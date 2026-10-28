@@ -359,7 +359,7 @@ def _norms_dir(path: str | None) -> Path:
 
     The default is relative to the working directory, which is the repo root
     everywhere the seed is loaded on purpose. When it is NOT there — a test run
-    from a package directory such as ``frontends/aiq_api`` — resolve it against
+    from a package directory such as ``apps/backend`` — resolve it against
     the repository root instead, so the seed does not silently vanish and every
     caller downstream sees an empty registry.
     """

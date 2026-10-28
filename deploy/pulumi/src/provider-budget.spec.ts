@@ -40,7 +40,8 @@ async function load(config: Record<string, string> = {}) {
     "grid-oib:observabilityEnabled": "false",
     ...config,
   });
-  return import("./config").then((m) => ({ ...m, cfg: m.loadConfig() }));
+  const [configModule, budget] = await Promise.all([import("./config"), import("./config/vlm-ceiling")]);
+  return { ...budget, cfg: configModule.loadConfig() };
 }
 
 /** A knob as a stack file sets it, or the default the program falls back to. */

@@ -293,7 +293,7 @@ provides-extras = ["dev", "docs", "viz"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "aiq-api", editable = "frontends/aiq_api" },
+    { name = "aiq-api", editable = "apps/backend" },
     { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
     { name = "import-linter", specifier = ">=2.15" },
     { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
@@ -316,7 +316,7 @@ dev = [
 [[package]]
 name = "aiq-api"
 version = "0.1.0"
-source = { editable = "frontends/aiq_api" }
+source = { editable = "apps/backend" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "asyncpg" },

@@ -1,4 +1,4 @@
-// @disk-inputs: ../aiq_api/src/aiq_api/chat_socket.py
+// @disk-inputs: ../../apps/backend/src/aiq_api/chat_socket.py
 /**
  * @vitest-environment node
  */
@@ -16,7 +16,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CHAT_TURN_DEADLINE_SECONDS, DEFAULT_ASK_MAX_SECONDS } from './ask-wire'
 
-const CHAT_SOCKET = join(__dirname, '..', '..', '..', '..', 'aiq_api', 'src', 'aiq_api', 'chat_socket.py')
+const CHAT_SOCKET = join(__dirname, '..', '..', '..', '..', '..', 'apps', 'backend', 'src', 'aiq_api', 'chat_socket.py')
 
 describe('the longest an ask stays open', () => {
   it('is the chat turn deadline the socket enforces', () => {

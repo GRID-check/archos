@@ -40,7 +40,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -169,7 +169,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -212,7 +212,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -265,7 +265,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -535,7 +535,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -586,7 +586,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -606,7 +606,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     # The image CMD migrates then serves; migration has moved to migrate,
     # so this container only serves.
     command: ["node", "server.js"]
@@ -800,7 +800,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -844,7 +844,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/jobs/index.js"]
     environment: *frontend-environment
     networks:
@@ -881,7 +881,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "purger/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
@@ -933,7 +933,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "scheduler/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
@@ -987,7 +987,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
       - BACKEND_URL=${BACKEND_URL:-http://api:8000}
@@ -1274,7 +1274,7 @@ services:
     # v4 with its default write mode, events_only: a local volume left from v3
     # is cut over on first start. Local traces are disposable; the cluster
     # migrates in stages (kubernetes.md §9b, "Upgrading to Langfuse v4").
-    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config.ts);
+    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config/langfuse.ts);
     # web and worker must stay on the same one, so bump the two lines together.
     image: ghcr.io/langfuse/langfuse:4.71.0
     profiles: [langfuse]
