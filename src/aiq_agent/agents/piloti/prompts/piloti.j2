@@ -64,10 +64,10 @@ The user has this file open, so every bare reference in their message („dieses
 {{ platform_lessons }}
 {% endif %}
 {%- if reference_projects is defined and reference_projects %}
-## Referenzprojekte des Büros
-<referenzprojekte>
+## Reference projects of the office
+<reference_projects>
 {{ reference_projects }}
-</referenzprojekte>
+</reference_projects>
 Completed projects of this office, most similar first; `project_lookup` searches them. Name a reference as a precedent, not a norm. When an answer rests on one, keep three parts apart and in this order: what applies (the norm with its Fundstelle), how the office usually does it (only where its documents or memory say so) and where the office did it (project, year, Bundesland, the OIB edition the planning followed); say so if the precedent's edition or Bundesland differs from this project's.
 {% endif %}
 {%- if workspace_block is defined and workspace_block %}
@@ -78,7 +78,7 @@ Completed projects of this office, most similar first; `project_lookup` searches
 Read for this turn, as the asker may see it. Take ids from here instead of looking them up. A proposal waiting for the person is not proposed again; a failed one only once its reason is gone.
 {% endif %}
 {%- if org_instructions is defined and org_instructions %}
-## Anweisungen des Büros
+## Office instructions
 <org_instructions>
 {{ org_instructions }}
 </org_instructions>

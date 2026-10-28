@@ -37,6 +37,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { describeAppPath } from '@/lib/navigation/describe-path'
 import { backReaches, previousVisit, readTrail, type TrailEntry } from '@/lib/navigation/return-trail'
 
@@ -51,9 +54,9 @@ export interface BackLinkProps {
 export function BackLink({ fallbackHref, fallbackLabel, className }: BackLinkProps): JSX.Element {
   const pathname = usePathname()
   const router = useRouter()
-  const tNav = useTranslations('nav')
-  const tCollaboration = useTranslations('collaboration')
-  const tCommon = useTranslations('common')
+  const tNav = useTranslations(navCopy)
+  const tCollaboration = useTranslations(collaborationCopy)
+  const tCommon = useTranslations(commonCopy)
 
   // Read after mount, never during render: `sessionStorage` does not exist on
   // the server, so the first client render has to match the server's fallback.

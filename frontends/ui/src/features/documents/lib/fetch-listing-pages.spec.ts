@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it, vi } from 'vitest'
 import { ListingFetchError, MAX_LISTING_PAGES, fetchListingPages } from './fetch-listing-pages'
 

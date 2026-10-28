@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import { useCoarsePointer } from '@/features/documents/hooks/use-coarse-pointer'
 import { ProjectUppyUpload } from '@/features/documents/components/project-uppy-upload'
 import { useTranslations } from '@/i18n'
+import { intakeReadingStepCopy } from '@/i18n/namespaces/intake-reading-step'
 import { usePressed } from '../../hooks/use-pressed'
 import type { ReadingDocuments } from './reading-milestones'
 
@@ -45,7 +46,7 @@ export function AddDocuments({
   /** The link's look where it sits (the footer's aside); a quiet inline link by default. */
   className?: string
 }): JSX.Element {
-  const t = useTranslations('intakeReadingStep')
+  const t = useTranslations(intakeReadingStepCopy)
   const pickFiles = useRef<(() => void) | null>(null)
   const pickFolder = useRef<(() => void) | null>(null)
   const touch = useCoarsePointer()
@@ -115,7 +116,7 @@ export function ReadingDocumentsBar({
   showUnread: boolean
   tools: DocumentTools
 }): JSX.Element {
-  const t = useTranslations('intakeReadingStep')
+  const t = useTranslations(intakeReadingStepCopy)
   const [rereading, reread] = usePressed()
   const { read, total, unread } = documents
   const share = total === null ? (read > 0 ? 100 : 0) : total > 0 ? Math.round((read / total) * 100) : 0

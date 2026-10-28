@@ -23,6 +23,7 @@ import {
 import { InsetStage } from '@/components/ui/inset-stage'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { PdfDocumentView } from './pdf-document-view'
 import { RegionMarks } from './region-marks'
 import { PageSheet } from './pdf-viewer-atoms'
@@ -120,7 +121,7 @@ export interface PdfViewerDialogProps {
 }
 
 export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src: srcOverride, isImage, imageUnoptimized = true, highlight, highlightColor, regions, quoteFormat, onFindSimilar, headerChip, headerActions, children, aside }: PdfViewerDialogProps) {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const baseSrc = srcOverride ?? `/api/knowledge-base/documents/${encodeURIComponent(fileName)}`
   // The fragment is for the "open in new tab" link and the image branch, which
   // both hand the URL to the BROWSER's viewer. The in-app view takes `page` as

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, test } from 'vitest'
 
 import { moreDestinations, type MoreFlags } from './phone-more'

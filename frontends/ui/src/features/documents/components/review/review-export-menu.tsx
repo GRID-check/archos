@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { downloadFetched } from '@/lib/browser-download'
 import {
@@ -73,7 +74,7 @@ export function ReviewExportMenu({
   /** Where „Im Projekt ablegen" files it, and the document's name the file is named after; absent, it is not offered. */
   filing?: { target: ProtocolFilingTarget; documentName: string } | null
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [scope, setScope] = useState<AnnotationExportScope>('open')
   const [revision, setRevision] = useState<AnnotationExportRevision>('current')
   const [includeProposals, setIncludeProposals] = useState(false)

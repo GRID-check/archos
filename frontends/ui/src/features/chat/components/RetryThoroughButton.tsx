@@ -34,6 +34,7 @@ import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
 import { useAnswerFeedback } from '../hooks/use-answer-feedback'
@@ -53,7 +54,7 @@ export interface RetryThoroughButtonProps {
 }
 
 export const RetryThoroughButton: FC<RetryThoroughButtonProps> = ({ messageId, conversationId }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const projectId = useChatStore((s) => s.projectId)
   const { state } = useAnswerFeedback(messageId, conversationId, projectId)
   const send = useChatStore((s) => s.chatSendFn)

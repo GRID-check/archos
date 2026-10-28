@@ -24,6 +24,7 @@ import { ArrowRight } from 'lucide-react'
 
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
+import { runsCopy } from '@/i18n/namespaces/runs'
 import type { RunLedger, RunStatus } from '@/lib/runs/run-ledger-types'
 import { runDisplayStatus, runTallies, type RunTallies } from '@/lib/runs/run-vocabulary'
 import { cn } from '@/lib/utils'
@@ -69,7 +70,7 @@ export function RunBlockLine({
   at,
   className,
 }: RunBlockLineProps): JSX.Element {
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   const { locale } = useLocale()
   const shown: RunStatus = status ?? (ledger ? runDisplayStatus(ledger) : 'created')
   const statusWord = t(`status.${shown}`)

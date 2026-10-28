@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { RevisionLinks } from '@/lib/documents/revision-links'
@@ -78,7 +79,7 @@ export function FilePreviewDialog({
   showModels,
   canCollaborate,
 }: FilePreviewDialogProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
 
   /**
    * Where keyboard focus was when this opened, so closing can put it back.

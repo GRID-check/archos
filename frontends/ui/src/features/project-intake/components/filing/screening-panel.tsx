@@ -12,6 +12,7 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { TagInput } from '@/components/ui/tag-input'
 import { useLocale, useTranslations, type Translator } from '@/i18n'
+import { intakeFilingStepCopy } from '@/i18n/namespaces/intake-filing-step'
 import { normalizeTermList } from '@/lib/upload-screening/policy'
 import type { ProjectScreeningOverride } from '@/lib/upload-screening/project-policy'
 import { SummaryBlock } from './filing-atoms'
@@ -49,7 +50,7 @@ function listName(screening: ProjectUploadScreeningState, t: Translator): string
  */
 export function ScreeningSummary(props: ScreeningSummaryProps): JSX.Element {
   const { screening, loadFailed, onRetry, preview, draft, onDraftChange } = props
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   const { locale } = useLocale()
 
   if (loadFailed) {
@@ -127,7 +128,7 @@ function ScreeningEditor({
   onSave,
   open,
 }: ScreeningSummaryProps & { screening: ProjectUploadScreeningState; open: boolean }): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   const [saving, setSaving] = useState(false)
   const { office, override } = screening
   const current = draft ?? override

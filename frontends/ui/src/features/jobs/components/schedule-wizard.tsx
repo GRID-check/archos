@@ -79,6 +79,7 @@ import { Stepper } from '@/components/ui/stepper'
 import { Advanced, StepHeading } from '@/components/ui/step-form'
 import { Switch } from '@/components/ui/switch'
 import { useLocale, useTranslations } from '@/i18n'
+import { jobsCopy } from '@/i18n/namespaces/jobs'
 import { formatAbsoluteTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { createDataSourcesClient, type DataSourceFromAPI } from '@/adapters/api/data-sources-client'
@@ -194,7 +195,7 @@ export function ScheduleWizard({
   onSaved,
   onCancel,
 }: ScheduleWizardProps): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const { locale } = useLocale()
 
   const [stepIndex, setStepIndex] = useState(0)
@@ -737,7 +738,7 @@ function WizardNav({
   editing: boolean
   onRunAfterSave: () => void
 }): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const last = step === 'review'
 
   return (
@@ -853,7 +854,7 @@ function ScheduleStep({
   error: string | null
   locale: string
 }): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const timezones = useMemo(() => supportedTimezones(), [])
 
   return (
@@ -1163,7 +1164,7 @@ function UpcomingRuns({
   timezone: string
   locale: string
 }): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const [upcoming, setUpcoming] = useState<Date[] | null>(null)
 
   useEffect(() => {
@@ -1247,7 +1248,7 @@ function ReviewStep({
   onEnabledChange: (next: boolean) => void
   locale: string
 }): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const [promptOpen, setPromptOpen] = useState(false)
   // The prompt IS what the agent receives, verbatim. It used to be the prompt
   // plus the attached skill's whole body, which is why this pane existed: what

@@ -17,6 +17,7 @@ import { notFound } from 'next/navigation'
 import { PlatformRetrievalSettings } from '@/app/app/(shell)/platform/retrieval/platform-retrieval-settings'
 import { PageHeader } from '@/components/ui/page-header'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { RETRIEVAL_SETTINGS } from '@/lib/retrieval-settings/catalog'
 
 // The real catalog, not a copy of it: a renamed key or a reworded description
@@ -83,7 +84,7 @@ function installShim(): void {
 installShim()
 
 export default function PlatformRetrievalDevPage(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   if (process.env.NODE_ENV !== 'development') {
     notFound()
   }

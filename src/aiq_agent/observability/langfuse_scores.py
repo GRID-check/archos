@@ -536,7 +536,7 @@ def formula_provenance_score(card: dict[str, Any], *, index: int) -> RuntimeScor
     """
     if card.get("type") != "formula":
         return None
-    from aiq_agent.cards.models import formula_inputs
+    from aiq_agent.cards.formula_card import formula_inputs
 
     inputs = formula_inputs(card)
     given = [item for item in inputs if item.get("value") is not None]

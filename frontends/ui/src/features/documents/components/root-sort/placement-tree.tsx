@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { RootSortFolder } from '@/lib/filing/root-sort-types'
 import { cn } from '@/lib/utils'
 import {
@@ -71,7 +72,7 @@ export function PlacementTreeView({
   onToggleFolder,
   onRetarget,
 }: PlacementTreeViewProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // Open state the reader set, by folder path; absent means the default.
   const [opened, setOpened] = useState<ReadonlyMap<string, boolean>>(() => new Map())
   const isOpen = (node: FolderNode): boolean =>
@@ -147,7 +148,7 @@ function FolderItem({
   onRetarget,
   targets,
 }: FolderItemProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const kept = folderKept(node)
   const hasChildren = node.children.length > 0 || node.files.length > 0
   const count = node.placedBelow
@@ -241,7 +242,7 @@ interface FileRowProps {
 }
 
 function FileRow({ file, depth, onToggleFile, onRetarget, targets }: FileRowProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const placed = file.certainty !== null
   return (
     <li
@@ -283,7 +284,7 @@ function MoveMenu({
   targets: readonly RootSortFolder[]
   onRetarget: (documentId: string, choice: RetargetChoice) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

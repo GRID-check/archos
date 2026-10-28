@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS, MAX_TAGS } from '@/lib/documents/tag-vocabulary'
 
 /** Every tag a user may assign, in vocabulary order (Dokumenttyp then Fachbereich). */
@@ -30,7 +31,7 @@ export function DocumentTagsEditor({
   /** Hide the editing affordances and render the tags as static chips. */
   readOnly?: boolean
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [tags, setTags] = useState<string[]>(initialTags)
   const [input, setInput] = useState('')
   const [isEditing, setIsEditing] = useState(false)

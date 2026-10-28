@@ -63,7 +63,7 @@ class TurnContext:
     #: :class:`aiq_agent.stages.flags.TurnFlags`.
     deep_research_allowed: bool = True
     #: The office's reference projects (closed, most like this one), one line
-    #: each: rendered as ``<referenzprojekte>`` so the agent looks there unasked
+    #: each: rendered as ``<reference_projects>`` so the agent looks there unasked
     #: (docs/design/cross-project-escalation.md). None: none, or not loaded.
     reference_projects: str | None = None
     #: The WORKSPACE block (ADR-0123): the asker's roles, the project, the

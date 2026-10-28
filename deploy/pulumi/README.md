@@ -113,7 +113,10 @@ There are exactly three places values live — if you're looking for a number,
 it is in one of these, in this order:
 
 1. **`Pulumi.<stack>.yaml`** — *your* per-environment values (edit these).
-2. **`src/config.ts`** — every knob's declaration + default (the table below).
+2. **`src/config.ts`** and **`src/config/`** — every knob's declaration + default
+   (the table below): `config.ts` assembles `GridConfig`, and each concern
+   (Postgres, SeaweedFS, Qdrant, Langfuse, the chat tier, …) declares and
+   validates its own keys in `src/config/<concern>.ts`.
 3. **`src/constants.ts`** — fixed platform decisions (ports, UIDs, resource
    envelopes for helpers, shared timeouts) with the reasoning attached. Not
    knobs on purpose; promote one to `config.ts` if an environment genuinely
@@ -385,7 +388,8 @@ the bootstrap Jobs ran to completion under enforced NetworkPolicies.
 
 ```
 index.ts                 wiring + stack outputs
-src/config.ts            typed config (every knob + secret)
+src/config.ts            typed config: GridConfig and loadConfig
+src/config/              one module per concern: its keys, defaults and checks
 src/platform/            provider, namespace, cert-manager, gateway (Envoy),
                          dns (Cloudflare records for the Gateway's hosts),
                          metrics-server, scheduling (PDB/spread), rollout

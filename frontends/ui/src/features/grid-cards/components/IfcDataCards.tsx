@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import type { BimComparison } from '@/lib/bim/compare'
 import { canonicalBimRuleId, rulesWithOpenWork, type BimRuleResult } from '@/lib/bim/rules'
 import { roomScheduleToCsv, type BimRoomSchedule } from '@/lib/bim/schedule'
@@ -180,7 +181,7 @@ function NoModel({
   ambiguous?: boolean
   notReady?: 'extracting' | 'failed' | null
 } = {}): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   if (isLoading) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-dashed p-6">
@@ -245,7 +246,7 @@ export function IfcScheduleCard({
   note,
   projectId,
 }: IfcScheduleCardProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const {
     model,
@@ -462,7 +463,7 @@ export function IfcElementCard({
   note,
   projectId,
 }: IfcElementCardProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const {
     model,
@@ -588,7 +589,7 @@ export function IfcComplianceCard({
   note,
   projectId,
 }: IfcComplianceCardProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const {
     model,
     isLoading: modelsLoading,
@@ -772,7 +773,7 @@ function DiffGroup({
    */
   total: number
 }): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   if (entries.length === 0) return null
 
   return (
@@ -841,7 +842,7 @@ export function IfcDiffCard({
   note,
   projectId,
 }: IfcDiffCardProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const {
     model,
     models,

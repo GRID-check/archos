@@ -1,12 +1,12 @@
 import { render, screen, within } from '@/test-utils'
 import { describe, expect, test } from 'vitest'
 
-import { getDictionary } from '@/i18n'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { type PermissionSpec, type RoleSpec } from '@/lib/authz/catalog'
 import { PermissionReference, invertRoles } from './permission-reference'
 
-const t = createTranslator(getDictionary('en'), 'organization')
+const t = translatorFor(organizationCopy, 'en')
 
 const permission = (over: Partial<PermissionSpec> = {}): PermissionSpec => ({
   slug: 'org:budgets:manage',

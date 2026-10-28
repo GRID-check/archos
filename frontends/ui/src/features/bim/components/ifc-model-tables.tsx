@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import type { BimProfileSuggestion } from '@/lib/bim/profile'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import {
@@ -52,7 +53,7 @@ import {
  * terminal."
  */
 function PanelError({ text, onRetry }: { text: string; onRetry?: () => void }): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   return (
     <div className="flex flex-wrap items-center gap-2">
       <p className="text-destructive text-sm">{text}</p>
@@ -116,7 +117,7 @@ export function IfcRoomSchedule({
   onSelect,
   selectedGlobalId,
 }: IfcRoomScheduleProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const format = useNumberFormat()
   const [expanded, setExpanded] = useState(false)
 
@@ -383,7 +384,7 @@ export function IfcQuantityTakeoff({
   onByMaterialChange,
   units,
 }: IfcQuantityTakeoffProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const format = useNumberFormat()
   // The name and the unit of the quantity on screen. A Massenermittlung that
   // says `NetSideArea · 412` cannot be read into a Kostenschätzung; one that
@@ -554,7 +555,7 @@ export function IfcProfileSuggestions({
   onRetry,
   askHref,
 }: IfcProfileSuggestionsProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
 
   return (
     <section aria-labelledby="bim-profile-heading" className="space-y-2">

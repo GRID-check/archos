@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { humanizeTerm, type DrawingStructured } from '@/lib/documents/drawing-structured'
 
@@ -24,7 +25,7 @@ import { humanizeTerm, type DrawingStructured } from '@/lib/documents/drawing-st
  * shows up here without a frontend release.
  */
 export function DrawingStructuredDetails({ structured }: { structured: DrawingStructured }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [open, setOpen] = useState(false)
   const { segment, document } = structured
 
@@ -147,7 +148,7 @@ export function DrawingStructuredDetails({ structured }: { structured: DrawingSt
  * on the sheet, so they read as context rather than as this drawing's own.
  */
 function DocumentRows({ document }: { document: DrawingStructured['document'] }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const credits = [document.author, document.institution, document.supervision, document.location]
     .filter(Boolean)
     .join(', ')

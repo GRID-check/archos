@@ -6,6 +6,8 @@ import type { UserMessageAuthor } from '@/features/chat/components/UserMessage'
 import type { Finding, Findings } from '@/lib/conversations/message-findings'
 import { RunBlockMessage } from '@/features/runs/components/RunBlockMessage'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 
 /**
@@ -56,8 +58,8 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
   onCommissionFinding,
   onContinueRun,
 }) => {
-  const tFileStatus = useTranslations('research')
-  const tCommon = useTranslations('common')
+  const tFileStatus = useTranslations(researchCopy)
+  const tCommon = useTranslations(commonCopy)
   const messageType = message.messageType || (message.role === 'user' ? 'user' : 'assistant')
 
   switch (messageType) {
@@ -192,7 +194,7 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
                 : tFileStatus('fileSourceCard.statusAvailable')
       return (
         <div
-          className="bg-muted shadow-xs flex items-center gap-2 rounded-xl px-4 py-2"
+          className="bg-muted flex items-center gap-2 rounded-xl px-4 py-2 shadow-xs"
           role="status"
         >
           <FileText className="text-muted-foreground size-4" aria-hidden="true" />

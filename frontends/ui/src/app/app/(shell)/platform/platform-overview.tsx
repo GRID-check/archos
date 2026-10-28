@@ -59,6 +59,7 @@ import { usePlatformCan } from '@/features/platform/platform-access'
 import { makeWidgetTokenFetcher } from '@/lib/workos/widget-token'
 import { useResolvedAppearance, widgetTheme } from '@/lib/workos/use-widget-appearance'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { formatCount, formatDate, formatUsd as usd } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -162,7 +163,7 @@ const COLUMN_VISIBILITY = {
 } as const
 
 export const PlatformOverview: FC = () => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const appearance = useResolvedAppearance()
   const [overview, setOverview] = useState<OverviewDto | null>(null)
@@ -333,7 +334,7 @@ const HeadlineFigures: FC<{ overview: OverviewDto; refreshing: boolean }> = ({
   overview,
   refreshing,
 }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const { totals } = overview
   const monthMargin = totals.month.priceUsd - platformCost(totals.month)
@@ -410,7 +411,7 @@ const HeadlineFigures: FC<{ overview: OverviewDto; refreshing: boolean }> = ({
 }
 
 const OrganizationDirectory: FC<{ overview: OverviewDto }> = ({ overview }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const canManageOrganizations = usePlatformCan(PLATFORM_PERMISSIONS.organizationsManage)
   const [query, setQuery] = useState('')
@@ -559,7 +560,7 @@ const OrganizationRow: FC<{
   canManage: boolean
   onOpenBudget: () => void
 }> = ({ org, canManage, onOpenBudget }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const canViewUsage = usePlatformCan(PLATFORM_PERMISSIONS.usageView)
   const ingest = org.month.ingestCostUsd ?? 0

@@ -358,7 +358,7 @@ def test_the_chunker_works_under_the_deployed_import_path() -> None:
             sys.executable,
             "-c",
             "from knowledge_layer.llamaindex.clause_chunking import clause_documents;"
-            "from knowledge_layer.llamaindex.adapter import _apply_metadata_exclusions;"
+            "from knowledge_layer.llamaindex.chunk_metadata import apply_metadata_exclusions;"
             "print('ok')",
         ],
         capture_output=True,

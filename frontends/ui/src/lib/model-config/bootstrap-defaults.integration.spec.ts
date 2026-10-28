@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: the first-boot bootstrap against a real Postgres with
  * the migrations applied. Skipped unless GRID_TEST_DATABASE_URL is set (CI has
  * no database).

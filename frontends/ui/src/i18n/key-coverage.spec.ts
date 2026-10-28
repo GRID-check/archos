@@ -27,6 +27,8 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { en } from './dictionaries/en'
+import { de } from './dictionaries/de'
+import type { Namespace } from './namespace'
 import { getByPath } from './translate'
 
 const SRC_DIR = join(process.cwd(), 'src')
@@ -50,18 +52,21 @@ function sourceFiles(dir = SRC_DIR, found: string[] = []): string[] {
 }
 
 /**
- * Translator variables in a file, mapped to the namespace they were bound to.
+ * Translator variables in a file, mapped to the key path they were bound to.
  *
- * Catches both `useTranslations('chat')` and the server-side
- * `await getTranslations('chat')`, plus the un-namespaced form where the key is
- * already fully qualified.
+ * Catches `useTranslations(chatCopy)`, the server-side
+ * `await getTranslations(chatCopy)` and `getStoreTranslator(chatCopy)`, each
+ * with an optional scope (`useTranslations(searchCopy, 'filters')` binds
+ * `search.filters`). A namespace module exports `<name>Copy`, so the name is
+ * read off the identifier.
  */
 function translatorBindings(source: string): Map<string, string> {
   const bindings = new Map<string, string>()
-  const namespaced = /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\(\s*'([^']*)'\s*\)/g
-  for (const match of source.matchAll(namespaced)) bindings.set(match[1], match[2])
-  const bare = /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\(\s*\)/g
-  for (const match of source.matchAll(bare)) bindings.set(match[1], '')
+  const call =
+    /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations|getStoreTranslator)\(\s*(\w+)Copy\s*(?:,\s*'([^']*)'\s*)?\)/g
+  for (const match of source.matchAll(call)) {
+    bindings.set(match[1], match[3] ? `${match[2]}.${match[3]}` : match[2])
+  }
   return bindings
 }
 
@@ -151,5 +156,24 @@ describe('translation keys resolve against the dictionary', () => {
     // assertions above pass over nothing at all.
     expect(checked).toBeGreaterThan(1500)
     expect(prefixesChecked).toBeGreaterThan(50)
+  })
+})
+
+describe('every namespace has its module', () => {
+  const modules = import.meta.glob<Record<string, Namespace>>('./namespaces/*.ts', { eager: true })
+  const exported = Object.values(modules).flatMap((module) => Object.entries(module))
+
+  it('exports one `<name>Copy` per namespace of the dictionary', () => {
+    expect(exported.map(([binding, namespace]) => [binding, namespace.name]).sort()).toEqual(
+      Object.keys(en).map((name) => [`${name}Copy`, name]).sort(),
+    )
+  })
+
+  it('holds the same copy as the dictionary, in every locale', () => {
+    for (const [, namespace] of exported) {
+      const name = namespace.name as keyof typeof en
+      expect(namespace.messages.en, name).toBe(en[name])
+      expect(namespace.messages.de, name).toBe(de[name])
+    }
   })
 })

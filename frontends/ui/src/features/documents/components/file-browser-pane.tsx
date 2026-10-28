@@ -12,6 +12,7 @@ import { ItemList } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileSearch } from '../hooks/use-file-search'
 import { useCoarsePointer } from '../hooks/use-coarse-pointer'
@@ -338,7 +339,7 @@ export function FileBrowserPane({
   searchMatchesNamesOnly = false,
   selection,
 }: FileBrowserPaneProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const { semantic } = search
   // The field answers every keystroke; the filter over the whole corpus, and

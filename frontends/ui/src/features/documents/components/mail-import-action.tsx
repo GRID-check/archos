@@ -13,10 +13,11 @@ import { useState } from 'react'
 import { Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { MailImportDialog } from './mail-import-dialog'
 
 export function MailImportAction({ projectId }: { projectId: string }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [open, setOpen] = useState(false)
   return (
     <>

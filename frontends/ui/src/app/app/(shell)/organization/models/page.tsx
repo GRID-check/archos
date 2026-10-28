@@ -21,12 +21,13 @@ import { FEATURE_FLAGS, isFeatureEnabled } from '@/lib/authz/feature-flags'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { ModelConfigCard } from '../model-config-card'
 import { LlmCredentialsCard } from '../llm-credentials-card'
 
 export default async function OrganizationModelsPage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
 
     // Permission AND feature flag — the cards mirror the API's double gate.
     const models =

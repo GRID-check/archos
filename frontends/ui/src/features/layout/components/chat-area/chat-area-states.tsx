@@ -9,6 +9,9 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/adapters/auth'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { WELCOME_OFFSET_FALLBACK } from '../../hooks/use-composer-metrics'
 import { TOOLBAR_CLEAR_PADDING } from '../../lib/toolbar-clearance'
 
@@ -59,7 +62,7 @@ export const UnreadDivider: FC<{ label: string }> = ({ label }) => (
  */
 export const TurnInFlightBanner: FC<{ label: string }> = ({ label }) => (
   <div
-    className="bg-card shadow-xs flex min-h-9 w-fit items-center gap-2 rounded-lg border px-3.5 py-2"
+    className="bg-card flex min-h-9 w-fit items-center gap-2 rounded-lg border px-3.5 py-2 shadow-xs"
     role="status"
     data-testid="turn-in-flight"
   >
@@ -72,7 +75,7 @@ export const TurnInFlightBanner: FC<{ label: string }> = ({ label }) => (
  * HITL prompt until the turn resumes. Left-aligned to match assistant bubbles.
  */
 export const TypingIndicator: FC = () => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const label = t('chatArea.status.thinking')
   // Mounted when the reader answers the prompt, so counting from mount is the
   // true time since that answer.
@@ -116,7 +119,7 @@ export const TypingIndicator: FC = () => {
  * a WelcomeState flash before their thread loads in.
  */
 export const MessageListSkeleton: FC = () => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   return (
     <div
       className={cn(
@@ -188,11 +191,11 @@ export const WelcomeState: FC<WelcomeStateProps> = ({
   onSignIn,
   inProject = false,
 }) => {
-  const t = useTranslations('research')
-  const tChat = useTranslations('chat')
+  const t = useTranslations(researchCopy)
+  const tChat = useTranslations(chatCopy)
   const { user } = useAuth()
   const composerSubject = useChatStore((s) => s.composerSubject)
-  const tFiles = useTranslations('files')
+  const tFiles = useTranslations(filesCopy)
 
   if (!isAuthenticated) {
     return (

@@ -5,6 +5,7 @@ import { FolderUp } from 'lucide-react'
 import { FileDropOverlay } from '@/features/documents/components/file-drop-overlay'
 import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
 import { useTranslations } from '@/i18n'
+import { intakeFilingStepCopy } from '@/i18n/namespaces/intake-filing-step'
 import { cn } from '@/lib/utils'
 
 /**
@@ -23,7 +24,7 @@ export function FolderDropTarget({
   className?: string
   children: ReactNode
 }): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
     onDrop: (files) => {
       if (files.length > 0) onFiles(files)
@@ -61,7 +62,7 @@ export function FolderDropArea({
   onPickFiles: () => void
   disabled: boolean
 }): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   return (
     <div className="space-y-4" data-testid="intake-upload-zone">
       <FolderDropTarget onFiles={onFiles} disabled={disabled}>

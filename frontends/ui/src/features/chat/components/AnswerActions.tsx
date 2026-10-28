@@ -57,6 +57,7 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTransientFlag } from '@/hooks/use-transient-flag'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { copyMarkdownToClipboard } from '@/shared/utils/clipboard-rich'
 import { downloadFetched } from '@/lib/browser-download'
@@ -151,7 +152,7 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
   className,
   pending = false,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const swap = useIconSwapTransition()
   // Which copy showed its check, for as long as the receipt stands. The flag
   // owns the clock: a second press restarts it, and an unmount clears it.

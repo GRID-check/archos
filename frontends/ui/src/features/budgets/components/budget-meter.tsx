@@ -13,6 +13,7 @@
 import type { FC } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 /**
  * Spend against one limit. The track IS the limit, so "how full" is literal
@@ -28,7 +29,7 @@ export const BudgetMeter: FC<{
   /** Number plus unit word, in the organization's unit. */
   formatAmount: (value: number) => string
 }> = ({ title, total, limit, formatAmount }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const over = limit !== null && total >= limit
   const scale = limit !== null ? Math.max(limit, total) : total
   const fillPct = scale > 0 ? Math.min((total / scale) * 100, 100) : 0

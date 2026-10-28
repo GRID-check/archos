@@ -77,7 +77,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def _configured_identity() -> dict[str, str]:
     """The embedder this deployment is configured for: the fallback for a collection the export names none for."""
-    from knowledge_layer.llamaindex.adapter import embed_fingerprint_metadata
+    from knowledge_layer.llamaindex.embedding import embed_fingerprint_metadata
 
     return embed_fingerprint_metadata(
         os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large"),

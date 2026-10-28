@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The Beteiligte as one list: the Steckbrief decides who is on it, the roster
  * adds the role, and nobody's own access is offered for change.
  */

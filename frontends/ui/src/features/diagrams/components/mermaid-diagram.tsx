@@ -66,6 +66,8 @@ import { useHeightGlide } from '@/components/motion/height-glide'
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { CodeBlock } from '@/shared/components/CodeBlock'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { diagramFrameStyle } from '../diagram-size'
 import { renderPaperDiagram, useRenderedDiagram } from '../use-rendered-diagram'
 import { useDiagramModel } from '../use-diagram-model'
@@ -83,8 +85,8 @@ export interface MermaidDiagramProps {
 }
 
 export function MermaidDiagram({ source, isStreaming = false }: MermaidDiagramProps) {
-  const t = useTranslations('diagrams')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(diagramsCopy)
+  const tCommon = useTranslations(commonCopy)
   // The render itself is `useRenderedDiagram` — shared with the `diagram` card,
   // which draws the same sources through the same renderer. One drive, so the
   // fresh id, the cancellation and the "a failure is not a throw" rule cannot

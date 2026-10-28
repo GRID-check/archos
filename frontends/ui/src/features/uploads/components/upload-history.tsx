@@ -28,13 +28,15 @@ import { Item, ItemContent, ItemList, ItemTitle } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 import { formatAbsoluteTime } from '@/lib/format'
 import { useProjectUploads } from '../hooks/use-project-uploads'
 import { tallyHistoryEntry, visibleTally } from '../lib/upload-summary'
 import { TallyPill, useTallyLabel } from './upload-atoms'
 
 function UploadHistoryRow({ entry, own }: { entry: UploadHistoryEntry; own: boolean }): JSX.Element {
-  const t = useTranslations('uploadBatches')
+  const t = useTranslations(uploadBatchesCopy)
   const { locale } = useLocale()
   const tallyLabel = useTallyLabel()
   const pills = visibleTally(tallyHistoryEntry(entry))
@@ -91,7 +93,7 @@ export function UploadHistoryList({
   uploads: UploadHistoryEntry[]
   currentUserId: string | null
 }): JSX.Element {
-  const t = useTranslations('uploadBatches')
+  const t = useTranslations(uploadBatchesCopy)
   if (uploads.length === 0) {
     return (
       <EmptyState
@@ -120,8 +122,8 @@ export function UploadHistory({
   projectId: string
   currentUserId: string | null
 }): JSX.Element {
-  const t = useTranslations('uploadBatches')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(uploadBatchesCopy)
+  const tCommon = useTranslations(commonCopy)
   const { state, retry, loadMore } = useProjectUploads(projectId)
 
   if (state.status === 'loading') {

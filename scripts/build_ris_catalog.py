@@ -35,7 +35,7 @@ from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "sources" / "ris_adapter" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "packages" / "ris-adapter" / "src"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import importlib.util  # noqa: E402

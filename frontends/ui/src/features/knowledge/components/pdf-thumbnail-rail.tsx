@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState, type FC, type RefObject } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { cn } from '@/lib/utils'
 import { PageSheet, PageThumbnailButton } from './pdf-viewer-atoms'
 
@@ -45,7 +46,7 @@ export const PdfThumbnailRail: FC<PdfThumbnailRailProps> = ({
   onSelect,
   className,
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const railRef = useRef<HTMLElement | null>(null)
 
   // Keep the current page's thumbnail in view while the reader scrolls the

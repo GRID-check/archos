@@ -9,7 +9,7 @@ This script tests the complete knowledge layer workflow with LlamaIndex:
 
 Prerequisites:
     - OPENROUTER_API_KEY environment variable (via export or .env file)
-    - LlamaIndex dependencies: uv pip install -e "sources/knowledge_layer[llamaindex]"
+    - LlamaIndex dependencies: uv pip install -e "packages/knowledge-layer[llamaindex]"
 
 Usage:
     # Option 1: Export env var
@@ -111,7 +111,7 @@ async def main():
 
     # Import adapter to register it with the factory
     from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor  # noqa: F401
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever  # noqa: F401
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever  # noqa: F401
 
     from aiq_agent.knowledge import get_ingestor
     from aiq_agent.knowledge import get_retriever

@@ -29,6 +29,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import { parseSkillDocument, type ParsedSkillDocument } from '../lib/skill-document'
 
@@ -45,7 +46,7 @@ export const SkillRawDocumentSection: FC<SkillRawDocumentSectionProps> = ({
   onApply,
   className,
 }) => {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(document)
 

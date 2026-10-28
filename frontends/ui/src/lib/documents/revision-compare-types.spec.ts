@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { NO_VISIBLE_CHANGE, revisionCompareBodySchema, parseRevisionVisualChanges } from './revision-compare-types'
 

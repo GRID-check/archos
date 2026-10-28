@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { DeleteDocumentDialog } from './delete-document-dialog'
 import { RenameDocumentDialog } from './rename-document-dialog'
@@ -30,7 +31,8 @@ import {
   reingestOffer,
   type DocumentActionKind,
 } from './action-entries'
-import { useDocumentActions, type ActionableDocument, type DocumentScope } from './use-document-actions'
+import { useDocumentActions, type ActionableDocument } from './use-document-actions'
+import { DOCUMENT_SCOPE_COPY, type DocumentScope } from './document-scope'
 import { sortedFolderDestinations, type FolderDestination, type PathFolder } from '../../lib/folder-path-label'
 import { FolderPickerSheet } from '../folder-picker-sheet'
 
@@ -127,8 +129,8 @@ export function useDocumentActionMenu({
    */
   live?: boolean
 }) {
-  const t = useTranslations(scope)
-  const filesT = useTranslations('files')
+  const t = useTranslations(DOCUMENT_SCOPE_COPY[scope])
+  const filesT = useTranslations(filesCopy)
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [rereadOpen, setRereadOpen] = useState(false)
@@ -265,7 +267,7 @@ export function DocumentActionsMenu({
   side = 'bottom',
   ...props
 }: DocumentActionsMenuProps): ReactNode {
-  const t = useTranslations(props.scope)
+  const t = useTranslations(DOCUMENT_SCOPE_COPY[props.scope])
   const { entries, dialogs, name } = useDocumentActionMenu(props)
   if (entries.length === 0) return null
   return (

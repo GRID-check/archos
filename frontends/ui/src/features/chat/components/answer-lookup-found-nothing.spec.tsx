@@ -10,7 +10,7 @@
  */
 
 import { render, screen } from '@/test-utils'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { vi, describe, test, expect } from 'vitest'
 import { AgentResponse } from './AgentResponse'
 import { asStoreState, type DeepPartial, type StoreSelector } from '@/test-utils/store-fixtures'
@@ -35,7 +35,7 @@ vi.mock('@/shared/components/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ content }: { content: string }) => <span>{content}</span>,
 }))
 
-const note = en.chat.answerSources.lookupFoundNothing
+const note = chatCopy.messages.en.answerSources.lookupFoundNothing
 
 describe.each(['default', 'inline'] as const)('the %s answer variant', (variant) => {
   test('an answer whose search found nothing says what it rests on, without opening anything', () => {
@@ -59,12 +59,12 @@ describe.each(['default', 'inline'] as const)('the %s answer variant', (variant)
 })
 
 test('both locales carry their own sentence', () => {
-  expect(de.chat.answerSources.lookupFoundNothing).not.toBe(
-    en.chat.answerSources.lookupFoundNothing
+  expect(chatCopy.messages.de.answerSources.lookupFoundNothing).not.toBe(
+    chatCopy.messages.en.answerSources.lookupFoundNothing
   )
   for (const text of [
-    de.chat.answerSources.lookupFoundNothing,
-    en.chat.answerSources.lookupFoundNothing,
+    chatCopy.messages.de.answerSources.lookupFoundNothing,
+    chatCopy.messages.en.answerSources.lookupFoundNothing,
   ]) {
     expect(text.trim().length).toBeGreaterThan(20)
     expect(text).not.toContain('{')

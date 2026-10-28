@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * A zip writer is only correct if something else can read what it wrote, so
  * these tests parse the archive back out of the bytes rather than asserting on
  * offsets. The reader here is deliberately independent of the writer: it walks

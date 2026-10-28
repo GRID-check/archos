@@ -4,7 +4,7 @@
  * One policy, two gates. The NAME gate runs in the browser before a byte is
  * sent, and again in the BFF on receipt (`./name-screen`). The CONTENT gate
  * runs inside the ingest job, on text extracted locally, before the first model
- * call (`sources/knowledge_layer/src/llamaindex/screening.py`); the BFF hands it
+ * call (`packages/knowledge-layer/src/llamaindex/screening.py`); the BFF hands it
  * the content half of this policy on every dispatch (`toIngestScreening`).
  *
  * The content half also screens CHAT: the composer masks a message against

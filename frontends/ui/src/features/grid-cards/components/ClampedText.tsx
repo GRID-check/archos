@@ -19,6 +19,7 @@
 
 import { useLayoutEffect, useRef, useState, type ElementType } from 'react'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 
 /** Written out, because Tailwind reads class names from source, not from a template. */
@@ -39,7 +40,7 @@ interface ClampedTextProps {
 }
 
 export function ClampedText({ children, lines = 2, className, as: Tag = 'p' }: ClampedTextProps) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const ref = useRef<HTMLElement>(null)
   const [open, setOpen] = useState(false)
   const [cut, setCut] = useState(false)

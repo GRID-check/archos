@@ -40,7 +40,8 @@ async function load(config: Record<string, string> = {}) {
     "grid-oib:observabilityEnabled": "false",
     ...config,
   });
-  return import("./config").then((m) => ({ ...m, cfg: m.loadConfig() }));
+  const [configModule, budget] = await Promise.all([import("./config"), import("./config/vlm-ceiling")]);
+  return { ...budget, cfg: configModule.loadConfig() };
 }
 
 /** A knob as a stack file sets it, or the default the program falls back to. */
@@ -185,8 +186,8 @@ describe("the budget reaches the pods that spend it", () => {
     }
 
     const sources = [
-      read("sources", "knowledge_layer", "src", "llamaindex", "adapter.py"),
-      read("sources", "knowledge_layer", "src", "llamaindex", "processing.py"),
+      read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py"),
+      read("packages", "knowledge-layer", "src", "llamaindex", "processing.py"),
       read("src", "aiq_agent", "common", "provider_limiter.py"),
     ].join("\n");
     for (const name of Object.keys(expected)) expect(sources, name).toContain(`"${name}"`);
@@ -197,10 +198,10 @@ describe("the budget reaches the pods that spend it", () => {
     const python = (path: string[], pattern: RegExp) => Number(read(...path).match(pattern)?.[1]);
 
     expect(cfg.providerLimits.vlmFleetConcurrency).toBe(
-      python(["sources", "knowledge_layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = _env_int\("GRID_VLM_FLEET_CONCURRENCY", (\d+)\)/),
+      python(["packages", "knowledge-layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = _env_int\("GRID_VLM_FLEET_CONCURRENCY", (\d+)\)/),
     );
     expect(cfg.providerLimits.vlmBatchWorkers).toBe(
-      python(["sources", "knowledge_layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("GRID_VLM_BATCH_WORKERS", "(\d+)"\)/),
+      python(["packages", "knowledge-layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("GRID_VLM_BATCH_WORKERS", "(\d+)"\)/),
     );
     expect(cfg.providerLimits.limitCeiling).toBe(
       python(["src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_CEILING = (\d+)$/m),

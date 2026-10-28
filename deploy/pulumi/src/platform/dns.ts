@@ -1,8 +1,8 @@
 import * as cloudflare from "@pulumi/cloudflare";
 import * as pulumi from "@pulumi/pulumi";
-// Type-only: `config.ts` imports the host-set derivation from here at runtime,
+// Type-only: `config/dns.ts` imports the host-set derivation from here at runtime,
 // so a value import in this direction would close a module cycle.
-import type { GridConfig } from "../config";
+import type { GridConfig } from '../config'
 
 /**
  * Public DNS for the stack's hosts, in Cloudflare.

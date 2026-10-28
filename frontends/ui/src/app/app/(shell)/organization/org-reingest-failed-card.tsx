@@ -17,9 +17,10 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 export function OrgReingestFailedCard(): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const [isRescanning, setIsRescanning] = useState(false)
 
   const handleRescan = async (): Promise<void> => {

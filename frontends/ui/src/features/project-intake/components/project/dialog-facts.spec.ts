@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * What step 1 shows of the create dialog, and what an edit writes: the profile
  * wins over the intake row, the Gemeinde is shown only for the geocoder's own
  * hit, and an edit sends only what changed.

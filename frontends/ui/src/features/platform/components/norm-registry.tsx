@@ -65,6 +65,7 @@ import {
 } from '@/features/platform/components/norm-entry-editor'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import {
   NORM_RANKS,
   type NormEntry,
@@ -142,7 +143,7 @@ interface EditorTarget {
 }
 
 export function NormRegistry(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   // Saving the registry (and verifying an entry) is `settings:manage`. A
   // read-only viewer gets the table, without the controls that would 403.
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)

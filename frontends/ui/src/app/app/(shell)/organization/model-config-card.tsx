@@ -41,6 +41,8 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations, type Translator } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { formatCredits } from '@/lib/format'
 import { describeRejections, isZdrListUnavailableResponse } from '@/lib/model-config/rejections'
 import { ZdrGroupNotice, ZdrPolicySection, type ZdrCoverage } from './zdr-policy-section'
@@ -102,7 +104,7 @@ const ModelPicker: FC<{
   epoch: number
   onPick: (modelId: string) => void
 }> = ({ group, epoch, onPick }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
   const [query, setQuery] = useState('')
   const [models, setModels] = useState<ModelDto[] | null>(null)
@@ -206,8 +208,8 @@ const ModelPicker: FC<{
 }
 
 export const ModelConfigCard: FC = () => {
-  const t = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const { locale } = useLocale()
   const [groups, setGroups] = useState<AgentGroupDto[]>([])
   const [defaults, setDefaults] = useState<Record<string, string | null>>({})

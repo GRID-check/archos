@@ -78,7 +78,7 @@ export function topologicallyOrderedDefNames(root) {
     if (state.get(name) === 'visiting') {
       throw new Error(
         `Cyclic $ref among card defs: ${[...stack, name].join(' -> ')}. A cycle cannot be ` +
-          'emitted as plain consts; break it in `src/aiq_agent/cards/models.py`, or teach this ' +
+          'emitted as plain consts; break it in the card models (`src/aiq_agent/cards/`), or teach this ' +
           'generator to emit `z.lazy()` with hand-written type annotations for the cycle members.'
       )
     }

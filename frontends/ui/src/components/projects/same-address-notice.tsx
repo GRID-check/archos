@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { ExternalLink, Info } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { GeocodeResult } from '@/lib/geocoding/types'
 import type { SameAddressClient, SameAddressResponse } from '@/lib/projects/same-address-client'
 
@@ -23,7 +24,7 @@ export function SameAddressNotice({
   place: Pick<GeocodeResult, 'label' | 'lat' | 'lon'>
   client: SameAddressClient
 }): JSX.Element | null {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const [found, setFound] = useState<SameAddressResponse['projects']>([])
 
   useEffect(() => {

@@ -40,6 +40,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useCoarsePointer } from '@/features/documents/hooks/use-coarse-pointer'
 import { useTranslations } from '@/i18n'
+import { captureCopy } from '@/i18n/namespaces/capture'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { documentsOnlyAccept, type PhotoIntake } from '@/features/documents/lib/site-photo'
 
 /** Which input a selection came from: a camera capture is always renamed. */
@@ -63,8 +65,8 @@ export const ComposerAttach: FC<ComposerAttachProps> = ({
   title,
   onFiles,
 }) => {
-  const t = useTranslations('research')
-  const tCapture = useTranslations('capture')
+  const t = useTranslations(researchCopy)
+  const tCapture = useTranslations(captureCopy)
   const touch = useCoarsePointer()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const libraryInputRef = useRef<HTMLInputElement>(null)
