@@ -130,7 +130,7 @@ invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to parsing the individual headers
 exactly as before the envelope existed.
 
-**Enforcement matrix** (`backend.context_envelope.GridContextEnvelopeMiddleware`,
+**Enforcement matrix** (`agent_host.context_envelope.GridContextEnvelopeMiddleware`,
 403 / WS policy-violation close): applies only when ALL of — `REQUIRE_AUTH=true`;
 the caller is a WorkOS-authenticated JWT user (not internal-token, not
 anonymous); the path is NOT on the short exempt list; and no valid envelope is
@@ -144,10 +144,10 @@ list used to be the other way round (an allowlist of enforced paths), and the
 unlisted NAT routes (`/chat`, `/v1/chat/completions`, `/v1/workflow`,
 `/generate`, …) ran full agent turns with no organization, budget or source
 policy. Those routes are no longer mounted at all: this socket is the only way
-a turn runs (`backend.plugin.BackendConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
+a turn runs (`agent_host.plugin.AgentHostConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
 internal-token-authenticated service calls.
 See `docs/architecture/backend-deep-dive.md` and
-`apps/backend/src/backend/context_envelope.py`'s module docstring for the
+`apps/backend/src/agent_host/context_envelope.py`'s module docstring for the
 full design.
 
 ### Environment Variables
@@ -365,7 +365,7 @@ client that did not. The socket reads the policy once per connection from
 `GET /api/internal/chat-screening`, so a policy change applies from the next
 connection; until it can be read (no signed organization, an older BFF, an
 error) every detector applies and no term. A chosen `{option_id}` is not free
-text and passes as it is. `backend.chat_socket.ChatSocket._masked`;
+text and passes as it is. `agent_host.chat_socket.ChatSocket._masked`;
 the matcher is `agent.common.content_screen`.
 
 ### Invoking a skill (no wire field)
@@ -545,7 +545,7 @@ question asked while the socket has given up opens a new one with a fresh ladder
 
 A run — a deep-research run, a task run — streams its own events from
 `job_events` rather than over the socket: `GET /v1/jobs/async/{jobId}/events`
-(`backend.routes.job_handlers.JobRouteHandlers.stream_job_events`), replayable from `last_event_id`. That
+(`agent_host.routes.job_handlers.JobRouteHandlers.stream_job_events`), replayable from `last_event_id`. That
 stream carries the `job.*` lifecycle events (`job.phase`, `job.heartbeat`,
 `job.degraded`, `job.error`, `job.cancelled`), the `artifact.update` events the
 agent callbacks emit, and one more:
@@ -564,7 +564,7 @@ fixture `apps/workspace/tests/fixtures/run-ledger.schema.json` pins.
 Two properties a client should rely on:
 
 - **It is a snapshot, not a delta.** Replace what you hold with the payload. The
-  ledger is folded in exactly one place (`backend.jobs.run_ledger_fold`), and a
+  ledger is folded in exactly one place (`agent_host.jobs.run_ledger_fold`), and a
   client that folded its own from the raw events would be a second account of
   one run, differing from the stored one precisely when something went wrong.
 - **It is emitted on every flush** — debounced to about a second, and always on

@@ -105,7 +105,7 @@ REQUEST_CONTEXT_ENVELOPE_SIG_HEADER = "x-grid-request-context-sig"
 #: that carry it. DECLARATIVE, so a test can check every entry path that binds
 #: a tool supplies what it needs: the chat path sets these on the WebSocket
 #: upgrade, the job worker injects them from the run's identity
-#: (`backend.jobs.runner.WORKER_IDENTITY_HEADERS`) and, when the run carries
+#: (`agent_host.jobs.runner.WORKER_IDENTITY_HEADERS`) and, when the run carries
 #: one, the requester's signed envelope (`WORKER_ENVELOPE_HEADERS`). `remember` answered "no
 #: project in scope" on every deep-research run for weeks because this
 #: contract lived in two hand-maintained lists that nothing compared.
@@ -128,7 +128,7 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # the pinned session of the person the envelope names. An entry path
     # supplies it by FORWARDING one the BFF minted, never by building one: the
     # chat path from the turn's live session, the job worker from the
-    # requester's envelope the run carries (ADR-0108, `backend.jobs.run_envelope`).
+    # requester's envelope the run carries (ADR-0108, `agent_host.jobs.run_envelope`).
     # A run that carries none injects none, and the tool refuses — see the
     # `_NO_ENVELOPE` refusal in `tools/documents/filing.py`.
     "file_draft": (PROJECT_ID_HEADER, REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
@@ -470,7 +470,7 @@ class GridRequestContext:
     #: the field existed. A reader that GRANTS access on the envelope enforces
     #: the window itself and fails closed on a missing value, as the BFF
     #: verifier (`verifyGridRequestContextEnvelope`) does: the job routes do so
-    #: in `backend.jobs.access.signed_job_scope` (ADR-0084).
+    #: in `agent_host.jobs.access.signed_job_scope` (ADR-0084).
     issued_at: int | None = None
     #: The envelope EXACTLY as it arrived — the base64url header and its hex
     #: signature, unparsed.
@@ -546,7 +546,7 @@ class GridRequestContext:
 
         Returns ``None`` (treated as ABSENT by every caller — ``from_context``
         falls back to the individual headers, and the enforcement middleware
-        in ``backend`` treats it as "no envelope") when:
+        in ``agent_host`` treats it as "no envelope") when:
 
         - ``header_value`` is missing/blank;
         - the base64url payload fails to decode or does not parse as a JSON

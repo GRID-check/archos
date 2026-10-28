@@ -20,7 +20,7 @@ agent in the platform.
 The file is vendored **verbatim**, frontmatter included, so the licence and the
 author travel with the content rather than living only in this README. Do not
 edit it: any local change belongs in the code that consumes it
-(`apps/backend/src/backend/routes/skill_review.py`), which strips the
+(`apps/backend/src/agent_host/routes/skill_review.py`), which strips the
 frontmatter and the upsell paragraph at import time and leaves the rules alone.
 To take a newer upstream version, re-download the file and bump the Version row
 above.

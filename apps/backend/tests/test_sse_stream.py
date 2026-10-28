@@ -18,9 +18,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from backend.jobs.connection_manager import reset_connection_manager
-from backend.jobs.event_store import EventStore
-from backend.routes import job_event_stream
+from agent_host.jobs.connection_manager import reset_connection_manager
+from agent_host.jobs.event_store import EventStore
+from agent_host.routes import job_event_stream
 
 #: The direct (non-pooled) DSN LISTEN connects to: `LISTEN_DB_URL` in a deployment.
 DIRECT_DSN = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret

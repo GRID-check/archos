@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.jobs.access import derive_project_collection
+from agent_host.jobs.access import derive_project_collection
 
 
 @pytest.fixture(autouse=True)

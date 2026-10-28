@@ -17,10 +17,10 @@ from pathlib import Path
 
 import pytest
 
-from backend.mail_archive import reader
-from backend.mail_archive.reader import Archive
-from backend.mail_archive.reader import ArchiveError
-from backend.mail_archive.reader import AttachmentTooLargeError
+from agent_host.mail_archive import reader
+from agent_host.mail_archive.reader import Archive
+from agent_host.mail_archive.reader import ArchiveError
+from agent_host.mail_archive.reader import AttachmentTooLargeError
 
 UNICODE = 0x001F
 INT32 = 0x0003
@@ -262,7 +262,7 @@ def test_a_damaged_message_is_an_unreadable_item_and_the_page_goes_on():
 
 
 def test_a_store_failure_behind_the_damage_is_raised_as_itself():
-    from backend.mail_archive.remote_file import RemoteFileError
+    from agent_host.mail_archive.remote_file import RemoteFileError
 
     class Source:
         last_error = RemoteFileError("range 0-1 answered 503")
@@ -274,7 +274,7 @@ def test_a_store_failure_behind_the_damage_is_raised_as_itself():
 
 
 def test_a_store_failure_while_opening_is_not_called_a_bad_archive(monkeypatch):
-    from backend.mail_archive.remote_file import RemoteFileError
+    from agent_host.mail_archive.remote_file import RemoteFileError
 
     class Failing:
         def open_file_object(self, _file):

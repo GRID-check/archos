@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.routes import jobs as jobs_routes
+from agent_host.routes import jobs as jobs_routes
 
 TOKEN = "real-secret"  # pragma: allowlist secret
 AUTH = {"x-grid-internal-token": TOKEN}
@@ -63,7 +63,7 @@ def test_job_events_runs_one_cleanup_cycle_with_the_expiry_settings(
 
 
 def test_chat_checkpoints_reports_threads_reaped(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    from backend.jobs import checkpoint_retention
+    from agent_host.jobs import checkpoint_retention
 
     monkeypatch.setenv("CHECKPOINT_DB", "postgresql://grid@db/checkpoints")
     monkeypatch.setenv("CHAT_CHECKPOINT_RETENTION_SECONDS", "60")
@@ -84,7 +84,7 @@ def test_chat_checkpoints_without_a_checkpoint_db_says_why_it_did_nothing(
 
 def test_base_corpus_runs_one_sync_cycle_and_reports_its_counts(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     from agent import oib_sync
-    from backend.jobs import ingest_dispatch
+    from agent_host.jobs import ingest_dispatch
 
     calls = []
 

@@ -15,7 +15,7 @@ from agent.auth import Principal
 from agent.auth import get_current_principal
 from agent.common import claim_queue
 from agent.common.job_admission import JobAdmissionError
-from backend.auth import get_current_trace_tags
+from agent_host.auth import get_current_trace_tags
 
 from ..registry import get_agent_config
 from . import queue

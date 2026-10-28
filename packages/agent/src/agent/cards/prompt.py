@@ -41,7 +41,7 @@ already the reader's; a card that repeats it is a restatement. One or two cards 
 substance is a full kit even for a very long report."""
 
 # Ordering, which is the whole of what this path controls about placement. The runner attaches the
-# returned list to the finished report as-is (see `backend.jobs.runner`), so list order IS render
+# returned list to the finished report as-is (see `agent_host.jobs.runner`), so list order IS render
 # order and there is no marker, no anchor and no way to put a card beside the paragraph it belongs
 # to. Saying so is not pedantry: without this sentence the model has no way to know that the list it
 # returns is the order the reader reads.

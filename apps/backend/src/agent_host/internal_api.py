@@ -21,7 +21,7 @@ import httpx
 from agent.common.content_screen import DETECTORS_ONLY
 from agent.common.content_screen import ScreeningRules
 from agent.common.content_screen import is_screening_config
-from backend.internal_retry import send_with_retry
+from agent_host.internal_retry import send_with_retry
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from backend.routes.consistency_check import add_consistency_check_routes
+from agent_host.routes.consistency_check import add_consistency_check_routes
 
 
 @pytest.fixture
@@ -405,7 +405,7 @@ def test_placeholder_openrouter_key_does_not_select_the_openrouter_endpoint(monk
     back to LLM_API_KEY. The route then sent an unrelated provider's key in the
     Authorization header to OpenRouter.
     """
-    from backend.routes.consistency_check import _llm_settings
+    from agent_host.routes.consistency_check import _llm_settings
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "${OPENROUTER_API_KEY}")
     monkeypatch.setenv("LLM_API_KEY", "sk-some-other-provider")

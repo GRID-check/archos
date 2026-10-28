@@ -3593,7 +3593,7 @@
     },
     "TurnResult": {
       "additionalProperties": false,
-      "description": "Everything the finished turn delivers; authoritative, and what the server persists.\n\nIt replaces the text once more and takes back what it omits (a card\nsuppressed, a masthead gated out). The persisted row is built from this\nmodel and nothing else (``backend`` ``persist_turn_result``).",
+      "description": "Everything the finished turn delivers; authoritative, and what the server persists.\n\nIt replaces the text once more and takes back what it omits (a card\nsuppressed, a masthead gated out). The persisted row is built from this\nmodel and nothing else (``agent_host`` ``persist_turn_result``).",
       "properties": {
         "answer_confidence": {
           "anyOf": [

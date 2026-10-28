@@ -12,8 +12,8 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from backend.routes.cleanup_proposal import add_cleanup_proposal_routes
-from backend.routes.cleanup_proposal import parse_candidates
+from agent_host.routes.cleanup_proposal import add_cleanup_proposal_routes
+from agent_host.routes.cleanup_proposal import parse_candidates
 
 DOCUMENTS = [
     {"id": "d1", "filename": "Einreichplan EG_v3.pdf", "folder_path": "Pläne/Einreichung", "summary": "Grundriss EG"},

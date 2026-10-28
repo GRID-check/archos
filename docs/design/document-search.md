@@ -168,7 +168,7 @@ A content hit is one of two kinds. Its passage holds a word of the query (the
 BM25 or an exact-term channel ranked it): `matchedOn` says `content`. Or it is
 only near in meaning (an English question over a German document, a synonym):
 `matchedOn` says `meaning`, and the backend keeps it only above a cosine floor
-(`MEANING_ONLY_MIN_COSINE` in `backend/routes/document_search.py`, measured on
+(`MEANING_ONLY_MIN_COSINE` in `agent_host/routes/document_search.py`, measured on
 the deployed embedder), because the fusion always fills its candidates from the
 dense channel and a word nobody wrote would otherwise return the nearest
 passages as hits.

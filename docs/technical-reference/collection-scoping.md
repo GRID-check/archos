@@ -310,7 +310,7 @@ read **once, at job submit time**, in `piloti/conversation_register.py`, and
 carried through as a `collection_scope` field on the job payload rather than
 as a live header.
 
-When the research worker later runs the job, `apps/backend/src/backend/jobs/runner.py:641`
+When the research worker later runs the job, `apps/backend/src/agent_host/jobs/runner.py:641`
 re-injects it into the worker's own request context **only when present**:
 
 ```python

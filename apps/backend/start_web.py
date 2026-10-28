@@ -138,7 +138,7 @@ def configure_logging():
 
     # Set specific loggers to appropriate levels
     # These match NAT's default logging configuration
-    logger_names = ("nat", "agent", "backend", "knowledge_layer")
+    logger_names = ("nat", "agent", "agent_host", "knowledge_layer")
     for logger_name in logger_names:
         logging.getLogger(logger_name).setLevel(getattr(logging, log_level, logging.INFO))
 
@@ -159,7 +159,7 @@ def load_nat_config(config_file: str):
     """
     from agent.observability import ensure_registered as register_grid_telemetry
     from agent.observability.boot_timing import BootClock
-    from backend.roles import web_role
+    from agent_host.roles import web_role
     from nat.runtime.loader import load_config
 
     register_grid_telemetry()

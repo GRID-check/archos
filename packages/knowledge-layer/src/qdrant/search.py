@@ -384,7 +384,7 @@ def _lexical_ids(
     a query term (a sparse query scores nothing else) and an exact-term channel
     only one holding the phrase, so membership here is "it holds the words",
     told apart from "it is near in meaning" (the workspace search's floor,
-    ``backend/routes/document_search.py``).
+    ``agent_host/routes/document_search.py``).
     """
     if not ids or (not lexical_text.strip() and not exact_terms):
         return set()

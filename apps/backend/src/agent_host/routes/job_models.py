@@ -136,7 +136,7 @@ class JobReportResponse(BaseModel):
     files the report at the moment it reads it off THIS route, and this route
     returned the report and nothing else. The runner has persisted
     ``output["cards"]`` beside ``output["report"]`` since card generation
-    shipped (``backend.jobs.runner``), so the data sat one key away from the one
+    shipped (``agent_host.jobs.runner``), so the data sat one key away from the one
     consumer that wanted it, and the section stayed dormant — no heading, no
     citations — for want of a field.
 

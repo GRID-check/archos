@@ -1,6 +1,6 @@
 """Admin CRUD routes for the curated norm registry.
 
-Follows the factory pattern of :mod:`backend.routes.oib` (``add_norm_routes`` +
+Follows the factory pattern of :mod:`agent_host.routes.oib` (``add_norm_routes`` +
 the ``X-Admin-Token`` guard). Three endpoints under ``/v1/admin/norms``:
 
 - ``GET``    — read the current registry (store first, YAML seed fallback).

@@ -247,7 +247,7 @@ def _prepare_process(scope: JobScope, request: JobRequest, configure_logging: bo
 
     from agent.common.logging_utils import suppress_noisy_dependency_logs
     from agent.common.nat_step_repair import install_step_stack_repair
-    from backend.auth.request_trace import install_request_trace_span_injection
+    from agent_host.auth.request_trace import install_request_trace_span_injection
 
     install_request_trace_span_injection()
     if configure_logging:
@@ -276,7 +276,7 @@ async def _execute(scope: JobScope, request: JobRequest) -> None:
         logger.info("Job %s already terminal before start; aborting run", request.job_id)
         return
     from agent.observability import ensure_registered as register_grid_telemetry
-    from backend.auth.request_trace import request_trace_tag_context
+    from agent_host.auth.request_trace import request_trace_tag_context
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.observability.exporter_manager import ExporterManager
     from nat.runtime.loader import load_config

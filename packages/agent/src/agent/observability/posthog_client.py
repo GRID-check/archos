@@ -25,7 +25,7 @@ here. What is ours:
   exception message can embed one, and a PostHog event is retained off-cluster.
 * Every event carries the deployment's ``environment`` and the emitting
   ``service`` as super properties, the same values the Langfuse traces carry.
-* Frames under ``agent`` and ``backend`` are in-app, so error tracking
+* Frames under ``agent`` and ``agent_host`` are in-app, so error tracking
   groups an issue by our frame rather than by the library frame that raised.
 
 The exit flush is the SDK's: a bounded best-effort attempt of about a second,
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 HOST_ENV = "POSTHOG_HOST"
 PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN"  # pragma: allowlist secret
 #: Packages whose frames error tracking treats as ours.
-IN_APP_MODULES = ["agent", "backend"]
+IN_APP_MODULES = ["agent", "agent_host"]
 
 _client: Posthog | None = None
 _client_lock = Lock()

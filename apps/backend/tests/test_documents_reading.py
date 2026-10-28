@@ -10,7 +10,7 @@ import json
 from agent.knowledge.schema import AvailableDocument
 from agent.knowledge.schema import FileInfo
 from agent.knowledge.schema import FileStatus
-from backend.routes.documents import _merge_summaries
+from agent_host.routes.documents import _merge_summaries
 
 DOSSIER = {"version": 1, "document_type": "fire_safety_concept", "summary": "Brandschutzkonzept.", "facts": []}
 REFERENCES = [{"kind": "plan", "key": "ep-05", "label": "EP-05", "pages": [3]}]
@@ -49,7 +49,7 @@ async def test_a_listing_read_without_the_metadata_store_says_so(monkeypatch):
 
     from agent.knowledge.factory import clear_active_ingestor
     from agent.knowledge.factory import set_active_ingestor
-    from backend.routes import documents as routes
+    from agent_host.routes import documents as routes
 
     async def present(*args, **kwargs):
         return None

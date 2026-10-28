@@ -1,6 +1,6 @@
 """DB-claimed research worker (ADR-0021, ADR-0079).
 
-Run as a dedicated container: ``python -m backend.jobs.worker``. It claims
+Run as a dedicated container: ``python -m agent_host.jobs.worker``. It claims
 ``research_job_queue`` rows on the claim substrate (``agent.common.claim_queue``:
 fairly across organizations, interactive before bulk inside one, at most
 ``MAX_ACTIVE_JOBS_PER_ORG`` of an organization's jobs running at once),

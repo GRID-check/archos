@@ -3,7 +3,7 @@
 The design of record is ``docs/design/chat-wire-v2.md``. This module is the
 contract that design names, and nothing else: no I/O, no NAT import, no
 LangChain import, so the producers in ``agent`` (and ``sources/``) and the
-socket handler in ``backend`` all import it without a cycle.
+socket handler in ``agent_host`` all import it without a cycle.
 
 Three layers
 ------------
@@ -429,7 +429,7 @@ class TurnResult(_Model):
 
     It replaces the text once more and takes back what it omits (a card
     suppressed, a masthead gated out). The persisted row is built from this
-    model and nothing else (``backend`` ``persist_turn_result``).
+    model and nothing else (``agent_host`` ``persist_turn_result``).
     """
 
     message_id: str = Field(min_length=1, description="turn.response.answer_message_id(conversation, turn).")
@@ -475,7 +475,7 @@ class TurnResult(_Model):
     #: state is gone by then, and a stated level is the one the answering call
     #: runs at, so the two differ only for a turn that stated none.
     #: Withheld from the frame only while ``WIRE_V2_ADDITIVE_FIELDS`` is
-    #: set ``off``, the rollback (``backend.chat_socket.STAGED_SERVER_FIELDS``);
+    #: set ``off``, the rollback (``agent_host.chat_socket.STAGED_SERVER_FIELDS``);
     #: the row keeps it.
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
 

@@ -1,6 +1,6 @@
 """The summary-reconcile sweep forgets rows whose chunks are gone, and nothing else.
 
-Module under test: ``backend.routes.maintenance.reconcile_orphaned_summaries``.
+Module under test: ``agent_host.routes.maintenance.reconcile_orphaned_summaries``.
 
 The agent's document inventory is the summaries table; retrieval is the
 vector store. A summary row with no chunks behind it lists a file the agent
@@ -19,7 +19,7 @@ from fastapi import HTTPException
 import agent.knowledge.ingest_status_store as ingest_status_mod
 from agent.knowledge import factory as knowledge_factory
 from agent.knowledge.schema import FileStatus
-from backend.routes.maintenance import reconcile_orphaned_summaries
+from agent_host.routes.maintenance import reconcile_orphaned_summaries
 
 
 class _Ingestor:
@@ -305,7 +305,7 @@ def test_the_route_is_registered_beside_purge_with_the_same_guard():
     """The BFF calls it by path; a typo here is a 404 that looks like a backend outage."""
     from fastapi import APIRouter
 
-    from backend.routes.maintenance import add_maintenance_routes
+    from agent_host.routes.maintenance import add_maintenance_routes
 
     router = APIRouter()
     add_maintenance_routes(router)

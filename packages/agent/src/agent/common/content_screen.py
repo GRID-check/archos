@@ -5,7 +5,7 @@ Daten" policy (ADR-0086):
 
 * the ingest job's content gate (``knowledge_layer.llamaindex.screening``) turns
   the spans into a quarantine verdict before the first model call;
-* the chat socket (``backend.chat_socket``) replaces them with a placeholder
+* the chat socket (``agent_host.chat_socket``) replaces them with a placeholder
   before the agent sees a message or its history keeps one.
 
 The browser runs a TypeScript twin (``apps/workspace/bff/upload-screening/content-screen.ts``)
@@ -143,7 +143,7 @@ Detector = Literal["iban", "at_svnr", "credit_card"]
 #: Detectors in the order their findings are reported.
 DETECTORS: tuple[str, ...] = ("iban", "at_svnr", "credit_card")
 
-#: Bounds the request model enforces too (``backend.models.requests.ScreeningPolicy``).
+#: Bounds the request model enforces too (``agent_host.models.requests.ScreeningPolicy``).
 MAX_TERMS = 200
 MIN_TERM_CHARS = 2
 MAX_TERM_CHARS = 80

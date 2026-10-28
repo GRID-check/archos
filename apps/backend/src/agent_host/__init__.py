@@ -5,19 +5,19 @@ This package combines:
 - Knowledge API: Collection and document management
 - Async Job API: Agent job submission and SSE streaming
 
-``BackendConfig`` and ``BackendWorker`` load on first use. Importing ``.plugin``
+``AgentHostConfig`` and ``AgentHostWorker`` load on first use. Importing ``.plugin``
 here pulled the routes, the job runner and the agents in with ANY submodule
-(``backend.auth.errors`` included). NAT registers through ``backend.register``.
+(``agent_host.auth.errors`` included). NAT registers through ``agent_host.register``.
 """
 
 from typing import TYPE_CHECKING
 from typing import Any
 
 if TYPE_CHECKING:
-    from .plugin import BackendConfig
-    from .plugin import BackendWorker
+    from .plugin import AgentHostConfig
+    from .plugin import AgentHostWorker
 
-__all__ = ["BackendConfig", "BackendWorker"]
+__all__ = ["AgentHostConfig", "AgentHostWorker"]
 
 
 def __getattr__(name: str) -> Any:

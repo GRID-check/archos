@@ -8,7 +8,7 @@
  * restart or a network blip at that moment, or a job that finished before this
  * tier had written its backend job id onto the row, left the run `running` for
  * good and its message empty. The worker now retries the outcome and the report
- * briefly (`backend/internal_retry.py`); this is the backstop for what the
+ * briefly (`agent_host/internal_retry.py`); this is the backstop for what the
  * retry could not heal, and for a lost ledger op, which is not retried.
  *
  * ## Pull, from the one place that knows

@@ -43,7 +43,7 @@ _REQUEST_TIMEOUT_SECONDS = 5.0
 #: Agents allowed in the ``grid-agents`` metadata comma-list.
 #:
 #: These are the ``AGENT_REGISTRY`` identifiers (see
-#: ``apps/backend/src/backend/registry.py``) — the same strings a schedule's
+#: ``apps/backend/src/agent_host/registry.py``) — the same strings a schedule's
 #: ``agent_type`` and the job-submit path use, so the feature has ONE agent
 #: vocabulary rather than one per layer. An unknown name in ``grid-agents`` is
 #: logged and ignored rather than silently narrowing a skill to nothing: a typo

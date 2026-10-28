@@ -23,9 +23,9 @@ from httpx import AsyncClient
 
 from agent.knowledge.factory import clear_active_ingestor
 from agent.knowledge.factory import set_active_ingestor
-from backend.routes.ingest import DeferredObjectDownload
-from backend.routes.ingest import _assert_public_host_resolution
-from backend.routes.ingest import add_ingest_routes
+from agent_host.routes.ingest import DeferredObjectDownload
+from agent_host.routes.ingest import _assert_public_host_resolution
+from agent_host.routes.ingest import add_ingest_routes
 
 _SIGNED_REF = "http://seaweedfs.test/bucket/doc/plan.pdf?X-Amz-Signature=secret-original"
 
@@ -354,7 +354,7 @@ async def test_ingest_drops_project_facts_it_cannot_read_and_keeps_the_upload(
         "collection": "proj_1",
         "project_facts": {"facts": {"federal_state": "vienna", **facts}, "status": "active"},
     }
-    with caplog.at_level(logging.WARNING, logger="backend.models.requests"):
+    with caplog.at_level(logging.WARNING, logger="agent_host.models.requests"):
         sent = await _post_json(app, body)
 
     assert sent.status_code == 202
@@ -458,7 +458,7 @@ def test_deferred_download_retries_a_refused_connect():
     """An object-store restart costs a few seconds, not the file: the download
     goes through a transport that retries a refused CONNECT (httpcore's own
     retry, which repeats nothing that reached the store)."""
-    from backend.routes.ingest import _DOWNLOAD_CONNECT_RETRIES
+    from agent_host.routes.ingest import _DOWNLOAD_CONNECT_RETRIES
 
     with (
         patch("httpx.HTTPTransport", wraps=httpx.HTTPTransport) as transport,
@@ -473,7 +473,7 @@ def test_deferred_download_retries_a_refused_connect():
 def test_deferred_download_bounds_each_connect_attempt():
     """Seven attempts at the 60 s read timeout would hold a worker for minutes
     against a store that drops SYNs: each CONNECT has its own short bound."""
-    from backend.routes.ingest import _DOWNLOAD_CONNECT_TIMEOUT_SECONDS
+    from agent_host.routes.ingest import _DOWNLOAD_CONNECT_TIMEOUT_SECONDS
 
     with patch("httpx.Client.get", return_value=_download(b"%PDF", "application/pdf")) as get:
         path = DeferredObjectDownload(_SIGNED_REF)()
@@ -486,7 +486,7 @@ def test_deferred_download_bounds_each_connect_attempt():
 def test_infer_suffix_office_types():
     """An office original whose presigned path has no extension keeps its
     type's extension rather than landing as `.bin`."""
-    from backend.routes.ingest import _infer_suffix
+    from agent_host.routes.ingest import _infer_suffix
 
     url = "http://seaweedfs.test/bucket/doc/object"
     assert _infer_suffix("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", url) == ".xlsx"
@@ -686,7 +686,7 @@ async def test_concurrent_dispatches_of_one_document_submit_once(app, keyed_inge
     assert [r.json()["job_id"] for r in responses] == ["job-1", "job-1"]
     assert len(keyed_ingestor.submitted) == 1
 
-    from backend.routes import ingest
+    from agent_host.routes import ingest
 
     assert ingest._dispatch_slots == {}
 
@@ -702,8 +702,8 @@ async def test_without_a_document_id_every_dispatch_submits(app, keyed_ingestor,
 
 
 def test_the_dispatch_key_is_a_digest_of_document_object_path_and_collection():
-    from backend.models.requests import IngestRequest
-    from backend.routes.ingest import _dispatch_key
+    from agent_host.models.requests import IngestRequest
+    from agent_host.routes.ingest import _dispatch_key
 
     def key(file_ref: str, document_id: str | None = "doc-1", collection: str = "c") -> str | None:
         return _dispatch_key(IngestRequest(file_ref=file_ref, collection=collection, document_id=document_id))

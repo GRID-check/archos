@@ -17,9 +17,9 @@ import pytest
 from sqlalchemy import text
 
 from agent.common import claim_queue
-from backend.jobs import payload_crypto
-from backend.jobs import queue
-from backend.jobs.runner import _lost_claim
+from agent_host.jobs import payload_crypto
+from agent_host.jobs import queue
+from agent_host.jobs.runner import _lost_claim
 
 _POSTGRES = os.environ.get("TEST_POSTGRES_URL")
 

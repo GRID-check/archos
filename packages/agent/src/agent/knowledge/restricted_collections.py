@@ -10,7 +10,7 @@ this module is its reader and must agree with it.
 Retrieval needs nothing from here: every read path stays inside the signed
 scope. Two other kinds of reader do:
 
-- whoever derives the project from a scope (``backend.jobs.submit``), which must
+- whoever derives the project from a scope (``agent_host.jobs.submit``), which must
   read a restricted collection as its base project collection rather than as a
   second, competing project;
 - whoever writes something that outlives the turn and is read by people the

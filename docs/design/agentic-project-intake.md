@@ -379,7 +379,7 @@ the quote states the value, as ADR-0096 does.
 | 1 Profile substrate | `salvage.ts`, `intake-profile.ts` (`mergeIntakeProfile`), `intake-types.ts` (`foundIn`, `feeds`), `prompt-view.ts`, `project-experience/service.ts` + shared `lib/project-intake/evidence.ts` |
 | 2 Needs and derivation | `lib/project-intake/needs.ts`, `derivations.ts` (+specs) |
 | 3 BFF service and routes | `lib/project-intake/{repository,service,run,client}.ts`, the four routes, outcome fallback, settle hook and BFF job, inbox type, `submitBackgroundRun` in `lib/jobs/service.ts` |
-| 4 Worker hosting | `backend/registry.py`, `backend/jobs/runner.py` |
+| 4 Worker hosting | `agent_host/registry.py`, `agent_host/jobs/runner.py` |
 | 5 The agent | `packages/agent/src/agent/agents/intake/`, `pyproject.toml` entry point, `configs/config_oib_openrouter.yml`, `project_context.TOOL_CONTEXT_REQUIREMENTS` |
 | 6 Create flow and UI | `lib/projects/service.ts`, `app/api/projects/route.ts`, `projects/actions.ts`, `create-project-form.tsx`, `app/app/(shell)/projects/[id]/setup/`, `features/project-intake/`, `/dev/project-setup`, i18n |
 | 7 Docs | ADR-0111, this doc, `where-is-what.md`, `CONTEXT.md`, `langfuse.md`, `python-endpoints.md`, `apps/workspace/AGENTS.md` |
@@ -464,4 +464,4 @@ The profile's keys, option tokens and building ids are English: `federal_state`,
   column. A key the table does not know (an agent-invented fact) is kept as is,
   so scan the distinct keys before deploying.
 - **Qdrant stays German** until the retrieval rename: `ProjectFacts.to_store()`
-  and `SimilarityWeights.to_store()` translate at the backend boundary.
+  and `SimilarityWeights.to_store()` translate at the agent_host boundary.

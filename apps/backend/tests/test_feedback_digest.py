@@ -12,8 +12,8 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from backend.models.requests import MAX_DIGEST_SAMPLES
-from backend.routes.feedback_digest import add_feedback_digest_routes
+from agent_host.models.requests import MAX_DIGEST_SAMPLES
+from agent_host.routes.feedback_digest import add_feedback_digest_routes
 
 
 @pytest.fixture

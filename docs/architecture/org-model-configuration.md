@@ -172,7 +172,7 @@ through `LLMProvider`, so the effort has its own provider method,
 `RequestLLMContext.apply` (`common/request_llm_context.py`, which chat's
 `_active_provider`, `Clarifier.deps_for` and deep research's
 `_agent_for_request` all go through), and in the detached worker
-(`backend/jobs/runner.py`) after the captured overrides. The four per-request
+(`agent_host/jobs/runner.py`) after the captured overrides. The four per-request
 lookups (overrides, efforts, BYOK credential, ZDR) are read there by
 `read_request_llm_context`, each on its own `asyncio.to_thread` hop: every one
 can fall back to a blocking BFF call, and on the loop a cold miss stalled every
@@ -358,7 +358,7 @@ modality.
 one you get depends on which question is being asked:
 
 - `getWorkflowGroupDefaults()` — the backend's loaded YAML models, from
-  `GET /v1/config/llm-defaults` (backend `routes/config_info.py`,
+  `GET /v1/config/llm-defaults` (agent_host `routes/config_info.py`,
   internal-token guarded) mapped through `configLlmRefs`. The **platform**
   screen shows this, because that is what clearing a default returns to.
 - `getGroupDefaults()` — the same with the platform defaults layered over it.

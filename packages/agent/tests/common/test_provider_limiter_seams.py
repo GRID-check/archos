@@ -329,7 +329,7 @@ def test_a_chat_turn_runs_in_the_chat_class():
 
 
 def test_a_research_job_runs_in_the_research_class():
-    from backend.jobs import agent_job
+    from agent_host.jobs import agent_job
 
     assert getattr(agent_job.run_agent_job, "__wrapped__", None) is not None
     assert inspect.iscoroutinefunction(agent_job.run_agent_job)
@@ -338,9 +338,9 @@ def test_a_research_job_runs_in_the_research_class():
 def test_a_queued_ingest_job_runs_in_the_class_of_its_priority(monkeypatch):
     import threading
 
-    import backend.jobs.ingest_dispatch as dispatch
+    import agent_host.jobs.ingest_dispatch as dispatch
     from agent.knowledge.base import PreparedIngestJob
-    from backend.jobs.ingest_dispatch import QueueSource
+    from agent_host.jobs.ingest_dispatch import QueueSource
 
     seen: list[str] = []
 

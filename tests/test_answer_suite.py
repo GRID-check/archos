@@ -374,13 +374,13 @@ def test_every_linked_package_is_checked_for_a_foreign_import():
 
 
 def test_the_frontend_plugins_a_run_loads_come_from_this_checkout():
-    # From a worktree, the main checkout's editable `backend` met the worktree's
+    # From a worktree, the main checkout's editable `agent_host` met the worktree's
     # `agent` and every turn died, reported as a 0.0 s run.
     import census
 
     packages = census.source_packages()
-    assert packages["backend"].is_relative_to(census.ROOT.resolve())
-    assert (packages["backend"] / "__init__.py").exists()
+    assert packages["agent_host"].is_relative_to(census.ROOT.resolve())
+    assert (packages["agent_host"] / "__init__.py").exists()
 
 
 def test_one_failing_run_does_not_sink_the_suite(tmp_path, monkeypatch):
@@ -674,7 +674,7 @@ def _ingest_in_this_process(monkeypatch, tmp_path, *, succeed: bool):
     """A corpus of one file, the real queue, and a "claiming source" that runs what is queued."""
     from agent import corpus_store
     from agent import oib_sync
-    from backend.jobs import ingest_dispatch
+    from agent_host.jobs import ingest_dispatch
     from tests.corpus_job_fakes import FakeIngestor
     from tests.corpus_job_fakes import run_worker
     from tests.object_corpus_fakes import install
@@ -731,7 +731,7 @@ def test_a_local_corpus_directory_is_ingested_without_a_bff_or_an_object_store(m
     # could not run without a deployed stack (gate G1 waited on one for that).
     from agent import corpus_store
     from agent import oib_sync
-    from backend.jobs import ingest_dispatch
+    from agent_host.jobs import ingest_dispatch
     from tests.corpus_job_fakes import FakeIngestor
     from tests.corpus_job_fakes import run_worker
     from tests.object_corpus_fakes import install

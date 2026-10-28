@@ -21,7 +21,7 @@ from httpx import AsyncClient
 
 from agent.knowledge.factory import clear_active_ingestor
 from agent.knowledge.factory import set_active_ingestor
-from backend.routes.ingest import add_ingest_routes
+from agent_host.routes.ingest import add_ingest_routes
 
 
 @pytest.fixture

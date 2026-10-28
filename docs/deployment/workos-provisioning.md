@@ -304,7 +304,7 @@ nobody. The current gap in both environments, and what it costs users, is in
   ```
 
   The agent reads them off the verified token as the person's name, email and
-  office in the system prompt (`backend.auth.jwt_validator`,
+  office in the system prompt (`agent_host.auth.jwt_validator`,
   `agent.turn.context.user_info_from_principal`); without the template
   the prompt has no name. A null `organization.name` drops its key, and an
   unknown name renders as an empty string, which the agent reads as no name.

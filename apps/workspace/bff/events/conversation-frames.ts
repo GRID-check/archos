@@ -6,7 +6,7 @@
  *
  * The Python tier already publishes every outbound WebSocket frame to
  * `conv:<id>:events` on Dragonfly — that is the conversation bus
- * (`apps/backend/src/backend/conversation_bus.py`, ADR-0028), whose day job
+ * (`apps/backend/src/agent_host/conversation_bus.py`, ADR-0028), whose day job
  * is letting the replica that holds a socket relay frames for a turn owned by a
  * different replica. An observer of a shared thread wants exactly the same bytes
  * for exactly the same reason: they do not hold the socket either. So this

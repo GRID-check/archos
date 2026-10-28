@@ -8,8 +8,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from agent.common import turn_admission
-from backend.routes.chat_occupancy import CHAT_OCCUPANCY_PATH
-from backend.routes.chat_occupancy import add_chat_occupancy_routes
+from agent_host.routes.chat_occupancy import CHAT_OCCUPANCY_PATH
+from agent_host.routes.chat_occupancy import add_chat_occupancy_routes
 
 TOKEN = "real-secret"  # pragma: allowlist secret
 

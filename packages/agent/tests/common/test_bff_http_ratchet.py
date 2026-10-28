@@ -20,7 +20,7 @@ SEAM = Path("packages/agent/src/agent/common/bff_http.py")
 
 #: Where the agent tier calls the BFF from. ``knowledge_layer`` is its own
 #: package, imported by the ingest worker, and must not depend on ``agent``;
-#: ``backend`` is the API host, whose ``internal_api.py`` persists messages.
+#: ``agent_host`` is the API host, whose ``internal_api.py`` persists messages.
 TREES = ("packages/agent/src/agent", "packages/knowledge-layer/src", "apps/backend/src")
 
 PATTERNS = {
@@ -28,7 +28,7 @@ PATTERNS = {
     "redirect_guard": re.compile(r"class \w+\([^)]*HTTPRedirectHandler"),
     # The base-URL read, whatever fallback chain it spells.
     "base_url": re.compile(r"FRONTEND_INTERNAL_URL"),
-    # The service-token header, in any case. Inbound checks live in backend, so
+    # The service-token header, in any case. Inbound checks live in agent_host, so
     # this one is held only in the agent package.
     "token_header": re.compile(r"x-grid-internal-token", re.IGNORECASE),
 }
@@ -42,7 +42,7 @@ TOKEN_HEADER_TREES = ("packages/agent/src/agent",)
 #:   ``FRONTEND_INTERNAL_URL`` on purpose (no default host for a write of the
 #:   corpus or a permit record), which the seam's fallback chain would change.
 #: - knowledge_layer must not import agent (see TREES).
-#: - backend's internal_api.py returns None without either URL (it skips
+#: - agent_host's internal_api.py returns None without either URL (it skips
 #:   persisting rather than guessing a host).
 ALLOWED: dict[str, dict[str, int]] = {
     "base_url": {
@@ -58,7 +58,7 @@ ALLOWED: dict[str, dict[str, int]] = {
         "packages/knowledge-layer/src/llamaindex/document_presence.py": 3,
         "packages/knowledge-layer/src/llamaindex/page_text_store.py": 3,
         "packages/knowledge-layer/src/view_image.py": 4,
-        "apps/backend/src/backend/internal_api.py": 2,
+        "apps/backend/src/agent_host/internal_api.py": 2,
     },
     "token_header": {
         "packages/agent/src/agent/skills/resolver.py": 1,

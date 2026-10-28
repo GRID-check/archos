@@ -142,7 +142,7 @@ def build_request_trace_tags(
 # does NOT match one of these receives 404.  Prefix entries must end with "/".
 # No turn route is here: a turn runs on the chat socket alone (ADR-0068), and
 # NAT's HTTP turn routes (`/chat`, `/generate`, `/v1/chat`, ...) are
-# not mounted (`backend.plugin.BackendConfig`).
+# not mounted (`agent_host.plugin.AgentHostConfig`).
 EXTERNAL_ALLOWED_PATHS: list[str] = [
     "/health",
     "/docs",
@@ -341,7 +341,7 @@ class AuthMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             # WebSocket connections are authenticated in
-            # backend.chat_socket.authenticate_websocket_connection,
+            # agent_host.chat_socket.authenticate_websocket_connection,
             # which validates the handshake Authorization header and binds the
             # identity per message via user_context().
             await self.app(scope, receive, send)

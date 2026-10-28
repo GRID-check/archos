@@ -10,7 +10,7 @@ research it cites; this module is the one place both tiers meet.
 Three halves, one object
 ------------------------
 
-* **The socket** (``backend.chat_socket``) owns a :class:`SteerInbox` per
+* **The socket** (``agent_host.chat_socket``) owns a :class:`SteerInbox` per
   turn and binds it with :func:`bind_steer_inbox` before the workflow runs, the
   pattern of ``tools/canvas/presence.py``: the graph's tasks copy the context,
   so they all see the one object. It :meth:`SteerInbox.offer`\\ s each note

@@ -5,7 +5,7 @@ One plugin, two web roles (``PROCESS_ROLE``, ``roles.WebRole``, ADR-0082 step B)
 
 * ``chat`` mounts the chat socket, the chat-occupancy route KEDA reads, and
   what is left of NAT's own routes once its HTTP turn routes are off (see
-  ``BackendConfig``), and drains running chat turns at shutdown.
+  ``AgentHostConfig``), and drains running chat turns at shutdown.
 * ``api`` mounts the Knowledge API (collections/documents, the LLM utilities,
   admin) and the Async Job API (agent jobs, SSE streaming, housekeeping), and
   closes its SSE streams at shutdown.
@@ -46,9 +46,9 @@ from agent.common.log_redaction import install_presigned_url_scrubbing
 from agent.knowledge.leader_lock import require_direct_dsns
 from agent.observability import posthog_exceptions
 from agent.stages.delivery import register_stage_frame_sink
-from backend.auth.middleware import AuthMiddleware
-from backend.context_envelope import GridContextEnvelopeMiddleware
-from backend.legacy_headers import LegacyHeaderNamesMiddleware
+from agent_host.auth.middleware import AuthMiddleware
+from agent_host.context_envelope import GridContextEnvelopeMiddleware
+from agent_host.legacy_headers import LegacyHeaderNamesMiddleware
 from nat.builder.workflow_builder import WorkflowBuilder
 from nat.cli.register_workflow import register_front_end  # noqa: TID251
 from nat.data_models.config import Config
@@ -133,7 +133,7 @@ def register_validator(validator) -> None:
 
     Example::
 
-        from backend.plugin import register_validator
+        from agent_host.plugin import register_validator
         from mypackage.auth import MyCustomValidator
         register_validator(MyCustomValidator(...))
     """
@@ -141,13 +141,13 @@ def register_validator(validator) -> None:
 
 
 def _load_validators_from_entry_points() -> list:
-    """Discover validators registered via the ``backend.validators`` entry-point group.
+    """Discover validators registered via the ``agent_host.validators`` entry-point group.
 
     Any installed package can contribute validators by declaring an entry point
     that returns a list of validator instances::
 
         # pyproject.toml (in the internal / deployment package)
-        [project.entry-points."backend.validators"]
+        [project.entry-points."agent_host.validators"]
         my_provider = "mypackage.auth:get_validators"
 
         # mypackage/auth.py
@@ -160,7 +160,7 @@ def _load_validators_from_entry_points() -> list:
     from importlib.metadata import entry_points
 
     validators = []
-    for ep in entry_points(group="backend.validators"):
+    for ep in entry_points(group="agent_host.validators"):
         try:
             factory = ep.load()
             result = factory()
@@ -176,7 +176,7 @@ def _load_validators_from_entry_points() -> list:
 
 
 #: The fields of a NAT endpoint config that each mount a route running the
-#: workflow: the HTTP turn routes and NAT's own WebSocket. ``BackendConfig`` leaves
+#: workflow: the HTTP turn routes and NAT's own WebSocket. ``AgentHostConfig`` leaves
 #: every one unset and refuses a config that sets one.
 WORKFLOW_ROUTE_FIELDS = (
     "path",
@@ -188,7 +188,7 @@ WORKFLOW_ROUTE_FIELDS = (
 )
 
 
-class BackendConfig(FastApiFrontEndConfig, name="backend"):
+class AgentHostConfig(FastApiFrontEndConfig, name="agent_host"):
     """
     Configuration for unified AI-Q API endpoints.
 
@@ -223,7 +223,7 @@ class BackendConfig(FastApiFrontEndConfig, name="backend"):
     step_adaptor: StepAdaptorConfig = StepAdaptorConfig(mode=StepAdaptorMode.OFF)
 
     @model_validator(mode="after")
-    def _the_chat_socket_is_the_only_turn_route(self) -> BackendConfig:
+    def _the_chat_socket_is_the_only_turn_route(self) -> AgentHostConfig:
         """Refuse a config that puts a NAT route in front of the workflow, rather than serve it.
 
         NAT's defaults put the workflow behind ``/v1/workflow*``, ``/generate*``,
@@ -242,7 +242,7 @@ class BackendConfig(FastApiFrontEndConfig, name="backend"):
         served += [f"endpoints[{endpoint.function_name}]" for endpoint in self.endpoints]
         if served:
             raise ValueError(
-                f"backend serves a turn over its own chat socket only (ADR-0068); leave {', '.join(served)} unset"
+                f"agent_host serves a turn over its own chat socket only (ADR-0068); leave {', '.join(served)} unset"
             )
         return self
 
@@ -305,7 +305,7 @@ def _create_shutdown_signal_handler(
 
 #: The routers the ``chat`` role mounts on its router. The chat socket and what
 #: is left of NAT's own routes are the rest of what it serves
-#: (``BackendWorker._add_chat_routes``).
+#: (``AgentHostWorker._add_chat_routes``).
 CHAT_ROUTERS: tuple[Callable[[APIRouter], None], ...] = (
     # The chat tier's scaling signal, read by KEDA (ADR-0080). Internal-token
     # only, so it stays off the external allowlist like the maintenance routes.
@@ -395,21 +395,21 @@ def _add_request_middleware(app: FastAPI, *, validators: list, require_auth: boo
     GridContextEnvelopeMiddleware is added BEFORE AuthMiddleware so that
     AuthMiddleware (added, and therefore outer, second) always resolves
     scope["state"]["user"] before the envelope-enforcement middleware reads it
-    for HTTP requests. See backend.context_envelope's module docstring for the
+    for HTTP requests. See agent_host.context_envelope's module docstring for the
     full enforcement design (matrix, WebSocket handling, exemptions).
     """
     app.add_middleware(GridContextEnvelopeMiddleware, require_auth=require_auth, validators=validators)
     app.add_middleware(AuthMiddleware, validators=validators, require_auth=require_auth)
     # Outside both: a service header that arrives under its new name is copied
-    # onto the old one before auth and the envelope read it (backend.legacy_headers).
+    # onto the old one before auth and the envelope read it (agent_host.legacy_headers).
     app.add_middleware(LegacyHeaderNamesMiddleware)
     # Added last, so outermost: it counts every HTTP request this process
     # takes, the ones auth refuses included, which is the load the scaling
-    # signal must see. See backend.inflight.
+    # signal must see. See agent_host.inflight.
     app.add_middleware(InFlightMiddleware, role=role.value)
 
 
-class BackendWorker(FastApiFrontEndPluginWorker):
+class AgentHostWorker(FastApiFrontEndPluginWorker):
     """
     Worker that adds the AI-Q routes of one web role to the FastAPI app.
 
@@ -478,8 +478,8 @@ class BackendWorker(FastApiFrontEndPluginWorker):
         if require_auth and not validators:
             raise RuntimeError(
                 "REQUIRE_AUTH=true but no validators have been registered. "
-                "Either call backend.plugin.register_validator() before starting the server, "
-                "or declare an 'backend.validators' entry point in your package."
+                "Either call agent_host.plugin.register_validator() before starting the server, "
+                "or declare an 'agent_host.validators' entry point in your package."
             )
         _add_request_middleware(app, validators=validators, require_auth=require_auth, role=self._role)
         if self._role is WebRole.CHAT:
@@ -497,7 +497,7 @@ class BackendWorker(FastApiFrontEndPluginWorker):
         """Nothing: a turn's one route is the chat socket, which ``_add_chat_routes`` mounts.
 
         NAT's version mounts the generate, chat and socket routes the
-        ``workflow`` config names, which ``BackendConfig`` leaves unset. It also
+        ``workflow`` config names, which ``AgentHostConfig`` leaves unset. It also
         mounts the async generate route whenever a Dask scheduler is reachable,
         whatever the config says, as ``None/async`` when ``workflow.path`` is
         unset. So the routes are left out here, not by the config alone.
@@ -511,7 +511,7 @@ class BackendWorker(FastApiFrontEndPluginWorker):
             await self._add_api_routes(app, builder)
 
         # One /health for both roles, ours and not NAT's: the sha and the role,
-        # no database ping (backend.health). Last, so it replaces the NAT route
+        # no database ping (agent_host.health). Last, so it replaces the NAT route
         # `super().add_routes` mounted on chat.
         install_health_route(app, self._role)
 
@@ -642,19 +642,19 @@ class BackendWorker(FastApiFrontEndPluginWorker):
             logger.warning("Failed to restore signal handlers: %s", e)
 
 
-class BackendPlugin(FastApiFrontEndPlugin):
+class AgentHostPlugin(FastApiFrontEndPlugin):
     """Plugin that adds unified AI-Q API endpoints to the FastAPI server."""
 
-    def __init__(self, full_config: Config, config: BackendConfig):
+    def __init__(self, full_config: Config, config: AgentHostConfig):
         super().__init__(full_config=full_config)
         self.config = config
 
     @override
     def get_worker_class(self) -> type[FastApiFrontEndPluginWorkerBase]:
-        return BackendWorker
+        return AgentHostWorker
 
 
-@register_front_end(config_type=BackendConfig)
-async def register_backend(config: BackendConfig, full_config: Config):
+@register_front_end(config_type=AgentHostConfig)
+async def register_agent_host(config: AgentHostConfig, full_config: Config):
     """Register unified AI-Q API with NAT framework."""
-    yield BackendPlugin(full_config=full_config, config=config)
+    yield AgentHostPlugin(full_config=full_config, config=config)

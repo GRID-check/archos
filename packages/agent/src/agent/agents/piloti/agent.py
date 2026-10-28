@@ -1004,7 +1004,7 @@ class PilotiAgent:
     #: The state model ``run`` takes. Declared rather than derived: the async
     #: job runner used to spell it out of the class name, so renaming the class
     #: silently handed the agent a bare dict instead of a state object
-    #: (``backend.jobs.runner._get_agent_state_class``).
+    #: (``agent_host.jobs.runner._get_agent_state_class``).
     state_model = ResearchAgentState
 
     def __init__(

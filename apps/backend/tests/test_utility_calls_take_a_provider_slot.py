@@ -26,15 +26,15 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-import backend.routes as routes_package
+import agent_host.routes as routes_package
 from agent.common import provider_limiter as pl
-from backend.routes.cleanup_proposal import add_cleanup_proposal_routes
-from backend.routes.consistency_check import add_consistency_check_routes
-from backend.routes.feedback_digest import add_feedback_digest_routes
-from backend.routes.generate_conversation_title import add_generate_conversation_title_routes
-from backend.routes.generate_summary import add_generate_summary_routes
-from backend.routes.lesson_distill import add_lesson_distill_routes
-from backend.routes.skill_review import add_skill_review_routes
+from agent_host.routes.cleanup_proposal import add_cleanup_proposal_routes
+from agent_host.routes.consistency_check import add_consistency_check_routes
+from agent_host.routes.feedback_digest import add_feedback_digest_routes
+from agent_host.routes.generate_conversation_title import add_generate_conversation_title_routes
+from agent_host.routes.generate_summary import add_generate_summary_routes
+from agent_host.routes.lesson_distill import add_lesson_distill_routes
+from agent_host.routes.skill_review import add_skill_review_routes
 
 _ROUTES = {
     "summary": (

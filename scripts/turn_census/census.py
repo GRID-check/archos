@@ -116,10 +116,10 @@ def run_stamp() -> str:
 
 # The NAT plugin a run loads from ``frontends/``: installed editable from ONE
 # checkout like the workspace packages, and loaded by every ``nat run`` through their entry
-# points. From a worktree of another commit the main checkout's ``backend`` met
+# points. From a worktree of another commit the main checkout's ``agent_host`` met
 # the worktree's ``agent`` and every turn died (``Unknown field name
 # front_end``), reported as a 0.0 s run.
-FRONTEND_PACKAGES = {"backend": "apps/backend/src/backend"}
+FRONTEND_PACKAGES = {"agent_host": "apps/backend/src/agent_host"}
 
 
 def source_packages() -> dict[str, Path]:

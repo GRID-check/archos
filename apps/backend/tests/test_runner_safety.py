@@ -16,31 +16,31 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.jobs.conversation_output import write_job_turn
-from backend.jobs.run_result import ANSWER_CONFIDENCE_FIELDS
-from backend.jobs.run_result import build_job_output
-from backend.jobs.run_result import extract_answer_transparency
-from backend.jobs.run_result import extract_skills_activated
-from backend.jobs.run_result import mark_degraded
-from backend.jobs.runner import _DEGRADED_EVENT_FIELDS
-from backend.jobs.runner import _GRAPH_RECURSION_ERROR_MSG
-from backend.jobs.runner import _WALL_CLOCK_TIMEOUT_MSG
-from backend.jobs.runner import JOB_DEGRADED_EVENT_TYPE
-from backend.jobs.runner import CancellationMonitor
-from backend.jobs.runner import _b64url_encode_text
-from backend.jobs.runner import _create_agent_instance
-from backend.jobs.runner import _generate_grid_cards
-from backend.jobs.runner import _purge_deep_checkpoint
-from backend.jobs.runner import _resolve_deep_research_checkpointer
-from backend.jobs.runner import _update_status_if_not_terminal
-from backend.jobs.runner import sanitize_job_error
+from agent_host.jobs.conversation_output import write_job_turn
+from agent_host.jobs.run_result import ANSWER_CONFIDENCE_FIELDS
+from agent_host.jobs.run_result import build_job_output
+from agent_host.jobs.run_result import extract_answer_transparency
+from agent_host.jobs.run_result import extract_skills_activated
+from agent_host.jobs.run_result import mark_degraded
+from agent_host.jobs.runner import _DEGRADED_EVENT_FIELDS
+from agent_host.jobs.runner import _GRAPH_RECURSION_ERROR_MSG
+from agent_host.jobs.runner import _WALL_CLOCK_TIMEOUT_MSG
+from agent_host.jobs.runner import JOB_DEGRADED_EVENT_TYPE
+from agent_host.jobs.runner import CancellationMonitor
+from agent_host.jobs.runner import _b64url_encode_text
+from agent_host.jobs.runner import _create_agent_instance
+from agent_host.jobs.runner import _generate_grid_cards
+from agent_host.jobs.runner import _purge_deep_checkpoint
+from agent_host.jobs.runner import _resolve_deep_research_checkpointer
+from agent_host.jobs.runner import _update_status_if_not_terminal
+from agent_host.jobs.runner import sanitize_job_error
 
 
 def _ensure_job_info_table(db_url: str) -> None:
     """Create NAT's job_info table (mock stores cannot represent the race)."""
     from sqlalchemy import text
 
-    from backend.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     engine = EventStore._get_or_create_sync_engine(db_url)
     with engine.connect() as conn:
@@ -72,7 +72,7 @@ def _seed_job(db_url: str, job_id: str, status: str) -> None:
 
     from sqlalchemy import text
 
-    from backend.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     _ensure_job_info_table(db_url)
     engine = EventStore._get_or_create_sync_engine(db_url)
@@ -102,7 +102,7 @@ def job_db(tmp_path):
 
 @pytest.fixture(autouse=True)
 def clear_event_store_caches():
-    from backend.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore._tables_initialized.clear()
     yield
@@ -850,7 +850,7 @@ class TestTransparencyReachesBothSurfaces:
         output = build_job_output("# Report", cards=None, transparency=transparency)
 
         with patch(
-            "backend.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=AsyncMock,
         ) as post:
             await write_job_turn(
@@ -873,7 +873,7 @@ class TestTransparencyReachesBothSurfaces:
         assert build_job_output("# Report", cards=None, transparency=transparency) == {"report": "# Report"}
 
         with patch(
-            "backend.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=AsyncMock,
         ) as post:
             await write_job_turn(
@@ -897,7 +897,7 @@ class TestTransparencyReachesBothSurfaces:
         still leave the reader with the answer.
         """
         with patch(
-            "backend.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=AsyncMock,
         ) as post:
             await write_job_turn(
@@ -950,7 +950,7 @@ class TestTheReportsOwnAccountReachesTheMessage:
     def test_the_retrieval_ledger_and_the_hidden_skills_are_lifted(self) -> None:
         from types import SimpleNamespace
 
-        from backend.jobs.run_result import extract_answer_transparency
+        from agent_host.jobs.run_result import extract_answer_transparency
 
         state = SimpleNamespace(retrieval_ledger=[{"round": 0}], skills_hidden=["house-voice", 3, ""])
         assert extract_answer_transparency(state) == {
@@ -961,7 +961,7 @@ class TestTheReportsOwnAccountReachesTheMessage:
     def test_an_empty_ledger_or_list_writes_nothing(self) -> None:
         from types import SimpleNamespace
 
-        from backend.jobs.run_result import extract_answer_transparency
+        from agent_host.jobs.run_result import extract_answer_transparency
 
         assert extract_answer_transparency(SimpleNamespace(retrieval_ledger=[], skills_hidden=[])) == {}
 
@@ -971,7 +971,7 @@ class TestReportFollowUps:
     async def test_the_org_flag_gates_the_stage_like_a_chat_turn(self, monkeypatch) -> None:
         from unittest.mock import AsyncMock
 
-        from backend.jobs import runner
+        from agent_host.jobs import runner
 
         monkeypatch.setattr(
             "agent.stages.flags.resolve_enabled_stages", AsyncMock(return_value=frozenset({"memory_reflection"}))
@@ -984,7 +984,7 @@ class TestReportFollowUps:
     async def test_the_stages_handler_payload_rides_the_message(self, monkeypatch) -> None:
         from unittest.mock import AsyncMock
 
-        from backend.jobs import runner
+        from agent_host.jobs import runner
 
         monkeypatch.setattr(
             "agent.stages.flags.resolve_enabled_stages", AsyncMock(return_value=frozenset({"follow_ups"}))
@@ -1003,7 +1003,7 @@ class TestReportFollowUps:
 
 class TestTheFindingsRideIntoMemory:
     def test_each_finding_is_one_line_after_the_report(self) -> None:
-        from backend.jobs.runner import _reflection_text
+        from agent_host.jobs.runner import _reflection_text
 
         text = _reflection_text(
             "Bericht.",
@@ -1020,13 +1020,13 @@ class TestTheFindingsRideIntoMemory:
 
     def test_a_row_without_a_status_states_none(self) -> None:
         """``exclude_none`` drops an absent status; it must not come back as „offen"."""
-        from backend.jobs.runner import _reflection_text
+        from agent_host.jobs.runner import _reflection_text
 
         text = _reflection_text("Bericht.", {"items": [{"requirement": "Stellplätze", "value": "12"}]})
         assert text == "Bericht.\n\n## Befunde\n- Stellplätze — 12"
 
     def test_no_findings_leaves_the_report_as_it_was(self) -> None:
-        from backend.jobs.runner import _reflection_text
+        from agent_host.jobs.runner import _reflection_text
 
         assert _reflection_text("Bericht.", None) == "Bericht."
         assert _reflection_text("Bericht.", {"items": []}) == "Bericht."
@@ -1045,14 +1045,14 @@ class TestReportReflectionHasNoScopeCheck:
     def test_the_reflection_takes_no_collection_scope(self) -> None:
         import inspect
 
-        from backend.jobs import runner
+        from agent_host.jobs import runner
 
         assert "collection_scope" not in inspect.signature(runner._run_deep_research_reflection).parameters
 
     @pytest.mark.asyncio
     async def test_a_report_still_reflects(self, monkeypatch) -> None:
         from agent import common
-        from backend.jobs import runner
+        from agent_host.jobs import runner
 
         get_llm = AsyncMock(side_effect=RuntimeError("stop before the model call"))
         monkeypatch.setattr(common, "get_langchain_llm", get_llm)

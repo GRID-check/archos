@@ -21,9 +21,9 @@ from agent.project_context import PROJECT_ID_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from agent.project_context import TOOL_CONTEXT_REQUIREMENTS
-from backend.jobs.run_envelope import envelope_headers_for_run
-from backend.jobs.runner import WORKER_ENVELOPE_HEADERS
-from backend.jobs.runner import WORKER_IDENTITY_HEADERS
+from agent_host.jobs.run_envelope import envelope_headers_for_run
+from agent_host.jobs.runner import WORKER_ENVELOPE_HEADERS
+from agent_host.jobs.runner import WORKER_IDENTITY_HEADERS
 
 ENVELOPE = (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER)
 

@@ -14,7 +14,7 @@ from knowledge_layer.llamaindex import revisions
 from agent.knowledge.schema import AvailableDocument
 from agent.knowledge.schema import FileInfo
 from agent.knowledge.schema import FileStatus
-from backend.routes.documents import _merge_summaries
+from agent_host.routes.documents import _merge_summaries
 
 
 def _row(name, facts=None, **kwargs) -> AvailableDocument:
@@ -195,7 +195,7 @@ class TestInTheListing:
         assert all(f.revision_suggestion is None for f in files)
 
     def test_the_listing_route_reads_held_names_of_its_collection(self, monkeypatch):
-        from backend.routes.documents import _held_names_of
+        from agent_host.routes.documents import _held_names_of
 
         seen = []
         monkeypatch.setattr(revisions, "held_file_names", lambda collection: seen.append(collection) or {"x.pdf"})

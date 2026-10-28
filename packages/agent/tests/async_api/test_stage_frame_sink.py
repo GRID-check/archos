@@ -1,6 +1,6 @@
 """The stage channel, from the agent tier's sink call to the socket (chat wire v2).
 
-`agent` owns the graph and never learns what a WebSocket is; `backend` owns
+`agent` owns the graph and never learns what a WebSocket is; `agent_host` owns
 the socket and publishes an implementation of
 ``agent.stages.delivery.StageFrameSink`` to it at start-up. Nothing else
 connects the two halves, so nothing else can say whether they are connected:
@@ -23,10 +23,10 @@ from agent.common.wire_v2 import RunStartedBody
 from agent.common.wire_v2 import StageValue
 from agent.common.wire_v2 import TurnResult
 from agent.stages import delivery
-from backend import chat_socket
-from backend.chat_socket import ChatRegistry
-from backend.chat_socket import RunningTurn
-from backend.chat_socket import TurnWire
+from agent_host import chat_socket
+from agent_host.chat_socket import ChatRegistry
+from agent_host.chat_socket import RunningTurn
+from agent_host.chat_socket import TurnWire
 
 CONVERSATION_ID = "conv-stage-sink"
 TURN_ID = "msg_1755600000000_3"
@@ -65,7 +65,7 @@ async def _answered_turn(monkeypatch, socket: _Socket | None) -> ChatRegistry:
 
 class TestTheStageReachesTheSocket:
     async def test_the_published_sink_is_the_one_the_agent_tier_calls(self) -> None:
-        import backend.plugin  # noqa: F401 — registers the sink at import
+        import agent_host.plugin  # noqa: F401 — registers the sink at import
 
         assert delivery.get_stage_frame_sink() is chat_socket.send_stage
 

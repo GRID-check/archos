@@ -108,7 +108,7 @@ export function ensureTablesPython(): string {
   return [
     "import os",
     "from agent.knowledge import ingest_queue",
-    "from backend.jobs import queue",
+    "from agent_host.jobs import queue",
     "ingest_queue.ensure_table(ingest_queue.db_url())",
     'queue.ensure_research_queue_table(os.environ["NAT_JOB_STORE_DB_URL"])',
   ].join("\n");

@@ -15,14 +15,14 @@ from httpx import AsyncClient
 
 from agent.common import provider_limiter
 from agent.common.openrouter import limited_async_http_client
-from backend.routes import folder_proposals as module
-from backend.routes.folder_proposals import MAX_DOCUMENTS
-from backend.routes.folder_proposals import REDUCE_PROMPT
-from backend.routes.folder_proposals import SYSTEM_PROMPT
-from backend.routes.folder_proposals import FolderProposal
-from backend.routes.folder_proposals import FolderProposalsRequest
-from backend.routes.folder_proposals import add_folder_proposals_routes
-from backend.routes.folder_proposals import parse_proposals
+from agent_host.routes import folder_proposals as module
+from agent_host.routes.folder_proposals import MAX_DOCUMENTS
+from agent_host.routes.folder_proposals import REDUCE_PROMPT
+from agent_host.routes.folder_proposals import SYSTEM_PROMPT
+from agent_host.routes.folder_proposals import FolderProposal
+from agent_host.routes.folder_proposals import FolderProposalsRequest
+from agent_host.routes.folder_proposals import add_folder_proposals_routes
+from agent_host.routes.folder_proposals import parse_proposals
 
 BODY = {
     "locale": "de",

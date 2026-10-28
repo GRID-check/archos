@@ -1,6 +1,6 @@
 """The document facts half of the weekly vector reconcile: every live collection's facts copied again.
 
-Module under test: ``backend.routes.maintenance`` (``refresh_document_facts``
+Module under test: ``agent_host.routes.maintenance`` (``refresh_document_facts``
 and its route). ``writes.refresh_facts`` never raises after a person's edit,
 so a copy that failed leaves the old tags, Dokumentart or superseded mark on
 the points, and the pre-filters that read them hide or show a document
@@ -17,9 +17,9 @@ from httpx import ASGITransport
 from httpx import AsyncClient
 from knowledge_layer.qdrant import writes
 
-from backend.routes.maintenance import REFRESH_FACTS_MAX_COLLECTIONS
-from backend.routes.maintenance import add_maintenance_routes
-from backend.routes.maintenance import refresh_document_facts
+from agent_host.routes.maintenance import REFRESH_FACTS_MAX_COLLECTIONS
+from agent_host.routes.maintenance import add_maintenance_routes
+from agent_host.routes.maintenance import refresh_document_facts
 
 
 @pytest.fixture

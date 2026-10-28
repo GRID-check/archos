@@ -1,7 +1,7 @@
-"""Register a lightweight ``backend`` package before submodule imports.
+"""Register a lightweight ``agent_host`` package before submodule imports.
 
-Skips ``backend/__init__.py`` (plugin pulls NAT) so tests can load
-``backend.auth`` and peers from ``src/`` without the full runtime stack.
+Skips ``agent_host/__init__.py`` (plugin pulls NAT) so tests can load
+``agent_host.auth`` and peers from ``src/`` without the full runtime stack.
 """
 
 from __future__ import annotations
@@ -16,16 +16,16 @@ from knowledge_layer_testing.qdrant_fixtures import fresh_qdrant_store  # noqa: 
 from knowledge_layer_testing.qdrant_fixtures import qdrant_store  # noqa: F401 - the shared store fixture
 
 _SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
-_PKG_DIR = _SRC_ROOT / "backend"
+_PKG_DIR = _SRC_ROOT / "agent_host"
 
 if _PKG_DIR.is_dir():
     if str(_SRC_ROOT) not in sys.path:
         sys.path.insert(0, str(_SRC_ROOT))
 
-    if "backend" not in sys.modules:
-        _pkg = types.ModuleType("backend")
+    if "agent_host" not in sys.modules:
+        _pkg = types.ModuleType("agent_host")
         _pkg.__path__ = [str(_PKG_DIR)]
-        sys.modules["backend"] = _pkg
+        sys.modules["agent_host"] = _pkg
 
 
 @pytest.fixture(autouse=True)
@@ -55,7 +55,7 @@ def _no_retry_pauses(monkeypatch):
     a test that doubles a failing BFF would otherwise wait 25 s per call. The
     attempts still happen; only the pauses are skipped.
     """
-    from backend import internal_retry
+    from agent_host import internal_retry
 
     async def _instant(_seconds: float) -> None:
         return None

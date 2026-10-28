@@ -1,6 +1,6 @@
 """The state the research worker hands the Erfassungs-Agent (ADR-0111).
 
-The runner builds it from the job (``backend.jobs.runner._run_agent``): the
+The runner builds it from the job (``agent_host.jobs.runner._run_agent``): the
 messages, and each of its optional fields this model declares. The intake reads
 only the organization (for the decision model's tenant) and the BFF's
 instruction text; everything it needs about the project it asks the intake API

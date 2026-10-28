@@ -40,7 +40,7 @@ def create_workos_validator() -> JWTValidator:
 
 
 def get_validators() -> list:
-    """Return a list of validators for the ``backend.validators`` entry point.
+    """Return a list of validators for the ``agent_host.validators`` entry point.
 
     Reads ``WORKOS_CLIENT_ID`` from the environment. If set, returns a
     WorkOS JWT validator.  If not set, returns an empty list so the entry

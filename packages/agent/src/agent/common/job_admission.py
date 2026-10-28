@@ -1,6 +1,6 @@
 """Admission-control error for async job submission.
 
-Lives in ``agent.common`` (not ``backend``) so the chat agent can catch it
+Lives in ``agent.common`` (not ``agent_host``) so the chat agent can catch it
 without importing the API plugin package.
 """
 

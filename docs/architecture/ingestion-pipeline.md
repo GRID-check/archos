@@ -13,7 +13,7 @@ ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
 Short forms: **A** is `packages/knowledge-layer/src/llamaindex/adapter.py`, **S** is
 `apps/workspace/bff/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
-`apps/backend/src/backend/jobs/ingest_dispatch.py`.
+`apps/backend/src/agent_host/jobs/ingest_dispatch.py`.
 
 ## 1. The whole thing on one page
 
@@ -32,7 +32,7 @@ flowchart LR
     SW[(SeaweedFS<br/>original + rendition)]
     PG[(Postgres<br/>documents, ingest_jobs,<br/>ingest_job_queue)]
   end
-  subgraph API["backend"]
+  subgraph API["agent_host"]
     IN[/v1/ingest<br/>idempotent per document/]
   end
   subgraph Worker["ingest-worker tier (KEDA, 1 to 5 pods x 3 jobs)"]

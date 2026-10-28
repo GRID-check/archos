@@ -28,7 +28,7 @@ Two callers drive it: an admin upload stores the file and queues its job at once
 admin's "run it now") records what finished, then queues every file that still
 needs a job.
 
-The queue write itself is the API tier's (``backend.jobs.ingest_dispatch.enqueue_only``:
+The queue write itself is the API tier's (``agent_host.jobs.ingest_dispatch.enqueue_only``:
 it encrypts the payload, which carries URLs). The API routes that drive this module hand it
 in as ``enqueue``, so the dependency runs from the API tier to this one and never back.
 """

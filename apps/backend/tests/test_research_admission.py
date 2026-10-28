@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 
 from agent.common.job_admission import JobAdmissionError
-from backend.jobs import queue
-from backend.jobs import submit
+from agent_host.jobs import queue
+from agent_host.jobs import submit
 
 
 @pytest.fixture

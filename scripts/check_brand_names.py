@@ -96,7 +96,7 @@ EXCLUDED = re.compile(
             # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
             r"^deploy/pulumi/src/names\.ts$",
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
-            r"^apps/workspace/bff/http/legacy-header-names\.|^apps/backend/src/backend/legacy_headers\.py$",
+            r"^apps/workspace/bff/http/legacy-header-names\.|^apps/backend/src/agent_host/legacy_headers\.py$",
             r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",

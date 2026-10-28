@@ -1,7 +1,7 @@
 """The dedicated ingestion worker tier (ADR-0076).
 
 Run as its own container: ``PROCESS_ROLE=ingest-worker`` makes the entrypoint start
-``python -m backend.jobs.ingest_worker``. It builds the NAT workflow once, which
+``python -m agent_host.jobs.ingest_worker``. It builds the NAT workflow once, which
 activates the ingestor exactly as the web roles do (same summary model, same
 shared Qdrant, same object store), attaches the durable queue to it, and then
 does nothing but claim: its ``INGEST_MAX_WORKERS`` threads take the next job

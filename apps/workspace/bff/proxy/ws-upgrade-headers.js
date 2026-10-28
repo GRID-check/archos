@@ -29,7 +29,7 @@ const CLIENT_CREDENTIAL_HEADERS = new Set(['authorization', 'x-internal-token'])
 /**
  * The same context headers under their names without the product's (`x-budget`
  * for `x-grid-budget`), which the backend reads beside the old ones from this
- * release (`backend.legacy_headers`). Named one by one: `x-` alone is every
+ * release (`agent_host.legacy_headers`). Named one by one: `x-` alone is every
  * proxy's prefix. `tests/test_legacy_headers.py` holds this list and the
  * backend's equal.
  */

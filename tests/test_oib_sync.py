@@ -25,7 +25,7 @@ from agent.knowledge import ingest_queue
 from agent.knowledge import ingest_status_store
 from agent.knowledge.document_metadata_store import DocumentMetadataStore
 from agent.knowledge.ingest_scheduler import PLATFORM_LANE
-from backend.jobs import ingest_dispatch
+from agent_host.jobs import ingest_dispatch
 from tests.corpus_job_fakes import FakeIngestor
 from tests.corpus_job_fakes import lose_the_workers_for as _lose_the_workers_for
 from tests.corpus_job_fakes import run_worker

@@ -14,7 +14,7 @@ from agent.knowledge.schema import CollectionInfo
 from agent.knowledge.schema import FileInfo
 from agent.knowledge.schema import FileStatus
 from agent.oib_status import OibFileState
-from backend.jobs import ingest_dispatch
+from agent_host.jobs import ingest_dispatch
 from tests.corpus_job_fakes import FakeIngestor as JobIngestor
 from tests.corpus_job_fakes import lose_the_workers_for
 from tests.corpus_job_fakes import run_worker

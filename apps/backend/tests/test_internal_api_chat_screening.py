@@ -13,10 +13,10 @@ import httpx
 import pytest
 
 from agent.common.content_screen import DETECTORS
-from backend import internal_api
-from backend.internal_api import CHAT_SCREENING_FALLBACK
-from backend.internal_api import chat_screening_for
-from backend.internal_api import chat_screening_from
+from agent_host import internal_api
+from agent_host.internal_api import CHAT_SCREENING_FALLBACK
+from agent_host.internal_api import chat_screening_for
+from agent_host.internal_api import chat_screening_from
 
 
 class _Requests(list):

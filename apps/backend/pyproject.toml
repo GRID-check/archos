@@ -3,7 +3,7 @@ requires = ["setuptools>=84.2.1", "setuptools-scm>=10.3.4"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "backend"
+name = "agent-host"
 version = "0.1.0"
 description = "Piloti backend host: the chat runtime, the knowledge and job APIs, and the workers"
 readme = "README.md"
@@ -59,9 +59,9 @@ dev = [
 where = ["src"]
 
 [project.entry-points."nat.plugins"]
-backend = "backend.register"
+agent_host = "agent_host.register"
 
 # The WorkOS validator, the one this deployment uses. Still an entry point
 # rather than an import (ADR-0002): another package can add its own.
-[project.entry-points."backend.validators"]
-workos = "backend.auth.workos_validator:get_validators"
+[project.entry-points."agent_host.validators"]
+workos = "agent_host.auth.workos_validator:get_validators"

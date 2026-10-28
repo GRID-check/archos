@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from backend.mail_archive import archives
+from agent_host.mail_archive import archives
 
 
 class FakeArchive:

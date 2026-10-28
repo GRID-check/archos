@@ -12,16 +12,16 @@ from fastapi import APIRouter
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.mail_archive.body_text import BodyText
-from backend.mail_archive.reader import Address
-from backend.mail_archive.reader import ArchiveError
-from backend.mail_archive.reader import ArchiveMessage
-from backend.mail_archive.reader import AttachmentInfo
-from backend.mail_archive.reader import AttachmentTooLargeError
-from backend.mail_archive.reader import MessagePage
-from backend.mail_archive.reader import UnreadableItemError
-from backend.mail_archive.remote_file import RemoteFileError
-from backend.routes import mail_archive as route
+from agent_host.mail_archive.body_text import BodyText
+from agent_host.mail_archive.reader import Address
+from agent_host.mail_archive.reader import ArchiveError
+from agent_host.mail_archive.reader import ArchiveMessage
+from agent_host.mail_archive.reader import AttachmentInfo
+from agent_host.mail_archive.reader import AttachmentTooLargeError
+from agent_host.mail_archive.reader import MessagePage
+from agent_host.mail_archive.reader import UnreadableItemError
+from agent_host.mail_archive.remote_file import RemoteFileError
+from agent_host.routes import mail_archive as route
 
 TOKEN = "test-internal-token"
 ARCHIVE = {"key": "org/o1/mail-import/i1/archiv.pst", "url": "http://seaweedfs:8333/x?sig", "size": 1000}

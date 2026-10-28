@@ -299,7 +299,7 @@ class TestGridRequestContextEnvelopeContractFixture:
 class TestGridRequestContextFromEnvelope:
     """Unit tests for `GridRequestContext.from_envelope` — the single
     verify+parse function the enforcement middleware in
-    `backend.context_envelope` and `from_context`/`from_headers` (envelope
+    `agent_host.context_envelope` and `from_context`/`from_headers` (envelope
     precedence) all delegate to.
     """
 

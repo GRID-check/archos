@@ -11,8 +11,8 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
-from backend.routes.maintenance import _DEV_DEFAULT_TOKEN
-from backend.routes.maintenance import _require_internal_token
+from agent_host.routes.maintenance import _DEV_DEFAULT_TOKEN
+from agent_host.routes.maintenance import _require_internal_token
 
 
 class _Req:

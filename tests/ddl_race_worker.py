@@ -4,7 +4,7 @@ A module of its own, because ``multiprocessing`` ("spawn") imports the target by
 name in the child and the test modules are collected with ``importlib`` mode.
 Imports of the code under test are inside the functions: a child must import
 THIS checkout's packages, and only after :func:`worker` has put them first on
-its path (``backend`` is a workspace package the venv may have installed from
+its path (``agent_host`` is a workspace package the venv may have installed from
 another checkout).
 """
 
@@ -41,7 +41,7 @@ def _ingest_status_store(url: str) -> bool:
 
 
 def _research_queue(url: str) -> bool:
-    from backend.jobs import queue
+    from agent_host.jobs import queue
 
     queue.ensure_research_queue_table(url)
     return url in queue.queue_for(url).initialized
@@ -69,14 +69,14 @@ def _corpus_store(url: str) -> bool:
 
 
 def _event_store_instance(url: str) -> bool:
-    from backend.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore(url)
     return url in EventStore._tables_initialized
 
 
 def _event_store_class(url: str) -> bool:
-    from backend.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore._ensure_table_exists(url)
     return url in EventStore._tables_initialized
@@ -85,14 +85,14 @@ def _event_store_class(url: str) -> bool:
 def _event_store_async(url: str) -> bool:
     import asyncio
 
-    from backend.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     asyncio.run(EventStore._ensure_table_async(url))
     return url in EventStore._tables_initialized
 
 
 def _job_access(url: str) -> bool:
-    from backend.jobs import access
+    from agent_host.jobs import access
 
     access.ensure_job_access_table(url)
     return url in access._job_access_schema_initialized

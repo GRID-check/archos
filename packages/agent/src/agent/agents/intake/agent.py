@@ -1,7 +1,7 @@
 """The Erfassungs-Agent: Piloti sets a project up from its documents (ADR-0111).
 
 A run of agent type ``project_intake`` on the research worker
-(``backend/registry.py``), started by the BFF when a finished upload batch lands
+(``agent_host/registry.py``), started by the BFF when a finished upload batch lands
 on a project with an intake, or by a person's click. It acts as that person
 through the signed envelope the run carries (ADR-0108), and reads only the
 project's main collection, the scope the BFF signed.

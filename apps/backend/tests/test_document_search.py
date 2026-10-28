@@ -26,7 +26,7 @@ from agent.knowledge.factory import set_active_ingestor
 from agent.knowledge.factory import set_active_retriever
 from agent.knowledge.schema import Chunk
 from agent.knowledge.schema import RetrievalResult
-from backend.routes.document_search import add_document_search_routes
+from agent_host.routes.document_search import add_document_search_routes
 
 
 def _chunk(
@@ -553,8 +553,8 @@ def test_the_reading_filters_compile_in_the_one_scope_filter():
     """Every field is one the scope filter accepts (indexed, keyword), so Qdrant applies it, not a post-filter."""
     from knowledge_layer.qdrant.scope import scope_filter
 
-    from backend.models.requests import GroupedSearchFilters
-    from backend.routes.document_search import grouped_filters
+    from agent_host.models.requests import GroupedSearchFilters
+    from agent_host.routes.document_search import grouped_filters
 
     filters = grouped_filters(
         GroupedSearchFilters(document_ids=[DOC_A], reading_types=["permit"], refers_to=["ÖNORM B 1600"])
@@ -733,7 +733,7 @@ async def test_the_workspace_search_drops_meaning_only_documents_below_the_floor
     A document whose passage holds a query word stays at any cosine; one that
     only means the same stays above the floor and says so (`lexical: false`).
     """
-    from backend.routes.document_search import MEANING_ONLY_MIN_COSINE
+    from agent_host.routes.document_search import MEANING_ONLY_MIN_COSINE
 
     groups = [
         (
@@ -812,8 +812,8 @@ async def test_a_document_filter_names_the_files_whose_passages_carry_no_id(app)
 
 
 def test_the_prefilter_mode_names_how_the_bff_narrowed_the_query():
-    from backend.models.requests import GroupedSearchFilters
-    from backend.routes.document_search import prefilter_mode
+    from agent_host.models.requests import GroupedSearchFilters
+    from agent_host.routes.document_search import prefilter_mode
 
     assert prefilter_mode(None) == "none"
     assert prefilter_mode(GroupedSearchFilters()) == "none"

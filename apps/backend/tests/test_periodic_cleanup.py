@@ -8,8 +8,8 @@ from datetime import timedelta
 
 import pytest
 
-from backend.jobs.event_store import EventStore
-from backend.routes.job_event_cleanup import run_event_cleanup
+from agent_host.jobs.event_store import EventStore
+from agent_host.routes.job_event_cleanup import run_event_cleanup
 
 
 @pytest.fixture

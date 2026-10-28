@@ -40,9 +40,9 @@ from agent.knowledge.schema import FileProgress
 from agent.knowledge.schema import FileStatus
 from agent.knowledge.schema import IngestionJobStatus
 from agent.knowledge.schema import JobState
-from backend.jobs import ingest_dispatch
-from backend.routes import oib as oib_routes
-from backend.routes.oib import add_oib_routes
+from agent_host.jobs import ingest_dispatch
+from agent_host.routes import oib as oib_routes
+from agent_host.routes.oib import add_oib_routes
 
 _COLLECTION = "oib_knowledge"
 
@@ -771,7 +771,7 @@ class TestCorpusExport:
 
     @pytest.fixture
     def corpus(self, monkeypatch, cache_dir, bucket):
-        from backend.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         corpus_store.put("oib-rl_2_ausgabe_mai_2023.pdf", b"%PDF first")
         corpus_store.put("oib-rl_4_ausgabe_mai_2023.pdf", b"%PDF second")
@@ -807,7 +807,7 @@ class TestCorpusExport:
 
     @pytest.mark.asyncio
     async def test_no_configured_token_fails_closed(self, app, corpus, monkeypatch):
-        from backend.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         monkeypatch.setattr(oib_routes, "_ADMIN_TOKEN", None)
         async with _client(app) as client:
@@ -815,7 +815,7 @@ class TestCorpusExport:
         assert res.status_code == 503
 
     def test_a_failed_build_leaves_no_partial_archive(self, corpus, tmp_path, monkeypatch):
-        from backend.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         scratch = tmp_path / "tmp"
         scratch.mkdir()
@@ -832,7 +832,7 @@ class TestCorpusExport:
     def test_a_file_that_cannot_be_fetched_fails_the_export_instead_of_shipping_half_a_corpus(
         self, corpus, bucket, tmp_path, monkeypatch
     ):
-        from backend.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         scratch = tmp_path / "tmp"
         scratch.mkdir()

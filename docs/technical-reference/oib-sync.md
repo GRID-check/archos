@@ -2,7 +2,7 @@
 
 How the base corpus (the OIB, Österreichisches Institut für Bautechnik, Richtlinien and the other documents the platform owner uploads) is stored and ingested into the `oib_knowledge` collection in Qdrant. ADR-0082 step A2.
 
-There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `packages/agent/src/agent/corpus_store.py` (storage, table, cache), `packages/agent/src/agent/oib_sync.py` (ingestion), `packages/agent/src/agent/oib_status.py` (the status view) and `apps/backend/src/backend/routes/oib.py` (the routes).
+There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `packages/agent/src/agent/corpus_store.py` (storage, table, cache), `packages/agent/src/agent/oib_sync.py` (ingestion), `packages/agent/src/agent/oib_status.py` (the status view) and `apps/backend/src/agent_host/routes/oib.py` (the routes).
 
 ---
 
@@ -202,7 +202,7 @@ packages/agent/src/agent/oib_sync.py ──────────► packages/
        │   │                              │ writes: BFF presigned URLs / delete
        │   │                              │ reads:  agent.common.seaweed_s3
        │   │                              └ cache:  BASE_CORPUS_CACHE_DIR
-       │   └── enqueue (handed in by the route) ─► backend.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
+       │   └── enqueue (handed in by the route) ─► agent_host.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
        │                                                          │ claimed by
        │                                                          ▼
        │                                         ingest workers (QueueSource) ─► CorpusObjectDownload

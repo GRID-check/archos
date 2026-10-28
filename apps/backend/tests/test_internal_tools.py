@@ -25,8 +25,8 @@ from agent.common.backend_tools import BACKEND_READ_TOOLS
 from agent.project_context import GridRequestContext
 from agent.project_context import get_organization_id_from_context
 from agent.project_context import get_project_id_from_context
-from backend.routes import internal_tools
-from backend.routes.internal_tools import add_internal_tool_routes
+from agent_host.routes import internal_tools
+from agent_host.routes.internal_tools import add_internal_tool_routes
 
 TOKEN = "real-secret"  # pragma: allowlist secret
 PATH = "/v1/internal/tools/{name}"

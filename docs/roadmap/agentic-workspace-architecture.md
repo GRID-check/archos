@@ -49,8 +49,8 @@ that closes a loop is named where it ran.
 | A | The Punkt and the retrieval score are parsed off the grounding block, fold under page dedup, reach the wire and the stored message, and the locus reads "Pkt. 3.5.2 · S. 7" | `citation_verification.py`, `features/chat/lib/citations/*`, `SourcePreview.tsx`, `CitationPeek.tsx` |
 | A | The turn's retrieval query survives the storage prune and the server whitelist, so a reloaded or shared thread keeps what was searched | `prune-message-for-storage.ts`, `message-provenance.ts`, `turn-events.ts` |
 | A · pass | The structural retrievability harness runs in CI as a gate (`task be:eval:retrieval`, 95% floor, 98.3% measured). *(Retired 2026-09-09: the corpus became operator-provided and gitignored, so no CI checkout can measure it. The harness stays as a local tool — [ADR-0058, Update (2026-09-09)](../adr/0058-retrieval-correctness-and-the-measurement-gate.md).)* | `Taskfile.yml`, `evals/oib-retrieval/src/oib_retrieval/runner.py` |
-| B | A background run carries the project, organization and user identity, fetches the live memory digest, composes it into the agent's context and hands the reflection pass a real digest; the fire path builds the digest and evaluates the reflection flag | `backend/jobs/runner.py`, `routes/skills.py`, `lib/jobs/service.ts` |
-| B | A finished or failed run tells the job's creator: `job.completed` / `job.failed` inbox items, a `project` inbox target, an internal outcome route the worker calls from its terminal arms | `lib/inbox/*`, `app/api/internal/jobs/[jobId]/outcome`, `backend/jobs/outcome_notify.py` |
+| B | A background run carries the project, organization and user identity, fetches the live memory digest, composes it into the agent's context and hands the reflection pass a real digest; the fire path builds the digest and evaluates the reflection flag | `agent_host/jobs/runner.py`, `routes/skills.py`, `lib/jobs/service.ts` |
+| B | A finished or failed run tells the job's creator: `job.completed` / `job.failed` inbox items, a `project` inbox target, an internal outcome route the worker calls from its terminal arms | `lib/inbox/*`, `app/api/internal/jobs/[jobId]/outcome`, `agent_host/jobs/outcome_notify.py` |
 | B | One personal-data guard on the write path both memory writers share; a date is no longer dropped as a phone number | `knowledge/project_memory.py` |
 | B | Accepted and declined proposals reach the next turn as a `PROPOSAL_DECISIONS` block on the memory channel | `lib/projects/proposal-decisions.ts`, `piloti.j2` |
 | B | Memory recall ranks by similarity in SQL and a quoted correction resolves across the whole scope, not the 200 most recent rows | `lib/projects/memory-service.ts` |
@@ -300,7 +300,7 @@ What a delegated task needs, and what already exists for each:
 
 | Need | Exists as | Where | Missing |
 |---|---|---|---|
-| Execution | Two correct DB-claimed worker tiers (`FOR UPDATE SKIP LOCKED`, heartbeat, stale reclaim, leader-elected reaper) | `backend/jobs/queue.py`, `scheduler/db.js`, `purger/db.js` | One shared claim library; a `kind` on the queue so a non-research step can be queued; a migration and RLS for `research_job_queue`, which is created by runtime DDL |
+| Execution | Two correct DB-claimed worker tiers (`FOR UPDATE SKIP LOCKED`, heartbeat, stale reclaim, leader-elected reaper) | `agent_host/jobs/queue.py`, `scheduler/db.js`, `purger/db.js` | One shared claim library; a `kind` on the queue so a non-research step can be queued; a migration and RLS for `research_job_queue`, which is created by runtime DDL |
 | Trigger | A job: prompt, optional skill snapshot, output kind, cron | `schema/jobs.ts:98` | An overlap policy (`skip_if_running` / `queue`); an event trigger of any kind |
 | Playbook | Skills: versioned, org-owned, platform-shadowable, snapshotted, progressively disclosed | `skills/resolver.py`, `runtime.py` | Nothing. This is the most finished part |
 | Plan + approval | The clarifier's plan preview with approve / short answer / cancel | `piloti/clarify.py` (`preview_plan`) | It is an `asyncio` future on a live socket. A job has no socket, so it cannot be approved |
@@ -497,7 +497,7 @@ Nothing new; each line joins two things that are built.
 
 | Change | Module |
 |---|---|
-| Send the live memory digest on the job fire path; fetch it in the worker's reflection pass instead of passing the profile | `lib/jobs/service.ts:362-391`, `backend/jobs/runner.py:1409-1477` |
+| Send the live memory digest on the job fire path; fetch it in the worker's reflection pass instead of passing the profile | `lib/jobs/service.ts:362-391`, `agent_host/jobs/runner.py:1409-1477` |
 | Re-inject `x-grid-project-id` / `x-grid-organization-id` in the runner so `remember` works on deep research; a startup check that every bound tool can run in its context | `jobs/runner.py:749-785`, `packages/agent/tests/test_config_tool_wiring.py` |
 | Two inbox types, `task.completed` and `task.failed` (today keyed on the job run) | `lib/inbox/registry.ts`, `schema/inbox.ts:45` |
 | A project-wide "Läufe" tab in Automation from the existing per-job run history | `automation-panel.tsx`, `job-run-history.tsx` |
@@ -525,7 +525,7 @@ The one new table, and the seams that already exist hung off it.
 | File the run's artifact at completion as the pinned requester, off the interactive GET | `lib/documents/research-report.ts`, `api/jobs/async/[...path]/route.ts:247` | generalisation; the route comment names this as "v1.1, decision 10" |
 | Audit actions `task.created … task.accepted`; per-task budget and deadline enforced by `GridCostTracker` and `BudgetGuardCallback` | `lib/audit/schemas.mjs`, `common/budget_guard.py`, `lib/request-context.ts` | generalisation |
 | A review surface: the `Unvergeben + Von Piloti` preset becomes the inbox row's landing view; accept / reject / edit writes a decision the next run reads | `documents/lib/file-filters.ts:20,80`, `file-filter-menu.tsx` | generalisation |
-| One shared claim library; `research_job_queue` gets a migration, RLS and a `kind`; overlap policy checked in `fireJob` | `backend/jobs/queue.py`, `scheduler/db.js`, `purger/db.js`, `lib/jobs/service.ts:354` | consolidation of four copies |
+| One shared claim library; `research_job_queue` gets a migration, RLS and a `kind`; overlap policy checked in `fireJob` | `agent_host/jobs/queue.py`, `scheduler/db.js`, `purger/db.js`, `lib/jobs/service.ts:354` | consolidation of four copies |
 | First two task kinds: `compliance_check` and `einreichcheck`, each producing a filed report and a work list | `agents/compliance_checker/`, `skills/builtin/oib/einreichcheck/` | wiring, no new agent |
 
 **Verification pass C.** A member writes "@Piloti prüf die Einreichung gegen

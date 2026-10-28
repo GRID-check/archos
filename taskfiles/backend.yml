@@ -31,7 +31,7 @@ tasks:
       - '{{.RUFF}} check . {{.CLI_ARGS}}'
       - '{{.RUFF}} format --check .'
       # The contracts in pyproject.toml's [tool.importlinter]: agent reaches
-      # backend and knowledge_layer only through their seams. About a second.
+      # agent_host and knowledge_layer only through their seams. About a second.
       # docs/contributing/module-seams.md
       - '{{.LINT_IMPORTS}} --no-cache'
 
@@ -340,7 +340,7 @@ tasks:
         d = json.loads(p.read_text()); p.write_text(json.dumps({k: round(v, 3) for k, v in sorted(d.items())}, indent=0) + chr(10))"
 
   be:test:api:
-    desc: backend plugin suite
+    desc: agent_host plugin suite
     cmds:
       - '{{.PY}} -X faulthandler -m pytest apps/backend/tests/ -q {{.XDIST}}'
 

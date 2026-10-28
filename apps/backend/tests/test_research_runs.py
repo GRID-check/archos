@@ -18,12 +18,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from agent.auth import Principal
-from backend.jobs import access as job_access
-from backend.jobs.access import JobCaller
-from backend.jobs.access import SignedJobScope
-from backend.jobs.event_store import EventStore
-from backend.routes import job_handlers
-from backend.routes.research_runs import find_research_runs
+from agent_host.jobs import access as job_access
+from agent_host.jobs.access import JobCaller
+from agent_host.jobs.access import SignedJobScope
+from agent_host.jobs.event_store import EventStore
+from agent_host.routes import job_handlers
+from agent_host.routes.research_runs import find_research_runs
 
 
 @pytest.fixture
@@ -231,7 +231,7 @@ class TestListingFollowsTheSignedScope:
 @pytest.fixture
 async def research_runs_app(db_url, monkeypatch):
     """Build a minimal app with the async job routes, including the new list endpoint."""
-    import backend.routes.jobs as jobs_routes
+    import agent_host.routes.jobs as jobs_routes
 
     worker = SimpleNamespace(
         _db_url=db_url,

@@ -20,7 +20,7 @@ installed NAT, not assumed:
 * ``user.id`` — NAT 1.9 sets it from ``Context.user_id`` at span creation
   (#2152), and Langfuse maps ``user.id`` to the trace's user. The chat socket
   opens every turn's session with ``user_id`` = the VERIFIED subject
-  (``backend.chat_socket``), the same WorkOS user id the envelope carries, so
+  (``agent_host.chat_socket``), the same WorkOS user id the envelope carries, so
   this module no longer writes ``langfuse.user.id``
   (``test_nat_puts_the_session_user_on_every_span`` pins NAT's half). NAT sets
   it, and ``<prefix>.user.id``, on every span whatever

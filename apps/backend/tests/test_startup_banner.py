@@ -15,12 +15,12 @@ import logging
 
 import pytest
 
-from backend.startup_banner import UNKNOWN_SHA
-from backend.startup_banner import boot_line
-from backend.startup_banner import deployed_sha
-from backend.startup_banner import flag_source
-from backend.startup_banner import format_boot_line
-from backend.startup_banner import log_boot_line
+from agent_host.startup_banner import UNKNOWN_SHA
+from agent_host.startup_banner import boot_line
+from agent_host.startup_banner import deployed_sha
+from agent_host.startup_banner import flag_source
+from agent_host.startup_banner import format_boot_line
+from agent_host.startup_banner import log_boot_line
 
 # (name, env, expected line) — byte-identical to the TypeScript spec's table.
 CASES = [
@@ -88,7 +88,7 @@ def test_log_boot_line_emits_at_info_and_returns_what_it_logged(caplog, monkeypa
     monkeypatch.delenv("GIT_SHA", raising=False)
     monkeypatch.setenv("REQUIRE_AUTH", "true")
 
-    with caplog.at_level(logging.INFO, logger="backend.startup_banner"):
+    with caplog.at_level(logging.INFO, logger="agent_host.startup_banner"):
         line = log_boot_line()
 
     assert line == boot_line(dict(__import__("os").environ))
@@ -106,6 +106,6 @@ def test_build_app_prints_it_before_anything_else_registers() -> None:
     """
     from pathlib import Path
 
-    source = (Path(__file__).resolve().parents[1] / "src/backend/plugin.py").read_text(encoding="utf-8")
+    source = (Path(__file__).resolve().parents[1] / "src/agent_host/plugin.py").read_text(encoding="utf-8")
     assert "log_boot_line()" in source, "plugin.py no longer emits the boot line"
     assert source.index("log_boot_line()") < source.index("app = super().build_app()")

@@ -30,13 +30,13 @@ from agent.knowledge.schema import FileProgress
 from agent.knowledge.schema import FileStatus
 from agent.knowledge.schema import IngestionJobStatus
 from agent.knowledge.schema import JobState
-from backend.jobs import ingest_dispatch
-from backend.models import requests as request_models
-from backend.models.requests import IngestRequest
-from backend.models.requests import ScreeningPolicy
-from backend.routes.ingest import DeferredObjectDownload
-from backend.routes.ingest import _job_config
-from backend.routes.ingest import add_ingest_routes
+from agent_host.jobs import ingest_dispatch
+from agent_host.models import requests as request_models
+from agent_host.models.requests import IngestRequest
+from agent_host.models.requests import ScreeningPolicy
+from agent_host.routes.ingest import DeferredObjectDownload
+from agent_host.routes.ingest import _job_config
+from agent_host.routes.ingest import add_ingest_routes
 
 _FILE_REF = "http://seaweedfs.test/bucket/doc/gehalt.pdf?X-Amz-Signature=abc"
 _POLICY = {"content_terms": ["Gehaltsabrechnung", "Honorarvereinbarung"], "detectors": ["iban", "at_svnr"]}

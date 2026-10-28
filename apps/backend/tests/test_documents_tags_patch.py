@@ -23,7 +23,7 @@ from agent.knowledge.factory import configure_summary_db
 from agent.knowledge.factory import get_document_person_tags
 from agent.knowledge.factory import get_document_person_topics
 from agent.knowledge.factory import set_active_ingestor
-from backend.routes.documents import add_document_routes
+from agent_host.routes.documents import add_document_routes
 
 
 @pytest.fixture

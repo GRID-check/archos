@@ -117,7 +117,7 @@ RUN uv pip install -e './packages/ifc-spatial-py[ids]'
 # A requirement no layer installed fails the build, not the pod. Only the "not
 # installed" class: the declared-Python and cryptography mismatches `uv pip
 # check` also lists are accepted in pyproject.toml and are not this.
-RUN /app/.venv/bin/python -c "import backend; import knowledge_layer; import ris_adapter.register; import tavily_web_search.register; print('✓ Base packages installed')" \
+RUN /app/.venv/bin/python -c "import agent_host; import knowledge_layer; import ris_adapter.register; import tavily_web_search.register; print('✓ Base packages installed')" \
     && /app/.venv/bin/python -c "import ifc_spatial.tools; print('✓ Spatial engine installed')" \
     && ! uv pip check --python /app/.venv/bin/python 2>&1 | grep "not installed"
 
@@ -142,7 +142,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-RUN /app/.venv/bin/python -c "import backend; import knowledge_layer; print('✓ All packages installed')"
+RUN /app/.venv/bin/python -c "import agent_host; import knowledge_layer; print('✓ All packages installed')"
 
 # =============================================================================
 # Stage 3: Development runtime

@@ -4,7 +4,7 @@ The design is ``docs/design/chat-wire-v2.md`` §c/§d, the contract
 ``agent.common.wire_v2``, and the protocol page
 ``docs/api/websocket-protocol.md``.
 
-NAT's WebSocket route is off (``websocket_path: null``, ``plugin.BackendConfig``)
+NAT's WebSocket route is off (``websocket_path: null``, ``plugin.AgentHostConfig``)
 and this module is mounted at ``/websocket`` instead. It runs the workflow
 through NAT's public session API (``SessionManager.session`` →
 ``Session.run`` → ``Runner.result_stream``, via ``workflow_stream``) and
@@ -169,33 +169,33 @@ from agent.turn.payload import thread_reply_requested
 from agent.turn.payload import turn_surface
 from agent.turn.response import answer_message_id
 from agent.turn.streaming import TurnTextFold
-from backend.after_terminal_writes import drain_after_terminal
-from backend.after_terminal_writes import in_background
-from backend.auth.middleware import build_request_trace_tags
-from backend.auth.middleware import detect_internal_caller
-from backend.auth.middleware import resolve_request_user
-from backend.auth.middleware import user_context
-from backend.auth.request_trace import request_trace_tag_context
-from backend.conversation_bus import CANCEL
-from backend.conversation_bus import FRAME
-from backend.conversation_bus import HITL_ANSWER
-from backend.conversation_bus import STEER
-from backend.conversation_bus import SUPERSEDE
-from backend.conversation_bus import BusUnavailable
-from backend.conversation_bus import ConversationBus
-from backend.conversation_bus import Envelope
-from backend.conversation_bus import get_bus
-from backend.conversation_bus import is_multi_replica_bus
-from backend.conversation_bus import running_renew_interval
-from backend.conversation_bus import running_ttl
-from backend.internal_api import ChatScreening
-from backend.internal_api import chat_screening_for
-from backend.internal_api import post_internal_conversation_message
-from backend.internal_api import post_internal_turn_outcome
-from backend.startup_banner import deployed_sha
-from backend.turn_fence import TurnFence
-from backend.turn_fence import validate_running_ttl
-from backend.workflow_stream import stream_workflow
+from agent_host.after_terminal_writes import drain_after_terminal
+from agent_host.after_terminal_writes import in_background
+from agent_host.auth.middleware import build_request_trace_tags
+from agent_host.auth.middleware import detect_internal_caller
+from agent_host.auth.middleware import resolve_request_user
+from agent_host.auth.middleware import user_context
+from agent_host.auth.request_trace import request_trace_tag_context
+from agent_host.conversation_bus import CANCEL
+from agent_host.conversation_bus import FRAME
+from agent_host.conversation_bus import HITL_ANSWER
+from agent_host.conversation_bus import STEER
+from agent_host.conversation_bus import SUPERSEDE
+from agent_host.conversation_bus import BusUnavailable
+from agent_host.conversation_bus import ConversationBus
+from agent_host.conversation_bus import Envelope
+from agent_host.conversation_bus import get_bus
+from agent_host.conversation_bus import is_multi_replica_bus
+from agent_host.conversation_bus import running_renew_interval
+from agent_host.conversation_bus import running_ttl
+from agent_host.internal_api import ChatScreening
+from agent_host.internal_api import chat_screening_for
+from agent_host.internal_api import post_internal_conversation_message
+from agent_host.internal_api import post_internal_turn_outcome
+from agent_host.startup_banner import deployed_sha
+from agent_host.turn_fence import TurnFence
+from agent_host.turn_fence import validate_running_ttl
+from agent_host.workflow_stream import stream_workflow
 from nat.plugin_api import HumanResponse
 from nat.plugin_api import InteractionPrompt
 
@@ -229,7 +229,7 @@ STAGE_WIRE_TTL_S = 600.0
 #: returns. How many turns run at once is not decided here: ADR-0040's
 #: admission (``MAX_ACTIVE_TURNS``) refuses a turn it has no slot for at
 #: once, and NAT's own semaphore, which queued it silently, is off
-#: (``plugin.BackendWorker._create_chat_session_manager``).
+#: (``plugin.AgentHostWorker._create_chat_session_manager``).
 TURN_DEADLINE_SECONDS = float(os.getenv("CHAT_TURN_DEADLINE_SECONDS", "2700"))
 
 #: How many of its own frames a turn's sequencer keeps for ``attach``, so the
@@ -341,7 +341,7 @@ def for_open_tabs(frame: dict[str, Any]) -> dict[str, Any]:
 
 
 if not chat_affinity_enabled():
-    # The owner fences itself (`backend.turn_fence`): a TTL it cannot write inside is a misconfiguration to stop on.
+    # The owner fences itself (`agent_host.turn_fence`): a TTL it cannot write inside is a misconfiguration to stop on.
     validate_running_ttl(running_ttl())
 
 
@@ -775,7 +775,7 @@ class Fence:
     that did not (single process, the bus down with affinity on, a marker that
     already names it) has nothing to give back. ``refusal`` is the reason the
     question may not run, never both. ``guard`` is the holder's own clock on the
-    marker (:class:`~backend.turn_fence.TurnFence`).
+    marker (:class:`~agent_host.turn_fence.TurnFence`).
     """
 
     held: bool = False

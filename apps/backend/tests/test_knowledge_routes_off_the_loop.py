@@ -31,9 +31,9 @@ from agent.knowledge.schema import FileInfo
 from agent.knowledge.schema import FileStatus
 from agent.knowledge.schema import IngestionJobStatus
 from agent.knowledge.schema import JobState
-from backend.routes import documents as documents_module
-from backend.routes.collections import add_collection_routes
-from backend.routes.documents import add_document_routes
+from agent_host.routes import documents as documents_module
+from agent_host.routes.collections import add_collection_routes
+from agent_host.routes.documents import add_document_routes
 
 
 class _RecordingIngestor:

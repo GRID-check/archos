@@ -9,10 +9,10 @@ is not valid. This module is the FAIL-CLOSED enforcement point for that rule.
 Design
 ------
 ``GridContextEnvelopeMiddleware`` is a raw ASGI middleware, following the
-same pattern as ``backend.auth.middleware.AuthMiddleware`` (not Starlette's
+same pattern as ``agent_host.auth.middleware.AuthMiddleware`` (not Starlette's
 ``BaseHTTPMiddleware``, which buffers the response body and breaks SSE
 streaming — several routes here stream). It is registered in
-``plugin.py::BackendWorker.build_app`` and must be added to the app BEFORE
+``plugin.py::AgentHostWorker.build_app`` and must be added to the app BEFORE
 ``AuthMiddleware`` is added: Starlette's ``add_middleware`` inserts each
 middleware as the new OUTERMOST layer, so whichever is added *last* runs
 *first* on the way in. Adding this middleware first (so ``AuthMiddleware`` is
@@ -22,7 +22,7 @@ requests.
 
 For WebSocket upgrades, ``AuthMiddleware`` deliberately no-ops (see its
 module docstring) — the real handshake auth lives in
-``backend.chat_socket.authenticate_websocket_connection``, which this module
+``agent_host.chat_socket.authenticate_websocket_connection``, which this module
 does not import. Instead,
 for the ``/websocket`` path this middleware independently re-runs the same
 ``resolve_request_user`` classification the WS handshake will *also* run,
@@ -56,7 +56,7 @@ with nothing but the member's cookie. A path a future NAT release adds would
 have been open the same way. Now a JWT caller needs the envelope everywhere
 except the short list of paths that run no workflow and that a BFF proxy
 legitimately forwards with the member's bearer and no envelope. Those NAT
-routes are no longer mounted at all (``backend.plugin.BackendConfig``: a turn
+routes are no longer mounted at all (``agent_host.plugin.AgentHostConfig``: a turn
 runs on the chat socket alone); deny by default is what still closes a route
 a later NAT release adds.
 
@@ -142,7 +142,7 @@ ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES: tuple[str, ...] = (
 # The chat socket is the only WebSocket, and it runs agent turns: no exemption.
 ENVELOPE_EXEMPT_WEBSOCKET_PATH_PREFIXES: tuple[str, ...] = ()
 
-# Same status code backend.chat_socket uses for a rejected handshake
+# Same status code agent_host.chat_socket uses for a rejected handshake
 # (WS_POLICY_VIOLATION), as a literal so this middleware never imports the socket.
 _WS_POLICY_VIOLATION = 1008
 

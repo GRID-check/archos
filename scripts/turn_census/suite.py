@@ -862,7 +862,7 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
     """
     from agent import corpus_store
     from agent import oib_sync
-    from backend.jobs import ingest_dispatch
+    from agent_host.jobs import ingest_dispatch
 
     print("queueing the corpus:", oib_sync.sync(enqueue=ingest_dispatch.enqueue_only))
     if not ingest_dispatch.attach(oib_sync._get_oib_ingestor()):

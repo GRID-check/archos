@@ -22,8 +22,8 @@ from httpx import AsyncClient
 from agent.common import norm_registry
 from agent.knowledge import norm_store
 from agent.knowledge.norm_store import NormRegistryStore
-from backend.routes import norms as norms_module
-from backend.routes.norms import add_norm_routes
+from agent_host.routes import norms as norms_module
+from agent_host.routes.norms import add_norm_routes
 
 
 @pytest.fixture

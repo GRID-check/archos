@@ -27,9 +27,9 @@ import os
 
 import pytest
 
-from backend.jobs import queue
-from backend.jobs import worker as worker_mod
-from backend.jobs.agent_job import run_agent_job
+from agent_host.jobs import queue
+from agent_host.jobs import worker as worker_mod
+from agent_host.jobs.agent_job import run_agent_job
 
 from .test_job_queue import _age_heartbeat
 

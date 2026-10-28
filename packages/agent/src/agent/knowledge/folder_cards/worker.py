@@ -1,6 +1,6 @@
 """The folder card builder's loop: claim, hash, skip or build, write, climb (ADR-0127).
 
-Runs in the ingest-worker role (``backend.jobs.ingest_worker``) beside the ingest
+Runs in the ingest-worker role (``agent_host.jobs.ingest_worker``) beside the ingest
 queue's claim loop, for the organizations with the ``folder-cards`` WorkOS flag. Each pass:
 
 1. claims up to :data:`CLAIM_LIMIT` folders that went quiet (``queue.claim``:

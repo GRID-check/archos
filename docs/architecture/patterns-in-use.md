@@ -25,7 +25,7 @@ Layers and rules:
 
 The UI's layers point one way, `app` → `features` → `components` → `lib`, and a
 feature reaches another only through its index and never in a circle. In
-Python, `agent` never imports `backend` (the API tier owns the request
+Python, `agent` never imports `agent_host` (the API tier owns the request
 identity's writes and hands its capabilities in) and reaches `knowledge_layer`
 only through the port in `knowledge/factory.py` (ADR-0072).
 The rules and the baselines that hold today's exceptions:

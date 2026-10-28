@@ -9,7 +9,7 @@
  * context envelope: no organization, no budget, no disabled sources, no model
  * policy. A member refused at the WebSocket upgrade could chat through here.
  * The agent service now refuses those without an envelope too
- * (`backend/context_envelope.py`, deny by default); this is the other layer,
+ * (`agent_host/context_envelope.py`, deny by default); this is the other layer,
  * and it is the one that also closes whatever the agent service mounts next.
  *
  * Each entry is a request a product client actually makes, found by reading

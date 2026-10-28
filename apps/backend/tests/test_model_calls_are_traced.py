@@ -29,7 +29,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from agent.observability import direct_trace
 
-ROUTES = Path(__file__).resolve().parents[1] / "src" / "backend" / "routes"
+ROUTES = Path(__file__).resolve().parents[1] / "src" / "agent_host" / "routes"
 MODEL_ENDPOINT = "/chat/completions"
 WRAPPER = "observed_generation"
 
@@ -129,7 +129,7 @@ def exporter(monkeypatch):
 
 
 def _app() -> FastAPI:
-    from backend.routes.generate_summary import add_generate_summary_routes
+    from agent_host.routes.generate_summary import add_generate_summary_routes
 
     app = FastAPI()
     router = APIRouter()

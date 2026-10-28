@@ -19,14 +19,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from agent.auth import Principal
-from backend.jobs import access as job_access
-from backend.jobs.event_store import EventStore
-from backend.routes import job_handlers
-from backend.routes import job_kill
-from backend.routes import job_reaper
-from backend.routes.job_reaper import GHOST_JOB_TIMEOUT_SECONDS
-from backend.routes.job_reaper import _find_stale_jobs
-from backend.routes.job_reaper import reap_stale_jobs_once
+from agent_host.jobs import access as job_access
+from agent_host.jobs.event_store import EventStore
+from agent_host.routes import job_handlers
+from agent_host.routes import job_kill
+from agent_host.routes import job_reaper
+from agent_host.routes.job_reaper import GHOST_JOB_TIMEOUT_SECONDS
+from agent_host.routes.job_reaper import _find_stale_jobs
+from agent_host.routes.job_reaper import reap_stale_jobs_once
 
 
 @pytest.fixture
@@ -203,7 +203,7 @@ class TestReapStaleJobsOnce:
 @pytest.fixture
 async def cancel_app(db_url, monkeypatch):
     """Minimal app with the async job routes and a controllable job store."""
-    import backend.routes.jobs as jobs_routes
+    import agent_host.routes.jobs as jobs_routes
     from nat.front_ends.fastapi.async_jobs import job_store as job_store_module
 
     monkeypatch.setattr(
@@ -326,7 +326,7 @@ class TestCancelRoute:
     @pytest.mark.asyncio
     async def test_db_mode_cancel_of_an_unclaimed_job_drops_it_and_reports(self, cancel_app, db_url, monkeypatch):
         """No worker ever claimed it, so no runner will ever report it."""
-        from backend.jobs import queue
+        from agent_host.jobs import queue
 
         queue.ensure_research_queue_table(db_url)
         queue.enqueue(db_url, "job-1", {"input_text": "x"})
@@ -346,7 +346,7 @@ class TestKillActiveRoute:
 
     @pytest.fixture
     async def kill_app(self, db_url, monkeypatch):
-        import backend.routes.jobs as jobs_routes
+        import agent_host.routes.jobs as jobs_routes
         from nat.front_ends.fastapi.async_jobs.job_store import JobStore
 
         notify = AsyncMock(return_value=True)
@@ -514,8 +514,8 @@ class TestAddDocumentRoute:
 
 class TestTheMonitorHearsTheRequest:
     def test_the_write_now_event_sets_the_signal_and_advances_the_cursor(self):
-        from backend.jobs.runner import WRITE_NOW_EVENT_TYPE
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import WRITE_NOW_EVENT_TYPE
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(db_url="sqlite://", job_id="job-1")
         monitor._note_control_events([{"_id": 3, "type": "job.heartbeat"}, {"_id": 4, "type": WRITE_NOW_EVENT_TYPE}])
@@ -523,8 +523,8 @@ class TestTheMonitorHearsTheRequest:
         assert monitor._last_event_id == 4
 
     def test_a_document_event_joins_the_added_list_once_and_calls_the_hook(self):
-        from backend.jobs.runner import DOCUMENT_ADDED_EVENT_TYPE
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import DOCUMENT_ADDED_EVENT_TYPE
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(db_url="sqlite://", job_id="job-1")
         seen: list[str] = []
@@ -546,8 +546,8 @@ class TestTheMonitorHearsTheRequest:
         from agent.agents.deep_researcher.control import bind_added_documents
         from agent.agents.deep_researcher.control import reset_added_documents
         from agent.agents.deep_researcher.control import take_added_documents
-        from backend.jobs.runner import DOCUMENT_ADDED_EVENT_TYPE
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import DOCUMENT_ADDED_EVENT_TYPE
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(db_url="sqlite://", job_id="job-1")
         seen: list[str] = []
@@ -565,9 +565,9 @@ class TestTheMonitorHearsTheRequest:
     @pytest.mark.asyncio
     async def test_the_poll_reads_only_the_control_events(self, tmp_path):
         """A token stream ahead of the request must not page it out of reach."""
-        from backend.jobs.event_store import EventStore
-        from backend.jobs.runner import CONTROL_EVENT_TYPES
-        from backend.jobs.runner import WRITE_NOW_EVENT_TYPE
+        from agent_host.jobs.event_store import EventStore
+        from agent_host.jobs.runner import CONTROL_EVENT_TYPES
+        from agent_host.jobs.runner import WRITE_NOW_EVENT_TYPE
 
         db_url = f"sqlite+aiosqlite:///{tmp_path / 'events.db'}"
         EventStore._tables_initialized.discard(db_url)
@@ -584,7 +584,7 @@ class TestTheMonitorHearsTheRequest:
         ] * 150
 
     def test_other_events_leave_the_signal_alone(self):
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(db_url="sqlite://", job_id="job-1")
         monitor._note_control_events([{"_id": 9, "type": "job.phase"}])

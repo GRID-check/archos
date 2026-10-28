@@ -39,9 +39,9 @@ vars:
   PY: '{{.VENV_BIN}}/python{{.EXE}}'
   RUFF: '{{.VENV_BIN}}/ruff{{.EXE}}'
   LINT_IMPORTS: '{{.VENV_BIN}}/lint-imports{{.EXE}}'
-  # pytest-xdist, one worker per logical CPU, for the core and backend suites.
+  # pytest-xdist, one worker per logical CPU, for the core and agent_host suites.
   # Much of their wall clock is asyncio waits, so a serial run left the runner
-  # idle: on two workers backend went 67s -> 44s, the core suite ~3m20s -> 2m27s.
+  # idle: on two workers agent_host went 67s -> 44s, the core suite ~3m20s -> 2m27s.
   # A test that only passes after another one ran will fail under it; fix the
   # test, do not drop the flag.
   XDIST: -n logical

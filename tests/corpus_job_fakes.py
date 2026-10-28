@@ -24,7 +24,7 @@ from agent.knowledge.schema import FileProgress
 from agent.knowledge.schema import FileStatus
 from agent.knowledge.schema import IngestionJobStatus
 from agent.knowledge.schema import JobState
-from backend.jobs import ingest_dispatch
+from agent_host.jobs import ingest_dispatch
 
 
 @dataclass

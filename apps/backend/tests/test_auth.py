@@ -1,4 +1,4 @@
-"""Unit tests for backend.auth (middleware, JWT validator, base types)."""
+"""Unit tests for agent_host.auth (middleware, JWT validator, base types)."""
 
 from __future__ import annotations
 
@@ -19,14 +19,14 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt import PyJWK
 from jwt.algorithms import RSAAlgorithm
 
-from backend.auth import AuthMiddleware
-from backend.auth import JWTValidator
-from backend.auth import TokenExpiredError
-from backend.auth import TokenInvalidError
-from backend.auth import TokenValidator
-from backend.auth import get_current_user
-from backend.auth import middleware as middleware_module
-from backend.auth.errors import AuthError
+from agent_host.auth import AuthMiddleware
+from agent_host.auth import JWTValidator
+from agent_host.auth import TokenExpiredError
+from agent_host.auth import TokenInvalidError
+from agent_host.auth import TokenValidator
+from agent_host.auth import get_current_user
+from agent_host.auth import middleware as middleware_module
+from agent_host.auth.errors import AuthError
 
 
 def _with_legacy_tags(tags: dict[str, str]) -> dict[str, str]:
@@ -958,14 +958,14 @@ class TestAuthMiddlewareExempt:
 class TestLoadExternalHostnames:
     def test_reads_aiq_external_hostnames_env(self) -> None:
         with patch.dict(os.environ, {"EXTERNAL_HOSTNAMES": " a.com , b.com "}):
-            from backend.auth.middleware import _load_external_hostnames
+            from agent_host.auth.middleware import _load_external_hostnames
 
             assert _load_external_hostnames() == {"a.com", "b.com"}
 
 
 class TestAuthPackageExports:
     def test_all_exports_importable(self) -> None:
-        from backend import auth as auth_pkg
+        from agent_host import auth as auth_pkg
 
         for name in auth_pkg.__all__:
             assert getattr(auth_pkg, name) is not None

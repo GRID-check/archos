@@ -344,7 +344,7 @@ def _agent_for_request(
     means "nothing to apply" keeps the prebuilt agent. There is deliberately no
     ``data_sources is not None`` guard: org-disabled sources narrow
     ``selected_tools`` even on "all tools" requests. A sandbox is scoped to the
-    async job_id NAT carries (set by ``backend/jobs/agent_job.py``; a per-request
+    async job_id NAT carries (set by ``agent_host/jobs/agent_job.py``; a per-request
     uuid in ``DeepAgentsRuntime`` when None), so it is always rebuilt.
     """
     provider = llm_context.apply(blueprint.provider)

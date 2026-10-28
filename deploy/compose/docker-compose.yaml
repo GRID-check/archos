@@ -96,7 +96,7 @@ services:
       SEAWEED_ENDPOINT: ${SEAWEED_ENDPOINT:-http://seaweedfs:8333}
       # Browser-facing host: the BFF signs presigned URLs against this, so the
       # ingest endpoint must accept file_refs pointing at it too (SSRF
-      # allowlist in backend.routes.ingest).
+      # allowlist in agent_host.routes.ingest).
       SEAWEED_PUBLIC_ENDPOINT: ${SEAWEED_PUBLIC_ENDPOINT:-http://localhost:8333}
       # READ-ONLY. `look` (ADR-0039) only ever calls get_object,
       # and this tier used to carry the `grid` credential — which holds

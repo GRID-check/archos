@@ -1,6 +1,6 @@
 """The backend reads a service header sent under its new name as the old one it still reads.
 
-`backend.legacy_headers` is the expand step of the header rename (expand,
+`agent_host.legacy_headers` is the expand step of the header rename (expand,
 switch, contract). The BFF's WebSocket proxy strips the same names from what a
 browser sends, or a client could hand the backend a context header the BFF
 never decided; the two lists are held equal here.
@@ -20,9 +20,9 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from backend.legacy_headers import SERVICE_HEADERS
-from backend.legacy_headers import LegacyHeaderNamesMiddleware
-from backend.legacy_headers import with_legacy_names
+from agent_host.legacy_headers import SERVICE_HEADERS
+from agent_host.legacy_headers import LegacyHeaderNamesMiddleware
+from agent_host.legacy_headers import with_legacy_names
 
 ROOT = Path(__file__).resolve().parents[1]
 WS_PROXY = ROOT / "apps" / "workspace" / "bff" / "proxy" / "ws-upgrade-headers.js"

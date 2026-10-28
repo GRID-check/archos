@@ -23,8 +23,8 @@ from httpx import AsyncClient
 
 from agent.knowledge.factory import clear_active_retriever
 from agent.knowledge.factory import set_active_retriever
-from backend.routes.document_search import add_document_search_routes
-from backend.routes.project_facts import add_project_facts_routes
+from agent_host.routes.document_search import add_document_search_routes
+from agent_host.routes.project_facts import add_project_facts_routes
 
 DIM = 8
 #: The real resolver, taken before the conftest stubs every name to a private IP for the SSRF guard.

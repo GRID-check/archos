@@ -36,7 +36,7 @@ collector, so nothing is exported there and every meter is a no-op.
 
 | Metric | Attributes | From |
 |---|---|---|
-| `grid.queue.depth` | `queue`, `status` | Every claim queue: `ingest` (`common/claim_queue.py`), `research` (`backend/jobs/queue.py`) and `bff` (`workers/jobs/queue-metrics.js`). Read from the table by every replica, so chart it with `max` |
+| `grid.queue.depth` | `queue`, `status` | Every claim queue: `ingest` (`common/claim_queue.py`), `research` (`agent_host/jobs/queue.py`) and `bff` (`workers/jobs/queue-metrics.js`). Read from the table by every replica, so chart it with `max` |
 | `grid.queue.oldest_age_seconds` | `queue` | The same queues; `max` as well. Absent while nothing is queued |
 | `grid.queue.claim_latency_ms` | `queue` | One claim round trip |
 | `grid.queue.job_duration_seconds` | `queue`, `kind` | One claimed job, to its end or its give-back |
@@ -47,7 +47,7 @@ collector, so nothing is exported there and every meter is a no-op.
 | `grid.provider.throttled_total` | `scope`, `model` | Calls the provider answered 429 |
 | `grid.boot.phase_seconds` | `role`, `phase` | How long a backend role took to become useful, by phase (`observability/boot_timing.py`, ADR-0082) |
 | `http.server.request.duration` | `http.request.method`, `http.response.status_code`, `grid.route.class` (`api`, `page`, `static`, `health`) | Every request the BFF gateway answers (`observability/http-metrics.js`) |
-| `grid.http.requests_in_flight`, `grid.http.request_seconds` | `role` (`chat`, `api`), `kind` (`request`, `stream`) | Every HTTP request the Python web roles hold (`backend/inflight.py`): what the api tier would scale on |
+| `grid.http.requests_in_flight`, `grid.http.request_seconds` | `role` (`chat`, `api`), `kind` (`request`, `stream`) | Every HTTP request the Python web roles hold (`agent_host/inflight.py`): what the api tier would scale on |
 | `nodejs.eventloop.delay.p99` | | Every Node process: the BFF, bff-jobs, the scheduler, the purger |
 | `process.memory.usage` | `process.memory.type` (`rss`, `heap_used`) | The same |
 

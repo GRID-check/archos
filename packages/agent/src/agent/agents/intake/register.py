@@ -4,7 +4,7 @@ The agent never runs as a NAT function. The research worker reads this config
 by name (``builder.get_function_config("project_intake_agent")``), builds the
 model from ``llm`` and the reading tools from ``tools``, and constructs
 :class:`~agent.agents.intake.agent.ProjectIntakeAgent` itself
-(``backend/jobs/agent_job.py``), handing it the run's budgets from this config
+(``agent_host/jobs/agent_job.py``), handing it the run's budgets from this config
 (``_create_agent_instance``, as it hands deep research its own). NAT still
 builds every function the YAML names for
 every workflow, so the function yields a no-op, as the deep researcher's

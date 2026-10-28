@@ -10,7 +10,7 @@ import json
 from agent.knowledge.schema import AvailableDocument
 from agent.knowledge.schema import FileInfo
 from agent.knowledge.schema import FileStatus
-from backend.routes.documents import _merge_summaries
+from agent_host.routes.documents import _merge_summaries
 
 FACTS = {
     "document_number": "A-101",

@@ -1,4 +1,4 @@
-"""The chat socket, wire v2 (``backend.chat_socket``, design §c/§d/§g).
+"""The chat socket, wire v2 (``agent_host.chat_socket``, design §c/§d/§g).
 
 Driven through ``ChatSocket.serve`` over an in-memory socket, with NAT's session
 API stood in by a fake whose run yields what a turn's ``_run`` yields: wire
@@ -64,21 +64,21 @@ from agent.turn import annotation_reply
 from agent.turn.annotation_reply import note_thread_post
 from agent.turn.annotation_reply import settle_thread_reply
 from agent.turn.response import answer_message_id
-from backend import after_terminal_writes
-from backend import chat_socket
-from backend import internal_api as chat_socket_internal
-from backend.auth.errors import AuthError
-from backend.chat_socket import ChatRegistry
-from backend.chat_socket import ChatSocket
-from backend.chat_socket import authenticate_websocket_connection
-from backend.chat_socket import configure_websocket_auth
-from backend.chat_socket import handshake_conversation_binding
-from backend.chat_socket import persist_turn_result
-from backend.chat_socket import turn_row_metadata
-from backend.conversation_bus import ConversationBus
-from backend.conversation_bus import force_multi_replica_for_tests
-from backend.conversation_bus import reset_bus_for_tests
-from backend.internal_api import ChatScreening
+from agent_host import after_terminal_writes
+from agent_host import chat_socket
+from agent_host import internal_api as chat_socket_internal
+from agent_host.auth.errors import AuthError
+from agent_host.chat_socket import ChatRegistry
+from agent_host.chat_socket import ChatSocket
+from agent_host.chat_socket import authenticate_websocket_connection
+from agent_host.chat_socket import configure_websocket_auth
+from agent_host.chat_socket import handshake_conversation_binding
+from agent_host.chat_socket import persist_turn_result
+from agent_host.chat_socket import turn_row_metadata
+from agent_host.conversation_bus import ConversationBus
+from agent_host.conversation_bus import force_multi_replica_for_tests
+from agent_host.conversation_bus import reset_bus_for_tests
+from agent_host.internal_api import ChatScreening
 from nat.plugin_api import InteractionPrompt
 
 CONV = "conv-1"
@@ -292,8 +292,8 @@ def _types(events: list[dict]) -> list[str]:
 async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypatch):
     from fastapi import FastAPI
 
-    from backend.plugin import BackendConfig
-    from backend.plugin import BackendWorker
+    from agent_host.plugin import AgentHostConfig
+    from agent_host.plugin import AgentHostWorker
     from nat.data_models.config import Config
     from nat.data_models.config import GeneralConfig
     from nat.data_models.step_adaptor import StepAdaptorMode
@@ -302,13 +302,13 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
     from nat.front_ends.fastapi.fastapi_front_end_plugin_worker import FastApiFrontEndPluginWorker
     from nat.front_ends.fastapi.routes import websocket as websocket_routes
 
-    config = BackendConfig()
+    config = AgentHostConfig()
     assert config.workflow.websocket_path is None
     assert config.step_adaptor.mode == StepAdaptorMode.OFF
 
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
     monkeypatch.setenv("PROCESS_ROLE", "chat")
-    worker = BackendWorker(Config(general=GeneralConfig(front_end=config)))
+    worker = AgentHostWorker(Config(general=GeneralConfig(front_end=config)))
     session_manager = object()
     monkeypatch.setattr(worker, "_create_chat_session_manager", AsyncMock(return_value=session_manager))
     monkeypatch.setattr(FastApiFrontEndPluginWorker, "add_routes", AsyncMock())
@@ -323,18 +323,18 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
 
     sockets = [route for route in app.routes if route.path == "/websocket"]
     assert len(sockets) == 1
-    assert sockets[0].endpoint.__module__ == "backend.chat_socket"
+    assert sockets[0].endpoint.__module__ == "agent_host.chat_socket"
     assert websocket_routes.websocket_endpoint.__module__ == "nat.front_ends.fastapi.routes.websocket"
     assert websocket_routes.WebSocketMessageHandler is message_handler.WebSocketMessageHandler
     assert worker_module.WebSocketMessageHandler is message_handler.WebSocketMessageHandler
 
 
 def test_a_config_that_asks_nat_for_a_socket_is_refused():
-    from backend.plugin import BackendConfig
+    from agent_host.plugin import AgentHostConfig
 
-    workflow = {**BackendConfig().workflow.model_dump(), "websocket_path": "/websocket"}
+    workflow = {**AgentHostConfig().workflow.model_dump(), "websocket_path": "/websocket"}
     with pytest.raises(ValueError, match="websocket_path"):
-        BackendConfig(workflow=workflow)
+        AgentHostConfig(workflow=workflow)
 
 
 # ---------------------------------------------------------------------------
@@ -1202,7 +1202,7 @@ async def test_a_base_exception_group_still_ends_the_turn_and_is_logged(harness,
 
 
 async def test_a_stop_ends_the_turn_even_when_the_workflow_teardown_hangs(harness, monkeypatch, persisted):
-    from backend import workflow_stream
+    from agent_host import workflow_stream
 
     monkeypatch.setattr(workflow_stream, "PRODUCER_TEARDOWN_SECONDS", 0.05)
     started, unstuck = asyncio.Event(), asyncio.Event()
@@ -1425,7 +1425,7 @@ async def test_a_question_is_refused_when_the_running_turn_does_not_stop_in_time
 
 
 async def test_a_dead_owner_s_marker_expires_and_the_question_runs(harness, monkeypatch):
-    from backend import conversation_bus
+    from agent_host import conversation_bus
 
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.2)
     owner, relay, relay_bus = _replicas()
@@ -1439,7 +1439,7 @@ async def test_a_dead_owner_s_marker_expires_and_the_question_runs(harness, monk
 
 
 async def test_a_running_turn_keeps_its_marker_past_the_ttl_and_gives_it_back_at_the_end(harness, monkeypatch):
-    from backend import conversation_bus
+    from agent_host import conversation_bus
 
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.15)
     owner, relay, relay_bus = _replicas()
@@ -1563,9 +1563,9 @@ async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
 
     The one concurrency gate is ADR-0040's admission, which refuses at once.
     """
-    from backend import plugin
-    from backend.plugin import BackendConfig
-    from backend.plugin import BackendWorker
+    from agent_host import plugin
+    from agent_host.plugin import AgentHostConfig
+    from agent_host.plugin import AgentHostWorker
     from nat.data_models.config import Config
     from nat.data_models.config import GeneralConfig
 
@@ -1573,7 +1573,7 @@ async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
     monkeypatch.setattr(plugin.SessionManager, "create", create)
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
     monkeypatch.setenv("PROCESS_ROLE", "chat")
-    worker = BackendWorker(Config(general=GeneralConfig(front_end=BackendConfig())))
+    worker = AgentHostWorker(Config(general=GeneralConfig(front_end=AgentHostConfig())))
 
     manager = await worker._create_chat_session_manager(builder=object())
 
@@ -2030,8 +2030,8 @@ class FencedReplica:
 
 def _fenced_cluster(monkeypatch, log: WriteLog) -> tuple[FencedReplica, FencedReplica, ConversationBus]:
     """Two replicas on one Dragonfly with affinity off, and a log of every time a replica takes the marker."""
-    from backend import conversation_bus
-    from backend import turn_fence
+    from agent_host import conversation_bus
+    from agent_host import turn_fence
 
     monkeypatch.setenv("CHAT_AFFINITY", "0")
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)
@@ -2142,7 +2142,7 @@ async def test_a_write_in_flight_when_the_deadline_passes_lands_before_a_new_own
 
 async def test_one_failed_bus_command_for_another_conversation_does_not_starve_the_renewals(harness, monkeypatch):
     """The fail-fast window refuses commands without I/O; the renewal must not be one of them."""
-    from backend.conversation_bus import BusUnavailable
+    from agent_host.conversation_bus import BusUnavailable
 
     log = WriteLog()
     a, _, shared = _fenced_cluster(monkeypatch, log)
@@ -2250,7 +2250,7 @@ async def test_two_questions_racing_from_an_empty_marker_never_run_at_once(harne
 
 async def test_with_affinity_on_an_owner_that_cannot_renew_keeps_running_as_before(harness, monkeypatch):
     """Affinity keeps both turns of a conversation in one process: the fence fails open, as the bus does."""
-    from backend import conversation_bus
+    from agent_host import conversation_bus
 
     monkeypatch.delenv("CHAT_AFFINITY", raising=False)
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)

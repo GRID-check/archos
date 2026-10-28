@@ -98,7 +98,7 @@ def test_builds_one_client_with_the_promised_options(configured_env: None, fake_
         "enable_exception_autocapture": False,
         "before_send": posthog_client._scrub_event,
         "super_properties": {"environment": "staging", "service": "grid-agent-worker"},
-        "in_app_modules": ["agent", "backend"],
+        "in_app_modules": ["agent", "agent_host"],
     }
 
 

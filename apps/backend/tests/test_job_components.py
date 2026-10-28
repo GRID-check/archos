@@ -1,7 +1,7 @@
 """
 Tests for async job components.
 
-Module under test: apps/backend/src/backend/jobs/
+Module under test: apps/backend/src/agent_host/jobs/
 
 Test coverage:
     TestIntermediateStepEvent:
@@ -50,12 +50,12 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.jobs.callbacks import ArtifactType
-from backend.jobs.callbacks import DeepResearchEventCallback
-from backend.jobs.callbacks import EventCategory
-from backend.jobs.callbacks import EventData
-from backend.jobs.callbacks import EventState
-from backend.jobs.callbacks import IntermediateStepEvent
+from agent_host.jobs.callbacks import ArtifactType
+from agent_host.jobs.callbacks import DeepResearchEventCallback
+from agent_host.jobs.callbacks import EventCategory
+from agent_host.jobs.callbacks import EventData
+from agent_host.jobs.callbacks import EventState
+from agent_host.jobs.callbacks import IntermediateStepEvent
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -63,7 +63,7 @@ from tests.provider_doubles import nat_langchain_client
 @pytest.fixture(name="event_store_cache_guard", autouse=True)
 def fixture_event_store_cache_guard():
     """Reset EventStore caches to avoid cross-test leakage."""
-    from backend.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore.dispose_all_engines()
     yield
@@ -346,7 +346,7 @@ class TestRunAgentStateFields:
     async def test_run_agent_sets_deep_research_state_fields(self):
         """user_info, clarifier_result, and project_context land on the deep state."""
         from agent.agents.deep_researcher.models import DeepResearchAgentState
-        from backend.jobs.runner import _run_agent
+        from agent_host.jobs.runner import _run_agent
 
         captured: dict = {}
 
@@ -389,7 +389,7 @@ class TestRunAgentStateFields:
         own standard skills came to be silently absent from every report.
         """
         from agent.agents.deep_researcher.models import DeepResearchAgentState
-        from backend.jobs.runner import _run_agent
+        from agent_host.jobs.runner import _run_agent
 
         captured: dict = {}
 
@@ -421,7 +421,7 @@ class TestRunAgentStateFields:
     async def test_run_agent_skips_unsupported_state_fields(self):
         """Fields absent from a state model are not passed (no validation errors)."""
         from agent.agents.piloti.models import ResearchAgentState
-        from backend.jobs.runner import _run_agent
+        from agent_host.jobs.runner import _run_agent
 
         captured: dict = {}
 
@@ -464,8 +464,8 @@ class TestRunAgentStateFields:
         """
         import importlib
 
-        from backend.jobs.runner import _get_agent_state_class
-        from backend.registry import AGENT_REGISTRY
+        from agent_host.jobs.runner import _get_agent_state_class
+        from agent_host.registry import AGENT_REGISTRY
 
         assert AGENT_REGISTRY, "no agents registered"
         for agent_type, config in AGENT_REGISTRY.items():
@@ -488,7 +488,7 @@ class TestResolveWorkerToolRefs:
         inheritance and built a tool-less worker whose researcher sub-agents got
         no source tools.
         """
-        from backend.jobs.runner import _resolve_worker_tool_refs
+        from agent_host.jobs.runner import _resolve_worker_tool_refs
 
         class FakeConfig:
             tools = []
@@ -498,7 +498,7 @@ class TestResolveWorkerToolRefs:
 
     def test_none_tools_inherits_registry(self):
         """A missing tools attribute also inherits the registry."""
-        from backend.jobs.runner import _resolve_worker_tool_refs
+        from agent_host.jobs.runner import _resolve_worker_tool_refs
 
         class FakeConfig:
             pass
@@ -508,7 +508,7 @@ class TestResolveWorkerToolRefs:
 
     def test_explicit_tools_are_used_verbatim_without_inheriting(self):
         """A non-empty explicit list is used as-is; the registry is never consulted."""
-        from backend.jobs.runner import _resolve_worker_tool_refs
+        from agent_host.jobs.runner import _resolve_worker_tool_refs
 
         class FakeConfig:
             tools = ["web_search_tool"]
@@ -522,7 +522,7 @@ class TestEventStore:
 
     def test_store_event(self, tmp_path):
         """Test storing an event."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -536,7 +536,7 @@ class TestEventStore:
 
     def test_get_events_empty(self, tmp_path):
         """Test get_events returns empty list for unknown job."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -547,7 +547,7 @@ class TestEventStore:
 
     def test_get_events_with_after_id(self, tmp_path):
         """Test get_events with after_id cursor."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -567,7 +567,7 @@ class TestEventStore:
     @pytest.mark.asyncio
     async def test_get_events_async(self, tmp_path):
         """Test async get_events."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -581,7 +581,7 @@ class TestEventStore:
 
     def test_cleanup_job_events(self, tmp_path):
         """Test cleanup_job_events deletes events."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -598,7 +598,7 @@ class TestEventStore:
 
     def test_engine_caching(self, tmp_path):
         """Test that engines are cached and reused."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -615,7 +615,7 @@ class TestEventStore:
 
     def test_dispose_all_engines(self, tmp_path):
         """Test dispose_all_engines clears cache."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -629,7 +629,7 @@ class TestEventStore:
     @pytest.mark.asyncio
     async def test_dispose_all_engines_async_disposes_all(self):
         """Test dispose_all_engines_async disposes sync and async engines."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         sync_engine = MagicMock()
         async_engine = MagicMock()
@@ -649,7 +649,7 @@ class TestEventStore:
 
     def test_dispose_all_engines_schedules_async_cleanup(self):
         """Test dispose_all_engines schedules async dispose with running loop."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         sync_engine = MagicMock()
         async_engine = MagicMock()
@@ -680,8 +680,8 @@ class TestEventStore:
 
     def test_cleanup_stale_engines_disposes_async_engine(self):
         """Test stale async engines are disposed with a running loop."""
-        from backend.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
+        from agent_host.jobs.event_store import EventStore
 
         async_engine = MagicMock()
         async_engine.dispose = AsyncMock()
@@ -708,8 +708,8 @@ class TestEventStore:
 
     def test_cleanup_stale_engines_uses_asyncio_run_without_loop(self):
         """Test stale async engines use asyncio.run without a loop."""
-        from backend.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
+        from agent_host.jobs.event_store import EventStore
 
         async_engine = MagicMock()
         async_engine.dispose = AsyncMock()
@@ -742,7 +742,7 @@ class TestToolArtifactMapping:
 
     def test_default_mappings(self):
         """Test default tool mappings are registered."""
-        from backend.jobs.callbacks import ToolArtifactMapping
+        from agent_host.jobs.callbacks import ToolArtifactMapping
 
         mapping = ToolArtifactMapping()
 
@@ -752,8 +752,8 @@ class TestToolArtifactMapping:
 
     def test_get_mapping(self):
         """Test get_mapping returns correct mapping."""
-        from backend.jobs.callbacks import ArtifactType
-        from backend.jobs.callbacks import ToolArtifactMapping
+        from agent_host.jobs.callbacks import ArtifactType
+        from agent_host.jobs.callbacks import ToolArtifactMapping
 
         mapping = ToolArtifactMapping()
         todo_mapping = mapping.get_mapping("write_todos")
@@ -763,8 +763,8 @@ class TestToolArtifactMapping:
 
     def test_register_custom_mapping(self):
         """Test registering a custom tool mapping."""
-        from backend.jobs.callbacks import ArtifactType
-        from backend.jobs.callbacks import ToolArtifactMapping
+        from agent_host.jobs.callbacks import ArtifactType
+        from agent_host.jobs.callbacks import ToolArtifactMapping
 
         mapping = ToolArtifactMapping()
         mapping.register(
@@ -895,7 +895,7 @@ class TestCancellationMonitor:
 
     def test_init(self):
         """Test CancellationMonitor initialization."""
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -907,7 +907,7 @@ class TestCancellationMonitor:
 
     def test_is_cancelled_initially_false(self):
         """Test is_cancelled is initially False."""
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -920,7 +920,7 @@ class TestCancellationMonitor:
         """Test check() raises CancelledError when cancelled."""
         import asyncio
 
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -933,7 +933,7 @@ class TestCancellationMonitor:
 
     def test_stop_cancels_monitor_task(self):
         """Test stop() cancels the monitor task."""
-        from backend.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -954,7 +954,7 @@ class TestDataSourceModel:
 
     def test_data_source_basic_creation(self):
         """Test creating DataSource with required fields."""
-        from backend.routes.job_models import DataSource
+        from agent_host.routes.job_models import DataSource
 
         source = DataSource(id="web_search", name="Web Search")
 
@@ -964,7 +964,7 @@ class TestDataSourceModel:
 
     def test_data_source_with_description(self):
         """Test creating DataSource with description."""
-        from backend.routes.job_models import DataSource
+        from agent_host.routes.job_models import DataSource
 
         source = DataSource(
             id="confluence",
@@ -978,7 +978,7 @@ class TestDataSourceModel:
 
     def test_data_source_serialization(self):
         """Test DataSource serialization to dict."""
-        from backend.routes.job_models import DataSource
+        from agent_host.routes.job_models import DataSource
 
         source = DataSource(
             id="sharepoint",
@@ -998,7 +998,7 @@ class TestJobErrorEventEmission:
     @pytest.mark.asyncio
     async def test_exception_emits_job_error_event(self, tmp_path):
         """Test that exceptions emit job.error events to event store."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "error_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1025,7 +1025,7 @@ class TestJobErrorEventEmission:
 
     def test_job_error_event_structure(self, tmp_path):
         """Test job.error event has correct structure."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "structure_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1055,7 +1055,7 @@ class TestJobErrorEventEmission:
 
     def test_job_error_preserves_error_type(self, tmp_path):
         """Test that different error types are preserved correctly."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "types_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1089,7 +1089,7 @@ class TestJobErrorEventEmission:
 
     def test_job_error_with_long_message(self, tmp_path):
         """Test job.error handles long error messages."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "long_error_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1116,7 +1116,7 @@ class TestJobErrorEventEmission:
     @pytest.mark.asyncio
     async def test_job_error_async_retrieval(self, tmp_path):
         """Test job.error events can be retrieved asynchronously."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "async_error_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1146,7 +1146,7 @@ class TestJobCancelledEventComparison:
 
     def test_cancelled_and_error_events_coexist(self, tmp_path):
         """Test that cancelled and error events can coexist for same job."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "coexist_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1165,7 +1165,7 @@ class TestJobCancelledEventComparison:
 
     def test_job_error_follows_status_event_pattern(self, tmp_path):
         """Test job.error follows same pattern as job.cancelled."""
-        from backend.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "pattern_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1197,7 +1197,7 @@ class TestSQLAlchemyPoolFilter:
         """Test filter passes normal error messages."""
         import logging
 
-        from backend.jobs.event_store import SQLAlchemyPoolFilter
+        from agent_host.jobs.event_store import SQLAlchemyPoolFilter
 
         filter_obj = SQLAlchemyPoolFilter()
         record = logging.LogRecord(
@@ -1216,7 +1216,7 @@ class TestSQLAlchemyPoolFilter:
         """Test filter blocks CancelledError messages."""
         import logging
 
-        from backend.jobs.event_store import SQLAlchemyPoolFilter
+        from agent_host.jobs.event_store import SQLAlchemyPoolFilter
 
         filter_obj = SQLAlchemyPoolFilter()
         record = logging.LogRecord(
@@ -1235,7 +1235,7 @@ class TestSQLAlchemyPoolFilter:
         """Test filter passes INFO level messages."""
         import logging
 
-        from backend.jobs.event_store import SQLAlchemyPoolFilter
+        from agent_host.jobs.event_store import SQLAlchemyPoolFilter
 
         filter_obj = SQLAlchemyPoolFilter()
         record = logging.LogRecord(
@@ -1259,7 +1259,7 @@ class TestAsyncJobRunnerAgentFactory:
         """Async workers honor all deep-research role-specific LLM config fields."""
         from agent.agents.deep_researcher.register import DeepResearchAgentConfig
         from agent.common import LLMRole
-        from backend.jobs.runner import _create_llm_provider
+        from agent_host.jobs.runner import _create_llm_provider
 
         llms = {
             "orchestrator": MagicMock(name="orchestrator_llm"),
@@ -1298,7 +1298,7 @@ class TestAsyncJobRunnerAgentFactory:
         from types import SimpleNamespace
 
         from agent.common import LLMRole
-        from backend.jobs.runner import _create_llm_provider
+        from agent_host.jobs.runner import _create_llm_provider
 
         shared_llm = MagicMock(name="shared_llm")
 
@@ -1330,7 +1330,7 @@ class TestAsyncJobRunnerAgentFactory:
         from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
         from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
         from agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from backend.jobs.runner import _create_agent_instance
+        from agent_host.jobs.runner import _create_agent_instance
 
         class FakeDeepResearcherAgent:
             def __init__(
@@ -1412,7 +1412,7 @@ class TestAsyncJobRunnerAgentFactory:
         from agent.agents.deep_researcher.register import DeepResearchAgentConfig
         from agent.common import LLMProvider
         from agent.common import LLMRole
-        from backend.jobs.runner import _create_agent_instance
+        from agent_host.jobs.runner import _create_agent_instance
 
         mock_llm = MagicMock()
         provider = LLMProvider()
@@ -1456,7 +1456,7 @@ class TestAsyncJobRunnerAgentFactory:
         from agent.agents.deep_researcher.register import DeepResearchAgentConfig
         from agent.common import LLMProvider
         from agent.common import LLMRole
-        from backend.jobs.runner import _create_agent_instance
+        from agent_host.jobs.runner import _create_agent_instance
 
         @tool
         def async_test_search(query: str) -> str:
@@ -1542,7 +1542,7 @@ class TestAsyncJobRunnerAgentFactory:
         from agent.agents.deep_researcher.register import DeepResearchAgentConfig
         from agent.common import LLMProvider
         from agent.common import LLMRole
-        from backend.jobs.runner import _create_agent_instance
+        from agent_host.jobs.runner import _create_agent_instance
 
         mock_llm = MagicMock()
         provider = LLMProvider()
@@ -1593,7 +1593,7 @@ class TestAsyncJobRunnerAgentFactory:
         from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
         from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
         from agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from backend.jobs.runner import _create_agent_instance
+        from agent_host.jobs.runner import _create_agent_instance
 
         class BrokenDeepResearcherAgent:
             def __init__(
@@ -1654,7 +1654,7 @@ class TestDeepResearchReflection:
         """Enabled + ref + project in scope → reflection runs over the report."""
         from contextlib import nullcontext
 
-        from backend.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock(return_value=MagicMock())
@@ -1696,7 +1696,7 @@ class TestDeepResearchReflection:
     @pytest.mark.asyncio
     async def test_skips_when_disabled(self):
         """Feature flag off → no LLM built, no reflection."""
-        from backend.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock()
@@ -1724,7 +1724,7 @@ class TestDeepResearchReflection:
     @pytest.mark.asyncio
     async def test_skips_without_llm_ref(self):
         """No reflection LLM configured → no-op."""
-        from backend.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock()
@@ -1752,7 +1752,7 @@ class TestDeepResearchReflection:
     @pytest.mark.asyncio
     async def test_skips_without_project_scope(self):
         """Org-only job (no project) → reflection has nothing it may write."""
-        from backend.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock()
@@ -1782,7 +1782,7 @@ class TestDeepResearchReflection:
         """A reflection failure is swallowed — job outcome is unaffected."""
         from contextlib import nullcontext
 
-        from backend.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock(return_value=MagicMock())
@@ -1819,7 +1819,7 @@ class TestDeepResearchReflection:
         import asyncio
         from contextlib import nullcontext
 
-        from backend.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock(return_value=MagicMock())
@@ -2309,7 +2309,7 @@ class TestWorkerHeaderInjection:
         return SimpleNamespace(metadata=_Slot(_LiveAttrs(request)))
 
     def test_layers_headers_and_keeps_existing_ones(self):
-        from backend.jobs.runner import _inject_worker_headers
+        from agent_host.jobs.runner import _inject_worker_headers
 
         state = self._context_state()
         _inject_worker_headers(state, {"x-grid-project-id": "proj-1"})
@@ -2322,7 +2322,7 @@ class TestWorkerHeaderInjection:
 
 class TestWorkflowReflectionLlmRef:
     def test_reads_the_workflow_ref_as_a_plain_string(self):
-        from backend.jobs.runner import _workflow_reflection_llm_ref
+        from agent_host.jobs.runner import _workflow_reflection_llm_ref
 
         class _Ref(str):
             pass
@@ -2333,7 +2333,7 @@ class TestWorkflowReflectionLlmRef:
         assert type(ref) is str
 
     def test_none_when_the_workflow_declares_no_ref(self):
-        from backend.jobs.runner import _workflow_reflection_llm_ref
+        from agent_host.jobs.runner import _workflow_reflection_llm_ref
 
         assert _workflow_reflection_llm_ref(SimpleNamespace(workflow=SimpleNamespace())) is None
         assert _workflow_reflection_llm_ref(SimpleNamespace()) is None

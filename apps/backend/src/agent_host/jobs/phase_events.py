@@ -15,7 +15,7 @@ module never needs to import the (off-limits-to-edit) deep_researcher
 package.
 
 Detection hook: ``on_tool_start``/``on_tool_end`` on the standard LangChain
-callback stack already assembled in ``backend.jobs.runner`` for every
+callback stack already assembled in ``agent_host.jobs.runner`` for every
 deep-research job (the same stack ``AgentEventCallback`` and
 ``VerboseTraceCallback`` use). LangChain's ``ToolCallbackManager`` forwards
 the tool's original (pre-string-formatting) argument dict as the ``inputs``
@@ -34,7 +34,7 @@ that ``task`` call's ``on_tool_end``.
 
 Persisted as ``job.phase`` job_events rows -- ``{"type": "job.phase", "data":
 {"phase": ..., ...}}`` -- matching the shape of the other job.* lifecycle
-events already emitted directly in ``backend.jobs.runner``
+events already emitted directly in ``agent_host.jobs.runner``
 (job.heartbeat, job.error, job.cancelled, job.cancellation_requested) so the
 existing SSE surface streams them to the UI unchanged.
 """
@@ -70,7 +70,7 @@ def emit_phase_event(event_store: Any, phase: str, **extra: Any) -> None:
     """Store one ``job.phase`` job_events row.
 
     Best-effort like the other job.* lifecycle events written directly in
-    ``backend.jobs.runner`` -- a phase-event failure must never fail or even
+    ``agent_host.jobs.runner`` -- a phase-event failure must never fail or even
     slow down the underlying research job.
     """
     if event_store is None:

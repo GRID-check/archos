@@ -1,7 +1,7 @@
 """
 Tests for the async job API routes.
 
-Module under test: apps/backend/src/backend/routes/jobs.py
+Module under test: apps/backend/src/agent_host/routes/jobs.py
 
 API endpoints tested:
     GET  /v1/jobs/async/agents                         - List available agent types
@@ -42,10 +42,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from backend.routes.job_models import JobReportResponse
-from backend.routes.job_models import JobStateResponse
-from backend.routes.job_models import JobStatusResponse
-from backend.routes.job_models import JobSubmitRequest
+from agent_host.routes.job_models import JobReportResponse
+from agent_host.routes.job_models import JobStateResponse
+from agent_host.routes.job_models import JobStatusResponse
+from agent_host.routes.job_models import JobSubmitRequest
 
 
 class TestJobSubmitRequest:
@@ -219,7 +219,7 @@ class TestRegisterRoutes:
     @pytest.mark.asyncio
     async def test_routes_registered_without_any_scheduler(self, tmp_path, monkeypatch):
         """The research queue is the only execution path, so no scheduler gates the routes."""
-        from backend.routes.jobs import register_job_routes
+        from agent_host.routes.jobs import register_job_routes
 
         monkeypatch.delenv("NAT_CONFIG_FILE", raising=False)
         mock_app = MagicMock()
@@ -238,7 +238,7 @@ class TestRegisterRoutes:
     @pytest.mark.asyncio
     async def test_no_config_file_registers_no_job_routes(self, monkeypatch):
         """Without a config file the worker cannot run a job, so only the data routes are mounted."""
-        from backend.routes.jobs import register_job_routes
+        from agent_host.routes.jobs import register_job_routes
 
         monkeypatch.delenv("NAT_CONFIG_FILE", raising=False)
         mock_app = MagicMock()
@@ -259,7 +259,7 @@ class TestArtifactHelpers:
 
     def test_extract_event_metadata_with_data(self):
         """Test extracting metadata from event with data dict."""
-        from backend.routes.job_artifacts import _extract_event_metadata
+        from agent_host.routes.job_artifacts import _extract_event_metadata
 
         event = {
             "type": "tool.start",
@@ -274,7 +274,7 @@ class TestArtifactHelpers:
 
     def test_extract_event_metadata_fallback_to_nested(self):
         """Test extracting metadata from nested data.metadata."""
-        from backend.routes.job_artifacts import _extract_event_metadata
+        from agent_host.routes.job_artifacts import _extract_event_metadata
 
         event = {
             "type": "tool.start",
@@ -287,7 +287,7 @@ class TestArtifactHelpers:
 
     def test_extract_event_metadata_handles_non_dict(self):
         """Test extracting metadata handles non-dict data."""
-        from backend.routes.job_artifacts import _extract_event_metadata
+        from agent_host.routes.job_artifacts import _extract_event_metadata
 
         event = {"type": "test", "data": "string_data"}
 
@@ -298,7 +298,7 @@ class TestArtifactHelpers:
 
     def test_process_tool_start(self):
         """Test processing tool.start event."""
-        from backend.routes.job_artifacts import _process_tool_start
+        from agent_host.routes.job_artifacts import _process_tool_start
 
         # Shape produced by IntermediateStepEvent.to_sse_dict: id/name at the
         # top level, tool input directly under data.
@@ -315,7 +315,7 @@ class TestArtifactHelpers:
 
     def test_process_tool_end_updates_existing(self):
         """Test processing tool.end updates existing tool."""
-        from backend.routes.job_artifacts import _process_tool_end
+        from agent_host.routes.job_artifacts import _process_tool_end
 
         # tool.end events carry their own id; the running entry is matched
         # by tool name, not by event id.
@@ -339,7 +339,7 @@ class TestArtifactHelpers:
 
     def test_process_tool_end_creates_new(self):
         """Test processing tool.end creates new entry if missing."""
-        from backend.routes.job_artifacts import _process_tool_end
+        from agent_host.routes.job_artifacts import _process_tool_end
 
         event = {"type": "tool.end", "id": "tool-2", "name": "other", "timestamp": "2026-01-22T10:00:01"}
         data = {"output": "result"}
@@ -353,7 +353,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update(self):
         """Test processing artifact.update event."""
-        from backend.routes.job_artifacts import _process_artifact_update
+        from agent_host.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "output.md", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "output", "content": "Report content", "extra": "value"}
@@ -371,7 +371,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update_skips_empty_content(self):
         """Test that empty content is skipped."""
-        from backend.routes.job_artifacts import _process_artifact_update
+        from agent_host.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "empty.md", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "output", "content": None}
@@ -386,7 +386,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update_tracks_citation_source(self):
         """Test that citation_source events are tracked."""
-        from backend.routes.job_artifacts import _process_artifact_update
+        from agent_host.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "https://example.com", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "citation_source", "content": "https://example.com", "url": "https://example.com"}
@@ -403,7 +403,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update_tracks_citation_use(self):
         """Test that citation_use events are tracked."""
-        from backend.routes.job_artifacts import _process_artifact_update
+        from agent_host.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "https://example.com", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "citation_use", "content": "https://example.com", "url": "https://example.com"}

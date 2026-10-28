@@ -33,8 +33,8 @@ async function load() {
 }
 
 const pythonSources = [
-  read("apps", "backend", "src", "backend", "jobs", "ingest_dispatch.py"),
-  read("apps", "backend", "src", "backend", "jobs", "ingest_worker.py"),
+  read("apps", "backend", "src", "agent_host", "jobs", "ingest_dispatch.py"),
+  read("apps", "backend", "src", "agent_host", "jobs", "ingest_worker.py"),
   // The per-organisation cap is read where the in-process pool and the queue share it.
   read("packages", "agent", "src", "agent", "knowledge", "ingest_scheduler.py"),
   // The in-process pool's size, read by the knowledge layer's adapter.

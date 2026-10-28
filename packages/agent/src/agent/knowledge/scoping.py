@@ -254,7 +254,7 @@ def get_collection_scope_from_context() -> list[str] | None:
     consume the envelope's VERIFIED ``collection_scope``; the raw header is
     honored only when no valid envelope is present (anonymous / internal-service
     / dev / legacy) — exactly ``GridRequestContext.from_context()``'s
-    envelope-preferring fallback, and the backend enforcement middleware
+    envelope-preferring fallback, and the agent_host enforcement middleware
     fail-closes authenticated turns that lack a valid envelope, so an
     authenticated request always resolves against the signed value. In legitimate
     traffic the BFF dual-writes identical values to both header and envelope, so

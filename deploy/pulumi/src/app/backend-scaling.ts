@@ -7,13 +7,13 @@ import { SCALER_POLLING_SECONDS, installTriggerAuth } from "./keda-scaling";
 import { PORT } from "../constants";
 import { CHAT_TIER } from "./tier-names";
 
-/** The route that reports the fleet's running chat turns (`backend/routes/chat_occupancy.py`). */
+/** The route that reports the fleet's running chat turns (`agent_host/routes/chat_occupancy.py`). */
 export const OCCUPANCY_PATH = "/v1/internal/chat-occupancy";
 
 /** The field of its JSON answer KEDA reads: `{"activeTurns": 7, "maxActiveTurns": 24}`. */
 export const OCCUPANCY_FIELD = "activeTurns";
 
-/** The header KEDA sends the shared internal token in (`backend/routes/internal_auth.py`). */
+/** The header KEDA sends the shared internal token in (`agent_host/routes/internal_auth.py`). */
 export const OCCUPANCY_TOKEN_HEADER = "x-grid-internal-token";
 
 /**

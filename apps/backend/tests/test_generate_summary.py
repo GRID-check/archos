@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from backend.routes.generate_summary import add_generate_summary_routes
+from agent_host.routes.generate_summary import add_generate_summary_routes
 
 
 @pytest.fixture
@@ -324,7 +324,7 @@ def test_placeholder_openrouter_key_does_not_select_the_openrouter_endpoint(monk
     """Same placeholder trap as the consistency route: an uninterpolated
     `${OPENROUTER_API_KEY}` is truthy but not a key, and reading it raw sent
     LLM_API_KEY to openrouter.ai."""
-    from backend.routes.generate_summary import _llm_settings
+    from agent_host.routes.generate_summary import _llm_settings
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "${OPENROUTER_API_KEY}")
     monkeypatch.setenv("LLM_API_KEY", "sk-some-other-provider")

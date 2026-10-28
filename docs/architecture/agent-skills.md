@@ -337,7 +337,7 @@ offers exactly the skills this one gate resolves for that agent — which is the
 payoff of consolidating availability onto a single key.
 
 The agent vocabulary is the `AGENT_REGISTRY` identifiers
-(`apps/backend/src/backend/registry.py`): **`researcher`** and
+(`apps/backend/src/agent_host/registry.py`): **`researcher`** and
 **`deep_researcher`**. There is one spelling; the older `deep_research_agent`
 name is gone from the skills path entirely, because two vocabularies for one
 agent meant a `grid-agents` value that was correct in one file and inert in
@@ -1001,9 +1001,9 @@ submission subsequently fails — a submit error is not proof the backend never
 received the run (a timeout is the common case), and deleting the thread a run
 is about to write into would destroy the output to tidy up a row.
 
-## Backend internal route (Python, backend)
+## Backend internal route (Python, agent_host)
 
-`POST /v1/internal/skills/submit` (`backend.routes.skills`) — guarded by
+`POST /v1/internal/skills/submit` (`agent_host.routes.skills`) — guarded by
 `INTERNAL_API_TOKEN` (constant-time compare, dev-default-token refusal
 outside dev — the `maintenance.py` pattern; NOT on the external-path
 allowlist). It wraps `submit_agent_job`, so admission control, cost tracking
@@ -1045,7 +1045,7 @@ request got far enough to look healthy before the route guard refused it.
 
 ### Writing the run into its conversation
 
-`backend/jobs/conversation_output.py` is the other half of the chat-output
+`agent_host/jobs/conversation_output.py` is the other half of the chat-output
 path. When the finished run has a `conversation_id`, `write_job_turn` posts the
 job's prompt as a `user` message and the report as an `agent_response`,
 carrying the cards in metadata. A run with a run message writes its report

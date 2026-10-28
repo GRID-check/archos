@@ -15,10 +15,10 @@ from pathlib import Path
 
 import pytest
 
-from backend.jobs import ingest_worker
-from backend.jobs import worker as research_worker
-from backend.plugin import BackendWorker
-from backend.roles import WebRole
+from agent_host.jobs import ingest_worker
+from agent_host.jobs import worker as research_worker
+from agent_host.plugin import AgentHostWorker
+from agent_host.roles import WebRole
 from nat.front_ends.fastapi.fastapi_front_end_plugin_worker import FastApiFrontEndPluginWorker
 
 POOLED = "postgresql+psycopg://agent:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
@@ -43,9 +43,9 @@ def test_the_ingest_worker_will_not_boot_without_the_lock_dsn():
         ingest_worker.main()
 
 
-def _web(role: WebRole) -> BackendWorker:
+def _web(role: WebRole) -> AgentHostWorker:
     """A worker of this role, without NAT's front end: the check runs ahead of ``super().build_app()``."""
-    web = BackendWorker.__new__(BackendWorker)
+    web = AgentHostWorker.__new__(AgentHostWorker)
     web._role = role
     return web
 
@@ -92,7 +92,7 @@ def test_the_workers_do_not_ask_for_the_listen_dsn(monkeypatch):
 
 
 def test_the_check_follows_the_role_and_runs_before_the_app_is_built():
-    source = (Path(__file__).resolve().parents[1] / "src/backend/plugin.py").read_text(encoding="utf-8")
+    source = (Path(__file__).resolve().parents[1] / "src/agent_host/plugin.py").read_text(encoding="utf-8")
 
     check = "require_direct_dsns(listen=self._role is WebRole.API)"
     assert check in source

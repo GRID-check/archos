@@ -9,6 +9,6 @@ response, and streaming it. The workflow entry point
 units; each is a small tested function with an explicit signature, so a fix in
 one can be tested without standing up a NAT workflow.
 
-Nothing here imports ``backend``: the API tier hosts this workflow and depends
+Nothing here imports ``agent_host``: the API tier hosts this workflow and depends
 on it, never the other way (the ``agent-api-seam`` import-linter contract).
 """

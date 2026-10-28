@@ -442,7 +442,7 @@ interface CollectionFiles {
   ambiguousNames: Set<string>
   /**
    * The backend listed the files but could not merge what it read of them
-   * (`X-Grid-Reading-Unavailable`, `backend/routes/documents.py`): summaries,
+   * (`X-Grid-Reading-Unavailable`, `agent_host/routes/documents.py`): summaries,
    * dossiers, references and coverage are missing for this read, not absent.
    */
   readingUnavailable: boolean

@@ -6,7 +6,7 @@
  * They move by expand, switch and contract, because the BFF and the backend
  * roll out side by side: this release every receiver reads the new name and
  * the old one, the next one the senders switch to the new name, and the one
- * after that this file goes. `backend.legacy_headers` is the backend's half.
+ * after that this file goes. `agent_host.legacy_headers` is the backend's half.
  */
 
 /** The old name of a header: `x-internal-token` → `x-grid-internal-token`. */

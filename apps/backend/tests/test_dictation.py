@@ -21,8 +21,8 @@ from httpx import AsyncClient
 from agent.common.credential_resolution import ResolvedCredential
 from agent.common.openrouter import NO_RETENTION_LIMITS
 from agent.common.openrouter import ZERO_DATA_RETENTION
-from backend.routes import dictation as route
-from backend.routes._dictation_text import clean_transcript
+from agent_host.routes import dictation as route
+from agent_host.routes._dictation_text import clean_transcript
 
 TOKEN = "test-internal-token"
 AUDIO = b"\x1aE\xdf\xa3 fake webm bytes"

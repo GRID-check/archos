@@ -365,7 +365,7 @@ class TestRunIngestionFromRendition:
 
 
 def _deferred(path):
-    """A stand-in for backend's DeferredObjectDownload: writes a PDF and returns its path."""
+    """A stand-in for agent_host's DeferredObjectDownload: writes a PDF and returns its path."""
 
     def _download():
         path.write_bytes(b"%PDF-1.4\n% downloaded rendition\n")
@@ -457,7 +457,7 @@ class TestDeferredOriginal:
     def test_the_job_downloads_the_original_ingests_it_and_deletes_it(
         self, tmp_path, monkeypatch, ingestor, summary_db, pdf_pipeline, caplog
     ):
-        from backend.routes.ingest import DeferredObjectDownload
+        from agent_host.routes.ingest import DeferredObjectDownload
 
         get, calls = _object_store_get(b"%PDF-1.4\n% original\n", "application/pdf")
         monkeypatch.setattr("httpx.Client.get", get)
@@ -519,7 +519,7 @@ class TestDeferredOriginal:
     def test_the_job_is_live_while_it_downloads(self, tmp_path, monkeypatch, ingestor, summary_db, pdf_pipeline):
         """A retried dispatch that lands while the job is still downloading
         (on this replica or another) finds the job and joins it."""
-        from backend.routes.ingest import DeferredObjectDownload
+        from agent_host.routes.ingest import DeferredObjectDownload
 
         gate = threading.Event()
         get, calls = _object_store_get(b"%PDF-1.4\n", "application/pdf", gate=gate)

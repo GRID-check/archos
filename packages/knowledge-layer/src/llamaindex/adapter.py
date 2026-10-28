@@ -3277,7 +3277,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         status, so a caller that chooses ids looks the status up first.
 
         What runs it is the caller's choice: ``submit_prepared`` queues it in
-        this process, and the durable queue (``backend.jobs.ingest_queue``)
+        this process, and the durable queue (``agent_host.jobs.ingest_queue``)
         stores it for whichever worker claims it, on any replica. So a pending
         job is NOT registered in this process here: the process that runs it
         is the one that vouches for it (``_beat``). A job that fails validation
@@ -4028,7 +4028,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # the org/project/document ids in the key are, so whether the
             # signature survived was luck, and the tenant path leaked in full for
             # short keys. Same rule as the download side in
-            # apps/backend/src/backend/routes/ingest.py.
+            # apps/backend/src/agent_host/routes/ingest.py.
             logger.info("Uploaded thumbnail (%d bytes)", len(thumbnail_bytes))
         except Exception as error:
             # The class only: an httpx error's text, and so its traceback,

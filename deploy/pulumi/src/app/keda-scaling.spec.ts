@@ -360,7 +360,7 @@ describe("the program's ScaledObjects", () => {
     it("are the tables the queues write", () => {
       const table = (path: string[]) => read(...path).match(/^TABLE = "([a-z_]+)"$/m)?.[1];
       expect(table(["packages", "agent", "src", "agent", "knowledge", "ingest_queue.py"])).toBe("ingest_job_queue");
-      expect(table(["apps", "backend", "src", "backend", "jobs", "queue.py"])).toBe("research_job_queue");
+      expect(table(["apps", "backend", "src", "agent_host", "jobs", "queue.py"])).toBe("research_job_queue");
       expect(read("apps", "workspace", "migrations", "0104_bff_job_queue.sql")).toContain('CREATE TABLE IF NOT EXISTS "bff_job_queue"');
     });
 
@@ -385,12 +385,12 @@ describe("the program's ScaledObjects", () => {
 
       // Every name the snippet calls is one the Python modules define.
       const ingest = read("packages", "agent", "src", "agent", "knowledge", "ingest_queue.py");
-      const research = read("apps", "backend", "src", "backend", "jobs", "queue.py");
+      const research = read("apps", "backend", "src", "agent_host", "jobs", "queue.py");
       expect(ingest).toMatch(/^def db_url\(\)/m);
       expect(ingest).toMatch(/^def ensure_table\(/m);
       expect(research).toMatch(/^def ensure_research_queue_table\(/m);
       expect(research).toMatch(/^TABLE = "research_job_queue"/m);
-      expect(read("apps", "backend", "src", "backend", "jobs", "worker.py")).toContain('"NAT_JOB_STORE_DB_URL"');
+      expect(read("apps", "backend", "src", "agent_host", "jobs", "worker.py")).toContain('"NAT_JOB_STORE_DB_URL"');
     });
 
     it("are created for both Python queues", async () => {

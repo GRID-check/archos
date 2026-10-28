@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from backend.routes.generate_conversation_title import add_generate_conversation_title_routes
+from agent_host.routes.generate_conversation_title import add_generate_conversation_title_routes
 
 
 @pytest.fixture

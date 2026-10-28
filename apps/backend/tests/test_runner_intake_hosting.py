@@ -1,6 +1,6 @@
 """The project intake agent is hosted by the research worker (slice 4 of agentic project intake).
 
-Module under test: ``backend.jobs.runner`` and ``backend.registry``.
+Module under test: ``agent_host.jobs.runner`` and ``agent_host.registry``.
 
 The intake writes suggested values onto a project, not a report. Three things
 follow, each pinned here: the post-report model calls (grid cards, anatomy,
@@ -19,9 +19,9 @@ from unittest.mock import patch
 import pytest
 
 from agent.common import AgentGroup
-from backend.jobs import runner
-from backend.registry import AGENT_REGISTRY
-from backend.registry import get_agent_config
+from agent_host.jobs import runner
+from agent_host.registry import AGENT_REGISTRY
+from agent_host.registry import get_agent_config
 
 
 class _Reportless:

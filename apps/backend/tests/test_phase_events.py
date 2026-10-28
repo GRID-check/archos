@@ -10,14 +10,14 @@ store.
 
 from __future__ import annotations
 
-from backend.jobs.phase_events import JOB_PHASE_EVENT_TYPE
-from backend.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
-from backend.jobs.phase_events import PHASE_DONE
-from backend.jobs.phase_events import PHASE_PLANNING_STARTED
-from backend.jobs.phase_events import PHASE_RESEARCH_STARTED
-from backend.jobs.phase_events import PHASE_WRITING_STARTED
-from backend.jobs.phase_events import PhaseProgressCallback
-from backend.jobs.phase_events import emit_phase_event
+from agent_host.jobs.phase_events import JOB_PHASE_EVENT_TYPE
+from agent_host.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
+from agent_host.jobs.phase_events import PHASE_DONE
+from agent_host.jobs.phase_events import PHASE_PLANNING_STARTED
+from agent_host.jobs.phase_events import PHASE_RESEARCH_STARTED
+from agent_host.jobs.phase_events import PHASE_WRITING_STARTED
+from agent_host.jobs.phase_events import PhaseProgressCallback
+from agent_host.jobs.phase_events import emit_phase_event
 
 
 class FakeEventStore:

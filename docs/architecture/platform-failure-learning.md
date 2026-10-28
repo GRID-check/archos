@@ -359,7 +359,7 @@ means anything.
 |---|---|
 | Pipeline service + digest | `apps/workspace/bff/platform-lessons/service.ts` |
 | Repository (all SQL) | `apps/workspace/bff/platform-lessons/repository.ts` |
-| Distiller/auditor route | `apps/backend/src/backend/routes/lesson_distill.py` |
+| Distiller/auditor route | `apps/backend/src/agent_host/routes/lesson_distill.py` |
 | PII scrub | `apps/workspace/bff/text/redact-pii.ts` |
 | Schema | `apps/workspace/bff/db/schema/platform-lessons.ts`, migration `0068` |
 | Trigger | `apps/workspace/app/api/feedback/answers/route.ts` (`after()`) |

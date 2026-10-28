@@ -11,10 +11,10 @@ from fastapi.testclient import TestClient
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
-from backend import inflight
-from backend.inflight import IN_FLIGHT
-from backend.inflight import REQUEST_SECONDS
-from backend.inflight import InFlightMiddleware
+from agent_host import inflight
+from agent_host.inflight import IN_FLIGHT
+from agent_host.inflight import REQUEST_SECONDS
+from agent_host.inflight import InFlightMiddleware
 
 
 @pytest.fixture

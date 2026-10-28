@@ -1,6 +1,6 @@
 """``run_agent_job`` as its phases: what each one decides, and that the terminal paths always run.
 
-Module under test: ``backend.jobs.agent_job`` (claim, run, release),
+Module under test: ``agent_host.jobs.agent_job`` (claim, run, release),
 ``agent_job_setup`` (prepare) and ``job_outcome`` (persist, finish, failure).
 """
 
@@ -15,11 +15,11 @@ from typing import Any
 
 import pytest
 
-from backend.jobs import agent_job
-from backend.jobs import agent_job_setup
-from backend.jobs import job_outcome
-from backend.jobs.agent_job import JobRequest
-from backend.jobs.agent_job import run_agent_job
+from agent_host.jobs import agent_job
+from agent_host.jobs import agent_job_setup
+from agent_host.jobs import job_outcome
+from agent_host.jobs.agent_job import JobRequest
+from agent_host.jobs.agent_job import run_agent_job
 
 
 def _request(**overrides: Any) -> JobRequest:
@@ -134,7 +134,7 @@ async def test_a_failure_in_prepare_is_recorded_and_the_job_released(monkeypatch
 
     await run_agent_job(**_payload(auth_token="tok"))
 
-    from backend.jobs._auth_context import job_auth_token
+    from agent_host.jobs._auth_context import job_auth_token
 
     assert statuses == ["running", "failure"]
     assert notified == ["failure"]
@@ -226,7 +226,7 @@ async def test_a_job_runs_its_phases_to_a_success_and_one_thread_turn(monkeypatc
 
     from agent.agents.deep_researcher.anatomy import ReportAnatomy
     from agent.cards.generate import CardGenerationResult
-    from backend.jobs.agent_job_setup import JobModels
+    from agent_host.jobs.agent_job_setup import JobModels
 
     store = _Store()
     builder = SimpleNamespace(_telemetry_exporters={})

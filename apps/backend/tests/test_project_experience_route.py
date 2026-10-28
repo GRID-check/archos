@@ -17,7 +17,7 @@ from httpx import AsyncClient
 
 from agent.knowledge import factory
 from agent.knowledge.schema import AvailableDocument
-from backend.routes.project_experience import add_project_experience_routes
+from agent_host.routes.project_experience import add_project_experience_routes
 
 TOKEN = "project-experience-test-token"
 PATH = "/v1/internal/project-experience"

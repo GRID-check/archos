@@ -2,7 +2,7 @@
 
 Agent nodes catch :class:`AuthError` before the generic ``Exception`` handler
 and return ``str(e)`` to the user. The API tier's token failures
-(``backend.auth.errors``) subclass it: the dependency runs from the API tier
+(``agent_host.auth.errors``) subclass it: the dependency runs from the API tier
 to this one, never back.
 """
 

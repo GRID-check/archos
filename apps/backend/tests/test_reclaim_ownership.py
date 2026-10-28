@@ -36,16 +36,16 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy import text
 
-from backend.jobs import queue
-from backend.jobs.conversation_output import INTERRUPTED_NOTICE
-from backend.jobs.conversation_output import write_job_turn
-from backend.jobs.event_store import EventStore
-from backend.jobs.runner import JOB_OWNERSHIP_LOST_EVENT_TYPE
-from backend.jobs.runner import _finalize_cancelled_run
-from backend.jobs.runner import _lost_claim
-from backend.jobs.runner import _should_emit_cancelled_event
-from backend.jobs.runner import _should_write_notice
-from backend.jobs.runner import _update_status_if_not_terminal
+from agent_host.jobs import queue
+from agent_host.jobs.conversation_output import INTERRUPTED_NOTICE
+from agent_host.jobs.conversation_output import write_job_turn
+from agent_host.jobs.event_store import EventStore
+from agent_host.jobs.runner import JOB_OWNERSHIP_LOST_EVENT_TYPE
+from agent_host.jobs.runner import _finalize_cancelled_run
+from agent_host.jobs.runner import _lost_claim
+from agent_host.jobs.runner import _should_emit_cancelled_event
+from agent_host.jobs.runner import _should_write_notice
+from agent_host.jobs.runner import _update_status_if_not_terminal
 
 USAGE = {"identity": {"organization_id": "org_1", "user_id": "u1"}}
 CONVERSATION_ID = "conv-1"
@@ -78,7 +78,7 @@ def posts(monkeypatch):
     """The conversation HTTP seam: record what the thread would have received."""
     mock = AsyncMock()
     monkeypatch.setattr(
-        "backend.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         mock,
     )
     return mock
@@ -88,7 +88,7 @@ def posts(monkeypatch):
 def notify_spy(monkeypatch):
     """Observe (not stub out) outcome notifications."""
     mock = AsyncMock(return_value=False)
-    monkeypatch.setattr("backend.jobs.runner.notify_job_outcome", mock)
+    monkeypatch.setattr("agent_host.jobs.runner.notify_job_outcome", mock)
     return mock
 
 
@@ -405,7 +405,7 @@ class TestQueueVerdictsAreReported:
     """Retry exhaustion and poison quarantine end a run no runner will report."""
 
     def _worker(self, db_url: str):
-        from backend.jobs import worker as worker_mod
+        from agent_host.jobs import worker as worker_mod
 
         worker = worker_mod.ResearchWorker()
         worker.db_url = db_url
@@ -415,7 +415,7 @@ class TestQueueVerdictsAreReported:
 
     @pytest.mark.asyncio
     async def test_retries_exhausted_reports_failure(self, db_url, monkeypatch):
-        from backend.jobs import worker as worker_mod
+        from agent_host.jobs import worker as worker_mod
 
         _seed_job(db_url, "job-1", "running")
         queue.enqueue(db_url, "job-1", {"input_text": "x"})
@@ -434,7 +434,7 @@ class TestQueueVerdictsAreReported:
 
     @pytest.mark.asyncio
     async def test_retries_exhausted_after_the_run_finished_reports_nothing(self, db_url, monkeypatch):
-        from backend.jobs import worker as worker_mod
+        from agent_host.jobs import worker as worker_mod
 
         _seed_job(db_url, "job-1", "success")
         queue.enqueue(db_url, "job-1", {"input_text": "x"})
@@ -450,7 +450,7 @@ class TestQueueVerdictsAreReported:
 
     @pytest.mark.asyncio
     async def test_a_quarantined_payload_reports_failure(self, db_url, monkeypatch):
-        from backend.jobs import worker as worker_mod
+        from agent_host.jobs import worker as worker_mod
 
         _seed_job(db_url, "job-1", "submitted")
         notify = AsyncMock(return_value=True)
@@ -479,7 +479,7 @@ class TestShouldNotifyOutcome:
         ],
     )
     async def test_truth_table(self, db_url, status, finalized, expected):
-        from backend.jobs.runner import _should_notify_outcome
+        from agent_host.jobs.runner import _should_notify_outcome
 
         _seed_job(db_url, "job-1", status)
         result = await _should_notify_outcome(
@@ -491,7 +491,7 @@ class TestShouldNotifyOutcome:
     async def test_an_unreadable_status_does_not_fail_open(self, db_url):
         """Unlike the notice: the outcome route overwrites the run row's status,
         so a guessed `interrupted` could relabel a run already reported done."""
-        from backend.jobs.runner import _should_notify_outcome
+        from agent_host.jobs.runner import _should_notify_outcome
 
         assert (
             await _should_notify_outcome(

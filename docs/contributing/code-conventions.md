@@ -79,7 +79,7 @@ Not a hit: the name as a word in prose (`Piloti` or `Grid` alone, in a
 comment or a string a person reads), `grid` the English word (CSS and Tailwind,
 `grid` as a layout noun at the end of a name, `FileGrid`), URLs, host names and
 the repository's own name, and the Python package names `agent` and
-`backend` until their scripted rename (ADR-0145 row 10a). Not checked: ADRs, audits, release notes,
+`agent_host` until their scripted rename (ADR-0145 row 10a). Not checked: ADRs, audits, release notes,
 migrations, the i18n dictionaries and the site's content, published assets,
 lockfiles and Markdown. The list is `EXCLUDED` in the script.
 
@@ -90,7 +90,7 @@ one release, never as a hard break.
 A name two deployed tiers exchange (the `x-grid-*` service headers between
 the BFF and the backend) moves by expand, switch, contract, because the tiers
 roll out side by side: first every receiver reads the new name beside the old
-(`lib/http/legacy-header-names.ts`, `backend.legacy_headers`), the next
+(`lib/http/legacy-header-names.ts`, `agent_host.legacy_headers`), the next
 release the senders switch, the release after the old name goes.
 
 ## Python

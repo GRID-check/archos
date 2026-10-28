@@ -22,8 +22,8 @@ from agent.citations.registry import SourceRegistry
 from agent.citations.session import reset_session_registry
 from agent.citations.session import set_session_registry
 from agent.citations.verification import verify_citations
-from backend.jobs.callbacks import AgentEventCallback
-from backend.jobs.callbacks import ArtifactType
+from agent_host.jobs.callbacks import AgentEventCallback
+from agent_host.jobs.callbacks import ArtifactType
 
 OIB_KEY = "oib-rl_2_ausgabe_mai_2023.pdf, p.12"
 REAL_URL = "https://example.com/oib-2-zusammenfassung"

@@ -114,8 +114,8 @@ def build_client() -> Any:
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from backend.routes.filing_fit import add_filing_fit_routes
-    from backend.routes.folder_proposals import add_folder_proposals_routes
+    from agent_host.routes.filing_fit import add_filing_fit_routes
+    from agent_host.routes.folder_proposals import add_folder_proposals_routes
 
     router = APIRouter()
     add_filing_fit_routes(router)

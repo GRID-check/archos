@@ -26,9 +26,9 @@ addopts = "--import-mode=importlib -m 'not live'"
 # own venv tested the MAIN checkout's code while everything passed. This puts
 # the checkout's own `packages/agent/src/` ahead of that install (the editable `.pth` is
 # appended to sys.path, so it loses). `apps/backend/src` is the same guard
-# for `backend`, which `packages/agent/tests` imports too (the worker's header
+# for `agent_host`, which `packages/agent/tests` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
-# those tests against the MAIN checkout's `backend`. `evals/oib-retrieval/src`
+# those tests against the MAIN checkout's `agent_host`. `evals/oib-retrieval/src`
 # is the same guard for the retrieval harness, a finder-style editable the evals
 # import by name. `knowledge_layer` is a finder-style editable too and is NOT
 # covered by this; see docs/contributing/gotchas.md.
@@ -131,7 +131,7 @@ extend-ignore = [
 combine-as-imports = true
 default-section = "third-party"
 force-single-line = true
-known-first-party = ["agent", "backend", "nat", "nat_*", "_utils"]
+known-first-party = ["agent", "agent_host", "nat", "nat_*", "_utils"]
 known-third-party = [
   "agno",
   "autogen",
@@ -152,7 +152,7 @@ order-by-type = true
 # gone fails the run (import-linter's default), so these lists only shrink.
 # docs/contributing/module-seams.md
 [tool.importlinter]
-root_packages = ["agent", "backend", "knowledge_layer"]
+root_packages = ["agent", "agent_host", "knowledge_layer"]
 # Third-party packages become nodes too, so a contract can name one.
 include_external_packages = true
 
@@ -160,7 +160,7 @@ include_external_packages = true
 id = "qdrant-client-confined"
 name = "Only knowledge_layer.qdrant imports qdrant_client"
 type = "forbidden"
-source_modules = ["agent", "backend", "knowledge_layer"]
+source_modules = ["agent", "agent_host", "knowledge_layer"]
 forbidden_modules = ["qdrant_client"]
 # Who names the client, not who reaches a module that does: everything reaches
 # knowledge_layer.qdrant, which is the point of confining the client there.
@@ -169,10 +169,10 @@ ignore_imports = ["knowledge_layer.qdrant.** -> qdrant_client"]
 
 [[tool.importlinter.contracts]]
 id = "agent-api-seam"
-name = "agent never imports backend: the API tier hosts the agent, not the reverse"
+name = "agent never imports agent_host: the API tier hosts the agent, not the reverse"
 type = "forbidden"
 source_modules = ["agent"]
-forbidden_modules = ["backend"]
+forbidden_modules = ["agent_host"]
 
 [[tool.importlinter.contracts]]
 id = "agent-knowledge-port"
@@ -180,7 +180,7 @@ name = "agent reaches knowledge_layer only through the retriever and ingestor po
 type = "forbidden"
 source_modules = ["agent"]
 forbidden_modules = ["knowledge_layer"]
-# Direct imports only: agent reaching knowledge_layer through backend is the
+# Direct imports only: agent reaching knowledge_layer through agent_host is the
 # API tier's business, and the agent-api-seam contract already bounds that edge.
 allow_indirect_imports = true
 ignore_imports = [
@@ -240,7 +240,7 @@ dev = [
     "tavily-web-search",
     "ris-adapter",
     "knowledge-layer[all]",
-    "backend",
+    "agent-host",
     # The eval harness (evals/), so its tests and `task be:eval:*` import it
     # by name. Path sources, not workspace members: the backend image's
     # `uv sync --all-packages` would otherwise need evals/ in its build context.
@@ -294,5 +294,5 @@ agent = { workspace = true }
 tavily-web-search = { workspace = true }
 ris-adapter = { workspace = true }
 knowledge-layer = { workspace = true }
-backend = { workspace = true }
+agent-host = { workspace = true }
 oib-retrieval = { path = "evals/oib-retrieval", editable = true }

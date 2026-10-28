@@ -322,7 +322,7 @@ export async function dispatchIngest(
     return { jobId: ingestJobId, status: 'pending' }
   }
   // No job id, failed or not. The backend answers 202 with a `job_id` on every
-  // success (`backend/routes/ingest.py`), so an OK response without one is not
+  // success (`agent_host/routes/ingest.py`), so an OK response without one is not
   // a quieter success — it is a response this caller does not understand, and
   // leaving the row at its birth status ('uploaded', which the badge renders
   // green "Ready") would promise citations for a document nothing ever

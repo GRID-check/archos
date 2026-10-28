@@ -31,8 +31,8 @@ from agent.knowledge.schema import AvailableDocument
 from agent.knowledge.schema import FileInfo
 from agent.knowledge.schema import FileStatus
 from agent.observability import direct_trace
-from backend.routes.documents import _merge_summaries
-from backend.routes.documents import add_document_routes
+from agent_host.routes.documents import _merge_summaries
+from agent_host.routes.documents import add_document_routes
 
 COLLECTION = "proj_a"
 OLDER = "Grundriss_EG_Index_B.pdf"
@@ -176,7 +176,7 @@ class TestLinking:
         snapshot = store.get_all(COLLECTION)
         store.link_revision(COLLECTION, NEWER, OLDER)
 
-        with patch("backend.routes.documents.get_available_documents_async", AsyncMock(return_value=snapshot)):
+        with patch("agent_host.routes.documents.get_available_documents_async", AsyncMock(return_value=snapshot)):
             res = await _put(app, LINK)
 
         assert res.status_code == 409
@@ -251,7 +251,7 @@ class TestLinking:
         from agent.common import provider_limiter
 
         fake, post = _gateway()
-        with patch("backend.routes.documents.limited_async_http_client", fake):
+        with patch("agent_host.routes.documents.limited_async_http_client", fake):
             async with _client(app) as client:
                 await client.put(f"/v1/collections/{COLLECTION}/revision", json=LINK)
 
@@ -259,7 +259,7 @@ class TestLinking:
         post.assert_called_once()
 
     async def test_the_organization_header_reaches_the_credential_resolution(self, app, store):
-        with patch("backend.routes.documents._llm_settings") as settings:
+        with patch("agent_host.routes.documents._llm_settings") as settings:
             settings.return_value = MagicMock(api_key="")
             await _put(app, LINK, headers={"x-grid-organization-id": "org_1"})
         settings.assert_called_once_with("org_1")

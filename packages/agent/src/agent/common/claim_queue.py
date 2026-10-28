@@ -4,7 +4,7 @@ Background work that must outlive the process that accepted it is a row here:
 claimed by whichever worker is free, on any replica or in a dedicated worker
 tier, with ``FOR UPDATE SKIP LOCKED`` so no two claim it, and a heartbeat so a
 crashed worker's job is claimed again. ``agent.knowledge.ingest_queue`` is
-the first queue on it (ADR-0076); ``backend.jobs.queue``, the research queue,
+the first queue on it (ADR-0076); ``agent_host.jobs.queue``, the research queue,
 is the second. Each queue keeps its own table, payload and verdict; this module
 owns the algorithm.
 

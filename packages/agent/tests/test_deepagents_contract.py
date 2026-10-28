@@ -67,7 +67,7 @@ _IMPORTED_NAMES = {
     "deepagents.middleware.patch_tool_calls": ["PatchToolCallsMiddleware"],
     "deepagents.middleware.skills": ["SkillsMiddleware", "_list_skills"],
     "deepagents.middleware.summarization": ["create_summarization_middleware"],
-    # named in `backend/jobs/phase_events.py` and `tokenomics/`, which read the
+    # named in `agent_host/jobs/phase_events.py` and `tokenomics/`, which read the
     # `task` tool's `subagent_type` argument off tool callbacks
     "deepagents.middleware.subagents": ["TaskToolSchema", "_build_task_tool"],
 }
@@ -382,7 +382,7 @@ def test_write_todos_is_where_the_prompts_offer_it_and_delete_is_nowhere() -> No
     """0.7 dropped `TodoListMiddleware` from the defaults and added `delete` (CompositeBackend offers it).
 
     `orchestrator.j2` and `planner.j2` offer `write_todos`, and the job's todo
-    artifact (`backend/jobs/callbacks.py`) is built from it, so
+    artifact (`agent_host/jobs/callbacks.py`) is built from it, so
     `factory.planning_middleware` adds it back; `FILESYSTEM_TOOL_NAMES` keeps
     `delete` off every agent.
     """

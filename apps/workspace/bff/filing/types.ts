@@ -1,6 +1,6 @@
 /**
  * The filing judgement's wire contract with `POST /v1/filing-fit`
- * (`apps/backend/src/backend/routes/filing_fit.py`), and what the BFF
+ * (`apps/backend/src/agent_host/routes/filing_fit.py`), and what the BFF
  * keeps of the answer. The request is built here; the answer is parsed here
  * and never trusted: `keepKnownMoves` (`./judge`) drops anything that names a
  * document or a folder the request did not send.

@@ -5,7 +5,7 @@ it: a restart lost every queued job (settled ``failed: interrupted``), a second
 replica could not take work from the first, and nothing could scale ingestion
 apart from the chat tier. A job the durable queue carries is a row here instead,
 claimed by whichever worker is free, on any replica or in the dedicated
-ingest-worker tier (``backend.jobs.ingest_worker``).
+ingest-worker tier (``agent_host.jobs.ingest_worker``).
 
 The claim itself, its fairness across organisations (fewest running first, then
 the lane served longest ago, then priority, then oldest), the heartbeat, the
@@ -15,7 +15,7 @@ research queue. This module is the ingestion queue on it: its table, its lane
 (an organisation, or ``PLATFORM_LANE``) and the database it lives in, which is
 the status store's.
 
-The payload is opaque here: ``backend.jobs.ingest_dispatch`` writes it
+The payload is opaque here: ``agent_host.jobs.ingest_dispatch`` writes it
 (encrypted, since it carries presigned URLs) and reads it back. The status store
 (``ingest_status_store``) reads this table to know that a PENDING job whose
 accepting replica is gone is still waiting here, not lost; a retired row (dead,

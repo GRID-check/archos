@@ -52,14 +52,14 @@ dependency-cruiser accepts it.
 
 A run takes about thirty seconds, most of it parsing 2,900 modules.
 
-## Python: `agent`, `backend`, `knowledge_layer`
+## Python: `agent`, `agent_host`, `knowledge_layer`
 
 The contracts are `[tool.importlinter]` in the root `pyproject.toml`. import-linter
 builds the graph with grimp, which sees imports inside functions too.
 
 | Contract | What it forbids | Allowed |
 |---|---|---|
-| `agent-api-seam` | `agent` importing `backend`, directly or through a chain. What the agent needs from a request is owned in `agent` and written by `backend` (`auth/request_identity.py`, `auth/errors.py`), or handed in by the API-tier caller (`oib_sync`'s `enqueue`) | nothing |
+| `agent-api-seam` | `agent` importing `agent_host`, directly or through a chain. What the agent needs from a request is owned in `agent` and written by `agent_host` (`auth/request_identity.py`, `auth/errors.py`), or handed in by the API-tier caller (`oib_sync`'s `enqueue`) | nothing |
 | `agent-knowledge-port` | `agent` importing `knowledge_layer` directly | `knowledge/factory.py`, the BaseRetriever/BaseIngestor port (ADR-0072); sixteen known bypasses, each listed |
 | `qdrant-client-confined` | Any of the three packages importing `qdrant_client` directly | `knowledge_layer.qdrant` |
 

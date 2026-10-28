@@ -20,14 +20,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from agent.auth import Principal
-from backend.jobs import access as job_access
-from backend.jobs.access import create_job_access
-from backend.jobs.access import get_job_access
-from backend.jobs.access import job_exists
-from backend.jobs.event_store import EventStore
-from backend.jobs.submit import DuplicateJobIdError
-from backend.jobs.submit import submit_agent_job
-from backend.routes import job_handlers
+from agent_host.jobs import access as job_access
+from agent_host.jobs.access import create_job_access
+from agent_host.jobs.access import get_job_access
+from agent_host.jobs.access import job_exists
+from agent_host.jobs.event_store import EventStore
+from agent_host.jobs.submit import DuplicateJobIdError
+from agent_host.jobs.submit import submit_agent_job
+from agent_host.routes import job_handlers
 
 
 @pytest.fixture
@@ -173,7 +173,7 @@ class TestSubmitDuplicateJobId:
         job_store = _mock_job_store()
         with patch.dict("os.environ", _submit_env(db_url)):
             with patch("nat.front_ends.fastapi.async_jobs.job_store.JobStore", return_value=job_store):
-                with patch("backend.jobs.submit.job_exists") as job_exists_spy:
+                with patch("agent_host.jobs.submit.job_exists") as job_exists_spy:
                     result = await submit_agent_job(
                         agent_type="deep_researcher",
                         input_text="query",
@@ -214,8 +214,8 @@ class TestRollbackHardening:
         job_store = _mock_job_store()
         with patch.dict("os.environ", _submit_env(db_url)):
             with patch("nat.front_ends.fastapi.async_jobs.job_store.JobStore", return_value=job_store):
-                with patch("backend.jobs.submit.create_job_access", side_effect=RuntimeError("db write failed")):
-                    with patch("backend.jobs.submit.rollback_job_submission") as rollback:
+                with patch("agent_host.jobs.submit.create_job_access", side_effect=RuntimeError("db write failed")):
+                    with patch("agent_host.jobs.submit.rollback_job_submission") as rollback:
                         with pytest.raises(RuntimeError, match="db write failed"):
                             await submit_agent_job(
                                 agent_type="deep_researcher",
@@ -233,9 +233,9 @@ class TestRollbackHardening:
         job_store = _mock_job_store()
         with patch.dict("os.environ", _submit_env(db_url)):
             with patch("nat.front_ends.fastapi.async_jobs.job_store.JobStore", return_value=job_store):
-                with patch("backend.jobs.submit.job_exists", side_effect=RuntimeError("db unreachable")):
-                    with patch("backend.jobs.submit.create_job_access", side_effect=RuntimeError("db write failed")):
-                        with patch("backend.jobs.submit.rollback_job_submission") as rollback:
+                with patch("agent_host.jobs.submit.job_exists", side_effect=RuntimeError("db unreachable")):
+                    with patch("agent_host.jobs.submit.create_job_access", side_effect=RuntimeError("db write failed")):
+                        with patch("agent_host.jobs.submit.rollback_job_submission") as rollback:
                             with pytest.raises(RuntimeError, match="db write failed"):
                                 await submit_agent_job(
                                     agent_type="deep_researcher",
@@ -251,8 +251,8 @@ class TestRollbackHardening:
 @pytest.fixture
 async def submit_conflict_app(db_url, monkeypatch):
     """Minimal app with async job routes and a conflicting submit_agent_job."""
-    import backend.routes.jobs as jobs_routes
-    from backend.jobs import submit
+    import agent_host.routes.jobs as jobs_routes
+    from agent_host.jobs import submit
 
     monkeypatch.setattr(
         job_handlers,

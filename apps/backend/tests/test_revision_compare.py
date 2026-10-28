@@ -26,8 +26,8 @@ from agent.common import cache
 from agent.knowledge import revision_compare as compare
 from agent.knowledge.schema import AvailableDocument
 from agent.observability import direct_trace
-from backend.routes import revision_compare as route
-from backend.routes.revision_compare import add_revision_compare_routes
+from agent_host.routes import revision_compare as route
+from agent_host.routes.revision_compare import add_revision_compare_routes
 
 COLLECTION = "proj_a"
 OLDER = "Grundriss_EG_Index_B.pdf"

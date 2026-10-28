@@ -11,7 +11,7 @@
  * two decision states, decided by which panel the reader happened to click in.
  *
  * The owning message DOES exist. `write_job_turn`
- * (`backend/jobs/conversation_output.py`) writes the finished run into its
+ * (`agent_host/jobs/conversation_output.py`) writes the finished run into its
  * conversation as an assistant message carrying `metadata.cards` — the very
  * cards the report tab is drawing. This module finds that message in the store
  * rather than reconstructing its id: the backend derives it as

@@ -15,9 +15,9 @@ from datetime import timedelta
 
 from sqlalchemy import text
 
-from backend.jobs.checkpoint_retention import _cutoff_iso
-from backend.jobs.checkpoint_retention import reap_idle_threads
-from backend.jobs.event_store import EventStore
+from agent_host.jobs.checkpoint_retention import _cutoff_iso
+from agent_host.jobs.checkpoint_retention import reap_idle_threads
+from agent_host.jobs.event_store import EventStore
 
 _TABLES = ("checkpoints", "checkpoint_blobs", "checkpoint_writes")
 

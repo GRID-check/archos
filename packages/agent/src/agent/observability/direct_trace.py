@@ -1,7 +1,7 @@
 """A Langfuse generation for a model call that no NAT workflow makes (ADR-0089).
 
 Every model call must be observable, and NAT's span exporter only sees what runs
-inside a workflow. The auxiliary routes in ``backend`` (conversation title,
+inside a workflow. The auxiliary routes in ``agent_host`` (conversation title,
 project summary, consistency check, skill review, lesson distill, feedback
 digest) post to the chat-completions endpoint straight from a FastAPI handler, so
 they cost money and took seconds without leaving a span anywhere. This module gives

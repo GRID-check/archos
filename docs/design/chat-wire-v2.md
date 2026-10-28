@@ -45,7 +45,7 @@ more code than it adds. That is an exit criterion (§h).
 sequenceDiagram
     participant B as Browser (turn-socket + foldTurnEvent)
     participant P as server.js (proxy, unchanged)
-    participant H as backend chat socket (ours)
+    participant H as agent_host chat socket (ours)
     participant W as workflow _run (NAT session)
     participant G as conversation graph (astream custom)
     B->>P: user_message {v:2}
@@ -72,7 +72,7 @@ and what of ours that deletes.
 |---|---|---|
 | **`nat.plugin_api`**: the stable plugin surface. `Context`, `ContextState`, `Builder`, `Function`, `FunctionInfo`, `FunctionBaseConfig`, `LLMFrameworkEnum`, the `*Ref` types, `register_*`, every HITL model (`InteractionPrompt`, `HumanPrompt{Text,Radio,…}`, `HumanResponse{Text,Radio,…}`, `InteractionResponse`), `HITLMiddleware`, `FunctionMiddleware` | **Yes, everywhere** | S0 moves every import it covers (`nat.builder.context` ×19, `nat.cli.register_workflow` ×22, `nat.builder.builder` ×21, `nat.data_models.function` ×20, `nat.builder.function_info` ×19, `nat.data_models.component_ref` ×14, `nat.builder.framework_enum` ×8, `nat.data_models.interactive` ×8) onto `nat.plugin_api`. A ruff `banned-api` then bans the internal modules for those names. This is ADR-0068's "stop importing internals": no lines saved, but one import surface to re-check per NAT minor instead of eight |
 | `SessionManager.session(user_id=…)`, `Context.user_id` | **Yes** | The chat socket passes the verified subject as `user_id`, so NAT's per-user builders and `Context.user_id` see the real person rather than whatever NAT's unverified decode would have made of the header |
-| **Verified WebSocket identity**: `front_end.identity_authentication` → `_type: jwt` providers (`issuer_url`, `jwks_uri`, **`audience: str`**, required), `accepted_identity_credentials`, `identity_header`, `UserManager.extract_user_from_connection_with_verification` | **No, not in this cut** | WorkOS AuthKit access tokens carry **no `aud`**. Our validator skips audience deliberately (`auth/workos_validator.py:33`), and 1.9's `JwtAuthProviderConfig` requires one. Pointing it at WorkOS would reject every token, or pin an audience the token does not have. `backend/auth/jwt_validator.py` (246) and `backend/auth/workos_validator.py` (55) therefore stay, and so does the HTTP middleware that shares them (ADR-0002). S0 confirms this against a real token. If authlib turns out to accept a token without `aud`, a follow-up replaces the WS half, and we file `audience: str \| None` upstream. `identity_header` is not taken either: it trusts a bare header, and our signed context envelope (HMAC over the whole context) is strictly stronger |
+| **Verified WebSocket identity**: `front_end.identity_authentication` → `_type: jwt` providers (`issuer_url`, `jwks_uri`, **`audience: str`**, required), `accepted_identity_credentials`, `identity_header`, `UserManager.extract_user_from_connection_with_verification` | **No, not in this cut** | WorkOS AuthKit access tokens carry **no `aud`**. Our validator skips audience deliberately (`auth/workos_validator.py:33`), and 1.9's `JwtAuthProviderConfig` requires one. Pointing it at WorkOS would reject every token, or pin an audience the token does not have. `agent_host/auth/jwt_validator.py` (246) and `agent_host/auth/workos_validator.py` (55) therefore stay, and so does the HTTP middleware that shares them (ADR-0002). S0 confirms this against a real token. If authlib turns out to accept a token without `aud`, a follow-up replaces the WS half, and we file `audience: str \| None` upstream. `identity_header` is not taken either: it trusts a bare header, and our signed context envelope (HMAC over the whole context) is strictly stronger |
 | **Reconnection bound to identity**: `worker.get_conversation_handler(user_id, conversation_id)` | **No** | It lives inside NAT's `WebSocketMessageHandler`, which v2 no longer runs. v2 binds a socket to the conversation the BFF **signed**, which is stronger than the user alone, and resumes by `attach` (§d). What it deletes is our override of it: `_restore_execution_state` and its query-param rewrite go with S3 |
 | **`HITLMiddleware`**: a prompt before or after any NAT function, through `prompt_user_input` | **Available at no cost** | It rides the same `user_input_callback` → `interaction_request` path as `ask_user` and the clarifier, so it needs nothing on the wire. It is not configured in this cut: today's write-side tools propose through cards and never write (ADR-0003). It is the candidate for approving a write tool when one exists |
 | `langgraph_wrapper` (`nat.plugins.langchain.langgraph_workflow`): `conversation_id` → `thread_id` | **No** | Our `thread_id_for_turn` already maps `conversation_id` → `thread_id`, identically. The wrapper only drives graphs whose state is `messages`, and streams only the default `updates` mode, so it cannot carry our state or the `custom` stream |
@@ -165,7 +165,7 @@ its changelog entry.
 8. **Async jobs tunable by config**
    ([#2150](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2150) JobStore
    connection pooling, [#2159](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2159)
-   submit timeout, 1.9). Our job API (`backend/jobs`, 19 `JobStore` imports) can
+   submit timeout, 1.9). Our job API (`agent_host/jobs`, 19 `JobStore` imports) can
    size its pool in YAML. Not needed by this cut.
 9. **The eval and langchain extras no longer conflict**
    ([#2155](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2155), 1.9 Bug
@@ -352,7 +352,7 @@ still open after the deploy refused a hello that names `accepts` (its socket
 ends `outdated`) and a `RUN_FINISHED` whose result has `reasoning_effort` (the
 turn never ends). So for that one release the server withheld both behind
 `WIRE_V2_ADDITIVE_FIELDS`, off by default (`STAGED_SERVER_FIELDS`,
-`backend/chat_socket.py`). Every bundle since parses leniently, so the flag is
+`agent_host/chat_socket.py`). Every bundle since parses leniently, so the flag is
 now on by default; `off` is the rollback. A new tab works without the two
 fields: with no `accepts` it sends no `shown`, so a Stop stores everything
 streamed so far; a Stop that crossed the finished answer is still cut by the
@@ -453,7 +453,7 @@ where it emits in v2:
 | Run hand-off (ADR-0062) | `turn/commission.py`, lifted as `run_id`/`run_message_id` | `TurnResult.run`, with `outcome="handed_off"` |
 | Heartbeat | `websocket_reconnect._beat_while_running` (`GridTurnHeartbeat`) | the same task in the handler, writing a `HeartbeatBody` stamped by the turn's sequencer. The `grid_`-prefixed NAT workaround model is deleted |
 | Stage frames | `stages/delivery.deliver_stage_frame` → `websocket_reconnect.send_stage_frame` (`GridStageMessage`) | `StageFrameSink` becomes `(conversation_id, turn_id, StageValue) -> bool`. The handler stamps it with the turn's sequencer, which the registry keeps after the terminal until the last stage lands or `STAGE_WIRE_TTL_S` (10 min) passes. `GridStageMessage` is deleted. The `rejected` half of `shared/stages/frames.json` becomes schema refusal; the `delivered` half moves into the wire fixtures |
-| HITL: `clarify.py:703` and `ask_user.py:244` → `user_interaction_manager.prompt_user_input(build_human_prompt(...))` | `common/human_prompt.py` (NAT `HumanPromptText`/`Radio`) | **Unchanged for producers** (ADR-0068 §3). The handler's `user_input_callback` maps the NAT prompt to `interaction_request` and the answer back to `HumanResponseText`/`HumanResponseRadio`. The HITL models come from `nat.plugin_api` (1.9), and this mapping is their only use in `backend` |
+| HITL: `clarify.py:703` and `ask_user.py:244` → `user_interaction_manager.prompt_user_input(build_human_prompt(...))` | `common/human_prompt.py` (NAT `HumanPromptText`/`Radio`) | **Unchanged for producers** (ADR-0068 §3). The handler's `user_input_callback` maps the NAT prompt to `interaction_request` and the answer back to `HumanResponseText`/`HumanResponseRadio`. The HITL models come from `nat.plugin_api` (1.9), and this mapping is their only use in `agent_host` |
 | Deep-research progress, when it runs in process on the socket | its `turn_status` calls and its tool calls, inside the deep graph under the conversation graph's node | The same writer: steps carry `scope: "deep"`, set from a `ContextVar` that the deep node binds. Its subagents are `SUBAGENT_*` events from one producer, `turn_status.subagent_run`, bound around the run (`DeepResearcherAgent.run`), around each orchestrator `task` call (`SubagentEventsMiddleware`, the orchestrator's innermost middleware) and around each researcher worker (`tools/research._run_research_query`); a second `ContextVar` attributes every step inside. A deep-research **job** runs under `ainvoke` in a worker, so its writer calls are no-ops. Its events stay on `job_events` and SSE, unchanged |
 | `retrieval_trace.emit_retrieval_span` (`retrieve.<tool>` NAT steps) | `observability/retrieval_trace.py` | **Unchanged.** It is telemetry, it never reached the reader, and with the adaptor `off` it cannot |
 
@@ -462,7 +462,7 @@ where it emits in v2:
 **The route.** `configs/config_oib_openrouter.yml` → `front_end.workflow.websocket_path: null`
 (NAT registers no WS route) and `front_end.step_adaptor: {mode: off}`
 (intermediate steps go to the exporters, which subscribe to the step manager,
-never to the adaptor). `BackendWorker.add_routes` (`backend/plugin.py`) calls
+never to the adaptor). `AgentHostWorker.add_routes` (`agent_host/plugin.py`) calls
 `super().add_routes(...)`, then:
 
 ```python
@@ -475,7 +475,7 @@ affinity, the header stripping, the teardown classification and both limiters ar
 unchanged. `install_reconnectable_handler()` and its import-time call in
 `plugin.py:74` are deleted, and so are the three module assignments.
 
-**The handler** is `backend/chat_socket.py`, and `websocket_reconnect.py` is
+**The handler** is `agent_host/chat_socket.py`, and `websocket_reconnect.py` is
 deleted. It does not subclass or compose `WebSocketMessageHandler`: nothing of
 that run loop is still wanted.
 
@@ -873,7 +873,7 @@ separately. The exit criterion in the definition of done is the measured diff.
   line is still emitted.
 
 **S3 · Backend socket.**
-- **Owns:** `apps/backend/src/backend/websocket_reconnect.py` (deleted) →
+- **Owns:** `apps/backend/src/agent_host/websocket_reconnect.py` (deleted) →
   `chat_socket.py`, `plugin.py`, `workflow_stream.py`, `conversation_bus.py`,
   `configs/config_oib_openrouter.yml`, `common/human_prompt.py`,
   `observability/langfuse_trace_attributes.py` (the user half, gain 3), and the

@@ -1,6 +1,6 @@
 """The channel a ``delivery="frame"`` stage pushes its outcome down.
 
-``backend`` owns the socket and ``agent`` owns the graph, so the channel is
+``agent_host`` owns the socket and ``agent`` owns the graph, so the channel is
 **published, not imported** — the same inversion
 ``conversation_context.register_context_appender`` already uses in the opposite
 direction. The front end registers a sink at start-up; this package calls it and

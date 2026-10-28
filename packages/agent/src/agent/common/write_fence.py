@@ -6,7 +6,7 @@ that the running turn renews. A turn that loses the marker without noticing
 (a renewal task that never ran, Dragonfly unreachable from this replica) would
 go on writing the conversation's LangGraph thread while a newer turn on
 another replica writes it too. The fence is how it notices: the front end
-that owns the marker (``backend.turn_fence``) hands each turn an object that
+that owns the marker (``agent_host.turn_fence``) hands each turn an object that
 answers, synchronously and from the clock alone, whether the turn may still
 write; every write the turn makes to shared conversation state asks it first.
 

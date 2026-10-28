@@ -9,7 +9,7 @@ it. This module is how a run gets one, in three steps, none of which signs.
 
 **Carry.** When the job API accepts a submit, :func:`capture_request_envelope`
 keeps the envelope the BFF sent with it, byte for byte, but only when it
-verifies for the run's own requester (:func:`backend.jobs.access.verified_envelope`).
+verifies for the run's own requester (:func:`agent_host.jobs.access.verified_envelope`).
 It travels inside the job's encrypted payload as ``request_envelope``
 (``jobs/payload_crypto.py``), next to the auth token it is as sensitive as.
 

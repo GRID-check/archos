@@ -22,9 +22,9 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
   citation-registry snapshots. Cache-only semantics; both tiers fail open to
   in-process fallbacks when it is down or `REDIS_URL` is unset.
 
-The **real** backend front-end plugin is `apps/backend` (`_type: backend`).
+The **real** backend front-end plugin is `apps/backend` (`_type: agent_host`).
 (The old `packages/agent/src/agent/fastapi_extensions/` duplicate was deleted 2026-07-03,
-commit `2570b1b`; its one live route, `/v1/ingest`, was ported into `backend`.)
+commit `2570b1b`; its one live route, `/v1/ingest`, was ported into `agent_host`.)
 
 The working config is `configs/config_oib_openrouter.yml` (OpenRouter DeepSeek +
 OpenRouter embeddings), the only config left in `configs/`.
@@ -60,7 +60,7 @@ Browser WebSocket
     neutrally as "Assistant" (getDisplayName in intermediate-step-parser.ts),
     not "Research Agent" — a greeting is not a research run.
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
-      apps/backend/src/backend/chat_socket.py
+      apps/backend/src/agent_host/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
   → apps/workspace/ui/features/layout/components/ChatArea.tsx → AgentResponse.tsx
 ```
@@ -231,7 +231,7 @@ invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to the individual headers exactly as
 before the envelope existed.
 
-`apps/backend/src/backend/context_envelope.py`'s
+`apps/backend/src/agent_host/context_envelope.py`'s
 `GridContextEnvelopeMiddleware` (raw ASGI, same pattern as `AuthMiddleware` —
 never buffers the response body, so SSE routes are unaffected) fail-closed
 rejects (403 / WS policy-violation close) a workflow-invoking request when
@@ -243,7 +243,7 @@ workflow and that a BFF proxy forwards with the member's bearer alone
 job reads and controls under `/v1/jobs/async/{jobs,job,agents}`, `/v1/drafts`);
 every other path, the WebSocket included, needs the envelope. NAT's HTTP turn
 routes (`/chat`, `/generate`, `/v1/chat/completions`, `/v1/workflow`, ...) are
-not mounted at all: a turn runs on the chat socket alone (`BackendConfig`,
+not mounted at all: a turn runs on the chat socket alone (`AgentHostConfig`,
 ADR-0068), and deny by default is what closes a route a later NAT adds. Always exempt:
 anonymous mode and internal-token-authenticated service calls. Dev fail-open note:
 when `INTERNAL_API_TOKEN` is unset, signature verification is skipped
@@ -285,7 +285,7 @@ next real turn's `ainvoke` then reads the ingested turns as ordinary history.
 
 Key pieces:
 - Char caps, appender registry: `packages/agent/src/agent/conversation_context.py`.
-- The appender is *published*, not imported: `backend` owns the socket and
+- The appender is *published*, not imported: `agent_host` owns the socket and
   `agent` owns the graph, so `piloti/conversation_register.py` calls
   `register_context_appender(agent.append_context_message)` where the compiled graph
   (and its checkpointer) exists.
@@ -333,7 +333,7 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   cannot get it in time is refused, never run beside the stale one. With the
   bus down the claim fails open to the local registry, and so does the marker
   while `CHAT_AFFINITY` is on; with it off the question is refused.
-- **The owner fences itself** (`backend/turn_fence.py`, `agent/common/write_fence.py`;
+- **The owner fences itself** (`agent_host/turn_fence.py`, `agent/common/write_fence.py`;
   only with `CHAT_AFFINITY` off). The marker's TTL can run out under a
   turn that is still running (a renewal task starved or late, Dragonfly
   unreachable from this replica), and a newer turn on another replica may then
@@ -413,7 +413,7 @@ config key any more. The result rides `ChatResponse.cards` → `message.cards`
 
 With `use_async_deep_research: true` (the working config), any query routed to
 deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
-**real** answer is produced later by `apps/backend/src/backend/jobs/agent_job.py`
+**real** answer is produced later by `apps/backend/src/agent_host/jobs/agent_job.py`
 (`run_agent_job`), which now generates cards post-hoc from the final report
 (`_generate_grid_cards` → `agent.cards.generate_cards`), re-emits the
 report artifact with cards attached over the job SSE stream, and stores
@@ -526,7 +526,7 @@ takes a `previousSummary` and both callers (`profile/route.ts`,
 preserving it across rebuilds.
 
 Operational note: `/v1/generate-summary` fails silently (swallowed try/catch on
-both ends) if the `backend` process has no LLM key. Ensure `OPENROUTER_API_KEY`
+both ends) if the `agent_host` process has no LLM key. Ensure `OPENROUTER_API_KEY`
 (or `SUMMARY_LLM_API_KEY`) is set, else the summary stays empty even though the
 fact-sheet renders.
 
@@ -1085,7 +1085,7 @@ The text parsers in `citations/text_parsers.py`
 (`_parse_knowledge_layer` and the eleven `_KL_*` regexes) stay for the callers
 that hold the bytes without the records: a registry hydrated from the shared
 cache, a turn replayed out of Postgres, and the job runner's callback in
-`apps/backend/src/backend/jobs/callbacks.py`. A text those parsers find no
+`apps/backend/src/agent_host/jobs/callbacks.py`. A text those parsers find no
 `Citation:` line in carries no sources at all; the generic URL extractor beneath
 them reads the tools with no registered parser (web search), never a passage
 body. Nothing reads a FAILED call either: both capture loops skip a
@@ -1749,7 +1749,7 @@ T3-11).** The worker makes three writes when a run ends: the outcome
 `task_runs` row, files the report, tells the requester), the report into the
 run's message (`conversation_output.py` → `/api/internal/runs/by-job/{id}/report`)
 and the ledger's terminal op. The first two, and the thread-turn fallback, go
-through `backend/internal_retry.py`: three attempts over about 25 s on a
+through `agent_host/internal_retry.py`: three attempts over about 25 s on a
 transport failure or a 5xx, and on a 404 too when the job was submitted for a
 run (the runner holds a `run_id`), because then the 404 means the BFF has not
 yet written the backend job id onto the row. The ledger client keeps its single
@@ -1772,7 +1772,7 @@ runner). And the research tab can 403 — see §9.
 `f8093a0`)**: the `X-Grid-Collection-Scope` header is captured once at submit
 time (`piloti/conversation_register.py`) and threaded into the async job payload
 as `collection_scope`. The research worker only re-injects it into its own
-request context conditionally — `apps/backend/src/backend/jobs/agent_job_setup.py`
+request context conditionally — `apps/backend/src/agent_host/jobs/agent_job_setup.py`
 (`_inject_scope_headers`) does `if collection_scope is not None:` before base64url-encoding it back
 onto the header. When the scope is absent, `knowledge_retrieval` inside the
 worker falls back to legacy config-based resolution (base collection +
@@ -1806,7 +1806,7 @@ the run inside the composed `input` — the BFF concatenates the job prompt and
 the skill body — and the `skills` array on the submit body is a name list for
 the log; nothing is forced onto the worker's state. A `chat` job additionally carries a `conversation_id`,
 and the worker writes the question and answer into that thread at completion
-(`backend/jobs/conversation_output.py`, best-effort — it can never fail a run).
+(`agent_host/jobs/conversation_output.py`, best-effort — it can never fail a run).
 This replaces the ADR-0023 Workflows scheduler, which was removed. See
 `docs/architecture/agent-skills.md`.
 
@@ -2025,7 +2025,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   workers (`BudgetGuardCallback`, `packages/agent/src/agent/common/budget_guard.py`),
   independent of the USD budget ledger.
 - **Phase progress events** (backlog T4-4, 2026-07-16): `PhaseProgressCallback`
-  (`backend.jobs.phase_events`) observes the deep-research orchestrator's
+  (`agent_host.jobs.phase_events`) observes the deep-research orchestrator's
   existing task-dispatch and `run_research_batch` callback events to detect
   planning/research/writing/citation-verification/done transitions, without
   any change to the `deep_researcher` package itself, and persists each as a

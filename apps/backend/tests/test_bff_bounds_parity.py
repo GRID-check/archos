@@ -15,10 +15,10 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from backend.models.requests import GroupedDocumentSearchRequest
-from backend.models.requests import ProjectFacts
-from backend.models.similar import SimilarPassagesRequest
-from backend.routes.maintenance import REFRESH_FACTS_MAX_COLLECTIONS
+from agent_host.models.requests import GroupedDocumentSearchRequest
+from agent_host.models.requests import ProjectFacts
+from agent_host.models.similar import SimilarPassagesRequest
+from agent_host.routes.maintenance import REFRESH_FACTS_MAX_COLLECTIONS
 
 UI_LIB = Path(__file__).resolve().parents[3] / "apps" / "workspace" / "bff"
 

@@ -66,7 +66,7 @@ class RunBudgetExceededError(RuntimeError):
     ``str(exc)`` is a curated, user-safe message -- safe to persist directly
     as the job's error field and to stream in a ``job.error`` event without
     going through the generic exception-message sanitization used for
-    unclassified errors (see ``backend.jobs.runner.sanitize_job_error``).
+    unclassified errors (see ``agent_host.jobs.runner.sanitize_job_error``).
     """
 
     #: A limit doing its job, not a fault: PostHog error tracking skips it
@@ -107,7 +107,7 @@ def _extract_completion_tokens(response: Any) -> int:
     """Extract the completion/output token count from an ``LLMResult``.
 
     Mirrors the extraction order ``AgentEventCallback._extract_llm_response``
-    uses in ``backend.jobs.callbacks`` (LangChain's standardized
+    uses in ``agent_host.jobs.callbacks`` (LangChain's standardized
     ``usage_metadata.output_tokens`` first, then the OpenAI-style
     ``response_metadata.token_usage.completion_tokens`` fallback). Returns 0
     -- never raises -- when no usage information is present (e.g. a cached or
@@ -180,7 +180,7 @@ class BudgetGuardCallback(BaseCallbackHandler):
     """LangChain callback enforcing a per-job completion-token ceiling.
 
     Add one instance to a job's callback list (see
-    ``backend.jobs.agent_job.run_agent_job``); it reaches every LLM call in the
+    ``agent_host.jobs.agent_job.run_agent_job``); it reaches every LLM call in the
     job the same way the existing ``AgentEventCallback``/
     ``VerboseTraceCallback`` do -- LangGraph/DeepAgents' ``task`` tool merges
     the ambient parent config (including ``callbacks``) into every subagent

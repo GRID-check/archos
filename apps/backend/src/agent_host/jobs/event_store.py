@@ -155,7 +155,7 @@ class EventStore:
                 except ImportError as e:
                     raise ImportError(
                         "PostgreSQL support requires psycopg (v3). "
-                        "Install with: pip install 'backend[postgres]' or pip install 'psycopg[binary]'"
+                        "Install with: pip install 'agent-host[postgres]' or pip install 'psycopg[binary]'"
                     ) from e
 
             engine = create_engine(

@@ -13,7 +13,7 @@ export const MAX_DICTATION_SECONDS = 45
  * The largest recording the BFF accepts, in bytes. 45 seconds at the 64 kbit/s
  * the recorder asks for is about 360 KB; the ceiling leaves room for a browser
  * that ignores the requested bitrate. The Python route re-applies the same
- * number (`MAX_DICTATION_AUDIO_BYTES` in `backend/models/requests.py`).
+ * number (`MAX_DICTATION_AUDIO_BYTES` in `agent_host/models/requests.py`).
  */
 export const MAX_DICTATION_AUDIO_BYTES = 4 * 1024 * 1024
 

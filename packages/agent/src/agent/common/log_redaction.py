@@ -32,7 +32,7 @@ partial scrub invites reasoning about which half was sensitive.
 
 Lives beside :func:`agent.common.db_utils.redact_db_url` for the same reason
 that one exists: redaction belongs in one place per secret shape, importable by
-every tier (``backend`` already imports ``redact_db_url`` from here).
+every tier (``agent_host`` already imports ``redact_db_url`` from here).
 """
 
 from __future__ import annotations

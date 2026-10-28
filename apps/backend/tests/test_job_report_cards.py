@@ -1,6 +1,6 @@
 """The report endpoint hands back the run's Grid cards, not only its prose.
 
-Module under test: ``apps/backend/src/backend/routes/jobs.py``
+Module under test: ``apps/backend/src/agent_host/routes/jobs.py``
     GET /v1/jobs/async/job/{job_id}/report
 
 These are ROUTE-level rather than model-level on purpose. The gap this closes
@@ -23,7 +23,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from agent.auth import Principal
-from backend.routes import job_handlers
+from agent_host.routes import job_handlers
 
 LEGAL_BASIS_CARD = {
     "type": "legal_basis",
@@ -63,7 +63,7 @@ def report_app(tmp_path, monkeypatch):
 
 async def _fetch_report(report_app, output) -> dict:
     """Register the routes over a job whose stored output is ``output``."""
-    import backend.routes.jobs as jobs_routes
+    import agent_host.routes.jobs as jobs_routes
 
     report_app.job_store.get_job.return_value = SimpleNamespace(job_id="job-1", output=output)
     await jobs_routes.register_job_routes(report_app.app, report_app.builder, report_app.worker)
@@ -196,7 +196,7 @@ async def test_report_carries_the_project_the_run_was_commissioned_in(report_app
     # `register_job_routes` to keep heavy imports off module load, so the name
     # is bound when the routes are registered — which `_fetch_report` does after
     # this line.
-    from backend.jobs import access
+    from agent_host.jobs import access
 
     async def _commissioned_in(job_id, db_url):
         assert job_id == "job-1"
@@ -216,7 +216,7 @@ async def test_a_run_with_no_project_reports_none_rather_than_a_guess(report_app
     That is the case the old fallback filled in from the reader's preferences,
     silently, with no filing disclosure ever having been shown.
     """
-    from backend.jobs import access
+    from agent_host.jobs import access
 
     async def _no_project(job_id, db_url):
         return None
@@ -234,7 +234,7 @@ async def test_a_poll_with_no_report_yet_pays_for_no_access_read(report_app, mon
     There is nothing to file, so there is no destination to look up, and this
     route is polled for the whole length of a run that costs minutes.
     """
-    from backend.jobs import access
+    from agent_host.jobs import access
 
     calls = []
 

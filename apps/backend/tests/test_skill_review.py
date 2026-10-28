@@ -12,13 +12,13 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from backend.routes.skill_review import MAX_CHECK_CHARS
-from backend.routes.skill_review import MAX_FINDINGS
-from backend.routes.skill_review import MAX_FIX_CHARS
-from backend.routes.skill_review import MAX_MESSAGE_CHARS
-from backend.routes.skill_review import RULEBOOK_VERSION
-from backend.routes.skill_review import SYSTEM_PROMPT
-from backend.routes.skill_review import add_skill_review_routes
+from agent_host.routes.skill_review import MAX_CHECK_CHARS
+from agent_host.routes.skill_review import MAX_FINDINGS
+from agent_host.routes.skill_review import MAX_FIX_CHARS
+from agent_host.routes.skill_review import MAX_MESSAGE_CHARS
+from agent_host.routes.skill_review import RULEBOOK_VERSION
+from agent_host.routes.skill_review import SYSTEM_PROMPT
+from agent_host.routes.skill_review import add_skill_review_routes
 
 
 @pytest.fixture

@@ -36,20 +36,20 @@ from starlette.datastructures import Headers
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from agent.project_context import GridRequestContext
-from backend.jobs import access as job_access
-from backend.jobs import queue
-from backend.jobs import run_envelope
-from backend.jobs import worker as worker_mod
-from backend.jobs.agent_job import run_agent_job
-from backend.jobs.event_store import EventStore
-from backend.jobs.run_envelope import RUN_ENVELOPE_RENEW_AFTER_MS
-from backend.jobs.run_envelope import capture_request_envelope
-from backend.jobs.run_envelope import envelope_headers_for_run
-from backend.jobs.run_envelope import parse_renewal
-from backend.jobs.run_envelope import refusal_reason
-from backend.jobs.runner import WORKER_ENVELOPE_HEADERS
-from backend.jobs.runner import _inject_worker_headers
-from backend.jobs.runner import _run_user_info
+from agent_host.jobs import access as job_access
+from agent_host.jobs import queue
+from agent_host.jobs import run_envelope
+from agent_host.jobs import worker as worker_mod
+from agent_host.jobs.agent_job import run_agent_job
+from agent_host.jobs.event_store import EventStore
+from agent_host.jobs.run_envelope import RUN_ENVELOPE_RENEW_AFTER_MS
+from agent_host.jobs.run_envelope import capture_request_envelope
+from agent_host.jobs.run_envelope import envelope_headers_for_run
+from agent_host.jobs.run_envelope import parse_renewal
+from agent_host.jobs.run_envelope import refusal_reason
+from agent_host.jobs.runner import WORKER_ENVELOPE_HEADERS
+from agent_host.jobs.runner import _inject_worker_headers
+from agent_host.jobs.runner import _run_user_info
 
 from .test_job_submit_data_sources import submit_app  # noqa: F401 - the public submit route, built once
 
@@ -108,7 +108,7 @@ def _no_retry_pause(monkeypatch):
     async def _skip(_seconds: float) -> None:
         return None
 
-    monkeypatch.setattr("backend.internal_retry._sleep", _skip)
+    monkeypatch.setattr("agent_host.internal_retry._sleep", _skip)
 
 
 @pytest.fixture(scope="module")
@@ -157,7 +157,7 @@ class _BFF:
 def bff():
     _BFF.calls = []
     _BFF.answers = [(500, None)]
-    with mock.patch("backend.jobs.run_envelope.httpx.AsyncClient", _BFF):
+    with mock.patch("agent_host.jobs.run_envelope.httpx.AsyncClient", _BFF):
         yield _BFF
 
 
@@ -233,7 +233,7 @@ def db_url(tmp_path, monkeypatch):
 
 @pytest.fixture
 def skills_client():
-    from backend.routes.skills import add_skill_routes
+    from agent_host.routes.skills import add_skill_routes
 
     router = APIRouter()
     add_skill_routes(router)
@@ -518,8 +518,8 @@ class TestTheWireContract:
 #: new answer to "who signs here?", and the answer for an envelope is: nobody.
 _HMAC_SITES = {
     ("packages/agent/src/agent/project_context.py", "from_envelope"),  # verifies, compare_digest
-    ("apps/backend/src/backend/auth/utils.py", "_build_pseudonymous_trace_user_id"),  # trace ids
-    ("apps/backend/src/backend/auth/utils.py", "_build_pseudonymous_trace_client_id"),  # trace ids
+    ("apps/backend/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_user_id"),  # trace ids
+    ("apps/backend/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_client_id"),  # trace ids
 }
 
 

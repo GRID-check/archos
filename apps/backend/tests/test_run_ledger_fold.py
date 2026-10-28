@@ -27,16 +27,16 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from agent.common.run_ledger import RUN_PHASES
-from backend.jobs.phase_events import JOB_PHASE_EVENT_TYPE
-from backend.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
-from backend.jobs.phase_events import PHASE_DONE
-from backend.jobs.phase_events import PHASE_PLANNING_STARTED
-from backend.jobs.phase_events import PHASE_RESEARCH_STARTED
-from backend.jobs.phase_events import PHASE_WRITING_STARTED
-from backend.jobs.run_ledger_fold import JOB_DEGRADED_EVENT_TYPE
-from backend.jobs.run_ledger_fold import PHASE_KEYS
-from backend.jobs.run_ledger_fold import RUN_LEDGER_EVENT_TYPE
-from backend.jobs.run_ledger_fold import RunLedgerFold
+from agent_host.jobs.phase_events import JOB_PHASE_EVENT_TYPE
+from agent_host.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
+from agent_host.jobs.phase_events import PHASE_DONE
+from agent_host.jobs.phase_events import PHASE_PLANNING_STARTED
+from agent_host.jobs.phase_events import PHASE_RESEARCH_STARTED
+from agent_host.jobs.phase_events import PHASE_WRITING_STARTED
+from agent_host.jobs.run_ledger_fold import JOB_DEGRADED_EVENT_TYPE
+from agent_host.jobs.run_ledger_fold import PHASE_KEYS
+from agent_host.jobs.run_ledger_fold import RUN_LEDGER_EVENT_TYPE
+from agent_host.jobs.run_ledger_fold import RunLedgerFold
 
 SCHEMA_PATH = (
     Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "run-ledger.schema.json"
@@ -140,7 +140,7 @@ class TestTheMapping:
     def test_it_listens_for_the_spelling_the_runner_writes(self) -> None:
         """The fold names the event types itself (the runner imports it, not the
         other way round), so this is what keeps the two spellings one spelling."""
-        from backend.jobs.runner import JOB_DEGRADED_EVENT_TYPE as runner_degraded
+        from agent_host.jobs.runner import JOB_DEGRADED_EVENT_TYPE as runner_degraded
 
         assert JOB_DEGRADED_EVENT_TYPE == runner_degraded
 
@@ -476,8 +476,8 @@ class TestTheContract:
 
 
 def test_a_repeated_claim_is_not_a_change() -> None:
-    from backend.jobs.run_ledger_fold import _add_findings
-    from backend.jobs.run_ledger_fold import _Step
+    from agent_host.jobs.run_ledger_fold import _add_findings
+    from agent_host.jobs.run_ledger_fold import _Step
 
     step = _Step(id="s1", phase="research", intent="Brandschutz", started_at="t")
     notes = json.dumps({"findings": [{"claim": "REI 60 gefordert."}]})

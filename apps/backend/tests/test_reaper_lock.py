@@ -19,7 +19,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from agent.knowledge import leader_lock
-from backend.routes import job_reaper
+from agent_host.routes import job_reaper
 
 POOLED = "postgresql+asyncpg://agent:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
 DIRECT = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret

@@ -197,7 +197,7 @@ repos:
         entry: python3 scripts/check_env_docs.py
         language: system
         pass_filenames: false
-        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/backend/jobs/.*\.py$|^packages/agent/src/agent/knowledge/ingest_.*\.py$|^apps/workspace/(workers|purger|scheduler)/.*\.js$|^apps/workspace/bff/(jobs-queue|mail-import)/.*\.ts$
+        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/agent_host/jobs/.*\.py$|^packages/agent/src/agent/knowledge/ingest_.*\.py$|^apps/workspace/(workers|purger|scheduler)/.*\.js$|^apps/workspace/bff/(jobs-queue|mail-import)/.*\.ts$
 
       - id: validate-skills
         name: skill bundles are well-formed

@@ -16,7 +16,7 @@ from httpx import AsyncClient
 
 from agent.knowledge.factory import clear_active_ingestor
 from agent.knowledge.factory import set_active_ingestor
-from backend.routes.documents import add_document_routes
+from agent_host.routes.documents import add_document_routes
 
 
 def _make_app(ingestor):

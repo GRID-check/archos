@@ -77,7 +77,7 @@ def instruments() -> _Instruments:
     global _instruments
     with _instruments_lock:
         if _instruments is None:
-            _instruments = _Instruments(metrics.get_meter("backend.inflight"))
+            _instruments = _Instruments(metrics.get_meter("agent_host.inflight"))
         return _instruments
 
 

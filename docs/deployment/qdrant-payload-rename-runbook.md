@@ -28,10 +28,10 @@ The fact **tokens** moved with the keys: `wien` is now `vienna`, `holzbau`
 `timber`, `wohnen` `residential`, `neubau` `new_build` (the table is
 `LEGACY_PROFILE_TOKENS` in `packages/agent/src/agent/profile_names.py`).
 
-The wire between the BFF and `backend` changed with it: the boost weights are
+The wire between the BFF and `agent_host` changed with it: the boost weights are
 `building_class_adjacent`, `use`, `use_max` (were `gebaeudeklasse_adjacent`,
-`nutzung`, `nutzung_max`), and `backend` stopped translating to German on the
-way to the store. `backend` still accepts the German names on the request, so
+`nutzung`, `nutzung_max`), and `agent_host` stopped translating to German on the
+way to the store. `agent_host` still accepts the German names on the request, so
 a BFF pod that has not rolled yet keeps working.
 
 ## What reads both until the rewrite has run

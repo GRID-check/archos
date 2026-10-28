@@ -30,7 +30,7 @@ from agent.tools.documents.draft_store import FILED_VERSION_KEY
 from agent.tools.documents.draft_store import MAX_DRAFT_BYTES
 from agent.tools.documents.draft_store import DraftBackend
 from agent.tools.documents.draft_store import draft_namespace
-from backend.routes.internal_auth import _DEV_DEFAULT_TOKEN
+from agent_host.routes.internal_auth import _DEV_DEFAULT_TOKEN
 
 _TOKEN = "real-internal-secret"
 CONVERSATION = "conv-read-1"
@@ -53,7 +53,7 @@ def store(monkeypatch: pytest.MonkeyPatch) -> InMemoryStore:
 
 @pytest.fixture
 def client(store) -> TestClient:
-    from backend.routes.drafts import add_draft_routes
+    from agent_host.routes.drafts import add_draft_routes
 
     router = APIRouter()
     add_draft_routes(router)

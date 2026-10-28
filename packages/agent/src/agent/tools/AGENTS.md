@@ -71,7 +71,7 @@ requester, inside the encrypted job payload; the worker injects those two
 strings at claim under the names a chat turn uses, and asks the BFF
 (`POST /api/internal/runs/{runId}/envelope`) for a fresh one when the carried one
 is over an hour old. Every refusal or failure leaves the run without an
-envelope. The whole path is `apps/backend/src/backend/jobs/run_envelope.py`;
+envelope. The whole path is `apps/backend/src/agent_host/jobs/run_envelope.py`;
 nothing on it builds or signs an envelope.
 
 The BFF decides identity and permission. This tier decides only *which bytes* and
