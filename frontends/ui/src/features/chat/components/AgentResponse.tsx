@@ -15,7 +15,6 @@
 
 import {
   type FC,
-  type ReactNode,
   memo,
   useCallback,
   useId,
@@ -32,24 +31,18 @@ import {
   motionInstant,
   motionQuick,
   motionQuickExit,
-  useIconSwapTransition,
   useMotionToken,
 } from '@/components/motion'
 import { HeightArrival, HeightExpand } from '@/components/motion/height-arrival'
 import { cn } from '@/lib/utils'
-import { Check, ChevronDown, FileText, MessageCircle } from 'lucide-react'
-import { Chip } from '@/components/ui/chip'
+import { MessageCircle } from 'lucide-react'
 import { SectionLabel } from '@/components/ui/section-label'
 import type { PluggableList } from 'unified'
-import { useLocale, useTranslations } from '@/i18n'
-import { AnswerCost } from './AnswerCost'
-import type { Translator } from '@/i18n'
+import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { remarkCitationMarkers } from '@/features/layout/lib/citation-markers'
 import { remarkFileReferences } from '@/features/layout/lib/file-reference-markers'
-import { formatTime } from '@/shared/utils/format-time'
-import { formatDurationElapsed } from '@/lib/format'
 import { GridCardItem } from '@/features/grid-cards/components/GridCards'
 import { useDecidedProposals } from '@/features/grid-cards/decided-proposals'
 import {
@@ -59,31 +52,21 @@ import {
   unplacedCardIndices,
 } from '@/features/grid-cards/card-markers'
 import { MarkdownSlotProvider } from '@/shared/components/MarkdownRenderer/slot-context'
-import type { GridCard } from '@/shared/cards/schemas'
-import type { CitationSource } from '../types'
-import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
-import { ANSWER_DEGRADED_REASONS, TRUNCATION_REASONS } from '@/lib/conversations/message-provenance'
-import type { MessageStages } from '@/lib/conversations/message-stages'
-import type { CardInteractions } from '@/features/grid-cards/card-decision'
 import { useChatStore } from '../store'
 import { registerShownText, useAnswerRevealStore } from '../stores/answer-reveal-store'
 import { useAnswerFileReferences } from '../hooks/use-answer-file-references'
 import { handleNearestCitationTap } from '../hooks/use-nearest-citation-tap'
 import { usePacedText } from '../hooks/use-paced-text'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   answerDocuments,
   answerSourceAnchorPrefix,
   buildCitationModel,
   proseLength,
   splitAnswerBody,
-  type CitedDocument,
 } from '../lib/citations'
 import { AnswerCitations } from './AnswerCitations'
 import { DiagramFilingProvider } from '@/features/diagrams/diagram-filing-context'
 import { NestedMarkdownPluginsProvider } from '@/shared/components/MarkdownRenderer/nested-plugins-context'
-import { SkillsUsedDisclosure } from '@/features/skills/components/SkillsUsedDisclosure'
 import { AnswerSourcesRow } from './AnswerSourcesRow'
 import { MemoryNotedChip } from './MemoryNotedChip'
 import { ViewerActionRow } from './ViewerActionRow'
@@ -92,851 +75,30 @@ import { answerMetaToAnatomy, summaryDuplicatesBody } from '../lib/answer-meta-c
 import { AnatomyBlock, AnatomyMasthead, mastheadShows } from './AnswerAnatomy'
 import { AnswerOutline } from './AnswerOutline'
 import { FindingsMatrix } from './FindingsMatrix'
-import type { AnswerKind, AnswerMeta } from '@/lib/conversations/message-answer-meta'
-import type { Finding, Findings } from '@/lib/conversations/message-findings'
-import { ConfidenceChip, type AnswerConfidence } from './ConfidenceChip'
 import { AnswerFeedback } from './AnswerFeedback'
 import { RetryThoroughButton } from './RetryThoroughButton'
 import { AnswerActions } from './AnswerActions'
 import { CardSlot, CardSlotLiveProvider, forgetArrivals } from './CardSlotArrival'
-import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
-import type { QuoteStamp } from '@/lib/conversations/message-quote-stamps'
-import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
 import { projectKeysIn } from '@/lib/text/answer-directives'
-import { AnswerDataProvider, type AnswerData } from '@/shared/components/MarkdownRenderer/answer-block-context'
+import {
+  AnswerDataProvider,
+  type AnswerData,
+} from '@/shared/components/MarkdownRenderer/answer-block-context'
 import { AnswerProjectStrip } from '@/shared/components/MarkdownRenderer/project-binding'
 import { useProjectFacts } from '../hooks/use-project-facts'
 import { isNotRegulated, searchedSources } from '../lib/answer-data'
-
-/**
- * The first paragraph of a long answer, typeset as a lede.
- *
- * The agent is asked to lead with the ruling or the number. That rule is the
- * `<stimme>` section of the researcher's system prompt („Der erste Satz ist die
- * Antwort"), unconditional on every answering turn since the `piloti-voice`
- * platform skill was folded into it. The answer arrives with its conclusion first —
- * but a conclusion set at exactly the weight of the reasoning beneath it is a
- * conclusion the reader still has to go looking for.
- * One notch of size and air is enough to make the answer legible before the
- * audit trail is read, without turning the reply into a document with a title.
- *
- * Applied only when it earns its keep: a short reply IS its own lede, and
- * enlarging its single paragraph would just look like a font bug.
- */
-const LEDE_CLASS =
-  '[&>.markdown-content>p:first-child]:text-[1.0625rem] ' +
-  '[&>.markdown-content>p:first-child]:leading-[1.65] ' +
-  '[&>.markdown-content>p:first-child]:mb-4'
-
-/**
- * The prose wrapper's classes: the lede. Nothing for the caret: it is placed
- * inside the block being written (`MarkdownRenderer`'s `caret`), so every
- * block keeps its own display while it streams. Forcing the last block inline
- * to trail the caret behind its last glyph made it ignore its measure, its
- * list indent and its margins until the next block began (stream audit
- * 2026-10, A1).
- */
-const proseClass = (lede: string): string | undefined => lede || undefined
-
-/**
- * What separates a written summary from the prose in the one text the pace
- * reveals: a paragraph break, so neither side's markup reaches into the other
- * when the reveal judges a clean cut.
- */
-const SUMMARY_GAP = '\n\n'
-
-/** What the copy actions are handed while the answer is still arriving. */
-const NO_DOCUMENTS: CitedDocument[] = []
-
-/**
- * The mark on the role tab. A check says the answer is complete, so it is
- * held back while the answer arrives (and after Stop, which leaves it
- * incomplete): a quiet dot stands in its place at the same size, and at the
- * settle the check lands on `iconSwapTransition` (scale on `springSnap`,
- * opacity on a tween), the turn's one small moment of arrival, and simply
- * appears under reduced motion. A restored answer shows its check at once.
- */
-const RoleTabMark: FC<{ complete: boolean; arrived: boolean }> = ({ complete, arrived }) => {
-  const swap = useIconSwapTransition()
-  return (
-    <span className="inline-flex size-2.5 items-center justify-center" aria-hidden="true">
-      {complete ? (
-        <motion.span
-          className="inline-flex"
-          initial={arrived ? { opacity: 0, scale: 0.6 } : false}
-          animate={{ opacity: 1, scale: 1, transition: swap.enter }}
-        >
-          <Check className="size-2.5" strokeWidth={2.6} />
-        </motion.span>
-      ) : (
-        <span className="size-1 rounded-full bg-current opacity-60" data-testid="role-tab-pending" />
-      )}
-    </span>
-  )
-}
-
-/**
- * A lede only makes sense when the answer opens with prose. An answer that
- * opens with a heading, a list, a table, a quote, a fence or a card marker has
- * already chosen a different way in, and enlarging whatever `p` happens to come
- * first would land the emphasis somewhere arbitrary.
- */
-const NON_PROSE_OPENER = /^(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||```|\[\[card:)/
-
-/** Enough of the opening to tell every opener above from prose (`[[card:` is the longest). */
-const OPENER_DECIDABLE_CHARS = 8
-
-/**
- * Whether the answer opens with prose, or `null` while too little of it has
- * arrived to say (a lone `#` may yet be a heading).
- */
-function opensWithProse(text: string, final: boolean): boolean | null {
-  const trimmed = text.trimStart()
-  if (!final && trimmed.length < OPENER_DECIDABLE_CHARS && !trimmed.includes('\n')) return null
-  const firstLine = trimmed.split('\n', 1)[0]
-  return Boolean(firstLine) && !NON_PROSE_OPENER.test(firstLine)
-}
-
-export interface AgentResponseProps {
-  /** Response content from the agent */
-  content: string
-  /** Timestamp of the response (Date or ISO string from persisted state) */
-  timestamp?: Date | string
-  /** How long the answer took, question sent to answer final, in milliseconds. */
-  answerDurationMs?: number
-  /** Display variant - 'default' has box styling, 'inline' has no box (for use inside containers) */
-  variant?: 'default' | 'inline'
-  /**
-   * Grid cards attached to this answer. Each is drawn where the answer placed
-   * it with a `[[card:N]]` marker (N is 1-based over this array); the ones no
-   * marker claimed follow the prose as a block. Positions are identity: a
-   * rejected card leaves an `undefined` hole rather than renumbering the rest
-   * (see `validateGridCards`), and a hole renders nothing.
-   */
-  cards?: (GridCard | undefined)[]
-  /**
-   * Citations already collected for this answer (deep-research path). Drives
-   * the "Belegt durch" chip row — renders nothing when absent (no fake chips).
-   */
-  citations?: CitationSource[]
-  /** Conversation this response belongs to (keys the per-answer feedback row) */
-  conversationId?: string | null
-  /**
-   * The reader's answer to each interactive card of this answer, keyed by
-   * `cardKey`. Needed HERE, not only inside the cards, because a
-   * `memory_proposal` only becomes something Piloti remembered once the reader
-   * says yes — and the „Piloti hat sich gemerkt" chip must not claim a write
-   * that has not happened.
-   */
-  cardInteractions?: CardInteractions
-  /**
-   * What a POST-ANSWER STAGE computed for this turn
-   * (`docs/architecture/post-answer-stages.md` §4.3). Only
-   * `memoryReflection` is read here; the follow-ups rail is a SIBLING of this
-   * component in the thread column, not part of the answer card (§6.1).
-   */
-  stages?: MessageStages
-  /**
-   * The answer's structured anatomy (verdict / takeaways / callout) — native
-   * answer fields with a FIXED layout: the verdict renders above the prose,
-   * the callout and the takeaways after it. Gated backend-side and sanitized
-   * at every boundary; never part of `cards`.
-   */
-  answerMeta?: AnswerMeta
-  /** The report's findings, drawn as the Befundmatrix between the masthead and the prose. */
-  findings?: Findings
-  /** The previous report's findings on the same subject, for the matrix's change marks. */
-  previousFindings?: Findings
-  /** Commission a run to clear an open finding; absent when the thread cannot. */
-  onCommissionFinding?: (finding: Finding) => Promise<boolean>
-  /** The assistant's guarded self-assessed answer confidence (shallow answers only) */
-  answerConfidence?: 'low' | 'medium' | 'high'
-  /**
-   * Why the self-assessed confidence was capped (WP-A transparency extra) —
-   * `'ungrounded'` or `'quote_unverified'` add the matching cap explanation to
-   * the ConfidenceChip tooltip (PB-9).
-   */
-  answerConfidenceCappedReason?: AnswerConfidenceCappedReason
-  /**
-   * The model's own one-clause justification for its confidence level, shown
-   * verbatim in the ConfidenceChip tooltip.
-   */
-  answerConfidenceReason?: string
-  /** What the answer check found (`TurnResult.confidence_check`, ADR-0139); the chip names its findings. */
-  confidenceCheck?: ConfidenceCheck
-  /** Which rule computed the confidence: 2 the per-sentence formula; absent on older answers. */
-  answerConfidenceVersion?: 1 | 2
-  /** A search ran and found nothing; the answer is the model's own knowledge, said in a note. */
-  lookupFoundNothing?: true
-  /**
-   * Citation-verification result: how many citations were removed as
-   * unverifiable, with de-duplicated reasons. Renders a muted note inside the
-   * answer details, whose trigger carries a warning dot when it is present.
-   */
-  citationsRemoved?: { count: number; reasons: string[] }
-  /**
-   * Retrieved-but-uncited documents for this answer (document key +
-   * lane/kind + page, no prose). Renders the collapsed "Gelesen, nicht
-   * zitiert" disclosure inside the answer details; absent when everything
-   * retrieved was cited.
-   */
-  readSources?: CitationSource[]
-  /**
-   * The turn's research was cut off at its budget ceiling: this answer rests on
-   * the evidence gathered up to that point rather than on a finished search.
-   * Renders one muted line inside the answer details, whose trigger carries a
-   * warning dot when it is present — a fact about the EVIDENCE, in the same register
-   * as the sources row. Never a badge on the
-   * answer and never folded into the confidence chip: that grades whether the
-   * claims are sourced, which a truncated answer can be, perfectly.
-   */
-  researchTruncated?: true
-  /**
-   * WHY it was cut off, as the backend's stable token (`wall_clock`,
-   * `step_limit`). Appended to the line above as a short parenthetical.
-   *
-   * Typed `string`, not the union, deliberately: this crosses a version
-   * boundary — a newer backend can name a cutoff cause this build has never
-   * heard of — and the component's contract is that it renders only tokens it
-   * has a sentence for. An unknown one renders NOTHING; it is never shown raw,
-   * because `wall_clock` under an answer about Fluchtwegbreiten is noise that
-   * looks like a defect.
-   */
-  truncationReason?: string
-  /**
-   * Ways this answer is weaker than one from a finished run, as stable tokens
-   * (`no_report_file`, `no_valid_citations`). Same token contract as above:
-   * de-duplicated, unknown entries dropped, an empty list rendering nothing —
-   * "degraded in zero ways" is the ordinary case and is not stated.
-   */
-  degradedReasons?: string[]
-  /**
-   * Skills whose full instructions the agent loaded while writing this answer
-   * (a `read_file` of its `SKILL.md`), in activation order. Absent on a turn that activated none,
-   * which is the common case — availability is not activation.
-   */
-  skillsActivated?: string[]
-  /**
-   * The `grid-hidden` subset of `skillsActivated` — a skill that runs on every
-   * answer (the house voice), muted in the disclosure until the reader turns on
-   * the reasoning view. Named there, never dropped.
-   */
-  skillsHidden?: string[]
-  /**
-   * The reader's `showReasoningSkills` preference. Passed in from the list
-   * parent rather than read here, because this component renders once PER
-   * MESSAGE — a hook that fetches the preference on mount would fire one GET per
-   * answer in the thread and re-render every message when it settled. Defaults
-   * to closed, so the muted rows stay muted for the SpectatedTurn and dev
-   * surfaces that do not thread it.
-   */
-  showReasoning?: boolean
-  /**
-   * Client-side message identifier of this answer — keys the per-answer
-   * thumbs feedback row (WS-7). No feedback row renders when absent (e.g.
-   * legacy callers), so existing usages are unaffected.
-   */
-  messageId?: string
-  /**
-   * Whether this answer is still streaming (C6). Drives the blinking caret at
-   * the end of the answer body and the partial-markdown stabilizer in the
-   * MarkdownRenderer. Threaded from `message.isStreaming` by ChatArea.
-   */
-  isStreaming?: boolean
-  /**
-   * Which path the turn turned out to take, observed after the answer (WP-A
-   * transparency extra). `'meta'` marks a conversational / clarifying reply (greetings,
-   * capability questions, Rückfragen) — rendered with a quiet neutral "Hinweis"
-   * role tab when the envelope has no `kind`. Envelope `kind` wins when present:
-   * `direct` → Hinweis, `walkthrough` → Antwort, `ruling` (or a legacy
-   * no-kind verdict) → Ergebnis. Absent/`'error'` fall back to the "Ergebnis"
-   * treatment, so existing callers render exactly as before.
-   */
-  routingDecision?: 'meta' | 'shallow' | 'deep' | 'error'
-  /**
-   * Somebody else's turn, drawn for a colleague reading along
-   * (`SpectatedTurn`, ADR-0039 §5). No card acts — every interactive card
-   * draws without its actions, and none is given the reader's project or the
-   * message to record a decision on — and neither feedback nor copy actions
-   * are offered over an answer that is about to be replaced by the persisted
-   * one, which carries its own. A file the answer names still links.
-   */
-  readOnly?: boolean
-  /**
-   * The backend's account of the turn's retrieval rounds. Read here for the
-   * „Gesucht in" pane of a `:::not-found`, which lists what the turn searched
-   * from this record and never from the model's words.
-   */
-  retrievalLedger?: RetrievalLedger
-  /** The server's check of each quote line (`TurnResult.quote_stamps`), for „Wortlaut belegt [N]". */
-  quoteStamps?: QuoteStamp[]
-  /**
-   * The project profile `:project[key]` binds, when the caller has it (a
-   * preview, a spec). Omitted, the open project's profile is fetched once for
-   * the thread (`useProjectFacts`).
-   */
-  projectProfile?: unknown
-  /**
-   * The reader pressed Stop on this turn (`ChatMessage.stopped`). The answer
-   * keeps what was on screen at the press, says „Gestoppt" where the writing
-   * ended, and does not claim to be complete: the role tab's check is held
-   * back, as for a turn still running.
-   */
-  stopped?: boolean
-  /**
-   * The turn failed (`RUN_ERROR`) under this answer (`ChatMessage.failed`).
-   * What had been shown stays, frozen as for Stop and dimmed, with the error
-   * card the thread puts under it; nothing in the footer becomes operable,
-   * because a cut-off fragment is not an answer to copy or rate.
-   */
-  failed?: boolean
-}
-
-/** Role-tab label for the default answer card. Envelope `kind` wins. */
-function answerRoleTab(
-  kind: AnswerKind | undefined,
-  routingDecision: AgentResponseProps['routingDecision'],
-  hasVerdict: boolean
-): 'note' | 'answer' | 'result' {
-  if (kind === 'direct' || kind === 'handoff') return 'note'
-  if (kind === 'walkthrough' || kind === 'work') return 'answer'
-  if (kind === 'ruling' || (!kind && hasVerdict)) return 'result'
-  if (routingDecision === 'meta') return 'note'
-  return 'result'
-}
-
-/**
- * The caret at the tail of a still-streaming answer (C6), placed after the
- * last word by the renderer (`streaming-caret.tsx`).
- *
- * It takes no room: a zero-width box at the baseline, the bar and the veil
- * drawn out of it. A caret with a width pushed the last word to the next line
- * when it just fitted, and pulled it back when the caret moved on.
- *
- * Solid while words advance and breathing only while the reveal stands still
- * (`idle`, from `usePacedText`), as an editor's caret does: a caret pulsing
- * under arriving words read as a blink, and the pause is what a breath is
- * for. It fades out while the finish reveals the last words (`fading`), so by
- * the time the answer settles and it is removed there is nothing left to
- * disappear. The fade is on the wrapper and the breath on the bar: two
- * animations of one property on one element fight.
- *
- * `veil`: the newest words come out of a short gradient trailing the caret,
- * drawn in the card's colour, so each word the reveal adds starts faint and
- * darkens as the next ones push it out, like ink settling. Eased stops rather
- * than a straight ramp, so the faint end does not read as an edge. It moves
- * with the caret and animates nothing, so it costs no more than the caret
- * does. A fade per word (a span per word, each with its own entrance) cost a
- * 4x throttled phone 10 fps and 200 ms of main thread a second on a
- * prose-heavy answer (docs/design/streaming-chat-answer.md). Only on the card,
- * whose colour it is drawn in.
- */
-const StreamingCaret: FC<{ fading?: boolean; veil?: boolean; idle?: boolean }> = ({
-  fading = false,
-  veil = false,
-  idle = false,
-}) => (
-  <span
-    aria-hidden="true"
-    data-testid="streaming-caret"
-    data-idle={idle ? 'true' : undefined}
-    className={`group/caret relative inline-block h-0 w-0 transition-opacity duration-base ease-out ${fading ? 'opacity-0' : 'opacity-100'}`}
-  >
-    {veil && (
-      // Hidden after markup with a ground of its own (a code span, a citation
-      // pill: `data-caret-after`), which the card's colour would paint over,
-      // and wherever the reader asked for contrast or the system's colours.
-      <span className="pointer-events-none absolute right-0 -bottom-[0.3em] h-[1.4em] w-[2.5em] bg-[linear-gradient(to_right,transparent,color-mix(in_oklab,var(--card)_30%,transparent)_45%,var(--card))] in-data-[caret-after=markup]:hidden contrast-more:hidden forced-colors:hidden" />
-    )}
-    <span className="bg-foreground/70 absolute -bottom-[0.2em] left-px h-[1.1em] w-[2px] rounded-full group-data-[idle=true]/caret:animate-caret-breathe motion-reduce:animate-none forced-colors:bg-[CanvasText]" />
-  </span>
-)
-
-/**
- * The verification's own vocabulary for dropping a citation
- * (`citations/`, the backend package). Listed here because THIS is the file
- * that owns the words for them — see {@link localizeToken}.
- */
-const CITATION_REMOVAL_REASONS = [
-  'url_not_in_registry',
-  'citation_key_not_in_registry',
-  'unverifiable',
-  'duplicate',
-  'ungrounded',
-  'quote_unverified',
-] as const
-
-/**
- * One stable backend token, in the reader's language — or nothing.
- *
- * The backend states these as tokens ON PURPOSE: it has no locale, and a
- * sentence composed in the agent tier would arrive in whichever language that
- * turn happened to think in. So the frontend owns the words, which makes the
- * unknown-token case the one that matters. It is not hypothetical — a token is
- * added on the producer's release train, not ours, and it also arrives from a
- * jsonb row written by a build that is not this one.
- *
- * The allow-list is checked BEFORE `t()` rather than trusting the dictionary to
- * miss: `createTranslator` falls back to the key itself, so an unmapped token
- * would not render nothing, it would render
- * `answerSources.truncationReason.tool_budget` under an answer about building
- * law. Silence is the honest rendering of "the system said something this build
- * cannot put into words" — the FACT (the run was cut off, N citations were
- * dropped) is carried by the line the token only qualifies, and that line still
- * renders.
- */
-function localizeToken(
-  t: Translator,
-  group: string,
-  token: string,
-  known: readonly string[]
-): string | null {
-  return known.includes(token) ? t(`${group}.${token}`) : null
-}
-
-/**
- * The same, for a LIST of tokens: localized, de-duplicated, order preserved.
- * Duplicates are dropped by the rendered SENTENCE rather than by the token, so
- * two tokens that this build words identically still produce one line.
- */
-function localizeTokens(
-  t: Translator,
-  group: string,
-  tokens: string[] | undefined,
-  known: readonly string[]
-): string[] {
-  const lines: string[] = []
-  for (const token of tokens ?? []) {
-    const line = typeof token === 'string' ? localizeToken(t, group, token, known) : null
-    if (line && !lines.includes(line)) lines.push(line)
-  }
-  return lines
-}
-
-/**
- * Muted note under the "Belegt durch" row: citation verification removed one or
- * more citations from this answer as unverifiable (WP-A `citations_removed`).
- * The de-duplicated reasons hang off a tooltip so the row stays quiet by
- * default. Renders nothing when nothing was removed.
- */
-const CitationsRemovedNote: FC<{ citationsRemoved?: { count: number; reasons: string[] } }> = ({
-  citationsRemoved,
-}) => {
-  const t = useTranslations(chatCopy)
-  if (!citationsRemoved || citationsRemoved.count <= 0) return null
-
-  const label = t('answerSources.citationsRemoved', { count: citationsRemoved.count })
-  // Localized, not passed through. These are verification TOKENS
-  // (`url_not_in_registry`), and the tooltip used to print them verbatim — which
-  // nobody outside this repository can read. A token with no sentence here is
-  // left out; the count above is the fact and it is unaffected.
-  const reasons = localizeTokens(
-    t,
-    'answerSources.citationsRemovedReason',
-    citationsRemoved.reasons,
-    CITATION_REMOVAL_REASONS
-  )
-
-  const text = (
-    <span className="text-muted-foreground text-xs leading-relaxed" role="note">
-      {label}
-    </span>
-  )
-
-  if (reasons.length === 0) {
-    return <div className="mt-1.5">{text}</div>
-  }
-
-  return (
-    <div className="mt-1.5">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            className="rounded-xs focus-visible:ring-ring/60 cursor-help text-left focus-visible:outline-none focus-visible:ring-2"
-            aria-label={label}
-          >
-            <span className="text-muted-foreground text-xs leading-relaxed underline decoration-dotted underline-offset-2">
-              {label}
-            </span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-xs">
-          {/* `text-current`: the tooltip paints its own foreground, and the
-              eyebrow's muted ink would drop below AA on it. */}
-          <SectionLabel className="mb-1 block text-current">
-            {t('answerSources.citationsRemovedReasonsLabel')}
-          </SectionLabel>
-          <ul className="list-disc space-y-0.5 pl-4">
-            {reasons.map((reason, i) => (
-              <li key={i}>{reason}</li>
-            ))}
-          </ul>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  )
-}
-
-/**
- * The line under the sources row for a turn whose research was CUT OFF.
- *
- * Two sentences, not one with a clause bolted on: an answer that found nothing
- * cannot be described as resting on "the evidence gathered up to that point",
- * because there is none — and that case, cut off before it found anything, is
- * both the worst one and the one a reader most needs told plainly. The gap row
- * above already says the answer cites nothing; this says the search stopped
- * early, so the two read as one statement instead of contradicting each other.
- *
- * `role="note"`, muted, no icon, no tint, no border: truncation is a property
- * of the EVIDENCE, not an error state and not a verdict on the answer.
- */
-/**
- * The search ran and found nothing, and the answer is shown anyway (ADR-0125).
- * It used to be replaced by a canned „nothing retrieved" message; now the
- * reader gets the answer and this note, so they can see it rests on the
- * model's own knowledge and nothing it could cite. Above the sources row,
- * not in the details: it changes how the whole answer reads.
- */
-const LookupFoundNothingNote: FC<{ show: boolean }> = ({ show }) => {
-  const t = useTranslations(chatCopy)
-  if (!show) return null
-  return (
-    <div className="mt-1.5" data-testid="lookup-found-nothing">
-      <span className="text-feedback-warning text-xs leading-relaxed" role="note">
-        {t('answerSources.lookupFoundNothing')}
-      </span>
-    </div>
-  )
-}
-
-const ResearchTruncatedNote: FC<{
-  researchTruncated?: true
-  truncationReason?: string
-  hasSources: boolean
-}> = ({ researchTruncated, truncationReason, hasSources }) => {
-  const t = useTranslations(chatCopy)
-  if (!researchTruncated) return null
-  const sentence = t(
-    hasSources ? 'answerSources.researchTruncated' : 'answerSources.researchTruncatedWithoutSources'
-  )
-  // The cause rides the same line as a parenthetical rather than claiming one of
-  // its own: "it ran out of time" is not a second statement, it is the first one
-  // finished. Absent (or unknown) leaves the sentence exactly as it was before
-  // this field existed, which is what every turn before today's backend has.
-  const cause = truncationReason
-    ? localizeToken(t, 'answerSources.truncationReason', truncationReason, TRUNCATION_REASONS)
-    : null
-  return (
-    <div className="mt-1.5">
-      <span className="text-muted-foreground text-xs leading-relaxed" role="note">
-        {cause ? `${sentence} (${cause})` : sentence}
-      </span>
-    </div>
-  )
-}
-
-/**
- * What the cutoff COST — one muted line per degradation, under the truncation
- * line and in the same register.
- *
- * Separate lines rather than one joined sentence because the two known
- * degradations ask for different things: "no report was filed" tells the reader
- * this thread is the only copy, "nothing survived verification" tells them to
- * check the figures before they use them. Joining them would make one of the two
- * a subordinate clause of the other.
- *
- * Still `role="note"`, still no icon, tint or border. A salvaged answer can be
- * perfectly well-grounded in what it did reach, and this must not turn a good
- * one into an alarm — but it must also never be silent about the way the answer
- * is weaker, which is precisely what it was before this rendered at all.
- */
-const AnswerDegradedNote: FC<{ degradedReasons?: string[] }> = ({ degradedReasons }) => {
-  const t = useTranslations(chatCopy)
-  const lines = localizeTokens(
-    t,
-    'answerSources.degradedReason',
-    degradedReasons,
-    ANSWER_DEGRADED_REASONS
-  )
-  // An empty list is not a claim: a turn that degraded in none of the known ways
-  // — and one whose every token this build cannot word — says nothing here.
-  if (lines.length === 0) return null
-  return (
-    <div className="mt-1.5 flex flex-col gap-0.5">
-      {lines.map((line) => (
-        <span key={line} className="text-muted-foreground text-xs leading-relaxed" role="note">
-          {line}
-        </span>
-      ))}
-    </div>
-  )
-}
-
-/**
- * How many read-but-uncited documents the disclosure shows before it stops.
- * A summary, not a dump — the same cap the "Belegt durch" row uses, so the
- * two never disagree about what "a handful" means.
- */
-const MAX_READ_SOURCES = 8
-
-/**
- * The label the "Gelesen, nicht zitiert" disclosure shows for one entry — the
- * document's identity and nothing else.
- *
- * The single definition of "renderable" for this disclosure: the section below
- * skips every entry without one (never falling back to `content`, which on a
- * verbose entry is a locator line or a passage), and `hasDetailsContent`
- * counts the same entries — otherwise the details trigger opens onto an empty
- * section.
- */
-/** The `[N]` the structured wire sources carry. */
-const wireCitationNumbers = (citations: CitationSource[] | undefined): number[] =>
-  (citations ?? []).flatMap((citation) => (typeof citation.number === 'number' ? [citation.number] : []))
-
-function readSourceLabel(source: CitationSource): string | undefined {
-  return source.fileName ?? source.title ?? source.citationKey
-}
-
-/**
- * "Gelesen, nicht zitiert": what the turn read beyond what the answer claims.
- *
- * Muted document chips only — a name plus the page, never a passage and
- * never a claim about what the document says. The label is the document's
- * identity (`fileName ?? title ?? citationKey`) and nothing else: the entries
- * ride a `.passthrough()` schema, so `content` on a verbose entry is a locator
- * line or a passage, and falling back to it would render evidence prose as a
- * chip. An entry without any identity is skipped, never rendered. The entries
- * carry no prose by construction (the backend drops every prose key), and this
- * renders no field that could restate evidence, so an uncited document cannot
- * ground anything here. Renders nothing when everything retrieved was cited.
- *
- * Past eight the list folds behind a disclosure control — the count first,
- * every name on expand — so a wide retrieval still names each document
- * without burying the footer. Dedupe stays backend-side: one row per entry.
- */
-const ReadSourcesSection: FC<{ readSources?: CitationSource[] }> = ({ readSources }) => {
-  const t = useTranslations(chatCopy)
-  const [expanded, setExpanded] = useState(false)
-  const named = useMemo(
-    () =>
-      (readSources ?? []).flatMap((source) => {
-        const label = readSourceLabel(source)
-        return label === undefined ? [] : [{ source, label }]
-      }),
-    [readSources]
-  )
-  if (named.length === 0) return null
-  const visible = expanded ? named : named.slice(0, MAX_READ_SOURCES)
-  const hidden = named.length - visible.length
-
-  return (
-    <div className="flex flex-col gap-1.5" data-testid="read-sources">
-      <SectionLabel>{t('answerDetails.readSources.label')}</SectionLabel>
-      <div
-        className="flex flex-wrap items-center gap-1.5"
-        role="list"
-        aria-label={t('answerDetails.readSources.label')}
-      >
-        {visible.map(({ source, label }) => (
-          <span key={source.id} role="listitem">
-            <Chip size="sm" variant="muted" data-testid="read-source-chip">
-              <FileText aria-hidden />
-              {label}
-              {typeof source.page === 'number' && (
-                <span className="opacity-80">{t('answerSources.page', { page: source.page })}</span>
-              )}
-            </Chip>
-          </span>
-        ))}
-        {named.length > MAX_READ_SOURCES && (
-          <button
-            type="button"
-            onClick={() => setExpanded((open) => !open)}
-            aria-expanded={expanded}
-            data-testid="read-sources-more"
-            className="rounded-xs text-muted-foreground duration-quick hover:text-foreground focus-visible:ring-ring/60 cursor-pointer text-xs leading-relaxed underline decoration-dotted underline-offset-2 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2"
-          >
-            {expanded
-              ? t('answerDetails.readSources.less')
-              : t('answerDetails.readSources.more', { count: hidden })}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/**
- * The single disclosure in the answer footer.
- *
- * The footer keeps verdict, body, the "Belegt durch" sources row, the copy
- * actions, the memory chip (`beside` the trigger) and the feedback thumbs
- * visible; everything else the turn carries
- * — confidence, the skills that shaped the answer, the
- * verification notes and the timestamp — lives behind ONE muted text-xs
- * trigger line. When the turn carries something the reader must not miss —
- * a cut-off, a salvaged run, stripped citations, low confidence — the trigger
- * carries a warning dot, because a warning behind an unmarked trigger is a
- * warning nobody read. It does not open itself: the warnings land at the
- * settle, and the disclosure opening then moved the footer under a reader
- * who had just reached the end. `SkillsUsedDisclosure` is MOVED here, not duplicated: it
- * renders null on a turn that activated nothing, like every other item
- * inside. Feedback stays out on purpose: rating the answer must not cost a
- * click first.
- */
-const AnswerDetails = memo(function AnswerDetails({
-  hasConfidence,
-  answerConfidence,
-  answerConfidenceCappedReason,
-  answerConfidenceReason,
-  confidenceCheck,
-  answerConfidenceVersion,
-  skillsActivated,
-  skillsHidden,
-  showReasoning,
-  researchTruncated,
-  truncationReason,
-  degradedReasons,
-  citationsRemoved,
-  readSources,
-  hasAnswerSources,
-  timestamp,
-  answerDurationMs,
-  conversationId,
-  messageId,
-  before,
-  beside,
-  after,
-}: {
-  hasConfidence: boolean
-  answerConfidence?: AnswerConfidence
-  answerConfidenceCappedReason?: AnswerConfidenceCappedReason
-  answerConfidenceReason?: string
-  confidenceCheck?: ConfidenceCheck
-  answerConfidenceVersion?: 1 | 2
-  skillsActivated?: string[]
-  skillsHidden?: string[]
-  showReasoning?: boolean
-  researchTruncated?: true
-  truncationReason?: string
-  degradedReasons?: string[]
-  citationsRemoved?: { count: number; reasons: string[] }
-  readSources?: CitationSource[]
-  hasAnswerSources: boolean
-  timestamp?: Date | string
-  answerDurationMs?: number
-  /** Both needed for the answer's cost line; without either it is omitted. */
-  conversationId?: string | null
-  messageId?: string
-  /** Set on the trigger's own line: the footer's copy actions before it, feedback after. */
-  before?: ReactNode
-  /**
-   * Right after the trigger, before the spacer: what the turn wants SEEN
-   * without opening anything (the memory chip). After the trigger so that a
-   * chip arriving late moves nothing the reader already found.
-   */
-  beside?: ReactNode
-  after?: ReactNode
-}) {
-  const t = useTranslations(chatCopy)
-  // Without the locale `formatTime` uses the RUNTIME default, so a German user on
-  // an en-US browser got "03:35 PM" beside cards that all say "15:35".
-  const { locale } = useLocale()
-  const [open, setOpen] = useState(false)
-  // Something the reader must not miss: a cut-off, a salvaged run, stripped
-  // citations, low confidence. These arrive with the terminal frame, after the
-  // answer settled, and used to OPEN the disclosure from an effect: 100-400px
-  // snapping in under a reader who had just reached the end. Now the trigger
-  // carries a warning dot instead, positioned over the gap beside it so it
-  // takes no width and moves nothing, and fading in only when it arrives in
-  // front of the reader. The details open when the reader asks.
-  const needsAttention = Boolean(
-    researchTruncated ||
-    degradedReasons?.length ||
-    citationsRemoved?.count ||
-    answerConfidence === 'low'
-  )
-  const [attentionAtMount] = useState(needsAttention)
-  return (
-    <Collapsible open={open} onOpenChange={setOpen} className="flex w-full flex-col">
-      {/* One line: copy, the trigger, and feedback at the far end. The
-          Collapsible is full-width so its content can open below; with the
-          trigger alone inside it, it took a line of its own under the rest. */}
-      <div className="flex min-h-6 flex-wrap items-center gap-2">
-        {before}
-        <CollapsibleTrigger
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 touch-target duration-quick pointer-coarse:self-center flex items-center gap-1.5 self-start rounded-md text-xs leading-relaxed transition-colors ease-out focus-visible:outline-none focus-visible:ring-2"
-          aria-label={t(needsAttention ? 'answerDetails.triggerAriaAttention' : 'answerDetails.triggerAria')}
-          data-testid="answer-details-trigger"
-        >
-          <span>{t('answerDetails.trigger')}</span>
-          <span className="relative inline-flex">
-            <ChevronDown
-              className={`duration-quick size-3 shrink-0 transition-transform ease-out motion-reduce:transition-none${open ? ' rotate-180' : ''}`}
-              aria-hidden="true"
-            />
-            {needsAttention && (
-              <span
-                aria-hidden="true"
-                data-testid="answer-details-attention"
-                className={cn(
-                  'text-feedback-warning absolute -right-2 top-0 size-1.5 rounded-full bg-current',
-                  !attentionAtMount && 'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none'
-                )}
-              />
-            )}
-          </span>
-        </CollapsibleTrigger>
-        {beside}
-        {after ? (
-          <>
-            <span className="flex-1" aria-hidden="true" />
-            {after}
-          </>
-        ) : null}
-      </div>
-      <CollapsibleContent className="mt-1.5">
-        <div className="flex flex-col gap-2">
-          {hasConfidence && (
-            <ConfidenceChip
-              confidence={answerConfidence}
-              cappedReason={answerConfidenceCappedReason}
-              reason={answerConfidenceReason}
-              check={confidenceCheck}
-              version={answerConfidenceVersion}
-            />
-          )}
-          <SkillsUsedDisclosure
-            skillsActivated={skillsActivated}
-            hiddenSkills={skillsHidden}
-            showReasoning={showReasoning}
-          />
-          <ResearchTruncatedNote
-            researchTruncated={researchTruncated}
-            truncationReason={truncationReason}
-            hasSources={hasAnswerSources}
-          />
-          <AnswerDegradedNote degradedReasons={degradedReasons} />
-          <CitationsRemovedNote citationsRemoved={citationsRemoved} />
-          <ReadSourcesSection readSources={readSources} />
-          {(Boolean(timestamp) || Boolean(answerDurationMs)) && (
-            <span className="text-subtle text-xs" data-testid="answer-time">
-              {timestamp && formatTime(timestamp, locale)}
-              {timestamp && answerDurationMs ? ' · ' : null}
-              {answerDurationMs
-                ? t('answerDetails.duration', {
-                    duration: formatDurationElapsed(answerDurationMs / 1000, locale),
-                  })
-                : null}
-            </span>
-          )}
-          {conversationId && messageId ? <AnswerCost conversationId={conversationId} messageId={messageId} /> : null}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  )
-})
+import { LookupFoundNothingNote } from './agent-response/answer-notes'
+import { wireCitationNumbers, readSourceLabel } from './agent-response/read-sources'
+import { AnswerDetails } from './agent-response/answer-details'
+import { RoleTabMark, answerRoleTab, StreamingCaret } from './agent-response/answer-role'
+import {
+  LEDE_CLASS,
+  proseClass,
+  SUMMARY_GAP,
+  NO_DOCUMENTS,
+  opensWithProse,
+} from './agent-response/answer-prose'
+import { AgentResponseProps } from './agent-response/agent-response-props'
 
 /**
  * Agent response bubble component for completed responses
@@ -1055,10 +217,18 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // screen fades in whole as before, since writing it in above text the
   // reader is on would move that text line by line.
   const [summaryWritten, setSummaryWritten] = useState<boolean | null>(null)
-  if (summaryWritten === null && effectiveSummary) setSummaryWritten(mountedLive && isStreaming && !wroteBefore)
+  if (summaryWritten === null && effectiveSummary)
+    setSummaryWritten(mountedLive && isStreaming && !wroteBefore)
   const lead = summaryWritten && effectiveSummary ? `${effectiveSummary}${SUMMARY_GAP}` : ''
   // A failed turn freezes like a stopped one: what was shown is what stays.
-  const paced = usePacedText(lead + prose, isStreaming, undefined, stopped || failed, messageId, lead.length)
+  const paced = usePacedText(
+    lead + prose,
+    isStreaming,
+    undefined,
+    stopped || failed,
+    messageId,
+    lead.length
+  )
   // The reveal split back into its two places: the summary's share for the
   // masthead, the rest for the body.
   const pacedProse = paced.text.slice(lead.length)
@@ -1110,7 +280,10 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // pace shows it a frame or more later, and letting go at the arrival
   // dropped the held height for that gap.
   const retracted =
-    mountedLive && isStreaming && wroteBefore && (blank || (!shownContent.trim() && !hasLiveMasthead))
+    mountedLive &&
+    isStreaming &&
+    wroteBefore &&
+    (blank || (!shownContent.trim() && !hasLiveMasthead))
   // The words the retraction took, held on screen while they fade. Written
   // after every commit that showed words, read in the commit that lost them.
   const lastWords = useRef('')
@@ -1150,7 +323,8 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     .sort((a, b) => a - b)
     .join(',')
   const citationNumbers = useMemo(
-    (): ReadonlySet<number> => new Set(citationNumbersKey ? citationNumbersKey.split(',').map(Number) : []),
+    (): ReadonlySet<number> =>
+      new Set(citationNumbersKey ? citationNumbersKey.split(',').map(Number) : []),
     [citationNumbersKey]
   )
 
@@ -1174,7 +348,8 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // The lede gate reads the result: a hidden summary hands the emphasis back
   // to the first paragraph instead of leaving the answer with none.
   // Derived state, set during render: the next render (before paint) holds it.
-  if (!retracted && effectiveSummary && effectiveSummary !== keptSummary) setKeptSummary(effectiveSummary)
+  if (!retracted && effectiveSummary && effectiveSummary !== keptSummary)
+    setKeptSummary(effectiveSummary)
   // The Projektbezug strip: the project facts the answer binds, drawn from the
   // profile under the masthead, only where the answer binds one. Read off what
   // has arrived, so it is there from the first frame its keys exist. It stands
@@ -1182,7 +357,10 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // stored answer, a reload); one that binds its first fact while the reader
   // is reading gets it BELOW the prose instead, where it moves nothing they
   // have read. The next view puts it back on top.
-  const stripKeys = useMemo(() => (prose.includes(':project[') ? projectKeysIn(prose) : []), [prose])
+  const stripKeys = useMemo(
+    () => (prose.includes(':project[') ? projectKeysIn(prose) : []),
+    [prose]
+  )
   const [stripAbove] = useState(() => prose.includes(':project['))
   // The lede, decided ONCE from what is known at the answer's first words:
   // its kind (a note is never a lede), whether it opens with prose, and
@@ -1203,7 +381,11 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // Retracted words decided nothing: once they have faded, the answer that
   // follows decides the lede and the kept summary afresh, from its own first
   // words. Not before: the fading words keep the size they were shown at.
-  if (retracted && retractionFaded && (frozenLede !== null || keptSummary !== undefined || summaryWritten !== null)) {
+  if (
+    retracted &&
+    retractionFaded &&
+    (frozenLede !== null || keptSummary !== undefined || summaryWritten !== null)
+  ) {
     setFrozenLede(null)
     setSummaryWritten(null)
     setKeptSummary(undefined)
@@ -1366,7 +548,8 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // the row on anything less let it mount as an empty band (bare spacer + its
   // own gap) on a meta turn that has neither.
   const hasConfidence =
-    ['low', 'medium', 'high'].includes(answerConfidence ?? '') || confidenceCheck?.status === 'unavailable'
+    ['low', 'medium', 'high'].includes(answerConfidence ?? '') ||
+    confidenceCheck?.status === 'unavailable'
   // Rating somebody else's answer is not the reader's to do (readOnly).
   const hasFeedback = !readOnly && Boolean(messageId)
   // The copy actions. A still-arriving answer cannot be copied — half a
@@ -1376,8 +559,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // settle, they widened the row, and on a phone wrapped it onto a second
   // line, under a reader who had just finished the last sentence.
   const hasAnswerActions =
-    !readOnly &&
-    (live || (Boolean(content) && content.trim().length > 0 && content !== 'null'))
+    !readOnly && (live || (Boolean(content) && content.trim().length > 0 && content !== 'null'))
   const hasMetaRow =
     hasConfidence || hasFeedback || hasAnswerActions || Boolean(timestamp) || memoryItems.length > 0
   // The row is reserved at chip height while the answer arrives, so the
@@ -1449,7 +631,15 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
           pending={inert}
         />
       ) : null,
-    [hasAnswerActions, actionsContent, actionsBody, actionsDocuments, conversationId, messageId, inert]
+    [
+      hasAnswerActions,
+      actionsContent,
+      actionsBody,
+      actionsDocuments,
+      conversationId,
+      messageId,
+      inert,
+    ]
   )
   // On the meta row itself, never behind „Details": a write to the project's
   // memory changes what every later answer starts from, so the reader is told
@@ -1462,7 +652,12 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
       hasFeedback && messageId ? (
         <>
           {!inert && <RetryThoroughButton messageId={messageId} conversationId={conversationId} />}
-          <AnswerFeedback compact pending={inert} messageId={messageId} conversationId={conversationId} />
+          <AnswerFeedback
+            compact
+            pending={inert}
+            messageId={messageId}
+            conversationId={conversationId}
+          />
         </>
       ) : null,
     [hasFeedback, messageId, conversationId, inert]
@@ -1563,7 +758,9 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     bodyFadeControls.current?.complete()
     bodyFadeControls.current = animate(proseRef.current, { opacity: [0, 1] }, bodyFade)
     const frame = frameRef.current
-    return frame && frameHeight.current !== null ? glideFrameDown(frame, frameHeight.current) : undefined
+    return frame && frameHeight.current !== null
+      ? glideFrameDown(frame, frameHeight.current)
+      : undefined
   }, [body, mountedLive, bodyFade, glideFrameDown, stopped, failed])
 
   // The retraction, on the elements that are already there (nothing remounts).
@@ -1580,7 +777,10 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     const controls = animate(prose, { opacity: [1, 0] }, retractionFade)
     // Timed by the token rather than the animation's promise: a page that
     // gets no frames (hidden) must still reach the quiet line.
-    const timer = window.setTimeout(() => setRetractionFaded(true), (retractionFade.duration ?? 0) * 1000)
+    const timer = window.setTimeout(
+      () => setRetractionFaded(true),
+      (retractionFade.duration ?? 0) * 1000
+    )
     return () => {
       window.clearTimeout(timer)
       controls.stop()
@@ -1636,7 +836,9 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
             topic={anatomy.topic}
             context={anatomy.context}
             kind={answerMeta?.kind}
-            caret={writingSummary && <StreamingCaret idle={paced.idle} veil={variant !== 'inline'} />}
+            caret={
+              writingSummary && <StreamingCaret idle={paced.idle} veil={variant !== 'inline'} />
+            }
           />
         </motion.div>
       )}
@@ -1745,68 +947,69 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   if (variant === 'inline') {
     return (
       <AnswerDataProvider value={answerData}>
-    <DiagramFilingProvider target={diagramFilingTarget}>
-        <NestedMarkdownPluginsProvider plugins={nestedPlugins}>
-          <AnswerCitations
-            documents={documents}
-            anchorPrefix={anchorPrefix}
-            resolveFileReference={fileReferences.resolve}
-          >
-            <div
-              ref={frameRef}
-              onClick={handleNearestCitationTap}
-              className={cn(
-                'flex w-full flex-col gap-2 overflow-hidden break-words',
-                dimmed
-              )}
-              aria-busy={live || undefined}
-              data-testid={failed ? 'answer-failed' : undefined}
-              lang="de"
+        <DiagramFilingProvider target={diagramFilingTarget}>
+          <NestedMarkdownPluginsProvider plugins={nestedPlugins}>
+            <AnswerCitations
+              documents={documents}
+              anchorPrefix={anchorPrefix}
+              resolveFileReference={fileReferences.resolve}
             >
-              {/* The answer's masthead — verdict/topic and/or summary, flat above the prose. */}
-              {masthead}
-              {stripAbove && <AnswerProjectStrip keys={stripKeys} />}
-              {findings && (
-                <FindingsMatrix
-                  findings={findings}
-                  anchorPrefix={anchorPrefix}
-                  previous={previousFindings}
-                  onCommission={onCommissionFinding}
-                />
-              )}
-              {/* Response Content rendered as markdown, the streaming caret after
+              <div
+                ref={frameRef}
+                onClick={handleNearestCitationTap}
+                className={cn('flex w-full flex-col gap-2 overflow-hidden break-words', dimmed)}
+                aria-busy={live || undefined}
+                data-testid={failed ? 'answer-failed' : undefined}
+                lang="de"
+              >
+                {/* The answer's masthead — verdict/topic and/or summary, flat above the prose. */}
+                {masthead}
+                {stripAbove && <AnswerProjectStrip keys={stripKeys} />}
+                {findings && (
+                  <FindingsMatrix
+                    findings={findings}
+                    anchorPrefix={anchorPrefix}
+                    previous={previousFindings}
+                    onCommission={onCommissionFinding}
+                  />
+                )}
+                {/* Response Content rendered as markdown, the streaming caret after
             its last word. Cards the answer placed with a marker are spliced
             into this body. */}
-              {retractionLine}
-              {viewerActionRow}
-              <CardSlotLiveProvider value={live}>
-                <MarkdownSlotProvider render={renderCardSlot}>
-                  <div ref={proseRef} className={proseClass(ledeClass)}>
-                    <MarkdownRenderer
-                      content={body}
-                      isStreaming={live}
-                      remarkPlugins={markerPlugins}
-                      caret={live && !retracted && !writingSummary && <StreamingCaret fading={finishing} idle={paced.idle} />}
-                    />
-                  </div>
-                </MarkdownSlotProvider>
-              </CardSlotLiveProvider>
+                {retractionLine}
+                {viewerActionRow}
+                <CardSlotLiveProvider value={live}>
+                  <MarkdownSlotProvider render={renderCardSlot}>
+                    <div ref={proseRef} className={proseClass(ledeClass)}>
+                      <MarkdownRenderer
+                        content={body}
+                        isStreaming={live}
+                        remarkPlugins={markerPlugins}
+                        caret={
+                          live &&
+                          !retracted &&
+                          !writingSummary && <StreamingCaret fading={finishing} idle={paced.idle} />
+                        }
+                      />
+                    </div>
+                  </MarkdownSlotProvider>
+                </CardSlotLiveProvider>
 
-              {stoppedMarker}
-              {/* What arrives below the prose: never before it, since an answer
+                {stoppedMarker}
+                {/* What arrives below the prose: never before it, since an answer
             that opens with three diagrams has pushed itself below the fold. */}
-              {lateBlocks}
+                {lateBlocks}
 
-              {/* "Belegt durch": provenance chips for sources this answer carries */}
-              <LookupFoundNothingNote show={lookupFoundNothing === true} />
-              <AnswerSourcesRow
-                documents={documents}
-                anchorPrefix={anchorPrefix}
-                routingDecision={routingDecision}
-                isStreaming={live || cutShort}
-              />
+                {/* "Belegt durch": provenance chips for sources this answer carries */}
+                <LookupFoundNothingNote show={lookupFoundNothing === true} />
+                <AnswerSourcesRow
+                  documents={documents}
+                  anchorPrefix={anchorPrefix}
+                  routingDecision={routingDecision}
+                  isStreaming={live || cutShort}
+                />
 
-              {/* No copy actions here, deliberately. This variant is the box-less
+                {/* No copy actions here, deliberately. This variant is the box-less
             rendering used INSIDE another container (the thinking process, the
             dev turn surfaces) — it has no consolidated meta row, so the buttons
             would land as one more loose element in a stack that already ends in
@@ -1814,45 +1017,49 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
             answer in the thread: ChatArea always uses the default variant, so
             every answer a reader would paste has its buttons on its own card.
             If that changes, <AnswerActions /> drops into the row below. */}
-              {reserveMetaRow && (
-                <div
-                  className={hasMetaRow ? 'flex min-h-6 flex-col gap-1.5' : 'min-h-6'}
-                  aria-hidden={hasMetaRow ? undefined : true}
-                >
-                  {memoryChip}
-                  {hasDetailsContent && (
-                    <AnswerDetails
-                      conversationId={conversationId}
-                      messageId={messageId}
-                      hasConfidence={hasConfidence}
-                      answerConfidence={answerConfidence}
-                      answerConfidenceCappedReason={answerConfidenceCappedReason}
-                      answerConfidenceReason={answerConfidenceReason}
-                      confidenceCheck={confidenceCheck}
-                      answerConfidenceVersion={answerConfidenceVersion}
-                      skillsActivated={skillsActivated}
-                      skillsHidden={skillsHidden}
-                      showReasoning={showReasoning}
-                      researchTruncated={researchTruncated}
-                      truncationReason={truncationReason}
-                      degradedReasons={degradedReasons}
-                      citationsRemoved={citationsRemoved}
-                      readSources={readSources}
-                      hasAnswerSources={hasAnswerSources}
-                      timestamp={timestamp}
-                      answerDurationMs={answerDurationMs}
-                    />
-                  )}
-                  {hasFeedback && messageId && (
-                    <AnswerFeedback pending={inert} messageId={messageId} conversationId={conversationId} />
-                  )}
-                </div>
-              )}
-            </div>
-          </AnswerCitations>
-        </NestedMarkdownPluginsProvider>
-      </DiagramFilingProvider>
-    </AnswerDataProvider>
+                {reserveMetaRow && (
+                  <div
+                    className={hasMetaRow ? 'flex min-h-6 flex-col gap-1.5' : 'min-h-6'}
+                    aria-hidden={hasMetaRow ? undefined : true}
+                  >
+                    {memoryChip}
+                    {hasDetailsContent && (
+                      <AnswerDetails
+                        conversationId={conversationId}
+                        messageId={messageId}
+                        hasConfidence={hasConfidence}
+                        answerConfidence={answerConfidence}
+                        answerConfidenceCappedReason={answerConfidenceCappedReason}
+                        answerConfidenceReason={answerConfidenceReason}
+                        confidenceCheck={confidenceCheck}
+                        answerConfidenceVersion={answerConfidenceVersion}
+                        skillsActivated={skillsActivated}
+                        skillsHidden={skillsHidden}
+                        showReasoning={showReasoning}
+                        researchTruncated={researchTruncated}
+                        truncationReason={truncationReason}
+                        degradedReasons={degradedReasons}
+                        citationsRemoved={citationsRemoved}
+                        readSources={readSources}
+                        hasAnswerSources={hasAnswerSources}
+                        timestamp={timestamp}
+                        answerDurationMs={answerDurationMs}
+                      />
+                    )}
+                    {hasFeedback && messageId && (
+                      <AnswerFeedback
+                        pending={inert}
+                        messageId={messageId}
+                        conversationId={conversationId}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </AnswerCitations>
+          </NestedMarkdownPluginsProvider>
+        </DiagramFilingProvider>
+      </AnswerDataProvider>
     )
   }
 
@@ -1874,119 +1081,129 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
         : t('roles.result')
   return (
     <AnswerDataProvider value={answerData}>
-    <DiagramFilingProvider target={diagramFilingTarget}>
-      <NestedMarkdownPluginsProvider plugins={nestedPlugins}>
-        <AnswerCitations
-          documents={documents}
-          anchorPrefix={anchorPrefix}
-          resolveFileReference={fileReferences.resolve}
-        >
-          {/* Full column width, not a fixed 680px: the answer is the thread's main
+      <DiagramFilingProvider target={diagramFilingTarget}>
+        <NestedMarkdownPluginsProvider plugins={nestedPlugins}>
+          <AnswerCitations
+            documents={documents}
+            anchorPrefix={anchorPrefix}
+            resolveFileReference={fileReferences.resolve}
+          >
+            {/* Full column width, not a fixed 680px: the answer is the thread's main
         content and reads as a centered column (the width itself is set by the
         list's max-w container), rather than a card hugging the left edge with
         dead space beside it. */}
-          {/* No entrance of its own: the thread row owns it, gated on whether
+            {/* No entrance of its own: the thread row owns it, gated on whether
             the answer is arriving or being restored (a CSS entrance here
             replayed on every thread open, switch and reload). */}
-          {/* An article named by its role tab, busy while it arrives, in the
+            {/* An article named by its role tab, busy while it arrives, in the
             answer's language (German) whatever the UI locale: hyphenation
             and a screen reader's voice follow `lang`. */}
-          <article
-            className="flex w-full flex-col"
-            aria-labelledby={roleTabId}
-            aria-busy={live || undefined}
-            data-testid={failed ? 'answer-failed' : undefined}
-            lang="de"
-          >
-            {/* Role tab — uppercase 10.5/600. Substantive answer: near-black action
+            <article
+              className="flex w-full flex-col"
+              aria-labelledby={roleTabId}
+              aria-busy={live || undefined}
+              data-testid={failed ? 'answer-failed' : undefined}
+              lang="de"
+            >
+              {/* Role tab — uppercase 10.5/600. Substantive answer: near-black action
           fill + check. Meta / direct reply: quiet secondary fill + conversation icon. */}
-            {isNote ? (
-              <SectionLabel
-                as="div"
-                id={roleTabId}
-                className="bg-secondary text-secondary-foreground ml-[14px] inline-flex w-fit items-center gap-1.5 rounded-t-md px-2.5 py-1"
-              >
-                <MessageCircle className="size-2.5" strokeWidth={2.6} aria-hidden="true" />
-                {tabLabel}
-              </SectionLabel>
-            ) : (
-              <SectionLabel
-                as="div"
-                id={roleTabId}
-                className="bg-primary text-primary-foreground ml-[14px] inline-flex w-fit items-center gap-1.5 rounded-t-md px-2.5 py-1"
-              >
-                <RoleTabMark complete={!live && !stopped && !failed} arrived={mountedLive} />
-                {tabLabel}
-              </SectionLabel>
-            )}
+              {isNote ? (
+                <SectionLabel
+                  as="div"
+                  id={roleTabId}
+                  className="bg-secondary text-secondary-foreground ml-[14px] inline-flex w-fit items-center gap-1.5 rounded-t-md px-2.5 py-1"
+                >
+                  <MessageCircle className="size-2.5" strokeWidth={2.6} aria-hidden="true" />
+                  {tabLabel}
+                </SectionLabel>
+              ) : (
+                <SectionLabel
+                  as="div"
+                  id={roleTabId}
+                  className="bg-primary text-primary-foreground ml-[14px] inline-flex w-fit items-center gap-1.5 rounded-t-md px-2.5 py-1"
+                >
+                  <RoleTabMark complete={!live && !stopped && !failed} arrived={mountedLive} />
+                  {tabLabel}
+                </SectionLabel>
+              )}
 
-            {/* Shell: subtle surface + hairline + soft shadow, corners clipped. A meta
+              {/* Shell: subtle surface + hairline + soft shadow, corners clipped. A meta
           reply sits on a quieter muted surface, so the whole card — not just the
           tab — reads as the calmer, non-result kind. Both kinds use shadow-sm,
           matching the composer's elevation so the answer never outranks it. */}
-            <div
-              className={
-                isNote
-                  ? 'border-input bg-muted relative overflow-hidden rounded-lg border shadow-sm'
-                  : 'border-input bg-input-background relative overflow-hidden rounded-lg border shadow-sm'
-              }
-            >
-              {/* Answer body — the hero white surface. It fills the top of the card
+              <div
+                className={
+                  isNote
+                    ? 'border-input bg-muted relative overflow-hidden rounded-lg border shadow-sm'
+                    : 'border-input bg-input-background relative overflow-hidden rounded-lg border shadow-sm'
+                }
+              >
+                {/* Answer body — the hero white surface. It fills the top of the card
             flush (corners clipped by the shell) and is separated from the
             provenance footer by a single hairline, so the whole thing reads as
             one considered object with sections — not a card floating in a tray. */}
-              <div
-                ref={frameRef}
-                onClick={handleNearestCitationTap}
-                className={cn(
-                  'bg-card flex flex-col gap-2 break-words px-4 pb-[17px] pt-[18px] sm:px-[22px]',
-                  dimmed
-                )}
-              >
-                {/* The answer's masthead — verdict/topic and/or summary, flat above the prose. */}
-                {masthead}
-                {stripAbove && <AnswerProjectStrip keys={stripKeys} />}
-                {findings && (
-                  <FindingsMatrix
-                    findings={findings}
-                    anchorPrefix={anchorPrefix}
-                    previous={previousFindings}
-                    onCommission={onCommissionFinding}
-                  />
-                )}
-                {/* Response Content rendered as markdown, the streaming caret after
+                <div
+                  ref={frameRef}
+                  onClick={handleNearestCitationTap}
+                  className={cn(
+                    'bg-card flex flex-col gap-2 px-4 pt-[18px] pb-[17px] break-words sm:px-[22px]',
+                    dimmed
+                  )}
+                >
+                  {/* The answer's masthead — verdict/topic and/or summary, flat above the prose. */}
+                  {masthead}
+                  {stripAbove && <AnswerProjectStrip keys={stripKeys} />}
+                  {findings && (
+                    <FindingsMatrix
+                      findings={findings}
+                      anchorPrefix={anchorPrefix}
+                      previous={previousFindings}
+                      onCommission={onCommissionFinding}
+                    />
+                  )}
+                  {/* Response Content rendered as markdown, the streaming caret after
               its last word. Cards the answer placed with a marker are spliced
               into this body. */}
-                {retractionLine}
-                {viewerActionRow}
-                <AnswerOutline markdown={body} scopeRef={proseRef} enabled={!live && !failed && !retracted}>
-                  <CardSlotLiveProvider value={live}>
-                    <MarkdownSlotProvider render={renderCardSlot}>
-                      <div ref={proseRef} className={proseClass(ledeClass)}>
-                        <MarkdownRenderer
-                          content={body}
-                          isStreaming={live}
-                          remarkPlugins={markerPlugins}
-                          caret={live && !retracted && !writingSummary && <StreamingCaret fading={finishing} idle={paced.idle} veil />}
-                        />
-                      </div>
-                    </MarkdownSlotProvider>
-                  </CardSlotLiveProvider>
-                </AnswerOutline>
+                  {retractionLine}
+                  {viewerActionRow}
+                  <AnswerOutline
+                    markdown={body}
+                    scopeRef={proseRef}
+                    enabled={!live && !failed && !retracted}
+                  >
+                    <CardSlotLiveProvider value={live}>
+                      <MarkdownSlotProvider render={renderCardSlot}>
+                        <div ref={proseRef} className={proseClass(ledeClass)}>
+                          <MarkdownRenderer
+                            content={body}
+                            isStreaming={live}
+                            remarkPlugins={markerPlugins}
+                            caret={
+                              live &&
+                              !retracted &&
+                              !writingSummary && (
+                                <StreamingCaret fading={finishing} idle={paced.idle} veil />
+                              )
+                            }
+                          />
+                        </div>
+                      </MarkdownSlotProvider>
+                    </CardSlotLiveProvider>
+                  </AnswerOutline>
 
-                {stoppedMarker}
-                {/* What arrives below the prose: never before it, since an answer
+                  {stoppedMarker}
+                  {/* What arrives below the prose: never before it, since an answer
               that opens with three diagrams has pushed itself below the fold. */}
-                {lateBlocks}
-              </div>
+                  {lateBlocks}
+                </div>
 
-              {/* Provenance footer — ONE tinted zone under the body's hairline that
+                {/* Provenance footer — ONE tinted zone under the body's hairline that
             holds the sources block, the copy actions, the memory chip, and a
             single disclosure for everything else (confidence, skills used,
             verification notes, feedback, timestamp). The sources row must not
             draw its own divider here (the body hairline already separates), so
             it takes withDivider={false}. */}
-              {/* Hidden while the answer arrives and faded in at the settle.
+                {/* Hidden while the answer arrives and faded in at the settle.
                 Shown, it moved down a line with every line the prose grew
                 while it was in view: most of the turn's layout shift (0.18 of
                 the 0.20 on the desktop harness). Hidden content does not
@@ -1996,81 +1213,83 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                 at the settle. The body's hairline is the footer's top border,
                 so a closed footer leaves no second line along the shell's
                 own bottom edge. */}
-              <HeightExpand open={!live || footerReserved} instant={live}>
-                <div
-                  className={cn(
-                    'duration-base flex flex-col gap-2.5 border-t px-4 pb-[14px] pt-3 transition-opacity sm:px-[22px] ease-out motion-reduce:transition-none',
-                    live && mountedLive && 'invisible opacity-0'
-                  )}
-                  data-testid="answer-footer"
-                >
-                  <LookupFoundNothingNote show={lookupFoundNothing === true} />
-                  <AnswerSourcesRow
-                    documents={documents}
-                    anchorPrefix={anchorPrefix}
-                    routingDecision={routingDecision}
-                    isStreaming={live || cutShort}
-                    withDivider={false}
-                  />
-                  {reserveMetaRow && (
-                    <div
-                      className={hasMetaRow ? 'flex min-h-6 flex-wrap items-center gap-2' : 'min-h-6'}
-                      aria-hidden={hasMetaRow ? undefined : true}
-                    >
-                      {/* Copy the answer out — markdown, with or without its sources
+                <HeightExpand open={!live || footerReserved} instant={live}>
+                  <div
+                    className={cn(
+                      'duration-base flex flex-col gap-2.5 border-t px-4 pt-3 pb-[14px] transition-opacity ease-out motion-reduce:transition-none sm:px-[22px]',
+                      live && mountedLive && 'invisible opacity-0'
+                    )}
+                    data-testid="answer-footer"
+                  >
+                    <LookupFoundNothingNote show={lookupFoundNothing === true} />
+                    <AnswerSourcesRow
+                      documents={documents}
+                      anchorPrefix={anchorPrefix}
+                      routingDecision={routingDecision}
+                      isStreaming={live || cutShort}
+                      withDivider={false}
+                    />
+                    {reserveMetaRow && (
+                      <div
+                        className={
+                          hasMetaRow ? 'flex min-h-6 flex-wrap items-center gap-2' : 'min-h-6'
+                        }
+                        aria-hidden={hasMetaRow ? undefined : true}
+                      >
+                        {/* Copy the answer out — markdown, with or without its sources
                     written out. Before the disclosure: "take this with you" is
                     what the reader wants first; the details are the afterthought.
                     `compact` feedback: the thumbs stay on this line and their
                     disclosure takes the next one full-width. */}
-                      {hasDetailsContent ? (
-                        <AnswerDetails
-                          conversationId={conversationId}
-                          messageId={messageId}
-                          hasConfidence={hasConfidence}
-                          answerConfidence={answerConfidence}
-                          answerConfidenceCappedReason={answerConfidenceCappedReason}
-                          answerConfidenceReason={answerConfidenceReason}
-                          confidenceCheck={confidenceCheck}
-                          answerConfidenceVersion={answerConfidenceVersion}
-                          skillsActivated={skillsActivated}
-                          skillsHidden={skillsHidden}
-                          showReasoning={showReasoning}
-                          researchTruncated={researchTruncated}
-                          truncationReason={truncationReason}
-                          degradedReasons={degradedReasons}
-                          citationsRemoved={citationsRemoved}
-                          readSources={readSources}
-                          hasAnswerSources={hasAnswerSources}
-                          timestamp={timestamp}
-                          answerDurationMs={answerDurationMs}
-                          before={answerActions}
-                          beside={memoryChip}
-                          after={feedback}
-                        />
-                      ) : (
-                        <>
-                          {answerActions}
-                          {memoryChip}
-                          {hasMetaRow && <span className="flex-1" aria-hidden="true" />}
-                          {feedback}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </HeightExpand>
-              {/* The elevation again, OVER the content: in dark mode it carries
+                        {hasDetailsContent ? (
+                          <AnswerDetails
+                            conversationId={conversationId}
+                            messageId={messageId}
+                            hasConfidence={hasConfidence}
+                            answerConfidence={answerConfidence}
+                            answerConfidenceCappedReason={answerConfidenceCappedReason}
+                            answerConfidenceReason={answerConfidenceReason}
+                            confidenceCheck={confidenceCheck}
+                            answerConfidenceVersion={answerConfidenceVersion}
+                            skillsActivated={skillsActivated}
+                            skillsHidden={skillsHidden}
+                            showReasoning={showReasoning}
+                            researchTruncated={researchTruncated}
+                            truncationReason={truncationReason}
+                            degradedReasons={degradedReasons}
+                            citationsRemoved={citationsRemoved}
+                            readSources={readSources}
+                            hasAnswerSources={hasAnswerSources}
+                            timestamp={timestamp}
+                            answerDurationMs={answerDurationMs}
+                            before={answerActions}
+                            beside={memoryChip}
+                            after={feedback}
+                          />
+                        ) : (
+                          <>
+                            {answerActions}
+                            {memoryChip}
+                            {hasMetaRow && <span className="flex-1" aria-hidden="true" />}
+                            {feedback}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </HeightExpand>
+                {/* The elevation again, OVER the content: in dark mode it carries
                 an inset top highlight, and the full-bleed body painted over the
                 shell's own. Its outer shadow is clipped here; the shell's stands. */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-sm"
-              />
-            </div>
-          </article>
-        </AnswerCitations>
-      </NestedMarkdownPluginsProvider>
-    </DiagramFilingProvider>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-sm"
+                />
+              </div>
+            </article>
+          </AnswerCitations>
+        </NestedMarkdownPluginsProvider>
+      </DiagramFilingProvider>
     </AnswerDataProvider>
   )
 }
@@ -2082,4 +1301,5 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
  * props are primitives plus stable store-derived arrays/objects.
  */
 export const AgentResponse = memo(AgentResponseComponent)
+
 AgentResponse.displayName = 'AgentResponse'
