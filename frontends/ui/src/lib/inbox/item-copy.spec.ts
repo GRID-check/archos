@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { createTranslator } from '@/i18n/translate'
 import { inboxItemCopy } from './item-copy'
 import type { InboxItemView } from './types'
 
-const dictionary = { collaboration: de.collaboration }
+const dictionary = { collaboration: collaborationCopy.messages.de }
 const t = createTranslator(dictionary, 'collaboration')
 
 function quarantined(overrides: Partial<InboxItemView> = {}): InboxItemView {
@@ -90,7 +89,7 @@ describe('Piloti’s Rückfrage, by where it is answered', () => {
       variant: null,
       answerIn,
     })
-  const enDictionary = { collaboration: en.collaboration }
+  const enDictionary = { collaboration: collaborationCopy.messages.en }
   const enT = createTranslator(enDictionary, 'collaboration')
 
   // While events do not wake Piloti the row leads to the Prüfansicht

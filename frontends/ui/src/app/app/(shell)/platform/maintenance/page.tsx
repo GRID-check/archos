@@ -9,11 +9,12 @@
 import type { JSX } from 'react'
 import { PageHeader } from '@/components/ui/page-header'
 import { getTranslations } from '@/i18n/server'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { RunKillSwitch } from '../run-kill-switch'
 import { VectorMaintenance } from '../vector-maintenance'
 
 export default async function PlatformMaintenancePage(): Promise<JSX.Element> {
-  const t = await getTranslations('platform')
+  const t = await getTranslations(platformCopy)
 
   return (
     <div className="flex flex-col gap-6">

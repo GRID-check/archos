@@ -480,7 +480,7 @@ functions:
 
   # The chat surface's single RIS tool: question in, citable passages out.
   # Its bounds are its own (candidates 3, fetches 2, passages 6) and live in
-  # `sources/ris_adapter/src/lookup/`, one module per stage — they are not
+  # `packages/ris-adapter/src/lookup/`, one module per stage — they are not
   # tunable here, because each is a claim about what one charged call may cost.
   # `planner_llm` serves BOTH internal LLM calls: planning a live search and
   # picking the answering §§ out of a law's headings. Neither happens when the
@@ -632,7 +632,7 @@ functions:
     _type: read_passage
     knowledge_search: knowledge_search
 
-  # The file browser (sources/knowledge_layer/src/browse.py): `ls` over the
+  # The file browser (packages/knowledge-layer/src/browse.py): `ls` over the
   # reader's own shelves — every file, by folder, name, Dokumentart and upload
   # date, paged. The prompt inventory stops at a few dozen names; this does
   # not. Deterministic, no LLM, and it reads only the scope `knowledge_search`

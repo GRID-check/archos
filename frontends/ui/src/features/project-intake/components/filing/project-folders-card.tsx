@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import { Folder, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useTranslations } from '@/i18n'
+import { intakeFilingStepCopy } from '@/i18n/namespaces/intake-filing-step'
 import { cn } from '@/lib/utils'
 import type { AccessRow } from './access-panel'
 import { FilingCard } from './filing-atoms'
@@ -29,7 +30,7 @@ export function ProjectFoldersCard({
   onAddMore?: () => void
   onFiles: (files: File[]) => void
 }): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   return (
     <FolderDropTarget onFiles={onFiles} disabled={!onAddMore}>
       <FilingCard aria-label={t('project.label')} data-testid="filing-project-folders">

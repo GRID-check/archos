@@ -1,4 +1,4 @@
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { QDRANT } from "../constants";
 
 /**

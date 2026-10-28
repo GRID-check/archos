@@ -13,7 +13,7 @@ The adapters, one per call-site shape:
 - a JSON body built by hand: ``ResolvedCredential.request_body`` or
   ``PLATFORM_FIXED.apply`` / ``DataPolicy.apply``;
 - an OpenAI SDK client: ``openrouter.openai_client``;
-- the embedding client: ``knowledge_layer.llamaindex.adapter.make_embed_model``;
+- the embedding client: ``knowledge_layer.llamaindex.embedding.make_embed_model``;
 - a LangChain chat model: ``pin_chat_model`` / ``apply_model_override`` /
   ``RequestLLMContext.apply`` (not scanned here: those models are built by NAT,
   and ``test_model_overrides`` / ``test_llm_provider`` cover them).
@@ -27,13 +27,20 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-SCANNED = [ROOT / "src", ROOT / "sources", ROOT / "frontends" / "aiq_api" / "src", ROOT / "scripts"]
+SCANNED = [
+    ROOT / "src",
+    ROOT / "packages" / "knowledge-layer",
+    ROOT / "packages" / "ris-adapter",
+    ROOT / "packages" / "tavily-web-search",
+    ROOT / "frontends" / "aiq_api" / "src",
+    ROOT / "scripts",
+]
 
 #: Constructing a model client by hand. Allowed only where the seam builds one.
 RAW_CLIENT = re.compile(r"\b(?:Async)?OpenAI\(|\bNVIDIAEmbedding\(")
 RAW_CLIENT_HOMES = {
     "src/aiq_agent/common/openrouter.py",  # openai_client
-    "sources/knowledge_layer/src/llamaindex/adapter.py",  # make_embed_model
+    "packages/knowledge-layer/src/llamaindex/embedding.py",  # make_embed_model
 }
 
 #: Talking to a model endpoint directly. The module must also use an adapter.
@@ -69,7 +76,7 @@ def test_the_scan_sees_the_known_call_sites():
     """Guards the test itself: a glob that silently matched nothing would pass everything."""
     scanned = {_rel(p) for p in _python_files()}
     assert "frontends/aiq_api/src/aiq_api/routes/generate_summary.py" in scanned
-    assert "sources/knowledge_layer/src/cross_encoder.py" in scanned
+    assert "packages/knowledge-layer/src/cross_encoder.py" in scanned
     assert "src/aiq_agent/common/decisions.py" in scanned
 
 
@@ -80,7 +87,7 @@ def test_no_model_client_is_built_outside_the_seam(path: Path):
     match = RAW_CLIENT.search(path.read_text(encoding="utf-8"))
     assert match is None, (
         f"{_rel(path)} builds {match.group(0)!r} by hand. Build it through common/openrouter.py "
-        "(openai_client, pinned_http_client) or adapter.make_embed_model, so its requests carry "
+        "(openai_client, pinned_http_client) or embedding.make_embed_model, so its requests carry "
         "the organization's zero-data-retention policy."
     )
 

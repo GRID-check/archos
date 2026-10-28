@@ -164,7 +164,7 @@ class ConversationState(BaseModel):
     # registering in the checkpointer serde allowlist (aiq_agent/common/__init__.py).
     org_instructions: str | None = None
     # The office's reference projects (closed, most like this one), one line
-    # each, from the turn context; rendered as ``<referenzprojekte>`` when
+    # each, from the turn context; rendered as ``<reference_projects>`` when
     # ``project_lookup`` is bound. Plain str, as above.
     reference_projects: str | None = None
     # The WORKSPACE block from the turn context (ADR-0123): who asks, where,

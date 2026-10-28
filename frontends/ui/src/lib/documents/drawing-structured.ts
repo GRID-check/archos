@@ -4,7 +4,7 @@
  * The backend stores the whole analysis on each visual chunk and hands it back
  * on `/visual-details` as `structured`. It is produced by a vision model
  * against a versioned, domain-neutral schema
- * (`sources/knowledge_layer/src/llamaindex/visual_analysis.py`) whose
+ * (`packages/knowledge-layer/src/llamaindex/visual_analysis.py`) whose
  * vocabulary comes from pluggable domains (`.../visual_domains.py`). This
  * module is the boundary that turns it into something the UI can render
  * WITHOUT knowing any domain: unknown keys are dropped, every field is

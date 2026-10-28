@@ -35,6 +35,7 @@ import { Minus, TrendingDown, TrendingUp } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import {
   feedbackTrendAverage,
   feedbackTrendDelta,
@@ -114,7 +115,7 @@ export function FeedbackTrendDirection({
   endDay,
   minVotes = MIN_TREND_VOTES,
 }: Omit<FeedbackTrendProps, 'className'>): JSX.Element | null {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const delta = useMemo(
     () => feedbackTrendDelta(fillTrendWindow(points, windowDays, minVotes, endOf(endDay))),
@@ -155,7 +156,7 @@ export function FeedbackTrend({
   minVotes = MIN_TREND_VOTES,
   className,
 }: FeedbackTrendProps): JSX.Element | null {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const clipId = useId()
   const [hover, setHover] = useState<number | null>(null)

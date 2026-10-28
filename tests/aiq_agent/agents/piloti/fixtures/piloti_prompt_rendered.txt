@@ -147,7 +147,7 @@ The user has this file open, so every bare reference in their message („dieses
 
 <<PLATFORM LESSONS>>
 
-## Anweisungen des Büros
+## Office instructions
 <org_instructions>
 <<ORG INSTRUCTIONS>>
 </org_instructions>

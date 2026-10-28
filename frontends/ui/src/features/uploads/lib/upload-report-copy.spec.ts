@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { dossierCopy } from '@/i18n/namespaces/dossier'
 import type { UploadReport } from '@/lib/upload-batches/upload-report'
 import { uploadReportCopy, uploadReportFindingsHref } from './upload-report-copy'
 
-const tDe = createTranslator(de, 'dossier')
-const tEn = createTranslator(en, 'dossier')
+const tDe = translatorFor(dossierCopy, 'de')
+const tEn = translatorFor(dossierCopy, 'en')
 
 const report: UploadReport = {
   projectId: 'proj-hubergasse',

@@ -786,7 +786,7 @@ services:
     command: ["node", "purger/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
-      # it steps up to grid_app_platform per transaction.
+      # it steps up to app_platform per transaction.
       - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
       - BACKEND_URL=http://api:8000
       # A chat erasure the delete request could not finish is retried through
@@ -834,7 +834,7 @@ services:
     command: ["node", "scheduler/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
-      # it steps up to grid_app_platform per transaction.
+      # it steps up to app_platform per transaction.
       - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
       - FRONTEND_INTERNAL_URL=http://frontend:3000
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}

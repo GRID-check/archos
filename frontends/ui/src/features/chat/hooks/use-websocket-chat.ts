@@ -58,6 +58,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { useAuth } from '@/adapters/auth'
 import { createTurnSocket, type OpenTurn } from '@/adapters/api/turn-socket'
 import { browserPageLifecycle, isActive, sleptThrough } from '@/adapters/api/page-lifecycle'
@@ -932,7 +933,7 @@ const ownsUnansweredTurnIn = (
 export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebSocketChatReturn => {
   const { autoConnect = true, canCollaborate = false } = options
   const { user, authRequired, isLoading: authLoading, getAccessToken } = useAuth()
-  const tChat = useTranslations('chat')
+  const tChat = useTranslations(chatCopy)
 
   // The conversation's id and whether its newest turn is mine, not the
   // conversation itself: the conversation is a new object on every flush,

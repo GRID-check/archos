@@ -19,7 +19,9 @@
  */
 import * as pulumi from "@pulumi/pulumi";
 
-import { backendAutoscaled, backendImage, frontendImage, loadConfig, webImage } from "./src/config";
+import { loadConfig } from './src/config'
+import { backendAutoscaled } from './src/config/chat-tier'
+import { backendImage, frontendImage, webImage } from './src/config/images'
 import { makeProvider } from "./src/platform/providers";
 import { makeAppNamespace } from "./src/platform/namespaces";
 import { installCertManager } from "./src/platform/cert-manager";

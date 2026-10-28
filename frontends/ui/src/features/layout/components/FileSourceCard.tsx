@@ -17,6 +17,7 @@ import type { Transition } from 'motion/react'
 import { motion, motionQuick, springDrawer, useMotionToken } from '@/components/motion'
 import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useLocale, useTranslations } from '@/i18n'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { IngestFailureNotice } from '@/features/documents/components/ingest-failure-notice'
 import { HeldUploadReason } from '@/features/documents/components/held-upload-reason'
 import type { TrackedFile } from '@/features/documents/types'
@@ -219,7 +220,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
   onDelete,
   onOpen,
 }) => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const { locale } = useLocale()
   const cardMotion = useMotionToken(cardTransition)
   const config = STATUS_CONFIG[status]

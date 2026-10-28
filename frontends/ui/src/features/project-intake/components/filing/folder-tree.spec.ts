@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { SUGGESTED_SCREENING_POLICY } from '@/lib/upload-screening/policy'
 import {

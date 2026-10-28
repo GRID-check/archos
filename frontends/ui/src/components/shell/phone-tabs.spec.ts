@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The phone tab bar's destinations: which tabs each scope carries, which one
  * is lit, where the bar stands down, and where the header's back goes.
  */

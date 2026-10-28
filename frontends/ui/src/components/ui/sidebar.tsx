@@ -13,6 +13,7 @@ import { PanelLeft, X } from 'lucide-react'
 
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
@@ -252,7 +253,7 @@ function Sidebar({
   closeLabel?: string
 }): React.JSX.Element {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
-  const tNav = useTranslations('nav')
+  const tNav = useTranslations(navCopy)
 
   if (collapsible === 'none') {
     return (

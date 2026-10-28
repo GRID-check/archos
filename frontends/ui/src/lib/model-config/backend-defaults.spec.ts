@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Where the shared internal token is allowed to travel.
  *
  * `GRID_INTERNAL_API_TOKEN` is a bearer secret. Plain HTTP is the intended

@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import { intakeShellCopy } from '@/i18n/namespaces/intake-shell'
 import { cn } from '@/lib/utils'
 import { SETUP_STEP_IDS, type SetupStepId, type SetupStepSummary } from './steps/types'
 
@@ -137,7 +138,7 @@ function overviewHref(projectId: string): string {
  * all five), and the step's own progress under it.
  */
 export function SetupBar({ projectId, projectName, step, summaries, progress, onGoTo }: BarProps): JSX.Element {
-  const tShell = useTranslations('intakeShell')
+  const tShell = useTranslations(intakeShellCopy)
   const index = SETUP_STEP_IDS.indexOf(step)
   const total = SETUP_STEP_IDS.length
   return (
@@ -224,7 +225,7 @@ function StepRail({
   summaries: readonly SetupStepSummary[]
   onGoTo: (step: SetupStepId) => void
 }): JSX.Element {
-  const tShell = useTranslations('intakeShell')
+  const tShell = useTranslations(intakeShellCopy)
   const current = SETUP_STEP_IDS.indexOf(step)
   return (
     <nav aria-label={tShell('steps.label')} className="min-w-0 flex-1">
@@ -293,7 +294,7 @@ export function SetupFooter({
   slotRef: (name: SlotName) => (element: HTMLElement | null) => void
   onNext?: () => void
 }): JSX.Element {
-  const tShell = useTranslations('intakeShell')
+  const tShell = useTranslations(intakeShellCopy)
   const index = SETUP_STEP_IDS.indexOf(step)
   const next = SETUP_STEP_IDS[index + 1]
   return (

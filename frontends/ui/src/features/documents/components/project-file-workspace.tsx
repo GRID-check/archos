@@ -6,6 +6,7 @@ import { Mail } from 'lucide-react'
 import { ProjectSectionActions } from '@/components/shell/project-section-frame'
 import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { DocumentLifecyclePermission } from '@/lib/documents/lifecycle-types'
 import { askAboutFile } from '../lib/ask-about-file'
 import type { FileShelf } from '../lib/file-shelf'
@@ -96,7 +97,7 @@ export function ProjectFileWorkspace({
   initialRootAccess = 'write',
   mailImportEnabled = false,
 }: ProjectFileWorkspaceProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const router = useRouter()
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
   // The Outlook import is a button beside the upload control on a wide screen

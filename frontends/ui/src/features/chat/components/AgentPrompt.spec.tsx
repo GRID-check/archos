@@ -2,7 +2,7 @@ import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { AgentPrompt } from './AgentPrompt'
-import { en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { useChatStore } from '../store'
 import { useLayoutStore } from '@/features/layout/store'
 
@@ -551,7 +551,7 @@ describe('AgentPrompt — the plan card', () => {
 
   test('a shallow answer to a plan says so, not that the plan was approved', () => {
     render(<AgentPrompt content={CONTENT} isResponded response="shallow" />)
-    expect(screen.getByTestId('plan-record')).toHaveTextContent(en.chat.agentPrompt.responseShallow)
+    expect(screen.getByTestId('plan-record')).toHaveTextContent(chatCopy.messages.en.agentPrompt.responseShallow)
   })
 
   test('answering swaps the decision for the receipt in one slot', async () => {

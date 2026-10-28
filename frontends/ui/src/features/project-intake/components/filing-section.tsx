@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import { FilingBar } from '@/features/documents/components/filing-bar'
 import type { FilingFolderSuggestion } from '@/features/documents/lib/filing-suggestions'
 import { useTranslations } from '@/i18n'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import { IntakeSection } from './intake-atoms'
 
 /**
@@ -24,7 +25,7 @@ export function FilingSection({
   /** A suggestion was decided: re-read the open ones. */
   onSettled: () => void
 }): JSX.Element | null {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   if (entries.length === 0) return null
   return (
     <IntakeSection label={t('filing.heading')} description={t('filing.description')} testId="intake-filing">

@@ -42,6 +42,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
@@ -111,8 +113,8 @@ export function applyLessonUpdate(overview: OverviewDto, next: LessonDto): Overv
 }
 
 export const PlatformLessons: FC = () => {
-  const t = useTranslations('platform')
-  const tc = useTranslations('common')
+  const t = useTranslations(platformCopy)
+  const tc = useTranslations(commonCopy)
   const { locale } = useLocale()
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)
   const [overview, setOverview] = useState<OverviewDto | null>(null)

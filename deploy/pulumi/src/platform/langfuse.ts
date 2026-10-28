@@ -2,7 +2,8 @@ import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
-import { GridConfig, pullPolicyFor } from "../config";
+import { GridConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "./namespaces";
 import {
   ROLLOUT,

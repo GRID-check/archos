@@ -34,6 +34,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { SectionNav } from '@/components/shell/section-nav'
 
 /**
@@ -63,7 +64,7 @@ export interface OrganizationNavProps {
 }
 
 export function OrganizationNav({ sections }: OrganizationNavProps): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
 
   const items = ORGANIZATION_SECTIONS.filter((section) => sections.includes(section.key)).map(
     (section) => ({ ...section, label: t(`nav.${section.key}`) })

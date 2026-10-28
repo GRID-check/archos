@@ -26,6 +26,7 @@ import { Chip } from '@/components/ui/chip'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useCurrentProject } from '@/features/projects/lib/current-project'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { Finding, Findings, FindingStatus } from '@/lib/conversations/message-findings'
 import { findingCounts, hasFindingStatuses } from '@/lib/conversations/message-findings'
 import { cn } from '@/lib/utils'
@@ -89,7 +90,7 @@ const STACKED_CELL =
 const OPEN_STATUSES: ReadonlySet<FindingStatus> = new Set(['open', 'not_met'])
 
 const RequirementText: FC<{ finding: Finding; change: FindingChange }> = ({ finding, change }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <span>
       {finding.requirement}
@@ -109,7 +110,7 @@ const FindingRow: FC<{
   change: FindingChange
   onCommission?: (finding: Finding) => Promise<boolean>
 }> = ({ finding, anchorPrefix, change, onCommission }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [open, setOpen] = useState(false)
   const Icon = finding.status ? STATUS_ICON[finding.status] : null
   const reference = referenceText(finding, t)
@@ -236,7 +237,7 @@ export const FindingsMatrix: FC<{
   /** Commission a run to clear an open finding; absent when the thread cannot. */
   onCommission?: (finding: Finding) => Promise<boolean>
 }> = ({ findings, anchorPrefix, previous, onCommission }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // A closed project commissions nothing (ADR-0090): the thread hides „Klären“, and this says why.
   const closedProject = useCurrentProject()?.status === 'closed'
   const openFindings = findings.items.some((finding) => finding.status !== undefined && OPEN_STATUSES.has(finding.status))

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import type { FileItem } from '../components/project-file-workspace'
 import { refreshedFileFields, toFileItem } from './file-item'

@@ -30,6 +30,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   ASSIGNEE_ME,
   PROJECT_MARK_DUE,
@@ -99,7 +100,7 @@ export interface OpenPointsPanelProps {
 }
 
 export function OpenPointsPanel({ projectId, currentUserId, initial, filing = null }: OpenPointsPanelProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const pathname = usePathname() ?? `/app/projects/${projectId}/files/open-points`
   const searchParams = useSearchParams()
   const [assignee, setAssigneeState] = useState<AssigneeChoice>(() => choicesOf(searchParams).assignee)

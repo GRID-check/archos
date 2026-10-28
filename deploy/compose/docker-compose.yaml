@@ -885,7 +885,7 @@ services:
     command: ["node", "purger/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
-      # organization, so it steps up to grid_app_platform per transaction
+      # organization, so it steps up to app_platform per transaction
       # — see frontends/ui/workers/platform-scope.js.
       - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}
       - BACKEND_URL=${BACKEND_URL:-http://api:8000}
@@ -937,7 +937,7 @@ services:
     command: ["node", "scheduler/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
-      # organization, so it steps up to grid_app_platform per transaction
+      # organization, so it steps up to app_platform per transaction
       # — see frontends/ui/workers/platform-scope.js.
       - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
@@ -1295,7 +1295,7 @@ services:
     # v4 with its default write mode, events_only: a local volume left from v3
     # is cut over on first start. Local traces are disposable; the cluster
     # migrates in stages (kubernetes.md §9b, "Upgrading to Langfuse v4").
-    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config.ts);
+    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config/langfuse.ts);
     # web and worker must stay on the same one, so bump the two lines together.
     image: ghcr.io/langfuse/langfuse:4.71.0
     profiles: [langfuse]

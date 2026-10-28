@@ -16,7 +16,7 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { getByPath } from '@/i18n/translate'
 import { buildCitationModel, decodeCitations, documentShelfLabel, documentTabLabel } from './index'
 import { citationFromWire } from '../wire-citation'
@@ -49,7 +49,7 @@ const documentFor = (source: WireCitationSource) => {
 const t = (key: string): string =>
   key
     .split('.')
-    .reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], de.chat) as string
+    .reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], chatCopy.messages.de) as string
 
 describe('the shelf arrives explicitly', () => {
   test('the wire field survives the mapping onto a citation', () => {
@@ -140,7 +140,7 @@ describe('a private session attachment is not project knowledge', () => {
   })
 
   test('the lane is named in the reader’s language, never in the wire’s German label', () => {
-    const tEn = (key: string) => getByPath(en.chat, key) as string
+    const tEn = (key: string) => getByPath(chatCopy.messages.en, key) as string
     const oib = documentFor(
       wire({ shelf: 'base', kind: 'building_law', lane: 'building_law_oib', lane_label: 'OIB-Richtlinie' })
     )

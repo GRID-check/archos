@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * `findProjectProfile` hands out a profile every reader can use as one.
  *
  * `projects.profile` is `jsonb NOT NULL DEFAULT '{}'`, so a project whose

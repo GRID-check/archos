@@ -35,6 +35,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { cn } from '@/lib/utils'
 
 export interface SectionCardProps {
@@ -91,7 +92,7 @@ export function SectionCard({
   testId,
   children,
 }: SectionCardProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const busy = refreshing && !loading && !error
   const showAction = Boolean(action) && !loading && !error
   const hasHeader = Boolean(title || description || showAction || busy)

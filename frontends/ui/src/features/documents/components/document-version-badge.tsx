@@ -27,6 +27,7 @@
 import type { JSX } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { useTranslations, type Translator } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import {
   documentBadgeState,
@@ -95,7 +96,7 @@ export function DocumentVersionStateBadge({
   testId = 'document-version-badge',
   ...subject
 }: DocumentVersionStateBadgeProps): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const state = always
     ? (subject.lifecycle === 'archived' ? 'archived' : (subject.versionState ?? null))
     : documentBadgeState(subject)

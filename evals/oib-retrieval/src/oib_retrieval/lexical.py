@@ -49,7 +49,7 @@ from oib_retrieval.corpus import Chunk
 # Imported, never copied. The module docstring's whole claim is that a change to the
 # shipped document-frequency ceiling must move these numbers; a literal here would keep
 # the harness reporting stable results while production behaviour had already moved.
-# Retrieval's term pricing (`LlamaIndexRetriever._qdrant_lexical_inputs`) reads it the same way.
+# Retrieval's term pricing (`lexical_query.lexical_inputs`) reads it the same way.
 try:
     from aiq_agent.common.german_text import DEFAULT_DF_CEILING_RATIO
 except ImportError:  # pragma: no cover - the harness can run without the backend package

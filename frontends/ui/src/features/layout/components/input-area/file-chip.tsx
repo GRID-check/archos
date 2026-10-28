@@ -8,6 +8,8 @@ import { failedWhileReading } from '@/features/documents/lib/ingest-failure'
 import { useIngestFailureText } from '@/features/documents/components/ingest-failure-notice'
 import { heldSentenceKey, quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { researchCopy } from '@/i18n/namespaces/research'
 
 /**
  * The photo itself, small, on its chip: a site photo is recognised by what it
@@ -33,7 +35,7 @@ function usePhotoThumbnail(file: File | undefined): ReactNode {
       alt=""
       aria-hidden="true"
       data-testid="file-chip-thumbnail"
-      className="pointer-coarse:size-8 size-5 shrink-0 rounded-[4px] object-cover"
+      className="size-5 shrink-0 rounded-[4px] object-cover pointer-coarse:size-8"
     />
   )
 }
@@ -65,7 +67,7 @@ export const FileChip: FC<{
    */
   readOnly?: boolean
 }> = ({ file, onOpen, onRemove, onRetry, readOnly = false }) => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const isPending = file.status === 'uploading' || file.status === 'ingesting'
   const isFailed = file.status === 'failed'
   // Held back by the content check (ADR-0086): a reason, not a failure, and
@@ -85,18 +87,24 @@ export const FileChip: FC<{
   // sentence, not a verdict (ADR-0086): it is said as it is.
   // A file the content check held says why from its verdict, with the same
   // sentence the findings use (`heldSentenceKey`), never from its message.
-  const tFiles = useTranslations('files')
+  const tFiles = useTranslations(filesCopy)
   const heldSentence = isHeld
     ? file.replacesHeld
       ? file.errorMessage
       : tFiles(heldSentenceKey(quarantineVerdictOf(file)))
     : null
-  const ingestFailure = useIngestFailureText(isFailed && failedWhileReading(file) ? file.errorMessage : null)
+  const ingestFailure = useIngestFailureText(
+    isFailed && failedWhileReading(file) ? file.errorMessage : null
+  )
   // Uploading and reading are both pending, but only one of them is an upload.
   const statusTitle = isPending
-    ? t(file.status === 'ingesting' ? 'fileSourceCard.statusIngesting' : 'inputArea.fileUploadingStatus')
+    ? t(
+        file.status === 'ingesting'
+          ? 'fileSourceCard.statusIngesting'
+          : 'inputArea.fileUploadingStatus'
+      )
     : isHeld
-      ? (heldSentence || t('fileSourceCard.statusHeld'))
+      ? heldSentence || t('fileSourceCard.statusHeld')
       : isStored
         ? t('fileSourceCard.statusStored')
         : isFailed
@@ -158,7 +166,7 @@ export const FileChip: FC<{
           type="button"
           onClick={() => onOpen(file)}
           aria-label={t('inputArea.openFile', { name: file.fileName })}
-          className="text-foreground/85 focus-visible:ring-ring/50 pointer-coarse:min-h-11 flex min-w-0 flex-1 items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2"
+          className="text-foreground/85 focus-visible:ring-ring/50 flex min-w-0 flex-1 items-center gap-1.5 rounded-sm focus-visible:ring-2 focus-visible:outline-none pointer-coarse:min-h-11"
         >
           {statusIcon}
           {thumbnail}
@@ -180,7 +188,7 @@ export const FileChip: FC<{
           // The chip above is already `pointer-coarse:h-11` precisely so this
           // button could grow inside it — and then the button stopped at 36.
           // `size-11` fills the height the chip is already paying for.
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 pointer-coarse:size-11 inline-flex shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none pointer-coarse:size-11"
         >
           <RotateCw className="size-3" aria-hidden="true" />
         </button>
@@ -194,7 +202,7 @@ export const FileChip: FC<{
           // The chip above is already `pointer-coarse:h-11` precisely so this
           // button could grow inside it — and then the button stopped at 36.
           // `size-11` fills the height the chip is already paying for.
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 pointer-coarse:size-11 inline-flex shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none pointer-coarse:size-11"
         >
           <X className="size-3" aria-hidden="true" />
         </button>

@@ -16,7 +16,7 @@
 
 import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { AgentResponse } from './AgentResponse'
 import { asStoreState, type DeepPartial, type StoreSelector } from '@/test-utils/store-fixtures'
@@ -60,10 +60,10 @@ beforeEach(() => {
  * into two places.
  */
 const copy = {
-  label: en.chat.answerDetails.readSources.label,
+  label: chatCopy.messages.en.answerDetails.readSources.label,
   more: (count: number) =>
-    en.chat.answerDetails.readSources.more.replace('{count}', String(count)),
-  less: en.chat.answerDetails.readSources.less,
+    chatCopy.messages.en.answerDetails.readSources.more.replace('{count}', String(count)),
+  less: chatCopy.messages.en.answerDetails.readSources.less,
 }
 
 const readSource = (overrides: Partial<CitationSource> = {}): CitationSource => ({
@@ -220,10 +220,10 @@ describe('both locales carry a real label', () => {
     // German is the product's language here and English is its own label, not
     // a gloss of it — so the two must differ, and neither may be a
     // half-finished template that ships a brace to the reader.
-    expect(de.chat.answerDetails.readSources.label).not.toBe(en.chat.answerDetails.readSources.label)
+    expect(chatCopy.messages.de.answerDetails.readSources.label).not.toBe(chatCopy.messages.en.answerDetails.readSources.label)
     for (const text of [
-      de.chat.answerDetails.readSources.label,
-      en.chat.answerDetails.readSources.label,
+      chatCopy.messages.de.answerDetails.readSources.label,
+      chatCopy.messages.en.answerDetails.readSources.label,
     ]) {
       expect(text.trim().length).toBeGreaterThan(3)
       expect(text).not.toContain('{')

@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: the citation-health reads against a REAL Postgres
  * with every migration applied, as the restricted runtime role.
  *

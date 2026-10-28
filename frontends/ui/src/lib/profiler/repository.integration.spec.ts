@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: the profiler's conversation directory against a
  * REAL Postgres with every migration applied, as the restricted runtime role.
  *

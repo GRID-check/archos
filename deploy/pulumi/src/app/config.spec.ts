@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { purgerEnv, schedulerEnv, type AppWiring } from "./config";
-import type { GridConfig } from "../config";
+import type { GridConfig } from '../config'
 
 const here = __dirname;
 // src/app -> src -> deploy/pulumi -> deploy -> repo root
@@ -160,7 +160,7 @@ describe("frontendEnv", () => {
  */
 describe("backendEnv extraction switches", () => {
   const adapterSource = readFileSync(
-    join(repoRoot, "sources", "knowledge_layer", "src", "llamaindex", "adapter.py"),
+    join(repoRoot, "packages", "knowledge-layer", "src", "llamaindex", "adapter.py"),
     "utf8",
   );
   const switches = ["GRID_EXTRACT_TABLES", "GRID_EXTRACT_IMAGES", "GRID_EXTRACT_CHARTS"];

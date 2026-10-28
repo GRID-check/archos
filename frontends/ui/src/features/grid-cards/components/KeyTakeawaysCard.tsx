@@ -45,6 +45,7 @@ import { ChevronDown, CircleCheck } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { AnswerMetaTakeaway } from '@/lib/conversations/message-answer-meta'
 import { CARD_SHELL } from './card-chrome'
@@ -165,7 +166,7 @@ const TakeawayRow: FC<{ item: AnswerMetaTakeaway; index: number }> = ({ item, in
 }
 
 export const KeyTakeawaysCard: FC<KeyTakeawaysCardProps> = ({ title, items, flat = false }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // An item with no `text` is skipped rather than rendered empty: every field
   // inside every array item reaches the renderer unvalidated (§0.5.1), and a
   // blank numbered row would claim the card has a takeaway it does not have.

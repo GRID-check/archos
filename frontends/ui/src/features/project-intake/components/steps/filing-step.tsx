@@ -10,6 +10,7 @@ import { ProjectUppyUpload } from '@/features/documents/components/project-uppy-
 import { isFolderUpload } from '@/features/documents/lib/folder-upload-plan'
 import type { FilingFolderSuggestion } from '@/features/documents/lib/filing-suggestions'
 import { useLocale, useTranslations, type Translator } from '@/i18n'
+import { intakeFilingStepCopy } from '@/i18n/namespaces/intake-filing-step'
 import { formatBytes } from '@/lib/format'
 import { FilingSection } from '../filing-section'
 import { ASIDE_ACTION_CLASS, PRIMARY_ACTION_CLASS, StepFooter } from '../setup-frame'
@@ -80,7 +81,7 @@ export function FilingStep({
   client = filingSetupClient,
   initialChoice,
 }: FilingStepProps): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   const { locale } = useLocale()
   const setup = useFilingSetup({ projectId, client, initialChoice })
   const [sent, setSent] = useState(false)

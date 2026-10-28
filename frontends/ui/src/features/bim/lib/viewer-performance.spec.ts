@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The speed/quality trades, and the one place they must not apply.
  *
  * These are cheap assertions on a small module, and they exist because the

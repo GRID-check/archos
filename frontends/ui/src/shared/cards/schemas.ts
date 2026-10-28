@@ -1,7 +1,7 @@
 // The Grid card schema is generated from the canonical Pydantic models. This
 // module re-exports the generated Zod schemas under the stable public API and
 // derives the TypeScript types consumed across the app. To change the schema,
-// edit `src/aiq_agent/cards/models.py`, regenerate `shared/cards/schemas.json`
+// edit the card models in `src/aiq_agent/cards/`, regenerate `shared/cards/schemas.json`
 // (`uv run python scripts/generate_card_schema.py`), then run
 // `npm run generate:cards`.
 
@@ -15,11 +15,11 @@ export type * from './generated'
 
 export type GridCard = z.infer<typeof gridCardSchema>
 
-/** A dimension's verdict: `DimStatus` in `cards/models.py`. */
+/** A dimension's verdict: `DimStatus` in `cards/schematic_cards.py`. */
 export type DimStatus = DimensionCheckData['status']
-/** Who makes the claim behind a number on a card: `Provenance` in `cards/models.py`. */
+/** Who makes the claim behind a number on a card: `Provenance` in `cards/schematic_cards.py`. */
 export type Provenance = NonNullable<DimensionCheckData['provenance']>
-/** The closed set of operations a Rechenweg step may take: `CalculationOperation` in `cards/models.py`. */
+/** The closed set of operations a Rechenweg step may take: `CalculationOperation` in `cards/calculation_card.py`. */
 export type CalculationOperation = CalculationStepData['operation']
 
 /**

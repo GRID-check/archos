@@ -36,6 +36,7 @@
 import { FolderTree } from 'lucide-react'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { useCardDecision } from '../hooks/use-card-decision'
 import type { FileOperationItem, FileOperationKind } from '../lib/file-operations'
 import { OperationList } from './FileOperationRows'
@@ -85,7 +86,7 @@ function UnstoredProposalCard({
   cardKey,
   decisionsMustPersist,
 }: Omit<FileOperationProposalCardProps, 'proposalId'>) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { decision } = useCardDecision(messageId, cardKey, { mustPersist: decisionsMustPersist })
 
   if (decision === 'accepted' || decision === 'partiallyApplied') {

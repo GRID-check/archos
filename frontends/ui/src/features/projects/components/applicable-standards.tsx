@@ -16,6 +16,7 @@ import {
   ItemTitle,
 } from '@/components/ui/item'
 import { useLocale, useTranslations, type Locale, type Translator } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { ApplicabilityChip, OibCodeChip } from './standard-chips'
 
 interface ApplicableStandardsProps {
@@ -66,7 +67,7 @@ export function ApplicableStandards({
   standards,
   briefComplete,
 }: ApplicableStandardsProps) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   return (
     <section className="space-y-4">

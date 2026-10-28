@@ -9,6 +9,7 @@ import { Chip, ChipCount, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { SegmentMeter, ToneSwatch, type MeterTone } from '@/components/ui/segment-meter'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatDayRange } from '@/lib/format'
 import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { cn } from '@/lib/utils'
@@ -129,7 +130,7 @@ export function FolderBrief({
   onLoadDetails,
   detailsLoading = false,
 }: FolderBriefProps): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { tally } = brief
   const phone = usePhoneLayout()
   if (tally.total === 0) return null
@@ -269,7 +270,7 @@ function legendSentence(tally: KnowledgeTally, t: Translate): string {
 
 /** Each state with documents in it, as swatch + count + word — and a way into exactly those documents. */
 function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect: (s: BriefSelection) => void }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const states = meterStates(tally).filter((state) => tally[state] > 0)
   return (
@@ -317,7 +318,7 @@ function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect:
  * biggest types, so the folder still says what it is without being opened.
  */
 function AboutSection({ brief, onSelect }: { brief: FolderBriefData; onSelect: (s: BriefSelection) => void }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { documentTypes, disciplines, contents, tally, topics, photos } = brief
   const { locale } = useLocale()
   if (tally.readable === 0) return null
@@ -398,7 +399,7 @@ function DeferredAboutSection({
   onLoadDetails?: () => void
   loading: boolean
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   if (tally.readable === 0) return null
   return (
     <BriefDisclosure id="folder-brief-about" title={t('brief.aboutTitle')} summary={t('brief.aboutDeferred')}>
@@ -493,7 +494,7 @@ function TagChip({
   onSelect: (s: BriefSelection) => void
   variant?: 'secondary' | 'outline'
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <Chip asChild interactive variant={variant} size="sm">
       <button
@@ -521,7 +522,7 @@ function NeedsYouSection({
   onReadAgain?: () => void
   readAgainProgress?: BulkReingestProgress | null
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // Counted from the tally, which both briefs carry exactly; the attention
   // lists only NAME documents for an action, and a summary-built brief names
   // the failed ones alone, up to the summary's limit (ADR-0102). The re-read
@@ -602,7 +603,7 @@ function AttentionRow({
   testId: string
   children?: ReactNode
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div className="flex items-start gap-2" data-testid={testId}>
       <ToneSwatch tone={tone} className="mt-[7px]" />
@@ -639,7 +640,7 @@ function HotspotSection({
   hotspots: readonly FolderLocation[]
   onOpenFolder: (id: string) => void
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   if (hotspots.length === 0) return null
   return (
     <BriefDisclosure
@@ -683,7 +684,7 @@ const MAX_MISSING_SHOWN = 8
  * to the role, Piloti cannot tell that this PDF is the Energieausweis.
  */
 function MissingSection({ missing }: { missing: readonly MissingDocument[] }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const shown = missing.slice(0, MAX_MISSING_SHOWN)
   const more = missing.length - shown.length
   const name = (entry: MissingDocument) => (entry.buildingName ? `${entry.label} · ${entry.buildingName}` : entry.label)

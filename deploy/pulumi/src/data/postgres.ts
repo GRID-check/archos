@@ -1,6 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, assertPgConnectionBudget } from "../config";
+import { GridConfig } from '../config'
+import { assertPgConnectionBudget } from '../config/pg-connection-budget'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedJobSecurityContext } from "../platform/security";
@@ -240,7 +241,7 @@ export function installPostgres(
    * Its own role and its own database, deliberately not one of the three
    * application databases and deliberately not the application login. The
    * filer store holds an AES key for every chunk in the object store, so a
-   * credential that reaches it must not also reach `grid_app`, and vice versa:
+   * credential that reaches it must not also reach `app`, and vice versa:
    * compromising the storage daemon should not yield the tenant database, and
    * compromising the app should not yield the keys to decrypt objects it was
    * never authorized to read.
@@ -274,7 +275,7 @@ export function installPostgres(
    * above. Langfuse runs Prisma migrations at startup — `CREATE TABLE`,
    * `ALTER TABLE`, `DROP` — so whatever credential it holds is a credential
    * with DDL rights. Confining that to a database it owns is what keeps a
-   * third-party image's migrator away from `grid_app`, where every tenant's
+   * third-party image's migrator away from `app`, where every tenant's
    * conversations live. It has no CREATEDB and no CREATEROLE, so it cannot
    * give itself another database either.
    */
@@ -581,7 +582,7 @@ export function installPostgres(
   /**
    * The filer's database, declared rather than bootstrapped.
    *
-   * `bootstrap.initdb.postInitSQL` — where `checkpoints` and `grid_app` are
+   * `bootstrap.initdb.postInitSQL` — where `checkpoints` and `app` are
    * created — runs EXACTLY ONCE, at cluster initialisation. Adding a fourth
    * database there would create it on a fresh stack and silently do nothing on
    * every existing one, which is the worst of both: the manifest would claim a

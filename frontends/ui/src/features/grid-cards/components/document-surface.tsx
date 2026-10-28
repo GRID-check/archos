@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import { ArrowUpRight, CloudAlert, FileSearch, RotateCcw } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { openFilePeek } from '@/features/documents/lib/open-file-peek'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
 import type { ResolvedSurfacedDocument } from '@/features/documents/hooks/use-surfaced-documents'
@@ -25,7 +26,7 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
   entry,
   projectId,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const isOffice = entry.surfaced.source === 'office'
   const href = isOffice ? '/app/office-shelf' : projectId ? `/app/projects/${projectId}/files` : '/app/office-shelf'
   const actionLabel = isOffice || !projectId ? t('documentGrid.openInOfficeShelf') : t('documentGrid.openInFiles')
@@ -59,7 +60,7 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
 
 /** Resolve failed (network / 5xx) — a retry affordance, never a wall of dead tiles. */
 export const ResolveErrorState: FC<{ onRetry: () => void }> = ({ onRetry }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <div
       data-testid="document-grid-error"

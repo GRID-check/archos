@@ -33,6 +33,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { liveLine } from '@/features/chat/lib/turn-events'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { presenceCopy } from '@/i18n/namespaces/presence'
 import { isGhostMark, type AnnotationView } from '@/lib/annotations/types'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
@@ -131,7 +134,7 @@ function ReviewTools({
   /** A mark tool was taken up from the keyboard: the crosshair sets the place. */
   onAim?: () => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const offered = TOOLS.filter(({ tool }) => tool === 'chat' || toolOffered(tool, review))
   return (
     <div role="group" aria-label={t('review.toolsLabel')} data-testid="review-tools" data-variant={variant} className="flex items-center gap-0.5">
@@ -260,8 +263,8 @@ export function Presence({
   following?: string | null
   onFollow?: (peerId: string | null) => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
-  const tPresence = useTranslations('presence')
+  const t = useTranslations(filesCopy)
+  const tPresence = useTranslations(presenceCopy)
   const { people: others, piloti } = useRoomCompany(review.room)
   // Piloti in the room as itself: a peer the server publishes while it works on
   // the document, naming whose request it works on (ADR-0105). The full name
@@ -420,7 +423,7 @@ function Elsewhere({
   canvas: RefObject<HTMLElement | null>
   onJump: (state: RoomPeerState) => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   useScrollTick(canvas)
   const row = useRef<HTMLDivElement | null>(null)
   const node = canvas.current
@@ -481,8 +484,8 @@ const documentReviewOf = (asks: readonly CanvasAsk[]): CanvasAsk | null =>
  * conversation is.
  */
 function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => void }): JSX.Element {
-  const t = useTranslations('files')
-  const tChat = useTranslations('chat')
+  const t = useTranslations(filesCopy)
+  const tChat = useTranslations(chatCopy)
   const { piloti } = review
   const run = documentReviewOf(piloti.asks)
   if (!run) {
@@ -637,7 +640,7 @@ export function DocumentReviewMode({
    */
   protocolFiling?: ProtocolFilingTarget | null
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
   const [following, setFollowing] = useState<string | null>(null)

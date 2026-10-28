@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 
 import { fitColumns, headerRem, minimumRem, NAME_MIN_REM, valuesRem, withoutLegalForm, type ColumnFit } from './register-fit'

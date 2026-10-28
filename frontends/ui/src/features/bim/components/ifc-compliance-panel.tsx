@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { rulesWithOpenWork } from '@/lib/bim/rules'
 import type { BimComplianceSummary, BimRuleResultWithConfirmation } from '@/lib/bim/rules'
 import { buildModelHref } from '../lib/model-link'
@@ -164,7 +165,7 @@ export function IfcCompliancePanel({
   onWithdraw,
   bcfHref,
 }: IfcCompliancePanelProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const openWork = rules === null ? 0 : rulesWithOpenWork(rules).length
 
   return (
@@ -369,7 +370,7 @@ function RuleRow({
   /** Patches the view rather than replacing it — see the panel's prop doc. */
   onShowElements?: (globalIds: string[], status: 'fail' | 'info') => void
 }): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const checked = rule.passed + rule.failed + rule.undecidable
 
   const { Icon, tone } = !rule.applicable
@@ -475,7 +476,7 @@ function Confirmation({
   onConfirm?: (ruleId: string, note: string) => Promise<void>
   onWithdraw?: (ruleId: string) => Promise<void>
 }): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState('')
@@ -738,7 +739,7 @@ function VerdictList({
   tone: string
   onShowElements?: (globalIds: string[], status: 'fail' | 'info') => void
 }): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   if (verdicts.length === 0) return null
   const shown = verdicts.slice(0, VISIBLE_ROWS)
 

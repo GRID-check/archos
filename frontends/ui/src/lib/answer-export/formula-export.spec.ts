@@ -10,14 +10,14 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import { cardBlocks } from './cards'
 import type { DocBlock } from './blocks'
 
 const t = (key: string): string =>
   key
     .split('.')
-    .reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], de.answerExport) as string
+    .reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], answerExportCopy.messages.de) as string
 
 const text = (blocks: DocBlock[]): string =>
   blocks

@@ -20,6 +20,7 @@
 
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { documentFilesHref } from '@/features/documents/lib/document-question'
 import { openFiledDocument } from '@/features/documents/lib/open-filed-document'
 import { cn } from '@/lib/utils'
@@ -36,7 +37,7 @@ export const CAPTION_CONTROL =
   'inline-flex min-h-11 items-center rounded-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export function DiagramFilingControls({ filing, className }: { filing: DiagramFiling; className?: string }) {
-  const t = useTranslations('diagrams')
+  const t = useTranslations(diagramsCopy)
   const isMobile = useIsMobile()
   const { state, target, documentId } = filing
 

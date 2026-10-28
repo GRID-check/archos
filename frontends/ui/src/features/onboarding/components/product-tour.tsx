@@ -44,6 +44,7 @@ import { ShortcutKeys } from '@/components/shell/shortcut-keys'
 import { MOD } from '@/components/shell/shortcuts'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { onboardingCopy } from '@/i18n/namespaces/onboarding'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { patchUserPreferences } from '@/lib/user-preferences/client'
 import {
@@ -124,7 +125,7 @@ function ProductTourRunner({
   // The phone shell (tab bar, drawer, search button) stands on the same `md`
   // line the shell draws, and some stops have a phone variant for it.
   const phone = useIsMobile()
-  const t = useTranslations('onboarding.tour')
+  const t = useTranslations(onboardingCopy, 'tour')
   const [active, setActive] = React.useState<{ tour: TourId; stops: PlacedTourStop[] } | null>(null)
   // Tours started in this tab. `eligible` came from the server when the frame
   // was first rendered, and the frame does not re-render on navigation, so it
@@ -285,7 +286,7 @@ function ProductTourCard({
   prevStep,
   skipTour,
 }: CardComponentProps): JSX.Element {
-  const t = useTranslations('onboarding.tour')
+  const t = useTranslations(onboardingCopy, 'tour')
   const shiftX = React.useContext(PlacedStopsContext)[currentStep]?.shiftX ?? 0
   return (
     // A card centred above a phone tab slides back on screen (`cardShift`);
@@ -318,7 +319,7 @@ function ProductTourCard({
  * does this document go in" is the question it exists to answer.
  */
 function StopBody({ stop }: { stop: PlacedTourStop }): JSX.Element {
-  const t = useTranslations('onboarding.tour')
+  const t = useTranslations(onboardingCopy, 'tour')
   if (stop.id === 'shortcuts') {
     return (
       <div className="space-y-3">
