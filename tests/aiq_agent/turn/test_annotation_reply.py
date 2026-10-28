@@ -3,7 +3,7 @@
 The record, the decision and the post are driven directly; the canvas tools
 marking the record are in ``tests/aiq_agent/tools/canvas/test_thread_reply.py``,
 and the chat socket calling it at the end of a turn in
-``frontends/aiq_api/tests/test_chat_socket.py``. The body the fallback builds is
+``apps/backend/tests/test_chat_socket.py``. The body the fallback builds is
 validated against the schema the BFF's route exports, as the tool's own are.
 """
 

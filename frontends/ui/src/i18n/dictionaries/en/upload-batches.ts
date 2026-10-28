@@ -22,9 +22,9 @@ export const uploadBatches = {
     },
     state: {
       sending: 'The upload is still running.',
-      reading: 'Piloti is still reading. This summary updates itself.',
+      reading: '{productName} is still reading. This summary updates itself.',
       done: 'Everything has been read.',
-      doneHeld: 'Everything except the files held back has been read. Piloti shows them to no model.',
+      doneHeld: 'Everything except the files held back has been read. {productName} shows them to no model.',
     },
     counts: {
       label: 'At a glance',
@@ -53,7 +53,7 @@ export const uploadBatches = {
         office_shelf: 'Office filing',
         session: 'Chat',
       },
-      empty: 'No file from this upload reached Piloti.',
+      empty: 'No file from this upload reached {productName}.',
       pages: '{count, plural, one {# page} other {# pages}}',
       openInFiles: 'Open in Files',
       openInOfficeShelf: 'Open in Office filing',

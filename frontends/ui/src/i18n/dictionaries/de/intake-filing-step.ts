@@ -3,13 +3,13 @@ import type { en } from '../en'
 /** intakeFilingStep: step 2, Ablage: the project folder as a tree, chosen per folder, the blacklist and the folder access for this project. */
 export const intakeFilingStep: typeof en.intakeFilingStep = {
   head: {
-    title: 'Welche Ordner soll Piloti lesen?',
+    title: 'Welche Ordner soll {productName} lesen?',
     choose:
-      'Wählen Sie den Projektordner auf dem Büroserver. Bevor etwas hochgeladen wird, sehen Sie ihn als Baum und entscheiden Ordner für Ordner, was Piloti liest.',
+      'Wählen Sie den Projektordner auf dem Büroserver. Bevor etwas hochgeladen wird, sehen Sie ihn als Baum und entscheiden Ordner für Ordner, was {productName} liest.',
     chosen: '{name} · {count, plural, one {# Datei} other {# Dateien}}. Ausgeschaltetes bleibt auf dem Büroserver.',
     other: 'Anderen Ordner wählen',
     uploadingTitle: 'Die Unterlagen sind unterwegs',
-    uploading: 'Prüfen Sie im Dialog, wohin jede Datei kommt. Piloti beginnt zu lesen, sobald sie angekommen sind.',
+    uploading: 'Prüfen Sie im Dialog, wohin jede Datei kommt. {productName} beginnt zu lesen, sobald sie angekommen sind.',
     inProjectTitle: 'Die Unterlagen sind im Projekt',
     inProject:
       '{count, plural, one {# Dokument liegt} other {# Dokumente liegen}} im Projekt. Weitere Ordner können Sie jederzeit dazunehmen.',
@@ -44,7 +44,7 @@ export const intakeFilingStep: typeof en.intakeFilingStep = {
   },
   summary: {
     label: 'Zusammenfassung',
-    reads: 'Piloti liest',
+    reads: '{productName} liest',
     files: '{count, plural, one {# Datei} other {# Dateien}}',
     left: '{size} · {what} ausgelassen',
     leftFolders: '{count, plural, one {# Ordner} other {# Ordner}}',
@@ -81,7 +81,7 @@ export const intakeFilingStep: typeof en.intakeFilingStep = {
     ahead: 'Jede weitere Datei wird mit {list} geprüft, bevor sie Ihren Rechner verlässt.',
     aheadTitle: 'Sensibles bleibt auf dem Server',
     listOffice: 'der Liste Ihres Büros',
-    listSuggested: 'der von Piloti vorgeschlagenen Liste',
+    listSuggested: 'der von {productName} vorgeschlagenen Liste',
     listProject: 'der Liste dieses Projekts',
     term: '„{term}“',
     offTitle: 'Die Prüfung ist ausgeschaltet',
@@ -95,7 +95,7 @@ export const intakeFilingStep: typeof en.intakeFilingStep = {
     added: 'Zusätzlich für dieses Projekt',
     addedPlaceholder: 'Begriff eingeben, Enter drücken',
     removeTerm: '„{term}“ entfernen',
-    contentNote: 'Inhalte prüft Piloti beim Lesen weiterhin mit der Liste des Büros.',
+    contentNote: 'Inhalte prüft {productName} beim Lesen weiterhin mit der Liste des Büros.',
     preview:
       'Mit dieser Liste {count, plural, one {bleibt # Datei} other {bleiben # Dateien}} auf dem Server.',
     previewNone: 'Mit dieser Liste bleibt nichts zurück.',
@@ -113,7 +113,7 @@ export const intakeFilingStep: typeof en.intakeFilingStep = {
   access: {
     heading: 'Wer welchen Ordner öffnen darf',
     description:
-      'Jede Person im Projekt öffnet einen Ordner nach ihrer Projektrolle, außer der Ordner hat eine eigene Liste. Schränken Sie einen Ordner am besten vor dem Hochladen ein: Dann liest Piloti ihn von Anfang an nur für diese Personen.',
+      'Jede Person im Projekt öffnet einen Ordner nach ihrer Projektrolle, außer der Ordner hat eine eigene Liste. Schränken Sie einen Ordner am besten vor dem Hochladen ein: Dann liest {productName} ihn von Anfang an nur für diese Personen.',
     everyoneTitle: 'Alle im Projekt sehen alle Ordner',
     everyone: 'Je nach Projektrolle lesen oder bearbeiten',
     restrictedTitle: '{count, plural, one {# Ordner ist} other {# Ordner sind}} eingeschränkt',

@@ -6,7 +6,7 @@ Neither of the latter is citable evidence, and a title-shaped query
 ("OIB-Richtlinie 2 Ausgabe Mai 2023") matched exactly them, so an overview
 question came back as four garbled cover pages at page 1.
 
-``_base_collection_filters`` now carries ``chunking != "page"`` on every
+``base_collection_filters`` now carries ``chunking != "page"`` on every
 base-corpus search. The load-bearing claim is that ``$ne`` KEEPS records that
 have no ``chunking`` key at all — Begriffsbestimmungen, Zitierte Normen,
 project uploads and office files never carry one, and a filter that dropped
@@ -23,8 +23,8 @@ from unittest.mock import MagicMock
 import pytest
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.register import KnowledgeRetrievalConfig
-from knowledge_layer.register import _base_collection_filters
 from knowledge_layer.register import knowledge_retrieval
+from knowledge_layer.search_scope import base_collection_filters
 from knowledge_layer_testing.qdrant import record
 from knowledge_layer_testing.qdrant import write
 
@@ -72,7 +72,7 @@ class TestQdrantNeSemantics:
         )
         config = KnowledgeRetrievalConfig(collection_name=BASE, exclude_file_names=["drop_me.pdf"])
 
-        assert _kept(BASE, _base_collection_filters(config, {"content_type": "text"})) == ["glossar", "punkt"]
+        assert _kept(BASE, base_collection_filters(config, {"content_type": "text"})) == ["glossar", "punkt"]
 
 
 class _StoreBackedRetriever:

@@ -18,7 +18,7 @@ export const capture: typeof en.capture = {
   photos: {
     fileNamePrefix: 'Foto',
     unavailableVision:
-      'Fotos gehen hier noch nicht: Piloti braucht ein Bildmodell, um sie zu lesen, und für Ihr Büro ist keins eingerichtet.',
+      'Fotos gehen hier noch nicht: {productName} braucht ein Bildmodell, um sie zu lesen, und für Ihr Büro ist keins eingerichtet.',
     unavailableNotEnabled: 'Fotos sind für Ihr Büro noch nicht freigeschaltet.',
     heicUnconvertible:
       '„{name}“ ist ein HEIC-Foto, das dieser Browser nicht in JPEG umwandeln kann. Über „Aus Mediathek“ gewählt, kommt es als JPEG an.',

@@ -4028,7 +4028,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # the org/project/document ids in the key are, so whether the
             # signature survived was luck, and the tenant path leaked in full for
             # short keys. Same rule as the download side in
-            # frontends/aiq_api/src/aiq_api/routes/ingest.py.
+            # apps/backend/src/aiq_api/routes/ingest.py.
             logger.info("Uploaded thumbnail (%d bytes)", len(thumbnail_bytes))
         except Exception as error:
             # The class only: an httpx error's text, and so its traceback,

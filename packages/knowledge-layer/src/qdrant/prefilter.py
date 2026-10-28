@@ -39,7 +39,7 @@ through ``POST /v1/maintenance/refresh-document-facts``). So the rules are:
   list still drops those hits after retrieval (:func:`without_files`).
 * ``doc_class`` is human-set and beats every filename guess: the payload holds
   the stored class when there is one and the chunk's own otherwise, which is
-  exactly what ``register._hit_doc_class`` resolves.
+  exactly what ``hit_metadata.hit_doc_class`` resolves.
 
 This module builds filters in the backend-neutral grammar the adapter accepts,
 so every condition still goes through ``scope.scope_filter``. It imports no
@@ -62,7 +62,7 @@ FOLDER_FIELD = "folder_ancestors"
 def folder_key(path: Any) -> str | None:
     """A folder path as the folder filter compares it: slashes trimmed, case folded; None for the root.
 
-    The normalisation ``register._folder_matches`` applies to both sides,
+    The normalisation ``hit_metadata._folder_matches`` applies to both sides,
     because the agent retypes the folder name from the inventory.
     """
     key = str(path or "").strip().strip("/").casefold()

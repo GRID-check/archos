@@ -26,6 +26,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { withProductName } from '@/lib/brand'
 import { en } from './dictionaries/en'
 import { de } from './dictionaries/de'
 import type { Namespace } from './namespace'
@@ -172,8 +173,9 @@ describe('every namespace has its module', () => {
   it('holds the same copy as the dictionary, in every locale', () => {
     for (const [, namespace] of exported) {
       const name = namespace.name as keyof typeof en
-      expect(namespace.messages.en, name).toBe(en[name])
-      expect(namespace.messages.de, name).toBe(de[name])
+      // The source with the product's name filled in, as `defineNamespace` hands it out.
+      expect(namespace.messages.en, name).toStrictEqual(withProductName(en[name]))
+      expect(namespace.messages.de, name).toStrictEqual(withProductName(de[name]))
     }
   })
 })

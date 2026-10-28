@@ -35,7 +35,7 @@ MODULES = [
     ROOT / "src" / "aiq_agent" / "tools" / "workspace" / "client.py",
     ROOT / "src" / "aiq_agent" / "tools" / "workspace" / "register.py",
     ROOT / "src" / "aiq_agent" / "tools" / "workspace" / "cards.py",
-    ROOT / "frontends" / "aiq_api" / "src" / "aiq_api" / "routes" / "internal_tools.py",
+    ROOT / "apps" / "backend" / "src" / "aiq_api" / "routes" / "internal_tools.py",
 ]
 
 #: German that is domain data, not a word the model is taught: (text, reason). None yet.

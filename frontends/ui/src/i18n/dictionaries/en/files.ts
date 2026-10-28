@@ -20,8 +20,8 @@ export const files = {
     heading: {
       transferringOne: 'Uploading 1 document',
       transferringOther: 'Uploading {count} documents',
-      processingOne: 'Piloti is reading 1 document',
-      processingOther: 'Piloti is reading {count} documents',
+      processingOne: '{productName} is reading 1 document',
+      processingOther: '{productName} is reading {count} documents',
       doneOne: '1 document added',
       doneOther: '{count} documents added',
       mixed: '{ready} added · {failed} failed',
@@ -100,7 +100,7 @@ export const files = {
   toast: {
     // Fired the instant async ingestion finishes and the document becomes
     // citable — the confirmation the completion moment previously lacked.
-    ingestionComplete: '“{name}” is now in Piloti’s knowledge — citable',
+    ingestionComplete: '“{name}” is now in {productName}’s knowledge — citable',
     modelReady: '“{name}” has been read. You can now ask about the building.',
   },
   // Card thumbnail fallbacks: a warm placeholder chip when no thumbnail exists,
@@ -148,12 +148,12 @@ export const files = {
     suggestionsLabel: 'Tag suggestions',
     noTagMatch: 'No matching tag — pick one of the suggested labels.',
     reading: {
-      classifiedAs: 'Piloti reads this as',
-      noType: 'Piloti did not recognize a document type.',
+      classifiedAs: '{productName} reads this as',
+      noType: '{productName} did not recognize a document type.',
       correct: 'Correct',
       assign: 'Assign',
       done: 'Done',
-      correctionKept: 'Your choice stays, even when Piloti reads the file again.',
+      correctionKept: 'Your choice stays, even when {productName} reads the file again.',
       topics: 'Topics',
       addTopic: 'Add topic',
       topicsSaveError: 'The topics could not be saved.',
@@ -169,11 +169,11 @@ export const files = {
       compare: 'Compare',
       changedSince: 'What changed since {name}:',
       changedSincePrevious: 'What changed since the previous revision:',
-      changeHint: 'Summarized by Piloti from both revisions. Check dimensions and values in the document itself.',
+      changeHint: 'Summarized by {productName} from both revisions. Check dimensions and values in the document itself.',
       suggestion: 'Is this a newer revision of {name}?',
       basisTitleBlock: 'The drawing number and index in the title block suggest so.',
       basisName: 'The index and date in the file name suggest so.',
-      basisContent: 'Piloti read both:',
+      basisContent: '{productName} read both:',
       confirm: 'Yes, newer revision',
       dismiss: 'No',
       askEditor: 'Anyone who may edit this folder can confirm it.',
@@ -203,12 +203,12 @@ export const files = {
         /** Only when the name is truly unknown. Never “someone”. */
         someone: 'a team member',
         answer: {
-          this: 'Piloti answers from this revision.',
-          older: 'Piloti still answers from revision {number}.',
-          newer: 'Piloti answers from the newer revision {number}; this one stays readable, also for comparing.',
-          notYet: 'Piloti answers from it only once it is approved.',
-          notYetRead: 'Piloti answers from it once it has been read.',
-          never: 'Piloti does not answer from it.',
+          this: '{productName} answers from this revision.',
+          older: '{productName} still answers from revision {number}.',
+          newer: '{productName} answers from the newer revision {number}; this one stays readable, also for comparing.',
+          notYet: '{productName} answers from it only once it is approved.',
+          notYetRead: '{productName} answers from it once it has been read.',
+          never: '{productName} does not answer from it.',
         },
         /** {name} arrives with the date: “Anna Berger · 14 Aug 2026”, kept on one line. */
         act: '{act} by {name}',
@@ -217,15 +217,15 @@ export const files = {
         bySomeone: 'a team member',
         rowMenu: 'More actions for revision {number}',
         approveExplain:
-          'Approving means the office stands behind the content. From then on, Piloti answers from this revision.',
+          'Approving means the office stands behind the content. From then on, {productName} answers from this revision.',
         changedSince: 'Changed since revision {number}:',
         archive: 'Retire this file …',
       },
     },
     indexed: {
-      title: 'Read by Piloti',
+      title: 'Read by {productName}',
       documentType: 'Document type',
-      pending: 'Piloti is still reading this document – its summary and properties appear here once it is done.',
+      pending: '{productName} is still reading this document – its summary and properties appear here once it is done.',
     },
     contentTypeNames: {
       text: 'Text',
@@ -340,7 +340,7 @@ export const files = {
     heldTitle: 'Held back by the content check',
     heldDecided: 'Someone has already decided about this file.',
     ingestionFailedPreviousVersionKept:
-      'Search and Piloti still use the previous revision. The download serves the new file.',
+      'Search and {productName} still use the previous revision. The download serves the new file.',
     retryIngestion: 'Read again',
     retryWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
     retryingIngestion: 'Retrying…',
@@ -367,15 +367,15 @@ export const files = {
      * already see. What it cannot see is what the state costs: the answer it is
      * about to ask for will not use this file.
      */
-    peekIndexingHint: 'Piloti cannot cite this file until it has been read.',
-    peekFailedHint: 'Reading failed. Piloti cannot cite this file.',
+    peekIndexingHint: '{productName} cannot cite this file until it has been read.',
+    peekFailedHint: 'Reading failed. {productName} cannot cite this file.',
     /**
      * The same failure on a document with an earlier revision: the index keeps
      * that revision's passages, so the file is still citable, just not the new
      * bytes. Mirrors `ingestionFailedPreviousVersionKept` in the pane.
      */
     peekFailedPreviousVersionHint:
-      'The new file could not be read — Piloti is still citing the previous revision.',
+      'The new file could not be read — {productName} is still citing the previous revision.',
     /** The way out of that: the enlarged view carries the error and the retry. */
     peekFailedAction: 'Details',
   },
@@ -395,21 +395,21 @@ export const files = {
     dispatch_failed: "Reading couldn't be started. Try again.",
     timeout: 'Reading took too long and was stopped. Try again. Splitting a very large file helps.',
     empty: 'No text was found in this file. It may be password-protected, damaged or empty.',
-    deleted: 'The file was deleted while Piloti was reading it.',
+    deleted: 'The file was deleted while {productName} was reading it.',
     quarantined:
-      'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+      'This file contains something your office marks as sensitive. {productName} showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
     // Found in the text a vision model read off scanned pages (`after_transcription`):
     // that model saw those pages, no other did.
     quarantinedAfterTranscription:
       'This file contains something your office marks as sensitive, found in the text of scanned pages. A vision model read those pages so they could be checked; no other model saw them. An office or project admin reviews it and decides whether it stays or is deleted.',
     // The reason is not stored or cannot be read: claim nothing the line above does not show.
     quarantinedUnreadable:
-      'The content check held this file back. Its reason is not stored or cannot be read. While it is held back, Piloti shows it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+      'The content check held this file back. Its reason is not stored or cannot be read. While it is held back, {productName} shows it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
     // The office's screening rules could not be applied: the file was not read at
     // all and waits like a held one (ADR-0086).
     screening_unavailable:
-      "The check for sensitive data couldn't run, so Piloti didn't read this file or show it to any model. Read it again, or an office or project admin decides whether it stays.",
-    unknown: "Piloti couldn't read this document, so search can't find it.",
+      "The check for sensitive data couldn't run, so {productName} didn't read this file or show it to any model. Read it again, or an office or project admin decides whether it stays.",
+    unknown: "{productName} couldn't read this document, so search can't find it.",
     details: 'Details',
   },
   screening: {
@@ -454,7 +454,7 @@ export const files = {
     folderEmptyDescription: 'Upload documents here, or pick another folder from the sidebar.',
     noDocumentsTitle: 'No documents yet',
     noDocumentsDescription:
-      'Upload your project’s documents: drawings, official notices, expert reports. Piloti reads them and cites them instead of answering from generic guidance.',
+      'Upload your project’s documents: drawings, official notices, expert reports. {productName} reads them and cites them instead of answering from generic guidance.',
     searchPlaceholder: 'Search…',
     /** The field of a shelf that has the workspace search: typing filters names, Enter searches everything. */
     searchPlaceholderEverything: 'Filter, Enter searches all…',
@@ -556,7 +556,7 @@ export const files = {
       lockoutEveryoneReads:
         'If you are not on the list with “Edit” yourself, you may only read the folder once you save, unless you are an organization admin.',
       moveNotice:
-        'If who may read changes, Piloti moves the folder’s documents and reads them again. For a large folder that takes a few minutes; meanwhile the documents show as “Reading”.',
+        'If who may read changes, {productName} moves the folder’s documents and reads them again. For a large folder that takes a few minutes; meanwhile the documents show as “Reading”.',
       ifcNotice:
         'Folders not every project member may read cannot hold building models (IFC) yet. Keep IFC models in folders everyone may read.',
       /** The 409 from the IFC guard (ADR-0087): restricting, uploading or moving into a restricted folder. */
@@ -581,7 +581,7 @@ export const files = {
     /** What belongs in a folder (migration 0145): Piloti files uploads by it. */
     description: {
       title: 'What belongs in “{name}”?',
-      hint: 'A sentence or two on what this folder holds. Everyone who opens the folder reads it, and Piloti suggests where an upload belongs by it.',
+      hint: 'A sentence or two on what this folder holds. Everyone who opens the folder reads it, and {productName} suggests where an upload belongs by it.',
       label: 'Description',
       placeholder: 'e.g. Permits and statements from the building authority',
       count: '{count} / {max} characters',
@@ -597,7 +597,7 @@ export const files = {
    * row, the popover it opens, and the filing bar that decides per folder.
    */
   filing: {
-    label: 'Filing suggestion from Piloti',
+    label: 'Filing suggestion from {productName}',
     /** The chip's accessible name; it shows only the folder's last segment. */
     chip: 'Filing suggestion: {folder}',
     new: 'new',
@@ -607,7 +607,7 @@ export const files = {
     /** Spoken before the two paths of the popover, which a screen reader cannot see struck through. */
     from: 'Now in',
     to: 'Would move to',
-    barHeading: '{count, plural, one {Piloti suggests filing # file} other {Piloti suggests filing # files}}',
+    barHeading: '{count, plural, one {{productName} suggests filing # file} other {{productName} suggests filing # files}}',
     fileCount: '{count, plural, one {# file} other {# files}}',
     others: '{count, plural, one {with # more file} other {with # more files}}',
     move: 'Move',
@@ -644,7 +644,7 @@ export const files = {
     purge: 'Delete permanently',
     purgeTitle: 'Permanently delete “{name}”?',
     purgeDescription:
-      'The folder, its subfolders and {documents, plural, one {# document} other {# documents}} are deleted now, with every revision and preview. This cannot be undone. What Piloti derived from them follows your organization’s setting.',
+      'The folder, its subfolders and {documents, plural, one {# document} other {# documents}} are deleted now, with every revision and preview. This cannot be undone. What {productName} derived from them follows your organization’s setting.',
     purged: '“{name}” is permanently deleted.',
     held: 'This folder is under a retention obligation and cannot be deleted right now.',
     purgeError: 'The folder could not be permanently deleted. Please try again.',
@@ -670,7 +670,7 @@ export const files = {
       'This folder holds content you may not delete. It can be deleted by someone who may edit all of its subfolders.',
     deleteFolderIndexDown: 'The folder was not deleted because the search index did not answer. Please try again.',
     openBin: 'Bin',
-    corpusSubtitle: 'Project knowledge: documents Piloti reads and cites.',
+    corpusSubtitle: 'Project knowledge: documents {productName} reads and cites.',
     uploadDocuments: 'Upload documents',
     uploadProblem: 'Upload problem',
     dismissError: 'Dismiss error',
@@ -741,7 +741,7 @@ export const files = {
     reingestWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
     reingestConfirmTitle: 'Read “{name}” again?',
     reingestConfirmDescription:
-      'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, Piloti keeps answering from what it read before.',
+      '{productName} reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, {productName} keeps answering from what it read before.',
     reingestConfirmAction: 'Read again',
     reingestError: "Reading couldn't be restarted. Please try again.",
     // Stop a read that has not finished: the bytes stay, nothing was indexed,
@@ -751,7 +751,7 @@ export const files = {
     cancelling: 'Stopping…',
     cancelled: 'Reading “{name}” stopped',
     cancelFinished: 'Nothing to stop — the reading had already finished',
-    cancelUnavailable: "Reading can’t be stopped for this file — Piloti is converting it on this server",
+    cancelUnavailable: "Reading can’t be stopped for this file — {productName} is converting it on this server",
     cancelError: "Reading couldn't be stopped. Please try again.",
     label: 'File actions for “{name}”',
     menuLabel: 'File actions',
@@ -766,7 +766,7 @@ export const files = {
   rename: {
     title: 'Rename document',
     description:
-      'Changes the name shown everywhere in Piloti, including on citations. The file itself and everything read from it stay as they are.',
+      'Changes the name shown everywhere in {productName}, including on citations. The file itself and everything read from it stay as they are.',
     label: 'Name',
     hint: 'The file extension stays as it is.',
     save: 'Rename',
@@ -828,7 +828,7 @@ export const files = {
       updateExplain:
         '“{name}” is already here under this name. The new file becomes the current revision; the previous one stays readable under “Revisions and approval”.',
       revisionExplain:
-        '“{file}” continues “{name}”: the index or date in its name is newer. The older revision stays readable, Piloti answers from the new one and notes what changed; the link can be undone later.',
+        '“{file}” continues “{name}”: the index or date in its name is newer. The older revision stays readable, {productName} answers from the new one and notes what changed; the link can be undone later.',
       unclearTitle: 'Is “{file}” a new revision?',
       unclearExplain:
         'By its name, several documents could be meant. Choose the one this file continues, or upload it as a separate document.',
@@ -874,7 +874,7 @@ export const files = {
     // computer unless someone uploads one anyway. "Held back" is the content check's.
     excluded: '{count, plural, one {# file not uploaded} other {# files not uploaded}}',
     excludedExplain:
-      'Your office marks these terms as sensitive, so these files are not uploaded: they do not leave your computer. If one of them belongs in Piloti after all, tick it.',
+      'Your office marks these terms as sensitive, so these files are not uploaded: they do not leave your computer. If one of them belongs in {productName} after all, tick it.',
     releaseFile: 'Upload anyway',
     // Files that come in as a new revision of a document already here: by the
     // same name (ADR-0054) or by a name series under another name (ADR-0099).
@@ -883,7 +883,7 @@ export const files = {
     revision: {
       title: '{count, plural, one {# new revision} other {# new revisions}}',
       consequence:
-        'The older revision stays readable, Piloti answers from the new one and notes what changed; unticked files come in as separate documents, and any link can be undone later.',
+        'The older revision stays readable, {productName} answers from the new one and notes what changed; unticked files come in as separate documents, and any link can be undone later.',
       sameNameTitle:
         '{count, plural, one {# file of the same name as a new revision} other {# files of the same name as new revisions}}',
       sameNameReason:
@@ -945,16 +945,16 @@ export const files = {
     tooLarge: '“{name}” is larger than {size}.',
     sending: 'Sending {sent} of {total}…',
     sendingHint:
-      'You can go on working in Piloti meanwhile; just keep this tab open until the archive is sent. Filing then runs in the background.',
+      'You can go on working in {productName} meanwhile; just keep this tab open until the archive is sent. Filing then runs in the background.',
     sendingLabel: 'Sending “{name}”',
-    joining: 'Sent. Piloti is putting the archive together…',
+    joining: 'Sent. {productName} is putting the archive together…',
     sendErrors: {
       busy: 'This tab is still sending another archive. Wait until it is sent, then choose this one.',
       alreadyRunning: 'An import of yours is still running in this project. Continue or cancel it first.',
       cancelled: 'The import was cancelled while it was being sent.',
       quota: 'The organization’s storage is full, so the archive cannot be imported.',
       forbidden: 'You may not add documents to this project.',
-      rejected: 'Piloti did not accept this archive. Check that it is an Outlook .pst or .ost file.',
+      rejected: '{productName} did not accept this archive. Check that it is an Outlook .pst or .ost file.',
       connection: 'The connection broke off. Choose the file again with “Continue sending” to pick up where it stopped.',
       unknown: 'The archive could not be sent. Try again with “Continue sending”.',
     },
@@ -969,7 +969,7 @@ export const files = {
     cancelConfirm: {
       title: 'Cancel this import?',
       description:
-        'What has been filed so far stays. The archive is deleted from Piloti, so importing the rest means sending “{name}” again.',
+        'What has been filed so far stays. The archive is deleted from {productName}, so importing the rest means sending “{name}” again.',
       confirm: 'Cancel import',
       keep: 'Keep importing',
     },
@@ -1118,16 +1118,16 @@ export const files = {
     showTag: 'Show every “{tag}” document in this folder and its subfolders',
     pages: '{count, plural, one {{formatted} page read} other {{formatted} pages read}}',
     aboutTitle: 'What this is about',
-    noTypes: 'Piloti has not recognized a document type here yet.',
+    noTypes: '{productName} has not recognized a document type here yet.',
     /** "What this is about" while only the folder's counts are loaded (ADR-0102). */
     aboutDeferred: 'Document types, disciplines and topics',
     aboutDeferredHint:
-      'What Piloti recognized in the documents is kept with each document. For a large folder it is loaded only when you want to see it.',
+      'What {productName} recognized in the documents is kept with each document. For a large folder it is loaded only when you want to see it.',
     loadDetails: 'Load',
     loadingDetails: 'Loading…',
     contains: 'Contains {list}',
     needsTitle: 'Needs your attention',
-    failedLine: '{count, plural, one {Piloti could not read # document.} other {Piloti could not read # documents.}}',
+    failedLine: '{count, plural, one {{productName} could not read # document.} other {{productName} could not read # documents.}}',
     readAgainAll: '{count, plural, one {Read again} other {Read all # again}}',
     readAgainProgress: 'Starting {done} of {count}…',
     readAgainDone: '{count, plural, one {# document is being read again} other {# documents are being read again}}',
@@ -1135,16 +1135,16 @@ export const files = {
     heldLine:
       '{count, plural, one {# document is held back by the content check until someone reviews it.} other {# documents are held back by the content check until someone reviews them.}}',
     unplacedLine:
-      '{count, plural, one {Piloti could not assign # document to a document type.} other {Piloti could not assign # documents to a document type.}}',
+      '{count, plural, one {{productName} could not assign # document to a document type.} other {{productName} could not assign # documents to a document type.}}',
     unplacedHint:
-      'You don’t have to enter anything, Piloti assigns types on its own. For these, only you can: open the document and choose “Assign”.',
+      'You don’t have to enter anything, {productName} assigns types on its own. For these, only you can: open the document and choose “Assign”.',
     show: 'Show',
-    missingTitle: 'What Piloti is still missing',
-    missingLead: 'From the project details, Piloti expects these documents and does not know them yet:',
+    missingTitle: 'What {productName} is still missing',
+    missingLead: 'From the project details, {productName} expects these documents and does not know them yet:',
     missingMore: '+{count} more',
     missingHint:
-      'If one of them is already here, Piloti just doesn’t know which file it is, and will call it missing in answers. Read does not mean matched to its role.',
-    topicsTitle: 'Topics Piloti recognized',
+      'If one of them is already here, {productName} just doesn’t know which file it is, and will call it missing in answers. Read does not mean matched to its role.',
+    topicsTitle: 'Topics {productName} recognized',
     photos: '{count, plural, one {# photo} other {# photos}} from {span}',
     whereTitle: 'Where it’s stuck',
     expand: 'Expand',
@@ -1228,14 +1228,14 @@ export const files = {
     pageGroupShown: 'on screen',
     changeShow: 'Change {number}: {label}. Show on the page.',
     changeTag: 'Change {number}: {label}',
-    markPage: 'Compare page {page} with Piloti',
-    markingPage: 'Piloti is comparing page {page}…',
+    markPage: 'Compare page {page} with {productName}',
+    markingPage: '{productName} is comparing page {page}…',
     markedPage: 'Page {page} is marked',
     markPageMissing: 'Only one revision has page {page}',
     markSlow: 'This usually takes a few seconds.',
-    caveat: 'Marked by Piloti. Check dimensions in the document.',
+    caveat: 'Marked by {productName}. Check dimensions in the document.',
     markNotRead: 'This revision is still being read. You can compare as soon as it is citable.',
-    markUnavailable: 'Piloti is not reachable right now. Try again in a minute.',
+    markUnavailable: '{productName} is not reachable right now. Try again in a minute.',
     markFailed: 'The comparison failed. Please try again.',
   },
   filters: {
@@ -1282,20 +1282,20 @@ export const files = {
     },
   },
   authorship: {
-    byPiloti: 'Created by Piloti',
+    byPiloti: 'Created by {productName}',
     /** Filter chip beside All · Mine · Unassigned. */
-    filter: 'By Piloti',
+    filter: 'By {productName}',
     /** The question this filter left unanswered: WHICH files those would be. */
-    emptyTitle: 'Piloti has filed nothing here yet',
+    emptyTitle: '{productName} has filed nothing here yet',
     emptyDescription:
-      'This is where the files Piloti wrote itself appear: filed research reports and diagrams. Documents you uploaded do not count, even where Piloti has read them.',
+      'This is where the files {productName} wrote itself appear: filed research reports and diagrams. Documents you uploaded do not count, even where {productName} has read them.',
     /**
      * Why Ask is disabled on a generated report — and it is disabled, not
      * hidden, following the pattern the citable-yet case already set. The
      * difference is that there is no "yet": the report was never indexed, on
      * purpose, so that the agent cannot cite its own writing back as evidence.
      */
-    notInKnowledge: 'Created by Piloti — not in the knowledge base',
+    notInKnowledge: 'Created by {productName} — not in the knowledge base',
   },
   /**
    * Fassungen und Freigabe — the editorial state of a document (ADR-0054).
@@ -1333,7 +1333,7 @@ export const files = {
       approve: 'Approve',
       requestChanges: 'Request changes',
       /** The same decision, plus one thing: Piloti writes the next revision. */
-      delegateRevision: 'Have Piloti revise it',
+      delegateRevision: 'Have {productName} revise it',
       reject: 'Reject',
       publish: 'Publish',
       archive: 'Retire',
@@ -1385,7 +1385,7 @@ export const files = {
      */
     publishSection: {
       heading: 'Publication',
-      blurb: 'Publishing makes revision {number} the one Piloti answers from.',
+      blurb: 'Publishing makes revision {number} the one {productName} answers from.',
     },
     /**
      * Archiving is the one act in this section that cannot be taken back from
@@ -1402,7 +1402,7 @@ export const files = {
       consequences: {
         listing:
           'The file leaves the file list. The “Also show retired” filter brings it back into view.',
-        knowledge: 'Piloti stops citing it: its knowledge-base entries are removed.',
+        knowledge: '{productName} stops citing it: its knowledge-base entries are removed.',
         kept: 'The file and every revision are kept. This is not a delete.',
         permanent: 'This cannot be undone here.',
       },
@@ -1416,31 +1416,31 @@ export const files = {
      * cannot point at it („Alone").
      */
     meaning: {
-      draftLive: 'A draft of a new revision. Piloti keeps answering from the published revision.',
-      draftAlone: 'A draft. Piloti answers from it only once it is approved.',
-      inReviewLive: 'Waiting for approval. Piloti answers from the published revision.',
-      inReviewAlone: 'Waiting for approval. Until then Piloti does not answer from it.',
+      draftLive: 'A draft of a new revision. {productName} keeps answering from the published revision.',
+      draftAlone: 'A draft. {productName} answers from it only once it is approved.',
+      inReviewLive: 'Waiting for approval. {productName} answers from the published revision.',
+      inReviewAlone: 'Waiting for approval. Until then {productName} does not answer from it.',
       changesRequestedLive:
-        'Changes requested. Piloti answers from the published revision until the reworked one is approved.',
+        'Changes requested. {productName} answers from the published revision until the reworked one is approved.',
       changesRequestedAlone:
-        'Changes requested. Piloti answers from the reworked revision only once it is approved.',
+        'Changes requested. {productName} answers from the reworked revision only once it is approved.',
       approvedLive:
-        'Approved, waiting to be published. Until then Piloti answers from the published revision.',
-      approvedAlone: 'Approved, waiting to be published. Only then does Piloti answer from it.',
-      published: 'Piloti answers from this revision.',
-      rejectedLive: 'Rejected. Piloti answers from the published revision.',
-      rejectedAlone: 'Rejected. Piloti does not answer from it.',
+        'Approved, waiting to be published. Until then {productName} answers from the published revision.',
+      approvedAlone: 'Approved, waiting to be published. Only then does {productName} answer from it.',
+      published: '{productName} answers from this revision.',
+      rejectedLive: 'Rejected. {productName} answers from the published revision.',
+      rejectedAlone: 'Rejected. {productName} does not answer from it.',
       superseded: 'Replaced by a newer revision.',
-      archived: 'Retired. Gone from the file list; Piloti stops citing it.',
+      archived: 'Retired. Gone from the file list; {productName} stops citing it.',
       none: 'No revision yet.',
-      olderRevision: 'An older revision. Piloti answers from the newer one.',
+      olderRevision: 'An older revision. {productName} answers from the newer one.',
     },
     comment: {
       /** Rejecting needs a reason; asking for changes needs the changes. */
       reasonLabel: 'Reason for rejection',
       changesLabel: 'What needs to change',
       /** Said where the decision is taken, not in a tooltip. */
-      delegateNote: 'Piloti then drafts the next revision and submits it for approval.',
+      delegateNote: '{productName} then drafts the next revision and submits it for approval.',
       placeholder: 'The next revision reads this.',
       cancel: 'Cancel',
     },
@@ -1504,7 +1504,7 @@ export const files = {
     // One word for one gesture, on all three surfaces: the file pane, the report
     // card and the inbox row. It names Piloti: „Discuss" alone did not say with
     // whom, and beside „Ask a colleague" it read as a meeting with the team.
-    discuss: 'Discuss with Piloti',
+    discuss: 'Discuss with {productName}',
     askColleague: 'Ask a colleague',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
@@ -1525,7 +1525,7 @@ export const files = {
     welcomeAbout:
       'This thread is about {name}. Ask it something — answers will cite the file and the law.',
     subjectHint:
-      'Piloti searches this document. Other project files and Office filing stay out.',
+      '{productName} searches this document. Other project files and Office filing stay out.',
     subjectClear: 'Stop focusing on this file',
     loadingPeople: 'Loading people…',
     noPeople: 'No one in this project yet',
@@ -1558,7 +1558,7 @@ export const files = {
     annotateHint: 'Put an annotation on the page',
     workOn: 'Annotate and review',
     workOnAll: 'See and review all {count}',
-    empty: 'Put annotations right on pages and areas – for yourself, with colleagues or with Piloti.',
+    empty: 'Put annotations right on pages and areas – for yourself, with colleagues or with {productName}.',
     joinIn: 'Join',
     peopleHere: '{count, plural, one {{names} is in this document right now} other {{names} are in this document right now}}',
     replies: '{count, plural, one {# reply} other {# replies}}',
@@ -1620,8 +1620,8 @@ export const files = {
       documents: 'Documents',
       status: {
         open: 'Open annotations',
-        proposed: 'Piloti’s proposals',
-        'all-live': 'Open annotations and Piloti’s proposals',
+        proposed: '{productName}’s proposals',
+        'all-live': 'Open annotations and {productName}’s proposals',
       },
       assignee: 'Assignee: {name}',
       due: {
@@ -1647,22 +1647,22 @@ export const files = {
     follow: 'Follow {name}',
     unfollow: 'Stop following {name}',
     following: 'Following {name} · Esc to stop',
-    pilotiWorking: 'Piloti is working on the document',
-    reviewWithPiloti: 'Have Piloti review',
+    pilotiWorking: '{productName} is working on the document',
+    reviewWithPiloti: 'Have {productName} review',
     reviewSeed:
       'Go through this document and set what you find as annotations at the places they concern, looking at each page first: defects, questions for the consultants and notes. Cite the clause when a finding rests on a standard.',
     tools: {
       select: 'Select',
       point: 'Comment',
       region: 'Comment on area',
-      ask: 'Ask Piloti',
+      ask: 'Ask {productName}',
     },
     // Under each tool on a touch screen: one word that fits under 56px.
     toolsShort: {
       select: 'Select',
       point: 'Comment',
       region: 'Area',
-      ask: 'Piloti',
+      ask: '{productName}',
       chat: 'Say',
     },
     toolsIntroFold: 'Hide labels',
@@ -1670,12 +1670,12 @@ export const files = {
     toolHint: {
       point: 'Click the place · Esc cancels',
       region: 'Drag a frame around the detail · Esc cancels',
-      ask: 'Drag a frame around the detail to ask Piloti about · Esc cancels',
+      ask: 'Drag a frame around the detail to ask {productName} about · Esc cancels',
     },
     toolHintTouch: {
       point: 'Tap the place',
       region: 'Drag a frame around the detail with one finger',
-      ask: 'Drag a frame around the detail to ask Piloti about, with one finger',
+      ask: 'Drag a frame around the detail to ask {productName} about, with one finger',
     },
     popout: 'Open in a new window',
     copyReviewLink: 'Copy link to the review',
@@ -1693,22 +1693,22 @@ export const files = {
     // Piloti on the canvas: a box asked about, the answer beside it, and Piloti in a thread.
     piloti: {
       conversationTitle: '{name} · Review',
-      ask: 'Ask Piloti',
-      mention: 'Mention Piloti',
-      mentionHint: 'Piloti answers in this thread',
-      replying: 'Piloti is answering …',
-      replyFailed: 'Piloti could not answer.',
-      replyingFor: 'Piloti is answering … · for {name}',
-      workQueued: 'Piloti is on it · for {name}',
+      ask: 'Ask {productName}',
+      mention: 'Mention {productName}',
+      mentionHint: '{productName} answers in this thread',
+      replying: '{productName} is answering …',
+      replyFailed: '{productName} could not answer.',
+      replyingFor: '{productName} is answering … · for {name}',
+      workQueued: '{productName} is on it · for {name}',
       // Why a woken Piloti did not answer, by the class of the stored reason (`wakeEndReasonKind`).
       workFailed: {
-        budget: 'Piloti could not answer: the usage budget is used up. Whoever manages the organization can raise it.',
-        busy: 'Piloti did not get to it in time. Ask again later.',
-        access: 'Piloti could not sign in for {name}. Ask again.',
-        error: 'Piloti broke off before it had an answer. Ask again, or work on it yourself.',
+        budget: '{productName} could not answer: the usage budget is used up. Whoever manages the organization can raise it.',
+        busy: '{productName} did not get to it in time. Ask again later.',
+        access: '{productName} could not sign in for {name}. Ask again.',
+        error: '{productName} broke off before it had an answer. Ask again, or work on it yourself.',
       },
-      wakeHeld: 'Piloti is not answering here right now: too many requests in a short time.',
-      delegateChip: 'Piloti is working on it · for {name}',
+      wakeHeld: '{productName} is not answering here right now: too many requests in a short time.',
+      delegateChip: '{productName} is working on it · for {name}',
       retry: 'Ask again',
       close: 'Close',
       stop: 'Stop',
@@ -1728,40 +1728,40 @@ export const files = {
         oib: 'Check this detail against the relevant OIB guidelines and cite the clause.',
         question: 'Draft a precise query to the consultants about this detail.',
       },
-      busy: 'Piloti is still answering the previous question.',
+      busy: '{productName} is still answering the previous question.',
       // While Piloti works, what the person adds goes into the running answer
       // instead of becoming a new question: Piloti reads it before its next step.
-      busySteer: 'Piloti is still working: your question goes into the running answer as a note.',
-      steerPlaceholder: 'Steer Piloti …',
+      busySteer: '{productName} is still working: your question goes into the running answer as a note.',
+      steerPlaceholder: 'Steer {productName} …',
       steerSend: 'Add',
       steerNotes: 'Your notes',
       steerWaiting: 'being taken into account',
       steerApplied: 'applied in round {round}',
       thinking: 'Looking at the detail …',
       thinkingDocument: 'Going through the document …',
-      needsInput: 'Piloti has a question for you. You can answer it in the chat.',
-      failed: 'Piloti could not answer.',
+      needsInput: '{productName} has a question for you. You can answer it in the chat.',
+      failed: '{productName} could not answer.',
       sources: 'Sources',
       source: 'Source',
       adopt: 'Keep as annotation',
       adoptReply: 'Add to the thread',
       continueInChat: 'Open in chat',
-      reopen: "Open Piloti's answer",
-      reviewing: 'Piloti is reviewing the document …',
-      reviewDone: 'Piloti is done',
-      reviewFound: '{count, plural, one {Piloti found # point} other {Piloti found # points}}',
-      busyTooltip: 'Piloti is answering your question',
+      reopen: "Open {productName}'s answer",
+      reviewing: '{productName} is reviewing the document …',
+      reviewDone: '{productName} is done',
+      reviewFound: '{count, plural, one {{productName} found # point} other {{productName} found # points}}',
+      busyTooltip: '{productName} is answering your question',
       reviewFailed: 'Review failed',
-      checkingFixed: 'Piloti is checking what is fixed …',
-      checkFixedDone: 'Piloti answered in the threads',
+      checkingFixed: '{productName} is checking what is fixed …',
+      checkFixedDone: '{productName} answered in the threads',
       openConversation: 'Conversation',
-      declined: 'Piloti did not take this on. The reason is above.',
-      handedOff: 'Piloti is researching this in depth. The result arrives in the chat.',
+      declined: '{productName} did not take this on. The reason is above.',
+      handedOff: '{productName} is researching this in depth. The result arrives in the chat.',
       stopped: 'This answer was stopped.',
-      empty: 'Piloti answered by working on the document, not in words.',
-      degradedRegion: 'Piloti could not see the marked detail and answered about the whole document.',
+      empty: '{productName} answered by working on the document, not in words.',
+      degradedRegion: '{productName} could not see the marked detail and answered about the whole document.',
       degradedThread: 'This answer did not reach the thread. You can add it yourself.',
-      failedConnection: 'The connection to Piloti broke off. What arrived is kept.',
+      failedConnection: 'The connection to {productName} broke off. What arrived is kept.',
       failedSession: 'Your session expired. Reload the page and ask again.',
     },
     peerSelected: '{names} has this open',
@@ -1775,8 +1775,8 @@ export const files = {
     peerRegion: 'is marking a region',
     // Piloti says on the document whom it writes for (ADR-0105; EU AI Act Art. 50).
     attribution: {
-      pilotiFor: 'Piloti · for {name}',
-      proposalFor: 'Proposal by Piloti · for {name}',
+      pilotiFor: '{productName} · for {name}',
+      proposalFor: 'Proposal by {productName} · for {name}',
       woken: {
         thread_mention: 'Woken by a mention',
         thread_reply: 'Woken by a reply',
@@ -1800,7 +1800,7 @@ export const files = {
       label: {
         point: 'Choose a spot. Arrow keys move the crosshair, with Shift in larger steps. Enter places the point, Escape cancels.',
         region: 'Choose a region. Arrow keys move the crosshair. Enter holds the first corner, the arrow keys draw the box out, Enter places it. Escape cancels.',
-        ask: 'Choose a region for Piloti. Arrow keys move the crosshair. Enter holds the first corner, the arrow keys draw the box out, Enter asks Piloti about it. Escape cancels.',
+        ask: 'Choose a region for {productName}. Arrow keys move the crosshair. Enter holds the first corner, the arrow keys draw the box out, Enter asks {productName} about it. Escape cancels.',
       },
       hint: {
         point: 'Click or ↵ · Arrow keys · Esc',
@@ -1811,12 +1811,12 @@ export const files = {
       box: 'Box {w} % wide, {h} % high',
     },
     announce: {
-      pilotiProposed: 'Piloti set {count, plural, one {a proposal} other {# proposals}}',
+      pilotiProposed: '{productName} set {count, plural, one {a proposal} other {# proposals}}',
       created: '{name}: {count, plural, one {new annotation {numbers}} other {# new annotations}}',
       replied: '{name}: {count, plural, one {new reply on annotation {numbers}} other {new replies on annotations {numbers}}}',
       updated: '{name} changed {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
       deleted: '{name} deleted {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
-      pilotiAnswered: 'Piloti answered',
+      pilotiAnswered: '{productName} answered',
     },
     page: 'Page {page}',
     draftPlaceholder: 'Write an annotation … (Enter to save)',
@@ -1846,9 +1846,9 @@ export const files = {
     more: 'More',
     closeThread: 'Close',
     makeKind: 'Make it a {kind}',
-    askPiloti: 'Ask Piloti about it',
-    delegateToPiloti: 'Delegate to Piloti',
-    takeBackFromPiloti: 'Take back from Piloti',
+    askPiloti: 'Ask {productName} about it',
+    delegateToPiloti: 'Delegate to {productName}',
+    takeBackFromPiloti: 'Take back from {productName}',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
     linkCopyFailed: 'The link could not be copied.',
@@ -1872,14 +1872,14 @@ export const files = {
     replaces: 'Replaces “{name}”',
     replacedNotice: 'This document was replaced by “{name}”.',
     checkFixed: {
-      action: 'Have Piloti check what is fixed',
-      running: 'Piloti is checking what is fixed …',
+      action: 'Have {productName} check what is fixed',
+      running: '{productName} is checking what is fixed …',
       currentRevision: 'the current revision',
       seed:
         'Check whether {count, plural, one {open annotation {numbers}} other {open annotations {numbers}}} from an earlier revision {count, plural, one {is} other {are}} fixed in {current}. For each one, read it, look at the place in this document and answer in its thread, starting with “Fixed in {current}:” or “Still open:”, saying in one sentence how you can tell. Do not resolve or otherwise change any annotation: we decide that ourselves.',
       seedFrom:
         'Check whether {count, plural, one {open annotation {numbers}} other {open annotations {numbers}}} on “{from}” {count, plural, one {is} other {are}} fixed in this document, “{current}”. For each one, read it on “{from}”, look at the place here and answer in its thread on “{from}”, starting with “Fixed in {current}:” or “Still open:”, saying in one sentence how you can tell. Do not resolve or otherwise change any annotation: we decide that ourselves.',
-      verdict: 'Piloti’s answer',
+      verdict: '{productName}’s answer',
       resolve: 'Resolve',
       resolveMark: 'Resolve annotation {number} on “{name}”',
       resolveFailed: 'The annotation could not be resolved. Please try again.',
@@ -1897,10 +1897,10 @@ export const files = {
     editCancel: 'Cancel',
     replyMore: 'More for your reply',
     replyEditLabel: 'Your reply',
-    replyEditNoWake: 'An edited reply does not reach Piloti. Ask Piloti in a new reply.',
+    replyEditNoWake: 'An edited reply does not reach {productName}. Ask {productName} in a new reply.',
     replyDeleteConfirm: 'Delete your reply?',
     replyDeleteHint: 'People it mentioned no longer see the notice about it.',
-    replyTakenUp: 'Piloti has already taken this reply up. It stays as it is; write a new one.',
+    replyTakenUp: '{productName} has already taken this reply up. It stays as it is; write a new one.',
     edited: 'edited',
     assigneeYou: 'You',
     clearDue: 'Remove due date',
@@ -1916,11 +1916,11 @@ export const files = {
       closed: 'Done',
     },
     mine: 'For you',
-    proposalsGroup: '{count, plural, one {# proposal from Piloti} other {# proposals from Piloti}}',
+    proposalsGroup: '{count, plural, one {# proposal from {productName}} other {# proposals from {productName}}}',
     walkProposals: 'Go through',
     walkPosition: '{index}/{total}',
     walkNext: 'Next',
-    proposalsLegend: 'Dashed = proposed by Piloti, not accepted yet',
+    proposalsLegend: 'Dashed = proposed by {productName}, not accepted yet',
     empty: {
       noneTitle: 'No annotations yet',
       noneBody: 'Press C and click the place it is about, or R and drag out a region.',
@@ -1950,7 +1950,7 @@ export const files = {
         current: 'Current revision',
         all: 'All revisions',
       },
-      includeProposals: 'Add Piloti’s proposals',
+      includeProposals: 'Add {productName}’s proposals',
       formatLabel: 'Download as',
       formats: {
         pdf: 'PDF',
@@ -1988,7 +1988,7 @@ export const files = {
           // Closed ones too, of the current revision only: what is still open from earlier ones is in it anyway.
           currentWithOpenFromEarlier: 'current revision, plus what is still open from earlier ones',
         },
-        withProposals: 'with Piloti’s proposals',
+        withProposals: 'with {productName}’s proposals',
         exportedAt: 'Exported on',
         exportedBy: 'Exported by',
         marks: 'Annotations',
@@ -2001,20 +2001,20 @@ export const files = {
           proposed: 'proposal',
         },
         setBy: 'Set by {name} · {date}',
-        pilotiSetFor: 'Set by Piloti · for {name} · {date}',
-        pilotiSet: 'Set by Piloti · {date}',
-        proposalFor: 'Proposed by Piloti · for {name} · {date}',
-        proposal: 'Proposed by Piloti · {date}',
+        pilotiSetFor: 'Set by {productName} · for {name} · {date}',
+        pilotiSet: 'Set by {productName} · {date}',
+        proposalFor: 'Proposed by {productName} · for {name} · {date}',
+        proposal: 'Proposed by {productName} · {date}',
         closedResolved: 'Resolved by {name} · {date}',
         closedDismissed: 'Dismissed by {name} · {date}',
-        delegated: 'Piloti is working on it · for {name}',
+        delegated: '{productName} is working on it · for {name}',
         basis: 'Basis',
         assignee: 'Responsible',
         due: 'Due',
         thread: 'Thread',
-        proposals: 'Proposals by Piloti, not reviewed',
+        proposals: 'Proposals by {productName}, not reviewed',
         proposalsNote:
-          'Piloti proposed these places and nobody in the office has taken them over. They are not the office’s annotations.',
+          '{productName} proposed these places and nobody in the office has taken them over. They are not the office’s annotations.',
       },
     },
   },
@@ -2023,7 +2023,7 @@ export const files = {
     advanced: 'Advanced',
     menuItem: 'Sort all files into folders…',
     title: 'Sort files into folders',
-    description: 'Piloti proposes a folder for each file in the root. Nothing moves until you apply.',
+    description: '{productName} proposes a folder for each file in the root. Nothing moves until you apply.',
     close: 'Close',
     cancel: 'Cancel',
     start: 'Start',
@@ -2039,10 +2039,10 @@ export const files = {
       folders: '{count, plural, one {# folder} other {# folders}}',
       unreadable: '{count, plural, one {# file is not read yet and stays out of this run.} other {# files are not read yet and stay out of this run.}}',
       truncated: 'The root holds more files than one run sorts. The rest waits for the next run.',
-      noFolders: 'Create the folders first. Piloti sorts files into folders that exist, and there is nowhere to sort them without any.',
+      noFolders: 'Create the folders first. {productName} sorts files into folders that exist, and there is nowhere to sort them without any.',
       nothing: 'No file is in the root. There is nothing to sort.',
       loadFailed: 'The root could not be read.',
-      steps: 'Piloti first assigns each file to a folder and proposes new folders for the rest. Then you review everything: nothing moves until you apply. With many files this takes a few minutes, and you can keep working meanwhile.',
+      steps: '{productName} first assigns each file to a folder and proposes new folders for the rest. Then you review everything: nothing moves until you apply. With many files this takes a few minutes, and you can keep working meanwhile.',
     },
     stages: {
       judge: 'Assign',
@@ -2051,20 +2051,20 @@ export const files = {
       move: 'Move',
     },
     progress: {
-      judging: 'Piloti is assigning the files to folders',
-      grouping: 'Piloti is proposing new folders',
-      applying: 'Piloti is moving the files',
-      undoing: 'Piloti is putting the files back',
+      judging: '{productName} is assigning the files to folders',
+      grouping: '{productName} is proposing new folders',
+      applying: '{productName} is moving the files',
+      undoing: '{productName} is putting the files back',
       count: '{done} of {total}',
-      starting: 'Piloti is reading the first files …',
+      starting: '{productName} is reading the first files …',
       groupingDetail: '{count, plural, one {No existing folder fits # file.} other {No existing folder fits # files.}} With many files this takes up to four minutes.',
       elapsed: 'Running for {duration}',
       remaining: 'About {duration} left',
       waiting: 'Queued: the sort starts by itself as soon as a slot is free.',
       recent: 'Just assigned',
       recentItem: '{name} to {folder}',
-      keepOpen: 'You can close this window and keep working. Piloti tells you in your inbox once the review is ready.',
-      keepOpenMoving: 'You can close this window and keep working. Piloti keeps going, and you will find the state here again.',
+      keepOpen: 'You can close this window and keep working. {productName} tells you in your inbox once the review is ready.',
+      keepOpenMoving: 'You can close this window and keep working. {productName} keeps going, and you will find the state here again.',
     },
     cancelled: 'The sort was cancelled. Nothing was moved.',
     failed: 'The sort failed.',
@@ -2083,11 +2083,11 @@ export const files = {
       onlyUnsure: 'Show unsure only',
       hint: 'Uncheck what should stay. Use “Move to …” to pick another folder for a file.',
       newFoldersNote: 'New folders are created when you move the files.',
-      empty: 'Piloti found no folder for any file.',
-      allFailed: 'Piloti could not judge any of the files. They all stay in the root.',
+      empty: '{productName} found no folder for any file.',
+      allFailed: '{productName} could not judge any of the files. They all stay in the root.',
       failed: '{count, plural, one {# file could not be judged and stays in the root.} other {# files could not be judged and stay in the root.}}',
-      groupingFailed: 'Piloti could not propose new folders for the remaining files. They stay in the root; a new run can try again.',
-      onlyUnsureEmpty: 'Nothing is unsure. Piloti is sure of every proposal.',
+      groupingFailed: '{productName} could not propose new folders for the remaining files. They stay in the root; a new run can try again.',
+      onlyUnsureEmpty: 'Nothing is unsure. {productName} is sure of every proposal.',
       treeLabel: 'Proposal as a folder tree',
       staysLabel: 'Stays in the root',
     },
@@ -2106,7 +2106,7 @@ export const files = {
       moveTo: 'Move to …',
       moveAria: 'Choose a folder for “{name}”',
       stayInRoot: 'Stays in the root',
-      restore: 'Back to Piloti’s proposal',
+      restore: 'Back to {productName}’s proposal',
       noReason: 'No folder fits.',
     },
     apply: {

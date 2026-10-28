@@ -119,7 +119,7 @@ def run_stamp() -> str:
 # points. From a worktree of another commit the main checkout's ``aiq_api`` met
 # the worktree's ``aiq_agent`` and every turn died (``Unknown field name
 # front_end``), reported as a 0.0 s run.
-FRONTEND_PACKAGES = {"aiq_api": "frontends/aiq_api/src/aiq_api"}
+FRONTEND_PACKAGES = {"aiq_api": "apps/backend/src/aiq_api"}
 
 
 def source_packages() -> dict[str, Path]:

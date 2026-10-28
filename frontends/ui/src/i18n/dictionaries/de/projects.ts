@@ -28,7 +28,7 @@ export const projects: typeof en.projects = {
     empty: {
       title: 'Starten Sie Ihr erstes Projekt',
       description:
-        'Piloti ist der Arbeitsbereich, in dem ein Planungsbüro ein Bauprojekt führt. Legen Sie ein Projekt an, um Dateien, Mitglieder und Chat zusammenzubringen. Piloti arbeitet darin und zitiert jede Quelle.',
+        '{productName} ist der Arbeitsbereich, in dem ein Planungsbüro ein Bauprojekt führt. Legen Sie ein Projekt an, um Dateien, Mitglieder und Chat zusammenzubringen. {productName} arbeitet darin und zitiert jede Quelle.',
       action: 'Erstellen Sie Ihr erstes Projekt',
     },
     filter: {
@@ -62,7 +62,7 @@ export const projects: typeof en.projects = {
     range: '{start} – {end}',
     periodOpen: 'Beginn offen',
     startedOn: 'Beginn',
-    startedOnDefault: 'Der Monat, in dem das Projekt in Piloti angelegt wurde. Ändern Sie ihn, wenn die Arbeit früher begann.',
+    startedOnDefault: 'Der Monat, in dem das Projekt in {productName} angelegt wurde. Ändern Sie ihn, wenn die Arbeit früher begann.',
     endedOn: 'Abschluss',
     endedOnRunning: 'Laufend. Der Abschluss wird beim Abschließen des Projekts gesetzt.',
     month: 'Monat',
@@ -75,9 +75,9 @@ export const projects: typeof en.projects = {
     more: '{count, plural, one {# weitere Person} other {# weitere Personen}}',
     noPeople: 'Noch niemand eingetragen.',
     peopleHint:
-      'Die Mitglieder des Projekts stehen hier von selbst. Ergänzen Sie, wer ohne Piloti-Konto mitgearbeitet hat: externe Planer, Bauherr, frühere Mitarbeitende.',
+      'Die Mitglieder des Projekts stehen hier von selbst. Ergänzen Sie, wer ohne {productName}-Konto mitgearbeitet hat: externe Planer, Bauherr, frühere Mitarbeitende.',
     rosterUnknown: 'Die Mitglieder des Projekts ließen sich gerade nicht laden. Hier steht nur, was eingetragen ist.',
-    privacy: 'Gespeichert werden nur Name, Funktion, Firma und Zeitraum. Piloti verwendet diese Angaben nicht in Antworten.',
+    privacy: 'Gespeichert werden nur Name, Funktion, Firma und Zeitraum. {productName} verwendet diese Angaben nicht in Antworten.',
     member: 'Mitglied',
     former: 'ehemalig',
     functionMissing: 'Funktion offen',
@@ -102,18 +102,18 @@ export const projects: typeof en.projects = {
     closing: {
       heading: 'Wer war dabei',
       description:
-        'Prüfen Sie, wer am Projekt mitgearbeitet hat, und ergänzen Sie, wer ohne Piloti-Konto dabei war. Nach dem Abschluss ist der Steckbrief schreibgeschützt.',
+        'Prüfen Sie, wer am Projekt mitgearbeitet hat, und ergänzen Sie, wer ohne {productName}-Konto dabei war. Nach dem Abschluss ist der Steckbrief schreibgeschützt.',
       loadFailed: 'Der Steckbrief konnte nicht geladen werden. Sie können das Projekt trotzdem abschließen.',
     },
   },
   cleanup: {
-    loading: 'Piloti sieht die Dateien durch …',
+    loading: '{productName} sieht die Dateien durch …',
     aiNotice:
-      'KI-Vorschlag: erstellt von Piloti aus Dateinamen, Ordnern, Typen und den vorhandenen Zusammenfassungen, ohne den Inhalt der Dateien neu zu lesen. Prüfen Sie jeden Eintrag.',
+      'KI-Vorschlag: erstellt von {productName} aus Dateinamen, Ordnern, Typen und den vorhandenen Zusammenfassungen, ohne den Inhalt der Dateien neu zu lesen. Prüfen Sie jeden Eintrag.',
     aiUnavailable:
       'Die KI-Prüfung war gerade nicht verfügbar. Die Vorschläge beruhen nur auf festen Regeln, etwa Sperrdateien, „Kopie von …“ oder ein älterer Index im Dateinamen.',
     considered: '{count} Dateien geprüft, die Sie bearbeiten dürfen.',
-    none: 'Piloti schlägt nichts zum Entfernen vor.',
+    none: '{productName} schlägt nichts zum Entfernen vor.',
     unavailable: 'Vorschläge konnten nicht geladen werden. Sie können das Projekt trotzdem abschließen.',
     binNote: 'Ausgewähltes kommt für 14 Tage in den Papierkorb und lässt sich von dort wiederherstellen.',
     aiChip: 'KI-Vorschlag',
@@ -134,7 +134,7 @@ export const projects: typeof en.projects = {
       'old-name': 'Als alt markiert (Name)',
       'same-content': 'Gleicher Inhalt wie eine ältere Datei',
       'older-version': 'Ältere Fassung, eine neuere liegt im selben Ordner',
-      'unpublished-draft': 'Entwurf von Piloti, nie veröffentlicht',
+      'unpublished-draft': 'Entwurf von {productName}, nie veröffentlicht',
     },
   },
   lifecycle: {
@@ -147,7 +147,7 @@ export const projects: typeof en.projects = {
     banner: {
       title: 'Abgeschlossenes Projekt · nur lesen',
       endedIn: 'Abschluss {month}.',
-      closedOn: 'In Piloti abgeschlossen am {date}.',
+      closedOn: 'In {productName} abgeschlossen am {date}.',
       cancelled: 'Es wurde nicht realisiert.',
       body: 'Dateien, Ordner, Briefing und Projektgedächtnis sind schreibgeschützt. Fragen im Chat bleiben möglich.',
       outsider:
@@ -165,7 +165,7 @@ export const projects: typeof en.projects = {
       closedDescription:
         'Schreibgeschützt und für das ganze Büro lesbar, als Referenz für künftige Projekte. Ordner mit eigener Zugriffsliste bleiben eingeschränkt. Wieder geöffnet ist es bearbeitbar und nur noch für seine Mitglieder sichtbar.',
       closedFacts: '{outcome} · Abschluss {month}',
-      closedOn: 'In Piloti abgeschlossen am {date}',
+      closedOn: 'In {productName} abgeschlossen am {date}',
       pausedOn: 'Ruht seit {date}',
       whichOne:
         'Pausieren, wenn das Projekt wartet und weitergeht. Abschließen, wenn die Arbeit vorbei ist, ob gebaut oder nicht.',
@@ -192,7 +192,7 @@ export const projects: typeof en.projects = {
         cleanup: {
           label: 'Ausmisten',
           description:
-            'Piloti schlägt vor, was das fertige Projekt nicht mehr braucht: Arbeitskopien, überholte Fassungen, Duplikate, temporäre Dateien und nie veröffentlichte Entwürfe. Sie entscheiden über jeden Eintrag.',
+            '{productName} schlägt vor, was das fertige Projekt nicht mehr braucht: Arbeitskopien, überholte Fassungen, Duplikate, temporäre Dateien und nie veröffentlichte Entwürfe. Sie entscheiden über jeden Eintrag.',
         },
       },
       outcome: {
@@ -217,11 +217,11 @@ export const projects: typeof en.projects = {
     },
     debrief: {
       intro:
-        'Was dieses Projekt gelernt hat, kann jedes künftige Projekt im Büro nutzen: Piloti schlägt es vor, wenn eine ähnliche Frage kommt. Prüfen Sie vor dem Abschluss kurz, was davon bleibt.',
+        'Was dieses Projekt gelernt hat, kann jedes künftige Projekt im Büro nutzen: {productName} schlägt es vor, wenn eine ähnliche Frage kommt. Prüfen Sie vor dem Abschluss kurz, was davon bleibt.',
       fingerprint: {
-        heading: 'Woran Piloti es wiederfindet',
+        heading: 'Woran {productName} es wiederfindet',
         description:
-          'Nach diesen Angaben findet Piloti vergleichbare Projekte, und Ihr Büro findet dieses unter „Ähnliche Projekte“. Fehlende ergänzen Sie im Briefing.',
+          'Nach diesen Angaben findet {productName} vergleichbare Projekte, und Ihr Büro findet dieses unter „Ähnliche Projekte“. Fehlende ergänzen Sie im Briefing.',
         missing: '{count, plural, one {# Angabe fehlt} other {# Angaben fehlen}}',
         complete: 'Vollständig',
         open: 'offen',
@@ -242,12 +242,12 @@ export const projects: typeof en.projects = {
       },
       extract: {
         action: 'Aus den Unterlagen erschließen',
-        pending: 'Piloti liest die Unterlagen …',
+        pending: '{productName} liest die Unterlagen …',
         result:
           '{suggested, plural, one {# Eckdatum} other {# Eckdaten}} vorgeschlagen, {drafted, plural, one {# Entscheidung} other {# Entscheidungen}} erschlossen aus {documents, plural, one {# Dokument} other {# Dokumenten}}.',
-        none: 'Piloti hat in den Unterlagen nichts Neues gefunden.',
+        none: '{productName} hat in den Unterlagen nichts Neues gefunden.',
         errors: {
-          backendUnavailable: 'Piloti konnte die Unterlagen gerade nicht lesen, bitte später erneut.',
+          backendUnavailable: '{productName} konnte die Unterlagen gerade nicht lesen, bitte später erneut.',
           noDocuments: 'Es gibt noch keine lesbaren Unterlagen in den offenen Ordnern.',
           failed: 'Das Lesen hat nicht geklappt, bitte später erneut.',
         },
@@ -255,13 +255,13 @@ export const projects: typeof en.projects = {
       decisions: {
         heading: 'Was das Büro behalten soll',
         description:
-          'Entscheidungen und Vorgaben aus dem Projektgedächtnis. Bestätigte nennt Piloti in anderen Projekten „von einer Person bestätigt".',
-        empty: 'Piloti hat für dieses Projekt noch keine Entscheidungen festgehalten.',
+          'Entscheidungen und Vorgaben aus dem Projektgedächtnis. Bestätigte nennt {productName} in anderen Projekten „von einer Person bestätigt".',
+        empty: '{productName} hat für dieses Projekt noch keine Entscheidungen festgehalten.',
         confirm: 'Bestätigen',
         confirmed: 'Bestätigt',
         dismiss: 'Verwerfen',
         grounded: 'aus den Unterlagen erschlossen',
-        noted: 'von Piloti notiert',
+        noted: 'von {productName} notiert',
         evidencePage: '{file}, S. {page}',
         kind: { decision: 'Entscheidung', constraint: 'Vorgabe' },
       },
@@ -296,7 +296,7 @@ export const projects: typeof en.projects = {
   },
   card: {
     summaryFallback:
-      'Arbeitsbereich des Planungsbüros. Fügen Sie Dokumente und ein Briefing hinzu, damit Piloti aus diesem Projekt arbeiten kann.',
+      'Arbeitsbereich des Planungsbüros. Fügen Sie Dokumente und ein Briefing hinzu, damit {productName} aus diesem Projekt arbeiten kann.',
     status: {
       active: 'Aktiv',
       paused: 'Ruhend',
@@ -321,7 +321,7 @@ export const projects: typeof en.projects = {
   dialog: {
     newProject: 'Neues Projekt',
     title: 'Neues Projekt',
-    description: 'Danach legen Sie die Unterlagen ab. Den Rest erledigt Piloti.',
+    description: 'Danach legen Sie die Unterlagen ab. Den Rest erledigt {productName}.',
   },
   form: {
     nameRequired: 'Der Projektname ist erforderlich.',
@@ -341,14 +341,14 @@ export const projects: typeof en.projects = {
       clearStartedOn: 'Beginn leeren',
       endedOnBeforeStart: 'Der Abschluss liegt vor dem Beginn.',
       readOnlyPiloti:
-        'Das Projekt bleibt offen, solange Piloti die Dokumente liest. Es wird abgeschlossen, wenn Sie die Erfassung beenden.',
+        'Das Projekt bleibt offen, solange {productName} die Dokumente liest. Es wird abgeschlossen, wenn Sie die Erfassung beenden.',
     },
     addressLabel: 'Adresse',
     addressPlaceholder: 'Straße und Hausnummer oder Ort',
     address: {
       searching: 'Suche läuft…',
       suggestions: 'Adressvorschläge',
-      keepTyped: 'Oder einfach so lassen: Piloti übernimmt die Adresse, wie Sie sie tippen.',
+      keepTyped: 'Oder einfach so lassen: {productName} übernimmt die Adresse, wie Sie sie tippen.',
     },
     sameAddress: {
       heading: 'An dieser Adresse gibt es schon ein Projekt',
@@ -360,12 +360,12 @@ export const projects: typeof en.projects = {
       open: 'Kurz beschreiben, worum es geht',
       label: 'Worum geht es?',
       placeholder: 'z. B. Aufstockung eines Gründerzeithauses um zwei Geschoße, Dachgeschoßausbau mit 6 Wohnungen',
-      help: 'Ein, zwei Sätze helfen Piloti beim Lesen der Unterlagen.',
+      help: 'Ein, zwei Sätze helfen {productName} beim Lesen der Unterlagen.',
     },
     drop: {
       title: 'Projektordner hierher ziehen',
       titleTouch: 'Projektunterlagen hinzufügen',
-      help: 'Optional. Sie wählen im nächsten Schritt, welche Ordner Piloti liest.',
+      help: 'Optional. Sie wählen im nächsten Schritt, welche Ordner {productName} liest.',
       choose: 'Auswählen',
       overlay: 'Projektordner hier ablegen',
       held: 'Ordner „{name}“: {count, plural, one {# Datei wird} other {# Dateien werden}} abgelegt, sobald das Projekt besteht.',
@@ -389,12 +389,12 @@ export const projects: typeof en.projects = {
     source: 'Quelle',
     sourceAria: 'Quelle für {code} öffnen',
     sourceTitle: 'OIB-Quelle öffnen',
-    askGrid: 'Piloti fragen',
-    askGridAria: 'Piloti zu {code} fragen',
-    askGridTitle: 'Piloti zu dieser Richtlinie fragen',
+    askGrid: '{productName} fragen',
+    askGridAria: '{productName} zu {code} fragen',
+    askGridTitle: '{productName} zu dieser Richtlinie fragen',
     emptyTitle: 'Noch keine anwendbaren Standards',
     emptyDescription:
-      'Vervollständigen Sie das Projekt-Briefing, damit Piloti ermitteln kann, welche OIB-Richtlinien auf dieses Gebäude zutreffen.',
+      'Vervollständigen Sie das Projekt-Briefing, damit {productName} ermitteln kann, welche OIB-Richtlinien auf dieses Gebäude zutreffen.',
     disclaimer:
       'Nur zur Orientierung — keine Rechtsberatung. Prüfen Sie die Anwendbarkeit anhand der aktuellen Bauordnung und der zuständigen Behörde.',
   },
@@ -441,7 +441,7 @@ export const projects: typeof en.projects = {
     tryAgain: 'Erneut versuchen',
     emptyTitle: 'Noch keine Tiefenrecherchen',
     emptyDescription:
-      'Tiefenrecherchen erscheinen hier, sobald Sie Piloti im Chat eine umfassende Frage stellen. Es arbeitet Dateien, Büroablage und Baurecht durch und liefert einen belegten Bericht, den Sie erneut aufrufen können.',
+      'Tiefenrecherchen erscheinen hier, sobald Sie {productName} im Chat eine umfassende Frage stellen. Es arbeitet Dateien, Büroablage und Baurecht durch und liefert einen belegten Bericht, den Sie erneut aufrufen können.',
     emptyAction: 'Einen Lauf im Chat starten',
     viewReport: 'Bericht ansehen',
     viewProgress: 'Fortschritt ansehen',
@@ -470,9 +470,9 @@ export const projects: typeof en.projects = {
     },
     eyebrowEdit: 'Projekt-Briefing bearbeiten',
     eyebrowCreate: 'Projekteinrichtung',
-    titleFallback: 'Erzählen Sie Piloti von diesem Projekt',
+    titleFallback: 'Erzählen Sie {productName} von diesem Projekt',
     subtitle:
-      'Etwa 2 Minuten. Mit diesem Briefing arbeitet Piloti auf Ihr Gebäude zugeschnitten und zeigt, welche OIB-Richtlinien gelten.',
+      'Etwa 2 Minuten. Mit diesem Briefing arbeitet {productName} auf Ihr Gebäude zugeschnitten und zeigt, welche OIB-Richtlinien gelten.',
     moduleNav: 'Module',
     moduleNavAria: 'Wizard-Module',
     documentRole: {
@@ -515,7 +515,7 @@ export const projects: typeof en.projects = {
     reviewTitle: 'Prüfen & bestätigen',
     reviewStep: 'Prüfen',
     reviewDescription:
-      'Bestätigen Sie, was Piloti über dieses Projekt verstanden hat, bevor Sie speichern.',
+      'Bestätigen Sie, was {productName} über dieses Projekt verstanden hat, bevor Sie speichern.',
     back: 'Zurück',
     stepCounter: 'Schritt {current} von {total}',
     saving: 'Wird gespeichert…',
@@ -526,9 +526,9 @@ export const projects: typeof en.projects = {
     saveChanges: 'Änderungen speichern',
     saveAndSee: 'Speichern & meine Standards ansehen',
     next: 'Weiter',
-    unknownsTitle: 'Piloti wird weiterhin nicht wissen',
+    unknownsTitle: '{productName} wird weiterhin nicht wissen',
     unknownsHint:
-      'Sie können jetzt speichern und dies später ergänzen — Piloti markiert diese Punkte als offene Fragen.',
+      'Sie können jetzt speichern und dies später ergänzen — {productName} markiert diese Punkte als offene Fragen.',
     edit: 'Bearbeiten',
     optional: '(optional)',
     yes: 'Ja',
@@ -556,7 +556,7 @@ export const projects: typeof en.projects = {
     classification: {
       title: 'Wozu dieses Profil da ist',
       description:
-        'Die Gebäudeklasse steht hier, wenn sie bestätigt ist. Fehlt sie, fragt Piloti im Chat nach, bevor eine Antwort fällt, die an der Klasse hängt. Das Profil ist die Arbeitsgrundlage dafür, welche Regeln gelten und was noch offen ist.',
+        'Die Gebäudeklasse steht hier, wenn sie bestätigt ist. Fehlt sie, fragt {productName} im Chat nach, bevor eine Antwort fällt, die an der Klasse hängt. Das Profil ist die Arbeitsgrundlage dafür, welche Regeln gelten und was noch offen ist.',
     },
     consistency: {
       checking: 'Angaben werden geprüft…',
@@ -597,12 +597,12 @@ export const projects: typeof en.projects = {
     },
     provenance: {
       user: 'von Ihnen hinzugefügt',
-      grid: 'von Piloti notiert',
+      grid: 'von {productName} notiert',
     },
     conflict: {
       badge: 'Widerspricht einer bestätigten Notiz',
       title:
-        'Widerspricht „{note}“ — Piloti durfte diese Notiz nicht ersetzen. Bestätigen oder entfernen Sie einen der beiden Einträge.',
+        'Widerspricht „{note}“ — {productName} durfte diese Notiz nicht ersetzen. Bestätigen oder entfernen Sie einen der beiden Einträge.',
       titleUnknown: 'Widerspricht einer bestätigten Notiz, die nicht mehr in dieser Liste steht.',
     },
     restricted: {
@@ -634,7 +634,7 @@ export const projects: typeof en.projects = {
     updated: 'Eintrag aktualisiert.',
     deleted: 'Eintrag entfernt.',
     heading: 'Projektspeicher',
-    description: 'Was Piloti über dieses Projekt gelernt hat — bearbeitbar.',
+    description: 'Was {productName} über dieses Projekt gelernt hat — bearbeitbar.',
     addMemory: 'Eintrag hinzufügen',
     kindAria: 'Art des Eintrags',
     scopeAria: 'Geltungsbereich des Eintrags',
@@ -645,7 +645,7 @@ export const projects: typeof en.projects = {
     add: 'Hinzufügen',
     emptyTitle: 'Noch nichts erfasst',
     emptyDescription:
-      'Piloti hat zu diesem Projekt noch nichts erfasst. Das geschieht, während Sie chatten — oder fügen Sie selbst etwas hinzu.',
+      '{productName} hat zu diesem Projekt noch nichts erfasst. Das geschieht, während Sie chatten — oder fügen Sie selbst etwas hinzu.',
     orgWide: 'organisationsweit',
     confidence: 'Konfidenz {confidence}',
     save: 'Speichern',
@@ -668,7 +668,7 @@ export const projects: typeof en.projects = {
   overview: {
     workspaceCreated: 'Projekt-Arbeitsbereich · erstellt {date}',
     workspace: 'Projekt-Arbeitsbereich',
-    askGrid: 'Piloti fragen',
+    askGrid: '{productName} fragen',
     uploadFiles: 'Dateien hochladen',
     rename: {
       action: 'Projekt umbenennen',
@@ -689,7 +689,7 @@ export const projects: typeof en.projects = {
       summaryGenerate: 'Zusammenfassung erstellen',
       summaryRegenerate: 'Neu erstellen',
       summaryGenerating: 'Wird erstellt…',
-      summaryWriting: 'Piloti schreibt die Projekt-Zusammenfassung…',
+      summaryWriting: '{productName} schreibt die Projekt-Zusammenfassung…',
       summarySuccess: 'Zusammenfassung aktualisiert.',
       summaryError:
         'Die Zusammenfassung konnte nicht erstellt werden. Bitte versuchen Sie es erneut.',
@@ -703,10 +703,10 @@ export const projects: typeof en.projects = {
       startedNoDetailsBefore:
         'Das Briefing wurde begonnen, aber es sind noch keine Details erfasst. ',
       completeBrief: 'Briefing vervollständigen',
-      startedNoDetailsAfter: ', damit Piloti seine Antworten fundieren kann.',
-      missingHeading: 'Piloti weiß noch nicht',
+      startedNoDetailsAfter: ', damit {productName} seine Antworten fundieren kann.',
+      missingHeading: '{productName} weiß noch nicht',
       assumptionsHeading:
-        'Von Piloti vorgeschlagen — bestätigen, um es als Projektfakt zu übernehmen',
+        'Von {productName} vorgeschlagen — bestätigen, um es als Projektfakt zu übernehmen',
       assumptionConfirm: 'Bestätigen',
       assumptionDismiss: 'Verwerfen',
       assumptionError: 'Das Briefing konnte nicht aktualisiert werden. Bitte erneut versuchen.',
@@ -720,7 +720,7 @@ export const projects: typeof en.projects = {
       },
       emptyTitle: 'Projekt-Briefing einrichten',
       emptyDescription:
-        'Erzählen Sie Piloti von diesem Gebäude — Nutzung, Klasse, Geschosse und Ziele. Ein vollständiges Briefing lässt Piloti jede Antwort im realen Kontext Ihres Projekts fundieren.',
+        'Erzählen Sie {productName} von diesem Gebäude — Nutzung, Klasse, Geschosse und Ziele. Ein vollständiges Briefing lässt {productName} jede Antwort im realen Kontext Ihres Projekts fundieren.',
       emptyAction: 'Projektkontext einrichten',
     },
     stats: {
@@ -733,7 +733,7 @@ export const projects: typeof en.projects = {
       viewAll: 'Alle ansehen',
       emptyTitle: 'Noch keine Dateien',
       emptyDescription:
-        'Laden Sie Baudokumente hoch (Zeichnungen, Berichte, Auszüge der Bauordnung), damit Piloti Ihr Projekt in seinen Antworten zitieren kann.',
+        'Laden Sie Baudokumente hoch (Zeichnungen, Berichte, Auszüge der Bauordnung), damit {productName} Ihr Projekt in seinen Antworten zitieren kann.',
       emptyAction: 'Dateien hochladen',
     },
   },

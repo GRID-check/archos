@@ -6,8 +6,8 @@
 export const projectIntake = {
   status: {
     waiting: 'Waiting for documents',
-    reading: 'Piloti is reading the documents …',
-    ready: 'Piloti has read the documents',
+    reading: '{productName} is reading the documents …',
+    ready: '{productName} has read the documents',
     failed: 'Reading failed',
     completed: 'Setup finished',
   },
@@ -24,7 +24,7 @@ export const projectIntake = {
     editSelf: 'Briefing editor',
     editSelfAria: 'Open the briefing wizard for this project',
     addDocuments: 'Add documents',
-    failedTitle: 'Piloti could not finish reading',
+    failedTitle: '{productName} could not finish reading',
     failed: 'Reading was interrupted. What was found until then is below. You can try again.',
     retryAria: 'Start reading again',
     readOnly: 'You can look at the setup, not change it.',
@@ -42,13 +42,13 @@ export const projectIntake = {
   upload: {
     title: 'Drop the project folder',
     description:
-      'Piloti reads the documents once they are uploaded and suggests every value with the page it found it on.',
+      '{productName} reads the documents once they are uploaded and suggests every value with the page it found it on.',
     hint: 'Whole folders, ZIP files and single documents all work.',
     dropOverlay: 'Drop to upload',
     unsupportedOverlay: 'This file type is not supported',
     closed: 'A closed project takes no documents.',
     uploadingLabel: 'Uploading …',
-    readingSoon: 'The documents are in. Piloti starts reading in a moment.',
+    readingSoon: 'The documents are in. {productName} starts reading in a moment.',
   },
   contradictions: {
     heading: 'Contradictions',
@@ -69,14 +69,14 @@ export const projectIntake = {
     unknown: 'Not known',
     unknownAria: '{label}: not known',
     dropTitle: 'Hand in a document',
-    dropHint: 'Drop it here or choose it. Piloti reads it and closes the question when the value is in it.',
+    dropHint: 'Drop it here or choose it. {productName} reads it and closes the question when the value is in it.',
     pick: 'Choose',
     pickAria: 'Choose a document that answers: {label}',
   },
   review: {
     heading: 'Review',
     description:
-      'Everything Piloti found in the documents. Values that decide the Gebäudeklasse you confirm one by one; the rest you take in one go, after discarding anything wrong.',
+      'Everything {productName} found in the documents. Values that decide the Gebäudeklasse you confirm one by one; the rest you take in one go, after discarding anything wrong.',
     confirm: 'Use',
     confirmAria: 'Use {value} for {label}',
     dismiss: 'Discard',
@@ -85,13 +85,13 @@ export const projectIntake = {
     contested: 'Contradiction',
     decisive: 'Decisive',
     decisiveHint: 'Decides the Gebäudeklasse',
-    empty: 'Nothing found yet. Piloti lists its suggestions here once it has read a document.',
+    empty: 'Nothing found yet. {productName} lists its suggestions here once it has read a document.',
   },
   // Filing: the project's open filing suggestions, the same ones Files shows.
   filing: {
     heading: 'Filing',
     description:
-      "Piloti would file these documents in the project's described folders. Each suggestion moves every file that belongs there.",
+      "{productName} would file these documents in the project's described folders. Each suggestion moves every file that belongs there.",
   },
   derivations: {
     heading: 'Derivations',
@@ -171,8 +171,8 @@ export const projectIntake = {
     complete: 'We could not finish the setup.',
   },
   empty: {
-    title: 'This project has no setup by Piloti',
-    description: 'It was created without Piloti reading its documents. You fill in the briefing in the wizard.',
+    title: 'This project has no setup by {productName}',
+    description: 'It was created without {productName} reading its documents. You fill in the briefing in the wizard.',
     action: 'Open the briefing',
   },
 }

@@ -53,7 +53,7 @@ export const errors: typeof en.errors = {
     filing:
       'Dieser Chat stützt sich auf einen Ordner mit eingeschränktem Zugriff oder auf ein anderes Projekt, deshalb lässt sich aus ihm nichts dorthin ablegen: Der Ablageort ist auch für Personen sichtbar, die den eingeschränkten Ordner oder das andere Projekt nicht lesen dürfen. Ablegen geht nur in einen Ordner, der mindestens so eng eingeschränkt ist, und nie für Inhalte aus anderen Projekten.',
     revision:
-      'Dieses Dokument liegt in einem Ordner mit eingeschränktem Zugriff, deshalb kann Piloti es nicht überarbeiten: Die Aufgabe dafür wäre für alle im Projekt sichtbar, auch für Personen, die für diesen Ordner nicht freigegeben sind. Fordern Sie die Änderungen ohne Piloti an.',
+      'Dieses Dokument liegt in einem Ordner mit eingeschränktem Zugriff, deshalb kann {productName} es nicht überarbeiten: Die Aufgabe dafür wäre für alle im Projekt sichtbar, auch für Personen, die für diesen Ordner nicht freigegeben sind. Fordern Sie die Änderungen ohne {productName} an.',
     planDocument:
       'Eine genannte Unterlage liegt in einem Ordner mit eingeschränktem Zugriff, deshalb lässt sie sich einer Recherche nicht als Unterlage mitgeben: Unterlagen und Bericht einer Recherche sind für alle im Projekt sichtbar, auch für Personen, die für diesen Ordner nicht freigegeben sind.',
   },

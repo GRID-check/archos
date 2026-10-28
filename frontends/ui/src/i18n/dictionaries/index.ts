@@ -9,9 +9,14 @@
  * source of truth for the message shape; importing the type costs nothing.
  */
 
-import { en } from './en'
-import { de } from './de'
+import { withProductName } from '@/lib/brand'
+import { en as enSource } from './en'
+import { de as deSource } from './de'
 import type { Locale } from '../config'
+
+// The copy says `{productName}`; the name goes in here, and in `defineNamespace` for each namespace.
+const en = withProductName(enSource)
+const de = withProductName(deSource)
 
 /** The canonical message shape, derived from English. */
 export type Dictionary = typeof en

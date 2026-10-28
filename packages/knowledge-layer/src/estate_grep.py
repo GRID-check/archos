@@ -348,13 +348,13 @@ async def _candidates(
     from .browse import _collection_filter
     from .browse import _entry_shelf
     from .qdrant.retrieval import PatternTooCostly
-    from .register import _resolve_base_collection
+    from .search_scope import resolve_base_collection
 
     if retriever is None:
         from aiq_agent.knowledge.factory import get_active_retriever
 
         retriever = get_active_retriever()
-    base = _resolve_base_collection(search_config) if search_config is not None else ""
+    base = resolve_base_collection(search_config) if search_config is not None else ""
     options: dict[str, Any] = {"user_regex": True} if query.mode == "regex" else {}
     if query.stemmed:
         options["stem_phrases"] = list(query.phrases)
