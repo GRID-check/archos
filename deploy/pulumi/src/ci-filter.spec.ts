@@ -22,14 +22,21 @@ function specFiles(dir: string): string[] {
  * Directories (a spec that scans all of frontends/ui/src) are left out: the
  * infra job would then run on every change to them.
  */
-function filesReadOutsideDeploy(): Map<string, string> {
+function pathsIn(source: string): string[] {
   // Each alternative captures one argument list with a single negated class, so
   // no input can make the match backtrack (CodeQL js/redos).
   const call = /\bread\(([^)]*)\)|\bpython\(\[([^\]]*)\]|\bjoin\(repoRoot,([^)]*)\)/g;
+  // Either quote style: nothing in this program enforces one.
+  const literal = /"([^"]+)"|'([^']+)'/g;
+  return [...source.matchAll(call)].map((match) =>
+    [...(match[1] ?? match[2] ?? match[3]).matchAll(literal)].map((m) => m[1] ?? m[2]).join("/"),
+  );
+}
+
+function filesReadOutsideDeploy(): Map<string, string> {
   const found = new Map<string, string>();
   for (const spec of specFiles(pulumiDir)) {
-    for (const match of readFileSync(spec, "utf8").matchAll(call)) {
-      const path = [...(match[1] ?? match[2] ?? match[3]).matchAll(/"([^"]+)"/g)].map((m) => m[1]).join("/");
+    for (const path of pathsIn(readFileSync(spec, "utf8"))) {
       if (path.startsWith("deploy/") || !path.includes("/")) continue;
       const absolute = join(repoRoot, path);
       if (statSync(absolute, { throwIfNoEntry: false })?.isFile()) found.set(path, relative(pulumiDir, spec));
@@ -44,6 +51,16 @@ function covers(glob: string, path: string): boolean {
 }
 
 describe("the infra CI filter", () => {
+  it("reads a spec's paths in either quote style", () => {
+    const source = [
+      `read("packages", "a.py")`,
+      `read('apps', 'backend', 'b.py')`,
+      `python(['src', "c.py"], /x = env_int\\(/)`,
+      `join(repoRoot, 'frontends', 'ui', 'd.js')`,
+    ].join("\n");
+    expect(pathsIn(source)).toEqual(["packages/a.py", "apps/backend/b.py", "src/c.py", "frontends/ui/d.js"]);
+  });
+
   it("runs the manifest specs when a file they read as source changes", () => {
     const filters = load(readFileSync(join(repoRoot, ".github", "filters.yml"), "utf8")) as Record<string, string[]>;
     const read = filesReadOutsideDeploy();
