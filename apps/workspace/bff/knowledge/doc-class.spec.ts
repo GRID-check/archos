@@ -1,4 +1,4 @@
-// @disk-inputs: ../../src/aiq_agent/knowledge/document_classification.py
+// @disk-inputs: ../../packages/agent/src/aiq_agent/knowledge/document_classification.py
 /**
  * @vitest-environment node
  */
@@ -6,7 +6,7 @@
  * Parity guard: the frontend Dokumentart vocabulary must match the backend enum.
  *
  * The canonical doc_class vocabulary lives in the Python backend
- * (`src/aiq_agent/knowledge/document_classification.py` — `DOCUMENT_CLASS_LABELS`,
+ * (`packages/agent/src/aiq_agent/knowledge/document_classification.py` — `DOCUMENT_CLASS_LABELS`,
  * whose ordered keys are `DOCUMENT_CLASSES`). The base-knowledge admin UI keeps a
  * hand-written TypeScript mirror (`doc-class.ts`) to render its dropdown + badge.
  * This test reads the Python file at test time and fails if the two ever drift —
@@ -33,7 +33,7 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url))
 const BACKEND_SOURCE = resolve(
   HERE,
-  '../../../../src/aiq_agent/knowledge/document_classification.py',
+  '../../../../packages/agent/src/aiq_agent/knowledge/document_classification.py',
 )
 
 /** Pull the ordered keys out of the Python `DOCUMENT_CLASS_LABELS` dict block. */

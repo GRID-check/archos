@@ -20,7 +20,7 @@ So authorship is its own axis, and it beats both.
 ## The metadata contract
 
 Four keys, stamped by the BFF at publish and parsed by
-`src/aiq_agent/common/provenance.py`:
+`packages/agent/src/aiq_agent/common/provenance.py`:
 
 | Key | Value |
 |---|---|

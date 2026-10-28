@@ -6,7 +6,7 @@ exists — plus the GitHub link for requesting a card, or a value on an existing
 card, that the catalog does not carry yet. Grid's answers are only as rich as
 this list, so "which figures can it actually show me?" is a question the product
 should answer itself instead of sending someone to read
-``src/aiq_agent/cards/models.py``.
+``packages/agent/src/aiq_agent/cards/models.py``.
 
 Derived from the Pydantic union via :func:`aiq_agent.cards.catalog.describe_card_catalog`,
 the same source the ``emit_card`` tool description and the generated frontend Zod

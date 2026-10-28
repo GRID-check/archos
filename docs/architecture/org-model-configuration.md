@@ -182,7 +182,7 @@ router) get it inside `apply_model_override`. A dial that reaches only the
 second seam is the bug this paragraph used to describe as impossible: it was
 read by four minor call sites and never by a chat turn, and every test stayed
 green because none exercised the provider seam. `TestProviderWithReasoningEfforts`
-and `tests/aiq_agent/agents/piloti/test_active_provider.py` now pin it.
+and `packages/agent/tests/agents/piloti/test_active_provider.py` now pin it.
 
 The effort is platform-wide, so nothing is captured at submit time for the
 worker: any process that reaches the BFF resolves the same map (60 s TTL,
@@ -206,7 +206,7 @@ explicit `settings.zdrOnly === false` turns it off. Because every org inherits
 the platform defaults under ZDR, a platform default without a ZDR endpoint is
 refused at save, and the platform page checks saved defaults against the live
 ZDR list (a stored snapshot would go stale). The pin itself
-is applied in one place, `src/aiq_agent/common/openrouter.py`: the per-request
+is applied in one place, `packages/agent/src/aiq_agent/common/openrouter.py`: the per-request
 dials above carry it for the models an org chooses (`RequestLLMContext.apply`,
 `apply_model_override`, the worker's `provider.with_zdr` after BYOK), and every
 model the platform fixes (embeddings, reranker, decision model, `summary_llm`,
@@ -220,7 +220,7 @@ still fail open to the YAML models.
 The override points sit *above* the YAML LLM names, so the YAML can reshuffle
 freely. Registry: `apps/workspace/bff/model-config/agent-groups.ts` (with
 capability requirements) mirrored by `AgentGroup` in
-`src/aiq_agent/common/model_overrides.py` (**keep in sync**).
+`packages/agent/src/aiq_agent/common/model_overrides.py` (**keep in sync**).
 
 | Group id | Covers (config LLMs) | Requirements (catalog) |
 |---|---|---|
@@ -482,7 +482,7 @@ invalidation path is intact:
   each side falls back to a per-process (BFF: per-replica) memory store, the
   delete reaches only the replica that performed the save, and every other
   replica serves its memo until the TTLs below expire.
-- **Backend tiers** (`src/aiq_agent/common/model_overrides.py`): L1 10 s
+- **Backend tiers** (`packages/agent/src/aiq_agent/common/model_overrides.py`): L1 10 s
   in-process memo, L2 60 s shared entry, both write-invalidated by the BFF
   delete. Errors are negative-cached for 1 s in L1 only; empty successes
   (`{}, False` — also what a missing `INTERNAL_API_TOKEN` resolves to)
@@ -559,7 +559,7 @@ This environment cannot reach openrouter.ai (network policy), so:
   `TEST_DATABASE_URL`).
 - Header parse/sanitize, `override_model` copy semantics, and provider
   derivation are covered by pytest
-  (`tests/aiq_agent/common/test_model_overrides.py`).
+  (`packages/agent/tests/common/test_model_overrides.py`).
 - **Marked assumption**: OpenRouter's catalog fields
   (`supported_parameters`, `context_length`,
   `architecture.input_modalities`, string `pricing`) per the official API

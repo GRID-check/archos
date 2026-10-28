@@ -66,7 +66,7 @@ relative to `packages/knowledge-layer/src/` unless they are absolute.
 | Mechanism | Where | Why it exists |
 |---|---|---|
 | `$contains` exact-term channel, priced by a `collection.get` per term | `llamaindex/hybrid.py`, `adapter.py:6291` | Chroma has no lexical index |
-| Postgres `chunk_text` mirror for German FTS, with hits fetched back from Chroma by id | `src/aiq_agent/knowledge/chunk_text_store.py` | Same |
+| Postgres `chunk_text` mirror for German FTS, with hits fetched back from Chroma by id | `packages/agent/src/aiq_agent/knowledge/chunk_text_store.py` | Same |
 | Cosine recovered from `exp(-d)` | `adapter.py:998, 6393` | LlamaIndex's Chroma score scale |
 | RRF *across collections*, rank padding | `register.py:616-850` | N collections give N incomparable score bands |
 | 3× over-fetch, then post-filter on `doc_class`, title, folder | `register.py:48, 1132-1173, 2049` | Human-set metadata lives only in Postgres and cannot reach the store |
@@ -82,7 +82,7 @@ relative to `packages/knowledge-layer/src/` unless they are absolute.
   (`adapter.py:778`)
 - the 24 h prefix-based TTL reaper on `s_` collections
 - no office, document or folder id on any chunk: identity is
-  `(collection, file_name)` (`src/aiq_agent/knowledge/schema.py:166`,
+  `(collection, file_name)` (`packages/agent/src/aiq_agent/knowledge/schema.py:166`,
   ADR-0087 l. 40)
 
 **One consequence that is a design choice rather than an accident:** moving a

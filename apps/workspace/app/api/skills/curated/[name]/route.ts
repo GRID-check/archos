@@ -3,7 +3,7 @@
  * (`PATCH /api/skills/curated/[name]` with `{ enabled }`).
  *
  * Addressed by NAME, unlike every other skill route, because a platform skill
- * has no id: it is a file under `src/aiq_agent/skills/builtin/`, and what is
+ * has no id: it is a file under `packages/agent/src/aiq_agent/skills/builtin/`, and what is
  * stored is only the organization's decision about it
  * (`curated_skill_activations`).
  *

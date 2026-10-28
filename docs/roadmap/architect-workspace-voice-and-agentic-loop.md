@@ -101,7 +101,7 @@ The first sentence the model reads on every chat turn:
 
 > You are the Grid OIB Research Agent. You cover internal office knowledge (Bürowissen), Austrian building regulations (OIB Richtlinien, Bauordnung, Baurecht, RIS), technische Richtlinien, and related technical and energy standards. Your job is fast, citation-backed answers from the tools you have.
 
-`src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2:2`
+`packages/agent/src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2:2`
 
 Deep research copies the same frame. Planner, researcher, writer, and orchestrator all open as “Grid OIB — an assistant for … Austrian building regulations”. The fallback if the Jinja file is missing is still “You are a research assistant.” (`shallow_researcher/agent.py:600`)
 
@@ -226,7 +226,7 @@ A researched reply **is** one fenced `answer_json` object. The module header sta
 
 > a verdict is not an exhibit attached BESIDE the answer the way a stair diagram is, it is the answer's own headline. … the frontend renders them in a FIXED layout (**verdict above the prose**, callout and takeaways after it). The model decides content, never placement.
 
-`src/aiq_agent/common/answer_envelope.py:13–21`
+`packages/agent/src/aiq_agent/common/answer_envelope.py:13–21`
 
 Fields:
 
@@ -484,11 +484,11 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 
 ### This repo (primary)
 
-- `src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2` — identity, output contract, stimme, envelope teaching, 2-call cap
-- `src/aiq_agent/common/answer_envelope.py` — schema, gates, “verdict is the headline”
-- `src/aiq_agent/agents/shallow_researcher/agent.py` — ReAct loop, budgets, forced synthesis, repair
+- `packages/agent/src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2` — identity, output contract, stimme, envelope teaching, 2-call cap
+- `packages/agent/src/aiq_agent/common/answer_envelope.py` — schema, gates, “verdict is the headline”
+- `packages/agent/src/aiq_agent/agents/shallow_researcher/agent.py` — ReAct loop, budgets, forced synthesis, repair
 - `configs/config_oib_openrouter.yml` — tool list, `max_tool_iterations: 7`, `repair_pass` (the `compliance_check` binding is retired; see §1)
-- `src/aiq_agent/common/turn_status.py` — live status keys, requery/repair events, replace-not-accumulate
+- `packages/agent/src/aiq_agent/common/turn_status.py` — live status keys, requery/repair events, replace-not-accumulate
 - `packages/knowledge-layer/src/requery.py` — hidden sufficiency judge
 - `apps/workspace/ui/features/chat/components/reasoning/ReasoningFlow.tsx` + `.spec.ts` — fan-out, never a chain
 - `apps/workspace/ui/features/chat/components/ChatThinking.tsx`, `AnswerAnatomy.tsx`
@@ -503,7 +503,7 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 - `apps/site/src/i18n/ui.ts` (marketing: Empfehlung)
 - `apps/workspace/app/layout.tsx` (window title: OIB Compliance Assistant)
 - Builtin OIB `SKILL.md` L1 lines (Prüfkette)
-- `src/aiq_agent/agents/compliance_checker/README.md`
+- `packages/agent/src/aiq_agent/agents/compliance_checker/README.md`
 
 ### Industry (inspected pages)
 

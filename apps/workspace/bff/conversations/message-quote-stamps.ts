@@ -1,6 +1,6 @@
 /**
  * The server's check of every quote line `> „…" [N]` in an answer
- * (`TurnResult.quote_stamps`, `src/aiq_agent/common/quote_stamps.py`), made
+ * (`TurnResult.quote_stamps`, `packages/agent/src/aiq_agent/common/quote_stamps.py`), made
  * durable.
  *
  * One stamp per quote line, in document order: `verbatim` names the retrieved

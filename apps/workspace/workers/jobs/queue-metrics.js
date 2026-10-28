@@ -1,6 +1,6 @@
 /**
  * The `grid.queue.*` meters for the BFF's job queue (ADR-0079), under the names
- * and attributes the Python queues report (`src/aiq_agent/common/claim_queue.py`),
+ * and attributes the Python queues report (`packages/agent/src/aiq_agent/common/claim_queue.py`),
  * with `queue="bff"`. One chart in PostHog then shows every queue the platform
  * runs.
  *

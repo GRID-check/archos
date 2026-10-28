@@ -39,7 +39,7 @@ TS_MAPPER = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "documents" /
 TS_RETRY_POLICY = REPO_ROOT / "apps" / "workspace" / "bff" / "documents" / "retry-policy.ts"
 BACKEND_ROOTS = (
     REPO_ROOT / "packages" / "knowledge-layer" / "src",
-    REPO_ROOT / "src" / "aiq_agent" / "knowledge",
+    REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "knowledge",
     # The ingest worker settles a job whose queued payload it cannot read
     # (`unreadable_job:`, `jobs/ingest_dispatch.py`). It was outside the scan,
     # and its reason reached the UI unmapped.

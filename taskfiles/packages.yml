@@ -12,7 +12,7 @@ tasks:
   # OUTSIDE the workspace it sits next to: `ifc-spatial` has its own
   # bun.lock and is not in the UI's bun workspace; `ifc-spatial-py` has
   # its own uv.lock and is not in the root uv workspace. That is why they get
-  # their own tasks instead of riding `fe:*` or `be:*` — neither toolchain can
+  # their own tasks instead of riding `workspace:*` or `be:*` — neither toolchain can
   # see them.
   #
   # Until now nothing ran either suite: no Taskfile target, no CI job, no

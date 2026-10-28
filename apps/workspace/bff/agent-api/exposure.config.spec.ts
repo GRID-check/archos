@@ -10,7 +10,7 @@
  * entry that offers Piloti what Piloti may never propose.
  *
  * The config is also written as JSON, `tests/fixtures/exposure.json`, for the
- * docs and for Python (`tests/aiq_agent/tools/test_exposure_config.py` checks
+ * docs and for Python (`packages/agent/tests/tools/test_exposure_config.py` checks
  * every `native:<tool>` against Piloti's tool list in
  * `configs/config_oib_openrouter.yml`). A changed entry fails here until the
  * fixture is regenerated:

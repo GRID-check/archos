@@ -1,7 +1,7 @@
 /**
  * The BACKEND's copy of an org's effective model config in the shared cache.
  *
- * `src/aiq_agent/common/model_overrides.py` (`shared_model_config_key`) writes
+ * `packages/agent/src/aiq_agent/common/model_overrides.py` (`shared_model_config_key`) writes
  * `modelconfig:{org}` after its just-in-time fetch and memoises it per process
  * for seconds only, so deleting the key here is what makes a save reach every
  * backend replica within seconds instead of the minute a per-replica TTL

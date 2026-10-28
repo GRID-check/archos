@@ -310,7 +310,7 @@ describe('legacy citation keys still parse', () => {
  * remainder fails `FILENAME_RE`, and the citation resolves to null.
  *
  * These strings are pinned byte-for-byte against `SHELF_QUALIFIERS` in
- * `src/aiq_agent/common/source_kinds.py`.
+ * `packages/agent/src/aiq_agent/common/source_kinds.py`.
  */
 describe('citation-key qualifiers the backend can write', () => {
   const cases: ReadonlyArray<readonly [qualifier: string, shelf: string]> = [

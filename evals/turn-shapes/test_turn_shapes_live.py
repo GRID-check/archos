@@ -4,7 +4,7 @@ ADR-0052 deleted the intent classifier: every turn enters
 Piloti with every tool bound, and what the turn IS is decided by the model
 with the tools in hand. Two things that used to be routing are now the model's
 judgment, pinned only by the ``<output_contract>`` block of
-``src/aiq_agent/agents/piloti/prompts/piloti.j2``:
+``packages/agent/src/aiq_agent/agents/piloti/prompts/piloti.j2``:
 
 1. a greeting or a question about the assistant is a direct reply, and calls
    no data-source tool;
@@ -16,7 +16,7 @@ measured (ledger row 5): a commissioned Aktenvermerk is WRITTEN rather than
 described, a revision edits the draft instead of writing a second one, and
 „leg das ins Projekt ab" files it. Their prompts and their one assertion live
 in ``tests/fixtures/drafting_turns.py``, shared with the scripted-LLM pair in
-``tests/aiq_agent/agents/piloti/test_agent.py`` that runs them in CI — two
+``packages/agent/tests/agents/piloti/test_agent.py`` that runs them in CI — two
 harnesses asking different questions would stop being the same eval the first
 time either was edited.
 

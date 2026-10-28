@@ -26,8 +26,8 @@ DOC = Path("docs/deployment/environment-variables.md")
 
 SCOPE = (
     "apps/backend/src/aiq_api/jobs/*.py",
-    "src/aiq_agent/knowledge/ingest_*.py",
-    "src/aiq_agent/knowledge/folder_cards/*.py",
+    "packages/agent/src/aiq_agent/knowledge/ingest_*.py",
+    "packages/agent/src/aiq_agent/knowledge/folder_cards/*.py",
     "apps/workspace/workers/*.js",
     "apps/workspace/purger/*.js",
     "apps/workspace/scheduler/*.js",

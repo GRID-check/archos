@@ -18,7 +18,7 @@
  * {@link OFFICE_SHELF_TARGET_COLLECTION_PREFIX} and delete the legacy entry.
  *
  * Python twin: `OFFICE_SHELF_COLLECTION_PREFIX` and friends in
- * `src/aiq_agent/common/source_kinds.py`; `collection-prefix.spec.ts` holds the
+ * `packages/agent/src/aiq_agent/common/source_kinds.py`; `collection-prefix.spec.ts` holds the
  * two equal. No `server-only`: the browser may ask whether a name is a shelf's.
  */
 

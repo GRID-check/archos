@@ -24,7 +24,7 @@
  * against the SAME checked-in fixture — the device
  * `citation-wire-contract.spec.ts` already uses for the three other formats,
  * extended here to the field it did not carry. The Python counterpart,
- * `tests/aiq_agent/common/test_citation_pipeline_contract.py`
+ * `packages/agent/tests/common/test_citation_pipeline_contract.py`
  * (`test_wire_sources_fixture_matches_the_serializer`), proves the fixture is
  * still a faithful sample of what `source_entry_to_wire` emits; this file
  * proves the frontend still reads it that way. Rename or re-value the field and

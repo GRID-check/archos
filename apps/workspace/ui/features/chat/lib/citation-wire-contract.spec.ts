@@ -17,7 +17,7 @@
  *
  * Both sides assert against the SAME checked-in fixtures, produced by one real
  * pipeline run. The Python counterpart —
- * `tests/aiq_agent/common/test_citation_pipeline_contract.py`
+ * `packages/agent/tests/common/test_citation_pipeline_contract.py`
  * (`TestSharedWireFixturesAreCurrent`) — proves the fixtures are still what the
  * backend emits; this spec proves the frontend still understands them. Change a
  * format and exactly one of the two fails, which is the only way this drift

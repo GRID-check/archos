@@ -25,7 +25,7 @@
  * dropped by `reconcileCardInteractions`.
  *
  * The guard against the general case is cross-stack and lives elsewhere:
- * `tests/aiq_agent/cards/test_interactive_card_parity.py` fails when the
+ * `packages/agent/tests/cards/test_interactive_card_parity.py` fails when the
  * backend union carries a type this frontend cannot classify or render. This
  * file pins the CONSEQUENCE, in the frontend's own terms, so the reason the
  * parity guard matters survives next to the code it protects.

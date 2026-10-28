@@ -201,7 +201,7 @@ answer. Posted best-effort through the ingestion API, never awaited by the call
 The reading of a new project's documents (ADR-0111) is a `research-job` trace of
 agent type `project_intake` (ADR-0108), not a trace of its own name. The run
 writes its facts once, when it ends, in `_record_trace`
-(`src/aiq_agent/agents/intake/agent.py`):
+(`packages/agent/src/aiq_agent/agents/intake/agent.py`):
 
 | Key | Meaning |
 |---|---|
@@ -443,12 +443,12 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 
 | Concern | Module |
 |---|---|
-| Environment, release, types, trace names | `src/aiq_agent/observability/trace_context.py` |
-| The processors on NAT's exporter | `src/aiq_agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
-| A turn's outcome on its root | `src/aiq_agent/observability/turn_outcome.py`, bound in `aiq_api/chat_socket.py` `_drive` |
-| Runtime scores | `src/aiq_agent/observability/langfuse_scores.py` |
-| Model calls outside NAT | `src/aiq_agent/observability/direct_trace.py` |
-| Langfuse configuration as code | `src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
+| Environment, release, types, trace names | `packages/agent/src/aiq_agent/observability/trace_context.py` |
+| The processors on NAT's exporter | `packages/agent/src/aiq_agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
+| A turn's outcome on its root | `packages/agent/src/aiq_agent/observability/turn_outcome.py`, bound in `aiq_api/chat_socket.py` `_drive` |
+| Runtime scores | `packages/agent/src/aiq_agent/observability/langfuse_scores.py` |
+| Model calls outside NAT | `packages/agent/src/aiq_agent/observability/direct_trace.py` |
+| Langfuse configuration as code | `packages/agent/src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
 | Votes, reasons, review queue | `apps/workspace/bff/langfuse/feedback-score.ts` |
 | Decisions on Piloti's proposals, marks and changes | `apps/workspace/bff/langfuse/decision-score.ts` |
 | Tool calls on the agent door (MCP) | `apps/workspace/bff/langfuse/tool-call-trace.ts`, called from `lib/agent-api/telemetry.ts` |

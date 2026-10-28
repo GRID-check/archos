@@ -45,7 +45,7 @@ export function filingReference(conversationId: string, path: string): string {
   const raw = `${conversationId}-${filingSlug(normalized)}`
   if (raw.length <= MAX_FILING_REF_CHARS) return raw
   // PAIRED CHANGE: the agent tier mints the same reference
-  // (`src/aiq_agent/tools/documents/register.py::filing_reference`), which
+  // (`packages/agent/src/aiq_agent/tools/documents/register.py::filing_reference`), which
   // truncates the same way, over the same normalized path, with the same hash
   // suffix. Change this truncation or the hash and change that side in the same
   // commit: long keys would otherwise diverge and a browser filing would land

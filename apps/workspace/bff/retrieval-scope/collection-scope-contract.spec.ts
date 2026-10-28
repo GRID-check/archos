@@ -6,13 +6,13 @@
  * Cross-language contract for the shelf, on the hop where it is emitted.
  *
  * `X-Grid-Collection-Scope` is written here and read by
- * `src/aiq_agent/knowledge/scoping.py`. Nothing in either runtime imports the
+ * `packages/agent/src/aiq_agent/knowledge/scoping.py`. Nothing in either runtime imports the
  * other's enum — ADR-0047 keeps each side's three constants local on purpose —
  * so the ONLY thing holding the two in agreement is this shared fixture.
  *
  * Both sides assert against `tests/fixtures/collection_scope/scope_header.json`:
  * this spec proves the BFF still emits it, and
- * `tests/aiq_agent/knowledge/test_scope_header_contract.py` proves the agent
+ * `packages/agent/tests/knowledge/test_scope_header_contract.py` proves the agent
  * still reads it. Change the payload on one end and exactly one of the two
  * fails, which is the point — every defect this phase produced was invisible to
  * one side's own tests:

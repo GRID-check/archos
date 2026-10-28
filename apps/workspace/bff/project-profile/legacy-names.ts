@@ -13,7 +13,7 @@
  * JSON, its spec and the Python twin (`aiq_agent/profile_names.py`).
  *
  * The data is `legacy-names.json`, shared with the migrations and the Python
- * twin through `legacy-names.spec.ts` and `tests/aiq_agent/common/test_profile_names.py`,
+ * twin through `legacy-names.spec.ts` and `packages/agent/tests/common/test_profile_names.py`,
  * so the three cannot drift.
  */
 import names from './legacy-names.json'

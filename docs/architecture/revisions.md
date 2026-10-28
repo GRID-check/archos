@@ -30,7 +30,7 @@ A Fassung is stored in one of two ways, and the reader sees one of them.
 | What else is stored there | State per version, who approved, who published | `revision_suggestion`, `change_summary`, `change_basis`, `revision_facts` (the title block) |
 | Who decides it is one | The name, so nobody has to | A person, after a suggestion |
 | Undo | Not needed, the old bytes stay | Unlink. No citation, share, assignment or folder placement moves |
-| Owner | `apps/workspace/bff/documents/lifecycle*.ts`, `version-repository.ts` | `src/aiq_agent/knowledge/document_metadata_store.py` |
+| Owner | `apps/workspace/bff/documents/lifecycle*.ts`, `version-repository.ts` | `packages/agent/src/aiq_agent/knowledge/document_metadata_store.py` |
 
 `supersedes` is never stored. It is the reverse of `superseded_by`, derived when
 the listing is read.
@@ -73,8 +73,8 @@ a suggestion or a decision. None of them links two documents without a person.
 | Layer | Reads | Says | Model call | Code |
 |---|---|---|---|---|
 | Name grammar | The file name: `Index C`, `idx-B`, `Rev 12`, `v3`, a date as `2026-08-14`, `14.08.2026`, `260814_…`, a bare letter after a sheet number (`A-101_C_…`) | Which names are one series, and which looks current | No | `apps/workspace/bff/documents/revision-series.ts`, `packages/knowledge-layer/src/revision_series.py` |
-| Title block | The Plankopf: document number, Index, date, scale, title, read once per drawing page during ingestion | Same `document_number` means same document. Higher Index, else later date, means later state | No extra call: it rides the drawing analysis | `src/aiq_agent/knowledge/title_block.py`, `packages/knowledge-layer/src/llamaindex/visual_analysis.py` |
-| LLM judge | Name, Dokumentart, tags and one-line summary of up to eight candidates in the collection | Whether the new file is a newer Fassung of exactly one of them | One, on the summary model | `src/aiq_agent/knowledge/document_revisions.py` |
+| Title block | The Plankopf: document number, Index, date, scale, title, read once per drawing page during ingestion | Same `document_number` means same document. Higher Index, else later date, means later state | No extra call: it rides the drawing analysis | `packages/agent/src/aiq_agent/knowledge/title_block.py`, `packages/knowledge-layer/src/llamaindex/visual_analysis.py` |
+| LLM judge | Name, Dokumentart, tags and one-line summary of up to eight candidates in the collection | Whether the new file is a newer Fassung of exactly one of them | One, on the summary model | `packages/agent/src/aiq_agent/knowledge/document_revisions.py` |
 | Derived on read | The rows already stored: title blocks first, then the name grammar | A suggestion for documents ingested before the Fassung step existed | No | `packages/knowledge-layer/src/llamaindex/revisions.py`, `derive_suggestions` |
 | Upload decision | A tick in the upload dialog | „Als neue Fassung von X ablegen“ | No (only the change summary) | `revision_of`, below |
 
@@ -282,8 +282,8 @@ Four things, in rising cost.
 | | What | Model | Code |
 |---|---|---|---|
 | **Look** | Two Fassungen side by side, overlaid (older cyan, newer orange) or swiped, page by page, through the preview's pdf.js runtime | No | `features/documents/components/revision-compare/` |
-| **Pages and values** | For the agent: which pages changed, the values that moved in the printed text, the quantities and dimension strings that changed in the drawing reading, and the Plankopf. Read from the index, so nothing is read again | No | `src/aiq_agent/knowledge/revision_diff.py`, `list_files(compare_to=…)` |
-| **Marks** | On request, or unasked where the office switched it on (below, „Piloti notices a new Fassung“), Piloti boxes what changed on the newer page and says it in words | One vision call per page pair, cached | `lib/documents/revision-compare-service.ts`, `routes/revision_compare.py`, `src/aiq_agent/knowledge/revision_compare.py` |
+| **Pages and values** | For the agent: which pages changed, the values that moved in the printed text, the quantities and dimension strings that changed in the drawing reading, and the Plankopf. Read from the index, so nothing is read again | No | `packages/agent/src/aiq_agent/knowledge/revision_diff.py`, `list_files(compare_to=…)` |
+| **Marks** | On request, or unasked where the office switched it on (below, „Piloti notices a new Fassung“), Piloti boxes what changed on the newer page and says it in words | One vision call per page pair, cached | `lib/documents/revision-compare-service.ts`, `routes/revision_compare.py`, `packages/agent/src/aiq_agent/knowledge/revision_compare.py` |
 | **Words** | The change summary: what differs between two descriptions | Summary model, at ingest or at confirmation | `document_revisions.py`, `summarize_change` |
 
 `POST /api/documents/[id]/revision-compare` takes `{ older, page }`.
@@ -314,10 +314,10 @@ The agent reads the same facts the UI does, through the knowledge layer.
 |---|---|---|
 | `list_files` | Marks a row that a person replaced („ersetzt durch X (bestätigt)“), then rows that share a title-block number („aktuelle / ältere Fassung laut Plankopf“), then the name reading. A confirmed link beats the sheets, which beat the name. Prints `Plankopf: Nr. …, Index …, Stand …` | `packages/knowledge-layer/src/browse_rows.py`, `confirmed_revision_marks`, `title_block_marks` |
 | `list_files(revisions_of=…)` | The whole chain of one document, newest first, with Index and date, upload date and what changed against the one before. The chain follows a confirmed link in both directions, the same title-block number and the name series, transitively | `browse_revisions.py`, `render_revisions`, `_chain_members`, `_chain_order` |
-| `list_files(revisions_of=…, compare_to=…)` | What changed between two Fassungen of the chain: the Plankopf, pages aligned by their text, values that moved in printed lines, and quantities and dimension strings from the drawing analysis. No model call; the stored change line rides along when its basis is exactly that older file | `browse_compare.py`, `resolve_compare`, `compare_revisions`; `src/aiq_agent/knowledge/revision_diff.py` |
+| `list_files(revisions_of=…, compare_to=…)` | What changed between two Fassungen of the chain: the Plankopf, pages aligned by their text, values that moved in printed lines, and quantities and dimension strings from the drawing analysis. No model call; the stored change line rides along when its basis is exactly that older file | `browse_compare.py`, `resolve_compare`, `compare_revisions`; `packages/agent/src/aiq_agent/knowledge/revision_diff.py` |
 | `knowledge_search` | Leaves confirmed older Fassungen out of the ranking on the user shelves, so an older state cannot outrank its replacement on similarity. Says „Ältere Fassungen ausgeblendet: …“. `file_name=…` bypasses the exclusion, and when the named file is an older Fassung the result carries the same line `read_passage` gives („Ältere Fassung: … ist durch … ersetzt“, the end of the chain). The base corpus is untouched | `packages/knowledge-layer/src/register.py`, `_superseded_files`, `_named_older_revision_notice`; `document_metadata_store.get_superseded_files` |
 | `read_passage` | Reading an older Fassung is allowed, because „Index B“ and „die alte Fassung“ ask for it. A one-line notice names the current one and tells the answer to say it read the older state | `packages/knowledge-layer/src/read_passage_revisions.py`, `_current_revision`, `_older_revision_notice` |
-| Inventory | A row suffix carries only the confirmed link, never a suggestion | `src/aiq_agent/knowledge/inventory.py` |
+| Inventory | A row suffix carries only the confirmed link, never a suggestion | `packages/agent/src/aiq_agent/knowledge/inventory.py` |
 
 A citation of an older Fassung says so. The citation peek shows „Ältere Fassung –
 aktuell: …“ with a button that opens the current one

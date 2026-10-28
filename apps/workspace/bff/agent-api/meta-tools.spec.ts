@@ -1,15 +1,15 @@
-// @disk-inputs: ../../src/aiq_agent/tools/workspace/meta_tools.json
+// @disk-inputs: ../../packages/agent/src/aiq_agent/tools/workspace/meta_tools.json
 /**
  * @vitest-environment node
  */
 /**
  * The meta-tools are written once, here (`metaToolsFor` in `discovery.ts`), and
- * Piloti's own client reads them: `src/aiq_agent/tools/workspace/meta_tools.json`
+ * Piloti's own client reads them: `packages/agent/src/aiq_agent/tools/workspace/meta_tools.json`
  * is the in-product variant, which `tools/workspace/register.py` turns into its
  * four tools' descriptions. This spec REWRITES that file when
  * `UPDATE_FIXTURES=1` and otherwise compares, so a description changed here and
  * not regenerated fails in the commit that changed it, and the Python side never
- * keeps a second copy (`tests/aiq_agent/tools/workspace/test_workspace_client.py`
+ * keeps a second copy (`packages/agent/tests/tools/workspace/test_workspace_client.py`
  * holds the other half).
  */
 
@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest'
 import { metaToolsFor } from './discovery'
 import { AGENT_DOMAINS } from './operation'
 
-const FIXTURE = resolve(__dirname, '../../../../src/aiq_agent/tools/workspace/meta_tools.json')
+const FIXTURE = resolve(__dirname, '../../../../packages/agent/src/aiq_agent/tools/workspace/meta_tools.json')
 
 describe('the meta-tools Piloti reads', () => {
   it('are the committed fixture', () => {

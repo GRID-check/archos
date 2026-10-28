@@ -1,7 +1,7 @@
 /**
  * INTERNAL service endpoint — the single write path into the
  * `agent_profiler_spans` ledger. The backend's agent profiler
- * (src/aiq_agent/common/profiler.py) POSTs one batch per flush, mirroring
+ * (packages/agent/src/aiq_agent/common/profiler.py) POSTs one batch per flush, mirroring
  * `api/internal/usage/route.ts`; `app` stays single-writer.
  */
 

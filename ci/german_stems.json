@@ -38,7 +38,7 @@
     "vorhaben",
     "widmung"
   ],
-  "prose_description": "German words that must not appear in anything an agent reads (AGENTS.md, 'Industry standard first': operation names and descriptions, schema descriptions, MCP instructions, refusals). Matched as whole words, case-insensitive, in prose; any word with an umlaut or ß, and any word carrying one of `stems`, counts too. Domain data (document names, addresses, legal citations) is allowed by the allowlist of each check, with a reason. Read by apps/workspace/bff/agent-api/english-only.spec.ts and tests/aiq_agent/tools/workspace/test_english_only.py.",
+  "prose_description": "German words that must not appear in anything an agent reads (AGENTS.md, 'Industry standard first': operation names and descriptions, schema descriptions, MCP instructions, refusals). Matched as whole words, case-insensitive, in prose; any word with an umlaut or ß, and any word carrying one of `stems`, counts too. Domain data (document names, addresses, legal citations) is allowed by the allowlist of each check, with a reason. Read by apps/workspace/bff/agent-api/english-only.spec.ts and packages/agent/tests/tools/workspace/test_english_only.py.",
   "prose_words": [
     "ablage",
     "abschluss",

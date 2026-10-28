@@ -28,7 +28,7 @@ _DEV_APP_ENVS = {"development", "dev", "local"}
 #:
 #: This guard read ``x-internal-token`` ONLY, while every caller in the repo —
 #: the BFF's skill submit and model-config fetch, and each of the nine Python
-#: clients under ``src/aiq_agent`` — sends ``x-grid-internal-token``. So the
+#: clients under ``packages/agent/src/aiq_agent`` — sends ``x-grid-internal-token``. So the
 #: routes this guard protects rejected every real request with a 403. Nothing
 #: caught it because the two sides are tested separately and each test pinned
 #: its own spelling, and because the ASGI envelope middleware

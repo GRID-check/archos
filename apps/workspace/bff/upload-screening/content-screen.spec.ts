@@ -7,7 +7,7 @@
  * (`aiq_agent.common.content_screen`): every case in the shared fixture gives
  * the same matches, the same masked text and the same findings here as there,
  * and the placeholders are the ones Python defines. Python's half is
- * `tests/aiq_agent/common/test_content_screen.py`.
+ * `packages/agent/tests/common/test_content_screen.py`.
  *
  * ONE fixture, at the repo root, read from disk at run time: vitest runs in
  * `apps/workspace` with the whole repository checked out (CI's workspace jobs

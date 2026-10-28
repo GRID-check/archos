@@ -69,7 +69,7 @@ def test_the_backend_image_watches_what_its_dockerfile_copies(mod):
     inputs = mod.inputs(backend)
 
     assert "packages/ifc-spatial-py" in inputs
-    assert {"apps/backend/Dockerfile", "apps/backend", "src", "uv.lock"} <= set(inputs)
+    assert {"apps/backend/Dockerfile", "apps/backend", "packages/agent", "uv.lock"} <= set(inputs)
     assert "tests" not in inputs and "docs" not in inputs
 
 

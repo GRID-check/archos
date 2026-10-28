@@ -112,8 +112,8 @@ describe("the agent-worker tier", () => {
     const table = read("apps", "backend", "src", "aiq_api", "jobs", "queue.py").match(
       /^TABLE = "([a-z_]+)"$/m,
     )?.[1];
-    const dead = read("src", "aiq_agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
-    const cancelled = read("src", "aiq_agent", "common", "claim_queue.py").match(
+    const dead = read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
+    const cancelled = read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py").match(
       /^CANCELLED = "([a-z_]+)"$/m,
     )?.[1];
 
@@ -131,7 +131,7 @@ describe("the agent-worker tier", () => {
     // The query has no clause for finished jobs, so the worker must delete them.
     const queue = read("apps", "backend", "src", "aiq_api", "jobs", "queue.py");
     expect(queue).toMatch(/def mark_done\(/);
-    expect(read("src", "aiq_agent", "common", "claim_queue.py")).toMatch(/DELETE FROM \{self\.table\}/);
+    expect(read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py")).toMatch(/DELETE FROM \{self\.table\}/);
   });
 
   it("asks KEDA for one replica per `concurrency` open jobs, within the configured bounds", async () => {

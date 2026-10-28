@@ -6,7 +6,7 @@
  * The chat wire v2 contract, read from this side (`docs/design/chat-wire-v2.md`).
  *
  * `contracts/wire/v2/` holds recorded turns, one event per line, and
- * `tests/aiq_agent/common/test_wire_v2.py` reads the same files with the Pydantic
+ * `packages/agent/tests/common/test_wire_v2.py` reads the same files with the Pydantic
  * models they were generated from. Every event must parse here, parse to the
  * type it says it is, and every frame of the old wire must NOT parse: there is
  * no second reader.

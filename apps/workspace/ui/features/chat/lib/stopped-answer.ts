@@ -2,14 +2,14 @@
  * What a stopped answer keeps (`docs/design/chat-wire-v2.md` §c, Stop).
  *
  * Three writers store a stopped answer under the same message id: the agent
- * tier (`TurnTextFold.stopped`, `src/aiq_agent/turn/streaming.py`), the
+ * tier (`TurnTextFold.stopped`, `packages/agent/src/aiq_agent/turn/streaming.py`), the
  * asker's client (`stopTurnView` in `turn-fold.ts`) and the BFF, which cuts a
  * row the server stored whole because the Stop reached it after the answer
  * had finished (`cutStoppedAnswer` in `lib/conversations/service.ts`).
  * Whichever write lands, a reload must show the same bytes, so this is the one
  * TypeScript copy of the rule, and `contracts/wire/v2/stopped-cases.jsonl` holds
  * it and the Python one to the same cases (`stopped-answer.spec.ts`,
- * `tests/aiq_agent/turn/test_streaming.py`).
+ * `packages/agent/tests/turn/test_streaming.py`).
  *
  * The rule: the first `chars` code points of the stretch the reader was
  * reading, a marker the cut left half written dropped. A settled text (the

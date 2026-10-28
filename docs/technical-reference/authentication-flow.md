@@ -195,11 +195,11 @@ JWTValidator(
 4. Returns a dict with claims (`type: "jwt"`, `sub`, `email`, `name`, `token`) on success
 5. Returns error code `token_expired` or `token_invalid` on failure
 
-The validated principal is accessible in Python via `get_current_principal()` from `src/aiq_agent/auth/utils.py`, which reads the caller identity the middleware binds in `aiq_agent.auth.request_identity`.
+The validated principal is accessible in Python via `get_current_principal()` from `packages/agent/src/aiq_agent/auth/utils.py`, which reads the caller identity the middleware binds in `aiq_agent.auth.request_identity`.
 
 ## Token retrieval chain
 
-`get_auth_token()` in `src/aiq_agent/auth/utils.py` returns a token from the first available source, checked in priority order:
+`get_auth_token()` in `packages/agent/src/aiq_agent/auth/utils.py` returns a token from the first available source, checked in priority order:
 
 1. **Registered token fetchers** — custom fetchers registered via `register_token_fetcher(fn, priority)`, sorted high-to-low
 2. **NAT Context cookies** — `idToken` cookie from the NAT context (browser / web-UI mode)

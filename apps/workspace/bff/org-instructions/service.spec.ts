@@ -1,4 +1,4 @@
-// @disk-inputs: ../../src/aiq_agent/project_context.py, migrations/0087_organization_instructions.sql
+// @disk-inputs: ../../packages/agent/src/aiq_agent/project_context.py, migrations/0087_organization_instructions.sql
 /**
  * @vitest-environment node
  */
@@ -101,7 +101,7 @@ describe('the write boundary', () => {
   })
 
   it('is the number the backend uses (the SQL CHECK is held to it below)', () => {
-    const backend = readFileSync(join(process.cwd(), '..', '..', 'src', 'aiq_agent', 'project_context.py'), 'utf8')
+    const backend = readFileSync(join(process.cwd(), '..', '..', 'packages', 'agent', 'src', 'aiq_agent', 'project_context.py'), 'utf8')
     expect(backend).toContain(`ORG_INSTRUCTIONS_MAX_CHARS = ${ORG_INSTRUCTIONS_MAX_CHARS}\n`)
   })
 })

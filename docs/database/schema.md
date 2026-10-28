@@ -209,7 +209,7 @@ contract `retrieval_ledger` keeps, and for a stronger reason: the payload is
 produced by a different deployable. The shape is defined once in zod
 (`lib/runs/run-ledger-types.ts`) and exported to
 `apps/workspace/tests/fixtures/run-ledger.schema.json`, which the Python models
-(`src/aiq_agent/common/run_ledger.py`) validate against (ADR-0055, ADR-0062).
+(`packages/agent/src/aiq_agent/common/run_ledger.py`) validate against (ADR-0055, ADR-0062).
 
 **English names in the metadata (migrations `0163`, `0164`).** The closed
 vocabularies inside `metadata` were German identifiers and are English now.
@@ -1321,7 +1321,7 @@ default. The BFF serves the pinned set to the backend over
 `GET /api/internal/retrieval-settings` (TTL-cached, fail-open); the catalog of
 keys, bounds and boot defaults is the single source of truth at
 `apps/workspace/bff/retrieval-settings/catalog.ts` (mirrored in the backend
-resolver `src/aiq_agent/common/retrieval_settings.py`, parity-tested). Schema:
+resolver `packages/agent/src/aiq_agent/common/retrieval_settings.py`, parity-tested). Schema:
 `apps/workspace/bff/db/schema/platform-retrieval-settings.ts`.
 
 ## org_model_configs / org_model_config_versions (migration 0012)
@@ -1394,7 +1394,7 @@ was derived from it; 0043 renamed them and inverted that relationship (see
   `created_by`/`created_by_email`. Unique index `idx_skills_org_name` on
   `(organization_id, name)`: one skill per name per org, and the point query
   the fire/resolve paths make. Platform-authored skills are **not** rows — they
-  ship as files under `src/aiq_agent/skills/builtin/<collection>/`.
+  ship as files under `packages/agent/src/aiq_agent/skills/builtin/<collection>/`.
 - `jobs`: a project-scoped prompt on a timer — `project_id` (cascade FK) +
   denormalized `organization_id`, `name`, `prompt` (**NOT NULL** — the message
   the job fires; the attached skill's body is appended to it), the optional
@@ -1736,7 +1736,7 @@ Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6). One row pe
 ## citation_events
 
 Citation-quality ledger written **only** by `POST /api/internal/citation-events`
-(the backend emitter `src/aiq_agent/common/citation_events.py`) — the quality
+(the backend emitter `packages/agent/src/aiq_agent/common/citation_events.py`) — the quality
 sibling of the cost ledger (`llm_usage_events`) and the timing ledger
 (`agent_profiler_spans`). Schema: `apps/workspace/bff/db/schema/citation-events.ts`;
 migration `migrations/0025_citation_events.sql`.

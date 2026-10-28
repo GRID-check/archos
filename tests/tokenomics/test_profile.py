@@ -1,6 +1,6 @@
 """Tests for tokenomics profile dataclasses.
 
-Module under test: src/aiq_agent/tokenomics/profile.py
+Module under test: packages/agent/src/aiq_agent/tokenomics/profile.py
 """
 
 from aiq_agent.tokenomics.profile import PHASE_ORCHESTRATOR

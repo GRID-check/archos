@@ -339,7 +339,7 @@ documents ([ADR-0133](../adr/0133-piloti-reads-the-estate-through-standard-files
 * [ADR-0046](../adr/0046-agent-skills.md) rejected Deep Agents'
   `SkillsMiddleware` for the chat because it had no request-driven forcing and
   "offers the skill filesystem as tool content rather than a catalog". By then
-  the forcing was gone from our own code (`src/aiq_agent/skills/runtime.py`: "Nothing in this
+  the forcing was gone from our own code (`packages/agent/src/aiq_agent/skills/runtime.py`: "Nothing in this
   module can REQUIRE a skill"), and the middleware rendered a name and
   description catalog with progressive disclosure. The rejection still read as
   in force.

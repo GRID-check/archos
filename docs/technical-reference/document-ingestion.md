@@ -144,7 +144,7 @@ with no job gets a new one, a row whose job is dead is failed with its reason.
 
 ## Step 3: Python Ingest Route
 
-**File**: `apps/backend/src/aiq_api/routes/ingest.py` (moved from the deleted `src/aiq_agent/fastapi_extensions/` package on 2026-07-03)
+**File**: `apps/backend/src/aiq_api/routes/ingest.py` (moved from the deleted `packages/agent/src/aiq_agent/fastapi_extensions/` package on 2026-07-03)
 
 ```python
 POST /v1/ingest
@@ -189,7 +189,7 @@ header (a release date carries no retrieval signal, and embedding an approver's
 name would shift every chunk of the document toward whoever signed it) and
 stored regardless, because retrieval reads them off `Chunk.metadata`.
 
-The names are spelled once, in `src/aiq_agent/common/provenance.py`, which is
+The names are spelled once, in `packages/agent/src/aiq_agent/common/provenance.py`, which is
 also what reads them back. Nothing is inferred: a document with no provenance is
 a human document, which is what every unmarked chunk already means. Only a
 published version is ever dispatched, so a draft has no chunks at all — see
@@ -372,7 +372,7 @@ is marked failed (it does not replace its predecessor unguarded across replicas)
 so the failed-ingestion rescan picks it up. An ingest worker on Postgres with no
 `LOCK_DB_URL` refuses to start.
 
-The base corpus (`src/aiq_agent/oib_sync.py`) relies on the same step: its ingest
+The base corpus (`packages/agent/src/aiq_agent/oib_sync.py`) relies on the same step: its ingest
 jobs run on the queue like any other and nothing deletes a file before it is ingested again.
 
 ### A document deleted while it indexed takes its chunks back out
@@ -581,7 +581,7 @@ list while the row is being read. Both send one request,
 forwards `POST /v1/documents/{job_id}/cancel` to the backend.
 
 The stop is expressed through the ingest claim, not a second control channel:
-`cancel` (`src/aiq_agent/common/claim_queue.py`) marks the job's queue row
+`cancel` (`packages/agent/src/aiq_agent/common/claim_queue.py`) marks the job's queue row
 `cancelled` — a terminal status that is never claimed again and is not counted
 by KEDA — and blanks its payload. A worker reading the file then finds its
 heartbeat refused (the lease renews only while the row is `claimed`) and stops

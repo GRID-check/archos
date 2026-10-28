@@ -19,7 +19,7 @@
 >
 > **Bounded by design:** an override can never change `base_url` or the API key —
 > all AI traffic always transits OpenRouter and only OpenRouter
-> (`src/aiq_agent/common/model_overrides.py:25-31`); candidates are validated
+> (`packages/agent/src/aiq_agent/common/model_overrides.py:25-31`); candidates are validated
 > against the OpenRouter catalog server-side (422 on failure, 503 on catalog
 > outage); every change is an immutable, author-attributed, one-click-reversible
 > version with a catalog snapshot; changes emit the audit event

@@ -7,7 +7,7 @@ else of the workflow, and writes each one's name, description, input JSON Schema
 and annotations to ``apps/workspace/tests/fixtures/backend-tools.schema.json``.
 The BFF's ``lib/agent-api/backend-operations.ts`` reads that file, so an MCP
 client sees the description the chat model sees, and a change to a tool without
-this file regenerated fails ``tests/aiq_agent/common/test_backend_tools_schema.py``.
+this file regenerated fails ``packages/agent/tests/common/test_backend_tools_schema.py``.
 
 Run with::
 

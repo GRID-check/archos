@@ -266,7 +266,7 @@ again if it is still large. The result carries `layered: true` and `field`.
 The meta-tools are written once, `metaToolsFor` in `discovery.ts`, per caller:
 the domain list is the office door's (never `platform`), and Piloti's
 `call-operation` says a write comes back as a proposal. Piloti's client reads its variant from
-`src/aiq_agent/tools/workspace/meta_tools.json`, which `meta-tools.spec.ts`
+`packages/agent/src/aiq_agent/tools/workspace/meta_tools.json`, which `meta-tools.spec.ts`
 writes (`UPDATE_FIXTURES=1`) and holds current; Python keeps no copy and renames
 only the tool names to its own (`workspace__call`).
 
@@ -337,7 +337,7 @@ words are in [`../glossary.md`](../glossary.md#agent-surface-and-standard-terms)
   `lib/agent-api/` and `app/api/mcp/`, and fails on a German word (an umlaut,
   a stem or a prose word of `ci/german_stems.json`). Domain data passes only
   through its `DOMAIN_DATA` list, each entry with a reason. Its Python half is
-  `tests/aiq_agent/tools/workspace/test_english_only.py`, for what the workspace
+  `packages/agent/tests/tools/workspace/test_english_only.py`, for what the workspace
   tools tell Piloti's model.
 - Not yet: the internal routes Piloti's native tools call still refuse in German
   (`AGENT_REFUSAL_LOCALE`); see ADR-0122, "Follow-ups".
@@ -482,7 +482,7 @@ ceiling.
 2. `UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/exposure.config.spec.ts src/app/api/mcp/workspace-eval.fixture.spec.ts`
    rewrites `tests/fixtures/exposure.json` (the docs' and Python's copy) and the
    workspace eval's catalog (what Piloti sees).
-3. `.venv/bin/pytest tests/aiq_agent/tools/test_exposure_config.py` checks that
+3. `.venv/bin/pytest packages/agent/tests/tools/test_exposure_config.py` checks that
    every `native:<tool>` is a tool Piloti has.
 4. A change to a `piloti` entry changes what Piloti does: run the workspace set
    of the answer suite before and after
@@ -534,7 +534,7 @@ closed gap does not stay written down as open.
 `parity.config.spec.ts` fails when an op of `internalAnnotationRequestSchema` or
 a canvas operation of the catalog has no entry, when a side has neither mirror
 nor reason, or when a named component or card does not exist. It writes
-`tests/fixtures/surface-parity.json`; `tests/aiq_agent/tools/test_surface_parity.py`
+`tests/fixtures/surface-parity.json`; `packages/agent/tests/tools/test_surface_parity.py`
 fails when a tool of the `canvas` group, `look` or `show_in_viewer` is missing
 from it, or an entry names a tool Piloti is not bound to.
 
@@ -552,7 +552,7 @@ own and the page that runs it is the asker's. Regenerate with
 | Layer | What | Where |
 |---|---|---|
 | 1. Atomic operations | One per route method. The layer the rule is checked on | `lib/agent-api/catalog/` |
-| 2. Task-shaped tools | Where an agent needs more than CRUD: retrieval, IFC, canvas | `src/aiq_agent/tools/`, served through the MCP in phase 2 |
+| 2. Task-shaped tools | Where an agent needs more than CRUD: retrieval, IFC, canvas | `packages/agent/src/aiq_agent/tools/`, served through the MCP in phase 2 |
 | 3. Workflows and skills | "Brief me on a project"; the office's own skills, found and read by the agent | MCP prompts, `lib/agent-api/door/`; `skill-search` and `skill-get` ([below](#the-offices-skills)) |
 
 The Python-only reads (`knowledge_search`, `read_passage`, `list_files`,

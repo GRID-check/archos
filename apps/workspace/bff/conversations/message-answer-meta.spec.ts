@@ -17,7 +17,7 @@ import {
 
 /**
  * The Python↔TS crossing, pinned to one artifact: the backend's own gate wrote
- * this fixture (`tests/aiq_agent/common/test_answer_envelope.py` asserts it
+ * this fixture (`packages/agent/tests/common/test_answer_envelope.py` asserts it
  * still does), and this side asserts the sanitizer passes it through verbatim.
  * A renamed key or a moved cap on either side fails one of the two tests
  * instead of shipping green with the anatomy silently dropped.

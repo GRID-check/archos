@@ -1,7 +1,7 @@
 /**
  * Grid cards, rendered into the document.
  *
- * A card is STRUCTURED DATA — the shapes live in `src/aiq_agent/cards/models.py`
+ * A card is STRUCTURED DATA — the shapes live in `packages/agent/src/aiq_agent/cards/models.py`
  * and reach the browser as `metadata.cards`. In the app most of them are drawn
  * as SVG schematics; none of that can go into a .docx, and a screenshot of one
  * would not be a work product anyway (you cannot correct a number in a picture).

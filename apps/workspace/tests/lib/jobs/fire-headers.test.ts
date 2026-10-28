@@ -16,7 +16,7 @@
  * rather than two that agree with themselves". This is one of its two halves:
  * a shared fixture (`apps/workspace/tests/fixtures/job_fire_headers.json`) names the headers,
  * this spec asserts the BFF really puts them on the wire, and
- * `tests/aiq_agent/test_fire_path_contract.py` asserts what the Python side
+ * `packages/agent/tests/test_fire_path_contract.py` asserts what the Python side
  * demands is a subset of the same file. Neither side can move a name alone.
  *
  * It asserts against what `submitJob` ACTUALLY sends — a stubbed `fetch`

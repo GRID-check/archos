@@ -4,7 +4,7 @@
  */
 /**
  * The committed JSON Schema is what the Erfassungs-Agent's tools
- * (`src/aiq_agent/agents/intake/`) are tested against, and this keeps it from
+ * (`packages/agent/src/aiq_agent/agents/intake/`) are tested against, and this keeps it from
  * going stale: it REWRITES the fixture when `UPDATE_FIXTURES=1` and otherwise
  * compares.
  */

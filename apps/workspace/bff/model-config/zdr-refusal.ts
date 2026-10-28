@@ -8,7 +8,7 @@
  *    data policy" — matched on `data policy`, case-insensitive
  *    (`DATA_POLICY_REFUSAL_MARKER` on the Python side).
  *  - The backend's canned answer for it (`ZDR_MODEL_REFUSED_MESSAGE` in
- *    `src/aiq_agent/common/canned_replies.py`), which chat turns answer with and
+ *    `packages/agent/src/aiq_agent/common/canned_replies.py`), which chat turns answer with and
  *    deep-research jobs persist as `job.error` — matched on its opening clause.
  *
  * Deliberately NOT on "ZDR" or "zero data retention" alone: an internal fault

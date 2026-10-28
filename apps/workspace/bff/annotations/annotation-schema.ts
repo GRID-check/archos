@@ -2,7 +2,7 @@
  * The Anmerkungen wire schemas Piloti's tool speaks, as JSON Schema, for the
  * Python tier (ADR-0055). Generated from `types.ts` into
  * `tests/fixtures/document-annotations.schema.json`, which the agent's tool is
- * tested against (`tests/aiq_agent/tools/canvas/test_wire_contract.py`),
+ * tested against (`packages/agent/tests/tools/canvas/test_wire_contract.py`),
  * so the two languages read one contract.
  */
 

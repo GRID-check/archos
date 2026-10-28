@@ -108,7 +108,7 @@ This repo's CI/dev environment cannot reach openrouter.ai, so the contract
 above is **verified against the official documentation and replayed as test
 fixtures**, not against the live API:
 
-- `tests/aiq_agent/common/test_cost_tracking.py` replays a
+- `packages/agent/tests/common/test_cost_tracking.py` replays a
   documentation-exact usage object end-to-end: extraction → budget math →
   the exact JSON batch POSTed to the ledger endpoint.
 - `apps/workspace/app/api/internal/usage/route.spec.ts` accepts exactly
@@ -129,7 +129,7 @@ fixtures**, not against the live API:
 
 ## Capture: one handler, zero per-agent code
 
-`src/aiq_agent/common/cost_tracking.py`:
+`packages/agent/src/aiq_agent/common/cost_tracking.py`:
 
 ```
 track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)

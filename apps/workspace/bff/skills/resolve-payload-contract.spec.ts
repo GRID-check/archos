@@ -23,7 +23,7 @@
  * resolve_payload.json` — the device `citation-wire-contract.spec.ts` uses for
  * the citation formats. This file proves the fixture is still a faithful sample
  * of what the real `resolveSkillsForAgent` emits; the Python counterpart,
- * `tests/aiq_agent/skills/test_resolve_payload_contract.py`, proves the real
+ * `packages/agent/tests/skills/test_resolve_payload_contract.py`, proves the real
  * `SkillResolver` still reads it. Rename or drop a field and exactly one of the
  * two fails.
  *

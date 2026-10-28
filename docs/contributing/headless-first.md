@@ -85,7 +85,7 @@ offered operation's text names a withheld one.
 `exposure.config.spec.ts` fails an entry with no reason where one is due, a
 `platform` entry off the `platform` domain, an entry that offers Piloti a
 sensitive operation, an ask or a proposal decision, and a stale
-`tests/fixtures/exposure.json`. `tests/aiq_agent/tools/test_exposure_config.py`
+`tests/fixtures/exposure.json`. `packages/agent/tests/tools/test_exposure_config.py`
 fails a `native:<tool>` Piloti does not have.
 
 ## Not sure it deserves a tool

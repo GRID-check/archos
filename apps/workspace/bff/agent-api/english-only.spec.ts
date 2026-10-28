@@ -22,7 +22,7 @@
  * Domain data is allowed only through {@link DOMAIN_DATA}, each entry with the
  * reason it is data and not a word the agent is taught. Its Python half, for
  * what Piloti's workspace client tells the model, is
- * `tests/aiq_agent/tools/workspace/test_english_only.py`.
+ * `packages/agent/tests/tools/workspace/test_english_only.py`.
  */
 
 import { webcrypto } from 'node:crypto'

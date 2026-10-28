@@ -49,7 +49,7 @@ Full persona report highlights (severity · finding · key evidence):
 | Crit | No privacy policy / Impressum / terms (Art. 12–14; ECG §5) | *(fixed in this branch — placeholders must be completed)* |
 | Crit | Art. 15/17/20 not implemented for users: purgers for document/conversation/org/user are "later phases"; no export endpoint; no account deletion UI | `apps/workspace/purger/index.js:47-50`; `app/api/documents/[id]/` (no DELETE) |
 | Crit | Conversation delete removes only DB rows; LangGraph checkpoints (full content) persist indefinitely | `lib/conversations/repository.ts:87-92`; `docs/architecture/deletion-pipeline.md` (self-acknowledged) |
-| High | Chat prompts logged cleartext at INFO | `src/aiq_agent/agents/chat_researcher/register.py:518` |
+| High | Chat prompts logged cleartext at INFO | `packages/agent/src/aiq_agent/agents/chat_researcher/register.py:518` |
 | High | WorkOS EU data residency unverified (own ADR); audit events ship email + client IP + doc filenames to WorkOS; no DPA evidence | ADR-0002 Open Questions; `lib/audit/service.ts:56-93` |
 | High | Document content flows to NVIDIA US API by config default (embeddings/VLM) | `packages/knowledge-layer/src/llamaindex/adapter.py:583-591` |
 | High | `REQUIRE_AUTH=false` default (Art. 25(2) violation); anon mode has known cross-tenant memory-write gap (S3) | `deploy/.env.example`; `docs/architecture/memory-reflection-audit.md` |

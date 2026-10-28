@@ -32,8 +32,8 @@ import { valueText } from '@/shared/components/MarkdownRenderer/table-shape'
 
 /**
  * Blocks, written `:::name` … `:::` around the Markdown they describe. Mirrors
- * `DIRECTIVE_BLOCKS` in `src/aiq_agent/common/answer_dialect.py`; the parity
- * test (`tests/aiq_agent/common/test_answer_dialect_parity.py`) reads this list.
+ * `DIRECTIVE_BLOCKS` in `packages/agent/src/aiq_agent/common/answer_dialect.py`; the parity
+ * test (`packages/agent/tests/common/test_answer_dialect_parity.py`) reads this list.
  */
 export const DIRECTIVE_BLOCKS = [
   'check',
@@ -69,7 +69,7 @@ export const PROJECT_DIRECTIVE = 'project'
 /**
  * The keys `:project[…]` accepts, each with the project-profile fact it reads
  * (`lib/project-profile/intake-definition.ts` writes them). Mirrors
- * `PROJECT_KEYS` in `src/aiq_agent/common/answer_dialect.py`. There is no
+ * `PROJECT_KEYS` in `packages/agent/src/aiq_agent/common/answer_dialect.py`. There is no
  * `parcel_area_m2`: the profile records no Grundstücksfläche.
  */
 export const PROJECT_KEYS = {
