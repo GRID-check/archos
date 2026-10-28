@@ -9,7 +9,7 @@
  * still on the old names keeps working and no reader in the code knows them.
  * A name already set wins over `GRID_X`, which wins over `AIQ_X`.
  *
- * The same table as `LEGACY_PREFIXES` and `RENAMED` in `apps/backend/entrypoint.py`,
+ * The same table as `LEGACY_PREFIXES` and `RENAMED` in `apps/agent-host/entrypoint.py`,
  * which does this for the backend image; `tests/test_entrypoint_roles.py`
  * holds the two equal. Then this file goes.
  */
@@ -24,7 +24,7 @@ const RENAMED = {
   PILOTI_ASK_MAX_SECONDS: 'AGENT_ASK_MAX_SECONDS',
 }
 
-/** Every reader reads the new names, so an old one is worth a warning (as `WARN` in `apps/backend/entrypoint.py`). */
+/** Every reader reads the new names, so an old one is worth a warning (as `WARN` in `apps/agent-host/entrypoint.py`). */
 const WARN = true
 
 /** The name `legacy` is read as now, or null when it carries no old prefix. */

@@ -960,7 +960,7 @@ audit trail, as the person who took the mark back.
 A turn asked from a thread, whose model did not call `canvas__reply`, posts its
 answer into that thread at the end, when the turn ended `answered`
 (`packages/agent/src/agent/turn/annotation_reply.py`, posted by `post_fallback_reply` in
-`apps/backend/src/agent_host/chat_socket.py`). It does so only when nothing
+`apps/agent-host/src/agent_host/chat_socket.py`). It does so only when nothing
 Piloti did in that thread already spoke there, and only where everyone who
 opens the document reads. The reply goes through the route the tool uses, as
 the person who asked.

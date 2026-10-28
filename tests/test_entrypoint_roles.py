@@ -1,4 +1,4 @@
-"""``apps/backend/entrypoint.py`` starts the four roles of the image and refuses every other name (ADR-0082).
+"""``apps/agent-host/entrypoint.py`` starts the four roles of the image and refuses every other name (ADR-0082).
 
 ``PROCESS_ROLE`` has no default and ``web`` is not a value: a container that does
 not say which job it does stops at once, with the names it may take, instead of
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-ENTRYPOINT = Path(__file__).resolve().parents[1] / "apps" / "backend" / "entrypoint.py"
+ENTRYPOINT = Path(__file__).resolve().parents[1] / "apps" / "agent-host" / "entrypoint.py"
 
 
 def _run(env: dict[str, str]) -> subprocess.CompletedProcess[str]:

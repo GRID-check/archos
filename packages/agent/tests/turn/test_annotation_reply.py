@@ -3,7 +3,7 @@
 The record, the decision and the post are driven directly; the canvas tools
 marking the record are in ``packages/agent/tests/tools/canvas/test_thread_reply.py``,
 and the chat socket calling it at the end of a turn in
-``apps/backend/tests/test_chat_socket.py``. The body the fallback builds is
+``apps/agent-host/tests/test_chat_socket.py``. The body the fallback builds is
 validated against the schema the BFF's route exports, as the tool's own are.
 """
 

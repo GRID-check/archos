@@ -119,7 +119,7 @@ def run_stamp() -> str:
 # points. From a worktree of another commit the main checkout's ``agent_host`` met
 # the worktree's ``agent`` and every turn died (``Unknown field name
 # front_end``), reported as a 0.0 s run.
-FRONTEND_PACKAGES = {"agent_host": "apps/backend/src/agent_host"}
+FRONTEND_PACKAGES = {"agent_host": "apps/agent-host/src/agent_host"}
 
 
 def source_packages() -> dict[str, Path]:

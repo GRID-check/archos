@@ -18,7 +18,7 @@
  * with where it was.
  *
  * The backend twin — same URL, same `folder_path` body — is
- * `apps/backend/tests/test_document_folder_path_patch.py`.
+ * `apps/agent-host/tests/test_document_folder_path_patch.py`.
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 

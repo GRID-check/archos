@@ -104,7 +104,7 @@ The agent tier grew to nineteen thousand lines with functions that ran two
 hundred lines deep and four `if`s wide, and the cost was not aesthetic: a fix
 in the middle of one of them could not be tested on its own, and a reader had
 to hold the whole thing to know which branch they were in. These rules are the
-floor for anything under `packages/agent/src/agent`, the Python packages under `packages/` and `apps/backend`,
+floor for anything under `packages/agent/src/agent`, the Python packages under `packages/` and `apps/agent-host`,
 new or touched:
 
 - **Two levels of nesting inside a function, at most.** A third `if`/`for`/

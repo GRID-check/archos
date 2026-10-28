@@ -25,7 +25,7 @@ addopts = "--import-mode=importlib -m 'not live'"
 # whichever checkout ran `uv sync`, so a bare `pytest` in a worktree without its
 # own venv tested the MAIN checkout's code while everything passed. This puts
 # the checkout's own `packages/agent/src/` ahead of that install (the editable `.pth` is
-# appended to sys.path, so it loses). `apps/backend/src` is the same guard
+# appended to sys.path, so it loses). `apps/agent-host/src` is the same guard
 # for `agent_host`, which `packages/agent/tests` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
 # those tests against the MAIN checkout's `agent_host`. `evals/oib-retrieval/src`
@@ -35,7 +35,7 @@ addopts = "--import-mode=importlib -m 'not live'"
 # The test-support packages come last: `<distribution>_testing`, one per suite
 # family, so a suite imports its helpers by a name that no directory move changes
 # (ADR-0145 row 5; tests/test_test_imports.py holds it).
-pythonpath = [".", "packages/agent/src", "apps/backend/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "packages/agent/tests/testing"]
+pythonpath = [".", "packages/agent/src", "apps/agent-host/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "packages/agent/tests/testing"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
@@ -222,7 +222,7 @@ indent_dictionary_value = true
 #   uv sync                              # Install root + all workspace members
 #   uv sync --package agent  # Install only the agent
 #   uv pip install -e ./packages/ris-adapter  # Install a specific package
-#   uv pip install -e "./apps/backend[postgres]"  # With extras
+#   uv pip install -e "./apps/agent-host[postgres]"  # With extras
 # -----------------------------------------------------------------------------
 [dependency-groups]
 dev = [
@@ -286,7 +286,7 @@ members = [
     "packages/knowledge-layer",
     "packages/ris-adapter",
     "packages/tavily-web-search",
-    "apps/backend",
+    "apps/agent-host",
 ]
 
 [tool.uv.sources]

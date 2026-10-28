@@ -37,10 +37,10 @@ def test_script_chains_take_either_quote_and_skip_comments():
     source = """// read('no/comment.ts')
 /* `no/block.ts` */
 const label = <p>don't</p>
-read('apps', "backend", 'x.py')
+read('apps', "agent-host", 'x.py')
 join(repoRoot, "apps/workspace", 'y.js')
 """
-    assert reads.chains(reads.script_tokens(source)) == ["apps/backend/x.py", "apps/workspace/y.js"]
+    assert reads.chains(reads.script_tokens(source)) == ["apps/agent-host/x.py", "apps/workspace/y.js"]
 
 
 def test_a_chain_resolves_under_a_directory_the_file_names():

@@ -10,7 +10,7 @@
  * The header used to be written at sixteen call sites with three policies
  * nobody chose: send an empty token, throw a 503, or quietly omit it. The
  * backend refuses every one of those requests that lacks a valid token
- * (`apps/backend/src/agent_host/routes/internal_auth.py`), so the empty
+ * (`apps/agent-host/src/agent_host/routes/internal_auth.py`), so the empty
  * header only bought a misleading 403.
  */
 

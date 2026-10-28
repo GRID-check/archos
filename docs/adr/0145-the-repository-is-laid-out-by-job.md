@@ -204,7 +204,7 @@ Every category found on 39f8628, what replaces it, and the row that does it:
 | Other paths | 124 path names, most of them the site's art and downloads, the UI's card modules (`grid-cards`), docs and fixtures (`grid_request_context.json`), counted with every other brand name by `scripts/check_brand_names.py` (#1302) | renamed with the code around them; the count only falls | each row |
 | Docs and tests | prose and test names | follow the row that renames the thing they describe | each row |
 
-The API package is `agent_host`, not `backend` (decided by the owner on 2026-10-28): the repository has many backends, and this one is the process that hosts `agent`: its chat socket, job API, queues and workers. The name says the job; `agent` never imports `agent_host`.
+The API package is `agent_host`, not `backend` (decided by the owner on 2026-10-28): the repository has many backends, and this one is the process that hosts `agent`: its chat socket, job API, queues and workers. The name says the job; `agent` never imports `agent_host`. The directory followed on 2026-10-28: `apps/backend` is `apps/agent-host`, the same name with a hyphen, and the layout test lists the old path as moved.
 
 ### Inside `apps/workspace`
 

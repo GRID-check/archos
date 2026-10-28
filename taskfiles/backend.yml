@@ -1,4 +1,4 @@
-# Backend tier (src/, the Python packages, apps/backend, evals/), Langfuse/prompts.
+# Backend tier (src/, the Python packages, apps/agent-host, evals/), Langfuse/prompts.
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
 # (`be:test`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
@@ -17,11 +17,11 @@ vars:
   TESTMON_PATHS:
     map:
       core: tests/ packages/agent/tests/ evals/
-      api: apps/backend/tests/
+      api: apps/agent-host/tests/
       sources: packages/knowledge-layer packages/ris-adapter packages/tavily-web-search --dist loadfile
 
 tasks:
-  # ── backend (src/, the Python packages, apps/backend) ───────────────────
+  # ── backend (src/, the Python packages, apps/agent-host) ───────────────────
 
   be:lint:
     desc: 'Ruff lint + format check, and the package seams (import-linter). CI: task be:lint -- --output-format=github'
@@ -210,7 +210,7 @@ tasks:
 
   be:eval:root-sort:
     desc: 'Root-sort eval — placement precision, coverage and the sure-threshold sweep on a labelled synthetic shelf, plus the new-folder grouping (NEEDS OPENROUTER_API_KEY; no backend)'
-    dir: '{{.ROOT_DIR}}/apps/backend'
+    dir: '{{.ROOT_DIR}}/apps/agent-host'
     cmds:
       # Sets SURE_CONFIDENCE (apps/workspace/bff/filing/root-sort-types.ts).
       # Run before and after a change to the sort prompt, the scoring or the
@@ -342,7 +342,7 @@ tasks:
   be:test:api:
     desc: agent_host plugin suite
     cmds:
-      - '{{.PY}} -X faulthandler -m pytest apps/backend/tests/ -q {{.XDIST}}'
+      - '{{.PY}} -X faulthandler -m pytest apps/agent-host/tests/ -q {{.XDIST}}'
 
   be:verify:
     desc: Everything CI runs for the backend tier
@@ -365,6 +365,6 @@ tasks:
         bash scripts/rls-test-db.sh --exec "{{.PY}}" -X faulthandler -m pytest -q
         packages/agent/tests/common/test_claim_queue.py
         tests/knowledge_layer_tests/test_ingest_queue.py
-        apps/backend/tests/test_research_queue_fair.py
+        apps/agent-host/tests/test_research_queue_fair.py
         packages/agent/tests/knowledge/folder_cards
         tests/test_postgres_rename_legacy_names.py

@@ -665,7 +665,7 @@ things in this repo read IFC and exactly one of them may state a number:
 
 | reader | reads IFC | asserts a number | shipped |
 |---|---|---|---|
-| `packages/ifc-spatial-py` (IfcOpenShell / OCCT) | yes | **yes — every measured number** | `apps/backend/Dockerfile:67,95,98` installs it |
+| `packages/ifc-spatial-py` (IfcOpenShell / OCCT) | yes | **yes — every measured number** | `apps/agent-host/Dockerfile:67,95,98` installs it |
 | `packages/ifc-spatial` (TypeScript, `@ifc-lite`) | yes | only inside `tests/test_parity.py` | no `package.json` in the repo depends on it |
 | `apps/workspace` viewport (`@ifc-lite/renderer`) | yes | no — pixels and a GlobalId | yes |
 
@@ -1101,7 +1101,7 @@ one non-test caller — `openModel`, `packages/ifc-spatial/src/model.ts:68` —
 which is reached only from `SpatialCache.load` (`model.ts:194`) and from there
 only from the TypeScript MCP server's `open_model` handler
 (`packages/ifc-spatial/src/mcp/tools.ts:238`). That server ships nowhere:
-`apps/backend/Dockerfile:67,95,98` installs `packages/ifc-spatial-py` and nothing
+`apps/agent-host/Dockerfile:67,95,98` installs `packages/ifc-spatial-py` and nothing
 else, no `package.json` in the repo depends on `@grid/ifc-spatial`, and
 `ifc_measure` (`configs/config_oib_openrouter.yml:481`) reaches the engine
 through `packages/agent/src/agent/knowledge/ifc_spatial_client.py`, which imports the

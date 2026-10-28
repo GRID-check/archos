@@ -41,11 +41,11 @@ docker compose up -d --build
          │      • Container exits (one-shot)
          │
          ├── 5. chat starts (depends on postgres + seaweedfs healthy)
-         │      • ENTRYPOINT: python /app/apps/backend/entrypoint.py
+         │      • ENTRYPOINT: python /app/apps/agent-host/entrypoint.py
          │      │
          │      │   entrypoint.py:
          │      │   1. Reads CONFIG_FILE, HOST, PORT
-         │      │   2. Starts python /app/apps/backend/start_web.py as subprocess
+         │      │   2. Starts python /app/apps/agent-host/start_web.py as subprocess
          │      │
          │      │   start_web.py:
          │      │   1. Configures logging (LOG_LEVEL, format)

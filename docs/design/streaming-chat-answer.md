@@ -11,7 +11,7 @@ describe that wire. The settle and verify rules, the paced reveal and the
 storage rules are unchanged by it. Streaming is the default delivery; there is
 no runtime flag beyond the platform switch below.
 **Related:** the per-turn chat path (`agents/piloti/conversation_register.py`,
-`note_settled_replaced`), the chat socket (`apps/backend/src/agent_host/chat_socket.py`),
+`note_settled_replaced`), the chat socket (`apps/agent-host/src/agent_host/chat_socket.py`),
 the turn fold (`apps/workspace/ui/features/chat/lib/turn-fold.ts`) and the chat
 store. Live prose: `common/answer_prose_stream.py` and
 `agents/piloti/answer_pipeline.py` (`LiveAnswer`, `settle_streamed_citations`).
@@ -1013,7 +1013,7 @@ as it does on a desk.
 - Producers and handler: prose deltas are coalesced, the snapshot and the
   retraction are emitted from the streamed call, `RUN_FINISHED` is persisted
   from `TurnResult`, and a cancelled turn persists its partial marked stopped
-  (`packages/agent/tests/turn/`, `apps/backend/tests/test_chat_socket.py`).
+  (`packages/agent/tests/turn/`, `apps/agent-host/tests/test_chat_socket.py`).
 - Fold: every fixture turn folds to the expected view; a duplicate `seq` keeps
   identity and a gap is flagged; snapshot, retraction and terminal
   replacement; a card before its marker; a spectator starting mid-turn

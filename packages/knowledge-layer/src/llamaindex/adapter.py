@@ -4028,7 +4028,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # the org/project/document ids in the key are, so whether the
             # signature survived was luck, and the tenant path leaked in full for
             # short keys. Same rule as the download side in
-            # apps/backend/src/agent_host/routes/ingest.py.
+            # apps/agent-host/src/agent_host/routes/ingest.py.
             logger.info("Uploaded thumbnail (%d bytes)", len(thumbnail_bytes))
         except Exception as error:
             # The class only: an httpx error's text, and so its traceback,

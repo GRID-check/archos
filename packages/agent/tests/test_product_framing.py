@@ -140,5 +140,5 @@ def test_the_scan_sees_the_packages() -> None:
     assert {
         "packages/agent/pyproject.toml",
         "packages/knowledge-layer/pyproject.toml",
-        "apps/backend/pyproject.toml",
+        "apps/agent-host/pyproject.toml",
     } <= set(PYPROJECTS)

@@ -518,8 +518,8 @@ class TestTheWireContract:
 #: new answer to "who signs here?", and the answer for an envelope is: nobody.
 _HMAC_SITES = {
     ("packages/agent/src/agent/project_context.py", "from_envelope"),  # verifies, compare_digest
-    ("apps/backend/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_user_id"),  # trace ids
-    ("apps/backend/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_client_id"),  # trace ids
+    ("apps/agent-host/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_user_id"),  # trace ids
+    ("apps/agent-host/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_client_id"),  # trace ids
 }
 
 
@@ -545,7 +545,7 @@ def _hmac_sites(root: Path) -> set[tuple[str, str]]:
 class TestNothingIsSignedInPython:
     def test_no_hmac_is_computed_anywhere_it_has_not_been_justified(self):
         sites = _hmac_sites(REPO / "packages" / "agent" / "src" / "agent") | _hmac_sites(
-            REPO / "apps" / "backend" / "src"
+            REPO / "apps" / "agent-host" / "src"
         )
         assert sites == _HMAC_SITES
 

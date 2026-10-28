@@ -25,7 +25,7 @@
  * ## This route owns `run_ledger` and no other metadata key
  *
  * The finished report, its sources and the transparency keys
- * (`_TRANSPARENCY_METADATA_KEYS` in `apps/backend/.../conversation_output.py`)
+ * (`_TRANSPARENCY_METADATA_KEYS` in `apps/agent-host/.../conversation_output.py`)
  * are written by the path that produces them, into the same message. The merge
  * below is per top-level key, so a ledger flush never touches them and a report
  * write never touches the ledger — two writers, one message, no lost update

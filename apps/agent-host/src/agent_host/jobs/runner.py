@@ -103,7 +103,7 @@ _DEGRADED_EVENT_FIELDS = ("research_truncated", "truncation_reason", "degraded_r
 #: replays, so the stored history and the live stream agree. Deliberately NOT a
 #: ``job.phase`` row:
 #: ``phase_events`` owns phase progress for the progress display, and an
-#: ownership change is not a phase (apps/backend/AGENTS.md).
+#: ownership change is not a phase (apps/agent-host/AGENTS.md).
 JOB_OWNERSHIP_LOST_EVENT_TYPE = "job.ownership-lost"
 
 #: The only payload of the ownership-lost event. A stable reason token, never

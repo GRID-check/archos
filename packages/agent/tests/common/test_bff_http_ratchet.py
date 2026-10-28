@@ -21,7 +21,7 @@ SEAM = Path("packages/agent/src/agent/common/bff_http.py")
 #: Where the agent tier calls the BFF from. ``knowledge_layer`` is its own
 #: package, imported by the ingest worker, and must not depend on ``agent``;
 #: ``agent_host`` is the API host, whose ``internal_api.py`` persists messages.
-TREES = ("packages/agent/src/agent", "packages/knowledge-layer/src", "apps/backend/src")
+TREES = ("packages/agent/src/agent", "packages/knowledge-layer/src", "apps/agent-host/src")
 
 PATTERNS = {
     # A private redirect guard: the seam's opener is the one that refuses redirects.
@@ -58,7 +58,7 @@ ALLOWED: dict[str, dict[str, int]] = {
         "packages/knowledge-layer/src/llamaindex/document_presence.py": 3,
         "packages/knowledge-layer/src/llamaindex/page_text_store.py": 3,
         "packages/knowledge-layer/src/view_image.py": 4,
-        "apps/backend/src/agent_host/internal_api.py": 2,
+        "apps/agent-host/src/agent_host/internal_api.py": 2,
     },
     "token_header": {
         "packages/agent/src/agent/skills/resolver.py": 1,

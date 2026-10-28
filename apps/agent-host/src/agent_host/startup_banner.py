@@ -43,7 +43,7 @@ def deployed_sha(env: dict[str, str] | None = None) -> str:
     """The commit this image was built from, or ``unknown``.
 
     ``GIT_SHA`` is stamped as a build arg and re-exported as an env var by
-    ``apps/backend/Dockerfile``. There is no ``.git`` in the image, so this is the
+    ``apps/agent-host/Dockerfile``. There is no ``.git`` in the image, so this is the
     only place the answer can come from.
     """
     source = os.environ if env is None else env
