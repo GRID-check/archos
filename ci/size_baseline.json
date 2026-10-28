@@ -58,7 +58,7 @@
     "frontends/ui/src/features/documents/components/file-browser-pane.tsx": 1131,
     "frontends/ui/src/features/documents/components/file-list-view.tsx": 655,
     "frontends/ui/src/features/documents/components/file-preview-host.tsx": 830,
-    "frontends/ui/src/features/documents/components/file-preview-pane.tsx": 2556,
+    "frontends/ui/src/features/documents/components/file-preview-pane.tsx": 2026,
     "frontends/ui/src/features/documents/components/file-workspace.tsx": 1363,
     "frontends/ui/src/features/documents/components/folder-brief.tsx": 693,
     "frontends/ui/src/features/documents/components/folder-navigation.tsx": 942,
