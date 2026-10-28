@@ -7,7 +7,7 @@ import 'server-only'
  *
  * Every internal route carries the same static service token and no user, and
  * the agent's principal is WIDER than any human's — so a route that took
- * `userId` from its own body would let anything holding `INTERNAL_API_TOKEN`
+ * `userId` from its own body would let anything holding `GRID_INTERNAL_API_TOKEN`
  * write into any tenant as anybody. `POST /api/internal/document-versions` was
  * the first route to close that, with the two helpers below written inside it;
  * `POST /api/internal/tasks` is the second, and a second copy of an identity
@@ -35,18 +35,15 @@ import 'server-only'
 import { BadRequestError, ForbiddenError, UnauthorizedError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import {
-  GRID_HEADER_NAMES,
-  verifyGridRequestContextEnvelope,
-  type VerifiedGridRequestContext,
-} from '@/lib/request-context'
+import { readHeader } from '@/lib/http/legacy-header-names'
+import { verifyGridRequestContextEnvelope, type VerifiedGridRequestContext } from '@/lib/request-context'
 
 /** The verified envelope, or a 401. Never says which check failed. */
 export function requireVerifiedContext(request: Request): VerifiedGridRequestContext {
   const context = verifyGridRequestContextEnvelope(
-    request.headers.get(GRID_HEADER_NAMES.REQUEST_CONTEXT),
-    request.headers.get(GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG),
-    process.env.INTERNAL_API_TOKEN,
+    readHeader(request.headers, 'X-Request-Context'),
+    readHeader(request.headers, 'X-Request-Context-Sig'),
+    process.env.GRID_INTERNAL_API_TOKEN,
   )
   if (!context) throw new UnauthorizedError('Missing or invalid request context envelope')
   return context

@@ -130,6 +130,7 @@ describe('runDocumentCheckSlice — starting the turn', () => {
     )
     const [[request]] = vi.mocked(runHeadlessTurn).mock.calls
     expect(request.conversationId).toBe(CONVERSATION)
+    expect(request.headers['x-chat-mode']).toBe('headless')
     expect(request.headers['x-aiq-mode']).toBe('headless')
     expect(request.requires).toEqual(['user_message.trigger', 'user_message.if_idle'])
     expect(request.message).toMatchObject({

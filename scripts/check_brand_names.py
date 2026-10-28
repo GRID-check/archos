@@ -81,7 +81,7 @@ EXCLUDED = re.compile(
             r"^docs/(adr|audits)/",  # decisions and audits: history, written once
             r"^releasenotes/",  # what shipped, under the name it shipped with
             r"(^|/)migrations/|^frontends/ui/drizzle/",  # Alembic and Drizzle history, written once
-            r"(^|/)i18n/dictionaries/|^frontends/web/src/(i18n|data)/",  # copy, where the name belongs
+            r"(^|/)i18n/dictionaries/|^apps/site/src/(i18n|data)/",  # copy, where the name belongs
             r"(^|/)public/",  # published assets: their URLs are public
             r"(^|/)(uv\.lock|bun\.lockb?|package-lock\.json|apm\.lock\.yaml)$",  # rendered from manifests
             r"\.mdx?$",  # prose, which follows the code it names
@@ -92,9 +92,14 @@ EXCLUDED = re.compile(
             r"^frontends/ui/scripts/legacy-env-names\.",
             # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
             r"^deploy/pulumi/src/names\.ts$",
+            # The one-release fallback that reads the old x-grid-* header names, and its tests.
+            r"^frontends/ui/src/lib/http/legacy-header-names\.|^frontends/aiq_api/src/aiq_api/legacy_headers\.py$",
+            r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",
             r"^deploy/pulumi/index-postgres-rename\.spec\.ts$|^tests/test_postgres_rename_legacy_names\.py$",
+            # The one release the BFF also sends the mode header under its old name, beside `x-chat-mode`.
+            r"^frontends/ui/src/lib/turns/headless-mode\.ts$",
         )
     )
 )

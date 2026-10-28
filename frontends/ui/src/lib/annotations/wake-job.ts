@@ -15,7 +15,7 @@
  * 6. The turn context for their pinned session and that thread
  *    (`resolveTurnContext`), which refuses a spent budget.
  * 7. The chat socket, opened as an internal caller with the signed envelope
- *    (the thread inside it) and `X-AIQ-Mode: headless`
+ *    (the thread inside it) and `X-Chat-Mode: headless`
  *    (`lib/turns/headless-turn.ts`), and one `user_message` with `trigger`,
  *    `if_idle`, the mark's region and `reply_in_thread`.
  *
@@ -43,6 +43,7 @@ import { getAccessibleDocument } from '@/lib/documents/access'
 import type { JobAttempt, JobSliceResult, PilotiWakePayload } from '@/lib/jobs-queue/types'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from '@/lib/turns/headless-turn'
+import { HEADLESS_MODE_HEADERS } from '@/lib/turns/headless-mode'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import { onWakeEnded } from './attention'
@@ -335,7 +336,7 @@ export async function runPilotiWake(
     url: chatSocketUrl(conversationId),
     conversationId,
     projectId: context.projectId,
-    headers: { ...turnContextHeaders(context, { issuedAt: Date.now(), secret }), 'x-aiq-mode': 'headless' },
+    headers: { ...turnContextHeaders(context, { issuedAt: Date.now(), secret }), ...HEADLESS_MODE_HEADERS },
     message: wakeMessage({ payload, conversationId, doc, mark, text, authorName }),
     requires: WAKE_REQUIRES,
   })

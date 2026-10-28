@@ -21,6 +21,7 @@
 import 'server-only'
 import type { JobAttempt, PilotiWakeStopPayload } from '@/lib/jobs-queue/types'
 import { cancelHeadlessTurn, chatSocketUrl } from '@/lib/turns/headless-turn'
+import { HEADLESS_MODE_HEADERS } from '@/lib/turns/headless-mode'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import { documentThreadConversationId } from './wake-ids'
 import { findWake } from './wake-repository'
@@ -43,7 +44,7 @@ export async function runPilotiWakeStop(
     turnId: payload.wakeId,
     headers: {
       ...turnContextHeaders({ organizationId, userId: payload.actorUserId, conversationId }, { issuedAt: Date.now(), secret }),
-      'x-aiq-mode': 'headless',
+      ...HEADLESS_MODE_HEADERS,
     },
   })
   switch (outcome.kind) {

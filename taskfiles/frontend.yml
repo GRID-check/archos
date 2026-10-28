@@ -1,7 +1,7 @@
 # Frontend tier (frontends/ui) and the tenant-isolation suite.
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`fe:test`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`fe:test`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 

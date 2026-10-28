@@ -56,7 +56,7 @@ What follows a terminal goes out off the turn's path, in order, once
 (:func:`_after_terminal`): the answer row; the answer into an Anmerkung's thread
 when the turn was asked there and the model did not reply in it
 (``aiq_agent.turn.annotation_reply``); and, for a turn a headless caller (the
-BFF's wake job, ``X-AIQ-Mode: headless``) started, how it ended
+BFF's wake job, ``X-Chat-Mode: headless``) started, how it ended
 (``POST /api/internal/turns/outcome``), because that caller has let go of the
 socket by then.
 
@@ -813,7 +813,7 @@ class RunningTurn:
     #: The notes the asker typed while the turn runs (``common.steering``),
     #: bound into the workflow's context by :func:`_drive`.
     inbox: SteerInbox = field(default_factory=SteerInbox)
-    #: A headless caller started it (``X-AIQ-Mode: headless``): it is told the outcome (:func:`_after_terminal`).
+    #: A headless caller started it (``X-Chat-Mode: headless``): it is told the outcome (:func:`_after_terminal`).
     headless: bool = False
     #: The thread the question asks its answer in, or None (``aiq_agent.turn.annotation_reply``),
     #: bound into the workflow's context by :func:`_drive` so the canvas tools mark it.

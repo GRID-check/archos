@@ -24,7 +24,7 @@ def test_every_signal_is_a_sibling_on_the_same_collector(configured, signal):
 def test_the_resource_names_the_tier_the_build_and_the_process():
     # service.version tells a regression from a pod still running the old
     # image; the instance keeps two replicas' cumulative counters apart.
-    env = {"OTEL_SERVICE_NAME": "grid-agent-worker", "GIT_SHA": " abc123 ", "HOSTNAME": "agent-worker-7f9c-x2"}
+    env = {"OTEL_SERVICE_NAME": "grid-agent-worker", "GRID_GIT_SHA": " abc123 ", "HOSTNAME": "agent-worker-7f9c-x2"}
     assert resource_attributes(env, pid=7) == {
         "service.name": "grid-agent-worker",
         "service.version": "abc123",
@@ -34,7 +34,7 @@ def test_the_resource_names_the_tier_the_build_and_the_process():
 
 
 def test_blank_values_are_left_out_and_the_name_falls_back_to_the_chat_service():
-    assert resource_attributes({"OTEL_SERVICE_NAME": " ", "GIT_SHA": "", "HOSTNAME": ""}, pid=7) == {
-        "service.name": "grid-aiq-agent",
+    assert resource_attributes({"OTEL_SERVICE_NAME": " ", "GRID_GIT_SHA": "", "HOSTNAME": ""}, pid=7) == {
+        "service.name": "backend-chat",
         "process.pid": 7,
     }

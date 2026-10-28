@@ -15,7 +15,8 @@
  * building, gets nothing.
  */
 
-import { answersFromProfile, type ProjectIntakeDefinition } from '@/lib/project-profile/intake-definition'
+import { answersFromProfile } from '@/lib/project-profile/intake-profile'
+import type { ProjectIntakeDefinition } from '@/lib/project-profile/intake-types'
 import type { DerivationEvidence, DerivationInput, ProfileAlternative } from '@/lib/project-profile/evidence-schema'
 import type { ProjectProfile } from '@/lib/project-profile/types'
 import { deriveBuildingClass, BUILDING_CLASS_DERIVATION } from './derivations'

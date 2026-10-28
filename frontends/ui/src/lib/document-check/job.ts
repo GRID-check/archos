@@ -51,6 +51,7 @@ import { recordDocumentCheckScore } from '@/lib/langfuse/document-check-score'
 import { askAnswerMessageId } from '@/lib/turns/answer-ids'
 import { leaveNotice, noticeThread } from '@/lib/revision-notice/leave'
 import { chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from '@/lib/turns/headless-turn'
+import { HEADLESS_MODE_HEADERS } from '@/lib/turns/headless-mode'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import {
@@ -183,7 +184,7 @@ async function startCheck(
     url: chatSocketUrl(conversationId),
     conversationId,
     projectId: context.projectId,
-    headers: { ...turnContextHeaders(context, { issuedAt: Date.now(), secret }), 'x-aiq-mode': 'headless' },
+    headers: { ...turnContextHeaders(context, { issuedAt: Date.now(), secret }), ...HEADLESS_MODE_HEADERS },
     message: checkTurnMessage({ payload, conversationId, document, authorName: session.name }),
     requires: CHECK_REQUIRES,
   })
