@@ -25,9 +25,9 @@ from aiq_agent.common import RunBudgetExceededError
 from aiq_agent.common import extract_json
 from aiq_agent.common.cost_tracking import BudgetExceededError
 from aiq_agent.common.retrieval_rounds import repeat_fetches
-from aiq_agent.common.turn_status import emit_repeat_fetch
-from aiq_agent.common.turn_status import fetch_signature
-from aiq_agent.common.turn_status import record_round_announcement
+from aiq_agent.common.retrieval_status import record_round_announcement
+from aiq_agent.common.tool_calls import fetch_signature
+from aiq_agent.common.turn_notices import emit_repeat_fetch
 from aiq_agent.common.turn_status import retrieval_round_scope
 from aiq_agent.common.turn_status import subagent_run
 
@@ -117,7 +117,7 @@ class RetrievalRounds:
     """
 
     #: One entry per announced batch, in dispatch order, as
-    #: ``turn_status.record_round_announcement`` shapes it. Its position is the
+    #: ``retrieval_status.record_round_announcement`` shapes it. Its position is the
     #: round index the hits of that batch are stamped with.
     announcements: list[dict[str, Any]] = field(default_factory=list)
     #: Fetch signature to the note that signature's first execution returned,

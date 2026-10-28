@@ -5,7 +5,7 @@
 
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test } from 'vitest'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import type { Conversation } from '@/features/chat/types'
 import { useSessionRows } from './use-session-rows'
 

@@ -318,7 +318,7 @@ class TestExactSearch:
 
 
 def test_the_exact_mode_is_never_withheld_as_a_repeat_of_the_ranked_one():
-    from aiq_agent.common.turn_status import fetch_signature
+    from aiq_agent.common.tool_calls import fetch_signature
 
     ranked = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03"}})
     exact = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03", "match": "exact"}})
