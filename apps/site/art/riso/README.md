@@ -137,7 +137,7 @@ before drawing a new plate.
 ## The kit
 
 `setup.mjs` clones [sevenevesai/riso-windowseat](https://github.com/sevenevesai/riso-windowseat)
-at `kit.json`'s commit into `~/.cache/piloti-riso/riso-windowseat-<commit>`
+at `kit.json`'s commit into `~/.cache/riso-kit/riso-windowseat-<commit>`
 (`RISO_KIT_DIR` overrides), outside the repo so every worktree shares one clone
 and a new pin never reuses an old one. It runs `npm ci --ignore-scripts` in the
 kit's `tools/`: stills need playwright-core, not the ffmpeg the film tools

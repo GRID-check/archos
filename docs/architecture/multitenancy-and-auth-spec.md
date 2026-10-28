@@ -570,7 +570,7 @@ erDiagram
 | `created_at` | `timestamptz` | | |
 
 > **This table does not store identity.** Users, memberships, roles, and permissions live in
-> WorkOS. The `organizations` row only holds Grid-specific app settings keyed by the WorkOS
+> WorkOS. The `organizations` row only holds app-specific app settings keyed by the WorkOS
 > org ID: default project, retention policy, base knowledge config, etc. See
 > [ADR‑0007](../adr/0007-no-local-identity-sync.md).
 

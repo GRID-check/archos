@@ -49,7 +49,7 @@ The `BACKEND_WS_URL` is derived from `BACKEND_CHAT_URL` by replacing `http` with
 Called internally (no external route) by `server.js` during WebSocket upgrade. Resolves the collection scope for the backend:
 
 1. Reads `projectId` and `conversationId` from query params
-2. Calls `getGridSession()` to resolve the WorkOS session (or null in anonymous mode)
+2. Calls `getUserSession()` to resolve the WorkOS session (or null in anonymous mode)
 3. If `REQUIRE_AUTH=true` and no session: returns `401`
 4. If project access required: calls `requireProjectAccess()` → returns `403` on failure
 5. Calls `buildCollectionScopeFromRequest(session, { projectId, conversationId })` to build the ordered scope

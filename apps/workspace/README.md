@@ -350,9 +350,9 @@ ui/adapters/auth/
 └── index.ts         # Re-exports
 
 bff/auth/
-├── session.ts       # Server GridSession helper wrapping withAuth()/refreshSession()
+├── session.ts       # Server UserSession helper wrapping withAuth()/refreshSession()
 ├── require-auth.ts  # requireAuthorizedSession() redirects to onboarding
-└── types.ts         # GridSession / AuthorizedSession types
+└── types.ts         # UserSession / AuthorizedSession types
 
 bff/authz/
 └── projects.ts      # project_members lookup + admin override

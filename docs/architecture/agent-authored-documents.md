@@ -351,7 +351,7 @@ step, and it is why the audit commit lands first.
    lands` — there is no submit form (see *What the build changed about this design* §1,
    and [As built §1](#1-the-disclosure-verbatim) for the copy).
 5. `feat(export): a generated document says so, in the file itself`.
-6. `feat(files): Piloti-authored files read as unclaimed` — authorship line,
+6. `feat(files): agent-authored files read as unclaimed` — authorship line,
    the `stored` state, toast actions, `/dev` preview.
 7. `docs:` schema, ADR-0032/0047 addenda, the `filed` field in
    `docs/api/bff-routes.md`, the user guide, and the exploration doc marked as

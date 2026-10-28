@@ -1,6 +1,6 @@
 # GRID Design Language
 
-> Branding note (2026-07-17): the user-facing product brand — wordmark, tab titles, all UI copy — is **Piloti** (`src/lib/brand.ts`). GRID remains the internal/platform name, including this design language and its tokens (e.g. the `--grid-blue` alias).
+> Branding note (2026-07-17): the user-facing product brand — wordmark, tab titles, all UI copy — is **Piloti** (`src/lib/brand.ts`). GRID remains the internal/platform name, including this design language and its tokens (e.g. the `--law-blue` alias).
 
 The single reference every page redesign builds against. Goal: an **understated, premium, precise** workspace for architects and planning offices, where they run projects, files, the building model, tasks and research. Linear/Vercel/Stripe-dashboard restraint, not consumer SaaS. Calm, trustworthy, dense-but-legible. No gradients, no emojis, no decorative color.
 
@@ -92,7 +92,7 @@ hidden under `contrast-more:` and `forced-colors:`.
 | `--status-done(-tint)` | warm gray | status "Abgeschlossen" | dot |
 | `--signal-error(-tint)` | red #c14a38 | errors only | alert |
 
-All are mapped as Tailwind colors (`bg-source-law-tint`, `text-source-law-text`, `border-source-office`, `bg-status-active-tint`, …). **Rule: color never travels alone — a provenance color always appears together with its icon and a text label.** Never use a source color decoratively or for anything but its meaning. `--grid-blue` survives only as a legacy alias of the law blue; it is not an accent.
+All are mapped as Tailwind colors (`bg-source-law-tint`, `text-source-law-text`, `border-source-office`, `bg-status-active-tint`, …). **Rule: color never travels alone — a provenance color always appears together with its icon and a text label.** Never use a source color decoratively or for anything but its meaning. `--law-blue` survives only as a legacy alias of the law blue; it is not an accent.
 
 **Accents vs. signals.** `--source-oib` is the one *accent*: a hue inside an
 existing signal, not a fifth family. OIB stays `law` everywhere the coarse

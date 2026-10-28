@@ -196,7 +196,7 @@ Every submission path used to hand-roll its own subset of the `x-grid-*`
 context headers (org/user/project id, collection scope, project
 context/memory, model overrides, budget, disabled sources) — one audited case
 (async-job submit, §8b) simply forgot one. `apps/workspace/bff/request-context.ts`
-is now the single builder: `buildGridRequestContextWireHeaders` returns every
+is now the single builder: `buildRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
 header (base64url JSON of the same fields, plus the structured `federal_state`
 fact — §6b) and `X-Grid-Request-Context-Sig` (hex HMAC-SHA256 of the raw
@@ -224,7 +224,7 @@ rather than accepting identity in a body. The JSON response body carries
 growing data; a context-read failure is an explicit turn error. This keeps
 the agent stateless without coupling connection availability to profile size.
 
-On the backend, `agent.project_context.GridRequestContext.from_context()`
+On the backend, `agent.project_context.RequestContext.from_context()`
 /`from_envelope()` verifies the signature with `hmac.compare_digest` and
 prefers a present-and-valid envelope over the individual headers; an
 invalid/missing signature is treated as an ABSENT envelope (logged as a
@@ -232,7 +232,7 @@ WARNING tamper signal), falling back to the individual headers exactly as
 before the envelope existed.
 
 `apps/agent-host/src/agent_host/context_envelope.py`'s
-`GridContextEnvelopeMiddleware` (raw ASGI, same pattern as `AuthMiddleware` —
+`RequestContextEnvelopeMiddleware` (raw ASGI, same pattern as `AuthMiddleware` —
 never buffers the response body, so SSE routes are unaffected) fail-closed
 rejects (403 / WS policy-violation close) a workflow-invoking request when
 ALL of: `REQUIRE_AUTH=true`; the caller is a WorkOS-authenticated JWT user;
@@ -407,7 +407,7 @@ validated against the shared schema and pushed into the conversation-scoped
 `CardRegistry`, which the chat entrypoint reads after the turn. There is no
 separate card-generation LLM call on that path, and no `card_generator_llm`
 config key any more. The result rides `ChatResponse.cards` → `message.cards`
-→ the frontend `validateGridCards` → `AnswerCards.tsx`.
+→ the frontend `validateAnswerCards` → `AnswerCards.tsx`.
 
 ### Deep-research cards (async path: closed; sync inline path: open)
 
@@ -415,7 +415,7 @@ With `use_async_deep_research: true` (the working config), any query routed to
 deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
 **real** answer is produced later by `apps/agent-host/src/agent_host/jobs/agent_job.py`
 (`run_agent_job`), which now generates cards post-hoc from the final report
-(`_generate_grid_cards` → `agent.cards.generate_cards`), re-emits the
+(`_generate_answer_cards` → `agent.cards.generate_cards`), re-emits the
 report artifact with cards attached over the job SSE stream, and stores
 `{"report", "cards"}` as the job output. Deep research cannot use the
 `emit_card` tool directly: the conversation-scoped `CardRegistry` is bound
@@ -507,7 +507,7 @@ confirmation), applies them through the shared patch engine, and prunes unknowns
 the patch just answered. The proposal records who decided and when, and every
 reader of the thread sees it. A card without a `proposal_id` (an older answer, or
 a run that could not store it) posts the patch to the same route from the
-browser, as before. `GridCards` receives the chat store's `projectId` in both the
+browser, as before. `AnswerCards` receives the chat store's `projectId` in both the
 chat bubble and the run block's report (both `AgentResponse.tsx`), so
 Accept is live wherever the card renders.
 
@@ -2009,7 +2009,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   by design: there is no org layer (ADR-0016) — every tenant's queries share
   the fleet counts.
 - **Cost capture (DRY)**: `packages/agent/src/agent/common/cost_tracking.py` installs
-  `GridCostTracker` through LangChain's `register_configure_hook` ContextVar
+  `CostTracker` through LangChain's `register_configure_hook` ContextVar
   seam — every callback manager configured inside the request picks it up,
   so agents contain no metering code. Activated in exactly three places:
   the chat workflow `_run`, the research job runner, and the reflection task.

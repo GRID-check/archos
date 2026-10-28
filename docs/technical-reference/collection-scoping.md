@@ -69,7 +69,7 @@ Builds an ordered deduplicated list of collection names:
 
 ```typescript
 function computeCollectionScope(
-  session: GridSession | null,
+  session: UserSession | null,
   context: ScopeContext
 ): string[]
 ```
@@ -114,7 +114,7 @@ The main entry point for SSE and WebSocket routes. It:
 
 ```typescript
 async function buildCollectionScopeFromRequest(
-  session: GridSession | null,
+  session: UserSession | null,
   context: RequestContext
 ): Promise<{ scope: string[], headerValue: string, projectId?: string, conversationId?: string }>
 ```

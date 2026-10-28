@@ -511,7 +511,7 @@ published bundle, gzipped):
 `@dagrejs/dagre` lays out the flow and map canvases. Graph layout is someone
 else's domain, so it is a dependency; ELK does the same job at about 28 times
 the gzip size. dagre is imported statically by `views/diagram-views.tsx`, so it
-ships with the card components (`GridCards` → `DiagramCard`) as well as with
+ships with the card components (`AnswerCards` → `DiagramCard`) as well as with
 the fence's dynamic import.
 
 `mermaid` is a production dependency, imported dynamically through

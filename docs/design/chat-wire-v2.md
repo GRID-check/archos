@@ -96,7 +96,7 @@ and what of ours that deletes.
   takes `.default` out and retry-patches it as NAT did.
 - `WebSocketMessageHandler.__init__` gains three keyword arguments. They are
   optional, so our patched endpoint still constructs it.
-- 1.9 adds `routes/v1_chat_completions.py`. `GridContextEnvelopeMiddleware` is
+- 1.9 adds `routes/v1_chat_completions.py`. `RequestContextEnvelopeMiddleware` is
   deny-by-default, so the new route needs the envelope. S0 adds a test that
   walks the app's routes and asserts every workflow route is behind it.
 - `nvidia-nat-core` 1.9 declares `Requires-Python <3.14`, as 1.7 did. uv
@@ -825,7 +825,7 @@ separately. The exit criterion in the definition of done is the measured diff.
   they start: ownership is sequential, never concurrent.
 - **Also owns:** the three breakages above in `websocket_reconnect.py`
   (`get_conversation_handler(user_id, …)`) and a route-coverage test for
-  `GridContextEnvelopeMiddleware`.
+  `RequestContextEnvelopeMiddleware`.
 - **Also:** `nvidia-nat[langchain]` → `nvidia-nat-langchain[openai]` (gain 2),
   and a before/after measurement of one turn's Langfuse trace size (#2100).
 - **Adds:** ~+25 (the route test and the adapted override).

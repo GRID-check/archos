@@ -67,8 +67,8 @@ credential every route accepts, which is a second door.
 
 ### The acting session
 
-Route handlers learn who is asking from `getGridSession()`, which reads the
-AuthKit cookie. An agent has no cookie, so `getGridSession()` has one more
+Route handlers learn who is asking from `getUserSession()`, which reads the
+AuthKit cookie. An agent has no cookie, so `getUserSession()` has one more
 answer: the session bound by `runAsActingSession` (`acting-session.ts`) to the
 async execution of one call. The binding ends with the callback, so a call cannot
 leak its person into the next one.

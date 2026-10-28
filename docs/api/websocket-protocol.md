@@ -110,7 +110,7 @@ carriers and sign `contextTransport: "bff"`. Remaining context headers have an
 encoded-byte budget so an oversized capsule is refused explicitly. The envelope is minted by
 every submission path (WS upgrade, the async-jobs REST proxy, the skill-run
 internal-submit path) via the shared builder
-(`apps/workspace/bff/request-context.ts`'s `buildGridRequestContextWireHeaders`,
+(`apps/workspace/bff/request-context.ts`'s `buildRequestContextWireHeaders`,
 duplicated with a pinning comment in `server.js` since it is plain CommonJS).
 
 For compact WebSocket mode, the agent calls `POST /api/internal/turn-context`
@@ -124,7 +124,7 @@ with an explicit error instead of answering without its project context.
 Legacy and anonymous callers retain their previous inline-context behavior.
 Deploy backend support before the frontend starts emitting compact mode.
 
-Backend-side, `agent.project_context.GridRequestContext.from_context()`
+Backend-side, `agent.project_context.RequestContext.from_context()`
 prefers a present-and-valid envelope over the individual headers; an
 invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to parsing the individual headers

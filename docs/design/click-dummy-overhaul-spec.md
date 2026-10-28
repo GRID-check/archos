@@ -241,7 +241,7 @@ don't churn):
   slightly darker, white cards; dark mode: warm charcoal equivalents, derived,
   not shipped-in-dummy — we design them, `.dark` stays).
 - `--primary`/action → near-black ink (dark mode: paper-white on ink).
-  `--grid-blue` ceases to be the action color; blue is reassigned to the
+  `--law-blue` ceases to be the action color; blue is reassigned to the
   **Baurecht** source signal.
 - New token family:
   `--source-law`, `--source-project`, `--source-office`, `--source-auto`,

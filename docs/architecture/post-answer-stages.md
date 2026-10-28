@@ -850,7 +850,7 @@ Moving them out of the always-on card catalogue is where the 136 tokens/turn go.
 
 ### 6.1 "Below the message, not inside it" — structurally
 
-Today `follow_ups` is a `GridCard` inside `AgentResponse`'s answer body: cards no
+Today `follow_ups` is a `AnswerCard` inside `AgentResponse`'s answer body: cards no
 marker claimed are rendered in the fallback block **inside** the white answer
 surface (`AgentResponse.tsx:684-695`), above the provenance footer.
 
@@ -1274,7 +1274,7 @@ queued.**
 ### 7.10 Migration — retiring the `follow_ups` card
 
 Stored `follow_ups` cards exist in `messages.metadata.cards`, are re-read on every
-render (`server-message-mapper.ts:129-132` → `validateGridCards`) and on every
+render (`server-message-mapper.ts:129-132` → `validateAnswerCards`) and on every
 export (`lib/answer-export/cards.ts`, walked generically). They must keep working.
 
 **Retire, never delete.** Four steps, in this order.
@@ -1329,12 +1329,12 @@ export (`lib/answer-export/cards.ts`, walked generically). They must keep workin
    > `grid-cards` against `model_facing_card_types()`, so a retired name left in
    > the list is silently dropped on every read — a seed naming a card the
    > runtime never sees, which is exactly the drift
-   > `test_seeded_grid_cards_survive_the_read_path` exists to catch.
+   > `test_seeded_answer_cards_survive_the_read_path` exists to catch.
    >
    > The post-hoc prompt falls **12,654 → 12,127** per finished report. All
    > figures are tiktoken `cl100k_base`, measured over the rendered strings.
 3. **Leave the pydantic model, the Zod schema and `FollowUpsCard.tsx` in place.**
-   `validateGridCards` leaves an `undefined` hole for anything that fails the
+   `validateAnswerCards` leaves an `undefined` hole for anything that fails the
    union (`src/shared/cards/schemas.ts`), so removing the member would make every
    old thread lose its chips at those positions *and* log a warning per card.
    `AnswerCards.tsx:278-284` keeps rendering stored ones.

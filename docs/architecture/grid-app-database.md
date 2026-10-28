@@ -6,7 +6,7 @@ This document describes the Next.js BFF's application database: what it stores, 
 
 ## What `app` stores
 
-`app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all Grid-specific application state that is not already owned by the Python AI-Q agent:
+`app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all app-specific application state that is not already owned by the Python AI-Q agent:
 
 | Area | Tables |
 |---|---|
@@ -16,7 +16,7 @@ This document describes the Next.js BFF's application database: what it stores, 
 
 ### Note on `organizations`
 
-`organizations` is **not** a WorkOS mirror. It stores Grid-specific app settings keyed by the WorkOS org ID (`workos_org_id`): default project, retention policy, base knowledge config, etc. Users, memberships, roles, and permissions remain authoritative in WorkOS per [ADR-0007](../adr/0007-no-local-identity-sync.md).
+`organizations` is **not** a WorkOS mirror. It stores app-specific app settings keyed by the WorkOS org ID (`workos_org_id`): default project, retention policy, base knowledge config, etc. Users, memberships, roles, and permissions remain authoritative in WorkOS per [ADR-0007](../adr/0007-no-local-identity-sync.md).
 
 The Python agent continues to own `jobs` (job metadata, summaries) and `checkpoints` (LangGraph graph state) directly. All three databases run on the same PostgreSQL server in Docker but are logically separate systems of record.
 
@@ -38,7 +38,7 @@ The BFF connects via **Drizzle ORM** with the **`postgres` driver**.
 > A query that loses its `organization_id` filter returns nothing rather than
 > another tenant's data; a query with no context at all throws
 > `MissingTenantContextError`. Authenticated paths get the context from
-> `getGridSession()` automatically — see
+> `getUserSession()` automatically — see
 > [row-level-security.md](../database/row-level-security.md).
 
 ```typescript
