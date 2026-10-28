@@ -14,8 +14,21 @@ job's queue row is deleted, so the queue looked empty. The fix sends the ids in
 calls of at most 200 (`apps/workspace/bff/documents/status-batch.ts`). See the
 [gotchas entry](../contributing/gotchas.md) for how it was found.
 
-Nothing here re-ingests anything. The documents are read back from what the backend
-already knows, so the steps are safe to repeat.
+The sweep re-ingests nothing: it reads each row's outcome back from what the backend
+knows, so it is safe to repeat. The documents split in two by what the backend still holds.
+
+- **Indexed** (chunks exist in the collection): the job finished and only the row is stale. The sweep
+  reads the job's result, or failing that the collection listing, and the row becomes `completed`.
+  The shelf listing reconciles one page of 100 rows, under the limit, which is why some rows
+  of the same batches did settle: a listing read fixes only the rows on its page.
+- **Not indexed** (no chunks): the job failed or died, and the backend keeps a finished job's status
+  for only 24 hours (`FILE_TRACKING_RETENTION_SECONDS`), so the reason is gone. Nothing retains the
+  category. A row older than 48 hours whose job the backend has forgotten, with no indexed
+  file under its name, becomes `failed` with `interrupted: the ingestion job was lost before it
+  finished; retry to index this file`, category `transient`, retryable. That is correct, not a
+  regression: the document was never readable, and it now says so and offers a retry. To learn
+  why a scan failed, read `ingest-worker` logs for the job id in the row's `metadata`; they
+  are the only trace left.
 
 ## 1. Deploy the fix first
 
@@ -55,11 +68,24 @@ WHERE organization_id = '<organization id>' AND upload_batch_id IN ('<batch id>'
 GROUP BY status;
 ```
 
-`pending` should be gone, replaced by `completed` or `failed` with a reason.
+`pending` should be gone. Expect the indexed share as `completed` and the rest as `failed`
+(`ingest_failure_category = 'transient'`, `ingest_retryable = true`), about 304 and 224 for the two
+batches of the 2026-10 incident.
 
-## 4. What can stay `pending`
+## 4. Re-ingest the failed ones
 
-A document whose job the backend has forgotten (its status row was pruned) and whose
-file is not in the collection listing stays `pending`: no witness is left for it.
-Re-run it from the document's retry action, or its project's re-index; both
-dispatch it again and count a new attempt.
+The existing **Rescan failed ingestions** (Organization > Enterprise) sends every failed document of
+one organization back through ingest under its own id. An organization admin
+(`org:settings:manage`) starts it; it is `POST /api/organization/documents/reingest-failed`, answers
+202 with a `bff-jobs` job, and a second press while one is open joins it. It pages the failed set with a
+keyset and skips rows that are running, already finished or not eligible, so it is safe to repeat. It
+is scoped to the organization, not to one batch: a failed document from another upload is retried too.
+Run it once the sweep has finished, and `bff-jobs` must be up (it was down Oct 20 to 28).
+
+A document that fails again keeps a real reason this time, from a job that is still young.
+
+## 5. What can stay `pending`
+
+A document younger than 48 hours whose job the backend has forgotten stays `pending` until it
+is 48 hours old, then follows the rule above. A document whose collection the backend cannot list
+is left alone for the round: outage is not evidence.

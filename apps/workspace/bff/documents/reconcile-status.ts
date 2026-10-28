@@ -13,6 +13,15 @@
  */
 
 import { fetchInChunks } from './status-batch'
+import {
+  extractIngestJobId,
+  INTERRUPTED_REASON_PREFIX,
+  isLostJob,
+  isRecheckableCancellation,
+  isRecheckableInterruption,
+  lostJobResolution,
+  toEpochMs,
+} from './lost-job'
 import { getBackendUrl } from '@/lib/backend-url'
 import { announceIngestsFinished } from '@/lib/analytics/ingest-events'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
@@ -80,25 +89,6 @@ const IN_FLIGHT_STATUSES = IN_FLIGHT_DOCUMENT_STATUSES
  * the re-ingest action, which asks the backend live.
  */
 const LOCALLY_OWNED_STATUS = 'processing'
-
-/**
- * The reason prefix the backend gives a job whose owner stopped heartbeating
- * (`INTERRUPTED` in `agent/knowledge/ingest_status_store.py`). Such a
- * failure is a verdict another replica reached about someone else's job, and
- * the owner may still be alive: when it writes again its write wins, and the
- * job can end `completed` with its chunks indexed. A row the BFF already moved
- * to `failed` from that verdict is therefore asked about again.
- */
-const INTERRUPTED_REASON_PREFIX = 'interrupted:'
-
-/**
- * How long after the row's last write an `interrupted:` failure is re-checked.
- * An owner that revives does so within a heartbeat of reaching the database
- * again; half an hour covers a long outage and then stops, so a job that
- * really died costs a bounded number of batch lookups rather than one per read
- * for as long as the row exists.
- */
-const INTERRUPTED_RECHECK_WINDOW_MS = 30 * 60 * 1000
 
 const FETCH_TIMEOUT_MS = 5000
 
@@ -175,7 +165,7 @@ export interface DocumentMetadata {
   queueAhead?: number | null
 }
 
-interface TerminalResolution {
+export interface TerminalResolution {
   status: 'completed' | 'failed' | 'quarantined' | 'cancelled'
   errorMessage: string | null
   /**
@@ -217,13 +207,7 @@ type JobResolution =
   // Job unknown to the backend — fall back to the collection file list.
   | { kind: 'unknown' }
 
-export const extractIngestJobId = (metadata: unknown): string | null => {
-  if (metadata && typeof metadata === 'object' && 'ingestJobId' in metadata) {
-    const jobId = (metadata as Record<string, unknown>).ingestJobId
-    if (typeof jobId === 'string' && jobId.length > 0) return jobId
-  }
-  return null
-}
+export { extractIngestJobId }
 
 /** The digest a dispatch recorded beside its job id (`setDocumentIngestJob`), or null. */
 const recordedIngestHash = (metadata: unknown): string | null => {
@@ -717,39 +701,6 @@ export async function describeBackendIngestState(row: {
 }
 
 /**
- * A `failed` row whose failure was the backend's `interrupted` settle, recent
- * enough to still be worth asking about, and with a job the batch call can
- * answer for. See {@link INTERRUPTED_REASON_PREFIX}. A row without `updatedAt`
- * is not re-checked: nothing would bound how long it keeps asking.
- */
-const isRecheckableInterruption = (row: ReconcilableDocument, now: number): boolean => {
-  if (row.status !== 'failed') return false
-  if (!row.errorMessage?.startsWith(INTERRUPTED_REASON_PREFIX)) return false
-  if (!extractIngestJobId(row.metadata)) return false
-  const writtenAt = toEpochMs(row.updatedAt)
-  return writtenAt !== null && now - writtenAt < INTERRUPTED_RECHECK_WINDOW_MS
-}
-
-/**
- * A `cancelled` row recent enough to still be worth asking about, and with a
- * job the batch call can answer for.
- *
- * A cancel and a job finalizing can land in the same instant: a worker that
- * passed its last ownership check may finish and write `completed` just as the
- * queue records the stop. The stop is the trace then, not the truth, and a row
- * the BFF wrote `cancelled` is asked about again for the same bounded window as
- * an interruption — a late `completed` heals it. The status alone is the
- * marker, so no message prefix is needed. A row without `updatedAt` is not
- * re-checked: nothing would bound how long it keeps asking.
- */
-const isRecheckableCancellation = (row: ReconcilableDocument, now: number): boolean => {
-  if (row.status !== 'cancelled') return false
-  if (!extractIngestJobId(row.metadata)) return false
-  const writtenAt = toEpochMs(row.updatedAt)
-  return writtenAt !== null && now - writtenAt < INTERRUPTED_RECHECK_WINDOW_MS
-}
-
-/**
  * What the backend's answer about an interrupted job changes, or null for
  * nothing: a job that is still failed (or unknown) leaves the row as it is, so
  * a confirmed interruption costs no write.
@@ -789,12 +740,6 @@ const resolveCancelledRow = (job: BackendJobStatus | null | undefined): RowResol
  * „Von Piloti erstellt“ byline, and returned by
  * `GET /api/documents/{id}/status` to the chat peek pane.
  */
-const toEpochMs = (value: Date | string | null | undefined): number | null => {
-  if (value === null || value === undefined) return null
-  const ms = new Date(value).getTime()
-  return Number.isNaN(ms) ? null : ms
-}
-
 const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef): DocumentMetadata | null => {
   if (!files || files.ambiguousNames.has(ref.filename)) return null
   const file = files.byName.get(ref.filename)
@@ -1027,11 +972,13 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       inFlight.map(async (row) => {
         const jobId = extractIngestJobId(row.metadata)
         let resolution: TerminalResolution | null = null
+        let jobForgotten = false
 
         if (jobId) {
           // Batch call failed → backend unreachable → leave rows untouched.
           if (jobStatuses === null) return
           const jobResult = resolveFromJobStatus(jobStatuses.get(jobId))
+          jobForgotten = jobResult.kind === 'unknown'
           if (jobResult.kind === 'terminal') {
             resolution = jobResult.resolution
           } else if (jobResult.kind === 'in_progress') {
@@ -1048,7 +995,10 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
           // the honest outcome for it is "unchanged", not another document's.
           const ref = collectionFileRef(row)
           if (!ref) return
-          resolution = resolveFromCollection(await getFreshCollectionFiles(row.collectionName), ref, jobId)
+          const files = await getFreshCollectionFiles(row.collectionName)
+          resolution = resolveFromCollection(files, ref, jobId)
+          // Nothing of this job survives anywhere: see `isLostJob`.
+          if (!resolution && files && jobForgotten && isLostJob(row, now)) resolution = lostJobResolution()
         }
         if (!resolution) return
 

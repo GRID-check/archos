@@ -192,6 +192,46 @@ describe('reconcileDocumentStatuses', () => {
     expect(result.filter((r) => r.status === 'completed')).toHaveLength(309)
   })
 
+  /**
+   * The backend keeps a finished job's status 24 hours. A job it has forgotten,
+   * with no indexed file under the row's name, left the row `pending` for ever;
+   * past two days it is a retryable failure, and before that it is left alone.
+   */
+  it('settles a row whose job the backend forgot, and which was never indexed, once it is two days old', async () => {
+    const db = makeDbMock()
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/v1/documents/status/batch') ? batchResponse({ 'job-1': null, 'job-2': null }) : collectionResponse([])
+    )
+    const old = new Date(Date.now() - 3 * 24 * 60 * 60_000)
+    const recent = new Date(Date.now() - 60 * 60_000)
+
+    const [lost, waiting] = await reconcileDocumentStatuses(
+      [
+        makeRow({ updatedAt: old }),
+        makeRow({ id: 'doc-2', metadata: { ingestJobId: 'job-2' }, updatedAt: recent }),
+      ],
+      'org-1'
+    )
+
+    expect(lost.status).toBe('failed')
+    expect(lost.errorMessage).toMatch(/^interrupted:/)
+    expect(waiting.status).toBe('pending')
+    expect(db.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', ingestFailureCategory: 'transient', ingestRetryable: true })
+    )
+  })
+
+  it('does not give up an old row while the backend cannot list its collection', async () => {
+    makeDbMock()
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/v1/documents/status/batch')
+        ? batchResponse({ 'job-1': null })
+        : { ok: false, status: 503, json: () => Promise.resolve({}) }
+    )
+    const [row] = await reconcileDocumentStatuses([makeRow({ updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60_000) })], 'org-1')
+    expect(row.status).toBe('pending')
+  })
+
   it('marks a row failed with the job error message', async () => {
     const db = makeDbMock()
     mockFetch.mockResolvedValue(
