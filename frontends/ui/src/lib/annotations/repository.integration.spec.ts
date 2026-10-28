@@ -622,7 +622,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
       )
       expect(reply.addressesAgent).toBe(true)
       const id = wakeIds.wakeTurnId(reply.id)
-      expect(await count(sql`select count(*)::int as n from piloti_wakes where id = ${id}::uuid and status = 'queued'`)).toBe(1)
+      expect(await count(sql`select count(*)::int as n from agent_wakes where id = ${id}::uuid and status = 'queued'`)).toBe(1)
       expect(
         await count(sql`select count(*)::int as n from bff_job_queue where job_id = ${id}::uuid and kind = 'piloti_wake'`)
       ).toBe(1)
@@ -644,7 +644,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
         )
       ).rejects.toThrow(/after the wake/)
       expect(wakeId).not.toBe('')
-      expect(await count(sql`select count(*)::int as n from piloti_wakes where id = ${wakeId}::uuid`)).toBe(0)
+      expect(await count(sql`select count(*)::int as n from agent_wakes where id = ${wakeId}::uuid`)).toBe(0)
       expect(await count(sql`select count(*)::int as n from bff_job_queue where job_id = ${wakeId}::uuid`)).toBe(0)
       expect(await count(sql`select count(*)::int as n from document_annotation_replies where annotation_id = ${row.id}::uuid`)).toBe(0)
     })
@@ -660,12 +660,12 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
       }
       expect(outcomes.map((outcome) => outcome.outcome)).toEqual(['queued', 'queued', 'suppressed'])
       expect(
-        await count(sql`select count(*)::int as n from piloti_wakes where annotation_id = ${row.id}::uuid and status = 'suppressed' and reason = 'cap:mark-hour' and settled_at is not null`)
+        await count(sql`select count(*)::int as n from agent_wakes where annotation_id = ${row.id}::uuid and status = 'suppressed' and reason = 'cap:mark-hour' and settled_at is not null`)
       ).toBe(1)
       // The same event a second time is not a second wake.
       const again = await inOrg(ORG, () => db.transaction((tx) => wake.enqueueWake(tx, event(row.id, `cap-${STAMP}-1`), { limits: { perMarkHour: 9, perPersonDay: 50 } })))
       expect(again.outcome).toBe('queued')
-      expect(await count(sql`select count(*)::int as n from piloti_wakes where annotation_id = ${row.id}::uuid`)).toBe(3)
+      expect(await count(sql`select count(*)::int as n from agent_wakes where annotation_id = ${row.id}::uuid`)).toBe(3)
     })
 
     it('refuses a wake record that says it did not start without saying why', async () => {
@@ -673,7 +673,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
       await expect(
         inOrg(ORG, () =>
           db.execute(sql`
-            insert into piloti_wakes (id, organization_id, document_id, annotation_id, trigger_kind, event_id, actor_user_id, status, settled_at)
+            insert into agent_wakes (id, organization_id, document_id, annotation_id, trigger_kind, event_id, actor_user_id, status, settled_at)
             values (gen_random_uuid(), ${ORG}, ${ids.document}::uuid, ${row.id}::uuid, 'thread_mention', 'e', ${USER}, 'refused', now())`)
         )
       ).rejects.toThrow()
@@ -728,7 +728,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
         )
       )
       await inOrg(ORG, () =>
-        db.execute(sql`update piloti_wakes set status = 'started', settled_at = now() where annotation_id = ${row.id}::uuid`)
+        db.execute(sql`update agent_wakes set status = 'started', settled_at = now() where annotation_id = ${row.id}::uuid`)
       )
 
       await inOrg(ORG, () =>
@@ -741,7 +741,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
         })
       )
 
-      expect(await count(sql`select count(*)::int as n from piloti_wakes where annotation_id = ${row.id}::uuid`)).toBe(0)
+      expect(await count(sql`select count(*)::int as n from agent_wakes where annotation_id = ${row.id}::uuid`)).toBe(0)
       expect(
         await count(
           sql`select count(*)::int as n from bff_job_queue where kind = 'piloti_wake_stop' and payload->>'annotationId' = ${row.id}`
@@ -751,7 +751,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
 
     it('shows another organization none of the wakes', async () => {
       const leaked = await inOrg(OTHER_ORG, () =>
-        db.execute<{ n: number }>(sql`select count(*)::int as n from piloti_wakes`)
+        db.execute<{ n: number }>(sql`select count(*)::int as n from agent_wakes`)
       )
       expect(Number(Array.from(leaked)[0]?.n)).toBe(0)
     })

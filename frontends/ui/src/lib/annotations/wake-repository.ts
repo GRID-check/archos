@@ -1,5 +1,5 @@
 /**
- * The SQL over `piloti_wakes` (migration 0139): the record of each wake of
+ * The SQL over `agent_wakes` (migration 0139): the record of each wake of
  * Piloti on an Anmerkung, which the caps count.
  *
  * No authorization here; `./wake.ts` and `./wake-job.ts` own it. Every write
@@ -34,7 +34,7 @@ export interface NewWake {
 export async function insertWake(executor: DbExecutor, wake: NewWake): Promise<boolean> {
   const settled = wake.status === 'suppressed'
   // A wake held at enqueue never starts, so it is ended as it is recorded
-  // (`piloti_wakes_ended_when_final`, 0141).
+  // (`agent_wakes_ended_when_final`, 0141).
   const now = new Date()
   const rows = await executor
     .insert(pilotiWakes)
