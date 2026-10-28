@@ -1,178 +1,12 @@
-[build-system]
-build-backend = "setuptools.build_meta"
-requires = ["setuptools>=83.0.0", "setuptools-scm>=10.2.1"]
-
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.package-data]
-"aiq_agent.agents.deep_researcher" = ["skills/**/*"]
-
-[project]
-name = "aiq-agent"
-version = "2.0.0"
-description = "Piloti, the workspace for architects: the agent, its tools and the knowledge it reads"
-readme = "README.md"
-# 3.14.1, not 3.14: uv lets a pre-release interpreter satisfy `>=3.14`, and on
-# 3.14.0rc2 pydantic calls `typing._eval_type` with `prefer_fwd_module`, a
-# keyword that landed after rc2, so every backend test died at import.
-requires-python = ">=3.14.1,<3.15"
-license = {text = "Apache-2.0"}
-dependencies = [
-    "nvidia-nat-core==1.9.0",
-    "nvidia-nat[async-endpoints,phoenix,mcp]==1.9.0",
-    # `[openai]` only: every LLM runs as `_type: openai`, and `[langchain]` on
-    # the meta package is `[all]`, nine provider stacks we never import.
-    "nvidia-nat-langchain[openai]==1.9.0",
-    "nvidia-nat-eval==1.9.0",
-    "nvidia-nat-profiler==1.9.0",
-    # Exact: every 0.7 patch release changed a default, a tool's output or a
-    # builder we call. Bump on purpose, then run tests/aiq_agent/test_deepagents_contract.py.
-    # langchain-modal moves with it (0.0.7 needs deepagents>=0.7.32,<0.8).
-    "deepagents==0.7.32",
-    "langgraph-checkpoint-postgres>=3.0.0",
-    "langgraph-checkpoint-sqlite>=2.0.0",
-    "langchain-modal==0.0.7",
-    "psycopg[binary]>=3.3.4",
-    "asyncpg>=0.29.0",
-    "redis>=5.0.0,<9",
-    "aiosqlite>=0.19.0",
-    "aiofiles>=23.0.0",
-    "python-multipart>=0.0.27,<0.1",
-    "knowledge-layer[all]",
-    # Prompt management only (`common/prompt_store.py`): constructed with
-    # `tracing_enabled=False`, so it never registers a tracer provider or hangs
-    # a span processor on ours. Traces keep going out through NAT + the OTel
-    # collector.
-    "langfuse>=4.15.3,<5",
-    # CVE version floors for transitive dependencies
-    "cryptography>=50.0.0,<51",
-    "pillow>=12.2.0,<14",
-    "pygments>=2.20.0,<3",
-    "a2ui-core==0.4.0",
-    # Arrives through nvidia-nat-langchain[openai]; the floor is ours. Below 1.6.6 a
-    # STREAMED Responses call drops the model's encrypted reasoning items, so
-    # every tool round thinks from scratch and nothing fails
-    # (docs/contributing/gotchas.md, a0ec99d2).
-    "langchain-openai>=1.6.6",
-    # 7.59 reads POSTHOG_RELEASE_ID, which links an exception to its release.
-    "posthog>=7.59,<8",
-    # The language of the person's newest message (`common/question_language.py`).
-    # Pure Python on numpy, a 4 MB wheel with its model inside: lingua's wheel is
-    # 160 MB and fast-langdetect downloads its model at runtime.
-    "py3langid>=0.4.0,<0.5",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=9.1.1",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "pytest-env>=1.1.0",
-    "pre-commit>=3.5.0",
-    "ruff~=0.17.0",
-    "yapf>=0.40.0",
-    "mypy>=2.3.0",
-    "fakeredis[lua]>=2.20.0",
-]
-docs = [
-    "sphinx>=7.0",
-    "myst-parser>=3.0",
-    "sphinx-copybutton>=0.5",
-    "sphinx-mermaid>=0.0.8",
-    "sphinx-rtd-theme>=2.0",
-    "sphinx-autobuild>=2025.8.25",
-    "nvidia-sphinx-theme>=0.0.9.post1",
-    "sphinx-design>=0.7.0",
-    "sphinxcontrib-mermaid>=2.0.3",
-]
-viz = [
-    "pygraphviz>=2.0",
-]
-
-# -----------------------------------------------------------------------------
-# Workspace members are installed via: uv sync
-# Individual packages: uv pip install -e ./apps/backend
-# See [tool.uv.workspace] below for auto-discovered packages
-# -----------------------------------------------------------------------------
-
-[project.entry-points."nat.plugins"]
-# `aiq_researcher*` and not `aiq_piloti*` although the package moved to
-# `agents/piloti`: a plugin entry-point name is what a deployment's
-# `NAT_PLUGIN_*` allow/deny lists and the installed dist-info carry, and a
-# stale `<pkg>.egg-info/entry_points.txt` from an older checkout is exactly the
-# ModuleNotFoundError-from-nowhere in `docs/contributing/gotchas.md`. Only the
-# module paths move.
-aiq_researcher_conversation = "aiq_agent.agents.piloti.conversation_register"
-aiq_researcher = "aiq_agent.agents.piloti.register"
-aiq_deep_researcher = "aiq_agent.agents.deep_researcher.register"
-aiq_data_source_registry = "aiq_agent.common.data_source_registry"
-aiq_project_memory = "aiq_agent.memory.register"
-aiq_cards = "aiq_agent.cards.register"
-aiq_bim = "aiq_agent.tools.bim.register"
-# The spatial half of the BIM surface (`ifc_measure`). A second entry point
-# rather than an import from `register`: NAT discovers plugins by loading the
-# module a plugin names, so the fast metadata tool and the geometry tool stay
-# independently loadable — and `ifc_query` keeps working on a deployment where
-# the spatial engine (ifcopenshell, shapely) is not installed at all.
-aiq_bim_measure = "aiq_agent.tools.bim.measure_register"
-# The write-side workspace tool, `propose_file_change` (move, rename,
-# create_folder, assign as one `operation` argument).
-aiq_files = "aiq_agent.tools.files.register"
-# The working directory's door into the project (`file_draft`, which files a
-# draft and, with `submit`, sends it for review). Its OTHER four verbs are stock
-# DeepAgents tools bound directly by Piloti's register and are not NAT
-# functions at all, so this entry point covers exactly the one that calls the BFF.
-aiq_documents = "aiq_agent.tools.documents.register"
-# Delegation (`create_task`). Its own entry point rather than a member of
-# `aiq_documents`: the two call different BFF routes with different contracts,
-# and a deployment that turns one off must be able to keep the other.
-aiq_tasks = "aiq_agent.tools.tasks.register"
-# Cross-project lookups for a chat, shared or solo (`project_lookup`, ADR-0094). Its own
-# entry point: it imports the knowledge layer's lane fan-out lazily, and a
-# deployment without the lookups must keep every other tool.
-aiq_cross_project = "aiq_agent.tools.cross_project.register"
-# The review canvas (`canvas` function group, `tools/canvas`): see who is in the
-# document, point and highlight, read and propose Anmerkungen, set, change or
-# delete one when the person asks, answer in a thread. Its own entry point: it
-# calls its own BFF route, and a deployment without it keeps every other tool.
-aiq_canvas = "aiq_agent.tools.canvas.register"
-# `look` (`tools/look`, ADR-0128): a page, a region of it or an embedded image,
-# as an image the model sees, in every context. Its own entry point, not a
-# member of the canvas group: a deployment without one keeps the other.
-aiq_look = "aiq_agent.tools.look.register"
-# `show_in_viewer` (`tools/viewer`, ADR-0144): Piloti proposes to move the asker's
-# own document viewer, one allow-listed action as an AG-UI frontend tool call.
-# Its own entry point: it reuses `look`'s resolver, and a deployment can drop it alone.
-aiq_viewer = "aiq_agent.tools.viewer.register"
-# Piloti as a client of its own MCP server (`workspace` function group,
-# `tools/workspace`, ADR-0122): search, describe and call the operations a person
-# can do in the product. Its own entry point: it calls the BFF's `/api/mcp`, and a
-# deployment without it keeps every other tool.
-aiq_workspace = "aiq_agent.tools.workspace.register"
-# The Erfassungs-Agent's config (`_type: project_intake_agent`, ADR-0111). The
-# research worker reads it by name and runs the agent; NAT only has to know the
-# type, or `load_config` refuses the YAML that names it.
-aiq_project_intake = "aiq_agent.agents.intake.register"
-# Grid telemetry `_type`s named in the shipped YAML. They register at import
-# via NAT decorators and used to ride in on `chat_researcher.register`. After
-# that package dissolved, `load_config` in a clean interpreter (the container's
-# `start_web.py`) raised ValidationError and the pod CrashLoopBackOff'd.
-# Discovery loads `nat.plugins`; without these they do not exist at runtime.
-# The RIS chat surface (`ris_lookup`). The three older RIS tools ride in on
-# `ris-adapter`'s own entry point (`packages/ris-adapter/pyproject.toml`); this
-# one is separate because `ris_adapter.lookup` hard-imports the knowledge layer
-# for the passage bound and the lane fan-out, and a deployment without it must
-# lose this tool alone rather than `ris_search` and `ris_fetch_document` with
-# it — the `aiq_bim_measure` split, for the same reason.
-aiq_ris_lookup = "ris_adapter.lookup"
-aiq_otel_logs = "aiq_agent.observability.otlp_logging_method"
-aiq_otel_redaction = "aiq_agent.observability.otel_header_redaction_exporter"
+# The workspace root: no project of its own. The agent is `packages/agent`; the
+# root holds the repo-wide tool configuration (pytest, ruff, import-linter), the
+# dev dependency group and the uv workspace (ADR-0145 row 8).
 
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
     "evals",
+    "packages/agent/tests",
     "packages/knowledge-layer/tests",
     "packages/ris-adapter/tests",
     "packages/tavily-web-search/tests",
@@ -187,10 +21,10 @@ addopts = "--import-mode=importlib -m 'not live'"
 # `pytest` console script, and an IDE runner — instead of
 # depending on which of those happens to put the repo root on sys.path.
 #
-# `src` is the same guard for `aiq_agent`. The venv installs it editable from
+# `packages/agent/src` is the same guard for `aiq_agent`. The venv installs it editable from
 # whichever checkout ran `uv sync`, so a bare `pytest` in a worktree without its
 # own venv tested the MAIN checkout's code while everything passed. This puts
-# the checkout's own `src/` ahead of that install (the editable `.pth` is
+# the checkout's own `packages/agent/src/` ahead of that install (the editable `.pth` is
 # appended to sys.path, so it loses). `apps/backend/src` is the same guard
 # for `aiq_api`, which `tests/aiq_agent` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
@@ -201,7 +35,7 @@ addopts = "--import-mode=importlib -m 'not live'"
 # The test-support packages come last: `<distribution>_testing`, one per suite
 # family, so a suite imports its helpers by a name that no directory move changes
 # (ADR-0145 row 5; tests/test_test_imports.py holds it).
-pythonpath = [".", "src", "apps/backend/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "tests/aiq_agent/testing"]
+pythonpath = [".", "packages/agent/src", "apps/backend/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "packages/agent/tests/testing"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
@@ -381,7 +215,7 @@ indent_dictionary_value = true
 #
 # Usage:
 #   uv sync                              # Install root + all workspace members
-#   uv sync --package aiq-agent  # Install only the root package
+#   uv sync --package aiq-agent  # Install only the agent
 #   uv pip install -e ./packages/ris-adapter  # Install a specific package
 #   uv pip install -e "./apps/backend[postgres]"  # With extras
 # -----------------------------------------------------------------------------
@@ -397,6 +231,7 @@ dev = [
     "mypy>=2.3.0",
     "fakeredis[lua]>=2.20.0",
     # Workspace packages for testing
+    "aiq-agent",
     "tavily-web-search",
     "ris-adapter",
     "knowledge-layer[all]",
@@ -442,6 +277,7 @@ members = [
     # IfcOpenShell stays out of this one (packages/AGENTS.md), and ifc-spatial
     # and brand are not Python. tests/test_python_packages.py holds this list,
     # pytest's testpaths and the Taskfile's PY_PACKAGES to one another.
+    "packages/agent",
     "packages/knowledge-layer",
     "packages/ris-adapter",
     "packages/tavily-web-search",
