@@ -44,6 +44,8 @@ const SETTLE_GRACE_MS = 60_000
 export const ABANDONED_AFTER_MS = 30 * 60_000
 /** Older than this, a batch is left alone: a document stuck in flight for a week is not news. */
 const SWEEP_WINDOW_MS = 7 * 24 * 60 * 60_000
+/** The widest window an operator may ask for (`?windowDays=`), to catch up on batches the default has aged out. */
+export const MAX_SWEEP_WINDOW_DAYS = 60
 /** Batches one sweep looks at. */
 export const SWEEP_BATCH = 25
 
@@ -58,9 +60,12 @@ export interface UploadSweepResult {
   pruned: number
 }
 
-export async function sweepUploadBatches(now: Date = new Date()): Promise<UploadSweepResult> {
+export async function sweepUploadBatches(
+  now: Date = new Date(),
+  windowMs: number = SWEEP_WINDOW_MS
+): Promise<UploadSweepResult> {
   const open = await listOpenBatchesBetween(
-    new Date(now.getTime() - SWEEP_WINDOW_MS),
+    new Date(now.getTime() - windowMs),
     new Date(now.getTime() - SETTLE_GRACE_MS),
     SWEEP_BATCH
   )

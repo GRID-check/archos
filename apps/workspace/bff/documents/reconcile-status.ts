@@ -12,6 +12,7 @@
  * wiped the in-memory job registry) and terminal states are written back.
  */
 
+import { fetchInChunks } from './status-batch'
 import { getBackendUrl } from '@/lib/backend-url'
 import { announceIngestsFinished } from '@/lib/analytics/ingest-events'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
@@ -331,18 +332,16 @@ const completedOutcome = (job: BackendJobStatus): TerminalResolution => {
  * (→ collection-file-list fallback); a failed batch call skips reconciliation
  * for this round entirely.
  */
-const fetchJobStatuses = async (jobIds: string[]): Promise<Map<string, BackendJobStatus | null> | null> => {
-  if (jobIds.length === 0) return new Map()
-  const result = await fetchJson(`${getBackendUrl()}/v1/documents/status/batch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ job_ids: jobIds }),
+const fetchJobStatuses = (jobIds: string[]): Promise<Map<string, BackendJobStatus | null> | null> =>
+  fetchInChunks(jobIds, async (chunk) => {
+    const result = await fetchJson(`${getBackendUrl()}/v1/documents/status/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_ids: chunk }),
+    })
+    if (!result || result.status === 404 || typeof result.body !== 'object' || result.body === null) return null
+    return (result.body as { statuses?: Record<string, BackendJobStatus | null> }).statuses ?? {}
   })
-  if (!result || result.status === 404 || typeof result.body !== 'object' || result.body === null) return null
-
-  const statuses = (result.body as { statuses?: Record<string, BackendJobStatus | null> }).statuses ?? {}
-  return new Map(Object.entries(statuses))
-}
 
 /**
  * The resolution a stopped job writes: `cancelled`, and nothing else.

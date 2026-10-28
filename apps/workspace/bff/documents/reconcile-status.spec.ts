@@ -165,6 +165,33 @@ describe('reconcileDocumentStatuses', () => {
     expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: 'sha256:judged' })
   })
 
+  /**
+   * The backend refuses a status call of more than 200 job ids with a 422, which
+   * once read as an unreachable backend: two bulk uploads (309 and 219 documents)
+   * stayed `pending` for days although every job had finished.
+   */
+  it('settles a bulk upload larger than the backend takes in one status call', async () => {
+    makeDbMock()
+    const calls: number[] = []
+    mockFetch.mockImplementation(async (url: string, init?: { body?: string }) => {
+      if (!url.includes('/v1/documents/status/batch')) return collectionResponse([])
+      const ids = (JSON.parse(init?.body ?? '{}') as { job_ids: string[] }).job_ids
+      calls.push(ids.length)
+      if (ids.length > 200) return { ok: false, status: 422, json: () => Promise.resolve({}) }
+      return batchResponse(
+        Object.fromEntries(ids.map((id) => [id, { status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success' }] }]))
+      )
+    })
+    const rows = Array.from({ length: 309 }, (_, i) =>
+      makeRow({ id: `doc-${i}`, metadata: { ingestJobId: `job-${i}` } })
+    )
+
+    const result = await reconcileDocumentStatuses(rows, 'org-1')
+
+    expect(Math.max(...calls)).toBeLessThanOrEqual(200)
+    expect(result.filter((r) => r.status === 'completed')).toHaveLength(309)
+  })
+
   it('marks a row failed with the job error message', async () => {
     const db = makeDbMock()
     mockFetch.mockResolvedValue(
