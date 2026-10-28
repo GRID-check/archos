@@ -95,7 +95,7 @@ flowchart TB
 
     subgraph Tier2["Tier 2 · Python AI backend (port 8000)"]
         API["FastAPI (agent_host plugin)"]
-        AGENT["Agent runtime (NeMo Agent Toolkit) + LangGraph agents"]
+        AGENT["Agent runtime + LangGraph agents"]
         JOBS["Research queue (Postgres) — deep-research jobs"]
     end
 
