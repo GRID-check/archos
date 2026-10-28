@@ -11,6 +11,7 @@ import { useState, type FC } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { classifyIngestFailure, ingestFailureSentence } from '../lib/ingest-failure'
 
@@ -21,7 +22,7 @@ import { classifyIngestFailure, ingestFailureSentence } from '../lib/ingest-fail
 export function useIngestFailureText(
   errorMessage: string | null | undefined
 ): { sentence: string; raw: string } | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const failure = classifyIngestFailure(errorMessage)
   if (!failure) return null
   return { sentence: ingestFailureSentence(failure, t), raw: failure.raw }
@@ -41,7 +42,7 @@ export const IngestFailureNotice: FC<IngestFailureNoticeProps> = ({
   className,
   testId = 'ingest-failure',
 }) => {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [open, setOpen] = useState(false)
   const text = useIngestFailureText(errorMessage)
 

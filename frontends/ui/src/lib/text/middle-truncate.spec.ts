@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_TAIL_LENGTH, MAX_TAIL_LENGTH, distinguishingTailLength, splitForMiddleTruncation } from './middle-truncate'
 

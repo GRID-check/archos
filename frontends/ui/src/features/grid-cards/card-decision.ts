@@ -167,7 +167,7 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // written, so there is nothing to remember.
   ifc_model_picker: 'presentational',
   // A composition of content cards (ADR-0065). Its leaves may not be
-  // interactive (`SURFACE_EXCLUDED_LEAVES` in cards/models.py), because a
+  // interactive (`SURFACE_EXCLUDED_LEAVES` in cards/surface_card.py), because a
   // decision is keyed by a card's position in the message and a leaf has none.
   surface: 'presentational',
 }

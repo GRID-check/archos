@@ -28,6 +28,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { makeWidgetTokenFetcher } from '@/lib/workos/widget-token'
 import { useResolvedAppearance, widgetTheme } from '@/lib/workos/use-widget-appearance'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 export interface OrgWidgetsProps {
   canManageUsers: boolean
@@ -44,7 +45,7 @@ export const OrgWidgets = ({
   canManageDomains,
   canManageAuditLogs,
 }: OrgWidgetsProps): React.ReactNode => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const appearance = useResolvedAppearance()
 
   const usersToken = useMemo(() => makeWidgetTokenFetcher(['widgets:users-table:manage']), [])

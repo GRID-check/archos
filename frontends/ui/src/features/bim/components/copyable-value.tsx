@@ -18,6 +18,7 @@ import type { JSX } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { useTransientFlag } from '@/hooks/use-transient-flag'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 
 export interface CopyableValueProps {
@@ -26,7 +27,7 @@ export interface CopyableValueProps {
 }
 
 export function CopyableValue({ value, className }: CopyableValueProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const [copied, raise] = useTransientFlag()
 
   const copy = (): void => {

@@ -1,5 +1,8 @@
 // @disk-inputs: src/**
 /**
+ * @vitest-environment node
+ */
+/**
  * The deadlock shape, made into a build failure.
  *
  * Since ADR-0041 every statement runs inside its own `BEGIN … COMMIT`, so it

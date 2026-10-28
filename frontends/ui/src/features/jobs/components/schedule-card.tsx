@@ -30,6 +30,7 @@ import { RaisedCard, RaisedCardBody, RaisedCardFooter } from '@/components/ui/ra
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { useLocale, useTranslations } from '@/i18n'
+import { jobsCopy } from '@/i18n/namespaces/jobs'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { updateJob, type Job } from '@/adapters/api/jobs-client'
@@ -59,7 +60,7 @@ export function ScheduleCard({
   onSelect,
   accent,
 }: ScheduleCardProps): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const { locale } = useLocale()
 
   const cadence = cadenceOf(job)

@@ -185,6 +185,10 @@
               "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
             },
             {
+              "en": "A question asked in English, or another language, in a project whose documents are German is now answered in the language you asked in. Short replies such as \"ok\" or a name still get a German answer.",
+              "de": "Fragen, die Sie in einem Projekt mit deutschen Dokumenten auf Englisch oder in einer anderen Sprache stellen, werden jetzt in der jeweiligen Sprache beantwortet. Auf kurze Antworten wie „ok“ oder einen Namen erhalten Sie weiterhin eine Antwort auf Deutsch."
+            },
+            {
               "en": "Piloti now answers in the language you ask in, also when the project's documents are in German, and no longer writes an internal project field name into an answer.",
               "de": "Piloti antwortet jetzt in der Sprache, in der Sie fragen, auch wenn die Projektdokumente auf Deutsch sind, und nennt interne Projektfeldnamen nicht mehr in Antworten."
             },

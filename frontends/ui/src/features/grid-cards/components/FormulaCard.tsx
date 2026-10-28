@@ -39,6 +39,7 @@ import { QuantityInput, type QuantityIssue } from '@/components/ui/quantity-inpu
 import { SectionLabel } from '@/components/ui/section-label'
 import { useReaderOverrides } from '@/features/a2ui/reader-inputs'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   SchematicCard,
   StatusBadge,
@@ -385,7 +386,7 @@ const CheckRow: FC<{
 /* ── the card ───────────────────────────────────────────────────────────── */
 
 export const FormulaCard: FC<FormulaCardProps> = ({ title, formula, note }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { overrides, change, reset } = useReaderOverrides()
   // Which fields hold text the field refused. One reader's view of their own
   // typing, so component state, never the data model.

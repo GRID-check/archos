@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // What Next does when `cookies()` or `headers()` is called with no request in
@@ -15,6 +18,7 @@ vi.mock('@/lib/user-preferences/locale', () => ({ findSavedLocale: () => findSav
 
 import { runAsJobSlice } from '@/lib/jobs-queue/slice-scope'
 import { defaultLocale } from './config'
+import { answerExportCopy } from './namespaces/answer-export'
 import { getLocale, getTranslations } from './server'
 
 beforeEach(() => {
@@ -37,7 +41,7 @@ describe('getLocale', () => {
     headers.mockRejectedValue(new Error(OUTSIDE_A_REQUEST))
 
     expect(await runAsJobSlice(() => getLocale())).toBe(defaultLocale)
-    expect(await runAsJobSlice(async () => (await getTranslations('answerExport'))('documentTitle'))).toEqual(
+    expect(await runAsJobSlice(async () => (await getTranslations(answerExportCopy))('documentTitle'))).toEqual(
       expect.any(String)
     )
     expect(cookies).not.toHaveBeenCalled()

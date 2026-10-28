@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { AnnotationView } from '@/lib/annotations/types'
 import { splitDocumentName } from '@/lib/documents/display-name'
 import type { RevisionRef } from '@/lib/documents/revision-links'
@@ -61,7 +62,7 @@ export function useCheckFixed(
   review: DocumentReview,
   { documentName, revisionLabel }: { documentName: string; revisionLabel: string | null }
 ): CheckFixed | undefined {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const { piloti, canAnnotate, documentId } = review
   const ask = piloti.ask

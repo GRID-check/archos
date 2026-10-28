@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The lifecycle's pure rule (ADR-0098): the moves it has, and which states run
  * schedules and carry an Abschluss.
  */

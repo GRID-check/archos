@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The platform reasoning-effort endpoint. The contract worth pinning down: only
  * the platform owner may write it, only the unified vocabulary is accepted, an
  * omitted group is a *clear* (that is how a group goes back to the workflow

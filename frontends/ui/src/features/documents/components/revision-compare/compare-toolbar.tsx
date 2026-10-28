@@ -15,6 +15,7 @@ import { Kbd } from '@/components/ui/kbd'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { isFitZoom, MAX_ZOOM, MIN_ZOOM } from './lib/pages'
 import { COMPARE_MODES, type CompareMode } from './types'
 
@@ -44,7 +45,7 @@ function Hinted({ hint, keys, children }: { hint: string; keys?: string; childre
  * show only where there is a keyboard to press them on.
  */
 export function ModeSwitch({ mode, onMode }: { mode: CompareMode; onMode: (mode: CompareMode) => void }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <ToggleGroup
       type="single"
@@ -81,7 +82,7 @@ export function ModeSwitch({ mode, onMode }: { mode: CompareMode; onMode: (mode:
  * reader is.
  */
 export function PageNav({ current, count, onPage }: { current: number; count: number; onPage: (page: number) => void }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [draft, setDraft] = useState(String(current))
   // A page turned from elsewhere (the arrows, a change in the list) resets the field.
   const [shown, setShown] = useState(current)
@@ -149,7 +150,7 @@ export function ZoomControl({
   onStep: (direction: 1 | -1) => void
   onFit: () => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const fit = isFitZoom(zoom)
   return (
     <div className="flex items-center gap-1" role="group" aria-label={t('compare.zoomLabel')}>
@@ -190,7 +191,7 @@ export type MarkState =
  * action with no word on why.
  */
 export function MarkButton({ state, onMark, className }: { state: MarkState; onMark: () => void; className?: string }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { page } = state
   const label =
     state.kind === 'loading'

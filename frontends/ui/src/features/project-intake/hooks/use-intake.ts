@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import {
   createProjectIntakeClient,
   type ProjectIntakeClient,
@@ -47,7 +48,7 @@ export interface UseIntake {
 }
 
 export function useIntake({ projectId, initial, client }: UseIntakeOptions): UseIntake {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   const api = useRef<ProjectIntakeClient>(client ?? createProjectIntakeClient())
   const [view, setView] = useState<IntakeView>(initial)
   const [busy, setBusy] = useState(false)

@@ -18,11 +18,12 @@ import { canManageBudgets } from '@/lib/authz/organizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { BudgetUsageCard } from '../budget-usage-card'
 
 export default async function OrganizationBudgetsPage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
 
     const isAdmin = canManageBudgets(session)
 

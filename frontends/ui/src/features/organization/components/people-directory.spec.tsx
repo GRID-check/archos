@@ -1,8 +1,8 @@
 import { render, screen, within } from '@/test-utils'
 import { describe, expect, test, vi } from 'vitest'
 
-import { getDictionary } from '@/i18n'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import type { OrganizationMemberWithRole } from '@/lib/organizations/service'
 import { PeopleDirectory } from './people-directory'
 
@@ -22,7 +22,7 @@ vi.mock('@workos-inc/widgets', () => ({
  * hard-coded, so these assertions pin the BEHAVIOUR (an explicit string is
  * rendered for a member with no role) and survive the dictionary being reworded.
  */
-const t = createTranslator(getDictionary('en'), 'organization')
+const t = translatorFor(organizationCopy, 'en')
 
 const member = (over: Partial<OrganizationMemberWithRole> = {}): OrganizationMemberWithRole => ({
   id: 'user_1',

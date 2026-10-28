@@ -54,7 +54,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { en } from '@/i18n/dictionaries/en'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 // The canonical card JSON Schema, generated from `models.py`. Loaded at
 // runtime (it lives above the app root, outside the Docker build context) —
 // see the helper for why a static import breaks the production image build.
@@ -176,9 +176,9 @@ for (const defName of cardDefNames) {
   }
 }
 
-const fields = en.answerExport.fields as Record<string, string | undefined>
-const cardTypes = en.answerExport.cardTypes as Record<string, string | undefined>
-const values = en.answerExport.values as Record<string, Record<string, string | undefined>>
+const fields = answerExportCopy.messages.en.fields as Record<string, string | undefined>
+const cardTypes = answerExportCopy.messages.en.cardTypes as Record<string, string | undefined>
+const values = answerExportCopy.messages.en.values as Record<string, Record<string, string | undefined>>
 
 /** `{a: {b: 'x'}}` → `a.b`. The dictionary's own nesting mirrors the payload. */
 const flattenKeys = (node: unknown, prefix: string, into: Set<string>): Set<string> => {
@@ -194,7 +194,7 @@ const flattenKeys = (node: unknown, prefix: string, into: Set<string>): Set<stri
   return into
 }
 
-const overrideKeys = [...flattenKeys(en.answerExport.fieldsByPath, '', new Set<string>())].sort()
+const overrideKeys = [...flattenKeys(answerExportCopy.messages.en.fieldsByPath, '', new Set<string>())].sort()
 
 /** `calculation.limit.value?comparator=between` → its three parts. */
 const parseOverride = (key: string) => {

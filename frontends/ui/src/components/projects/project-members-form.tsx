@@ -40,6 +40,8 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { membersCopy } from '@/i18n/namespaces/members'
 import { capturePosthog } from '@/lib/analytics/posthog'
 
 type ProjectRole = 'project-viewer' | 'project-contributor' | 'project-editor' | 'project-admin'
@@ -184,7 +186,7 @@ function MemberSuggestField({
   roleLabel,
   containerClassName,
 }: MemberSuggestFieldProps): JSX.Element {
-  const t = useTranslations('members')
+  const t = useTranslations(membersCopy)
   const field = useFieldContext<string>()
   const listboxId = useId()
   const [open, setOpen] = useState(false)
@@ -322,8 +324,8 @@ export function ProjectMembersForm({
   canManage,
   currentMembershipId = null,
 }: ProjectMembersFormProps): JSX.Element {
-  const t = useTranslations('members')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(membersCopy)
+  const tCommon = useTranslations(commonCopy)
   const roleLabel = (role: ProjectRole): string => t(`roles.${role}`)
   const roleDescription = (role: ProjectRole): string => t(`roleDescriptions.${role}`)
   const roleOptions = ROLE_VALUES.map((value) => ({

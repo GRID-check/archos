@@ -13,6 +13,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 
 import { Command, CommandList } from '@/components/ui/command'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import type { SearchHit } from '@/lib/search/search-wire'
 import type { PaletteSearch } from '../hooks/use-palette-search'
 import { PaletteSearchResults, paletteHits, paletteHitValue } from './palette-search'
@@ -46,7 +47,7 @@ export const ComposerSearchPicker = forwardRef<ComposerSearchPickerHandle, Compo
   { query, search, onPick, onAriaChange },
   ref
 ) {
-  const t = useTranslations('search.composerPicker')
+  const t = useTranslations(searchCopy, 'composerPicker')
   const rootRef = useRef<HTMLDivElement>(null)
   const hits = useMemo(() => paletteHits(search.response, COMPOSER_PICKER_HITS), [search.response])
   const [activeIndex, setActiveIndex] = useState(0)

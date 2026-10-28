@@ -8,9 +8,8 @@
  * „leer“.
  */
 import { describe, expect, test } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { translatorFor } from '@/i18n/namespace'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   legacyPlace,
   sanitizeThinkingSteps,
@@ -27,8 +26,8 @@ import { deriveExecutedSteps } from './executed-steps'
 import { foldRows, workRounds, type WorkRound, type WorkRow } from './work-list'
 import { namePattern, regexWords, settledHead, workParts, workPartsText } from './work-sentence'
 
-const t = createTranslator(de, 'chat')
-const tEn = createTranslator(en, 'chat')
+const t = translatorFor(chatCopy, 'de')
+const tEn = translatorFor(chatCopy, 'en')
 const NB = ' '
 
 const sentence = (action: StoredAction, translator = t) =>

@@ -46,6 +46,7 @@
 import type { JSX } from 'react'
 import { StageTrack } from '@/components/ui/stage-track'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { LIFECYCLE_STAGES, lifecycleMeaning, lifecycleProgress } from '../lib/document-lifecycle'
@@ -70,7 +71,7 @@ export function DocumentLifecyclePosition({
   sentence,
   className,
 }: DocumentLifecyclePositionProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const progress = lifecycleProgress(version, lifecycle)
   const meaning = lifecycleMeaning(version, lifecycle, { live })
 

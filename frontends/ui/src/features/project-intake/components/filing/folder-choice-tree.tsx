@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useLocale, useTranslations } from '@/i18n'
+import { intakeFilingStepCopy } from '@/i18n/namespaces/intake-filing-step'
 import { formatBytes } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { ExclusionReason } from './default-exclusions'
@@ -52,7 +53,7 @@ const ROW = 'border-border/60 flex min-h-11 items-center gap-2.5 border-t pr-4 t
  * opens with the chevron in its indent.
  */
 export function FolderChoiceTree({ tree, excluded, proposed, heldIn, summary, onToggle }: FolderChoiceTreeProps): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   const { locale } = useLocale()
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const flip = (path: string): void =>

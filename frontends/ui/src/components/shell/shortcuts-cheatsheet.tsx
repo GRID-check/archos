@@ -29,6 +29,9 @@ import {
 import { Item, ItemActions, ItemContent, ItemList, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { navCopy } from '@/i18n/namespaces/nav'
+import { shortcutsCopy } from '@/i18n/namespaces/shortcuts'
 import { ShortcutKeys, useModifierLabel } from './shortcut-keys'
 import {
   shortcutSections,
@@ -64,9 +67,9 @@ function splitColumns(sections: ShortcutSection[]): [ShortcutSection[], Shortcut
  * which two go unused.
  */
 function useLabelResolver(): (label: ShortcutRow['label']) => string {
-  const tNav = useTranslations('nav')
-  const tCollab = useTranslations('collaboration')
-  const tItems = useTranslations('shortcuts.cheatsheet.items')
+  const tNav = useTranslations(navCopy)
+  const tCollab = useTranslations(collaborationCopy)
+  const tItems = useTranslations(shortcutsCopy, 'cheatsheet.items')
 
   return React.useCallback(
     (label) => {
@@ -115,8 +118,8 @@ export function ShortcutsCheatsheet({
   canCollaborate = false,
   canAccessInbox = false,
 }: ShortcutsCheatsheetProps) {
-  const t = useTranslations('shortcuts.cheatsheet')
-  const tGroups = useTranslations('shortcuts.cheatsheet.groups')
+  const t = useTranslations(shortcutsCopy, 'cheatsheet')
+  const tGroups = useTranslations(shortcutsCopy, 'cheatsheet.groups')
   const resolveLabel = useLabelResolver()
   const mod = useModifierLabel()
 

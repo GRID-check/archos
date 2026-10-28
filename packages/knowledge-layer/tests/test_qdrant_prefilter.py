@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from knowledge_layer.hit_metadata import _folder_matches
-from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant import prefilter
 from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant import store as store_module

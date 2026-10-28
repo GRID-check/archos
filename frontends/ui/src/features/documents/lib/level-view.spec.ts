@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Which read the Files workspace makes (ADR-0102): a folder level page by page
  * unless something only the whole shelf in the browser can answer is asked.
  */

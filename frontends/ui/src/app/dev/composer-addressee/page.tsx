@@ -43,6 +43,7 @@ import { ArrowUp, AtSign, ChevronDown, Mic, Paperclip } from 'lucide-react'
 import { AddresseeIndicator } from '@/features/collaboration/components/AddresseeIndicator'
 import type { DraftMention } from '@/lib/mentions/mention-text'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 
 const ANNA: DraftMention = { targetId: 'user_anna', display: 'Anna Berger' }
@@ -129,7 +130,7 @@ const Eyebrow = ({ children }: { children: React.ReactNode }): JSX.Element => (
  * hard-coded German would quietly drift from the product it is evidence of.
  */
 function Previews(): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
 
   return (
     <>

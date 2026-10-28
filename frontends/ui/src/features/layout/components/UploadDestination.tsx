@@ -17,6 +17,7 @@
 
 import type { FC } from 'react'
 import { useTranslations } from '@/i18n'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { cn } from '@/lib/utils'
 
 /**
@@ -37,7 +38,7 @@ export interface UploadDestinationCopy {
 
 /** The destination's copy, for callers that need the words without the markup. */
 export function useUploadDestination(target: UploadDestination): UploadDestinationCopy {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const isProject = target === 'project'
   const label = t(isProject ? 'fileSourcesTab.targetProject' : 'fileSourcesTab.targetSession')
   const labelLower = t(

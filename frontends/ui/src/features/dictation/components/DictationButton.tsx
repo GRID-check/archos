@@ -24,6 +24,8 @@ import { AudioWave } from '@/components/ui/audio-wave'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { captureCopy } from '@/i18n/namespaces/capture'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { MAX_DICTATION_SECONDS } from '@/lib/dictation/contract'
 import { formatDurationElapsed } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -89,7 +91,7 @@ export function DictationButton({
   onExplain,
   channel,
 }: DictationButtonProps) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { state, toggle } = useDictation({
     locale,
     onTranscript,
@@ -126,7 +128,7 @@ export function DictationControl({
   onToggle,
   onExplain,
 }: DictationControlProps) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (state.phase === 'unavailable' || state.phase === 'checking') {
     const reason = state.phase === 'unavailable' ? t(`dictation.unavailable.${state.reason}`) : t('dictation.start')
     return (
@@ -218,7 +220,7 @@ export interface DictationStripProps {
  * already shows the same two facts.
  */
 export function DictationStrip({ state, locale, onToggle, className }: DictationStripProps) {
-  const tCapture = useTranslations('capture')
+  const tCapture = useTranslations(captureCopy)
   if (state.phase === 'transcribing') {
     return (
       <div

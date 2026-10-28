@@ -24,6 +24,7 @@ import type { JSX } from 'react'
 import { useMemo } from 'react'
 import { SkillEditorDialog, type SkillPersistence } from '@/features/skills/components/skill-editor-dialog'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import {
   createPlatformSkill,
   deletePlatformSkill,
@@ -75,7 +76,7 @@ export function PlatformSkillEditorDialog({
   categories = [],
   onSaved,
 }: PlatformSkillEditorDialogProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
 
   const persistence = useMemo<SkillPersistence>(
     () => ({

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { AnnotationChange } from '@/lib/annotations/room-types'
 import type { DocumentReview } from '../../hooks/use-document-review'
 
@@ -60,7 +61,7 @@ export function announcementOf(
  * what this reader did themselves, in this tab or another.
  */
 export function ReviewAnnouncer({ review }: { review: Pick<DocumentReview, 'room' | 'annotations' | 'piloti'> }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [said, setSaid] = useState('')
   const { onAnnotationsChanged, peerId, self } = review.room
   const selfUserId = self?.userId ?? null

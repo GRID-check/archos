@@ -6,6 +6,9 @@ import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ClosingIntent, IntakeView } from '@/lib/project-intake/types'
 import { usePressed } from '../../hooks/use-pressed'
 import { formatMonth } from '../completed-note'
@@ -34,7 +37,7 @@ export interface ProfileStepProps extends SetupStepProps {
  * „Alles übernehmen und abschließen“, takes the rest as theirs.
  */
 export function ProfileStep({ view, projectId, canDecide, busy, onDecide, onComplete, onGoTo }: ProfileStepProps): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const decide = { canDecide, busy, onDecide }
   const finished = view.status === 'completed'
   return (
@@ -92,8 +95,8 @@ function FinishFooter({
   onDecide,
   onComplete,
 }: Pick<ProfileStepProps, 'view' | 'canDecide' | 'busy' | 'onDecide' | 'onComplete'>): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
-  const tIntake = useTranslations('projectIntake')
+  const t = useTranslations(intakeProfileStepCopy)
+  const tIntake = useTranslations(projectIntakeCopy)
   const [finishing, finish] = usePressed()
   const [asking, setAsking] = useState(false)
   const closing = view.closing
@@ -141,9 +144,9 @@ function FinishFooter({
 }
 
 function ClosingDescription({ closing }: { closing: ClosingIntent }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
-  const tIntake = useTranslations('projectIntake')
-  const tProjects = useTranslations('projects')
+  const t = useTranslations(intakeProfileStepCopy)
+  const tIntake = useTranslations(projectIntakeCopy)
+  const tProjects = useTranslations(projectsCopy)
   const period = closing.startedOn
     ? tIntake('complete.period', { from: formatMonth(closing.startedOn), to: formatMonth(closing.endedOn) })
     : tIntake('complete.periodEnd', { to: formatMonth(closing.endedOn) })

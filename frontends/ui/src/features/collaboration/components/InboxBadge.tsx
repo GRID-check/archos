@@ -25,6 +25,7 @@
 import type { JSX } from 'react'
 import { CountPill } from '@/components/ui/count-pill'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 
 export interface InboxBadgeProps {
   /** Items needing the user's attention. `0` (or less) renders nothing. */
@@ -37,7 +38,7 @@ export interface InboxBadgeProps {
 }
 
 export function InboxBadge({ pending, className }: InboxBadgeProps): JSX.Element | null {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
 
   if (!Number.isFinite(pending) || pending <= 0) return null
 

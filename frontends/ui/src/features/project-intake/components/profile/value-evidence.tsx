@@ -6,6 +6,7 @@ import { ScanSearch } from 'lucide-react'
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
 import type { ProfileEvidence } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 import { EvidenceChips } from '../evidence-chips'
@@ -16,7 +17,7 @@ import { PageExcerpt } from './page-excerpt'
 
 /** The words for a confidence, from the step's own namespace. */
 export function useConfidenceLabel(): (confidence: Confidence) => string {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   return (confidence) => {
     if (confidence.level === 'confirmed') return confidence.ownAnswer ? t('confidence.ownAnswer') : t('confidence.confirmed')
     if (confidence.level === 'contested' || confidence.level === 'corroborated') {
@@ -48,7 +49,7 @@ export function ValueEvidence({
   excerptOpen?: boolean
   className?: string
 }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const label = useConfidenceLabel()
   const [open, setOpen] = useState(excerptOpen)
   const cited = evidence.find(hasExcerpt)

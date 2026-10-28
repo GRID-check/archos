@@ -39,6 +39,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { foldDiacritics } from '@/lib/text/latinize'
 import { cn } from '@/lib/utils'
 import {
@@ -98,7 +100,7 @@ export function ProjectSwitcherSheet({
   projects,
   activeProjectId,
 }: ProjectSwitcherSheetProps): JSX.Element {
-  const t = useTranslations('nav')
+  const t = useTranslations(navCopy)
   const router = useRouter()
   const open = useShellOverlays((s) => s.projectSheetOpen)
   const setOpen = useShellOverlays((s) => s.setProjectSheetOpen)
@@ -242,7 +244,7 @@ function SwitcherRow({
   current: boolean
   onChoose: () => void
 }): JSX.Element {
-  const tProjects = useTranslations('projects')
+  const tProjects = useTranslations(projectsCopy)
   const quiet = project.status === 'paused' || project.status === 'closed'
   return (
     <li>

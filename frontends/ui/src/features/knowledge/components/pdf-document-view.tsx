@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { SIMILAR_PASSAGE_TEXT_MIN } from '@/lib/similar-passages/types'
 import {
@@ -470,7 +471,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   onViewport,
   className,
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const coarse = useMediaQuery('(pointer: coarse)')
   const gutter = coarse ? TOUCH_GUTTER : GUTTER
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
@@ -1523,7 +1524,7 @@ function HostGround({ className, children }: { className?: string; children?: Re
  * what shows blank on Android Chrome, which has no inline PDF renderer.
  */
 const PdfFailure: FC<{ href: string; onRetry: () => void }> = ({ href, onRetry }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   return (
     <EmptyState
       variant="bare"
@@ -1565,7 +1566,7 @@ const PdfPasswordPrompt: FC<{ incorrect: boolean; onSubmit: (password: string) =
   incorrect,
   onSubmit,
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const [value, setValue] = useState('')
   return (
     <EmptyState
@@ -1630,7 +1631,7 @@ const QuoteBar: FC<{
   /** Look for passages like the selection; absent where nobody asked for it, or the selection is too short. */
   onFindSimilar?: () => void
 }> = ({ selection, state, onCopy, onFindSimilar }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const label =
     state === 'done'
       ? t('viewer.quoteCopied')

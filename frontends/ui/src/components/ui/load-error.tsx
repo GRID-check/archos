@@ -6,6 +6,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { BusyButton } from '@/components/ui/busy-button'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 
 export interface LoadErrorProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   /**
@@ -46,7 +47,7 @@ export interface LoadErrorProps extends Omit<React.HTMLAttributes<HTMLDivElement
  */
 export const LoadError = React.forwardRef<HTMLDivElement, LoadErrorProps>(
   ({ title, description, onRetry, retrying, actions, ...props }, ref) => {
-    const t = useTranslations('common')
+    const t = useTranslations(commonCopy)
     const [pending, setPending] = React.useState(false)
     const busy = retrying ?? pending
 

@@ -6,6 +6,7 @@ import { Building2, FileText, Folder, MessageSquare, MessageSquareWarning } from
 
 import { LoadMore } from '@/components/ui/load-more'
 import { useLocale, useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { ANNOTATION_KINDS, ANNOTATION_STATUSES } from '@/lib/annotations/types'
 import { formatRelativeTime } from '@/lib/format'
 import { keepUnitsTogether } from '@/lib/text/keep-units'
@@ -133,7 +134,7 @@ function KindSection({
   listId?: string
   optionId?: (hit: SearchHit) => string
 }): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const total = section.totalIsLowerBound ? t('totalAtLeast', { count: section.total }) : String(section.total)
   const row = (hit: SearchHit): JSX.Element => (
     <HitRow key={hit.id} hit={hit} text={text} active={activeKey === `${hit.kind}:${hit.id}`} id={optionId?.(hit)} />
@@ -169,7 +170,7 @@ function KindSection({
  * palette's one line truncates the mark and keeps its full name in the title.
  */
 function useWhere(): (shelf: 'project' | 'office_shelf', projectId: string | null, projectName: string | null, folderName?: string | null) => JSX.Element[] {
-  const tWhere = useTranslations('search.where')
+  const tWhere = useTranslations(searchCopy, 'where')
   const scope = useContext(HitScopeContext)
   const wrap = !useCompactRow()
   return (shelf, projectId, projectName, folderName = null) => {
@@ -189,7 +190,7 @@ function useWhere(): (shelf: 'project' | 'office_shelf', projectId: string | nul
 }
 
 function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string; active: boolean; id?: string }): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const labels = useSearchLabels()
   const where = useWhere()
   const menus = useHitMenus()
@@ -250,7 +251,7 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
 }
 
 function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolean; id?: string }): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const where = useWhere()
   const kind = (ANNOTATION_KINDS as readonly string[]).includes(hit.annotationKind) ? t(`annotation.kinds.${hit.annotationKind}`) : hit.annotationKind
   const from = useSearchReturn()

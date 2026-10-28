@@ -57,14 +57,14 @@ export type FileOperation = (typeof FILE_OPERATIONS)[number]
 export const PROPOSAL_NOTICE_VARIANTS = [...FILE_OPERATIONS, 'memory', 'project_profile', 'operation'] as const
 export type ProposalNoticeVariant = (typeof PROPOSAL_NOTICE_VARIANTS)[number]
 
-/** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `src/aiq_agent/cards/models.py`. */
+/** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `src/aiq_agent/cards/file_operation_card.py`. */
 export const MAX_FILE_OPERATION_ITEMS = 8
 
 const text = (max: number) => z.string().trim().min(1).max(max)
 
 /**
  * One item, in the vocabulary of the card it replaces (`FileOperationItem` in
- * `cards/models.py`): documents and folders by NAME and PATH, never by id. The
+ * `cards/file_operation_card.py`): documents and folders by NAME and PATH, never by id. The
  * agent's inventory has no ids; the deciding person's session resolves the
  * names when the change is applied.
  */

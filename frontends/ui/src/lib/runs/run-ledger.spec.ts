@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The bound on the run ledger, and the moves that grow one.
  *
  * What is under test is not "does it copy fields". It is the three properties a

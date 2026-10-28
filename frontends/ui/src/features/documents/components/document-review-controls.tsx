@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { hasLiveMarks, openMarksLabel } from './open-marks-chip'
 import { formatAbsoluteTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -191,7 +192,7 @@ export function DocumentReviewControls({
   openMarks = null,
   className,
 }: DocumentReviewControlsProps): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const [typing, setTyping] = useState<DocumentLifecycleGesture | null>(null)
   const [comment, setComment] = useState('')
