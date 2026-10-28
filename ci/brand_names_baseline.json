@@ -1261,7 +1261,7 @@
   "frontends/ui/src/lib/proxy/collection-authz.spec.ts": 5,
   "frontends/ui/src/lib/proxy/collection-authz.ts": 3,
   "frontends/ui/src/lib/proxy/proxy-request.ts": 2,
-  "frontends/ui/src/lib/proxy/ws-upgrade-headers.js": 4,
+  "frontends/ui/src/lib/proxy/ws-upgrade-headers.js": 5,
   "frontends/ui/src/lib/proxy/ws-upgrade-headers.spec.ts": 12,
   "frontends/ui/src/lib/push/browser.ts": 1,
   "frontends/ui/src/lib/push/config.spec.ts": 7,
