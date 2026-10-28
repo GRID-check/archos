@@ -204,7 +204,7 @@ const isLiveVariant = (): boolean => variant() === 'live'
  * The frames the live variant replays, in the order the backend would emit them
  * (`conversation_bus` envelopes, unwrapped by `/api/conversations/:id/live`).
  *
- * Real NAT shapes, not a convenient summary: the whole value of this preview is
+ * Real agent-runtime shapes, not a convenient summary: the whole value of this preview is
  * that it exercises the actual reducer, so a change to the wire format shows up
  * here as a blank panel rather than passing silently.
  */

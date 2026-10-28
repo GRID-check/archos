@@ -1,6 +1,6 @@
 """``knowledge_search`` and ``list_files`` as a binding that reads the estate by path sees them (ADR-0133 slice 6).
 
-The same NAT functions, rebound: ranked search scoped by ``path`` (the literal modes are ``grep``),
+The same agent-runtime functions, rebound: ranked search scoped by ``path`` (the literal modes are ``grep``),
 and the listing without its tree view (that is ``ls(depth=…)``). The descriptions are the shared
 ones with one paragraph replaced; the schemas are the functions' own minus the fields that left,
 and forbid unknown arguments, so a retired one is an error naming it (``common.retired_calls``).

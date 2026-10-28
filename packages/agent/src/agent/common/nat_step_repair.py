@@ -1,8 +1,8 @@
-"""Closes NAT LangChain profiler spans on error so retries stop corrupting the
+"""Closes agent-runtime LangChain profiler spans on error so retries stop corrupting the
 step stack.
 
 ``nat.plugins.langchain.callback_handler.LangchainProfilerHandler`` (the
-callback NAT wires up for Phoenix/OTel observability) implements
+callback the agent runtime wires up for Phoenix/OTel observability) implements
 ``on_llm_start``/``on_chat_model_start``/``on_llm_end``/``on_tool_start``/
 ``on_tool_end`` but not ``on_llm_error`` or ``on_tool_error``. Every one of
 those ``on_*_start`` calls pushes an ``IntermediateStepPayload`` START event
@@ -211,7 +211,7 @@ def _drop_ended_tail(state: ContextState) -> None:
 
 
 def install_step_stack_repair() -> None:
-    """Keep NAT's span stack free of ended steps, so no START names a closed parent.
+    """Keep the agent runtime's span stack free of ended steps, so no START names a closed parent.
 
     ``langchain_core`` runs ``on_chain_end``/``on_llm_end`` through ``@shielded``:
     a NEW task on a COPY of the context. ``IntermediateStepManager``'s END then
@@ -223,8 +223,8 @@ def install_step_stack_repair() -> None:
     node STARTs under that dead id, ``SpanExporter`` drops it ("No parent span
     found"), its END finds nothing ("No subspan found"), and every descendant
     cascades: whole agent rounds, LLM generations included, never reach
-    Langfuse. Upstream in NAT 1.9.0 (``builder/intermediate_step_manager.py``);
-    remove this when NAT tracks the stack without relying on the context.
+    Langfuse. Upstream in the agent runtime 1.9.0 (``builder/intermediate_step_manager.py``);
+    remove this when the agent runtime tracks the stack without relying on the context.
 
     Idempotent; call once at process startup (API server and agent worker).
     """

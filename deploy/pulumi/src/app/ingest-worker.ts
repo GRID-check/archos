@@ -107,7 +107,7 @@ export function installIngestWorker(
                   periodSeconds: 30,
                   failureThreshold: 3,
                 },
-                // The first mark appears only after the whole NAT workflow is
+                // The first mark appears only after the whole agent-runtime workflow is
                 // built; hold liveness off until then (up to 10 minutes).
                 startupProbe: {
                   exec: { command: ["python", "-c", `import os,sys; sys.exit(0 if os.path.exists('${liveness}') else 1)`] },

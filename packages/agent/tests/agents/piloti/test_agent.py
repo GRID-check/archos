@@ -3780,9 +3780,9 @@ class TestATurnThatWritesADraft:
         )
         _bind_signed_turn(monkeypatch, conversation_id="conv-1")
 
-        # A NAT function is bound as a plain tool here: the graph only needs a
-        # `BaseTool` with the right NAME, and building the NAT wrapper would test
-        # NAT rather than the turn.
+        # An agent-runtime function is bound as a plain tool here: the graph only
+        # needs a `BaseTool` with the right NAME, and building the agent-runtime
+        # wrapper would test the agent runtime rather than the turn.
         file_draft_tool = StructuredTool.from_function(
             coroutine=filing_tools.run_file_draft, name="file_draft", description="legt ab"
         )

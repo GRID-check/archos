@@ -99,7 +99,7 @@ def test_build_app_prints_it_before_anything_else_registers() -> None:
     """The line is worthless if a crash during route registration precedes it.
 
     Reading the source rather than building the app: ``build_app`` pulls the
-    whole NAT front-end stack, which this suite cannot stand up, and what
+    whole agent-runtime front-end stack, which this suite cannot stand up, and what
     matters here is ORDER — that ``log_boot_line()`` sits ahead of
     ``super().build_app()``, so a container that fails to come up has still
     said which build failed.

@@ -339,7 +339,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "backend-chat"): EnvV
     // OTLP tracing via the cluster collector (ADR-0029 amendment). Producers
     // send plain OTLP in-cluster — the collector alone holds the Langfuse
     // key. HTTP/protobuf to :4318 — the full /v1/traces path is required: the
-    // NAT exporter posts to the endpoint as-is (path appending only happens
+    // The agent-runtime exporter posts to the endpoint as-is (path appending only happens
     // for SDK env-var defaults, not for an endpoint the config passes
     // explicitly). OTEL_SERVICE_NAME becomes service.name on the spans so
     // chat tier and worker tier are distinct resources in Langfuse.
@@ -646,7 +646,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // src/instrumentation.ts register @vercel/otel (it no-ops without the
     // endpoint). NOTE the BASE URL here vs. the backend's full /v1/traces
     // path: the JS OTLP HTTP exporter appends the signal path per the OTEL
-    // spec; the Python NAT exporter does not.
+    // spec; the Python agent-runtime exporter does not.
     ...(cfg.observability.enabled
       ? [
           { name: "OTEL_SERVICE_NAME", value: "grid-ui" },

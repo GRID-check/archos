@@ -83,7 +83,7 @@ class DomainCatalogRegistry:
         else:
             try:
                 import yaml
-            except ImportError as exc:  # pragma: no cover - PyYAML is present in normal NAT environments
+            except ImportError as exc:  # pragma: no cover - PyYAML is present in normal agent-runtime environments
                 raise ImportError("Domain catalog YAML files require PyYAML. Use JSON or install PyYAML.") from exc
             raw_data = yaml.safe_load(raw_text) or {}
 

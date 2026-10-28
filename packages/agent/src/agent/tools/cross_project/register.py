@@ -1090,7 +1090,7 @@ async def run_project_lookup(
     open_folders_only: bool = False,
     project_facts: list[ProjectFact] | None = None,
 ) -> str:
-    """Look across the office's other projects. Module-level so the refusals are reachable without NAT."""
+    """Look across the office's other projects. Module-level so the refusals are reachable without the agent runtime."""
     outcome = ActionOutcome()
     row = ActionRow("lookup", query=(query or "").strip())
     try:

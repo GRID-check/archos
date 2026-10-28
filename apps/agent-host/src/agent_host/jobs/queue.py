@@ -24,7 +24,7 @@ runs on too, so this module is only what is research's own: its table, its lane
   worker could not finish, without spending an attempt.
 
 This table carries only *dispatch* metadata and the serialized
-``run_agent_job`` payload. User-facing status stays in NAT's ``job_info``
+``run_agent_job`` payload. User-facing status stays in the agent runtime's ``job_info``
 (written by the runner) and events stay in ``job_events``: SSE streaming is
 unchanged, and a job that waits here is ``SUBMITTED`` there.
 

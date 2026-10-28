@@ -991,7 +991,7 @@ class ChatAgent:
 
     A two-node LangGraph (``agent`` → ``tools`` → ``agent`` …) whose loop
     terminates on the ROUND ceiling or the turn's input-token ceiling, followed
-    by the post-answer pipeline. NAT-independent: every dependency arrives via the constructor,
+    by the post-answer pipeline. Agent-runtime-independent: every dependency arrives via the constructor,
     and what varies per turn arrives via :meth:`run`'s ``turn``.
 
     Example:
@@ -1369,7 +1369,7 @@ class ChatAgent:
         # returned: from here on the transcript, the repeat-fetch answers and
         # the next turn's history carry the passages without the lanes JSON
         # the model never reads (``strip_trace_lanes``). The frontend's copy is
-        # the NAT tool step, recorded when the tool returned, and unaffected.
+        # the agent-runtime tool step, recorded when the tool returned, and unaffected.
         ran_messages = [_without_trace_lanes(message) for message in ran_messages]
         result = {**result, "messages": ran_messages}
         failed_ids = failed_call_ids(ran_messages)

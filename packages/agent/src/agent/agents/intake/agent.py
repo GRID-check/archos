@@ -81,12 +81,12 @@ MAX_INSTRUCTION_CHARS = 500
 
 
 def _context_job_id() -> str | None:
-    """The job this run is: the worker sets NAT's ``workflow_run_id`` to it at claim."""
+    """The job this run is: the worker sets the agent runtime's ``workflow_run_id`` to it at claim."""
     try:
         from nat.plugin_api import Context
 
         value = Context.get().workflow_run_id
-    except Exception:  # noqa: BLE001 — outside a NAT context there is no job
+    except Exception:  # noqa: BLE001 — outside an agent-runtime context there is no job
         return None
     return str(value) if value else None
 

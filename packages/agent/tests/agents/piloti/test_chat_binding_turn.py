@@ -30,7 +30,7 @@ RAN: list[dict] = []
 
 
 class _SearchInput(BaseModel):
-    """The NAT function's own arguments, as the shared binding has them."""
+    """The agent-runtime function's own arguments, as the shared binding has them."""
 
     query: str
     match: str = "meaning"

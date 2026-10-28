@@ -476,6 +476,6 @@ async def ifc_measure(tool_config: IfcMeasureConfig, builder: Builder):
         """Measure the project's IFC/BIM model and report the provenance."""
         return await run_ifc_measure(arguments, tool_config.default_limit)
 
-    # `input_schema` is what NAT hands LangChain as `args_schema`: the enums,
+    # `input_schema` is what the agent runtime hands LangChain as `args_schema`: the enums,
     # the per-parameter text and the one required field reach the model.
     yield FunctionInfo.from_fn(_ifc_measure, input_schema=IfcMeasureInput, description=_TOOL_DESCRIPTION)

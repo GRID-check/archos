@@ -1,7 +1,7 @@
 """
 LangChain callback handlers for SSE event streaming.
 
-Uses NAT's IntermediateStep structure for consistent event types:
+Uses the agent runtime's IntermediateStep structure for consistent event types:
 - Category: LLM, TOOL, WORKFLOW, ARTIFACT
 - State: START, CHUNK, END, UPDATE
 
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 class EventCategory(StrEnum):
-    """Event categories aligned with NAT's IntermediateStepCategory."""
+    """Event categories aligned with the agent runtime's IntermediateStepCategory."""
 
     LLM = "llm"
     TOOL = "tool"
@@ -51,7 +51,7 @@ class EventCategory(StrEnum):
 
 
 class EventState(StrEnum):
-    """Event states aligned with NAT's IntermediateStepState. All present tense."""
+    """Event states aligned with the agent runtime's IntermediateStepState. All present tense."""
 
     START = "start"
     CHUNK = "chunk"
@@ -81,7 +81,7 @@ class EventData(BaseModel):
 
 class IntermediateStepEvent(BaseModel):
     """
-    SSE event structure aligned with NAT's IntermediateStep.
+    SSE event structure aligned with the agent runtime's IntermediateStep.
 
     This provides a consistent event format that frontends can consume
     without needing deep knowledge of specific tool/agent internals.
@@ -181,7 +181,7 @@ class ToolArtifactMapping:
 
 class AgentEventCallback(BaseCallbackHandler):
     """
-    Callback handler that emits NAT-aligned IntermediateStep events for SSE streaming.
+    Callback handler that emits agent-runtime-aligned IntermediateStep events for SSE streaming.
 
     Event model:
     - workflow.start/end: Agent execution boundaries (uses LangChain run_id as agent_id)

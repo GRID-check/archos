@@ -256,7 +256,7 @@ async def _check_skill_data_sources(body: SkillSubmitPayload, agent_type: str, c
     """Validate the data sources as the public submit route does, per agent when the builder is up."""
     # Validate data sources the same way the public submit route does. The
     # per-agent availability check needs the builder captured at job-route
-    # registration; import the (NAT-pulling) validator only when we have one.
+    # registration; import the validator (it pulls in the agent runtime) only when we have one.
     from .builder_state import get_active_builder
 
     builder = get_active_builder()
@@ -311,7 +311,7 @@ async def _submit_skill_run(
     request_envelope: dict[str, str] | None,
 ) -> str:
     """Queue the skill's job and return its id; the submit errors become the route's HTTP statuses."""
-    # Import the async-job layer lazily (it pulls NAT) so this module
+    # Import the async-job layer lazily (it pulls in the agent runtime) so this module
     # stays cheap to import next to the maintenance routes.
     from ..jobs.submit import DuplicateJobIdError
     from ..jobs.submit import MissingPrincipalError

@@ -6,9 +6,9 @@ raw JWT payload decoding.
 
 Token sources checked in priority order by ``get_auth_token()``:
 
-1. **NAT/AIQ Context cookies** — ``idToken`` cookie set by the frontend auth layer
+1. **Agent-runtime Context cookies** — ``idToken`` cookie set by the frontend auth layer
    (server / web-UI mode).
-2. **NAT/AIQ Context Authorization header** — ``Authorization: Bearer <jwt>`` sent
+2. **Agent-runtime Context Authorization header** — ``Authorization: Bearer <jwt>`` sent
    by API callers who authenticate with a JWT directly.
 """
 
@@ -142,8 +142,8 @@ def get_auth_token() -> str | None:
 
     Tries registered token fetchers in priority order (highest first),
     then falls back to the idToken cookie set by the frontend auth layer.
-    1. NAT ``Context`` cookies — ``idToken`` key (server / web-UI mode).
-    2. NAT ``Context`` Authorization header — ``Bearer <jwt>`` (API callers with JWT).
+    1. Agent-runtime ``Context`` cookies — ``idToken`` key (server / web-UI mode).
+    2. Agent-runtime ``Context`` Authorization header — ``Bearer <jwt>`` (API callers with JWT).
 
     Returns:
         ID token string, or ``None`` if no valid token is available.
@@ -166,14 +166,14 @@ def get_auth_token() -> str | None:
 
         context_metadata = Context.get().metadata
 
-        # 1. NAT Context cookie (browser / web-UI mode)
+        # 1. Agent-runtime Context cookie (browser / web-UI mode)
         if context_metadata and context_metadata.cookies:
             id_token = context_metadata.cookies.get("idToken")
             if id_token:
                 logger.debug("Using token from Context cookies")
                 return id_token.strip()
 
-        # 2. NAT Context Authorization header (API callers with JWT)
+        # 2. Agent-runtime Context Authorization header (API callers with JWT)
         if context_metadata and context_metadata.headers:
             auth_header = context_metadata.headers.get("authorization", "")
             if auth_header.startswith("Bearer eyJ"):

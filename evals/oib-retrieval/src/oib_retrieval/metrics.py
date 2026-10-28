@@ -1,4 +1,4 @@
-"""Ranking metrics for retrieval evaluation. PURE: no NAT, no chroma, no network, no I/O.
+"""Ranking metrics for retrieval evaluation. PURE: no agent runtime, no chroma, no network, no I/O.
 
 Every function here takes a ranked list of opaque, hashable *units* and the judgements
 for one query, and returns a number. Nothing in this module knows what a unit is, where

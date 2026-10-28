@@ -315,7 +315,7 @@ def streaming_call(
 
     The handler is ADDED to the call's inherited callback manager, never
     passed as the call's own callbacks: those replace the inherited ones, and
-    NAT's profiler, which bills the call, rides on them.
+    The agent runtime's profiler, which bills the call, rides on them.
     """
     prose = _PROSE.get()
     if prose is None or prose.streamed or not hasattr(llm, "bind"):

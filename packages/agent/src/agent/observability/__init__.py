@@ -1,8 +1,8 @@
-"""Grid NAT telemetry types (`otelcollector_logs`, `otelcollector_redaction`)."""
+"""Grid agent-runtime telemetry types (`otelcollector_logs`, `otelcollector_redaction`)."""
 
 
 def ensure_registered() -> None:
-    """Import the two Grid telemetry `_type`s so NAT's registry can resolve them.
+    """Import the two Grid telemetry `_type`s so the agent runtime's registry can resolve them.
 
     Registration is a decorator side-effect of importing the modules. This
     function exists so boot paths can name that import. Safe to call twice.

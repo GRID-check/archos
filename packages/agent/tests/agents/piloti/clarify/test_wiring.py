@@ -1,6 +1,6 @@
 """Tests for how the clarification step is configured and wired.
 
-What was the `clarifier_agent` NAT registration: the config block (now nested
+What was the `clarifier_agent` agent-runtime registration: the config block (now nested
 under the workflow), the tool set it boots with, the HITL channel it asks
 through, and the per-request narrowing that keeps a per-org model override,
 a BYOK credential, ZDR routing and data-source filtering working.
@@ -170,10 +170,10 @@ class TestResolveTools:
 
 
 class TestAskThroughNat:
-    """The HITL channel: NAT prompt out, user's reply in.
+    """The HITL channel: agent-runtime prompt out, user's reply in.
 
     This is the live user interaction the plan-approval dialog blocks on, so it
-    keeps its own tests even though nothing registers a NAT function any more.
+    keeps its own tests even though nothing registers an agent-runtime function any more.
     """
 
     @staticmethod

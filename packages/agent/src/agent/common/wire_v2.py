@@ -1,7 +1,7 @@
 """The chat wire, version 2: every frame the chat socket carries, as types (ADR-0068).
 
 The design of record is ``docs/design/chat-wire-v2.md``. This module is the
-contract that design names, and nothing else: no I/O, no NAT import, no
+contract that design names, and nothing else: no I/O, no agent-runtime import, no
 LangChain import, so the producers in ``agent`` (and ``sources/``) and the
 socket handler in ``agent_host`` all import it without a cycle.
 
@@ -27,7 +27,7 @@ One frame is none of the three: :class:`Hello`, the server's first frame on
 every socket. It belongs to the connection, not to a turn, so it has no
 ``conversation_id``, ``turn_id`` or ``seq`` and is not a :data:`WireEvent`. The
 client opens nothing until it arrives: a server that accepts the upgrade and
-never says it speaks v2 (an agent rolled back to NAT's stock socket, which
+never says it speaks v2 (an agent rolled back to the agent runtime's stock socket, which
 ignores ``?v=2``) is otherwise indistinguishable from one that is thinking.
 
 Rules the models carry

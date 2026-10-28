@@ -31,7 +31,7 @@ from agent.observability.retrieval_trace import emit_step_span
 
 
 def now() -> float:
-    """NAT's clock, the one its own steps are stamped with; wall time when NAT is absent."""
+    """The agent runtime's clock, the one its own steps are stamped with; wall time when the runtime is absent."""
     try:
         from nat.utils.providers import current_time
 

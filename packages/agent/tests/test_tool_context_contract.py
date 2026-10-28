@@ -42,7 +42,7 @@ def config() -> dict:
 
 
 def _bound_tool_types(config: dict, agent: str) -> dict[str, str]:
-    """Bound tool name -> its NAT function type, the identity the contract is keyed by."""
+    """Bound tool name -> its agent-runtime function type, the identity the contract is keyed by."""
     declared = {**config["functions"], **(config.get("function_groups") or {})}
     return {name: declared[name]["_type"] for name in config["functions"][agent]["tools"] if name in declared}
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Custom web server startup script for the NVIDIA NeMo Agent toolkit
+Custom web server startup script for the agent runtime's
 research assistant.
 
 =============================================================================
 WHY THIS FILE EXISTS - THE ASYNCIO/ANYIO EVENT LOOP CONFLICT
 =============================================================================
 
-The standard NAT CLI command `nat serve` uses asyncio.run() internally to start
+The standard agent-runtime CLI command `nat serve` uses asyncio.run() internally to start
 the FastAPI server. This creates a fundamental conflict with how anyio (used by
 FastAPI/Starlette) manages event loops:
 
@@ -34,8 +34,8 @@ THE SOLUTION
 
 Instead of using `nat serve`, we bypass the asyncio.run() wrapper by:
 
-1. Loading the NAT configuration ourselves using the same loader NAT uses
-2. Setting up the required environment variables that NAT's FastAPI app expects
+1. Loading the agent runtime's configuration ourselves using the same loader the runtime uses
+2. Setting up the required environment variables that the agent runtime's FastAPI app expects
 3. Running uvicorn DIRECTLY with loop="asyncio"
 
 This allows uvicorn to manage its own event loop without conflict.
@@ -49,13 +49,13 @@ ENVIRONMENT VARIABLES
 =============================================================================
 
 This script reads:
-- CONFIG_FILE: Path to the NAT config YAML (default:
+- CONFIG_FILE: Path to the agent-runtime config YAML (default:
   /app/configs/config_oib_openrouter.yml)
 - HOST: Bind address (default: 0.0.0.0)
 - PORT: Bind port (default: 8000)
 
-This script sets (for NAT's FastAPI app):
-- NAT_CONFIG_FILE: Path to the config file (passed directly to NAT)
+This script sets (for the agent runtime's FastAPI app):
+- NAT_CONFIG_FILE: Path to the config file (passed directly to the runtime)
 - NAT_FRONT_END_WORKER: The worker class name for the FastAPI frontend
 
 =============================================================================
@@ -68,8 +68,8 @@ ALTERNATIVE APPROACHES CONSIDERED
 2. Running nat serve in a subprocess
    - Rejected: Adds complexity, harder to manage signals/shutdown
 
-3. Modifying NAT source code
-   - Rejected: We want to use NAT as a dependency, not fork it
+3. Modifying the agent runtime's source code
+   - Rejected: We want to use the agent runtime as a dependency, not fork it
 
 4. Using uvicorn programmatically (THIS APPROACH)
    - Chosen: Clean, no patches, uvicorn handles the loop correctly
@@ -137,7 +137,7 @@ def configure_logging():
     )
 
     # Set specific loggers to appropriate levels
-    # These match NAT's default logging configuration
+    # These match the agent runtime's default logging configuration
     logger_names = ("nat", "agent", "agent_host", "knowledge_layer")
     for logger_name in logger_names:
         logging.getLogger(logger_name).setLevel(getattr(logging, log_level, logging.INFO))
@@ -152,7 +152,7 @@ def configure_logging():
 
 
 def load_nat_config(config_file: str):
-    """Register Grid telemetry `_type`s, then load and validate the NAT YAML.
+    """Register Grid telemetry `_type`s, then load and validate the agent-runtime YAML.
 
     The JOIN `start_web` actually runs: a process that has imported none of
     pytest's plugins. `load_config` alone is not enough.
@@ -173,8 +173,8 @@ def main():
 
     This function:
     1. Reads configuration from environment variables
-    2. Loads and validates the NAT config file
-    3. Sets up environment variables required by NAT's FastAPI app
+    2. Loads and validates the agent-runtime config file
+    3. Sets up environment variables required by the agent runtime's FastAPI app
     4. Starts uvicorn directly (bypassing nat serve's asyncio.run wrapper)
     """
     # Configure logging first (before any imports that might log)
@@ -199,11 +199,11 @@ def main():
     print()
 
     # -------------------------------------------------------------------------
-    # STEP 1: Load and validate the NAT configuration
+    # STEP 1: Load and validate the agent-runtime configuration
     # -------------------------------------------------------------------------
-    # NAT's load_config() discovers plugins then validates YAML `_type` tags
+    # The agent runtime's load_config() discovers plugins then validates YAML `_type` tags
     # against the registry. Grid's otelcollector_logs / otelcollector_redaction
-    # register at import and are not in NAT's stock set. They used to ride in
+    # register at import and are not in the runtime's stock set. They used to ride in
     # on chat_researcher.register; after that package dissolved, this process
     # called load_config in a clean interpreter and CrashLoopBackOff'd.
     # pytest already imported the plugins, so an in-process test cannot catch
@@ -213,26 +213,26 @@ def main():
     print("✓ Configuration loaded and validated")
 
     # -------------------------------------------------------------------------
-    # STEP 2: Set NAT_CONFIG_FILE for NAT's FastAPI app
+    # STEP 2: Set NAT_CONFIG_FILE for the agent runtime's FastAPI app
     # -------------------------------------------------------------------------
-    # NAT's FastAPI app (nat.front_ends.fastapi.main:get_app) expects the
+    # The agent runtime's FastAPI app (nat.front_ends.fastapi.main:get_app) expects the
     # config to be available via the NAT_CONFIG_FILE environment variable.
     #
     # We pass the original config file path since load_config() has already
-    # validated it. NAT will re-load it internally when the app starts.
+    # validated it. The runtime will re-load it internally when the app starts.
     print("Setting NAT_CONFIG_FILE...")
     os.environ["NAT_CONFIG_FILE"] = config_file
     print(f"✓ NAT_CONFIG_FILE set to {config_file}")
 
     # -------------------------------------------------------------------------
-    # STEP 3: Set up the worker class for NAT's FastAPI frontend
+    # STEP 3: Set up the worker class for the agent runtime's FastAPI frontend
     # -------------------------------------------------------------------------
-    # NAT's FastAPI app needs to know which worker class to use for handling
+    # The agent runtime's FastAPI app needs to know which worker class to use for handling
     # requests. This is normally set by nat serve, but since we're bypassing
     # that, we need to set it ourselves.
     #
     # IMPORTANT: We need to use the runner_class from the config file, not the
-    # default NAT worker. The config specifies aiq_async.plugin.AsyncAPIWorker
+    # default agent-runtime worker. The config specifies aiq_async.plugin.AsyncAPIWorker
     # which provides async job infrastructure with SSE streaming.
     print("Setting up FastAPI worker...")
     from nat.front_ends.fastapi.utils import get_class_name
@@ -250,7 +250,7 @@ def main():
             os.environ["NAT_FRONT_END_WORKER"] = runner_class_name
             print(f"✓ Worker class (from config): {runner_class_name}")
         else:
-            # Fallback to default NAT worker if not specified in config
+            # Fallback to default agent-runtime worker if not specified in config
             from nat.front_ends.fastapi.fastapi_front_end_plugin import FastApiFrontEndPlugin
 
             worker_class = FastApiFrontEndPlugin.get_worker_class(None)

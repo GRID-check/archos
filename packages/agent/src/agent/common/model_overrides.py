@@ -147,7 +147,7 @@ class AgentGroup(StrEnum):
     # Ingestion-plane VLM (image captioning + rendered-drawing description).
     # Re-points the vision model used during document ingestion. Unlike the
     # chat groups it is resolved by org id in a detached ingest thread (no
-    # request header) and applies to a bespoke vision call site, not a NAT chat
+    # request header) and applies to a bespoke vision call site, not an agent-runtime chat
     # model. The frontend registry gates it to vision-capable models
     # (`requiresImageInput` in agent-groups.ts); the picker save path validates
     # against that same gate.
@@ -447,9 +447,9 @@ def get_zdr_only_from_context() -> bool:
 
 
 def _rebind_instance_method_patches(original: object, copy_obj: object) -> None:
-    """Rebind instance-level method wrappers (e.g. NAT ``patch_with_retry``) to the copy.
+    """Rebind instance-level method wrappers (e.g. the agent runtime's ``patch_with_retry``) to the copy.
 
-    NAT's LLM builders wrap every public method of the chat model with retry
+    The agent runtime's LLM builders wrap every public method of the chat model with retry
     wrappers stored in the instance ``__dict__`` as ``types.MethodType`` bound
     to the *original* instance. Pydantic ``model_copy`` shallow-copies
     ``__dict__``, so without rebinding every call on the override copy keeps
@@ -500,7 +500,7 @@ def override_reasoning_effort(llm: object, effort: str) -> object:
     """Return a copy of a chat model set to the platform owner's thinking level.
 
     Like :func:`override_model`, uses ``model_copy`` so the result is a real chat
-    model sharing the underlying HTTP client, and rebinds NAT's instance-level
+    model sharing the underlying HTTP client, and rebinds the agent runtime's instance-level
     retry wrappers to the copy. Request-scoped: the shared build-time instance is
     never mutated.
 

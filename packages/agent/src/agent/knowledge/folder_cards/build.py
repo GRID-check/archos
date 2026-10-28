@@ -6,7 +6,7 @@ by ``openrouter.pin_chat_model`` at registration): the same machinery that write
 each document's one-sentence summary, so a card is written by the model that wrote
 its children's summaries. The call is a Langfuse generation named ``folder-card``
 (``observed_generation``), with the collection, the depth and the prompt version as
-metadata, because it runs in the ingest worker and no NAT workflow sees it.
+metadata, because it runs in the ingest worker and no agent-runtime workflow sees it.
 
 The prompt is English and the output German, which is domain data. :func:`validate`
 is the guard that matters: a key fact survives only when every document it names

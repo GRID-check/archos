@@ -30,7 +30,7 @@ export const SCALER_FALLBACK_FAILURES = 3;
  * active trigger a tier is held before it is taken from 1 replica to 0, so it
  * does nothing where `minReplicas` is 1 (prod). Every step from N down to 1 is
  * the HPA's, and `QUEUE_SCALE_BEHAVIOR.scaleDown` is what slows it. It is long so
- * that a burst arriving in waves does not pay a cold start (a NAT build, a Next
+ * that a burst arriving in waves does not pay a cold start (an agent-runtime build, a Next
  * boot) per wave.
  */
 export const SCALER_COOLDOWN_SECONDS = 300;

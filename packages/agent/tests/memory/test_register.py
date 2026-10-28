@@ -1,6 +1,6 @@
 """Tests for the ``remember`` tool's honest failure handling.
 
-Drives the inner ``_remember`` function (the one yielded as a NAT
+Drives the inner ``_remember`` function (the one yielded as an agent-runtime
 ``FunctionInfo``) with ``insert_memory_item`` mocked, so the tool's user-facing
 result strings can be asserted without a real internal API.
 """
@@ -38,12 +38,12 @@ def _patch_context(monkeypatch, *, project_id="p1", organization_id="o1", conver
 
 
 async def _remember(monkeypatch, insert, **kwargs):
-    """Enter the NAT registration, call _remember once, return its string result."""
+    """Enter the agent-runtime registration, call _remember once, return its string result."""
     monkeypatch.setattr(pm, "insert_memory_item", insert)
     params = {"kind": "derived_fact", "content": "The roof load is 2 kN/m2.", "scope": "project"}
     params.update(kwargs)
     async with project_memory_remember(ProjectMemoryRememberConfig(), MagicMock()) as info:
-        # NAT wraps the inner fn behind a pydantic input schema; call it the same
+        # The agent runtime wraps the inner fn behind a pydantic input schema; call it the same
         # way the framework does — with a validated input model instance.
         return await info.single_fn(info.input_schema(**params))
 

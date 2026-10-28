@@ -14,7 +14,7 @@ CONTEXTVAR PROPAGATION
 -----------------------
 The middleware binds the resolved user dict in the agent tier's ``ContextVar``
 (``agent.auth.request_identity``) so that
-NAT workflow functions (which do not receive the ASGI ``Request`` object)
+Agent-runtime workflow functions (which do not receive the ASGI ``Request`` object)
 can read the caller type without framework coupling.
 
     from agent.auth.request_identity import get_current_user
@@ -141,7 +141,7 @@ def build_request_trace_tags(
 # Paths reachable from outside the cluster.  Any external request whose path
 # does NOT match one of these receives 404.  Prefix entries must end with "/".
 # No turn route is here: a turn runs on the chat socket alone (ADR-0068), and
-# NAT's HTTP turn routes (`/chat`, `/generate`, `/v1/chat`, ...) are
+# The agent runtime's HTTP turn routes (`/chat`, `/generate`, `/v1/chat`, ...) are
 # not mounted (`agent_host.plugin.AgentHostConfig`).
 EXTERNAL_ALLOWED_PATHS: list[str] = [
     "/health",

@@ -35,7 +35,7 @@ from agent_host.jobs.runner import _update_status_if_not_terminal
 def db_url(tmp_path):
     """One SQLite file for the queue table, job_info and job_events alike.
 
-    ``sqlite+aiosqlite`` so NAT's async JobStore and the sync SQLAlchemy
+    ``sqlite+aiosqlite`` so the agent runtime's async JobStore and the sync SQLAlchemy
     engines (queue/event_store, normalized to sync) meet in the same file.
     """
     url = f"sqlite+aiosqlite:///{tmp_path / 'write_gating.db'}"

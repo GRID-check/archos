@@ -1,6 +1,6 @@
 """The chat socket, wire v2 (``agent_host.chat_socket``, design §c/§d/§g).
 
-Driven through ``ChatSocket.serve`` over an in-memory socket, with NAT's session
+Driven through ``ChatSocket.serve`` over an in-memory socket, with the agent runtime's session
 API stood in by a fake whose run yields what a turn's ``_run`` yields: wire
 bodies. Every frame the socket writes is checked against the contract
 (``HELLO`` for the first, ``WIRE_EVENT`` for the rest), so a frame the reader
@@ -155,7 +155,7 @@ Turn = Callable[[Any, Callable], AsyncIterator[Any]]
 
 
 class FakeSessions:
-    """NAT's ``SessionManager``: ``session()`` → ``run()`` → ``result_stream()`` of what ``turn`` yields."""
+    """The runtime's ``SessionManager``: ``session()`` → ``run()`` → ``result_stream()`` of what ``turn`` yields."""
 
     def __init__(self, turn: Turn) -> None:
         self.turn = turn
@@ -285,7 +285,7 @@ def _types(events: list[dict]) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# The route: NAT's socket is off and unpatched, ours is mounted (DoD 5)
+# The route: the runtime's socket is off and unpatched, ours is mounted (DoD 5)
 # ---------------------------------------------------------------------------
 
 
@@ -318,7 +318,7 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
 
     before = list(app.routes)
     await websocket_routes.add_websocket_routes(worker, app, config.workflow, session_manager)
-    assert app.routes == before  # NAT mounts no socket
+    assert app.routes == before  # the runtime mounts no socket
     await worker.add_routes(app, builder=object())
 
     sockets = [route for route in app.routes if route.path == "/websocket"]
@@ -474,7 +474,7 @@ async def test_a_malformed_message_is_refused(harness):
 
 
 async def test_a_message_this_wire_does_not_have_is_answered_never_dropped(harness):
-    """NAT's stock socket met a type it did not know with a frame the page could not read; silence is no better."""
+    """The runtime's stock socket met an unknown type with a frame the page could not read; silence is no better."""
     h = harness()
     sock = h.connect()
 
@@ -516,7 +516,7 @@ async def test_a_turn_is_run_started_then_what_the_workflow_yields_in_seq_order(
     ]
     assert events[0]["message_id"] == answer_message_id(CONV, "t1")
     opened = h.sessions.opened[0]
-    assert opened["user_id"] == "user_asker"  # NAT's Context.user_id and span user.id: the verified subject
+    assert opened["user_id"] == "user_asker"  # the runtime's Context.user_id and span user.id: the verified subject
     assert (opened["conversation_id"], opened["user_message_id"]) == (CONV, "t1")
     assert persisted[0]["message_id"] == answer_message_id(CONV, "t1")
     assert persisted[0]["metadata"] == {
@@ -529,7 +529,7 @@ async def test_a_turn_is_run_started_then_what_the_workflow_yields_in_seq_order(
 async def test_the_workflow_runs_in_the_trace_its_answer_row_names(harness, persisted):
     """The BFF scores a vote on the trace the row names, so the run must really be in it.
 
-    NAT adopts a `workflow_trace_id` already in the context instead of drawing a
+    The agent runtime adopts a `workflow_trace_id` already in the context instead of drawing a
     random one, and every root span takes it; the pin is what the workflow sees.
     """
     from nat.plugin_api import ContextState
@@ -852,7 +852,7 @@ async def test_a_question_goes_out_and_the_asker_s_choice_comes_back(harness):
     asker.client(type="user_message", message_id="t1", text="?")
     await until(lambda: "interaction_request" in _types(asker.events()))
     request = asker.events()[-1]["value"]
-    assert (request["interaction_id"], request["input"]) == ("ask_01", "choice")  # NAT's prompt id
+    assert (request["interaction_id"], request["input"]) == ("ask_01", "choice")  # the runtime's prompt id
 
     colleague.client(type="interaction_response", turn_id="t1", interaction_id="ask_01", answer={"option_id": "1"})
     asker.client(type="interaction_response", turn_id="t1", interaction_id="ask_other", answer={"text": "x"})
@@ -1559,7 +1559,7 @@ async def test_a_duplicate_never_asks_the_running_turn_to_stop(harness):
 
 
 async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
-    """NAT's semaphore queued a turn after RUN_STARTED, heartbeating, behind turns waiting on a person.
+    """The agent runtime's semaphore queued a turn after RUN_STARTED, heartbeating, behind turns waiting on a person.
 
     The one concurrency gate is ADR-0040's admission, which refuses at once.
     """
@@ -1578,7 +1578,7 @@ async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
     manager = await worker._create_chat_session_manager(builder=object())
 
     assert create.await_args.kwargs["max_concurrency"] == 0
-    assert manager in worker._session_managers  # shut down with NAT's own
+    assert manager in worker._session_managers  # shut down with the runtime's own
 
 
 # ---------------------------------------------------------------------------

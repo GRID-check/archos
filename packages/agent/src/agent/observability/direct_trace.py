@@ -1,6 +1,6 @@
-"""A Langfuse generation for a model call that no NAT workflow makes (ADR-0089).
+"""A Langfuse generation for a model call that no agent-runtime workflow makes (ADR-0089).
 
-Every model call must be observable, and NAT's span exporter only sees what runs
+Every model call must be observable, and the agent runtime's span exporter only sees what runs
 inside a workflow. The auxiliary routes in ``agent_host`` (conversation title,
 project summary, consistency check, skill review, lesson distill, feedback
 digest) post to the chat-completions endpoint straight from a FastAPI handler, so
@@ -11,7 +11,7 @@ when the call failed.
 
 Mechanics, each a decision:
 
-* **A private ``TracerProvider``, never the global one.** NAT, and whatever else
+* **A private ``TracerProvider``, never the global one.** The agent runtime, and whatever else
   in the process speaks the OpenTelemetry API, must not start exporting through
   this provider. Built lazily on the first call and kept for the life of the
   process; the SDK flushes it at interpreter exit.
@@ -24,11 +24,11 @@ Mechanics, each a decision:
 * **Fail-open.** A telemetry fault logs at DEBUG and the route carries on; the
   context manager never raises and never swallows the route's own exception.
 
-Input and output are the content category NAT already exports for a chat turn
+Input and output are the content category the agent runtime already exports for a chat turn
 (ADR-0029), each capped at :data:`MAX_PAYLOAD_CHARS` so a long skill document
 cannot turn one span into megabytes. The environment, release and observation
 type come from ``trace_context`` and the usage buckets from
-``usage_observation_attributes``, so this span and a NAT generation cannot
+``usage_observation_attributes``, so this span and an agent-runtime generation cannot
 disagree about what they carry.
 """
 
@@ -144,7 +144,7 @@ def _clip(text: str) -> str:
     """A payload attribute as it may leave the process: inline images redacted, then cut to the bound.
 
     Every payload this tracer writes passes here, so no prompt, output or pick carries an image's
-    bytes (``common.image_redaction``), as on the NAT pipeline's spans. Redacted before the cut, so a
+    bytes (``common.image_redaction``), as on the agent runtime's pipeline spans. Redacted before the cut, so a
     cut never leaves half a data URL the pattern no longer matches.
     """
     text = redact_inline_images(text)
@@ -526,10 +526,10 @@ def observed_retrieval(
     query: Mapping[str, Any],
     metadata: Mapping[str, Any] | None = None,
 ) -> _ObservedRetrieval:
-    """Trace one store query that no NAT workflow runs, as a Langfuse ``retriever`` observation named ``step``.
+    """Trace one store query that no workflow runs, as a Langfuse ``retriever`` observation named ``step``.
 
     A search a person starts from a page (similar passages) runs in a plain
-    route, where NAT's exporter sees nothing. Wrap the query and ``.finish``
+    route, where the agent runtime's exporter sees nothing. Wrap the query and ``.finish``
     the picks inside the block::
 
         with observed_retrieval("similar-passages", step="retrieve.similar_passages", query={...}) as trace:

@@ -6,8 +6,8 @@ that turn, and may not affect the answer in any way. Adding one costs a
 declaration and a handler: the single call site iterates the registry and never
 names a stage.
 
-Importing this package registers every built-in stage, the same way importing a
-NAT plugin package registers its functions.
+Importing this package registers every built-in stage, the same way importing an
+agent-runtime plugin package registers its functions.
 
 See docs/architecture/post-answer-stages.md.
 """

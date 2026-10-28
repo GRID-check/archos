@@ -44,7 +44,7 @@ def test_the_ingest_worker_will_not_boot_without_the_lock_dsn():
 
 
 def _web(role: WebRole) -> AgentHostWorker:
-    """A worker of this role, without NAT's front end: the check runs ahead of ``super().build_app()``."""
+    """A worker of this role, without the agent runtime's front end: the check runs ahead of ``super().build_app()``."""
     web = AgentHostWorker.__new__(AgentHostWorker)
     web._role = role
     return web

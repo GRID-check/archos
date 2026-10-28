@@ -1,4 +1,4 @@
-"""A turn's wire bodies folded back into its text: NAT's single-output fold and the Stop partial."""
+"""A turn's wire bodies folded back into its text: the agent runtime's single-output fold and the Stop partial."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ class TestFoldTurn:
             fold_turn([_delta("Vorläufig")])
 
     def test_the_return_annotation_is_an_object_nat_can_resolve(self):
-        """NAT builds the workflow's single output type from it; a string annotation breaks `nat run`."""
+        """The agent runtime builds the workflow's single output type from it; a string annotation breaks `nat run`."""
         assert fold_turn.__annotations__["return"] is str
 
 

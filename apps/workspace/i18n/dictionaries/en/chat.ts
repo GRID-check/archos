@@ -1630,7 +1630,7 @@ export const chat = {
     },
     showThinking: 'Show thinking ({count})',
     showThinkingSteps: 'Show thinking steps ({count})',
-    // The trace's header line. No step count: it counted raw NAT event names,
+    // The trace's header line. No step count: it counted raw agent-runtime event names,
     // not turns or calls (see ChatThinking). The sources clause is ABSENT when
     // there are none: "0 sources" is a true number that reads as a failure, and
     // an answer grounded in a measurement of the model rightly has no citations.

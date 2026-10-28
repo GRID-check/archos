@@ -4,7 +4,7 @@ The admission (``restricted_use.admit_tool_results``) works on what a tool call
 REPORTS it read (``note_collections_read``) and, as a backstop, on restricted
 collection names in the result's text. A new tool that returns a restricted
 folder's content without reporting it, and without naming the collection,
-would pass both. So every NAT function this deployment registers is classified
+would pass both. So every agent-runtime function this deployment registers is classified
 here, and the classification names the test that pins it: a new tool fails
 this file until somebody decides which kind it is and points at the proof.
 
@@ -134,7 +134,7 @@ _KINDS = {"reports", "lists_nothing_restricted", "no_collection_content", "exter
 
 
 def _registered_tool_types() -> set[str]:
-    """Every registered NAT function AND function group: a group's tools reach the model like any other."""
+    """Every registered agent-runtime function AND function group: a group's tools reach the model like any other."""
     for entry_point in importlib.metadata.entry_points(group="nat.plugins"):
         entry_point.load()
     registry = GlobalTypeRegistry.get()

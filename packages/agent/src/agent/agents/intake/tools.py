@@ -2,7 +2,7 @@
 
 ADR-0111.
 
-Built per run in Python, not registered with NAT: they exist only for this
+Built per run in Python, not registered with the agent runtime: they exist only for this
 agent, close over the run's :class:`IntakeSession`, and nothing else binds
 them. The rules about how each is used live in its description (ADR-0060), so
 the prompt keeps only the job.

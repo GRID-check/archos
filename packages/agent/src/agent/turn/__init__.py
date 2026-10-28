@@ -7,7 +7,7 @@ against capacity and budget, lifting the finished graph state onto the wire
 response, and streaming it. The workflow entry point
 (:mod:`agent.agents.piloti.conversation_register`) composes these
 units; each is a small tested function with an explicit signature, so a fix in
-one can be tested without standing up a NAT workflow.
+one can be tested without standing up an agent-runtime workflow.
 
 Nothing here imports ``agent_host``: the API tier hosts this workflow and depends
 on it, never the other way (the ``agent-api-seam`` import-linter contract).

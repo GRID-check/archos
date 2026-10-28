@@ -914,7 +914,6 @@
   "packages/agent/src/agent/agents/piloti/prompts/piloti.j2": 1,
   "packages/agent/src/agent/agents/piloti/register.py": 2,
   "packages/agent/src/agent/auth/request_identity.py": 1,
-  "packages/agent/src/agent/auth/utils.py": 2,
   "packages/agent/src/agent/cards/catalog.py": 4,
   "packages/agent/src/agent/citations/binding.py": 1,
   "packages/agent/src/agent/citations/grounding_text.py": 1,

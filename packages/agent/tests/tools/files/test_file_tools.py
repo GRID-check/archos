@@ -1,6 +1,6 @@
 """The write-side workspace tool: what it resolves, and what it refuses.
 
-Every test here drives the inner function NAT yields, with the turn's inventory
+Every test here drives the inner function the agent runtime yields, with the turn's inventory
 and a card registry bound the way a real turn binds them. Two properties are
 what this file exists to hold:
 

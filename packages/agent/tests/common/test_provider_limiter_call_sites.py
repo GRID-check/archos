@@ -53,7 +53,7 @@ SCANNED = [
     ROOT / "scripts",
 ]
 
-#: Building a chat model by hand, or acquiring one from NAT without the seam.
+#: Building a chat model by hand, or acquiring one from the agent runtime without the seam.
 #: Every one of them yields a model the contract subclass never wraps.
 CHAT_MODEL = re.compile(
     r"\b(?:ChatOpenAI|AzureChatOpenAI|ChatNVIDIA|ChatAnthropic|ChatGoogleGenerativeAI|ChatMistralAI|ChatOllama"
@@ -262,10 +262,10 @@ def test_every_pinned_client_is_built_on_the_limited_transport(make):
 
 
 async def test_a_chat_model_from_the_seam_holds_a_slot_for_every_call(pool, monkeypatch):
-    """`get_langchain_llm` through a real NAT builder: what every agent in the fleet is handed."""
+    """`get_langchain_llm` through a real agent-runtime builder: what every agent in the fleet is handed."""
     from langchain_openai import ChatOpenAI
 
-    import nat.plugins.langchain.llm  # noqa: F401 - registers NAT's LangChain clients
+    import nat.plugins.langchain.llm  # noqa: F401 - registers the agent runtime's LangChain clients
     from agent.common.llm_factory import get_langchain_llm
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.llm.openai_llm import OpenAIModelConfig

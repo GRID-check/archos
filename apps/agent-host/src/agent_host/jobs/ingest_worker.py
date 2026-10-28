@@ -1,7 +1,7 @@
 """The dedicated ingestion worker tier (ADR-0076).
 
 Run as its own container: ``PROCESS_ROLE=ingest-worker`` makes the entrypoint start
-``python -m agent_host.jobs.ingest_worker``. It builds the NAT workflow once, which
+``python -m agent_host.jobs.ingest_worker``. It builds the agent-runtime workflow once, which
 activates the ingestor exactly as the web roles do (same summary model, same
 shared Qdrant, same object store), attaches the durable queue to it, and then
 does nothing but claim: its ``INGEST_MAX_WORKERS`` threads take the next job
@@ -20,7 +20,7 @@ second run is the one that counts. A pod that is killed instead (OOM, node loss)
 leaves its claims to go stale and be claimed again.
 
 Config (env):
-  CONFIG_FILE / NAT_CONFIG_FILE        the NAT config the web tier runs
+  CONFIG_FILE / NAT_CONFIG_FILE        the agent-runtime config the web tier runs
   INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
   INGEST_WORKER_DRAIN_SECONDS     drain budget on SIGTERM (default 600)
   WORKER_LIVENESS_FILE            touched while the loop is alive

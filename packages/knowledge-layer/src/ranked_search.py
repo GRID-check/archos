@@ -137,7 +137,7 @@ class RankedSearch:
         )
         self._start_side_reads()
         # Per-turn requery budget: one firing per turn. Reset per turn id when
-        # the NAT context states one (user message id), falling back to the
+        # the agent-runtime context states one (user message id), falling back to the
         # executing-round stamp (round zero opens a new turn); unstamped
         # callers (tests, standalone) get a slot rather than inheriting a
         # spent cap. Fail-open when neither is visible.

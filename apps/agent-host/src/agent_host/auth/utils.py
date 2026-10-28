@@ -96,7 +96,7 @@ def _load_trace_client_ip_headers() -> list[str]:
 HEADERS = {"mode": ("x-chat-mode", "x-aiq-mode"), "access-channel": ("x-access-channel", "x-aiq-access-channel")}
 
 #: The span attributes this middleware writes, each under ``app.`` (ADR-0145):
-#: OpenTelemetry wants custom attributes namespaced, and NAT already writes a bare
+#: OpenTelemetry wants custom attributes namespaced, and the agent runtime already writes a bare
 #: ``user.id`` of its own. Saved trace views filtered on them under ``aiq.``, so
 #: for one release each is written under that name too.
 TRACE_TAG_KEYS = frozenset(

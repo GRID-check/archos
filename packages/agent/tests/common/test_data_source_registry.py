@@ -168,25 +168,25 @@ class TestToolSourceMap:
         assert get_source_id_for_tool("tool") is None
 
     def test_group_matches_nat_separator(self):
-        """Function group tools use NAT's __ separator."""
+        """Function group tools use the agent runtime's __ separator."""
         set_group_source_map({"my_group": "my_group"})
 
         assert get_source_id_for_tool("my_group__tool_a") == "my_group"
         assert get_source_id_for_tool("my_group__tool_b") == "my_group"
 
     def test_group_matches_legacy_separator(self):
-        """Function group tools also match NAT's legacy . separator."""
+        """Function group tools also match the agent runtime's legacy . separator."""
         set_group_source_map({"my_group": "my_group"})
 
         assert get_source_id_for_tool("my_group.tool_a") == "my_group"
 
     def test_group_rejects_no_separator(self):
-        """Bare prefix without NAT separator does not match."""
+        """Bare prefix without the agent runtime's separator does not match."""
         set_group_source_map({"my_group": "my_group"})
 
         assert get_source_id_for_tool("my_group") is None
         assert get_source_id_for_tool("my_groupfoo") is None
-        assert get_source_id_for_tool("my_group_tool") is None  # single underscore is not a NAT separator
+        assert get_source_id_for_tool("my_group_tool") is None  # single underscore is not an agent-runtime separator
 
     def test_exact_match_takes_priority_over_group(self):
         """Exact tool match should win over group prefix match."""

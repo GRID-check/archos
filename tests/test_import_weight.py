@@ -3,7 +3,7 @@
 Importing ``agent.common.turn_status`` executes ``agent/__init__.py`` and
 ``agent/common/__init__.py`` first, and the root conftest loads before every
 test. When those imported their whole package, a one-line harness test spent
-4.6 s of its 5.7 s loading LangChain, NAT, LangGraph's checkpointers and the
+4.6 s of its 5.7 s loading LangChain, the agent runtime, LangGraph's checkpointers and the
 Qdrant client, and every test importing one ``agent.common`` module loaded
 all sixty (docs/audit/blast-radius-2026-10.md). Each import check runs in a
 fresh interpreter, because this one has long since imported everything.
@@ -94,7 +94,7 @@ def test_a_conftest_every_test_loads_loads_nothing_heavy(conftest):
 
 def test_every_knowledge_layer_tool_module_is_an_entry_point():
     # The package `__init__` used to import `browse` and `read_passage`, which is
-    # how NAT saw their tools; each has its own entry point now. A stale venv
+    # how the agent runtime saw their tools; each has its own entry point now. A stale venv
     # fails here: `uv sync --group dev` installs the new entry points.
     from importlib.metadata import entry_points
 

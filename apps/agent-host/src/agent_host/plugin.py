@@ -1,10 +1,10 @@
 """
-NAT plugin registration for unified AI-Q API.
+Agent-runtime plugin registration for unified AI-Q API.
 
 One plugin, two web roles (``PROCESS_ROLE``, ``roles.WebRole``, ADR-0082 step B):
 
 * ``chat`` mounts the chat socket, the chat-occupancy route KEDA reads, and
-  what is left of NAT's own routes once its HTTP turn routes are off (see
+  what is left of the agent runtime's own routes once its HTTP turn routes are off (see
   ``AgentHostConfig``), and drains running chat turns at shutdown.
 * ``api`` mounts the Knowledge API (collections/documents, the LLM utilities,
   admin) and the Async Job API (agent jobs, SSE streaming, housekeeping), and
@@ -175,8 +175,8 @@ def _load_validators_from_entry_points() -> list:
     return validators
 
 
-#: The fields of a NAT endpoint config that each mount a route running the
-#: workflow: the HTTP turn routes and NAT's own WebSocket. ``AgentHostConfig`` leaves
+#: The fields of an agent-runtime endpoint config that each mount a route running the
+#: workflow: the HTTP turn routes and the agent runtime's own WebSocket. ``AgentHostConfig`` leaves
 #: every one unset and refuses a config that sets one.
 WORKFLOW_ROUTE_FIELDS = (
     "path",
@@ -210,7 +210,7 @@ class AgentHostConfig(FastApiFrontEndConfig, name="agent_host"):
         le=604800,
         description="Job expiry time in seconds (default: 24 hours)",
     )
-    # The chat wire is ours (ADR-0068), and it is the only way in to a turn. NAT
+    # The chat wire is ours (ADR-0068), and it is the only way in to a turn. The agent runtime
     # mounts no WebSocket route and none of its HTTP turn routes, and its step
     # adaptor, which fed them, is off. Steps still reach the exporters, which
     # subscribe to the step manager and not to the adaptor.
@@ -224,13 +224,13 @@ class AgentHostConfig(FastApiFrontEndConfig, name="agent_host"):
 
     @model_validator(mode="after")
     def _the_chat_socket_is_the_only_turn_route(self) -> AgentHostConfig:
-        """Refuse a config that puts a NAT route in front of the workflow, rather than serve it.
+        """Refuse a config that puts an agent-runtime route in front of the workflow, rather than serve it.
 
-        NAT's defaults put the workflow behind ``/v1/workflow*``, ``/generate*``,
+        The agent runtime's defaults put the workflow behind ``/v1/workflow*``, ``/generate*``,
         ``/v1/chat*`` (its OpenAI-compatible completions among them), ``/chat*``
         and ``/websocket``. Each of those skips what the chat socket does per
         turn: admission, the conversation fence, cancel, replay, the persisted
-        answer, and the ``finally`` that always sends a terminal. They stream through NAT's
+        answer, and the ``finally`` that always sends a terminal. They stream through the agent runtime's
         ``generate_streaming_response``, whose early stop leaves the producer
         running (``workflow_stream`` has the account), and with the step adaptor
         off they carry none of the steps a reader is shown. ``/websocket`` is the
@@ -304,7 +304,7 @@ def _create_shutdown_signal_handler(
 
 
 #: The routers the ``chat`` role mounts on its router. The chat socket and what
-#: is left of NAT's own routes are the rest of what it serves
+#: is left of the agent runtime's own routes are the rest of what it serves
 #: (``AgentHostWorker._add_chat_routes``).
 CHAT_ROUTERS: tuple[Callable[[APIRouter], None], ...] = (
     # The chat tier's scaling signal, read by KEDA (ADR-0080). Internal-token
@@ -419,7 +419,7 @@ class AgentHostWorker(FastApiFrontEndPluginWorker):
 
     ``chat``:
     - The chat socket (ADR-0068), the one route a turn runs through
-    - NAT's own routes that run no turn (the OAuth callback, its execution
+    - The agent runtime's own routes that run no turn (the OAuth callback, its execution
       store, ``/evaluate/item``, the MCP tool list)
     """
 
@@ -496,7 +496,7 @@ class AgentHostWorker(FastApiFrontEndPluginWorker):
     async def add_default_route(self, app: FastAPI, session_manager: SessionManager):
         """Nothing: a turn's one route is the chat socket, which ``_add_chat_routes`` mounts.
 
-        NAT's version mounts the generate, chat and socket routes the
+        The agent runtime's version mounts the generate, chat and socket routes the
         ``workflow`` config names, which ``AgentHostConfig`` leaves unset. It also
         mounts the async generate route whenever a Dask scheduler is reachable,
         whatever the config says, as ``None/async`` when ``workflow.path`` is
@@ -510,8 +510,8 @@ class AgentHostWorker(FastApiFrontEndPluginWorker):
         else:
             await self._add_api_routes(app, builder)
 
-        # One /health for both roles, ours and not NAT's: the sha and the role,
-        # no database ping (agent_host.health). Last, so it replaces the NAT route
+        # One /health for both roles, ours and not the agent runtime's: the sha and the role,
+        # no database ping (agent_host.health). Last, so it replaces the agent-runtime route
         # `super().add_routes` mounted on chat.
         install_health_route(app, self._role)
 
@@ -555,18 +555,18 @@ class AgentHostWorker(FastApiFrontEndPluginWorker):
             self._restore_signal_handlers()
 
     async def _add_chat_routes(self, app: FastAPI, builder: WorkflowBuilder) -> None:
-        """What only ``chat`` serves: the chat socket, and NAT's own routes that run no turn."""
+        """What only ``chat`` serves: the chat socket, and the agent runtime's own routes that run no turn."""
         await super().add_routes(app, builder)
 
         # The chat socket (ADR-0068), on the worker's own session manager so
-        # NAT shuts it down with the others.
+        # The agent runtime shuts it down with the others.
         session_manager = await self._create_chat_session_manager(builder)
         app.add_api_websocket_route(CHAT_SOCKET_PATH, chat_socket_endpoint(session_manager))
 
     async def _add_api_routes(self, app: FastAPI, builder: WorkflowBuilder) -> None:
         """What only ``api`` serves beside its router: the job routes.
 
-        NAT's own routes (execution, the OAuth callback, evaluate item, monitor,
+        The agent runtime's own routes (execution, the OAuth callback, evaluate item, monitor,
         static, MCP) belong to ``chat`` alone: nothing calls them on this tier.
         """
         for register in API_APP_REGISTRARS:
@@ -574,9 +574,9 @@ class AgentHostWorker(FastApiFrontEndPluginWorker):
         logger.info("Async Job API routes registered")
 
     async def _create_chat_session_manager(self, builder: WorkflowBuilder) -> SessionManager:
-        """The chat socket's session manager, with NAT's concurrency gate off (``max_concurrency=0``).
+        """The chat socket's session manager, with the agent runtime's concurrency gate off (``max_concurrency=0``).
 
-        NAT's default gate (8) is an ``asyncio.Semaphore`` held for the whole
+        The agent runtime's default gate (8) is an ``asyncio.Semaphore`` held for the whole
         ``Session.run``: a turn waiting on a person's answer kept its place for
         up to ``HITL_RESPONSE_TIMEOUT_SECONDS``, and the ninth turn queued
         behind them unseen, after ``RUN_STARTED``, while its heartbeat kept the
@@ -584,7 +584,7 @@ class AgentHostWorker(FastApiFrontEndPluginWorker):
         ADR-0040's admission (``agent.common.turn_admission``,
         ``MAX_ACTIVE_TURNS``), held around every chat turn, which refuses
         a turn it has no slot for at once with a retry hint instead of queueing
-        it. Registered with the worker's others so NAT shuts it down with them.
+        it. Registered with the worker's others so the agent runtime shuts it down with them.
         """
         session_manager = await SessionManager.create(config=self._config, shared_builder=builder, max_concurrency=0)
         self._session_managers.append(session_manager)
@@ -656,5 +656,5 @@ class AgentHostPlugin(FastApiFrontEndPlugin):
 
 @register_front_end(config_type=AgentHostConfig)
 async def register_agent_host(config: AgentHostConfig, full_config: Config):
-    """Register unified AI-Q API with NAT framework."""
+    """Register unified AI-Q API with the agent runtime's framework."""
     yield AgentHostPlugin(full_config=full_config, config=config)

@@ -9,7 +9,7 @@ candidate budget and the per-chunk picks (file, page, score, shelf) had no
 structured home. An empty result was indistinguishable from a turn that never
 searched at all.
 
-This module emits ONE balanced NAT step pair per search, named
+This module emits ONE balanced agent-runtime step pair per search, named
 ``retrieve.<tool>`` (e.g. ``retrieve.knowledge_search``), so it:
 
 * flows through the same exporter pipeline as every other span and therefore
@@ -73,7 +73,7 @@ def build_retrieval_input(
 ) -> dict[str, Any]:
     """What the search asked for — the half that explains WHY these picks.
 
-    Pure, so tests can pin the shape without a NAT context.
+    Pure, so tests can pin the shape without an agent-runtime context.
     """
     payload: dict[str, Any] = {
         "query": query,
@@ -132,7 +132,7 @@ def emit_retrieval_span(*, tool_name: str, search_input: dict[str, Any], picks: 
 
 
 def _end_timestamps(started_at: float | None, ended_at: float | None) -> dict[str, float]:
-    """The END event's two clocks: when the span ended, and when it started (NAT's convention)."""
+    """The END event's two clocks: when the span ended, and when it started (the agent runtime's convention)."""
     stamps: dict[str, float] = {}
     if ended_at is not None:
         stamps["event_timestamp"] = ended_at
@@ -152,13 +152,13 @@ def emit_step_span(
     """Push ONE balanced FUNCTION step pair named ``step_name``, with these as its input and output.
 
     The mechanics every agent-named observation shares (``retrieve.*``, and the
-    decision model's ``decide.*``): a START and an END with one UUID, so NAT's
+    decision model's ``decide.*``): a START and an END with one UUID, so the agent runtime's
     span stack stays balanced and the observation nests under whatever step is
     open. Never raises: telemetry must never take a turn down.
 
     Both events are pushed now, back to back. Without timestamps the
     observation is a point (its latency reads ~1 ms in Langfuse, whatever the
-    work took). ``started_at`` and ``ended_at`` (NAT's clock,
+    work took). ``started_at`` and ``ended_at`` (the agent runtime's clock,
     ``nat.utils.providers.current_time``) give it the real interval instead:
     the exporter reads a span's start off the START event's timestamp and its
     end off the END's (``span_exporter``). ``observability.turn_phases`` is the

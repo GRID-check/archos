@@ -1,7 +1,7 @@
 """Tests for duplicate job-ID rejection on submit (hijack/delete protection).
 
 A caller-supplied job_id that collides with an existing job must be rejected
-with 409 Conflict: NAT's job_info write and the job_access upsert are
+with 409 Conflict: the agent runtime's job_info write and the job_access upsert are
 unconditional, so re-submitting an existing ID would rewrite ownership, and a
 failed re-submission would wipe the original job via rollback_job_submission.
 """
@@ -150,7 +150,7 @@ class TestSubmitDuplicateJobId:
 
     @pytest.mark.asyncio
     async def test_job_info_only_row_also_rejected(self, db_url):
-        """A job known only to NAT's job_info (no access row yet) still counts as existing."""
+        """A job known only to the agent runtime's job_info (no access row yet) still counts as existing."""
         _insert_job_info(db_url, "job-1")
 
         job_store = _mock_job_store()

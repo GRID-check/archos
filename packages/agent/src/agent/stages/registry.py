@@ -1,6 +1,6 @@
 """Import-time registration of post-answer stages.
 
-Same shape as NAT's ``@register_function`` that the whole agent tier already
+Same shape as the agent runtime's ``@register_function`` that the whole agent tier already
 uses: a stage module declares its :class:`~agent.stages.spec.StageSpec` at
 module level and hands it to :func:`register_stage`, and importing the package
 is what makes it exist. The single call site iterates

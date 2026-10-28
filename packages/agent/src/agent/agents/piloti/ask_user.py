@@ -169,7 +169,7 @@ class AskUserGuard:
             self._pending_conversations.clear()
 
 
-#: The process-wide guard: NAT registers ``ask_user`` once per process, and the
+#: The process-wide guard: the agent runtime registers ``ask_user`` once per process, and the
 #: pending-slot condition is a property of the transport, not of a tool
 #: instance. Module-level by the registry rule: it has a reset for tests.
 _guard = AskUserGuard()
@@ -230,7 +230,7 @@ def _reject_arguments(question: str, labels: list[str]) -> str | None:
 
 
 def _turn_scope() -> tuple[str | None, str | None, Any] | None:
-    """``(conversation_id, turn_id, interaction manager)`` from the NAT context, or None without one."""
+    """``(conversation_id, turn_id, interaction manager)`` from the agent-runtime context, or None without one."""
     try:
         nat_context = Context.get()
         return nat_context.conversation_id, nat_context.user_message_id, nat_context.user_interaction_manager

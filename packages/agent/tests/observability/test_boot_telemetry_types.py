@@ -2,8 +2,8 @@
 
 `test_shipped_config_wires_the_otlp_logging_method` only yaml.safe_load's the
 file, and pytest has already imported the plugins. That suite stayed green
-while `start_web.py` died on `_type` `otelcollector_logs` not in the NAT
-registry. This file is the process that actually boots.
+while `start_web.py` died on `_type` `otelcollector_logs` not in the agent
+runtime's registry. This file is the process that actually boots.
 
 Full `load_config` of the shipped YAML needs every `nat.plugins` entry point
 to import, which an editable install from another worktree will not do. The

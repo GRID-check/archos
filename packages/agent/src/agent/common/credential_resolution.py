@@ -1,12 +1,12 @@
-"""Unified LLM credential resolution for the bespoke, non-NAT call sites.
+"""Unified LLM credential resolution for the bespoke, non-agent-runtime call sites.
 
-Six credential paths grew up outside the NAT ``LLMProvider``/BYOK system (the
+Six credential paths grew up outside the agent runtime's ``LLMProvider``/BYOK system (the
 VLM captioner, the embeddings client, the tag-backfill script, and the two
 BFF-invoked FastAPI routes — consistency-check and generate-summary). Each had
 its own hand-rolled env chain, and none could reach an org's bring-your-own-key
 (BYOK) credential. This module gives them ONE resolver so the same deployment
-key (the org's OpenRouter/BYOK key) powers everything, exactly like the NAT
-agents already do.
+key (the org's OpenRouter/BYOK key) powers everything, exactly like the agent
+runtime's agents already do.
 
 Resolution order (see :func:`resolve_llm_credential`):
 
@@ -165,7 +165,7 @@ def resolve_llm_credential(
     organization_id: str | None = None,
     data_policy: DataPolicy | None = None,
 ) -> ResolvedCredential:
-    """Resolve an LLM credential for a bespoke (non-NAT) call site.
+    """Resolve an LLM credential for a bespoke (non-agent-runtime) call site.
 
     See the module docstring for the resolution order. ``base_url`` and
     ``model`` are resolved first (from ``base_url_env``/``model_env`` when given,
@@ -174,7 +174,7 @@ def resolve_llm_credential(
 
     A BYOK hit (``organization_id`` given and the org has a credential) swaps
     ``api_key`` + ``base_url`` only — the model is left as resolved from
-    env/defaults, matching the NAT model/credential separation (ADR-0022/0014).
+    env/defaults, matching the agent runtime's model/credential separation (ADR-0022/0014).
 
     ``data_policy`` defaults to the organization's (``openrouter.data_policy_for``,
     fails closed). Pass one explicitly only for work that is not one

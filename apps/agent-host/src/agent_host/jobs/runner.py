@@ -2,10 +2,10 @@
 Agent-agnostic job runner.
 
 The helpers of the research worker's job function, ``agent_job.run_agent_job``, which runs any registered agent with:
-- NAT's JobStore for job metadata and status
+- The agent runtime's JobStore for job metadata and status
 - SSE event streaming for real-time UI updates
 - Cancellation monitoring for graceful job termination
-- Phoenix/OpenTelemetry observability via NAT's ExporterManager
+- Phoenix/OpenTelemetry observability via the agent runtime's ExporterManager
 """
 
 from __future__ import annotations
@@ -201,7 +201,7 @@ async def _update_status_if_not_terminal(job_store: Any, job_id: str, status: An
     partially clobbered.
 
     Returns True if the status was written, False if it was left untouched.
-    Raises ValueError if the job does not exist (matching NAT's
+    Raises ValueError if the job does not exist (matching the agent runtime's
     ``JobStore.update_status`` contract).
     """
     from sqlalchemy import update
@@ -227,9 +227,9 @@ async def _update_status_if_not_terminal(job_store: Any, job_id: str, status: An
 
 
 def _status_values(status: Any, *, error: Any = None, output_path: Any = None, output: Any = None) -> dict[str, Any]:
-    """The columns a status write sets, serialized as NAT's ``JobStore.update_status`` does.
+    """The columns a status write sets, serialized as the agent runtime's ``JobStore.update_status`` does.
 
-    NAT honors exactly these fields; mirroring its output serialization keeps a
+    The agent runtime honors exactly these fields; mirroring its output serialization keeps a
     guarded write byte-identical to the unguarded one it replaces.
     """
     from pydantic import BaseModel
@@ -835,7 +835,7 @@ def _load_agent_class(agent_class_path: str) -> type:
     return getattr(module, class_name)
 
 
-# NAT function ``_type``s whose single ``llm`` runs on the tool-calling chat model's
+# Agent-runtime function ``_type``s whose single ``llm`` runs on the tool-calling chat model's
 # group (``AgentGroup.RESEARCH``) rather than the deep-research default.
 _CHAT_MODEL_AGENT_TYPES = frozenset({"research_agent", "project_intake_agent"})
 
@@ -848,7 +848,7 @@ _JOB_PROFILE_NAMES = {"project_intake_agent": "project_intake_job"}
 
 
 async def _create_llm_provider(builder: Any, fn_config: Any) -> tuple[Any, Any]:
-    """Create a role-aware LLM provider from a NAT function config."""
+    """Create a role-aware LLM provider from an agent-runtime function config."""
     from agent.common import AgentGroup
     from agent.common import LLMProvider
     from agent.common import LLMRole

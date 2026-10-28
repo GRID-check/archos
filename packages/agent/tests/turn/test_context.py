@@ -246,8 +246,8 @@ class TestLoadTurnContext:
             )
 
         # Untimed first: the first call imports what its body imports lazily
-        # (NAT, ~0.7 s), which is no measure of overlap. The shared conftest
-        # used to hide that by importing NAT before every test.
+        # (the agent runtime, ~0.7 s), which is no measure of overlap. The shared conftest
+        # used to hide that by importing the agent runtime before every test.
         await load()
         started = time.perf_counter()
         await load()
