@@ -15,7 +15,6 @@
 import { fetchInChunks } from './status-batch'
 import {
   extractIngestJobId,
-  INTERRUPTED_REASON_PREFIX,
   isLostJob,
   isRecheckableCancellation,
   isRecheckableInterruption,
@@ -878,7 +877,7 @@ function announceSettledShelves(
 /**
  * Reconcile in-flight document rows with the backend's ingestion state and
  * persist any terminal transition (and re-check a recent `interrupted:`
- * failure or `cancelled` row, see {@link INTERRUPTED_REASON_PREFIX}), then merge
+ * failure or `cancelled` row, see `INTERRUPTED_REASON_PREFIX` in `lost-job.ts`), then merge
  * the backend's read-only document metadata (summary, page/chunk counts,
  * content types) onto every returned row.
  *
