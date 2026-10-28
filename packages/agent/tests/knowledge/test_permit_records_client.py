@@ -33,7 +33,7 @@ class _Bff:
                 bff.requests.append(
                     {
                         "path": self.path,
-                        "token": self.headers.get("X-Grid-Internal-Token"),
+                        "token": self.headers.get("X-Internal-Token"),
                         "body": self.rfile.read(length),
                     }
                 )

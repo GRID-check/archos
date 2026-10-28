@@ -249,7 +249,7 @@ def _fetch_org_config(organization_id: str) -> tuple[dict[str, str], bool]:
     response = httpx.get(
         f"{base_url}/api/internal/model-overrides",
         params={"organizationId": organization_id},
-        headers={"x-grid-internal-token": token},
+        headers={"x-internal-token": token},
         timeout=_REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()

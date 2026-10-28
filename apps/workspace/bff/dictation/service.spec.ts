@@ -59,8 +59,8 @@ describe('transcribeDictation', () => {
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('http://backend:8000/v1/dictation')
     const headers = init?.headers as Record<string, string>
-    expect(headers['x-grid-organization-id']).toBe('org_1')
-    expect(headers['x-grid-user-id']).toBe('user_1')
+    expect(headers['x-organization-id']).toBe('org_1')
+    expect(headers['x-user-id']).toBe('user_1')
     const body = JSON.parse(String(init?.body))
     expect(body).toMatchObject({ format: 'webm', duration_ms: 4200, locale: 'de' })
     expect(body).not.toHaveProperty('language')

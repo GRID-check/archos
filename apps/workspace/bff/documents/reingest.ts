@@ -223,7 +223,7 @@ async function requestIngestCancel(jobId: string, organizationId: string): Promi
       method: 'POST',
       // Forward the org id, as the dispatch does: the backend resolves the
       // organization's queue from it.
-      headers: { 'x-grid-organization-id': organizationId },
+      headers: { 'x-organization-id': organizationId },
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
   } catch (error) {

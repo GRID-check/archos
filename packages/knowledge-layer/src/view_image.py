@@ -408,7 +408,7 @@ async def _resolve_storage_location(
             response = await client.get(
                 f"{base_url.rstrip('/')}/api/internal/document-file",
                 params=params,
-                headers={"x-grid-internal-token": token, **_envelope_headers()},
+                headers={"x-internal-token": token, **_envelope_headers()},
             )
         if response.status_code != 200:
             return None

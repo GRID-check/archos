@@ -132,7 +132,7 @@ def _fetch_digest() -> tuple[str | None, tuple[str, ...]]:
     base_url = (os.environ.get("FRONTEND_INTERNAL_URL") or "http://frontend:3000").rstrip("/")
     response = httpx.get(
         f"{base_url}/api/internal/platform-lessons/digest",
-        headers={"x-grid-internal-token": token},
+        headers={"x-internal-token": token},
         timeout=_REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()

@@ -178,12 +178,12 @@ describe('a wake that runs', () => {
     const { headers } = sentRequest()
     expect(headers['x-chat-mode']).toBe('headless')
     expect(headers['x-aiq-mode']).toBe('headless')
-    expect(headers['x-grid-user-id']).toBe('user_anna')
+    expect(headers['x-user-id']).toBe('user_anna')
     // No browser cookie and no bearer: the backend reads an internal caller and trusts the envelope.
     expect(headers).not.toHaveProperty('authorization')
     const envelope = verifyRequestContextEnvelope(
-      headers['x-grid-request-context'],
-      headers['x-grid-request-context-sig'],
+      headers['x-request-context'],
+      headers['x-request-context-sig'],
       SECRET
     )
     expect(envelope).toMatchObject({ organizationId: 'org_1', userId: 'user_anna', projectId: 'proj_1', conversationId: THREAD })

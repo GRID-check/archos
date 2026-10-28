@@ -79,7 +79,7 @@ describe('judgeFiling', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('http://backend.test/v1/filing-fit')
-    expect(init?.headers).toMatchObject({ 'x-grid-organization-id': 'org_1' })
+    expect(init?.headers).toMatchObject({ 'x-organization-id': 'org_1' })
     expect(JSON.parse(String(init?.body))).toEqual(filingFitBody(INPUT))
     expect(judgement).toEqual({
       moves: [{ documentId: 'd1', folder: 'Bescheide', reason: 'Ein Bescheid.', newFolder: null, confidence: null }],

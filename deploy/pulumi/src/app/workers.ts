@@ -51,7 +51,7 @@ function internalSweepScript(label: string, timeoutMs: number): string {
     // A ceiling: anything near it is a fault, and hanging forever would block
     // the next tick under concurrencyPolicy: Forbid.
     `const signal = AbortSignal.timeout(${timeoutMs});`,
-    "fetch(url, { method: 'POST', headers: { 'x-grid-internal-token': token }, signal })",
+    "fetch(url, { method: 'POST', headers: { 'x-internal-token': token }, signal })",
     "  .then(async (response) => {",
     "    const body = await response.text();",
     "    if (!response.ok) throw new Error(`sweep failed: ${response.status} ${body}`);",

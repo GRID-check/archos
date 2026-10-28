@@ -67,7 +67,7 @@ def store_permit_record(
         response = httpx.post(
             f"{base_url.rstrip('/')}{_PERMIT_RECORDS_PATH}",
             json=body,
-            headers={"x-grid-internal-token": token},
+            headers={"x-internal-token": token},
             timeout=_HTTP_TIMEOUT_SECONDS,
         )
         if response.status_code != 200:

@@ -431,7 +431,7 @@ export function findBackendOperation(name: string): BackendOperation | undefined
 /** The backend answers within this, or the call is a 504. The BIM tools are the slow ones. */
 const BACKEND_TOOL_TIMEOUT_MS = 120_000
 
-const ENVELOPE_HEADERS = ['x-grid-request-context', 'x-grid-request-context-sig'] as const
+const ENVELOPE_HEADERS = ['x-request-context', 'x-request-context-sig'] as const
 
 /**
  * A refusal in the routes' error envelope (`{ error, code, details }`,

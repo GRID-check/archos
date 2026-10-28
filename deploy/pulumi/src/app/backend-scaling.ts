@@ -14,7 +14,7 @@ export const OCCUPANCY_PATH = "/v1/internal/chat-occupancy";
 export const OCCUPANCY_FIELD = "activeTurns";
 
 /** The header KEDA sends the shared internal token in (`agent_host/routes/internal_auth.py`). */
-export const OCCUPANCY_TOKEN_HEADER = "x-grid-internal-token";
+export const OCCUPANCY_TOKEN_HEADER = "x-internal-token";
 
 /**
  * The URL KEDA polls. The operator runs in its own namespace, so the Service name

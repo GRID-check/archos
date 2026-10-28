@@ -142,7 +142,7 @@ export const GET = tenantSlotRoute(async function GET(
       headers: {
         ...authHeaders,
         Accept: 'application/json',
-        'X-Grid-Collection-Scope': headerValue,
+        'X-Collection-Scope': headerValue,
       },
     })
 
@@ -217,7 +217,7 @@ export const POST = tenantSlotRoute(async function POST(
       headers: {
         ...authHeaders,
         ...requestHeaders,
-        'X-Grid-Collection-Scope': headerValue,
+        'X-Collection-Scope': headerValue,
       },
       ...(body ? { body, duplex: 'half' } : {}),
     })
@@ -280,7 +280,7 @@ export const DELETE = tenantSlotRoute(async function DELETE(
       headers: {
         ...authHeaders,
         'Content-Type': 'application/json',
-        'X-Grid-Collection-Scope': headerValue,
+        'X-Collection-Scope': headerValue,
       },
       ...(body ? { body } : {}),
     })

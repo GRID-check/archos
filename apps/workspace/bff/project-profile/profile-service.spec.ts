@@ -143,7 +143,7 @@ describe('checkProjectConsistency backend fetch is time-bounded (fail-open)', ()
     await checkProjectConsistency(session, 'proj-1', { freeText: [] })
 
     const [, init] = mockFetch.mock.calls[0]
-    expect((init as RequestInit).headers).toMatchObject({ 'x-grid-organization-id': 'org-1' })
+    expect((init as RequestInit).headers).toMatchObject({ 'x-organization-id': 'org-1' })
   })
 
   it('degrades a timeout abort to the same fail-open result as a network error', async () => {
@@ -358,6 +358,6 @@ describe('generateProjectSummary', () => {
     await generateProjectSummary(session, 'proj-1')
 
     const [, init] = mockFetch.mock.calls[0]
-    expect((init as RequestInit).headers).toMatchObject({ 'x-grid-organization-id': 'org-1' })
+    expect((init as RequestInit).headers).toMatchObject({ 'x-organization-id': 'org-1' })
   })
 })

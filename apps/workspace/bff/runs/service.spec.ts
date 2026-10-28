@@ -152,7 +152,7 @@ const session = {
 
 /** The envelope a run control carried, decoded the way the backend reads it. */
 const signedPayload = (caller: JobControlCaller): Record<string, unknown> =>
-  JSON.parse(Buffer.from(caller.contextHeaders['X-Grid-Request-Context'], 'base64url').toString('utf8'))
+  JSON.parse(Buffer.from(caller.contextHeaders['X-Request-Context'], 'base64url').toString('utf8'))
 
 /** ADR-0084: the project the service authorized travels signed, so a teammate may steer the run. */
 const expectSignedProject = (caller: JobControlCaller): void => {

@@ -150,7 +150,7 @@ async function modelCandidates(
   try {
     const res = await fetch(`${getBackendUrl()}/v1/cleanup-proposal`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-grid-organization-id': session.organizationId },
+      headers: { 'Content-Type': 'application/json', 'x-organization-id': session.organizationId },
       body: JSON.stringify({
         locale,
         documents: facts.map((fact) => ({

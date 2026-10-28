@@ -80,7 +80,7 @@ import { isProjectClosed, projectClosedError } from '@/lib/projects/project-stat
  * user-mandated; ADR-0084) for every request this proxy forwards, plus, on a
  * submit, the per-org runtime model overrides ({agentGroup: openrouterModelId})
  * — same header/encoding server.js forwards on the WebSocket upgrade
- * (x-grid-model-overrides, base64url JSON), decoded by the backend
+ * (x-model-overrides, base64url JSON), decoded by the backend
  * (model_overrides.py). Without the overrides header, submit falls through to
  * the WS-only override path and jobs silently run on YAML-default models even
  * when the org has configured overrides.
@@ -272,7 +272,7 @@ export const GET = tenantSlotRoute(async function GET(
         ...authHeaders,
         ...requestContextHeaders,
         Accept: isStreamRequest ? 'text/event-stream' : 'application/json',
-        'X-Grid-Collection-Scope': scope.headerValue,
+        'X-Collection-Scope': scope.headerValue,
       },
       ...(isStreamRequest ? { signal: req.signal } : {}),
     })
@@ -432,7 +432,7 @@ export const POST = tenantSlotRoute(async function POST(
 
     // Forward the request to the backend.
     //
-    // `resolveRequestContextHeaders` also emits `X-Grid-Collection-Scope` (it
+    // `resolveRequestContextHeaders` also emits `X-Collection-Scope` (it
     // encodes the same `scope` for the signed envelope), so it must NOT be
     // spread over the authoritative header the route computed. Set the scope
     // header from `buildCollectionScopeFromRequest`'s `headerValue` LAST so it
@@ -444,7 +444,7 @@ export const POST = tenantSlotRoute(async function POST(
         'Content-Type': 'application/json',
         ...authHeaders,
         ...requestContextHeaders,
-        'X-Grid-Collection-Scope': scope.headerValue,
+        'X-Collection-Scope': scope.headerValue,
       },
       ...(body ? { body } : {}),
     })
@@ -500,7 +500,7 @@ export const DELETE = tenantSlotRoute(async function DELETE(
         ...authHeaders,
         ...requestContextHeaders,
         Accept: 'application/json',
-        'X-Grid-Collection-Scope': scope.headerValue,
+        'X-Collection-Scope': scope.headerValue,
       },
     })
 

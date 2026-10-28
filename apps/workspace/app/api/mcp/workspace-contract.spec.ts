@@ -276,7 +276,7 @@ describe('what client.py sends, replayed against the real route', () => {
     expect(principal).toMatchObject({
       actor: 'piloti',
       conversationId: 'conv_1',
-      answerMessageId: recorded('call_read').headers['x-grid-answer-message-id'],
+      answerMessageId: recorded('call_read').headers['x-answer-message-id'],
     })
     expect(vi.mocked(recordWorkspaceHandOut).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(callOperation).mock.invocationCallOrder[0]
@@ -324,8 +324,8 @@ describe('what the route says to a request the client cannot make valid', () => 
     const answer = await captured(
       await POST(
         replay(recorded('search'), (h) => {
-          delete h['x-grid-request-context']
-          delete h['x-grid-request-context-sig']
+          delete h['x-request-context']
+          delete h['x-request-context-sig']
         })
       )
     )
@@ -338,8 +338,8 @@ describe('what the route says to a request the client cannot make valid', () => 
     const answer = await captured(
       await POST(
         replay(recorded('search'), (h) => {
-          h['x-grid-request-context'] = forged.header
-          h['x-grid-request-context-sig'] = forged.signature
+          h['x-request-context'] = forged.header
+          h['x-request-context-sig'] = forged.signature
         })
       )
     )
@@ -350,7 +350,7 @@ describe('what the route says to a request the client cannot make valid', () => 
     const answer = await captured(
       await POST(
         replay(recorded('search'), (h) => {
-          h['x-grid-internal-token'] = 'wrong'
+          h['x-internal-token'] = 'wrong'
         })
       )
     )

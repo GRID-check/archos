@@ -87,7 +87,7 @@ def _fetch_credential(organization_id: str) -> OrgLLMCredential | None:
     response = httpx.get(
         f"{_internal_base_url()}/api/internal/llm-credential",
         params={"organizationId": organization_id},
-        headers={"x-grid-internal-token": token},
+        headers={"x-internal-token": token},
         timeout=_REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
