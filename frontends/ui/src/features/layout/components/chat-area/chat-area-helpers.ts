@@ -39,13 +39,18 @@ export const turnEnding = (
   turnMessages: ChatMessage[],
   failed: boolean
 ): ThinkingEnding | undefined => {
-  if (view?.outcome === 'handed_off' || view?.result?.run || turnMessages.some((m) => m.runLedger)) {
+  if (
+    view?.outcome === 'handed_off' ||
+    view?.result?.run ||
+    turnMessages.some((m) => m.runLedger)
+  ) {
     return 'handed_off'
   }
   const refusedByBanner = turnMessages.some(
     (m) => m.messageType === 'error' && REFUSAL_CODES.has(m.errorData?.errorCode ?? '')
   )
-  if (view?.outcome === 'refused' || view?.result?.job_admission_rejected || refusedByBanner) return 'refused'
+  if (view?.outcome === 'refused' || view?.result?.job_admission_rejected || refusedByBanner)
+    return 'refused'
   return failed ? 'failed' : undefined
 }
 
