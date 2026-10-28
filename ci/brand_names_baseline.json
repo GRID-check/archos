@@ -3,7 +3,7 @@
   ".github/workflows/deploy.yml": 37,
   "ci/image_inputs.py": 1,
   "configs/config_oib_openrouter.yml": 9,
-  "deploy/.env.example": 30,
+  "deploy/.env.example": 27,
   "deploy/Dockerfile": 2,
   "deploy/compose/docker-compose.coolify.yaml": 110,
   "deploy/compose/docker-compose.yaml": 208,
