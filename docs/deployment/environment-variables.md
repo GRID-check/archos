@@ -653,7 +653,7 @@ init container, which runs `deploy/migration/chroma_export.py` through
 ## Notes
 
 - **Placeholder values**: The `.env.example` file contains commented-out optional variables. The `.env` file contains actual development keys.
-- **Docker networking**: In Docker Compose, services communicate over the internal `aiq-network` bridge network. Variables like `BACKEND_URL=http://aiq-api:8000`, `BACKEND_CHAT_URL=http://aiq-agent:8000` and `SEAWEED_ENDPOINT=http://seaweedfs:8333` use Docker DNS resolution.
+- **Docker networking**: In Docker Compose, services communicate over the internal `app` bridge network. Variables like `BACKEND_URL=http://api:8000`, `BACKEND_CHAT_URL=http://chat:8000` and `SEAWEED_ENDPOINT=http://seaweedfs:8333` use Docker DNS resolution.
 - **SeaweedFS credentials**: The SeaweedFS credentials are currently hardcoded in `docker-compose.yaml` for all three services that use them. For production, these should be externalized to the `.env` file.
 
 ## Model Configuration & Budgets (frontend)
