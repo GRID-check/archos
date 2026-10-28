@@ -214,7 +214,7 @@ export async function renderVersionBytes(
   const marking = generatedDocumentMarking(producer, document.authoredByRef ?? document.id)
   // No locale, for the reason `fileAgentDocumentDraft` states: this path's
   // callers are the agent's internal route and a revision run, neither of which
-  // sends a `grid-locale` cookie, so the office's own `default_locale` is what
+  // sends a `locale` cookie, so the office's own `default_locale` is what
   // the header line should inherit rather than the app default.
   const organizationName = await getOrganizationDisplayName(document.organizationId)
   const branding = await resolveDocumentBranding({

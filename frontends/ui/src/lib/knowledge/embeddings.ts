@@ -149,7 +149,7 @@ export function enrichForEmbedding(content: string, labels: readonly string[]): 
 
 /**
  * A SQL fragment scoring `column` against `vector` by cosine similarity, using
- * the `grid_cosine_similarity` function migration 0069 installs.
+ * the `cosine_similarity` function migration 0069 installs.
  *
  * Rows whose vector is absent, or was produced by a different model, score
  * NULL — the function returns NULL on a dimensionality mismatch, and callers
@@ -157,7 +157,7 @@ export function enrichForEmbedding(content: string, labels: readonly string[]): 
  * silently compare across models.
  */
 export function cosineSimilaritySql(column: SQL | unknown, vector: number[]): SQL<number | null> {
-  return sql<number | null>`grid_cosine_similarity(${column}, ${toVectorLiteral(vector)}::real[])`
+  return sql<number | null>`cosine_similarity(${column}, ${toVectorLiteral(vector)}::real[])`
 }
 
 /**

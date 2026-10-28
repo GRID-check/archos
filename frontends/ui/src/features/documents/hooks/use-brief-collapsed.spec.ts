@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useBriefCollapsed } from './use-brief-collapsed'
 
-const KEY = 'grid.files.brief.collapsed'
+const KEY = 'files.brief.collapsed'
 
 describe('useBriefCollapsed', () => {
   beforeEach(() => window.localStorage.clear())

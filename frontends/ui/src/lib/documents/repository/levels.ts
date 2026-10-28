@@ -80,7 +80,7 @@ export function afterDocumentLevelCursor(cursor: DocumentLevelCursor): SQL {
 
 /**
  * Documents whose file name or rename contains `q`, both sides folded by
- * `grid_fold_german` (migration 0188): case, either Unicode form (a name off a
+ * `fold_german` (migration 0188): case, either Unicode form (a name off a
  * Mac is decomposed), and ä ö ü ß as ae oe ue ss, so „Abgabepläne“ and
  * „Abgabeplaene“ find the same files, as the agent's file listing does
  * (`knowledge_layer/browse.py`, `fold`). `strpos` and not `LIKE`, so a `%` or
@@ -91,8 +91,8 @@ export function nameContains(q: string | undefined): SQL | undefined {
   const needle = q?.trim() ?? ''
   if (needle === '') return undefined
   return or(
-    sql`strpos(grid_fold_german(${documents.filename}), grid_fold_german(${needle})) > 0`,
-    sql`strpos(grid_fold_german(coalesce(${documents.displayName}, '')), grid_fold_german(${needle})) > 0`,
+    sql`strpos(fold_german(${documents.filename}), fold_german(${needle})) > 0`,
+    sql`strpos(fold_german(coalesce(${documents.displayName}, '')), fold_german(${needle})) > 0`,
   )
 }
 

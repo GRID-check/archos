@@ -38,7 +38,7 @@
  */
 
 /** Key under which the trail is persisted for the tab. */
-const STORAGE_KEY = 'grid.return-trail'
+const STORAGE_KEY = 'return-trail'
 
 /**
  * How many entries to keep. The consumer only ever reads the entry below the

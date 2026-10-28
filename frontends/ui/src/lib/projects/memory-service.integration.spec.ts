@@ -14,7 +14,7 @@
  * suite counts rows.
  *
  * It also runs the semantic gate through the real driver. That gate is raw SQL
- * over `grid_cosine_similarity`, and a mocked `execute` returns whatever shape
+ * over `cosine_similarity`, and a mocked `execute` returns whatever shape
  * the spec author expected; only a real result shows what postgres-js hands
  * back. The embedder itself is stubbed deterministically — the backend is not
  * part of this harness, and the claim under test is what the service does with

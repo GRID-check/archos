@@ -176,11 +176,11 @@ export function filtersWhere(filters: DocumentFilters): SQL[] {
 
 /**
  * The words as a query over `search_vector`, in both spellings the vector holds
- * (migration 0188): as typed, and folded by `grid_fold_german`, so
+ * (migration 0188): as typed, and folded by `fold_german`, so
  * „Flaechenwidmung“ and „Flächenwidmung“ find the same documents.
  */
 const tsQuery = (text: string): SQL =>
-  sql`(websearch_to_tsquery('german', ${text}) || websearch_to_tsquery('german', grid_fold_german(${text})))`
+  sql`(websearch_to_tsquery('german', ${text}) || websearch_to_tsquery('german', fold_german(${text})))`
 
 /** The text predicate: the name, what the document is (the reading), or its content. */
 function textWhere(text: TextMatch): SQL {

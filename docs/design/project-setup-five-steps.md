@@ -68,7 +68,7 @@ under a minute. Every step stays reachable, and nothing in one blocks the next.
   if any, `Popover` + `Command` for pickers) before writing a `div`.
 - A server change follows `frontends/ui/AGENTS.md`: a route is a thin adapter,
   the service owns logic and authorization, the repository owns SQL, and a new
-  table gets `grid_secure_table`. Each model call or check is observable in
+  table gets `secure_table`. Each model call or check is observable in
   Langfuse.
 - Each step ships with specs, and with a state in the `/dev/project-setup`
   preview (`?step=<id>&state=<fixture>`). Fixtures live in

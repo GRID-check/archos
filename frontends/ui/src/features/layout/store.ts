@@ -158,7 +158,7 @@ export const useLayoutStore = create<LayoutStore>()(
         ),
     }),
       {
-        name: 'grid-layout',
+        name: 'layout',
         // Only explicit user preferences survive reloads — panel/tab/data-source
         // state stays ephemeral per session.
         partialize: (state) => ({

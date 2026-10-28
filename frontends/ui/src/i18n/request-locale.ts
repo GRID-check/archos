@@ -6,7 +6,7 @@
  * For a signed-in request the SAVED facts decide: the person's own choice
  * (`user_preferences.prefs.locale`), else their office's chosen default
  * (`organizations.default_locale`, null until an admin picks one). The
- * `grid-locale` cookie only mirrors those facts, so it stands in for them only
+ * `locale` cookie only mirrors those facts, so it stands in for them only
  * when they cannot be read: signed out, auth disabled, the database down.
  *
  * Why the cookie does not win for a signed-in request: it was written in the

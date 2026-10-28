@@ -16,7 +16,7 @@
  *
  * How the collapsed state is forced. `AppSidebar` mounts its own
  * `SidebarProvider` and does not expose `defaultOpen`, so the only seam is the
- * storage key the provider restores from (`grid.sidebar.collapsed`, read in an
+ * storage key the provider restores from (`sidebar.collapsed`, read in an
  * effect at `components/ui/sidebar.tsx`). The seed therefore runs at MODULE
  * SCOPE — the same reason the fetch shims elsewhere in `/dev` do: React runs a
  * child's effects before its parent's, so anything deferred to a component
@@ -50,8 +50,8 @@ import { useShellOverlays } from '@/components/shell/shell-overlays'
 import { useLayoutStore } from '@/features/layout/store'
 import { installInboxBadgeFake } from '../_fixtures/inbox-badge'
 
-const SIDEBAR_STORAGE_KEY = 'grid.sidebar.collapsed'
-const SIDEBAR_WIDTH_STORAGE_KEY = 'grid.sidebar.width'
+const SIDEBAR_STORAGE_KEY = 'sidebar.collapsed'
+const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar.width'
 /** The `wide` variant's width — near the rail's 420px ceiling, not at it. */
 const WIDE_WIDTH = 400
 

@@ -77,7 +77,7 @@ export const documentRoles = pgTable(
     /**
      * The project reference carries the ORGANIZATION too.
      *
-     * `organizationId` is denormalised onto this table and `grid_secure_table`
+     * `organizationId` is denormalised onto this table and `secure_table`
      * checks only that column, so a single-column project reference let a row
      * bear this tenant's organization while pointing at another tenant's
      * project — every constraint passed, and the row was then readable under

@@ -17,7 +17,7 @@ describe('GlobalError', () => {
   })
 
   afterEach(() => {
-    document.cookie = 'grid-locale=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    document.cookie = 'locale=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
   })
 
   test('renders the generic error screen and offers retry', () => {
@@ -31,7 +31,7 @@ describe('GlobalError', () => {
   })
 
   test("speaks the visitor's language from the locale cookie, since no provider exists to ask", () => {
-    document.cookie = 'grid-locale=de'
+    document.cookie = 'locale=de'
     render(<GlobalError error={new Error('layout crashed')} retry={vi.fn()} />)
 
     expect(screen.queryByText(/something went wrong/i)).toBeNull()

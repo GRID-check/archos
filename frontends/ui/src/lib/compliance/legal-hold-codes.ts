@@ -2,7 +2,7 @@
  * The spellings a legal-hold refusal travels under, declared once.
  *
  * `LEGAL_HOLD_SQLSTATE` is what the database's delete triggers raise
- * (`grid_refuse_held_delete`, migration 0093); `LEGAL_HOLD_REASON` is the
+ * (`refuse_held_delete`, migration 0093); `LEGAL_HOLD_REASON` is the
  * `details.reason` of the 409 a client keys its copy on. The service check
  * (`./holds`) and the route wrapper's mapping of the trigger
  * (`@/lib/api/handler`) both answer with it, so a hold reads the same whichever

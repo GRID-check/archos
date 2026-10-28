@@ -268,7 +268,7 @@ describe('FilePreviewSplit — the file panel actually opens', () => {
     group.onLayoutChanged?.({}, { isUserInteraction: true })
 
     expect(useFilePreviewStore.getState().peekWidth).toBe(540)
-    expect(window.localStorage.getItem('grid.filePeek.width')).toBe('540')
+    expect(window.localStorage.getItem('filePeek.width')).toBe('540')
   })
 
   it('ignores layout changes it caused itself', () => {
@@ -287,7 +287,7 @@ describe('FilePreviewSplit — the file panel actually opens', () => {
     group.onLayoutChanged?.({}, { isUserInteraction: false })
 
     expect(useFilePreviewStore.getState().peekWidth).toBe(320)
-    expect(window.localStorage.getItem('grid.filePeek.width')).toBeNull()
+    expect(window.localStorage.getItem('filePeek.width')).toBeNull()
   })
 
   it('treats a seam dragged shut as dismissing the peek', () => {
@@ -311,7 +311,7 @@ describe('FilePreviewSplit — the file panel actually opens', () => {
   })
 
   it('opens at the width the reader left it at in an earlier session', () => {
-    window.localStorage.setItem('grid.filePeek.width', '620')
+    window.localStorage.setItem('filePeek.width', '620')
     nav.pathname = '/app/projects/p1/chat'
     useFilePreviewStore.getState().open(FILE, 'peek', { projectId: 'p1' })
     render(

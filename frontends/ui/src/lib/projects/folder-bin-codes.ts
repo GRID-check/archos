@@ -3,7 +3,7 @@
  * browser reads the same constants the server writes.
  *
  * What the database answers when something is filed into a deleted folder
- * (migration 0115, `grid_refuse_write_into_deleted_folder`): its own SQLSTATE
+ * (migration 0115, `refuse_write_into_deleted_folder`): its own SQLSTATE
  * (class `GF`, unassigned by the standard), which `lib/api/handler.ts` answers
  * as the folder being gone. Kept apart, like `legal-hold-codes.ts`, so the
  * handler imports a constant and not the bin's services.

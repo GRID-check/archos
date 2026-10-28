@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-const BRIEF_STORAGE_KEY = 'grid.files.brief.collapsed'
+const BRIEF_STORAGE_KEY = 'files.brief.collapsed'
 
 /**
  * Whether the folder brief is folded to its one-line summary, remembered per

@@ -43,7 +43,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   try {
     // Both columns restore collapse from the same key; pin the rail expanded so
     // the comparison is between SCOPES and not between collapse states.
-    window.localStorage.setItem('grid.sidebar.collapsed', 'false')
+    window.localStorage.setItem('sidebar.collapsed', 'false')
   } catch {
     // Storage unavailable — the rail renders expanded by default anyway.
   }

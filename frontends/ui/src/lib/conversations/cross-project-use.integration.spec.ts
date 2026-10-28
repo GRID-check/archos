@@ -306,7 +306,7 @@ describe.skipIf(!url)('cross-project use against Postgres (migration 0125)', () 
 
     expect(await marks(restrictedAnswer)).toBe(1)
     // Another project's open content is not restricted use: the project record
-    // stays outside `grid_conversation_restricted_use`.
+    // stays outside `conversation_restricted_use`.
     expect(await marks(openAnswer)).toBe(0)
   })
 

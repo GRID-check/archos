@@ -261,7 +261,7 @@ describe('conversation trace erasure queries', () => {
     expect(select.text).toContain('q.purged_at >= now() - make_interval(days => $)')
     expect(select.text).toContain('q.purged_at <= now() - make_interval(mins => $)')
     expect(select.text).toContain("q.payload->>'langfuseTracesErasedAt' IS NULL")
-    expect(select.text).toContain('NOT grid_legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)')
+    expect(select.text).toContain('NOT legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)')
     // 35 days, 15 minutes, 100 rows.
     expect(select.values).toEqual([35, 15, 100])
   })
@@ -269,7 +269,7 @@ describe('conversation trace erasure queries', () => {
   it('asks the hold predicate about the one conversation before its traces go', async () => {
     const { sql, executed } = makeClaimSql([{ held: true }])
     expect(await conversationIsHeld(sql, { entity_id: 's_1', organization_id: 'org_1' })).toBe(true)
-    expect(executed[1].text).toContain("grid_legal_hold_blocks('conversation', $, $)")
+    expect(executed[1].text).toContain("legal_hold_blocks('conversation', $, $)")
     expect(executed[1].values).toEqual(['s_1', 'org_1'])
 
     const free = makeClaimSql([{ held: false }])
