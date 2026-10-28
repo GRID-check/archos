@@ -47,7 +47,7 @@ from aiq_agent.common.citation_collector import artifact_for
 from aiq_agent.common.citation_collector import collect_citations
 from aiq_agent.common.estate_paths import is_draft_path
 from aiq_agent.common.estate_paths import is_skill_path
-from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
+from aiq_agent.common.tool_calls import CONCLUSION_DESCRIPTION
 from aiq_agent.skills import SKILLS_ROOT
 
 from .draft_store import DRAFT_ROOT

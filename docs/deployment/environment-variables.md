@@ -76,12 +76,12 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 |----------|----------|------------------|-----------------|-------------|
 | `APP_DATABASE_URL` | Yes | `postgresql://grid_app_rw:grid_app_rw_dev@postgres:5432/grid_app` <!-- pragma: allowlist secret (documented compose default) --> | `postgresql://grid_app_rw:…@localhost:5432/grid_app` | PostgreSQL URL for the Next.js BFF application database (Drizzle ORM), and for the purger and skill-scheduler workers. Connects as **`grid_app_rw`**, the least-privilege role: DML only, no DDL, and subject to row-level security, so a query that loses its organization filter returns no rows rather than another tenant's (ADR-0041). Pointing this at the owner credential silently disables enforcement — RLS does not apply to a table's owner. |
 | `APP_RUNTIME_PASSWORD` | No | `grid_app_rw_dev` | n/a | Compose only, and only a substitution into the DSNs below — the ROLE's password is set from `APP_DATABASE_URL` by `scripts/ensure-rls-roles.mjs`, so the two cannot drift. On Kubernetes CloudNativePG reconciles the role from the `pg-runtime-credentials` Secret (Pulumi config `pgRuntimePassword`, which is **required and has no fallback** — sharing the owner's password would let a runtime-DSN holder authenticate as the owner, who is exempt from every policy); this variable is not used there. |
-| `APP_MIGRATION_DATABASE_URL` | No | `postgresql://aiq:aiq_dev@postgres:5432/grid_app` | unset | Owner credential, set only on the workload that runs `drizzle-kit migrate`. DDL needs the schema owner, and a data backfill run as `grid_app_rw` would silently update zero rows. `drizzle.config.ts` prefers this and falls back to `APP_DATABASE_URL`. |
+| `APP_MIGRATION_DATABASE_URL` | No | `postgresql://agent:aiq_dev@postgres:5432/grid_app` | unset | Owner credential, set only on the workload that runs `drizzle-kit migrate`. DDL needs the schema owner, and a data backfill run as `grid_app_rw` would silently update zero rows. `drizzle.config.ts` prefers this and falls back to `APP_DATABASE_URL`. |
 | `DB_POOL_MAX` | No | `10` | `10` | Max PostgreSQL connections the BFF connection pool holds open. Bounds resource use so connection acquisition fails fast under load instead of piling requests up behind a saturated/unreachable database. Invalid/non-positive values fall back to `10`. |
-| `NAT_JOB_STORE_DB_URL` | No (SQLite fallback) | `postgresql+asyncpg://aiq:aiq_dev@postgres:5432/aiq_jobs` | `sqlite+aiosqlite:///./jobs.db` | NAT job store URL. PostgreSQL for Docker, SQLite for local dev. |
-| `CHECKPOINT_DB` | No (SQLite fallback) | `postgresql://aiq:aiq_dev@postgres:5432/aiq_checkpoints` | `./checkpoints.db` | LangGraph conversation checkpoint database, and the LangGraph store behind the chat working directory (the per-conversation drafts `write_file`/`edit_file` produce). PostgreSQL for Docker, SQLite for local dev — a non-Postgres value keeps the checkpointer on SQLite and puts the working directory in memory, so drafts do not survive a restart of the agent process. |
+| `NAT_JOB_STORE_DB_URL` | No (SQLite fallback) | `postgresql+asyncpg://agent:aiq_dev@postgres:5432/jobs` | `sqlite+aiosqlite:///./jobs.db` | NAT job store URL. PostgreSQL for Docker, SQLite for local dev. |
+| `CHECKPOINT_DB` | No (SQLite fallback) | `postgresql://agent:aiq_dev@postgres:5432/checkpoints` | `./checkpoints.db` | LangGraph conversation checkpoint database, and the LangGraph store behind the chat working directory (the per-conversation drafts `write_file`/`edit_file` produce). PostgreSQL for Docker, SQLite for local dev — a non-Postgres value keeps the checkpointer on SQLite and puts the working directory in memory, so drafts do not survive a restart of the agent process. |
 | `DEEP_CHECKPOINT_DB` | No | unset (durability OFF — strictly opt-in) | unset | Optional durable LangGraph checkpointing for **async deep-research jobs** (backlog T3-8, 2026-07-16) — separate from `CHECKPOINT_DB` above, which only covers the sync chat graph. Sets `deep_research_agent.checkpoint_db`; a worker crash no longer loses execution state (`thread_id = job_id`, `durability="async"`), but resume is manual-resubmit-based, not automatic. Unset/empty = durability off. MUST point at a writable volume path or Postgres DSN — a default-on relative path crashed container startup on read-only workdirs (post-#72 hotfix); an unopenable value now fails open with a warning instead of failing startup. |
-| `SUMMARY_DB` | No (SQLite fallback) | `postgresql+psycopg://aiq:aiq_dev@postgres:5432/aiq_jobs` | `sqlite+aiosqlite:///./summaries.db` | Document summaries database. Pointed at `aiq_jobs` in Docker to share the database. |
+| `SUMMARY_DB` | No (SQLite fallback) | `postgresql+psycopg://agent:aiq_dev@postgres:5432/jobs` | `sqlite+aiosqlite:///./summaries.db` | Document summaries database. Pointed at `jobs` in Docker to share the database. |
 
 ---
 
@@ -180,7 +180,7 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | `TURN_LEASE_SECONDS` | No | `120` | How long an admission slot survives without its turn renewing it. A running turn renews every third of the lease (`turn_admission.admit_turn_async`), so this bounds only how long a replica killed mid-turn keeps its slots, not how long a turn may run. Leases rather than a counter: a killed replica would otherwise leak its slot forever and shrink the pool permanently. Was `900`, taken once and never renewed, which a 40-minute deep-research turn outlived and the pool then over-admitted. |
 | `CHAT_RUNNING_TTL_SECONDS` | No | `12` | How long a conversation's running-turn marker (`conv:<id>:running`, ADR-0080) survives without its owner renewing it. The owner renews every quarter of this while its turn runs and deletes the marker when the turn ends. It bounds two things in opposite directions. How long a newer question waits behind a replica that died mid-turn (up to this value, so it must stay under `CHAT_SUPERSEDE_WAIT_SECONDS`, which stays under the client's 15 s acknowledgement bound). And, with `CHAT_AFFINITY` off, how long a Dragonfly blip the owner survives: it stops writing and cancels its turn once a successful renewal is older than this minus a fixed 4 s margin (one guarded write, 3 s, plus 1 s), so a blip shorter than this value minus 6 s is always ridden out (a failed renewal is retried every second, outside the bus's fail-fast window) and a longer one may end the answer. Must be above 4; the backend refuses to start with affinity off otherwise. With affinity on nothing is fenced and this bounds only the dead-owner wait. |
 | `CHAT_SUPERSEDE_WAIT_SECONDS` | No | `13.5` | How long a newer question waits for the conversation's running turn to stop (and its marker to clear) before it is refused as "still finishing the previous answer", never run beside it. Keep it above `CHAT_RUNNING_TTL_SECONDS`, so a replica that died mid-turn never costs a refusal, and under the client's 15 s acknowledgement bound (`RUN_STARTED` follows the wait). Only used while the conversation bus spans replicas. |
-| `CHAT_DRAIN_SECONDS` | No | `2700` | How long a terminating `chat` replica (`aiq-agent`) waits for the chat turns it runs before it cancels them (each ends with a cancelled terminal and is persisted). It must fit inside the pod's grace period and, to lose no turn, cover `CHAT_TURN_DEADLINE_SECONDS`. Pulumi derives the grace period from `backendDrainSeconds`, the value it sets here. |
+| `CHAT_DRAIN_SECONDS` | No | `2700` | How long a terminating `chat` replica (`aiq-agent`) waits for the chat turns it runs before it cancels them (each ends with a cancelled terminal and is persisted). It must fit inside the pod's grace period and, to lose no turn, cover `CHAT_TURN_DEADLINE_SECONDS`. Pulumi derives the grace period from `backendDrainSeconds`, the value it sets here. After the turns, the drain waits up to 30 s more for what follows their terminals (the answer row, a headless caller's outcome notice), inside the grace period's 60 s slack. |
 | `CHAT_AFFINITY` | No | `1` (on) | Whether the BFF pins each conversation to one `aiq-agent` replica by a hash of its id (ADR-0028). **On by default**: routing is the hash and the replica count is static. Set to `0` on the BFF and the backend together (Pulumi: `chatAffinity: false`) and sockets go to the load-balanced Service while the conversation bus decides which replica runs each turn (ADR-0080), which is what lets KEDA scale the tier. The backend reads it for one decision: with it on, a question that cannot be fenced on a down bus still runs; with it off, it is refused. |
 | `WIRE_V2_ADDITIVE_FIELDS` | No | `on` | Whether the chat socket's frames carry the server-to-client fields the lenient-parsing release added (`STAGED_SERVER_FIELDS` in `aiq_api/chat_socket.py`): the hello's `accepts` and `RUN_FINISHED.result.reasoning_effort`. It was off for that one release, while a tab opened before the deploy could still run a bundle that parsed every frame strictly. Every bundle since parses leniently, so it is on; `off` is the rollback. Off, the hello names nothing it accepts, so the page sends no `focus_region`, `reply_in_thread`, `steer` or `cancel_turn.shown`: a canvas question reaches Piloti without its box, a Stop stores everything streamed so far, and the answer shows the level the asker chose (the stored row keeps the resolved level). Read per frame on the `chat` role. Planned: the flag goes once the rollback is no longer needed. See [`chat-wire-v2.md`](../design/chat-wire-v2.md#compatibility-additive-changes-are-safe). |
 | `MAX_RUN_COMPLETION_TOKENS` | No | `0` (disabled) | Per-run completion (output) token ceiling for `deep_research_agent` jobs, enforced across every LLM call in the run including concurrent researcher workers (backlog T4-4, 2026-07-16). Exceeding it fails the job with an explicit budget-exceeded message rather than a generic internal error. Independent of the USD budget ledger below. |
@@ -202,7 +202,7 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | `CITATION_EVENTS_ENABLED` | No | `true` | Emit citation-health events (`src/aiq_agent/common/citation_events.py`) to `POST /api/internal/citation-events`, feeding the platform dashboard's citation-quality surface. `false`/`0`/`no`/`off` disables emission entirely; the answer path is unaffected either way. Backend (aiq-agent) service. |
 | `CITATION_REGISTRY_TTL_SECONDS` | No | `86400` | TTL of per-conversation citation-source snapshots in the shared cache (lets a conversation keep prior-turn sources across restarts/replicas). |
 | `LISTEN_DB_URL` | Yes, on Postgres | — | Direct (non-pooled) Postgres URL for the job SSE streams' LISTEN/NOTIFY (ADR-0083). Postgres sits behind a transaction pooler (PgBouncer) in Compose and Kubernetes, and a pooled LISTEN receives nothing. There is no default to the job-store URL: the `api` role on Postgres refuses to start without it (`require_direct_dsns`, called once at boot). The `chat` role and the workers do not LISTEN and do not need it. |
-| `LOCK_DB_URL` | Yes, on Postgres | — | Direct (non-pooled) Postgres URL for every session advisory lock: `leader_lock` (collection TTL cleanup), `keyed_lock` (the re-ingest lock) and the ghost-job reaper (ADR-0083). A session lock taken through a transaction pooler is acquired on one server connection and "released" on another, so the lock leaks and the guarded work stops. Same database and role as `LISTEN_DB_URL` (`aiq_jobs`). A web, research-worker or ingest-worker process that has a Postgres `SUMMARY_DB` or `NAT_JOB_STORE_DB_URL` and no `LOCK_DB_URL` refuses to start (`require_direct_dsns`, called once at boot). Locks fail closed: if one cannot be taken, a leader election yields to nobody for that cycle and the next tick retries, and a re-ingest lock raises so the file fails and is rescanned. Unset on SQLite. |
+| `LOCK_DB_URL` | Yes, on Postgres | — | Direct (non-pooled) Postgres URL for every session advisory lock: `leader_lock` (collection TTL cleanup), `keyed_lock` (the re-ingest lock) and the ghost-job reaper (ADR-0083). A session lock taken through a transaction pooler is acquired on one server connection and "released" on another, so the lock leaks and the guarded work stops. Same database and role as `LISTEN_DB_URL` (`jobs`). A web, research-worker or ingest-worker process that has a Postgres `SUMMARY_DB` or `NAT_JOB_STORE_DB_URL` and no `LOCK_DB_URL` refuses to start (`require_direct_dsns`, called once at boot). Locks fail closed: if one cannot be taken, a leader election yields to nobody for that cycle and the next tick retries, and a re-ingest lock raises so the file fails and is rescanned. Unset on SQLite. |
 | `QUERY_EMBED_CACHE_SIZE` | No | `512` | Max query embeddings kept in the retriever's LRU (one query is embedded once and reused across the per-collection fan-out). |
 | `STATIC_RESULT_CACHE_COLLECTIONS` | No | `oib_knowledge` | Comma-separated collections whose retrieval results may be cached (static corpora only — never project/session collections). |
 | `STATIC_RESULT_CACHE_TTL_SECONDS` | No | `3600` | TTL for cached static-collection retrieval results; in-process writes invalidate immediately via a collection version. |
@@ -392,7 +392,7 @@ An agent asks Piloti through `POST /api/piloti-asks` (the MCP operation `piloti-
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `AGENT_ASK_MAX_SECONDS` | No | `1800` | How long an ask may stay `submitted` or `working` before the next read of it (`piloti-ask-get`, a cancel) ends it `failed`: its turn's outcome notice never arrived, as when a replica died mid-turn. Above the longest a turn runs (deep research stops at 1200 s, and an ask ends when its turn hands off to it). |
+| `AGENT_ASK_MAX_SECONDS` | No | `2820` | How long an ask may stay `submitted` or `working` before the next read of it (`piloti-ask-get`, a cancel) ends it `failed`: its turn's outcome notice never arrived, as when a replica died mid-turn. The chat turn's own deadline (`CHAT_TURN_DEADLINE_SECONDS`, 2700) plus two minutes for the notice, so an ask is never ended while its turn may still answer; `ask-wire.spec.ts` holds the default to that deadline. |
 
 ---
 
@@ -709,7 +709,7 @@ HTML (a baked host is how prod once linked at the dev app).
 
 ## Renamed variables
 
-No variable carries the product's name. Every variable that started `GRID_`, or `AIQ_` before that, is now read under the rest of its name: `GRID_MAX_ACTIVE_JOBS_PER_ORG` is `MAX_ACTIVE_JOBS_PER_ORG` (`docs/contributing/code-conventions.md#no-brand-names`). For one release both images still read an old name: the backend's entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) and every Node process of the UI image (`frontends/ui/scripts/legacy-env-names.cjs`, loaded through `NODE_OPTIONS`) copy `GRID_X`, else `AIQ_X`, onto `X` when that is unset and log a deprecation warning, and the Compose files interpolate `${X:-${GRID_X:-${AIQ_X:-default}}}`. A name already set wins. The release after drops all of it.
+No variable carries the product's name. Every variable that started `GRID_`, or `AIQ_` before that, is now read under the rest of its name: `GRID_MAX_ACTIVE_JOBS_PER_ORG` is `MAX_ACTIVE_JOBS_PER_ORG` (`docs/contributing/code-conventions.md#no-brand-names`). For one release both images still read an old name: the backend's entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) and every Node process of the UI image (`frontends/ui/scripts/legacy-env-names.cjs`, loaded through `NODE_OPTIONS`) copy `GRID_X`, else `AIQ_X`, onto `X` when that is unset (with a deprecation warning, once the deployments themselves have moved to the new names), and the Compose files interpolate `${X:-${GRID_X:-${AIQ_X:-default}}}`. A name already set wins. The release after drops all of it.
 
 Where the bare name would collide with a variable a library or the platform already reads, or would still carry the product's name, the variable took a name of its own:
 
@@ -719,239 +719,6 @@ Where the bare name would collide with a variable a library or the platform alre
 | `GRID_VERBOSE` | `AGENT_VERBOSE` | `VERBOSE` is read by build tools and shells |
 | `GRID_LANGFUSE_TRACE_RETENTION_DAYS` | `TRACE_RETENTION_DAYS` | `LANGFUSE_` is the Langfuse SDK's and server's namespace |
 | `GRID_PILOTI_ASK_MAX_SECONDS` | `AGENT_ASK_MAX_SECONDS` | the bare name still carries the product's name |
-
-Every renamed variable (228), old name first:
-
-| Old name | New name |
-|---|---|
-| `GRID_ADMIN_TOKEN` | `ADMIN_TOKEN` |
-| `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED` | `AGENT_AUTHORED_DOCUMENTS_ENABLED` |
-| `GRID_ALLOW_AGENT_ORG_MEMORY` | `ALLOW_AGENT_ORG_MEMORY` |
-| `GRID_APP_DATABASE_URL` | `APP_DATABASE_URL` |
-| `GRID_APP_MIGRATION_DATABASE_URL` | `APP_MIGRATION_DATABASE_URL` |
-| `GRID_APP_RUNTIME_PASSWORD` | `APP_RUNTIME_PASSWORD` |
-| `GRID_AUDIT_LOGS_ENABLED` | `AUDIT_LOGS_ENABLED` |
-| `GRID_AUTHZ_CACHE_TTL_MS` | `AUTHZ_CACHE_TTL_MS` |
-| `GRID_AUTHZ_SLOW_CALL_MS` | `AUTHZ_SLOW_CALL_MS` |
-| `GRID_AVAILABLE_DOCUMENTS_MAX` | `AVAILABLE_DOCUMENTS_MAX` |
-| `GRID_BACKEND_URL` | `BACKEND_URL` |
-| `GRID_BASE_CORPUS_CACHE_DIR` | `BASE_CORPUS_CACHE_DIR` |
-| `GRID_BFF_JOBS_CONCURRENCY` | `BFF_JOBS_CONCURRENCY` |
-| `GRID_BFF_JOBS_DEAD_RETENTION_DAYS` | `BFF_JOBS_DEAD_RETENTION_DAYS` |
-| `GRID_BFF_JOBS_DRAIN_SECONDS` | `BFF_JOBS_DRAIN_SECONDS` |
-| `GRID_BFF_JOBS_MAX_ATTEMPTS` | `BFF_JOBS_MAX_ATTEMPTS` |
-| `GRID_BFF_JOBS_MAX_PER_ORG` | `BFF_JOBS_MAX_PER_ORG` |
-| `GRID_BFF_JOBS_MODE` | `BFF_JOBS_MODE` |
-| `GRID_BFF_JOBS_POLL_MS` | `BFF_JOBS_POLL_MS` |
-| `GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS` | `BFF_JOBS_RETRY_BACKOFF_SECONDS` |
-| `GRID_BFF_JOBS_SLICE_TIMEOUT_MS` | `BFF_JOBS_SLICE_TIMEOUT_MS` |
-| `GRID_BFF_JOBS_STALE_SECONDS` | `BFF_JOBS_STALE_SECONDS` |
-| `GRID_BFF_JOBS_URL` | `BFF_JOBS_URL` |
-| `GRID_BUDGET_EUR_PER_USD` | `BUDGET_EUR_PER_USD` |
-| `GRID_BYOK_ALLOW_PRIVATE_BASE_URLS` | `BYOK_ALLOW_PRIVATE_BASE_URLS` |
-| `GRID_BYOK_LOCAL_KEK` | `BYOK_LOCAL_KEK` |
-| `GRID_BYOK_SECRET_BACKEND` | `BYOK_SECRET_BACKEND` |
-| `GRID_CAPABILITY_GAP_LOG` | `CAPABILITY_GAP_LOG` |
-| `GRID_CHAT_AFFINITY` | `CHAT_AFFINITY` |
-| `GRID_CHAT_CHECKPOINT_RETENTION_SECONDS` | `CHAT_CHECKPOINT_RETENTION_SECONDS` |
-| `GRID_CHAT_DRAIN_SECONDS` | `CHAT_DRAIN_SECONDS` |
-| `GRID_CHAT_RUNNING_TTL_SECONDS` | `CHAT_RUNNING_TTL_SECONDS` |
-| `GRID_CHAT_SUPERSEDE_WAIT_SECONDS` | `CHAT_SUPERSEDE_WAIT_SECONDS` |
-| `GRID_CHAT_TURN_DEADLINE_SECONDS` | `CHAT_TURN_DEADLINE_SECONDS` |
-| `GRID_CHECKPOINT_DB` | `CHECKPOINT_DB` |
-| `GRID_CHECKPOINT_POOL_MAX_SIZE` | `CHECKPOINT_POOL_MAX_SIZE` |
-| `GRID_CHECKPOINT_POOL_MIN_SIZE` | `CHECKPOINT_POOL_MIN_SIZE` |
-| `GRID_CHROMA_DIR` | `CHROMA_DIR` |
-| `GRID_CHROMA_URL` | `CHROMA_URL` |
-| `GRID_CITATION_EVENTS_ENABLED` | `CITATION_EVENTS_ENABLED` |
-| `GRID_CITATION_REGISTRY_TTL_SECONDS` | `CITATION_REGISTRY_TTL_SECONDS` |
-| `GRID_COLLABORATION_ENABLED` | `COLLABORATION_ENABLED` |
-| `GRID_COLLECTION_TTL_HOURS` | `COLLECTION_TTL_HOURS` |
-| `GRID_COLLECTION_VERSION_MEMO_SECONDS` | `COLLECTION_VERSION_MEMO_SECONDS` |
-| `GRID_CONVERSATION_BUS` | `CONVERSATION_BUS` |
-| `GRID_CONV_STREAM_MAXLEN` | `CONV_STREAM_MAXLEN` |
-| `GRID_CONV_STREAM_TTL_SECONDS` | `CONV_STREAM_TTL_SECONDS` |
-| `GRID_CORPUS_EXPORT_TOKEN` | `CORPUS_EXPORT_TOKEN` |
-| `GRID_DB_POOL_MAX` | `DB_POOL_MAX` |
-| `GRID_DECISIONS_API_KEY` | `DECISIONS_API_KEY` |
-| `GRID_DECISIONS_ENABLED` | `DECISIONS_ENABLED` |
-| `GRID_DECISIONS_MODEL` | `DECISIONS_MODEL` |
-| `GRID_DECISIONS_URL` | `DECISIONS_URL` |
-| `GRID_DEEP_CHECKPOINT_DB` | `DEEP_CHECKPOINT_DB` |
-| `GRID_DEFAULT_MODEL` | `DEFAULT_MODEL` |
-| `GRID_DEFAULT_STORAGE_QUOTA_BYTES` | `DEFAULT_STORAGE_QUOTA_BYTES` |
-| `GRID_DEV_ENV` | `DEV_ENV` |
-| `GRID_DICTATION_FALLBACK_MODEL` | `DICTATION_FALLBACK_MODEL` |
-| `GRID_DICTATION_MODEL` | `DICTATION_MODEL` |
-| `GRID_DISABLE_SELF_SERVE_ORGS` | `DISABLE_SELF_SERVE_ORGS` |
-| `GRID_DOCUMENT_CHECK_DAILY_LIMIT` | `DOCUMENT_CHECK_DAILY_LIMIT` |
-| `GRID_DOCUMENT_CHECK_MAX_BATCH` | `DOCUMENT_CHECK_MAX_BATCH` |
-| `GRID_DROP_OCR_NOISE` | `DROP_OCR_NOISE` |
-| `GRID_EMBED_API_KEY` | `EMBED_API_KEY` |
-| `GRID_EMBED_BASE_URL` | `EMBED_BASE_URL` |
-| `GRID_EMBED_BATCH_SIZE` | `EMBED_BATCH_SIZE` |
-| `GRID_EMBED_MODEL` | `EMBED_MODEL` |
-| `GRID_EMBED_TIMEOUT_SECONDS` | `EMBED_TIMEOUT_SECONDS` |
-| `GRID_ENFORCE_FEATURE_FLAGS` | `ENFORCE_FEATURE_FLAGS` |
-| `GRID_EVAL_CHECKPOINT_DB` | `EVAL_CHECKPOINT_DB` |
-| `GRID_EVAL_ENVELOPE` | `EVAL_ENVELOPE` |
-| `GRID_EVAL_ENVELOPE_SIG` | `EVAL_ENVELOPE_SIG` |
-| `GRID_EVAL_USER_MESSAGE` | `EVAL_USER_MESSAGE` |
-| `GRID_EXTERNAL_HOSTNAMES` | `EXTERNAL_HOSTNAMES` |
-| `GRID_EXTRACT_CHARTS` | `EXTRACT_CHARTS` |
-| `GRID_EXTRACT_IMAGES` | `EXTRACT_IMAGES` |
-| `GRID_EXTRACT_TABLES` | `EXTRACT_TABLES` |
-| `GRID_FILE_TRACKING_RETENTION_SECONDS` | `FILE_TRACKING_RETENTION_SECONDS` |
-| `GRID_FILING_SUGGESTIONS` | `FILING_SUGGESTIONS` |
-| `GRID_FOLDER_CARDS_MONTHLY_TOKENS` | `FOLDER_CARDS_MONTHLY_TOKENS` |
-| `GRID_GEOCODER_URL` | `GEOCODER_URL` |
-| `GRID_GIT_SHA` | `GIT_SHA` |
-| `GRID_HITL_RESPONSE_TIMEOUT_SECONDS` | `HITL_RESPONSE_TIMEOUT_SECONDS` |
-| `GRID_HYBRID_RETRIEVAL` | `HYBRID_RETRIEVAL` |
-| `GRID_IFC_MODELS_ENABLED` | `IFC_MODELS_ENABLED` |
-| `GRID_INGEST_CLAIM_MAX_ATTEMPTS` | `INGEST_CLAIM_MAX_ATTEMPTS` |
-| `GRID_INGEST_CLAIM_STALE_SECONDS` | `INGEST_CLAIM_STALE_SECONDS` |
-| `GRID_INGEST_DEAD_RETENTION_DAYS` | `INGEST_DEAD_RETENTION_DAYS` |
-| `GRID_INGEST_MAX_JOB_SECONDS` | `INGEST_MAX_JOB_SECONDS` |
-| `GRID_INGEST_MAX_PER_ORG` | `INGEST_MAX_PER_ORG` |
-| `GRID_INGEST_MAX_WORKERS` | `INGEST_MAX_WORKERS` |
-| `GRID_INGEST_PROGRESS_TIMEOUT_SECONDS` | `INGEST_PROGRESS_TIMEOUT_SECONDS` |
-| `GRID_INGEST_QUEUE` | `INGEST_QUEUE` |
-| `GRID_INGEST_WAIT_SECONDS` | `INGEST_WAIT_SECONDS` |
-| `GRID_INGEST_WORKER_DRAIN_SECONDS` | `INGEST_WORKER_DRAIN_SECONDS` |
-| `GRID_INTERNAL_API_TOKEN` | `INTERNAL_API_TOKEN` |
-| `GRID_JOB_INFO_DELETE_GRACE_SECONDS` | `JOB_INFO_DELETE_GRACE_SECONDS` |
-| `GRID_JOB_PAYLOAD_KEK` | `JOB_PAYLOAD_KEK` |
-| `GRID_JWT_AUDIENCE` | `JWT_AUDIENCE` |
-| `GRID_JWT_ISSUER` | `JWT_ISSUER` |
-| `GRID_KEYED_LOCK_TIMEOUT_SECONDS` | `KEYED_LOCK_TIMEOUT_SECONDS` |
-| `GRID_LANDING_URL` | `LANDING_URL` |
-| `GRID_LANGFUSE_TRACE_RETENTION_DAYS` | `TRACE_RETENTION_DAYS` |
-| `GRID_LISTEN_DB_URL` | `LISTEN_DB_URL` |
-| `GRID_LOCK_DB_URL` | `LOCK_DB_URL` |
-| `GRID_LOOP_EVAL_URL` | `LOOP_EVAL_URL` |
-| `GRID_MAIL_IMPORT_ENABLED` | `MAIL_IMPORT_ENABLED` |
-| `GRID_MAIL_IMPORT_MAX_BYTES` | `MAIL_IMPORT_MAX_BYTES` |
-| `GRID_MAX_ACTIVE_JOBS_PER_ORG` | `MAX_ACTIVE_JOBS_PER_ORG` |
-| `GRID_MAX_ACTIVE_TURNS` | `MAX_ACTIVE_TURNS` |
-| `GRID_MAX_ACTIVE_TURNS_PER_ORG` | `MAX_ACTIVE_TURNS_PER_ORG` |
-| `GRID_MAX_IMAGES_PER_DOCUMENT` | `MAX_IMAGES_PER_DOCUMENT` |
-| `GRID_MAX_IMAGE_PIXELS` | `MAX_IMAGE_PIXELS` |
-| `GRID_MAX_OCR_PAGES` | `MAX_OCR_PAGES` |
-| `GRID_MAX_QUERY_SUBMISSIONS` | `MAX_QUERY_SUBMISSIONS` |
-| `GRID_MAX_QUEUED_JOBS_PER_ORG` | `MAX_QUEUED_JOBS_PER_ORG` |
-| `GRID_MAX_RENDERED_PAGES` | `MAX_RENDERED_PAGES` |
-| `GRID_MAX_RUN_COMPLETION_TOKENS` | `MAX_RUN_COMPLETION_TOKENS` |
-| `GRID_MCP_RESOURCE_URL` | `MCP_RESOURCE_URL` |
-| `GRID_MEMORY_REFLECTION_ENABLED` | `MEMORY_REFLECTION_ENABLED` |
-| `GRID_NORMS_DIR` | `NORMS_DIR` |
-| `GRID_OCR_MODEL` | `OCR_MODEL` |
-| `GRID_PAGE_RENDER_MAX_DIM` | `PAGE_RENDER_MAX_DIM` |
-| `GRID_PDF_PAGE_MAX_OBJECTS` | `PDF_PAGE_MAX_OBJECTS` |
-| `GRID_PILOTI_ASK_MAX_SECONDS` | `AGENT_ASK_MAX_SECONDS` |
-| `GRID_PLATFORM_ORG_EXTERNAL_ID` | `PLATFORM_ORG_EXTERNAL_ID` |
-| `GRID_PLATFORM_OWNER_EMAIL` | `PLATFORM_OWNER_EMAIL` |
-| `GRID_PLATFORM_OWNER_EMAILS` | `PLATFORM_OWNER_EMAILS` |
-| `GRID_PROVIDER_LIMITER` | `PROVIDER_LIMITER` |
-| `GRID_PROVIDER_LIMIT_CEILING` | `PROVIDER_LIMIT_CEILING` |
-| `GRID_PROVIDER_LIMIT_FLOOR` | `PROVIDER_LIMIT_FLOOR` |
-| `GRID_PROVIDER_LIMIT_INTERVAL_SECONDS` | `PROVIDER_LIMIT_INTERVAL_SECONDS` |
-| `GRID_PROVIDER_MODEL_LIMIT_CEILING` | `PROVIDER_MODEL_LIMIT_CEILING` |
-| `GRID_PROVIDER_MODEL_LIMIT_FLOOR` | `PROVIDER_MODEL_LIMIT_FLOOR` |
-| `GRID_PST_FIXTURE_DIR` | `PST_FIXTURE_DIR` |
-| `GRID_QDRANT_API_KEY` | `QDRANT_API_KEY` |
-| `GRID_QDRANT_REPLICATION_FACTOR` | `QDRANT_REPLICATION_FACTOR` |
-| `GRID_QDRANT_SHARD_NUMBER` | `QDRANT_SHARD_NUMBER` |
-| `GRID_QDRANT_TEST_URL` | `QDRANT_TEST_URL` |
-| `GRID_QDRANT_URL` | `QDRANT_URL` |
-| `GRID_QUERY_EMBED_CACHE_SIZE` | `QUERY_EMBED_CACHE_SIZE` |
-| `GRID_QUERY_EMBED_TIMEOUT_SECONDS` | `QUERY_EMBED_TIMEOUT_SECONDS` |
-| `GRID_REGEN_GOLDEN` | `REGEN_GOLDEN` |
-| `GRID_RENDER_VISUAL_PAGES` | `RENDER_VISUAL_PAGES` |
-| `GRID_REQUEST_CONTEXT_MAX_AGE_MS` | `REQUEST_CONTEXT_MAX_AGE_MS` |
-| `GRID_RERANKER_API_KEY` | `RERANKER_API_KEY` |
-| `GRID_RERANKER_BASE_URL` | `RERANKER_BASE_URL` |
-| `GRID_RERANKER_MAX_DOC_CHARS` | `RERANKER_MAX_DOC_CHARS` |
-| `GRID_RERANKER_MODEL` | `RERANKER_MODEL` |
-| `GRID_RERANKER_PROVIDER` | `RERANKER_PROVIDER` |
-| `GRID_RERANKER_TIMEOUT_SECONDS` | `RERANKER_TIMEOUT_SECONDS` |
-| `GRID_RESEARCHER_RECURSION_LIMIT` | `RESEARCHER_RECURSION_LIMIT` |
-| `GRID_RESEARCH_DEAD_RETENTION_DAYS` | `RESEARCH_DEAD_RETENTION_DAYS` |
-| `GRID_RESEARCH_WORKERS` | `RESEARCH_WORKERS` |
-| `GRID_RESEARCH_WORKER_DRAIN_SECONDS` | `RESEARCH_WORKER_DRAIN_SECONDS` |
-| `GRID_RESEARCH_WORKER_HEARTBEAT_SECONDS` | `RESEARCH_WORKER_HEARTBEAT_SECONDS` |
-| `GRID_RESEARCH_WORKER_MAX_ATTEMPTS` | `RESEARCH_WORKER_MAX_ATTEMPTS` |
-| `GRID_RESEARCH_WORKER_POLL_SECONDS` | `RESEARCH_WORKER_POLL_SECONDS` |
-| `GRID_RESEARCH_WORKER_STALE_SECONDS` | `RESEARCH_WORKER_STALE_SECONDS` |
-| `GRID_RETRIEVER_TOP_K` | `RETRIEVER_TOP_K` |
-| `GRID_REVISION_NOTICE_DELAY_SECONDS` | `REVISION_NOTICE_DELAY_SECONDS` |
-| `GRID_REVISION_NOTICE_MAX_PAGES` | `REVISION_NOTICE_MAX_PAGES` |
-| `GRID_RIS_CACHE_TTL_DAYS` | `RIS_CACHE_TTL_DAYS` |
-| `GRID_RLS_MIGRATION_CHECKS` | `RLS_MIGRATION_CHECKS` |
-| `GRID_RLS_SUITE_REQUIRED` | `RLS_SUITE_REQUIRED` |
-| `GRID_ROLE` | `PROCESS_ROLE` |
-| `GRID_RUN_RECONCILE_STALE_MINUTES` | `RUN_RECONCILE_STALE_MINUTES` |
-| `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` |
-| `GRID_SEARCH_LATENCY` | `SEARCH_LATENCY` |
-| `GRID_SEARCH_LATENCY_KEEP` | `SEARCH_LATENCY_KEEP` |
-| `GRID_SEARCH_LATENCY_RUNS` | `SEARCH_LATENCY_RUNS` |
-| `GRID_SEARCH_LATENCY_SCALE` | `SEARCH_LATENCY_SCALE` |
-| `GRID_SHUTDOWN_DRAIN_MS` | `SHUTDOWN_DRAIN_MS` |
-| `GRID_SKILLS_CACHE_TTL_SECONDS` | `SKILLS_CACHE_TTL_SECONDS` |
-| `GRID_SKILLS_ENABLED` | `SKILLS_ENABLED` |
-| `GRID_SKILL_MIN_INTERVAL_MINUTES` | `SKILL_MIN_INTERVAL_MINUTES` |
-| `GRID_SKILL_RUNS_RETENTION_DAYS` | `SKILL_RUNS_RETENTION_DAYS` |
-| `GRID_SKILL_SCHEDULER_BATCH` | `SKILL_SCHEDULER_BATCH` |
-| `GRID_SKILL_SCHEDULER_POLL_MS` | `SKILL_SCHEDULER_POLL_MS` |
-| `GRID_STAGE_MAX_CONCURRENCY` | `STAGE_MAX_CONCURRENCY` |
-| `GRID_STAGE_MAX_PENDING` | `STAGE_MAX_PENDING` |
-| `GRID_STATIC_RESULT_CACHE_COLLECTIONS` | `STATIC_RESULT_CACHE_COLLECTIONS` |
-| `GRID_STATIC_RESULT_CACHE_TTL_SECONDS` | `STATIC_RESULT_CACHE_TTL_SECONDS` |
-| `GRID_STORAGE_ALERT_THRESHOLD_PERCENT` | `STORAGE_ALERT_THRESHOLD_PERCENT` |
-| `GRID_SUGGEST_EXPLAIN` | `SUGGEST_EXPLAIN` |
-| `GRID_SUMMARY_DB` | `SUMMARY_DB` |
-| `GRID_TEST_CORPUS_DB` | `TEST_CORPUS_DB` |
-| `GRID_TEST_DATABASE_URL` | `TEST_DATABASE_URL` |
-| `GRID_TEST_LEASE` | `TEST_LEASE` |
-| `GRID_TEST_OWNER_DATABASE_URL` | `TEST_OWNER_DATABASE_URL` |
-| `GRID_TEST_PG_URL` | `TEST_PG_URL` |
-| `GRID_TEST_POSTGRES_REQUIRED` | `TEST_POSTGRES_REQUIRED` |
-| `GRID_TEST_POSTGRES_URL` | `TEST_POSTGRES_URL` |
-| `GRID_TRACE_CLIENT_ID_HMAC_SECRET` | `TRACE_CLIENT_ID_HMAC_SECRET` |
-| `GRID_TRACE_CLIENT_ID_MODE` | `TRACE_CLIENT_ID_MODE` |
-| `GRID_TRACE_CLIENT_IP_HEADERS` | `TRACE_CLIENT_IP_HEADERS` |
-| `GRID_TRACE_IDENTITY_ATTRIBUTES` | `TRACE_IDENTITY_ATTRIBUTES` |
-| `GRID_TRACE_USER_IDENTITY_HMAC_SECRET` | `TRACE_USER_IDENTITY_HMAC_SECRET` |
-| `GRID_TRACE_USER_IDENTITY_MODE` | `TRACE_USER_IDENTITY_MODE` |
-| `GRID_TTL_CLEANUP_INTERVAL_SECONDS` | `TTL_CLEANUP_INTERVAL_SECONDS` |
-| `GRID_TURN_LEASE_SECONDS` | `TURN_LEASE_SECONDS` |
-| `GRID_VECTOR_IMPORT_PENDING` | `VECTOR_IMPORT_PENDING` |
-| `GRID_VERBOSE` | `AGENT_VERBOSE` |
-| `GRID_VIEW_IMAGES_ENABLED` | `VIEW_IMAGES_ENABLED` |
-| `GRID_VISUAL_DOMAINS` | `VISUAL_DOMAINS` |
-| `GRID_VISUAL_PAGE_MIN_PATHS` | `VISUAL_PAGE_MIN_PATHS` |
-| `GRID_VISUAL_PAGE_MIN_TEXT_CHARS` | `VISUAL_PAGE_MIN_TEXT_CHARS` |
-| `GRID_VLM_API_KEY` | `VLM_API_KEY` |
-| `GRID_VLM_BASE_URL` | `VLM_BASE_URL` |
-| `GRID_VLM_BATCH_WORKERS` | `VLM_BATCH_WORKERS` |
-| `GRID_VLM_FLEET_CONCURRENCY` | `VLM_FLEET_CONCURRENCY` |
-| `GRID_VLM_MODEL` | `VLM_MODEL` |
-| `GRID_VLM_RATE_LIMIT_RETRIES` | `VLM_RATE_LIMIT_RETRIES` |
-| `GRID_VLM_SECOND_PASS_DELAY_SECONDS` | `VLM_SECOND_PASS_DELAY_SECONDS` |
-| `GRID_VLM_TIMEOUT_SECONDS` | `VLM_TIMEOUT_SECONDS` |
-| `GRID_VOCABULARY_PATH` | `VOCABULARY_PATH` |
-| `GRID_WAKE_MAX_PER_MARK_HOUR` | `WAKE_MAX_PER_MARK_HOUR` |
-| `GRID_WAKE_MAX_PER_PERSON_DAY` | `WAKE_MAX_PER_PERSON_DAY` |
-| `GRID_WEB_PUSH_SUBJECT` | `WEB_PUSH_SUBJECT` |
-| `GRID_WEB_PUSH_VAPID_PRIVATE_KEY` | `WEB_PUSH_VAPID_PRIVATE_KEY` |
-| `GRID_WEB_PUSH_VAPID_PUBLIC_KEY` | `WEB_PUSH_VAPID_PUBLIC_KEY` |
-| `GRID_WIRE_V2_ADDITIVE_FIELDS` | `WIRE_V2_ADDITIVE_FIELDS` |
-| `GRID_WORKER_LIVENESS_FILE` | `WORKER_LIVENESS_FILE` |
-| `GRID_WRITER_CHAR_BUDGET` | `WRITER_CHAR_BUDGET` |
-| `GRID_WS_MESSAGE_LIMITS` | `WS_MESSAGE_LIMITS` |
-| `GRID_WS_SCOPE_CACHE_TTL_MS` | `WS_SCOPE_CACHE_TTL_MS` |
-| `GRID_WS_UPGRADE_MAX_INFLIGHT` | `WS_UPGRADE_MAX_INFLIGHT` |
-| `GRID_WS_UPGRADE_RATE_LIMIT` | `WS_UPGRADE_RATE_LIMIT` |
 
 The earlier `AIQ_` to `GRID_` rename, for reference (each `AIQ_X` is now read as `X`, like its `GRID_X`):
 

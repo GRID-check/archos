@@ -36,6 +36,7 @@ vi.mock('./repository', () => ({
   listAskDocuments: vi.fn(async () => []),
   markAskWorking: vi.fn(),
 }))
+vi.mock('@/lib/projects/repository', () => ({ findProjectProfile: vi.fn(async () => null) }))
 vi.mock('@/lib/turns/headless-turn', () => ({
   runHeadlessTurn: vi.fn(),
   cancelHeadlessTurn: vi.fn(),
@@ -59,6 +60,7 @@ import {
 import type { Conversation } from '@/lib/db/schema/conversations'
 import type { Message } from '@/lib/db/schema/messages'
 import type { PilotiAskRow } from '@/lib/db/schema/piloti-asks'
+import { findProjectProfile } from '@/lib/projects/repository'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 import { cancelHeadlessTurn, chatSocketUrl, runHeadlessTurn, type HeadlessTurnRequest } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
@@ -81,6 +83,7 @@ import {
   getAsk,
   recordAskOutcome,
 } from './service'
+import { CHAT_TURN_DEADLINE_SECONDS, DEFAULT_ASK_MAX_SECONDS } from './ask-wire'
 
 const SECRET = 'internal-secret'
 const ORG = 'org_1'
@@ -248,6 +251,30 @@ describe('askPiloti', () => {
     expect(view.answer?.sources).toMatchObject([{ documentId: 'c:Konzept.pdf', page: 2 }])
     expect(view.answer?.sources?.[0]?.url).toContain(`/app/projects/${PROJECT}/chat?session=${THREAD}&cite=`)
     expect(view.answer?.confidence).toEqual({ level: 'medium' })
+  })
+
+  it('hands the agent plain Markdown: no directive fence, and a binding read off the project', async () => {
+    row = askRow({ state: 'completed', endedAt: new Date() })
+    vi.mocked(findConversationInOrg).mockResolvedValue(conversation({ projectId: PROJECT }))
+    vi.mocked(findProjectProfile).mockResolvedValue({
+      version: 1,
+      facts: { building_class: { value: 'gk5', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } },
+    } as never)
+    vi.mocked(findMessageInConversation).mockImplementation(async (conversationId, id) =>
+      id === askAnswerMessageId(conversationId, row.id)
+        ? ({
+            id,
+            content: 'Klasse :project[building_class].\n\n:::check\n| A | B |\n|---|---|\n| x | y |\n:::',
+            createdAt: new Date(),
+            metadata: {},
+          } as Message)
+        : null,
+    )
+    const view = await getAsk(SESSION, row.id)
+    expect(view.answer?.text).not.toContain(':::')
+    expect(view.answer?.text).not.toContain(':project[')
+    expect(view.answer?.text).toContain('| x | y |')
+    expect(findProjectProfile).toHaveBeenCalledWith(PROJECT, ORG)
   })
 
   it('names the busy thread and the way out in the reason the agent reads', async () => {
@@ -488,10 +515,17 @@ describe('getAsk and cancelAsk', () => {
     expect(endAsk).not.toHaveBeenCalled()
   })
 
+  it('leaves an ask alone while its turn may still answer, up to the chat turn deadline', async () => {
+    // The old bound (30 minutes) ended an ask whose turn the socket lets run 45.
+    row = askRow({ state: 'working', createdAt: new Date(Date.now() - (CHAT_TURN_DEADLINE_SECONDS - 60) * 1_000) })
+    expect((await getAsk(SESSION, row.id)).state).toBe('working')
+    expect(endAsk).not.toHaveBeenCalled()
+  })
+
   it('reads the longest an ask stays open from AGENT_ASK_MAX_SECONDS', () => {
     expect(askMaxSeconds({ AGENT_ASK_MAX_SECONDS: '600' })).toBe(600)
-    expect(askMaxSeconds({ AGENT_ASK_MAX_SECONDS: 'x' })).toBe(1_800)
-    expect(askMaxSeconds({})).toBe(1_800)
+    expect(askMaxSeconds({ AGENT_ASK_MAX_SECONDS: 'x' })).toBe(DEFAULT_ASK_MAX_SECONDS)
+    expect(askMaxSeconds({})).toBe(DEFAULT_ASK_MAX_SECONDS)
   })
 })
 

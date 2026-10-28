@@ -18,7 +18,7 @@ This document describes the Next.js BFF's application database: what it stores, 
 
 `organizations` is **not** a WorkOS mirror. It stores Grid-specific app settings keyed by the WorkOS org ID (`workos_org_id`): default project, retention policy, base knowledge config, etc. Users, memberships, roles, and permissions remain authoritative in WorkOS per [ADR-0007](../adr/0007-no-local-identity-sync.md).
 
-The Python agent continues to own `aiq_jobs` (job metadata, summaries) and `aiq_checkpoints` (LangGraph graph state) directly. All three databases run on the same PostgreSQL server in Docker but are logically separate systems of record.
+The Python agent continues to own `jobs` (job metadata, summaries) and `checkpoints` (LangGraph graph state) directly. All three databases run on the same PostgreSQL server in Docker but are logically separate systems of record.
 
 ---
 
@@ -112,11 +112,11 @@ Generated migrations are written to `frontends/ui/drizzle/` and committed to git
 
 ## Docker setup
 
-The `grid_app` database is created alongside `aiq_jobs` and `aiq_checkpoints` in the PostgreSQL container defined in `deploy/compose/docker-compose.yaml`.
+The `grid_app` database is created alongside `jobs` and `checkpoints` in the PostgreSQL container defined in `deploy/compose/docker-compose.yaml`.
 
 - **Init script:** `deploy/compose/init-db.sql`
 - **Mount point:** `/docker-entrypoint-initdb.d/init-db.sql` inside the `postgres` container
-- **Databases created:** `aiq_jobs`, `aiq_checkpoints`, `grid_app`
+- **Databases created:** `jobs`, `checkpoints`, `grid_app`
 - **Default user/password:** `aiq` / `aiq_dev`
 
 The init script is idempotent (`IF NOT EXISTS`) and runs automatically when the PostgreSQL container starts with an empty data directory. The BFF service receives `APP_DATABASE_URL` via the environment.

@@ -41,23 +41,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import {
+  getAnswerFeedbackDigest,
+  type AnswerFeedbackDigestResponse,
+  type FeedbackDigestPayload,
+} from '@/adapters/api/answer-feedback-client'
 
-export interface FeedbackDigestPayload {
-  headline: string
-  strengths: string[]
-  concerns: string[]
-  recommendation: string | null
-  generatedAt: string
-  windowDays: number
-  votes: number
-  /** Sampled unhelpful votes by decided cause; absent on a digest cached before causes existed. */
-  causes?: { cause: string; count: number }[]
-}
-
-interface DigestResponse {
-  digest: FeedbackDigestPayload | null
-  error: string | null
-}
+export type { FeedbackDigestPayload }
 
 export interface FeedbackDigestProps {
   /**
@@ -81,7 +71,7 @@ const BENIGN = new Set(['no_feedback', 'too_few_votes'])
 export function FeedbackDigest({ search, className }: FeedbackDigestProps): JSX.Element | null {
   const t = useTranslations('platform')
   const { locale } = useLocale()
-  const [data, setData] = useState<DigestResponse | null>(null)
+  const [data, setData] = useState<AnswerFeedbackDigestResponse | null>(null)
   const [loading, setLoading] = useState(true)
   /**
    * The request this card is still waiting on. Filters change faster than a
@@ -99,9 +89,7 @@ export function FeedbackDigest({ search, className }: FeedbackDigestProps): JSX.
         const params = new URLSearchParams(search)
         params.set('locale', locale)
         if (refresh) params.set('refresh', '1')
-        const res = await fetch(`/api/platform/answer-feedback/digest?${params.toString()}`)
-        if (!res.ok) throw new Error(String(res.status))
-        const body = (await res.json()) as DigestResponse
+        const body = await getAnswerFeedbackDigest(params.toString())
         if (requestId === latestRequest.current) setData(body)
       } catch {
         if (requestId === latestRequest.current)

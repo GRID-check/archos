@@ -17,10 +17,10 @@ from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex import image_store
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer.register import _format_results
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 # =============================================================================
 # store_extracted_images against stub callables

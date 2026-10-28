@@ -15,15 +15,15 @@ docker compose up -d --build
          ├── 2. postgres:16-alpine starts
          │      • Container name: aiq-postgres
          │      • Runs /docker-entrypoint-initdb.d/init-db.sql
-         │      │   • Creates aiq_checkpoints database
+         │      │   • Creates checkpoints database
          │      │   • Creates grid_app database
          │      │   • Grants ALL on all 3 DBs to aiq user
-         │      │   • Connects to aiq_jobs
+         │      │   • Connects to jobs
          │      │   │   • Creates job_info table
          │      │   │   • Creates job_access table
          │      │   │   • Creates job_events table
          │      │   │   • Creates document_metadata table
-         │      │   • Connects to aiq_checkpoints
+         │      │   • Connects to checkpoints
          │      │   │   • Creates checkpoint_migrations table
          │      │   │   • Creates checkpoints table
          │      │   │   • Creates checkpoint_blobs table
@@ -167,8 +167,8 @@ one-shot `grid-migrate` service runs, in order:
 
 The `init-db.sql` script (`deploy/compose/init-db.sql`) runs as part of PostgreSQL initialization. It creates 3 databases and their schemas. Key details:
 
-- **aiq_jobs** database: Contains `job_info`, `job_access`, `job_events`, and `document_metadata` tables.
-- **aiq_checkpoints** database: Contains `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, and `checkpoint_migrations` tables for LangGraph state persistence.
+- **jobs** database: Contains `job_info`, `job_access`, `job_events`, and `document_metadata` tables.
+- **checkpoints** database: Contains `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, and `checkpoint_migrations` tables for LangGraph state persistence.
 - **grid_app** database: Created but left empty (schema managed by Drizzle Kit migrations from the frontend).
 
 The LangGraph checkpoint tables are created in the init script (not lazily by the application) to prevent crashes if PostgreSQL restarts while the backend is running — previously, restarts would drop the tables and running backends would crash with "relation checkpoints does not exist".

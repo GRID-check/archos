@@ -64,19 +64,19 @@ services:
       # (`pgbouncer`), and everything that needs ONE server connection across
       # statements goes straight to `postgres`, so a session-feature regression
       # fails here and not first in production.
-      NAT_JOB_STORE_DB_URL: ${NAT_JOB_STORE_DB_URL:-postgresql+asyncpg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
-      CHECKPOINT_DB: ${CHECKPOINT_DB:-${GRID_CHECKPOINT_DB:-${AIQ_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      NAT_JOB_STORE_DB_URL: ${NAT_JOB_STORE_DB_URL:-postgresql+asyncpg://agent:aiq_dev@pgbouncer:5432/jobs}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      CHECKPOINT_DB: ${CHECKPOINT_DB:-${GRID_CHECKPOINT_DB:-${AIQ_CHECKPOINT_DB:-postgresql://agent:aiq_dev@pgbouncer:5432/checkpoints}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # A research job's deep checkpoint, so one that loses its worker resumes where it
       # was instead of starting over. Kubernetes sets the same (deploy/pulumi config.ts).
-      DEEP_CHECKPOINT_DB: ${DEEP_CHECKPOINT_DB:-${GRID_DEEP_CHECKPOINT_DB:-${AIQ_DEEP_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
-      SUMMARY_DB: ${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      DEEP_CHECKPOINT_DB: ${DEEP_CHECKPOINT_DB:-${GRID_DEEP_CHECKPOINT_DB:-${AIQ_DEEP_CHECKPOINT_DB:-postgresql://agent:aiq_dev@pgbouncer:5432/checkpoints}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      SUMMARY_DB: ${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      LISTEN_DB_URL: ${LISTEN_DB_URL:-${GRID_LISTEN_DB_URL:-${AIQ_LISTEN_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      LISTEN_DB_URL: ${LISTEN_DB_URL:-${GRID_LISTEN_DB_URL:-${AIQ_LISTEN_DB_URL:-postgresql://agent:aiq_dev@postgres:5432/jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper). A session owns the lock, so behind the pooler it would be taken
       # on one server connection and "released" on another.
-      LOCK_DB_URL: ${LOCK_DB_URL:-${GRID_LOCK_DB_URL:-${AIQ_LOCK_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      LOCK_DB_URL: ${LOCK_DB_URL:-${GRID_LOCK_DB_URL:-${AIQ_LOCK_DB_URL:-postgresql://agent:aiq_dev@postgres:5432/jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # Shared cache (Dragonfly, ADR-0020): citation-registry snapshots and
       # cross-replica caches. Unset = per-process in-memory fallback.
       REDIS_URL: ${REDIS_URL:-redis://dragonfly:6379/0}
@@ -143,6 +143,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       qdrant:
@@ -188,6 +190,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       qdrant:
@@ -232,6 +236,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       qdrant:
@@ -285,6 +291,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       qdrant:
@@ -316,7 +324,7 @@ services:
     env_file:
       - ../.env
     environment:
-      - SUMMARY_DB=${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}}
+      - SUMMARY_DB=${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs}}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
     entrypoint: ["python", "-m", "aiq_agent.legacy_corpus_import"]
@@ -541,13 +549,15 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://aiq:aiq_dev@postgres:5432/grid_app}}
+      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://agent:aiq_dev@postgres:5432/grid_app}}
       # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
       # with the credential the app actually uses.
       - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
     networks:
       - aiq-network
 
@@ -757,6 +767,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       # Started, not healthy: conversion fails open (the original stays
@@ -812,7 +824,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://aiq:aiq_dev@postgres:5432/grid_app}}
+      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://agent:aiq_dev@postgres:5432/grid_app}}
     depends_on:
       frontend:
         condition: service_healthy
@@ -862,6 +874,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
     healthcheck:
@@ -906,6 +920,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       seaweedfs:
@@ -958,6 +974,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       frontend:
@@ -1098,9 +1116,9 @@ services:
     image: postgres:16-alpine
     container_name: aiq-postgres
     environment:
-      POSTGRES_USER: aiq
+      POSTGRES_USER: agent
       POSTGRES_PASSWORD: aiq_dev
-      POSTGRES_DB: aiq_jobs
+      POSTGRES_DB: jobs
     ports:
       - "5432:5432"
     volumes:
@@ -1119,7 +1137,7 @@ services:
           cpus: '1'
           memory: 2G
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aiq -d aiq_jobs && pg_isready -U aiq -d aiq_checkpoints && pg_isready -U aiq -d grid_app"]
+      test: ["CMD-SHELL", "pg_isready -U agent -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -1127,6 +1145,29 @@ services:
       # without a start_period the stack fails with "postgres is unhealthy".
       start_period: 120s
     restart: unless-stopped
+
+  # Renames the databases and the owner role from their AI-Q names to jobs,
+  # checkpoints and agent (ADR-0145 row 10d), once, before anything that
+  # connects starts: every service that waits on postgres waits on this too.
+  # A volume made with the new names, and the second run, change nothing. The
+  # same script runs as the Kubernetes Job `pg-rename-legacy-names`.
+  postgres-rename:
+    image: postgres:16-alpine
+    container_name: grid-postgres-rename
+    command: ["sh", "/rename-legacy-names.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: agent
+      PGPASSWORD: aiq_dev  # pragma: allowlist secret (local compose default, the POSTGRES_PASSWORD above)
+      ROLE_PASSWORD: aiq_dev  # pragma: allowlist secret (local compose default, the POSTGRES_PASSWORD above)
+    volumes:
+      - ../postgres/rename-legacy-names.sh:/rename-legacy-names.sh:ro
+    networks:
+      - aiq-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   # Transaction pooler in front of the pooled DSNs (ADR-0083): the same
   # PgBouncer parameters Kubernetes runs through the CloudNativePG `Pooler`
@@ -1146,7 +1187,7 @@ services:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
     container_name: aiq-pgbouncer
     environment:
-      DATABASE_URLS: postgres://aiq:aiq_dev@postgres:5432/aiq_jobs,postgres://aiq:aiq_dev@postgres:5432/aiq_checkpoints,postgres://grid_app_rw:${APP_RUNTIME_PASSWORD:-${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}}@postgres:5432/grid_app  # pragma: allowlist secret (compose dev default)
+      DATABASE_URLS: postgres://agent:aiq_dev@postgres:5432/jobs,postgres://agent:aiq_dev@postgres:5432/checkpoints,postgres://grid_app_rw:${APP_RUNTIME_PASSWORD:-${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}}@postgres:5432/grid_app  # pragma: allowlist secret (compose dev default)
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "2000"
@@ -1159,6 +1200,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432"]
       interval: 5s
@@ -1301,6 +1344,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       clickhouse:
         condition: service_healthy
       langfuse-queue:

@@ -25,10 +25,10 @@ from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import _base_collection_filters
 from knowledge_layer.register import knowledge_retrieval
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import write
 
 from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import write
 
 BASE = "oib_knowledge"
 PROJECT = "proj_abc"

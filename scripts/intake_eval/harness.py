@@ -34,6 +34,7 @@ from langchain_core.callbacks import AsyncCallbackHandler
 
 from .bff import JOB_ID
 from .bff import FakeIntakeBff
+from .bff import FakeIntakeRoute
 from .bff import Gate
 from .fixture import REPO_ROOT
 from .fixture import Fixture
@@ -221,7 +222,6 @@ def fixture_world(fixture: Fixture, bff: FakeIntakeBff) -> Iterator[None]:
     from aiq_agent import project_context
     from aiq_agent.agents.intake import client
     from aiq_agent.agents.intake import reading
-    from tests.aiq_agent.agents.intake.conftest import FakeIntakeRoute
 
     route = FakeIntakeRoute(**bff.answers())
     patches = [

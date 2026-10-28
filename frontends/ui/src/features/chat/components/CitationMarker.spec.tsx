@@ -9,7 +9,7 @@ import { fireEvent, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { AgentResponse } from './AgentResponse'
-import { resetSourcePreviewIndexCache } from './SourcePreview'
+import { resetSourcePreviewIndexCache } from './source-preview/source-preview-index'
 import type { CitationSource } from '../types'
 import { popoverMounts, resetPopoverMounts } from '@/test-utils/popover-mounts'
 

@@ -104,3 +104,16 @@ def test_history_and_copy_are_not_checked(checker, repo):
     _add(repo, "frontends/ui/src/i18n/dictionaries/en/chat.ts", "pilotiWakes: 'Piloti'\n")
     _add(repo, "frontends/ui/drizzle/0001_piloti.sql", "CREATE TABLE piloti_wakes ();\n")
     assert checker.main([]) == 0
+
+
+def test_the_package_names_pending_their_scripted_rename_are_not_counted(checker):
+    assert checker.count_text("from aiq_agent.common.cards import Card\nimport aiq_api.jobs") == 0
+    assert checker.count_text("src/aiq_agent/turn/x.py aiq-agent") == 0
+    assert checker.count_text("from aiq_agent.agents.piloti import run") == 1
+
+
+def test_a_file_split_inside_a_package_directory_is_not_a_new_hit(checker, repo):
+    _add(repo, "src/aiq_agent/big.py", "from aiq_agent.common import x\n")
+    assert checker.main(["--rebaseline"]) == 0
+    _add(repo, "src/aiq_agent/split/part.py", "from aiq_agent.common import x\n")
+    assert checker.main([]) == 0

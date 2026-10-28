@@ -49,7 +49,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
-from aiq_agent.common.turn_status import tool_basename
+from aiq_agent.common.tool_calls import tool_basename
 from aiq_agent.common.wire_v2 import FocusRegion
 
 #: Notes one turn takes. The gateway's frame limiter counts only questions

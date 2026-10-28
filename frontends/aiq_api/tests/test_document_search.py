@@ -706,7 +706,7 @@ async def test_the_workspace_search_is_one_retriever_observation_carrying_counts
     query = json.loads(attributes["langfuse.observation.input"])
     assert query["prefilter"] == "document_ids" and query["document_ids"] == 2 and query["text_tokens"] == 2
     output = json.loads(attributes["langfuse.observation.output"])
-    assert output["candidates"] == 3 and output["documents"] == 3
+    assert output["candidates"] == 3 and output["documents"] == 3 and output["below_meaning_floor"] == 0
     assert output["hits_per_collection"] == {"proj_a": 2, "proj_b": 1}
     serialized = json.dumps(attributes, ensure_ascii=False)
     assert "Fluchtweg" not in serialized and "some content" not in serialized
@@ -717,6 +717,98 @@ async def test_a_grouped_search_without_a_purpose_is_not_traced_here(app):
     """The cross-project lookup is traced by Piloti's `project_lookup`; a second trace would count it twice."""
     set_active_retriever(_grouped_retriever([("proj_a", [_ranked("a.pdf", 0.9, 0.03)])]))
     assert await _traced_spans(app, {"query": "q", "collections": ["proj_a"]}) == []
+
+
+def _lexical(chunk: Chunk, holds_the_words: bool) -> Chunk:
+    from aiq_agent.knowledge.base import LEXICAL_MATCH_KEY
+
+    chunk.metadata[LEXICAL_MATCH_KEY] = holds_the_words
+    return chunk
+
+
+@pytest.mark.asyncio
+async def test_the_workspace_search_drops_meaning_only_documents_below_the_floor(app):
+    """„qwxzv“ returned sixteen documents: the dense channel fills the fusion whatever the words.
+
+    A document whose passage holds a query word stays at any cosine; one that
+    only means the same stays above the floor and says so (`lexical: false`).
+    """
+    from aiq_api.routes.document_search import MEANING_ONLY_MIN_COSINE
+
+    groups = [
+        (
+            "proj_a",
+            [
+                _lexical(_ranked("rechnung.jpg", 0.20, 0.05), True),
+                _lexical(_ranked("reisekosten.xlsx", MEANING_ONLY_MIN_COSINE + 0.02, 0.04), False),
+                _lexical(_ranked("sample.pdf", 0.11, 0.03), False),
+                # A document is lexical when any of its ranked chunks is.
+                _lexical(_ranked("plan.pdf", 0.12, 0.02), False),
+                _lexical(_ranked("plan.pdf", 0.10, 0.01), True),
+            ],
+        )
+    ]
+    set_active_retriever(_grouped_retriever(groups))
+    body = {"query": "Rechnung", "collections": ["proj_a"], "files_per_group": 10}
+    async with _client(app) as client:
+        workspace = (await client.post("/v1/collections/search", json={**body, "purpose": "workspace_search"})).json()
+        lookup = (await client.post("/v1/collections/search", json=body)).json()
+
+    assert [(hit["file_name"], hit["lexical"]) for hit in workspace["hits"]] == [
+        ("rechnung.jpg", True),
+        ("reisekosten.xlsx", False),
+        ("plan.pdf", True),
+    ]
+    # The cross-project lookup hands a ranked pool to a model: nothing is dropped there.
+    assert [hit["file_name"] for hit in lookup["hits"]] == [
+        "rechnung.jpg",
+        "reisekosten.xlsx",
+        "sample.pdf",
+        "plan.pdf",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_retriever_that_cannot_tell_the_words_drops_nothing(app):
+    set_active_retriever(_grouped_retriever([("proj_a", [_ranked("a.pdf", 0.05, 0.03)])]))
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search", json={"query": "q", "collections": ["proj_a"], "purpose": "workspace_search"}
+        )
+    assert [(hit["file_name"], hit["lexical"]) for hit in res.json()["hits"]] == [("a.pdf", None)]
+
+
+@pytest.mark.asyncio
+async def test_a_document_filter_names_the_files_whose_passages_carry_no_id(app):
+    """Points copied from Chroma carry no ``grid_document_id``: by id alone a currentOnly search lost them."""
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "Schnitt",
+                "collections": ["proj_a"],
+                "filters": {
+                    "document_ids": [DOC_A],
+                    "file_names": ["Screenshot 2026-08-28 175733.png", "a.pdf", "a.pdf"],
+                },
+            },
+        )
+
+    assert res.status_code == 200
+    assert retriever.search_grouped.await_args.kwargs["filters"] == {
+        "$and": [
+            {
+                "$or": [
+                    {"grid_document_id": {"$in": [DOC_A]}},
+                    {"file_name": {"$in": ["Screenshot 2026-08-28 175733.png", "a.pdf"]}},
+                ]
+            },
+            {"superseded": {"$ne": True}},
+        ]
+    }
 
 
 def test_the_prefilter_mode_names_how_the_bff_narrowed_the_query():

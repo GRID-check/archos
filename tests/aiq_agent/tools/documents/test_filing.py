@@ -17,7 +17,8 @@ from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 
 from aiq_agent.common import bff_http
-from aiq_agent.common import turn_status
+from aiq_agent.common import retrieval_status
+from aiq_agent.common import status_keys
 from aiq_agent.tools.documents import filing
 from aiq_agent.tools.documents import register as filing_tools
 from aiq_agent.tools.documents.draft_store import FILED_AT_DRAFT_VERSION_KEY
@@ -724,9 +725,9 @@ class TestTheLiveLine:
 
     def test_filing_and_submitting_read_differently(self) -> None:
         def key(args: dict) -> str | None:
-            return turn_status._describe_calls([{"name": "file_draft", "args": args}])["key"]
+            return retrieval_status._describe_calls([{"name": "file_draft", "args": args}])["key"]
 
-        assert key({"path": DRAFT}) == turn_status.KEY_ACTION_DRAFT_FILED
-        assert key({"path": DRAFT, "submit": False}) == turn_status.KEY_ACTION_DRAFT_FILED
-        assert key({"path": DRAFT, "submit": True}) == turn_status.KEY_ACTION_DRAFT_SUBMITTED
-        assert key({"path": DRAFT, "submit": "true"}) == turn_status.KEY_ACTION_DRAFT_SUBMITTED
+        assert key({"path": DRAFT}) == status_keys.KEY_ACTION_DRAFT_FILED
+        assert key({"path": DRAFT, "submit": False}) == status_keys.KEY_ACTION_DRAFT_FILED
+        assert key({"path": DRAFT, "submit": True}) == status_keys.KEY_ACTION_DRAFT_SUBMITTED
+        assert key({"path": DRAFT, "submit": "true"}) == status_keys.KEY_ACTION_DRAFT_SUBMITTED
