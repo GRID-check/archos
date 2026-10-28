@@ -43,7 +43,7 @@ BACKEND_ROOTS = (
     # The ingest worker settles a job whose queued payload it cannot read
     # (`unreadable_job:`, `jobs/ingest_dispatch.py`). It was outside the scan,
     # and its reason reached the UI unmapped.
-    REPO_ROOT / "frontends" / "aiq_api" / "src",
+    REPO_ROOT / "apps" / "backend" / "src",
 )
 
 #: A reason-prefixed literal where a failure is written: an ``error=`` /

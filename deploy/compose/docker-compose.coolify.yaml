@@ -50,7 +50,7 @@ services:
       # build contexts, bind mounts, and the init-db mount below are written
       # relative to the repo root — NOT to this file's directory.
       context: .
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     environment:
       # The chat role: the chat WebSocket and the answers running on it
@@ -483,7 +483,7 @@ services:
   migrate:
     build:
       context: ./frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -536,7 +536,7 @@ services:
   audit-schemas:
     build:
       context: ./frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -553,7 +553,7 @@ services:
   frontend:
     build:
       context: ./frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     # The image CMD migrates then serves; migration has moved to migrate,
     # so this container only serves.
     command: ["node", "server.js"]
@@ -758,7 +758,7 @@ services:
   workos-authz:
     build:
       context: ./frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -782,7 +782,7 @@ services:
   purger:
     build:
       context: ./frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "purger/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
@@ -830,7 +830,7 @@ services:
     # reached the BFF.
     build:
       context: ./frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "scheduler/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
@@ -858,7 +858,7 @@ services:
     # backend runs no loop of its own.
     build:
       context: ./frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
       - BACKEND_URL=http://api:8000

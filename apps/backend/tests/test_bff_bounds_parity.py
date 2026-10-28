@@ -20,7 +20,7 @@ from aiq_api.models.requests import ProjectFacts
 from aiq_api.models.similar import SimilarPassagesRequest
 from aiq_api.routes.maintenance import REFRESH_FACTS_MAX_COLLECTIONS
 
-UI_LIB = Path(__file__).resolve().parents[2] / "ui" / "src" / "lib"
+UI_LIB = Path(__file__).resolve().parents[3] / "frontends" / "ui" / "src" / "lib"
 
 
 def _ts_number(path: Path, name: str) -> int:

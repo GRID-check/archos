@@ -3,7 +3,7 @@
 Both queues use these defaults. The BFF's claim loop
 (``frontends/ui/workers/jobs/index.js``) shares max attempts and dead retention,
 and drains for 60 s instead of 600 because a slice is short;
-``frontends/aiq_api/tests/test_lease_policy.py`` holds both sides to that. Each
+``apps/backend/tests/test_lease_policy.py`` holds both sides to that. Each
 caller keeps its own floors, and its own values where the queues differ on
 purpose: the stale window (research 90 s, ingest 180 s) and the per-organization
 cap are product choices, not drift.

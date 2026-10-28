@@ -60,7 +60,7 @@ There is also a fourth, less structural but more immediate finding:
 |---|---|---|---|---|---|
 | 1 | `frontends/ui/server.js` (WS upgrade) | per client IP | fixed window, atomic `INCR` | Dragonfly | fail open |
 | 2 | `frontends/ui/src/lib/sharing/rate-limit.ts` | per subject/action | fixed window, **non-atomic** read-modify-write | Dragonfly via cache | fail open |
-| 3 | `frontends/aiq_api/.../jobs/submit.py`, `jobs/queue.py` | per org a **claim cap** (`…_PER_ORG` 3) plus a **queued-length bound** (`MAX_QUEUED_JOBS_PER_ORG` 50), the only 429 | Postgres | fail open |
+| 3 | `apps/backend/.../jobs/submit.py`, `jobs/queue.py` | per org a **claim cap** (`…_PER_ORG` 3) plus a **queued-length bound** (`MAX_QUEUED_JOBS_PER_ORG` 50), the only 429 | Postgres | fail open |
 | 4 | `common/cost_tracking.py` + ADR-0015 | org / member / project | EUR budget, daily+monthly | Postgres ledger + rollups | read fails open, refusal fails closed |
 | 5 | `GRID_MAX_RUN_COMPLETION_TOKENS`, `GRID_MAX_QUERY_SUBMISSIONS` | per run | hard ceilings | in-process | n/a |
 
@@ -266,7 +266,7 @@ be argued rather than assumed. Two options:
 **Decision: (b).** The premise's real goal is *"I don't want to re-implement this
 in every app"* — and that is already satisfied, because there is exactly **one**
 user-facing app. `apps/site` is a static Astro site (L1 covers it),
-`frontends/aiq_api` is not publicly routed (no HTTPRoute), and the workers have
+`apps/backend` is not publicly routed (no HTTPRoute), and the workers have
 no ingress. Option (a) buys architectural purity for the price of a new
 always-in-path service that can take chat down, and it would have to duplicate
 AuthKit session unsealing to serve one ingress. Revisit if a second authenticated

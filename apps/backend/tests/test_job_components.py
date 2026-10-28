@@ -1,7 +1,7 @@
 """
 Tests for async job components.
 
-Module under test: frontends/aiq_api/src/aiq_api/jobs/
+Module under test: apps/backend/src/aiq_api/jobs/
 
 Test coverage:
     TestIntermediateStepEvent:

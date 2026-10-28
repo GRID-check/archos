@@ -6,7 +6,7 @@ import { join } from "node:path";
 const repoRoot = join(__dirname, "..", "..", "..", "..");
 const read = (...parts: string[]) => readFileSync(join(repoRoot, ...parts), "utf8");
 
-const jobsRoutes = read("frontends", "aiq_api", "src", "aiq_api", "routes", "jobs.py");
+const jobsRoutes = read("apps", "backend", "src", "aiq_api", "routes", "jobs.py");
 const workers = read("deploy", "pulumi", "src", "app", "workers.ts");
 const composeClock = read("frontends", "ui", "workers", "housekeeping-clock.js");
 const appConfig = read("deploy", "pulumi", "src", "app", "config.ts");

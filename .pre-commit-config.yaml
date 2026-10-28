@@ -159,7 +159,7 @@ repos:
         entry: .venv/bin/lint-imports --no-cache
         language: system
         pass_filenames: false
-        files: ^(src/aiq_agent|frontends/aiq_api/src|packages/knowledge-layer/src)/.*\.py$|^pyproject\.toml$
+        files: ^(src/aiq_agent|apps/backend/src|packages/knowledge-layer/src)/.*\.py$|^pyproject\.toml$
 
       - id: file-size
         name: no source file passes 600 lines, no Python function 60, and no giant grows
@@ -197,7 +197,7 @@ repos:
         entry: python3 scripts/check_env_docs.py
         language: system
         pass_filenames: false
-        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^frontends/aiq_api/src/aiq_api/jobs/.*\.py$|^src/aiq_agent/knowledge/ingest_.*\.py$|^frontends/ui/(workers|purger|scheduler)/.*\.js$|^frontends/ui/src/lib/(jobs-queue|mail-import)/.*\.ts$
+        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/aiq_api/jobs/.*\.py$|^src/aiq_agent/knowledge/ingest_.*\.py$|^frontends/ui/(workers|purger|scheduler)/.*\.js$|^frontends/ui/src/lib/(jobs-queue|mail-import)/.*\.ts$
 
       - id: validate-skills
         name: skill bundles are well-formed

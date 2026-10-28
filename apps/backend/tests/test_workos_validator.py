@@ -1,6 +1,6 @@
 """Tests for WorkOS JWT validator configuration.
 
-Module under test: frontends/aiq_api/src/aiq_api/auth/workos_validator.py
+Module under test: apps/backend/src/aiq_api/auth/workos_validator.py
 """
 
 import os

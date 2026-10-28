@@ -23,7 +23,7 @@ export const UID = {
    * it writes is on the data PVC (owned via `fsGroup`) or an emptyDir.
    */
   qdrant: 1000,
-  /** Backend image (`deploy/Dockerfile`): `USER 1000:1000`. */
+  /** Backend image (`apps/backend/Dockerfile`): `USER 1000:1000`. */
   backend: 1000,
   /** Frontend image (`frontends/ui/deploy/Dockerfile`): user `nextjs` = 1001. */
   frontend: 1001,

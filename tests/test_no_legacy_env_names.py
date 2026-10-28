@@ -1,7 +1,7 @@
 """No environment variable is read or set under its old ``AIQ_`` name (ADR-0145 row 10b).
 
 Every variable lost its prefix: ``GRID_X``, and ``AIQ_X`` before it, is now
-``X``. For one release the images' start (``deploy/entrypoint.py`` for the
+``X``. For one release the images' start (``apps/backend/entrypoint.py`` for the
 backend, ``legacy-env-names.cjs`` for the UI) still adopts an old name an
 operator set by hand, and the Compose files interpolate it; those, the rename
 table and the published release notes are the only files that may spell one.
@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 #: The one-release fallback, its tests, the rename table and history.
 ALLOWED = (
-    "deploy/entrypoint.py",
+    "apps/backend/entrypoint.py",
     "tests/test_entrypoint_roles.py",
     "tests/test_no_legacy_env_names.py",
     "frontends/ui/scripts/legacy-env-names.cjs",

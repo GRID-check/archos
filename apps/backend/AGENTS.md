@@ -1,8 +1,14 @@
-# The API plugin: `frontends/aiq_api`
+# The API plugin: `apps/backend`
 
 The backend's FastAPI front end, loaded by NAT as a front-end plugin
 (`_type: aiq_api`): REST routes, the async job API with SSE streaming, and
 `/v1/ingest`. A uv workspace member, installed into the same venv as the agent.
+
+The backend image is built here too (ADR-0145 rule 2): `Dockerfile` (context
+the repo root, `docker build -f apps/backend/Dockerfile .`), `entrypoint.py`,
+which starts the role `PROCESS_ROLE` names (ADR-0082), and `start_web.py`, the
+uvicorn launcher of the `chat` and `api` roles. The image copies this directory
+whole and runs them from `/app/apps/backend/`.
 
 ## Obligations
 

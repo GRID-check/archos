@@ -118,7 +118,7 @@ def main() -> int:
     # The base corpus is not synced from here: it lives in object storage and a
     # table (ADR-0082), and one sync cycle runs as the base-corpus housekeeping
     # route, on a schedule outside this process.
-    web_proc = subprocess.Popen(["python", "/app/deploy/start_web.py"])
+    web_proc = subprocess.Popen(["python", "/app/apps/backend/start_web.py"])
 
     def _handle_web_signal(_signum: int, _frame: object) -> None:
         print("Shutting down...", flush=True)
