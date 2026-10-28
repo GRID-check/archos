@@ -4,7 +4,7 @@
 ``box: given`` (``north_star_eval``) needs one: the review canvas sends ``user_message.focus_region``
 (``common/wire_v2.py::FocusRegion``) with the open document's name, and the turn's prompt then carries
 the „Fokusbereich“ section (``agents/piloti/prompt.py::focus_region_block``) that tells the model to
-look at exactly that crop. The suite hands the row's box to the run through ``GRID_EVAL_USER_MESSAGE``
+look at exactly that crop. The suite hands the row's box to the run through ``EVAL_USER_MESSAGE``
 (:func:`env_for`); ``sitecustomize.py`` calls :func:`install` in the run's process, which makes the
 turn's own parse (``aiq_agent.turn.payload.extract_turn_inputs``) read the string as the
 ``UserMessage`` the socket would have built. Nothing else about the turn is faked.
@@ -12,7 +12,7 @@ turn's own parse (``aiq_agent.turn.payload.extract_turn_inputs``) read the strin
 What a row's two harness needs mean here:
 
 - ``given_box``: the turn carries the drawn box (``focus_region``: page, x, y, w, h);
-- ``trigger``: the turn is the headless one an upload starts (``frontends/ui/src/lib/document-check/job.ts``,
+- ``trigger``: the turn is the headless one an upload starts (``apps/workspace/bff/document-check/job.ts``,
   ``checkTurnMessage``): the row's question is the fixed instruction, and the message carries the open
   document (``focus_file_name``, ``focus_shelf``, ``focus_document_id``) and ``trigger: new_document``;
 - ``open`` (a files-set row's key, the document's name): the turn is asked with that document open
@@ -28,7 +28,7 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-ENV = "GRID_EVAL_USER_MESSAGE"
+ENV = "EVAL_USER_MESSAGE"
 #: The harness abilities this module gives a row (``north_star_eval.HARNESS``).
 ABILITIES = frozenset({"given_box", "canvas", "trigger"})
 #: The ids the wire frame requires; the turn's own ids come from the run's conversation (`--conversation_id`).

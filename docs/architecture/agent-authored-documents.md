@@ -21,12 +21,12 @@ produces exactly one thing the office wanted: a report. That report is written
 by `writer-agent` to `/shared/output.md`, read back out by
 `_extract_final_markdown`, returned as a chat message, and **discarded** — the
 run's whole file system with it
-(`src/aiq_agent/agents/deep_researcher/agent.py`, `deepagents_runtime.py`).
+(`packages/agent/src/aiq_agent/agents/deep_researcher/agent.py`, `deepagents_runtime.py`).
 There is even a fallback that mines the last assistant message when the file is
 missing, which is the code saying the file, not the message, was the artifact.
 
 `docs/roadmap/feature-opportunities.md` rates "a deliverable an architect can
-hand to the authority" **very high**. `frontends/ui/src/lib/answer-export/`
+hand to the authority" **very high**. `apps/workspace/bff/answer-export/`
 already renders a saved answer to an authorized `.docx`. The gap is not that the
 deliverable cannot be produced — it is that it lands in *Downloads* instead of
 in the project, where it could be found, assigned, previewed and deleted like
@@ -41,7 +41,7 @@ Two failure modes make the naive fix worse than the gap:
    behaviour of a write-capable agent over its own RAG corpus, not a rare
    prompt going wrong.
 2. **Writing it from the backend.** The agent's principal is **wider** than the
-   user's, not narrower: it holds the shared `GRID_INTERNAL_API_TOKEN`, and the
+   user's, not narrower: it holds the shared `INTERNAL_API_TOKEN`, and the
    internal memory route says so in its own comment — *"this service-token
    endpoint cannot verify the human's org role"*
    (`app/api/internal/memory/route.ts`). A project-scoped write through
@@ -165,7 +165,7 @@ Cut deliberately, each with the reason:
 > is migrations 0063–0066: `authored_by_run_id` was renamed to `authored_by_ref`
 > and joined by `authored_by_ref_kind` (`agent_run` | `answer_artifact`), because
 > two of the three producers file a reference that is not a job id at all. Read
-> `frontends/ui/drizzle/0066_authored_ref_names_its_kind.sql` for the current
+> `apps/workspace/migrations/0066_authored_ref_names_its_kind.sql` for the current
 > shape and the argument; `docs/database/schema.md` for the table.
 
 Migration `00NN`:
@@ -518,7 +518,7 @@ Decision 4 gated the filing on `project:documents:write` and called that "a
 capability an organization can withhold, which is what ADR-0038 §3 created
 `project:documents:write` for". The second half was false. That permission also
 authorizes an ordinary **human upload**, a delete and a whole-project re-index
-(`lib/documents/service.ts`), so an organization that wanted Piloti to answer
+(`lib/documents/document-dispatch.ts`, `document-edits.ts`, `reindex.ts`), so an organization that wanted Piloti to answer
 without writing into its file system had exactly one lever, and pulling it
 stopped its own architects uploading plans.
 
@@ -539,7 +539,7 @@ rather than a duplicate. The permission is the tenant's, per project and per
 role, withheld on a custom role. Withdrawing it fleet-wide would mean editing the
 built-in project roles in the catalog, which `provision:authz --check` then fails
 in CI — so the operator's kill switch has to be the `agent-authored-documents`
-flag (`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, default ON), checked at the same
+flag (`AGENT_AUTHORED_DOCUMENTS_ENABLED`, default ON), checked at the same
 seam so every producer rides one switch rather than one each.
 
 ### 6. The filed report is a PDF

@@ -23,7 +23,7 @@ registry entry.
 **Storage.** `resource_shares`, `mention_requests` and `inbox_items` all key on a
 polymorphic `(resource_type text, resource_id text)` with matching indexes, and
 none of them has a foreign key to `conversations` (the one FK in
-`drizzle/0027_collaboration.sql` is on `conversation_reads`, a chat-only table
+`migrations/0027_collaboration.sql` is on `conversation_reads`, a chat-only table
 outside the substrate). **A new type needs no migration on these three tables.**
 
 **Effective access.** `lib/sharing/access.ts` — tenancy → container → strongest
@@ -132,12 +132,12 @@ resource waits on somebody who can never answer.
 project-scoped variants from a `listIdsInProject` descriptor member.
 
 **And the cascade is stated twice, in two runtimes.** The purger service
-(`frontends/ui/purger/purge-project.js`) deletes `inbox_items`,
+(`apps/workspace/purger/purge-project.js`) deletes `inbox_items`,
 `mention_requests` and `resource_shares` for a purged project with its own raw
 SQL and its own hardcoded `resource_type = 'conversation'` literal. It is not
 working around the helper: it *cannot* call it. The purger is a separate
 CommonJS process (`node purger/index.js`) with no bundler and no TS step, so a
-`'server-only'` module behind `@/…` aliases is unreachable; its grid_app deletes
+`'server-only'` module behind `@/…` aliases is unreachable; its `app` deletes
 must stay inside one postgres.js transaction, while this tier's repositories open
 their own connection; the per-conversation helper is best-effort and never
 throws, where the purger needs a failure to abort and leave the queue row
@@ -238,7 +238,7 @@ The files work is the second consumer this document was waiting for
 allowed to leave this §3 standing.
 
 One place the rule cannot reach, and you have to check by hand: the substrate has
-a second implementation outside the BFF. `frontends/ui/purger/purge-project.js`
+a second implementation outside the BFF. `apps/workspace/purger/purge-project.js`
 carries its own copy of the delete cascade, in CommonJS, outside `tsc --noEmit`
 and outside the lint run over `src` (§3.5). Widening the union will not make it fail to
 compile, and no test in this tier covers it. Grep the purger for your type's name

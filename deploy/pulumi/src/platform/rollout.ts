@@ -1,6 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { createHash } from "node:crypto";
+import { objectName } from "../names";
 
 /**
  * Rolling-update safety primitives.
@@ -51,7 +52,7 @@ import { createHash } from "node:crypto";
  * is to change when the Secret's contents change, so the workload controller
  * performs a rolling update instead of silently keeping stale credentials.
  */
-export const SECRET_CHECKSUM_ANNOTATION = "grid.bigls.net/secret-checksum"; // pragma: allowlist secret (annotation key name, not a credential)
+export const SECRET_CHECKSUM_ANNOTATION = objectName("secretChecksumAnnotation"); // pragma: allowlist secret (annotation key name, not a credential)
 
 /** Old ReplicaSets/ControllerRevisions kept for `kubectl rollout undo`. */
 export const REVISION_HISTORY_LIMIT = 5;
@@ -81,7 +82,7 @@ export interface RolloutProfile {
 
 /**
  * Seconds the frontend gateway keeps serving after SIGTERM before forcing exit
- * (`GRID_SHUTDOWN_DRAIN_MS` in server.js). Chat WebSockets are long-lived, so a
+ * (`SHUTDOWN_DRAIN_MS` in server.js). Chat WebSockets are long-lived, so a
  * hard close on SIGTERM drops every streaming answer in flight on every deploy.
  * Must fit inside the frontend grace period alongside `endpointDrainSeconds`.
  */
@@ -247,7 +248,7 @@ export const ROLLOUT = {
   },
 
   /**
-   * Astro landing + blog (frontends/web): stateless static site behind a
+   * Astro landing + blog (apps/site): stateless static site behind a
    * Service + HPA, surge-only like the frontend. Node boot is fast and there
    * are no long-lived connections, so the shortest grace that still covers the
    * endpoint-drain preStop suffices.
@@ -387,14 +388,14 @@ export const BACKEND_DRAIN_SLACK_SECONDS = 60;
  *
  * On SIGTERM the replica is already out of the Service's endpoints, so no new
  * socket arrives, and it waits for the turns it claimed
- * (`GRID_CHAT_DRAIN_SECONDS`, `chat_socket.ChatRegistry.drain`) while relays on
+ * (`CHAT_DRAIN_SECONDS`, `chat_socket.ChatRegistry.drain`) while relays on
  * other replicas keep streaming them from Dragonfly (ADR-0080). The pod must
  * live that long, so the grace period IS the drain plus the endpoint drain and
  * slack, not a number chosen beside it: at the old fixed 90 s every rollout and
  * every scale-in killed a long answer after a minute and a half.
  *
  * `drainSeconds` has to cover the longest chat turn, which is the turn's own
- * deadline (`GRID_CHAT_TURN_DEADLINE_SECONDS`, 2700). The admission lease is
+ * deadline (`CHAT_TURN_DEADLINE_SECONDS`, 2700). The admission lease is
  * renewed for as long as a turn runs, so it bounds nothing here.
  */
 export function backendRollout(drainSeconds: number): RolloutProfile {

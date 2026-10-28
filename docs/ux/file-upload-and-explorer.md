@@ -760,7 +760,7 @@ time.
 | A folder's description: the line, the dialog, the edit (`describe`) | `src/features/documents/components/folder-description-dialog.tsx`; `src/features/documents/hooks/use-folder-tree.ts` |
 | Piloti's filing suggestion: the chip and its popover, the highlight, the filing bar, the shelf's open suggestions | `src/features/documents/components/filing-suggestion.tsx`; `src/features/documents/components/filing-bar.tsx`; the kit: `src/components/ui/filing-chip.tsx`, `path-change.tsx`, `suggestion-panel.tsx`, `highlight.ts`; `src/features/documents/hooks/use-filing-suggestions.ts`; `src/features/documents/lib/filing-suggestions.ts` |
 | The folder brief: a folder's subtree tally, the brief, what each count selects | `src/features/documents/lib/folder-knowledge.ts`; `src/features/documents/components/folder-brief.tsx` |
-| Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
+| Revision series read from file names (TS twin of `packages/knowledge-layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
 | The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-revisions.tsx`; `src/lib/documents/revision-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/revision-request.ts` |
 | A folder's read state: the dot on its tile, the dot and phrase on its list-view row | `src/features/documents/components/folder-read-state.tsx` |
 | Bulk re-read, four requests at a time, and the one request each sends | `src/features/documents/hooks/use-bulk-reingest.ts`; `src/features/documents/lib/reingest-request.ts` |
@@ -815,7 +815,7 @@ therefore no longer able to drift: `useLevelListing` and `useShelfSummary`
 now the fallback), `useFolderTree` (load, create, rename,
 move, delete, with the `files` strings), `useDocumentMoves`, `useShelfUpload`
 (the plan, the ensure request, moves of unchanged documents, `folderIdFor`),
-`useFolderParam` (`?folder=`), `useViewPreference` (`grid.files.view`),
+`useFolderParam` (`?folder=`), `useViewPreference` (`files.view`),
 `useFileSearch` (takes the shelf's search route), `usePreviewChannel` and
 `useDocParamSync` (`?doc=`), `useModelStage` (`?model=`), and the one row mapper
 `toFileItem`.

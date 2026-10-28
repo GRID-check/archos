@@ -1,0 +1,124 @@
+{
+  "comment": "Written by apps/workspace/bff/agent-api/meta-tools.spec.ts from metaToolsFor (discovery.ts), the in-product variant. Read by tools/workspace/register.py. Regenerate with UPDATE_FIXTURES=1.",
+  "tools": {
+    "search-operations": {
+      "title": "Search operations",
+      "description": "Find what can be done in the Piloti workspace (projects, members, documents and their versions, review, the inbox, tasks, building-law knowledge, BIM models) by plain words, ranked over each operation's name, summary and description. Start here. Answers operation names with one line each and whether each reads, writes or destroys. Then call-operation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The goal in a few plain words, e.g. \"add project member\". Empty lists everything, or a whole domain."
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "projects",
+              "documents",
+              "folders",
+              "review",
+              "conversations",
+              "collaboration",
+              "tasks",
+              "skills",
+              "knowledge",
+              "bim",
+              "organization"
+            ],
+            "description": "Only operations of this area."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "At most this many (default 10)."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "readOnly": true
+    },
+    "describe-operation": {
+      "title": "Describe an operation",
+      "description": "One operation's description, annotations and input JSON Schema ({ params, query, body }), by the exact name search-operations returned. Call it before the first call of an operation whose input you do not know. An unknown name comes back with similar names. A very large input comes back as an outline; pass field to open one part.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "An operation name, e.g. project-list."
+          },
+          "field": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Dot path into the input schema, e.g. \"body.files\": returns just that part. For an outline's large fields."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "readOnly": true
+    },
+    "call-operation": {
+      "title": "Call an operation",
+      "description": "Run one operation as the signed-in person, with that person's rights. `input` is { params, query, body } as describe-operation shows it (params: path ids; query: the query string; body: the JSON body). Input that does not fit comes back with the reason. A refusal names the reason and the next step; do not repeat the same call. A write is never run: the result says \"Proposed\" and nothing changed, because the person decides on a card. Say in one sentence what is proposed, and never claim it is done.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "An operation name from search-operations."
+          },
+          "input": {
+            "type": "object",
+            "description": "The operation's input, as describe-operation shows it."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "readOnly": false
+    },
+    "report-missing-operation": {
+      "title": "Report a missing operation",
+      "description": "Count a gap: the person wants something done in the workspace and search-operations found no operation for it with two different phrasings. Also for friction with an operation you did find: set category to tool_description, input_schema, error_message or result_shape when one was confusing. The Piloti team sees that a report was made and its category, never your words, so describe the goal or the confusion without names or document contents. For a gap, then tell the person it cannot be done here yet.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "The goal that has no operation, or what was confusing."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "missing_operation",
+              "tool_description",
+              "input_schema",
+              "error_message",
+              "result_shape",
+              "other"
+            ],
+            "description": "What the report is about (default missing_operation)."
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "readOnly": false
+    }
+  }
+}

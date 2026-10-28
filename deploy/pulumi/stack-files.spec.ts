@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { load } from "js-yaml";
-import { RETIRED_VECTOR_KEYS } from "./src/config";
+import { RETIRED_VECTOR_KEYS } from './src/config/qdrant'
 
 /**
  * The committed stack files, checked against EACH OTHER.

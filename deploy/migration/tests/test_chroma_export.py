@@ -11,7 +11,7 @@ pytest's ``testpaths``):
 The end-to-end test hands the export to ``scripts/import_vectors.py`` in the
 repository's own venv (``.venv/bin/python``, or ``PILOTI_VENV_PYTHON``), which
 has no ``chromadb``: the two halves share the file format and nothing else, as
-in production. It needs ``GRID_QDRANT_TEST_URL``; without it it skips locally
+in production. It needs ``QDRANT_TEST_URL``; without it it skips locally
 and fails on CI.
 """
 
@@ -259,7 +259,7 @@ _DRIVER = textwrap.dedent(
     spec = importlib.util.spec_from_file_location("cli", sys.argv[1])
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
-    cli._configured_identity = lambda: {"aiq:embed_fingerprint": "fp-config", "aiq:embed_model": "config"}
+    cli._configured_identity = lambda: {"embed_fingerprint": "fp-config", "embed_model": "config"}
     code = cli.main(["--in", sys.argv[3], "--verify"])
     client = store_module.make_client()
     seen = {}
@@ -275,7 +275,7 @@ _DRIVER = textwrap.dedent(
             }
         seen[scope] = {
             "points": points,
-            "identity": client.get_collection(store.alias(scope)).config.metadata["aiq:embed_fingerprint"],
+            "identity": client.get_collection(store.alias(scope)).config.metadata["embed_fingerprint"],
         }
     for physical in schema.Physical:
         name = schema.ALIASES[physical] + schema.FIRST_VERSION
@@ -291,11 +291,11 @@ def _venv_python() -> pathlib.Path:
 
 
 def test_exported_vectors_arrive_in_qdrant_unchanged(chroma_dir, tmp_path):
-    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("QDRANT_TEST_URL", "").strip()
     if not url:
         if os.environ.get("CI"):
-            pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-        pytest.skip("GRID_QDRANT_TEST_URL not set")
+            pytest.fail("QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+        pytest.skip("QDRANT_TEST_URL not set")
     persist, held = chroma_dir
     out = tmp_path / "export"
     assert _export(["--persist-dir", str(persist)], out, "--batch-size", "4").returncode == 0
@@ -313,7 +313,7 @@ def test_exported_vectors_arrive_in_qdrant_unchanged(chroma_dir, tmp_path):
         text=True,
         timeout=600,
         check=False,
-        env={**os.environ, "GRID_QDRANT_URL": url},
+        env={**os.environ, "QDRANT_URL": url},
     )
     assert result.returncode == 0, result.stdout[-4000:] + result.stderr[-4000:]
     report = json.loads(result.stdout.strip().splitlines()[-1])

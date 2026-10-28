@@ -44,27 +44,27 @@ that closes a loop is named where it ran.
 
 | Loop | Landed | Where |
 |---|---|---|
-| A | Diversity cap applied on the answer budget after reranking (was a no-op on the candidate pool) | `sources/knowledge_layer/src/register.py` |
+| A | Diversity cap applied on the answer budget after reranking (was a no-op on the candidate pool) | `packages/knowledge-layer/src/register.py` |
 | A | Quote verification refuses a skipped or inserted whole word, whatever the word, at any length; sub-word OCR noise stays tolerated | `common/citation_verification.py` |
 | A | The Punkt and the retrieval score are parsed off the grounding block, fold under page dedup, reach the wire and the stored message, and the locus reads "Pkt. 3.5.2 · S. 7" | `citation_verification.py`, `features/chat/lib/citations/*`, `SourcePreview.tsx`, `CitationPeek.tsx` |
 | A | The turn's retrieval query survives the storage prune and the server whitelist, so a reloaded or shared thread keeps what was searched | `prune-message-for-storage.ts`, `message-provenance.ts`, `turn-events.ts` |
-| A · pass | The structural retrievability harness runs in CI as a gate (`task be:eval:retrieval`, 95% floor, 98.3% measured). *(Retired 2026-09-09: the corpus became operator-provided and gitignored, so no CI checkout can measure it. The harness stays as a local tool — [ADR-0058, Update (2026-09-09)](../adr/0058-retrieval-correctness-and-the-measurement-gate.md).)* | `Taskfile.yml`, `oib_retrieval_eval/runner.py` |
+| A · pass | The structural retrievability harness runs in CI as a gate (`task be:eval:retrieval`, 95% floor, 98.3% measured). *(Retired 2026-09-09: the corpus became operator-provided and gitignored, so no CI checkout can measure it. The harness stays as a local tool — [ADR-0058, Update (2026-09-09)](../adr/0058-retrieval-correctness-and-the-measurement-gate.md).)* | `Taskfile.yml`, `evals/oib-retrieval/src/oib_retrieval/runner.py` |
 | B | A background run carries the project, organization and user identity, fetches the live memory digest, composes it into the agent's context and hands the reflection pass a real digest; the fire path builds the digest and evaluates the reflection flag | `aiq_api/jobs/runner.py`, `routes/skills.py`, `lib/jobs/service.ts` |
 | B | A finished or failed run tells the job's creator: `job.completed` / `job.failed` inbox items, a `project` inbox target, an internal outcome route the worker calls from its terminal arms | `lib/inbox/*`, `app/api/internal/jobs/[jobId]/outcome`, `aiq_api/jobs/outcome_notify.py` |
 | B | One personal-data guard on the write path both memory writers share; a date is no longer dropped as a phone number | `knowledge/project_memory.py` |
 | B | Accepted and declined proposals reach the next turn as a `PROPOSAL_DECISIONS` block on the memory channel | `lib/projects/proposal-decisions.ts`, `piloti.j2` |
 | B | Memory recall ranks by similarity in SQL and a quoted correction resolves across the whole scope, not the 200 most recent rows | `lib/projects/memory-service.ts` |
-| fix | A chat attachment re-uploaded under its name replaces the first, as the project and Archiv shelves already did; the probe skips machine-authored rows; migration 0074 makes one live human-uploaded document per `(organization, collection, filename)` a unique index; every replace path discards the superseded thumbnail and `_bim/` derivatives | `lib/session-documents/service.ts`, `lib/documents/object-cleanup.ts`, `drizzle/0074_*` |
+| fix | A chat attachment re-uploaded under its name replaces the first, as the project and Archiv shelves already did; the probe skips machine-authored rows; migration 0074 makes one live human-uploaded document per `(organization, collection, filename)` a unique index; every replace path discards the superseded thumbnail and `_bim/` derivatives | `lib/session-documents/service.ts`, `lib/documents/object-cleanup.ts`, `migrations/0074_*` |
 | fix | A deep run whose post-hoc cards could not be produced records `cards_generation_failed` as a degraded reason, worded under the answer and in the Herleitung graph, instead of looking like a run that had nothing to propose | `cards/generate.py`, `jobs/runner.py`, `turn-events.ts`, `message-provenance.ts` |
 | fix | The Report tab's source list carries the `[N]` the report cites by: the report route returns the persisted numbered sources, and both load paths merge them into the citation list | `routes/jobs.py`, `deep-research-client.ts`, `use-deep-research.ts`, `use-load-job-data.ts` |
-| fix | The OIB display title reads any edition off the filename, not only "Mai 2023"; the three document-metadata resolvers log a failed store read instead of silently falling back | `common/norm_registry.py`, `sources/knowledge_layer/src/register.py` |
+| fix | The OIB display title reads any edition off the filename, not only "Mai 2023"; the three document-metadata resolvers log a failed store read instead of silently falling back | `common/norm_registry.py`, `packages/knowledge-layer/src/register.py` |
 | D · L0 | The turn's one repair: a failed citation or quote triggers one retrieval aimed at the failing text and one rewrite, re-verified, the better answer ships (`repair_pass`, `status.repair`). (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) | `piloti/agent.py` |
 | D · L1 | The retrieval loop: a sufficiency judge beside the reranker, alternative formulations retrieved from every collection and fused into the same RRF, a second rerank; `status.retrieval.requery` on the live line and `requery_queries` in the trace | `knowledge_layer/requery.py`, `register.py`, `config_oib_openrouter.yml` |
-| D · L5 | The turn holds for an attachment still being indexed (`GRID_INGEST_WAIT_SECONDS`, `status.documents.waiting`), re-reads the inventory when it finishes; the in-flight filter that never fired is fixed | `piloti/conversation_register.py`, `knowledge/ingest_status_store.py` |
+| D · L5 | The turn holds for an attachment still being indexed (`INGEST_WAIT_SECONDS`, `status.documents.waiting`), re-reads the inventory when it finishes; the in-flight filter that never fired is fixed | `piloti/conversation_register.py`, `knowledge/ingest_status_store.py` |
 | fix | Deep research no longer dies of one slow source: a tool's own timeout is a tool error the model routes around; the writer's call bound matches its output (600 s, one retry); a budget exhaustion keeps its actionable message; the banner names the real cause | `deep_researcher/tools/source_tool_batching.py`, `deep_researcher/agent.py`, `jobs/runner.py`, `config_oib_openrouter.yml` |
-| B | Reinforcement fires only on a build ranked against a question; a refused supersede is recorded as `conflicts_with_id` on the new row (migration 0076); every bound tool's context needs are declared (`TOOL_CONTEXT_REQUIREMENTS`) and checked against what the job worker injects | `lib/projects/memory-service.ts`, `project_context.py`, `tests/aiq_agent/test_tool_context_contract.py` |
+| B | Reinforcement fires only on a build ranked against a question; a refused supersede is recorded as `conflicts_with_id` on the new row (migration 0076); every bound tool's context needs are declared (`TOOL_CONTEXT_REQUIREMENTS`) and checked against what the job worker injects | `lib/projects/memory-service.ts`, `project_context.py`, `packages/agent/tests/test_tool_context_contract.py` |
 | delete | `card_generator_llm` (a field nothing read), the unmaintained `config_grid_oib.yml`, the two-hop research → history → chat redirect, and the backlog lines closed at HEAD | `piloti/conversation_register.py`, `configs/`, `docs/audit/overnight-run-backlog.md` |
-| C | The `tasks` row (ADR-0051): one per attempt, requester pinned, plan frozen, lifecycle and review as separate axes; a scheduled deep-research report is filed at completion as the requester through the outcome callback; a rejection's reason reaches the next run's prompt as `PREVIOUS_DECISIONS`; audit `task.created` / `task.completed` / `task.reviewed`; `GET …/tasks`, `POST …/tasks/[taskId]/review` | `lib/tasks/*`, `lib/auth/pinned-session.ts`, `drizzle/0075_tasks.sql`, `jobs/outcome_notify.py` |
+| C | The `tasks` row (ADR-0051): one per attempt, requester pinned, plan frozen, lifecycle and review as separate axes; a scheduled deep-research report is filed at completion as the requester through the outcome callback; a rejection's reason reaches the next run's prompt as `PREVIOUS_DECISIONS`; audit `task.created` / `task.completed` / `task.reviewed`; `GET …/tasks`, `POST …/tasks/[taskId]/review` | `lib/tasks/*`, `lib/auth/pinned-session.ts`, `migrations/0075_tasks.sql`, `jobs/outcome_notify.py` |
 
 Still open from the plan: the card-generation failure signal, the stall
 notice on the banner and the memory chip link (UI workstream); reinforcement
@@ -144,7 +144,7 @@ named in `deploy/compose/docker-compose.coolify.yaml:131`.
 | Can it act without a human click? | No. Org memory writes and profile patches become proposal cards the user accepts | `register.py:171-186`, `cards/models.py:280-289` |
 | Can it work unattended? | A *job* is one prompt on a cron line that fires one agent. No plan, no steps, no review, no notification when it finishes | `lib/db/schema/jobs.ts:98-159`, `scheduler/index.js:131-157` |
 | Are its tools all live? | Two tools bound to the deep researcher cannot work there: `remember` needs `x-grid-project-id`, which the job runner never re-injects; `emit_card` needs a card registry that exists only on the chat path | `jobs/runner.py:749-785` vs `project_context.py:44-46`; `cards/register.py:175-181` |
-| Is quality measured? | A real retrieval harness exists (52-entry golden set, recall@k, nDCG, structural retrievability of 946 Punkte). No CI job, Taskfile target or schedule runs it | `frontends/benchmarks/oib_retrieval/`; `grep benchmark Taskfile.yml .github/workflows/` is empty |
+| Is quality measured? | A real retrieval harness exists (52-entry golden set, recall@k, nDCG, structural retrievability of 946 Punkte). No CI job, Taskfile target or schedule runs it | `evals/oib-retrieval/`; `grep benchmark Taskfile.yml .github/workflows/` is empty |
 | Is the user told what happened? | Live: yes, and well (status keys, the Herleitung graph, "Ausgeführt" chips, HITL). After the turn: the query is blanked before storage | `features/chat/lib/prune-message-for-storage.ts:47-59` |
 
 The one place the backend is genuinely multi-agent is deep research
@@ -252,7 +252,7 @@ What remains, ranked by consequence:
    classification could replace on arrival. "What was in force at the permit
    date" cannot be asked.
 6. **Cross-encoder reranking is dark.** 437 tested lines, five providers,
-   `GRID_RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
+   `RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
    recall is saturated at k=60 and the remaining gain is ordering.
 7. **Tables lose their Punkt.** Table documents are built from a separate
    pdfplumber pass with no outline context, so the threshold tables where the
@@ -377,7 +377,7 @@ closed. A loop with no measurement is a hope.
 
 | # | Loop | Runs today | Does not | Closed when |
 |---|---|---|---|---|
-| L0 | **Turn**: generate → verify → repair → ship | generate, verify (subtractive), ship | repair. A failed quote or a removed citation yields a marker, never a re-search or a rewrite | One bounded repair pass (one extra tool call, one rewrite) on `citations_removed > 0`, an unverified quote, or a capped confidence; measured by the `oib_compliance` suite's citation-validity rate before and after. (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) |
+| L0 | **Turn**: generate → verify → repair → ship | generate, verify (subtractive), ship | repair. A failed quote or a removed citation yields a marker, never a re-search or a rewrite | One bounded repair pass (one extra tool call, one rewrite) on `citations_removed > 0`, an unverified quote, or a capped confidence; measured by the `oib_compliance` suite's citation-validity rate before and after (that suite was deleted uncalibrated in ADR-0145 row 2). (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) |
 | L1 | **Retrieval**: retrieve → judge sufficiency → re-query | retrieve, fuse, rerank | judge, re-query, multi-query. Nothing inside `knowledge_search` improves a weak query | recall@10 and nDCG@10 on the golden set, run in CI against a committed baseline, with the structural arm as the merge gate |
 | L2 | **Task**: plan → approve → run → verify → review → accept | run (deep research, compliance check) | everything durable around it: the plan is a socket future, the artifact expires, nobody is told, nobody reviews, the decision never returns | Time from "task created" to "task accepted" is a measured number per kind, and a rejected task's reason reaches the next run's prompt |
 | L3 | **Memory**: capture → consolidate → recall → measure use → decay | all five, on the chat path | capture and recall on the job path; closing an open question; use vs injection | Reinforcement fires only on the query-ranked build; `open_question` rows have a resolved rate; a memory holdout like the lessons' `holdout_pct` |
@@ -402,8 +402,8 @@ Before any of the above, the single most useful thing to establish is
   The pilot runs on Coolify compose, whose redeploy is manual
   (`feedback-backlog.md:106`: "merge → full Redeploy in Coolify").
 - `deploy/compose/docker-compose.coolify.yaml:517,523,612`:
-  `GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED` and
-  `GRID_ENFORCE_FEATURE_FLAGS` all default to `false`. With those defaults
+  `SKILLS_ENABLED`, `COLLABORATION_ENABLED` and
+  `ENFORCE_FEATURE_FLAGS` all default to `false`. With those defaults
   the product a pilot organisation sees has no inbox, no sharing, no
   mentions, no jobs, no skills and no knowledge-transparency page. PF-4
   reasons carefully about why "@ erwähnen funktioniert nicht" and concludes
@@ -426,7 +426,7 @@ Behind the release layer, the backend items that are real and were confirmed:
 |---|---|---|
 | A plan attached in chat is answered before it is ingested; nothing tells the agent the file is in flight | `InputArea.tsx` ("send is never blocked"), `ingest_status_store` unread on the chat path | The first event trigger (L5) fixes this and PF-2 at once |
 | `research_job_queue` has no migration, no RLS, one index whose predicate the claim query cannot use | `queue.py:63-91` | It becomes the task queue |
-| `ResearchWorker`'s loop and heartbeat cancellation have no test | `worker.py:68-102`; `grep ResearchWorker frontends/aiq_api/tests/` is empty | The most safety-critical code in the tier |
+| `ResearchWorker`'s loop and heartbeat cancellation have no test | `worker.py:68-102`; `grep ResearchWorker apps/backend/tests/` is empty | The most safety-critical code in the tier |
 | No cross-service contract test for the fire path | ADR-0046 Risks records the 403 that broke every scheduled run in a real deployment | The lesson was written down; the test was not |
 | `sources/` (90 tests) and `packages/` (~636 tests) run in no CI job | `Taskfile.yml:347-352`, `packages/AGENTS.md` | `sources/` is where every agent tool lives; `packages/ifc-spatial*` backs a default-on feature that renders compliance verdicts |
 | `backend-deep-dive.md` describes a card-generation LLM call that no longer exists and a `card_generator_llm` key that nothing reads | `backend-deep-dive.md:355-368`, `piloti/conversation_register.py:639,816` | An agent working this repo acts on the doc |
@@ -475,7 +475,7 @@ touches the three choke points named in §4 and two verification modules.
 | Persist the retrieval query: keep the `status:` key and its interpolation values on the stored step instead of blanking `content` | `features/chat/lib/prune-message-for-storage.ts:47-59` | refinement, one file, server inherits it via ADR-0037 |
 | Parse `Punkt:` into `SourceEntry`, carry it on the wire, cite as "OIB-RL 2, Pkt. 3.5.2" | `common/citation_verification.py:944-963`, `source_entry_to_wire:1770`, `features/chat/lib/citations/` | refinement |
 | Carry `score`, `rank` and `channel` on the wire and the row; show strength on the Herleitung's source card, not the chip | `source_entry_to_wire`, `message-provenance.ts`, `reasoning/SourceCard.tsx:140-152` | refinement |
-| Restore the diversity cap to `effective_top_k`, applied after reranking | `sources/knowledge_layer/src/register.py:1485,1521` | bug |
+| Restore the diversity cap to `effective_top_k`, applied after reranking | `packages/knowledge-layer/src/register.py:1485,1521` | bug |
 | Polarity-aware quote verification: a negation token inside an elision fails the quote | `common/citation_verification.py:2027-2295` | bug, the most serious one |
 | Bind each verified quote to its own `[N]` rather than any registry entry | `verify_quoted_spans` | refinement |
 | A `cards_generation_failed` signal, rendered by the existing degradation note | `jobs/runner.py:1404`, `AgentResponse.tsx:448` | refinement |
@@ -486,7 +486,7 @@ touches the three choke points named in §4 and two verification modules.
 executes the structural arm and the lexical arm against a committed baseline
 and fails on regression. *(That was true when this pass ran. The CI job was
 retired on 2026-09-09 with the corpus; the command still does exactly this
-locally, for anyone who has one.)* The `oib_compliance` suite reports citation-validity
+locally, for anyone who has one.)* The `oib_compliance` suite (deleted uncalibrated in ADR-0145 row 2) reports citation-validity
 and a new quote-polarity case. A stored message, reloaded on a second device,
 shows the query, the Punkt and the score for every source. Deployed SHA and
 the three flags are read off the pilot and recorded in the triage doc.
@@ -498,7 +498,7 @@ Nothing new; each line joins two things that are built.
 | Change | Module |
 |---|---|
 | Send the live memory digest on the job fire path; fetch it in the worker's reflection pass instead of passing the profile | `lib/jobs/service.ts:362-391`, `aiq_api/jobs/runner.py:1409-1477` |
-| Re-inject `x-grid-project-id` / `x-grid-organization-id` in the runner so `remember` works on deep research; a startup check that every bound tool can run in its context | `jobs/runner.py:749-785`, `tests/aiq_agent/test_config_tool_wiring.py` |
+| Re-inject `x-grid-project-id` / `x-grid-organization-id` in the runner so `remember` works on deep research; a startup check that every bound tool can run in its context | `jobs/runner.py:749-785`, `packages/agent/tests/test_config_tool_wiring.py` |
 | Two inbox types, `task.completed` and `task.failed` (today keyed on the job run) | `lib/inbox/registry.ts`, `schema/inbox.ts:45` |
 | A project-wide "Läufe" tab in Automation from the existing per-job run history | `automation-panel.tsx`, `job-run-history.tsx` |
 | Feed `cardInteractions` into the next turn's context so a rejected patch is not re-proposed | `websocket-scope/route.ts`, `project_context.py` |
@@ -520,7 +520,7 @@ The one new table, and the seams that already exist hung off it.
 
 | Change | Module | Kind |
 |---|---|---|
-| `tasks` table with lifecycle, pinned requester, plan, budget, deadline, concurrency policy; `jobs` creates tasks | `frontends/ui/src/lib/db/schema/tasks.ts`, `lib/tasks/`, migration with `grid_secure_table` | new row, generalises `jobs`/`job_runs`/`mention_requests` |
+| `tasks` table with lifecycle, pinned requester, plan, budget, deadline, concurrency policy; `jobs` creates tasks | `apps/workspace/bff/db/schema/tasks.ts`, `lib/tasks/`, migration with `secure_table` | new row, generalises `jobs`/`job_runs`/`mention_requests` |
 | Persist the clarifier's plan on the task; approval is a row transition resolved by an event, not a socket future | `piloti/clarify.py` (`preview_plan`), `lib/tasks/` | generalisation |
 | File the run's artifact at completion as the pinned requester, off the interactive GET | `lib/documents/research-report.ts`, `api/jobs/async/[...path]/route.ts:247` | generalisation; the route comment names this as "v1.1, decision 10" |
 | Audit actions `task.created … task.accepted`; per-task budget and deadline enforced by `GridCostTracker` and `BudgetGuardCallback` | `lib/audit/schemas.mjs`, `common/budget_guard.py`, `lib/request-context.ts` | generalisation |
@@ -543,14 +543,14 @@ The loops that make the agent trustworthy unattended.
 | Change | Module |
 |---|---|
 | One bounded repair pass in the turn: on `citations_removed > 0`, an unverified quote or a capped confidence, one more retrieval and one rewrite, then ship with the marker if it still fails. (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) | `piloti/agent.py:1150-1400`, `deep_researcher/agent.py:1049-1160` |
-| Retrieve → judge → re-query inside `knowledge_search`: a sufficiency judgement over the fused pool, one paraphrase fan-out merged by the existing RRF | `sources/knowledge_layer/src/register.py:1312`, `hybrid.py:29` |
+| Retrieve → judge → re-query inside `knowledge_search`: a sufficiency judgement over the fused pool, one paraphrase fan-out merged by the existing RRF | `packages/knowledge-layer/src/register.py:1312`, `hybrid.py:29` |
 | A checker step on every task kind: the compliance matrix is re-read against its own citations before filing | `agents/compliance_checker/agent.py:503`, task runner |
 | The event seam with three consumers: ingest terminal state (hold the turn, tell the agent), `oib_status` STALE (re-check affected projects), a watched folder | `knowledge/ingest_status_store.py`, `oib_status.py:31-55`, `lib/tasks/triggers/` |
 | Standing rules in the form ADR-0036 §9 fixed: named, listable, disableable, evaluated on an event or a schedule, posting only on change | `lib/tasks/rules/` |
 | Tell the reader about truncation in the answer, which the config calls an open product decision | `config_oib_openrouter.yml:684-694` |
 
 **Verification pass D.** Citation-validity and quote-polarity rates on the
-`oib_compliance` suite with the repair pass on and off. Recall@10 with and
+`oib_compliance` suite with the repair pass on and off (deleted uncalibrated in ADR-0145 row 2; a successor eval would carry this). Recall@10 with and
 without the fan-out. A plan attached and asked about in one message is
 answered after ingestion and says so. A stale corpus produces one task per
 affected project and no duplicate.

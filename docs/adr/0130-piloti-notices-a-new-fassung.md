@@ -32,7 +32,7 @@ Every part a notice needs already exists, each started by a person:
 - **The marks.** Piloti's canvas tool proposes marks through
   `POST /api/internal/document-annotations` (`op: propose`,
   `runAgentAnnotationRequest`). A proposal waits for a person
-  (`only_piloti_proposes`, migration 0138), records a `piloti_changes` row per
+  (`only_piloti_proposes`, migration 0138), records a `agent_changes` row per
   mark against the turn's answer, and a decision on it is scored
   `piloti-decision` on that answer's trace.
 - **Running in the background as a person.** ADR-0106 wakes a turn as the person
@@ -134,7 +134,7 @@ Changed pages past the cap are named in the message, not looked at.
 - **One message in the person's thread about the document** (ADR-0106's
   `ensureDocumentThread`), with a derived id: what was compared, the proposals,
   the pages not looked at, and that this is a picture comparison, no check
-  against regulations or other documents. The marks' `piloti_changes` rows name
+  against regulations or other documents. The marks' `agent_changes` rows name
   this message, so the activity card, undo, and the `piloti-decision` score on
   each mark work unchanged.
 - **One inbox row** for that person, `piloti.revision_checked`, anchored on the
@@ -195,7 +195,7 @@ shows 10“. That is option 1, and it is built as a second job kind,
   the claim outlives the job, whose row is deleted when it finishes, so a re-read
   that settles the document again checks nothing again.
 - **A headless turn, not a pipeline.** The turn is the one `piloti-asks` run
-  (`runHeadlessTurn`, the signed envelope, `X-AIQ-Mode: headless`, `if_idle`), with
+  (`runHeadlessTurn`, the signed envelope, `X-Chat-Mode: headless`, `if_idle`), with
   the new trigger kind `new_document` on the wire (`event_id` the check's id, no
   Anmerkung). `ask_user` refuses on it, so it cannot ask anyone. The instruction
   is fixed and English: read the document, find its 2 to 4 load-bearing facts,
@@ -210,7 +210,7 @@ shows 10“. That is option 1, and it is built as a second job kind,
   no trace in their lists. With findings it stays: it is the origin of the marks'
   change rows (undo, `piloti-decision`).
 - **What it leaves.** Only with at least one finding (the marks the turn proposed,
-  read from `piloti_changes`): one message in the person's thread about the
+  read from `agent_changes`): one message in the person's thread about the
   document and one inbox row, `piloti.revision_checked` with the variants
   `check_one` and `check_many`, through the `leaveNotice` helper the visual notice
   uses. No finding: the conversation is deleted, nothing is left.

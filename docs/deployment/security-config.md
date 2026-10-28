@@ -18,7 +18,7 @@ When auth is disabled, the system runs with a default unauthenticated user conte
 
 The backend reads the same variable. With `REQUIRE_AUTH=true` it enforces:
 
-- **Job access by signed scope** ([ADR-0084](../adr/0084-the-backend-authorizes-a-job-by-the-scope-the-bff-signed.md)). A research job is returned to the principal that submitted it, and to a caller whose signed envelope places the job inside what the BFF checked: the same organization, plus either the job's project (read and steer: cancel, write-now, add a document) or the job's conversation (read only). The BFF signs a project only after it checked `project:chat` on it, and a conversation only after it checked `viewer` on an existing one. The envelope must be signed with `GRID_INTERNAL_API_TOKEN`, carry `issuedAt` within six hours, and name the same user as the bearer token. A job whose `job_access` row has no organization is reachable by its owner only. Every other caller gets the same 404 as for a job that does not exist, and the run listing returns the same set. Members who may view a project but not chat in it cannot open the live stream of someone else's run; the ADR records this as a known limit.
+- **Job access by signed scope** ([ADR-0084](../adr/0084-the-backend-authorizes-a-job-by-the-scope-the-bff-signed.md)). A research job is returned to the principal that submitted it, and to a caller whose signed envelope places the job inside what the BFF checked: the same organization, plus either the job's project (read and steer: cancel, write-now, add a document) or the job's conversation (read only). The BFF signs a project only after it checked `project:chat` on it, and a conversation only after it checked `viewer` on an existing one. The envelope must be signed with `INTERNAL_API_TOKEN`, carry `issuedAt` within six hours, and name the same user as the bearer token. A job whose `job_access` row has no organization is reachable by its owner only. Every other caller gets the same 404 as for a job that does not exist, and the run listing returns the same set. Members who may view a project but not chat in it cannot open the live stream of someone else's run; the ADR records this as a known limit.
 - **The signed envelope.** A WorkOS-authenticated request to any route not on the exempt list must carry a valid `X-Grid-Request-Context` envelope (`aiq_api/context_envelope.py`). The job routes are on it, because they authorize by themselves: without an envelope a caller reaches only the jobs it owns, and a valid one can widen that to the project or conversation it signs (ADR-0084).
 - **Document search scope.** `/v1/collections/{name}/search` refuses a request that carries no signed scope.
 
@@ -54,11 +54,11 @@ The `WORKOS_COOKIE_PASSWORD` is used to encrypt the AuthKit session cookie. Requ
 
 ### The chat socket's context headers
 
-The WebSocket proxy (`frontends/ui/server.js`) tells the backend who the caller
+The WebSocket proxy (`apps/workspace/server.js`) tells the backend who the caller
 is and what the organization decided: model overrides, the remaining budget, the
 data sources it switched off. It does so twice, as individual `x-grid-*` headers
 and as the signed `X-Grid-Request-Context` envelope (HMAC-SHA256 under
-`GRID_INTERNAL_API_TOKEN`). Two rules keep a client from choosing those values
+`INTERNAL_API_TOKEN`). Two rules keep a client from choosing those values
 for itself:
 
 - The proxy removes every inbound `x-grid-*` header, `authorization` and
@@ -70,7 +70,7 @@ for itself:
   the signed envelope whenever one arrived (`get_signed_request_context`), and
   falls back to the individual headers only without one (a job worker, the CLI).
 
-`GRID_INTERNAL_API_TOKEN` must therefore be set in production: without it the
+`INTERNAL_API_TOKEN` must therefore be set in production: without it the
 backend accepts an envelope on its shape alone, and the signature protects
 nothing.
 
@@ -146,12 +146,12 @@ In production, consider:
 - For production WorkOS API keys, use `sk_live_...` (not `sk_test_...`). Test keys do not process real authentication.
 - API keys are passed to containers via environment variables. They are visible in `docker inspect` output if the container is inspected.
 
-## GRID_ADMIN_TOKEN
+## ADMIN_TOKEN
 
 The admin token protects privileged endpoints:
 
 ```bash
-GRID_ADMIN_TOKEN=change-me-in-production
+ADMIN_TOKEN=change-me-in-production
 ```
 
 This is a simple bearer token. Change it from the default before deploying to production. The token is sent in the `Authorization: Bearer <token>` header.
@@ -163,19 +163,19 @@ This is a simple bearer token. Change it from the default before deploying to pr
 Embeddings and the VLM route through OpenRouter with `OPENROUTER_API_KEY`; the
 embeddings client is LlamaIndex's `NVIDIAEmbedding` class pointed at an
 OpenAI-compatible endpoint, and the key reaches it through the shared credential
-resolver (`GRID_EMBED_API_KEY`, else the key inferred from `GRID_EMBED_BASE_URL`).
+resolver (`EMBED_API_KEY`, else the key inferred from `EMBED_BASE_URL`).
 `NVIDIA_API_KEY` is not read anywhere.
 
 ### What's Needed For VLM Features
 
 Vision-Language Model features (table extraction, image extraction, chart
-extraction) are on by default (`GRID_EXTRACT_*`, set `false` to disable one);
+extraction) are on by default (`EXTRACT_*`, set `false` to disable one);
 they need only a VLM key, and the model and host default to OpenRouter:
 
 ```bash
 # defaults, shown for completeness
-GRID_VLM_MODEL=openai/gpt-6-luna
-GRID_VLM_BASE_URL=https://openrouter.ai/api/v1
+VLM_MODEL=openai/gpt-6-luna
+VLM_BASE_URL=https://openrouter.ai/api/v1
 ```
 
 ## PostgreSQL
@@ -185,7 +185,7 @@ GRID_VLM_BASE_URL=https://openrouter.ai/api/v1
 ```yaml
 POSTGRES_USER: aiq
 POSTGRES_PASSWORD: aiq_dev
-POSTGRES_DB: aiq_jobs
+POSTGRES_DB: jobs
 ```
 
 **These are development credentials.** In production:
@@ -219,7 +219,7 @@ Port `5432` is mapped to the host by default. In production:
 4. **Audit `.env` permissions**: Ensure `deploy/.env` is readable only by the user running Docker (`chmod 600`).
 5. **Use separate API keys per environment**: Production and development should use different keys.
 6. **Enable WorkOS Auth in production**: Set `REQUIRE_AUTH=true` and configure WorkOS properly.
-7. **Remove default admin tokens**: Change `GRID_ADMIN_TOKEN` from `change-me-in-production`.
+7. **Remove default admin tokens**: Change `ADMIN_TOKEN` from `change-me-in-production`.
 8. **Review the SeaweedFS init script**: The `seaweedfs-init` service uses hardcoded credentials. For production, pass credentials via environment variables or use IAM roles if deploying on cloud infrastructure.
 
 ### TLS / HTTPS

@@ -1,0 +1,204 @@
+"""The envelope's cards reach the turn's registry, and the prose's markers reach them.
+
+Through ``finalize_answer``, because the seam is the order: registration is
+what turns the array's numbers into registry positions, and it has to run
+before the suppression floor and the callout resolver read the prose. A card
+the validator refuses is repaired ONCE on the small model and never by a
+round; a card that still fails is dropped, recorded, and its marker removed
+so no later card slides onto its place.
+"""
+
+from __future__ import annotations
+
+import json
+from unittest.mock import AsyncMock
+
+import pytest
+from langchain_core.messages import AIMessage
+from langchain_core.messages import ToolMessage
+
+from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
+from aiq_agent.cards.registry import CardRegistry
+from aiq_agent.cards.registry import reset_card_registry
+from aiq_agent.cards.registry import set_card_registry
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
+
+BASIS = {"type": "ifc_model_picker", "title": "Welches Modell möchten Sie öffnen?"}
+_CHECK = {"label": "Steigung", "value": 17, "required": 18, "unit": "cm", "comparator": "<=", "status": "pass"}
+TABLE_WRONG = {"type": "stair_diagram", "title": "Treppe", "riser_count": 17}
+TABLE_RIGHT = {
+    "type": "stair_diagram",
+    "title": "Treppe",
+    "riser_count": 17,
+    "riser_height": _CHECK,
+    "tread_depth": {**_CHECK, "label": "Auftritt", "value": 30, "required": 28, "comparator": ">="},
+    "width": {**_CHECK, "label": "Laufbreite", "value": 120, "required": 120, "comparator": ">="},
+    "reference": {"document": "OIB-Richtlinie 4"},
+}
+PROSE = (
+    "x" * 900 + " Die Antwort [1].\n\n[[card:1]]\n\nWeiter.\n\n[[card:2]]\n\n## References\n- [1] https://example.com"
+)
+
+
+@pytest.fixture
+def card_registry():
+    registry = CardRegistry()
+    token = set_card_registry(registry)
+    yield registry
+    reset_card_registry(token)
+
+
+def _messages(cards: list, *tool_replies: str) -> list:
+    envelope = {"answer": PROSE, "kind": "walkthrough", "cards": cards}
+    return [
+        *(ToolMessage(content=reply, name="write_file", tool_call_id=f"t{i}") for i, reply in enumerate(tool_replies)),
+        AIMessage(content="```answer_json\n" + json.dumps(envelope, ensure_ascii=False) + "\n```"),
+    ]
+
+
+def _sources() -> SourceRegistry:
+    registry = SourceRegistry()
+    registry.add(SourceEntry(url="https://example.com", tool_name="web"))
+    return registry
+
+
+@pytest.mark.asyncio
+async def test_sound_cards_register_in_array_order_and_the_markers_stay(card_registry):
+    final = await finalize_answer(_messages([BASIS, TABLE_RIGHT]), registry=_sources(), tools=[], repair=None)
+
+    assert [card["type"] for card in card_registry.snapshot()] == ["ifc_model_picker", "stair_diagram"]
+    assert "[[card:1]]" in final.content and "[[card:2]]" in final.content
+
+
+@pytest.mark.asyncio
+async def test_the_array_lands_after_the_tool_cards_and_its_markers_follow(card_registry):
+    """A draft the turn filed sits at position 1. The model follows the taught
+    rule and numbers its two cards after the handed marker, 2 and 3; each
+    lands on its own card, and the draft keeps its marker."""
+    card_registry.add({"type": "document_draft", "title": "Aktenvermerk"})
+    handed = "Draft written. Write [[card:1]] where the file belongs."
+    prose = (
+        "x" * 900
+        + " Die Antwort [1].\n\n[[card:1]]\n\n[[card:2]]\n\nWeiter.\n\n[[card:3]]\n\n## References\n- [1] https://example.com"
+    )
+    envelope = {"answer": prose, "kind": "walkthrough", "cards": [BASIS, TABLE_RIGHT]}
+    messages = [
+        ToolMessage(content=handed, name="write_file", tool_call_id="t0"),
+        AIMessage(content="```answer_json\n" + json.dumps(envelope, ensure_ascii=False) + "\n```"),
+    ]
+
+    final = await finalize_answer(messages, registry=_sources(), tools=[], repair=None)
+
+    assert [card["type"] for card in card_registry.snapshot()] == [
+        "document_draft",
+        "ifc_model_picker",
+        "stair_diagram",
+    ]
+    body = final.content
+    assert body.index("[[card:1]]") < body.index("[[card:2]]") < body.index("Weiter.") < body.index("[[card:3]]")
+
+
+@pytest.mark.asyncio
+async def test_a_model_that_ignores_the_offset_is_read_by_array_number(card_registry):
+    """Numbers at or below the handed marker that a tool did not hand out can
+    only be array numbers; a clash with a handed number stays the tool's."""
+    card_registry.add({"type": "document_draft", "title": "Aktenvermerk"})
+    card_registry.add({"type": "document_draft", "title": "Protokoll"})
+    handed = "Drafts written. Write [[card:2]] where the file belongs."
+
+    final = await finalize_answer(_messages([BASIS, TABLE_RIGHT], handed), registry=_sources(), tools=[], repair=None)
+
+    # `[[card:1]]` is array card 1 (ifc_model_picker, position 3); `[[card:2]]` was handed.
+    assert "[[card:3]]" in final.content and "[[card:2]]" in final.content
+    assert "[[card:1]]" not in final.content
+
+
+@pytest.mark.asyncio
+async def test_a_shape_miss_is_repaired_once_on_the_small_model(card_registry, emitted):
+    repair = AsyncMock(return_value=TABLE_RIGHT)
+    final = await finalize_answer(
+        _messages([BASIS, TABLE_WRONG]), registry=_sources(), tools=[], repair=None, card_repair=repair
+    )
+
+    repair.assert_awaited_once()
+    card, refusal, answer = repair.await_args.args
+    assert card == TABLE_WRONG
+    assert refusal.startswith("card of type 'stair_diagram' failed validation:")
+    assert "shape:" in refusal  # the type's full shape rides along for the repair
+    assert answer.startswith("x" * 100)
+    assert [card["type"] for card in card_registry.snapshot()] == ["ifc_model_picker", "stair_diagram"]
+    assert "[[card:2]]" in final.content
+    recorded = [step.detail for step in emitted.steps if step.id.startswith("status:card:invalid")]
+    assert recorded == [{"cardType": "stair_diagram", "outcome": "repaired"}]
+
+
+@pytest.mark.asyncio
+async def test_a_card_that_still_fails_is_dropped_recorded_and_its_marker_removed(card_registry, emitted):
+    repair = AsyncMock(return_value=None)
+    final = await finalize_answer(
+        _messages([TABLE_WRONG, BASIS]), registry=_sources(), tools=[], repair=None, card_repair=repair
+    )
+
+    assert [card["type"] for card in card_registry.snapshot()] == ["ifc_model_picker"]
+    # The dropped card's marker is gone; the second card is now position 1.
+    assert "[[card:2]]" not in final.content
+    assert final.content.count("[[card:1]]") == 1
+    recorded = [step.detail for step in emitted.steps if step.id.startswith("status:card:invalid")]
+    assert recorded == [{"cardType": "stair_diagram", "outcome": "dropped"}]
+
+
+@pytest.mark.asyncio
+async def test_a_system_card_in_the_envelope_is_refused_and_never_repaired(card_registry):
+    repair = AsyncMock(return_value=None)
+    fake = {"type": "document_grid", "title": "fake", "documents": [{"file_name": "x.pdf"}]}
+
+    await finalize_answer(_messages([fake]), registry=_sources(), tools=[], repair=None, card_repair=repair)
+
+    repair.assert_not_awaited()
+    assert card_registry.snapshot() == []
+
+
+@pytest.mark.asyncio
+async def test_no_registry_bound_ships_the_answer_without_cards():
+    final = await finalize_answer(_messages([BASIS]), registry=_sources(), tools=[], repair=None)
+    assert final.answered
+
+
+@pytest.mark.asyncio
+async def test_a_marker_a_tool_handed_out_last_turn_is_not_taken_this_turn(card_registry):
+    """The transcript carries the previous turn; its `[[card:1]]` belongs to that turn's registry."""
+    from langchain_core.messages import HumanMessage
+
+    previous_turn = [
+        HumanMessage(content="Schreib den Aktenvermerk."),
+        ToolMessage(
+            content="Draft written. Write [[card:1]] where the file belongs.", name="write_file", tool_call_id="t0"
+        ),
+        AIMessage(content="Erledigt. [[card:1]]"),
+        HumanMessage(content="Und die Brandabschnitte?"),
+    ]
+    final = await finalize_answer([*previous_turn, *_messages([BASIS])], registry=_sources(), tools=[], repair=None)
+
+    assert [card["type"] for card in card_registry.snapshot()] == ["ifc_model_picker"]
+    assert "[[card:1]]" in final.content
+
+
+@pytest.mark.asyncio
+async def test_a_retired_card_is_laid_out_as_markdown_at_its_marker_not_dropped(card_registry):
+    """Guardrail 8: a model that reached for a retired type out of habit put
+    content in it that may be nowhere else. The card cannot register, so its
+    content lands at its marker as Markdown, and no later card slides onto its
+    place."""
+    retired = {
+        "type": "typed_table",
+        "title": "Mindestmaße",
+        "columns": [{"label": "Bauteil", "type": "text"}, {"label": "Maß", "type": "mass"}],
+        "rows": [["Tür", "90 cm"]],
+    }
+    final = await finalize_answer(_messages([retired, BASIS]), registry=_sources(), tools=[], repair=None)
+
+    assert [card["type"] for card in card_registry.snapshot()] == ["ifc_model_picker"]
+    assert "**Mindestmaße**" in final.content
+    assert "| Tür | 90 cm |" in final.content
+    assert final.content.index("Mindestmaße") < final.content.index("Weiter.") < final.content.index("[[card:1]]")

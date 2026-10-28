@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
 import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
@@ -626,7 +626,7 @@ describe("with the Langfuse tier enabled", () => {
       spec.template.spec.containers[0].env.map((e: any) => [e.name, e.value ?? e.valueFrom]),
     );
 
-    expect(env.GRID_TRACE_IDENTITY_ATTRIBUTES).toBe("true");
+    expect(env.TRACE_IDENTITY_ATTRIBUTES).toBe("true");
   });
 });
 

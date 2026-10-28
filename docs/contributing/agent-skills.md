@@ -59,7 +59,7 @@ was deleted rather than moved.
 | `aiq-maintain-ci` | moved | CI maintenance is contributor knowledge, and [ci.md](ci.md) already held most of it | [ci.md, "Changing CI"](ci.md#changing-ci) |
 | `aiq-add-tool`, `aiq-add-data-source` | merged and moved | One procedure, needed by anyone extending the agent | [adding-a-tool.md](../architecture/adding-a-tool.md) |
 | `aiq-customize-prompts-models` | moved | Prompt and model configuration is architecture knowledge | [llm-providers.md](../architecture/llm-providers.md#which-model-each-role-uses) and the prompt section of [backend-deep-dive.md](../architecture/backend-deep-dive.md#prompts-three-layers-and-where-each-is-authored) |
-| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`frontends/web/art/riso/README.md`](../../frontends/web/art/riso/README.md#making-a-print) |
+| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`apps/site/art/riso/README.md`](../../apps/site/art/riso/README.md#making-a-print) |
 | `aiq-deploy` | deleted | A deployment runbook, and the upstream blueprint's: it cloned NVIDIA's repository and deployed with Helm | [`docs/deployment/`](../deployment/), [`scripts/README.md`](../../scripts/README.md) |
 
 ## Installed
@@ -71,7 +71,7 @@ Third-party skills sit in the same manifest, pinned to a commit and locked in
 |---|---|---|
 | `unslop` | automatically, on any writing | This repo carries a lot of prose |
 | `writing-for-agents` | automatically, when you touch a skill, `AGENTS.md` or `CLAUDE.md` | The rules `AGENTS.md` is now written to |
-| `typescript-best-practices` | automatically, on any `.ts`/`.tsx` | `frontends/ui` is most of the surface area |
+| `typescript-best-practices` | automatically, on any `.ts`/`.tsx` | `apps/workspace` is most of the surface area |
 | `how` | automatically, on "how does X work" and placement questions | Four layers can own a feature here, so "which layer" recurs |
 | `why` | automatically, on "why does X work this way", rationale, postmortems | The question `docs/adr/` exists to answer. `how` reads the code, `why` reconstructs the forces from history, issues and docs |
 | `technical-writing` | by name | Human-facing prose: docs, RFCs, PR bodies. `writing-for-agents` covers what an agent consumes |
@@ -91,7 +91,7 @@ Third-party skills sit in the same manifest, pinned to a commit and locked in
 | `apple-design` | automatically, on gestures, springs, sheets, materials, typography | The physical-motion half of the bar; our sheets and spring catalog are its territory |
 | `mobile-native` | automatically, on touch and PWA work | Piloti is a mobile-first PWA: tap highlight, `dvh`, input zoom, safe areas |
 | `break-ui` | automatically, on "stress-test this component" | Worst-case data: long German compound names, empty lists, huge counts |
-| `ask-sonner` | automatically, on toast work | `frontends/ui` uses Sonner (`components/ui/sonner.tsx`) |
+| `ask-sonner` | automatically, on toast work | `apps/workspace` uses Sonner (`components/ui/sonner.tsx`) |
 | `review-animations` | by name | The strict reviewer for a motion diff; approval is earned |
 | `pick-ui-library` | by name | A curated list to check before hand-rolling a general component ("Buy, don't build") |
 | `prototype` | by name | Several variants of one piece of UI behind a picker, to choose by feel |
@@ -162,7 +162,7 @@ review, not in a gate. Sweeping a contributor's merged prose to keep the claim
 true is not worth the diff either, so treat it as the house style for anything
 you write here rather than as a property of the directory. The rest of `docs/`
 was never swept at all. Two deliberate exceptions: the `next dev` block at the top of
-`frontends/ui/AGENTS.md`, which regenerates itself, and ADR titles quoted in
+`apps/workspace/AGENTS.md`, which regenerates itself, and ADR titles quoted in
 `docs/adr/README.md`, which have to match the records they point at.
 
 Rule 26 bans some words this repo uses on purpose. "Ratchet" and "substrate

@@ -15,7 +15,7 @@ writes one CSV row per question, and `--compare before.csv after.csv` prints wha
 moved.
 
 It is NOT a correctness benchmark. Whether the right passage came back is the
-retrieval golden set's question (`frontends/benchmarks/oib_retrieval`,
+retrieval golden set's question (`evals/oib-retrieval`,
 `task be:eval:retrieval`). This one asks how the turn went looking: how many
 rounds, whether the locator was used, whether the cited Punkt is the one the
 question is about, and whether the budget ran out before the answer.
@@ -35,14 +35,14 @@ exercise decorative.
 
 USAGE
 -----
-`GRID_LOOP_EVAL_URL` is the backend's chat role (`GRID_ROLE=chat`, ADR-0082), the
+`LOOP_EVAL_URL` is the backend's chat role (`PROCESS_ROLE=chat`, ADR-0082), the
 one that serves the chat socket. Each question is one turn on its own
 conversation over that socket (wire v2, ADR-0068), as the UI asks it: a turn has
 no other way in. The backend runs without its BFF, so `REQUIRE_AUTH=false`.
 
-    GRID_LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out before.csv
+    LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out before.csv
     # …change the loop, redeploy…
-    GRID_LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out after.csv
+    LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out after.csv
     python scripts/loop_eval.py --compare before.csv after.csv
 
 `task be:eval:loop` is the same thing with the paths defaulted.
@@ -71,7 +71,7 @@ DEFAULT_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval
 #: Environment variable naming the backend to measure. Deliberately its own name
 #: rather than reusing a deployment variable: pointing this at production by
 #: inheriting a URL from the environment is exactly the accident to avoid.
-BASE_URL_ENV = "GRID_LOOP_EVAL_URL"
+BASE_URL_ENV = "LOOP_EVAL_URL"
 
 #: How long one question may take. A research turn with two rounds and a
 #: reranker is tens of seconds; the deep-research escalation path is minutes and
@@ -408,7 +408,7 @@ def _citation_keys_by_round(payloads: Sequence[tuple[str, dict]]) -> dict[int | 
             continue
         try:
             round_index: int | None = int(inp.get("round")) if inp.get("round") is not None else None
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             round_index = None
         by_round.setdefault(round_index, set()).update(keys)
     return by_round
@@ -441,7 +441,7 @@ def flag_cross_turn(payloads: Sequence[tuple[str, dict]]) -> str:
 # measuring channel, and nothing read out of anybody's prose.
 
 #: Tool basenames belonging to RIS. The prefix, not a list of names, because
-#: `turn_status._SEARCH_CORPORA` maps the same prefix to the `ris` corpus and
+#: `tool_calls._SEARCH_CORPORA` maps the same prefix to the `ris` corpus and
 #: two lists of RIS tool names would drift.
 _RIS_TOOL_PREFIX = "ris"
 
@@ -569,7 +569,7 @@ def observe(question: Question, steps: Sequence[dict], answer: str, envelope: di
             if isinstance(raw, dict) and raw.get("round") is not None:
                 try:
                     rounds.add(int(raw["round"]))
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     pass
     checkpoints = {
         int(m.group(1)): str(body.get("source") or "none")

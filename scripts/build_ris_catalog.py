@@ -35,7 +35,7 @@ from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "sources" / "ris_adapter" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "packages" / "ris-adapter" / "src"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import importlib.util  # noqa: E402
@@ -60,7 +60,7 @@ def _load_norm_registry_module():
     """
     import types
 
-    common_dir = REPO_ROOT / "src" / "aiq_agent" / "common"
+    common_dir = REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "common"
     for package in ("aiq_agent", "aiq_agent.common"):
         if package not in sys.modules:
             stub = types.ModuleType(package)

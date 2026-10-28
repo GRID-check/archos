@@ -2,7 +2,7 @@
 
 ## Root Layout
 
-**File:** `frontends/ui/src/app/layout.tsx`
+**File:** `apps/workspace/app/layout.tsx`
 
 The root layout is an async server component that:
 
@@ -19,13 +19,13 @@ The root layout is an async server component that:
 </AppConfigProvider>
 ```
 
-Metadata: title template `%s — Piloti`, `robots: noindex, nofollow` (the app is behind sign-in; `app/robots.ts` explains why crawling stays allowed). Icons and the manifest come from the `app/` file conventions (`favicon.ico`, `icon.svg`, `apple-icon.png`, `manifest.ts`), all rendered from `shared/brand/piloti-mark.svg`.
+Metadata: title template `%s — Piloti`, `robots: noindex, nofollow` (the app is behind sign-in; `app/robots.ts` explains why crawling stays allowed). Icons and the manifest come from the `app/` file conventions (`favicon.ico`, `icon.svg`, `apple-icon.png`, `manifest.ts`), all rendered from `packages/brand/mark.svg`.
 
 ---
 
 ## Providers Tree
 
-**File:** `frontends/ui/src/app/providers.tsx`
+**File:** `apps/workspace/app/providers.tsx`
 
 Nesting order (outermost to innermost):
 
@@ -55,7 +55,7 @@ AppConfigProvider
 
 ## MainLayout Component
 
-**File:** `frontends/ui/src/features/layout/components/MainLayout.tsx`
+**File:** `apps/workspace/ui/features/layout/components/MainLayout.tsx`
 
 Orchestrates all visible panels and areas. Accepts `isAuthenticated` and `onSignIn` props.
 
@@ -112,7 +112,7 @@ Navigation is blocked (`isNavigationBlocked`) when streaming or waiting for a hu
 
 ## Layout Store
 
-**File:** `frontends/ui/src/features/layout/store.ts`
+**File:** `apps/workspace/ui/features/layout/store.ts`
 
 Zustand store with `devtools` middleware, named `LayoutStore`.
 
@@ -155,7 +155,7 @@ Zustand store with `devtools` middleware, named `LayoutStore`.
 
 ### Types
 
-**File:** `frontends/ui/src/features/layout/types.ts`
+**File:** `apps/workspace/ui/features/layout/types.ts`
 
 ```typescript
 type ThemeMode = 'light' | 'dark' | 'system'

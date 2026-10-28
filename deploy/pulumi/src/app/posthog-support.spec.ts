@@ -4,7 +4,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "../test-support/stack-config";
 
 /**
- * PostHog Support on the BFF (`frontends/ui/src/lib/posthog-support/config.ts`):
+ * PostHog Support on the BFF (`apps/workspace/bff/posthog-support/config.ts`):
  * the personal API key is optional and secret, and the project id means nothing
  * without it. A stack that never set the key must not get an empty variable
  * pointing at a Secret key that is not there (CreateContainerConfigError), and a

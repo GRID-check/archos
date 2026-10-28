@@ -350,14 +350,14 @@ class TestFormatParity:
     """The block is the search's block. Nothing downstream learns a second shape."""
 
     async def test_the_located_passage_renders_exactly_as_a_searched_one(self, store):
-        from knowledge_layer.register import _format_results
+        from knowledge_layer.search_results import format_results
 
         out = await _read(document=OIB, clause="3.5.2")
 
         located = _chunk(clause="3.5.2", page=12, content="Fluchtweglänge …", chunk_id="a")
         located.metadata["collection"] = "oib_knowledge"
         located.metadata["shelf"] = str(Shelf.BASE)
-        expected = _format_results(
+        expected = format_results(
             RetrievalResult(
                 chunks=[located],
                 query="Pkt. 3.5.2",

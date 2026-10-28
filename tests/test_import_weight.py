@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import pkgutil
 import subprocess
 import sys
@@ -50,8 +51,11 @@ def _loaded_by(statement: str) -> list[str]:
         f"{statement}\n"
         "print(json.dumps(sorted(set(sys.modules) - before)))\n"
     )
+    # This interpreter's path, so the child resolves what the suite resolves:
+    # pytest's `pythonpath` (the test-support packages) never reaches a child.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(entry for entry in sys.path if entry)}
     done = subprocess.run(
-        [sys.executable, "-c", script], cwd=ROOT, capture_output=True, text=True, check=True, timeout=120
+        [sys.executable, "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=True, timeout=120
     )
     return json.loads(done.stdout.strip().splitlines()[-1])
 
@@ -77,7 +81,7 @@ def test_a_lazy_package_exports_no_name_a_submodule_has(package):
     assert set(getattr(module, "__all__", ())) & submodules == set()
 
 
-@pytest.mark.parametrize("conftest", ["tests/conftest.py", "frontends/aiq_api/tests/conftest.py"], ids=["core", "api"])
+@pytest.mark.parametrize("conftest", ["tests/conftest.py", "apps/backend/tests/conftest.py"], ids=["core", "api"])
 def test_a_conftest_every_test_loads_loads_nothing_heavy(conftest):
     loaded = _loaded_by(
         "import importlib.util\n"

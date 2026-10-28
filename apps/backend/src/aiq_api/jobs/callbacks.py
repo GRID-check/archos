@@ -1,0 +1,1178 @@
+"""
+LangChain callback handlers for SSE event streaming.
+
+Uses NAT's IntermediateStep structure for consistent event types:
+- Category: LLM, TOOL, WORKFLOW, ARTIFACT
+- State: START, CHUNK, END, UPDATE
+
+All verbs are present tense for consistency.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+import threading
+import time
+import uuid
+from collections.abc import Callable
+from datetime import UTC
+from datetime import datetime
+from enum import StrEnum
+from typing import TYPE_CHECKING
+from typing import Any
+
+from langchain_core.callbacks import BaseCallbackHandler
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
+
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import get_session_registry
+from aiq_agent.citations.verification import cited_document_entries
+from aiq_agent.citations.wire import source_entry_to_wire
+
+if TYPE_CHECKING:
+    from .event_store import EventStore
+
+logger = logging.getLogger(__name__)
+
+
+class EventCategory(StrEnum):
+    """Event categories aligned with NAT's IntermediateStepCategory."""
+
+    LLM = "llm"
+    TOOL = "tool"
+    WORKFLOW = "workflow"
+    ARTIFACT = "artifact"
+    JOB = "job"
+
+
+class EventState(StrEnum):
+    """Event states aligned with NAT's IntermediateStepState. All present tense."""
+
+    START = "start"
+    CHUNK = "chunk"
+    END = "end"
+    UPDATE = "update"
+
+
+class ArtifactType(StrEnum):
+    """Types of artifacts that can be tracked via artifact.update events."""
+
+    FILE = "file"
+    OUTPUT = "output"
+    CITATION_SOURCE = "citation_source"
+    CITATION_USE = "citation_use"
+    TODO = "todo"
+
+
+class EventData(BaseModel):
+    """Generic event data payload."""
+
+    model_config = ConfigDict(extra="allow")
+
+    input: Any | None = None
+    output: Any | None = None
+    chunk: Any | None = None
+
+
+class IntermediateStepEvent(BaseModel):
+    """
+    SSE event structure aligned with NAT's IntermediateStep.
+
+    This provides a consistent event format that frontends can consume
+    without needing deep knowledge of specific tool/agent internals.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    category: EventCategory
+    state: EventState
+    name: str | None = None
+    timestamp: float = Field(default_factory=time.time)
+    data: EventData | None = None
+    metadata: dict[str, Any] | None = None
+
+    @property
+    def event_type(self) -> str:
+        """Returns event type string for SSE: category.state"""
+        return f"{self.category.value}.{self.state.value}"
+
+    def to_sse_dict(self) -> dict:
+        """Convert to dict for SSE transmission."""
+        result = {
+            "type": self.event_type,
+            "id": self.id,
+            "name": self.name,
+            "timestamp": datetime.fromtimestamp(self.timestamp, tz=UTC).isoformat(),
+        }
+        if self.data:
+            result["data"] = self.data.model_dump(exclude_none=True)
+        if self.metadata:
+            result["metadata"] = self.metadata
+        return {k: v for k, v in result.items() if v is not None}
+
+
+class ToolArtifactMapping:
+    """
+    Maps tool names to artifact types for automatic artifact emission.
+
+    This provides a generic way to handle middleware-managed tools and
+    any other tools that produce trackable artifacts. New mappings can
+    be added without modifying the callback handler logic.
+    """
+
+    def __init__(self):
+        self._mappings: dict[str, dict] = {}
+        self._register_defaults()
+
+    def _register_defaults(self):
+        """Register default mappings for deepagents middleware tools."""
+        self.register(
+            "write_todos",
+            artifact_type=ArtifactType.TODO,
+            content_key="todos",
+        )
+        self.register(
+            "write_file",
+            artifact_type=ArtifactType.FILE,
+            content_key="content",
+            name_key="file_path",
+            extra_keys=["file_path", "path", "filename"],
+        )
+
+    def register(
+        self,
+        tool_name: str,
+        artifact_type: ArtifactType,
+        content_key: str | None = None,
+        name_key: str | None = None,
+        extra_keys: list[str] | None = None,
+    ):
+        """
+        Register a tool-to-artifact mapping.
+
+        Args:
+            tool_name: Name of the tool (case-insensitive matching)
+            artifact_type: Type of artifact to emit
+            content_key: Key in tool input containing the content
+            name_key: Key in tool input containing the artifact name
+            extra_keys: Additional keys to include in artifact data
+        """
+        self._mappings[tool_name.lower()] = {
+            "artifact_type": artifact_type,
+            "content_key": content_key,
+            "name_key": name_key,
+            "extra_keys": extra_keys or [],
+        }
+
+    def get_mapping(self, tool_name: str) -> dict | None:
+        """Get mapping for a tool, or None if not registered."""
+        return self._mappings.get(tool_name.lower())
+
+    def is_artifact_tool(self, tool_name: str) -> bool:
+        """Check if a tool produces artifacts."""
+        return tool_name.lower() in self._mappings
+
+
+class AgentEventCallback(BaseCallbackHandler):
+    """
+    Callback handler that emits NAT-aligned IntermediateStep events for SSE streaming.
+
+    Event model:
+    - workflow.start/end: Agent execution boundaries (uses LangChain run_id as agent_id)
+    - llm.start/chunk/end: LLM inference
+    - tool.start/end: Tool invocations
+    - artifact.update: Structured artifacts (files, output, citations, todos)
+
+    Agent tracking:
+    - Uses LangChain's run_id as the unique agent identifier
+    - Tracks parent_run_id hierarchy to handle parallel agent execution
+    - Each operation traces back to its owning agent via parent chain
+    """
+
+    OUTPUT_MIN_LENGTH = 200
+    URL_PATTERN = re.compile(r'https?://[^\s<>"\')\]}>]+', re.IGNORECASE)
+    SEARCH_TOOL_PATTERNS = {"search", "tavily", "web_search", "google", "bing"}
+    TOOL_CALL_PATTERN = re.compile(r'\b[a-z][a-z0-9_]*\s*\(\s*(?:["\'{]|[a-z_]+\s*=)', re.IGNORECASE)
+
+    AGENT_PATTERNS = {"agent"}
+    AGENT_EXCLUDE_PATTERNS = {"middleware", "handler", "callback"}
+
+    _job_discovered_urls: dict[str, set[str]] = {}
+    _job_discovered_sources: dict[str, set[str]] = {}
+    _job_cited_urls: dict[str, set[str]] = {}
+    _cache_lock = threading.Lock()
+
+    def __init__(
+        self,
+        event_store: EventStore | None = None,
+        tool_artifact_mapping: ToolArtifactMapping | None = None,
+        source_registry: SourceRegistry | Callable[[], SourceRegistry | None] | None = None,
+    ):
+        """
+        Args:
+            event_store: Sink for the emitted SSE events.
+            tool_artifact_mapping: Tool-to-artifact mapping overrides.
+            source_registry: The run's ``SourceRegistry``, or a zero-argument
+                callable returning it (e.g.
+                ``SourceRegistryMiddleware.active_registry``). Optional: when
+                unset the callback falls back to the session-scoped registry
+                and then to its own mirror — see :meth:`_get_source_registry`
+                for why a job needs those fallbacks at all.
+        """
+        super().__init__()
+        self._event_store = event_store
+        self._tool_mapping = tool_artifact_mapping or ToolArtifactMapping()
+
+        self._run_id_to_name: dict[str, str] = {}
+        self._run_id_to_parent: dict[str, str] = {}
+        self._agent_run_ids: dict[str, str] = {}  # {run_id: name}
+
+        self._source_registry = source_registry
+        # The run's refusal of the reader's Ausgeschlossen (deep research sets
+        # it); an excluded document is neither a citation_source nor mirrored.
+        self._source_excluded: Callable[[SourceEntry], bool] | None = None
+        # Last-resort mirror of what this run's tools actually returned; see
+        # _mirror_sources.
+        self._mirrored_registry = SourceRegistry()
+        self._mirrored_registry_populated = False
+
+        self._job_id = event_store.job_id if event_store else None
+        self._instance_discovered_urls: set[str] = set()
+        self._instance_discovered_sources: set[str] = set()
+        self._instance_cited_urls: set[str] = set()
+        self._init_job_url_sets()
+
+    def _init_job_url_sets(self) -> None:
+        """Initialize URL sets for this job."""
+        if not self._job_id:
+            return
+        with AgentEventCallback._cache_lock:
+            if self._job_id not in AgentEventCallback._job_discovered_urls:
+                AgentEventCallback._job_discovered_urls[self._job_id] = set()
+            if self._job_id not in AgentEventCallback._job_discovered_sources:
+                AgentEventCallback._job_discovered_sources[self._job_id] = set()
+            if self._job_id not in AgentEventCallback._job_cited_urls:
+                AgentEventCallback._job_cited_urls[self._job_id] = set()
+
+    @property
+    def _discovered_urls(self) -> set[str]:
+        """Get discovered URLs set for this job."""
+        if self._job_id and self._job_id in AgentEventCallback._job_discovered_urls:
+            return AgentEventCallback._job_discovered_urls[self._job_id]
+        return self._instance_discovered_urls
+
+    @property
+    def _discovered_sources(self) -> set[str]:
+        """Identity keys of structured citation_source artifacts already emitted."""
+        if self._job_id and self._job_id in AgentEventCallback._job_discovered_sources:
+            return AgentEventCallback._job_discovered_sources[self._job_id]
+        return self._instance_discovered_sources
+
+    @property
+    def _cited_urls(self) -> set[str]:
+        """Get cited URLs set for this job."""
+        if self._job_id and self._job_id in AgentEventCallback._job_cited_urls:
+            return AgentEventCallback._job_cited_urls[self._job_id]
+        return self._instance_cited_urls
+
+    @classmethod
+    def cleanup_job_urls(cls, job_id: str) -> None:
+        """Clean up URL caches for a completed job."""
+        with cls._cache_lock:
+            cls._job_discovered_urls.pop(job_id, None)
+            cls._job_discovered_sources.pop(job_id, None)
+            cls._job_cited_urls.pop(job_id, None)
+
+    def _is_agent_like(self, name: str) -> bool:
+        """Check if name represents an agent (contains 'agent' but not middleware/handler)."""
+        name_lower = name.lower()
+        if any(exclude in name_lower for exclude in self.AGENT_EXCLUDE_PATTERNS):
+            return False
+        return any(pattern in name_lower for pattern in self.AGENT_PATTERNS)
+
+    def _find_agent_for_run(self, run_id: str) -> tuple[str, str] | None:
+        """
+        Find the agent that owns a given run_id by traversing the parent chain.
+        Returns (agent_name, agent_run_id) or None if no agent found.
+        """
+        current = run_id
+        visited = set()
+        while current and current not in visited:
+            visited.add(current)
+            if current in self._agent_run_ids:
+                return (self._agent_run_ids[current], current)
+            current = self._run_id_to_parent.get(current)
+        return None
+
+    def _build_metadata_for_run(self, run_id: str, **extra: Any) -> dict[str, Any] | None:
+        """Build metadata with agent context for a specific run_id."""
+        metadata: dict[str, Any] = {}
+
+        agent_info = self._find_agent_for_run(run_id)
+        if agent_info:
+            metadata["workflow"] = agent_info[0]
+            metadata["agent_id"] = agent_info[1]
+
+        metadata.update({k: v for k, v in extra.items() if v is not None})
+        return metadata if metadata else None
+
+    def _emit(self, event: IntermediateStepEvent):
+        if self._event_store:
+            self._event_store.store(event.to_sse_dict())
+
+    def _emit_artifact(
+        self,
+        artifact_type: ArtifactType,
+        content: Any,
+        name: str | None = None,
+        **extra_data,
+    ):
+        """
+        Emit an artifact.update event for tracking structured outputs.
+
+        Args:
+            artifact_type: Type of artifact (file, output, citation_source, etc.)
+            content: The artifact content
+            name: Optional artifact name (e.g., filename, URL)
+            **extra_data: Additional type-specific fields (workflow, agent_id, etc.)
+        """
+        workflow = extra_data.pop("workflow_source", None) or extra_data.get("workflow")
+        agent_id = extra_data.pop("agent_id", None)
+        data = {"type": artifact_type.value, "content": content, **extra_data}
+
+        metadata: dict[str, Any] | None = None
+        if workflow or agent_id:
+            metadata = {}
+            if workflow:
+                metadata["workflow"] = workflow
+            if agent_id:
+                metadata["agent_id"] = agent_id
+
+        self._emit(
+            IntermediateStepEvent(
+                category=EventCategory.ARTIFACT,
+                state=EventState.UPDATE,
+                name=name,
+                data=EventData(**data),
+                metadata=metadata,
+            )
+        )
+
+    def _get_chain_name(self, serialized: dict | None, **kwargs) -> str:
+        if serialized:
+            name = serialized.get("name") or serialized.get("id", [""])[-1]
+            if name:
+                return name
+        return kwargs.get("name", "unknown")
+
+    def set_source_registry(self, source_registry: SourceRegistry | Callable[[], SourceRegistry | None]) -> None:
+        """Attach the run's SourceRegistry (or a callable returning it).
+
+        Accepts the accessor rather than the object so a run that swaps
+        registries mid-flight — ``SourceRegistryMiddleware.active_registry``
+        prefers the session-scoped registry when one exists — is followed
+        rather than pinned to whatever was current at wiring time.
+        """
+        self._source_registry = source_registry
+
+    def set_source_exclusion(self, excluded: Callable[[SourceEntry], bool]) -> None:
+        """Attach the run's predicate for sources from documents the reader excluded."""
+        self._source_excluded = excluded
+
+    def _get_source_registry(self) -> SourceRegistry | None:
+        """Return the SourceRegistry a cited source must be validated against.
+
+        Three tiers, most authoritative first:
+
+        1. The registry explicitly attached to this callback (constructor arg
+           or :meth:`set_source_registry`) — for deep research that is
+           ``SourceRegistryMiddleware.active_registry``, i.e. the very registry
+           ``verify_citations`` later judges the report against.
+        2. The session-scoped registry, bound by the synchronous chat
+           entrypoints and — since the fix below — by ``DeepResearcherAgent.run``.
+        3. This callback's own mirror of the sources its tool results carried
+           (:meth:`_mirror_sources`).
+
+        Tier 2 used to be the WHOLE lookup, and inside a research worker nothing
+        bound it: only the synchronous chat paths called
+        ``set_session_registry``. Every lookup here therefore returned None for
+        a deep-research run, ``_emit_cited_documents`` early-returned, and no
+        knowledge-base document could ever be marked cited — which in a
+        knowledge-base-first product is most citations, so the live sources
+        panel showed a run's four OIB Richtlinien as merely "discovered" while
+        the one web page it cited was the only thing marked cited.
+
+        ``DeepResearcherAgent.run`` now binds its own registry to that
+        contextvar when nothing is bound, so tier 2 is the tier that actually
+        carries a deep-research job today — do not read the paragraph above as
+        "tier 2 is dead code". Tiers 1 and 3 are what keep the answer honest
+        for every OTHER caller: this callback is generic, the binding is not, so
+        a job whose agent never binds — or a run whose binding does not survive
+        the context boundary the handler is invoked across — still validates
+        against something this run really retrieved instead of falling back to
+        guessing from a URL scrape.
+
+        Fail-open: a provider that raises or yields nothing falls through to
+        the next tier rather than breaking the artifact stream.
+        """
+        provider = self._source_registry
+        if provider is not None:
+            registry: SourceRegistry | None
+            try:
+                registry = provider() if callable(provider) else provider
+            except Exception:
+                logger.warning("Attached source registry provider raised; falling back", exc_info=True)
+                registry = None
+            if registry is not None:
+                return registry
+
+        session_registry = get_session_registry()
+        if session_registry is not None:
+            return session_registry
+
+        # Only offer the mirror once a tool result has actually populated it.
+        # An empty registry is not the same answer as "no registry": it would
+        # turn every document citation into an unverifiable one instead of
+        # letting _emit_cited_documents decline to guess.
+        return self._mirrored_registry if self._mirrored_registry_populated else None
+
+    def _mirror_sources(self, entries: list[SourceEntry]) -> None:
+        """Mirror parsed tool sources into this callback's fallback registry.
+
+        The entries are the ones ``_emit_structured_citation_sources`` already
+        parsed, with the same parser ``SourceRegistryMiddleware`` uses on the
+        same tool results — so the mirror costs one insert per discovered
+        source and cannot drift in shape from the real registry. It is what
+        makes cited-document detection work in a worker that has neither a
+        session registry nor a wired-in run registry.
+        """
+        if not entries:
+            return
+        try:
+            # SourceRegistry documents itself as single-event-loop / not
+            # thread-safe, and LangChain fires handlers from worker threads, so
+            # mutations go under the same lock the discovery sets use.
+            with AgentEventCallback._cache_lock:
+                for entry in entries:
+                    self._mirrored_registry.add(entry)
+                self._mirrored_registry_populated = True
+        except Exception:
+            logger.warning("Failed to mirror tool sources into the fallback registry", exc_info=True)
+
+    def emit_final_report(self, content: str, cards: list[dict] | None = None) -> None:
+        """Emit the post-processed final report as an OUTPUT artifact.
+
+        Call this after citation verification and sanitisation so the
+        frontend receives the verified content (overwrites the earlier
+        auto-emitted version).
+
+        This is also the ONLY place ``citation_use`` is emitted from, and that
+        is deliberate. The cited set used to be derived from raw ``on_llm_end``
+        content, which is produced BEFORE ``verify_citations`` runs in
+        ``DeepResearcherAgent._finalize``: a fabricated or unverifiable
+        citation had already been broadcast as cited by the time verification
+        stripped it from the report, and nothing ever took it back. The
+        frontend's merge is deliberately monotonic — ``isCited`` is sticky once
+        true, so a later event cannot lower a source back to "discovered" — so
+        a retraction event would not have repaired the display; the only
+        truthful fix is to not make the claim until it is verified. Sources
+        still stream live as ``citation_source`` (discovery) throughout the
+        run; only the stronger "the answer cites this" claim waits for the
+        verified text.
+
+        Args:
+            content: The final report markdown.
+            cards: Optional validated Grid response cards to attach to the
+                report artifact (delivered as an additive ``cards`` field).
+        """
+        extra: dict[str, Any] = {"cards": cards} if cards else {}
+        self._emit_artifact(
+            ArtifactType.OUTPUT,
+            content,
+            output_category="final_report",
+            **extra,
+        )
+        # Best-effort by contract: these are transparency artifacts, and the
+        # report itself has already been emitted above — a citation failure
+        # must never cost the user their report or fail the job. Repeat calls
+        # (the runner re-emits with Grid cards attached) are deduped by the
+        # cited-identity set, so no duplicate artifacts are produced.
+        try:
+            self._emit_cited_sources(content)
+        except Exception:
+            logger.warning("Failed to emit cited sources for the final report", exc_info=True)
+
+    def _is_search_tool(self, tool_name: str) -> bool:
+        """Check if tool is a search-related tool that returns URLs."""
+        tool_lower = tool_name.lower()
+        return any(pattern in tool_lower for pattern in self.SEARCH_TOOL_PATTERNS)
+
+    def _contains_tool_call_syntax(self, content: str) -> bool:
+        """
+        Check if content contains tool call syntax that shouldn't be emitted as output.
+
+        This prevents the LLM's text-based tool call attempts from being captured
+        as output artifacts when the model outputs function call syntax as text
+        instead of properly invoking the tool.
+        """
+        if not content:
+            return False
+        return bool(self.TOOL_CALL_PATTERN.search(content))
+
+    def _normalize_url(self, url: str) -> str:
+        """
+        Normalize URL for consistent matching.
+
+        Handles:
+        - Trailing slashes
+        - Case normalization for domain
+        - Query parameter sorting (basic)
+        """
+        from urllib.parse import urlparse
+        from urllib.parse import urlunparse
+
+        try:
+            parsed = urlparse(url)
+            # Normalize: lowercase scheme and netloc, remove trailing slash from path
+            normalized_path = parsed.path.rstrip("/") if parsed.path != "/" else "/"
+            normalized = urlunparse(
+                (
+                    parsed.scheme.lower(),
+                    parsed.netloc.lower(),
+                    normalized_path,
+                    parsed.params,
+                    parsed.query,
+                    "",  # Remove fragment
+                )
+            )
+            return normalized
+        except Exception:
+            return url
+
+    def _extract_urls(self, text: str) -> list[str]:
+        """Extract unique URLs from text content."""
+        if not text:
+            return []
+        urls = self.URL_PATTERN.findall(str(text))
+        cleaned = []
+        for url in urls:
+            url = url.rstrip(".,;:!?)'\"]}>)")
+            if len(url) > 10 and "." in url:
+                cleaned.append(url)
+        return list(dict.fromkeys(cleaned))
+
+    def _get_output_category(self, agent_info: tuple[str, str] | None = None) -> str:
+        """
+        Determine output category based on workflow.
+
+        Args:
+            agent_info: Optional (name, run_id) tuple for the owning agent
+
+        Returns:
+            - "research_notes" for researcher-agent outputs
+            - "draft" for orchestrator or unattributed outputs
+        """
+        workflow_name = agent_info[0] if agent_info else None
+        if not workflow_name:
+            return "draft"
+        workflow_lower = workflow_name.lower()
+        if "researcher" in workflow_lower or "research" in workflow_lower:
+            return "research_notes"
+        if "orchestrator" in workflow_lower:
+            return "draft"
+        return "intermediate"
+
+    def _emit_cited_sources(self, content: str) -> None:
+        """Emit citation_use events for the sources ``content`` actually cites.
+
+        Driven from :meth:`emit_final_report` only — ``content`` is the
+        verified, sanitised report, so what is announced as cited is what the
+        reader can actually see cited. See that method for why the raw
+        streaming output no longer feeds this.
+
+        Covers BOTH source shapes:
+
+        - URLs, validated against the registry when one is attached (consistent
+          with verify_citations), else against the callback's own
+          ``_discovered_urls`` set.
+        - Knowledge-base documents, validated by document key against the
+          registry (:func:`cited_document_entries`).
+
+        The document half used to be missing entirely, and "cited" is what the
+        provenance row filters on: a run that cited four OIB Richtlinien and one
+        web page marked only the web page, so the row showed the web page ALONE
+        and the four authoritative sources vanished. The failure only appeared
+        when web and knowledge-base sources co-occurred, because with no web
+        citation at all the frontend fell back to showing every discovered
+        source.
+        """
+        self._emit_cited_urls(content)
+        self._emit_cited_documents(content)
+
+    def _emit_cited_urls(self, content: str) -> None:
+        """Emit citation_use events for URL sources referenced in ``content``."""
+        urls = self._extract_urls(content)
+        # Resolved ONCE for the whole report rather than once per URL. The
+        # attached tier is an accessor a run may swap mid-flight, so re-reading
+        # it inside the loop would let a single report be judged against two
+        # different registries — the first few citations validated against one
+        # truth and the rest silently dropped against another, with nothing in
+        # the artifact stream to show that the standard moved.
+        registry = self._get_source_registry()
+        for url in urls:
+            normalized = self._normalize_url(url)
+
+            if registry is not None:
+                is_valid = registry.has_url(url)
+            else:
+                is_valid = normalized in self._discovered_urls
+
+            if is_valid:
+                # Atomic test-and-set (see on_tool_end): avoid duplicate
+                # citation_use artifacts from concurrent handler threads.
+                with AgentEventCallback._cache_lock:
+                    if normalized in self._cited_urls:
+                        continue
+                    self._cited_urls.add(normalized)
+                self._emit_artifact(
+                    ArtifactType.CITATION_USE,
+                    url,
+                    name=url,
+                    url=url,
+                )
+
+    def _emit_cited_documents(self, content: str) -> None:
+        """Emit citation_use events for knowledge-base documents cited in ``content``.
+
+        Requires a registry (:meth:`_get_source_registry`) — the document key
+        is only verifiable against what retrieval actually returned, and unlike
+        a URL there is no weaker fallback worth guessing from. Carries the full
+        structured wire so the frontend's cited entry keeps its file/page/kind
+        rather than degrading to a bare marker.
+        """
+        registry = self._get_source_registry()
+        if registry is None:
+            return
+        try:
+            entries = cited_document_entries(content, registry)
+        except Exception:
+            logger.warning("Failed to resolve cited documents", exc_info=True)
+            return
+
+        for entry in entries:
+            wire = source_entry_to_wire(entry)
+            identity = self._source_identity(wire)
+            # Same atomic test-and-set as the URL path: concurrent handler
+            # threads must not emit duplicate citation_use artifacts. Shares the
+            # `_cited_urls` set — it is a set of identity strings, and document
+            # identities ("key:…") cannot collide with normalized URLs.
+            with AgentEventCallback._cache_lock:
+                if identity in self._cited_urls:
+                    continue
+                self._cited_urls.add(identity)
+            content_line = str(wire.get("content") or entry.citation_key or "")
+            extra = {key: value for key, value in wire.items() if key != "content"}
+            self._emit_artifact(
+                ArtifactType.CITATION_USE,
+                content_line,
+                name=str(wire.get("title") or entry.citation_key or content_line),
+                **extra,
+            )
+
+    def _emit_tool_artifact(self, tool_name: str, tool_input: Any, run_id: str = "") -> None:
+        """
+        Emit artifacts for tools registered in the mapping.
+
+        This provides generic handling for middleware-managed tools and any
+        other tools that produce trackable artifacts. The mapping determines
+        how to extract content and metadata from the tool input.
+        """
+        mapping = self._tool_mapping.get_mapping(tool_name)
+        if not mapping:
+            return
+
+        artifact_type = mapping["artifact_type"]
+        content_key = mapping["content_key"]
+        name_key = mapping["name_key"]
+        extra_keys = mapping["extra_keys"]
+
+        content = None
+        name = None
+        extra_data = {}
+
+        if isinstance(tool_input, dict):
+            if content_key:
+                content = tool_input.get(content_key)
+            if name_key:
+                name = tool_input.get(name_key)
+            for key in extra_keys:
+                if key in tool_input:
+                    extra_data[key] = tool_input[key]
+                    if not name and key in ("file_path", "path", "filename", "name"):
+                        name = tool_input[key]
+        elif isinstance(tool_input, list) and content_key == "todos":
+            content = tool_input
+
+        if content is not None:
+            # For todo artifacts, include source context so the UI can
+            # distinguish orchestrator-level todos from sub-agent todos.
+            if artifact_type == ArtifactType.TODO and run_id:
+                agent_info = self._find_agent_for_run(run_id)
+                if agent_info:
+                    extra_data["workflow"] = agent_info[0]
+                    extra_data["agent_id"] = agent_info[1]
+                    extra_data["source"] = "agent"
+                else:
+                    extra_data["source"] = "orchestrator"
+            self._emit_artifact(artifact_type, content, name=name, **extra_data)
+
+    def on_chain_start(self, serialized: dict | None, inputs: dict, **kwargs) -> None:
+        name = self._get_chain_name(serialized, **kwargs)
+        run_id = str(kwargs.get("run_id", ""))
+        parent_run_id = str(kwargs.get("parent_run_id", "")) if kwargs.get("parent_run_id") else ""
+
+        if run_id:
+            self._run_id_to_name[run_id] = name
+            if parent_run_id:
+                self._run_id_to_parent[run_id] = parent_run_id
+
+        if self._is_agent_like(name):
+            self._agent_run_ids[run_id] = name
+
+            self._emit(
+                IntermediateStepEvent(
+                    category=EventCategory.WORKFLOW,
+                    state=EventState.START,
+                    name=name,
+                    data=EventData(input=self._extract_input(inputs)),
+                    metadata=self._build_metadata_for_run(run_id),
+                )
+            )
+
+    def on_chain_end(self, outputs: dict, **kwargs) -> None:
+        run_id = str(kwargs.get("run_id", ""))
+        name = self._run_id_to_name.pop(run_id, kwargs.get("name", ""))
+
+        if self._is_agent_like(name):
+            self._emit(
+                IntermediateStepEvent(
+                    category=EventCategory.WORKFLOW,
+                    state=EventState.END,
+                    name=name,
+                    data=EventData(output=self._extract_output(outputs)),
+                    metadata=self._build_metadata_for_run(run_id),
+                )
+            )
+
+            if run_id in self._agent_run_ids:
+                del self._agent_run_ids[run_id]
+
+        self._run_id_to_parent.pop(run_id, None)
+
+    def on_chain_error(self, error: BaseException, **kwargs) -> None:
+        """Emit a retry hint when a chain (typically an LLM call) fails."""
+        run_id = str(kwargs.get("run_id", ""))
+        name = self._run_id_to_name.get(run_id, "unknown")
+
+        self._emit(
+            IntermediateStepEvent(
+                category=EventCategory.JOB,
+                state=EventState.UPDATE,
+                name="retry",
+                data=EventData(output=f"Retrying {name}: {type(error).__name__}"),
+                metadata=self._build_metadata_for_run(run_id),
+            )
+        )
+
+    TOOL_INPUT_TRIM_LIMIT = 500
+
+    def _trim_tool_input(self, parsed_input: Any) -> Any:
+        """Trim tool input to a reasonable size for SSE streaming."""
+        if parsed_input is None:
+            return None
+        serialized = str(parsed_input)
+        if len(serialized) <= self.TOOL_INPUT_TRIM_LIMIT:
+            return parsed_input
+        if isinstance(parsed_input, str):
+            return parsed_input[: self.TOOL_INPUT_TRIM_LIMIT] + "..."
+        return serialized[: self.TOOL_INPUT_TRIM_LIMIT] + "..."
+
+    def on_tool_start(self, serialized: dict | None, input_str: str, **kwargs) -> None:
+        tool_name = serialized.get("name", "unknown") if serialized else "unknown"
+        run_id = str(kwargs.get("run_id", ""))
+        parent_run_id = str(kwargs.get("parent_run_id", "")) if kwargs.get("parent_run_id") else ""
+
+        if run_id:
+            self._run_id_to_name[run_id] = tool_name
+            if parent_run_id:
+                self._run_id_to_parent[run_id] = parent_run_id
+
+        parsed_input = self._parse_tool_input(input_str)
+
+        emit_input = self._trim_tool_input(parsed_input)
+
+        self._emit(
+            IntermediateStepEvent(
+                category=EventCategory.TOOL,
+                state=EventState.START,
+                name=tool_name,
+                data=EventData(input=emit_input) if emit_input else None,
+                metadata=self._build_metadata_for_run(run_id),
+            )
+        )
+
+        self._emit_tool_artifact(tool_name, parsed_input, run_id=run_id)
+
+    def on_tool_end(self, output: str, **kwargs) -> None:
+        run_id = str(kwargs.get("run_id", ""))
+        tool_name = self._run_id_to_name.pop(run_id, kwargs.get("name", "unknown"))
+
+        agent_info = self._find_agent_for_run(run_id)
+
+        # Include the (trimmed) output so the /state endpoint can surface tool
+        # results; with data=None every tool call reads as output=None there.
+        emit_output = self._trim_tool_input(str(output)) if output else None
+        self._emit(
+            IntermediateStepEvent(
+                category=EventCategory.TOOL,
+                state=EventState.END,
+                name=tool_name,
+                data=EventData(output=emit_output) if emit_output is not None else None,
+                metadata=self._build_metadata_for_run(run_id),
+            )
+        )
+
+        if output:
+            self._emit_structured_citation_sources(
+                tool_name,
+                str(output),
+                agent_id=agent_info[1] if agent_info else None,
+                workflow=agent_info[0] if agent_info else None,
+            )
+
+        self._run_id_to_parent.pop(run_id, None)
+
+    def _source_identity(self, wire: dict[str, Any]) -> str:
+        """Stable dedupe key for a structured citation wire payload."""
+        citation_key = wire.get("citation_key")
+        if isinstance(citation_key, str) and citation_key.strip():
+            return f"key:{citation_key.strip().lower()}"
+        url = wire.get("url")
+        if isinstance(url, str) and url.strip():
+            return f"url:{self._normalize_url(url)}"
+        file_name = wire.get("file_name")
+        if isinstance(file_name, str) and file_name.strip():
+            page = wire.get("page")
+            return f"file:{file_name.strip().lower()}:{page if page is not None else ''}"
+        content = wire.get("content")
+        if isinstance(content, str) and content.strip():
+            return f"content:{content.strip().lower()[:200]}"
+        return f"tool:{wire.get('tool') or 'unknown'}"
+
+    def _emit_structured_citation_sources(
+        self,
+        tool_name: str,
+        output: str,
+        *,
+        agent_id: str | None,
+        workflow: str | None,
+    ) -> None:
+        """Emit ``citation_source`` artifacts from parsed tool output (KB/RIS/web).
+
+        Prefer :func:`extract_sources_from_tool_result` so knowledge-layer hits
+        carry ``file_name`` / ``page`` / ``collection``. Falls back to the legacy
+        URL scrape for search tools when the structured parsers return nothing
+        useful (keeps web discovery working for odd result shapes).
+        """
+        try:
+            entries = extract_sources_from_tool_result(tool_name, output)
+        except Exception:
+            logger.warning("Failed to extract sources from tool %s", tool_name, exc_info=True)
+            entries = []
+
+        # Drop non-URL tool_result placeholders (noise from non-data tools).
+        useful = [
+            entry for entry in entries if entry.url or entry.citation_key or (entry.source_type == "knowledge_layer")
+        ]
+
+        if not useful and self._is_search_tool(tool_name):
+            for url in self._extract_urls(output):
+                useful.append(SourceEntry(url=url, source_type="generic", tool_name=tool_name))
+        if self._source_excluded is not None:
+            useful = [entry for entry in useful if not self._source_excluded(entry)]
+
+        # Mirror BEFORE the per-entry emit loop: that loop skips entries whose
+        # citation_source artifact was already emitted, but the mirror wants
+        # every source this run retrieved, not only the newly seen ones. (It
+        # also must not run inside the loop's `_cache_lock` block — the lock is
+        # not reentrant.)
+        self._mirror_sources(useful)
+
+        for entry in useful:
+            wire = source_entry_to_wire(entry)
+            if not wire.get("tool"):
+                wire["tool"] = tool_name
+            identity = self._source_identity(wire)
+
+            with AgentEventCallback._cache_lock:
+                if identity in self._discovered_sources:
+                    continue
+                self._discovered_sources.add(identity)
+                if entry.url:
+                    self._discovered_urls.add(self._normalize_url(entry.url))
+
+            content = str(wire.get("content") or entry.url or entry.citation_key or tool_name)
+            name = str(wire.get("title") or wire.get("citation_key") or entry.url or content)
+            # ``content`` is passed positionally; drop it from the wire spread so it
+            # is not also bound via **kwargs (would raise TypeError: got multiple
+            # values for argument 'content' and crash every citation-source emit).
+            extra = {key: value for key, value in wire.items() if key != "content"}
+            self._emit_artifact(
+                ArtifactType.CITATION_SOURCE,
+                content,
+                name=name,
+                agent_id=agent_id,
+                workflow=workflow,
+                **extra,
+            )
+
+    def on_llm_start(self, serialized: dict, prompts: list, **kwargs) -> None:
+        model_name = "unknown"
+        if serialized:
+            model_name = serialized.get("name") or serialized.get("id", ["unknown"])[-1]
+
+        run_id = str(kwargs.get("run_id", ""))
+        parent_run_id = str(kwargs.get("parent_run_id", "")) if kwargs.get("parent_run_id") else ""
+
+        if run_id:
+            self._run_id_to_name[run_id] = model_name
+            if parent_run_id:
+                self._run_id_to_parent[run_id] = parent_run_id
+
+        metadata = self._build_metadata_for_run(run_id) or {}
+        metadata["prompt_count"] = len(prompts) if prompts else 0
+
+        self._emit(
+            IntermediateStepEvent(
+                category=EventCategory.LLM,
+                state=EventState.START,
+                name=model_name,
+                metadata=metadata if metadata else None,
+            )
+        )
+
+    def on_llm_new_token(self, token: str, **kwargs) -> None:
+        if token:
+            self._emit(
+                IntermediateStepEvent(
+                    category=EventCategory.LLM,
+                    state=EventState.CHUNK,
+                    data=EventData(chunk=token),
+                )
+            )
+
+    THINKING_TRIM_LIMIT = 300
+    THINKING_TRIM_SUFFIX = " [Trimmed - check traces for full logs]"
+
+    def on_llm_end(self, response, **kwargs) -> None:
+        run_id = str(kwargs.get("run_id", ""))
+        model_name = self._run_id_to_name.pop(run_id, "unknown")
+
+        content, thinking, usage, has_tool_calls = self._extract_llm_response(response)
+
+        agent_info = self._find_agent_for_run(run_id)
+        metadata = self._build_metadata_for_run(run_id) or {}
+        if thinking:
+            if len(thinking) > self.THINKING_TRIM_LIMIT:
+                metadata["thinking"] = thinking[: self.THINKING_TRIM_LIMIT] + self.THINKING_TRIM_SUFFIX
+            else:
+                metadata["thinking"] = thinking
+        if usage:
+            metadata["usage"] = usage
+
+        self._emit(
+            IntermediateStepEvent(
+                category=EventCategory.LLM,
+                state=EventState.END,
+                name=model_name,
+                data=None,
+                metadata=metadata if any(v for v in metadata.values()) else None,
+            )
+        )
+
+        if (
+            content
+            and len(content) >= self.OUTPUT_MIN_LENGTH
+            and not has_tool_calls
+            and not self._contains_tool_call_syntax(content)
+        ):
+            output_category = self._get_output_category(agent_info)
+            self._emit_artifact(
+                ArtifactType.OUTPUT,
+                content,
+                output_category=output_category,
+                workflow_source=agent_info[0] if agent_info else None,
+                agent_id=agent_info[1] if agent_info else None,
+            )
+            # No citation_use here. This content is raw model output: it has
+            # not been through verify_citations (which runs later, in
+            # DeepResearcherAgent._finalize) and it is often an INTERMEDIATE
+            # agent's notes, whose sources the writer may never carry into the
+            # answer. Announcing "cited" from here claimed things that the
+            # finished report does not, and the frontend's sticky isCited made
+            # the claim permanent. emit_final_report owns that claim now.
+
+        self._run_id_to_parent.pop(run_id, None)
+
+    def on_chat_model_start(self, serialized: dict, messages: list, **kwargs) -> None:
+        model_name = "unknown"
+        if serialized:
+            model_name = serialized.get("name") or serialized.get("kwargs", {}).get("model", "unknown")
+
+        run_id = str(kwargs.get("run_id", ""))
+        parent_run_id = str(kwargs.get("parent_run_id", "")) if kwargs.get("parent_run_id") else ""
+
+        if run_id:
+            self._run_id_to_name[run_id] = model_name
+            if parent_run_id:
+                self._run_id_to_parent[run_id] = parent_run_id
+
+        metadata = self._build_metadata_for_run(run_id) or {}
+        metadata["message_count"] = len(messages) if messages else 0
+
+        self._emit(
+            IntermediateStepEvent(
+                category=EventCategory.LLM,
+                state=EventState.START,
+                name=model_name,
+                metadata=metadata if metadata else None,
+            )
+        )
+
+    def _extract_input(self, inputs: dict | Any) -> Any:
+        """Extract input data without preprocessing. Frontend handles display."""
+        if not inputs:
+            return None
+        if isinstance(inputs, str):
+            return inputs
+        if isinstance(inputs, dict):
+            if "input" in inputs:
+                return inputs["input"]
+            if "messages" in inputs and inputs["messages"]:
+                msg = inputs["messages"][-1]
+                if hasattr(msg, "content"):
+                    return msg.content
+            return inputs
+        return inputs
+
+    def _extract_output(self, outputs: Any) -> Any:
+        """Extract output data without preprocessing. Frontend handles display."""
+        if outputs is None:
+            return None
+        if isinstance(outputs, str):
+            return outputs
+        if isinstance(outputs, dict):
+            for key in ("output", "result", "answer", "response"):
+                if key in outputs:
+                    return outputs[key]
+            if "messages" in outputs and outputs["messages"]:
+                msg = outputs["messages"][-1]
+                if hasattr(msg, "content"):
+                    return msg.content
+            return outputs
+        return outputs
+
+    def _parse_tool_input(self, input_str: str) -> dict | str:
+        """Parse tool input string to structured data if possible."""
+        import ast
+
+        if not input_str:
+            return ""
+        try:
+            return ast.literal_eval(input_str)
+        except Exception:
+            return input_str
+
+    def _extract_tool_output(self, output: Any) -> Any:
+        """Extract tool output without preprocessing. Frontend handles display."""
+        if output is None:
+            return None
+        if isinstance(output, str):
+            return output
+        if hasattr(output, "update") and isinstance(output.update, dict):
+            messages = output.update.get("messages", [])
+            if messages and hasattr(messages[-1], "content"):
+                return messages[-1].content
+        if hasattr(output, "content"):
+            return output.content
+        return str(output)
+
+    def _extract_llm_response(self, response) -> tuple[str | None, str | None, dict | None, bool]:
+        """
+        Extract content, thinking, usage, and tool_call flag from LLM response.
+
+        Returns raw data - let frontend decide how to display it.
+        The has_tool_calls flag indicates if the response triggered tool execution.
+        """
+        content = None
+        thinking = None
+        usage = None
+        has_tool_calls = False
+
+        try:
+            if not hasattr(response, "generations") or not response.generations:
+                return content, thinking, usage, has_tool_calls
+
+            gen = response.generations[0][0] if response.generations[0] else None
+            if not gen:
+                return content, thinking, usage, has_tool_calls
+
+            msg = getattr(gen, "message", None)
+            if not msg and hasattr(gen, "generation_info"):
+                msg = gen.generation_info.get("message") if gen.generation_info else None
+
+            if msg:
+                if hasattr(msg, "content"):
+                    content = str(msg.content) if msg.content else None
+
+                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                    has_tool_calls = True
+                elif hasattr(msg, "additional_kwargs"):
+                    tool_calls = msg.additional_kwargs.get("tool_calls")
+                    if tool_calls:
+                        has_tool_calls = True
+
+                if hasattr(msg, "additional_kwargs") and msg.additional_kwargs:
+                    thinking = (
+                        msg.additional_kwargs.get("reasoning_content")
+                        or msg.additional_kwargs.get("thinking")
+                        or msg.additional_kwargs.get("reasoning")
+                    )
+
+                if not thinking and hasattr(msg, "response_metadata") and msg.response_metadata:
+                    thinking = msg.response_metadata.get("reasoning_content") or msg.response_metadata.get("thinking")
+
+                if hasattr(msg, "usage_metadata") and msg.usage_metadata:
+                    usage = dict(msg.usage_metadata)
+                elif hasattr(msg, "response_metadata") and msg.response_metadata:
+                    token_usage = msg.response_metadata.get("token_usage")
+                    if token_usage:
+                        usage = dict(token_usage)
+
+            elif hasattr(gen, "text"):
+                content = gen.text
+
+        except Exception as e:
+            logger.debug("Error extracting LLM response: %s", e)
+
+        return content, thinking, usage, has_tool_calls
+
+
+# Alias for backwards compatibility
+DeepResearchEventCallback = AgentEventCallback

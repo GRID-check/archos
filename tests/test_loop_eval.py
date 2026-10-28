@@ -111,7 +111,7 @@ class TestTheQuestionSet:
         """
         import json
 
-        index_path = REPO_ROOT / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures" / "clause_index.json"
+        index_path = REPO_ROOT / "evals" / "oib-retrieval" / "fixtures" / "clause_index.json"
         index = json.loads(index_path.read_text(encoding="utf-8"))
         unknown = [
             (q.id, q.family, q.clause)
@@ -451,11 +451,11 @@ class TestTheCli:
         assert "rounds" in capsys.readouterr().out
 
 
-WIRE = REPO_ROOT / "shared" / "wire" / "v2"
+WIRE = REPO_ROOT / "contracts" / "wire" / "v2"
 
 
 def _recorded(name: str) -> list[dict]:
-    """A recorded wire v2 turn (`shared/wire/v2/`), one event per line."""
+    """A recorded wire v2 turn (`contracts/wire/v2/`), one event per line."""
     import json
 
     return [json.loads(line) for line in (WIRE / name).read_text(encoding="utf-8").splitlines() if line.strip()]

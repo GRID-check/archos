@@ -19,9 +19,9 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 |---|---|---|
 | Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels; metadata `page`, `prompt_version` and `purpose`, `person` from the compare view or `notice` when Piloti compared a new Fassung on its own, ADR-0130), `look-reading` (the second reader of `look` with a `question`: the office's ingest vision model on the same crop, input shown without the pixels, metadata `prompt_version` and `region`; an ERROR generation when the model could not be reached, and the tool still answers), `filing-fit` (where an upload batch belongs, or a root sort's chunk with `purpose: sort`; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `folder-proposals.map` and `folder-proposals.reduce` (a root sort's new folders: the groups of one chunk, then the merge across them), `folder-card` (one folder's written card in the ingest worker, ADR-0127: the summary model, metadata `collection`, `depth`, `prompt_version`, `documents`, `subfolders`, `mode` (`incremental`: the old card and the diff alone; `full`: the whole folder) and the diff sizes `diff_added`, `diff_removed`, `diff_changed`; a card that only lost documents is pruned without a call and has no generation), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, or one A2A method, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>` or `a2a.<operation>`; metadata and tags below) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
-| Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
+| Release | `GIT_SHA`, the image's commit | the commit hash |
 | Session | the conversation id (NAT sets `session.id`) | one session per chat |
-| User | the verified WorkOS subject, only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true` | WorkOS user id |
+| User | the verified WorkOS subject, only with `TRACE_IDENTITY_ATTRIBUTES=true` | WorkOS user id |
 | Observation type | `nat.span.kind` mapped by `trace_context.observation_type` | `agent` (the turn), `generation` (a model call), `tool`, `retriever` (`retrieve.*`), `chain`, `embedding`, `guardrail`, `evaluator` |
 | Prompt | `PromptLinkProcessor`, generations only | `piloti-system-static` and its version |
 | Usage and cost | `UsageAttributeProcessor` (NAT), `observed_generation` (auxiliary) | input, output, cached and reasoning tokens; the provider's cost when it reports one |
@@ -63,7 +63,8 @@ Trace metadata on the root:
 | `organization_id`, `project_id` | the tenant, only with identity attributes on |
 | `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |
 | `turn_surface` | where the question was asked: `chat`, `review_canvas` (a box drawn on a document, `user_message.focus_region`) or `annotation_thread` (asked in an Anmerkung's thread, `reply_in_thread` with the mark's id). Recorded by the socket for every turn (`record_turn_surface`); both canvas values also carry the tag `surface:review-canvas` |
-| `turn_trigger`, `trigger_event_id` | on a turn an event woke, not typed (`user_message.trigger`, the BFF's wake job; ADR-0106): the kind (`thread_mention`, `thread_reply`, `assigned`) and the id of the reply or assignment that woke it. Recorded by the socket (`record_turn_trigger`) with the tag `trigger:<kind>`; absent on a typed turn The trace id's turn is `wakeTurnId(<event id>)`, the same id as the `piloti_wakes` row and the job. A wake that started no turn (a cap, the switch, rights lost, a spent budget) has no model call and so no trace: it is on its `piloti_wakes` row and in the WorkOS audit trail, as `piloti.wake.suppressed` when it was held (`lib/annotations/wake.ts`), as `piloti.wake.ended` when the job was refused or gave up (`lib/annotations/wake-audit.ts`) |
+| `turn_trigger`, `trigger_event_id` | on a turn an event woke, not typed (`user_message.trigger`, the BFF's wake job; ADR-0106): the kind (`thread_mention`, `thread_reply`, `assigned`) and the id of the reply or assignment that woke it. Recorded by the socket (`record_turn_trigger`) with the tag `trigger:<kind>`; absent on a typed turn The trace id's turn is `wakeTurnId(<event id>)`, the same id as the `agent_wakes` row and the job. A wake that started no turn (a cap, the switch, rights lost, a spent budget) has no model call and so no trace: it is on its `agent_wakes` row and in the WorkOS audit trail, as `piloti.wake.suppressed` when it was held (`lib/annotations/wake.ts`), as `piloti.wake.ended` when the job was refused or gave up (`lib/annotations/wake-audit.ts`) |
+| `question_language`, `question_language_confidence`, `answer_language_instructed` | the language py3langid calls the person's newest message (ISO 639-1, or `undetermined` for one too short to call), its probability, and whether the turn context ended with the line telling the model to answer in it: only for a confident call that is not German (`common/question_language.py`, recorded by `agent.run`). A turn answered in German with `answer_language_instructed: true` is the model ignoring the line |
 | `steer_count` | on a turn the asker steered: how many of their notes (`steer`, typed while the turn ran) it has read so far, recorded by the agent node each time it reads one (`agent._announce_steer`). With the tag `steered` |
 | `thread_reply` | on a turn asked to answer in an Anmerkung's thread (`reply_in_thread`): `replied` (the model called `canvas__reply` on that mark), `skipped` (it did not, so the socket posts the answer in the thread after the turn, `aiq_agent.turn.annotation_reply`), or `skipped_withheld` (it did not, and the conversation drew on a restricted folder, so nothing is posted). Recorded when the turn leaves the canvas (`settle_thread_reply`). The fallback's own post runs after the trace closes and is not an observation; this value is what keeps a model that stops replying in threads visible |
 | `focus_region_viewed` | on a turn with a box only: whether a region view (`look` with `region`) ran, read off the turn's image budget (`conversation_register._finished`). `false` is a turn that answered about a drawing it never looked at |
@@ -111,9 +112,11 @@ as above): its input the query's length in `text_chars` and `text_tokens`
 candidates named by id; `payload`: too many to name, so what they are and cite;
 `none`), how many `document_ids` and which `filter_fields`; its output
 `candidates` (the passages ranked), `documents` handed back, `with_document_id`,
-`collections_with_hits` and `hits_per_collection` (the 50 collections with most,
-by name: `proj_<uuid>`, `office_shelf_<org>`). Metadata: `prefilter`,
-`collections`, `candidates`, `documents`. A grouped search without the purpose
+`collections_with_hits`, `hits_per_collection` (the 50 collections with most,
+by name: `proj_<uuid>`, `office_shelf_<org>`) and `below_meaning_floor` (the
+documents dropped because they matched by meaning alone below the floor).
+Metadata: `prefilter`, `collections`, `candidates`, `documents`,
+`below_meaning_floor`. A grouped search without the purpose
 (the cross-project lookup) is traced where it runs, as
 `retrieve.project_lookup`, never twice. The browser's side of the same search
 is PostHog's `search_issued`, and the route's `Server-Timing` header splits its
@@ -160,6 +163,12 @@ before the LangGraph run; inside it `history.trim` in the graph's first node,
 and in Piloti's own function `setup.skills`, `setup.file_tools` and
 `setup.llm_provider` beside `decide.turn`. Input is a few counts, output
 `outcome` (`ok`, `error`, `cancelled`), `ms` and counts; never turn content.
+`setup.project_context` is one call to the BFF's turn-context route, so its
+output also carries that route's `Server-Timing`: `bff_<read>_ms` for
+`session`, `access` and each read it runs at once (`profile`, `instructions`,
+`memory`, `decisions`, `reviews`, `cross_project`, `references`, `folders`,
+`workspace`), `bff_total_ms`, and `bff_memory_desc`, whether the memory read
+waited for the query embed (`ranked`, `skipped`, `unavailable`, `no-query`).
 A `decide.<slot>` generation also spans its call now (its `latency_ms`), where
 it used to read 1 ms. "Where did the first turn's seconds go" is a read of
 these rows: `docs/audit/turn-latency-measured-2026-09.md` §3.6.
@@ -171,8 +180,8 @@ Piloti's own `workspace__*` tools, is a root trace `agent-tool-call` holding one
 `TOOL` observation named `mcp.<operation>` (`search-operations`, `call-operation`
 is recorded under the operation it ran, `unknown` for a name no operation has:
 that is the agent's own text). Each A2A method at `/api/a2a` (ADR-0124) is one
-too, its observation `a2a.<operation>` (`piloti-ask-create`, `piloti-ask-get`,
-`piloti-ask-cancel`); the polls a blocking call or a stream makes while it
+too, its observation `a2a.<operation>` (`agent-ask-create`, `agent-ask-get`,
+`agent-ask-cancel`); the polls a blocking call or a stream makes while it
 waits are not. A tool call on the platform door at `/api/platform/mcp`
 (ADR-0126) is the same trace, observation `mcp.<operation>`, door `platform`.
 Metadata on all: `operation`, `domain`, `door`
@@ -183,7 +192,7 @@ Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
 `door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and
 `org:<id>` with identity attributes on. The session is the conversation when
 Piloti made the call, so the call sits beside the turn that asked for it; the
-user only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true`. Never the input or the
+user only with `TRACE_IDENTITY_ATTRIBUTES=true`. Never the input or the
 answer. Posted best-effort through the ingestion API, never awaited by the call
 (`lib/langfuse/tool-call-trace.ts`, from `lib/agent-api/telemetry.ts`). No score.
 
@@ -192,7 +201,7 @@ answer. Posted best-effort through the ingestion API, never awaited by the call
 The reading of a new project's documents (ADR-0111) is a `research-job` trace of
 agent type `project_intake` (ADR-0108), not a trace of its own name. The run
 writes its facts once, when it ends, in `_record_trace`
-(`src/aiq_agent/agents/intake/agent.py`):
+(`packages/agent/src/aiq_agent/agents/intake/agent.py`):
 
 | Key | Meaning |
 |---|---|
@@ -237,7 +246,7 @@ a name is written but not declared, or declared but not listed here.
 | `piloti-decision` | categorical | BFF, on a person's decision | `accepted`, `dismissed`, `undone`: what a person did with a proposal, a proposed mark or an applied change Piloti made in this turn, or with a value a reading of the project's documents suggested (ADR-0111). One score per decision, on the trace of the producing turn (for an intake suggestion, the reading's `research-job` trace); metadata `subject` (`proposal`, `annotation`, `change`, `intake_suggestion`) and `subject_id`. The acceptance rate of Piloti's work |
 | `diagram-filed` | categorical | BFF, when a drawing is filed into a project (ADR-0141) | `as_drawn` (the drawing Piloti made, kept as it was) or `edited` (reworked in the sketch editor first). On the trace of the turn that drew it, through the `answerId` the filing sends; no answer id or no trace on it, no score. Metadata `document_id`, the filed SVG, which is also the score id, so filing the same drawing again upserts. The share `edited` is how often Piloti's drawing was a starting point rather than the result |
 | `revision-notice` | numeric ≥ 0 | BFF, when a notice of a new Fassung ends (ADR-0130) | How many marks Piloti proposed on its own after comparing a new Fassung with the one it replaces; 0 is „compared, nothing visible". On the trace of the first page's `revision-visual-compare` generation (metadata `purpose: notice`), so no score without a traced call; metadata `notice_id`, `pages_compared`, `pages_changed`. Each mark it proposed is recorded against the notice's thread message, so a person's decision on it is a `piloti-decision` on the same trace: the share accepted is the precision of noticing |
-| `document-check` | numeric ≥ 0 | BFF, when a check of a new document ends (ADR-0130) | How many marks Piloti proposed on its own after checking a new document against the project's other documents; 0 is „checked, everything agrees“. On the trace of the headless turn that ran the check (`turn_trigger: new_document`, the check's id as `trigger_event_id`), so no score without a trace; metadata `check_id`. Each mark is a `piloti_changes` row on the turn's answer, so a person's decision on it is a `piloti-decision` on the same trace: the share accepted is the precision of the check |
+| `document-check` | numeric ≥ 0 | BFF, when a check of a new document ends (ADR-0130) | How many marks Piloti proposed on its own after checking a new document against the project's other documents; 0 is „checked, everything agrees“. On the trace of the headless turn that ran the check (`turn_trigger: new_document`, the check's id as `trigger_event_id`), so no score without a trace; metadata `check_id`. Each mark is a `agent_changes` row on the turn's answer, so a person's decision on it is a `piloti-decision` on the same trace: the share accepted is the precision of the check |
 | `citation-health` | boolean | agent | nothing removed, patched or flagged on this turn |
 | `answer-grounded` | boolean | agent | false when sources were retrieved but no citation survived |
 | `citations-removed` | numeric | agent | citations verification dropped |
@@ -290,7 +299,7 @@ task langfuse:provision -- --apply   # create what is missing (ask first on a sh
 * **Score configs** for every score above, so Langfuse validates values and the
   annotation UI offers the categories.
 * **Annotation queue `answer-review`.** Every down-voted answer's trace is added
-  by the BFF (`frontends/ui/src/lib/langfuse/feedback-score.ts`). Reviewers
+  by the BFF (`apps/workspace/bff/langfuse/feedback-score.ts`). Reviewers
   record `review-correctness` and `review-sources`.
 * **LLM-as-a-judge evaluators** `judge-answers-question`, `judge-uncited-claims`
   and `judge-clarity`, and the rule `chat-turn-judges` that runs them on one in
@@ -353,7 +362,7 @@ settings (introduced with the v4 preview):
 | Both | all of the above | | `dual`; duplicates by design, for migration only |
 
 Our deployment writes both tables (`langfuseV4WriteMode` defaults to `dual`,
-`deploy/pulumi/src/config.ts`), so either source works today. Upstream moves a
+`deploy/pulumi/src/config/langfuse.ts`), so either source works today. Upstream moves a
 self-hosted deployment on to the enriched source automatically once the server
 runs in `events_only`; the switch is one-way.
 
@@ -372,11 +381,11 @@ never reads a trace's body, so this is the whole cost.
 
 * `user_id` becomes the event's distinct id, so it must be the WorkOS user id
   PostHog identifies the browser with. That is Langfuse's user, which Grid sets
-  only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true`; without it every event is
+  only with `TRACE_IDENTITY_ATTRIBUTES=true`; without it every event is
   `langfuse_unknown_user` and joins to no person.
 * `trace.metadata.$posthog_session_id` becomes `$session_id`. Each chat turn
   carries the browser's PostHog session id there:
-  `getPosthogSessionId()` (`frontends/ui/src/lib/analytics/posthog.ts`) is read
+  `getPosthogSessionId()` (`apps/workspace/bff/analytics/posthog.ts`) is read
   per question and sent as `user_message.posthog_session_id`; `_drive` in
   `aiq_api/chat_socket.py` records it with `record_posthog_session`
   (`langfuse_trace_attributes.py`). From a trace, open the same `$session_id`
@@ -391,7 +400,7 @@ never reads a trace's body, so this is the whole cost.
   turn.
 * The page sends the id only to a server whose hello lists
   `user_message.posthog_session_id` in `accepts`, which is withheld while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is off. It is on by default; set off, the link is gone.
+  `WIRE_V2_ADDITIVE_FIELDS` is off. It is on by default; set off, the link is gone.
 
 ### How to enable
 
@@ -428,21 +437,21 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 | Add or change a quality check | Emit a score through `langfuse_scores.emit_scores`, declare it in `SCORE_DEFINITIONS`, add its row here, run `task langfuse:provision` |
 | Add a dimension an analyst should slice by | Trace metadata through `record_trace_metadata` (tools) or `turn_outcome` (turn results); a tag only if it is a low-cardinality label |
 | Change a judge, the queue or the dataset | Edit `langfuse_catalog.py`, then `task langfuse:provision -- --apply` once it is merged |
-| Gate something on identity | Only the user and the tenant. Labels, counts and scores are never behind `GRID_TRACE_IDENTITY_ATTRIBUTES` |
+| Gate something on identity | Only the user and the tenant. Labels, counts and scores are never behind `TRACE_IDENTITY_ATTRIBUTES` |
 
 ## Where the code is
 
 | Concern | Module |
 |---|---|
-| Environment, release, types, trace names | `src/aiq_agent/observability/trace_context.py` |
-| The processors on NAT's exporter | `src/aiq_agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
-| A turn's outcome on its root | `src/aiq_agent/observability/turn_outcome.py`, bound in `aiq_api/chat_socket.py` `_drive` |
-| Runtime scores | `src/aiq_agent/observability/langfuse_scores.py` |
-| Model calls outside NAT | `src/aiq_agent/observability/direct_trace.py` |
-| Langfuse configuration as code | `src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
-| Votes, reasons, review queue | `frontends/ui/src/lib/langfuse/feedback-score.ts` |
-| Decisions on Piloti's proposals, marks and changes | `frontends/ui/src/lib/langfuse/decision-score.ts` |
-| Tool calls on the agent door (MCP) | `frontends/ui/src/lib/langfuse/tool-call-trace.ts`, called from `lib/agent-api/telemetry.ts` |
-| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `frontends/ui/src/lib/analytics/posthog.ts` |
-| Retention and erasure | `frontends/ui/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
+| Environment, release, types, trace names | `packages/agent/src/aiq_agent/observability/trace_context.py` |
+| The processors on NAT's exporter | `packages/agent/src/aiq_agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
+| A turn's outcome on its root | `packages/agent/src/aiq_agent/observability/turn_outcome.py`, bound in `aiq_api/chat_socket.py` `_drive` |
+| Runtime scores | `packages/agent/src/aiq_agent/observability/langfuse_scores.py` |
+| Model calls outside NAT | `packages/agent/src/aiq_agent/observability/direct_trace.py` |
+| Langfuse configuration as code | `packages/agent/src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
+| Votes, reasons, review queue | `apps/workspace/bff/langfuse/feedback-score.ts` |
+| Decisions on Piloti's proposals, marks and changes | `apps/workspace/bff/langfuse/decision-score.ts` |
+| Tool calls on the agent door (MCP) | `apps/workspace/bff/langfuse/tool-call-trace.ts`, called from `lib/agent-api/telemetry.ts` |
+| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `apps/workspace/bff/analytics/posthog.ts` |
+| Retention and erasure | `apps/workspace/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
 | Deployment | `deploy/pulumi/src/platform/langfuse.ts` ([`kubernetes.md`](../deployment/kubernetes.md) § Langfuse) |

@@ -1,6 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, pullPolicyFor } from "../config";
+import { GridConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { AUTOSCALER_SAFE_TO_EVICT, BOOTSTRAP_JOB_RESOURCES, JOB_DEFAULTS, PORT, QDRANT, UID } from "../constants";
 import { commonLabels } from "../platform/namespaces";
 import {
@@ -22,7 +23,7 @@ export interface Qdrant {
   snapshotCronJob: k8s.batch.v1.CronJob;
   /** The Prometheus alerting rules, rendered against this stack's limits. */
   alertRules: k8s.core.v1.ConfigMap;
-  /** In-cluster URL every backend tier points GRID_QDRANT_URL at. */
+  /** In-cluster URL every backend tier points QDRANT_URL at. */
   url: pulumi.Output<string>;
   /** `host:port` of every peer's metrics listener, which the collector scrapes. */
   metricsTargets: pulumi.Output<string[]>;

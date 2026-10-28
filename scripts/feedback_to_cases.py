@@ -64,7 +64,7 @@ def slug(question: str) -> str:
 
 
 #: The export prefixes a cell starting with one of these with an apostrophe, so a
-#: spreadsheet opens it as text (``frontends/ui/src/lib/text/csv-cell.ts``).
+#: spreadsheet opens it as text (``apps/workspace/bff/text/csv-cell.ts``).
 _FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
 
 

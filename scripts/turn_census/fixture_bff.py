@@ -3,7 +3,7 @@
 The answer suite runs the real agent with no BFF, so it cannot ask a single
 question about another project (docs/roadmap/office-experience.md, step A).
 This serves exactly the routes that question needs, from
-``frontends/ui/tests/fixtures/precedent/``:
+``apps/workspace/tests/fixtures/precedent/``:
 
 - ``POST /api/internal/turn-context``: the current project's PROJECT_CONTEXT
   and the reference catalog, both as the production renderers wrote them
@@ -57,7 +57,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 
 #: The per-project page the BFF searched before ADR-0116 (8 projects). The BFF now ranks a page of
 #: `CROSS_PROJECT_PAGE_PROJECTS` (40, `lib/cross-project/types.ts`) in one grouped query; kept at 8 so
@@ -92,14 +92,14 @@ Embed = Callable[[list[str]], "list[list[float]] | None"]
 def production_embedder() -> Embed | None:
     """The deployment's embedding model, built as the note-embeddings route builds it; None without a key."""
     try:
-        from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-        from knowledge_layer.llamaindex.adapter import _resolve_embed_api_key
-        from knowledge_layer.llamaindex.adapter import make_embed_model
+        from knowledge_layer.llamaindex.embedding import make_embed_model
+        from knowledge_layer.llamaindex.embedding import resolve_embed_api_key
+        from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     except ImportError:
         return None
     model = LlamaIndexRetriever.DEFAULT_EMBED_MODEL
     base_url = LlamaIndexRetriever.DEFAULT_EMBED_BASE_URL
-    api_key = _resolve_embed_api_key(base_url, model)
+    api_key = resolve_embed_api_key(base_url, model)
     if not api_key:
         return None
     embedder = make_embed_model(base_url=base_url, model=model, api_key=api_key)

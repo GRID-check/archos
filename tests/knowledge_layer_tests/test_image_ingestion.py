@@ -23,11 +23,11 @@ from knowledge_layer.llamaindex.adapter import _build_image_caption_document
 from knowledge_layer.llamaindex.adapter import _looks_like_image
 from knowledge_layer.llamaindex.adapter import _read_image_as_jpeg
 from knowledge_layer.llamaindex.adapter import _strip_visual_marker
+from knowledge_layer_testing.qdrant import FakeEmbedder
 from PIL import ExifTags
 from PIL import Image
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
 
 
 def _patch_vlm_credential(monkeypatch, api_key: str):
@@ -516,7 +516,7 @@ class TestRunIngestionImageBranch:
         assert not status.is_success
         detail = status.file_details[0]
         assert detail.status.value == "failed"
-        assert detail.error_message == "vlm_not_configured: image ingestion requires GRID_VLM_API_KEY"
+        assert detail.error_message == "vlm_not_configured: image ingestion requires VLM_API_KEY"
 
     def test_summary_fail_but_tags_succeed_persists_fallback_summary(self, tmp_path, monkeypatch, ingestor, summary_db):
         """Fix 1: when the summary LLM call fails but tag classification

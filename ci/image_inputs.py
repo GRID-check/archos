@@ -13,7 +13,7 @@ the commit before it and rebuild only the images whose paths changed. Two things
 broke that, both silently:
 
 - The path lists were written by hand, twice, and disagreed with the
-  Dockerfile. `deploy/Dockerfile` copies `packages/ifc-spatial-py/`, and neither
+  Dockerfile. `apps/backend/Dockerfile` copies `packages/ifc-spatial-py/`, and neither
   list watched it, so a change there never reached a published image.
 - A push that is superseded while queued is dropped, and the next push diffs
   only against its own parent. On 2026-10-09 a merge train of nine commits
@@ -71,9 +71,9 @@ class Image:
 
 
 IMAGES = (
-    Image("backend", context=".", dockerfile="deploy/Dockerfile", target="release"),
-    Image("frontend", context="frontends/ui", dockerfile="frontends/ui/deploy/Dockerfile"),
-    Image("web", context="frontends/web", dockerfile="frontends/web/Dockerfile"),
+    Image("backend", context=".", dockerfile="apps/backend/Dockerfile", target="release"),
+    Image("frontend", context="apps/workspace", dockerfile="apps/workspace/deploy/Dockerfile"),
+    Image("web", context="apps/site", dockerfile="apps/site/Dockerfile"),
 )
 
 _INSTRUCTION = re.compile(r"^\s*(COPY|ADD)\s+(.*)$", re.IGNORECASE)
@@ -138,6 +138,15 @@ def _git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout
 
 
+def _tracks(rev: str, path: str) -> bool:
+    return (
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{rev}:{path}"], check=False, cwd=ROOT, capture_output=True
+        ).returncode
+        == 0
+    )
+
+
 def inputs(image: Image, rev: str = "HEAD") -> list[str]:
     """The repository paths whose content is this image's content."""
     dockerfile = _git("show", f"{rev}:{image.dockerfile}")
@@ -191,9 +200,16 @@ def plan_pull_request(base: str, *, week: str) -> tuple[list[dict], list[dict]]:
     change the pull request made.
     """
     merge_base = _git("merge-base", base, "HEAD").strip()
-    head, before = hashes("HEAD", week=week), hashes(merge_base, week=week)
+    head = hashes("HEAD", week=week)
+    # An image whose Dockerfile the base does not have (new, or moved with its
+    # directory) has no inputs there to compare: it is a change, and is built.
+    before = {
+        image.name: input_hash(image, merge_base, week=week)
+        for image in IMAGES
+        if _tracks(merge_base, image.dockerfile)
+    }
     images = [_entry(image, head[image.name]) for image in IMAGES]
-    return [entry for entry in images if head[entry["name"]] != before[entry["name"]]], images
+    return [entry for entry in images if head[entry["name"]] != before.get(entry["name"])], images
 
 
 Published = Callable[[str, str], bool | None]

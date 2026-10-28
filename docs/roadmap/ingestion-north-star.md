@@ -47,7 +47,7 @@ architecture doc.
    pages an hour in total, and at most 15 documents are in flight across every
    office. Time to searchable for a new upload depends on everyone else's
    drawings.
-2. **Pages past 20 are not read.** `GRID_MAX_RENDERED_PAGES = 20` per file. A
+2. **Pages past 20 are not read.** `MAX_RENDERED_PAGES = 20` per file. A
    60-sheet Einreichung loses 40 sheets of drawing content without telling anyone.
 3. **The document is understood from its cover and its last page.** Summary, tags
    and topics see the first and last chunk, 4000 characters. Tags are 12 coarse
@@ -309,7 +309,7 @@ says it worked.
 | The table pass skips drawings the vision model reads (0.68 s a page on a vector sheet, for no table) | speed | `adapter._table_pass_skips` |
 | References: norms, laws, plans, named documents, no model | 4 | `knowledge_layer/references.py` |
 | The dossier: one strict call over a digest of every page; its summary replaces the first-and-last-chunk one; printed drawing quantities lifted into facts | 5 | `aiq_agent/knowledge/dossier.py` |
-| Findings derived per project (missing document, missing plan, contradiction, incomplete read), served to people and agents | 6 (first half) | `frontends/ui/src/lib/documents/findings.ts` |
+| Findings derived per project (missing document, missing plan, contradiction, incomplete read), served to people and agents | 6 (first half) | `apps/workspace/bff/documents/findings.ts` |
 | Transient failures read again on their own, capped, at bulk priority | reliability | `lib/documents/transient-retry.ts` |
 | Piloti sees the type, facts, references and unread pages of each document | 5 | `browse.py`, `inventory.py` |
 | The Eingangsbericht on the uploader's `upload.completed` inbox row: documents read by type, new and settled findings, unresolved references, unread pages, a link to the findings; computed at the settle as the uploader, bounded, fail-open | 6 (second half, inbox) | `lib/upload-batches/upload-report.ts` |

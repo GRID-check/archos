@@ -1,0 +1,175 @@
+/**
+ * @vitest-environment node
+ */
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+
+vi.mock('server-only', () => ({}))
+
+const send = vi.fn()
+vi.mock('@/lib/s3', () => ({
+  s3Client: { send: (...args: unknown[]) => send(...args) },
+}))
+
+const admitDocumentWithinQuota = vi.fn()
+const admitReplacementWithinQuota = vi.fn()
+vi.mock('./service', () => ({
+  admitDocumentWithinQuota: (...args: unknown[]) => admitDocumentWithinQuota(...args),
+  admitReplacementWithinQuota: (...args: unknown[]) => admitReplacementWithinQuota(...args),
+}))
+
+import { InsufficientStorageError } from '@/lib/api/errors'
+import { admitOrDiscard, admitReplacementOrDiscard } from './admission'
+import type { NewDocument } from '@/lib/db/schema/documents'
+
+/**
+ * The object is written before the row, because a `documents` row implies its
+ * bytes exist and every read path assumes that. The cost of that order is this
+ * module: admission can refuse AFTER the upload, and a refused upload must not
+ * leave an object nothing references.
+ *
+ * An orphan there is worse than it sounds — invisible to the UI, invisible to the
+ * quota ledger (which counts rows), findable only by a bucket-wide sweep — so
+ * these tests are about a leak, not about tidiness.
+ */
+const ROW = {
+  id: 'doc-1',
+  organizationId: 'org-1',
+  storageKey: 'org/org-1/project/p1/doc-1/report.pdf',
+  fileSize: 5_000,
+} as unknown as NewDocument
+
+const BUCKET = 'grid-org-org-1-abc'
+
+describe('admitOrDiscard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    send.mockResolvedValue({})
+  })
+
+  it('keeps the object when the row is admitted', async () => {
+    admitDocumentWithinQuota.mockResolvedValue(undefined)
+    await admitOrDiscard(BUCKET, ROW.storageKey, ROW)
+    expect(admitDocumentWithinQuota).toHaveBeenCalledWith(ROW)
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('deletes the object it just wrote when admission refuses', async () => {
+    admitDocumentWithinQuota.mockRejectedValue(new InsufficientStorageError())
+
+    await expect(admitOrDiscard(BUCKET, ROW.storageKey, ROW)).rejects.toBeInstanceOf(
+      InsufficientStorageError,
+    )
+
+    expect(send).toHaveBeenCalledTimes(1)
+    const command = send.mock.calls[0][0]
+    expect(command).toBeInstanceOf(DeleteObjectCommand)
+    // The bucket it was written to, not the shared one — the row was never
+    // inserted, so nothing else records where those bytes went.
+    expect(command.input).toEqual({ Bucket: BUCKET, Key: ROW.storageKey })
+  })
+
+  it('re-throws the refusal, so the caller reports the quota and not a 500', async () => {
+    const refusal = new InsufficientStorageError('no room', {
+      quotaBytes: 10,
+      usedBytes: 10,
+      requestedBytes: 5,
+    })
+    admitDocumentWithinQuota.mockRejectedValue(refusal)
+    await expect(admitOrDiscard(BUCKET, ROW.storageKey, ROW)).rejects.toBe(refusal)
+  })
+
+  // Any failure, not just a quota refusal: a row that was not inserted for ANY
+  // reason leaves the same orphan.
+  //
+  // That breadth is now DEPENDED ON and not merely prudent. `fileGeneratedDocument`
+  // loses an idempotency race as a `23505` out of this insert (migration 0064's
+  // unique index on `(organization_id, project_id, authored_by_ref, authored_by_producer)`), and its
+  // recovery deliberately does no cleanup of its own because this one already
+  // ran. Narrowing the catch to `InsufficientStorageError` would therefore leak
+  // one object per lost race — bytes with no row, invisible to the UI and to the
+  // quota ledger, which counts rows.
+  it('also cleans up when the insert fails for a reason other than the quota', async () => {
+    admitDocumentWithinQuota.mockRejectedValue(new Error('deadlock detected'))
+    await expect(admitOrDiscard(BUCKET, ROW.storageKey, ROW)).rejects.toThrow('deadlock detected')
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('still reports the original failure when the cleanup itself fails', async () => {
+    // Turning a quota refusal into a 500 because the tidy-up failed would hide
+    // the one thing the user can act on. The orphan is logged and the purge
+    // collects it with its project.
+    const refusal = new InsufficientStorageError()
+    admitDocumentWithinQuota.mockRejectedValue(refusal)
+    send.mockRejectedValue(new Error('AccessDenied'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await expect(admitOrDiscard(BUCKET, ROW.storageKey, ROW)).rejects.toBe(refusal)
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+})
+
+
+/**
+ * The re-upload twin, and the same leak.
+ *
+ * A replace writes the new object first too, so a refusal after it has landed
+ * must take it back — and here the object to discard is the NEW one, because
+ * the row was not changed and still points at the old key. Discarding the old
+ * one would delete the bytes the surviving row references, which is the same
+ * fault as the leak but pointed at live data.
+ */
+describe('admitReplacementOrDiscard', () => {
+  const NEXT = {
+    storageKey: 'org/org-1/project/p1/doc-1/report.pdf',
+    storageBucket: BUCKET,
+    fileSize: 5_000,
+    contentType: 'application/pdf',
+    contentHash: 'sha256:beef',
+    folderId: null,
+    createdBy: 'user-1',
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    admitReplacementWithinQuota.mockResolvedValue(undefined)
+    send.mockResolvedValue({})
+  })
+
+  it('leaves the object alone when the replacement is admitted', async () => {
+    await admitReplacementOrDiscard(BUCKET, NEXT.storageKey, 'org-1', 'doc-1', NEXT)
+
+    expect(admitReplacementWithinQuota).toHaveBeenCalledWith('org-1', 'doc-1', NEXT)
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('discards the NEW object when the quota refuses, and rethrows', async () => {
+    admitReplacementWithinQuota.mockRejectedValue(
+      new InsufficientStorageError('full', { quotaBytes: 1, usedBytes: 1, requestedBytes: 1 })
+    )
+
+    await expect(
+      admitReplacementOrDiscard(BUCKET, NEXT.storageKey, 'org-1', 'doc-1', NEXT)
+    ).rejects.toBeInstanceOf(InsufficientStorageError)
+
+    expect(send).toHaveBeenCalledTimes(1)
+    const command = send.mock.calls[0]?.[0]
+    expect(command).toBeInstanceOf(DeleteObjectCommand)
+    expect((command as DeleteObjectCommand).input).toMatchObject({
+      Bucket: BUCKET,
+      Key: NEXT.storageKey,
+    })
+  })
+
+  it('still surfaces the refusal when the cleanup itself fails', async () => {
+    // The caller is already failing for a reason the user can act on; turning
+    // that into a 500 because a delete did not land would hide it.
+    admitReplacementWithinQuota.mockRejectedValue(new Error('nope'))
+    send.mockRejectedValue(new Error('object store down'))
+
+    await expect(
+      admitReplacementOrDiscard(BUCKET, NEXT.storageKey, 'org-1', 'doc-1', NEXT)
+    ).rejects.toThrow('nope')
+  })
+})

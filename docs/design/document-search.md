@@ -159,9 +159,25 @@ counting there would count what the reader may not open. ADR-0136 records this.
 
 Postgres decides which documents are in a result; Qdrant only ranks their
 passages. With text, the content search is pre-filtered for recall: by
-`grid_document_id` in the SQL candidates when they are few, else by the payload
-fields ingestion mirrors onto every chunk (`document_type`, `references`,
-`dossier_facts`). No Qdrant count is ever shown.
+`grid_document_id` in the SQL candidates when they are few (and by their file
+names, for the passages written before that field or copied from Chroma, which
+carry none), else by the payload fields ingestion mirrors onto every chunk
+(`document_type`, `references`, `dossier_facts`). No Qdrant count is ever shown.
+
+A content hit is one of two kinds. Its passage holds a word of the query (the
+BM25 or an exact-term channel ranked it): `matchedOn` says `content`. Or it is
+only near in meaning (an English question over a German document, a synonym):
+`matchedOn` says `meaning`, and the backend keeps it only above a cosine floor
+(`MEANING_ONLY_MIN_COSINE` in `aiq_api/routes/document_search.py`, measured on
+the deployed embedder), because the fusion always fills its candidates from the
+dense channel and a word nobody wrote would otherwise return the nearest
+passages as hits.
+
+The words are matched in one German spelling: ä ö ü ß and ae oe ue ss are the
+same letters in a name, in the reading's full-text vector (both through
+`fold_german`, migration 0188) and in the BM25 channel, which asks both
+spellings and keeps the one the documents hold
+(`german_text.umlaut_spellings`).
 
 The projection is derived, never authored. A row is written:
 
@@ -314,7 +330,7 @@ yet for the same reason.
 
 ### Where the page is
 
-One organism, `frontends/ui/src/features/search` (`SearchWorkspace`), at every
+One organism, `apps/workspace/ui/features/search` (`SearchWorkspace`), at every
 scope; the question lives in the URL (`?q=…&type=…&view=register&sort=…`), so
 a search is a link and Back walks its filters.
 
@@ -469,7 +485,7 @@ way back, which are this reader's), and a toast says it did. A
 Büroablage document has no chat to start, so it offers no „Piloti fragen".
 With a row marked, Shift+F10 or the menu key opens its ⋯ while the focus
 stays in the field. Each action is an operation that already exists
-(`piloti-ask-create`, `document-status`, `annotation-list`); none is new.
+(`agent-ask-create`, `document-status`, `annotation-list`); none is new.
 
 In the chat composer, `#` and a word search the workspace for a document as
 `@` finds a person (`useDocumentReference`): the palette's live results,
@@ -519,10 +535,10 @@ Planfred-style "who received which Index" from the version access log.
 
 ## Measured
 
-`task fe:search:latency` seeds a throwaway Postgres migrated with the repo's
-chain and times the repository functions themselves, as `grid_app_rw` under
+`task workspace:search:latency` seeds a throwaway Postgres migrated with the repo's
+chain and times the repository functions themselves, as `app_rw` under
 row-level security, pool and per-statement `SET LOCAL` included
-(`frontends/ui/src/lib/search/search-latency.integration.spec.ts`; a spec
+(`apps/workspace/bff/search/search-latency.integration.spec.ts`; a spec
 rather than a script, so it measures the SQL the builders make, not a copy).
 The office: three organizations, the measured one with 120 projects and
 20,000 documents (5% held, 3% archived, 10% superseded, 2% in a hidden

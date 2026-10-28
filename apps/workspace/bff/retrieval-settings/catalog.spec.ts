@@ -1,0 +1,111 @@
+/**
+ * @vitest-environment node
+ */
+import { describe, expect, it } from 'vitest'
+
+import catalogFixture from '../../tests/fixtures/retrieval_settings_catalog.json'
+
+import {
+  RETRIEVAL_SETTINGS,
+  RETRIEVAL_SETTING_KEYS,
+  getRetrievalSettingDefinition,
+  isSwitchSetting,
+  retrievalSettingDefaults,
+  validateRetrievalSettingValue,
+} from './catalog'
+
+describe('retrieval settings catalog', () => {
+  it('contains the platform-tunable counts, plus the lessons control group and the streaming switch', () => {
+    expect(RETRIEVAL_SETTING_KEYS).toEqual([
+      'chat.answer_streaming',
+      'lessons.holdout_pct',
+      'knowledge.top_k',
+      'knowledge.max_chunks_per_document',
+      'knowledge.relevance_floor_pct',
+      'surface.chunk_top_k',
+      'surface.max_files',
+      'web.max_results',
+      'web.advanced_max_results',
+      'ris.max_results',
+      'ris.page_size',
+      'ris_catalog.max_matches',
+    ])
+  })
+
+  it('pins every default to the value the tools ship with', () => {
+    expect(retrievalSettingDefaults()).toEqual({
+      // On: the answer streams unless the platform owner switches it off.
+      'chat.answer_streaming': 1,
+      'lessons.holdout_pct': 0,
+      'knowledge.top_k': 16,
+      'knowledge.max_chunks_per_document': 5,
+      // 0 disables the floor, and that is the shipped default deliberately: measured on
+      // this corpus, similarity does not separate answerable from out-of-scope questions.
+      'knowledge.relevance_floor_pct': 0,
+      'surface.chunk_top_k': 40,
+      'surface.max_files': 3,
+      'web.max_results': 8,
+      'web.advanced_max_results': 4,
+      'ris.max_results': 20,
+      'ris.page_size': 20,
+      'ris_catalog.max_matches': 8,
+    })
+  })
+
+  it('matches the cross-language contract fixture byte-for-byte', () => {
+    // The Python parity test reads the same file and asserts it against
+    // `_BOUNDS`/`_ALLOWED_VALUES`.
+    expect(
+      RETRIEVAL_SETTINGS.map(({ key, defaultValue, min, max, allowedValues, label, description }) => ({
+        key,
+        defaultValue,
+        min,
+        max,
+        ...(allowedValues ? { allowedValues: [...allowedValues] } : {}),
+        label,
+        description,
+      }))
+    ).toEqual(catalogFixture)
+  })
+
+  it('draws only a 0/1 setting as a switch', () => {
+    expect(RETRIEVAL_SETTINGS.filter(isSwitchSetting).map((s) => s.key)).toEqual(['chat.answer_streaming'])
+  })
+
+  it('resolves definitions by key and returns undefined for unknown keys', () => {
+    expect(getRetrievalSettingDefinition('knowledge.top_k')?.max).toBe(50)
+    expect(getRetrievalSettingDefinition('nope')).toBeUndefined()
+  })
+})
+
+describe('validateRetrievalSettingValue', () => {
+  it('accepts values at the bounds', () => {
+    expect(validateRetrievalSettingValue('knowledge.top_k', 1)).toBeNull()
+    expect(validateRetrievalSettingValue('knowledge.top_k', 50)).toBeNull()
+    expect(validateRetrievalSettingValue('knowledge.max_chunks_per_document', 0)).toBeNull()
+  })
+
+  it('rejects values outside the bounds', () => {
+    expect(validateRetrievalSettingValue('knowledge.top_k', 0)).toMatch(/zwischen 1 und 50/)
+    expect(validateRetrievalSettingValue('knowledge.top_k', 51)).toMatch(/zwischen 1 und 50/)
+  })
+
+  it('rejects non-integers', () => {
+    expect(validateRetrievalSettingValue('knowledge.top_k', 8.5)).toMatch(/ganze Zahlen/)
+  })
+
+  it('enforces the discrete RIS page sizes over the numeric range', () => {
+    expect(validateRetrievalSettingValue('ris.page_size', 20)).toBeNull()
+    expect(validateRetrievalSettingValue('ris.page_size', 30)).toMatch(/nur 10, 20, 50, 100/)
+  })
+
+  it('takes only on or off for a switch', () => {
+    expect(validateRetrievalSettingValue('chat.answer_streaming', 0)).toBeNull()
+    expect(validateRetrievalSettingValue('chat.answer_streaming', 1)).toBeNull()
+    expect(validateRetrievalSettingValue('chat.answer_streaming', 2)).toMatch(/nur 0, 1/)
+  })
+
+  it('rejects unknown keys', () => {
+    expect(validateRetrievalSettingValue('unknown.key', 1)).toMatch(/Unbekannte Einstellung/)
+  })
+})

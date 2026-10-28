@@ -2,7 +2,8 @@ import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
-import { GridConfig, pullPolicyFor } from "../config";
+import { GridConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "./namespaces";
 import {
   ROLLOUT,
@@ -16,6 +17,7 @@ import {
 import { GATEWAY_NAME } from "./gateway";
 import { OBSERVABILITY_VIEW_PERMISSION, OIDC_CLIENT_SECRET_KEY, platformOidcSecurityPolicySpec } from "./platform-oidc";
 import { EDGE_TIMEOUT, LANGFUSE, PORT } from "../constants";
+import { logicalName, objectName } from "../names";
 
 /** Secret name. A constant rather than `secret.metadata.name` because the
  *  SecurityPolicy spec is a plain (typed) object, not a Pulumi resource input. */
@@ -147,7 +149,7 @@ export function langfuseInClusterUrl(): string {
 /**
  * What the BFF needs to write answer feedback into Langfuse as scores and to
  * link a rated turn to its trace (ADR-0044, Amendment 3;
- * `frontends/ui/src/lib/langfuse/config.ts` reads exactly these names).
+ * `apps/workspace/bff/langfuse/config.ts` reads exactly these names).
  *
  * Empty unless the tier is deployed, so a stack without Langfuse renders the
  * frontend exactly as before and the BFF's scoring stays a no-op.
@@ -698,7 +700,7 @@ export function installLangfuse(
     ],
   };
   const route = new k8s.apiextensions.CustomResource(
-    "grid-langfuse-route",
+    logicalName("grid-langfuse-route"),
     {
       apiVersion: "gateway.networking.k8s.io/v1",
       kind: "HTTPRoute",
@@ -709,11 +711,11 @@ export function installLangfuse(
   );
 
   const securityPolicy = new k8s.apiextensions.CustomResource(
-    "grid-langfuse-security-policy",
+    logicalName("grid-langfuse-security-policy"),
     {
       apiVersion: "gateway.envoyproxy.io/v1alpha1",
       kind: "SecurityPolicy",
-      metadata: { name: "grid-langfuse-auth", namespace, labels: webLabels },
+      metadata: { name: objectName("langfuseAuth"), namespace, labels: webLabels },
       spec: platformOidcSecurityPolicySpec(cfg, {
         routeName: LANGFUSE.routeName,
         domain: lf.domain,

@@ -49,14 +49,14 @@ echo "Core framework installed"
 # Install the backend host (--no-deps: dependencies already resolved by uv sync)
 echo ""
 echo "Installing the backend host..."
-"${UV_BIN}" pip install -e ./frontends/aiq_api
+"${UV_BIN}" pip install -e ./apps/backend
 echo "Backend host installed"
 
 # Install data sources
 echo ""
 echo "Installing data sources..."
-"${UV_BIN}" pip install -e ./sources/tavily_web_search
-"${UV_BIN}" pip install -e "./sources/knowledge_layer[llamaindex]"
+"${UV_BIN}" pip install -e ./packages/tavily-web-search
+"${UV_BIN}" pip install -e "./packages/knowledge-layer[llamaindex]"
 echo "Data Sources installed"
 
 # Setup pre-commit
@@ -77,9 +77,9 @@ fi
 
 # Setup UI dependencies (optional)
 echo ""
-if [ -d "frontends/ui" ]; then
+if [ -d "apps/workspace" ]; then
     echo "Setting up UI dependencies..."
-    cd frontends/ui
+    cd apps/workspace
 
     if command -v npm &> /dev/null; then
         npm ci
@@ -91,7 +91,7 @@ if [ -d "frontends/ui" ]; then
 
     cd ../..
 else
-    echo "UI directory not found at frontends/ui"
+    echo "UI directory not found at apps/workspace"
 fi
 
 echo ""

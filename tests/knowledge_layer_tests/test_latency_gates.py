@@ -294,7 +294,7 @@ def loop_harness(monkeypatch):
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
         monkeypatch.setattr(
-            "knowledge_layer.register._format_results",
+            "knowledge_layer.search_results.format_results",
             # The real renderer carries every decoration inside its bytes; the fake does too.
             lambda merged, query, notice="", trailer="", preamble_note="", opened_files=frozenset(), **_: (
                 notice + preamble_note + ("|".join(c.chunk_id for c in merged.chunks) or "no results") + trailer
@@ -302,7 +302,7 @@ def loop_harness(monkeypatch):
         )
         monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
         monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
         async def _resolve(_builder, name):
@@ -437,18 +437,18 @@ class TestGateSkipsTheJudge:
 
 class TestSpanEnrichment:
     def test_normalized_query_folds_whitespace_and_case(self):
-        from knowledge_layer.register import _normalized_query_for_span
+        from knowledge_layer.search_span import normalized_query_for_span
 
-        assert _normalized_query_for_span("  FluchtWEG   GK4\n") == "fluchtweg gk4"
+        assert normalized_query_for_span("  FluchtWEG   GK4\n") == "fluchtweg gk4"
 
     def test_citation_key_prefers_the_stored_display_citation(self):
-        from knowledge_layer.register import _citation_key_for_span
+        from knowledge_layer.search_span import citation_key_for_span
 
         chunk = SimpleNamespace(display_citation="oib-rl_2.pdf p.12", file_name="x.pdf", page_number=5)
-        assert _citation_key_for_span(chunk) == "oib-rl_2.pdf p.12"
+        assert citation_key_for_span(chunk) == "oib-rl_2.pdf p.12"
         chunk = SimpleNamespace(display_citation=None, file_name="Plan.pdf", page_number=4)
-        assert _citation_key_for_span(chunk) == "Plan.pdf, p.4"
-        assert _citation_key_for_span(SimpleNamespace()) is None
+        assert citation_key_for_span(chunk) == "Plan.pdf, p.4"
+        assert citation_key_for_span(SimpleNamespace()) is None
 
     async def test_search_emits_round_tool_query_and_citation_keys(self, loop_harness, monkeypatch):
         captured: dict = {}

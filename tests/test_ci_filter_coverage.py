@@ -3,7 +3,7 @@
 `.github/filters.yml` decides which jobs a change runs (dorny/paths-filter), and
 a job that is skipped counts as passed. So a path no filter names is a path
 whose change merges with its tests unrun, and nothing says so: moving
-`frontends/foo/` to `apps/foo/` without moving its filter line drops its CI
+`apps/foo/` to `apps/bar/` without moving its filter line drops its CI
 silently. This test makes that move fail instead.
 
 Semantics are dorny/paths-filter's: picomatch 2 with `{dot: true}`, the default
@@ -31,9 +31,9 @@ FILTERS = ROOT / ".github" / "filters.yml"
 FLAGS = glob.GLOBSTAR | glob.DOTGLOB
 
 #: The families that decide whether a test tier runs. `sast` is left out: it
-#: decides whether Semgrep has code to scan, and its `frontends/**` would hide a
-#: UI directory that lost its `frontend:` line.
-TEST_TIERS = ("backend", "frontend", "web", "infra", "packages", "migrations")
+#: decides whether Semgrep has code to scan, and its `apps/**` would hide a
+#: UI directory that lost its `workspace:` line.
+TEST_TIERS = ("backend", "workspace", "site", "infra", "packages", "migrations")
 
 #: Paths that belong to no tier on purpose, each with why no tier needs them.
 #: A file a tier's tests read is named in that tier even when a pattern here
@@ -113,7 +113,7 @@ def test_the_grammar_check_refuses_what_only_one_matcher_reads():
 
 
 def test_a_path_outside_every_tier_is_reported():
-    assert _uncovered(["apps/moved-ui/src/page.tsx", "frontends/ui/src/page.tsx"]) == ["apps/moved-ui/src/page.tsx"]
+    assert _uncovered(["apps/moved-ui/src/page.tsx", "apps/workspace/src/page.tsx"]) == ["apps/moved-ui/src/page.tsx"]
 
 
 def test_the_tiers_this_test_reads_exist():
@@ -149,7 +149,7 @@ def test_patterns_stay_in_the_grammar_both_matchers_share():
 
 
 def _picomatch2() -> Path | None:
-    for candidate in sorted(ROOT.glob("frontends/*/node_modules/**/picomatch/package.json")):
+    for candidate in sorted(ROOT.glob("apps/*/node_modules/**/picomatch/package.json")):
         if json.loads(candidate.read_text(encoding="utf-8")).get("version", "").startswith("2."):
             return candidate.parent
     return None
@@ -159,7 +159,7 @@ def test_wcmatch_agrees_with_picomatch():
     """The oracle: picomatch 2, as dorny/paths-filter calls it, on every pattern and path."""
     picomatch = _picomatch2()
     if shutil.which("node") is None or picomatch is None:
-        pytest.skip("needs node and a picomatch 2.x under frontends/*/node_modules (task setup)")
+        pytest.skip("needs node and a picomatch 2.x under apps/*/node_modules (task setup)")
     patterns = sorted({p for family in _filters().values() for p in family} | set(UNFILTERED))
     paths = _tracked() + ["apps/moved-ui/src/page.tsx", ".github/x/y.yml", "a/.hidden/b"]
     script = (

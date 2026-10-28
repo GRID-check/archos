@@ -68,7 +68,7 @@ SeaweedFS — harmless.
 Run SeaweedFS **alongside** the still-running MinIO — do not tear MinIO down yet.
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 
 # 1. Preview (reads only, changes nothing)
 SRC_ENDPOINT=http://localhost:9000 SRC_ACCESS_KEY=minioadmin  SRC_SECRET_KEY=minioadmin \

@@ -1,6 +1,6 @@
-# NVIDIA AI-Q Blueprint - Docker Compose
+# Piloti - Docker Compose
 
-Use this guide to deploy the AI-Q blueprint with Docker Compose. The deployment
+Use this guide to deploy Piloti with Docker Compose. The deployment
 starts a FastAPI backend, PostgreSQL for async jobs and checkpoints, and a database-claimed research worker for background work.
 
 ## Prerequisites
@@ -57,20 +57,20 @@ Choose one database configuration in `deploy/.env`:
 
 **PostgreSQL (recommended):**
 - Set `NAT_JOB_STORE_DB_URL` to
-  `postgresql+asyncpg://aiq:aiq_dev@postgres:5432/aiq_jobs`.
-- Set `GRID_CHECKPOINT_DB` to
-  `postgresql://aiq:aiq_dev@postgres:5432/aiq_checkpoints`.
-- Set `GRID_SUMMARY_DB` to
-  `postgresql+psycopg://aiq:aiq_dev@postgres:5432/aiq_jobs`.
+  `postgresql+asyncpg://agent:aiq_dev@postgres:5432/jobs`.
+- Set `CHECKPOINT_DB` to
+  `postgresql://agent:aiq_dev@postgres:5432/checkpoints`.
+- Set `SUMMARY_DB` to
+  `postgresql+psycopg://agent:aiq_dev@postgres:5432/jobs`.
 
 **SQLite (dev environment):**
 - Set `NAT_JOB_STORE_DB_URL` to
   `sqlite+aiosqlite:///./data/jobs.db`.
-- Set `GRID_CHECKPOINT_DB` to
+- Set `CHECKPOINT_DB` to
   `/app/data/checkpoints.db`.
-- Set `GRID_SUMMARY_DB` to `sqlite+aiosqlite:///./summaries.db` (the base corpus table lives there too).
+- Set `SUMMARY_DB` to `sqlite+aiosqlite:///./summaries.db` (the base corpus table lives there too).
 - You can keep the `postgres` service running or remove the `depends_on` block
-  for `aiq-agent` if you want a SQLite-only setup.
+  for `chat` if you want a SQLite-only setup.
 
 ## Start Services
 
@@ -90,20 +90,20 @@ To use pre-built images instead of building locally, set the `BACKEND_IMAGE` and
 ```bash
 cd deploy/compose
 
-# Login to the container registry first
-docker login nvcr.io
+# Log in to the registry CI publishes to
+docker login <registry>
 
 # Run with pre-built images
-BACKEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-agent:2.0.0 \
-FRONTEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0 \
+BACKEND_IMAGE=<registry>/<backend image>:<tag> \
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag> \
 docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
 You can also add these to your `deploy/.env` file:
 
 ```bash
-BACKEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-agent:2.0.0
-FRONTEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0
+BACKEND_IMAGE=<registry>/<backend image>:<tag>
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag>
 ```
 
 Then run without specifying them on the command line:
@@ -113,8 +113,8 @@ docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
 Services started:
-- `aiq-agent` (port 8000)
-- `aiq-blueprint-ui` (port 3000)
+- `api` (port 8000)
+- `frontend` (port 3000)
 - `postgres` (port 5432)
 
 ### Frontend runtime variables
@@ -122,8 +122,8 @@ Services started:
 The compose files pass these variables into the UI container:
 
 - `REQUIRE_AUTH`: Set to `true` to require WorkOS AuthKit login, or `false` (default) for anonymous access.
-- `BACKEND_URL`: The backend's `api` role for the UI container: every HTTP call (default `http://aiq-api:8000`).
-- `BACKEND_CHAT_URL`: The backend's `chat` role, which the UI container's gateway dials for the WebSocket alone (default `http://aiq-agent:8000`). Required, with no fallback to `BACKEND_URL`.
+- `BACKEND_URL`: The backend's `api` role for the UI container: every HTTP call (default `http://api:8000`).
+- `BACKEND_CHAT_URL`: The backend's `chat` role, which the UI container's gateway dials for the WebSocket alone (default `http://chat:8000`). Required, with no fallback to `BACKEND_URL`.
 - `WORKOS_CLIENT_ID`: WorkOS client ID (required when `REQUIRE_AUTH=true`).
 - `WORKOS_API_KEY`: WorkOS API key (required when `REQUIRE_AUTH=true`).
 - `WORKOS_REDIRECT_URI`: AuthKit callback URL, e.g. `http://localhost:3000/api/auth/callback` (required when `REQUIRE_AUTH=true`).
@@ -171,9 +171,9 @@ Common conflicts:
 
 **Check logs:**
 ```bash
-docker logs aiq-agent -f
-docker logs aiq-blueprint-ui -f
-docker logs aiq-postgres -f
+docker compose logs -f chat
+docker compose logs -f frontend
+docker compose logs -f postgres
 ```
 
 **Health check:**
@@ -183,7 +183,7 @@ curl http://localhost:8000/health
 
 **Database connection:**
 ```bash
-docker exec -it aiq-postgres psql -U aiq -d aiq_jobs
+docker compose exec postgres psql -U agent -d jobs
 ```
 
 **Rebuild:**
@@ -197,7 +197,7 @@ docker compose --env-file ../.env -f docker-compose.yaml up -d
 ## Custom Startup Script
 
 The container uses `start_web.py` instead of `nat serve` to avoid asyncio event loop conflicts between the
-NeMo Agent toolkit runtime and FastAPI/Starlette anyio event loop management. See [start_web.py](../start_web.py)
+NeMo Agent toolkit runtime and FastAPI/Starlette anyio event loop management. See [start_web.py](../../apps/backend/start_web.py)
 for details.
 
 ## Security

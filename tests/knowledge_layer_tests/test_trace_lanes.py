@@ -5,8 +5,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from knowledge_layer.register import _format_results
-from knowledge_layer.register import _trace_lanes_for_chunks
+from knowledge_layer.search_results import format_results
+from knowledge_layer.trace_lanes import _trace_lanes_for_chunks
 
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
@@ -139,13 +139,13 @@ def test_emitted_hits_are_captured_for_the_per_round_ledger():
 
 def test_a_search_result_is_one_sources_step_built_from_its_records(emitted):
     """Through the real producer: the step carries the lanes the records made, and the tool that ran."""
-    from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
+    from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
     from aiq_agent.common.turn_status import lane_tool_scope
     from aiq_agent.common.turn_status import retrieval_round_scope
 
     chunks = [_chunk(file_name="OIB-RL_4.pdf", page=3, collection="oib_knowledge")]
     with retrieval_round_scope(2), lane_tool_scope(READ_PASSAGE_TOOL):
-        _format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
+        format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
         lanes = list(_trace_lanes_for_chunks(chunks))
     (step,) = emitted.steps
     assert (step.kind, step.round, step.tool, step.lanes) == ("sources", 2, "read_passage", lanes)
@@ -157,7 +157,7 @@ def test_format_results_appends_trace_lanes_block():
         chunks=[_chunk(file_name="OIB-RL_4.pdf", page=3, collection="oib_knowledge")],
         error_message=None,
     )
-    text = _format_results(result, "test query")
+    text = format_results(result, "test query")
     assert "## Trace-Lanes" in text
     assert "building_law_oib" in text
     assert "OIB-RL_4.pdf" in text
@@ -165,7 +165,7 @@ def test_format_results_appends_trace_lanes_block():
 
 def test_format_results_empty_chunks_skips_trace_block():
     result = SimpleNamespace(success=True, chunks=[], error_message=None)
-    text = _format_results(result, "q")
+    text = format_results(result, "q")
     assert "Trace-Lanes" not in text
 
 
@@ -216,7 +216,7 @@ def test_the_grounding_block_states_who_released_the_document_in_one_line():
         chunks=[_chunk(file_name="Brandschutzkonzept.md", page=1, shelf="project", provenance=_PILOTI)],
         error_message=None,
     )
-    text = _format_results(result, "brandschutz")
+    text = format_results(result, "brandschutz")
     assert "Herkunft: Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026" in text
     # One line, and no sentence for the model to copy into an answer.
     assert "freigegeben" not in text.replace(
@@ -227,5 +227,5 @@ def test_the_grounding_block_states_who_released_the_document_in_one_line():
 def test_an_unmarked_hit_is_formatted_exactly_as_before():
     """Every human document in the corpus is this case, and it must not move."""
     chunk = _chunk(file_name="Konzept.pdf", page=1, shelf="project")
-    text = _format_results(SimpleNamespace(success=True, chunks=[chunk], error_message=None), "q")
+    text = format_results(SimpleNamespace(success=True, chunks=[chunk], error_message=None), "q")
     assert "Herkunft" not in text

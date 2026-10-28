@@ -20,7 +20,7 @@ events. `tests/test_posthog_boundaries.py` enforces that.
   goes out with no distinct id of ours, and posthog-node gives it a fresh one
   with `$process_person_profile: false`, so no person is minted for it.
 - **Every server event carries `release`, `service` and `app_host`**, the
-  deployed commit (`GRID_GIT_SHA`), the process (`OTEL_SERVICE_NAME`) and the
+  deployed commit (`GIT_SHA`), the process (`OTEL_SERVICE_NAME`) and the
   deployment's host (`app.piloti.at`, `app.dev.piloti.at`, from the pinned
   redirect URI), registered once as super properties of the server client.
   Staging and production share the project and both run `APP_ENV=production`,
@@ -34,8 +34,8 @@ events. `tests/test_posthog_boundaries.py` enforces that.
   durations and statuses. Never a question, an answer, a document or file name,
   an email, a name, a URL or an error message that can quote one.
 - **Both sides use a closed union.** `PostHogEvent` in
-  `frontends/ui/src/lib/analytics/posthog.ts` and `ServerEvent` in
-  `frontends/ui/src/lib/analytics/posthog-server.ts`. A typo fails the build.
+  `apps/workspace/bff/analytics/posthog.ts` and `ServerEvent` in
+  `apps/workspace/bff/analytics/posthog-server.ts`. A typo fails the build.
   Add the name to the union and a row here in the same change.
 - **A server event never changes a route.** `captureServer` queues and returns;
   it cannot throw, and the budget checks that need the cache or the ledger run
@@ -47,7 +47,7 @@ events. `tests/test_posthog_boundaries.py` enforces that.
   the event, so a signed image link or an OAuth callback cannot leave the process
   by accident.
 
-Paths below are under `frontends/ui/src`.
+Paths below are under `apps/workspace/src`.
 
 ## Server events
 

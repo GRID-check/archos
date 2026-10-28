@@ -4,7 +4,7 @@ Status: Active (2026-07-18). Companion to ADR-0025 v2 and `backend-deep-dive.md`
 
 Piloti ships Austria-first, but the product goal is multi-jurisdiction. This
 document is the honest map of what that takes: the binding contract that already
-exists (`src/aiq_agent/common/country_profile.py`, Austria = implementation #1),
+exists (`packages/agent/src/aiq_agent/common/country_profile.py`, Austria = implementation #1),
 and the complete inventory of remaining Austria/German couplings a second
 country must address — so "add Germany" is a checklist, not archaeology.
 
@@ -46,7 +46,7 @@ Phase 1 — data + corpus (days):
 
 Phase 2 — the one real code artifact (weeks):
 4. A source adapter for the country's legal database (Germany:
-   gesetze-im-internet + Länder portals), following `sources/ris_adapter` as
+   gesetze-im-internet + Länder portals), following `packages/ris-adapter` as
    the template — tools, planner prompt, URL predicates all live inside the
    adapter package. Note: the adapter's state-filter vocabulary must consume
    the profile's `states`, not re-declare it (RIS adapter currently

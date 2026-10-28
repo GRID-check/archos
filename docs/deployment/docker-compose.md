@@ -2,8 +2,8 @@
 
 The Docker Compose file is at `deploy/compose/docker-compose.yaml`. It defines
 24 services, several named volumes, and 2 bridge networks. The backend image
-runs as four of them (ADR-0082): the `chat` role (`aiq-agent`), the `api` role
-(`aiq-api`), the research `agent-worker` and the `ingest-worker`, all against the
+runs as four of them (ADR-0082): the `chat` role (`chat`), the `api` role
+(`api`), the research `agent-worker` and the `ingest-worker`, all against the
 shared `qdrant` vector store (ADR-0115). This page describes the core ones; the observability stack
 (`dragonfly`, `clickhouse`, the three `langfuse-*` services) and the four
 background workers (`purger`,
@@ -14,7 +14,7 @@ loop of its own, and this calls its `/v1/maintenance/housekeeping/*` routes on
 the cadences Kubernetes runs as CronJobs. One of them is the base-corpus sync
 (`base-corpus`, every ten minutes), which queues an ingest job for each uploaded OIB PDF that is
 not indexed yet (the `ingest-worker` service claims and runs it); the backend does no sync at boot. `bff-jobs` (ADR-0079) is the frontend image
-running `workers/jobs/index.js`: the BFF (or, with `GRID_BFF_JOBS_MODE=inprocess`,
+running `workers/jobs/index.js`: the BFF (or, with `BFF_JOBS_MODE=inprocess`,
 the services bundled into `dist-jobs/slice.mjs` and no server) plus the claim loop that runs the jobs
 in `bff_job_queue` (project reindex, failed-ingestion rescan, IFC extraction,
 Office rendition through `gotenberg`, research-report filing), with no
@@ -37,53 +37,53 @@ BUILD_TARGET=release docker compose --env-file ../.env -f docker-compose.yaml up
 To use pre-built images from a registry (skips local build):
 
 ```bash
-BACKEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-agent:2.0.0 \
-FRONTEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0 \
+BACKEND_IMAGE=<registry>/<backend image>:<tag> \
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag> \
 docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
 ## Services
 
-### aiq-agent (the `chat` role)
+### chat (the `chat` role)
 
-The Python backend running NAT + FastAPI as `GRID_ROLE=chat`: the chat WebSocket
+The Python backend running NAT + FastAPI as `PROCESS_ROLE=chat`: the chat WebSocket
 and the answers running on it, the only way a turn runs (NAT's HTTP turn routes,
 `/generate`, `/chat`, `/v1/chat/completions` and the rest, are not mounted). It
 serves no other route but `/health` and NAT's few that run no turn. The frontend's gateway
-reaches it with `BACKEND_CHAT_URL=http://aiq-agent:8000`, and nothing else does.
-Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
+reaches it with `BACKEND_CHAT_URL=http://chat:8000`, and nothing else does.
+Every other HTTP route is [`api`](#api-the-api-role)'s.
 
 | Property | Value |
 |----------|-------|
-| Image | `nvcr.io/nvidia/blueprint/aiq-agent:2.0.0` (override with `BACKEND_IMAGE`) |
+| Image | `backend:local` (override with `BACKEND_IMAGE`) |
 | Build context | `../../` (repo root) |
-| Dockerfile | `deploy/Dockerfile` |
+| Dockerfile | `apps/backend/Dockerfile` |
 | Build target | `${BUILD_TARGET:-dev}` (dev = CLI included, release = web only) |
-| Container name | `aiq-agent` |
+| Container name | (auto-generated) |
 | Ports | `${CHAT_PORT:-8001}:8000` (the WebSocket, for a client that dials it directly, such as `task be:eval:loop`) |
 | Env file | `../.env` |
-| Networks | `aiq-network` |
+| Networks | `app` |
 
 **Key environment variables** (set in compose, can be overridden via .env):
 
 | Variable | Default |
 |----------|---------|
 | `APP_ENV` | `production` |
-| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs` (pooled) |
-| `GRID_CHECKPOINT_DB` | `postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints` (pooled) |
-| `GRID_SUMMARY_DB` | `postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs` (pooled) |
-| `GRID_LISTEN_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: SSE LISTEN/NOTIFY) |
-| `GRID_LOCK_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: session advisory locks) |
-| `GRID_ROLE` | `chat` |
-| `GRID_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
-| `GRID_QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
+| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `CHECKPOINT_DB` | `postgresql://agent:aiq_dev@pgbouncer:5432/checkpoints` (pooled) |
+| `SUMMARY_DB` | `postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `LISTEN_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: SSE LISTEN/NOTIFY) |
+| `LOCK_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: session advisory locks) |
+| `PROCESS_ROLE` | `chat` |
+| `QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
+| `QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
 | `CONFIG_FILE` | `/app/configs/config_oib_openrouter.yml` |
 | `HOST` | `0.0.0.0` |
 | `PORT` | `8000` |
 
 The environment is written once, on this service, as a YAML anchor
-(`&backend-environment`); `aiq-api`, `agent-worker` and `ingest-worker` alias it
-and set their own `GRID_ROLE`, so the four cannot drift.
+(`&backend-environment`); `api`, `agent-worker` and `ingest-worker` alias it
+and set their own `PROCESS_ROLE`, so the four cannot drift.
 
 **Volumes**:
 
@@ -107,38 +107,38 @@ the shared `qdrant` service.
 
 **Restart**: `unless-stopped`.
 
-### aiq-api (the `api` role)
+### api (the `api` role)
 
-The same image as `aiq-agent`, started as `GRID_ROLE=api`: the Knowledge API
+The same image as `chat`, started as `PROCESS_ROLE=api`: the Knowledge API
 (collections, documents, search, ingest enqueue), the Async Job API with its SSE
 streams, the LLM utilities (titles, summaries, consistency check, feedback digest,
 lesson distillation, skill review, note embeddings), admin, the housekeeping
-routes. It is what `BACKEND_URL=http://aiq-api:8000` names,
+routes. It is what `BACKEND_URL=http://api:8000` names,
 for the frontend, the purger and the `housekeeping` clock. It serves no chat
 socket. [`docs/api/python-endpoints.md`](../api/python-endpoints.md) lists which
 role serves which route.
 
 | Property | Value |
 |----------|-------|
-| Container name | `aiq-api` |
+| Container name | (auto-generated) |
 | Ports | `${PORT:-8000}:8000` (the API and `/docs`) |
-| Environment | `aiq-agent`'s, with `GRID_ROLE=api` |
-| Healthcheck | the same `/health` probe as `aiq-agent` |
+| Environment | `chat`'s, with `PROCESS_ROLE=api` |
+| Healthcheck | the same `/health` probe as `chat` |
 | Depends on | `seaweedfs`, `postgres`, `pgbouncer`, `qdrant` (healthy) |
 
 ### agent-worker
 
-The same image as `GRID_ROLE=worker` (ADR-0021): claims research jobs from
+The same image as `PROCESS_ROLE=worker` (ADR-0021): claims research jobs from
 Postgres (`FOR UPDATE SKIP LOCKED`) and runs them against the shared Qdrant. No
 web port. Healthy while `/tmp/research-worker.alive` is fresh; `stop_grace_period`
 is 660 s, the 600 s drain budget plus the time to give claims back.
 
 ### ingest-worker
 
-The same image as `GRID_ROLE=ingest-worker` (ADR-0076): `POST /v1/ingest`, served
-by `aiq-api`, only puts a job in the durable ingest queue, and this is the one
+The same image as `PROCESS_ROLE=ingest-worker` (ADR-0076): `POST /v1/ingest`, served
+by `api`, only puts a job in the durable ingest queue, and this is the one
 process that claims it, fairly across organizations. With it stopped, uploads sit
-pending. `GRID_INGEST_MAX_WORKERS` (default 2) is the jobs it runs at once. No web
+pending. `INGEST_MAX_WORKERS` (default 2) is the jobs it runs at once. No web
 port. Healthy while `/tmp/ingest-worker.alive` is fresh.
 
 ### qdrant
@@ -176,7 +176,7 @@ S3-compatible object storage for documents (single `weed server -s3` process).
 | Image | `chrislusf/seaweedfs:3.80` |
 | Container name | (auto-generated) |
 | Ports | `8333:8333` (S3 API), `8888:8888` (Filer UI), `9333:9333` (Master) |
-| Networks | `aiq-network` |
+| Networks | `app` |
 
 **Environment**:
 
@@ -219,7 +219,7 @@ app services wait on this via `service_completed_successfully`.
 |----------|-------|
 | Image | `chrislusf/seaweedfs:3.80` |
 | Entrypoint | `/bin/sh -c` |
-| Networks | `aiq-network` |
+| Networks | `app` |
 
 **Command**:
 ```bash
@@ -232,7 +232,7 @@ idempotent (bucket-already-exists is a successful no-op).
 
 This container runs, creates the bucket, and exits. It is not restarted.
 
-### grid-migrate
+### migrate
 
 One-shot migrator, and the reason `frontend` no longer migrates. It provisions
 the row-level-security roles (`scripts/ensure-rls-roles.mjs`) and then runs
@@ -242,7 +242,7 @@ initialises a **fresh** data directory, so an upgraded stack would otherwise
 never get them.
 
 It is the only long-running-image container that holds
-`GRID_APP_MIGRATION_DATABASE_URL` (the schema owner). Keeping that credential
+`APP_MIGRATION_DATABASE_URL` (the schema owner). Keeping that credential
 out of the container that serves requests is the point: row-level security does
 not apply to a table's owner, so a bug that reached it would have a full bypass
 inside the very process the boundary is meant to constrain. `frontend`,
@@ -251,7 +251,7 @@ inside the very process the boundary is meant to constrain. `frontend`,
 
 Runbook: [row-level security](../database/row-level-security.md), ADR-0041.
 
-### grid-workos-authz
+### workos-authz
 
 One-shot WorkOS authorization rollout from the frontend image, the compose
 equivalent of the Kubernetes Jobs `grid-app-authz-catalog` and
@@ -267,7 +267,7 @@ must not run while the old dialog can still narrow a list
 ([the rollout](workos-provisioning.md#rolling-out-folder-roles-adr-0097)). With
 `WORKOS_API_KEY` unset it prints one line and exits 0.
 
-### grid-audit-schemas
+### audit-schemas
 
 One-shot reconciler for the **WorkOS Audit Log schemas**, from the same frontend
 image, and the compose equivalent of the Kubernetes Job `grid-app-audit-schemas`
@@ -275,7 +275,7 @@ image, and the compose equivalent of the Kubernetes Job `grid-app-audit-schemas`
 `node scripts/provision-workos-audit-schemas.mjs --apply`, which reads the
 environment first and writes only the actions whose schema is missing or
 different — so re-running it on every `up` writes nothing when the registry
-(`frontends/ui/src/lib/audit/schemas.mjs`) has not changed.
+(`apps/workspace/bff/audit/schemas.mjs`) has not changed.
 
 **`frontend` waits on it** (`service_completed_successfully`), which the
 Kubernetes Job is deliberately not waited on. The reason is
@@ -294,8 +294,8 @@ already was for authentication.
 
 | Property | Value |
 |----------|-------|
-| Image | `${FRONTEND_IMAGE:-…/aiq-frontend:2.0.0}` (the frontend image) |
-| Container name | `aiq-blueprint-audit-schemas` |
+| Image | `${FRONTEND_IMAGE:-frontend:local}` (the frontend image) |
+| Container name | (auto-generated) |
 | Environment | `WORKOS_API_KEY` (optional) |
 | Depends on | nothing — it only needs egress to WorkOS |
 | Restart | `"no"` |
@@ -309,26 +309,26 @@ The Next.js UI application.
 
 | Property | Value |
 |----------|-------|
-| Image | `nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0` (override with `FRONTEND_IMAGE`) |
-| Build context | `../../frontends/ui` |
-| Dockerfile | `deploy/Dockerfile` |
-| Container name | `aiq-blueprint-ui` |
+| Image | `frontend:local` (override with `FRONTEND_IMAGE`) |
+| Build context | `../../apps/workspace` |
+| Dockerfile | `apps/backend/Dockerfile` |
+| Container name | (auto-generated) |
 | Ports | `${FRONTEND_PORT:-3000}:3000` |
-| Networks | `aiq-network`, `gotenberg-internal` |
+| Networks | `app`, `gotenberg-internal` |
 
 **Environment**:
 
 | Variable | Default / Source |
 |----------|------------------|
 | `REQUIRE_AUTH` | `${REQUIRE_AUTH:-false}` |
-| `BACKEND_URL` | `${BACKEND_URL:-http://aiq-api:8000}` (the api role: every HTTP call) |
-| `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://aiq-agent:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
-| `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `grid-migrate`, straight to `postgres`. |
+| `BACKEND_URL` | `${BACKEND_URL:-http://api:8000}` (the api role: every HTTP call) |
+| `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://chat:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
+| `APP_DATABASE_URL` | `${APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `APP_MIGRATION_DATABASE_URL`, set only on `migrate`, straight to `postgres`. |
 | `WORKOS_CLIENT_ID` | `${WORKOS_CLIENT_ID}` |
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}` |
 | `WORKOS_COOKIE_PASSWORD` | `${WORKOS_COOKIE_PASSWORD}` |
-| `FILE_UPLOAD_ACCEPTED_TYPES` | `${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}` — the same list as the code default in `frontends/ui/src/shared/config/file-upload.ts` |
+| `FILE_UPLOAD_ACCEPTED_TYPES` | `${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}` — the same list as the code default in `apps/workspace/shared/config/file-upload.ts` |
 | `GOTENBERG_URL` | `${GOTENBERG_URL-http://gotenberg:3000}`. Required for indexing Word, presentation, `.xls` and `.ods` files (ADR-0071). An empty value disables conversion: those files are then marked failed with a retryable reason, and `.xlsx`/`.xlsm` index without a preview. No colon in the expansion, so an empty value is kept rather than replaced by the default. The Coolify file uses `:-`, so there an empty value falls back to the bundled converter |
 | `SEAWEED_ENDPOINT` | `http://seaweedfs:8333` (hardcoded in compose) |
 | `SEAWEED_ACCESS_KEY` | `seaweedadmin` (hardcoded in compose) |
@@ -345,7 +345,7 @@ The Next.js UI application.
 
 **Healthcheck**: `curl -f http://localhost:3000/api/healthz` — interval 15s, timeout 10s, start period 60s, retries 5. The dependency-free `/api/healthz`, not `/` (a full SSR render) and not `/api/health` (which proxies the backend and reports 502 while the agent boots).
 
-**Depends on**: `grid-migrate` (completed successfully), `grid-audit-schemas` (completed successfully), `aiq-agent` (healthy), `aiq-api` (healthy), `seaweedfs` (healthy), `seaweedfs-init` (completed successfully), `postgres` (healthy), `gotenberg` (started, not healthy: a broken converter fails Word and presentation ingests retryably, and must not also take down the UI and every other upload type).
+**Depends on**: `migrate` (completed successfully), `audit-schemas` (completed successfully), `chat` (healthy), `api` (healthy), `seaweedfs` (healthy), `seaweedfs-init` (completed successfully), `postgres` (healthy), `gotenberg` (started, not healthy: a broken converter fails Word and presentation ingests retryably, and must not also take down the UI and every other upload type).
 
 **Restart**: `unless-stopped`.
 
@@ -364,7 +364,7 @@ preview or thumbnail.
 | Property | Value |
 |----------|-------|
 | Image | `gotenberg/gotenberg:8.37.0-libreoffice` (pinned, LibreOffice-only variant; Pulumi pins the same tag, and `deploy/pulumi/src/app/gotenberg.spec.ts` fails when they differ) |
-| Container name | `aiq-gotenberg` |
+| Container name | (auto-generated) |
 | Ports | none published |
 | Networks | `gotenberg-internal` only |
 
@@ -407,17 +407,17 @@ PostgreSQL 16 database.
 | Property | Value |
 |----------|-------|
 | Image | `postgres:16-alpine` |
-| Container name | `aiq-postgres` |
+| Container name | (auto-generated) |
 | Ports | `5432:5432` |
-| Networks | `aiq-network` |
+| Networks | `app` |
 
 **Environment**:
 
 | Variable | Value |
 |----------|-------|
-| `POSTGRES_USER` | `aiq` |
+| `POSTGRES_USER` | `app` |
 | `POSTGRES_PASSWORD` | `aiq_dev` |
-| `POSTGRES_DB` | `aiq_jobs` |
+| `POSTGRES_DB` | `jobs` |
 
 **Volumes**:
 
@@ -433,9 +433,24 @@ PostgreSQL 16 database.
 | CPU | 2 | 1 |
 | Memory | 4G | 2G |
 
-**Healthcheck**: `pg_isready -U aiq -d aiq_jobs && pg_isready -U aiq -d aiq_checkpoints && pg_isready -U aiq -d grid_app` — interval 5s, timeout 5s, retries 5.
+**Healthcheck**: `pg_isready -U agent -d postgres` — interval 5s, timeout 5s, retries 5.
 
 **Restart**: `unless-stopped`.
+
+### postgres-rename
+
+A one-shot run of `deploy/postgres/rename-legacy-names.sh` (ADR-0145 row 10d): a volume
+made before the rename has the databases `aiq_jobs` and `aiq_checkpoints` and the
+superuser `aiq`, and this renames them to `jobs`, `checkpoints` and
+`app`. Every service that waits on `postgres` waits for it to complete. A volume
+made with the new names, and every run after the first, change nothing. The
+renamed databases refuse new sessions and end the open ones while it runs.
+
+| Property | Value |
+|----------|-------|
+| Image | `postgres:16-alpine` (Coolify: the image `postgres.Dockerfile` builds, which carries the script) |
+| Command | `sh /rename-legacy-names.sh` |
+| Restart | `no` |
 
 ### pgbouncer
 
@@ -446,8 +461,8 @@ a direct connection fails here and not first in production.
 | Property | Value |
 |----------|-------|
 | Image | `edoburu/pgbouncer:v1.26.0-p0`, digest-pinned (PgBouncer 1.26.0; `max_prepared_statements` needs 1.21 or newer) |
-| Container name | `aiq-pgbouncer` |
-| Ports | none published; `pgbouncer:5432` on `aiq-network` |
+| Container name | (auto-generated) |
+| Ports | none published; `pgbouncer:5432` on `app` |
 | Pool mode | `transaction` |
 
 **Environment**: `DATABASE_URLS` (one login per pooled role, from which the
@@ -456,8 +471,8 @@ image writes its userlist), `POOL_MODE=transaction`, `AUTH_TYPE=scram-sha-256`,
 `IGNORE_STARTUP_PARAMETERS=extra_float_digits,options`. Passwords are written
 into URLs, so they cannot contain `:`, `@` or `/`.
 
-**Routing**: the pooled DSNs above and every `GRID_APP_DATABASE_URL` go through
-it. `GRID_LISTEN_DB_URL`, `GRID_LOCK_DB_URL`, `GRID_APP_MIGRATION_DATABASE_URL` and
+**Routing**: the pooled DSNs above and every `APP_DATABASE_URL` go through
+it. `LISTEN_DB_URL`, `LOCK_DB_URL`, `APP_MIGRATION_DATABASE_URL` and
 Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 **Healthcheck**: `pg_isready -h 127.0.0.1 -p 5432` — interval 5s, timeout 3s, retries 5.
@@ -476,12 +491,12 @@ Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 | Name | Driver | Services |
 |------|--------|----------|
-| `aiq-network` | bridge | Every service except `gotenberg` |
+| `app` | bridge | Every service except `gotenberg` |
 | `gotenberg-internal` | bridge, `internal: true` (no route off the host) | `gotenberg`, `frontend` |
 
 ## Build Targets
 
-The backend `deploy/Dockerfile` defines two build targets:
+The backend `apps/backend/Dockerfile` defines two build targets:
 
 ### dev (default)
 

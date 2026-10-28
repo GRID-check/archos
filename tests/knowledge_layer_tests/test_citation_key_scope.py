@@ -16,12 +16,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from knowledge_layer.register import _ambiguous_file_names
-from knowledge_layer.register import _format_results
+from knowledge_layer.grounding_hits import _ambiguous_file_names
+from knowledge_layer.search_results import format_results
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common.source_kinds import Shelf
 
 
@@ -40,7 +40,7 @@ def _chunk(*, file_name: str, collection: str, shelf: str | None = None, page: i
 
 
 def _format(chunks) -> str:
-    return _format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
+    return format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
 
 
 def test_a_name_held_on_one_shelf_is_not_qualified():
@@ -198,7 +198,7 @@ def test_a_legacy_entry_without_a_shelf_still_resolves_by_collection_name():
 
 
 def test_the_wire_payload_carries_the_shelf_and_omits_an_unknown_one():
-    from aiq_agent.common.citation_verification import source_entry_to_wire
+    from aiq_agent.citations.wire import source_entry_to_wire
 
     stated = SourceEntry(
         citation_key="Plan.pdf, p.3",

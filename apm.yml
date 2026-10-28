@@ -69,7 +69,7 @@ dependencies:
     - cursor/plugins/pstack/skills/blast-radius#bdf7aa355337897f167153e05069aca505dae17c
     - cursor/plugins/pstack/skills/principle-model-the-domain#bdf7aa355337897f167153e05069aca505dae17c
 
-    # UI evidence. These two replace the `frontends/ui/visual/` harness: one
+    # UI evidence. These two replace the `apps/workspace/visual/` harness: one
     # drives a real browser, the other puts what it captured in the PR.
     #
     # `agent-browser` is a native CLI, NOT an npm library the repo imports — it
@@ -110,7 +110,7 @@ dependencies:
     - vercel-labs/before-and-after/skill#8306d34f459b6704e08e6adb5829fcddb0dc3557
 
     # Interface craft, from Emil Kowalski (Vercel, Linear): motion, polish and
-    # the small details that decide whether the UI feels finished. `frontends/ui`
+    # the small details that decide whether the UI feels finished. `apps/workspace`
     # already ships `motion` and `sonner`, and is a mobile-first PWA, which is
     # why those three skills are in. `animate-expo` and `write-swift` are not:
     # there is no React Native or Swift here. `review-animations`,

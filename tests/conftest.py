@@ -13,9 +13,8 @@ import sys
 from typing import Any
 
 import pytest
-
-from sources.knowledge_layer.tests.qdrant_fixtures import fresh_qdrant_store  # noqa: F401 - a store of its own
-from sources.knowledge_layer.tests.qdrant_fixtures import qdrant_store  # noqa: F401 - the shared store fixture
+from knowledge_layer_testing.qdrant_fixtures import fresh_qdrant_store  # noqa: F401 - a store of its own
+from knowledge_layer_testing.qdrant_fixtures import qdrant_store  # noqa: F401 - the shared store fixture
 
 
 def _reset_shared_cache() -> None:
@@ -36,7 +35,7 @@ def _isolate_shared_cache():
     by one test is served to the next whenever the two feed the VLM identical
     image bytes: the second test's stubbed VLM is never called and it asserts
     against the first test's caption. Mirrors
-    ``sources/ris_adapter/tests/conftest.py``. No-op on a real Redis backend.
+    ``packages/ris-adapter/testing/ris_adapter_testing/lookup.py``. No-op on a real Redis backend.
     """
     _reset_shared_cache()
     yield
@@ -74,7 +73,7 @@ def _no_live_decisions(monkeypatch):
     passes or fails on its latency, and spends money. A test of a decision
     deletes the variable and stubs the endpoint (``test_decisions.py``).
     """
-    monkeypatch.setenv("GRID_DECISIONS_ENABLED", "false")
+    monkeypatch.setenv("DECISIONS_ENABLED", "false")
 
 
 class Emitted(list):

@@ -318,7 +318,7 @@ class TestExactSearch:
 
 
 def test_the_exact_mode_is_never_withheld_as_a_repeat_of_the_ranked_one():
-    from aiq_agent.common.turn_status import fetch_signature
+    from aiq_agent.common.tool_calls import fetch_signature
 
     ranked = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03"}})
     exact = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03", "match": "exact"}})
@@ -364,7 +364,7 @@ def turn_shelves(monkeypatch):
 
 def _store_retriever():
     """The production retriever over the test's Qdrant (``qdrant_store``), with no embedder: exact mode needs none."""
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
     retriever = LlamaIndexRetriever.__new__(LlamaIndexRetriever)
     retriever._ensure_initialized = lambda: None
@@ -373,8 +373,8 @@ def _store_retriever():
 
 def _seed(name: str, rows: list[tuple[str, str, int, dict]]) -> None:
     """Write ``(file_name, text, page, metadata)`` rows into collection ``name``, as ingestion writes chunks."""
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
 
     write(name, [record(text, file_name, page_label=str(page), **meta) for file_name, text, page, meta in rows])
 

@@ -213,7 +213,7 @@ A second block of the same type gets merged.
 - **Registry.**
   - One file, `shared/answer/dialect.json`, with these fields per entry: name, kind, primitive, body roles, typed attrs, allowed markers and parents, status vocabulary, strip mode, `teach` text, since.
   - Generated from it: the TS constants and Zod schemas (replacing `answer-directives.ts`), the Python tables, the RICH BLOCKS section of `piloti_static.md` (as a Jinja variable), the `catalog.py` refusal strings, and a docs page.
-  - CI: `fe:dialect:check`, next to `fe:cards:check`.
+  - CI: `workspace:dialect:check`, next to `workspace:cards:check`.
 - **Conformance corpus.**
   - `shared/answer/dialect-fixtures/`, run by both vitest and pytest.
   - It includes the adversarial cases (`10:30`, `Hinweis:Achtung`, `:::` inside code) and every streaming prefix of every fixture.

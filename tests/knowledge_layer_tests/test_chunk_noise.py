@@ -19,8 +19,8 @@ from knowledge_layer.chunk_noise import is_noise_chunk
 from knowledge_layer.chunk_noise import judge_text
 from knowledge_layer.chunk_noise import noise_filter_enabled
 from knowledge_layer.chunk_noise import without_noise
+from knowledge_layer.fusion import pool_without_noise
 from knowledge_layer.register import KnowledgeRetrievalConfig
-from knowledge_layer.register import _without_noise
 from knowledge_layer.register import knowledge_retrieval
 
 from aiq_agent.common.source_kinds import Shelf
@@ -142,8 +142,8 @@ class TestWhichChunksAreJudged:
         def pool(*chunks):
             return RetrievalResult(chunks=list(chunks), query="q", backend="test")
 
-        _, first = _without_noise(pool(shared, first_only, prose), enabled=True)
-        _, widened = _without_noise(pool(shared, widened_only, prose), enabled=True)
+        _, first = pool_without_noise(pool(shared, first_only, prose), enabled=True)
+        _, widened = pool_without_noise(pool(shared, widened_only, prose), enabled=True)
 
         assert len(first | widened) == 3
 

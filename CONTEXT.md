@@ -345,7 +345,7 @@ person and on their budget, in a private conversation of theirs.
 In the A2A protocol an ask is a *task*, its conversation the *context*, and
 its answer an *artifact*; that is the protocol's word, not an Aufgabe.
 _Avoid_: task, Aufgabe or job for an ask, outside the A2A wire.
-_Code_: `piloti_asks`; the states are A2A's: `submitted`, `working`,
+_Code_: `agent_asks`; the states are A2A's: `submitted`, `working`,
 `completed`, `canceled`, `failed`, `rejected`.
 
 ## Sharing and keeping

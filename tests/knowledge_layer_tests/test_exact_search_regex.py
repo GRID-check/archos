@@ -421,7 +421,7 @@ class TestLiteralSearchIsRecorded:
     @pytest.mark.parametrize("mode", ["exact", "regex"])
     async def test_each_literal_search_leaves_one_record(self, search_with, monkeypatch, mode):
         recorded: list[str] = []
-        monkeypatch.setattr("aiq_agent.common.turn_status.emit_literal_search", recorded.append)
+        monkeypatch.setattr("aiq_agent.common.action_rows.emit_literal_search", recorded.append)
         search_with(_Store([_chunk("Grundriss_EG.pdf", "BA-03 Nord", page=2)]))
 
         await _search(query="BA-03", match=mode)
@@ -559,11 +559,11 @@ class TestPageEndReachesTheHit:
         [({"page_end": "5"}, 4, 5), ({"page_end": "4"}, 4, None), ({}, 4, None), ({"page_end": "x"}, 4, None)],
     )
     def test_only_a_later_numeric_end_is_stated(self, metadata, page, expected):
-        from knowledge_layer.register import _page_end
+        from knowledge_layer.grounding_hits import _page_end
 
         assert _page_end(SimpleNamespace(metadata=metadata), page) == expected
 
     def test_a_chunk_without_a_page_states_no_end(self):
-        from knowledge_layer.register import _page_end
+        from knowledge_layer.grounding_hits import _page_end
 
         assert _page_end(SimpleNamespace(metadata={"page_end": "5"}), None) is None

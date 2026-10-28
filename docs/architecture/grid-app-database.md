@@ -1,12 +1,12 @@
-# Grid Application Database (`grid_app`)
+# Grid Application Database (`app`)
 
 This document describes the Next.js BFF's application database: what it stores, how it connects, and how schemas are managed.
 
 ---
 
-## What `grid_app` stores
+## What `app` stores
 
-`grid_app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all Grid-specific application state that is not already owned by the Python AI-Q agent:
+`app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all Grid-specific application state that is not already owned by the Python AI-Q agent:
 
 | Area | Tables |
 |---|---|
@@ -18,7 +18,7 @@ This document describes the Next.js BFF's application database: what it stores, 
 
 `organizations` is **not** a WorkOS mirror. It stores Grid-specific app settings keyed by the WorkOS org ID (`workos_org_id`): default project, retention policy, base knowledge config, etc. Users, memberships, roles, and permissions remain authoritative in WorkOS per [ADR-0007](../adr/0007-no-local-identity-sync.md).
 
-The Python agent continues to own `aiq_jobs` (job metadata, summaries) and `aiq_checkpoints` (LangGraph graph state) directly. All three databases run on the same PostgreSQL server in Docker but are logically separate systems of record.
+The Python agent continues to own `jobs` (job metadata, summaries) and `checkpoints` (LangGraph graph state) directly. All three databases run on the same PostgreSQL server in Docker but are logically separate systems of record.
 
 ---
 
@@ -26,13 +26,13 @@ The Python agent continues to own `aiq_jobs` (job metadata, summaries) and `aiq_
 
 The BFF connects via **Drizzle ORM** with the **`postgres` driver**.
 
-- **Environment variable:** `GRID_APP_DATABASE_URL`
-- **Role:** `grid_app_rw` — DML only, no DDL, and **subject to row-level
+- **Environment variable:** `APP_DATABASE_URL`
+- **Role:** `app_rw` — DML only, no DDL, and **subject to row-level
   security** (ADR-0041). Migrations use the owner credential in
-  `GRID_APP_MIGRATION_DATABASE_URL` instead.
-- **Client file:** `frontends/ui/src/lib/db/index.ts`
+  `APP_MIGRATION_DATABASE_URL` instead.
+- **Client file:** `apps/workspace/bff/db/index.ts`
 
-> **Every query carries a tenant.** `frontends/ui/src/lib/db/index.ts` wraps the
+> **Every query carries a tenant.** `apps/workspace/bff/db/index.ts` wraps the
 > postgres-js client so each statement runs with `grid.organization_id` set from
 > the caller's context, and Postgres policies filter rows to that organization.
 > A query that loses its `organization_id` filter returns nothing rather than
@@ -67,34 +67,34 @@ Use `closeDb()` to close the connection in tests or during graceful shutdown.
 
 ## Schema management
 
-Schemas live in `frontends/ui/src/lib/db/schema/` as TypeScript files using Drizzle's PostgreSQL column builders. They are exported from `frontends/ui/src/lib/db/schema/index.ts`.
+Schemas live in `apps/workspace/bff/db/schema/` as TypeScript files using Drizzle's PostgreSQL column builders. They are exported from `apps/workspace/bff/db/schema/index.ts`.
 
-Drizzle Kit is configured in `frontends/ui/drizzle.config.ts`:
+Drizzle Kit is configured in `apps/workspace/migrations.config.ts`:
 
 ```typescript
 export default defineConfig({
   schema: "./src/lib/db/schema/*.ts",
-  out: "./drizzle",
+  out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
-    // The OWNER credential (ADR-0041). `GRID_APP_DATABASE_URL` is the runtime
+    // The OWNER credential (ADR-0041). `APP_DATABASE_URL` is the runtime
     // role: DML only, RLS-enforced, and unable to run DDL — a migration pointed
     // at it fails, and a backfill pointed at it "succeeds" having touched
     // nothing. The fallback covers a local single-credential database only.
     url:
-      process.env.GRID_APP_MIGRATION_DATABASE_URL ?? process.env.GRID_APP_DATABASE_URL!,
+      process.env.APP_MIGRATION_DATABASE_URL ?? process.env.APP_DATABASE_URL!,
   },
 });
 ```
 
 ### Adding a new table
 
-1. Create or extend a file under `frontends/ui/src/lib/db/schema/`.
-2. Export the table from `frontends/ui/src/lib/db/schema/index.ts`.
+1. Create or extend a file under `apps/workspace/bff/db/schema/`.
+2. Export the table from `apps/workspace/bff/db/schema/index.ts`.
 3. Generate a migration:
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 npm run db:generate   # or: npx drizzle-kit generate
 ```
 
@@ -106,20 +106,20 @@ npm run db:migrate    # or: npx drizzle-kit migrate
 
 ### Migration files
 
-Generated migrations are written to `frontends/ui/drizzle/` and committed to git.
+Generated migrations are written to `apps/workspace/migrations/` and committed to git.
 
 ---
 
 ## Docker setup
 
-The `grid_app` database is created alongside `aiq_jobs` and `aiq_checkpoints` in the PostgreSQL container defined in `deploy/compose/docker-compose.yaml`.
+The `app` database is created alongside `jobs` and `checkpoints` in the PostgreSQL container defined in `deploy/compose/docker-compose.yaml`.
 
 - **Init script:** `deploy/compose/init-db.sql`
 - **Mount point:** `/docker-entrypoint-initdb.d/init-db.sql` inside the `postgres` container
-- **Databases created:** `aiq_jobs`, `aiq_checkpoints`, `grid_app`
+- **Databases created:** `jobs`, `checkpoints`, `app`
 - **Default user/password:** `aiq` / `aiq_dev`
 
-The init script is idempotent (`IF NOT EXISTS`) and runs automatically when the PostgreSQL container starts with an empty data directory. The BFF service receives `GRID_APP_DATABASE_URL` via the environment.
+The init script is idempotent (`IF NOT EXISTS`) and runs automatically when the PostgreSQL container starts with an empty data directory. The BFF service receives `APP_DATABASE_URL` via the environment.
 
 ---
 

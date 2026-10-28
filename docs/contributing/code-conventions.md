@@ -48,10 +48,50 @@ measuring them needs the TypeScript parser, which lives in the UI's
 `node_modules` that the Repo checks job does not install.
 
 Not checked, because their length follows their input rather than a design
-choice: generated files (the card schemas' `shared/cards/generated.ts`,
+choice: generated files (the card schemas' `src/shared/cards/generated.ts`,
 `*.generated.*`, `*.d.ts`), tests,
 specs, fixtures and test helpers, migrations, and copy (the i18n dictionaries,
 the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
+
+## No brand names
+
+No code or infrastructure name carries the product's name: no `aiq`, `grid`
+or `piloti` in an identifier, file or folder name, environment variable,
+route, header, table, metric, event, resource or tool name. The product was
+AI-Q, then Grid, now Piloti, and the next name is coming; every earlier rename
+was a code change across thousands of lines. Name the thing for what it does:
+`MAX_ACTIVE_JOBS_PER_ORG`, not `MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
+`piloti_wakes`. The product's name is copy, read from one place:
+`PRODUCT_NAME` in `apps/workspace/bff/brand.ts`, which the dictionaries
+reach as `{productName}`, and `aiq_agent.common.brand.PRODUCT_NAME`, which a
+prompt reaches as `{{ product_name }}`. `tests/test_product_name_parity.py`
+holds the two equal.
+
+`scripts/check_brand_names.py`, the `brand-names` hook in `task lint:repo`
+(CI's **Repo checks** job), holds it. It is a ratchet like the size check:
+`ci/brand_names_baseline.json` records the hits each file had when the check
+arrived, a file may not gain one, and a cleanup makes the check fail until
+`--update` lowers the entry. A move re-keys entries: `--rebaseline`, and check
+its diff shows only the move. A directory is its own key (`dir/`), so a new
+file inside `packages/agent/src/aiq_agent/` is fine and a new `piloti_x/` folder is not.
+
+Not a hit: the name as a word in prose (`Piloti` or `Grid` alone, in a
+comment or a string a person reads), `grid` the English word (CSS and Tailwind,
+`grid` as a layout noun at the end of a name, `FileGrid`), URLs, host names and
+the repository's own name, and the Python package names `aiq_agent` and
+`aiq_api` until their scripted rename (ADR-0145 row 10a). Not checked: ADRs, audits, release notes,
+migrations, the i18n dictionaries and the site's content, published assets,
+lockfiles and Markdown. The list is `EXCLUDED` in the script.
+
+An externally visible name (an MCP tool an outside agent calls, a public
+route, an analytics event) is renamed with the old name kept as an alias for
+one release, never as a hard break.
+
+A name two deployed tiers exchange (the `x-grid-*` service headers between
+the BFF and the backend) moves by expand, switch, contract, because the tiers
+roll out side by side: first every receiver reads the new name beside the old
+(`lib/http/legacy-header-names.ts`, `aiq_api.legacy_headers`), the next
+release the senders switch, the release after the old name goes.
 
 ## Python
 
@@ -64,7 +104,7 @@ The agent tier grew to nineteen thousand lines with functions that ran two
 hundred lines deep and four `if`s wide, and the cost was not aesthetic: a fix
 in the middle of one of them could not be tested on its own, and a reader had
 to hold the whole thing to know which branch they were in. These rules are the
-floor for anything under `src/aiq_agent`, `sources/` and `frontends/aiq_api`,
+floor for anything under `packages/agent/src/aiq_agent`, the Python packages under `packages/` and `apps/backend`,
 new or touched:
 
 - **Two levels of nesting inside a function, at most.** A third `if`/`for`/
@@ -101,7 +141,7 @@ change needs them.
 ### `any` is not a type we accept, in production code or in tests
 
 `no-explicit-any` (typescript-eslint's rule, run by oxlint as
-`typescript/no-explicit-any`) is an **error** in `frontends/ui/.oxlintrc.json`,
+`typescript/no-explicit-any`) is an **error** in `apps/workspace/.oxlintrc.json`,
 and the suite is clean. Reach for the real
 type, a `Partial<T>` or `Pick<T, …>` of it, `unknown`, or a deliberate
 `as unknown as T` at a single documented boundary.
@@ -175,7 +215,7 @@ never an environment variable.** Environment variables are for operator tuning
 (a budget, a delay, a page cap) and wiring (a URL, a token). A flag is decided
 per organization, changed in the dashboard with no deploy, and reaches the
 Python tier through the BFF (`GET /api/internal/stages`), which has no WorkOS
-client of its own. `GRID_FOLDER_CARDS` and `GRID_OFFICE_CONVENTIONS` were built
+client of its own. `FOLDER_CARDS` and `OFFICE_CONVENTIONS` were built
 as variables and replaced by the `folder-cards` and `office-conventions` flags;
-their tuning (`GRID_FOLDER_CARDS_MONTHLY_TOKENS`) stayed. Registering a flag:
+their tuning (`FOLDER_CARDS_MONTHLY_TOKENS`) stayed. Registering a flag:
 [`workos-provisioning.md`](../deployment/workos-provisioning.md).

@@ -28,6 +28,29 @@ overrides = [
     { name = "virtualenv", specifier = ">=21.7.13" },
 ]
 
+[manifest.dependency-groups]
+dev = [
+    { name = "aiq-agent", editable = "packages/agent" },
+    { name = "aiq-api", editable = "apps/backend" },
+    { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
+    { name = "import-linter", specifier = ">=2.15" },
+    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
+    { name = "mypy", specifier = ">=2.3.0" },
+    { name = "oib-retrieval", editable = "evals/oib-retrieval" },
+    { name = "pre-commit", specifier = ">=3.5.0" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+    { name = "pytest-cov", specifier = ">=4.1.0" },
+    { name = "pytest-env", specifier = ">=1.1.0" },
+    { name = "pytest-split", specifier = ">=0.11.0" },
+    { name = "pytest-testmon", specifier = ">=2.2.0" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "ris-adapter", editable = "packages/ris-adapter" },
+    { name = "ruff", specifier = "~=0.17.0" },
+    { name = "tavily-web-search", editable = "packages/tavily-web-search" },
+    { name = "yapf", specifier = ">=0.40.0" },
+]
+
 [[package]]
 name = "a2ui-core"
 version = "0.4.0"
@@ -166,7 +189,7 @@ wheels = [
 [[package]]
 name = "aiq-agent"
 version = "2.0.0"
-source = { editable = "." }
+source = { editable = "packages/agent" }
 dependencies = [
     { name = "a2ui-core" },
     { name = "aiofiles" },
@@ -188,6 +211,7 @@ dependencies = [
     { name = "pillow" },
     { name = "posthog" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "py3langid" },
     { name = "pygments" },
     { name = "python-multipart" },
     { name = "redis" },
@@ -220,27 +244,6 @@ viz = [
     { name = "pygraphviz" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "aiq-api" },
-    { name = "fakeredis", extra = ["lua"] },
-    { name = "import-linter" },
-    { name = "knowledge-layer", extra = ["all"] },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-env" },
-    { name = "pytest-split" },
-    { name = "pytest-testmon" },
-    { name = "pytest-xdist" },
-    { name = "ris-adapter" },
-    { name = "ruff" },
-    { name = "tavily-web-search" },
-    { name = "yapf" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "a2ui-core", specifier = "==0.4.0" },
@@ -250,7 +253,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0,<51" },
     { name = "deepagents", specifier = "==0.7.32" },
     { name = "fakeredis", extras = ["lua"], marker = "extra == 'dev'", specifier = ">=2.20.0" },
-    { name = "knowledge-layer", extras = ["all"], editable = "sources/knowledge_layer" },
+    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
     { name = "langchain-modal", specifier = "==0.0.7" },
     { name = "langchain-openai", specifier = ">=1.6.6" },
     { name = "langfuse", specifier = ">=4.15.3,<5" },
@@ -268,6 +271,7 @@ requires-dist = [
     { name = "posthog", specifier = ">=7.59,<8" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
+    { name = "py3langid", specifier = ">=0.4.0,<0.5" },
     { name = "pygments", specifier = ">=2.20.0,<3" },
     { name = "pygraphviz", marker = "extra == 'viz'", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
@@ -288,31 +292,10 @@ requires-dist = [
 ]
 provides-extras = ["dev", "docs", "viz"]
 
-[package.metadata.requires-dev]
-dev = [
-    { name = "aiq-api", editable = "frontends/aiq_api" },
-    { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
-    { name = "import-linter", specifier = ">=2.15" },
-    { name = "knowledge-layer", extras = ["all"], editable = "sources/knowledge_layer" },
-    { name = "mypy", specifier = ">=2.3.0" },
-    { name = "pre-commit", specifier = ">=3.5.0" },
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-asyncio", specifier = ">=0.21.0" },
-    { name = "pytest-cov", specifier = ">=4.1.0" },
-    { name = "pytest-env", specifier = ">=1.1.0" },
-    { name = "pytest-split", specifier = ">=0.11.0" },
-    { name = "pytest-testmon", specifier = ">=2.2.0" },
-    { name = "pytest-xdist", specifier = ">=3.8.0" },
-    { name = "ris-adapter", editable = "sources/ris_adapter" },
-    { name = "ruff", specifier = "~=0.17.0" },
-    { name = "tavily-web-search", editable = "sources/tavily_web_search" },
-    { name = "yapf", specifier = ">=0.40.0" },
-]
-
 [[package]]
 name = "aiq-api"
 version = "0.1.0"
-source = { editable = "frontends/aiq_api" }
+source = { editable = "apps/backend" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "asyncpg" },
@@ -1796,7 +1779,7 @@ wheels = [
 [[package]]
 name = "knowledge-layer"
 version = "1.0.0"
-source = { editable = "sources/knowledge_layer" }
+source = { editable = "packages/knowledge-layer" }
 dependencies = [
     { name = "boto3" },
     { name = "httpx" },
@@ -1833,7 +1816,7 @@ llamaindex = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.34" },
     { name = "httpx", specifier = ">=0.24.0" },
-    { name = "knowledge-layer", extras = ["llamaindex"], marker = "extra == 'all'", editable = "sources/knowledge_layer" },
+    { name = "knowledge-layer", extras = ["llamaindex"], marker = "extra == 'all'", editable = "packages/knowledge-layer" },
     { name = "llama-index", marker = "extra == 'llamaindex'", specifier = ">=0.14.23" },
     { name = "llama-index-embeddings-nvidia", marker = "extra == 'llamaindex'", specifier = ">=0.1.0" },
     { name = "openai", marker = "extra == 'llamaindex'", specifier = ">=2.53.0" },
@@ -2984,6 +2967,27 @@ wheels = [
 ]
 
 [[package]]
+name = "oib-retrieval"
+version = "1.0.0"
+source = { editable = "evals/oib-retrieval" }
+dependencies = [
+    { name = "numpy" },
+    { name = "nvidia-nat-eval" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", marker = "extra == 'record'", specifier = ">=0.27" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "nvidia-nat-eval", specifier = "==1.9.0" },
+    { name = "pdfplumber", marker = "extra == 'record'", specifier = ">=0.11" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "sentence-transformers", marker = "extra == 'dense'", specifier = ">=5.0.0" },
+]
+provides-extras = ["dense", "record"]
+
+[[package]]
 name = "openai"
 version = "2.54.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3566,6 +3570,18 @@ wheels = [
 ]
 
 [[package]]
+name = "py3langid"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/16/fc/51c88e5ef8346878ae6c09e1f7c86c6e6308c57794723bf423a72ddba4dd/py3langid-0.4.0.tar.gz", hash = "sha256:5924159039b5cc282c2edc10a7ea9363b2099834a0e99ed8d5bea3cc435d7871", size = 4604185, upload-time = "2026-09-02T09:10:53.983Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/2d/0eeff2727c970b1d553be70d15ba2d84e3830696c09a79d954c5ae3d5212/py3langid-0.4.0-py3-none-any.whl", hash = "sha256:c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616", size = 4600605, upload-time = "2026-09-02T09:10:49.54Z" },
+]
+
+[[package]]
 name = "pyasn1"
 version = "0.6.4"
 source = { registry = "https://pypi.org/simple" }
@@ -4107,7 +4123,7 @@ wheels = [
 [[package]]
 name = "ris-adapter"
 version = "1.0.0"
-source = { editable = "sources/ris_adapter" }
+source = { editable = "packages/ris-adapter" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "httpx" },
@@ -4597,7 +4613,7 @@ wheels = [
 [[package]]
 name = "tavily-web-search"
 version = "1.0.0"
-source = { editable = "sources/tavily_web_search" }
+source = { editable = "packages/tavily-web-search" }
 dependencies = [
     { name = "httpx" },
     { name = "langchain-tavily" },

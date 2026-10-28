@@ -1,29 +1,29 @@
 {
-  "src/app/dev/upload-tray/live-run.tsx": {
+  "app/dev/upload-tray/live-run.tsx": {
     "count": 1,
     "reason": "dev preview of the upload tray: a simulated batch of two uploads in the browser, no server work behind it"
   },
-  "src/features/bim/hooks/use-bim-model.ts": {
+  "ui/features/bim/hooks/use-bim-model.ts": {
     "count": 1,
     "reason": "reads the element pages of one BIM model, six requests in flight; a read walk, not a run. ADR-0121 debt if the walk stays in the browser"
   },
-  "src/features/documents/hooks/use-bulk-reingest.ts": {
+  "ui/features/documents/hooks/use-bulk-reingest.ts": {
     "count": 1,
     "reason": "re-reads a selected set of documents, four requests in flight. ADR-0121 debt: move onto a server run (reingest_failed covers only the whole organization)"
   },
-  "src/features/documents/hooks/use-document-moves.ts": {
+  "ui/features/documents/hooks/use-document-moves.ts": {
     "count": 2,
     "reason": "multi-select move, a 4-wide browser pool of PATCH /api/documents/{id}/folder; tolerated for a hand-picked selection, ADR-0121 debt (moveMany)"
   },
-  "src/features/documents/lib/content-digest.ts": {
+  "ui/features/documents/lib/content-digest.ts": {
     "count": 1,
     "reason": "hashes local files the browser holds before upload, two at a time; the server cannot read them, so not a loop over server items"
   },
-  "src/features/documents/lib/document-status-reads.ts": {
+  "ui/features/documents/lib/document-status-reads.ts": {
     "count": 2,
     "reason": "status reads for the listing rows still in flight, one request per document, six at a time per tick. ADR-0121 debt on the read side: a batched read would replace the pool"
   },
-  "src/features/documents/lib/upload-queue.ts": {
+  "ui/features/documents/lib/upload-queue.ts": {
     "count": 2,
     "reason": "a batch of local files sent from the browser, three in flight; the bytes exist only in the browser until sent, so not a loop over server items"
   }

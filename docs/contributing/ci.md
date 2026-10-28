@@ -69,17 +69,17 @@ It also lists the third-party image pins the change adds or moves
 | Plan (`changes`) | always | the three answers above, written to the run summary with the reason for each |
 | Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, the tests of `ci/`, the workflows and the release-note pipeline (`task be:test:harness`), release-note lint and (PRs) the release-note requirement, gitleaks over the commits a PR adds (a push: its full history) |
 | SAST (`semgrep`) | PRs touching code | Semgrep, diff-aware: blocks findings the PR introduces |
-| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, aiq_api, `sources/`), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
+| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, aiq_api, `sources`, the Python packages), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
 | Backend test database (`backend-testmon`) | every push to `develop` | records which test runs which code (`task be:test:testmon`) and caches it when green. Not a check |
 | Backend core (`backend`) | backend tier: pushes, and PRs testmon cannot select for | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
-| Backend suites (`backend-suites`) | backend tier | three jobs side by side: the aiq_api suite, the `sources/` suites, and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
-| Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
-| Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task fe:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
-| Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
-| Web, Infra, Standalone packages | their tier | `task web:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
+| Backend suites (`backend-suites`) | backend tier | three jobs side by side: the aiq_api suite, the Python packages' suites (`sources`), and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
+| Workspace (`workspace`) | workspace tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
+| Workspace tests (`workspace-test`) | workspace tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task workspace:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task workspace:test:related`) |
+| Workspace coverage | PRs, workspace tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
+| Site, Infra, Standalone packages | their tier | `task site:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |
-| Image build (`image`) | PRs that change an image's inputs | builds it, read-only token, no push. For the UI this IS the production build check: `fe:build` is not run separately |
+| Image build (`image`) | PRs that change an image's inputs | builds it, read-only token, no push. For the UI this IS the production build check: `workspace:build` is not run separately |
 | Image build + push (`image-push`) | pushes, image not in GHCR | builds and pushes `inputs-<hash>` and the layer cache |
 | Tag images (`publish`) | pushes, after every check passed | `sha-<commit>` on all three images, and `latest` on `develop` |
 | `CI OK` (`ci-ok`) | always | fails unless every needed job passed or was skipped; on a green PR, records the tested tree for reuse |
@@ -113,7 +113,7 @@ a changelog commit. It built the web image. The frontend and backend changes of
 five merged pull requests were never built, and staging kept running the old
 images until someone dispatched a rebuild by hand.
 
-`GRID_GIT_SHA` inside an image is the commit that *built* it. An image whose
+`GIT_SHA` inside an image is the commit that *built* it. An image whose
 inputs did not change is re-tagged, not rebuilt, so a container reports the
 commit its code came from.
 
@@ -127,7 +127,7 @@ deploy exactly as before.
 
 | Piece | Where | What it does |
 |---|---|---|
-| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `frontends/ui/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GRID_GIT_SHA` the container reports |
+| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `apps/workspace/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GIT_SHA` the container reports |
 | Backend release | `deploy.yml` (staging), before the plan (`PostHog/resolve-release`) | Finds or creates release `grid-agent` at the backend image's commit and hands its id to the Python tiers as `POSTHOG_RELEASE_ID` (below) |
 | Deploy marker | `deploy.yml`, after each `Pulumi up` (`deploy/pulumi/scripts/posthog-annotate.sh`) | A project annotation `deploy dev <sha>` or `deploy prod <sha>` at the time the apply finished. `continue-on-error`: a PostHog outage never turns a deploy red |
 
@@ -182,7 +182,7 @@ Why it is built this way:
   the binary. It has to: `bun install --production` over an existing
   `node_modules` does not prune devDependencies (measured with bun 1.3.11), so
   the later production install would let it ship in the runtime image.
-- Caching: `ARG GRID_GIT_SHA` is declared before `bun run build`, because the
+- Caching: `ARG GIT_SHA` is declared before `bun run build`, because the
   release version is read during the build. That costs nothing a rebuild did
   not already pay: an image is rebuilt only when its inputs changed, and then
   the build layer re-runs anyway. `POSTHOG_PROJECT_ID` is an arg before the
@@ -258,7 +258,7 @@ replace CodeQL. Turning one of them off is a setting
 
 Measured on 2026-10-19: CI runs took 13 to 15 minutes, and the one `backend`
 job was 13 to 14 of them. It ran the core suite (7:30 to 8:00), then aiq_api
-(1:20), then `sources/` (3:30), in one job, while every other check was done by
+(1:20), then the Python packages (`sources`, 3:30), in one job, while every other check was done by
 minute three. Job-level queueing was under three seconds in every run looked at,
 so the runner cap was not what made the run long; this one job was.
 
@@ -274,7 +274,7 @@ What it was made of, and what was done about each:
   at the average, so a stale file unbalances the shards and never drops a test.
   Each shard writes coverage data and `backend-coverage` combines it and
   applies the 65% gate, so the gate still sees the whole suite.
-- **`sources/` is Qdrant collection setup.** About 130 tests each create and
+- **The `sources` suite (the Python packages) is Qdrant collection setup.** About 130 tests each create and
   drop collections, and each collection was ~47 sequential payload-index
   calls. It runs in its own job beside the shards.
 - **Most PRs ran the lane without touching backend code.** The backend filter
@@ -308,7 +308,7 @@ not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
 runs the full suite on a pull request whenever testmon cannot see the change:
 a conftest, a Python fixture, the lockfile or a `pyproject.toml`, how the
 backend jobs run, Python outside the tested packages (tests load `scripts/` and
-`frontends/benchmarks/` by path or in a subprocess), package data or a fixture
+`deploy/` by path or in a subprocess), package data or a fixture
 no test names, or no recorded database. A data fixture under `tests/fixtures/`
 adds the tests that name it or one of its directories, as tests read whole
 fixture directories. A non-Python file that a helper or conftest reads (a
@@ -318,16 +318,24 @@ it spawns does; the push run is what catches that.
 
 **The UI suite selects the same way, by import graph.** `vitest related`
 keeps the specs whose imports reach a changed file, split over the same eight
-shards. Every spec that reads the tree from disk instead of importing it (the
-route, key and migration walkers; ~100 found by what they call, not by a
-list) runs on every selection, because no import graph connects them to a
-change. Changes to what every spec loads (the manifest, the vitest config and
+shards. A spec that reads the tree from disk instead of importing it (the
+route, key and migration walkers; ~120, found by what they call, not by a
+list) has inputs no import graph sees, so it declares them in its first line,
+`// @disk-inputs: src/app/api/**, ../../contracts/wire/v2/**` (globs relative to
+`apps/workspace`), and runs when a changed path matches one, wherever in the
+repository it is. `config/vitest/disk-inputs.ts` records what every declaring
+spec reads while it runs and fails it on a path the line leaves out; `node
+scripts/declare-disk-inputs.mjs <spec>` rewrites the line from a recorded run.
+A spec that declares nothing runs on every selection, as all of them used to:
+one that starts a process (the recorder cannot see the child's reads), one
+that reads from a file list (over 60 inputs: `english-names.spec.ts`), and one
+that read nothing in the recording run. Changes to what every spec loads (the manifest, the vitest config and
 setup, the mocks the setup installs, tsconfig) run the whole suite. A median
 squash commit that touches the UI still selected 815 of 1,644 specs, 86% of
 the suite's time, in October 2026: half of them change a dictionary string,
 which reaches ~720 specs, and the rest mostly touch a module behind
 `lib/api/errors.ts` or the schema barrel. A leaf change reaches a handful.
-`task fe:blast-radius` holds each hub to the specs it reached when recorded;
+`task workspace:blast-radius` holds each hub to the specs it reached when recorded;
 the hubs, and the splits that would cut them, are in
 [`docs/audit/blast-radius-2026-10.md`](../audit/blast-radius-2026-10.md). The
 coverage comment comes only from a full run.

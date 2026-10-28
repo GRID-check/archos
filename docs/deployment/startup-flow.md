@@ -13,17 +13,16 @@ docker compose up -d --build
          │      • Determines build order from depends_on
          │
          ├── 2. postgres:16-alpine starts
-         │      • Container name: aiq-postgres
          │      • Runs /docker-entrypoint-initdb.d/init-db.sql
-         │      │   • Creates aiq_checkpoints database
-         │      │   • Creates grid_app database
+         │      │   • Creates checkpoints database
+         │      │   • Creates `app` database
          │      │   • Grants ALL on all 3 DBs to aiq user
-         │      │   • Connects to aiq_jobs
+         │      │   • Connects to jobs
          │      │   │   • Creates job_info table
          │      │   │   • Creates job_access table
          │      │   │   • Creates job_events table
          │      │   │   • Creates document_metadata table
-         │      │   • Connects to aiq_checkpoints
+         │      │   • Connects to checkpoints
          │      │   │   • Creates checkpoint_migrations table
          │      │   │   • Creates checkpoints table
          │      │   │   • Creates checkpoint_blobs table
@@ -41,13 +40,12 @@ docker compose up -d --build
          │      • echo 's3.bucket.create -name grid-documents' | weed shell -master=seaweedfs:9333
          │      • Container exits (one-shot)
          │
-         ├── 5. aiq-agent starts (depends on postgres + seaweedfs healthy)
-         │      • Container name: aiq-agent
-         │      • ENTRYPOINT: python /app/deploy/entrypoint.py
+         ├── 5. chat starts (depends on postgres + seaweedfs healthy)
+         │      • ENTRYPOINT: python /app/apps/backend/entrypoint.py
          │      │
          │      │   entrypoint.py:
          │      │   1. Reads CONFIG_FILE, HOST, PORT
-         │      │   2. Starts python /app/deploy/start_web.py as subprocess
+         │      │   2. Starts python /app/apps/backend/start_web.py as subprocess
          │      │
          │      │   start_web.py:
          │      │   1. Configures logging (LOG_LEVEL, format)
@@ -71,26 +69,24 @@ docker compose up -d --build
          │      │   • /api/v1/ingest/* (file ingestion)
          │      └── AIQ API worker starts (async job processing with SSE)
          │
-         ├── 6. grid-migrate runs to completion (depends on postgres healthy)
-         │      • Container name: aiq-blueprint-migrate
+         ├── 6. migrate runs to completion (depends on postgres healthy)
          │      • One-shot (restart: "no"); everything below waits for it to exit 0
          │      │
          │      │   Step 6a: node scripts/ensure-rls-roles.mjs
-         │      │   • Creates grid_app_rw / grid_app_platform if absent
-         │      │   • Syncs the runtime password from GRID_APP_DATABASE_URL
+         │      │   • Creates app_rw / app_platform if absent
+         │      │   • Syncs the runtime password from APP_DATABASE_URL
          │      │
          │      └── Step 6b: node node_modules/drizzle-kit/bin.cjs migrate
-         │          • Reads GRID_APP_MIGRATION_DATABASE_URL — the schema OWNER
+         │          • Reads APP_MIGRATION_DATABASE_URL — the schema OWNER
          │          • DDL and backfills need it; row-level security exempts the
          │            owner, which is what keeps a backfill from touching 0 rows
          │          • Runs pending migrations from drizzle/ directory
          │
-         └── 7. frontend starts (depends on grid-migrate completed, plus
-                aiq-agent + postgres + seaweedfs healthy)
-                • Container name: aiq-blueprint-ui
+         └── 7. frontend starts (depends on migrate completed, plus
+                chat + postgres + seaweedfs healthy)
                 • command: ["node", "server.js"] — it serves, it does not migrate.
                   The serving container never holds the owner credential (ADR-0041).
-                • Connects as grid_app_rw via GRID_APP_DATABASE_URL
+                • Connects as app_rw via APP_DATABASE_URL
                 │
                 │   server.js starts
                 │   • Production mode (NODE_ENV=production)
@@ -110,8 +106,8 @@ docker compose up -d --build
 Docker Compose uses `depends_on: condition: service_healthy` which means each service only starts after its dependencies pass their healthchecks:
 
 ```
-postgres ──► aiq-agent ──► frontend
-seaweedfs ─► seaweedfs-init ──► aiq-agent ──► frontend
+postgres ──► chat ──► frontend
+seaweedfs ─► seaweedfs-init ──► chat ──► frontend
                            postgres ─────► frontend
 ```
 
@@ -121,7 +117,7 @@ If a dependency fails its healthcheck within the retry limit, the dependent serv
 
 - **PostgreSQL**: PostgreSQL manages its own connections. The Docker healthcheck runs `pg_isready` on all 3 databases every 5 seconds.
 - **SeaweedFS**: Healthcheck runs `wget http://localhost:9333/cluster/status` every 5 seconds.
-- **aiq-agent**: The agent relies on Docker's `restart: unless-stopped` for crash recovery. There is no built-in reconnection to PostgreSQL or SeaweedFS if they become unavailable after startup.
+- **chat**: The agent relies on Docker's `restart: unless-stopped` for crash recovery. There is no built-in reconnection to PostgreSQL or SeaweedFS if they become unavailable after startup.
 - **frontend**: Same `restart: unless-stopped` policy. No built-in reconnection logic beyond Docker restart.
 
 ## Manual Step: Uploading the OIB corpus
@@ -131,7 +127,7 @@ The backend ingests nothing at boot. The base corpus lives in SeaweedFS and the
 uploaded: in the platform-admin UI, or from a directory of PDFs with
 
 ```bash
-GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
+ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
 ```
 
 Each upload stores the file and queues its ingest job at once; the ingest workers
@@ -150,25 +146,25 @@ admin re-indexes it. It ingests nothing itself. See [`oib-sync.md`](../technical
 
 This is step 6 of the sequence above, spelled out. Migrations no longer run from
 the `frontend` container in any stack — compose, Coolify or Kubernetes. The
-one-shot `grid-migrate` service runs, in order:
+one-shot `migrate` service runs, in order:
 
-1. `node scripts/ensure-rls-roles.mjs` — creates `grid_app_rw` and
-   `grid_app_platform` if absent and syncs the runtime password from
-   `GRID_APP_DATABASE_URL`. Idempotent and fail-soft.
+1. `node scripts/ensure-rls-roles.mjs` — creates `app_rw` and
+   `app_platform` if absent and syncs the runtime password from
+   `APP_DATABASE_URL`. Idempotent and fail-soft.
 2. `node node_modules/drizzle-kit/bin.cjs migrate` — as the schema owner via
-   `GRID_APP_MIGRATION_DATABASE_URL`, because DDL and backfills need the owner
+   `APP_MIGRATION_DATABASE_URL`, because DDL and backfills need the owner
    (row-level security does not apply to it).
 
 `frontend` then starts with `command: ["node", "server.js"]` and connects as
-`grid_app_rw`. On Kubernetes the roles come from CloudNativePG's
+`app_rw`. On Kubernetes the roles come from CloudNativePG's
 `managed.roles` instead and the migration Job does step 2 alone.
 
 ## Init Database Script
 
 The `init-db.sql` script (`deploy/compose/init-db.sql`) runs as part of PostgreSQL initialization. It creates 3 databases and their schemas. Key details:
 
-- **aiq_jobs** database: Contains `job_info`, `job_access`, `job_events`, and `document_metadata` tables.
-- **aiq_checkpoints** database: Contains `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, and `checkpoint_migrations` tables for LangGraph state persistence.
-- **grid_app** database: Created but left empty (schema managed by Drizzle Kit migrations from the frontend).
+- **jobs** database: Contains `job_info`, `job_access`, `job_events`, and `document_metadata` tables.
+- **checkpoints** database: Contains `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, and `checkpoint_migrations` tables for LangGraph state persistence.
+- **`app`** database: Created but left empty (schema managed by Drizzle Kit migrations from the frontend).
 
 The LangGraph checkpoint tables are created in the init script (not lazily by the application) to prevent crashes if PostgreSQL restarts while the backend is running — previously, restarts would drop the tables and running backends would crash with "relation checkpoints does not exist".

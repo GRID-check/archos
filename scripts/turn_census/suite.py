@@ -25,8 +25,8 @@ Per run it records what the provider billed and what the reader got:
 
 No backend, no BFF: a question about an office's own files needs a project and
 is skipped, and says so. Needs OPENROUTER_API_KEY and the corpus ingested into
-the Qdrant at GRID_QDRANT_URL (`--ingest` queues the corpus's ingest jobs from the table in
-GRID_SUMMARY_DB and the object store, and claims and runs them in this process; with `--corpus data/oib`
+the Qdrant at QDRANT_URL (`--ingest` queues the corpus's ingest jobs from the table in
+SUMMARY_DB and the object store, and claims and runs them in this process; with `--corpus data/oib`
 the corpus is that directory's PDFs and needs no BFF or object store). Every run costs model calls.
 
 `--set precedent` runs the precedent eval instead
@@ -41,7 +41,7 @@ comparable exists, and flagged an older edition
 `--set visual` (`tests/fixtures/visual/visual_questions.yaml`, ADR-0128) asks questions answered by looking
 at a drawing: three sheets are rendered from `drawings.json` into the output directory and served by the
 fixture BFF, and the report counts looks and the IoU of their regions against the gold boxes. `--look off`
-is its paired arm (`GRID_VIEW_IMAGES_ENABLED=0`). Needs `GRID_QDRANT_URL` and `GRID_SUMMARY_DB` like `--set files`.
+is its paired arm (`VIEW_IMAGES_ENABLED=0`). Needs `QDRANT_URL` and `SUMMARY_DB` like `--set files`.
 
 `--set north-star` (`tests/fixtures/north_star/north_star_questions.yaml`) asks the exemplars of
 docs/architecture/north-star-answers.md: each row is a files-set or visual-set row, run behind its own
@@ -864,16 +864,13 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
     from aiq_agent import oib_sync
     from aiq_api.jobs import ingest_dispatch
 
-    print("queueing the corpus:", oib_sync.sync())
+    print("queueing the corpus:", oib_sync.sync(enqueue=ingest_dispatch.enqueue_only))
     if not ingest_dispatch.attach(oib_sync._get_oib_ingestor()):
-        return (
-            "the ingest queue is off or has no database (GRID_INGEST_QUEUE, GRID_SUMMARY_DB): "
-            "nothing can ingest the corpus"
-        )
+        return "the ingest queue is off or has no database (INGEST_QUEUE, SUMMARY_DB): nothing can ingest the corpus"
     unfinished = (oib_sync.JobProgress.WAITING, oib_sync.JobProgress.RUNNING)
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        result = oib_sync.sync()
+        result = oib_sync.sync(enqueue=ingest_dispatch.enqueue_only)
         rows = corpus_store.list_files()
         waiting = [
             name
@@ -932,7 +929,7 @@ def use_local_corpus(directory: Path) -> int:
 
 
 def _corpus_ready() -> bool:
-    """Whether the OIB collection holds chunks in the Qdrant at ``GRID_QDRANT_URL``.
+    """Whether the OIB collection holds chunks in the Qdrant at ``QDRANT_URL``.
 
     Asked through the process-wide store the ingest itself writes through.
     The reason a check fails is printed, so a corpus that reads as "not
@@ -952,13 +949,13 @@ def _corpus_ready() -> bool:
 def inventory_database() -> Path | None:
     """The SQLite file the runs will read the document inventory from, or None when it is not SQLite.
 
-    ``GRID_SUMMARY_DB`` or the config's default, ``./summaries.db``. A relative
+    ``SUMMARY_DB`` or the config's default, ``./summaries.db``. A relative
     path is resolved against the REPO ROOT, because that is the working
     directory every run's ``nat run`` gets (``census.run_once``), whatever
     directory the suite itself was started from. A worktree has its own root,
     and its own empty ``summaries.db``.
     """
-    url = os.environ.get("GRID_SUMMARY_DB") or "sqlite+aiosqlite:///./summaries.db"
+    url = os.environ.get("SUMMARY_DB") or "sqlite+aiosqlite:///./summaries.db"
     prefix = "sqlite+aiosqlite:///"
     if not url.startswith(prefix):
         return None
@@ -1073,7 +1070,7 @@ def precedent_envelope(
     """The signed request-context envelope the BFF would mint for a turn in the fixture office's current project.
 
     Base64url JSON, HMAC-SHA256 over the exact bytes with the run's
-    ``GRID_INTERNAL_API_TOKEN``: the agent verifies it like a real one
+    ``INTERNAL_API_TOKEN``: the agent verifies it like a real one
     (``GridRequestContext.from_envelope``). A solo chat, as the conversation
     has no row: the fixture BFF searches every project in the office. ``extra`` adds payload
     fields (``--set files`` states the project's ``collectionScope`` this way).
@@ -1123,9 +1120,9 @@ def start_workspace_bff(out: Path) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
         }
 
     return bff, env_for
@@ -1153,9 +1150,9 @@ def start_files_bff(out: Path) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
             # A row an upload starts carries its trigger and open document, as the headless turn does.
             **turn_input.env_for(question),
         }
@@ -1169,7 +1166,7 @@ def start_visual_bff(out: Path, look: bool = True) -> tuple[Any, Any]:
     The drawings are drawn from ``drawings.json`` into ``out/drawings`` now. The fixture BFF answers the
     document lookup and is the object store the run reads the bytes from (``fixture_visual.py``); the
     run's scope is the project's collection, as in ``--set files``. ``look`` False sets
-    ``GRID_VIEW_IMAGES_ENABLED=0`` for every run.
+    ``VIEW_IMAGES_ENABLED=0`` for every run.
     """
     import secrets
 
@@ -1186,9 +1183,9 @@ def start_visual_bff(out: Path, look: bool = True) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
             **workspace.env(bff.url, look),
             # A row with a drawn box sends it on the turn, as the canvas does (turn_input.py).
             **turn_input.env_for(question),
@@ -1216,9 +1213,9 @@ def start_fixture_bff(out: Path) -> tuple[Any, Any]:
         header, signature = precedent_envelope(office.office, conversation_id, token, office.current)
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
         }
 
     return bff, env_for
@@ -1312,17 +1309,17 @@ def _preflight(out: Path, ingest: bool, corpus: Path | None = None, needs_corpus
             print(problem, file=sys.stderr)
     if not _corpus_ready():
         print(
-            "The OIB corpus is not ingested into the Qdrant at GRID_QDRANT_URL. Upload the PDFs "
+            "The OIB corpus is not ingested into the Qdrant at QDRANT_URL. Upload the PDFs "
             "(scripts/upload_oib_corpus.py) and run with --ingest.",
             file=sys.stderr,
         )
         return 2
-    summary_db = os.environ.get("GRID_SUMMARY_DB", "")
+    summary_db = os.environ.get("SUMMARY_DB", "")
     if summary_db and "://" not in summary_db:
         # A bare path is not a database URL: every run then fails to start, after
         # the suite has already launched them all.
         print(
-            f"GRID_SUMMARY_DB is a path, not a database URL: {summary_db}. "
+            f"SUMMARY_DB is a path, not a database URL: {summary_db}. "
             "Use sqlite+aiosqlite:////absolute/path/summaries.db.",
             file=sys.stderr,
         )
@@ -1331,7 +1328,7 @@ def _preflight(out: Path, ingest: bool, corpus: Path | None = None, needs_corpus
     if not inventory_ready(database):
         print(
             f"The document inventory at {database} lists no corpus documents: runs would have no inventory, "
-            "no family overviews and no quote checks. Point GRID_SUMMARY_DB at the database the ingest wrote "
+            "no family overviews and no quote checks. Point SUMMARY_DB at the database the ingest wrote "
             "(sqlite+aiosqlite:////absolute/path/summaries.db).",
             file=sys.stderr,
         )
@@ -1460,7 +1457,7 @@ def main(argv: list[str] | None = None) -> int:
         "--look",
         choices=("on", "off"),
         default="on",
-        help="--set visual: off sets GRID_VIEW_IMAGES_ENABLED=0 for the run, the paired arm for what looking is worth",
+        help="--set visual: off sets VIEW_IMAGES_ENABLED=0 for the run, the paired arm for what looking is worth",
     )
     parser.add_argument(
         "--arm",

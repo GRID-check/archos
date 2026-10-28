@@ -23,7 +23,7 @@ _JPEG_BYTES = b"\xff\xd8\xff\xe0test-jpeg-payload"
 
 
 def _patch_env(monkeypatch, *, enabled: bool = True, vlm_key: str = "sk-test") -> None:
-    monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", "true" if enabled else "false")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true" if enabled else "false")
     monkeypatch.setattr(llm_adapter, "_get_vlm_api_key", lambda: vlm_key)
 
 
@@ -125,14 +125,14 @@ async def test_no_vlm_key_returns_text_only(monkeypatch, tmp_path) -> None:
 
 
 def test_is_enabled_respects_flag(monkeypatch) -> None:
-    monkeypatch.delenv("GRID_VIEW_IMAGES_ENABLED", raising=False)
+    monkeypatch.delenv("VIEW_IMAGES_ENABLED", raising=False)
     assert _is_enabled() is True
 
     for off in ("0", "false", "no", "off", "OFF"):
-        monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", off)
+        monkeypatch.setenv("VIEW_IMAGES_ENABLED", off)
         assert _is_enabled() is False
 
-    monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", "true")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true")
     assert _is_enabled() is True
 
 
@@ -418,7 +418,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
 
     # Unconfigured env -> None without any HTTP call.
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     assert await _resolve_storage_key("proj_1", "plan.png") is None
 
     class _Response:
@@ -449,7 +449,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
             return self.response
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
 
     assert await _resolve_storage_key("proj_1", "plan.png") == ("org/o1/k.png", None)

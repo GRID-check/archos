@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from knowledge_layer.register import _apply_agent_filters
-from knowledge_layer.register import _empty_search_message
+from knowledge_layer.hit_metadata import apply_agent_filters
+from knowledge_layer.search_results import empty_search_message
 
 
 def _chunk(file_name: str, collection: str) -> SimpleNamespace:
@@ -28,13 +28,13 @@ def _chunk(file_name: str, collection: str) -> SimpleNamespace:
 
 def test_a_name_that_matches_no_hit_empties_the_law_search() -> None:
     pool = [_chunk("OIB-RL 4.pdf", "oib_knowledge"), _chunk("Museum-Grundriss.pdf", "project_x")]
-    assert _apply_agent_filters(pool, None, None, "Anderer-Plan.pdf") == []
+    assert apply_agent_filters(pool, None, None, "Anderer-Plan.pdf") == []
 
 
 def test_the_miss_with_a_file_name_says_to_retry_without_it_for_the_law() -> None:
-    text = _empty_search_message("Absturzhöhe Brüstung", file_name="Museum-Grundriss.pdf")
+    text = empty_search_message("Absturzhöhe Brüstung", file_name="Museum-Grundriss.pdf")
     assert "WITHOUT `file_name=`" in text
 
 
 def test_the_miss_without_a_file_name_does_not_mention_dropping_one() -> None:
-    assert "WITHOUT" not in _empty_search_message("Absturzhöhe Brüstung")
+    assert "WITHOUT" not in empty_search_message("Absturzhöhe Brüstung")

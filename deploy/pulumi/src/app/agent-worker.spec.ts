@@ -109,11 +109,11 @@ describe("the agent-worker tier", () => {
   });
 
   it("scales on the table the research queue is written to, leaving dead rows out", () => {
-    const table = read("frontends", "aiq_api", "src", "aiq_api", "jobs", "queue.py").match(
+    const table = read("apps", "backend", "src", "aiq_api", "jobs", "queue.py").match(
       /^TABLE = "([a-z_]+)"$/m,
     )?.[1];
-    const dead = read("src", "aiq_agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
-    const cancelled = read("src", "aiq_agent", "common", "claim_queue.py").match(
+    const dead = read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
+    const cancelled = read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py").match(
       /^CANCELLED = "([a-z_]+)"$/m,
     )?.[1];
 
@@ -129,9 +129,9 @@ describe("the agent-worker tier", () => {
 
   it("counts every row a worker could still run, because a finished job's row is deleted", () => {
     // The query has no clause for finished jobs, so the worker must delete them.
-    const queue = read("frontends", "aiq_api", "src", "aiq_api", "jobs", "queue.py");
+    const queue = read("apps", "backend", "src", "aiq_api", "jobs", "queue.py");
     expect(queue).toMatch(/def mark_done\(/);
-    expect(read("src", "aiq_agent", "common", "claim_queue.py")).toMatch(/DELETE FROM \{self\.table\}/);
+    expect(read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py")).toMatch(/DELETE FROM \{self\.table\}/);
   });
 
   it("asks KEDA for one replica per `concurrency` open jobs, within the configured bounds", async () => {
@@ -190,20 +190,20 @@ describe("the agent-worker tier", () => {
   });
 
   it("hands the worker the same drain budget it derives the grace period from", () => {
-    const drain = env.find((e) => e.name === "GRID_RESEARCH_WORKER_DRAIN_SECONDS");
+    const drain = env.find((e) => e.name === "RESEARCH_WORKER_DRAIN_SECONDS");
 
     expect(drain?.value).toBe(String(drainSeconds));
     // A name the Python worker does not read would leave it on its default.
-    expect(read("frontends", "aiq_api", "src", "aiq_api", "jobs", "worker.py")).toContain(
-      '"GRID_RESEARCH_WORKER_DRAIN_SECONDS"',
+    expect(read("apps", "backend", "src", "aiq_api", "jobs", "worker.py")).toContain(
+      '"RESEARCH_WORKER_DRAIN_SECONDS"',
     );
   });
 
   it("emits the per-organization caps the queue's claim and admission read", () => {
     const names = new Set([...env, ...backendEnvVars].map((e) => e.name));
-    const queue = read("frontends", "aiq_api", "src", "aiq_api", "jobs", "queue.py");
+    const queue = read("apps", "backend", "src", "aiq_api", "jobs", "queue.py");
 
-    for (const name of ["GRID_MAX_ACTIVE_JOBS_PER_ORG", "GRID_MAX_QUEUED_JOBS_PER_ORG"]) {
+    for (const name of ["MAX_ACTIVE_JOBS_PER_ORG", "MAX_QUEUED_JOBS_PER_ORG"]) {
       expect(names.has(name), name).toBe(true);
       expect(queue).toContain(`"${name}"`);
     }

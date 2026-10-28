@@ -89,7 +89,7 @@ that path would add a store without removing one.
    capture, page count, pages not read, whether a newer Fassung replaces it,
    which facts it changed against the Fassung it replaced (the dossier's `changes`), a
    full-text vector, and the fingerprint of what it was built from. Tenant table
-   under `grid_secure_table`. It is never authored: each row is replaced whole.
+   under `secure_table`. It is never authored: each row is replaced whole.
 2. **A row is written when its document settles.** The status reconciliation
    already parses the reading (`extractMetadata` in `reconcile-status.ts`) when a
    row comes to rest; the projection row is upserted there. A person's edit of

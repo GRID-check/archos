@@ -6,7 +6,7 @@ WHY THIS EXISTS
 A person sorting a shelf's root asks the filing judgement (``POST /v1/filing-fit``,
 ``purpose: sort``) to place every loose document into a folder. Each placement carries
 Jev's probability for its folder; the dialog reads it as "sure" at ``SURE_CONFIDENCE``
-(``frontends/ui/src/lib/filing/root-sort-types.ts``) and as "unsure" below. That cut was
+(``apps/workspace/bff/filing/root-sort-types.ts``) and as "unsure" below. That cut was
 never measured. This script measures it on a labelled synthetic shelf: an Austrian
 architecture office's project root (``tests/fixtures/root_sort/austrian_office_root.json``).
 
@@ -21,18 +21,18 @@ WHAT IT MEASURES
   were grouped, and each group's purity by the theme a person would give it.
 
 The sort runs in chunks of ``CHUNK`` documents, the production ``ROOT_SORT_CHUNK``
-(half of ``MAX_JUDGED_DOCUMENTS`` in ``frontends/ui/src/lib/filing/types.ts``), and each
+(half of ``MAX_JUDGED_DOCUMENTS`` in ``apps/workspace/bff/filing/types.ts``), and each
 chunk's seconds are reported with the grouping's. No conventions are sent, so a placement
 is always into an existing folder of the shelf.
 
 USAGE
 -----
-    cd frontends/aiq_api && ../../.venv/bin/python -I ../../scripts/root_sort_eval.py
+    cd apps/backend && ../../.venv/bin/python -I ../../scripts/root_sort_eval.py
     ... --out /some/where.json        (default: tests/fixtures/root_sort/eval_<date>.json)
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``). The routes run in-process through
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``). The routes run in-process through
 FastAPI's TestClient, so the only network call is the model's. A failed call stops the
 run: a partial run is not a measurement, so no report is written.
 """
@@ -52,7 +52,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "root_sort" / "austrian_office_root.json"
 sys.path.insert(0, str(REPO_ROOT / "src"))
-sys.path.insert(0, str(REPO_ROOT / "frontends" / "aiq_api" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "apps" / "backend" / "src"))
 
 CHUNK = 30
 REQUESTED_CUTS = (0.4, 0.5, 0.6, 0.7, 0.8)
@@ -384,8 +384,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=FIXTURE.parent / f"eval_{date.today().isoformat()}.json")
     args = parser.parse_args(argv)
-    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GRID_DECISIONS_API_KEY")):
-        print("root_sort_eval: set OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); nothing to measure.")
+    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("DECISIONS_API_KEY")):
+        print("root_sort_eval: set OPENROUTER_API_KEY (or DECISIONS_API_KEY); nothing to measure.")
         return 2
     fixture = load_fixture()
     problems = check_fixture(fixture)

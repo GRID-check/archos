@@ -1,0 +1,688 @@
+/**
+ * The run's message and its ledger — the service behind the run primitive
+ * (ADR-0055, ADR-0062).
+ *
+ * A run is ONE assistant message in the conversation it was commissioned in.
+ * This module owns five moves on that message and nothing else:
+ *
+ *   `createRunMessage`  — mint it, empty, at submit time;
+ *   `applyRunLedgerOp`  — fold one op into `metadata.run_ledger`;
+ *   `writeRunReport`    — fill in the finished answer, found by backend job id;
+ *   `getRunView`        — read it back for a person, project-scoped;
+ *   `cancelRun`         — ask the backend to stop it, for a person, project-scoped.
+ *
+ * ## Identity comes from the row, never from the body
+ *
+ * The ledger arrives from a worker that holds one id: the run's. So
+ * `applyRunLedgerOp` resolves that id under platform access — there is genuinely
+ * no tenant yet — and then does EVERYTHING else inside the run's own
+ * organization, so row-level security applies to the write exactly as it would
+ * to a person's. The organization, the project and the requester are read off
+ * the `task_runs` row; the request body names none of them and could not be
+ * believed if it did (ADR-0041, and the shape `POST /api/internal/jobs/[jobId]/outcome`
+ * already uses).
+ *
+ * ## This route owns `run_ledger` and no other metadata key
+ *
+ * The finished report, its sources and the transparency keys
+ * (`_TRANSPARENCY_METADATA_KEYS` in `apps/backend/.../conversation_output.py`)
+ * are written by the path that produces them, into the same message. The merge
+ * below is per top-level key, so a ledger flush never touches them and a report
+ * write never touches the ledger — two writers, one message, no lost update
+ * (`mergeMessageMetadata` takes the row lock).
+ */
+
+import 'server-only'
+import { v5 as uuidv5 } from 'uuid'
+import { BadRequestError, ConflictError, NotFoundError, UpstreamError } from '@/lib/api/errors'
+import type { AuthorizedSession } from '@/lib/auth/types'
+import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
+import { requireProjectAccess } from '@/lib/authz/projects'
+import { projectClosedError } from '@/lib/projects/project-status'
+import { normalizeAgentAnswerMetadata } from '@/lib/conversations/agent-answer-metadata'
+import {
+  findMessageInConversation,
+  insertMessages,
+  mergeMessageMetadata,
+  writeMessageContent,
+} from '@/lib/conversations/repository'
+import type { Message } from '@/lib/db/schema/messages'
+import type { TaskRun } from '@/lib/db/schema/task-model'
+import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
+import {
+  addDocumentToBackendJob,
+  cancelBackendJob,
+  JobCancelError,
+  writeNowBackendJob,
+  type JobControlCaller,
+} from '@/lib/jobs/backend-client'
+import { signJobRequestContext } from '@/lib/jobs/request-envelope'
+import type { PlanDocument } from './plan-documents'
+import { AGENT_REFUSAL_LOCALE, requirePlanDocumentsOpen } from '@/lib/conversations/restricted-egress'
+import type { Locale } from '@/i18n/config'
+import { inboxGroupKey } from '@/lib/inbox/registry'
+import { emitInboxItems, resolveInboxItemsFor } from '@/lib/inbox/service'
+import * as taskRepository from '@/lib/tasks/repository'
+import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
+import { isActiveTaskRunStatus } from '@/lib/tasks/task-vocabulary'
+import { RUN_REPORT_MAX_CHARS, type RunViewQuery } from '@/lib/tasks/task-wire'
+import { requireResourceAccess } from '@/lib/sharing/access'
+import {
+  applyRunLedgerAppend,
+  applyRunLedgerFinish,
+  emptyRunLedger,
+  sanitizeRunLedger,
+  sanitizeRunTitle,
+} from './run-ledger'
+import type { RunLedger, RunLedgerRequest, RunLedgerResponse, RunView } from './run-ledger-types'
+import { isLiveStatus, runDisplayStatus } from './run-vocabulary'
+
+/** Where the ledger lives on the message. Wire spelling, like `retrieval_ledger`. */
+export const RUN_LEDGER_METADATA_KEY = 'run_ledger'
+/**
+ * Where the run's title lives on the message: the task's title, or the
+ * question a deep-research run was asked. Set once at mint time and never
+ * merged over — the ledger route writes `run_ledger` and nothing else.
+ */
+export const RUN_TITLE_METADATA_KEY = 'run_title'
+
+/** What `createRunMessage` takes beside the two ids. */
+export interface CreateRunMessageOptions {
+  /** The block's header line. Sanitised to one line of at most 200 characters. */
+  title?: string | null
+  at?: Date
+}
+
+/**
+ * The id of the message a run writes into, derived from the run id.
+ *
+ * Deterministic on purpose, exactly as `conversation_output._message_id` is on
+ * the Python side: `insertMessages` upserts with `onConflictDoNothing`, so a
+ * retried submit — a worker that lost its claim, a user who pressed the button
+ * twice — lands on the same row instead of leaving two half-written runs in the
+ * thread. uuid5 over `NAMESPACE_URL`, which is the namespace the Python half
+ * uses, so both tiers compute the same uuid for the same run.
+ */
+export function runMessageId(runId: string): string {
+  return uuidv5(`grid:run:${runId}`, uuidv5.URL)
+}
+
+/**
+ * Mint the run's message: an empty assistant turn carrying an empty ledger.
+ *
+ * Empty content, deliberately. The message is the run's PLACE in the thread from
+ * the moment it is submitted — „angelegt" is a state the reader should see —
+ * and its prose arrives when the run has some. A reader of an older build sees
+ * an assistant message with nothing in it, which is what it is.
+ *
+ * Runs inside the caller's tenant scope: the organization is defaulted from
+ * `grid.organization_id` in SQL, so a call outside a scope fails closed rather
+ * than writing into whatever tenant the socket last served.
+ */
+export async function createRunMessage(
+  conversationId: string,
+  runId: string,
+  options: CreateRunMessageOptions = {}
+): Promise<Message> {
+  const at = options.at ?? new Date()
+  const id = runMessageId(runId)
+  // The title is what the block's header shows while the ledger is still
+  // empty, so it is written with the ledger rather than by a later flush. Absent
+  // rather than empty when the caller has none: the block falls back to its own
+  // word for an untitled run, and an empty string would be a title that is empty.
+  const title = sanitizeRunTitle(options.title)
+  const [inserted] = await insertMessages([
+    {
+      id,
+      conversationId,
+      role: 'assistant',
+      runId,
+      content: '',
+      metadata: {
+        messageType: 'agent_response',
+        [RUN_LEDGER_METADATA_KEY]: emptyRunLedger(runId, at),
+        ...(title ? { [RUN_TITLE_METADATA_KEY]: title } : {}),
+      },
+      createdAt: at,
+    },
+  ])
+  if (inserted) return inserted
+  // The insert no-opped, so the message is already there — a retry, which is
+  // the whole point of the deterministic id. Read it back rather than reporting
+  // a failure: the caller wanted a message to exist, and one does.
+  const existing = await findMessageInConversation(conversationId, id)
+  if (!existing) throw new NotFoundError('The run message could not be created')
+  return existing
+}
+
+/** The run a ledger op is about, or a 404. Platform-scope lookup; see the header. */
+async function loadRunForLedger(runId: string) {
+  return withPlatformAccess(
+    'run ledger: the worker names a run by id, before any organization is known',
+    () => taskRepository.findRunById(runId)
+  )
+}
+
+/** The ledger stored on a message, sanitised, or null when it carries none. */
+function storedLedger(message: Message): RunLedger | null {
+  const metadata = (message.metadata ?? {}) as Record<string, unknown>
+  return sanitizeRunLedger(metadata[RUN_LEDGER_METADATA_KEY])
+}
+
+/** The op as the fold takes it — exactly one of a result or an error on `finish`. */
+function finishOutcome(op: Extract<RunLedgerRequest, { op: 'finish' }>) {
+  if (op.result && op.error) {
+    throw new BadRequestError('A finished run has a result or an error, never both')
+  }
+  if (op.result) return { result: op.result }
+  if (op.error) return { error: op.error }
+  throw new BadRequestError('A finished run must say what it produced or why it stopped')
+}
+
+/**
+ * Fold one op into the run's ledger and store the result.
+ *
+ * Read-modify-write under the row lock `mergeMessageMetadata` takes, because
+ * two flushes of the same run can be in flight: the debounced one and the
+ * terminal one. The fold itself is the pure one from `./run-ledger`, so the
+ * BFF, the Python tier and the UI all grow a ledger the same way.
+ */
+export async function applyRunLedgerOp(
+  runId: string,
+  op: RunLedgerRequest,
+  at: Date = new Date()
+): Promise<RunLedgerResponse> {
+  const { ledger } = await foldRunLedgerOp(runId, op, at, false)
+  return { runId, ledger }
+}
+
+/** {@link applyRunLedgerOp}, optionally only onto a live ledger, saying whether it wrote. */
+async function foldRunLedgerOp(
+  runId: string,
+  op: RunLedgerRequest,
+  at: Date,
+  onlyIfLive: boolean
+): Promise<{ ledger: RunLedger; applied: boolean }> {
+  const run = await loadRunForLedger(runId)
+  if (!run) throw new NotFoundError('Unknown run')
+  // A run submitted before this tier minted run messages has nowhere to put a
+  // ledger. A 404 rather than an invented message: the fold treats it as
+  // „nothing to write", and inventing a message would put an empty assistant
+  // turn into a thread nobody asked to have narrated.
+  if (!run.conversationId || !run.runMessageId) {
+    throw new NotFoundError('This run has no message to write a ledger into')
+  }
+  const conversationId = run.conversationId
+  const messageId = run.runMessageId
+
+  return withTenant({ organizationId: run.organizationId }, async () => {
+    // A message with no ledger yet — one minted before this column existed, or
+    // one whose payload did not survive the sanitiser — starts from an empty
+    // ledger dated to the run, never to now: a week-old run must not be dated
+    // to the moment a flush arrived.
+    let current = emptyRunLedger(runId, run.createdAt)
+    let ledger = current
+    let applied = false
+    const stored = await mergeMessageMetadata(conversationId, messageId, (metadata) => {
+      current = sanitizeRunLedger(metadata[RUN_LEDGER_METADATA_KEY]) ?? current
+      ledger = current
+      if (onlyIfLive && !isLiveStatus(runDisplayStatus(current))) return null
+      const next =
+        op.op === 'append'
+          ? applyRunLedgerAppend(current, op, at)
+          : applyRunLedgerFinish(current, finishOutcome(op), at)
+      // Sanitised once more on the way to the column: the moves already bound
+      // their output, and this is the line that makes „sanitised on write" true
+      // of the STORAGE rather than of the caller's good behaviour.
+      ledger = sanitizeRunLedger(next) ?? current
+      applied = true
+      return { [RUN_LEDGER_METADATA_KEY]: ledger }
+    })
+    if (!stored) throw new NotFoundError('This run has no message to write a ledger into')
+    if (!onlyIfLive) await markStartedIfQueued(run, at)
+    await notifyWaiting(run, current, ledger)
+    return { ledger, applied }
+  })
+}
+
+/**
+ * The worker's first flush is the proof a queued run has started: the research
+ * queue (ADR-0079) takes a job at once and starts it when an organization's turn
+ * comes, and until then the run's row says `queued`. Best-effort: the ledger is
+ * already written, and a row that stays `queued` is closed by the run's outcome
+ * exactly as a `running` one is.
+ */
+async function markStartedIfQueued(run: TaskRun, at: Date): Promise<void> {
+  if (run.status !== 'queued') return
+  try {
+    await taskRepository.markRunStarted(run.id, run.organizationId, at)
+  } catch (error) {
+    console.warn('[runs] could not move run', run.id, 'from queued to running', error)
+  }
+}
+
+/** How a run ended, as far as its ledger needs to know. */
+export interface RunEnding {
+  status: 'success' | 'failure' | 'interrupted'
+  error?: string | null
+}
+
+/** What the ledger says for a failure that carried no reason, as the worker's fold says it. */
+const DEFAULT_FAILURE_REASON = 'Der Lauf ist fehlgeschlagen.'
+
+/** How the ledger learns the run ended — the same op the worker's fold sends. */
+export function ledgerOpForEnding(ending: RunEnding, at: Date): RunLedgerRequest {
+  if (ending.status === 'success') return { op: 'finish', result: { filedAt: at.toISOString() } }
+  // A cancelled run has no finish op; „abgebrochen" travels as a status (ADR-0062).
+  if (ending.status === 'interrupted') return { op: 'append', status: 'cancelled' }
+  return { op: 'finish', error: { reason: (ending.error || DEFAULT_FAILURE_REASON).slice(0, 400) } }
+}
+
+/**
+ * Settle the run's block, when its ledger still reads as live, with the ending
+ * its row was just closed with.
+ *
+ * The worker's fold normally sends this op itself. It cannot when there is no
+ * worker left: the ghost reaper failing a run whose pod died, a cancel that
+ * dropped a job no worker had claimed, a reconciler closing what the job store
+ * already decided. Every one of those closes the row, and a closed row is one
+ * nothing looks at again — so before this, the block read „läuft" for good and
+ * its „Abbrechen" answered that the run had already ended.
+ *
+ * `onlyIfLive`, checked under the message's row lock: a ledger the worker has
+ * already settled keeps its own ending, which carries more than this one does
+ * (the filed document, the phase it stopped in). A run with no message has no
+ * block, and is nothing to settle. True when this call wrote the ending.
+ */
+export async function settleRunLedger(
+  run: Pick<TaskRun, 'id' | 'conversationId' | 'runMessageId'>,
+  ending: RunEnding,
+  at: Date = new Date()
+): Promise<boolean> {
+  if (!run.conversationId || !run.runMessageId) return false
+  try {
+    const { applied } = await foldRunLedgerOp(run.id, ledgerOpForEnding(ending, at), at, true)
+    return applied
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) throw error
+    return false
+  }
+}
+
+/**
+ * Tell the requester when their run stops to ask them something, and settle
+ * that row when the run moves on.
+ *
+ * `waiting` is the one status with no column behind it: it exists only in the
+ * ledger, so this fold is the only place that sees a run enter or leave it.
+ * The row is `task_run.waiting`, actionable, anchored on the run — and resolved by
+ * the ledger's next status, which is what keeps an actionable row out of the
+ * badge for good. The payload carries the same ids the outcome rows carry, so
+ * the inbox lands the reader on the run block (`lib/inbox/targets.ts`).
+ *
+ * Fail-open: a flush is the worker's write, and the inbox must never turn it
+ * into a 500 — a missed notification costs a badge, a refused flush costs the
+ * ledger.
+ */
+async function notifyWaiting(run: TaskRun, before: RunLedger, after: RunLedger): Promise<void> {
+  const wasWaiting = runDisplayStatus(before) === 'waiting'
+  const isWaiting = runDisplayStatus(after) === 'waiting'
+  if (wasWaiting === isWaiting) return
+  const groupKey = inboxGroupKey('task_run.waiting', 'project', run.projectId, run.id)
+  try {
+    if (!isWaiting) {
+      // The row an older pod wrote before 0177 still carries `job.waiting` in its key; resolve it too
+      // for one release (`LEGACY_INBOX_TYPES`).
+      const legacyGroupKey = `job.waiting${groupKey.slice('task_run.waiting'.length)}`
+      await resolveInboxItemsFor([
+        { organizationId: run.organizationId, recipientUserId: run.requesterUserId, groupKey },
+        { organizationId: run.organizationId, recipientUserId: run.requesterUserId, groupKey: legacyGroupKey },
+      ])
+      return
+    }
+    await emitInboxItems([
+      {
+        organizationId: run.organizationId,
+        recipientUserId: run.requesterUserId,
+        type: 'task_run.waiting',
+        resourceType: 'project',
+        resourceId: run.projectId,
+        anchorId: run.id,
+        actorUserId: null,
+        groupKey,
+        payload: {
+          subject: run.title,
+          jobId: run.definitionId,
+          runId: run.id,
+          conversationId: run.conversationId,
+          runMessageId: run.runMessageId,
+          taskId: run.id,
+        },
+      },
+    ])
+  } catch (err) {
+    console.warn('[runs] could not update the waiting row for run', run.id, err)
+  }
+}
+
+/**
+ * Where a backend job's run writes — the resolution the worker and the deep
+ * links both need, from the one id the job store holds.
+ *
+ * `backend_job_id` is the worker's only handle on a run: it has no `task_runs`
+ * id, no conversation and no message. Every consumer of that handle goes through
+ * here rather than deriving anything of its own, because the message id is
+ * derived from the RUN id and only this tier knows the pair.
+ *
+ * Null for an interactive deep-research job (no `task_runs` row at all) and for
+ * every run submitted before this tier minted run messages. Both mean the same
+ * thing to a caller — „this run has no message" — and the caller falls back to
+ * writing an ordinary turn.
+ */
+export async function findRunMessageByBackendJobId(
+  backendJobId: string
+): Promise<{ runId: string; conversationId: string; messageId: string } | null> {
+  const run = await withPlatformAccess(
+    'run message lookup: the worker names a run by its backend job id, before any organization is known',
+    () => taskRepository.findRunByBackendJobId(backendJobId)
+  )
+  if (!run?.conversationId || !run.runMessageId) return null
+  return { runId: run.id, conversationId: run.conversationId, messageId: run.runMessageId }
+}
+
+/**
+ * Write the run's finished answer into the run's own message.
+ *
+ * A run is ONE message in the thread that commissioned it, so its report does
+ * not arrive as a new assistant turn beside a question nobody typed — it fills
+ * in the message the thread has been showing since the run was submitted. The
+ * metadata is merged per top-level key and translated through
+ * `normalizeAgentAnswerMetadata` exactly as the internal messages route does, so
+ * the backend's wire spelling (`sources`, `answer_confidence`, …) reads back as
+ * the stored contract every surface looks for — and `run_ledger`, which another
+ * writer owns, is untouched.
+ *
+ * A 404 is the answer for a run with no message, and it is what tells the worker
+ * to fall back to today's question-and-answer pair.
+ */
+export async function writeRunReport(
+  backendJobId: string,
+  report: { content: string; metadata?: Record<string, unknown> }
+): Promise<{ runId: string; conversationId: string; messageId: string }> {
+  const target = await findRunMessageByBackendJobId(backendJobId)
+  if (!target) throw new NotFoundError('This run has no message to write a report into')
+
+  const run = await loadRunForLedger(target.runId)
+  if (!run) throw new NotFoundError('Unknown run')
+
+  return withTenant({ organizationId: run.organizationId }, async () => {
+    const written = await writeMessageContent(
+      target.conversationId,
+      target.messageId,
+      report.content,
+      normalizeAgentAnswerMetadata(report.metadata ?? {}) ?? {}
+    )
+    if (!written) throw new NotFoundError('This run has no message to write a report into')
+    return target
+  })
+}
+
+/**
+ * What a run's own message holds right now: its prose and its ledger.
+ *
+ * For the run reconciler (`./reconcile.ts`), which fills in only what the
+ * worker's own writes did not: a report into a message that is still empty, a
+ * terminal fact into a ledger that still reads as live. Runs inside the caller's
+ * tenant scope. Null when the run has no message, or it is gone.
+ */
+export async function readRunMessage(
+  run: Pick<TaskRun, 'conversationId' | 'runMessageId'>
+): Promise<{ content: string; ledger: RunLedger | null } | null> {
+  if (!run.conversationId || !run.runMessageId) return null
+  const message = await findMessageInConversation(run.conversationId, run.runMessageId)
+  if (!message) return null
+  return { content: message.content ?? '', ledger: storedLedger(message) }
+}
+
+/**
+ * One run as a person reads it: where its message is, and what the ledger says.
+ *
+ * Project-scoped and session-authorized — `project:view`, the same gate the
+ * task list uses — so this is the surface a browser reads a live run from. The
+ * internal route above is the write door and holds no session at all.
+ */
+export async function getRunView(
+  session: AuthorizedSession,
+  projectId: string,
+  runId: string,
+  query: RunViewQuery = {}
+): Promise<RunView> {
+  await requireProjectAccess(session, projectId, 'project:view')
+  const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
+  if (!run) throw new NotFoundError('Unknown run')
+  // A revision task is judged when read: its document's folder as it is now (ADR-0093).
+  await requireMaySeeSubject(session, projectId, run, 'Unknown run')
+  const message = await runMessageOf(run)
+  const view: RunView = {
+    ...viewOf(run, message),
+    // What the run produced, so a reviewer (a person or an agent) can judge it
+    // without opening the thread: the run's message IS its report (ADR-0062).
+    report: await reportOf(session, run, message),
+  }
+  // The stream key, for the browser's live block only; no other reader acts on it.
+  return query.include === 'stream' ? { ...view, backendJobId: run.backendJobId } : view
+}
+
+async function runMessageOf(run: TaskRun): Promise<Message | null> {
+  return run.conversationId && run.runMessageId
+    ? findMessageInConversation(run.conversationId, run.runMessageId)
+    : null
+}
+
+function viewOf(run: TaskRun, message: Message | null): RunView {
+  return {
+    runId: run.id,
+    taskId: run.definitionId,
+    conversationId: run.conversationId,
+    messageId: run.runMessageId,
+    status: run.status,
+    // Re-sanitised on READ as well as on write, like every other stored jsonb
+    // payload a renderer meets: the row may have been written by another build.
+    ledger: message ? storedLedger(message) : null,
+  }
+}
+
+/**
+ * The report as this reader may read it. The text is the run's message, which
+ * lives in a conversation: a commissioned run's conversation can be private to
+ * the people in it, and `project:view` is not a way into it. A reader who is
+ * not a party gets the filed document's id (whose own read checks it) and no
+ * text, rather than a 404 for a run the project list shows them.
+ */
+async function reportOf(
+  session: AuthorizedSession,
+  run: TaskRun,
+  message: Message | null
+): Promise<NonNullable<RunView['report']>> {
+  const content = message?.content?.trim() ?? ''
+  const mayRead =
+    content.length > 0 && run.conversationId
+      ? await requireResourceAccess(session, 'conversation', run.conversationId, 'viewer').then(
+          () => true,
+          () => false
+        )
+      : false
+  const text = mayRead ? content : null
+  return {
+    text: text === null ? null : text.slice(0, RUN_REPORT_MAX_CHARS),
+    truncated: text !== null && text.length > RUN_REPORT_MAX_CHARS,
+    filedDocumentId: run.filedDocumentId ?? null,
+  }
+}
+
+/** The view of a run already resolved inside the caller's project, as a control answers it. */
+async function runView(run: TaskRun): Promise<RunView> {
+  return viewOf(run, await runMessageOf(run))
+}
+
+/**
+ * Who may act on a run (cancel it, have it write now, hand it a document): its
+ * requester, or a member of the project. Not someone who reads the project
+ * only because it is closed (ADR-0090): reading and chatting about a closed
+ * project is every member's, steering somebody else's run is not. Returns the
+ * run, found in the project.
+ */
+async function requireRunActor(
+  session: AuthorizedSession,
+  projectId: string,
+  runId: string,
+  options: { write?: boolean } = {}
+): Promise<TaskRun> {
+  await requireProjectAccess(session, projectId, 'project:view')
+  const access = await requireProjectAccess(session, projectId, CHAT_PERMISSIONS)
+  // Handing a run a document changes what it files into the project: a write.
+  if (options.write && access.closed) throw projectClosedError()
+  const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
+  if (!run) throw new NotFoundError('Unknown run')
+  if (access.readsBecauseClosed && run.requesterUserId !== session.userId) throw new NotFoundError('Unknown run')
+  await requireMaySeeSubject(session, projectId, run, 'Unknown run')
+  return run
+}
+
+/**
+ * The credentials a run control carries to the backend: the person's token, and
+ * the project they were just authorized on, signed by the builder every job
+ * request uses (ADR-0084). The scope comes from `buildCollectionScopeFromRequest`
+ * so the project collection the backend compares is derived exactly as it was
+ * when the run was submitted.
+ */
+async function jobControlCaller(
+  session: AuthorizedSession,
+  projectId: string
+): Promise<JobControlCaller> {
+  const scope = await buildCollectionScopeFromRequest(session, { projectId })
+  return {
+    accessToken: session.accessToken ?? null,
+    contextHeaders: signJobRequestContext(session, scope),
+  }
+}
+
+/**
+ * Stop a run on a person's request: the write door of the run primitive that
+ * the block's „Abbrechen" presses (ADR-0055, ADR-0062).
+ *
+ * ## The same cancel, the same gate, behind the run's own id
+ *
+ * The browser has cancelled a deep-research job since before runs had
+ * messages: `POST /api/jobs/async/job/{jobId}/cancel`, which the proxy gates on
+ * the session plus `CHAT_PERMISSIONS` on the project in scope and forwards to
+ * the backend as the caller. This is that call reached by run id instead of
+ * job id — so the block, which holds only the run's message, does not have to
+ * learn the job store's key — and nothing about it is new: the same backend
+ * endpoint (`cancelBackendJob`), the same credential, and the same permission
+ * (`project:view` to read the run at all, `CHAT_PERMISSIONS` to act on the
+ * agent in the project, exactly as `buildCollectionScopeFromRequest` gates the
+ * proxy). The project travels to the backend signed (ADR-0084), so a teammate
+ * may stop a run somebody else commissioned in it; the backend answers 404, not
+ * 403, for a job outside the signed project that the caller does not own.
+ *
+ * ## Nothing is written here
+ *
+ * The row and the ledger stay as they are. The backend marks the job
+ * interrupted, the worker sees it and stops, the ledger's terminal flush
+ * arrives as `cancelled` through the same route every other flush uses, and
+ * the outcome callback closes the row. Writing „abgebrochen" here as well would
+ * be a second author of the run's status, and the two would disagree exactly
+ * when the cancel did not take.
+ *
+ * Refusals: 404 for a run outside the project, 409 for one that has already
+ * ended (by the row, or by the backend's own verdict when the two race) and for
+ * one that has no backend job — a run that never reached the worker has nothing
+ * to stop.
+ */
+export async function cancelRun(
+  session: AuthorizedSession,
+  projectId: string,
+  runId: string
+): Promise<RunView> {
+  const run = await requireRunActor(session, projectId, runId)
+  if (!isActiveTaskRunStatus(run.status)) throw new ConflictError('This run has already ended')
+  if (!run.backendJobId) throw new ConflictError('This run has no backend job to cancel')
+
+  try {
+    await cancelBackendJob(run.backendJobId, await jobControlCaller(session, projectId))
+  } catch (error) {
+    if (!(error instanceof JobCancelError)) throw error
+    // The backend's verdict on a race: the job finished between the row read
+    // and the cancel. Its 404 is „not yours or not there", and it says which
+    // to nobody on purpose.
+    if (error.status === 400) throw new ConflictError('This run has already ended')
+    if (error.status === 404) throw new NotFoundError('Unknown run')
+    throw new UpstreamError('The run could not be cancelled')
+  }
+  return runView(run)
+}
+
+/**
+ * Add a document to a running run's Grundlage on a person's request. Same
+ * gate and the same refusals as „Jetzt schreiben" ({@link writeNowRun}); the
+ * ledger lists the document through the run's own stream, never here.
+ *
+ * One refusal of its own: a document from a folder not every project member
+ * may read (`requirePlanDocumentsOpen`, 403 `CONVERSATION_CONFINED`), because
+ * the run's stream and report are read by the whole project. Refused before
+ * the backend hears of it. This is the only door a document reaches a running
+ * run by; the async proxy refuses `job/{id}/documents`.
+ */
+export async function addRunDocument(
+  session: AuthorizedSession,
+  projectId: string,
+  runId: string,
+  document: PlanDocument,
+  locale: Locale = AGENT_REFUSAL_LOCALE
+): Promise<RunView> {
+  const run = await requireRunActor(session, projectId, runId, { write: true })
+  if (!isActiveTaskRunStatus(run.status)) throw new ConflictError('This run has already ended')
+  if (!run.backendJobId) throw new ConflictError('This run has no backend job to hand the document to')
+  await requirePlanDocumentsOpen(session.organizationId, projectId, [document], locale)
+
+  try {
+    await addDocumentToBackendJob(run.backendJobId, document, await jobControlCaller(session, projectId))
+  } catch (error) {
+    if (!(error instanceof JobCancelError)) throw error
+    if (error.status === 400) throw new ConflictError('This run has already ended')
+    if (error.status === 404) throw new NotFoundError('Unknown run')
+    throw new UpstreamError('The document could not be handed to the run')
+  }
+  return runView(run)
+}
+
+/**
+ * „Jetzt schreiben": the run stops researching after its current batch and
+ * writes the report from what is there. Same gate as a cancel, the same run
+ * row, the same view answered — the ledger turns `interrupted` when the
+ * report lands, never because the button was pressed.
+ */
+export async function writeNowRun(
+  session: AuthorizedSession,
+  projectId: string,
+  runId: string
+): Promise<RunView> {
+  const run = await requireRunActor(session, projectId, runId)
+  if (!isActiveTaskRunStatus(run.status)) throw new ConflictError('This run has already ended')
+  if (!run.backendJobId) throw new ConflictError('This run has no backend job to write from')
+
+  try {
+    await writeNowBackendJob(run.backendJobId, await jobControlCaller(session, projectId))
+  } catch (error) {
+    if (!(error instanceof JobCancelError)) throw error
+    // The backend's verdict on a race: the job finished between the row read
+    // and the request. Its 404 is „not yours or not there", and it says which
+    // to nobody on purpose.
+    if (error.status === 400) throw new ConflictError('This run has already ended')
+    if (error.status === 404) throw new NotFoundError('Unknown run')
+    throw new UpstreamError('The run could not be asked to write now')
+  }
+  return runView(run)
+}

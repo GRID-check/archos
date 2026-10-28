@@ -42,8 +42,8 @@ pulumi.runtime.setMocks(
 // src/app -> src -> deploy/pulumi -> deploy -> repo root
 const repoRoot = join(__dirname, "..", "..", "..", "..");
 const read = (...parts: string[]) => readFileSync(join(repoRoot, ...parts), "utf8");
-const route = read("frontends", "aiq_api", "src", "aiq_api", "routes", "chat_occupancy.py");
-const chatSocket = read("frontends", "aiq_api", "src", "aiq_api", "chat_socket.py");
+const route = read("apps", "backend", "src", "aiq_api", "routes", "chat_occupancy.py");
+const chatSocket = read("apps", "backend", "src", "aiq_api", "chat_socket.py");
 
 function find(type: string, name: string) {
   const hit = RESOURCES.find((r) => r.type === type && r.name === name);
@@ -114,7 +114,7 @@ describe("the chat tier's scale-out", () => {
   });
 
   it("autoscales only with affinity off, a database-claimed tier and room between floor and ceiling", async () => {
-    const { backendAutoscaled } = await import("../config");
+    const { backendAutoscaled } = await import("../config/chat-tier");
     const { loadConfig } = await import("../config");
     expect(backendAutoscaled(cfg)).toBe(true);
 
@@ -146,7 +146,7 @@ describe("the chat tier's scale-out", () => {
     // Both sides, as source: the route's path, the JSON field it answers, the header it guards on.
     expect(route).toContain(`CHAT_OCCUPANCY_PATH = "${new URL(trigger.metadata.url).pathname}"`);
     expect(route).toContain(`"${trigger.metadata.valueLocation}": active`);
-    expect(read("frontends", "aiq_api", "src", "aiq_api", "routes", "internal_auth.py")).toContain(
+    expect(read("apps", "backend", "src", "aiq_api", "routes", "internal_auth.py")).toContain(
       `"${trigger.metadata.keyParamName}"`,
     );
     expect(trigger.metadata).toMatchObject({ authMode: "apiKey", method: "header" });
@@ -154,7 +154,7 @@ describe("the chat tier's scale-out", () => {
 
   it("sends the shared internal token from the Secret the pods read it from", async () => {
     const spec = await resolve(find(AUTH, "chat-occupancy-auth").inputs.spec);
-    expect(spec.secretTargetRef).toEqual([{ parameter: "apiKey", name: "grid-secrets", key: "GRID_INTERNAL_API_TOKEN" }]);
+    expect(spec.secretTargetRef).toEqual([{ parameter: "apiKey", name: "grid-secrets", key: "INTERNAL_API_TOKEN" }]);
     const scaled = await resolve(find(SCALED, "chat").inputs.spec);
     const trigger = scaled.triggers.find((t: { type: string }) => t.type === "metrics-api");
     expect(trigger.authenticationRef.name).toBe("chat-occupancy-auth");
@@ -192,20 +192,20 @@ describe("the chat tier's scale-out", () => {
   it("gives a terminating replica the whole drain, and the drain covers the longest chat turn", async () => {
     const spec = await resolve(find(STATEFULSET, "chat").inputs.spec);
     const grace = spec.template.spec.terminationGracePeriodSeconds;
-    const drain = Number(backendEnvNames.GRID_CHAT_DRAIN_SECONDS);
+    const drain = Number(backendEnvNames.CHAT_DRAIN_SECONDS);
 
     expect(drain).toBe(cfg.backend.drainSeconds);
     expect(grace).toBeGreaterThan(drain + 10); // the preStop endpoint drain comes out of the same budget
-    const deadline = Number(chatSocket.match(/GRID_CHAT_TURN_DEADLINE_SECONDS", "(\d+)"/)?.[1]);
+    const deadline = Number(chatSocket.match(/CHAT_TURN_DEADLINE_SECONDS", "(\d+)"/)?.[1]);
     expect(deadline).toBeGreaterThan(0);
     expect(drain).toBeGreaterThanOrEqual(deadline);
   });
 
   it("hands both tiers the one affinity flag, in the spelling each reads", () => {
-    expect(backendEnvNames.GRID_CHAT_AFFINITY).toBe("0");
-    expect(frontendEnvNames.GRID_CHAT_AFFINITY).toBe("0");
-    expect(chatSocket).toContain('"GRID_CHAT_AFFINITY"');
-    expect(read("frontends", "ui", "server.js")).toContain("GRID_CHAT_AFFINITY");
+    expect(backendEnvNames.CHAT_AFFINITY).toBe("0");
+    expect(frontendEnvNames.CHAT_AFFINITY).toBe("0");
+    expect(chatSocket).toContain('"CHAT_AFFINITY"');
+    expect(read("apps", "workspace", "server.js")).toContain("CHAT_AFFINITY");
   });
 
   it("leaves the replica count to KEDA once it exists", () => {

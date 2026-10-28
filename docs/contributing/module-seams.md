@@ -1,13 +1,13 @@
 # Module seams
 
 Which module may import which is checked by a tool in each language, not by
-review: dependency-cruiser for the UI (`task fe:lint`), import-linter for the
+review: dependency-cruiser for the UI (`task workspace:lint`), import-linter for the
 Python packages (`task be:lint`). Each has a list of the violations that existed
 when the check arrived. A new violation fails, and so does a listed one that is
 gone, so the lists only shrink. That is the ratchet: fixing an edge removes its
 line, and the line cannot come back.
 
-## The UI: `frontends/ui`
+## The UI: `apps/workspace`
 
 The layers point one way: `app` → `features` → `components` → `lib`.
 
@@ -23,7 +23,7 @@ The layers point one way: `app` → `features` → `components` → `lib`.
 Test files, `test-utils/` and `mocks/` are not checked. A type-only import
 counts like any other, except for `client-imports-server-only`.
 
-The config is `frontends/ui/.dependency-cruiser.cjs`. `feature-cycle` is not a
+The config is `apps/workspace/.dependency-cruiser.cjs`. `feature-cycle` is not a
 dependency-cruiser rule: dependency-cruiser finds cycles between modules or
 between leaf folders and keys each one by the path it walked, and those paths
 move when an unrelated edge inside a feature does. The reporter
@@ -32,7 +32,7 @@ and keys a cycle by its feature-to-feature edges instead.
 
 ### Working with it
 
-- `bun run lint:seams` (inside `task fe:lint`) passes the known violations and
+- `bun run lint:seams` (inside `task workspace:lint`) passes the known violations and
   fails new ones, and fails a baseline entry whose violation is gone.
 - Fixed one? `bun run lint:seams:baseline` removes the stale entries from both
   lists (`.dependency-cruiser-known-violations.json`,
@@ -59,7 +59,7 @@ builds the graph with grimp, which sees imports inside functions too.
 
 | Contract | What it forbids | Allowed |
 |---|---|---|
-| `agent-api-seam` | `aiq_agent` importing `aiq_api`, directly or through a chain | `turn/api_seam.py`, the seam itself; `auth/utils.py` and `auth/workos_validator.py`, an older inversion |
+| `agent-api-seam` | `aiq_agent` importing `aiq_api`, directly or through a chain. What the agent needs from a request is owned in `aiq_agent` and written by `aiq_api` (`auth/request_identity.py`, `auth/errors.py`), or handed in by the API-tier caller (`oib_sync`'s `enqueue`) | nothing |
 | `agent-knowledge-port` | `aiq_agent` importing `knowledge_layer` directly | `knowledge/factory.py`, the BaseRetriever/BaseIngestor port (ADR-0072); sixteen known bypasses, each listed |
 | `qdrant-client-confined` | Any of the three packages importing `qdrant_client` directly | `knowledge_layer.qdrant` |
 

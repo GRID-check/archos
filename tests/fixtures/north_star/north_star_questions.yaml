@@ -26,7 +26,7 @@
 # Every check below is the exemplar's, not today's behaviour: a failing row is the gap to the star.
 
 # The instruction of the document check, as `checkInstruction` in
-# frontends/ui/src/lib/document-check/check.ts words it. `${document.name}` and `${document.id}` are filled
+# apps/workspace/bff/document-check/check.ts words it. `${document.name}` and `${document.id}` are filled
 # from the row's `focus_document`; `${MAX_FINDINGS}` is already 4. `tests/test_north_star_rows.py` fails when
 # this text and check.ts differ.
 document_check_instruction: &document_check_instruction |-
@@ -225,7 +225,7 @@ questions:
       judge: [pending]
 
   # The turn a `piloti-ask` starts, asked as the chat turn it is (same prompt, tools and turn). The
-  # door around it is held by frontends/ui/src/lib/piloti-asks/service.spec.ts.
+  # door around it is held by apps/workspace/bff/agent-asks/service.spec.ts.
   - id: ns-piloti-ask
     scene: [4]
     capability: an outside agent consults Piloti

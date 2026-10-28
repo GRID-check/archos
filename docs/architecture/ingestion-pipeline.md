@@ -11,9 +11,9 @@ Older, deeper material is still right and is linked rather than repeated:
 [`visual-ingestion.md`](visual-ingestion.md) (the drawing schema and its rules),
 ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
-Short forms: **A** is `sources/knowledge_layer/src/llamaindex/adapter.py`, **S** is
-`frontends/ui/src/lib/documents/service.ts`, **D** is
-`frontends/aiq_api/src/aiq_api/jobs/ingest_dispatch.py`.
+Short forms: **A** is `packages/knowledge-layer/src/llamaindex/adapter.py`, **S** is
+`apps/workspace/bff/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
+`apps/backend/src/aiq_api/jobs/ingest_dispatch.py`.
 
 ## 1. The whole thing on one page
 
@@ -40,7 +40,7 @@ flowchart LR
     PL[_ingest_job A:4674<br/>the per-file pipeline]
   end
   subgraph Providers["OpenRouter"]
-    VLM[vision model<br/>GRID_VLM_MODEL]
+    VLM[vision model<br/>VLM_MODEL]
     JEV[Jev decisions]
     LLM[summary model]
     EMB[embeddings]
@@ -64,7 +64,7 @@ Three things in this picture decide almost everything about speed and reliabilit
 
 1. **One document is one queue row, one claim, one worker thread.** Nothing inside a
    document runs on a second machine (ADR-0117 keeps it that way).
-2. **Every vision call in the fleet holds one of `GRID_VLM_FLEET_CONCURRENCY` slots**
+2. **Every vision call in the fleet holds one of `VLM_FLEET_CONCURRENCY` slots**
    (32 by default, a lease pool on Dragonfly, A:419). That pool is shared by every
    office on the platform. It is the throughput ceiling, not CPU.
 3. **Status is pulled, never pushed.** The BFF learns a document is done when someone
@@ -87,7 +87,7 @@ sequenceDiagram
   F->>S: put original (and Gotenberg rendition for Word/PowerPoint)
   F->>P: dispatchIngest: presigned GET (24 h), thumbnail PUT, screening, project_facts (S:459)
   P->>P: dispatch key = sha256(document, path, collection), live job reused (ingest.py:229)
-  P->>Q: enqueue, payload encrypted with GRID_JOB_PAYLOAD_KEK
+  P->>Q: enqueue, payload encrypted with JOB_PAYLOAD_KEK
   P-->>F: job id
   F->>F: documents.ingest_status = pending (S:517)
   W->>Q: claim_next (FOR UPDATE SKIP LOCKED, lane with fewest running first)
@@ -167,7 +167,7 @@ What fails the file, and what only makes it poorer:
 A 429 or a timeout inside a vision call is retried in place (A:2274). A file whose
 read failed for a passing reason (`transient`: an interruption, a timeout, a download
 or provider error) is sent back by the background-work sweep
-(`frontends/ui/src/lib/documents/transient-retry.ts`): at `bulk` priority, at most
+(`apps/workspace/bff/documents/transient-retry.ts`): at `bulk` priority, at most
 three attempts in all, 5 minutes after the first failure and doubling, and only for a
 failure of the last 24 hours, so a deploy never re-reads an old backlog. Every other
 failure waits for a person or the `reingest_failed` job.
@@ -218,7 +218,7 @@ The vision phase is about 80 % of a drawing set's time, and it is serial in roun
 of four. The fleet sees it differently: **every one of those 20 calls holds one of
 the 32 slots every office shares**. At 25 s a call, the whole platform reads about
 4,600 drawing pages an hour, and at most 15 documents are in flight at once
-(5 pods × 3 jobs, `deploy/pulumi/src/config.ts:2995`). That is the number to watch
+(5 pods × 3 jobs, `ingestWorker` in `deploy/pulumi/src/config/workers.ts`). That is the number to watch
 when many offices upload at the same time, and why a cheaper first look at every
 page is the first move in the roadmap.
 
@@ -324,8 +324,8 @@ order, so B's document waits for one document of A's to finish before it starts.
 | Question | Where |
 |---|---|
 | Why did this file fail? | `documents.ingest_error`, the job's `file_details`, `[ingest-perf]` and the worker log for the job id |
-| Why is this page missing from search? | page triage (`page_triage.classify_page`), the render cap (`GRID_MAX_RENDERED_PAGES`), a skipped vision or OCR call (warning in the log only) |
+| Why is this page missing from search? | page triage (`page_triage.classify_page`), the render cap (`MAX_RENDERED_PAGES`), a skipped vision or OCR call (warning in the log only) |
 | What did it cost? | `llm_usage_events` where `activity = 'ingest'` and the job id |
 | Who decides the order of jobs? | `aiq_agent.knowledge.ingest_queue.claim_next`, ADR-0076 and ADR-0079 |
 | Where is the vision prompt? | `visual_analysis.build_prompt` over `visual_domains` |
-| What runs after a document settles? | `frontends/ui/src/lib/upload-batches/settle.ts` (`onDocumentsSettled`) |
+| What runs after a document settles? | `apps/workspace/bff/upload-batches/settle.ts` (`onDocumentsSettled`) |

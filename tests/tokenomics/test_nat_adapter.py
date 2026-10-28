@@ -1,6 +1,6 @@
 """Tests for NAT trace parsing and phase inference.
 
-Module under test: src/aiq_agent/tokenomics/nat_adapter.py
+Module under test: packages/agent/src/aiq_agent/tokenomics/nat_adapter.py
 """
 
 import json

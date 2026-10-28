@@ -50,7 +50,7 @@ the agent does not see it either; that can change when an answer needs it.
 months from and to, an optional `user_id` that must name a member of the
 organization when set, the creator and timestamps. A composite foreign key
 ties a row to its project and organization and cascades with the project's
-purge; `grid_secure_table` puts it inside the tenant boundary. A row is deleted
+purge; `secure_table` puts it inside the tenant boundary. A row is deleted
 outright: that is the erasure. The audit trail (`project.person.added`,
 `.updated`, `.deleted`, `project.period.changed`) names a person by id, never by
 name, because the audit log outlives an erasure.

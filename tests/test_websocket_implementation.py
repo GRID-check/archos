@@ -5,7 +5,7 @@ default exception handler. The source is websockets' legacy protocol (uvicorn's
 default): ``ping()`` returns ``asyncio.shield(pong_waiter)``, a peer that closes
 while a keepalive ping is unanswered gets the keepalive task, and so the shield,
 cancelled first, and Python 3.12+ then reports the waiter's close exception as
-"... exception in shielded future". ``deploy/start_web.py`` names the
+"... exception in shielded future". ``apps/backend/start_web.py`` names the
 implementation production runs; this runs that exact close against it.
 
 There used to be an oracle beside it that ran the same close against the legacy
@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 import uvicorn
 
-START_WEB = Path(__file__).resolve().parents[1] / "deploy" / "start_web.py"
+START_WEB = Path(__file__).resolve().parents[1] / "apps" / "backend" / "start_web.py"
 
 
 def _module_constant(name: str) -> object:
@@ -35,7 +35,7 @@ def _module_constant(name: str) -> object:
     for node in ast.parse(START_WEB.read_text()).body:
         if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == name for t in node.targets):
             return ast.literal_eval(node.value)
-    raise AssertionError(f"deploy/start_web.py no longer names {name}")
+    raise AssertionError(f"apps/backend/start_web.py no longer names {name}")
 
 
 def _production_implementation() -> str:
@@ -47,7 +47,7 @@ def _uvicorn_run_keywords() -> dict[str, str]:
     for node in ast.walk(ast.parse(START_WEB.read_text())):
         if isinstance(node, ast.Call) and ast.unparse(node.func) == "uvicorn.run":
             return {kw.arg: ast.unparse(kw.value) for kw in node.keywords if kw.arg}
-    raise AssertionError("deploy/start_web.py no longer calls uvicorn.run")
+    raise AssertionError("apps/backend/start_web.py no longer calls uvicorn.run")
 
 
 async def _app(scope, receive, send):

@@ -100,12 +100,12 @@ does not have.
   `POST /api/projects/[id]/tasks/[taskId]/review`); the UI for it belongs to
   the UI workstream.
 - Bad: one more table inside the tenant boundary (secured by
-  `grid_secure_table`, listed in `rls-coverage.spec.ts`).
+  `secure_table`, listed in `rls-coverage.spec.ts`).
 
 ### Confirmation
 
 The tenant boundary is a CHECK plus a test, not a comment. Migration
-`0075_tasks.sql` calls `grid_secure_table` with the same org-and-project
+`0075_tasks.sql` calls `secure_table` with the same org-and-project
 predicate `jobs` uses, and names today's `status` / `review` /
 `filing_status` members as CHECKs. `rls-coverage.spec.ts` lists `0075` in
 `BOUNDARY_MIGRATIONS`; `task db:test:rls` (CI's tenant-isolation job) is

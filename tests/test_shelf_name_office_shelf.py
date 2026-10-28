@@ -31,9 +31,11 @@ from aiq_agent.common.source_kinds import SOURCE_KINDS
 from aiq_agent.common.source_kinds import Shelf
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DICTIONARIES = REPO_ROOT / "frontends" / "ui" / "src" / "i18n" / "dictionaries"
-PROMPTS = sorted((REPO_ROOT / "src" / "aiq_agent" / "agents").glob("*/prompts/*"))
-BUILTIN_SKILLS = sorted((REPO_ROOT / "src" / "aiq_agent" / "skills" / "builtin").rglob("SKILL.md"))
+DICTIONARIES = REPO_ROOT / "apps" / "workspace" / "i18n" / "dictionaries"
+PROMPTS = sorted((REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents").glob("*/prompts/*"))
+BUILTIN_SKILLS = sorted(
+    (REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "skills" / "builtin").rglob("SKILL.md")
+)
 
 NAME_DE = "Büroablage"
 NAME_EN = "Office filing"
@@ -87,7 +89,7 @@ class TestTheOldNamesStayOut:
         assert _hits(_dictionary_files("en"), _OFFICE_ARCHIVE_TERM, copy_only=True) == []
 
     def test_no_agent_prompt_says_office_archive_or_office_archive(self):
-        assert PROMPTS, "no prompt files found under src/aiq_agent/agents/*/prompts"
+        assert PROMPTS, "no prompt files found under packages/agent/src/aiq_agent/agents/*/prompts"
         pattern = re.compile(rf"{_OFFICE_ARCHIVE_TERM.pattern}|office[- ]archive", re.IGNORECASE)
         assert _hits(PROMPTS, pattern, copy_only=False) == []
 
@@ -102,7 +104,7 @@ class TestTheOldNamesStayOut:
         what its code says about itself.
         """
         offenders: list[str] = []
-        for path in sorted((REPO_ROOT / "sources" / "knowledge_layer" / "src").rglob("*.py")):
+        for path in sorted((REPO_ROOT / "packages" / "knowledge-layer" / "src").rglob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"))
             docstrings = {
                 id(node.body[0].value)

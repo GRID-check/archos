@@ -165,5 +165,5 @@ there (`purger/storage.js`, `abortMultipartUploads`).
 - The BFF carries the archive's bytes; twenty gigabytes is twenty gigabytes
   through the frontend pods.
 - `libpff-python` is pinned to its first cp314 release and is labelled alpha
-  upstream; `GRID_PST_FIXTURE_DIR` runs `test_mail_archive_reader.py` over real
+  upstream; `PST_FIXTURE_DIR` runs `test_mail_archive_reader.py` over real
   archives when it moves.

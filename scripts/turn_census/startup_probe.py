@@ -74,7 +74,7 @@ def _patch_http() -> None:
 
 
 def _patch_retriever() -> None:
-    retriever = importlib.import_module("knowledge_layer.llamaindex.adapter").LlamaIndexRetriever
+    retriever = importlib.import_module("knowledge_layer.llamaindex.retriever").LlamaIndexRetriever
 
     def timed(phase: str, method: Any) -> Any:
         @functools.wraps(method)

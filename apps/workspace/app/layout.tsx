@@ -1,0 +1,276 @@
+/**
+ * Root Layout
+ *
+ * The root layout for the entire application.
+ * Sets up the HTML structure, global styles, and providers.
+ *
+ * Server-side environment variables are read here and passed to client
+ * providers, enabling runtime configuration without rebuilding.
+ */
+
+import { type ReactNode } from 'react'
+import { type Metadata, type Viewport } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { connection } from 'next/server'
+import { ChunkReloadGuard } from './chunk-reload-guard'
+import { STORAGE_RENAME_BOOT_SCRIPT } from './storage-rename-boot'
+import { THEME_BOOT_SCRIPT, THEME_COLOR } from './theme-boot'
+import { Providers } from './providers'
+import { NavigationTrail } from '@/components/shell/navigation-trail'
+import type { AppConfig } from '@/shared/context'
+import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
+import { isVlmConfigured } from '@/lib/documents/vlm-capability'
+import { getEffectiveMaxUploadBytes } from '@/lib/storage/upload-limit'
+import { getGridSession } from '@/lib/auth/session'
+import { runWithTenantSlot } from '@/lib/db/tenant-context'
+import { PRODUCT_NAME } from '@/lib/brand'
+import { FEATURE_FLAGS, isFeatureEnabled, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
+import { getLocale } from '@/i18n/server'
+import { commonCopy } from '@/i18n/namespaces/common'
+import './globals.css'
+import { isAuthRequired } from '@/lib/auth/auth-required'
+import { postHogConfigFromEnv, type PostHogConfig, type PostHogIdentity } from '@/lib/analytics/posthog-config'
+import { getOrganizationDisplayName } from '@/lib/organizations/service'
+
+const geistSans = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
+  display: 'swap',
+})
+
+/**
+ * Not preloaded. A preload is a promise that the page uses the file within
+ * seconds of load, and mono is set only by code, keycaps and admin tables —
+ * nothing on the first paint of the chat. Preloaded on every route, it was a
+ * console warning on every route. It still loads the moment something uses it,
+ * and `swap` shows the fallback stack (`--font-mono` in tokens.css) meanwhile.
+ */
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
+  display: 'swap',
+  preload: false,
+})
+
+/**
+ * Mobile-first viewport: edge-to-edge rendering on notched devices
+ * (safe-area insets are handled per-surface with env() padding).
+ *
+ * `interactiveWidget: 'resizes-content'` is what makes the on-screen keyboard
+ * part of the layout instead of something that happens on top of it. The shell
+ * is `h-dvh overflow-hidden` with the composer at the bottom of a flex column,
+ * and under the browser default (`resizes-visual`) the keyboard does not change
+ * the layout viewport at all: `dvh` keeps reporting the full screen, so the
+ * shell keeps laying itself out to a height that is now partly behind the
+ * keyboard, and the composer goes with it. The browser then rescues the focused
+ * field by shifting the visual viewport, which leaves the app's own chrome
+ * half-scrolled and the transcript in a position nothing in our code chose.
+ *
+ * `resizes-content` shrinks the layout viewport instead, so `h-dvh` becomes the
+ * space actually left above the keyboard and the existing flex column does the
+ * rest: the transcript gets shorter and the composer sits on the keyboard,
+ * which is what every messaging surface does and what this one was built to do.
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
+  // The browser UI (Android's status bar, Safari's tab bar) takes the app's
+  // paper or charcoal instead of a default white band above a dark app. The
+  // media pair answers 'system'; an explicit choice that disagrees with the OS
+  // is corrected by providers.tsx once React runs.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: THEME_COLOR.light },
+    { media: '(prefers-color-scheme: dark)', color: THEME_COLOR.dark },
+  ],
+}
+
+export const metadata: Metadata = {
+  title: {
+    // Bare landing/auth routes render this; nested routes (e.g. a project)
+    // override `template` so their titles read "<Section> — Piloti".
+    default: `${PRODUCT_NAME} — Workspace for planning offices`,
+    template: `%s — ${PRODUCT_NAME}`,
+  },
+  description:
+    'Workspace for planning offices: projects, files, the building model, tasks and research, with Office filing and building law at hand. Every answer cites its source.',
+  // Icons come from the file conventions beside this layout (favicon.ico,
+  // icon.svg, apple-icon.png) and manifest.ts; all are rendered from
+  // packages/brand/mark.svg. The app is behind sign-in: see robots.ts.
+  robots: { index: false, follow: false },
+  // Added to the home screen, iOS runs the app standalone under this name. The
+  // status bar is `default`: dark glyphs on the warm paper, which `themeColor`
+  // above paints behind it. `black-translucent` would draw white glyphs over
+  // the paper, and the shell already clears the status bar itself
+  // (`env(safe-area-inset-top)` on every top band), so it would buy nothing.
+  appleWebApp: { capable: true, title: PRODUCT_NAME, statusBarStyle: 'default' },
+  applicationName: PRODUCT_NAME,
+}
+
+/**
+ * Whether standalone image upload is offered to this session (WorkOS
+ * `image-upload` flag, FB-15a). Read tolerantly — an unauthenticated route or a
+ * session-lookup failure must never break the layout; it reads as a session
+ * without the claim (off where people sign in, on where nobody does).
+ */
+const isImageUploadEnabled = async (): Promise<boolean> =>
+  isSessionFlagEnabled(FEATURE_FLAGS.imageUpload)
+
+/** Whether IFC model upload is offered to this session (WorkOS `ifc-models`). */
+const isIfcUploadEnabled = async (): Promise<boolean> =>
+  isSessionFlagEnabled(FEATURE_FLAGS.ifcModels)
+
+const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> => {
+  try {
+    // Own slot, like every other entry point: the root layout gets no route
+    // factory either, and `getGridSession` publishes the tenant into whatever
+    // slot is open — with none, into an ambient binding that does not survive.
+    return await runWithTenantSlot(async () => {
+      const session = await getGridSession()
+      return isFeatureEnabled(session ?? { featureFlags: null }, flag)
+    })
+  } catch {
+    return isFeatureEnabled({ featureFlags: null }, flag)
+  }
+}
+
+/**
+ * The per-file upload limit of this session's organization, the number the
+ * upload routes enforce (`assertFileSizeAllowed`). `undefined` means the
+ * deployment default: a public page, a session without an organization, or a
+ * read that failed. Failing to the default is safe in both directions, because
+ * the server judges every file against the real number regardless.
+ */
+const getSessionMaxUploadBytes = async (): Promise<number | undefined> => {
+  try {
+    return await runWithTenantSlot(async () => {
+      const session = await getGridSession()
+      if (!session?.organizationId) return undefined
+      return getEffectiveMaxUploadBytes(session.organizationId)
+    })
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Who the server already knows the visitor is, for PostHog's `bootstrap`: with
+ * it the first pageview is identified, where an id handed over only after
+ * hydration left that pageview on an anonymous person.
+ *
+ * `null` for a signed-out visitor (no bootstrap, no profile), when analytics is
+ * off (no lookup is spent on it), when auth is off (there is no person), and on any failure: the browser then
+ * identifies after AuthKit restores its session, as it did before. Non-personal
+ * fields only; no email, no name.
+ */
+const getPosthogIdentity = async (
+  posthog: PostHogConfig,
+  locale: string
+): Promise<PostHogIdentity | null> => {
+  if (!posthog.host || !posthog.projectToken || !isAuthRequired()) return null
+  try {
+    return await runWithTenantSlot(async () => {
+      const session = await getGridSession()
+      if (!session?.userId) return null
+      return {
+        distinctId: session.userId,
+        organizationId: session.organizationId,
+        organizationName: await getOrganizationDisplayName(session.organizationId),
+        role: session.role,
+        locale,
+      }
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Runtime configuration from server-side environment variables.
+ * These values can be changed at runtime without rebuilding the container.
+ */
+const getAppConfig = async (locale: string): Promise<AppConfig> => {
+  // Image upload = flag AND capability; IFC upload = flag alone (extraction runs
+  // in this process, so there is no capability to derive). Resolved server-side
+  // so the picker and validation share ONE accepted-types list with the upload
+  // allow-list.
+  const [imageUploadEnabled, vlmAvailable, ifcUploadEnabled, maxFileSizeBytes] = await Promise.all([
+    isImageUploadEnabled(),
+    isVlmConfigured(),
+    isIfcUploadEnabled(),
+    getSessionMaxUploadBytes(),
+  ])
+  const posthog = postHogConfigFromEnv(process.env)
+  return {
+    authRequired: isAuthRequired(),
+    fileUpload: getFileUploadConfigFromEnv(process.env, {
+      imageUploadEnabled,
+      vlmAvailable,
+      ifcUploadEnabled,
+      maxFileSizeBytes,
+    }),
+    // Read server-side per request: the Docker image builds with no env
+    // files, so a client-side `process.env.NEXT_PUBLIC_*` read would bake
+    // `undefined` into the bundle and silently disable analytics on every
+    // deployed environment. Empty values keep the client disabled (fail-open).
+    // Replay, its sample rate and the first-party proxy switch are read here
+    // for the same reason as the host and token (`posthog-config.ts`).
+    posthog,
+    posthogIdentity: await getPosthogIdentity(posthog, locale),
+  }
+}
+
+interface RootLayoutProps {
+  children: ReactNode
+}
+
+const RootLayout = async ({ children }: RootLayoutProps): Promise<ReactNode> => {
+  await connection()
+  const locale = await getLocale()
+  const config = await getAppConfig(locale)
+  const t = commonCopy.messages[locale]
+
+  return (
+    <html
+      lang={locale}
+      id="style-root"
+      className={`${geistSans.variable} ${geistMono.variable} overscroll-none`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Blocking on purpose: it sets `.dark` while <head> is parsed, so the
+            first paint is already in the reader's theme (theme-boot.ts). The
+            app sends no Content-Security-Policy for documents yet; the day it
+            does, this script needs the request nonce like Next's own. The
+            first moves browser keys off their old names (storage-rename-boot.ts),
+            so the theme script and every store read the new ones. */}
+        <script dangerouslySetInnerHTML={{ __html: STORAGE_RENAME_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
+      {/* `overscroll-none` on html and body: inside the app the document never
+          scrolls (the shell is one viewport tall and scrolls inside), so all a
+          pull past the edge can do on iOS is rubber-band the whole app, chrome
+          included, away from the keyboard and the composer. Pages that do
+          scroll the document still scroll; they lose only the bounce and
+          Android's pull-to-refresh. Inner scrollers keep their own setting. */}
+      <body className="bg-surface-base text-foreground font-sans antialiased overscroll-none">
+        <ChunkReloadGuard />
+        <a
+          href="#main-content"
+          className="focus-visible:z-skip-link focus-visible:bg-primary focus-visible:text-primary-foreground sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-3 focus-visible:top-3 focus-visible:rounded-full focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:shadow-md"
+        >
+          {t.actions.skipToContent}
+        </a>
+        <Providers config={config} locale={locale}>
+          {/* Records where the reader has been, so the pages outside the project
+              shell can offer a back control that actually goes back. */}
+          <NavigationTrail />
+          {children}
+        </Providers>
+      </body>
+    </html>
+  )
+}
+
+export default RootLayout

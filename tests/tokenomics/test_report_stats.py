@@ -1,6 +1,6 @@
 """Tests for tokenomics report statistics helpers.
 
-Module under test: src/aiq_agent/tokenomics/report/_report_stats.py
+Module under test: packages/agent/src/aiq_agent/tokenomics/report/_report_stats.py
 """
 
 from aiq_agent.tokenomics.report._report_stats import _latency_stats

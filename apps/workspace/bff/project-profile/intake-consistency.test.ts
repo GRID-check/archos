@@ -1,0 +1,105 @@
+/**
+ * @vitest-environment node
+ */
+import { describe, expect, it } from 'vitest'
+
+import {
+  checkIntakeConsistency,
+  checkIntakeConsistencyFromAnswers,
+  collectFreeTextFields,
+  collectStructuredContextFields,
+} from './intake-consistency'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { buildIntakeProfile } from './intake-profile'
+import type { ProjectPrimitiveValue } from './types'
+
+const definition = projectIntakeDefinitionV1
+type Answers = Record<string, ProjectPrimitiveValue>
+
+function check(answers: Answers) {
+  return checkIntakeConsistencyFromAnswers(answers, definition)
+}
+function keys(findings: ReturnType<typeof check>): string[] {
+  return findings.map((f) => f.messageKey)
+}
+
+describe('checkIntakeConsistency — fossil heat source on a new build', () => {
+  it('flags a gas heat supply on a new build (Erneuerbare-Wärme-Gesetz)', () => {
+    const findings = check({ A5: ['new_build'], 'E1@bldg1': 'gas' })
+    const finding = findings.find((f) => f.messageKey === 'fossilNewBuildConflict')!
+    expect(finding).toBeDefined()
+    expect(finding.severity).toBe('inconsistency')
+    expect(finding.params).toMatchObject({ building: 'Bauwerk 1' })
+    expect(finding.fields[0]).toBe('Art des Vorhabens (Projekt gesamt)')
+  })
+
+  it('flags each offending building independently', () => {
+    const findings = check({
+      A5: ['new_build'],
+      'E1@bldg1': 'gas',
+      'E1@bldg2': 'heat_pump',
+      'E1@bldg3': 'gas',
+    })
+    expect(findings.filter((f) => f.messageKey === 'fossilNewBuildConflict')).toHaveLength(2)
+  })
+
+  it('does NOT flag gas on an existing-building project', () => {
+    expect(check({ A5: ['conversion', 'refurbishment'], 'E1@bldg1': 'gas' })).toEqual([])
+  })
+
+  it('does NOT flag a non-fossil supply on a new build', () => {
+    expect(check({ A5: ['new_build'], 'E1@bldg1': 'district_heating' })).toEqual([])
+  })
+
+  it('never triggers when either answer is skipped', () => {
+    expect(check({ A5: ['new_build'] })).toEqual([])
+    expect(check({ 'E1@bldg1': 'gas' })).toEqual([])
+  })
+})
+
+describe('checkIntakeConsistency — profile entry point', () => {
+  it('runs the rules against a reconstructed profile', () => {
+    const profile = buildIntakeProfile({ A5: ['new_build'], 'E1@bldg1': 'gas' }, definition)
+    expect(keys(checkIntakeConsistency(profile, definition))).toContain('fossilNewBuildConflict')
+  })
+
+  it('returns [] for a consistent (or too-sparse) profile', () => {
+    const profile = buildIntakeProfile({ A5: ['new_build'], 'E1@bldg1': 'heat_pump' }, definition)
+    expect(checkIntakeConsistency(profile, definition)).toEqual([])
+    expect(checkIntakeConsistency(buildIntakeProfile({}, definition), definition)).toEqual([])
+  })
+})
+
+describe('collectFreeTextFields', () => {
+  it('collects applicable free-text answers over the length threshold', () => {
+    const answers: Answers = {
+      G1: 'Ein städtebaulich markanter Wohnbau am Fluss mit begrüntem Innenhof.',
+    }
+    expect(collectFreeTextFields(answers, definition)).toEqual([
+      {
+        field: 'Projektbeschreibung, Entwurfsidee & Umfeld',
+        value: 'Ein städtebaulich markanter Wohnbau am Fluss mit begrüntem Innenhof.',
+      },
+    ])
+  })
+
+  it('omits trivial (<10 char) and blank free text', () => {
+    expect(collectFreeTextFields({ G1: 'ok' }, definition)).toEqual([])
+    expect(collectFreeTextFields({ G1: '   ' }, definition)).toEqual([])
+  })
+})
+
+describe('collectStructuredContextFields', () => {
+  it('renders applicable structured answers with option labels, excluding free text', () => {
+    const answers: Answers = {
+      A2_country: 'at',
+      A2_land: 'vienna',
+      A5: ['new_build'],
+      G1: 'Ein Freitext, der nicht im strukturierten Kontext auftauchen darf.',
+    }
+    const fields = collectStructuredContextFields(answers, definition)
+    expect(fields).toContainEqual({ field: 'Bundesland', value: 'Wien' })
+    expect(fields).toContainEqual({ field: 'Art des Vorhabens (Projekt gesamt)', value: 'Neubau' })
+    expect(fields.some((f) => f.field === 'Projektbeschreibung, Entwurfsidee & Umfeld')).toBe(false)
+  })
+})

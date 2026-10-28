@@ -6,7 +6,7 @@ measured. ``fixture_bff.py`` mounts this on ``POST /api/mcp`` for
 ``suite.py --set workspace``:
 
 - ``search-operations`` ranks the catalog production shows in-product Piloti
-  (``frontends/ui/tests/fixtures/workspace/catalog.json``, written from the
+  (``apps/workspace/tests/fixtures/workspace/catalog.json``, written from the
   real catalog by ``workspace-eval.fixture.spec.ts``) with a mirror of the
   server's ranking, ``lib/text/operation-search.ts``, which ``discovery.ts``
   ranks with. It is held to the lists the spec wrote from the TypeScript
@@ -36,8 +36,8 @@ from typing import Any
 from fixture_bff import ROOT
 from fixture_bff import _fold
 
-FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "workspace"
-VOCABULARY = ROOT / "frontends" / "ui" / "src" / "lib" / "text" / "operation-search-vocabulary.json"
+FIXTURES = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "workspace"
+VOCABULARY = ROOT / "apps" / "workspace" / "bff" / "text" / "operation-search-vocabulary.json"
 
 #: As ``DEFAULT_SEARCH_LIMIT`` and ``MAX_SEARCH_LIMIT`` in ``discovery.ts``.
 DEFAULT_SEARCH_LIMIT = 10

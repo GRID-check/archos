@@ -1,13 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import {
-  GridConfig,
-  appPullPolicy,
-  assertHpaTargetIsProportional,
-  assertMemoryFitsLimit,
-  backendImage,
-  toResourceRequirements,
-} from "../config";
+import { GridConfig } from '../config'
+import { appPullPolicy, backendImage } from '../config/images'
+import { assertHpaTargetIsProportional, assertMemoryFitsLimit, toResourceRequirements } from '../config/resources'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
@@ -36,7 +31,7 @@ const STARTUP_PERIOD_SECONDS = 10;
 const STARTUP_FAILURE_THRESHOLD = 60;
 
 /**
- * The api tier (ADR-0082 step B): `GRID_ROLE=api` of the backend image, every
+ * The api tier (ADR-0082 step B): `PROCESS_ROLE=api` of the backend image, every
  * HTTP route the backend serves except the chat socket. It is what
  * `BACKEND_URL` names: the BFF, the housekeeping CronJobs, the purger and the
  * workers' callers all reach it through its Service, under `name` (`tier-names.ts`).

@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Environment variables drop their GRID_ or AIQ_ prefix: GRID_SUMMARY_DB is now
+    SUMMARY_DB, and GRID_ROLE, GRID_VERBOSE, GRID_LANGFUSE_TRACE_RETENTION_DAYS
+    and GRID_PILOTI_ASK_MAX_SECONDS take names of their own. Old names still work
+    this release, with a warning at start. The full mapping is under "Renamed
+    variables" in the environment variable reference.

@@ -46,7 +46,7 @@ under a minute. Every step stays reachable, and nothing in one blocks the next.
 
 ## Rules for every step
 
-- One organism per step in `frontends/ui/src/features/project-intake/components/steps/`,
+- One organism per step in `apps/workspace/ui/features/project-intake/components/steps/`,
   taking `SetupStepProps` from `steps/types.ts`. A step never reads another
   step's state.
 - **One screen, one primary action, always in the same place.** The frame
@@ -66,9 +66,9 @@ under a minute. Every step stays reachable, and nothing in one blocks the next.
 - Compose atoms (`components/ui`, shadcn-based). Reach for what is there
   (`ChoiceCard`, `Item`, `InspectorSection`, `RaisedCard`, `Tree`
   if any, `Popover` + `Command` for pickers) before writing a `div`.
-- A server change follows `frontends/ui/AGENTS.md`: a route is a thin adapter,
+- A server change follows `apps/workspace/AGENTS.md`: a route is a thin adapter,
   the service owns logic and authorization, the repository owns SQL, and a new
-  table gets `grid_secure_table`. Each model call or check is observable in
+  table gets `secure_table`. Each model call or check is observable in
   Langfuse.
 - Each step ships with specs, and with a state in the `/dev/project-setup`
   preview (`?step=<id>&state=<fixture>`). Fixtures live in

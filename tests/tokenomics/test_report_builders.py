@@ -1,6 +1,6 @@
 """Tests for tokenomics report data builders.
 
-Module under test: src/aiq_agent/tokenomics/report/_report_builders.py
+Module under test: packages/agent/src/aiq_agent/tokenomics/report/_report_builders.py
 """
 
 from aiq_agent.tokenomics.pricing import PricingRegistry

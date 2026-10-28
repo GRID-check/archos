@@ -1,7 +1,7 @@
 # Retrieval on Qdrant, from first principles
 
 Status: **accepted 2026-10-13; built. Qdrant is the only vector store:
-Chroma, its mirror and the `GRID_VECTOR_BACKEND` flag are gone (slice 3, §12).**
+Chroma, its mirror and the `VECTOR_BACKEND` flag are gone (slice 3, §12).**
 The two decisions it rests on are
 [ADR-0115](../adr/0115-qdrant-replaces-chroma-reached-through-qdrant-client.md)
 (the store and the client) and
@@ -47,7 +47,7 @@ enforced them, through collection names:
 
 These are the full findings of the 2026-10-13 audit of the Chroma-era layer,
 condensed; the line numbers are that code's. Paths are
-relative to `sources/knowledge_layer/src/` unless they are absolute.
+relative to `packages/knowledge-layer/src/` unless they are absolute.
 
 **Domain needs we keep**, whatever store sits underneath:
 - the signed scope envelope (ADR-0047/0084)
@@ -66,7 +66,7 @@ relative to `sources/knowledge_layer/src/` unless they are absolute.
 | Mechanism | Where | Why it exists |
 |---|---|---|
 | `$contains` exact-term channel, priced by a `collection.get` per term | `llamaindex/hybrid.py`, `adapter.py:6291` | Chroma has no lexical index |
-| Postgres `chunk_text` mirror for German FTS, with hits fetched back from Chroma by id | `src/aiq_agent/knowledge/chunk_text_store.py` | Same |
+| Postgres `chunk_text` mirror for German FTS, with hits fetched back from Chroma by id | `packages/agent/src/aiq_agent/knowledge/chunk_text_store.py` | Same |
 | Cosine recovered from `exp(-d)` | `adapter.py:998, 6393` | LlamaIndex's Chroma score scale |
 | RRF *across collections*, rank padding | `register.py:616-850` | N collections give N incomparable score bands |
 | 3× over-fetch, then post-filter on `doc_class`, title, folder | `register.py:48, 1132-1173, 2049` | Human-set metadata lives only in Postgres and cannot reach the store |
@@ -82,7 +82,7 @@ relative to `sources/knowledge_layer/src/` unless they are absolute.
   (`adapter.py:778`)
 - the 24 h prefix-based TTL reaper on `s_` collections
 - no office, document or folder id on any chunk: identity is
-  `(collection, file_name)` (`src/aiq_agent/knowledge/schema.py:166`,
+  `(collection, file_name)` (`packages/agent/src/aiq_agent/knowledge/schema.py:166`,
   ADR-0087 l. 40)
 
 **One consequence that is a design choice rather than an accident:** moving a
@@ -128,7 +128,7 @@ alias switch.
 | `office_documents_v1` | One point per document Fassung: a summary vector plus document metadata | Document-level search, `with_lookup` joins for grouped results, "similar documents", facets |
 
 What does *not* move: project memory, platform lessons and permit records keep
-their `real[]` vectors in `grid_app`. They are small, transactional and
+their `real[]` vectors in `app`. They are small, transactional and
 RLS-bound ([`semantic-notes.md`](semantic-notes.md)). The trigger to revisit is
 any of them passing about 50k rows per office, or needing to be fused with
 document hits in one ranking.
@@ -210,7 +210,7 @@ project status and facts are all edited by people in Postgres. They are
   the commit.
 - The mirror carries a `meta_version`, and conditional updates (1.16) refuse to
   apply an older version over a newer one.
-- The existing weekly reconcile (`frontends/ui/src/lib/platform/vector-reconcile.ts`)
+- The existing weekly reconcile (`apps/workspace/bff/platform/vector-reconcile.ts`)
   repairs drift by copying again rather than by sampling and comparing: its
   document facts half sends every live collection, in batches of 25, to
   `POST /v1/maintenance/refresh-document-facts`, which runs
@@ -220,7 +220,7 @@ project status and facts are all edited by people in Postgres. They are
 
 This removes the 3× over-fetch and the `$in`/`$nin` file lists. Each filter
 becomes a pre-filter inside the vector search. The post-filters in
-`register.py` stay as a backstop over hits that already match, because a
+`hit_metadata.py` stay as a backstop over hits that already match, because a
 mirror can lag: a pre-filter may only narrow what the Postgres post-filter
 allows, never widen it. A stale fact can therefore cost recall but cannot
 show something wrong. The superseded exclusion is the one case where a stale
@@ -351,7 +351,7 @@ benefit yet.
 
 ### Before Qdrant
 
-How ADR-0094 search ran before this design was built (`frontends/ui/src/lib/cross-project/service.ts`);
+How ADR-0094 search ran before this design was built (`apps/workspace/bff/cross-project/service.ts`);
 "As built" below says what runs now: a page of up to 40 projects
 (`CROSS_PROJECT_PAGE_PROJECTS`) in one grouped query, at most 500 collections
 (`BACKEND_SEARCH_MAX_COLLECTIONS`, the backend's cap).
@@ -416,7 +416,7 @@ What this enables:
    (`docs/audit/upload-and-filing-retriage-2026-10-06.md` l. 228).
 5. **Counts.** `facet(project_id)` and `facet(project_facts.federal_state)` on the
    same filter give "6 von 8 Projekten in Mödling" without fetching passages.
-6. **A cheap catalog.** The `<referenzprojekte>` list (ADR-0094 l. 134) can be
+6. **A cheap catalog.** The `<reference_projects>` list (ADR-0094 l. 134) can be
    ranked by a `recommend` over project-level vectors (the mean of a project's
    document summaries in `office_documents`). Today it uses the fingerprint
    alone.
@@ -572,7 +572,7 @@ it changes, which is the path ADR-0072 itself named for this case.
 | Growth | Add a node, then `replicate_shard` / `move_shard`. A shape change means a new collection, a scroll-and-upsert copy of stored vectors, and an alias switch | No resharding or auto-rebalancing in OSS |
 | Large office | Tiered multitenancy (1.16) promotes one office to its own shard. It requires custom sharding chosen at collection creation | Decided in the spike from the largest office's point count (Q4) |
 
-New environment variables (`GRID_QDRANT_URL`, `GRID_QDRANT_API_KEY`,
+New environment variables (`QDRANT_URL`, `QDRANT_API_KEY`,
 `GRID_QDRANT_READ_ONLY_KEY`) get their rows in
 [`environment-variables.md`](../deployment/environment-variables.md) in the
 change that adds them.
@@ -663,7 +663,7 @@ in the product (ADR-0115):
   so a re-run inserts only what is missing and a point ingestion already wrote
   keeps its ids (§12). It refuses a collection whose fingerprint differs from
   the Qdrant collection's before writing anything, merges the person-set facts
-  from `grid_app`, compares the id sets (`--verify`), and deletes what the
+  from `app`, compares the id sets (`--verify`), and deletes what the
   export lacks (`--prune`).
 
 What the export cannot carry stays as it was for the backfill before it: each
@@ -694,8 +694,8 @@ change took Chroma out. What was built:
 | Registry reads from Qdrant: a file listing is one payload-limited scroll (no text); a collection's chunks and files are an exact count and a facet; `list_collections` is one facet per physical collection; a text sample is a structural fetch; visual details and `collection_pages.read_pages` scroll by filter. `get_collection` never answers "missing": a collection is a scope, and an empty one has no chunks (ADR-0116) | `adapter.py` — `_indexed_files`, `_collection_info`, `list_collections`; `collection_pages.py` |
 | A collection's `updated_at` (what the reaper of conversation uploads reads) is the newest `indexed_at` on its points, an ordered scroll | `schema.INDEXED_AT_FIELD`, `store.newest` |
 | A fact copy follows the rows a register or unregister changes the meaning of: the rows whose `superseded_by` names the file are copied again, so a Fassung that became current is not hidden by `superseded != true` | `factory.register_summary`, `unregister_summary`; `DocumentMetadataStore.files_linked_to` |
-| Deleted: Chroma's client and collections, `GRID_VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
-| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `GRID_QDRANT_TEST_URL`, fails on CI | `sources/knowledge_layer/tests/qdrant_testing.py` |
+| Deleted: Chroma's client and collections, `VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
+| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `QDRANT_TEST_URL`, fails on CI | `packages/knowledge-layer/testing/knowledge_layer_testing/qdrant.py` |
 | The import boundary forbids `chromadb` everywhere but the migration tool | `test_qdrant_import_boundary.py` |
 | The gate harness runs Qdrant alone: the corpus written through `write_chunks`, read through the production retriever, every number printed beside the Chroma path's from the gate run (fixed, `baseline.py`); exact mode held to a full regex scan, which is what Chroma's `$regex` was | `task be:eval:qdrant-parity`, `qdrant_parity/` |
 
@@ -712,10 +712,10 @@ itself.
 
 | Part | Where |
 |---|---|
-| The store: two collections behind aliases, dense + German BM25, TurboQuant, strict mode, payload indexes created before data | `sources/knowledge_layer/src/qdrant/schema.py`, `store.py` |
+| The store: two collections behind aliases, dense + German BM25, TurboQuant, strict mode, payload indexes created before data | `packages/knowledge-layer/src/qdrant/schema.py`, `store.py` |
 | Every read filter from one function, refusing an empty scope | `qdrant/scope.py` |
 | Hybrid search in one Query API call (dense, BM25 with per-scope IDF, exact-term phrase channels, RRF k=60) and the true cosine per hit | `qdrant/search.py` — `hybrid_search` |
-| Retrieval, exact search (`find_text`) and the health check reading Qdrant under `GRID_VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/adapter.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
+| Retrieval, exact search (`find_text`) and the health check reading Qdrant under `VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/retriever.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
 | Every Chroma write mirrored (insert, retire, discard, delete file, delete collection), vectors copied, never re-embedded. Removed in slice 3 | `qdrant/mirror.py` (deleted) |
 | Person-set facts (tags, topics, Dokumentart, Fassung, folder) mirrored onto points when they change | `aiq_agent/knowledge/factory.py` — `_mirror_facts` |
 | The move off Chroma: an exporter in its own environment writing the neutral format `piloti-vectors/1`, and an importer with `--prune`, `--verify`, `--verify-only`, `--dry-run` (it replaced the backfill that read Chroma directly) | `deploy/migration/chroma_export.py`; `qdrant/import_vectors.py`, `scripts/import_vectors.py` |
@@ -732,11 +732,11 @@ itself.
 | Similar passages („Im Büro behandelt“): the nearest passages to one the reader is looking at, across the collections the BFF authorized (the reader's project, the projects a solo chat reaches with closed ones, the Büroablage), the source document and superseded Fassungen filtered out in the query. A stored chunk is queried by its point id (by `chunk_id`, or a cited passage found in its file by its text), from the corpus by `lookup_from`; a selection is embedded once through the cached query path. Hits are joined to screened rows only (`SCREENED_ONLY`), so a held document never shows. A `retrieve.similar_passages` retriever observation per call | `qdrant/similar.py` — `find_similar`; `POST /v1/collections/similar` (`routes/similar_passages.py`); BFF `lib/similar-passages/service.ts` — `findSimilarPassages` |
 | Grouped answers ordered document by document across projects | `routes/document_search.py` — `_ranked_group_hits` |
 | Operations: every peer scraped by the collector on a keyless metrics port, 13 alert rules held to the collector's real export, quotas, the alias record beside the snapshots, alias-based rebuilds, a second key for rotation, the low-memory load mode, and a runbook whose procedures were drilled against real containers | `data/qdrant.ts`, `data/qdrant-alerts.ts`, `platform/otel-collector.ts` — `qdrantScrape`; `qdrant/rebuild.py`, `scripts/qdrant_rebuild.py`; [`qdrant-runbook.md`](../deployment/qdrant-runbook.md) |
-| The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](../audit/qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/` |
+| The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](../audit/qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `evals/oib-retrieval/src/oib_retrieval/qdrant_parity/` |
 | The ranking sweep: every `search.Ranking` variant read through the production retriever on one collection, per-question moves against a baseline measured first and last; the BM25 compound-splitting experiment ([results](../audit/qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)) | `qdrant_parity/variants.py`, `decompound.py`; `task be:eval:qdrant-parity -- --variants all` |
 | From the sweep: RRF ties ordered by cosine, then chunk id, with a tie straddling the cut fetched whole (repeated calls returned another top-60 for 86 of 105 queries, now 0), in grouped search before the grouping; the settings named once (`RANKING`) and on the span as `ranking` | `qdrant/search.py` — `Ranking`, `RANKING`, `_cosine_ordered_ties`; `register.py` |
-| From the sweep: BM25 never asked for the umlaut stopwords Qdrant's folding lets through (`über`, `für`, …) or for the pieces of a file name | `retrieval.bm25_candidates`, used by `_qdrant_lexical_inputs` |
-| From that measurement: BM25 terms priced by the German mirror's own rule (`german_text.select_terms`), with counts cached per collection size. Cross-project grouped search prices them too, and runs the same exact-term channels, with document frequencies over the union of the searched scopes (the corpus its IDF is computed over). It also found the tokenizer defect, fixed below under "Hardened after review" | `adapter.py` — `_qdrant_lexical_inputs`, `_search_grouped_sync`; `retrieval.term_frequencies` |
+| From the sweep: BM25 never asked for the umlaut stopwords Qdrant's folding lets through (`über`, `für`, …) or for the pieces of a file name | `retrieval.bm25_candidates`, used by `lexical_query.lexical_inputs` |
+| From that measurement: BM25 terms priced by the German mirror's own rule (`german_text.select_terms`), with counts cached per collection size. Cross-project grouped search prices them too, and runs the same exact-term channels, with document frequencies over the union of the searched scopes (the corpus its IDF is computed over). It also found the tokenizer defect, fixed below under "Hardened after review" | `llamaindex/lexical_query.py` — `lexical_inputs`; `llamaindex/retriever.py` — `_search_grouped_sync`; `retrieval.term_frequencies` |
 | Gate G1: the answer suite through the real agent on the pre-migration Chroma baseline and on Qdrant, one ingest read by both ([results](../audit/qdrant-gates-2026-10.md#g1-answer-quality-pass)) | `task be:eval:answer-suite -- --ingest --corpus data/oib`, `scripts/turn_census/suite.py` — `use_local_corpus` |
 
 ### Hardened after review (2026-10-13)
@@ -780,7 +780,7 @@ test that fails without the fix.
 | `knowledge_search(group_by="document")`: one entry per document (best passage, passages in the ranked pool, pages), keyed by `grid_document_id`, else collection and file name. Grouped client-side over the reranked pool, never by Qdrant's group query, which re-fuses per round on a fusion | `document_groups.py`; `register.py` — `search` |
 | Folder card points: `kind = folder` in the folder's own scope, dense vector of path, abstract and key facts, no BM25 vector. `scope_filter` takes `kind` (`chunk` by default, `folder`, `any`), so every chunk read leaves them out; the store's whole-scope reads go through it too, a whole-scope delete takes them. Written beside the BFF `PUT`, restamped and deleted beside it; a rebuild copies them | `qdrant/scope.py`, `qdrant/folders.py`, `qdrant/store.py`; `aiq_agent/knowledge/folder_cards/worker.py` |
 | The folder channel: one dense query over the turn's office scopes beside the chunk search, up to three `Folder:` lines after the passages, never a grounding record. Behind the `folder-cards` flag | `folder_channel.py`; `register.py` |
-| BM25 length per collection: `aiq:bm25_length` in the collection metadata (none: Qdrant's defaults), read by every write and query (five minutes' trust). A `_vN` copy measures the source's chunk lengths from its stored weights and, more than 10 % off, writes the target with the measured `avg_len` and recomputed lexical vectors | `qdrant/schema.py` — `bm25_length_of`; `store.bm25_length`; `qdrant/rebuild.py` — `measure_lengths`, `tuned_length`; `scripts/qdrant_chunk_length_stats.py` |
+| BM25 length per collection: `bm25_length` in the collection metadata (none: Qdrant's defaults), read by every write and query (five minutes' trust). A `_vN` copy measures the source's chunk lengths from its stored weights and, more than 10 % off, writes the target with the measured `avg_len` and recomputed lexical vectors | `qdrant/schema.py` — `bm25_length_of`; `store.bm25_length`; `qdrant/rebuild.py` — `measure_lengths`, `tuned_length`; `scripts/qdrant_chunk_length_stats.py` |
 | Inflected exact search: a second text field `text_stem` with a Snowball German full-text index; `match="exact", stemmed=true` adds what it matches to the literal result. Written with every new point; a rebuild fills it on the rest | `schema.TEXT_STEM_INDEX`, `payload.build_payload`, `retrieval.stem_condition`, `browse.stemmed_pattern` |
 
 ### Where slice 1 departed from the target, and why
@@ -871,7 +871,7 @@ rest stands.
   mirror and the deletes behind the ingest worker. Two keys in one process buy
   nothing: whoever has the process has both.
 * **Corpus at RF 2, not on every peer.** `create_collection` gives both
-  collections `GRID_QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
+  collections `QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
   peer. The runbook adds the third replica with one `replicate_shard` (drilled,
   4 s).
 * **`write_consistency_factor` is 1, decided by a drill.** On 2026-10-13,

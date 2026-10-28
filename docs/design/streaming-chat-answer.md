@@ -11,8 +11,8 @@ describe that wire. The settle and verify rules, the paced reveal and the
 storage rules are unchanged by it. Streaming is the default delivery; there is
 no runtime flag beyond the platform switch below.
 **Related:** the per-turn chat path (`agents/piloti/conversation_register.py`,
-`note_settled_replaced`), the chat socket (`frontends/aiq_api/src/aiq_api/chat_socket.py`),
-the turn fold (`frontends/ui/src/features/chat/lib/turn-fold.ts`) and the chat
+`note_settled_replaced`), the chat socket (`apps/backend/src/aiq_api/chat_socket.py`),
+the turn fold (`apps/workspace/ui/features/chat/lib/turn-fold.ts`) and the chat
 store. Live prose: `common/answer_prose_stream.py` and
 `agents/piloti/answer_pipeline.py` (`LiveAnswer`, `settle_streamed_citations`).
 The events themselves: [`websocket-protocol.md`](../api/websocket-protocol.md).
@@ -24,7 +24,7 @@ check for each: [`lifecycles/chat-turn.md`](lifecycles/chat-turn.md).
 The transport can already carry many chunks, but two layers assume **one content
 frame per turn**:
 
-1. **Rendering** — `frontends/ui/.../messages-store.ts` appends a *brand-new*
+1. **Rendering** — `apps/workspace/.../messages-store.ts` appends a *brand-new*
    assistant bubble for every content frame; it never merges deltas. N streamed
    frames ⇒ N bubbles.
 2. **Persistence** — on a client disconnect, the terminal message is persisted
@@ -95,13 +95,13 @@ For the answer that means:
 - **`RUN_ERROR`.** The turn failed and nothing was persisted.
 
 No frame's size depends on the prompt's length: the recorded answered turn
-(`shared/wire/v2/turn-answered.jsonl`) is 22 events and 8.5 KB, the terminal
+(`contracts/wire/v2/turn-answered.jsonl`) is 22 events and 8.5 KB, the terminal
 its largest at about 2 KB.
 
 ### The platform switch
 
 Platform → Abruf carries one on/off setting, `chat.answer_streaming` (catalog:
-`frontends/ui/src/lib/retrieval-settings/catalog.ts`, on by default). The
+`apps/workspace/bff/retrieval-settings/catalog.ts`, on by default). The
 backend reads it once per turn through the retrieval-settings pull
 (`answer_streaming_enabled`, TTL 60 s). Off, the answering call is buffered: no
 prose, snapshot, masthead or card event goes out, the Herleitung steps still
@@ -479,8 +479,8 @@ socket or not. Only a turn silent for 70 s (two minutes when there is no
 stream to ask, 40 minutes at most) ends with the banner. The reader meanwhile
 sees „prüfe auf fertige Antwort".
 
-**Bounds.** `GRID_CONV_STREAM_MAXLEN` (2000 events, many turns) and
-`GRID_CONV_STREAM_TTL_SECONDS` (an hour since the last event). A reader away
+**Bounds.** `CONV_STREAM_MAXLEN` (2000 events, many turns) and
+`CONV_STREAM_TTL_SECONDS` (an hour since the last event). A reader away
 longer than that gets the finished answer from Postgres, or the banner.
 
 ## The reveal is paced, not typed
@@ -799,7 +799,7 @@ keep arriving are never clipped.
 
 Stop keeps what was on screen at the press. The rule of what that is has one
 copy per language and three writers (the agent tier, the asker's browser and
-the BFF), held to the same cases by `shared/wire/v2/stopped-cases.jsonl`:
+the BFF), held to the same cases by `contracts/wire/v2/stopped-cases.jsonl`:
 [chat wire v2, Cancel](chat-wire-v2.md#c-the-route-and-the-handler) and
 `features/chat/lib/stopped-answer.ts`. In short: the shown code points, a
 marker cut in half dropped, a streamed `[N]` dropped and a settled one kept
@@ -842,7 +842,7 @@ Accepted residuals:
 - Between the terminal and the settle (the 300 to 500 ms finish) the composer
   already shows Send, so Stop is not offered there.
 - The server names `cancel_turn.shown` in its hello's `accepts` only while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is on. It is on by default; `off` is the
+  `WIRE_V2_ADDITIVE_FIELDS` is on. It is on by default; `off` is the
   rollback to the release that kept tabs of the strict bundle parsing frames
   ([chat wire v2, Compatibility](chat-wire-v2.md#compatibility-additive-changes-are-safe)).
   With it off the page sends no `shown`, and the agent stores everything
@@ -1007,17 +1007,17 @@ as it does on a desk.
 
 ## Tests
 
-- Contract: every recorded turn in `shared/wire/v2/` is valid and is byte for
-  byte the frame the server writes (`tests/aiq_agent/common/test_wire_v2.py`,
-  `frontends/ui/src/adapters/api/wire-v2.spec.ts`).
+- Contract: every recorded turn in `contracts/wire/v2/` is valid and is byte for
+  byte the frame the server writes (`packages/agent/tests/common/test_wire_v2.py`,
+  `apps/workspace/ui/adapters/api/wire-v2.spec.ts`).
 - Producers and handler: prose deltas are coalesced, the snapshot and the
   retraction are emitted from the streamed call, `RUN_FINISHED` is persisted
   from `TurnResult`, and a cancelled turn persists its partial marked stopped
-  (`tests/aiq_agent/turn/`, `frontends/aiq_api/tests/test_chat_socket.py`).
+  (`packages/agent/tests/turn/`, `apps/backend/tests/test_chat_socket.py`).
 - Fold: every fixture turn folds to the expected view; a duplicate `seq` keeps
   identity and a gap is flagged; snapshot, retraction and terminal
   replacement; a card before its marker; a spectator starting mid-turn
-  (`frontends/ui/src/features/chat/lib/turn-fold.spec.ts`).
+  (`apps/workspace/ui/features/chat/lib/turn-fold.spec.ts`).
 - Frontend: the whole-answer affordances (copy, unclaimed cards) wait for
   `isStreaming` to clear (`AgentResponse.spec.tsx`, "a streaming answer");
   `stable-overrides.spec.tsx` (a drawn diagram and an arrived card survive the

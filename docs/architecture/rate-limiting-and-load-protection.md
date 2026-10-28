@@ -58,11 +58,11 @@ There is also a fourth, less structural but more immediate finding:
 
 | # | Where | Scope | Algorithm | Store | On failure |
 |---|---|---|---|---|---|
-| 1 | `frontends/ui/server.js` (WS upgrade) | per client IP | fixed window, atomic `INCR` | Dragonfly | fail open |
-| 2 | `frontends/ui/src/lib/sharing/rate-limit.ts` | per subject/action | fixed window, **non-atomic** read-modify-write | Dragonfly via cache | fail open |
-| 3 | `frontends/aiq_api/.../jobs/submit.py`, `jobs/queue.py` | per org a **claim cap** (`…_PER_ORG` 3) plus a **queued-length bound** (`MAX_QUEUED_JOBS_PER_ORG` 50), the only 429 | Postgres | fail open |
+| 1 | `apps/workspace/server.js` (WS upgrade) | per client IP | fixed window, atomic `INCR` | Dragonfly | fail open |
+| 2 | `apps/workspace/bff/sharing/rate-limit.ts` | per subject/action | fixed window, **non-atomic** read-modify-write | Dragonfly via cache | fail open |
+| 3 | `apps/backend/.../jobs/submit.py`, `jobs/queue.py` | per org a **claim cap** (`…_PER_ORG` 3) plus a **queued-length bound** (`MAX_QUEUED_JOBS_PER_ORG` 50), the only 429 | Postgres | fail open |
 | 4 | `common/cost_tracking.py` + ADR-0015 | org / member / project | EUR budget, daily+monthly | Postgres ledger + rollups | read fails open, refusal fails closed |
-| 5 | `GRID_MAX_RUN_COMPLETION_TOKENS`, `GRID_MAX_QUERY_SUBMISSIONS` | per run | hard ceilings | in-process | n/a |
+| 5 | `MAX_RUN_COMPLETION_TOKENS`, `MAX_QUERY_SUBMISSIONS` | per run | hard ceilings | in-process | n/a |
 
 So the real project is **not greenfield**. It is: *push what belongs at the edge
 to the edge, give the rest one vocabulary, and stop the five from drifting.*
@@ -265,8 +265,8 @@ be argued rather than assumed. Two options:
 
 **Decision: (b).** The premise's real goal is *"I don't want to re-implement this
 in every app"* — and that is already satisfied, because there is exactly **one**
-user-facing app. `frontends/web` is a static Astro site (L1 covers it),
-`frontends/aiq_api` is not publicly routed (no HTTPRoute), and the workers have
+user-facing app. `apps/site` is a static Astro site (L1 covers it),
+`apps/backend` is not publicly routed (no HTTPRoute), and the workers have
 no ingress. Option (a) buys architectural purity for the price of a new
 always-in-path service that can take chat down, and it would have to duplicate
 AuthKit session unsealing to serve one ingress. Revisit if a second authenticated
@@ -323,7 +323,7 @@ lives, not as a plan.
 | Dedicated counter store — a **second** Dragonfly, `cache_mode` OFF | `src/data/dragonfly.ts` (`installRateLimitStore`) |
 | `envoy-gateway-system → dragonfly-ratelimit` allow | `src/platform/network-policies.ts` (rule 5c) |
 | Per-route, per-client-IP rules | `src/app/httproutes.ts` (`perClientIpRule`, `edgeRateLimit`) |
-| Knobs (`rateLimit*`, `xffNumTrustedHops`) | `src/config.ts`, tabled in `deploy/pulumi/README.md` |
+| Knobs (`rateLimit*`, `xffNumTrustedHops`) | `src/config/dragonfly.ts` and `src/config/ingress.ts`, tabled in `deploy/pulumi/README.md` |
 
 Three things this had to get right, each of which fails silently if missed:
 
@@ -351,7 +351,7 @@ Starting budgets (per client IP, per minute) — placeholders until measured:
 source IP (§1). `xffNumTrustedHops` defaults to 0, which is right only if it
 does. Every per-IP number above is provisional until someone checks.
 
-### L2 — per-member limits (`frontends/ui/src/lib/limits/`)
+### L2 — per-member limits (`apps/workspace/bff/limits/`)
 
 Enforcement is **`rate-limiter-flexible`**, not our own algorithm (see §2.5).
 What this module owns is the vocabulary around it:
@@ -414,7 +414,7 @@ requests; it now takes 200.
 with their budgets unchanged, so that migration was an algorithm change and not a
 silent retune.
 
-### L2b — WebSocket frames (`frontends/ui/server.js`)
+### L2b — WebSocket frames (`apps/workspace/server.js`)
 
 The blind spot of §1.2, closed. `src/lib/limits/ws-frames.js` is a passive
 incremental frame parser attached as an extra `data` listener on the client
@@ -450,7 +450,7 @@ Covered by `tests/gateway/ws-frame-limits.test.ts`, which spawns the real gatewa
 and pushes real frames — the same harness style as the existing upgrade tests,
 because `server.js` has no unit seam.
 
-### L3 — interactive-turn admission (`src/aiq_agent/common/turn_admission.py`)
+### L3 — interactive-turn admission (`packages/agent/src/aiq_agent/common/turn_admission.py`)
 
 A lease-based semaphore around `agent.run(...)` in `piloti/conversation_register.py`:
 slots held for the duration of a turn, per organization and globally, refused
@@ -475,7 +475,7 @@ than an admission.
   free worker claims the next job of the organisation with the fewest jobs
   running fleet-wide, then the one served longest ago. A lone office uses every
   worker; a second office's upload takes the next worker that frees up.
-  `GRID_INGEST_MAX_PER_ORG` adds a hard cap, off by default. The claim is the
+  `INGEST_MAX_PER_ORG` adds a hard cap, off by default. The claim is the
   generic `aiq_agent.common.claim_queue` (ADR-0079); `ingest_queue` is the
   ingestion table on it.
 - **Priority inside an office.** `POST /v1/ingest` takes
@@ -486,8 +486,8 @@ than an admission.
   value is the job's class at the provider limiter (L3c).
 - **A claim is given back, not lost.** A drain that runs out of time releases
   what it holds at no cost in attempts (`release_claims`). A job past
-  `GRID_INGEST_MAX_JOB_SECONDS`, or silent for
-  `GRID_INGEST_PROGRESS_TIMEOUT_SECONDS`, is no longer heartbeat and is claimed
+  `INGEST_MAX_JOB_SECONDS`, or silent for
+  `INGEST_PROGRESS_TIMEOUT_SECONDS`, is no longer heartbeat and is claimed
   again. A job that fails every claim is kept as a `dead` row with its reason,
   and is not counted as work. A job a person stops is `cancelled`, terminal the
   same way (`POST /v1/documents/{job_id}/cancel`).
@@ -495,7 +495,7 @@ than an admission.
   KEDA, not on CPU (`deploy/pulumi/src/app/ingest-worker.ts`); retired rows —
   `dead` and `cancelled` — are excluded from that depth. Its ceiling is held to the provider budget at plan
   time: `ingestWorkerMaxReplicas` x `ingestWorkerConcurrency` x
-  `GRID_VLM_BATCH_WORKERS` may not exceed twice `GRID_VLM_FLEET_CONCURRENCY`, or
+  `VLM_BATCH_WORKERS` may not exceed twice `VLM_FLEET_CONCURRENCY`, or
   `pulumi up` fails with the numbers (`assertVlmPeakFitsCeiling`); replicas past
   that only queue on the pool. The pool itself may not exceed either limiter
   ceiling a vision call passes (key-wide, and its model's own: 32), or it could
@@ -510,7 +510,7 @@ than an admission.
   reports the same depth, read from the same table, so chart depth and age
   with `max`, not `sum`.
 - **A fixed ceiling at the provider.** However many workers run, at most
-  `GRID_VLM_FLEET_CONCURRENCY` vision calls are in flight, a Dragonfly lease pool
+  `VLM_FLEET_CONCURRENCY` vision calls are in flight, a Dragonfly lease pool
   sharing L3's scripts (`common/lease_slots.py`). A 429 backs off outside its
   slot. Fails open like L3. It is the narrow, ingestion-only ceiling; L3c below
   is the one every model call passes, and the VLM pool sits outside it.
@@ -533,12 +533,12 @@ that chat, research, ingestion and embeddings all draw from
 - **Adaptive limits (AIMD), one per quota, shared by the fleet.** A limit starts
   at its ceiling. A 429 halves it, not below its floor, once per two seconds so
   the calls that fail together count once. Each
-  `GRID_PROVIDER_LIMIT_INTERVAL_SECONDS` without a 429 adds one. They live in
+  `PROVIDER_LIMIT_INTERVAL_SECONDS` without a 429 adds one. They live in
   Dragonfly next to the leases, so a new replica starts from the fleet's limits
   and scaling out adds callers, not 429s.
 - **Scoped to the quota that said 429.** A call holds a slot in the key-wide pool
-  (`GRID_PROVIDER_LIMIT_CEILING` / `_FLOOR`) and in the pool of its model
-  (`GRID_PROVIDER_MODEL_LIMIT_CEILING` / `_FLOOR`). OpenRouter wraps an upstream
+  (`PROVIDER_LIMIT_CEILING` / `_FLOOR`) and in the pool of its model
+  (`PROVIDER_MODEL_LIMIT_CEILING` / `_FLOOR`). OpenRouter wraps an upstream
   provider's refusal in its own 429 and names the provider in
   `error.metadata.provider_name`: that halves that model's limit only, so a
   Gemini brown-out leaves every other model's capacity alone. A 429 with
@@ -582,9 +582,9 @@ that chat, research, ingestion and embeddings all draw from
   retrieval already fails open on that. Every other class waits as long as the
   pool stays full: failing starved bulk work would turn the limiter into lost
   ingestion.
-- **Fails open.** No Dragonfly, a script it refuses or `GRID_PROVIDER_LIMITER=off`
+- **Fails open.** No Dragonfly, a script it refuses or `PROVIDER_LIMITER=off`
   means every call proceeds, as in every layer but L4.
-- **Enforced.** `tests/aiq_agent/common/test_provider_limiter_call_sites.py`
+- **Enforced.** `packages/agent/tests/common/test_provider_limiter_call_sites.py`
   fails when a module builds a chat model (`ChatOpenAI(`, `init_chat_model(`, a
   raw `builder.get_llm(`) or an embedding client by hand, when a file that talks
   to a model opens a raw `httpx` client instead of the limited one, and when a
@@ -612,12 +612,12 @@ waits, so its L3 is the same order and ceiling ingestion has.
   running fleet-wide, then the one served longest ago. One office's sweep of
   twenty scheduled runs does not make another office's question wait for all of
   them.
-- **The per-organisation cap is a claim cap.** `GRID_MAX_ACTIVE_JOBS_PER_ORG` is
+- **The per-organisation cap is a claim cap.** `MAX_ACTIVE_JOBS_PER_ORG` is
   how many of an organisation's jobs run at once; the rest wait their turn.
 - **Priority inside an office.** A scheduled fire is `bulk`; an escalated
   question and a person pressing "run now" are `interactive`. The scheduler no
   longer records "skipped" for a full queue: a queued job is a queued run.
-- **One 429 is left, as abuse protection.** `GRID_MAX_QUEUED_JOBS_PER_ORG` bounds
+- **One 429 is left, as abuse protection.** `MAX_QUEUED_JOBS_PER_ORG` bounds
   how many jobs one organisation may have waiting. Past it a submit is refused
   (a scheduled occurrence is then recorded `skipped`).
 - **A claim is given back, not lost.** A drain that runs out of time requeues

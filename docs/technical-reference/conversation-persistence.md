@@ -6,7 +6,7 @@ Conversations persist through two layers: a PostgreSQL database (server-side) an
 
 ### conversations table
 
-`frontends/ui/src/lib/db/schema/conversations.ts`
+`apps/workspace/bff/db/schema/conversations.ts`
 
 | Column | Type | Notes |
 |---|---|---|
@@ -20,7 +20,7 @@ Conversations persist through two layers: a PostgreSQL database (server-side) an
 
 ### messages table
 
-`frontends/ui/src/lib/db/schema/messages.ts`
+`apps/workspace/bff/db/schema/messages.ts`
 
 | Column | Type | Notes |
 |---|---|---|
@@ -35,43 +35,43 @@ Conversations persist through two layers: a PostgreSQL database (server-side) an
 
 ### GET /api/conversations
 
-`frontends/ui/src/app/api/conversations/route.ts:17`
+`apps/workspace/app/api/conversations/route.ts:17`
 
 Lists all conversations for the session's organization, ordered by `updatedAt DESC`. Requires `requireAuthorizedSession()`.
 
 ### POST /api/conversations
 
-`frontends/ui/src/app/api/conversations/route.ts:30`
+`apps/workspace/app/api/conversations/route.ts:30`
 
 Creates a new conversation. Request body: `{ id: string, title?: string, projectId?: uuid }`. Returns 201 with the created row.
 
 ### GET /api/conversations/[id]
 
-`frontends/ui/src/app/api/conversations/[id]/route.ts:15`
+`apps/workspace/app/api/conversations/[id]/route.ts:15`
 
 Returns a single conversation. Checks `organizationId` match. 404 if not found or wrong org.
 
 ### PATCH /api/conversations/[id]
 
-`frontends/ui/src/app/api/conversations/[id]/route.ts:36`
+`apps/workspace/app/api/conversations/[id]/route.ts:36`
 
 Updates conversation `title`. Validates `organizationId` access.
 
 ### DELETE /api/conversations/[id]
 
-`frontends/ui/src/app/api/conversations/[id]/route.ts:71`
+`apps/workspace/app/api/conversations/[id]/route.ts:71`
 
 Deletes a conversation. Messages are cascade-deleted by the FK constraint. Returns 204.
 
 ### GET /api/conversations/[id]/messages
 
-`frontends/ui/src/app/api/conversations/[id]/messages/route.ts:11`
+`apps/workspace/app/api/conversations/[id]/messages/route.ts:11`
 
 Lists all messages for a conversation, ordered by `createdAt ASC`. Validates org access.
 
 ### POST /api/conversations/[id]/messages
 
-`frontends/ui/src/app/api/conversations/[id]/messages/route.ts:47`
+`apps/workspace/app/api/conversations/[id]/messages/route.ts:47`
 
 Appends one or more messages. Accepts a single message object or an array. Each message requires `id`, `role`, `content`; optional `messageType`, `metadata`, `createdAt`. `messageType` is stored inside the `metadata` jsonb (no dedicated column) so the client can route rehydrated history to the right renderer. Duplicate message ids are skipped (`ON CONFLICT DO NOTHING`) so client retries can't fail a batch. Returns 201.
 

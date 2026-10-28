@@ -11,7 +11,7 @@ would have typed.
   Send, where the thumb ends up.
 - While recording with a mouse, the button shows a live waveform of the
   microphone level and the elapsed seconds (`AudioWave`,
-  `frontends/ui/src/components/ui/audio-wave.tsx`). On a touch screen the
+  `apps/workspace/ui/components/ui/audio-wave.tsx`). On a touch screen the
   button stays a 44px Stop square, so the row never reflows, and a full-width
   strip above the row (`DictationStrip`) shows the level, the time against the
   45-second limit and a progress line; the whole strip is the Stop target.
@@ -69,18 +69,18 @@ insertTranscript at caret ◀──────────
 
 | Concern | Owning code |
 |---|---|
-| The button and its states | `frontends/ui/src/features/dictation/components/DictationButton.tsx` (`DictationButton`, presentational `DictationControl`) |
-| Recording, the 45 s stop, the silence gate | `frontends/ui/src/features/dictation/hooks/use-dictation.ts` |
-| Which browsers can dictate, and why not | `frontends/ui/src/features/dictation/lib/recording-support.ts` |
-| Where the text goes | `frontends/ui/src/features/dictation/lib/insert-transcript.ts` |
-| Bounds shared by both sides | `frontends/ui/src/lib/dictation/contract.ts` |
-| The BFF route and service | `frontends/ui/src/app/api/dictation/route.ts`, `frontends/ui/src/lib/dictation/service.ts` |
-| The provider call, models, fallback, ledger row | `frontends/aiq_api/src/aiq_api/routes/dictation.py` |
-| Filler removal and silence phrases | `frontends/aiq_api/src/aiq_api/routes/_dictation_text.py` |
-| The composer's side | `frontends/ui/src/features/layout/components/InputArea.tsx` (`handleTranscript`) |
+| The button and its states | `apps/workspace/ui/features/dictation/components/DictationButton.tsx` (`DictationButton`, presentational `DictationControl`) |
+| Recording, the 45 s stop, the silence gate | `apps/workspace/ui/features/dictation/hooks/use-dictation.ts` |
+| Which browsers can dictate, and why not | `apps/workspace/ui/features/dictation/lib/recording-support.ts` |
+| Where the text goes | `apps/workspace/ui/features/dictation/lib/insert-transcript.ts` |
+| Bounds shared by both sides | `apps/workspace/bff/dictation/contract.ts` |
+| The BFF route and service | `apps/workspace/app/api/dictation/route.ts`, `apps/workspace/bff/dictation/service.ts` |
+| The provider call, models, fallback, ledger row | `apps/backend/src/aiq_api/routes/dictation.py` |
+| Filler removal and silence phrases | `apps/backend/src/aiq_api/routes/_dictation_text.py` |
+| The composer's side | `apps/workspace/ui/features/layout/components/InputArea.tsx` (`handleTranscript`) |
 | Preview | `/dev/dictation` |
 
-The facade is `frontends/ui/src/features/dictation/index.ts`; the composer
+The facade is `apps/workspace/ui/features/dictation/index.ts`; the composer
 imports nothing else from the module. There is no new deployable and no feature
 flag.
 
@@ -105,8 +105,8 @@ revisiting only if a live test shows A's output needs more than filler removal.
 
 | Variable | Default | |
 |---|---|---|
-| `GRID_DICTATION_MODEL` | `elevenlabs/scribe-v2` | Primary model |
-| `GRID_DICTATION_FALLBACK_MODEL` | `openai/whisper-large-v3-turbo` | Tried only when the primary failed; empty switches it off |
+| `DICTATION_MODEL` | `elevenlabs/scribe-v2` | Primary model |
+| `DICTATION_FALLBACK_MODEL` | `openai/whisper-large-v3-turbo` | Tried only when the primary failed; empty switches it off |
 
 These are environment variables, like `SUMMARY_LLM_MODEL`, because dictation
 is not an agent group: Platform → Models validates a group's model against chat

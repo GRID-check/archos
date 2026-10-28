@@ -1,0 +1,127 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/app": [
+        "./app"
+      ],
+      "@/app/*": [
+        "./app/*"
+      ],
+      "@/lib": [
+        "./bff"
+      ],
+      "@/lib/*": [
+        "./bff/*"
+      ],
+      "@/features": [
+        "./ui/features"
+      ],
+      "@/features/*": [
+        "./ui/features/*"
+      ],
+      "@/components": [
+        "./ui/components"
+      ],
+      "@/components/*": [
+        "./ui/components/*"
+      ],
+      "@/hooks": [
+        "./ui/hooks"
+      ],
+      "@/hooks/*": [
+        "./ui/hooks/*"
+      ],
+      "@/styles": [
+        "./ui/styles"
+      ],
+      "@/styles/*": [
+        "./ui/styles/*"
+      ],
+      "@/adapters": [
+        "./ui/adapters"
+      ],
+      "@/adapters/*": [
+        "./ui/adapters/*"
+      ],
+      "@/i18n": [
+        "./i18n"
+      ],
+      "@/i18n/*": [
+        "./i18n/*"
+      ],
+      "@/shared": [
+        "./shared"
+      ],
+      "@/shared/*": [
+        "./shared/*"
+      ],
+      "@/types": [
+        "./types"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/utils": [
+        "./utils"
+      ],
+      "@/utils/*": [
+        "./utils/*"
+      ],
+      "@/test-utils": [
+        "./tests/test-utils"
+      ],
+      "@/test-utils/*": [
+        "./tests/test-utils/*"
+      ],
+      "@/mocks": [
+        "./tests/mocks"
+      ],
+      "@/mocks/*": [
+        "./tests/mocks/*"
+      ]
+    }
+  },
+  "_includeNote": [
+    "`purger/**/*.js` and `workers/**/*.js` are here on purpose. Those files are",
+    "CommonJS because the purger runs as `node purger/index.js` with no build",
+    "step and no loader hook — the process that erases a tenant should have as",
+    "little between the source and the running code as possible. That is a",
+    "reason to be CommonJS; it was never a reason to be UNCHECKED. They carry",
+    "`// @ts-check` and JSDoc, and listing them here is what points tsc at them.",
+    "Nothing about the runtime changes: no rename, no emit, no flag."
+  ],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "purger/**/*.js",
+    "workers/**/*.js"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

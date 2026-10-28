@@ -137,7 +137,7 @@ folder role on it and are not an organization admin (ADR-0097). The UI shows
 them disabled with „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat
 stammt“ and never names the folder. At most 200 people are evaluated, a bounded
 number at a time, each against their folder roles (cached for
-`GRID_AUTHZ_CACHE_TTL_MS`) and the membership roles behind the admin bypass
+`AUTHZ_CACHE_TTL_MS`) and the membership roles behind the admin bypass
 (cached for 60 s); anyone beyond that, or whose lookup fails, is reported as
 lacking access. Absent for a document.
 
@@ -285,7 +285,7 @@ asked in it (spec IB-9).
 
 ## Inbox
 
-Every route below has one typed client, `frontends/ui/src/lib/inbox/client.ts`
+Every route below has one typed client, `apps/workspace/bff/inbox/client.ts`
 (ADR-0055): the inbox list and badge, the review (which marks have unread
 news, and opening a mark reads it) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
 drives the real handlers through it. The service worker posts a tapped
