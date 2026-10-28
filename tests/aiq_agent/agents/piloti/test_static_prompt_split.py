@@ -14,8 +14,7 @@ prompt edit changes it, and the diff is what review reads; an accidental one
 fails a test instead of shipping. Regenerate with:
 
     PYTHONPATH=src .venv/bin/python -c "
-    from tests.aiq_agent.agents.piloti.test_static_prompt_split import regenerate
-    regenerate()"
+    import runpy; runpy.run_path('tests/aiq_agent/agents/piloti/test_static_prompt_split.py')['regenerate']()"
 """
 
 from __future__ import annotations

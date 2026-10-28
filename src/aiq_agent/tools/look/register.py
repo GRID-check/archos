@@ -32,9 +32,9 @@ from typing import Any
 
 from pydantic import Field
 
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
 from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
-from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.observability.retrieval_trace import emit_step_span
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig

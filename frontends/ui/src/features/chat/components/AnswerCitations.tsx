@@ -51,7 +51,7 @@ import {
   FileReferenceProvider,
   type FileReferenceResolver,
 } from './FileReference'
-import { SourceDocumentDialog } from './SourcePreview'
+import { SourceDocumentDialog } from './source-preview/source-document-dialog'
 
 const NO_FILE_REFERENCES: FileReferenceResolver = () => null
 

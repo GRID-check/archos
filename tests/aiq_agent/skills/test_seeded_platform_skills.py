@@ -30,6 +30,12 @@ import json
 import re
 
 import pytest
+from agent_testing.seeded_skill_rows import DRIZZLE_DIR
+from agent_testing.seeded_skill_rows import EFFECTIVE_SEEDS
+from agent_testing.seeded_skill_rows import REPO_ROOT
+from agent_testing.seeded_skill_rows import RETIRED_NAMES
+from agent_testing.seeded_skill_rows import SEEDS
+from agent_testing.seeded_skill_rows import effective_row as _effective_row
 
 from aiq_agent.cards.catalog import model_facing_card_types
 from aiq_agent.cards.catalog import render_card_details
@@ -41,12 +47,6 @@ from aiq_agent.skills.models import skill_hidden
 from aiq_agent.skills.models import split_metadata_list
 from aiq_agent.skills.resolver import KNOWN_AGENTS
 from aiq_agent.skills.resolver import canonical_agent
-from tests.aiq_agent.skills.seeded_skill_rows import DRIZZLE_DIR
-from tests.aiq_agent.skills.seeded_skill_rows import EFFECTIVE_SEEDS
-from tests.aiq_agent.skills.seeded_skill_rows import REPO_ROOT
-from tests.aiq_agent.skills.seeded_skill_rows import RETIRED_NAMES
-from tests.aiq_agent.skills.seeded_skill_rows import SEEDS
-from tests.aiq_agent.skills.seeded_skill_rows import effective_row as _effective_row
 
 SEED_IDS = [tag for tag, _ in SEEDS]
 #: Ids for the tests that must run over the row a live database HOLDS rather than

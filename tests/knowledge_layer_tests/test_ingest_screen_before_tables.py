@@ -24,11 +24,11 @@ from knowledge_layer.llamaindex import processing
 from knowledge_layer.llamaindex import screening
 from knowledge_layer.llamaindex import transcription
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
 from aiq_agent.knowledge.schema import FileStatus
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 from .test_upload_screening_ingestion import _pdf
 from .test_upload_screening_ingestion import _pdf_with_table_page

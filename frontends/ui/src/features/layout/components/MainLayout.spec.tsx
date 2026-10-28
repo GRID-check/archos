@@ -44,6 +44,11 @@ let chatStoreOverrides: Record<string, unknown> = {}
 
 // Mock the chat store
 vi.mock('@/features/chat', () => ({
+  NoSourcesBanner: () => <div data-testid="no-sources-banner">No Sources Banner</div>,
+  ChatUsageNotice: ({ isAuthenticated }: { isAuthenticated?: boolean }) =>
+    isAuthenticated ? <div data-testid="usage-notice-slot" /> : null,
+}))
+vi.mock('@/features/chat/store', () => ({
   useChatStore: vi.fn((selector?: StoreSelector<ChatStoreWithHydration>) => {
     const state: DeepPartial<ChatStoreWithHydration> = {
       currentConversation: { id: 'session-1', title: 'Test Session' },
@@ -59,9 +64,6 @@ vi.mock('@/features/chat', () => ({
     }
     return selector ? selector(asStoreState<ChatStoreWithHydration>(state)) : state
   }),
-  NoSourcesBanner: () => <div data-testid="no-sources-banner">No Sources Banner</div>,
-  ChatUsageNotice: ({ isAuthenticated }: { isAuthenticated?: boolean }) =>
-    isAuthenticated ? <div data-testid="usage-notice-slot" /> : null,
 }))
 
 // Mock the layout store
@@ -114,7 +116,7 @@ vi.mock('./InputArea', () => ({
   InputArea: () => <div data-testid="input-area">Input Area</div>,
 }))
 
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useLayoutStore } from '../store'
 
 describe('MainLayout', () => {

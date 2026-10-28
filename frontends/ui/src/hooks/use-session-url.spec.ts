@@ -53,7 +53,7 @@ const mockChatStore = {
   getUserConversations: vi.fn((): Conversation[] => []),
 } satisfies DeepPartial<ChatStoreWithHydration>
 
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   // `mockChatStore` doubles as the mock holder these tests reconfigure
   // (`getUserConversations.mockReturnValue(...)`), so it keeps its inferred
   // mock types and widens to the store only at this boundary.

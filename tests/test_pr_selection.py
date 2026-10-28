@@ -141,6 +141,36 @@ def test_a_file_only_a_helper_reads_forces_the_full_suite(mod):
     assert mod.decide_python(changed, TESTS, recorded=True)[0] == "full"
 
 
+def test_a_file_a_support_package_reads_selects_the_tests_that_import_it(mod):
+    # ADR-0145 row 5: a `<package>_testing` module has one importable name, so
+    # its importers are known, and a full run is not needed.
+    tests = {
+        "tests/aiq_agent/testing/agent_testing/exposure.py": "EXPOSURE = ROOT / 'tests/fixtures/exposure.json'",
+        "tests/aiq_agent/tools/test_exposure_config.py": "from agent_testing.exposure import EXPOSURE",
+        "tests/aiq_agent/test_framing.py": "from agent_testing import exposure, langfuse",
+        "tests/aiq_agent/test_other.py": "from agent_testing.langfuse import trace",
+    }
+
+    mode, selected, _ = mod.decide_python(["tests/fixtures/exposure.json"], tests, recorded=True)
+
+    assert (mode, selected) == (
+        "select",
+        ["tests/aiq_agent/test_framing.py", "tests/aiq_agent/tools/test_exposure_config.py"],
+    )
+
+
+def test_a_support_package_no_test_imports_still_forces_the_full_suite(mod):
+    tests = {"sources/knowledge_layer/testing/knowledge_layer_testing/pdfs.py": "PDF = 'fixtures/scan.pdf'"}
+
+    assert mod.decide_python(["tests/fixtures/scan.pdf"], tests, recorded=True)[0] == "full"
+
+
+def test_python_in_a_support_package_is_python_testmon_sees(mod):
+    changed = ["sources/knowledge_layer/testing/knowledge_layer_testing/qdrant.py"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[0] == "select"
+
+
 def test_a_document_a_helper_only_cites_selects_nothing_extra(mod):
     assert mod.decide_python(["sources/AGENTS.md"], TESTS, recorded=True)[:2] == ("select", [])
 
