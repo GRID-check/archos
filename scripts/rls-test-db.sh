@@ -240,6 +240,41 @@ TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app"
     workers/jobs/slice-bundle.integration.spec.mjs \
     scheduler/db.integration.spec.mjs
 
+# A function, a table and a view created by a superuser (a restore, a hand-run
+# script) are what made `ALTER FUNCTION … RENAME` in migration 0190 fail on
+# production with `42501 must be owner of function`. The deploy's superuser step
+# hands them to the migration role before migrate; prove the migration role
+# cannot rename one before, and can after.
+echo "==> a superuser-owned object no longer stops a migration (ownership normalized before migrate)"
+$PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE grid_ownership OWNER $OWNER;"
+$PSQL -q -v ON_ERROR_STOP=1 -d grid_ownership \
+  -c "CREATE FUNCTION public.grid_stranger() RETURNS int LANGUAGE sql AS 'SELECT 1'" \
+  -c "CREATE TABLE public.stranger_table (id serial PRIMARY KEY)" \
+  -c "CREATE VIEW public.stranger_view AS SELECT 1 AS one"
+OWNER_PSQL="$PGBIN/psql -h $WORKDIR -p $PORT -U $OWNER -d grid_ownership -v ON_ERROR_STOP=1 -q"
+if $OWNER_PSQL -c "ALTER FUNCTION public.grid_stranger() RENAME TO stranger" 2>/dev/null; then
+  echo "OWNERSHIP SETUP FAILED: the migration role renamed a function it does not own" >&2
+  exit 1
+fi
+normalize_ownership() {
+  PATH="$PGBIN:$PATH" PGHOST="$WORKDIR" PGPORT="$PORT" PGUSER=postgres OWNER_ROLE="$OWNER" OWNER_DATABASE=grid_ownership \
+    sh "$REPO_ROOT/deploy/postgres/rename-legacy-names.sh" normalize-ownership
+}
+normalize_ownership
+normalize_ownership # idempotent
+$OWNER_PSQL -c "ALTER FUNCTION public.grid_stranger() RENAME TO stranger" \
+  -c "ALTER TABLE public.stranger_table RENAME TO stranger_renamed" \
+  -c "ALTER VIEW public.stranger_view RENAME TO stranger_view_renamed" || {
+  echo "OWNERSHIP NOT NORMALIZED: the migration role still cannot rename what a superuser created" >&2
+  exit 1
+}
+strangers=$($PSQL -d grid_ownership -tAc "SELECT count(*) FROM pg_class c JOIN pg_roles r ON r.oid = c.relowner WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r','v','S') AND r.rolname = 'postgres'")
+if [ "$strangers" != "0" ]; then
+  echo "OWNERSHIP NOT NORMALIZED: $strangers relation(s) in public still belong to postgres" >&2
+  exit 1
+fi
+$PSQL -q -c "DROP DATABASE grid_ownership;"
+
 # Everything below re-proves one migration of the chain at a time: a database
 # migrated to just before it, seeded with the old shapes, checked row by row,
 # then taken down. Those claims read nothing but apps/workspace/migrations/ and this
