@@ -49,7 +49,8 @@ import { NotFoundError } from '@/lib/api/errors'
 import { restrictedCollectionBase } from '@/lib/authz/folder-access-rule'
 import { drawableRestrictedCollections } from '@/lib/conversations/restricted-use'
 import { findDocumentImageStorageKey, findDocumentStorageKey } from '@/lib/documents/service'
-import { GRID_HEADER_NAMES, type VerifiedGridRequestContext } from '@/lib/request-context'
+import { type VerifiedGridRequestContext } from '@/lib/request-context'
+import { hasHeader } from '@/lib/http/legacy-header-names'
 
 const querySchema = z.object({
   collection: z.string().min(1),
@@ -63,7 +64,7 @@ type DocumentFileQuery = z.infer<typeof querySchema>
 /** The verified envelope when the caller presented one (a 401 when it does not verify); null when it presented none. */
 function presentedContext(request: Request): VerifiedGridRequestContext | null {
   const presented =
-    request.headers.has(GRID_HEADER_NAMES.REQUEST_CONTEXT) || request.headers.has(GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG)
+    hasHeader(request.headers, 'X-Request-Context') || hasHeader(request.headers, 'X-Request-Context-Sig')
   return presented ? requireVerifiedContext(request) : null
 }
 

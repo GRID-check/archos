@@ -27,6 +27,32 @@ const CLIENT_CONTEXT_HEADER_PREFIX = 'x-grid-'
 const CLIENT_CREDENTIAL_HEADERS = new Set(['authorization', 'x-internal-token'])
 
 /**
+ * The same context headers under their names without the product's (`x-budget`
+ * for `x-grid-budget`), which the backend reads beside the old ones from this
+ * release (`aiq_api.legacy_headers`). Named one by one: `x-` alone is every
+ * proxy's prefix. `tests/test_legacy_headers.py` holds this list and the
+ * backend's equal.
+ */
+const SERVICE_HEADERS = new Set([
+  'x-answer-message-id',
+  'x-budget',
+  'x-collection-scope',
+  'x-context-transport',
+  'x-disabled-sources',
+  'x-feature-memory-reflection',
+  'x-locale',
+  'x-model-overrides',
+  'x-org-instructions',
+  'x-organization-id',
+  'x-project-context',
+  'x-project-id',
+  'x-project-memory',
+  'x-request-context',
+  'x-request-context-sig',
+  'x-user-id',
+])
+
+/**
  * Delete, in place, every inbound header only the proxy may set.
  *
  * `headers` is Node's `req.headers`, whose names are already lower-case.
@@ -39,7 +65,7 @@ function stripClientContextHeaders(headers) {
   const removed = []
   for (const name of Object.keys(headers)) {
     const lower = name.toLowerCase()
-    if (lower.startsWith(CLIENT_CONTEXT_HEADER_PREFIX) || CLIENT_CREDENTIAL_HEADERS.has(lower)) {
+    if (lower.startsWith(CLIENT_CONTEXT_HEADER_PREFIX) || SERVICE_HEADERS.has(lower) || CLIENT_CREDENTIAL_HEADERS.has(lower)) {
       delete headers[name]
       removed.push(lower)
     }
@@ -104,6 +130,7 @@ function withoutSessionCookies(cookieHeader) {
 }
 
 module.exports = {
+  SERVICE_HEADERS,
   stripClientContextHeaders,
   findOversizedWsHeader,
   withoutSessionCookies,
