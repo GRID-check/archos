@@ -129,16 +129,16 @@ class TestTheCredential:
         assert bff_http.post_json("/api/internal/x", {"ü": 1}, timeout=2, headers=envelope.headers()) == {"ok": True}
 
         (sent,) = bff.requests
-        assert sent["headers"]["X-Grid-Internal-Token"] == TOKEN
-        assert sent["headers"]["X-Grid-Request-Context"] == "eyJhIjoxfQ"
-        assert sent["headers"]["X-Grid-Request-Context-Sig"] == "c2ln"
+        assert sent["headers"]["X-Internal-Token"] == TOKEN
+        assert sent["headers"]["X-Request-Context"] == "eyJhIjoxfQ"
+        assert sent["headers"]["X-Request-Context-Sig"] == "c2ln"
         assert sent["headers"]["Content-Type"] == "application/json"
         assert json.loads(sent["body"]) == {"ü": 1}
 
     def test_a_caller_cannot_replace_the_token(self, bff: _Server) -> None:
         bff.answers["/api/internal/x"] = (200, {}, b"{}")
-        bff_http.get_json("/api/internal/x", timeout=2, headers={"x-grid-internal-token": "chosen"})
-        assert bff.requests[0]["headers"]["X-Grid-Internal-Token"] == TOKEN
+        bff_http.get_json("/api/internal/x", timeout=2, headers={"x-internal-token": "chosen"})
+        assert bff.requests[0]["headers"]["X-Internal-Token"] == TOKEN
 
     def test_the_query_is_encoded(self, bff: _Server) -> None:
         bff.answers["/api/internal/x"] = (200, {}, b"{}")
@@ -271,7 +271,7 @@ class TestTheLedgersGoThroughTheSeam:
         bff.answers[route] = (202, {}, b"")
         post(payload)
         (sent,) = bff.requests
-        assert (sent["path"], sent["headers"]["X-Grid-Internal-Token"]) == (route, TOKEN)
+        assert (sent["path"], sent["headers"]["X-Internal-Token"]) == (route, TOKEN)
         assert json.loads(sent["body"]) == payload
 
     def test_a_refusal_is_logged_not_raised(

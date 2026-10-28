@@ -225,7 +225,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
         const target = String(input)
         if (!target.endsWith('/v1/collections/similar')) throw new Error(`unexpected fetch ${target}`)
         const headers = new Headers(init?.headers)
-        const envelope = headers.get('x-grid-request-context') ?? ''
+        const envelope = headers.get('x-request-context') ?? ''
         const scope = JSON.parse(Buffer.from(envelope, 'base64url').toString()).collectionScope as string[]
         calls.push({ body: JSON.parse(String(init?.body)), scope })
         return new Response(

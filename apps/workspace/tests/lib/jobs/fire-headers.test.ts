@@ -141,10 +141,13 @@ describe('the headers the BFF puts on a job fire', () => {
 
     // `jobs/runner.WORKER_IDENTITY_HEADERS`. A rename made on one side only is
     // how `remember` answered "no project in scope" on every unattended run.
-    expect(lower(fixture.workerIdentityHeaders).filter((name) => !(name in sent))).toEqual([])
-    expect(sent['x-grid-organization-id']).toBe('org_123')
-    expect(sent['x-grid-project-id']).toBe('proj_789')
-    expect(sent['x-grid-user-id']).toBe('user_456')
+    // The worker's names are the old `x-grid-*` ones its readers read; the BFF sends each as `x-*`,
+    // and the backend's legacy-header middleware copies it back until the contract step.
+    const onTheWire = (name: string) => name.replace(/^x-grid-/, 'x-')
+    expect(lower(fixture.workerIdentityHeaders).filter((name) => !(onTheWire(name) in sent))).toEqual([])
+    expect(sent['x-organization-id']).toBe('org_123')
+    expect(sent['x-project-id']).toBe('proj_789')
+    expect(sent['x-user-id']).toBe('user_456')
   })
 
   it('still carries the floor when every optional context lookup came back empty', async () => {

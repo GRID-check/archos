@@ -54,7 +54,7 @@ async def test_posts_the_outcome_by_backend_job_id() -> None:
     call = _Client.calls[0]
     assert call["url"] == "http://frontend:3000/api/internal/jobs/job-1/outcome"
     assert call["json"] == {"organizationId": "org-1", "status": "failure", "error": "boom"}
-    assert call["headers"]["X-Grid-Internal-Token"] == "a-real-secret-token"
+    assert call["headers"]["X-Internal-Token"] == "a-real-secret-token"
 
 
 @pytest.mark.asyncio

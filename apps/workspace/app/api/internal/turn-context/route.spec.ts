@@ -77,7 +77,7 @@ function signedHeaders(overrides: RequestContextInput = {}) {
 function call(body: unknown = {}, headers: Record<string, string> = signedHeaders()) {
   return POST(new Request('https://grid.test/api/internal/turn-context', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-grid-internal-token': SECRET, ...headers },
+    headers: { 'content-type': 'application/json', 'x-internal-token': SECRET, ...headers },
     body: JSON.stringify(body),
   }))
 }
@@ -207,7 +207,7 @@ describe('POST /api/internal/turn-context', () => {
   })
 
   it('checks the service token independently of a valid signed capsule', async () => {
-    expect((await call({}, { ...signedHeaders(), 'x-grid-internal-token': 'wrong' })).status).toBe(403)
+    expect((await call({}, { ...signedHeaders(), 'x-internal-token': 'wrong' })).status).toBe(403)
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
   })
 
@@ -220,7 +220,7 @@ describe('POST /api/internal/turn-context', () => {
   it('refuses unsigned, tampered, expired and anonymous capsules', async () => {
     for (const headers of [
       {},
-      { ...signedHeaders(), 'X-Grid-Request-Context-Sig': 'f'.repeat(64) },
+      { ...signedHeaders(), 'X-Request-Context-Sig': 'f'.repeat(64) },
       signedHeaders({ issuedAt: Date.now() - REQUEST_CONTEXT_MAX_AGE_MS - 1000 }),
       signedHeaders({ organizationId: null, userId: null }),
     ]) expect((await call({}, headers)).status).toBe(401)

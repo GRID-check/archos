@@ -368,7 +368,7 @@ describe('extractProjectExperience', () => {
     expect(request.organizationId).toBe('org-1')
     expect(mockFetch.mock.calls[0]?.[0]).toBe('http://backend:8000/v1/internal/project-experience')
     const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>
-    expect(headers['x-grid-internal-token']).toBeDefined()
+    expect(headers['x-internal-token']).toBeDefined()
   })
 
   it.each([

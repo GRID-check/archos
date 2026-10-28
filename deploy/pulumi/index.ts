@@ -34,6 +34,7 @@ import { installClickHouse } from "./src/data/clickhouse";
 import { installSeaweedFS, type SeaweedFS } from "./src/data/seaweedfs";
 import { installSeaweedFSBackup } from "./src/data/seaweedfs-backup";
 import { installQdrant } from "./src/data/qdrant";
+import { installWorkloadAlerts } from "./src/platform/workload-alerts";
 import { installGeocoder } from "./src/data/geocoder";
 import { AppWiring, PULL_SECRET_NAME, buildRegistryPullSecret, buildScalerSecret, buildSecrets } from "./src/app/config";
 import { runMigrations } from "./src/app/migrations-job";
@@ -184,6 +185,7 @@ const rateLimitStore = cfg.rateLimit.enabled
 // uploads into. Chroma is gone from this program: on the deploy that removes it,
 // `chromaMigration` (below) copies it over before Pulumi deletes the server, and
 // its claim `data-chroma-0` is kept (`whenDeleted: Retain`) as the way back.
+installWorkloadAlerts(provider, namespace);
 const qdrant = installQdrant(cfg, provider, namespace, seaweed.internalEndpoint, [seaweed.bucketInitJob]);
 // Office → PDF converter for the document viewer (ADR-0070). Stateless and
 // fail-open, so nothing waits on it; its NetworkPolicies admit the frontend

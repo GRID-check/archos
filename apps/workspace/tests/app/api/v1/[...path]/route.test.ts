@@ -119,7 +119,7 @@ describe('/api/v1/[...path]', () => {
       expect(res.status).toBe(200)
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const init = fetchMock.mock.calls[0][1] as RequestInit
-      expect(getHeader(init, 'X-Grid-Collection-Scope')).toBe('encoded-scope')
+      expect(getHeader(init, 'X-Collection-Scope')).toBe('encoded-scope')
       expect(getHeader(init, 'Accept')).toBe('application/json')
       expect(getHeader(init, 'Authorization')).toBe('Bearer tok')
       expect(mockBuildCollectionScopeFromRequest).toHaveBeenCalledWith(baseSession, {
@@ -158,7 +158,7 @@ describe('/api/v1/[...path]', () => {
       expect(res.status).toBe(200)
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const init = fetchMock.mock.calls[0][1] as RequestInit
-      expect(getHeader(init, 'X-Grid-Collection-Scope')).toBe('encoded-scope')
+      expect(getHeader(init, 'X-Collection-Scope')).toBe('encoded-scope')
       expect(getHeader(init, 'Content-Type')).toBe('application/json')
       expect(getHeader(init, 'Authorization')).toBe('Bearer tok')
       expect(mockBuildCollectionScopeFromRequest).toHaveBeenCalledWith(baseSession, {
@@ -189,7 +189,7 @@ describe('/api/v1/[...path]', () => {
 
       expect(res.status).toBe(200)
       expect(mockRequireAuthorizedSession).not.toHaveBeenCalled()
-      expect(getHeader(fetchMock.mock.calls[0][1], 'X-Grid-Collection-Scope')).toBe('anon-scope')
+      expect(getHeader(fetchMock.mock.calls[0][1], 'X-Collection-Scope')).toBe('anon-scope')
       expect(getHeader(fetchMock.mock.calls[0][1], 'Authorization')).toBeUndefined()
     })
   })

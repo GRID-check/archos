@@ -90,7 +90,7 @@ describe('/api/jobs/async/[...path]', () => {
       expect(res.status).toBe(200)
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const init = fetchMock.mock.calls[0][1] as RequestInit
-      expect(getHeader(init, 'X-Grid-Collection-Scope')).toBe('encoded-scope')
+      expect(getHeader(init, 'X-Collection-Scope')).toBe('encoded-scope')
       expect(getHeader(init, 'Accept')).toBe('text/event-stream')
       expect(mockBuildCollectionScopeFromRequest).toHaveBeenCalledWith(baseSession, {
         projectId: 'proj-1',
@@ -124,7 +124,7 @@ describe('/api/jobs/async/[...path]', () => {
 
       expect(res.status).toBe(200)
       expect(mockRequireAuthorizedSession).not.toHaveBeenCalled()
-      expect(getHeader(fetchMock.mock.calls[0][1], 'X-Grid-Collection-Scope')).toBe('anon-scope')
+      expect(getHeader(fetchMock.mock.calls[0][1], 'X-Collection-Scope')).toBe('anon-scope')
     })
 
     it('refuses to submit research in a closed project, and forwards nothing (ADR-0090)', async () => {
@@ -239,7 +239,7 @@ describe('/api/jobs/async/[...path]', () => {
       expect(res.status).toBe(200)
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const init = fetchMock.mock.calls[0][1] as RequestInit
-      expect(getHeader(init, 'X-Grid-Collection-Scope')).toBe('encoded-scope')
+      expect(getHeader(init, 'X-Collection-Scope')).toBe('encoded-scope')
       expect(mockBuildCollectionScopeFromRequest).toHaveBeenCalledWith(baseSession, {
         projectId: 'proj-1',
         conversationId: 'conv-1',
@@ -294,7 +294,7 @@ describe('/api/jobs/async/[...path]', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const init = fetchMock.mock.calls[0][1] as RequestInit
       expect(init.method).toBe('DELETE')
-      expect(getHeader(init, 'X-Grid-Collection-Scope')).toBe('delete-scope')
+      expect(getHeader(init, 'X-Collection-Scope')).toBe('delete-scope')
       expect(mockBuildCollectionScopeFromRequest).toHaveBeenCalledWith(baseSession, {
         projectId: 'proj-1',
         conversationId: undefined,

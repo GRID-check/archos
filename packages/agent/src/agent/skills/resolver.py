@@ -327,7 +327,7 @@ class SkillResolver:
         response = httpx.get(
             f"{base_url}/api/internal/skills/resolve",
             params=params,
-            headers={"x-grid-internal-token": token},
+            headers={"x-internal-token": token},
             timeout=_REQUEST_TIMEOUT_SECONDS,
         )
         response.raise_for_status()

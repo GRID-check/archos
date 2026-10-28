@@ -313,7 +313,7 @@ export async function proposeRootFolders(
   try {
     const response = await fetch(`${getBackendUrl()}/v1/folder-proposals`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-grid-organization-id': session.organizationId },
+      headers: { 'Content-Type': 'application/json', 'x-organization-id': session.organizationId },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(NEW_FOLDERS_TIMEOUT_MS),
     })

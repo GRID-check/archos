@@ -347,7 +347,7 @@ export async function checkProjectConsistency(
       // credential (falls back to the platform env chain when unset).
       headers: {
         'Content-Type': 'application/json',
-        'x-grid-organization-id': session.organizationId,
+        'x-organization-id': session.organizationId,
       },
       body: JSON.stringify({
         free_text: input.freeText,
@@ -422,7 +422,7 @@ export async function generateProjectSummary(
       // credential (falls back to the platform env chain when unset).
       headers: {
         'Content-Type': 'application/json',
-        'x-grid-organization-id': session.organizationId,
+        'x-organization-id': session.organizationId,
       },
       body: JSON.stringify({ profile_text: profileText, locale }),
       // Bound the call so an unreachable backend rejects promptly (as a

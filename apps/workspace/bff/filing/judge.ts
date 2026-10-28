@@ -103,7 +103,7 @@ export async function judgeFiling(organizationId: string, input: FilingJudgement
   try {
     const response = await fetch(`${getBackendUrl()}/v1/filing-fit`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-grid-organization-id': organizationId },
+      headers: { 'Content-Type': 'application/json', 'x-organization-id': organizationId },
       body: JSON.stringify(filingFitBody(input)),
       signal: AbortSignal.timeout(input.purpose === 'sort' ? SORT_TIMEOUT_MS : TIMEOUT_MS[input.basis]),
     })

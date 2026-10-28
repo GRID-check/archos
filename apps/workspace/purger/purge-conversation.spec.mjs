@@ -58,7 +58,7 @@ describe('purgeConversation (the retry of a chat erasure)', () => {
     const [url, init] = fetchImpl.mock.calls[0]
     expect(url).toBe('http://frontend:3000/api/internal/conversations/s_conv%2F1/erase')
     expect(init.method).toBe('POST')
-    expect(init.headers['x-grid-internal-token']).toBe('tok')
+    expect(init.headers['x-internal-token']).toBe('tok')
     expect(JSON.parse(init.body)).toEqual({ organizationId: 'org_1' })
     // Bounded, so a hung BFF is recorded as a failed attempt rather than
     // outliving the stale-claim window.

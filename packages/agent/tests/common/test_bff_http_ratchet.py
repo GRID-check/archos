@@ -30,7 +30,7 @@ PATTERNS = {
     "base_url": re.compile(r"FRONTEND_INTERNAL_URL"),
     # The service-token header, in any case. Inbound checks live in agent_host, so
     # this one is held only in the agent package.
-    "token_header": re.compile(r"x-grid-internal-token", re.IGNORECASE),
+    "token_header": re.compile(r"x-(?:grid-)?internal-token", re.IGNORECASE),
 }
 TOKEN_HEADER_TREES = ("packages/agent/src/agent",)
 

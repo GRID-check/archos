@@ -76,7 +76,7 @@ describe('compareRevisionVisually', () => {
     expect(url).toBe('http://backend:8000/v1/collections/proj_abc/revision-compare')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf', page: 2, purpose: 'person' })
-    expect(init.headers).toMatchObject({ 'x-grid-organization-id': 'org-1', 'x-grid-user-id': 'user-1' })
+    expect(init.headers).toMatchObject({ 'x-organization-id': 'org-1', 'x-user-id': 'user-1' })
     expect(result).toEqual({
       regions: [REGION],
       summary: ['Die Wand ist nach Osten gerückt.'],

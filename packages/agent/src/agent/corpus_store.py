@@ -301,7 +301,7 @@ def _bff() -> tuple[str, dict[str, str]]:
     token = os.environ.get(_INTERNAL_TOKEN_ENV, "").strip()
     if not base_url or not token:
         raise CorpusStoreError(f"{_FRONTEND_INTERNAL_URL_ENV} and {_INTERNAL_TOKEN_ENV} are needed to write the corpus")
-    return base_url.rstrip("/"), {"x-grid-internal-token": token}
+    return base_url.rstrip("/"), {"x-internal-token": token}
 
 
 def _request_upload_url(name: str) -> tuple[str, str]:

@@ -60,7 +60,7 @@ describe('runAgentWakeStop', () => {
     expect(request).toMatchObject({ url: 'ws://aiq-agent:8000/websocket', conversationId: THREAD, turnId: WAKE_ID })
     expect(request.headers['x-chat-mode']).toBe('headless')
     expect(request.headers['x-aiq-mode']).toBe('headless')
-    expect(request.headers['x-grid-user-id']).toBe('user_anna')
+    expect(request.headers['x-user-id']).toBe('user_anna')
     expect(request.headers).not.toHaveProperty('authorization')
   })
 
@@ -69,8 +69,8 @@ describe('runAgentWakeStop', () => {
 
     const { headers } = sentRequest()
     const envelope = verifyRequestContextEnvelope(
-      headers['x-grid-request-context'],
-      headers['x-grid-request-context-sig'],
+      headers['x-request-context'],
+      headers['x-request-context-sig'],
       SECRET
     )
     expect(envelope).toMatchObject({ organizationId: 'org_1', userId: 'user_anna', conversationId: THREAD })

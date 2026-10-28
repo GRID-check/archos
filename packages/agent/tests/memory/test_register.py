@@ -579,8 +579,8 @@ async def test_an_org_denied_note_becomes_a_memory_proposal_and_the_card_carries
     }
     assert body["originCardIndex"] == 0
     (request,) = transport.requests
-    assert request.get_header("X-grid-request-context") == _HEADER  # echoed, never signed
-    assert request.get_header("X-grid-request-context-sig") == _SIGNATURE
+    assert request.get_header("X-request-context") == _HEADER  # echoed, never signed
+    assert request.get_header("X-request-context-sig") == _SIGNATURE
     (card,) = proposals.registry.snapshot()
     assert card["type"] == "memory_proposal"
     assert card["proposal_id"] == _PROPOSAL_ID

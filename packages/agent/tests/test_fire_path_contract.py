@@ -32,6 +32,8 @@ from agent_host.context_envelope import ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES
 from agent_host.context_envelope import _path_matches
 from agent_host.jobs.runner import WORKER_ENVELOPE_HEADERS
 from agent_host.jobs.runner import WORKER_IDENTITY_HEADERS
+from agent_host.legacy_headers import SERVICE_HEADERS
+from agent_host.legacy_headers import legacy_name
 from agent_host.routes.internal_auth import _TOKEN_HEADERS
 from agent_host.routes.internal_auth import _require_internal_token
 
@@ -48,9 +50,16 @@ def _lower(names) -> set[str]:
     return {str(name).lower() for name in names}
 
 
+def _received(names) -> set[str]:
+    """What the backend's readers see of headers sent under ``names``: each service header also under
+    its old ``x-grid-`` name, which ``LegacyHeaderNamesMiddleware`` adds until the contract step."""
+    sent = _lower(names)
+    return sent | {legacy_name(n.encode()).decode() for n in sent if n.encode() in SERVICE_HEADERS}
+
+
 def test_the_route_guard_accepts_only_spellings_the_contract_names(contract: dict) -> None:
     """`_TOKEN_HEADERS` is the exact list whose contents caused the 403."""
-    assert _lower(_TOKEN_HEADERS) <= _lower(contract["internalTokenAcceptedSpellings"])
+    assert _lower(_TOKEN_HEADERS) <= _received(contract["internalTokenAcceptedSpellings"])
 
 
 def test_the_envelope_middleware_agrees_with_the_route_guard(contract: dict) -> None:
@@ -61,7 +70,7 @@ def test_the_envelope_middleware_agrees_with_the_route_guard(contract: dict) -> 
     being refused.
     """
     middleware = _lower(name.decode("ascii") for name in _INTERNAL_TOKEN_HEADER_NAMES)
-    assert middleware <= _lower(contract["internalTokenAcceptedSpellings"])
+    assert middleware <= _received(contract["internalTokenAcceptedSpellings"])
     assert middleware == _lower(_TOKEN_HEADERS)
 
 
@@ -113,14 +122,14 @@ def test_the_worker_identity_headers_are_the_ones_on_the_wire(contract: dict) ->
     produces the same silence.
     """
     worker = _lower(WORKER_IDENTITY_HEADERS)
-    assert worker == _lower(contract["workerIdentityHeaders"])
-    assert worker <= _lower(contract["sentByBff"])
+    assert worker == {legacy_name(n.encode()).decode() for n in _lower(contract["workerIdentityHeaders"])}
+    assert worker <= _received(contract["sentByBff"])
 
 
 def test_the_signed_envelope_headers_match_what_the_bff_signs(contract: dict) -> None:
     envelope = _lower({REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER})
-    assert envelope == _lower(contract["contextEnvelope"])
-    assert envelope <= _lower(contract["sentByBff"])
+    assert envelope <= _received(contract["contextEnvelope"])
+    assert envelope <= _received(contract["sentByBff"])
     # What the worker re-injects for a run that carries one (ADR-0108) is the
     # same pair the BFF sent with the fire, under the same names.
     assert _lower(WORKER_ENVELOPE_HEADERS) == envelope
@@ -140,7 +149,7 @@ def test_every_backend_requirement_is_inside_the_contract(contract: dict) -> Non
     A backend requirement outside this file is a header the BFF has never been
     asked to send, which is the class of defect the whole fixture exists for.
     """
-    named = _lower(contract["sentByBff"]) | _lower(contract["internalTokenAcceptedSpellings"])
+    named = _received(contract["sentByBff"]) | _received(contract["internalTokenAcceptedSpellings"])
     backend_requires = (
         _lower(_TOKEN_HEADERS)
         | _lower(name.decode("ascii") for name in _INTERNAL_TOKEN_HEADER_NAMES)

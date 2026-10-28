@@ -114,7 +114,7 @@ export async function reviewSkill(
         'Content-Type': 'application/json',
         // Forwarded so the backend resolves this org's BYOK credential, exactly
         // as the sibling LLM routes do.
-        'x-grid-organization-id': session.organizationId,
+        'x-organization-id': session.organizationId,
       },
       body: JSON.stringify({
         name: input.name,

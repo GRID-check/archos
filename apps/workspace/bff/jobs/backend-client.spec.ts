@@ -22,7 +22,7 @@ const headersOf = (init: RequestInit | undefined): Record<string, string> =>
 /** A person steering a run: their token, and the envelope over the project their caller authorized. */
 const caller: JobControlCaller = {
   accessToken: 'tok',
-  contextHeaders: { 'X-Grid-Request-Context': 'signed-scope', 'X-Grid-Request-Context-Sig': 'sig' },
+  contextHeaders: { 'X-Request-Context': 'signed-scope', 'X-Request-Context-Sig': 'sig' },
 }
 
 const payload: JobSubmitPayload = {
@@ -72,13 +72,13 @@ describe('submitJob', () => {
 
   it('posts to the internal skills submit route with the X-Internal-Token header', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ jobId: 'job-1' }), { status: 200 }))
-    await submitJob(payload, { 'x-grid-organization-id': 'org-1' })
+    await submitJob(payload, { 'x-organization-id': 'org-1' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('http://backend:8000/v1/internal/skills/submit')
-    expect(headersOf(init)['x-grid-internal-token']).toBe('secret')
+    expect(headersOf(init)['x-internal-token']).toBe('secret')
     expect(headersOf(init)['content-type']).toBe('application/json')
-    expect(headersOf(init)['x-grid-organization-id']).toBe('org-1')
+    expect(headersOf(init)['x-organization-id']).toBe('org-1')
     expect(JSON.parse(init.body as string)).toMatchObject({
       skills: ['data-table-analysis'],
       // The wire field is `output`; the backend accepts `execution` for one
@@ -130,8 +130,8 @@ describe('cancelBackendJob', () => {
     await cancelBackendJob('job-1', caller)
     await writeNowBackendJob('job-1', caller)
     for (const [, init] of fetchMock.mock.calls as [string, RequestInit][]) {
-      expect(headersOf(init)['X-Grid-Request-Context']).toBe('signed-scope')
-      expect(headersOf(init)['X-Grid-Request-Context-Sig']).toBe('sig')
+      expect(headersOf(init)['X-Request-Context']).toBe('signed-scope')
+      expect(headersOf(init)['X-Request-Context-Sig']).toBe('sig')
     }
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
@@ -168,7 +168,7 @@ describe('addDocumentToBackendJob', () => {
     expect(url).toBe('http://backend:8000/v1/jobs/async/job/job%201/documents')
     expect(init.method).toBe('POST')
     expect(headersOf(init).Authorization).toBe('Bearer tok')
-    expect(headersOf(init)['X-Grid-Request-Context']).toBe('signed-scope')
+    expect(headersOf(init)['X-Request-Context']).toBe('signed-scope')
     expect(headersOf(init)['Content-Type']).toBe('application/json')
     expect(JSON.parse(init.body as string)).toEqual({ name: 'Einreichplan.pdf', shelf: 'project' })
   })
@@ -191,7 +191,7 @@ describe('fetchBackendJobOutcome', () => {
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('http://backend:8000/v1/internal/jobs/job%2F1/outcome?organization_id=org%201')
-    expect(headersOf(init)['x-grid-internal-token']).toBe('secret')
+    expect(headersOf(init)['x-internal-token']).toBe('secret')
     expect(headersOf(init).Authorization).toBeUndefined()
     expect(outcome).toEqual({ status: 'running', error: null, report: null, cards: null, message: null })
   })

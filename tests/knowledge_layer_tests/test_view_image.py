@@ -444,7 +444,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
 
         async def get(self, url, *, params, headers):
             assert url.endswith("/api/internal/document-file")
-            assert headers["x-grid-internal-token"] == "tok"
+            assert headers["x-internal-token"] == "tok"
             _Client.seen_params.append(params)
             return self.response
 
