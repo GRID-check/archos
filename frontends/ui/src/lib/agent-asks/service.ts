@@ -169,9 +169,9 @@ export function askMessage(input: {
 type SocketTarget = { url: string; secret: string } | { unavailable: string }
 
 function socketTarget(conversationId: string): SocketTarget {
-  const secret = process.env.GRID_INTERNAL_API_TOKEN
+  const secret = process.env.INTERNAL_API_TOKEN
   // Without it the envelope is unsigned and the backend would not trust it.
-  if (!secret) return { unavailable: 'this deployment cannot sign a turn (GRID_INTERNAL_API_TOKEN)' }
+  if (!secret) return { unavailable: 'this deployment cannot sign a turn (INTERNAL_API_TOKEN)' }
   try {
     return { url: chatSocketUrl(conversationId), secret }
   } catch {
@@ -181,7 +181,7 @@ function socketTarget(conversationId: string): SocketTarget {
 
 /** The longest an ask stays open before a read ends it `failed` (its outcome was lost). */
 export function askMaxSeconds(env: Record<string, string | undefined> = process.env): number {
-  const raw = Number.parseInt(env.GRID_PILOTI_ASK_MAX_SECONDS ?? '', 10)
+  const raw = Number.parseInt(env.AGENT_ASK_MAX_SECONDS ?? '', 10)
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_ASK_MAX_SECONDS
 }
 

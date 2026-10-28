@@ -40,7 +40,7 @@ afterEach(() => {
 
 describe('POST /api/internal/conversations/[id]/erase', () => {
   it('refuses a caller without the service token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest({ organizationId: 'org-1' }, 'wrong'), routeContext)
 
@@ -49,7 +49,7 @@ describe('POST /api/internal/conversations/[id]/erase', () => {
   })
 
   it('runs the erasure inside the queue row’s organization', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     let scope: unknown
     vi.mocked(retryConversationErasure).mockImplementation(async () => {
       scope = getTenantContext()
@@ -65,7 +65,7 @@ describe('POST /api/internal/conversations/[id]/erase', () => {
   })
 
   it('answers 400 without an organization', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest({}, REAL_TOKEN), routeContext)
 
@@ -74,7 +74,7 @@ describe('POST /api/internal/conversations/[id]/erase', () => {
   })
 
   it('answers a hold as 409 legal_hold, which the purger defers on', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(retryConversationErasure).mockRejectedValue(
       new ConflictError('held', { reason: 'legal_hold', entityType: 'conversation' })
     )
@@ -86,7 +86,7 @@ describe('POST /api/internal/conversations/[id]/erase', () => {
   })
 
   it('answers a store that still fails as 502, which the purger counts as an attempt', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(retryConversationErasure).mockRejectedValue(new UpstreamError('still down'))
 
     const response = await POST(makeRequest({ organizationId: 'org-1' }, REAL_TOKEN), routeContext)

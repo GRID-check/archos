@@ -65,7 +65,7 @@ describe('queueFilingReview', () => {
     expect(await queueFilingReview('org-1', { ...BATCH, scope: 'session' }, 'name')).toBe(false)
     vi.mocked(resolvePinnedRequesterSession).mockResolvedValueOnce(null)
     expect(await queueFilingReview('org-1', BATCH, 'name')).toBe(false)
-    vi.stubEnv('GRID_FILING_SUGGESTIONS', 'off')
+    vi.stubEnv('FILING_SUGGESTIONS', 'off')
     expect(await queueFilingReview('org-1', BATCH, 'name')).toBe(false)
     expect(enqueueJob).not.toHaveBeenCalled()
   })
@@ -78,7 +78,7 @@ describe('queueFilingReview', () => {
 
   it('is on unless switched off', () => {
     expect(filingSuggestionsEnabled({})).toBe(true)
-    expect(filingSuggestionsEnabled({ GRID_FILING_SUGGESTIONS: 'OFF' })).toBe(false)
-    expect(filingSuggestionsEnabled({ GRID_FILING_SUGGESTIONS: 'on' })).toBe(true)
+    expect(filingSuggestionsEnabled({ FILING_SUGGESTIONS: 'OFF' })).toBe(false)
+    expect(filingSuggestionsEnabled({ FILING_SUGGESTIONS: 'on' })).toBe(true)
   })
 })

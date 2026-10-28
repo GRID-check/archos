@@ -45,7 +45,7 @@ describe('checkResourcePermission', () => {
     store = new TestStore()
     setCacheStore(store)
     // The default TTL (30s) stays ON: these tests assert what survives it.
-    delete process.env.GRID_AUTHZ_CACHE_TTL_MS
+    delete process.env.AUTHZ_CACHE_TTL_MS
     check.mockResolvedValue({ authorized: true })
   })
 

@@ -32,7 +32,7 @@ const request = (body: unknown): Request =>
 describe('POST /api/organizations', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    delete process.env.GRID_DISABLE_SELF_SERVE_ORGS
+    delete process.env.DISABLE_SELF_SERVE_ORGS
     createOrganization.mockResolvedValue({ id: 'org_new' })
     createOrganizationMembership.mockResolvedValue({})
   })
@@ -47,7 +47,7 @@ describe('POST /api/organizations', () => {
   })
 
   it('is blocked when self-serve org creation is disabled (invite-only platform)', async () => {
-    process.env.GRID_DISABLE_SELF_SERVE_ORGS = 'true'
+    process.env.DISABLE_SELF_SERVE_ORGS = 'true'
     const res = await POST(request({ name: 'Acme' }))
     expect(res.status).toBe(403)
     expect(await res.json()).toEqual({ error: 'self-serve-disabled' })
@@ -86,7 +86,7 @@ describe('POST /api/organizations', () => {
   })
 
   it('reports nothing when self-serve creation is disabled', async () => {
-    process.env.GRID_DISABLE_SELF_SERVE_ORGS = 'true'
+    process.env.DISABLE_SELF_SERVE_ORGS = 'true'
 
     await POST(request({ name: 'Acme' }))
 

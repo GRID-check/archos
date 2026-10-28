@@ -9,7 +9,7 @@ import type { APIRoute } from 'astro'
  * into the static build is how the production landing page once sent visitors
  * to the dev app. The Deployment injects `PUBLIC_APP_URL`
  * (`https://app.<baseDomain>` via Pulumi); unset falls back to prod, matching
- * the fail-safe rule of `GRID_LANDING_URL` on the app side.
+ * the fail-safe rule of `LANDING_URL` on the app side.
  *
  * The `?sign-in` marker is required. The app's root redirects logged-out
  * visitors back to this landing site, so linking at the bare APP_URL bounces

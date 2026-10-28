@@ -31,7 +31,7 @@ a person gates. The working directory is the desk, not the file cabinet.
 Storage
 -------
 ``langgraph.store.postgres.AsyncPostgresStore`` on the Python service's own
-checkpoint database (``GRID_CHECKPOINT_DB``), sharing the pool the checkpointer
+checkpoint database (``CHECKPOINT_DB``), sharing the pool the checkpointer
 already opens. No table in ``app``: the single-writer rule holds. A
 non-Postgres DSN (the SQLite dev fallback) gets an ``InMemoryStore`` instead,
 and says once that drafts do not survive a restart.
@@ -142,7 +142,7 @@ _DRAFT_ROOT_BARE = DRAFT_ROOT.rstrip("/")
 #: many round trips an unusual conversation costs.
 _PAGE_SIZE = 100
 
-_DSN_ENV = "GRID_CHECKPOINT_DB"
+_DSN_ENV = "CHECKPOINT_DB"
 
 _stores: dict[str, BaseStore] = {}
 #: Serialises store creation: ``setup()`` is an await, so a bare check-then-act

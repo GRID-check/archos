@@ -23,7 +23,7 @@ from aiq_agent.common.reasoning_settings import sanitize_reasoning_efforts
 @pytest.fixture(autouse=True)
 def _clean_cache(monkeypatch):
     reset_reasoning_settings_cache()
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
     yield
     reset_reasoning_settings_cache()
@@ -85,7 +85,7 @@ class TestResolution:
         assert calls["n"] == 0
 
     def test_resolves_and_caches(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"efforts": {"shallow_research": "high", "deep_research": "low"}})
 
         assert get_reasoning_effort("shallow_research") == "high"
@@ -96,7 +96,7 @@ class TestResolution:
     def test_unpinned_group_is_none_not_a_level(self, monkeypatch):
         """`None` means "leave the YAML value alone" and must not be confused
         with the level "none", which disables reasoning."""
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"efforts": {"shallow_research": "none"}})
 
         assert get_reasoning_effort("shallow_research") == "none"
@@ -104,7 +104,7 @@ class TestResolution:
 
     def test_the_whole_map_is_one_round_trip_and_a_copy(self, monkeypatch):
         """``LLMProvider.with_reasoning_efforts`` takes the map; it must not alias the cache."""
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"efforts": {"shallow_research": "high", "deep_research": "low"}})
 
         efforts = get_reasoning_efforts()
@@ -114,12 +114,12 @@ class TestResolution:
         assert calls["n"] == 1
 
     def test_bff_failure_fails_open(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, error=httpx.ConnectError("boom"))
         assert get_reasoning_effort("shallow_research") is None
 
     def test_malformed_payload_fails_open(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"efforts": "not-a-map"})
         assert get_reasoning_effort("shallow_research") is None
 
@@ -181,7 +181,7 @@ class TestApplyModelOverride:
         assert result.reasoning_effort == "none"
 
     def test_unpinned_effort_leaves_the_configured_value(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"efforts": {}})
         llm = _FakeLlm(reasoning_effort="medium")
 
@@ -190,7 +190,7 @@ class TestApplyModelOverride:
         assert result.reasoning_effort == "medium"
 
     def test_resolves_from_the_platform_when_not_passed(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"efforts": {"shallow_research": "xhigh"}})
         llm = _FakeLlm(reasoning_effort="none")
 

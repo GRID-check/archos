@@ -73,14 +73,14 @@ describe('readTraceRetentionDays', () => {
   })
 
   it('never goes below Langfuse’s own minimum of 3 days', () => {
-    expect(readTraceRetentionDays({ GRID_LANGFUSE_TRACE_RETENTION_DAYS: '1' })).toEqual({ days: 3, clamped: true })
-    expect(readTraceRetentionDays({ GRID_LANGFUSE_TRACE_RETENTION_DAYS: '3' })).toEqual({ days: 3, clamped: false })
-    expect(readTraceRetentionDays({ GRID_LANGFUSE_TRACE_RETENTION_DAYS: '90' })).toEqual({ days: 90, clamped: false })
+    expect(readTraceRetentionDays({ TRACE_RETENTION_DAYS: '1' })).toEqual({ days: 3, clamped: true })
+    expect(readTraceRetentionDays({ TRACE_RETENTION_DAYS: '3' })).toEqual({ days: 3, clamped: false })
+    expect(readTraceRetentionDays({ TRACE_RETENTION_DAYS: '90' })).toEqual({ days: 90, clamped: false })
   })
 
   it('reads a value that is not a positive integer as the default, and says it corrected it', () => {
     for (const bad of ['abc', '0', '-5', '2.5']) {
-      expect(readTraceRetentionDays({ GRID_LANGFUSE_TRACE_RETENTION_DAYS: bad })).toEqual({ days: 30, clamped: true })
+      expect(readTraceRetentionDays({ TRACE_RETENTION_DAYS: bad })).toEqual({ days: 30, clamped: true })
     }
   })
 })

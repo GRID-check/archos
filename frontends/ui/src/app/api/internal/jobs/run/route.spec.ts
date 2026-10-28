@@ -32,7 +32,7 @@ afterEach(() => {
 
 describe('POST /api/internal/jobs/run', () => {
   it('runs one slice of the named claim and answers with the state to save', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
     runJobSlice.mockResolvedValueOnce({ done: false, payload: { cursor: 'p2' } })
 
     const response = await post({ jobId: JOB_ID, worker: 'bff-jobs-pod-0' })
@@ -43,7 +43,7 @@ describe('POST /api/internal/jobs/run', () => {
   })
 
   it('answers 409 when the job is not that worker’s, which the runner reads as a lost claim', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
     runJobSlice.mockRejectedValueOnce(new ConflictError('The job is not claimed by this worker'))
 
     const response = await post({ jobId: JOB_ID, worker: 'bff-jobs-pod-0' })
@@ -52,7 +52,7 @@ describe('POST /api/internal/jobs/run', () => {
   })
 
   it('refuses a wrong or missing token before reading anything (403)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
 
     expect((await post({ jobId: JOB_ID, worker: 'w' }, 'wrong')).status).toBe(403)
     expect((await post({ jobId: JOB_ID, worker: 'w' }, '')).status).toBe(403)
@@ -60,7 +60,7 @@ describe('POST /api/internal/jobs/run', () => {
   })
 
   it('refuses a body that does not name a job and a worker (400)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
 
     expect((await post({ jobId: 'not-a-uuid', worker: 'w' })).status).toBe(400)
     expect((await post({ jobId: JOB_ID })).status).toBe(400)

@@ -11,7 +11,7 @@
  *    Vault BYOK) with zero Grid changes. We store only the Vault object id.
  *
  *  - `local-aes-gcm` — anonymous/dev fallback. AES-256-GCM under the 32-byte
- *    base64 `GRID_BYOK_LOCAL_KEK`, with `orgId:credentialId` as AAD so a
+ *    base64 `BYOK_LOCAL_KEK`, with `orgId:credentialId` as AAD so a
  *    ciphertext can't be replayed across tenants or rows.
  *
  * NOTHING here may touch `@/lib/cache` — the shared cache can be
@@ -42,7 +42,7 @@ export interface SecretRowLike {
 
 /** Which backend new credentials use in this deployment. */
 export function activeSecretBackend(): SecretBackend {
-  const configured = (process.env.GRID_BYOK_SECRET_BACKEND ?? '').toLowerCase()
+  const configured = (process.env.BYOK_SECRET_BACKEND ?? '').toLowerCase()
   if (configured === 'vault' || configured === 'workos-vault') return 'workos-vault'
   if (configured === 'local' || configured === 'local-aes-gcm') return 'local-aes-gcm'
   return process.env.WORKOS_API_KEY ? 'workos-vault' : 'local-aes-gcm'
@@ -93,15 +93,15 @@ interface LocalEnvelope {
 }
 
 function localKek(): Buffer {
-  const raw = process.env.GRID_BYOK_LOCAL_KEK
+  const raw = process.env.BYOK_LOCAL_KEK
   if (!raw) {
     throw new Error(
-      'GRID_BYOK_LOCAL_KEK is not set — required for the local-aes-gcm BYOK secret backend (32 bytes, base64)',
+      'BYOK_LOCAL_KEK is not set — required for the local-aes-gcm BYOK secret backend (32 bytes, base64)',
     )
   }
   const key = Buffer.from(raw, 'base64')
   if (key.length !== 32) {
-    throw new Error('GRID_BYOK_LOCAL_KEK must decode to exactly 32 bytes (AES-256)')
+    throw new Error('BYOK_LOCAL_KEK must decode to exactly 32 bytes (AES-256)')
   }
   return key
 }

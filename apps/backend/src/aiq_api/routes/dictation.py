@@ -70,8 +70,8 @@ from .internal_auth import _require_internal_token
 
 logger = logging.getLogger(__name__)
 
-MODEL_ENV = "GRID_DICTATION_MODEL"
-FALLBACK_MODEL_ENV = "GRID_DICTATION_FALLBACK_MODEL"
+MODEL_ENV = "DICTATION_MODEL"
+FALLBACK_MODEL_ENV = "DICTATION_FALLBACK_MODEL"
 #: Chosen in a live test (2026-10-08, ten synthetic mixed German/English clips,
 #: ``docs/architecture/voice-dictation.md``): Scribe kept every mixed sentence
 #: as spoken; Whisper Turbo is a different provider, so the two fail apart.

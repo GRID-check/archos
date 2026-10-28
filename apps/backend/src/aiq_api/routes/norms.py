@@ -30,7 +30,7 @@ from aiq_agent.common.norm_registry import NormsFile
 
 logger = logging.getLogger(__name__)
 
-_ADMIN_TOKEN = os.environ.get("GRID_ADMIN_TOKEN")
+_ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN")
 
 # Bundesland -> OGD-RIS "SucheIn<State>" query flag (mirrors scripts/build_ris_catalog.py).
 _FEDERAL_STATE_PARAMS: dict[str, str] = {

@@ -812,7 +812,7 @@ server does not read its box or its thread target still goes; the canvas client
 says what it went without (`onDegraded`, `canvasDegradations`), the card says
 Piloti answered about the whole document, and a thread answer that never
 reached the thread is offered there to add by hand. Both fields travel only
-while `GRID_WIRE_V2_ADDITIVE_FIELDS` is on, its default: the hello then names
+while `WIRE_V2_ADDITIVE_FIELDS` is on, its default: the hello then names
 them in `accepts`.
 
 Mentioning Piloti in a thread sends the same turn with `reply_in_thread`. The
@@ -870,8 +870,8 @@ retried by the queue and recorded as `failed` on the last attempt.
 
 **Guards.** Piloti's own replies never wake it. Only a person who may write
 the document can reply, so only they can wake it. At most
-`GRID_WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
-`GRID_WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
+`WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
+`WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
 `agent_wakes` rows at enqueue and again at claim. The WorkOS flag
 `piloti-wakes`, an entitlement off by default. A wake held before Piloti was
 asked (a cap, the switch, rights lost, the mark gone, the delegation taken

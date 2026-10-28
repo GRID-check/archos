@@ -105,7 +105,7 @@ describe('queueDocumentCheck', () => {
   })
 
   it('reads the cap from the deployment', async () => {
-    vi.stubEnv('GRID_DOCUMENT_CHECK_DAILY_LIMIT', '3')
+    vi.stubEnv('DOCUMENT_CHECK_DAILY_LIMIT', '3')
 
     await queueDocumentCheck(request, NOW)
 
@@ -122,7 +122,7 @@ describe('queueDocumentCheck', () => {
   })
 
   it('switches the checks off with a cap of 0, before anything is read or claimed', async () => {
-    vi.stubEnv('GRID_DOCUMENT_CHECK_DAILY_LIMIT', '0')
+    vi.stubEnv('DOCUMENT_CHECK_DAILY_LIMIT', '0')
 
     expect(await queueDocumentCheck(request, NOW)).toBe(false)
     expect(isOrgFeatureEnabled).not.toHaveBeenCalled()

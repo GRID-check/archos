@@ -1153,13 +1153,13 @@ describe('FilePreviewPane', () => {
         file={{
           ...mockFile,
           status: 'failed',
-          errorMessage: 'vlm_not_configured: image ingestion requires GRID_VLM_API_KEY',
+          errorMessage: 'vlm_not_configured: image ingestion requires VLM_API_KEY',
         }}
         projectId="proj-1"
       />
     )
     expect(screen.getByText(/need a vision model, and none is set up/)).toBeDefined()
-    expect(screen.queryByText(/GRID_VLM_API_KEY/)).toBeNull()
+    expect(screen.queryByText(/VLM_API_KEY/)).toBeNull()
   })
 
   describe('the file operations', () => {

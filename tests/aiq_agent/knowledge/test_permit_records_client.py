@@ -62,7 +62,7 @@ class _Bff:
 def bff(monkeypatch):
     server = _Bff()
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", server.url + "/")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "secret")
     yield server
     server.close()
 
@@ -172,12 +172,12 @@ def test_an_unreachable_bff_is_false(monkeypatch):
     url = server.url
     server.close()
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", url)
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "secret")
 
     assert store_permit_record("org_1", "d1", "proj_1", "f.pdf", "m", _record()) is False
 
 
-@pytest.mark.parametrize("missing", ["FRONTEND_INTERNAL_URL", "GRID_INTERNAL_API_TOKEN"])
+@pytest.mark.parametrize("missing", ["FRONTEND_INTERNAL_URL", "INTERNAL_API_TOKEN"])
 def test_an_unconfigured_transport_posts_nothing(bff, monkeypatch, missing):
     monkeypatch.delenv(missing)
     assert store_permit_record("org_1", "d1", "proj_1", "f.pdf", "m", _record()) is False

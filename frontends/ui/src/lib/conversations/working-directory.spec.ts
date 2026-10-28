@@ -24,7 +24,7 @@ const fetchMock = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+  process.env.INTERNAL_API_TOKEN = 'test-token'
   vi.stubGlobal('fetch', fetchMock)
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 })
@@ -67,7 +67,7 @@ describe('discardConversationDrafts', () => {
   })
 
   it('does not call an unauthenticated DELETE when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     await expect(discardConversationDrafts('s_conv_1')).resolves.toBe(false)
     expect(fetchMock).not.toHaveBeenCalled()
   })

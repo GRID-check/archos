@@ -80,7 +80,7 @@ const ESCALATION_PERCENTS = [90, 100] as const
  * tenant walking into a wall.
  */
 export function storageAlertThresholdPercent(
-  raw = process.env.GRID_STORAGE_ALERT_THRESHOLD_PERCENT,
+  raw = process.env.STORAGE_ALERT_THRESHOLD_PERCENT,
 ): number {
   const parsed = Number(raw)
   if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) return DEFAULT_THRESHOLD_PERCENT

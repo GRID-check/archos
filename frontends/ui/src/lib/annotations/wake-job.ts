@@ -327,10 +327,10 @@ export async function runPilotiWake(
     if (isAuthzRefusal(error)) return end('suppressed', 'the person may no longer chat here')
     throw error
   }
-  const secret = process.env.GRID_INTERNAL_API_TOKEN
+  const secret = process.env.INTERNAL_API_TOKEN
   // Without it the envelope is unsigned and the backend would not trust it: a
   // deployment fault, which the queue's retries and dead row make visible.
-  if (!secret) throw new Error('GRID_INTERNAL_API_TOKEN is not set: a wake cannot sign its turn')
+  if (!secret) throw new Error('INTERNAL_API_TOKEN is not set: a wake cannot sign its turn')
 
   const outcome = await runHeadlessTurn({
     url: chatSocketUrl(conversationId),

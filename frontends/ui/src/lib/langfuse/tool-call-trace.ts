@@ -15,7 +15,7 @@ import 'server-only'
  * An unknown operation name is the agent's own text and is recorded as
  * `unknown`. The session is the conversation when Piloti made the call, so the
  * call sits beside the chat turn that asked for it. The person is named only
- * under `GRID_TRACE_IDENTITY_ATTRIBUTES=true`, the gate every other trace uses
+ * under `TRACE_IDENTITY_ATTRIBUTES=true`, the gate every other trace uses
  * (`docs/observability/langfuse.md`).
  *
  * ## Best-effort
@@ -60,12 +60,12 @@ function environment(raw = process.env.APP_ENV ?? ''): string | undefined {
   return value && !value.startsWith('langfuse') ? value : undefined
 }
 
-function release(raw = process.env.GRID_GIT_SHA ?? ''): string | undefined {
+function release(raw = process.env.GIT_SHA ?? ''): string | undefined {
   const value = raw.trim()
   return value && value !== 'unknown' ? value : undefined
 }
 
-const identityOn = () => process.env.GRID_TRACE_IDENTITY_ATTRIBUTES?.trim().toLowerCase() === 'true'
+const identityOn = () => process.env.TRACE_IDENTITY_ATTRIBUTES?.trim().toLowerCase() === 'true'
 
 /** The ingestion batch for one call. Pure, so the mapping is tested without a network. */
 export function toolCallBatch(call: ToolCallRecord, ids: { traceId: string; observationId: string; eventIds: [string, string] }): IngestionBatch {

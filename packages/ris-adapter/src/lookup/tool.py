@@ -83,7 +83,7 @@ class RisLookupToolConfig(FunctionBaseConfig, name="ris_lookup"):
         default="",
         description=(
             "DEPRECATED (ADR-0025): path to a legacy flat catalog YAML. Empty = the norm registry "
-            "(configs/norms/*/registry.yml, GRID_NORMS_DIR). Set only for legacy override."
+            "(configs/norms/*/registry.yml, NORMS_DIR). Set only for legacy override."
         ),
     )
     ingest_into_knowledge: bool = Field(

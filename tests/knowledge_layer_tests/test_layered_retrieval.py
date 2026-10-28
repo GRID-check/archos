@@ -268,7 +268,7 @@ class TestMergeResults:
 class TestMergeEmbeddingMismatch:
     """A fingerprint mismatch must surface, never read as a genuine miss.
 
-    Regression: a wrong GRID_EMBED_MODEL/GRID_EMBED_BASE_URL raised RuntimeError
+    Regression: a wrong EMBED_MODEL/EMBED_BASE_URL raised RuntimeError
     in ``_get_index``, ``_retrieve_sync`` converted it to ``success=False``,
     and ``merge_results`` skipped the layer and returned ``success=True`` —
     total base-corpus loss read as fewer sources.

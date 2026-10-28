@@ -35,7 +35,7 @@ export interface RateLimitConfig {
     app: number;
     /** `/api/auth/*` — the credential-stuffing surface. */
     appAuth: number;
-    /** `/websocket` upgrades. Mirrors `GRID_WS_UPGRADE_RATE_LIMIT`. */
+    /** `/websocket` upgrades. Mirrors `WS_UPGRADE_RATE_LIMIT`. */
     appWsUpgrade: number;
     /** Presigned S3 preview/download URLs. */
     s3: number;

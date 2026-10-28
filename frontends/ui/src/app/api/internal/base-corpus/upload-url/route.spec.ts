@@ -31,7 +31,7 @@ const request = (body: unknown, token: string | null = 'test-token'): Request =>
 describe('POST /api/internal/base-corpus/upload-url', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
     vi.mocked(getSignedUrl).mockResolvedValue('http://seaweedfs/grid-documents/base-corpus/x.pdf?X-Amz-Signature=abc')
   })
@@ -43,7 +43,7 @@ describe('POST /api/internal/base-corpus/upload-url', () => {
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await POST(request({ fileName: 'x.pdf' }))).status).toBe(503)
     expect(getSignedUrl).not.toHaveBeenCalled()
   })

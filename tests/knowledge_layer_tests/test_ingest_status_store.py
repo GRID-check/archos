@@ -33,13 +33,13 @@ def _status(job_id: str, state: JobState = JobState.PROCESSING) -> IngestionJobS
 @pytest.fixture
 def sqlite_db(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path}/jobs.db"
-    monkeypatch.setenv("GRID_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
     yield url
     ingest_status_store._initialized.discard(url)
 
 
 def test_noop_without_db(monkeypatch):
-    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     # No DB configured: writes are no-ops and reads return None (adapter then
     # falls back to its in-process dict — single-node behaviour unchanged).
@@ -108,7 +108,7 @@ class TestInFlightFiles:
         assert ingest_status_store.in_flight_files([]) == {}
 
     def test_no_db_is_empty(self, monkeypatch):
-        monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+        monkeypatch.delenv("SUMMARY_DB", raising=False)
         monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
         assert ingest_status_store.in_flight_files(["s_test"]) == {}
 
@@ -236,7 +236,7 @@ class TestInterruptedJobs:
                 {"j": _status("old", JobState.COMPLETED).model_dump_json()},
             )
         engine.dispose()
-        monkeypatch.setenv("GRID_SUMMARY_DB", url)
+        monkeypatch.setenv("SUMMARY_DB", url)
         try:
             got = ingest_status_store.get("old")
             assert got is not None and got.status == JobState.COMPLETED
@@ -315,7 +315,7 @@ class TestWritesReportTheirOutcome:
         assert ingest_status_store.put(_status("job-1", JobState.COMPLETED)) is False
 
     def test_without_a_database_there_is_nothing_to_retry(self, monkeypatch):
-        monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+        monkeypatch.delenv("SUMMARY_DB", raising=False)
         monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
         assert ingest_status_store.put(_status("job-1")) is True
         assert ingest_status_store.heartbeat(["job-1"]) is None
@@ -429,7 +429,7 @@ class TestCancelledJobs:
         assert ingest_status_store.settle_cancelled("never-written") is False
 
     def test_settle_cancelled_without_a_database_is_false(self, monkeypatch):
-        monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+        monkeypatch.delenv("SUMMARY_DB", raising=False)
         monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
 
         assert ingest_status_store.settle_cancelled("job-1") is False

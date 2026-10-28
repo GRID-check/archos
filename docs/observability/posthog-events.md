@@ -20,7 +20,7 @@ events. `tests/test_posthog_boundaries.py` enforces that.
   goes out with no distinct id of ours, and posthog-node gives it a fresh one
   with `$process_person_profile: false`, so no person is minted for it.
 - **Every server event carries `release`, `service` and `app_host`**, the
-  deployed commit (`GRID_GIT_SHA`), the process (`OTEL_SERVICE_NAME`) and the
+  deployed commit (`GIT_SHA`), the process (`OTEL_SERVICE_NAME`) and the
   deployment's host (`app.piloti.at`, `app.dev.piloti.at`, from the pinned
   redirect URI), registered once as super properties of the server client.
   Staging and production share the project and both run `APP_ENV=production`,

@@ -126,7 +126,7 @@ async def test_data_sources_lists_registry_and_reports_vlm_available_true(submit
     app, _submitted_job, _builder = submit_app
     # A resolvable VLM key ⇒ derived capability is True. Force the provider key
     # off so only the explicit override drives the result.
-    monkeypatch.setenv("GRID_VLM_API_KEY", "vlm-secret")
+    monkeypatch.setenv("VLM_API_KEY", "vlm-secret")
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
 
     with TestClient(app) as client:
@@ -142,8 +142,8 @@ async def test_data_sources_lists_registry_and_reports_vlm_available_true(submit
 async def test_data_sources_reports_vlm_available_false_without_a_key(submit_app, monkeypatch):
     """vlm_available is False when no VLM key (explicit or inferred provider key) resolves."""
     app, _submitted_job, _builder = submit_app
-    monkeypatch.delenv("GRID_VLM_API_KEY", raising=False)
-    monkeypatch.delenv("GRID_VLM_BASE_URL", raising=False)
+    monkeypatch.delenv("VLM_API_KEY", raising=False)
+    monkeypatch.delenv("VLM_BASE_URL", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
 
     with TestClient(app) as client:
@@ -157,8 +157,8 @@ async def test_data_sources_reports_vlm_available_false_without_a_key(submit_app
 async def test_data_sources_vlm_available_true_via_provider_inference(submit_app, monkeypatch):
     """The provider key inferred from the default OpenRouter VLM host also lights up the capability."""
     app, _submitted_job, _builder = submit_app
-    monkeypatch.delenv("GRID_VLM_API_KEY", raising=False)
-    monkeypatch.delenv("GRID_VLM_BASE_URL", raising=False)
+    monkeypatch.delenv("VLM_API_KEY", raising=False)
+    monkeypatch.delenv("VLM_BASE_URL", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", "openrouter-secret")
 
     with TestClient(app) as client:

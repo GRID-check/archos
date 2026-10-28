@@ -1266,7 +1266,7 @@ class TestTheSourceClientDrawsTheSameDistinction:
 
     @pytest.fixture(autouse=True)
     def _token(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
 
     @staticmethod
     def _http_error(status: int, body) -> urllib.error.HTTPError:
@@ -1312,7 +1312,7 @@ class TestTheSourceClientDrawsTheSameDistinction:
         from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
         from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source
 
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         with pytest.raises(BimQueryUnavailableError):
             resolve_model_source(organization_id="org", project_id="p")
 

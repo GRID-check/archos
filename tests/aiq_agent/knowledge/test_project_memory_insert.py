@@ -54,7 +54,7 @@ def _http_error(code, body=b""):
 
 
 def test_insert_returns_item_id(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, body={"item": {"id": "item-1"}}) as captured:
         result = pm.insert_memory_item(
             scope="project", project_id="p1", organization_id=None, kind="derived_fact", content="x"
@@ -66,7 +66,7 @@ def test_insert_returns_item_id(monkeypatch):
 def test_insert_sends_the_supersedes_quote(monkeypatch):
     """How the agent corrects memory instead of only appending to it: the entry
     being replaced is quoted verbatim and the frontend retires it."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, body={"item": {"id": "item-2"}}) as captured:
         pm.insert_memory_item(
             scope="project",
@@ -80,7 +80,7 @@ def test_insert_sends_the_supersedes_quote(monkeypatch):
 
 
 def test_insert_omits_the_supersedes_quote_when_absent(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, body={"item": {"id": "item-3"}}) as captured:
         pm.insert_memory_item(
             scope="project",
@@ -94,13 +94,13 @@ def test_insert_omits_the_supersedes_quote_when_absent(monkeypatch):
 
 
 def test_insert_raises_without_token(monkeypatch):
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     with pytest.raises(RuntimeError):
         pm.insert_memory_item(scope="project", project_id="p1", organization_id=None, kind="derived_fact", content="x")
 
 
 def test_org_memory_disabled_raises_typed_error(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     body = json.dumps({"error": "Agent organization-scoped memory is disabled", "code": "ORG_MEMORY_DISABLED"}).encode()
     with _patched_opener(monkeypatch, error=_http_error(403, body)):
         # The default-deny is expected and handled by the caller (confirmation
@@ -121,7 +121,7 @@ def test_org_memory_disabled_raises_typed_error(monkeypatch, caplog):
 
 
 def test_bare_403_logs_token_mismatch_and_reraises(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     # Bare 403 (token guard): body {"error":"Forbidden"} with no code.
     body = json.dumps({"error": "Forbidden"}).encode()
     with _patched_opener(monkeypatch, error=_http_error(403, body)):
@@ -130,14 +130,14 @@ def test_bare_403_logs_token_mismatch_and_reraises(monkeypatch, caplog):
                 pm.insert_memory_item(
                     scope="project", project_id="p1", organization_id=None, kind="derived_fact", content="x"
                 )
-    assert "GRID_INTERNAL_API_TOKEN" in caplog.text
+    assert "INTERNAL_API_TOKEN" in caplog.text
     assert "mismatch" in caplog.text
     # Must NOT be mislabeled as the org-disabled case.
     assert not any(isinstance(r.exc_info, pm.OrgMemoryDisabledError) for r in caplog.records)
 
 
 def test_forbidden_code_403_treated_as_token_mismatch(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     body = json.dumps({"error": "Forbidden", "code": "FORBIDDEN"}).encode()
     with _patched_opener(monkeypatch, error=_http_error(403, body)):
         with caplog.at_level(logging.ERROR, logger=pm.logger.name):
@@ -149,7 +149,7 @@ def test_forbidden_code_403_treated_as_token_mismatch(monkeypatch, caplog):
 
 
 def test_503_logs_disabled_and_reraises(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=_http_error(503, b'{"error":"Internal API disabled"}')):
         with caplog.at_level(logging.ERROR, logger=pm.logger.name):
             with pytest.raises(bff_http.BffRefusedError):
@@ -160,7 +160,7 @@ def test_503_logs_disabled_and_reraises(monkeypatch, caplog):
 
 
 def test_404_returns_none(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=_http_error(404, b'{"error":"Unknown project"}')):
         result = pm.insert_memory_item(
             scope="project", project_id="p-unknown", organization_id=None, kind="derived_fact", content="x"
@@ -174,7 +174,7 @@ def test_404_returns_none(monkeypatch):
 
 
 def test_check_internal_api_ok(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, body={"ok": True}) as captured:
         with caplog.at_level(logging.INFO, logger=pm.logger.name):
             result = pm.check_internal_api()
@@ -184,24 +184,24 @@ def test_check_internal_api_ok(monkeypatch, caplog):
 
 
 def test_check_internal_api_no_token(monkeypatch, caplog):
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     with caplog.at_level(logging.ERROR, logger=pm.logger.name):
         result = pm.check_internal_api()
     assert result is False
-    assert "GRID_INTERNAL_API_TOKEN" in caplog.text
+    assert "INTERNAL_API_TOKEN" in caplog.text
 
 
 def test_check_internal_api_403(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=_http_error(403, b'{"error":"Forbidden"}')):
         with caplog.at_level(logging.ERROR, logger=pm.logger.name):
             result = pm.check_internal_api()
     assert result is False
-    assert "GRID_INTERNAL_API_TOKEN" in caplog.text
+    assert "INTERNAL_API_TOKEN" in caplog.text
 
 
 def test_check_internal_api_503(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=_http_error(503, b'{"error":"Internal API disabled"}')):
         with caplog.at_level(logging.ERROR, logger=pm.logger.name):
             result = pm.check_internal_api()
@@ -210,7 +210,7 @@ def test_check_internal_api_503(monkeypatch, caplog):
 
 
 def test_check_internal_api_connection_error(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=urllib.error.URLError("connection refused")):
         with caplog.at_level(logging.WARNING, logger=pm.logger.name):
             result = pm.check_internal_api()
@@ -219,7 +219,7 @@ def test_check_internal_api_connection_error(monkeypatch, caplog):
 
 
 def test_check_internal_api_never_raises_on_oserror(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=OSError("boom")):
         # Must swallow the error and return False, never propagate.
         assert pm.check_internal_api() is False
@@ -227,7 +227,7 @@ def test_check_internal_api_never_raises_on_oserror(monkeypatch):
 
 def test_insert_sends_a_restriction_sorted_and_unique(monkeypatch):
     """ADR-0087: restricted memory names the restricted collections it depends on."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, body={"item": {"id": "item-r"}}) as captured:
         pm.insert_memory_item(
             scope="project",
@@ -242,7 +242,7 @@ def test_insert_sends_a_restriction_sorted_and_unique(monkeypatch):
 
 def test_insert_sends_the_judge_verdict_for_the_audit_trail(monkeypatch):
     """AI Act: the BFF audits the judge's verdict with the item it was about."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     verdict = {"verdict": "none", "judgedCollections": ["proj_p1_raaaaaaaaaaaa"], "drawnCollections": []}
     with _patched_opener(monkeypatch, body={"item": {"id": "item-j"}}) as captured:
         pm.insert_memory_item(
@@ -257,7 +257,7 @@ def test_insert_sends_the_judge_verdict_for_the_audit_trail(monkeypatch):
 
 
 def test_open_memory_sends_no_restriction(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, body={"item": {"id": "item-o"}}) as captured:
         pm.insert_memory_item(scope="project", project_id="p1", organization_id=None, kind="decision", content="x")
     assert "restrictedCollections" not in captured["payload"]
@@ -266,7 +266,7 @@ def test_open_memory_sends_no_restriction(monkeypatch):
 
 def test_a_restricted_write_is_logged_as_restricted_for_the_turn(monkeypatch):
     """The reflection stage and a later remember call treat it as restricted memory in the prompt."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     token = pm.begin_turn_memory_log("DIGEST")
     try:
         with _patched_opener(monkeypatch, body={"item": {"id": "item-r"}}):

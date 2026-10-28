@@ -118,7 +118,7 @@ logger = logging.getLogger(__name__)
 # Admission control for BACKGROUND work — the other half of ADR-0040 layer L3.
 #
 # This pool is deliberately SEPARATE from the interactive-turn pool
-# (`aiq_agent.common.turn_admission`, `GRID_MAX_ACTIVE_TURNS*`) rather than a
+# (`aiq_agent.common.turn_admission`, `MAX_ACTIVE_TURNS*`) rather than a
 # share of one total. That separation is the partition: a queue full of deep
 # research cannot consume the capacity interactive chat needs, and a busy chat
 # hour cannot block scheduled research. Sizing the two is therefore an explicit
@@ -126,10 +126,10 @@ logger = logging.getLogger(__name__)
 # between them.
 #
 # Capacity makes a job WAIT, never fail (ADR-0079). The worker tier claims fairly
-# across organizations and holds one organization to `GRID_MAX_ACTIVE_JOBS_PER_ORG`
+# across organizations and holds one organization to `MAX_ACTIVE_JOBS_PER_ORG`
 # running at once (`jobs/queue.py`), so a full cluster is a longer queue, and a
 # scheduled run is not skipped for it. The one refusal left is a bound on how many
-# jobs ONE organization may have waiting (`GRID_MAX_QUEUED_JOBS_PER_ORG`), which
+# jobs ONE organization may have waiting (`MAX_QUEUED_JOBS_PER_ORG`), which
 # stops a runaway caller and is not capacity management.
 
 

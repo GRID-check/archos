@@ -70,8 +70,8 @@ cleanly when unset, so a partial run only verifies what it knows:
 
 | Section | Desired state via | Reconciles |
 |---|---|---|
-| Platform organization | `GRID_PLATFORM_ORG_EXTERNAL_ID` (default `grid-platform`) | creates "GRID Platform" with that external id when missing |
-| Owner membership | `GRID_PLATFORM_OWNER_EMAIL` | seats the user in the platform org and assigns `org-platform-owner` (the invite itself stays manual) |
+| Platform organization | `PLATFORM_ORG_EXTERNAL_ID` (default `grid-platform`) | creates "GRID Platform" with that external id when missing |
+| Owner membership | `PLATFORM_OWNER_EMAIL` | seats the user in the platform org and assigns `org-platform-owner` (the invite itself stays manual) |
 | AuthKit redirect URIs / CORS origins | `WORKOS_DESIRED_REDIRECT_URIS`, `WORKOS_DESIRED_CORS_ORIGINS` (comma-separated) | adds missing entries; extras are REPORTED, never deleted without `--apply --prune` |
 | Observability Connect app | `WORKOS_CONNECT_APP_NAME` (default `GRID Observability`), `WORKOS_CONNECT_REDIRECT_URIS` | matches by name; creates a confidential OAuth app and prints client id + secret ONCE; updates redirect URIs on an existing app. The Scopes permission assignment stays manual |
 | Feature-flag targeting | `WORKOS_FLAG_TARGETS_JSON` (`{"<slug>": ["org_…", …]}`) | ADDITIVE only — adds missing targets per org, never removes one; flags missing from WorkOS are reported as MANUAL because creation has no SDK binding |
@@ -110,7 +110,7 @@ Two Production-specific notes:
 
 - **No users exist yet**, so the GRID Platform organization has no
   `org-platform-owner` membership. Until the first owner signs in, platform
-  access comes from the `GRID_PLATFORM_OWNER_EMAILS` break-glass allowlist —
+  access comes from the `PLATFORM_OWNER_EMAILS` break-glass allowlist —
   which is exactly the first-run case it exists for. Clear it once the
   membership is assigned.
 - **`multipleRolesEnabled` is `false` in Production and `true` in Staging.**
@@ -275,7 +275,7 @@ nobody. The current gap in both environments, and what it costs users, is in
 
 - Organization **"GRID Platform"**, external id **`grid-platform`**
   (Staging id: `org_01KX06QQJN3KA25R9G2PNFBGXV`). The app resolves it by
-  external id (`GRID_PLATFORM_ORG_EXTERNAL_ID`).
+  external id (`PLATFORM_ORG_EXTERNAL_ID`).
 - **Org-scoped role** `org-platform-owner` ("Platform Owner") **created
   inside that org only** — WorkOS org-scoped roles cannot be assigned in
   any other organization, which is the exclusivity guarantee. Permissions:
@@ -321,7 +321,7 @@ nobody. The current gap in both environments, and what it costs users, is in
      dashboard (or via the management API `updateAuthkitSettings`,
      `allowSignUp: false`) for Staging, and again when Production is
      provisioned.
-  2. **App-side**: `GRID_DISABLE_SELF_SERVE_ORGS=true` in the deploy
+  2. **App-side**: `DISABLE_SELF_SERVE_ORGS=true` in the deploy
      environment (Coolify) — org creation becomes platform-team-only and
      onboarding shows the invite-only notice up front.
 
@@ -502,7 +502,7 @@ the Staging WorkOS environment.
 | `deep-research` | entitlement | Deep-research runs, on all three paths that reach one: job submission (`POST /api/jobs/async/submit`), the commissioned run (`POST /api/internal/tasks`, op `research`), and — since the agent reads it per turn — whether a run is OFFERED at all, so the escalation and its plan-approval card never appear for a tenant without it. **OFF for all organizations in Production since 2026-09-18**; ON in Staging |
 | `byok-llm` | entitlement | BYOK LLM credentials (ADR-0022): org page card, all `/api/organization/llm-credentials` routes, and the internal resolution endpoint |
 | `web-search` | rollout | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade (like `memory-reflection`), combined with the tenant's own `settings.webSearchEnabled` toggle |
-| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`GRID_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
+| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
 | `wizard-conflict-check` | rollout | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
 | `skills` | entitlement | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/tasks` route, and every scheduled fire (`fireScheduledJob` asks per organization and records a `skipped` run when it is off; the `skill-scheduler` itself has no gate). Created 2026-09-18, **OFF for all organizations in both environments** |
 | `task-automation` | entitlement | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. Created 2026-09-18, **OFF for all organizations in both environments** |
@@ -561,7 +561,7 @@ Production once that check is green. The `image-upload` flag (FB-15a) exists in
 Staging AND Production (2026-07-14); enabled for all orgs in Staging,
 **intentionally OFF in Production** pending a live image-ingestion smoke test
 (a real PNG/JPG must round-trip through the VLM caption → summary/tags →
-retrieval, and the deployment must have `GRID_VLM_*` configured) — flip it on in
+retrieval, and the deployment must have `VLM_*` configured) — flip it on in
 Production once that check is green. The `research-in-chat-history` flag (FB-10)
 exists in Staging AND Production (2026-07-14); enabled for all orgs in Staging,
 **intentionally OFF in Production** pending a review of the merged navigation
@@ -576,12 +576,12 @@ free-text check has been smoke-tested against a configured LLM.
 
 #### Flags are always enforced (since 2026-10)
 
-`GRID_ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
+`ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
 then deleted, together with every env fallback that only mattered while it was
-off (`GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED`,
-`GRID_MAIL_IMPORT_ENABLED`, `GRID_IFC_MODELS_ENABLED`,
-`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`,
-`GRID_MEMORY_REFLECTION_ENABLED`, `GRID_STAGE_FOLLOW_UPS_ENABLED`). With it on,
+off (`SKILLS_ENABLED`, `COLLABORATION_ENABLED`,
+`MAIL_IMPORT_ENABLED`, `IFC_MODELS_ENABLED`,
+`AGENT_AUTHORED_DOCUMENTS_ENABLED`, `PROJECT_KNOWLEDGE_PAGE_ENABLED`,
+`MEMORY_REFLECTION_ENABLED`, `STAGE_FOLLOW_UPS_ENABLED`). With it on,
 every one of those was dead config in both stacks, and compose and local dev,
 which ran it off, rehearsed a different code path from the one that shipped.
 WorkOS is the control plane for features: per organization, per flag, no
@@ -739,7 +739,7 @@ Three things follow, and each has cost somebody an afternoon:
 4. **Script**: re-run both without `--apply` and confirm
    "WorkOS matches the catalog." / "WorkOS matches the desired environment."
 5. **Script**: re-run `provision:workos-env --apply` with
-   `GRID_PLATFORM_OWNER_EMAIL=<owner email>` set — it seats the user in GRID
+   `PLATFORM_OWNER_EMAIL=<owner email>` set — it seats the user in GRID
    Platform (the account itself must already exist; the script reports a
    missing one as MANUAL) and assigns `org-platform-owner`. The membership +
    role pair used to be a dashboard/API action.
@@ -772,7 +772,7 @@ Still manual in every environment, summarized by every `provision:workos-env`
 run: resource types, AuthKit's *Allow sign-ups* toggle, the
 `multipleRolesEnabled` role setting, flag creation, and Vault CMK via support.
 
-Bootstrap alternative: set `GRID_PLATFORM_OWNER_EMAILS=<owner email>` until
+Bootstrap alternative: set `PLATFORM_OWNER_EMAILS=<owner email>` until
 steps 3–5 are done, then clear it.
 
 ## Rolling out folder roles (ADR-0097)
@@ -817,9 +817,9 @@ changed is never carried over again and every later deploy's run is a no-op.
 By hand, for an environment no stack deploys against, from `frontends/ui`:
 
 ```bash
-WORKOS_API_KEY=sk_… GRID_APP_MIGRATION_DATABASE_URL=postgres://… \
+WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
   bun run migrate:folder-grants             # the plan, changes nothing
-WORKOS_API_KEY=sk_… GRID_APP_MIGRATION_DATABASE_URL=postgres://… \
+WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
   bun run migrate:folder-grants -- --apply  # register the folders, assign the roles
 ```
 
@@ -863,7 +863,7 @@ environment; the migration that drops it also deletes the
 - **Folders** (ADR-0097): `lib/authz/folder-roles.ts` holds every WorkOS call of
   the folder tier. A person's levels in a project are two
   `listResourcesForMembership` calls (`folder:read`, `folder:write`) scoped to
-  the project, cached for `GRID_AUTHZ_CACHE_TTL_MS` like every FGA answer, and
+  the project, cached for `AUTHZ_CACHE_TTL_MS` like every FGA answer, and
   never made for a project with no folder of its own (one indexed probe). A
   lookup that fails clears nothing and is not cached. Changing a list registers
   the folder, then removes the folder roles it no longer wants before assigning
@@ -886,10 +886,10 @@ environment; the migration that drops it also deletes the
 |---|---|---|
 | Who can create an ACCOUNT | **WorkOS (native)** | AuthKit → `allowSignUp` off = invite-only accounts; or enable the **waitlist** (approve/deny each entry). Auth methods (password/Google/GitHub/Microsoft/Apple), email verification, MFA, password policy are all native settings. |
 | Joining an existing org | **WorkOS (native)** | Invitations (users-table widget) and **domain auto-join** (verify the org's email domain; users signing up with that domain land in the org via JIT provisioning instead of the onboarding screen). |
-| Who can create an ORGANIZATION | **App-side** (`GRID_DISABLE_SELF_SERVE_ORGS`) | WorkOS has no org-creation gate — orgs are created by our API. `true` = only the platform team creates orgs; onboarding shows the invite-only notice up front. |
+| Who can create an ORGANIZATION | **App-side** (`DISABLE_SELF_SERVE_ORGS`) | WorkOS has no org-creation gate — orgs are created by our API. `true` = only the platform team creates orgs; onboarding shows the invite-only notice up front. |
 | Platform tier / cross-org access | **App-side on WorkOS primitives** | The GRID Platform org + org-scoped role (this runbook); resolution logic in `lib/authz/platform.ts`. |
 
 Decided posture (see §4): invite-only everything — `allowSignUp` off,
-`GRID_DISABLE_SELF_SERVE_ORGS=true`. Verified-domain auto-join stays
+`DISABLE_SELF_SERVE_ORGS=true`. Verified-domain auto-join stays
 available for known customer domains; the waitlist remains an option if
 public interest should queue rather than bounce.

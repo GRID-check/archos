@@ -60,7 +60,7 @@ const OWN_POLICY = {
 
 describe('GET /api/internal/chat-screening', () => {
   beforeEach(() => {
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
     stored.settings = {}
   })

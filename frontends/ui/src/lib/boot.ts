@@ -54,12 +54,12 @@ export const UNKNOWN_SHA = 'unknown'
 /**
  * The commit this image was built from, or {@link UNKNOWN_SHA}.
  *
- * `GRID_GIT_SHA` is stamped as a build arg by the image build and re-exported
+ * `GIT_SHA` is stamped as a build arg by the image build and re-exported
  * as an env var (both Dockerfiles), so it survives into the running container
  * without a runtime lookup — there is no `.git` in the image to ask.
  */
 export function deployedSha(env: NodeJS.ProcessEnv = process.env): string {
-  const sha = (env.GRID_GIT_SHA ?? '').trim()
+  const sha = (env.GIT_SHA ?? '').trim()
   return sha === '' ? UNKNOWN_SHA : sha
 }
 

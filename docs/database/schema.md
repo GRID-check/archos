@@ -1543,10 +1543,10 @@ bulk), then oldest, with `FOR UPDATE SKIP LOCKED`.
 | `lane` | text | The organization id: the unit of fairness AND of tenancy. |
 | `priority` | smallint | `0` interactive, `1` bulk (CHECK). |
 | `payload` | jsonb | The job's whole state: what was asked and how far it got (a keyset cursor, the counts). Saved after every slice and read back by whichever worker claims it next. Holds the requester's identity, permissions and feature flags, never an access token. A `file_research_report` job carries the finished report itself (the backend forgets a run after a day), so it is the one payload that can be large. |
-| `status` | text | `queued`, `claimed` or `dead` (CHECK). A finished job is **deleted**; a job that failed every attempt is `dead` and stays, with its reason, until `GRID_BFF_JOBS_DEAD_RETENTION_DAYS` after `dead_at`. When a row goes dead its `payload` is reduced to `runId`, `projectId`, `documentId` and `taskRunId` (`KEPT_PAYLOAD_KEYS`): the sweeps match a dead job by them, and nothing else of the report, requester or storage keys outlives the attempt. |
+| `status` | text | `queued`, `claimed` or `dead` (CHECK). A finished job is **deleted**; a job that failed every attempt is `dead` and stays, with its reason, until `BFF_JOBS_DEAD_RETENTION_DAYS` after `dead_at`. When a row goes dead its `payload` is reduced to `runId`, `projectId`, `documentId` and `taskRunId` (`KEPT_PAYLOAD_KEYS`): the sweeps match a dead job by them, and nothing else of the report, requester or storage keys outlives the attempt. |
 | `attempts` | integer | Claims spent. A drain or a cap gives a claim back without spending one. |
-| `claimed_by`, `claimed_at`, `heartbeat_at` | text, timestamptz | A `claimed` row always has a holder and a heartbeat (CHECK); a claim silent for `GRID_BFF_JOBS_STALE_SECONDS` is claimed again. |
-| `not_before` | timestamptz | Migration 0104. A failed job is not claimed again before this: `GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS` doubled per attempt, at most 15 minutes. NULL is no wait; a claim, a drain's release and a cap's release clear it. |
+| `claimed_by`, `claimed_at`, `heartbeat_at` | text, timestamptz | A `claimed` row always has a holder and a heartbeat (CHECK); a claim silent for `BFF_JOBS_STALE_SECONDS` is claimed again. |
+| `not_before` | timestamptz | Migration 0104. A failed job is not claimed again before this: `BFF_JOBS_RETRY_BACKOFF_SECONDS` doubled per attempt, at most 15 minutes. NULL is no wait; a claim, a drain's release and a cap's release clear it. |
 | `dead_at` | timestamptz | Migration 0104. Set when the row goes dead (CHECK `bff_job_queue_dead_stamped`: a dead row always has one), and what the retention counts from. |
 | `created_at`, `last_error` | timestamptz, text | |
 

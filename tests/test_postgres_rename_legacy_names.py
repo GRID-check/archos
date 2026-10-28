@@ -6,7 +6,7 @@ run here against a real server, twice: the second run must change nothing. A
 client still connected to an old database is what the deploy will meet, so one
 is held open while the script runs.
 
-Needs a superuser URL to a throwaway cluster in ``GRID_TEST_POSTGRES_URL``
+Needs a superuser URL to a throwaway cluster in ``TEST_POSTGRES_URL``
 (``task be:test:postgres`` provides one) and ``psql`` on the PATH.
 """
 
@@ -22,11 +22,9 @@ from urllib.parse import urlparse
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "deploy" / "postgres" / "rename-legacy-names.sh"
-_URL = os.environ.get("GRID_TEST_POSTGRES_URL")
+_URL = os.environ.get("TEST_POSTGRES_URL")
 
-pytestmark = pytest.mark.skipif(
-    not _URL or not shutil.which("psql"), reason="GRID_TEST_POSTGRES_URL or psql not available"
-)
+pytestmark = pytest.mark.skipif(not _URL or not shutil.which("psql"), reason="TEST_POSTGRES_URL or psql not available")
 
 OLD_DATABASES = ("aiq_jobs", "aiq_checkpoints")
 NEW_DATABASES = ("jobs", "checkpoints")

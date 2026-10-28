@@ -214,7 +214,7 @@ TURN_HEARTBEAT_SECONDS = 20.0
 #: How long a HITL prompt stays open before the turn gives up. Generous, because
 #: a clarifying question can sit while somebody checks a drawing, but finite:
 #: an unanswered prompt used to pin a turn and its checkpoint forever.
-HITL_RESPONSE_TIMEOUT_SECONDS = float(os.getenv("GRID_HITL_RESPONSE_TIMEOUT_SECONDS", "1800"))
+HITL_RESPONSE_TIMEOUT_SECONDS = float(os.getenv("HITL_RESPONSE_TIMEOUT_SECONDS", "1800"))
 
 #: How long a finished turn keeps its sequencer for the stage events that follow
 #: its terminal (``docs/architecture/post-answer-stages.md`` §4).
@@ -227,17 +227,17 @@ STAGE_WIRE_TTL_S = 600.0
 #: (2400 s) with an answer; this sits above that so it never pre-empts a clean
 #: cut-off, and bounds everything else: a model call, tool or graph that never
 #: returns. How many turns run at once is not decided here: ADR-0040's
-#: admission (``GRID_MAX_ACTIVE_TURNS``) refuses a turn it has no slot for at
+#: admission (``MAX_ACTIVE_TURNS``) refuses a turn it has no slot for at
 #: once, and NAT's own semaphore, which queued it silently, is off
 #: (``plugin.AIQAPIWorker._create_chat_session_manager``).
-TURN_DEADLINE_SECONDS = float(os.getenv("GRID_CHAT_TURN_DEADLINE_SECONDS", "2700"))
+TURN_DEADLINE_SECONDS = float(os.getenv("CHAT_TURN_DEADLINE_SECONDS", "2700"))
 
 #: How many of its own frames a turn's sequencer keeps for ``attach``, so the
 #: replica running a turn can replay it without the bus. The bus stream keeps
-#: the same number per conversation (``GRID_CONV_STREAM_MAXLEN``'s default).
+#: the same number per conversation (``CONV_STREAM_MAXLEN``'s default).
 LOCAL_REPLAY_FRAMES = 2000
 
-# @environment_variable GRID_CHAT_SUPERSEDE_WAIT_SECONDS
+# @environment_variable CHAT_SUPERSEDE_WAIT_SECONDS
 # @category Server
 # @type float
 # @default 13.5
@@ -246,11 +246,11 @@ LOCAL_REPLAY_FRAMES = 2000
 # (and its `conv:<id>:running` marker to clear) before it is refused as "still
 # finishing the previous answer". Keep it under the client's 15 s acknowledgement
 # bound (`ACK_TIMEOUT_MS`) so the reader hears an answer, and above
-# `GRID_CHAT_RUNNING_TTL_SECONDS`, so a replica that died mid-turn never costs a
+# `CHAT_RUNNING_TTL_SECONDS`, so a replica that died mid-turn never costs a
 # refusal. Only used while the conversation bus spans replicas.
-SUPERSEDE_WAIT_SECONDS = float(os.getenv("GRID_CHAT_SUPERSEDE_WAIT_SECONDS", "13.5") or "13.5")
+SUPERSEDE_WAIT_SECONDS = float(os.getenv("CHAT_SUPERSEDE_WAIT_SECONDS", "13.5") or "13.5")
 
-# @environment_variable GRID_CHAT_DRAIN_SECONDS
+# @environment_variable CHAT_DRAIN_SECONDS
 # @category Server
 # @type float
 # @default 2700
@@ -258,8 +258,8 @@ SUPERSEDE_WAIT_SECONDS = float(os.getenv("GRID_CHAT_SUPERSEDE_WAIT_SECONDS", "13
 # How long a terminating replica waits for the turns it is running before it
 # cancels them (each then ends with a cancelled terminal and is persisted). It
 # must fit inside the pod's grace period, and cover the longest turn:
-# `GRID_CHAT_TURN_DEADLINE_SECONDS`. Pulumi derives both from one number.
-DRAIN_SECONDS = float(os.getenv("GRID_CHAT_DRAIN_SECONDS", "2700") or "2700")
+# `CHAT_TURN_DEADLINE_SECONDS`. Pulumi derives both from one number.
+DRAIN_SECONDS = float(os.getenv("CHAT_DRAIN_SECONDS", "2700") or "2700")
 
 #: How long a drain waits for cancelled turns to unwind and publish their terminal.
 DRAIN_CANCEL_GRACE_SECONDS = 10.0
@@ -284,7 +284,7 @@ BUSY_REFUSAL = "The conversation is running another turn; ask again once it has 
 
 
 def chat_affinity_enabled() -> bool:
-    """Whether the BFF still pins a conversation to one replica (``GRID_CHAT_AFFINITY``, on by default).
+    """Whether the BFF still pins a conversation to one replica (``CHAT_AFFINITY``, on by default).
 
     The backend reads the flag the BFF routes by, for one decision: what a
     question does when the bus cannot say whether another replica is running
@@ -293,10 +293,10 @@ def chat_affinity_enabled() -> bool:
     so the fence fails open. With it off, nothing else knows, and the question
     is refused instead.
     """
-    return os.getenv("GRID_CHAT_AFFINITY", "1").strip().lower() not in ("0", "false", "no", "off", "")
+    return os.getenv("CHAT_AFFINITY", "1").strip().lower() not in ("0", "false", "no", "off", "")
 
 
-# @environment_variable GRID_WIRE_V2_ADDITIVE_FIELDS
+# @environment_variable WIRE_V2_ADDITIVE_FIELDS
 # @category Server
 # @type str
 # @default on
@@ -305,12 +305,12 @@ def chat_affinity_enabled() -> bool:
 # It was off for that one release, while a tab opened before it still ran a bundle whose wire
 # schemas were strict. Every bundle since parses leniently, so it is on; ``off`` is the rollback.
 # Off, the hello names nothing it accepts, and the canvas's box, thread target and notes never travel.
-_ADDITIVE_FIELDS_ENV = "GRID_WIRE_V2_ADDITIVE_FIELDS"
+_ADDITIVE_FIELDS_ENV = "WIRE_V2_ADDITIVE_FIELDS"
 
 #: The server-to-client fields this release added, as (frame kind, member, key). The bundle before it
 #: parsed every frame strictly (``.strict()`` zod), so an open tab of it marks the socket ``outdated`` on
 #: a hello that names ``accepts`` and never folds a ``RUN_FINISHED`` whose result has a
-#: ``reasoning_effort``. Withheld only while ``GRID_WIRE_V2_ADDITIVE_FIELDS`` is ``off``, the rollback.
+#: ``reasoning_effort``. Withheld only while ``WIRE_V2_ADDITIVE_FIELDS`` is ``off``, the rollback.
 STAGED_SERVER_FIELDS: tuple[tuple[str, str, str], ...] = (
     ("hello", "value", "accepts"),
     ("RUN_FINISHED", "result", "reasoning_effort"),
@@ -318,7 +318,7 @@ STAGED_SERVER_FIELDS: tuple[tuple[str, str, str], ...] = (
 
 
 def additive_wire_fields_enabled() -> bool:
-    """Whether frames carry ``STAGED_SERVER_FIELDS`` (``GRID_WIRE_V2_ADDITIVE_FIELDS``, on unless set off)."""
+    """Whether frames carry ``STAGED_SERVER_FIELDS`` (``WIRE_V2_ADDITIVE_FIELDS``, on unless set off)."""
     return os.getenv(_ADDITIVE_FIELDS_ENV, "on").strip().lower() not in ("0", "false", "no", "off", "")
 
 
@@ -444,7 +444,7 @@ def _handshake_envelope(scope: Mapping[str, Any]) -> GridRequestContext | None:
     return GridRequestContext.from_envelope(
         headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-        os.environ.get("GRID_INTERNAL_API_TOKEN"),
+        os.environ.get("INTERNAL_API_TOKEN"),
     )
 
 
@@ -1478,7 +1478,7 @@ _registry = ChatRegistry()
 
 
 async def drain_chat_turns(timeout: float | None = None) -> int:
-    """Wait for this process's running chat turns at shutdown (``GRID_CHAT_DRAIN_SECONDS``). How many were cut short."""
+    """Wait for this process's running chat turns at shutdown (``CHAT_DRAIN_SECONDS``). How many were cut short."""
     return await _registry.drain(DRAIN_SECONDS if timeout is None else timeout)
 
 

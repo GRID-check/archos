@@ -58,7 +58,7 @@ function backendAnswers(status: number, body: unknown): void {
 }
 
 beforeEach(() => {
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', SECRET)
+  vi.stubEnv('INTERNAL_API_TOKEN', SECRET)
   vi.stubEnv('BACKEND_URL', 'http://aiq-api:8000')
   vi.stubGlobal('fetch', fetchMock)
   requireProjectAccess.mockResolvedValue({
@@ -318,7 +318,7 @@ describe('callBackendOperation', () => {
     ).toBe(503)
 
     vi.stubEnv('BACKEND_URL', 'http://aiq-api:8000')
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     expect(
       (await callBackendOperation('knowledge-search', {}, session, { projectId: PROJECT })).status
     ).toBe(503)

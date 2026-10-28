@@ -221,8 +221,8 @@ class TestEmission:
 
     @pytest.fixture(autouse=True)
     def _no_context(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
-        monkeypatch.delenv("GRID_CITATION_EVENTS_ENABLED", raising=False)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
+        monkeypatch.delenv("CITATION_EVENTS_ENABLED", raising=False)
 
     def test_record_turn_posts_one_batch_with_every_event(self) -> None:
         # Dispatch goes through the daemon executor so the answer path is never
@@ -286,7 +286,7 @@ class TestEmission:
         assert len(payload["turnId"]) == 36
 
     def test_disabling_the_flag_emits_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("GRID_CITATION_EVENTS_ENABLED", "false")
+        monkeypatch.setenv("CITATION_EVENTS_ENABLED", "false")
         assert record_turn(agent="shallow", source_count=1, cited_count=1, identity={}) is None
 
     def test_record_empty_registry_emits_the_error_row(self) -> None:
@@ -308,7 +308,7 @@ class TestEmission:
             assert record_turn(agent="shallow", source_count=1, cited_count=1, identity={}) is None
 
     def test_a_failing_post_never_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         # No token configured: the batch is dropped with a warning, not an error.
         citation_events._post_batch({"events": [{"kind": "turn_verified"}]})
 
@@ -342,8 +342,8 @@ class TestTransportHardening:
 
     @pytest.fixture(autouse=True)
     def _token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
-        monkeypatch.delenv("GRID_CITATION_EVENTS_ENABLED", raising=False)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
+        monkeypatch.delenv("CITATION_EVENTS_ENABLED", raising=False)
 
     def test_a_non_http_frontend_url_is_dropped_not_raised(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture

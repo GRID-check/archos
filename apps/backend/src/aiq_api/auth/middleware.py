@@ -23,7 +23,7 @@ can read the caller type without framework coupling.
 
 ENVIRONMENT VARIABLES
 ----------------------
-``GRID_EXTERNAL_HOSTNAMES``
+``EXTERNAL_HOSTNAMES``
     Comma-separated list of external-facing hostnames.  Requests that arrive
     with a ``Host`` header matching one of these are treated as external (auth
     + path filter applied).
@@ -34,15 +34,15 @@ ENVIRONMENT VARIABLES
     run.  Defaults to ``"false"`` (safe default; configure ``"true"`` in
     production).
 
-``GRID_JWT_ISSUER``
+``JWT_ISSUER``
     OIDC issuer URL used for JWT signature verification
     (e.g. ``https://accounts.google.com``).  Required when ``REQUIRE_AUTH=true``.
 
-``GRID_JWT_AUDIENCE``
+``JWT_AUDIENCE``
     Optional ``aud`` claim to verify.  Leave unset to skip audience
     verification.
 
-``GRID_TRACE_USER_IDENTITY_MODE``
+``TRACE_USER_IDENTITY_MODE``
     Controls whether verified user identity is attached to active trace spans.
     Supported values:
     - ``none``: do not attach any user identity tags
@@ -52,23 +52,23 @@ ENVIRONMENT VARIABLES
       ``user.name`` when present
     Defaults to ``none``.
 
-``GRID_TRACE_USER_IDENTITY_HMAC_SECRET``
+``TRACE_USER_IDENTITY_HMAC_SECRET``
     Secret used to derive pseudonymous trace user IDs from verified subjects
-    when ``GRID_TRACE_USER_IDENTITY_MODE`` is ``id`` or ``full``. If unset,
+    when ``TRACE_USER_IDENTITY_MODE`` is ``id`` or ``full``. If unset,
     user identity tagging is disabled even when a mode is configured.
 
-``GRID_TRACE_CLIENT_ID_MODE``
+``TRACE_CLIENT_ID_MODE``
     Controls whether a pseudonymous client identifier is attached to trace spans.
     Supported values:
     - ``none``: do not attach a client identifier
     - ``ip``: derive a pseudonymous client ID from the request IP
     Defaults to ``none``.
 
-``GRID_TRACE_CLIENT_ID_HMAC_SECRET``
+``TRACE_CLIENT_ID_HMAC_SECRET``
     Secret used to derive pseudonymous client IDs. Falls back to
-    ``GRID_TRACE_USER_IDENTITY_HMAC_SECRET`` when unset.
+    ``TRACE_USER_IDENTITY_HMAC_SECRET`` when unset.
 
-``GRID_TRACE_CLIENT_IP_HEADERS``
+``TRACE_CLIENT_IP_HEADERS``
     Comma-separated header names to check for the client IP before falling back
     to the ASGI client address. Defaults to ``x-real-ip,x-forwarded-for``.
 """
@@ -159,8 +159,8 @@ AUTH_EXEMPT_PATHS: set[str] = {"/health", "/docs", "/redoc", "/openapi.json"}
 
 
 def _load_external_hostnames() -> set[str]:
-    """Read ``GRID_EXTERNAL_HOSTNAMES`` env var; fall back to staging hostname."""
-    env = os.getenv("GRID_EXTERNAL_HOSTNAMES", "")
+    """Read ``EXTERNAL_HOSTNAMES`` env var; fall back to staging hostname."""
+    env = os.getenv("EXTERNAL_HOSTNAMES", "")
     names = {h.strip() for h in env.split(",") if h.strip()}
     return names
 
@@ -290,7 +290,7 @@ class AuthMiddleware:
         validators: Ordered list of token validators to try.
         require_auth: When ``True``, external requests must carry a valid token.
         external_hostnames: Hostnames considered "external".
-            Defaults to ``GRID_EXTERNAL_HOSTNAMES`` env var.
+            Defaults to ``EXTERNAL_HOSTNAMES`` env var.
     """
 
     def __init__(

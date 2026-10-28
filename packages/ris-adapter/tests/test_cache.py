@@ -13,16 +13,16 @@ _DAY = 24 * 60 * 60
 
 class TestTtl:
     def test_default_seven_days(self, monkeypatch):
-        monkeypatch.delenv("GRID_RIS_CACHE_TTL_DAYS", raising=False)
+        monkeypatch.delenv("RIS_CACHE_TTL_DAYS", raising=False)
         assert ris_cache_ttl_seconds() == 7 * _DAY
 
     def test_custom_days(self, monkeypatch):
-        monkeypatch.setenv("GRID_RIS_CACHE_TTL_DAYS", "3")
+        monkeypatch.setenv("RIS_CACHE_TTL_DAYS", "3")
         assert ris_cache_ttl_seconds() == 3 * _DAY
 
-    @pytest.mark.parametrize("bad", ["0", "-1", "abc", "", "  ", "${GRID_RIS_CACHE_TTL_DAYS}"])
+    @pytest.mark.parametrize("bad", ["0", "-1", "abc", "", "  ", "${RIS_CACHE_TTL_DAYS}"])
     def test_invalid_falls_back_to_default(self, monkeypatch, bad):
-        monkeypatch.setenv("GRID_RIS_CACHE_TTL_DAYS", bad)
+        monkeypatch.setenv("RIS_CACHE_TTL_DAYS", bad)
         assert ris_cache_ttl_seconds() == 7 * _DAY
 
 

@@ -37,7 +37,7 @@
  * Deliberately OUT of scope: `X-Grid-Internal-Token` (`internal-auth.ts`,
  * `INTERNAL_TOKEN_HEADER`). That header authenticates the BFF *service*
  * against internal-only backend/BFF endpoints with a static shared secret
- * (`GRID_INTERNAL_API_TOKEN`) — it isn't derived from per-request caller
+ * (`INTERNAL_API_TOKEN`) — it isn't derived from per-request caller
  * context (org/project/model-overrides/...) the way every header above is.
  * Its producer is `internalServiceHeaders` and its BFF-side consumer
  * `requireInternalToken`, both in `internal-auth.ts`; `internal-auth.spec.ts`
@@ -242,7 +242,7 @@ export const GRID_HEADER_NAMES = {
    * Python-side verify+parse counterpart.
    */
   REQUEST_CONTEXT: 'X-Grid-Request-Context',
-  /** HMAC-SHA256 (hex) of the envelope's raw JSON, keyed on `GRID_INTERNAL_API_TOKEN`. */
+  /** HMAC-SHA256 (hex) of the envelope's raw JSON, keyed on `INTERNAL_API_TOKEN`. */
   REQUEST_CONTEXT_SIG: 'X-Grid-Request-Context-Sig',
 } as const
 
@@ -336,7 +336,7 @@ export function buildGridRequestContextHeaders(input: GridRequestContextInput): 
 // One consolidated, signed envelope carrying every field above (minus the
 // internal token) as a single `X-Grid-Request-Context` header, plus an
 // integrity signature (`X-Grid-Request-Context-Sig`, HMAC-SHA256 hex over
-// the raw JSON, keyed on `GRID_INTERNAL_API_TOKEN`). This is the ONE place
+// the raw JSON, keyed on `INTERNAL_API_TOKEN`). This is the ONE place
 // that builds it — every producer (this module's own callers, the
 // async-jobs proxy route, the workflows service, and `server.js`'s WS-upgrade
 // block, which duplicates this logic with a pinning comment because it is
@@ -454,7 +454,7 @@ export function signGridRequestContextEnvelope(json: string, secret: string): st
 /**
  * Mint the signed context envelope for one request.
  *
- * `secret` is normally `process.env.GRID_INTERNAL_API_TOKEN`. When falsy
+ * `secret` is normally `process.env.INTERNAL_API_TOKEN`. When falsy
  * (local dev without the token configured), the envelope is still minted
  * but UNSIGNED (`signature: null`) — the backend's enforcement middleware
  * mirrors this exact fail-open choice: signature verification is skipped
@@ -516,7 +516,7 @@ export function buildGridRequestContextWireHeaders(
 // ---------------------------------------------------------------------------
 
 /** How long a minted envelope stays acceptable. */
-export const GRID_REQUEST_CONTEXT_MAX_AGE_MS = 6 * 60 * 60 * 1000
+export const REQUEST_CONTEXT_MAX_AGE_MS = 6 * 60 * 60 * 1000
 
 /** The fields a verified envelope can be acted on. */
 export interface VerifiedGridRequestContext {
@@ -559,7 +559,7 @@ function scopeNames(raw: unknown): string[] {
  * tier verified it (`aiq_agent.project_context.GridRequestContext.from_envelope`).
  * The agent's document route is the first hop in the other direction, and the
  * problem it solves is the one ADR-0051 named for scheduled work: **an internal
- * route carries a service token and no user.** `GRID_INTERNAL_API_TOKEN`
+ * route carries a service token and no user.** `INTERNAL_API_TOKEN`
  * authenticates the SERVICE, and the agent's principal is wider than any human's
  * — so a route that took `userId` from its own request body would let anything
  * holding the shared token write into any tenant as anybody.
@@ -574,7 +574,7 @@ function scopeNames(raw: unknown): string[] {
  * | An attacker who holds | Can |
  * |---|---|
  * | the internal token alone | reach the route and be refused: no envelope, no acting identity |
- * | a captured envelope, within its window | act as the user it names, in the organization and project it names, for at most {@link GRID_REQUEST_CONTEXT_MAX_AGE_MS} — the same authority that user's own turn already had |
+ * | a captured envelope, within its window | act as the user it names, in the organization and project it names, for at most {@link REQUEST_CONTEXT_MAX_AGE_MS} — the same authority that user's own turn already had |
  * | a captured envelope, after its window | nothing: `issuedAt` is inside the signed bytes, so the age cannot be edited without invalidating the signature |
  * | the signing secret | everything the internal token already grants. This is not a second factor; it is what turns a service call into a person's call |
  *
@@ -629,7 +629,7 @@ export function verifyGridRequestContextEnvelope(
   if (!Number.isFinite(issuedAt)) return null
   // Both directions. A future-dated envelope is a clock that disagrees or a
   // value somebody chose, and neither is a reason to widen the window.
-  if (Math.abs(now - issuedAt) > GRID_REQUEST_CONTEXT_MAX_AGE_MS) return null
+  if (Math.abs(now - issuedAt) > REQUEST_CONTEXT_MAX_AGE_MS) return null
 
   return {
     organizationId,

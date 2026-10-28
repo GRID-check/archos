@@ -176,7 +176,7 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "card types it is likely to earn — and act on the answers only by ADDING: the named fetches "
             "run as round 0 before the first LLM call, the chosen skill's body and card shapes ride this "
             "turn's prompt. Every tool stays bound whatever it says; "
-            "a decision that cannot run leaves the turn exactly as before. GRID_DECISIONS_ENABLED=false "
+            "a decision that cannot run leaves the turn exactly as before. DECISIONS_ENABLED=false "
             "is the global switch."
         ),
     )

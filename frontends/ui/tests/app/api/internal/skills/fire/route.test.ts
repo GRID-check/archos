@@ -51,34 +51,34 @@ afterEach(() => {
 
 describe('POST /api/internal/skills/fire', () => {
   it('returns 503 when the internal token is unconfigured', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     const res = await POST(makeRequest({ scheduleId: JOB_ID }, REAL_TOKEN))
     expect(res.status).toBe(503)
     expect(mockFire).not.toHaveBeenCalled()
   })
 
   it('returns 403 without the token header', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const res = await POST(makeRequest({ scheduleId: JOB_ID }))
     expect(res.status).toBe(403)
     expect(mockLoad).not.toHaveBeenCalled()
   })
 
   it('returns 403 for a wrong token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const res = await POST(makeRequest({ scheduleId: JOB_ID }, 'wrong'))
     expect(res.status).toBe(403)
   })
 
   it('404s an unknown job', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     mockLoad.mockResolvedValue(null)
     const res = await POST(makeRequest({ scheduleId: JOB_ID }, REAL_TOKEN))
     expect(res.status).toBe(404)
   })
 
   it('relays a not-fired result (disabled race guard)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     mockLoad.mockResolvedValue(asJob({ id: JOB_ID, organizationId: 'org_1', enabled: false }))
     mockFire.mockResolvedValue({ fired: false, reason: 'disabled' })
     const res = await POST(makeRequest({ scheduleId: JOB_ID }, REAL_TOKEN))
@@ -88,7 +88,7 @@ describe('POST /api/internal/skills/fire', () => {
   })
 
   it('fires an enabled job through the scheduled-fire wrapper', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     mockLoad.mockResolvedValue(asJob({ id: JOB_ID, organizationId: 'org_1', enabled: true }))
     mockFire.mockResolvedValue({ fired: true, jobId: 'job-1' })
     const res = await POST(makeRequest({ scheduleId: JOB_ID }, REAL_TOKEN))
@@ -100,7 +100,7 @@ describe('POST /api/internal/skills/fire', () => {
   // BFF deploy separately, so renaming it would break every scheduled run in
   // the window between the two deploys.
   it('400s an invalid body (missing scheduleId)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const res = await POST(makeRequest({}, REAL_TOKEN))
     expect(res.status).toBe(400)
   })

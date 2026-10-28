@@ -1,12 +1,12 @@
 """Postgres session advisory locks for work that must not run twice at once.
 
 Every session-scoped advisory lock in the backend is taken here, on one engine
-built from ``GRID_LOCK_DB_URL`` and nowhere else (ADR-0083). A session lock lives
+built from ``LOCK_DB_URL`` and nowhere else (ADR-0083). A session lock lives
 as long as the server connection that took it. Behind a transaction pooler
 that connection is not the client's: the lock is acquired on whichever server
 connection PgBouncer hands over, "released" on another, and the first stays
 locked until the pooler recycles it. Nothing raises, and the work the lock
-guarded simply stops running. ``GRID_LOCK_DB_URL`` is therefore the direct
+guarded simply stops running. ``LOCK_DB_URL`` is therefore the direct
 (non-pooled) DSN, and the engine behind it never pools either, so closing a
 lock's connection ends its session.
 
@@ -27,7 +27,7 @@ Three shapes:
   fallback.
 - :func:`leader_lock_async` is the same election for a caller on an event loop
   (the ghost-job reaper): the blocking connect and query run on a thread.
-- :func:`keyed_lock` WAITS, up to ``GRID_KEYED_LOCK_TIMEOUT_SECONDS``, for one
+- :func:`keyed_lock` WAITS, up to ``KEYED_LOCK_TIMEOUT_SECONDS``, for one
   string key, in this process and, on Postgres, across every replica. The ingestor holds one per (collection,
   document name) while it replaces a document's previous version, so two jobs
   for the same name cannot both retire the same predecessor and keep both new
@@ -52,13 +52,13 @@ import threading
 logger = logging.getLogger(__name__)
 
 #: The direct Postgres DSN every session lock is taken on.
-LOCK_DB_ENV = "GRID_LOCK_DB_URL"
+LOCK_DB_ENV = "LOCK_DB_URL"
 #: The direct Postgres DSN the job SSE streams LISTEN on.
-LISTEN_DB_ENV = "GRID_LISTEN_DB_URL"
+LISTEN_DB_ENV = "LISTEN_DB_URL"
 
 # Databases a process may be configured with. A process that has one of these on
 # Postgres and no lock DSN is misconfigured, not single-node: see `require_direct_dsns`.
-_DATABASE_ENVS = ("GRID_SUMMARY_DB", "NAT_JOB_STORE_DB_URL")
+_DATABASE_ENVS = ("SUMMARY_DB", "NAT_JOB_STORE_DB_URL")
 
 
 def _postgres_configured() -> bool:
@@ -199,7 +199,7 @@ def leader_lock(lock_id: int):
     Yields False when another replica holds the Postgres advisory lock, and also
     when the lock cannot be taken at all (logged at WARNING): nobody leads that
     cycle and the next tick tries again. Releases on exit. Never raises on a
-    database fault; a process that has Postgres but no ``GRID_LOCK_DB_URL`` is a
+    database fault; a process that has Postgres but no ``LOCK_DB_URL`` is a
     configuration error and does raise.
     """
     url = _lock_url()
@@ -247,7 +247,7 @@ def _process_lock(key: str) -> threading.Lock:
 _DEFAULT_KEYED_LOCK_TIMEOUT_SECONDS = 900
 
 
-# @environment_variable GRID_KEYED_LOCK_TIMEOUT_SECONDS
+# @environment_variable KEYED_LOCK_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 900
@@ -259,7 +259,7 @@ _DEFAULT_KEYED_LOCK_TIMEOUT_SECONDS = 900
 # the longest a live holder keeps one (a file's ingestion). 0 for no limit.
 def _keyed_lock_timeout_seconds() -> int:
     try:
-        value = int(os.environ.get("GRID_KEYED_LOCK_TIMEOUT_SECONDS", ""))
+        value = int(os.environ.get("KEYED_LOCK_TIMEOUT_SECONDS", ""))
     except ValueError:
         return _DEFAULT_KEYED_LOCK_TIMEOUT_SECONDS
     return value if value >= 0 else _DEFAULT_KEYED_LOCK_TIMEOUT_SECONDS
@@ -268,7 +268,7 @@ def _keyed_lock_timeout_seconds() -> int:
 def _acquire_keyed(key: str):
     """The connection holding ``key``'s advisory lock, or None when there is no Postgres to lock on.
 
-    The wait is bounded by ``GRID_KEYED_LOCK_TIMEOUT_SECONDS`` (``lock_timeout``
+    The wait is bounded by ``KEYED_LOCK_TIMEOUT_SECONDS`` (``lock_timeout``
     on the lock's own session, which advisory lock waits honour). Raises when
     the lock cannot be taken, a timeout included: the caller must not proceed
     unguarded.
@@ -310,7 +310,7 @@ def keyed_lock(key: str):
     connection, and Postgres releases what the session held at once. A node that
     dies without closing TCP does not: its session, and the lock, stay until the
     server's TCP keepalives (set in the Postgres deployment) end it. The wait is
-    therefore bounded, by ``GRID_KEYED_LOCK_TIMEOUT_SECONDS``.
+    therefore bounded, by ``KEYED_LOCK_TIMEOUT_SECONDS``.
 
     Fail-closed: with no Postgres (single-node dev, the tests) only the process
     lock holds, but with Postgres an unreachable lock database, or a wait that

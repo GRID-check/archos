@@ -1,6 +1,6 @@
 """Every extraction capability is on unless switched off, and its cost is bounded.
 
-Production once set only ``GRID_EXTRACT_IMAGES``: uncaptioned tables stayed
+Production once set only ``EXTRACT_IMAGES``: uncaptioned tables stayed
 garbled page text, and every raster the VLM typed ``chart`` was analysed, paid
 for, and then dropped at indexing. Four layers are pinned here: the env switch
 (no env means on), the typing rule that decides what an analysed raster is
@@ -21,7 +21,7 @@ from knowledge_layer_testing.qdrant import capture_indexed_documents
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
 
-_SWITCHES = ("GRID_EXTRACT_TABLES", "GRID_EXTRACT_IMAGES", "GRID_EXTRACT_CHARTS")
+_SWITCHES = ("EXTRACT_TABLES", "EXTRACT_IMAGES", "EXTRACT_CHARTS")
 
 # =============================================================================
 # The env switch: on unless explicitly off
@@ -36,23 +36,23 @@ def test_unset_switch_is_on(monkeypatch, name):
 
 @pytest.mark.parametrize("value", ["", "true", "1", "yes", "TRUE", "garbage"])
 def test_anything_but_an_off_value_leaves_it_on(monkeypatch, value):
-    monkeypatch.setenv("GRID_EXTRACT_TABLES", value)
-    assert adapter.env_switch("GRID_EXTRACT_TABLES") is True
+    monkeypatch.setenv("EXTRACT_TABLES", value)
+    assert adapter.env_switch("EXTRACT_TABLES") is True
 
 
 @pytest.mark.parametrize("value", ["false", "FALSE", "0", "no", "off", " False "])
 def test_off_values_switch_it_off(monkeypatch, value):
-    monkeypatch.setenv("GRID_EXTRACT_CHARTS", value)
-    assert adapter.env_switch("GRID_EXTRACT_CHARTS") is False
+    monkeypatch.setenv("EXTRACT_CHARTS", value)
+    assert adapter.env_switch("EXTRACT_CHARTS") is False
 
 
 def test_an_ingestor_built_without_config_extracts_everything(tmp_path, monkeypatch):
     for name in _SWITCHES:
         monkeypatch.delenv(name, raising=False)
     for attr, name in (
-        ("DEFAULT_EXTRACT_TABLES", "GRID_EXTRACT_TABLES"),
-        ("DEFAULT_EXTRACT_IMAGES", "GRID_EXTRACT_IMAGES"),
-        ("DEFAULT_EXTRACT_CHARTS", "GRID_EXTRACT_CHARTS"),
+        ("DEFAULT_EXTRACT_TABLES", "EXTRACT_TABLES"),
+        ("DEFAULT_EXTRACT_IMAGES", "EXTRACT_IMAGES"),
+        ("DEFAULT_EXTRACT_CHARTS", "EXTRACT_CHARTS"),
     ):
         # The class reads the env once at import; re-read it the same way.
         monkeypatch.setattr(LlamaIndexIngestor, attr, adapter.env_switch(name))
@@ -342,7 +342,7 @@ def test_a_raster_over_the_pixel_budget_is_counted_on_the_file_status(tmp_path, 
 def test_pages_read_without_layout_are_counted_and_kept_from_the_table_pass(
     tmp_path, monkeypatch, ingestor, summary_db
 ):
-    """A page over GRID_PDF_PAGE_MAX_OBJECTS is a partial read, and the job status says so."""
+    """A page over PDF_PAGE_MAX_OBJECTS is a partial read, and the job status says so."""
     pipeline = _Pipeline(tmp_path, monkeypatch, rendered_pages=())
     table_calls: list = []
     monkeypatch.setattr(

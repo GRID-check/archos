@@ -63,7 +63,7 @@ def build_extraction_llm():
     cred = resolve_llm_credential(
         primary_env="BACKFILL_SUMMARY_API_KEY",
         default_base_url="https://openrouter.ai/api/v1",
-        default_model=os.environ.get("GRID_DEFAULT_MODEL", "openai/gpt-6-luna"),
+        default_model=os.environ.get("DEFAULT_MODEL", "openai/gpt-6-luna"),
         base_url_env="BACKFILL_SUMMARY_BASE_URL",
         model_env="BACKFILL_SUMMARY_MODEL",
         organization_id=None,

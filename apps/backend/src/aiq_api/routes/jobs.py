@@ -354,9 +354,9 @@ def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_second
         from ..jobs.checkpoint_retention import reap_idle_threads
 
         _require_internal_token(request)
-        dsn = os.environ.get("GRID_CHECKPOINT_DB")
+        dsn = os.environ.get("CHECKPOINT_DB")
         if not dsn:
-            return {"threads_reaped": 0, "skipped": "GRID_CHECKPOINT_DB is not set"}
+            return {"threads_reaped": 0, "skipped": "CHECKPOINT_DB is not set"}
         retention_seconds = checkpoint_retention_seconds()
         return {"threads_reaped": await asyncio.to_thread(reap_idle_threads, dsn, retention_seconds)}
 

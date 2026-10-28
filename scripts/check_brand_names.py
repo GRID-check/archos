@@ -89,7 +89,7 @@ EXCLUDED = re.compile(
             r"^\.github/filters\.yml$",  # CI path filters: they list paths, not names
             r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
             # The one-release fallback that reads the old, prefixed variable names, and its tests.
-            r"^apps/backend/entrypoint\.py$|^tests/test_entrypoint_roles\.py$|^frontends/ui/scripts/legacy-env-names\.",
+            r"^apps/backend/entrypoint\.py$|^tests/test_(entrypoint_roles|no_legacy_env_names)\.py$|^frontends/ui/scripts/legacy-env-names\.",
             # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
             r"^deploy/pulumi/src/names\.ts$",
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
@@ -168,7 +168,6 @@ def count_text(text: str) -> int:
     """The brand hits in ``text``, URLs and the repository's own name left out."""
     if not BRAND.search(text):
         return 0
-    text = REPOSITORY.sub(" ", URL.sub(" ", text))
     text = PENDING_RENAMES.sub(" ", REPOSITORY.sub(" ", URL.sub(" ", text)))
     return sum(len(brand_words(token)) for token in branded_tokens(text))
 

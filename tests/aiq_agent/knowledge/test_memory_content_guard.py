@@ -36,7 +36,7 @@ def test_contact_details_and_secrets_are_not_recorded(content):
 
 
 def test_insert_refuses_personal_data_before_any_request(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "a-real-secret-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "a-real-secret-token")
 
     def _no_request(*args, **kwargs):  # pragma: no cover - the assertion is that this is never reached
         raise AssertionError("a personal-data finding must never reach the BFF")

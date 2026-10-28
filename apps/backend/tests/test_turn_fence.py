@@ -98,7 +98,7 @@ def test_a_turn_that_ended_on_its_own_is_no_longer_fenced_by_the_clock_but_a_clo
 
 
 def test_a_ttl_the_margin_does_not_fit_in_is_refused():
-    with pytest.raises(ValueError, match="GRID_CHAT_RUNNING_TTL_SECONDS"):
+    with pytest.raises(ValueError, match="CHAT_RUNNING_TTL_SECONDS"):
         validate_running_ttl(fence_margin())
     with pytest.raises(ValueError, match="fenced as it starts"):
         _fence(Clock(), ttl=fence_margin() - 1)

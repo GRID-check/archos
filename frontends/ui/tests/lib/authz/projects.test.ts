@@ -64,12 +64,12 @@ describe("requireProjectAccess", () => {
   // Every test below asks about the same (session, project) with different
   // FGA answers, so the authz cache (default TTL 30s) must be off here.
   beforeEach(() => {
-    process.env.GRID_AUTHZ_CACHE_TTL_MS = "0";
+    process.env.AUTHZ_CACHE_TTL_MS = "0";
     vi.clearAllMocks();
   });
 
   afterEach(() => {
-    delete process.env.GRID_AUTHZ_CACHE_TTL_MS;
+    delete process.env.AUTHZ_CACHE_TTL_MS;
   });
 
   test("org admins bypass per-project FGA checks but NOT the tenancy check", async () => {

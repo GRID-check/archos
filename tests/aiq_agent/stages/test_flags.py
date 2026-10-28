@@ -32,7 +32,7 @@ def _body(payload) -> _Response:
 
 @pytest.fixture(autouse=True)
 def _internal_token(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
 
 
@@ -66,7 +66,7 @@ class TestFetchEnabledStages:
                 flags.fetch_enabled_stages(organization_id="org_1")
 
     def test_no_service_token_raises_rather_than_calling_unauthenticated(self, monkeypatch):
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         with patch.object(bff_http._opener, "open", return_value=_body({"enabled": []})) as urlopen:
             with pytest.raises(RuntimeError):
                 flags.fetch_enabled_stages(organization_id="org_1")

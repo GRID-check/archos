@@ -71,10 +71,10 @@ def isolated_qdrant(url: str, api_key: str | None = None) -> Iterator[str]:
 
     suffix = uuid.uuid4().hex[:8]
     saved = dict(schema.ALIASES)
-    saved_env = {key: os.environ.get(key) for key in ("GRID_QDRANT_URL", "GRID_QDRANT_API_KEY")}
-    os.environ["GRID_QDRANT_URL"] = url
+    saved_env = {key: os.environ.get(key) for key in ("QDRANT_URL", "QDRANT_API_KEY")}
+    os.environ["QDRANT_URL"] = url
     if api_key:
-        os.environ["GRID_QDRANT_API_KEY"] = api_key
+        os.environ["QDRANT_API_KEY"] = api_key
     for physical in schema.Physical:
         schema.ALIASES[physical] = f"parity_{suffix}_{physical.value}"
     reset_store()

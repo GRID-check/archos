@@ -4,7 +4,7 @@ What a person sees under „Im Büro behandelt“ is decided here: which
 collections may be searched and read (the signed scope), that the source
 document never comes back, that a superseded Fassung stays out, that passages
 are grouped by document in ranking order, and that a stored passage costs no
-embedding. Without ``GRID_QDRANT_TEST_URL`` it skips locally and fails on CI.
+embedding. Without ``QDRANT_TEST_URL`` it skips locally and fails on CI.
 """
 
 from __future__ import annotations
@@ -82,11 +82,11 @@ def _scope_headers(scope: list[str], secret: str | None = SECRET) -> dict[str, s
 
 @pytest.fixture
 def stack(monkeypatch):
-    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("QDRANT_TEST_URL", "").strip()
     if not url:
         if os.environ.get("CI"):
-            pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-        pytest.skip("GRID_QDRANT_TEST_URL not set")
+            pytest.fail("QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+        pytest.skip("QDRANT_TEST_URL not set")
     from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     from knowledge_layer.qdrant import schema
     from knowledge_layer.qdrant import store as store_module
@@ -94,9 +94,9 @@ def stack(monkeypatch):
     suffix = uuid.uuid4().hex[:8]
     monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"similar_corpus_{suffix}")
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"similar_office_{suffix}")
-    monkeypatch.setenv("GRID_QDRANT_URL", url)
+    monkeypatch.setenv("QDRANT_URL", url)
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setattr(socket, "getaddrinfo", _GETADDRINFO)
     store_module.reset_store()
     retriever = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})

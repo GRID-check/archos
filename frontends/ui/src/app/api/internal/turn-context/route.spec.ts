@@ -52,7 +52,7 @@ import type { ProposedChangeRow } from '@/lib/proposals/repository'
 import { loadReferenceBrief } from '@/lib/cross-project/reference-brief'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import {
-  buildGridRequestContextEnvelopeHeaders, GRID_REQUEST_CONTEXT_MAX_AGE_MS,
+  buildGridRequestContextEnvelopeHeaders, REQUEST_CONTEXT_MAX_AGE_MS,
   type GridRequestContextInput,
 } from '@/lib/request-context'
 import { turnContextResponseSchema } from '@/lib/turn-context/wire'
@@ -84,7 +84,7 @@ function call(body: unknown = {}, headers: Record<string, string> = signedHeader
 
 beforeEach(() => {
   vi.resetAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(SESSION)
   vi.mocked(withTenant).mockImplementation(async (_scope, run) => run())
   vi.mocked(withPlatformAccess).mockImplementation(async (_reason, run) => run())
@@ -212,7 +212,7 @@ describe('POST /api/internal/turn-context', () => {
   })
 
   it('fails closed without a configured token', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await call()).status).toBe(503)
     expect(loadProjectPromptView).not.toHaveBeenCalled()
   })
@@ -221,7 +221,7 @@ describe('POST /api/internal/turn-context', () => {
     for (const headers of [
       {},
       { ...signedHeaders(), 'X-Grid-Request-Context-Sig': 'f'.repeat(64) },
-      signedHeaders({ issuedAt: Date.now() - GRID_REQUEST_CONTEXT_MAX_AGE_MS - 1000 }),
+      signedHeaders({ issuedAt: Date.now() - REQUEST_CONTEXT_MAX_AGE_MS - 1000 }),
       signedHeaders({ organizationId: null, userId: null }),
     ]) expect((await call({}, headers)).status).toBe(401)
     expect(loadProjectPromptView).not.toHaveBeenCalled()

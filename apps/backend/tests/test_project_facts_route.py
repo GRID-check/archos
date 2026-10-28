@@ -57,7 +57,7 @@ def _scope(scope: list[str], secret: str) -> dict[str, str]:
 @pytest.fixture
 def signed(monkeypatch):
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     return lambda scope: _scope(scope, "s3cr3t")
 
 

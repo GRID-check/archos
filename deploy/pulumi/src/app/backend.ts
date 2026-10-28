@@ -27,12 +27,12 @@ export interface Backend {
 }
 
 /**
- * The chat tier (`GRID_ROLE=chat`, ADR-0082), under `name` (`tier-names.ts`):
+ * The chat tier (`PROCESS_ROLE=chat`, ADR-0082), under `name` (`tier-names.ts`):
  * the chat socket and the answers running on it, plus NAT's own routes. Every
  * other backend route is the api tier's (`api.ts`). It keeps no files: the vectors
  * live in the shared Qdrant cluster, the base corpus in SeaweedFS and a Postgres
  * table (ADR-0082 step A2), and what it caches on its own disk
- * (`GRID_BASE_CORPUS_CACHE_DIR`, under /tmp) it can lose at any restart.
+ * (`BASE_CORPUS_CACHE_DIR`, under /tmp) it can lose at any restart.
  *
  * The chat and retrieval path is replica-safe (shared Qdrant, Postgres DSNs,
  * shared cache, DB-persisted ingest status, advisory-locked reapers), so it runs

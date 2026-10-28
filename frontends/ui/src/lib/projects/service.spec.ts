@@ -74,7 +74,7 @@ describe('listProjects', () => {
     listProjectsInOrg.mockResolvedValue([ALPHA, BETA, GAMMA])
     // These tests are about the listing, not the cache: each mocks WorkOS
     // differently, so a cached verdict from the previous one would lie.
-    process.env.GRID_AUTHZ_CACHE_TTL_MS = '0'
+    process.env.AUTHZ_CACHE_TTL_MS = '0'
   })
 
   it('returns ONLY the projects the member holds project:view on', async () => {

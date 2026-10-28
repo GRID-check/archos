@@ -154,7 +154,7 @@ def test_the_bff_compares_against_the_reader_the_backend_stamps():
         ("unreadable_job: the queued ingestion job could not be read; retry to index this file", "transient", True),
         (SCAN_NEEDS_VLM, "configuration", True),
         (SCREENING_UNAVAILABLE, "configuration", True),
-        ("vlm_not_configured: image ingestion requires GRID_VLM_API_KEY", "configuration", True),
+        ("vlm_not_configured: image ingestion requires VLM_API_KEY", "configuration", True),
         ("pdf_pages_unreadable: 3 of 4 pages could not be read", "deterministic", False),
         ('quarantined:{"reasons":[],"checked":"full"}', "quarantined", False),
     ],

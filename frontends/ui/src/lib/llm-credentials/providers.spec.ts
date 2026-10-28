@@ -7,7 +7,7 @@ import { assertSafeBaseUrl, isKnownProvider, resolveBaseUrl } from './providers'
 
 describe('llm-credentials providers', () => {
   afterEach(() => {
-    delete process.env.GRID_BYOK_ALLOW_PRIVATE_BASE_URLS
+    delete process.env.BYOK_ALLOW_PRIVATE_BASE_URLS
   })
 
   it('knows the preset providers', () => {
@@ -44,7 +44,7 @@ describe('llm-credentials providers', () => {
   })
 
   it('honours the private-network escape hatch', () => {
-    process.env.GRID_BYOK_ALLOW_PRIVATE_BASE_URLS = 'true'
+    process.env.BYOK_ALLOW_PRIVATE_BASE_URLS = 'true'
     expect(() => assertSafeBaseUrl('https://litellm.corp.internal/v1')).not.toThrow()
   })
 })

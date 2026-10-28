@@ -305,7 +305,7 @@ async def test_list_research_runs_honours_the_signed_project(research_runs_app, 
 
     secret = "listing-test-secret"  # noqa: S105  # pragma: allowlist secret
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", secret)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", secret)
     monkeypatch.setenv("OIB_COLLECTION_NAME", "oib_knowledge")
     owner = Principal(type="jwt", sub="user-owner")
     teammate = Principal(type="jwt", sub="user-teammate")

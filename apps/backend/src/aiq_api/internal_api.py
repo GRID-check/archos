@@ -1,7 +1,7 @@
 """The backend's writes into the BFF's internal API: a message row, a run's report, a turn's outcome.
 
 Python never touches the database (``app`` is single-writer); every write
-goes over the internal HTTP API with the shared ``GRID_INTERNAL_API_TOKEN``.
+goes over the internal HTTP API with the shared ``INTERNAL_API_TOKEN``.
 The chat socket persists a finished turn through here (``chat_socket``), and so
 do the jobs runner and its notifiers (``jobs/``), so there is one place that
 knows how the backend writes a message. The two reads a socket needs before a
@@ -42,10 +42,10 @@ def internal_headers() -> dict[str, str] | None:
 
     Mirrors the ``remember`` tool's internal-endpoint pattern
     (``project_memory.py``): authenticate the backend→BFF call with the shared
-    ``GRID_INTERNAL_API_TOKEN`` rather than replaying the browser's handshake
+    ``INTERNAL_API_TOKEN`` rather than replaying the browser's handshake
     cookie, which expires on long deep-research turns and would silently 401.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         return None
     return {"Content-Type": "application/json", INTERNAL_TOKEN_HEADER: token}
@@ -92,7 +92,7 @@ async def post_internal_conversation_message(
     headers = internal_headers()
     if headers is None:
         logger.warning(
-            "Cannot persist message for %s: GRID_INTERNAL_API_TOKEN not configured",
+            "Cannot persist message for %s: INTERNAL_API_TOKEN not configured",
             conversation_id,
         )
         return False

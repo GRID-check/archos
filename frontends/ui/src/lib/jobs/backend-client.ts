@@ -2,7 +2,7 @@
  * Backend client for the single job submission path (ADR-0023 §4).
  *
  * `fireJob` (service.ts) POSTs to the Python backend's internal submit route,
- * guarded by the shared `GRID_INTERNAL_API_TOKEN` (`X-Internal-Token`, the
+ * guarded by the shared `INTERNAL_API_TOKEN` (`X-Internal-Token`, the
  * maintenance.py pattern — never on the external allowlist). This module owns
  * the HTTP call and maps responses to typed errors:
  *   - 429 → SkippedError (with Retry-After) so the run is recorded as a

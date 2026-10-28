@@ -19,9 +19,9 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 |---|---|---|
 | Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels; metadata `page`, `prompt_version` and `purpose`, `person` from the compare view or `notice` when Piloti compared a new Fassung on its own, ADR-0130), `look-reading` (the second reader of `look` with a `question`: the office's ingest vision model on the same crop, input shown without the pixels, metadata `prompt_version` and `region`; an ERROR generation when the model could not be reached, and the tool still answers), `filing-fit` (where an upload batch belongs, or a root sort's chunk with `purpose: sort`; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `folder-proposals.map` and `folder-proposals.reduce` (a root sort's new folders: the groups of one chunk, then the merge across them), `folder-card` (one folder's written card in the ingest worker, ADR-0127: the summary model, metadata `collection`, `depth`, `prompt_version`, `documents`, `subfolders`, `mode` (`incremental`: the old card and the diff alone; `full`: the whole folder) and the diff sizes `diff_added`, `diff_removed`, `diff_changed`; a card that only lost documents is pruned without a call and has no generation), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, or one A2A method, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>` or `a2a.<operation>`; metadata and tags below) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
-| Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
+| Release | `GIT_SHA`, the image's commit | the commit hash |
 | Session | the conversation id (NAT sets `session.id`) | one session per chat |
-| User | the verified WorkOS subject, only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true` | WorkOS user id |
+| User | the verified WorkOS subject, only with `TRACE_IDENTITY_ATTRIBUTES=true` | WorkOS user id |
 | Observation type | `nat.span.kind` mapped by `trace_context.observation_type` | `agent` (the turn), `generation` (a model call), `tool`, `retriever` (`retrieve.*`), `chain`, `embedding`, `guardrail`, `evaluator` |
 | Prompt | `PromptLinkProcessor`, generations only | `piloti-system-static` and its version |
 | Usage and cost | `UsageAttributeProcessor` (NAT), `observed_generation` (auxiliary) | input, output, cached and reasoning tokens; the provider's cost when it reports one |
@@ -192,7 +192,7 @@ Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
 `door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and
 `org:<id>` with identity attributes on. The session is the conversation when
 Piloti made the call, so the call sits beside the turn that asked for it; the
-user only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true`. Never the input or the
+user only with `TRACE_IDENTITY_ATTRIBUTES=true`. Never the input or the
 answer. Posted best-effort through the ingestion API, never awaited by the call
 (`lib/langfuse/tool-call-trace.ts`, from `lib/agent-api/telemetry.ts`). No score.
 
@@ -381,7 +381,7 @@ never reads a trace's body, so this is the whole cost.
 
 * `user_id` becomes the event's distinct id, so it must be the WorkOS user id
   PostHog identifies the browser with. That is Langfuse's user, which Grid sets
-  only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true`; without it every event is
+  only with `TRACE_IDENTITY_ATTRIBUTES=true`; without it every event is
   `langfuse_unknown_user` and joins to no person.
 * `trace.metadata.$posthog_session_id` becomes `$session_id`. Each chat turn
   carries the browser's PostHog session id there:
@@ -400,7 +400,7 @@ never reads a trace's body, so this is the whole cost.
   turn.
 * The page sends the id only to a server whose hello lists
   `user_message.posthog_session_id` in `accepts`, which is withheld while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is off. It is on by default; set off, the link is gone.
+  `WIRE_V2_ADDITIVE_FIELDS` is off. It is on by default; set off, the link is gone.
 
 ### How to enable
 
@@ -437,7 +437,7 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 | Add or change a quality check | Emit a score through `langfuse_scores.emit_scores`, declare it in `SCORE_DEFINITIONS`, add its row here, run `task langfuse:provision` |
 | Add a dimension an analyst should slice by | Trace metadata through `record_trace_metadata` (tools) or `turn_outcome` (turn results); a tag only if it is a low-cardinality label |
 | Change a judge, the queue or the dataset | Edit `langfuse_catalog.py`, then `task langfuse:provision -- --apply` once it is merged |
-| Gate something on identity | Only the user and the tenant. Labels, counts and scores are never behind `GRID_TRACE_IDENTITY_ATTRIBUTES` |
+| Gate something on identity | Only the user and the tenant. Labels, counts and scores are never behind `TRACE_IDENTITY_ATTRIBUTES` |
 
 ## Where the code is
 

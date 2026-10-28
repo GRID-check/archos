@@ -3,7 +3,7 @@
  * pod, once per slice of a claimed job (ADR-0079).
  *
  * The runner is plain Node with no build step, so it cannot import the
- * services a job calls from source; by default (`GRID_BFF_JOBS_MODE=http`) it
+ * services a job calls from source; by default (`BFF_JOBS_MODE=http`) it
  * claims from `bff_job_queue`, then POSTs here with the job id and its own
  * worker name. With `inprocess` it imports the same `runJobSlice` from the
  * bundle built at image build (`lib/jobs-queue/slice-entry.ts`) and this route

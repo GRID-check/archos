@@ -4,7 +4,7 @@
  * Permitting memory's rows (docs/design/permitting-memory.md), against a REAL
  * Postgres through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/permits/repository.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
@@ -45,7 +45,7 @@ const STATICS = [1, 0, 0]
 const FIRE = [0, 1, 0]
 const FEES = [0, 0, 1]
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_permits_${STAMP}`
 const OTHER_ORG = `${ORG}_other`
@@ -53,8 +53,8 @@ const USER = `user_permits_${STAMP}`
 
 describe('the permit records suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 
@@ -181,7 +181,7 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
   const contents = (found: Awaited<ReturnType<typeof search>>) => found.flatMap((record) => record.requirements.map((item) => item.content))
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

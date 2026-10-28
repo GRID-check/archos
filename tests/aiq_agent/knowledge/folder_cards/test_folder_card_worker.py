@@ -102,7 +102,7 @@ class TestHooks:
         assert _paths() == []
 
     def test_the_env_var_is_no_longer_read(self, agent_db, folder_cards_flag, monkeypatch):
-        monkeypatch.setenv("GRID_FOLDER_CARDS", "on")
+        monkeypatch.setenv("FOLDER_CARDS", "on")
         folder_cards_flag.off(ORG)
 
         _file("Bescheid.pdf", "Behörde")

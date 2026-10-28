@@ -5,9 +5,9 @@ later phase) returns the org's active skill set layered over the platform
 offerings; this module fetches it fail-open. Resolution discipline:
 
 - Cached in the shared Dragonfly/Redis cache (ADR-0020) keyed by
-  ``skills:{organization_id}:{agent}`` for ``GRID_SKILLS_CACHE_TTL_SECONDS``
+  ``skills:{organization_id}:{agent}`` for ``SKILLS_CACHE_TTL_SECONDS``
   (default 60), so per-turn resolution does not hammer the BFF across
-  replicas — exactly like ``GRID_RIS_CACHE_TTL_DAYS`` caches live law.
+  replicas — exactly like ``RIS_CACHE_TTL_DAYS`` caches live law.
 - Any failure (no token, timeout, non-2xx, malformed payload) degrades to the
   builtin set: skills are an additive capability and must never take chat
   down.
@@ -31,7 +31,7 @@ from aiq_agent.skills.models import build_skill_from_payload
 
 logger = logging.getLogger(__name__)
 
-# @environment_variable GRID_SKILLS_CACHE_TTL_SECONDS
+# @environment_variable SKILLS_CACHE_TTL_SECONDS
 # @category Server
 # @type int
 # @required false
@@ -99,7 +99,7 @@ def canonical_agent(name: str) -> str:
 
 
 def _cache_ttl_seconds() -> float:
-    raw = os.environ.get("GRID_SKILLS_CACHE_TTL_SECONDS")
+    raw = os.environ.get("SKILLS_CACHE_TTL_SECONDS")
     if not raw:
         return float(_DEFAULT_TTL_SECONDS)
     try:
@@ -308,9 +308,9 @@ class SkillResolver:
         return tuple(s for s in _build_org_skills(rows) if s.name in known)
 
     def _fetch_org_skills(self, organization_id: str) -> list[Any]:
-        token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+        token = os.environ.get("INTERNAL_API_TOKEN")
         if not token:
-            raise RuntimeError("GRID_INTERNAL_API_TOKEN unset; org skills unavailable")
+            raise RuntimeError("INTERNAL_API_TOKEN unset; org skills unavailable")
         import httpx
 
         base_url = (os.environ.get("FRONTEND_INTERNAL_URL") or "http://frontend:3000").rstrip("/")
@@ -353,7 +353,7 @@ def resolve_served_skills(agent: str, organization_id: str | None) -> tuple[Skil
     skills whose instructions call ``execute``.
 
     And it never raises. ``resolve`` already fails open on a bad payload or an
-    unreachable BFF, but ``GRID_INTERNAL_API_TOKEN`` being unset raises out of
+    unreachable BFF, but ``INTERNAL_API_TOKEN`` being unset raises out of
     ``_fetch_org_skills`` and a deep-research job must not die because the house
     voice could not be fetched — a report written without it is worth far more
     than no report. The degradation is silent to the reader and loud in the log.

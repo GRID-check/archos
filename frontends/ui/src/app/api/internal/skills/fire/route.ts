@@ -1,7 +1,7 @@
 /**
  * INTERNAL job fire endpoint - the scheduler POSTs `{ scheduleId }` here after
  * it has claimed a due row and advanced its next_run_at. Shared-token guarded
- * (GRID_INTERNAL_API_TOKEN via `internalApiRoute`, like
+ * (INTERNAL_API_TOKEN via `internalApiRoute`, like
  * /api/internal/workflows/fire).
  *
  * The path and the `scheduleId` field keep their pre-jobs spelling on purpose:

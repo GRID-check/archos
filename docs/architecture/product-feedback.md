@@ -48,7 +48,7 @@ platform page only when they ticked "you may contact me".
 Active members of the GRID Platform organization whose role holds
 `platform:settings:manage`. That is the same rule the storage alert uses: a
 permission, never a role name, and an unknown role holds nothing.
-Break-glass owners (`GRID_PLATFORM_OWNER_EMAILS`) are not members, so they are
+Break-glass owners (`PLATFORM_OWNER_EMAILS`) are not members, so they are
 not told. They still see every report on the page.
 
 Announcing fails open. The report is stored first, and a WorkOS failure while
@@ -317,7 +317,7 @@ destination's `assignee_names` map, else from the assignee's PostHog profile.
 
 ## No GitHub issues
 
-Bug reports used to be filed as GitHub issues too (`GRID_FEEDBACK_ISSUES_REPO`,
+Bug reports used to be filed as GitHub issues too (`FEEDBACK_ISSUES_REPO`,
 err2issue's token). That is gone: it was off in production, borrowed another
 tool's PAT, and the issue could not be traced back to the report. A bug keeps
 its Postgres record, the platform owners' inbox row and its Support ticket.

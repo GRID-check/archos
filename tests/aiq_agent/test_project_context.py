@@ -354,7 +354,7 @@ class TestGridRequestContextFromEnvelope:
 
     def test_no_secret_configured_skips_signature_check_but_still_requires_header(self):
         header, _sig = self._envelope({"organizationId": "org_1"})
-        # No secret (dev, GRID_INTERNAL_API_TOKEN unset) -> shape-only check;
+        # No secret (dev, INTERNAL_API_TOKEN unset) -> shape-only check;
         # signature is ignored entirely (even garbage/missing).
         ctx = pc.GridRequestContext.from_envelope(header, "garbage-signature", None)
         assert ctx is not None
@@ -430,7 +430,7 @@ class TestGridRequestContextEnvelopePrecedence:
         }
 
     def test_from_context_prefers_valid_envelope_over_individual_headers(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", self.SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", self.SECRET)
         envelope_headers = self._envelope_headers({"organizationId": "org_from_envelope"})
         individual_headers = {pc.ORGANIZATION_ID_HEADER: "org_from_individual_header"}
         merged = {**individual_headers, **envelope_headers}
@@ -440,7 +440,7 @@ class TestGridRequestContextEnvelopePrecedence:
         assert ctx.organization_id == "org_from_envelope"
 
     def test_from_context_falls_back_to_individual_headers_when_envelope_invalid(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", self.SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", self.SECRET)
         envelope_headers = self._envelope_headers({"organizationId": "org_from_envelope"})
         # Tamper the signature.
         sig = envelope_headers[pc.REQUEST_CONTEXT_ENVELOPE_SIG_HEADER]
@@ -467,7 +467,7 @@ class TestGridRequestContextEnvelopePrecedence:
         assert ctx.organization_id == "org_from_envelope"
 
     def test_compact_context_is_parsed_by_both_header_entry_points(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", self.SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", self.SECRET)
         headers = self._envelope_headers(
             {
                 "organizationId": "org_1",

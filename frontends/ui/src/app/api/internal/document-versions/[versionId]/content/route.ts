@@ -18,7 +18,7 @@
  *
  * ## Identity and tenancy
  *
- * Service-to-service, guarded by `GRID_INTERNAL_API_TOKEN` via
+ * Service-to-service, guarded by `INTERNAL_API_TOKEN` via
  * `internalApiRoute` (fail-closed when the token is unconfigured), and READ
  * ONLY: nothing here writes a row, so the signed request-context envelope that
  * `POST /api/internal/document-versions` demands is not the door being opened.

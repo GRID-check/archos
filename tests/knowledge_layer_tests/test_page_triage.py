@@ -573,7 +573,7 @@ class TestScannedPdfIngestion:
 
     def test_ocr_model_setting_is_used(self, tmp_path, monkeypatch, indexed, no_drawing_vlm):
         _credential(monkeypatch)
-        monkeypatch.setenv("GRID_OCR_MODEL", "mistral/ocr-vision")
+        monkeypatch.setenv("OCR_MODEL", "mistral/ocr-vision")
         live, calls = _fake_live()
         monkeypatch.setattr(transcription, "_transcribe_live", live)
 
@@ -583,7 +583,7 @@ class TestScannedPdfIngestion:
 
     def test_the_org_vision_override_wins(self, tmp_path, monkeypatch, indexed, no_drawing_vlm):
         _credential(monkeypatch)
-        monkeypatch.setenv("GRID_OCR_MODEL", "mistral/ocr-vision")
+        monkeypatch.setenv("OCR_MODEL", "mistral/ocr-vision")
         monkeypatch.setattr(adapter, "_resolve_vlm_model_override", lambda organization_id=None: "tenant/vision")
         live, calls = _fake_live()
         monkeypatch.setattr(transcription, "_transcribe_live", live)
@@ -668,7 +668,7 @@ class TestGarbledPdfIngestion:
 
 class TestOcrSwitch:
     def test_zero_ocr_pages_stops_transcription_and_keeps_the_text_layer(self, tmp_path, monkeypatch, indexed):
-        # GRID_MAX_OCR_PAGES=0 is the OCR switch; GRID_RENDER_VISUAL_PAGES is not.
+        # MAX_OCR_PAGES=0 is the OCR switch; RENDER_VISUAL_PAGES is not.
         _credential(monkeypatch)
         live, calls = _fake_live()
         monkeypatch.setattr(transcription, "_transcribe_live", live)

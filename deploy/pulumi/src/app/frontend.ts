@@ -79,7 +79,7 @@ export function installFrontend(
             imagePullSecrets: w.imagePullSecrets,
             // Keep serving after SIGTERM: preStop covers EndpointSlice
             // propagation at the gateway, then server.js drains in-flight
-            // requests and WebSockets (GRID_SHUTDOWN_DRAIN_MS).
+            // requests and WebSockets (SHUTDOWN_DRAIN_MS).
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
             // The frontend image runs as non-root UID 1001; make it explicit so
             // the pod is Pod-Security "restricted"-ready.

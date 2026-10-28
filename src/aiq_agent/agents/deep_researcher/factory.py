@@ -273,8 +273,8 @@ _WRITER_MAX_TOOL_RESULT_CHARS = 20_000
 # per-message max_chars and keep_last_n, the sum of all kept tool results can
 # grow unbounded (e.g. many research-note files each at 20K chars). When the
 # total exceeds this ceiling, the oldest oversized messages are truncated too.
-# Overridable via GRID_WRITER_CHAR_BUDGET (falls back on unset/invalid/<=0).
-_WRITER_CHAR_BUDGET = _positive_int_env("GRID_WRITER_CHAR_BUDGET", 200_000)
+# Overridable via WRITER_CHAR_BUDGET (falls back on unset/invalid/<=0).
+_WRITER_CHAR_BUDGET = _positive_int_env("WRITER_CHAR_BUDGET", 200_000)
 
 DEFAULT_TOOL_RESULT_KEEP_LAST_N = 10
 DEFAULT_TOOL_RESULT_MAX_CHARS = 2000

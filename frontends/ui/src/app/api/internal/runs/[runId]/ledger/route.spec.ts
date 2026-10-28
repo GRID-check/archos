@@ -67,7 +67,7 @@ function call(body: unknown, headers: Record<string, string> = { 'x-grid-interna
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(applyRunLedgerOp).mockResolvedValue({ runId: RUN, ledger: LEDGER })
 })
 

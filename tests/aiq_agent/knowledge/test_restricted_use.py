@@ -117,7 +117,7 @@ class TestTheAnswerTravels:
     def posted(self, monkeypatch) -> list[dict[str, Any]]:
         import json
 
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
         seen: list[dict[str, Any]] = []
 
         class _Response:

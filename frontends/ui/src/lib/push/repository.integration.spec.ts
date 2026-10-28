@@ -4,7 +4,7 @@
  * Push subscriptions against a REAL Postgres (migration 0147, ADR-0112), through
  * the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/push/repository.integration.spec.ts
  *
  * The unit specs use an in-memory table; these prove the SQL the privacy claims
@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_push_${Date.now()}`
 const OTHER_ORG = `${ORG}_other`
 const ANNA = 'user_push_anna'
@@ -45,7 +45,7 @@ describe.skipIf(!url)('push subscriptions against Postgres', () => {
   })
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

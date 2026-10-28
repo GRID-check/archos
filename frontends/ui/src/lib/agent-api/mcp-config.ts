@@ -59,13 +59,13 @@ export function authkitIssuer(env: Env = process.env): string | null {
 }
 
 /**
- * The canonical URL of the MCP server: `GRID_MCP_RESOURCE_URL`, else the
+ * The canonical URL of the MCP server: `MCP_RESOURCE_URL`, else the
  * deployment's pinned app origin plus `/api/mcp`. `null` when neither exists
  * (a local dev server with no redirect URI), in which case the external door is
  * closed rather than guessing an audience.
  */
 export function mcpResourceUrl(env: Env = process.env): URL | null {
-  const configured = env.GRID_MCP_RESOURCE_URL?.trim()
+  const configured = env.MCP_RESOURCE_URL?.trim()
   try {
     if (configured) return new URL(configured)
     const origin = configuredAppOrigin(env)

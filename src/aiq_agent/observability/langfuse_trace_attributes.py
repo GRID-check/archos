@@ -24,7 +24,7 @@ installed NAT, not assumed:
   this module no longer writes ``langfuse.user.id``
   (``test_nat_puts_the_session_user_on_every_span`` pins NAT's half). NAT sets
   it, and ``<prefix>.user.id``, on every span whatever
-  ``GRID_TRACE_IDENTITY_ATTRIBUTES`` says, so with the flag off
+  ``TRACE_IDENTITY_ATTRIBUTES`` says, so with the flag off
   :class:`UserIdentityStripProcessor` removes both before export: the default
   stays "no span names a person".
 * ``input.value`` / ``output.value`` — NAT emits the OpenInference attribute
@@ -57,7 +57,7 @@ accepted that traces carry user CONTENT, on the reasoning that the store is
 gated to platform operators. Tagging every span with its tenant and what a tool
 did is a further step, and it should arrive with the product decision that
 needs it rather than by default. So availability follows the house rule —
-``GRID_TRACE_IDENTITY_ATTRIBUTES`` is injected by the deployment only when the
+``TRACE_IDENTITY_ATTRIBUTES`` is injected by the deployment only when the
 Langfuse tier is deployed. A stack without Langfuse is byte-identical to before.
 """
 
@@ -71,7 +71,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 #: Env flag the deployment sets when the Langfuse tier is on (ADR-0044).
-IDENTITY_ATTRIBUTES_ENV = "GRID_TRACE_IDENTITY_ATTRIBUTES"
+IDENTITY_ATTRIBUTES_ENV = "TRACE_IDENTITY_ATTRIBUTES"
 
 #: Langfuse's trace-level attribute names. It also accepts `session.id`, but the
 #: `langfuse.`-prefixed spelling takes precedence in its OTel mapping, so it is
@@ -814,7 +814,7 @@ def current_contribution_attributes() -> dict[str, Any]:
     Tool facts (``feature:ifc``, ``ifc_op``), the usage rollup and the answer
     dialect census are labels and counts. They used to ride the identity
     processor and so vanished from every trace whenever
-    ``GRID_TRACE_IDENTITY_ATTRIBUTES`` was off, which made a privacy switch
+    ``TRACE_IDENTITY_ATTRIBUTES`` was off, which made a privacy switch
     silently turn off cost and quality reporting too (ADR-0089).
     """
     try:
@@ -948,7 +948,7 @@ try:
         NAT sets ``user.id`` and ``<prefix>.user.id`` from the session's user
         (#2152), and the chat socket opens each session with the verified
         subject. Attributing spans to a person is the step
-        ``GRID_TRACE_IDENTITY_ATTRIBUTES`` gates, so without the flag this
+        ``TRACE_IDENTITY_ATTRIBUTES`` gates, so without the flag this
         processor takes both back out.
         """
 

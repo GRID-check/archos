@@ -131,7 +131,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # both; a fork, a pull request or a plain `docker build` passes neither and
 # builds exactly as before). The key is a mount, never a build arg (an arg is
 # written into the image history), exported only inside this RUN. The release
-# version is the commit being built, so GRID_GIT_SHA is declared here; a new
+# version is the commit being built, so GIT_SHA is declared here; a new
 # commit re-runs the build anyway, because an image whose inputs did not change
 # is re-tagged rather than rebuilt (docs/contributing/ci.md). The PostHog CLI's
 # npm package fetches its binary on first use, here; it is deleted right after,
@@ -140,7 +140,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # (Turbopack emits some unasked) and the build fails if one survives or, when
 # it uploaded, if no chunk id was injected.
 ARG POSTHOG_PROJECT_ID=""
-ARG GRID_GIT_SHA=""
+ARG GIT_SHA=""
 
 RUN --mount=type=secret,id=posthog_cli_api_key,required=false \
     if [ -n "$POSTHOG_PROJECT_ID" ] && [ -s /run/secrets/posthog_cli_api_key ]; then \
@@ -164,7 +164,7 @@ RUN for script in provision-workos-authz migrate-folder-grants-to-workos; do \
 
 # The `bff-jobs` slice entry, the same way: our services inlined, packages left
 # to the production node_modules. `workers/jobs/index.js` imports it when
-# `GRID_BFF_JOBS_MODE=inprocess`, and then spawns no `node server.js` (ADR-0079
+# `BFF_JOBS_MODE=inprocess`, and then spawns no `node server.js` (ADR-0079
 # amendment 1). Its own script, for the shims Next would otherwise provide.
 RUN bun scripts/build-jobs-bundle.ts
 
@@ -187,14 +187,14 @@ ENV HOSTNAME="0.0.0.0"
 # deployment that sets NODE_OPTIONS itself must keep this --require in it.
 ENV NODE_OPTIONS="--require /app/scripts/legacy-env-names.cjs"
 
-# The commit this image was built from. `--build-arg GRID_GIT_SHA=$(git rev-parse
+# The commit this image was built from. `--build-arg GIT_SHA=$(git rev-parse
 # HEAD)` in the image build (publish-images.yml / docker-build.yml); unset
 # everywhere else, and the boot line then prints `sha=unknown` rather than
 # guessing. There is no `.git` in the image, so a build arg is the only way the
 # running container can answer "which commit am I", and it is the question a
 # pilot report cannot be actioned without.
-ARG GRID_GIT_SHA=""
-ENV GRID_GIT_SHA=$GRID_GIT_SHA
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 
 RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs \

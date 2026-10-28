@@ -2,7 +2,7 @@
 
 The maintenance purge routes and the skills submit route are both reachable
 only from inside the compose network (never on the AuthMiddleware external-path
-allowlist) and are authenticated with the shared ``GRID_INTERNAL_API_TOKEN``.
+allowlist) and are authenticated with the shared ``INTERNAL_API_TOKEN``.
 
 Factored here so both route modules import one implementation rather than
 copy-pasting the constant-time compare / dev-default-refusal logic. Behavior is
@@ -40,13 +40,13 @@ _TOKEN_HEADERS: tuple[str, ...] = ("x-grid-internal-token", "x-internal-token")
 
 
 def _require_internal_token(request: Request) -> None:
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         raise HTTPException(status_code=403, detail="Forbidden")
     app_env = os.environ.get("APP_ENV", "production").lower()
     if token == _DEV_DEFAULT_TOKEN and app_env not in _DEV_APP_ENVS:
         logger.error(
-            "GRID_INTERNAL_API_TOKEN is the well-known dev default "
+            "INTERNAL_API_TOKEN is the well-known dev default "
             "('%s') but APP_ENV=%s is not a dev environment - refusing to "
             "serve internal requests. Set a real token in the deployment "
             "environment.",

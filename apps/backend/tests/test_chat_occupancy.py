@@ -16,7 +16,7 @@ TOKEN = "real-secret"  # pragma: allowlist secret
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     monkeypatch.setenv("APP_ENV", "production")
     router = APIRouter()
     add_chat_occupancy_routes(router)

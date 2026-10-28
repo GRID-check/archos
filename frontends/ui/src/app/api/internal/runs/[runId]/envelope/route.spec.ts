@@ -38,7 +38,7 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import { authorizeConversationScope } from '@/lib/retrieval-scope/collection-scope-request'
 import type { TaskRun } from '@/lib/db/schema/task-model'
 import { resolveRunContext, type RunContext } from '@/lib/jobs/run-context'
-import { GRID_REQUEST_CONTEXT_MAX_AGE_MS, verifyGridRequestContextEnvelope } from '@/lib/request-context'
+import { REQUEST_CONTEXT_MAX_AGE_MS, verifyGridRequestContextEnvelope } from '@/lib/request-context'
 import { capabilityOf } from '@/lib/runs/run-envelope'
 import { runEnvelopeErrorSchema, runEnvelopeResponseSchema } from '@/lib/runs/run-envelope-types'
 import { findRunById } from '@/lib/tasks/repository'
@@ -111,7 +111,7 @@ async function refusalOf(response: Response) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(findRunById).mockResolvedValue(run)
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
   vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
@@ -154,7 +154,7 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
       requester: { name: 'Anna Weber', email: 'r@grid.test', organizationName: 'Atelier Nord' },
     })
     // Inside the window for its whole six hours, and not one millisecond more.
-    const end = envelope.issuedAt + GRID_REQUEST_CONTEXT_MAX_AGE_MS
+    const end = envelope.issuedAt + REQUEST_CONTEXT_MAX_AGE_MS
     expect(verifyGridRequestContextEnvelope(envelope.header, envelope.signature, SECRET, end)).not.toBeNull()
     expect(verifyGridRequestContextEnvelope(envelope.header, envelope.signature, SECRET, end + 1)).toBeNull()
   })

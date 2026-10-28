@@ -106,7 +106,7 @@ class TestJobConfig:
 
 def test_the_policy_survives_the_durable_queue(monkeypatch):
     monkeypatch.setenv("SEAWEED_ENDPOINT", "http://seaweedfs.test")
-    monkeypatch.delenv("GRID_JOB_PAYLOAD_KEK", raising=False)
+    monkeypatch.delenv("JOB_PAYLOAD_KEK", raising=False)
     config = _job_config(_request(screening=_POLICY), "org-1", None)
     prepared = PreparedIngestJob(
         job_id="job-1",

@@ -192,7 +192,7 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         description=(
             "Enable the lexical channels beside the dense one (German BM25 and the exact-term "
             "phrase channels, fused in Qdrant by reciprocal rank fusion). "
-            "None = environment default GRID_HYBRID_RETRIEVAL (on)."
+            "None = environment default HYBRID_RETRIEVAL (on)."
         ),
     )
     rerank_llm: str | None = Field(
@@ -207,7 +207,7 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         description=(
             "Cross-encoder reranking provider (none|openrouter|jev). `jev` scores one decision-model "
             "noul per candidate (ADR-0064), an option to evaluate beside the cross-encoder. "
-            "None falls back to the GRID_RERANKER_PROVIDER environment default, which is "
+            "None falls back to the RERANKER_PROVIDER environment default, which is "
             "'none'. When one resolves it becomes the primary reranker and rerank_llm "
             "becomes the fallback; a missing key or any provider error degrades to the judge."
         ),
@@ -288,7 +288,7 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
             "Leave text passages that are OCR debris (a scanned drawing's text layer: rotated labels one "
             "glyph group per line, spaced capitals one letter per token; `chunk_noise`) out of the ranked "
             "pool, before the reranker and the per-document cap, so their slots go to real passages. "
-            'Never touches `match="exact"`/`"regex"`. None = environment default GRID_DROP_OCR_NOISE '
+            'Never touches `match="exact"`/`"regex"`. None = environment default DROP_OCR_NOISE '
             "(off). Switch it on only after the answer suite has measured it."
         ),
     )

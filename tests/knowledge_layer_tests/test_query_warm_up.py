@@ -162,7 +162,7 @@ def test_no_search_retriever_means_no_warm_up(monkeypatch):
 
 
 def test_without_a_cache_parallel_callers_still_share_one_embedding(monkeypatch):
-    """``GRID_QUERY_EMBED_CACHE_SIZE=0`` turns the LRU off, not the in-flight
+    """``QUERY_EMBED_CACHE_SIZE=0`` turns the LRU off, not the in-flight
     sharing: the waiters read the vector off the in-flight record."""
     retriever, embedder = _retriever()
     monkeypatch.setattr(retriever._query_embeddings, "max_entries", 0)

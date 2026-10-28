@@ -22,7 +22,7 @@ with the same secret, and turned into that person's pinned session
 (ADR-0054 §4). Every permission check, every ``created_by`` and every audit actor
 downstream is the human who asked.
 
-Re-signing a payload of our own with ``GRID_INTERNAL_API_TOKEN`` would work, and
+Re-signing a payload of our own with ``INTERNAL_API_TOKEN`` would work, and
 that is the point: it would let this tier CHOOSE the user id, with a secret that
 authenticates the service. The rule is therefore stated as a rule and not as an
 implementation detail — **echo, never sign** — and

@@ -27,9 +27,8 @@ RENAMED = {
     "PILOTI_ASK_MAX_SECONDS": "AGENT_ASK_MAX_SECONDS",
 }
 
-#: Off until the change that moves the deployments to the new names: until every
-#: reader reads them, "rename it" would be advice that breaks the process.
-WARN = False
+#: Every reader reads the new names, so an old one is worth a warning.
+WARN = True
 
 
 def current_name(legacy: str) -> str | None:

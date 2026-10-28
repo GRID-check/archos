@@ -51,7 +51,7 @@ import type { BimElementVerdict, BimRuleResultWithConfirmation } from './rules'
  * Namespace for the UUIDv5 topic ids. A fixed constant, never regenerated:
  * changing it re-issues every topic in every project as a new one.
  */
-const GRID_BCF_NAMESPACE = '8f3d6a1e-5c47-4b9e-9a2d-7e1c0b4f8a53'
+const BCF_NAMESPACE = '8f3d6a1e-5c47-4b9e-9a2d-7e1c0b4f8a53'
 
 /** Verdict rows carried in a topic description before the count speaks. */
 const DESCRIPTION_ROWS = 12
@@ -137,10 +137,10 @@ function uuidV5(namespace: string, name: string): string {
 }
 
 const topicGuid = (projectId: string, ruleId: string): string =>
-  uuidV5(GRID_BCF_NAMESPACE, `${projectId}:${ruleId}`)
+  uuidV5(BCF_NAMESPACE, `${projectId}:${ruleId}`)
 
 const childGuid = (projectId: string, ruleId: string, kind: string): string =>
-  uuidV5(GRID_BCF_NAMESPACE, `${projectId}:${ruleId}:${kind}`)
+  uuidV5(BCF_NAMESPACE, `${projectId}:${ruleId}:${kind}`)
 
 // ---------------------------------------------------------------------------
 // Topic content

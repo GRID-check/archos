@@ -44,7 +44,7 @@ class TestEnvironment:
 
 class TestRelease:
     def test_the_commit_is_the_release(self, monkeypatch):
-        monkeypatch.setenv("GRID_GIT_SHA", "fa9268b6abc")
+        monkeypatch.setenv("GIT_SHA", "fa9268b6abc")
         assert langfuse_release() == "fa9268b6abc"
 
     @pytest.mark.parametrize("raw", ["", "unknown"])
@@ -87,7 +87,7 @@ class TestTraceName:
 class TestContextAttributes:
     def test_every_span_carries_environment_release_and_type(self, monkeypatch):
         monkeypatch.setenv("APP_ENV", "production")
-        monkeypatch.setenv("GRID_GIT_SHA", "abc123")
+        monkeypatch.setenv("GIT_SHA", "abc123")
 
         attributes = context_attributes_for(
             name="openai/gpt-x", attributes={"nat.span.kind": "LLM"}, is_root=False, outcome=None
@@ -100,7 +100,7 @@ class TestContextAttributes:
         }
 
     def test_only_a_root_names_its_trace_and_carries_the_outcome(self, monkeypatch):
-        monkeypatch.delenv("GRID_GIT_SHA", raising=False)
+        monkeypatch.delenv("GIT_SHA", raising=False)
         outcome = {"langfuse.trace.metadata.turn_outcome": "answered"}
 
         child = context_attributes_for(name="tool", attributes={}, is_root=False, outcome=outcome)

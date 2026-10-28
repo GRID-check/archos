@@ -386,7 +386,7 @@ is proposed as marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.
 
 1. **Queued.** `notifyNewRevision` queues a `revision_notice` job right after it
    claims the announcement of a cross-name Fassung, so once per Fassung; the
-   job id is uuid5 of the pair, and it waits `GRID_REVISION_NOTICE_DELAY_SECONDS`
+   job id is uuid5 of the pair, and it waits `REVISION_NOTICE_DELAY_SECONDS`
    (120 s). A same-name version is not noticed: its older bytes left the index
    when it was published.
 2. **As the person who made it.** The job runs as the announcement's actor (the
@@ -397,7 +397,7 @@ is proposed as marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.
 3. **Which pages.** `POST /v1/collections/{c}/revision-pages` reads the changed
    pages of the newer Fassung from the index (`revision_diff.changed_pages`), no
    model call. Nothing changed: silence. A scan with nothing read: the first
-   pages. At most `GRID_REVISION_NOTICE_MAX_PAGES` (3).
+   pages. At most `REVISION_NOTICE_MAX_PAGES` (3).
 4. **What changed.** `compareRevisionPage` with `purpose: notice`, the compare a
    click runs, queued as `bulk` and traced with `purpose` in its metadata; the
    route returns the generation's `trace_id`.

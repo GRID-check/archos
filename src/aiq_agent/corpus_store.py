@@ -2,7 +2,7 @@
 
 A base-corpus PDF has exactly one source of record, the object
 ``base-corpus/<file name>`` in ``SEAWEED_BUCKET``. One table in the knowledge
-database (``GRID_SUMMARY_DB``), ``oib_corpus_files``, lists what is in the corpus
+database (``SUMMARY_DB``), ``oib_corpus_files``, lists what is in the corpus
 and keeps what ingestion needs to know about each file:
 
 ====================== ======================================================
@@ -24,7 +24,7 @@ is the one thing remembered about a job that ran and failed, so the file is not
 tried again until its bytes change or an admin asks.
 
 Local files are a CACHE and nothing more. They live in
-``GRID_BASE_CORPUS_CACHE_DIR`` (default ``/tmp/base-corpus``), are filled one
+``BASE_CORPUS_CACHE_DIR`` (default ``/tmp/base-corpus``), are filled one
 file at a time by :func:`ensure_local` for whoever needs a path (ingestion, the
 PDF route, the export, the page renderer), and may disappear at any restart.
 Nothing pulls the corpus speculatively.
@@ -79,14 +79,14 @@ from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 logger = logging.getLogger(__name__)
 
-CACHE_DIR_ENV = "GRID_BASE_CORPUS_CACHE_DIR"
+CACHE_DIR_ENV = "BASE_CORPUS_CACHE_DIR"
 # A cache that may vanish at any restart, by design: the table and the bucket are the record.
 DEFAULT_CACHE_DIR = "/tmp/base-corpus"
 
 _UPLOAD_URL_PATH = "/api/internal/base-corpus/upload-url"
 _DELETE_PATH = "/api/internal/base-corpus/"
 _FRONTEND_INTERNAL_URL_ENV = "FRONTEND_INTERNAL_URL"
-_INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
+_INTERNAL_TOKEN_ENV = "INTERNAL_API_TOKEN"
 _BFF_TIMEOUT_SECONDS = 15.0
 _PUT_TIMEOUT_SECONDS = 300.0
 _CHUNK_BYTES = 1024 * 1024
@@ -143,7 +143,7 @@ class FileRow:
 
 
 def cache_dir() -> Path:
-    """This process's cache of corpus files (``GRID_BASE_CORPUS_CACHE_DIR``), read at call time."""
+    """This process's cache of corpus files (``BASE_CORPUS_CACHE_DIR``), read at call time."""
     return Path(os.environ.get(CACHE_DIR_ENV, "").strip() or DEFAULT_CACHE_DIR)
 
 
@@ -188,11 +188,11 @@ def _require_name(name: str) -> None:
 
 
 def _db_url() -> str:
-    url = os.environ.get("GRID_SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
+    url = os.environ.get("SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
     if not url:
         # A silent fall back to a local SQLite file would bring back exactly the
         # per-replica state the corpus store exists to remove.
-        raise CorpusStoreError("the base corpus needs GRID_SUMMARY_DB (the shared knowledge database)")
+        raise CorpusStoreError("the base corpus needs SUMMARY_DB (the shared knowledge database)")
     return url
 
 

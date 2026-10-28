@@ -48,9 +48,9 @@ describe('isValidCronExpression', () => {
 describe('minIntervalMinutesFromEnv', () => {
   it('defaults to 15 and honours a positive override', () => {
     expect(minIntervalMinutesFromEnv()).toBe(DEFAULT_MIN_INTERVAL_MINUTES)
-    vi.stubEnv('GRID_SKILL_MIN_INTERVAL_MINUTES', '30')
+    vi.stubEnv('SKILL_MIN_INTERVAL_MINUTES', '30')
     expect(minIntervalMinutesFromEnv()).toBe(30)
-    vi.stubEnv('GRID_SKILL_MIN_INTERVAL_MINUTES', 'abc')
+    vi.stubEnv('SKILL_MIN_INTERVAL_MINUTES', 'abc')
     expect(minIntervalMinutesFromEnv()).toBe(DEFAULT_MIN_INTERVAL_MINUTES)
   })
 })

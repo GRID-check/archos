@@ -29,7 +29,7 @@ differs by model, so each limit is AIMD, the shape TCP settled on:
 
 * a 429 halves it (not below its floor), once per ``CUT_COOLDOWN_SECONDS``, so
   the dozen calls that fail together count once;
-* each ``GRID_PROVIDER_LIMIT_INTERVAL_SECONDS`` with no 429 adds one (not above
+* each ``PROVIDER_LIMIT_INTERVAL_SECONDS`` with no 429 adds one (not above
   its ceiling, where it starts).
 
 There are two scopes, because a 429 is a statement about ONE quota. A call holds
@@ -77,7 +77,7 @@ sleeps it before re-raising, because the retry layer above it does not read it.
 Without the shared store (no ``REDIS_URL``, an outage, a script the server
 refuses) every call proceeds, as in every other layer but the budget: a limiter
 that turns a cache outage into stalled answers is worse than one that over-admits
-for as long as the outage lasts. ``GRID_PROVIDER_LIMITER=off`` turns it off.
+for as long as the outage lasts. ``PROVIDER_LIMITER=off`` turns it off.
 
 Meters (OpenTelemetry API only; the provider is wired in ``aiq_agent.observability``):
 ``grid.provider.inflight``, ``grid.provider.limit{scope,model}``,
@@ -147,41 +147,41 @@ STATE_TTL_SECONDS = 3600
 RETRY_AFTER_CAP_SECONDS = 30.0
 _WAIT_WARNING_SECONDS = 30.0
 
-# @environment_variable GRID_PROVIDER_LIMITER
+# @environment_variable PROVIDER_LIMITER
 # @category Server
 # @type str
 # @default on
 # @required false
 # The fleet-wide model-call limiter (ADR-0081). `off` lets every call through.
 # It also lets every call through, by design, when the shared cache is down.
-_ENABLED_ENV = "GRID_PROVIDER_LIMITER"
+_ENABLED_ENV = "PROVIDER_LIMITER"
 
-# @environment_variable GRID_PROVIDER_LIMIT_CEILING
+# @environment_variable PROVIDER_LIMIT_CEILING
 # @category Server
 # @type int
 # @default 128
 # @required false
 # Model calls in flight across the whole fleet when the provider is not
 # rate-limiting: where the adaptive limit starts and the most it recovers to.
-_CEILING_ENV = "GRID_PROVIDER_LIMIT_CEILING"
+_CEILING_ENV = "PROVIDER_LIMIT_CEILING"
 
-# @environment_variable GRID_PROVIDER_LIMIT_FLOOR
+# @environment_variable PROVIDER_LIMIT_FLOOR
 # @category Server
 # @type int
 # @default 8
 # @required false
 # The least the adaptive limit falls to however often the provider says 429.
-_FLOOR_ENV = "GRID_PROVIDER_LIMIT_FLOOR"
+_FLOOR_ENV = "PROVIDER_LIMIT_FLOOR"
 
-# @environment_variable GRID_PROVIDER_LIMIT_INTERVAL_SECONDS
+# @environment_variable PROVIDER_LIMIT_INTERVAL_SECONDS
 # @category Server
 # @type float
 # @default 5
 # @required false
 # Each interval without a 429 adds one call to the adaptive limit, up to the ceiling.
-_INTERVAL_ENV = "GRID_PROVIDER_LIMIT_INTERVAL_SECONDS"
+_INTERVAL_ENV = "PROVIDER_LIMIT_INTERVAL_SECONDS"
 
-# @environment_variable GRID_PROVIDER_MODEL_LIMIT_CEILING
+# @environment_variable PROVIDER_MODEL_LIMIT_CEILING
 # @category Server
 # @type int
 # @default 32
@@ -189,15 +189,15 @@ _INTERVAL_ENV = "GRID_PROVIDER_LIMIT_INTERVAL_SECONDS"
 # Calls in flight across the whole fleet to ONE model while its provider is not
 # rate-limiting: where that model's adaptive limit starts and the most it
 # recovers to. A 429 from an upstream provider halves only its model's limit.
-_MODEL_CEILING_ENV = "GRID_PROVIDER_MODEL_LIMIT_CEILING"
+_MODEL_CEILING_ENV = "PROVIDER_MODEL_LIMIT_CEILING"
 
-# @environment_variable GRID_PROVIDER_MODEL_LIMIT_FLOOR
+# @environment_variable PROVIDER_MODEL_LIMIT_FLOOR
 # @category Server
 # @type int
 # @default 2
 # @required false
 # The least one model's adaptive limit falls to however often its provider says 429.
-_MODEL_FLOOR_ENV = "GRID_PROVIDER_MODEL_LIMIT_FLOOR"
+_MODEL_FLOOR_ENV = "PROVIDER_MODEL_LIMIT_FLOOR"
 
 _DEFAULT_CEILING = 128
 _DEFAULT_FLOOR = 8
@@ -214,7 +214,7 @@ class ProviderWaitTimeout(TimeoutError):
 
 
 def enabled() -> bool:
-    """Whether the limiter runs at all (``GRID_PROVIDER_LIMITER``)."""
+    """Whether the limiter runs at all (``PROVIDER_LIMITER``)."""
     return os.environ.get(_ENABLED_ENV, "on").strip().lower() not in {"off", "false", "0", "no"}
 
 

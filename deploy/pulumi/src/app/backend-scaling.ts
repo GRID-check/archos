@@ -32,7 +32,7 @@ export function occupancyUrl(namespace: pulumi.Input<string>, tier: string = CHA
  *
  * SCALED ON TURNS IN FLIGHT, beside CPU. A chat turn mostly waits on a model, so
  * CPU alone says little about how close the tier is to its admission cap
- * (`GRID_MAX_ACTIVE_TURNS`). The `metrics-api` trigger asks the backend how many
+ * (`MAX_ACTIVE_TURNS`). The `metrics-api` trigger asks the backend how many
  * turns run fleet-wide and holds `turnsPerReplica` of them per replica; the cpu
  * trigger adds replicas for the work that is not a turn (retrieval, ingest
  * status, the REST routes). The HPA takes the larger answer of the two.
@@ -67,7 +67,7 @@ export function installBackendScaling(
     name: `${name}-occupancy-auth`,
     parameter: "apiKey",
     secretName: SECRET_NAME,
-    key: "GRID_INTERNAL_API_TOKEN",
+    key: "INTERNAL_API_TOKEN",
     labels,
     dependsOn,
   });

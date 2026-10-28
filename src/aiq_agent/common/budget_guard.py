@@ -1,6 +1,6 @@
 """Per-run completion-token budget cap for async research jobs (backlog T4-4).
 
-``GRID_MAX_RUN_COMPLETION_TOKENS`` bounds the total completion (output) tokens
+``MAX_RUN_COMPLETION_TOKENS`` bounds the total completion (output) tokens
 a single async job may consume across *every* LLM call it makes --
 orchestrator, planner, writer, source-router, and every concurrent researcher
 worker alike. It is a coarse run-away-job safety valve, independent of (and
@@ -47,7 +47,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 
 logger = logging.getLogger(__name__)
 
-# @environment_variable GRID_MAX_RUN_COMPLETION_TOKENS
+# @environment_variable MAX_RUN_COMPLETION_TOKENS
 # @category Cost control
 # @type int
 # @default 0
@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 # Per-run completion-token ceiling for async research jobs. 0 (or any
 # non-positive/unparseable value) disables the cap. Applies to the sum of
 # completion tokens across every LLM call in the job (all subagents/workers).
-GRID_MAX_RUN_COMPLETION_TOKENS_ENV = "GRID_MAX_RUN_COMPLETION_TOKENS"
+MAX_RUN_COMPLETION_TOKENS_ENV = "MAX_RUN_COMPLETION_TOKENS"
 
 DISABLED_CEILING = 0
 
@@ -80,10 +80,10 @@ class RunBudgetExceededError(RuntimeError):
 
 
 def _parse_completion_token_ceiling(raw: str | None) -> int:
-    """Parse ``GRID_MAX_RUN_COMPLETION_TOKENS`` defensively.
+    """Parse ``MAX_RUN_COMPLETION_TOKENS`` defensively.
 
     Mirrors the fail-safe-to-disabled parsing style used for other numeric
-    env knobs in this codebase (e.g. ``GRID_DB_POOL_MAX``): missing, blank,
+    env knobs in this codebase (e.g. ``DB_POOL_MAX``): missing, blank,
     unparseable, or non-positive values all fall back to disabled (0) rather
     than raising or silently picking an arbitrary default ceiling.
     """
@@ -94,7 +94,7 @@ def _parse_completion_token_ceiling(raw: str | None) -> int:
     except ValueError:
         logger.warning(
             "Invalid %s=%r (not an integer); disabling the completion-token budget cap",
-            GRID_MAX_RUN_COMPLETION_TOKENS_ENV,
+            MAX_RUN_COMPLETION_TOKENS_ENV,
             raw,
         )
         return DISABLED_CEILING
@@ -218,13 +218,13 @@ def create_budget_guard_callback(ceiling: int | None = None) -> BudgetGuardCallb
 
     Args:
         ceiling: Completion-token ceiling to enforce. Defaults to
-            ``GRID_MAX_RUN_COMPLETION_TOKENS`` (parsed defensively; 0/unset
+            ``MAX_RUN_COMPLETION_TOKENS`` (parsed defensively; 0/unset
             disables the cap).
     """
     resolved_ceiling = (
         ceiling
         if ceiling is not None
-        else _parse_completion_token_ceiling(os.environ.get(GRID_MAX_RUN_COMPLETION_TOKENS_ENV))
+        else _parse_completion_token_ceiling(os.environ.get(MAX_RUN_COMPLETION_TOKENS_ENV))
     )
     if resolved_ceiling <= 0:
         return None

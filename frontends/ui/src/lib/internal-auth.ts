@@ -3,7 +3,7 @@
  *
  * Inbound (backend → BFF over the compose network): `requireInternalToken`,
  * the guard every `/api/internal/*` route goes through. Requests authenticate
- * with GRID_INTERNAL_API_TOKEN via the `x-grid-internal-token` header; the
+ * with INTERNAL_API_TOKEN via the `x-grid-internal-token` header; the
  * well-known dev default is refused outside dev environments; an unconfigured
  * token disables the endpoint.
  *
@@ -28,7 +28,7 @@ export const CURRENT_INTERNAL_TOKEN_HEADER = 'x-internal-token'
  * calls (memory writes among them); a credential handed to something outside
  * the cluster gets its own, so leaking it opens exactly one route.
  */
-export type InternalTokenEnv = 'GRID_INTERNAL_API_TOKEN' | 'GRID_CORPUS_EXPORT_TOKEN'
+export type InternalTokenEnv = 'INTERNAL_API_TOKEN' | 'CORPUS_EXPORT_TOKEN'
 
 const DEV_DEFAULT_TOKEN = 'grid-internal-dev-token'
 const DEV_APP_ENVS = new Set(['development', 'dev', 'local'])
@@ -52,7 +52,7 @@ function isDevEnvironment(): boolean {
  * (an HMAC over a domain label), the same fail-closed rule the guard below
  * applies to the token itself.
  */
-export function usableInternalSecret(tokenEnv: InternalTokenEnv = 'GRID_INTERNAL_API_TOKEN'): string | null {
+export function usableInternalSecret(tokenEnv: InternalTokenEnv = 'INTERNAL_API_TOKEN'): string | null {
   const secret = process.env[tokenEnv]
   if (!secret) return null
   if (secret === DEV_DEFAULT_TOKEN && !isDevEnvironment()) return null
@@ -66,7 +66,7 @@ export function usableInternalSecret(tokenEnv: InternalTokenEnv = 'GRID_INTERNAL
 export function requireInternalToken(
   request: Request,
   label: string,
-  tokenEnv: InternalTokenEnv = 'GRID_INTERNAL_API_TOKEN'
+  tokenEnv: InternalTokenEnv = 'INTERNAL_API_TOKEN'
 ): Response | null {
   const expectedToken = process.env[tokenEnv]
   if (!expectedToken) {
@@ -155,9 +155,9 @@ export class InternalServiceUnavailableError extends ServiceUnavailableError {
  * says so, as `lib/model-config/backend-defaults.ts` does.
  */
 export function internalServiceHeaders(destination: string): Record<string, string> {
-  const token = process.env.GRID_INTERNAL_API_TOKEN
+  const token = process.env.INTERNAL_API_TOKEN
   if (!token) {
-    throw new InternalServiceUnavailableError('token_missing', 'GRID_INTERNAL_API_TOKEN is not configured')
+    throw new InternalServiceUnavailableError('token_missing', 'INTERNAL_API_TOKEN is not configured')
   }
   if (!isTokenSafeDestination(destination)) {
     throw new InternalServiceUnavailableError(

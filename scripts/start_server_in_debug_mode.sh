@@ -86,5 +86,5 @@ echo ""
 
 cd "$REPO_ROOT"
 source "$VENV_DIR/bin/activate"
-# The job API is the api role's (ADR-0082). The chat role (the chat socket, port 8001) is not started here: run `GRID_ROLE=chat nat serve --config_file $CONFIG_FILE --port 8001` alongside, or use start_e2e.sh.
-GRID_ROLE=api nat serve --config_file "$CONFIG_FILE" --port $PORT
+# The job API is the api role's (ADR-0082). The chat role (the chat socket, port 8001) is not started here: run `PROCESS_ROLE=chat nat serve --config_file $CONFIG_FILE --port 8001` alongside, or use start_e2e.sh.
+PROCESS_ROLE=api nat serve --config_file "$CONFIG_FILE" --port $PORT

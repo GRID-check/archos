@@ -124,7 +124,7 @@ def test_request_upload_slot_fail_open(monkeypatch):
     import httpx
 
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     assert image_store.request_upload_slot("d1", "proj_1", 0) is None
 
     calls: list[dict] = []
@@ -146,7 +146,7 @@ def test_request_upload_slot_fail_open(monkeypatch):
         return state["response"]
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000/")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "post", _post)
 
     assert image_store.request_upload_slot("d1", "proj_1", 2) == ("http://seaweed/put", "org/o1/_img/0.jpg")

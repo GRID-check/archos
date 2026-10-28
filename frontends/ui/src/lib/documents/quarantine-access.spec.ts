@@ -178,7 +178,7 @@ describe('the signed image URL of a document that turns held', () => {
   }
 
   beforeEach(() => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-signing-secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-signing-secret')
     vi.mocked(s3Client.send).mockResolvedValue({
       ContentLength: 64,
       Body: { transformToWebStream: () => new ReadableStream() },
@@ -406,7 +406,7 @@ describe('the preview of a held image', () => {
     quarantined({ status: 'processing' as const, errorMessage: null, filename: 'scan.png', contentType: 'image/png' })
 
   beforeEach(() => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-secret')
   })
 
   it.each([

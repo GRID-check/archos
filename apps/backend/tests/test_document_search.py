@@ -247,7 +247,7 @@ async def test_search_503_when_no_ingestor(app):
 async def test_search_in_scope_collection_allowed(app, monkeypatch):
     """A signed scope that CONTAINS the target collection is searched normally."""
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
 
     async with _client(app) as client:
@@ -270,7 +270,7 @@ async def test_search_out_of_scope_collection_rejected_404(app, monkeypatch):
     existence probe / retriever must never run.
     """
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     retriever = _make_retriever([_chunk("victim.pdf", 0.9)])
     set_active_retriever(retriever)
 
@@ -294,7 +294,7 @@ async def test_search_forged_raw_scope_header_not_honored(app, monkeypatch):
     envelope, so it is ignored and the request is rejected 403.
     """
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     set_active_retriever(_make_retriever([_chunk("victim.pdf", 0.9)]))
 
     scope = base64.urlsafe_b64encode(json.dumps(["proj_victim"]).encode()).decode().rstrip("=")
@@ -312,7 +312,7 @@ async def test_search_forged_raw_scope_header_not_honored(app, monkeypatch):
 async def test_search_wrong_signature_rejected(app, monkeypatch):
     """An envelope signed with the WRONG secret is treated as absent → 403."""
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
 
     async with _client(app) as client:
@@ -329,7 +329,7 @@ async def test_search_wrong_signature_rejected(app, monkeypatch):
 async def test_search_require_auth_without_envelope_rejected_403(app, monkeypatch):
     """REQUIRE_AUTH=true + no signed scope at all → 403 (BFF always forwards one)."""
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
 
     async with _client(app) as client:
@@ -605,7 +605,7 @@ async def test_grouped_search_refuses_reading_filters_out_of_bounds(app, filters
 @pytest.mark.asyncio
 async def test_grouped_search_rejects_any_collection_outside_the_signed_scope(app, monkeypatch):
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     retriever = _grouped_retriever([])
     set_active_retriever(retriever)
 
@@ -623,7 +623,7 @@ async def test_grouped_search_rejects_any_collection_outside_the_signed_scope(ap
 @pytest.mark.asyncio
 async def test_grouped_search_needs_a_signed_scope_under_auth(app, monkeypatch):
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     set_active_retriever(_grouped_retriever([]))
 
     async with _client(app) as client:

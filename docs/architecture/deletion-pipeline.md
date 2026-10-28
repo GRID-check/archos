@@ -186,7 +186,7 @@ claims it like any other row (`FOR UPDATE SKIP LOCKED`, backoff from
 `claimed_at`, `failed` after 10 attempts, `reapStranded`) and runs
 `purger/purge-conversation.js`, which re-checks the hold and calls
 `POST /api/internal/conversations/[id]/erase` on the BFF (`FRONTEND_INTERNAL_URL`,
-`GRID_INTERNAL_API_TOKEN`, the queue row's organization as the tenant scope).
+`INTERNAL_API_TOKEN`, the queue row's organization as the tenant scope).
 That route calls `retryConversationErasure`, which runs the same
 `eraseMarkedConversation`. The steps are not copied into the purger: they need
 the BFF's tenant scope, the session-document ledger and its backend clients, and
@@ -265,7 +265,7 @@ is removed by the retention sweep.
 **Trace retention.** Langfuse's own retention is Enterprise-only, so the
 scheduler (`scheduler/index.js`, `sweepTraceRetention`) does it once a day, the
 first run on its first tick: it lists root observations that started before
-`now - GRID_LANGFUSE_TRACE_RETENTION_DAYS` (default 30, never below Langfuse's
+`now - TRACE_RETENTION_DAYS` (default 30, never below Langfuse's
 own minimum of 3) and deletes their traces in batches of 1,000. A run sends at
 most 50 batches, reads at most 100 pages and stops after two minutes, so a
 backlog drains over days; it logs how many it asked Langfuse to delete. A failed
@@ -313,7 +313,7 @@ Content deletion (their messages' *text*, files they uploaded) stays with the ow
 3. Delete the WorkOS organization (and remaining FGA resources)
 4. Finalize queue row
 
-Python-side steps (vector collection + summaries, `jobs` rows, LangGraph checkpoints) are performed by the backend's internal `POST /v1/maintenance/purge-project-resources` endpoint, guarded by `GRID_INTERNAL_API_TOKEN`; the purger calls it as its first step. WorkOS calls use the same `@workos-inc/node` SDK and API key the UI uses.
+Python-side steps (vector collection + summaries, `jobs` rows, LangGraph checkpoints) are performed by the backend's internal `POST /v1/maintenance/purge-project-resources` endpoint, guarded by `INTERNAL_API_TOKEN`; the purger calls it as its first step. WorkOS calls use the same `@workos-inc/node` SDK and API key the UI uses.
 
 Beside it, `POST /v1/maintenance/reconcile-summaries` (same guard) forgets summary rows — the agent's document inventory — whose file holds no chunks in the vector store, the rows a per-document delete orphaned before `delete_file` learned to forget both together. Body: `{ collections?: string[], dry_run?: boolean }`; answer: `{ status, dry_run, collections_scanned, orphans_found, orphans_forgotten, forgotten: [{ collection, file_name }], failures: [{ collection, error }], collections_absent: string[] }`. It judges files only inside collections the store holds points of: a collection with none is listed in `collections_absent` and keeps every row, because Qdrant lists no empty collection and absence is what a collection the import from Chroma has not reached, or a restore has not brought back, looks like (a whole collection's rows go with the purge route above, `clear_collection_summaries`). It fails per collection, treats a file that is tracked in any status or still in flight as held, and refuses (503) rather than guesses when the vector store cannot be listed or holds no point at all. The BFF's orphaned-vector sweep (`lib/platform/vector-reconcile.ts`, Platform → Vector maintenance) calls it as its second half over the collections it just chunk-reconciled, so the OIB corpus is never in scope from there. Its third half copies every project's facts onto its chunks (`syncAllProjectFacts`), and its fourth sends the same collections, 25 per call, to `POST /v1/maintenance/refresh-document-facts` (same guard; body `{ collections: string[] }`, 1–100; answer `{ status, collections_scanned, files_refreshed, failures: [{ collection, error }] }`, `409` without a Qdrant store), which copies every document's person-set facts (tags, Dokumentart, the superseded mark, the folder) onto its points again with `writes.copy_facts`: the copy after an edit never raises, so this is what repairs one that failed. The same sweep runs on a clock: `POST /api/internal/maintenance/reconcile-vectors` (token-guarded `internalApiRoute`, cross-tenant by declaration) is called by the `vector-reconcile` CronJob in `deploy/pulumi/src/app/workers.ts` — the `storage-alerts` shape, weekly on Sunday 03:00 UTC by default (`vectorReconcileSchedule`, `vectorReconcileEnabled`; rows in `deploy/pulumi/README.md`). The manual run on the page and the scheduled one are the same function, so the page stays the place to run it now and read the counts. Compose has no scheduler for either sweep; an operator there points `cron` at the internal route.
 
@@ -354,7 +354,7 @@ How the design satisfies the articles enterprise DPAs and security questionnaire
 | **Art. 17** — right to erasure "without undue delay" | Deletion pipeline for all five entity types; grace + retry bounded within the Art. 12(3) one-month response window; `purged_at` timestamps are the evidence of completion |
 | **Art. 17** — erasing a folder and what was derived from it | The folder's purge after at most 23 days (or at once by „Endgültig löschen"): the documents by the document delete's steps, and under „Mit dem Ordner entfernen" the memory notes drawn from it, the answers that drew on it (replaced), the conversations' Langfuse traces; the queue row (ids, counts, who, when; no content) is the proof. A legal hold defers it |
 | **Art. 5(1)(e)** — derived content outliving a deleted folder | The organization's setting „Inhalte aus gelöschten Ordnern": unchanged, project, admins only, or removed with the folder; keeping derived personal data longer than its source is the organization's decision |
-| **Art. 17 / Art. 5(1)(e)** — the prompts and answers in LLM traces | Langfuse traces are deleted by conversation id when the purger erases a chat or a project (native delete API, every edition; asynchronous, usually within about 15 minutes), and by the scheduler's daily sweep once older than `GRID_LANGFUSE_TRACE_RETENTION_DAYS` (default 30, minimum 3). A chat deleted by the request itself is picked up by a scheduler job from its closed queue row, within about the hour (legal-held chats keep theirs); the 30-day sweep is the net behind it. Langfuse does not remove copies saved into datasets; Piloti creates none |
+| **Art. 17 / Art. 5(1)(e)** — the prompts and answers in LLM traces | Langfuse traces are deleted by conversation id when the purger erases a chat or a project (native delete API, every edition; asynchronous, usually within about 15 minutes), and by the scheduler's daily sweep once older than `TRACE_RETENTION_DAYS` (default 30, minimum 3). A chat deleted by the request itself is picked up by a scheduler job from its closed queue row, within about the hour (legal-held chats keep theirs); the 30-day sweep is the net behind it. Langfuse does not remove copies saved into datasets; Piloti creates none |
 | **Art. 12(3)** — respond within one month | Grace periods capped at ≤ 23 days; `attempts`/`failed` status surfaces stuck purges before the deadline |
 | **Art. 18** — restriction of processing | Legal hold: data preserved, hidden from active use, purge blocked until release |
 | **Art. 5(2) / Art. 30** — accountability, records of processing | `deletion_queue` rows survive purge as the record of what was erased, when, by whose request; `legal_holds` records restriction events |
@@ -391,7 +391,7 @@ One caution for honest positioning: this makes the *product capable of* GDPR-con
 
 - Scheduled retention policies ("auto-delete after X days") — the queue supports it later via `purge_after`.
 - Retention periods per folder („aufbewahren bis"); a deletion before it ends would be refused (later phase).
-- LangGraph checkpoints of chats whose answers a folder purge replaced: the agent's per-thread state keeps the original answer until the checkpoint reaper removes the idle thread (`GRID_CHAT_CHECKPOINT_RETENTION_SECONDS`, default 14 days) or the chat is deleted; no per-thread checkpoint delete exists yet.
+- LangGraph checkpoints of chats whose answers a folder purge replaced: the agent's per-thread state keeps the original answer until the checkpoint reaper removes the idle thread (`CHAT_CHECKPOINT_RETENTION_SECONDS`, default 14 days) or the chat is deleted; no per-thread checkpoint delete exists yet.
 - Legal-hold management UI (API only for now; holds are rare, deliberate events).
 - Data export / portability (Art. 20) and export-before-delete — separate feature.
 - Backup scrubbing — deleted data persists in backups until rotation; document the rotation window in the DPA (see GDPR section).

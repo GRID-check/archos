@@ -348,7 +348,7 @@ class TestOrgScopedFallbackResolution:
                     "zdrOnly": True,
                 }
 
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
         monkeypatch.setattr("httpx.get", lambda *a, **k: FakeResponse())
         assert M._fetch_org_config("org_A") == ({"deep_research": "x-ai/grok-4.5"}, True)
 
@@ -356,7 +356,7 @@ class TestOrgScopedFallbackResolution:
         """Without a trust channel nobody was asked: the org's ZDR bit is unknown, so it is on."""
         import aiq_agent.common.model_overrides as M
 
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         assert M.resolve_org_model_overrides("org_A") == {}
         assert M.resolve_org_zdr_only("org_A") is True
 
@@ -446,12 +446,12 @@ class TestSharedTier:
         assert cache.get_json(M.shared_model_config_key("org_1")) is None
 
     def test_missing_token_resolution_writes_nothing_to_the_shared_tier(self, monkeypatch):
-        """No GRID_INTERNAL_API_TOKEN -> YAML models with ZDR pinned, and no L2
+        """No INTERNAL_API_TOKEN -> YAML models with ZDR pinned, and no L2
         write, so an unconfigured backend cannot shadow a real config for a full TTL."""
         from aiq_agent.common import cache
         from aiq_agent.common import model_overrides as M
 
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         entry = M._resolve_org_config("org_1")
         assert entry.overrides == {} and entry.zdr_only is True
         assert cache.get_json(M.shared_model_config_key("org_1")) is None
@@ -474,7 +474,7 @@ class TestSharedTier:
 
         # A trust channel means `_fetch_org_config` actually ASKED the BFF, so
         # ({}, False) is the BFF's answer rather than "we never asked".
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
         monkeypatch.setattr(M, "_fetch_org_config", empty)
         assert M.resolve_org_model_overrides("org_1") == {}
         assert cache.get_json(M.shared_model_config_key("org_1")) == {"overrides": {}, "zdr_only": False}
@@ -652,7 +652,7 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
             headers[pc.REQUEST_CONTEXT_ENVELOPE_SIG_HEADER] = hmac.new(
                 self.SECRET.encode(), raw.encode(), hashlib.sha256
             ).hexdigest()
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", self.SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", self.SECRET)
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
 
     def test_model_overrides_come_from_the_envelope(self, monkeypatch):

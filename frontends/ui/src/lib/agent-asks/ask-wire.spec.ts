@@ -21,8 +21,8 @@ const CHAT_SOCKET = join(__dirname, '..', '..', '..', '..', '..', 'apps', 'backe
 describe('the longest an ask stays open', () => {
   it('is the chat turn deadline the socket enforces', () => {
     const source = readFileSync(CHAT_SOCKET, 'utf8')
-    const match = /GRID_CHAT_TURN_DEADLINE_SECONDS", "(\d+)"/.exec(source)
-    expect(match, 'GRID_CHAT_TURN_DEADLINE_SECONDS default not found in chat_socket.py').not.toBeNull()
+    const match = /CHAT_TURN_DEADLINE_SECONDS", "(\d+)"/.exec(source)
+    expect(match, 'CHAT_TURN_DEADLINE_SECONDS default not found in chat_socket.py').not.toBeNull()
     expect(CHAT_TURN_DEADLINE_SECONDS).toBe(Number(match![1]))
   })
 

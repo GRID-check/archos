@@ -97,7 +97,7 @@ const usedBytes = (bytes: number, documents = 1): void => {
 describe('storage quota', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    delete process.env.GRID_DEFAULT_STORAGE_QUOTA_BYTES
+    delete process.env.DEFAULT_STORAGE_QUOTA_BYTES
     getOrgSettings.mockResolvedValue(settingsWith(undefined))
     sumStorageBytes.mockResolvedValue(0)
     updatePlatformOwnedOrgSettings.mockResolvedValue(undefined)
@@ -118,24 +118,24 @@ describe('storage quota', () => {
     })
 
     it('uses the platform default when the org has not set one', async () => {
-      process.env.GRID_DEFAULT_STORAGE_QUOTA_BYTES = String(50 * GB)
+      process.env.DEFAULT_STORAGE_QUOTA_BYTES = String(50 * GB)
       await expect(getStorageQuotaBytes('org-1')).resolves.toBe(50 * GB)
     })
 
     it('lets an org value win over the platform default', async () => {
-      process.env.GRID_DEFAULT_STORAGE_QUOTA_BYTES = String(50 * GB)
+      process.env.DEFAULT_STORAGE_QUOTA_BYTES = String(50 * GB)
       getOrgSettings.mockResolvedValue(settingsWith(10 * GB))
       await expect(getStorageQuotaBytes('org-1')).resolves.toBe(10 * GB)
     })
 
     it('treats an explicit null as deliberately unlimited, not as unset', async () => {
-      process.env.GRID_DEFAULT_STORAGE_QUOTA_BYTES = String(50 * GB)
+      process.env.DEFAULT_STORAGE_QUOTA_BYTES = String(50 * GB)
       getOrgSettings.mockResolvedValue(settingsWith(null))
       await expect(getStorageQuotaBytes('org-1')).resolves.toBeNull()
     })
 
     it('ignores a nonsense platform default rather than blocking every upload', async () => {
-      process.env.GRID_DEFAULT_STORAGE_QUOTA_BYTES = 'not-a-number'
+      process.env.DEFAULT_STORAGE_QUOTA_BYTES = 'not-a-number'
       await expect(getStorageQuotaBytes('org-1')).resolves.toBeNull()
     })
   })

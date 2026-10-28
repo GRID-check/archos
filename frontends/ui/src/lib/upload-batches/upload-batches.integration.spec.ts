@@ -4,7 +4,7 @@
  * Upload batches and the quarantine release, against a REAL Postgres
  * (ADR-0086, migrations 0109 and 0110), through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/upload-batches/upload-batches.integration.spec.ts
  *
  * The unit specs mock the repository; these prove the SQL the claims rest on:
@@ -26,7 +26,7 @@ import { REVIEWER_READER, internalRead } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_uploads_${Date.now()}`
 const OTHER_ORG = `${ORG}_other`
 const USER = 'user_uploads'
@@ -65,7 +65,7 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

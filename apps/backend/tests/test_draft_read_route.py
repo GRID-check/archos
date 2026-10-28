@@ -65,7 +65,7 @@ def client(store) -> TestClient:
 
 @pytest.fixture
 def prod_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", _TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", _TOKEN)
     monkeypatch.setenv("APP_ENV", "production")
 
 
@@ -107,7 +107,7 @@ class TestTheGuard:
         assert _read(client, PATH, token="nope").status_code == 403
 
     def test_the_dev_default_outside_a_dev_environment_is_disabled(self, client, monkeypatch) -> None:
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
         monkeypatch.setenv("APP_ENV", "production")
         assert _list(client).status_code == 503
         assert _read(client, PATH).status_code == 503

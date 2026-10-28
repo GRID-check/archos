@@ -5,7 +5,7 @@ safe ZIP extraction (happy path + zip-slip + non-pdf skip), the reclassify
 PATCH endpoint (updates / validates / 404), delete, re-ingest, the PDF route and
 the corpus export. Uses a tmp-sqlite summary store, an in-memory stand-in for the
 BFF and SeaweedFS with a real corpus table, ingest queue and status store (a real
-Postgres when ``GRID_TEST_CORPUS_DB`` is set), and a fake ingestor that can only
+Postgres when ``TEST_CORPUS_DB`` is set), and a fake ingestor that can only
 PREPARE a job: an upload or a re-ingest must leave a job in the queue and ingest
 nothing in the route's own process.
 """
@@ -96,16 +96,14 @@ class _FakeBucket:
 def bucket(monkeypatch, tmp_path):
     """The corpus: a fake bucket, a fresh table and an empty cache directory."""
     fake = _FakeBucket()
-    monkeypatch.setenv(
-        "GRID_SUMMARY_DB", os.environ.get("GRID_TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}"
-    )
+    monkeypatch.setenv("SUMMARY_DB", os.environ.get("TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}")
     monkeypatch.setenv(corpus_store.CACHE_DIR_ENV, str(tmp_path / "cache"))
     monkeypatch.setattr(corpus_store, "_request_upload_url", fake.request_upload_url)
     monkeypatch.setattr(corpus_store, "_put_object", fake.put_object)
     monkeypatch.setattr(corpus_store, "_delete_object", fake.delete_object)
     monkeypatch.setattr(corpus_store, "_download_object", fake.download_object)
-    monkeypatch.delenv("GRID_INGEST_QUEUE", raising=False)
-    monkeypatch.delenv("GRID_JOB_PAYLOAD_KEK", raising=False)
+    monkeypatch.delenv("INGEST_QUEUE", raising=False)
+    monkeypatch.delenv("JOB_PAYLOAD_KEK", raising=False)
     with corpus_store._transaction() as conn:
         conn.execute(delete(corpus_store._files))
     ingest_status_store.get("never-existed")  # creates the status and queue tables
@@ -385,7 +383,7 @@ async def test_an_upload_queues_the_ingestion_of_the_file_it_stored(app, ingesto
 async def test_an_upload_when_the_queue_is_off_is_an_error_not_an_in_process_ingestion(
     app, bucket, ingestor, monkeypatch
 ):
-    monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+    monkeypatch.setenv("INGEST_QUEUE", "off")
 
     async with _client(app) as client:
         res = await client.post(
@@ -631,7 +629,7 @@ async def test_the_manual_sync_runs_one_cycle_and_reports_its_counts(app, monkey
 @pytest.mark.asyncio
 async def test_a_manual_sync_that_breaks_is_a_500(app, monkeypatch):
     def broken(**_kwargs):
-        raise corpus_store.CorpusStoreError("the base corpus needs GRID_SUMMARY_DB")
+        raise corpus_store.CorpusStoreError("the base corpus needs SUMMARY_DB")
 
     monkeypatch.setattr(oib_sync, "sync", broken)
 

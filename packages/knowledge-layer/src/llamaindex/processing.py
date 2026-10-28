@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-# @environment_variable GRID_VLM_BATCH_WORKERS
+# @environment_variable VLM_BATCH_WORKERS
 # @category Knowledge Layer
 # @type int
 # @default 4
@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 # provider rate-limit or the process socket pool — architectural plan sets
 # typically have 5-20 visual pages and 0-10 embedded images, so 4 workers
 # cuts a 20-page serial loop to ~5 rounds.
-VLM_BATCH_WORKERS = max(1, int(os.environ.get("GRID_VLM_BATCH_WORKERS", "4")))
+VLM_BATCH_WORKERS = max(1, int(os.environ.get("VLM_BATCH_WORKERS", "4")))
 
 # Content-hash cache TTL: 30 days. Long enough that re-ingesting a changed PDF
 # (but with many unchanged images) still hits the cache for the stable images.
@@ -415,14 +415,14 @@ def render_visual_pages_no_vlm(
 # ---------------------------------------------------------------------------
 
 
-# @environment_variable GRID_VLM_SECOND_PASS_DELAY_SECONDS
+# @environment_variable VLM_SECOND_PASS_DELAY_SECONDS
 # @category Knowledge Layer
 # @type float
 # @default 10
 # @required false
 # Seconds the vision batch waits before reading the pages and images that failed once more.
 # A negative value turns the second pass off.
-VLM_SECOND_PASS_DELAY_SECONDS = float(os.environ.get("GRID_VLM_SECOND_PASS_DELAY_SECONDS", "10"))
+VLM_SECOND_PASS_DELAY_SECONDS = float(os.environ.get("VLM_SECOND_PASS_DELAY_SECONDS", "10"))
 
 
 def enrich_vlm_batch(

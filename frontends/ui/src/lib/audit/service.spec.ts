@@ -59,7 +59,7 @@ describe('recordAuditEvent (WorkOS-native audit trail)', () => {
     vi.clearAllMocks()
     createEvent.mockResolvedValue(undefined)
     // The emission gate defaults OFF; these tests exercise the emit path.
-    process.env.GRID_AUDIT_LOGS_ENABLED = 'true'
+    process.env.AUDIT_LOGS_ENABLED = 'true'
   })
 
   it('emits an org-scoped WorkOS audit event with actor, target and context', async () => {
@@ -161,7 +161,7 @@ describe('recordAuditEvent (WorkOS-native audit trail)', () => {
     consoleError.mockRestore()
   })
 
-  // Deployment gate (GRID_AUDIT_LOGS_ENABLED, default OFF): a suppressed emit
+  // Deployment gate (AUDIT_LOGS_ENABLED, default OFF): a suppressed emit
   // must reach neither the WorkOS client nor the error log.
   describe('emission gate', () => {
     it.each([
@@ -169,9 +169,9 @@ describe('recordAuditEvent (WorkOS-native audit trail)', () => {
       ['empty', ''],
       ['false', 'false'],
       ['truthy junk', 'yes'],
-    ])('suppresses emission when GRID_AUDIT_LOGS_ENABLED is %s', async (_case, value) => {
-      if (value === undefined) delete process.env.GRID_AUDIT_LOGS_ENABLED
-      else process.env.GRID_AUDIT_LOGS_ENABLED = value
+    ])('suppresses emission when AUDIT_LOGS_ENABLED is %s', async (_case, value) => {
+      if (value === undefined) delete process.env.AUDIT_LOGS_ENABLED
+      else process.env.AUDIT_LOGS_ENABLED = value
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await recordAuditEvent({
@@ -188,7 +188,7 @@ describe('recordAuditEvent (WorkOS-native audit trail)', () => {
 
     it('accepts true case- and whitespace-insensitively', () => {
       for (const value of ['true', 'TRUE', ' true ']) {
-        process.env.GRID_AUDIT_LOGS_ENABLED = value
+        process.env.AUDIT_LOGS_ENABLED = value
         expect(auditLogsEnabled()).toBe(true)
       }
     })
@@ -288,7 +288,7 @@ describe('further targets', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     createEvent.mockResolvedValue(undefined)
-    process.env.GRID_AUDIT_LOGS_ENABLED = 'true'
+    process.env.AUDIT_LOGS_ENABLED = 'true'
   })
 
   it('follow the subject in order, and one without an id is left out', async () => {
@@ -390,7 +390,7 @@ describe('a restricted document is not named in the trail (ADR-0087)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     createEvent.mockResolvedValue(undefined)
-    process.env.GRID_AUDIT_LOGS_ENABLED = 'true'
+    process.env.AUDIT_LOGS_ENABLED = 'true'
   })
 
   const rename = (folderId: string | null) =>

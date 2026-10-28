@@ -112,7 +112,7 @@ def turn(monkeypatch):
     monkeypatch.setattr(pc, "get_conversation_id_from_context", lambda: CONVERSATION)
     monkeypatch.setattr(pc, "get_user_message_id_from_context", lambda: USER_MESSAGE)
     monkeypatch.setattr(scoping, "get_collection_scope_from_context", lambda: ["proj_p1"])
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "internal-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-token")
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test")
 
 

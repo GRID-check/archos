@@ -28,7 +28,7 @@ describe('signed document image URLs', () => {
   })
 
   function withSecret(secret = DEFAULT_TEST_SECRET) {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', secret)
+    vi.stubEnv('INTERNAL_API_TOKEN', secret)
   }
 
   it('mints a root-relative path — the optimizer only treats those as local', () => {
@@ -163,7 +163,7 @@ describe('signed document image URLs', () => {
   })
 
   it('is disabled, not open, when no secret is configured', () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
 
     expect(buildDocumentImageUrl(ORG, USER, DOC, 'original', { nowMs: NOW })).toBeNull()
     expect(verifyDocumentImageUrl(DOC, new URLSearchParams(), NOW)).toEqual({
@@ -187,12 +187,12 @@ describe('signed document image URLs', () => {
     // operator gets. Losing it means finding out by eye that a preview does not
     // feel like a WebP.
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
 
     buildDocumentImageUrl(ORG, USER, DOC, 'original', { nowMs: NOW })
 
     expect(logged).toHaveBeenCalledWith(expect.stringContaining('DISABLED'))
-    expect(logged).toHaveBeenCalledWith(expect.stringContaining('GRID_INTERNAL_API_TOKEN'))
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining('INTERNAL_API_TOKEN'))
 
     // Once, not once per image on the page.
     buildDocumentImageUrl(ORG, USER, 'doc-2', 'original', { nowMs: NOW })

@@ -1,10 +1,10 @@
 """The dedicated ingestion worker tier (ADR-0076).
 
-Run as its own container: ``GRID_ROLE=ingest-worker`` makes the entrypoint start
+Run as its own container: ``PROCESS_ROLE=ingest-worker`` makes the entrypoint start
 ``python -m aiq_api.jobs.ingest_worker``. It builds the NAT workflow once, which
 activates the ingestor exactly as the web roles do (same summary model, same
 shared Qdrant, same object store), attaches the durable queue to it, and then
-does nothing but claim: its ``GRID_INGEST_MAX_WORKERS`` threads take the next job
+does nothing but claim: its ``INGEST_MAX_WORKERS`` threads take the next job
 fairly across every organisation, run it, and come back for another.
 
 No web server, no port, no state of its own: jobs live in Postgres, vectors in
@@ -12,7 +12,7 @@ the shared Qdrant cluster. So the tier scales on the one number that says how mu
 ingestion is waiting, the depth of ``ingest_job_queue``, from zero workers when
 nothing is queued to as many as the provider's rate limit allows.
 
-On SIGTERM it stops claiming and waits up to ``GRID_INGEST_WORKER_DRAIN_SECONDS``
+On SIGTERM it stops claiming and waits up to ``INGEST_WORKER_DRAIN_SECONDS``
 for the jobs it holds (a claim in flight counts as held). A job still running
 when that budget ends is given back to the queue at no cost in attempts, and
 another worker claims it at once; re-indexing replaces a file's chunks, so the
@@ -21,9 +21,9 @@ leaves its claims to go stale and be claimed again.
 
 Config (env):
   CONFIG_FILE / NAT_CONFIG_FILE        the NAT config the web tier runs
-  GRID_INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
-  GRID_INGEST_WORKER_DRAIN_SECONDS     drain budget on SIGTERM (default 600)
-  GRID_WORKER_LIVENESS_FILE            touched while the loop is alive
+  INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
+  INGEST_WORKER_DRAIN_SECONDS     drain budget on SIGTERM (default 600)
+  WORKER_LIVENESS_FILE            touched while the loop is alive
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ _LIVENESS_EVERY_SECONDS = 15
 
 def _drain_seconds() -> int:
     """Not a number is the default; a negative budget is none."""
-    return max(0, lease_policy.int_env("GRID_INGEST_WORKER_DRAIN_SECONDS", lease_policy.DRAIN_SECONDS))
+    return max(0, lease_policy.int_env("INGEST_WORKER_DRAIN_SECONDS", lease_policy.DRAIN_SECONDS))
 
 
 async def run(stop: asyncio.Event) -> None:
@@ -61,7 +61,7 @@ async def run(stop: asyncio.Event) -> None:
     from nat.runtime.loader import load_config
 
     config_file = os.environ.get("CONFIG_FILE") or os.environ.get("NAT_CONFIG_FILE") or _DEFAULT_CONFIG
-    liveness = os.environ.get("GRID_WORKER_LIVENESS_FILE", "/tmp/ingest-worker.alive")
+    liveness = os.environ.get("WORKER_LIVENESS_FILE", "/tmp/ingest-worker.alive")
     # Grid's telemetry `_type`s register at import; load_config fails without them.
     register_grid_telemetry()
     clock = BootClock("ingest-worker")
@@ -74,7 +74,7 @@ async def run(stop: asyncio.Event) -> None:
         if ingestor is None:
             raise RuntimeError(f"{config_file} activates no ingestor; there is nothing to run jobs with")
         if not ingest_dispatch.attach(ingestor):
-            raise RuntimeError("the ingest queue is off or has no database (GRID_INGEST_QUEUE, GRID_SUMMARY_DB)")
+            raise RuntimeError("the ingest queue is off or has no database (INGEST_QUEUE, SUMMARY_DB)")
         logger.info("Ingest worker %s claiming", ingest_dispatch.worker_id())
         clock.ready()
         boot_timing.flush()

@@ -89,7 +89,7 @@ export function chatSocketUrl(conversationId: string, env: Record<string, string
   const pick = createBackendTargetPicker({
     replicas: Math.max(1, Number.parseInt(env.BACKEND_REPLICAS ?? '1', 10) || 1),
     podTemplate: env.BACKEND_POD_WS_TEMPLATE ?? '',
-    affinity: affinityEnabled(env.GRID_CHAT_AFFINITY),
+    affinity: affinityEnabled(env.CHAT_AFFINITY),
     serviceUrl: chat.replace(/^http/, 'ws'),
   })
   return `${pick(conversationId)}/websocket`

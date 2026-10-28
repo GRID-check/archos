@@ -30,7 +30,7 @@ worker — no agent state carries a forced-skill list any more, because a skill
 is a working method the model picks from its catalog, and a body already in the
 prompt needs no tool call to arrive.
 
-Guarded by ``GRID_INTERNAL_API_TOKEN`` (the ``maintenance.py`` pattern) and,
+Guarded by ``INTERNAL_API_TOKEN`` (the ``maintenance.py`` pattern) and,
 critically, NOT added to ``AuthMiddleware.EXTERNAL_ALLOWED_PATHS`` — so it is
 unreachable from outside the compose network. (The signed X-Grid-Request-Context
 envelope middleware enforces this path too, but internal-token calls are
@@ -431,7 +431,7 @@ def add_skill_routes(router: APIRouter) -> None:
             422: {"description": "Invalid payload, or unknown/agent-unavailable data source IDs"},
             429: {
                 "description": (
-                    "Abuse bound: the organization already has too many jobs waiting (`GRID_MAX_QUEUED_JOBS_PER_ORG`)"
+                    "Abuse bound: the organization already has too many jobs waiting (`MAX_QUEUED_JOBS_PER_ORG`)"
                 )
             },
         },

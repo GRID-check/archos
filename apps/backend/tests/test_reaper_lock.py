@@ -43,7 +43,7 @@ def _engine(monkeypatch, *, wins: bool):
 
 @pytest.fixture(autouse=True)
 def _lock_dsn(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
 
 
 @pytest.mark.asyncio

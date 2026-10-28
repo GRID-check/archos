@@ -54,10 +54,10 @@ PLATFORM_LANE = "__platform__"
 #: also have a ``release()``, which gives the claim back without running it.
 JobSource = Callable[[], Callable[[], None] | None]
 
-_CAP_ENV = "GRID_INGEST_MAX_PER_ORG"
+_CAP_ENV = "INGEST_MAX_PER_ORG"
 
 
-# @environment_variable GRID_INGEST_MAX_PER_ORG
+# @environment_variable INGEST_MAX_PER_ORG
 # @category Knowledge Layer
 # @type int
 # @default 0
@@ -67,7 +67,7 @@ _CAP_ENV = "GRID_INGEST_MAX_PER_ORG"
 # process's own pool. The claim is fair without it (fewest running first); a
 # cap also idles workers when one organisation is alone.
 def per_org_cap_from_env() -> int:
-    """The per-organisation cap: ``GRID_INGEST_MAX_PER_ORG``."""
+    """The per-organisation cap: ``INGEST_MAX_PER_ORG``."""
     raw = os.environ.get(_CAP_ENV, "").strip()
     try:
         return max(0, int(raw))

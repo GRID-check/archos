@@ -64,7 +64,7 @@ const PRIVATE_HOST_PATTERNS = [
 /**
  * SSRF guard for tenant-supplied base URLs (ADR-0022): HTTPS only, no
  * loopback/link-local/RFC-1918 hosts. Deployments fronting a self-hosted
- * internal gateway can opt out via GRID_BYOK_ALLOW_PRIVATE_BASE_URLS=true.
+ * internal gateway can opt out via BYOK_ALLOW_PRIVATE_BASE_URLS=true.
  * Throws `Error` with a human message when the URL is rejected.
  */
 export function assertSafeBaseUrl(effectiveBaseUrl: string): void {
@@ -80,7 +80,7 @@ export function assertSafeBaseUrl(effectiveBaseUrl: string): void {
   if (url.username || url.password) {
     throw new Error('Base URL must not embed credentials')
   }
-  const allowPrivate = (process.env.GRID_BYOK_ALLOW_PRIVATE_BASE_URLS ?? '').toLowerCase() === 'true'
+  const allowPrivate = (process.env.BYOK_ALLOW_PRIVATE_BASE_URLS ?? '').toLowerCase() === 'true'
   if (allowPrivate) return
   const host = url.hostname
   if (PRIVATE_HOST_PATTERNS.some((pattern) => pattern.test(host))) {

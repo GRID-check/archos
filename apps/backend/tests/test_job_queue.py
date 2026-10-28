@@ -168,7 +168,7 @@ def test_forged_plaintext_row_quarantined_with_kek(db_url, monkeypatch):
     }
     # Attacker writes dev-format plaintext straight into the table.
     stored = "json:" + base64.b64encode(json.dumps(forged).encode()).decode()
-    monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setenv("JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
     _insert_raw(db_url, "forged-1", stored)
     claim = queue.claim_next(db_url, "worker-A", stale_seconds=30, max_attempts=3)
     assert claim is not None
@@ -188,7 +188,7 @@ def test_corrupt_enc_blob_quarantined_and_healthy_claimed_next(db_url, monkeypat
     rotation, tampered tag) is quarantined on first claim — no raise, so the
     worker loop stays alive — and the very next claim already returns the
     healthy row behind it."""
-    monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setenv("JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
     corrupt = "enc:" + base64.b64encode(b"truncated-ciphertext").decode()
     _insert_raw(db_url, "poison-1", corrupt)
     healthy = {"input_text": "healthy"}
@@ -219,10 +219,10 @@ def test_worker_poll_loop_survives_poison_claim(monkeypatch, tmp_path):
 
     db_url = f"sqlite:///{tmp_path}/jobs.db"
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", db_url)
-    monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
+    monkeypatch.setenv("WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
 
     def _poison(db_url_, worker_id_, stale_seconds_, max_attempts_, per_lane_cap_=0):
-        raise payload_crypto.PayloadKeyError("payload is not encrypted but GRID_JOB_PAYLOAD_KEK is set")
+        raise payload_crypto.PayloadKeyError("payload is not encrypted but JOB_PAYLOAD_KEK is set")
 
     monkeypatch.setattr(worker_mod.queue, "claim_next", _poison)
     w = worker_mod.ResearchWorker()
@@ -253,7 +253,7 @@ async def test_worker_quarantines_poison_and_runs_healthy(monkeypatch, tmp_path)
     db_url = f"sqlite:///{tmp_path}/jobs.db"
     async_db_url = f"sqlite+aiosqlite:///{tmp_path}/jobs.db"
     queue.ensure_research_queue_table(db_url)
-    monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setenv("JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
 
     corrupt = "enc:" + base64.b64encode(b"truncated-ciphertext").decode()
     _insert_raw(db_url, "poison-1", corrupt)
@@ -290,8 +290,8 @@ async def test_worker_quarantines_poison_and_runs_healthy(monkeypatch, tmp_path)
         conn.commit()
 
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", async_db_url)
-    monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
-    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.setenv("WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
+    monkeypatch.delenv("DEEP_CHECKPOINT_DB", raising=False)
 
     ran: list[dict] = []
 

@@ -2,7 +2,7 @@
 
 Most cases run over stand-ins for libpff's objects, so the order and the paging
 are pinned without a binary fixture in the repository. The last test reads real
-archives when ``GRID_PST_FIXTURE_DIR`` names a directory of them (the
+archives when ``PST_FIXTURE_DIR`` names a directory of them (the
 pst-extractor corpus is what ADR-0085's spike used): a check of libpff itself,
 run by hand when its version moves.
 """
@@ -298,10 +298,10 @@ def test_a_position_past_the_end_is_refused():
         pst(Folder("Posteingang", [Message("a")])).page(2, 10)
 
 
-FIXTURES = os.environ.get("GRID_PST_FIXTURE_DIR")
+FIXTURES = os.environ.get("PST_FIXTURE_DIR")
 
 
-@pytest.mark.skipif(not FIXTURES, reason="GRID_PST_FIXTURE_DIR names no directory of real archives")
+@pytest.mark.skipif(not FIXTURES, reason="PST_FIXTURE_DIR names no directory of real archives")
 def test_real_archives_page_through_completely():
     for path in sorted(Path(FIXTURES).glob("*.[po]st")):
         with path.open("rb") as file:

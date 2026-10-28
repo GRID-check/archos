@@ -13,13 +13,13 @@ import { a2aEndpointUrl, agentCardResponse, buildAgentCard, A2A_SECURITY_SCHEME 
 
 const ENV = {
   WORKOS_AUTHKIT_DOMAIN: 'auth.piloti.test',
-  GRID_MCP_RESOURCE_URL: 'https://app.piloti.test/api/mcp',
+  MCP_RESOURCE_URL: 'https://app.piloti.test/api/mcp',
 }
 
 describe('buildAgentCard', () => {
   it('is null while the deployment has no AuthKit domain or origin', () => {
     expect(buildAgentCard({})).toBeNull()
-    expect(buildAgentCard({ GRID_MCP_RESOURCE_URL: ENV.GRID_MCP_RESOURCE_URL })).toBeNull()
+    expect(buildAgentCard({ MCP_RESOURCE_URL: ENV.MCP_RESOURCE_URL })).toBeNull()
   })
 
   it('names /api/a2a on the agent door’s origin, for A2A 1.0 and 0.3 over JSON-RPC', () => {

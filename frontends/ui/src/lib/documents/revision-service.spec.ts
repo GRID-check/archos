@@ -61,7 +61,7 @@ function documentsById(...docs: Document[]) {
 
 describe('setRevisionLink', () => {
   beforeEach(() => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     mockFetch.mockResolvedValue(new Response(JSON.stringify({ superseded_by: 'Grundriss_B.pdf' }), { status: 200 }))
@@ -174,7 +174,7 @@ describe('setRevisionLink', () => {
   })
 
   it('tells the backend whose organization and person the confirmation runs for (BYOK, ZDR, spend)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'tok-1')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'tok-1')
 
     await setRevisionLink(session, 'doc-b', 'doc-a', true, request)
 

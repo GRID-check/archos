@@ -17,8 +17,8 @@ afterEach(() => {
 })
 
 describe('searchAddresses', () => {
-  it('is off without GRID_GEOCODER_URL and calls nothing', async () => {
-    vi.stubEnv('GRID_GEOCODER_URL', '')
+  it('is off without GEOCODER_URL and calls nothing', async () => {
+    vi.stubEnv('GEOCODER_URL', '')
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
     expect(await searchAddresses(QUERY)).toEqual({ enabled: false, results: [] })
@@ -30,14 +30,14 @@ describe('searchAddresses', () => {
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
     for (const value of ['photon', 'ftp://photon.test', '   ']) {
-      vi.stubEnv('GRID_GEOCODER_URL', value)
+      vi.stubEnv('GEOCODER_URL', value)
       expect(await searchAddresses(QUERY)).toEqual({ enabled: false, results: [] })
     }
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it('searches the configured Photon when set', async () => {
-    vi.stubEnv('GRID_GEOCODER_URL', 'https://photon.test')
+    vi.stubEnv('GEOCODER_URL', 'https://photon.test')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(PHOTON_MOEDLING))))
     const response = await searchAddresses(QUERY)
     expect(response.enabled).toBe(true)
@@ -46,7 +46,7 @@ describe('searchAddresses', () => {
 
   it('stays enabled with no results when the provider fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    vi.stubEnv('GRID_GEOCODER_URL', 'https://photon.test')
+    vi.stubEnv('GEOCODER_URL', 'https://photon.test')
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 500 })))
     expect(await searchAddresses(QUERY)).toEqual({ enabled: true, results: [] })
   })

@@ -39,12 +39,12 @@ describe('ids', () => {
 describe('caps', () => {
   it('reads the deployment’s caps, bounded, with defaults', () => {
     expect(maxNoticePages({})).toBe(DEFAULT_MAX_PAGES)
-    expect(maxNoticePages({ GRID_REVISION_NOTICE_MAX_PAGES: '5' })).toBe(5)
-    expect(maxNoticePages({ GRID_REVISION_NOTICE_MAX_PAGES: '500' })).toBe(10)
-    expect(maxNoticePages({ GRID_REVISION_NOTICE_MAX_PAGES: '0' })).toBe(1)
-    expect(maxNoticePages({ GRID_REVISION_NOTICE_MAX_PAGES: 'x' })).toBe(DEFAULT_MAX_PAGES)
+    expect(maxNoticePages({ REVISION_NOTICE_MAX_PAGES: '5' })).toBe(5)
+    expect(maxNoticePages({ REVISION_NOTICE_MAX_PAGES: '500' })).toBe(10)
+    expect(maxNoticePages({ REVISION_NOTICE_MAX_PAGES: '0' })).toBe(1)
+    expect(maxNoticePages({ REVISION_NOTICE_MAX_PAGES: 'x' })).toBe(DEFAULT_MAX_PAGES)
     expect(noticeDelaySeconds({})).toBe(120)
-    expect(noticeDelaySeconds({ GRID_REVISION_NOTICE_DELAY_SECONDS: '0' })).toBe(0)
+    expect(noticeDelaySeconds({ REVISION_NOTICE_DELAY_SECONDS: '0' })).toBe(0)
   })
 })
 

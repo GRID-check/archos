@@ -155,7 +155,7 @@ async def test_the_in_process_stream_keeps_a_bounded_number_of_conversations(mon
 
 
 def test_bus_enabled_by_default(monkeypatch):
-    monkeypatch.delenv("GRID_CONVERSATION_BUS", raising=False)
+    monkeypatch.delenv("CONVERSATION_BUS", raising=False)
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
     reset_bus_for_tests()
     assert is_multi_replica_bus() is True  # default ON — the stateless architecture
@@ -163,7 +163,7 @@ def test_bus_enabled_by_default(monkeypatch):
 
 
 def test_bus_opt_out_via_env(monkeypatch):
-    monkeypatch.setenv("GRID_CONVERSATION_BUS", "0")
+    monkeypatch.setenv("CONVERSATION_BUS", "0")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
     reset_bus_for_tests()
     assert is_multi_replica_bus() is False  # explicit opt-out -> local fallback
@@ -171,7 +171,7 @@ def test_bus_opt_out_via_env(monkeypatch):
 
 
 def test_bus_is_in_memory_without_redis(monkeypatch):
-    monkeypatch.delenv("GRID_CONVERSATION_BUS", raising=False)
+    monkeypatch.delenv("CONVERSATION_BUS", raising=False)
     monkeypatch.delenv("REDIS_URL", raising=False)
     reset_bus_for_tests()
     assert is_multi_replica_bus() is False  # no REDIS_URL -> single-process in-memory

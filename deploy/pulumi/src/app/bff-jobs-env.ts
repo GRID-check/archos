@@ -13,7 +13,7 @@ type EnvVar = k8s.types.input.core.v1.EnvVar;
  * runner stops it only after the jobs in hand are given back, so it needs no
  * long WebSocket drain of its own.
  */
-const BFF_JOBS_OVERRIDES = new Set(["OTEL_SERVICE_NAME", "GRID_SHUTDOWN_DRAIN_MS"]);
+const BFF_JOBS_OVERRIDES = new Set(["OTEL_SERVICE_NAME", "SHUTDOWN_DRAIN_MS"]);
 
 /**
  * Names the bff-jobs pod does not inherit from the frontend: the Langfuse keys.
@@ -30,7 +30,7 @@ const BFF_JOBS_WITHHELD = new Set([
   "LANGFUSE_PROJECT_ID",
   "LANGFUSE_PUBLIC_KEY",
   "LANGFUSE_SECRET_KEY",
-  "GRID_GEOCODER_URL",
+  "GEOCODER_URL",
 ]);
 const inheritedByBffJobs = (env: EnvVar) =>
   typeof env.name !== "string" || !(BFF_JOBS_OVERRIDES.has(env.name) || BFF_JOBS_WITHHELD.has(env.name));
@@ -38,7 +38,7 @@ const inheritedByBffJobs = (env: EnvVar) =>
 /**
  * bff-jobs pool environment (ADR-0079): the whole frontend environment, because
  * the jobs call the same services the routes do (the database, object storage,
- * the backend, WorkOS), plus what the runner reads. Every `GRID_BFF_JOBS_` name
+ * the backend, WorkOS), plus what the runner reads. Every `BFF_JOBS_` name
  * here must be one `frontends/ui/workers/jobs/index.js` reads; `bff-jobs.spec.ts`
  * holds the two together.
  */
@@ -46,12 +46,12 @@ export function bffJobsEnv(w: AppWiring): EnvVar[] {
   const { cfg } = w;
   return [
     ...frontendEnv(w).filter(inheritedByBffJobs),
-    { name: "GRID_BFF_JOBS_CONCURRENCY", value: String(cfg.bffJobs.concurrency) },
-    { name: "GRID_BFF_JOBS_DRAIN_SECONDS", value: String(cfg.bffJobs.drainSeconds) },
-    { name: "GRID_BFF_JOBS_MAX_PER_ORG", value: String(cfg.bffJobs.maxPerOrg) },
+    { name: "BFF_JOBS_CONCURRENCY", value: String(cfg.bffJobs.concurrency) },
+    { name: "BFF_JOBS_DRAIN_SECONDS", value: String(cfg.bffJobs.drainSeconds) },
+    { name: "BFF_JOBS_MAX_PER_ORG", value: String(cfg.bffJobs.maxPerOrg) },
     // `http` spawns the BFF and asks it per slice; `inprocess` runs the bundled
     // services in the supervisor and serves the probes' /api/healthz itself.
-    { name: "GRID_BFF_JOBS_MODE", value: cfg.bffJobs.mode },
+    { name: "BFF_JOBS_MODE", value: cfg.bffJobs.mode },
     // Office conversions this pod runs at Gotenberg at once. The BFF in the pod
     // reads it as it does in the frontend (`rendition.ts`); here it is the
     // per-pod factor of the pool's ceiling (`renditionCeiling`), which
@@ -59,7 +59,7 @@ export function bffJobsEnv(w: AppWiring): EnvVar[] {
     { name: "GOTENBERG_MAX_CONCURRENCY", value: String(cfg.bffJobs.renditionConcurrency) },
     // The BFF is stopped AFTER the runner has drained, so it only has to close
     // its own idle connections.
-    { name: "GRID_SHUTDOWN_DRAIN_MS", value: "5000" },
+    { name: "SHUTDOWN_DRAIN_MS", value: "5000" },
     // The collector endpoint came with the frontend's; only the name differs.
     ...(cfg.observability.enabled ? [{ name: "OTEL_SERVICE_NAME", value: "grid-bff-jobs" }] : []),
   ];

@@ -1029,7 +1029,7 @@
           "type": "array"
         },
         "build": {
-          "description": "The deployed commit (GRID_GIT_SHA), or 'unknown', as /health has it.",
+          "description": "The deployed commit (GIT_SHA), or 'unknown', as /health has it.",
           "minLength": 1,
           "title": "Build",
           "type": "string"

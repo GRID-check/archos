@@ -44,8 +44,8 @@ retention sweep assume it. Ingestion claims from its own table,
 joins by claiming through its queue, never by an in-process pool alone.
 
 **Research waits, it is not refused.** Capacity never makes `jobs/submit.py`
-raise: `GRID_MAX_ACTIVE_JOBS_PER_ORG` is the claim's per-lane cap (read by the
-worker), and the one 429 left is `GRID_MAX_QUEUED_JOBS_PER_ORG`, abuse protection on how
+raise: `MAX_ACTIVE_JOBS_PER_ORG` is the claim's per-lane cap (read by the
+worker), and the one 429 left is `MAX_QUEUED_JOBS_PER_ORG`, abuse protection on how
 many jobs one organization may have waiting. A scheduled fire is `bulk`. Do not
 turn a full cluster back into a refusal: a scheduled task that meets one is
 skipped, not retried.

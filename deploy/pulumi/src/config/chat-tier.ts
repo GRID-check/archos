@@ -52,14 +52,14 @@ export interface BackendConfig {
   /** CPU utilisation (% of requests) at which the KEDA cpu trigger adds replicas. */
   cpuTargetPercent: number;
   /**
-   * `GRID_CHAT_DRAIN_SECONDS`: how long a terminating replica waits for its
+   * `CHAT_DRAIN_SECONDS`: how long a terminating replica waits for its
    * turns before cancelling them. The pod's grace period is this plus the
    * endpoint drain and slack (`backendRollout`), so it must cover the longest
-   * chat turn, `GRID_CHAT_TURN_DEADLINE_SECONDS` (2700).
+   * chat turn, `CHAT_TURN_DEADLINE_SECONDS` (2700).
    */
   drainSeconds: number;
   /**
-   * `GRID_CHAT_AFFINITY` (ADR-0080): the BFF pins a conversation to one
+   * `CHAT_AFFINITY` (ADR-0080): the BFF pins a conversation to one
    * replica by hash (on, ADR-0028) or hands the socket to the aiq-agent
    * Service and lets the conversation bus decide per turn (off). Prod stays
    * on until the cross-replica path is validated on dev.
@@ -79,11 +79,11 @@ export interface AgentWorkerConfig {
   resources: ResourceSpec;
   minReplicas: number;
   maxReplicas: number;
-  /** Concurrent research jobs per worker process (GRID_RESEARCH_WORKERS); also KEDA's jobs-per-replica target. */
+  /** Concurrent research jobs per worker process (RESEARCH_WORKERS); also KEDA's jobs-per-replica target. */
   concurrency: number;
   /**
    * Seconds a terminating worker may spend finishing the research jobs it has
-   * already claimed (`GRID_RESEARCH_WORKER_DRAIN_SECONDS`). The pod's
+   * already claimed (`RESEARCH_WORKER_DRAIN_SECONDS`). The pod's
    * `terminationGracePeriodSeconds` is this plus 30 s, so the worker has time
    * to give back what it did not finish before the kubelet SIGKILLs it.
    *

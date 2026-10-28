@@ -77,7 +77,7 @@ const RECORD: InternalIntakeRequest = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(requireVerifiedContext).mockReturnValue(CONTEXT)
   vi.mocked(requirePinnedSession).mockResolvedValue(SESSION)
   vi.mocked(intakeNeeds).mockResolvedValue({ needs: [], unreadFiles: ['Einreichplan.pdf'], description: null, location: null, mode: 'active', previousSummary: null })
@@ -91,7 +91,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  delete process.env.GRID_INTERNAL_API_TOKEN
+  delete process.env.INTERNAL_API_TOKEN
 })
 
 describe('POST /api/internal/project-intake', () => {

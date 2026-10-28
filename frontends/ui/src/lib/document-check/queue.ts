@@ -6,14 +6,14 @@
  * every user document that came to rest, so a FIRST upload is checked too, not
  * only a Fassung of an older document. Gated per organization (`piloti-notices`,
  * read from WorkOS for the organization, since nobody's session is at hand) and
- * held for `GRID_REVISION_NOTICE_DELAY_SECONDS`, so a burst of re-reads has
+ * held for `REVISION_NOTICE_DELAY_SECONDS`, so a burst of re-reads has
  * settled before a model looks.
  *
  * Once per document version: the check's id (uuid5 of the version) is claimed
  * in `document_revision_announcements` as the row's anchor, so a re-read that
  * settles the document again checks nothing again, and the claim outlives the
  * job (a finished job's row is deleted). A claim that could not be followed by
- * a job is given back. Per organization at most `GRID_DOCUMENT_CHECK_DAILY_LIMIT`
+ * a job is given back. Per organization at most `DOCUMENT_CHECK_DAILY_LIMIT`
  * checks start per day (0: none); a version over the cap stays claimed, so it is
  * skipped, not queued later. Never throws: the settle hook must not fail because of it.
  */

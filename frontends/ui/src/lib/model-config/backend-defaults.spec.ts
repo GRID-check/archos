@@ -4,7 +4,7 @@
 /**
  * Where the shared internal token is allowed to travel.
  *
- * `GRID_INTERNAL_API_TOKEN` is a bearer secret. Plain HTTP is the intended
+ * `INTERNAL_API_TOKEN` is a bearer secret. Plain HTTP is the intended
  * transport to a sibling service on the compose/cluster network, so the rule
  * cannot simply be "https only" — that would withhold the token from every
  * real deployment. It has to be "TLS, or provably not leaving this network".

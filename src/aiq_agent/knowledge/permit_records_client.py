@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _FRONTEND_INTERNAL_URL_ENV = "FRONTEND_INTERNAL_URL"
-_INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
+_INTERNAL_TOKEN_ENV = "INTERNAL_API_TOKEN"
 _PERMIT_RECORDS_PATH = "/api/internal/permit-records"
 # The BFF embeds the requirements before it answers (up to 60 of them), so this is
 # longer than the presence check's 10 s.

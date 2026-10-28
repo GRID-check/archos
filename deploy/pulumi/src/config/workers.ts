@@ -56,20 +56,20 @@ export interface IngestWorkerConfig {
   minReplicas: number;
   /**
    * Ceiling. The real ceiling is the model provider's rate limit on the
-   * shared key: replicas × concurrency × `GRID_VLM_BATCH_WORKERS` is the
+   * shared key: replicas × concurrency × `VLM_BATCH_WORKERS` is the
    * peak number of VLM calls in flight, and `assertVlmPeakFitsCeiling` fails
    * the deploy when that is more than twice `vlmFleetConcurrency`, which is
    * itself held to the provider ceilings.
    */
   maxReplicas: number;
-  /** Jobs one replica runs at once (`GRID_INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
+  /** Jobs one replica runs at once (`INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
   concurrency: number;
   /** SIGTERM budget to finish claimed jobs; an unfinished one is claimed again elsewhere. */
   drainSeconds: number;
   /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
   maxPerOrg: number;
   /**
-   * `GRID_MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
+   * `MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
    * refused before it is decoded. pypdfium2 cannot downscale an embedded image
    * on decode, so this is the only bound on one bitmap's allocation; the
    * PDFium lock serialises decodes within a process, so the tier's raster peak
@@ -87,14 +87,14 @@ export interface BffJobsConfig {
   /** Floor; 0 lets the pool scale to nothing while no job waits. */
   minReplicas: number;
   maxReplicas: number;
-  /** Jobs one replica runs at once (`GRID_BFF_JOBS_CONCURRENCY`); also KEDA's jobs-per-replica target. */
+  /** Jobs one replica runs at once (`BFF_JOBS_CONCURRENCY`); also KEDA's jobs-per-replica target. */
   concurrency: number;
   /** SIGTERM budget to finish the slice in hand; the claim is then given back without costing an attempt. */
   drainSeconds: number;
   /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
   maxPerOrg: number;
   /**
-   * Where a slice runs (`GRID_BFF_JOBS_MODE`): `http`, in a `node server.js`
+   * Where a slice runs (`BFF_JOBS_MODE`): `http`, in a `node server.js`
    * the pod spawns, or `inprocess`, in the supervisor from the bundled
    * services (`dist-jobs/slice.mjs`, ADR-0079 amendment 1). `http` until the
    * in-process host has run in every environment.
@@ -113,13 +113,13 @@ export interface BffJobsConfig {
 export interface KedaConfig { install: boolean }
 
 export interface ProviderLimitsConfig {
-  /** `GRID_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
+  /** `VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
   vlmFleetConcurrency: number;
-  /** `GRID_VLM_BATCH_WORKERS`: vision calls one file runs at once. */
+  /** `VLM_BATCH_WORKERS`: vision calls one file runs at once. */
   vlmBatchWorkers: number;
-  /** `GRID_PROVIDER_LIMIT_CEILING`: model calls in flight fleet-wide, all models together. */
+  /** `PROVIDER_LIMIT_CEILING`: model calls in flight fleet-wide, all models together. */
   limitCeiling: number;
-  /** `GRID_PROVIDER_MODEL_LIMIT_CEILING`: model calls in flight fleet-wide to one model. */
+  /** `PROVIDER_MODEL_LIMIT_CEILING`: model calls in flight fleet-wide to one model. */
   modelLimitCeiling: number;
 }
 
@@ -182,7 +182,7 @@ export function loadWorkers(
         limitsMemory: cfg.get("ingestWorkerLimitsMemory") ?? "6Gi",
       },
       minReplicas: Math.max(0, num(cfg, "ingestWorkerMinReplicas", 1)),
-      // 5 x 3 x `GRID_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
+      // 5 x 3 x `VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
       // most the default budget can feed (`assertVlmPeakFitsCeiling`).
       maxReplicas: Math.max(1, num(cfg, "ingestWorkerMaxReplicas", 5)),
       concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 3)),

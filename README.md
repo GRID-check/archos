@@ -44,7 +44,7 @@ The building-law corpus starts empty. Put the OIB PDFs in `data/oib` (run
 `git lfs pull` first), then upload them to the running backend:
 
 ```bash
-GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
+ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
 ```
 
 Each upload queues its own ingestion. Follow it in the logs:

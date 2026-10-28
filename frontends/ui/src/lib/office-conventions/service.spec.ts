@@ -104,7 +104,7 @@ describe('the switch', () => {
 
   it('no longer reads the environment variable', async () => {
     vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
-    vi.stubEnv('GRID_OFFICE_CONVENTIONS', 'on')
+    vi.stubEnv('OFFICE_CONVENTIONS', 'on')
     expect(await officeConventionsEnabled('org-1')).toBe(false)
   })
 })

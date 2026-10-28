@@ -3,7 +3,7 @@
  * finished assistant turn whose client dropped mid-turn. Keeps `app`
  * single-writer: the Python backend never touches the database; it POSTs here
  * over the compose network, authenticated by the shared service token
- * (GRID_INTERNAL_API_TOKEN on both services) instead of replaying the browser's
+ * (INTERNAL_API_TOKEN on both services) instead of replaying the browser's
  * handshake cookie — that token expires on long deep-research turns and the old
  * cookie-replay POST would silently 401, dropping the answer.
  *

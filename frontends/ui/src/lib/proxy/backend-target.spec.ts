@@ -4,7 +4,7 @@
 /**
  * Which aiq-agent address a chat socket dials (`server.js`, ADR-0028 / ADR-0080).
  *
- * With `GRID_CHAT_AFFINITY` on the route is the conversation-id hash it has
+ * With `CHAT_AFFINITY` on the route is the conversation-id hash it has
  * always been, byte for byte; with it off every socket goes to the Service.
  */
 import { describe, expect, it } from 'vitest'
@@ -16,7 +16,7 @@ const POD = 'ws://aiq-agent-{i}.aiq-agent-headless:8000'
 const picker = (over: Partial<Parameters<typeof createBackendTargetPicker>[0]> = {}) =>
   createBackendTargetPicker({ replicas: 3, podTemplate: POD, affinity: true, serviceUrl: SERVICE, ...over })
 
-describe('GRID_CHAT_AFFINITY', () => {
+describe('CHAT_AFFINITY', () => {
   it.each([undefined, '', '1', 'true', 'on', 'yes'])('reads %j as on, so an unset variable keeps today\'s routing', (v) => {
     // An empty string is not an off value: only an explicit one switches affinity off.
     expect(affinityEnabled(v)).toBe(true)

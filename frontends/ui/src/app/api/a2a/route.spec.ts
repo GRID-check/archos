@@ -112,7 +112,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(askPiloti).mockReset()
   process.env.WORKOS_AUTHKIT_DOMAIN = 'auth.piloti.test'
-  process.env.GRID_MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
+  process.env.MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
   vi.mocked(resolvePrincipal).mockResolvedValue(PERSON)
   vi.mocked(askPiloti).mockResolvedValue(view())
   vi.mocked(getAsk).mockResolvedValue(view())

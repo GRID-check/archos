@@ -339,7 +339,7 @@ class TestTheWaitIsAnnouncedFirst:
 
     def test_no_pending_upload_or_no_wait_budget_is_no_step(self, monkeypatch):
         assert pending_uploads(Inventory(None, None)) is None
-        monkeypatch.setenv("GRID_INGEST_WAIT_SECONDS", "0")
+        monkeypatch.setenv("INGEST_WAIT_SECONDS", "0")
         assert pending_uploads(self.PENDING) is None
 
     async def test_a_settled_upload_rebuilds_the_inventory(self):
@@ -392,7 +392,7 @@ class TestTheFamiliesLeaveTheGather:
         from aiq_agent.knowledge.inventory import get_inventory_drops
         from aiq_agent.knowledge.inventory import set_inventory_drops
 
-        monkeypatch.setenv("GRID_AVAILABLE_DOCUMENTS_MAX", "3")
+        monkeypatch.setenv("AVAILABLE_DOCUMENTS_MAX", "3")
         scope = [ScopedCollection("s_1", Shelf.SESSION)]
 
         async def fetch_one(_collection):
@@ -416,7 +416,7 @@ class TestTheToolsSeeEveryRow:
     SCOPE = [ScopedCollection("proj_1", Shelf.PROJECT)]
 
     async def test_the_inventory_carries_every_row_past_the_cap(self, monkeypatch):
-        monkeypatch.setenv("GRID_AVAILABLE_DOCUMENTS_MAX", "2")
+        monkeypatch.setenv("AVAILABLE_DOCUMENTS_MAX", "2")
 
         async def fetch_one(_collection):
             return [_Doc(f"plan_{index}.pdf") for index in range(5)]

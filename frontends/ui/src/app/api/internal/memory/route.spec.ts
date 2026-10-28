@@ -75,8 +75,8 @@ afterEach(() => {
 
 describe('POST /api/internal/memory — a conversation that drew on another project (ADR-0094)', () => {
   it('refuses with a typed 409 before anything is written, for project and organization scope', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
-    vi.stubEnv('GRID_ALLOW_AGENT_ORG_MEMORY', 'true')
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('ALLOW_AGENT_ORG_MEMORY', 'true')
     crossProject.recorded.set('s_cross', ['project_other'])
     vi.mocked(organizationExists).mockResolvedValue(true)
 
@@ -96,7 +96,7 @@ describe('POST /api/internal/memory — a conversation that drew on another proj
   })
 
   it('writes from a conversation that drew on no other project, as before', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     crossProject.recorded.set('s_cross', ['project_other'])
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(makeMemoryItem())
 
@@ -108,7 +108,7 @@ describe('POST /api/internal/memory — a conversation that drew on another proj
 
 describe('POST /api/internal/memory', () => {
   it('returns 503 when the internal token is not configured', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
 
     const response = await POST(makeRequest(validProjectPayload, REAL_TOKEN))
 
@@ -117,7 +117,7 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('returns 403 for a wrong token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest(validProjectPayload, 'wrong-token'))
 
@@ -126,7 +126,7 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('returns 403 when the token header is missing', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest(validProjectPayload))
 
@@ -134,7 +134,7 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('refuses the well-known dev default token outside dev environments (503)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
     vi.stubEnv('APP_ENV', 'production')
     vi.stubEnv('NODE_ENV', 'production')
 
@@ -145,7 +145,7 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('creates a project-scoped item with a valid token (201)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(
       makeMemoryItem({ id: 'item-1', projectId: PROJECT_ID })
     )
@@ -167,7 +167,7 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('threads the provenanceType through (distillation from the reflection stage)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(makeMemoryItem({ id: 'item-d' }))
 
     const response = await POST(
@@ -189,7 +189,7 @@ describe('POST /api/internal/memory', () => {
    * the stale entry stays live next to its own correction.
    */
   it('threads a supersedes quote through to the write path', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockImplementation(
       async (_projectId, _values, options) => {
         options?.onSuperseded?.('item-old')
@@ -222,7 +222,7 @@ describe('POST /api/internal/memory', () => {
    * never touched — the id must come from the write itself.
    */
   it('reports no retirement when the write refreshed a row that was already a correction', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(
       makeMemoryItem({ id: 'item-existing', supersedesId: 'retired-last-week' })
     )
@@ -239,8 +239,8 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('denies agent org-scoped writes by default (403), before touching the DB', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
-    // GRID_ALLOW_AGENT_ORG_MEMORY unset → default-deny (audit finding S1).
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
+    // ALLOW_AGENT_ORG_MEMORY unset → default-deny (audit finding S1).
 
     const response = await POST(
       makeRequest(
@@ -256,7 +256,7 @@ describe('POST /api/internal/memory', () => {
 
     expect(response.status).toBe(403)
     // Distinct machine-readable code so the backend does not mislabel this
-    // deliberate default-deny as a GRID_INTERNAL_API_TOKEN mismatch.
+    // deliberate default-deny as a INTERNAL_API_TOKEN mismatch.
     const body = await response.json()
     expect(body.code).toBe('ORG_MEMORY_DISABLED')
     expect(organizationExists).not.toHaveBeenCalled()
@@ -264,8 +264,8 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('rejects org-scoped writes for an unknown organization (404) when org writes are enabled', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
-    vi.stubEnv('GRID_ALLOW_AGENT_ORG_MEMORY', 'true')
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('ALLOW_AGENT_ORG_MEMORY', 'true')
     vi.mocked(organizationExists).mockResolvedValue(false)
 
     const response = await POST(
@@ -287,8 +287,8 @@ describe('POST /api/internal/memory', () => {
   })
 
   it('accepts org-scoped writes for a known organization when explicitly enabled (201)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
-    vi.stubEnv('GRID_ALLOW_AGENT_ORG_MEMORY', 'true')
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('ALLOW_AGENT_ORG_MEMORY', 'true')
     vi.mocked(organizationExists).mockResolvedValue(true)
     // The row the route echoes back must be org-scoped like the write itself —
     // `makeMemoryItem` defaults to a project row, which would let the fixture
@@ -327,7 +327,7 @@ describe('restricted memory', () => {
   const RESTRICTED = 'proj_4f9c1d2e3b4a4c5d8e6f7a8b9c0d1e2f_r0123456789ab'
 
   it('passes the restriction through to the project write', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(
       makeMemoryItem({ id: 'item-r', restrictedFolderIds: ['22222222-aaaa-4bbb-8ccc-000000000002'] })
     )
@@ -345,7 +345,7 @@ describe('restricted memory', () => {
   })
 
   it("audits the judge's verdict with the item it was about (AI Act)", async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const item = makeMemoryItem({ id: 'item-open' })
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(item)
     const restrictionJudge = { verdict: 'none', judgedCollections: [RESTRICTED], drawnCollections: [] }
@@ -357,7 +357,7 @@ describe('restricted memory', () => {
   })
 
   it('hands the judge\'s verdict to the write, so a restricted note can say a model helped decide', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(makeMemoryItem())
     const restrictionJudge = { verdict: 'drawn', judgedCollections: [RESTRICTED], drawnCollections: [RESTRICTED] }
 
@@ -373,7 +373,7 @@ describe('restricted memory', () => {
   // then offers the finding as a card that writes it open: the judge's "none"
   // decided that, so it is in the trail although no item exists.
   it("audits the judge's verdict on an organization write the deployment refused", async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(organizationExists).mockResolvedValue(true)
     const restrictionJudge = { verdict: 'none', judgedCollections: [RESTRICTED], drawnCollections: [] }
 
@@ -400,7 +400,7 @@ describe('restricted memory', () => {
   })
 
   it('audits no refused verdict into an organization this deployment does not know', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(organizationExists).mockResolvedValue(false)
     const restrictionJudge = { verdict: 'none', judgedCollections: [RESTRICTED], drawnCollections: [] }
 
@@ -416,7 +416,7 @@ describe('restricted memory', () => {
   })
 
   it('audits nothing when no judge was asked', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(makeMemoryItem())
 
     await POST(makeRequest(validProjectPayload, REAL_TOKEN))
@@ -425,7 +425,7 @@ describe('restricted memory', () => {
   })
 
   it('writes open memory when no restriction is named', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(createProjectMemoryItemForProject).mockResolvedValue(makeMemoryItem())
 
     await POST(makeRequest(validProjectPayload, REAL_TOKEN))
@@ -436,8 +436,8 @@ describe('restricted memory', () => {
   })
 
   it('refuses restricted organization memory (400) — it reaches every project', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
-    vi.stubEnv('GRID_ALLOW_AGENT_ORG_MEMORY', 'true')
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('ALLOW_AGENT_ORG_MEMORY', 'true')
 
     const response = await POST(
       makeRequest(
@@ -462,7 +462,7 @@ describe('restricted memory', () => {
     ['an open collection name', ['proj_4f9c1d2e3b4a4c5d8e6f7a8b9c0d1e2f']],
     ['more than twenty', Array.from({ length: 21 }, (_, i) => `proj_x_r${String(i).padStart(12, '0')}`)],
   ])('rejects %s (400)', async (_label, restrictedCollections) => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest({ ...validProjectPayload, restrictedCollections }, REAL_TOKEN))
 

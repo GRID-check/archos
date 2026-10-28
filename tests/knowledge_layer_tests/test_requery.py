@@ -185,7 +185,7 @@ def loop_harness(monkeypatch):
         monkeypatch.setattr("knowledge_layer.search_results.format_results", _grounding)
         monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
         monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
         async def _resolve(_builder, name):

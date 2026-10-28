@@ -2,7 +2,7 @@
  * Norm-registry service — server-only bridge to the backend's admin norm API.
  *
  * The backend attaches no admin token itself; this BFF service holds
- * GRID_ADMIN_TOKEN and forwards it via `X-Admin-Token` (mirroring
+ * ADMIN_TOKEN and forwards it via `X-Admin-Token` (mirroring
  * `@/lib/knowledge/service`). Backend 409/422/400 statuses are re-thrown as the
  * matching typed {@link ApiError} so route handlers relay them faithfully.
  */
@@ -31,7 +31,7 @@ const NORMS_TIMEOUT_MS = 30_000
 
 /** Admin-token header for the backend's `/v1/admin/norms*` endpoints. */
 function adminHeaders(): Record<string, string> {
-  const token = process.env.GRID_ADMIN_TOKEN
+  const token = process.env.ADMIN_TOKEN
   return token ? { 'X-Admin-Token': token } : {}
 }
 

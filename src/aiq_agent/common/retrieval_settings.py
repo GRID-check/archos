@@ -117,7 +117,7 @@ def sanitize_retrieval_settings(data: object) -> dict[str, int]:
 
 def _fetch_settings() -> dict[str, int]:
     """One HTTP round-trip to the BFF's internal retrieval-settings endpoint."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         # No internal-token trust channel — fall back to build-time defaults.
         return {}

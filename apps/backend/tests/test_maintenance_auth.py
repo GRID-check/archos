@@ -23,14 +23,14 @@ class _Req:
 
 
 def test_rejects_when_token_env_unset(monkeypatch):
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     with pytest.raises(HTTPException) as exc:
         _require_internal_token(_Req("anything"))
     assert exc.value.status_code == 403
 
 
 def test_rejects_dev_default_outside_dev(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
     monkeypatch.setenv("APP_ENV", "production")
     with pytest.raises(HTTPException) as exc:
         _require_internal_token(_Req(_DEV_DEFAULT_TOKEN))
@@ -38,7 +38,7 @@ def test_rejects_dev_default_outside_dev(monkeypatch):
 
 
 def test_rejects_wrong_header(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "real-secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "real-secret")
     monkeypatch.setenv("APP_ENV", "production")
     with pytest.raises(HTTPException) as exc:
         _require_internal_token(_Req("wrong"))
@@ -46,7 +46,7 @@ def test_rejects_wrong_header(monkeypatch):
 
 
 def test_rejects_missing_header(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "real-secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "real-secret")
     monkeypatch.setenv("APP_ENV", "production")
     with pytest.raises(HTTPException) as exc:
         _require_internal_token(_Req(None))
@@ -54,14 +54,14 @@ def test_rejects_missing_header(monkeypatch):
 
 
 def test_accepts_correct_token(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "real-secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "real-secret")
     monkeypatch.setenv("APP_ENV", "production")
     # Must not raise.
     _require_internal_token(_Req("real-secret"))
 
 
 def test_accepts_dev_default_in_dev(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
     monkeypatch.setenv("APP_ENV", "development")
     _require_internal_token(_Req(_DEV_DEFAULT_TOKEN))
 
@@ -80,19 +80,19 @@ def test_accepts_the_header_every_caller_actually_sends(monkeypatch):
     scheduled skill run, which recorded `status='error'` and looked like a
     backend outage. The two sides are tested separately and each pinned its own
     spelling, so nothing failed."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "real-secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "real-secret")
     monkeypatch.setenv("APP_ENV", "production")
     _require_internal_token(_HeaderReq("x-grid-internal-token", "real-secret"))
 
 
 def test_still_accepts_the_legacy_spelling(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "real-secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "real-secret")
     monkeypatch.setenv("APP_ENV", "production")
     _require_internal_token(_HeaderReq("x-internal-token", "real-secret"))
 
 
 def test_a_wrong_token_in_either_spelling_is_still_refused(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "real-secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "real-secret")
     monkeypatch.setenv("APP_ENV", "production")
     for name in ("x-grid-internal-token", "x-internal-token"):
         with pytest.raises(HTTPException) as exc:

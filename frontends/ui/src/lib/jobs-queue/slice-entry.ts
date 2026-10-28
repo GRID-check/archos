@@ -3,7 +3,7 @@
  *
  * `scripts/build-jobs-bundle.ts` bundles this module, and everything it reaches,
  * into `dist-jobs/slice.mjs`, which `workers/jobs/runner.js` imports when
- * `GRID_BFF_JOBS_MODE=inprocess`. The runner then runs a slice in its own
+ * `BFF_JOBS_MODE=inprocess`. The runner then runs a slice in its own
  * process instead of POSTing to a `node server.js` it spawned. It is the same
  * {@link runJobSlice} the internal route calls, inside the same tenant slot the
  * route opens, so a handler cannot tell the two paths apart.

@@ -162,7 +162,7 @@ def _parse_blocks(body: object) -> ContextBlocks:
 def fetch_turn_context(request: GridRequestContext, *, query: str | None = None) -> ContextBlocks:
     """Read fresh context for this signed requester. Blocking; use ``to_thread``."""
     if not bff_http.internal_token():
-        raise TurnContextError("GRID_INTERNAL_API_TOKEN is not configured for turn context")
+        raise TurnContextError("INTERNAL_API_TOKEN is not configured for turn context")
     if not request.envelope_header or not request.envelope_signature:
         raise TurnContextError("signed requester credentials are required for turn context")
     payload: dict[str, str] = {}
@@ -179,7 +179,7 @@ def fetch_turn_context(request: GridRequestContext, *, query: str | None = None)
         )
         body = response.json()
     except bff_http.BffNotConfiguredError as exc:
-        raise TurnContextError("GRID_INTERNAL_API_TOKEN is not configured for turn context") from exc
+        raise TurnContextError("INTERNAL_API_TOKEN is not configured for turn context") from exc
     except bff_http.BffRefusedError as exc:
         raise TurnContextError(f"the turn-context API refused the call ({exc.status})", status=exc.status) from exc
     except bff_http.BffMalformedResponseError as exc:

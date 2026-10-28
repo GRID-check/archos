@@ -10,7 +10,7 @@
  *                           `./platform-handler` so that AuthKit stays out
  *                           of the module every route imports.
  *   - `internalApiRoute`  — service-to-service routes guarded by
- *                           `GRID_INTERNAL_API_TOKEN`.
+ *                           `INTERNAL_API_TOKEN`.
  *   - `publicApiRoute`    — the rare intentionally unauthenticated route
  *                           (health checks). Using it is an explicit,
  *                           grep-able decision.
@@ -450,7 +450,7 @@ export function apiRoute<TParams = Record<string, string | string[]>>(
 
 /**
  * Declare an internal service-to-service route guarded by
- * `GRID_INTERNAL_API_TOKEN` (fail-closed; see `@/lib/internal-auth`).
+ * `INTERNAL_API_TOKEN` (fail-closed; see `@/lib/internal-auth`).
  */
 export function internalApiRoute<TParams = Record<string, string | string[]>>(
   label: string,

@@ -42,14 +42,14 @@ function boundedInt(raw: string | undefined, fallback: number, min: number, max:
   return Math.min(max, Math.max(min, value))
 }
 
-/** `GRID_REVISION_NOTICE_MAX_PAGES`: the cost cap of one notice, in vision calls. */
+/** `REVISION_NOTICE_MAX_PAGES`: the cost cap of one notice, in vision calls. */
 export function maxNoticePages(env: Record<string, string | undefined> = process.env): number {
-  return boundedInt(env.GRID_REVISION_NOTICE_MAX_PAGES, DEFAULT_MAX_PAGES, 1, MAX_PAGES_CEILING)
+  return boundedInt(env.REVISION_NOTICE_MAX_PAGES, DEFAULT_MAX_PAGES, 1, MAX_PAGES_CEILING)
 }
 
-/** `GRID_REVISION_NOTICE_DELAY_SECONDS`: the debounce before a notice runs. */
+/** `REVISION_NOTICE_DELAY_SECONDS`: the debounce before a notice runs. */
 export function noticeDelaySeconds(env: Record<string, string | undefined> = process.env): number {
-  return boundedInt(env.GRID_REVISION_NOTICE_DELAY_SECONDS, DEFAULT_DELAY_SECONDS, 0, MAX_DELAY_SECONDS)
+  return boundedInt(env.REVISION_NOTICE_DELAY_SECONDS, DEFAULT_DELAY_SECONDS, 0, MAX_DELAY_SECONDS)
 }
 
 /**

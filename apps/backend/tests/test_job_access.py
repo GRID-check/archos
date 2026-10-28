@@ -60,7 +60,7 @@ def clear_event_store_caches():
 def auth_on(monkeypatch):
     """REQUIRE_AUTH=true with the shared secret the BFF signs envelopes with."""
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setenv("OIB_COLLECTION_NAME", "oib_knowledge")
     monkeypatch.delenv("COLLECTION_NAME", raising=False)
 
@@ -330,7 +330,7 @@ class TestAuthorizeJobAccess:
 
     def test_without_a_shared_secret_no_envelope_grants(self, db_url, auth_on, monkeypatch):
         # An unsigned envelope is accepted elsewhere in dev; it never widens job access.
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+        monkeypatch.delenv("INTERNAL_API_TOKEN")
         job = _seed(db_url)
         headers = _envelope(project_collection="proj_alpha", secret=None)
 
@@ -366,8 +366,8 @@ class TestAuthorizeJobAccess:
 def test_the_job_envelope_window_is_the_bff_verifiers():
     """The two windows are one decision written in two languages; this holds them equal."""
     source = (Path(__file__).resolve().parents[3] / "frontends/ui/src/lib/request-context.ts").read_text()
-    match = re.search(r"export const GRID_REQUEST_CONTEXT_MAX_AGE_MS = ([\d *]+)\n", source)
-    assert match, "GRID_REQUEST_CONTEXT_MAX_AGE_MS moved; point this test at it"
+    match = re.search(r"export const REQUEST_CONTEXT_MAX_AGE_MS = ([\d *]+)\n", source)
+    assert match, "REQUEST_CONTEXT_MAX_AGE_MS moved; point this test at it"
 
     assert math.prod(int(factor) for factor in match.group(1).split("*")) == JOB_ENVELOPE_MAX_AGE_MS
 

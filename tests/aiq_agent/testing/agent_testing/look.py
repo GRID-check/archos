@@ -29,7 +29,7 @@ def stored(monkeypatch):
         asked.append((collection, file_name))
         return ("key", None) if collection == "proj_1" else None
 
-    monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", "true")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true")
     monkeypatch.setattr(llm_adapter, "_get_vlm_api_key", lambda: "sk-test")
     monkeypatch.setattr(view, "_find_pdf", lambda _name: None)
     monkeypatch.setattr(view, "_resolve_storage_location", locate)

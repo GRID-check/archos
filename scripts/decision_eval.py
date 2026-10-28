@@ -28,7 +28,7 @@ IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
 Unlike `loop_eval.py`, nothing here needs the corpus or a running backend: the
 decision reads the question and a fixed description of the six families. It
-needs `OPENROUTER_API_KEY` (or `GRID_DECISIONS_API_KEY`) and costs about a
+needs `OPENROUTER_API_KEY` (or `DECISIONS_API_KEY`) and costs about a
 cent for the whole set. It cannot run in CI for that reason alone.
 
 USAGE
@@ -326,8 +326,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--follow-ups", type=Path, default=DEFAULT_FOLLOW_UPS)
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
-    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GRID_DECISIONS_API_KEY")):
-        print("decision_eval: set OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); nothing to measure without one.")
+    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("DECISIONS_API_KEY")):
+        print("decision_eval: set OPENROUTER_API_KEY (or DECISIONS_API_KEY); nothing to measure without one.")
         return 2
     rows = asyncio.run(_evaluate(args.questions, args.follow_ups))
     summary = summarise(rows)

@@ -31,7 +31,7 @@ const createOrganizationSchema = z.object({
  */
 export const GET = publicApiRoute(
   async () => ({
-    selfServeDisabled: (process.env.GRID_DISABLE_SELF_SERVE_ORGS ?? '').toLowerCase() === 'true',
+    selfServeDisabled: (process.env.DISABLE_SELF_SERVE_ORGS ?? '').toLowerCase() === 'true',
   }),
   { why: 'mirrors one deployment flag the onboarding UI needs before a session exists' }
 )
@@ -62,7 +62,7 @@ export const POST = publicApiRoute(
     // creation off, so workspaces only come from the platform owner or via
     // invitations. Fresh users then see guidance instead of an org form.
     // Stable error code consumed by the onboarding UI — shape kept as-is.
-    if ((process.env.GRID_DISABLE_SELF_SERVE_ORGS ?? '').toLowerCase() === 'true') {
+    if ((process.env.DISABLE_SELF_SERVE_ORGS ?? '').toLowerCase() === 'true') {
       return NextResponse.json({ error: 'self-serve-disabled' }, { status: 403 })
     }
 

@@ -2,7 +2,7 @@
  * INTERNAL service endpoint — the write path for the backend agent's
  * `remember` tool. Keeps `app` single-writer: the Python backend never
  * touches the database; it calls this route over the compose network,
- * authenticated by a shared service token (GRID_INTERNAL_API_TOKEN on both
+ * authenticated by a shared service token (INTERNAL_API_TOKEN on both
  * services). Not user-facing; requests without the token are rejected, and
  * the route fails closed when the token is unconfigured (both enforced by
  * `internalApiRoute` via `@/lib/internal-auth`).
@@ -31,9 +31,9 @@ import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS, PROJECT_MEMORY_MAX_RE
 // cannot verify the human's org role, so an autonomous or prompt-injected write
 // would be a cross-project poisoning primitive (audit finding S1). Org-wide
 // findings are a deliberate, human-driven action via the org-memory panel.
-// Set GRID_ALLOW_AGENT_ORG_MEMORY=true only if you accept that risk.
+// Set ALLOW_AGENT_ORG_MEMORY=true only if you accept that risk.
 function agentOrgMemoryAllowed(): boolean {
-  return (process.env.GRID_ALLOW_AGENT_ORG_MEMORY ?? '').toLowerCase() === 'true'
+  return (process.env.ALLOW_AGENT_ORG_MEMORY ?? '').toLowerCase() === 'true'
 }
 
 const internalMemorySchema = z
@@ -125,7 +125,7 @@ export const POST = internalApiRoute(
           // Default-deny agent-authored org-wide writes (audit finding S1).
           if (!agentOrgMemoryAllowed()) {
             console.warn(
-              '[Internal Memory API] Rejected agent org-scoped write (GRID_ALLOW_AGENT_ORG_MEMORY not set)'
+              '[Internal Memory API] Rejected agent org-scoped write (ALLOW_AGENT_ORG_MEMORY not set)'
             )
             // The judge's "none" still decided something: it left the finding
             // open, and the agent now offers it to the user as a card that

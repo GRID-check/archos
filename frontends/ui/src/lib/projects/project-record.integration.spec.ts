@@ -4,7 +4,7 @@
  * The Steckbrief's tables (ADR-0091, migration 0117) against a REAL Postgres,
  * through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/project-record.integration.spec.ts
  *
  * Tenancy of `project_people` (row-level security and the composite foreign
@@ -17,7 +17,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_steckbrief_${STAMP}`
 const OTHER_ORG = `${ORG}_other`
@@ -43,7 +43,7 @@ describe.skipIf(!url)('the Steckbrief against Postgres', () => {
   })
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     repo = await import('./project-record-repository')

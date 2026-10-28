@@ -87,7 +87,7 @@ const confirmSchema = () => ({
 const SIGNING_DOMAIN = 'grid:mcp-request-state:v1'
 
 /**
- * The HMAC key for `requestState`: derived from `GRID_INTERNAL_API_TOKEN`, which
+ * The HMAC key for `requestState`: derived from `INTERNAL_API_TOKEN`, which
  * every deployment already provisions on every frontend pod, so a second round
  * served by another pod verifies. Null (no confirmation, today's behaviour) when
  * the secret is unset or the dev default outside dev, as for the token itself.

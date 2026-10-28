@@ -164,8 +164,8 @@ describe('isMemoryReflectionEnabled', () => {
     await expect(isMemoryReflectionEnabled('org-1')).resolves.toBe(false)
   })
 
-  it('reads no environment fallback — GRID_MEMORY_REFLECTION_ENABLED is gone', async () => {
-    vi.stubEnv('GRID_MEMORY_REFLECTION_ENABLED', 'true')
+  it('reads no environment fallback — MEMORY_REFLECTION_ENABLED is gone', async () => {
+    vi.stubEnv('MEMORY_REFLECTION_ENABLED', 'true')
     listOrganizationFeatureFlags.mockResolvedValue(paginated([{ slug: 'other' }]))
     await expect(isMemoryReflectionEnabled('org-1')).resolves.toBe(false)
   })

@@ -9,7 +9,7 @@ import { BYTES_PER_MB, maxDocumentBytesFrom, maxIfcBytesFrom } from './request-b
 // infrastructure dependencies, a capability is DERIVED from the dependency, and
 // availability = flag AND capability. Image upload follows it exactly: the
 // `image-upload` WorkOS flag is the product decision; a configured VLM
-// (GRID_VLM_API_KEY / provider fallback) is the dependency; `vlmAvailable` is the
+// (VLM_API_KEY / provider fallback) is the dependency; `vlmAvailable` is the
 // capability the backend derives from it; images are offered only when the flag
 // allows AND the capability is present.
 //

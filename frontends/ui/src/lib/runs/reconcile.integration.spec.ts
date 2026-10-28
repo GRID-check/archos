@@ -12,7 +12,7 @@
  * reached its block is claimed once, and its block — a real message, written
  * through the lock-held merge — ends.
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/runs/reconcile.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -24,7 +24,7 @@ import { emptySkillSnapshot } from '@/lib/jobs/types'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const STAMP = Date.now()
 const ORG = `org_reconcile_${STAMP}`
@@ -74,7 +74,7 @@ describe.skipIf(!url)('run reconciler SQL against live Postgres (migration 0096)
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

@@ -9,7 +9,7 @@
  * the lane's tenant as `app_rw`, and a handler that reads the request
  * (the locale, for a report's PDF) still finishes with no request to read.
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run workers/jobs/slice-bundle.integration.spec.mjs
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -26,7 +26,7 @@ import { createFailureStreak } from '../failure-streak.js'
 import { withPlatformScope } from '../platform-scope.js'
 import { createInProcessSliceRunner, createRunner } from './runner.js'
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const LANE = `org_bundle_${Date.now()}`
 const UI_ROOT = path.resolve(import.meta.dirname, '..', '..')
 
@@ -81,7 +81,7 @@ describe.skipIf(!url)('bff-jobs slices through the bundle, against live Postgres
     dir = mkdtempSync(path.join(UI_ROOT, 'node_modules', '.cache', 'jobs-bundle-it-'))
     const build = spawnSync('bun', ['scripts/build-jobs-bundle.ts', '--outdir', dir], { cwd: UI_ROOT, encoding: 'utf8' })
     if (build.status !== 0) throw new Error(`the jobs bundle did not build: ${build.stderr}`)
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     bundle = await import(pathToFileURL(path.join(dir, 'slice.mjs')).href)
   }, 120_000)
 

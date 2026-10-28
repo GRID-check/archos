@@ -144,7 +144,7 @@ def _resolve_target(scope: str, project_id: str | None, organization_id: str | N
     A project-scoped call with no project in scope escalates to the
     organization, because the finding is still worth keeping. NOTE: in default
     deployments the frontend denies agent org-wide writes (ORG_MEMORY_DISABLED,
-    audit finding S1) unless ``GRID_ALLOW_AGENT_ORG_MEMORY=true``; the caller
+    audit finding S1) unless ``ALLOW_AGENT_ORG_MEMORY=true``; the caller
     then turns the refusal into a confirmation card. (Escalation kept
     intentionally — product decision deferred.)
     """

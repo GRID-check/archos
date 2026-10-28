@@ -40,7 +40,7 @@ afterEach(() => {
 
 describe('POST /api/internal/maintenance/reconcile-background-work', () => {
   it('runs every part with a valid token and answers with each count', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
     recoverStuckProcessing.mockResolvedValueOnce(DOCUMENTS)
     recoverStuckFilings.mockResolvedValueOnce(FILINGS)
     sweepStaleMailImports.mockResolvedValueOnce(MAIL_IMPORTS)
@@ -58,7 +58,7 @@ describe('POST /api/internal/maintenance/reconcile-background-work', () => {
   })
 
   it('still runs the other parts when one throws, then answers with the failure', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     recoverStuckProcessing.mockRejectedValueOnce(new Error('database gone'))
     recoverStuckFilings.mockResolvedValueOnce(FILINGS)
@@ -74,7 +74,7 @@ describe('POST /api/internal/maintenance/reconcile-background-work', () => {
   })
 
   it('refuses a wrong or missing token before touching anything (403)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
 
     expect((await post('wrong')).status).toBe(403)
     expect((await post()).status).toBe(403)

@@ -32,14 +32,14 @@ CASES = [
     (
         "a published image that signs people in",
         {
-            "GRID_GIT_SHA": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c",  # pragma: allowlist secret
+            "GIT_SHA": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c",  # pragma: allowlist secret
             "REQUIRE_AUTH": "true",
         },
         "[boot] sha=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c flags=workos",  # pragma: allowlist secret
     ),
     (
         "REQUIRE_AUTH=false is the anonymous deployment, not WorkOS",
-        {"GRID_GIT_SHA": "abc1234", "REQUIRE_AUTH": "false"},
+        {"GIT_SHA": "abc1234", "REQUIRE_AUTH": "false"},
         "[boot] sha=abc1234 flags=defaults",
     ),
     (
@@ -49,7 +49,7 @@ CASES = [
     ),
     (
         "case is ignored and the sha is trimmed, as an env_file produces them",
-        {"GRID_GIT_SHA": "  deadbeef  ", "REQUIRE_AUTH": "TRUE"},
+        {"GIT_SHA": "  deadbeef  ", "REQUIRE_AUTH": "TRUE"},
         "[boot] sha=deadbeef flags=workos",
     ),
     (
@@ -58,8 +58,8 @@ CASES = [
         "[boot] sha=unknown flags=defaults",
     ),
     (
-        "an empty GRID_GIT_SHA is an unstamped image, not an empty sha",
-        {"GRID_GIT_SHA": ""},
+        "an empty GIT_SHA is an unstamped image, not an empty sha",
+        {"GIT_SHA": ""},
         "[boot] sha=unknown flags=defaults",
     ),
 ]
@@ -85,7 +85,7 @@ def test_it_is_one_line_because_an_operator_greps_for_it(name: str, env: dict, e
 
 
 def test_log_boot_line_emits_at_info_and_returns_what_it_logged(caplog, monkeypatch) -> None:
-    monkeypatch.delenv("GRID_GIT_SHA", raising=False)
+    monkeypatch.delenv("GIT_SHA", raising=False)
     monkeypatch.setenv("REQUIRE_AUTH", "true")
 
     with caplog.at_level(logging.INFO, logger="aiq_api.startup_banner"):

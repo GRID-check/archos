@@ -4,7 +4,7 @@
  * The search's annotation, folder and conversation providers against a REAL
  * Postgres through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/search/providers.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -35,7 +35,7 @@ vi.mock('@/lib/auth/membership-roles', () => ({
 }))
 vi.mock('@/lib/authz/folder-roles', () => ({ heldFolderLevels: vi.fn(async () => ({})) }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_search_providers_${STAMP}`
 const READER = `user_search_reader_${STAMP}`
@@ -43,8 +43,8 @@ const OTHER = `user_search_other_${STAMP}`
 
 describe('the search providers suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 
@@ -187,7 +187,7 @@ describe.skipIf(!url)('the search providers against live Postgres', () => {
   const titles = (hits: ReadonlyArray<{ title: string }>) => hits.map((hit) => hit.title).sort()
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

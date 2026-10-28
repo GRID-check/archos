@@ -26,7 +26,7 @@ def env_float(name: str, fallback: float, *, minimum: float = _POSITIVE) -> floa
 
     ``minimum`` defaults to "strictly positive", which is right for a timeout or a
     batch size but WRONG for a count whose zero means "off": rejecting
-    ``GRID_MAX_RENDERED_PAGES=0`` silently restored the default of 20 and the
+    ``MAX_RENDERED_PAGES=0`` silently restored the default of 20 and the
     deployment paid VLM cost it had explicitly opted out of. Pass ``minimum=0``
     for those.
     """

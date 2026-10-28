@@ -210,7 +210,7 @@ async function externalPrincipal(request: Request, deps: PrincipalDeps): Promise
   if (!domain || !issuer || !resource) {
     return refuse(
       503,
-      'The agent door is not configured on this deployment (WORKOS_AUTHKIT_DOMAIN / GRID_MCP_RESOURCE_URL).',
+      'The agent door is not configured on this deployment (WORKOS_AUTHKIT_DOMAIN / MCP_RESOURCE_URL).',
     )
   }
   const resourceMetadataUrl = getOAuthProtectedResourceMetadataUrl(resource)

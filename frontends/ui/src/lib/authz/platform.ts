@@ -30,7 +30,7 @@
  *    the permissions are what that membership's roles hold, as WorkOS says, at
  *    most a minute old. Any platform-org role counts, not only `org-platform-owner`:
  *    Support was previously invisible on this path and got nothing at all; or
- *  3. break-glass bootstrap: their email is in GRID_PLATFORM_OWNER_EMAILS
+ *  3. break-glass bootstrap: their email is in PLATFORM_OWNER_EMAILS
  *     (documented in docs/deployment/workos-provisioning.md; intended for
  *     first-run in a fresh environment before provisioning). Break-glass grants
  *     every platform permission, and is always audited.
@@ -44,7 +44,7 @@ import { ALL_PLATFORM_PERMISSION_SLUGS, PLATFORM_PERMISSIONS, type PlatformPermi
 import { resolveSubjectMembership } from './project-membership'
 import type { GridSession } from '@/lib/auth/types'
 
-export const PLATFORM_ORG_EXTERNAL_ID = process.env.GRID_PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
+export const PLATFORM_ORG_EXTERNAL_ID = process.env.PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
 export const PLATFORM_OWNER_ROLE_SLUG = 'org-platform-owner'
 
 const PLATFORM_ORG_CACHE_TTL_MS = 300_000
@@ -65,7 +65,7 @@ async function auditBreakGlassUse(session: GridSession): Promise<void> {
   if (last && Date.now() - last < BREAK_GLASS_AUDIT_INTERVAL_MS) return
   breakGlassAuditedAt.set(throttleKey, Date.now())
   console.warn(
-    `[Platform Authz] break-glass platform access granted to ${session.email} via GRID_PLATFORM_OWNER_EMAILS`
+    `[Platform Authz] break-glass platform access granted to ${session.email} via PLATFORM_OWNER_EMAILS`
   )
   // WorkOS audit events are org-scoped — break-glass lands in the platform
   // org's trail. During true first-run (no platform org yet) only the log
@@ -105,7 +105,7 @@ export async function getPlatformOrganizationId(): Promise<string | null> {
 }
 
 function bootstrapEmails(): string[] {
-  return (process.env.GRID_PLATFORM_OWNER_EMAILS ?? '')
+  return (process.env.PLATFORM_OWNER_EMAILS ?? '')
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)

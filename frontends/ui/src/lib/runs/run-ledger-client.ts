@@ -18,7 +18,7 @@
  *
  * ## Why there is no default browser instance
  *
- * The route is `internalApiRoute`: it is guarded by `GRID_INTERNAL_API_TOKEN`
+ * The route is `internalApiRoute`: it is guarded by `INTERNAL_API_TOKEN`
  * and no browser holds one. So the transport is always INJECTED — a spec hands
  * in a function that calls the handler, a service hands in one that adds the
  * token — and exporting a `fetch`-backed singleton here would be exporting a

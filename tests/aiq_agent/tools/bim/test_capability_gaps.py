@@ -22,7 +22,7 @@ from aiq_agent.tools.bim.measure_register import _build_call
 @pytest.fixture(autouse=True)
 def _ledger(tmp_path, monkeypatch):
     path = tmp_path / "gaps.jsonl"
-    monkeypatch.setenv("GRID_CAPABILITY_GAP_LOG", str(path))
+    monkeypatch.setenv("CAPABILITY_GAP_LOG", str(path))
     yield path
 
 
@@ -137,7 +137,7 @@ class TestWritingIsNeverAllowedToBreakAnAnswer:
         """A full disk or a read-only mount must not turn a working measurement
         into an error. The architect's answer is the product; this file is a
         convenience for us."""
-        monkeypatch.setenv("GRID_CAPABILITY_GAP_LOG", str(tmp_path / "nope" / "gaps.jsonl"))
+        monkeypatch.setenv("CAPABILITY_GAP_LOG", str(tmp_path / "nope" / "gaps.jsonl"))
 
         def _explode(*_args, **_kwargs):
             raise OSError("read-only file system")
@@ -161,14 +161,14 @@ class TestTheLedgerIsNotSomewhereAnyoneElseCanReachIt:
     """
 
     def test_the_default_is_not_a_shared_directory(self, monkeypatch, tmp_path):
-        monkeypatch.delenv("GRID_CAPABILITY_GAP_LOG", raising=False)
+        monkeypatch.delenv("CAPABILITY_GAP_LOG", raising=False)
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
         assert cg.default_path() == tmp_path / "state" / "aiq" / "capability-gaps.jsonl"
 
     def test_the_env_override_still_wins_because_an_operator_chose_it(self, monkeypatch, tmp_path):
         """The variable is a deployment decision, not something a request can
         influence — no value in a row ever reaches it."""
-        monkeypatch.setenv("GRID_CAPABILITY_GAP_LOG", str(tmp_path / "chosen.jsonl"))
+        monkeypatch.setenv("CAPABILITY_GAP_LOG", str(tmp_path / "chosen.jsonl"))
         assert cg.ledger_path() == tmp_path / "chosen.jsonl"
 
     def test_a_symlink_on_the_path_is_refused_rather_than_followed(self, monkeypatch, tmp_path):
@@ -176,7 +176,7 @@ class TestTheLedgerIsNotSomewhereAnyoneElseCanReachIt:
         victim.write_text("important\n", encoding="utf-8")
         link = tmp_path / "gaps.jsonl"
         link.symlink_to(victim)
-        monkeypatch.setenv("GRID_CAPABILITY_GAP_LOG", str(link))
+        monkeypatch.setenv("CAPABILITY_GAP_LOG", str(link))
 
         cg.record_gap(surface="ifc_measure", field="measure", asked_for="wandstaerke")
 
@@ -186,7 +186,7 @@ class TestTheLedgerIsNotSomewhereAnyoneElseCanReachIt:
 
     def test_the_file_is_not_readable_by_other_users(self, monkeypatch, tmp_path):
         target = tmp_path / "nested" / "gaps.jsonl"
-        monkeypatch.setenv("GRID_CAPABILITY_GAP_LOG", str(target))
+        monkeypatch.setenv("CAPABILITY_GAP_LOG", str(target))
 
         cg.record_gap(surface="ifc_measure", field="measure", asked_for="wandstaerke")
 

@@ -211,7 +211,7 @@ class TestTheInventoryFactsReachTheAnswer:
         from aiq_agent.knowledge.inventory import get_norm_families
         from aiq_agent.knowledge.schema import AvailableDocument
 
-        monkeypatch.setenv("GRID_AVAILABLE_DOCUMENTS_MAX", "3")
+        monkeypatch.setenv("AVAILABLE_DOCUMENTS_MAX", "3")
         names = ["oib-rl_2_ausgabe_mai_2023.pdf", "oib-rl_2.1_ausgabe_mai_2023.pdf"]
         names += [f"anhang_{i}.pdf" for i in range(8)]
 

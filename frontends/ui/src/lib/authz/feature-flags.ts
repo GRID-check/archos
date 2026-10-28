@@ -14,7 +14,7 @@
  * A flag is ON for a session exactly when WorkOS says so. Anything short of a
  * yes is a no: a token minted before the claim existed, a slug missing from
  * WorkOS, a failed lookup, a caller with no organization. There used to be
- * four semantics here — fail-open while `GRID_ENFORCE_FEATURE_FLAGS` was off,
+ * four semantics here — fail-open while `ENFORCE_FEATURE_FLAGS` was off,
  * an env opt-in that defaulted off, an env opt-out that defaulted on, and
  * fail-closed under enforcement — chosen per flag, and production ran the last
  * one while every other environment rehearsed one of the first three. Both

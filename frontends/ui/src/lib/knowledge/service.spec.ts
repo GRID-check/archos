@@ -189,7 +189,7 @@ describe('knowledge admin operations', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockReset()
-    vi.stubEnv('GRID_ADMIN_TOKEN', 'admin-secret')
+    vi.stubEnv('ADMIN_TOKEN', 'admin-secret')
   })
 
   afterEach(() => {

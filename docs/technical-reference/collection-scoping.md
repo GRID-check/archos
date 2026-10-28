@@ -143,7 +143,7 @@ shelf `project`, only when ALL of these hold:
   the whole project;
 - the session may read the folder (`effectiveFolderLevel` over the levels its
   folder roles give, ADR-0097: read from WorkOS by `heldFolderLevels` in
-  `lib/authz/folder-roles.ts`, cached for `GRID_AUTHZ_CACHE_TTL_MS`; a lookup
+  `lib/authz/folder-roles.ts`, cached for `AUTHZ_CACHE_TTL_MS`; a lookup
   that fails clears nothing);
 - everyone the conversation is shared with may read it too
   (`restrictedCollectionsForChatScope` in `lib/conversations/restricted-use.ts`).
