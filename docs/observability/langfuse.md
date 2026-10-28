@@ -163,7 +163,7 @@ waits are not. A tool call on the platform door at `/api/platform/mcp`
 Metadata on all: `operation`, `domain`, `door`
 (`mcp`, `piloti`, `a2a` or `platform`), `mode` (`search` or `tools`; null on the A2A door), `decision` (`run`, `propose`,
 `refused`, `confirm` when an outside agent's destructive call was put to the person in their own chat, `declined` when they did not
-confirm it), `decision_source` (`elicitation`, only on the round that runs a call the person confirmed; `app`, a press on Piloti's card inside the person's own assistant, an MCP App's app-only tool, from a client that declared MCP Apps; `app-unverified`, the same tool from a 2025-era client that declared nothing, ADR-0142), `status` (the route's HTTP status), `duration_ms`, `client_id`.
+confirm it, `person_required` when it was not run because it needs the person's yes and the client cannot ask for it), `decision_source` (`elicitation`, only on the round that runs a call the person confirmed; `app`, a press on Piloti's card inside the person's own assistant, an MCP App's app-only tool, from a client that declared MCP Apps; `app-unverified`, the same tool from a 2025-era client that declared nothing, ADR-0142), `status` (the route's HTTP status), `duration_ms`, `client_id`.
 Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
 `door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and
 `org:<id>` with identity attributes on. The session is the conversation when
