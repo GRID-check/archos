@@ -77,7 +77,6 @@
     "frontends/ui/src/features/grid-cards/schematics/DimensionDiagramCard.tsx": 692,
     "frontends/ui/src/features/grid-cards/schematics/kit.tsx": 853,
     "frontends/ui/src/features/jobs/components/schedule-wizard.tsx": 1291,
-    "frontends/ui/src/features/knowledge/components/pdf-document-view.tsx": 1184,
     "frontends/ui/src/features/knowledge/lib/passage-highlight.ts": 758,
     "frontends/ui/src/features/layout/components/ChatToolbar.tsx": 668,
     "frontends/ui/src/features/layout/components/SessionsPanel.tsx": 1304,
