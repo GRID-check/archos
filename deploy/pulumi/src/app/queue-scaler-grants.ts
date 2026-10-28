@@ -16,13 +16,14 @@ import { AppWiring } from "./config";
 import { QUEUE_TABLE as RESEARCH_TABLE } from "./agent-worker";
 import { QUEUE_TABLE as BFF_TABLE } from "./bff-jobs";
 import { QUEUE_TABLE as INGEST_TABLE } from "./ingest-worker";
+import { JOBS_DB } from "../data/postgres-rename";
 
 /**
  * What the read-only scaler login may read, and the step that makes the tables it
  * reads exist (ADR-0079).
  *
  * KEDA's `postgresql` scaler runs one `COUNT(*)` per queue. It used to do so as
- * the schema owner of `aiq_jobs` and of `grid_app`, which meant a credential
+ * the schema owner of `jobs` and of `grid_app`, which meant a credential
  * held by an operator in another namespace could write every table in both. The
  * login it reads through now (`KEDA_SCALER_ROLE`, declared with the other roles
  * in `data/postgres.ts`) has SELECT on the queue tables and nothing else. That
@@ -59,7 +60,7 @@ import { QUEUE_TABLE as INGEST_TABLE } from "./ingest-worker";
  * (`ON_ERROR_STOP`); the role CloudNativePG reconciles asynchronously is waited for.
  */
 
-/** The queue tables of the aiq_jobs database the scaler reads: the ingest tier's and the research tier's. */
+/** The queue tables of the jobs database the scaler reads: the ingest tier's and the research tier's. */
 export function jobsDatabaseTables(): string[] {
   return [INGEST_TABLE, RESEARCH_TABLE];
 }
@@ -78,7 +79,7 @@ function scalerTableGrants(tables: string): string {
   );
 }
 
-/** The `GRANT` for the Python queues, as run against `aiq_jobs`. */
+/** The `GRANT` for the Python queues, as run against `jobs`. */
 export function jobsGrantsSql(tables: string[]): string {
   return scalerTableGrants(tables.join(", "));
 }
@@ -145,10 +146,10 @@ export function installQueueScalerGrants(
       stringData: {
         // All direct (ADR-0083): a one-shot DDL and GRANT Job holds the owner's
         // session for its own statements and has no use for a pool.
-        JOBS_DSN: w.dsn({ db: "aiq_jobs", via: "direct" }),
+        JOBS_DSN: w.dsn({ db: JOBS_DB, via: "direct" }),
         APP_DSN: w.dsn({ db: "grid_app", via: "direct" }),
-        NAT_JOB_STORE_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct", driver: "postgresql+asyncpg" }),
-        GRID_SUMMARY_DB: w.dsn({ db: "aiq_jobs", via: "direct", driver: "postgresql+psycopg" }),
+        NAT_JOB_STORE_DB_URL: w.dsn({ db: JOBS_DB, via: "direct", driver: "postgresql+asyncpg" }),
+        GRID_SUMMARY_DB: w.dsn({ db: JOBS_DB, via: "direct", driver: "postgresql+psycopg" }),
       },
     },
     { provider: w.provider },

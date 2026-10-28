@@ -2,7 +2,6 @@
  * The two Dragonfly instances, the cache and the rate-limit store, and the password each must have.
  */
 import * as pulumi from "@pulumi/pulumi";
-import type { GridConfig } from "../config";
 import { bool, num } from "./readers";
 
 export interface RateLimitConfig {
@@ -100,7 +99,7 @@ export interface DragonflyConfig {
   password?: pulumi.Output<string>;
 }
 
-export function loadDragonfly(cfg: pulumi.Config): Pick<GridConfig, "dragonfly" | "rateLimit"> {
+export function loadDragonfly(cfg: pulumi.Config): { dragonfly: DragonflyConfig; rateLimit: RateLimitConfig } {
   // ── Dragonfly authentication ──────────────────────────────────────────────
   // Both instances shipped with NO password and NO TLS while the intra-namespace
   // NetworkPolicy lets any pod open 6379. The cache is the serious one: it

@@ -2,20 +2,19 @@
  * The application images: where they come from, how they are pulled, and the registry credentials.
  */
 import * as pulumi from "@pulumi/pulumi";
-import type { GridConfig } from "../config";
 
 /** Resolve the concrete backend image reference. */
-export function backendImage(c: GridConfig): string {
+export function backendImage(c: { images: ImagesConfig }): string {
   return c.images.backend ?? `${c.images.registry}/grid-oib-backend:${c.images.tag}`;
 }
 
 /** Resolve the concrete frontend image reference. */
-export function frontendImage(c: GridConfig): string {
+export function frontendImage(c: { images: ImagesConfig }): string {
   return c.images.frontend ?? `${c.images.registry}/grid-oib-frontend:${c.images.tag}`;
 }
 
 /** Resolve the concrete landing-site (web) image reference. */
-export function webImage(c: GridConfig): string {
+export function webImage(c: { images: ImagesConfig }): string {
   return c.images.web ?? `${c.images.registry}/grid-oib-web:${c.images.tag}`;
 }
 
@@ -28,7 +27,7 @@ export function webImage(c: GridConfig): string {
  * keeps a moving tag on `Always` — which the `moving-tag-must-repull`
  * policy-pack rule enforces.
  */
-export function appPullPolicy(c: GridConfig, image: string): string {
+export function appPullPolicy(c: { images: ImagesConfig }, image: string): string {
   return c.images.pullPolicyOverride ?? pullPolicyFor(image);
 }
 

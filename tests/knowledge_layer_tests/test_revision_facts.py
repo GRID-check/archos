@@ -625,11 +625,11 @@ class TestListFiles:
 # Wired into the ingest: the facts are stored beside the summary and decide the suggestion
 # ---------------------------------------------------------------------------
 
-from tests.knowledge_layer_tests.test_revision_ingestion import _documents  # noqa: E402
-from tests.knowledge_layer_tests.test_revision_ingestion import _ingest  # noqa: E402
-from tests.knowledge_layer_tests.test_revision_ingestion import live_ingestor  # noqa: E402, F401
-from tests.knowledge_layer_tests.test_revision_ingestion import model  # noqa: E402, F401
-from tests.knowledge_layer_tests.test_revision_ingestion import stores  # noqa: E402, F401
+from knowledge_layer_testing.revision_ingestion import _documents  # noqa: E402
+from knowledge_layer_testing.revision_ingestion import _ingest  # noqa: E402
+from knowledge_layer_testing.revision_ingestion import live_ingestor  # noqa: E402, F401
+from knowledge_layer_testing.revision_ingestion import model  # noqa: E402, F401
+from knowledge_layer_testing.revision_ingestion import stores  # noqa: E402, F401
 
 
 @pytest.fixture

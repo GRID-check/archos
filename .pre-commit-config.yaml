@@ -89,14 +89,14 @@ repos:
         files: ^(src/aiq_agent/common/wire_v2\.py|shared/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|frontends/ui/scripts/generate-(wire|card)-schemas\.mjs|frontends/ui/src/adapters/api/wire-v2\.generated\.ts)$
 
       - id: vocabularies
-        name: the UI's shared vocabularies are generated from their Python Literals
+        name: the UI's shared vocabularies are generated from their Python sources
         # One stage: each tuple in frontends/ui/src/shared/vocabularies.generated.ts
-        # is rendered straight from a Literal (scripts/generate_vocabularies.py).
+        # is rendered straight from a Python source (scripts/generate_vocabularies.py).
         # Running the generator is the check; a changed file fails the commit.
         entry: bash -c 'PYTHONPATH=src .venv/bin/python scripts/generate_vocabularies.py'
         language: system
         pass_filenames: false
-        files: ^(src/aiq_agent/cards/models\.py|scripts/generate_vocabularies\.py|frontends/ui/src/shared/vocabularies\.generated\.ts)$
+        files: ^(src/aiq_agent/cards/models\.py|src/aiq_agent/common/source_kinds\.py|scripts/generate_vocabularies\.py|frontends/ui/src/shared/vocabularies\.generated\.ts)$
 
       - id: agent-docs
         name: every AGENTS.md is reachable by the agents that need it
@@ -175,6 +175,18 @@ repos:
         # Always, not on matching files: a commit that only deletes a baselined
         # file passes no filename, and its stale entry would fail the next
         # person's commit instead. The check takes about three seconds.
+        always_run: true
+
+      - id: brand-names
+        name: no new product name in a code or infrastructure name
+        # The product was AI-Q, then Grid, now Piloti, and each rename was a
+        # code change across thousands of lines. The name belongs in copy, read
+        # from one place; a ratchet on ci/brand_names_baseline.json keeps every
+        # new identifier, file, route and variable neutral. Always, for the
+        # reason file-size gives. About five seconds.
+        entry: .venv/bin/python scripts/check_brand_names.py
+        language: system
+        pass_filenames: false
         always_run: true
 
       - id: env-docs

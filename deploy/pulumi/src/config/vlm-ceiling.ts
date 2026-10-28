@@ -1,7 +1,7 @@
+import type { IngestWorkerConfig, ProviderLimitsConfig } from "./workers";
 /**
  * The VLM call ceiling: the ingest worker's peak concurrent calls against the provider limit.
  */
-import type { GridConfig } from "../config";
 
 /**
  * Vision calls the ingest tier can have in flight at its ceiling: replicas, times
@@ -9,7 +9,7 @@ import type { GridConfig } from "../config";
  * (`GRID_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
  * slot of the fleet pool (`GRID_VLM_FLEET_CONCURRENCY`).
  */
-export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLimits">): number {
+export function vlmPeakCalls(cfg: { ingestWorker: IngestWorkerConfig; providerLimits: ProviderLimitsConfig }): number {
   return cfg.ingestWorker.maxReplicas * cfg.ingestWorker.concurrency * cfg.providerLimits.vlmBatchWorkers;
 }
 
@@ -34,7 +34,7 @@ export const VLM_OVERSUBSCRIPTION = 2;
  *
  * Skipped when the pool is off (`vlmFleetConcurrency` 0: nothing is held back).
  */
-export function assertVlmPeakFitsCeiling(cfg: Pick<GridConfig, "ingestWorker" | "providerLimits">): void {
+export function assertVlmPeakFitsCeiling(cfg: { ingestWorker: IngestWorkerConfig; providerLimits: ProviderLimitsConfig }): void {
   const { vlmFleetConcurrency, vlmBatchWorkers, limitCeiling, modelLimitCeiling } = cfg.providerLimits;
   if (vlmFleetConcurrency === 0) return;
   const peak = vlmPeakCalls(cfg);

@@ -2,7 +2,6 @@
  * The chat tier (ADR-0080): the backend, the api tier, the agent worker and the conversation bus between them.
  */
 import * as pulumi from "@pulumi/pulumi";
-import type { GridConfig } from "../config";
 import { bool, num } from "./readers";
 import type { ResourceSpec } from "./resources";
 
@@ -15,7 +14,7 @@ import type { ResourceSpec } from "./resources";
  * that does not exist yet is a dead socket. The count is then whatever
  * `backendReplicas` says, and the stack's own `replicas` field owns it.
  */
-export function backendAutoscaled(c: GridConfig): boolean {
+export function backendAutoscaled(c: { backend: BackendConfig }): boolean {
   return !c.backend.chatAffinity && c.backend.maxReplicas > c.backend.replicas;
 }
 
@@ -106,7 +105,7 @@ export interface AgentWorkerConfig {
 
 export function loadChatTier(
   cfg: pulumi.Config,
-): Pick<GridConfig, "backend" | "api" | "conversationBus" | "agentWorker"> {
+): { backend: BackendConfig; api: ApiConfig; conversationBus: boolean; agentWorker: AgentWorkerConfig } {
   const conversationBus = bool(cfg, "conversationBus", true);
   // ── Chat tier scale-out (ADR-0080) ────────────────────────────────────────
   const backendReplicas = Math.max(1, num(cfg, "backendReplicas", 2));

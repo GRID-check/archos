@@ -203,6 +203,22 @@ def prune_tool_results(messages: list[BaseMessage], *, keep_turns: int = 1) -> l
     return pruned
 
 
+def history_window(messages: list[BaseMessage], max_tokens: int) -> list[BaseMessage]:
+    """The history a model is handed: what was said always before what was read.
+
+    The previous turn's tool results ride along (:func:`prune_tool_results`), so a
+    follow-up („und für Wohnungen?") needs no fetch. When they do not fit the budget
+    they go, and the earlier questions and answers stay: trimming the full window
+    instead keeps the newest messages, which are those tool results, and
+    ``start_on="human"`` then drops the tail of the previous turn as well, leaving
+    the follow-up alone with no question it follows (live QA, 2026-10-27).
+    """
+    pruned = prune_tool_results(messages)
+    if _count_message_tokens(pruned) > max_tokens:
+        pruned = prune_tool_results(messages, keep_turns=0)
+    return trim_message_history(pruned, max_tokens)
+
+
 def _prose_only(message: AIMessage) -> AIMessage | None:
     """The message's prose with its tool calls gone, or ``None`` when it had none.
 

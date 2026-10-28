@@ -4,7 +4,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { GEOCODER } from "../constants";
 import { GOTENBERG_SLOTS_PER_REPLICA, bffJobsMode } from "../rendition-sizing";
-import type { GridConfig } from "../config";
 import { bool, num, positiveInt } from "./readers";
 import type { ResourceSpec } from "./resources";
 
@@ -126,7 +125,7 @@ export interface ProviderLimitsConfig {
 
 export function loadWorkers(
   cfg: pulumi.Config,
-): Pick<GridConfig, "gotenberg" | "geocoder" | "ingestWorker" | "bffJobs" | "keda" | "providerLimits"> {
+): { gotenberg: GotenbergConfig; geocoder: GeocoderConfig; ingestWorker: IngestWorkerConfig; bffJobs: BffJobsConfig; keda: KedaConfig; providerLimits: ProviderLimitsConfig } {
   return {
     gotenberg: {
       enabled: bool(cfg, "gotenbergEnabled", true),

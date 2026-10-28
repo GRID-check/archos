@@ -1,6 +1,10 @@
 /**
  * The PostgreSQL connection budget: every client's share against `max_connections`.
  */
+import type { LangfuseConfig } from "./langfuse";
+import type { PostgresConfig } from "./postgres";
+import type { SeaweedfsConfig } from "./seaweedfs";
+import type { BffJobsConfig, IngestWorkerConfig } from "./workers";
 import {
   KEDA_SCALER_CONNECTION_LIMIT,
   POOLED_POOLS,
@@ -8,7 +12,6 @@ import {
   POSTGRES_POOLER,
   POSTGRES_TUNING,
 } from "../constants";
-import type { GridConfig } from "../config";
 
 /** What `pgConnectionBudget` adds up, with the parts named so a failure can say which one grew. */
 export interface PgConnectionBudget {
@@ -22,7 +25,7 @@ export interface PgConnectionBudget {
   total: number;
 }
 
-type PgBudgetInputs = Pick<GridConfig, "postgres" | "ingestWorker" | "langfuse" | "seaweedfs" | "bffJobs">;
+type PgBudgetInputs = { postgres: PostgresConfig; ingestWorker: IngestWorkerConfig; langfuse: LangfuseConfig; seaweedfs: SeaweedfsConfig; bffJobs: BffJobsConfig };
 
 /**
  * The most connections the primary can be asked for, in `max_connections` slots

@@ -2,7 +2,7 @@
 
 The design this implements asked for the duplicate-fetch guard to withhold the
 second identical `ris_lookup` call. THE CODE DISAGREES, and the code wins:
-``turn_status.fetch_signature`` signs ``knowledge_search`` and ``read_passage``
+``tool_calls.fetch_signature`` signs ``knowledge_search`` and ``read_passage``
 and nothing else, so no RIS call has ever been withheld — putting `ris_lookup`
 under that guard means editing ``turn_status``, which is a different change
 with a different blast radius (it is the atom BOTH nodes read, the agent node
@@ -46,7 +46,7 @@ async def test_ris_lookup_is_not_signed_by_the_duplicate_fetch_guard(lookup):
     guard answers a repeat with a German scolding, which is worse than serving
     it from the cache the test above proves is already there.
     """
-    from aiq_agent.common.turn_status import fetch_signature
+    from aiq_agent.common.tool_calls import fetch_signature
 
     call = {"name": "ris_lookup_tool", "args": {"question": "Was verlangt § 63 BO Wien?"}}
 

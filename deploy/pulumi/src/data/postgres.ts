@@ -6,6 +6,9 @@ import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedJobSecurityContext } from "../platform/security";
 import { scrapeAnnotations } from "../platform/scrape";
+import { CHECKPOINTS_DB, JOBS_DB, installPostgresRename } from "./postgres-rename";
+export { CHECKPOINTS_DB, JOBS_DB };
+import { CHECKPOINTS_SQL, JOBS_SQL, seaweedFilerSql } from "./postgres-sql";
 import {
   BOOTSTRAP_JOB_RESOURCES,
   DATA_RESOURCES,
@@ -78,63 +81,6 @@ export interface Postgres {
 }
 
 export const CLUSTER_NAME = objectName("pgCluster");
-
-// Table DDL adapted from deploy/compose/init-db.sql, minus the psql
-// meta-commands (\gexec/\connect) — CNPG creates the databases, this Job only
-// creates tables. Every statement is IF NOT EXISTS, so re-runs are safe.
-const JOBS_SQL = `
-CREATE TABLE IF NOT EXISTS job_info (
-  job_id VARCHAR PRIMARY KEY, status VARCHAR NOT NULL, config_file VARCHAR,
-  error VARCHAR, output_path VARCHAR, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ,
-  expiry_seconds INTEGER, output VARCHAR, is_expired BOOLEAN DEFAULT FALSE);
-CREATE INDEX IF NOT EXISTS idx_job_info_status ON job_info(status);
-CREATE INDEX IF NOT EXISTS idx_job_info_created_at ON job_info(created_at);
-CREATE TABLE IF NOT EXISTS job_access (
-  job_id VARCHAR PRIMARY KEY, owner_auth_type VARCHAR NOT NULL, owner_subject VARCHAR NOT NULL,
-  owner_email VARCHAR, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE INDEX IF NOT EXISTS idx_job_access_owner ON job_access(owner_auth_type, owner_subject);
-CREATE TABLE IF NOT EXISTS job_events (
-  id SERIAL PRIMARY KEY, job_id VARCHAR(64) NOT NULL, event_type VARCHAR(64) NOT NULL,
-  event_data TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-CREATE INDEX IF NOT EXISTS idx_job_events_job_id ON job_events(job_id);
-CREATE INDEX IF NOT EXISTS idx_job_events_job_id_id ON job_events(job_id, id);
-CREATE TABLE IF NOT EXISTS summaries (
-  collection VARCHAR(256) NOT NULL, filename VARCHAR(512) NOT NULL, summary TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (collection, filename));
-CREATE INDEX IF NOT EXISTS idx_summaries_collection ON summaries(collection);
-`;
-
-const CHECKPOINTS_SQL = `
-CREATE TABLE IF NOT EXISTS checkpoint_migrations (v INTEGER PRIMARY KEY);
-CREATE TABLE IF NOT EXISTS checkpoints (
-  thread_id TEXT NOT NULL, checkpoint_ns TEXT NOT NULL DEFAULT '', checkpoint_id TEXT NOT NULL,
-  parent_checkpoint_id TEXT, type TEXT, checkpoint JSONB NOT NULL, metadata JSONB NOT NULL DEFAULT '{}',
-  PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id));
-CREATE TABLE IF NOT EXISTS checkpoint_blobs (
-  thread_id TEXT NOT NULL, checkpoint_ns TEXT NOT NULL DEFAULT '', channel TEXT NOT NULL,
-  version TEXT NOT NULL, type TEXT NOT NULL, blob BYTEA,
-  PRIMARY KEY (thread_id, checkpoint_ns, channel, version));
-CREATE TABLE IF NOT EXISTS checkpoint_writes (
-  thread_id TEXT NOT NULL, checkpoint_ns TEXT NOT NULL DEFAULT '', checkpoint_id TEXT NOT NULL,
-  task_id TEXT NOT NULL, idx INTEGER NOT NULL, channel TEXT NOT NULL, type TEXT, blob BYTEA NOT NULL,
-  PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx));
-`;
-
-/**
- * Lock down the filer's database (ADR-0043).
- *
- * PostgreSQL grants `CONNECT` on every new database to `PUBLIC`, which here
- * means the application logins can open a session against the store holding an
- * AES key for every chunk in the object store. They would find no tables they
- * could read — the filer owns them and grants nothing — but "the grant table
- * happens to be empty" is not a boundary, and `[postgres2]` creates a new table
- * per bucket at runtime, so the set of objects to protect is not even fixed.
- *
- * Run as the database OWNER, which is exactly the privilege needed and nothing
- * more. Idempotent: re-revoking an absent grant is a no-op.
- */
-const seaweedFilerSql = (database: string): string =>
-  `REVOKE CONNECT ON DATABASE "${database}" FROM PUBLIC;\n`;
 
 /**
  * Which TLS query parameter this driver understands.
@@ -271,7 +217,7 @@ export function installPostgres(
   /**
    * Login for `grid_keda_scaler`, the read-only role KEDA's `postgresql` scaler
    * counts the queue tables with (ADR-0079), where it used to borrow the owner
-   * (`aiq_jobs`) and the schema owner (`grid_app`): a credential held by an
+   * (`jobs`) and the schema owner (`grid_app`): a credential held by an
    * operator in another namespace that could write every table in both.
    *
    * Declared here, with the other roles, because CloudNativePG reconciles it as
@@ -416,9 +362,10 @@ export function installPostgres(
       }
     : {};
 
-  // 3. The Postgres cluster. `aiq_jobs` is the bootstrapped app DB; the other
+  // 3. The Postgres cluster. `jobs` is the bootstrapped app DB; the other
   //    two databases are created by postInitSQL (as superuser, once) owned by
-  //    the app role, so the same credentials reach all three.
+  //    the agent role, so the same credentials reach all three. A cluster made
+  //    before ADR-0145 has them as `aiq_*`, renamed by `pg-rename-legacy-names`.
   const cluster = new k8s.apiextensions.CustomResource(
     logicalName("grid-pg"),
     {
@@ -459,6 +406,9 @@ export function installPostgres(
         // The operator reconciles these as superuser, so they exist before the
         // migration Job runs — and migration 0030 asserts exactly that rather
         // than trying to create them.
+        // `<cluster>-superuser`, the only login that can rename a database or
+        // the agent role (`postgres-rename.ts`).
+        enableSuperuserAccess: true,
         managed: {
           roles: [
             { name: "grid_app_owner", ensure: "present", login: true, superuser: false, createdb: false, createrole: false },
@@ -529,11 +479,11 @@ export function installPostgres(
         },
         bootstrap: {
           initdb: {
-            database: "aiq_jobs",
+            database: JOBS_DB,
             owner: cfg.postgres.appUser,
             secret: { name: appSecret.metadata.name },
             postInitSQL: [
-              `CREATE DATABASE aiq_checkpoints OWNER ${cfg.postgres.appUser}`,
+              `CREATE DATABASE ${CHECKPOINTS_DB} OWNER ${cfg.postgres.appUser}`,
               `CREATE DATABASE grid_app OWNER ${cfg.postgres.appUser}`,
             ],
           },
@@ -662,7 +612,7 @@ export function installPostgres(
   /**
    * The filer's database, declared rather than bootstrapped.
    *
-   * `bootstrap.initdb.postInitSQL` — where `aiq_checkpoints` and `grid_app` are
+   * `bootstrap.initdb.postInitSQL` — where `checkpoints` and `grid_app` are
    * created — runs EXACTLY ONCE, at cluster initialisation. Adding a fourth
    * database there would create it on a fresh stack and silently do nothing on
    * every existing one, which is the worst of both: the manifest would claim a
@@ -788,7 +738,7 @@ export function installPostgres(
   };
 
   // 4. Idempotent table bootstrap. Waits for the cluster's -rw service to
-  //    answer, then applies the DDL to aiq_jobs and aiq_checkpoints.
+  //    answer, then applies the DDL to jobs and checkpoints.
   const initSqlCm = new k8s.core.v1.ConfigMap(
     "pg-init-sql",
     {
@@ -814,8 +764,8 @@ export function installPostgres(
       metadata: { namespace },
       stringData: {
         // Direct: DDL Jobs, and `pg_isready` waiting on the primary itself.
-        JOBS_DSN: dsn({ db: "aiq_jobs", via: "direct" }),
-        CHECKPOINTS_DSN: dsn({ db: "aiq_checkpoints", via: "direct" }),
+        JOBS_DSN: dsn({ db: JOBS_DB, via: "direct" }),
+        CHECKPOINTS_DSN: dsn({ db: CHECKPOINTS_DB, via: "direct" }),
         // As the filer's own role, which is the only login that can revoke a
         // grant on the database it owns — the app user has no rights there at
         // all, which is the whole point.
@@ -835,6 +785,13 @@ export function installPostgres(
     },
     { provider },
   );
+
+  const renameJob = installPostgresRename(cfg, provider, namespace, {
+    rwHost,
+    superuserSecret: `${CLUSTER_NAME}-superuser`,
+    appSecret: appSecret.metadata.name,
+    dependsOn: [cluster, appSecret],
+  });
 
   const initJob = new k8s.batch.v1.Job(
     "pg-init-tables",
@@ -893,6 +850,7 @@ export function installPostgres(
       provider,
       dependsOn: [
         cluster,
+        renameJob,
         initSqlCm,
         initDsnSecret,
         ...(filerDatabase ? [filerDatabase] : []),

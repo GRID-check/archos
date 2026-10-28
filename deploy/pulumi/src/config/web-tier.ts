@@ -2,7 +2,6 @@
  * The web tier: the Next.js frontend and the landing site.
  */
 import * as pulumi from "@pulumi/pulumi";
-import type { GridConfig } from "../config";
 import { num } from "./readers";
 import type { ResourceSpec } from "./resources";
 
@@ -22,7 +21,7 @@ export interface WebConfig {
   hpaCpuTargetPercent: number;
 }
 
-export function loadWebTier(cfg: pulumi.Config): Pick<GridConfig, "frontend" | "web"> {
+export function loadWebTier(cfg: pulumi.Config): { frontend: FrontendConfig; web: WebConfig } {
   // Fail fast: the web PDB allows maxUnavailable 1, so a webMinReplicas of 1
   // means a voluntary disruption (node drain, rolling update) takes the whole
   // landing site down. Two replicas is the floor the PDB contract assumes.

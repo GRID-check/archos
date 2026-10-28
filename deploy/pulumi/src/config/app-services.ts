@@ -3,7 +3,6 @@
  */
 import * as pulumi from "@pulumi/pulumi";
 import { bool, num } from "../config/readers";
-import type { GridConfig } from "../config";
 
 export interface LlmConfig {
   openrouterApiKey: pulumi.Output<string>;
@@ -71,7 +70,7 @@ export interface SkillsConfig {
 
 export function loadAppServices(
   cfg: pulumi.Config,
-): Pick<GridConfig, "llm" | "auth" | "internal" | "webPush" | "skills"> {
+): { llm: LlmConfig; auth: AuthConfig; internal: InternalConfig; webPush: WebPushConfig; skills: SkillsConfig } {
   // Fail closed: db-claimed job payloads carry the user's auth token and persist
   // in Postgres (table + WAL + backups + replicas). Refuse to deploy db mode
   // without a KEK to encrypt them at rest, unless plaintext is explicitly opted
