@@ -3,6 +3,8 @@
 import { useMemo } from 'react'
 
 import { useLocale, useTranslations } from '@/i18n'
+import { dossierCopy } from '@/i18n/namespaces/dossier'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { DOSSIER_DOCUMENT_TYPES, DOSSIER_FACT_KEYS, DOSSIER_PARTY_ROLES } from '@/lib/documents/dossier'
 import { formatDate } from '@/lib/format'
 import { SEARCH_READ_STATES, type FacetCount, type SearchFacetDimension } from '@/lib/search/search-wire'
@@ -31,8 +33,8 @@ export interface SearchLabels {
  * server labelled it.
  */
 export function useSearchLabels(): SearchLabels {
-  const t = useTranslations('search')
-  const tDossier = useTranslations('dossier')
+  const t = useTranslations(searchCopy)
+  const tDossier = useTranslations(dossierCopy)
   const { locale } = useLocale()
 
   return useMemo(() => {

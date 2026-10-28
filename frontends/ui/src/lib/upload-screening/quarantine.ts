@@ -4,7 +4,7 @@
  * The content gate in the ingest job records its verdict on the file's status
  * as a typed object, `quarantine`: `{"reasons":[…],"checked":"full"|"partial"}`,
  * plus `"omitted":N` when the job left N reasons out
- * (`sources/knowledge_layer/src/llamaindex/screening.py`, `to_model`). Status
+ * (`packages/knowledge-layer/src/llamaindex/screening.py`, `to_model`). Status
  * reconciliation stores it in `documents.quarantine`, and every reader takes it
  * through {@link quarantineVerdictOf}. Detector samples are already masked by
  * the job; nothing here ever sees a full IBAN.

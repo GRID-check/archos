@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { BellRing, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { intakeReadingStepCopy } from '@/i18n/namespaces/intake-reading-step'
 
 /** The project's chat: usable from the first minute, whatever the reading is doing. */
 export const projectChatHref = (projectId: string): string => `/app/projects/${encodeURIComponent(projectId)}/chat`
@@ -28,7 +29,7 @@ export function ReadingChatBand({
   /** Piloti has not finished reading: the chat is „schon jetzt" there. */
   early: boolean
 }): JSX.Element {
-  const t = useTranslations('intakeReadingStep')
+  const t = useTranslations(intakeReadingStepCopy)
   return (
     <div
       role="status"

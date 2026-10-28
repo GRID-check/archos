@@ -14,7 +14,7 @@ from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 
 BOUNDARY_ANCHOR = "<turn_context>"
-HEADING = "## Referenzprojekte des Büros"
+HEADING = "## Reference projects of the office"
 CATALOG = "- Wohnbau Graz (id p1): 2019–2021, steiermark, GK 4, holzbau · gemeinsam: GK 4"
 LOOKUP = {"name": "project_lookup", "description": "Schlägt in anderen Projekten nach."}
 SEARCH = {"name": "knowledge_search", "description": "Search the knowledge base."}

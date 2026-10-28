@@ -1120,7 +1120,7 @@ below lands.
 ### 6.2 The highest-impact code change (do this first)
 
 Per scaling-review §6.2, the single biggest capacity defect is that
-`LlamaIndexRetriever.retrieve` (`sources/knowledge_layer/src/llamaindex/adapter.py`)
+`LlamaIndexRetriever.retrieve` (`packages/knowledge-layer/src/llamaindex/adapter.py`)
 does a **synchronous** embedding call + vector query on the only event loop —
 one user's retrieval stalls every other user's chat stream. Wrapping it in
 `asyncio.to_thread` (hours of work, no behaviour change) is the difference
@@ -1665,7 +1665,7 @@ emitted somewhere it can read; see §10.
   through the BFF, and nobody has measured what a compressor does to that
   stream. The S3 route serves presigned PDFs and images, which do not shrink.
 - **Static caching is the web image's job, not Envoy's.** The container runs
-  `frontends/web/runtime/server.mjs`, which sets `Cache-Control` on files that
+  `apps/site/runtime/server.mjs`, which sets `Cache-Control` on files that
   exist: `/_astro/*` `public, max-age=31536000, immutable`, `/fonts/*` and
   `/art/*` `public, max-age=604800, stale-while-revalidate=86400`, HTML left at
   `public, max-age=0` with an ETag so every view revalidates. An HTTPRoute
@@ -2070,7 +2070,7 @@ render through the pinned collector's own `validate` (CI's infra job installs
 the binary).
 
 **Signals actually emitted today** (ADR-0029 Amendment 3): traces from
-grid-aiq-agent and grid-agent-worker (NAT tracing exporter); the BFF registers
+backend-chat and grid-agent-worker (NAT tracing exporter); the BFF registers
 no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
 (`src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
@@ -2111,7 +2111,7 @@ scraped series also carry `service.name` (the tier, or the scraped workload's
 their `k8s.*` resource attributes instead.
 
 ```text
-grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purger
+grid-ui / backend-chat / grid-agent-worker / grid-skill-scheduler / grid-purger
         │  plain OTLP (in-cluster, no key): traces, logs, metrics
         ▼
   otel-collector ──▶ traces  ──▶ Langfuse
@@ -2257,7 +2257,7 @@ creation, which left a provider that recorded nothing). Sending no `traceparent`
 costs nothing downstream: the Python tiers never continued the BFF's trace, and
 a root there is a NAT span with no NAT parent
 (`test_a_chat_root_needs_no_incoming_trace_context`). Logs appear as separate
-resources via `OTEL_SERVICE_NAME` (`grid-ui` / `grid-aiq-agent` /
+resources via `OTEL_SERVICE_NAME` (`grid-ui` / `backend-chat` /
 `grid-agent-worker`). The `server.js` WS proxy is not instrumented.
 
 **Wiring:**

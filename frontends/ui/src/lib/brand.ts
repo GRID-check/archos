@@ -35,7 +35,7 @@ export function withProductName<T>(dictionary: T): T {
 /**
  * The Piloti mark (the column) for every place that draws it inline: the app's
  * logo and the PDF exports. `path` is the master's, character for character
- * (`shared/brand/piloti-mark.svg`); `npm run check` in `frontends/web` fails when
+ * (`packages/brand/mark.svg`); `npm run check` in `apps/site` fails when
  * it drifts. `viewBox` crops the master's 32-unit tile to the column itself, so
  * the mark sits flush against a wordmark. Plain data, no DOM: the PDF renderer
  * imports it too.

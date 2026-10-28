@@ -19,7 +19,7 @@
 import { describe, expect, it } from 'vitest'
 import { readPdf, normalizePdfText } from '@/test-utils/read-pdf'
 import { AI_GENERATOR_NAME, aiProvenanceMarking } from '@/lib/ai-provenance'
-import { dictionaries } from '@/i18n/dictionaries'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import {
   MAX_MARKDOWN_PDF_CHARS,
   TABLE_CELL_COST_CHARS,
@@ -39,8 +39,8 @@ import {
  * pass just as well if the renderer had hardcoded a sentence of its own, which
  * is the failure the required option exists to prevent.
  */
-const de = dictionaries.de.answerExport
-const en = dictionaries.en.answerExport
+const de = answerExportCopy.messages.de
+const en = answerExportCopy.messages.en
 
 const DIAGRAM_PLACEHOLDER = 'Zeichnung hier nicht wiedergegeben.'
 const BASE = { diagramPlaceholder: DIAGRAM_PLACEHOLDER }

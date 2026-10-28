@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import type { DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 import { QuestionControl } from '@/features/projects/components/intake-question-field'
 import { useTranslations } from '@/i18n'
+import { intakeQuestionsStepCopy } from '@/i18n/namespaces/intake-questions-step'
 import { isIntakeAnswerProvided } from '@/lib/project-profile/intake-conditions'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import type { DocumentRequest, IntakeDecision, Need, ProfileEvidence, Suggestion } from '@/lib/project-intake/types'
@@ -81,13 +82,13 @@ function NeedControl({
 
 /** „Einreichplan (Grundriss) oder Baubeschreibung": where an answer usually stands, at most two. */
 function useWhere(): (documents: readonly string[]) => string | null {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   return (documents) => (documents.length === 0 ? null : documents.slice(0, 2).join(` ${t('or')} `))
 }
 
 /** A need no document answered: the decisive ones, and the register's own (Bundesland, Vorhaben). */
 export function NeedQuestion({ need, ...props }: RoundQuestionProps & { need: Need }): JSX.Element {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   const where = useWhere()
   const [draft, setDraft] = useState<ProjectPrimitiveValue>(() => emptyDraft(need))
   const [submitting, submit] = usePressed()
@@ -146,7 +147,7 @@ export function RequestQuestion({
   request,
   ...props
 }: RoundQuestionProps & { request: DocumentRequest }): JSX.Element {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   const [drafts, setDrafts] = useState<Readonly<Record<string, ProjectPrimitiveValue>>>({})
   const [submitting, submit] = usePressed()
   const [skipping, skip] = usePressed()
@@ -241,7 +242,7 @@ function optionsOf(item: Suggestion): ContradictionOption[] {
 
 /** „Anzahl oberirdischer Geschoße: 6 oder 7?": a contradiction as the question it is. */
 export function useContradictionTitle(): (item: Suggestion) => string {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   return (item) => {
     const values = optionsOf(item).map((option) => option.display)
     const last = values.pop() ?? ''
@@ -259,7 +260,7 @@ export function ContradictionQuestion({
   item,
   ...props
 }: RoundQuestionProps & { item: Suggestion }): JSX.Element {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   const title = useContradictionTitle()
   const options = optionsOf(item)
   const [picked, setPicked] = useState<string>('')

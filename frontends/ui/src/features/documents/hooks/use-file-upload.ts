@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { createDocumentsClient } from '@/adapters/api'
 import { deleteSessionDocument } from '@/adapters/api/session-documents-client'
 import { xhrUpload, XhrUploadError } from '@/lib/http/xhr-upload'
@@ -184,7 +185,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   const shelf: 'project' | 'office_shelf' | 'session' = officeShelf ? 'office_shelf' : projectId ? 'project' : 'session'
 
   const { idToken } = useAuth()
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // The APP's locale, not the runtime's: a size named in a validation error must
   // be punctuated like the one on the file card beside it, and the user may be
   // reading the app in German on an English-locale browser.

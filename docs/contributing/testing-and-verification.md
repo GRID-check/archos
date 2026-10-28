@@ -38,7 +38,7 @@ Reach for the narrow task rather than the whole gate:
 | Backend tests | `task be:test`, or `task be:test:api` for the plugin suite |
 | The Chroma exporter and the move off Chroma (`deploy/migration/`, `qdrant/import_vectors.py`) | `task be:test:migration`, in its own `chromadb` environment; nothing else imports `chromadb` ([`deploy/migration/README.md`](../../deploy/migration/README.md#tests)) |
 | Pulumi and the policy pack | `task infra:types` |
-| Astro landing site | `task web:verify` |
+| Astro landing site | `task site:verify` |
 
 Then run `task verify:fast` before you push.
 
@@ -166,8 +166,9 @@ installs can run them, which is how 830 tests behind a default-ON feature that
 renders OIB compliance verdicts ended up with no gate at all — no Taskfile
 target, no CI job, no pre-commit hook. The same shape as `sources/` before it.
 
-They now run as CI's `packages` job, behind a `packages/**` paths filter, and
-`CI OK` requires it. Locally:
+They now run as CI's `packages` job, behind the `packages` paths filter in
+`.github/filters.yml` (`packages/ifc-spatial*/**`: a new package with a suite
+adds its own line there), and `CI OK` requires it. Locally:
 
 ```bash
 task pkg:install    # both toolchains (`task setup` does this too now)
@@ -642,7 +643,7 @@ Traps that cost a run:
 - **A second or two between single runs is noise.** Compare medians over
   several runs, never one run against one run.
 - **Which checkout a run measures.** The suite and the census now put this
-  checkout's `src/` and `sources/` packages first on each run's `PYTHONPATH`,
+  checkout's `src/` and workspace packages first on each run's `PYTHONPATH`,
   and run it with this checkout's venv interpreter; the suite refuses to start
   when a run would still import another checkout. Before that, a run from a
   `git worktree` measured the main checkout's code while its report named the

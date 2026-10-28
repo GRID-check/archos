@@ -40,6 +40,8 @@ import {
   useDocClassLabel,
 } from '@/features/platform/components/knowledge-atoms'
 import { useLocale, useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatBytes } from '@/lib/format'
 import {
   DOC_CLASSES,
@@ -66,7 +68,7 @@ export function KnowledgeDocumentSheet({
   onClose,
   ...rest
 }: KnowledgeDocumentSheetProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return (
     <Sheet open={file !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
@@ -89,8 +91,8 @@ function SheetBody({
   onView,
   onDelete,
 }: Omit<KnowledgeDocumentSheetProps, 'file' | 'onClose'> & { file: KnowledgeFile }): JSX.Element {
-  const t = useTranslations('platform')
-  const tk = useTranslations('knowledge')
+  const t = useTranslations(platformCopy)
+  const tk = useTranslations(knowledgeCopy)
   const { locale } = useLocale()
   const label = useDocClassLabel()
   const [titleDraft, setTitleDraft] = useState(file.displayTitle ?? '')

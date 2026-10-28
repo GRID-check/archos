@@ -31,7 +31,8 @@ import { ForbiddenError } from '@/lib/api/errors'
 import { apiRoute } from '@/lib/api/handler'
 import { PlatformAccessDeniedError } from '@/lib/authz/platform'
 import { getLocale } from '@/i18n/server'
-import { getDictionary } from '@/i18n/dictionaries'
+import { feedbackExportCopy } from '@/i18n/namespaces/feedback-export'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { requireFeedbackQuery } from '@/lib/feedback/query'
 import { RATINGS_FILTER_PARAMS } from '@/lib/feedback/filters'
 import { EXPORT_IGNORED_FILTERS_HEADER, EXPORT_TRUNCATED_HEADER } from '@/lib/feedback/types'
@@ -71,7 +72,8 @@ export const GET = apiRoute(
   async ({ request, session }) => {
     const searchParams = new URL(request.url).searchParams
     const query = requireFeedbackQuery(searchParams)
-    const dictionary = getDictionary(await getLocale())
+    const locale = await getLocale()
+    const dictionary = { feedbackExport: feedbackExportCopy.messages[locale], platform: platformCopy.messages[locale] }
     try {
       if (searchParams.get('summary') === 'weekly') {
         const weekly = await getAnswerFeedbackWeeklyExport(session, query)

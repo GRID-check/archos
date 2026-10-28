@@ -58,6 +58,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { CHAT_EFFORTS, chatEffortFromSettings } from '@/lib/reasoning-settings/catalog'
 import { cn } from '@/lib/utils'
 
@@ -156,7 +157,7 @@ export const EffortDial: FC<EffortDialProps> = ({
   focusOnHide,
   className,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const effort = useEffortStore((state) => effectiveEffort(state, conversationId))
   const choose = useEffortStore((state) => state.choose)
 

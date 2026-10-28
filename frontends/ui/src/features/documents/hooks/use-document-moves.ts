@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileItem, FolderItem } from '../file-types'
 import { refusalOf, shelfRefusalOf, throwUnlessOk, type ShelfRefusal } from '../lib/move-refusal'
@@ -26,7 +27,7 @@ export function useDocumentMoves(
   setFiles: Dispatch<SetStateAction<FileItem[]>>,
   folders: readonly FolderItem[]
 ) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   /** Moves of this tab still on the wire; a live re-read waits for them (`isMoving`). */
   const inFlight = useRef(0)
   const isMoving = useCallback(() => inFlight.current > 0, [])

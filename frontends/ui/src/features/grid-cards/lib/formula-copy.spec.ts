@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { getByPath } from '@/i18n/translate'
 import { FORMULA_KEY_MAPS } from './formula-copy'
 
@@ -19,7 +19,7 @@ const keys = Object.entries(FORMULA_KEY_MAPS).flatMap(([map, entries]) =>
 
 describe('the formula card’s key maps', () => {
   it.each(keys)('%s → %s resolves in en and de', (_map, key) => {
-    expect(typeof getByPath(en.chat, key), `en.chat.${key}`).toBe('string')
-    expect(typeof getByPath(de.chat, key), `de.chat.${key}`).toBe('string')
+    expect(typeof getByPath(chatCopy.messages.en, key), `en.chat.${key}`).toBe('string')
+    expect(typeof getByPath(chatCopy.messages.de, key), `de.chat.${key}`).toBe('string')
   })
 })

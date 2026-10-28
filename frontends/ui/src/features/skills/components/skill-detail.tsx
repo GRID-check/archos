@@ -30,6 +30,8 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import type { SkillListItem } from '@/adapters/api/skills-client'
 import { agentScopeLabelKey } from '../lib/agent-scope'
@@ -67,8 +69,8 @@ export function SkillDetail({
   toggling,
   onClose,
 }: SkillDetailProps): JSX.Element {
-  const t = useTranslations('skills')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(skillsCopy)
+  const tCommon = useTranslations(commonCopy)
   const isOrg = skill !== null && skill.id !== null
   const scopeKey = skill ? agentScopeLabelKey(skill.metadata['grid-agents']) : null
 

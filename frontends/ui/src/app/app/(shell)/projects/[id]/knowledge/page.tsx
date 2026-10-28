@@ -5,6 +5,7 @@ import { withPageSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { isProjectKnowledgePageEnabled } from '@/lib/authz/feature-flags'
 import { getTranslations } from '@/i18n/server'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { KnowledgeBasePanel } from '@/features/knowledge/components/knowledge-base-panel'
 
 interface KnowledgePageProps {
@@ -12,7 +13,7 @@ interface KnowledgePageProps {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
+  const t = await getTranslations(navCopy)
   return { title: t('sections.knowledge') }
 }
 

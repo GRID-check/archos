@@ -18,6 +18,8 @@ import {
   type MentionQuery,
 } from '@/lib/mentions/mention-text'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { AnnotationRequestError } from '@/lib/annotations/client'
 import { MAX_ANNOTATION_BODY, type MarkMention } from '@/lib/annotations/types'
 import { MAX_MENTIONS_PER_MESSAGE } from '@/lib/limits/catalog'
@@ -110,8 +112,8 @@ export function Composer({
   describeFailure?: (error: unknown) => string | null
   testId: string
 }): JSX.Element {
-  const t = useTranslations('files')
-  const tCollab = useTranslations('collaboration')
+  const t = useTranslations(filesCopy)
+  const tCollab = useTranslations(collaborationCopy)
   const agentName = tCollab('mentions.picker.agentName')
   const [body, setBody] = useState(initialBody)
   const [busy, setBusy] = useState(false)

@@ -4,7 +4,7 @@
  * before it reaches a German reader as English.
  */
 import { describe, expect, it } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
 import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { OIB_STANDARDS } from '@/lib/oib/standards-catalog'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
@@ -43,8 +43,8 @@ describe('standard reasons', () => {
 
   it('has words for every key in both languages', () => {
     for (const id of STANDARD_REASON_IDS) {
-      expect(de.intakeProfileStep.rules.reasons[id]).toBeTruthy()
-      expect(en.intakeProfileStep.rules.reasons[id]).toBeTruthy()
+      expect(intakeProfileStepCopy.messages.de.rules.reasons[id]).toBeTruthy()
+      expect(intakeProfileStepCopy.messages.en.rules.reasons[id]).toBeTruthy()
     }
   })
 

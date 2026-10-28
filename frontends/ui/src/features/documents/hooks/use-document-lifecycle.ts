@@ -30,6 +30,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   DocumentLifecycleError,
   documentLifecycleClient,
@@ -132,7 +133,7 @@ export function useDocumentLifecycle({
   client = documentLifecycleClient,
   onChanged,
 }: UseDocumentLifecycleOptions): DocumentLifecyclePosition {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [listing, setListing] = useState<DocumentVersionListResponse | null>(null)
   const [loading, setLoading] = useState(enabled)
   const [failed, setFailed] = useState(false)

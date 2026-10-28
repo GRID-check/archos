@@ -12,7 +12,7 @@
  * as `undefined`.
  */
 import { describe, expect, it } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { GENERATED_DOCUMENT_PRODUCERS } from '@/lib/documents/generated'
 import {
   DIAGRAM_SOURCE_FACTS,
@@ -77,22 +77,22 @@ describe('the producer tuple grew, and grew by two', () => {
 
 describe('every refusal can be read, in both locales', () => {
   it('has English copy for every rejection', () => {
-    const missing = DIAGRAM_SVG_REJECTIONS.filter((reason) => !en.diagrams.rejected[reason])
+    const missing = DIAGRAM_SVG_REJECTIONS.filter((reason) => !diagramsCopy.messages.en.rejected[reason])
     expect(missing).toEqual([])
   })
 
   it('has German copy for every rejection', () => {
     // A missing key is not a compile error here — `rejected` is keyed by the
-    // tuple, and the German namespace is annotated `typeof en.diagrams`, so the
+    // tuple, and the German namespace is annotated `typeof diagramsCopy.messages.en`, so the
     // two locales cannot drift from EACH OTHER. What they can both miss is a
     // member the tuple gained, which is what this pair catches.
-    const missing = DIAGRAM_SVG_REJECTIONS.filter((reason) => !de.diagrams.rejected[reason])
+    const missing = DIAGRAM_SVG_REJECTIONS.filter((reason) => !diagramsCopy.messages.de.rejected[reason])
     expect(missing).toEqual([])
   })
 
   it('says something different in each locale, so neither is a copy of the other', () => {
     for (const reason of DIAGRAM_SVG_REJECTIONS) {
-      expect(de.diagrams.rejected[reason]).not.toBe(en.diagrams.rejected[reason])
+      expect(diagramsCopy.messages.de.rejected[reason]).not.toBe(diagramsCopy.messages.en.rejected[reason])
     }
   })
 
@@ -101,10 +101,10 @@ describe('every refusal can be read, in both locales', () => {
     // Behörde. Both halves are load-bearing: that a machine wrote it, and that
     // it is schematic, which is the doctrine the schematic cards protect by
     // computing their geometry and this one can only state.
-    expect(de.diagrams.marking).toContain('Von Piloti erstellt')
-    expect(de.diagrams.marking).toContain('Schematisch')
-    expect(en.diagrams.marking).toContain('Created by Piloti')
-    expect(en.diagrams.marking).toContain('Schematic')
-    expect(de.diagrams.schematicOnly).toBe('Schematisch — ohne Maßangabe.')
+    expect(diagramsCopy.messages.de.marking).toContain('Von Piloti erstellt')
+    expect(diagramsCopy.messages.de.marking).toContain('Schematisch')
+    expect(diagramsCopy.messages.en.marking).toContain('Created by Piloti')
+    expect(diagramsCopy.messages.en.marking).toContain('Schematic')
+    expect(diagramsCopy.messages.de.schematicOnly).toBe('Schematisch — ohne Maßangabe.')
   })
 })

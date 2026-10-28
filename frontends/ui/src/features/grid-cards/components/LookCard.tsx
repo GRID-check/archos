@@ -24,6 +24,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { PagePlaceButton } from '@/features/knowledge/components/page-place-button'
 import type { PagePlace } from '@/features/knowledge/lib/page-place'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
 import type { GridCard } from '@/shared/cards/schemas'
@@ -65,7 +66,7 @@ const placeWords = (t: Translator, item: LookItem): string | null => {
 }
 
 export const LookCard: FC<LookCardProps> = ({ document, items, eager }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const hasReading = items.some((item) => item.origin !== 'reference' && item.reading)
 
   return (

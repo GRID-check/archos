@@ -40,7 +40,7 @@ def user_context(user: dict[str, Any]) -> Iterator[None]:
 def skip_clarifier_requested() -> bool:
     """Whether the middleware marked this request as headless.
 
-    Covers ``X-AIQ-Mode: headless``, anonymous callers and unauthenticated
+    Covers ``X-Chat-Mode: headless``, anonymous callers and unauthenticated
     internal callers. Outside a request the default identity says ``False``.
     """
     return bool(get_current_user().get("skip_clarifier"))

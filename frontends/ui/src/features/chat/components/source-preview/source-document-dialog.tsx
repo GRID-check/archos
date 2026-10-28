@@ -4,6 +4,7 @@ import { useEffect, useRef, type FC } from 'react'
 import { Link2 } from 'lucide-react'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { RisDocumentDialog } from '@/features/knowledge/components/ris-document-dialog'
 import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
 import type { SourceTint } from '@/lib/source-kinds'
@@ -148,6 +149,6 @@ export const SourceDocumentDialog: FC<{
 
 /** The RIS provenance chip, so the reader's header matches the chip that opened it. */
 const RisHeaderChip: FC<{ signal: SourceTint }> = ({ signal }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return <SourceSignalChip signal={signal}>{t('sourcePreview.risDocument')}</SourceSignalChip>
 }

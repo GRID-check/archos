@@ -52,6 +52,7 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight, Boxes } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import {
   useBimElements,
@@ -100,7 +101,7 @@ export function IfcFilePreview({
   canOpenWorkspace = true,
   className,
 }: IfcFilePreviewProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   // Detected here, not passed in: the documents pane should not have to learn
   // what WebGPU is to show a file.
   const webGpu = useMemo(() => supportsWebGpu(), [])

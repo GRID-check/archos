@@ -61,6 +61,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { DocumentActionsMenu } from '@/features/documents/components/document-actions'
@@ -280,7 +281,7 @@ export function ModelStage({
   onModelDeleted,
   canCollaborate = false,
 }: ModelStageProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -1859,7 +1860,7 @@ function StageCanvas({
   source: { data: string | null; error: string | null; reload: () => void }
   viewport: ReturnType<typeof useModelViewport>
 }): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
 
   // `isLoading && nothing to show yet`, not `isLoading`.
   //

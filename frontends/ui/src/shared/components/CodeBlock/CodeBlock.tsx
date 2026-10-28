@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Check, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 import { AnimatePresence, motion, useIconSwapTransition } from '@/components/motion'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 
 export interface CodeBlockProps {
   /** Raw code content to display */
@@ -34,7 +35,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({
   maxLines = 15,
   className = '',
 }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const swap = useIconSwapTransition()
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)

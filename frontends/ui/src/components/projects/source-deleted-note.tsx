@@ -3,6 +3,7 @@
 import type { JSX } from 'react'
 import { FolderX } from 'lucide-react'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 import { formatCalendarDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -13,7 +14,7 @@ import { cn } from '@/lib/utils'
  * line, the date the purge ran.
  */
 export function SourceDeletedNote({ at, className }: { at: string; className?: string }): JSX.Element {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const { locale } = useLocale()
   const date = formatCalendarDate(at, locale)
   return (

@@ -12,6 +12,14 @@ its reasoning across turns saw its instructions change under it.
 What fails here: a per-turn value leaking into the system prompt, the context
 landing anywhere but right before the newest question, or the context entering
 the stored transcript.
+
+And the answer-language line (live on dev 2026-10-28, project Holzbau Wien,
+conversation ``s_db26a123…``): „What is this project about?" was answered
+entirely in German although the static prompt says to write in the language of
+the newest message (#1336). The turn context is mostly German and is the
+human-role message right before the question, so it outweighed the rule. What
+fails: the line missing on an English question, present on a German or
+ambiguous one, anywhere but after ``</turn_context>``, or not in the trace.
 """
 
 from __future__ import annotations
@@ -37,6 +45,9 @@ from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.common import LLMProvider
 from aiq_agent.common.prompt_store import PromptStore
 from aiq_agent.common.steering import AppliedSteer
+from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
+from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
+from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
 
 TOOLS = [{"name": "knowledge_search"}, {"name": "workspace__search"}, {"name": "project_lookup"}]
 PROMPT = TurnPrompt(system="SYSTEM", context="<turn_context>\nCTX\n</turn_context>")
@@ -152,6 +163,84 @@ class TestWhereTheContextGoes:
         ]
 
 
+#: The shape of Holzbau Wien's turn context on dev: English keys, German values
+#: and memory, German shelf names and summaries, German office instructions.
+HOLZBAU_CONTEXT = "\n".join(
+    [
+        "confirmed:",
+        "- project_name: Holzbau Wien",
+        "- site_address: Lacknergasse 98",
+        "- federal_state: vienna",
+        "- bauherrschaft: privat",
+        "- building_class: GK5",
+        "PROJECT_MEMORY v1",
+        "- [fact | high | unverified] Die Lacknergasse-Grundrisse zeigen ein Massivgebäude mit Turnsaal.",
+        "documents:",
+        "- projektstand: projektstand-holzbau-wien-2026-09-15.md",
+    ]
+)
+
+LINE_START = "Answer in English"
+
+
+def _holzbau_state(question: str) -> ResearchAgentState:
+    return ResearchAgentState(
+        messages=[
+            HumanMessage(content="Welche Gebäudeklasse hat das Projekt?"),
+            AIMessage(content="Gebäudeklasse 5."),
+            HumanMessage(content=question),
+        ],
+        user_info={"name": "Matthias Bigl", "office": "Atelier Nord"},
+        project_context=HOLZBAU_CONTEXT,
+        available_documents=[
+            {"file_name": "pd8280-2.pdf", "shelf": "project", "summary": "Der Lageplan im Maßstab 1:500."}
+        ],
+        org_instructions="Bitte immer in der Sie-Form antworten.",
+    )
+
+
+def _context_message(question: str) -> str:
+    state = _holzbau_state(question)
+    prompt = render_turn_prompt(system_prompt_template(), state, TOOLS)
+    request = request_messages(prompt, state.messages)
+    assert request[-1].content == question
+    assert request[-2].content == prompt.context
+    return str(request[-2].content)
+
+
+class TestTheAnswerLanguageLine:
+    def test_an_english_question_gets_it_after_the_whole_context(self):
+        context = _context_message("What is this project about?")
+
+        assert context.count(LINE_START) == 1
+        assert context.index(LINE_START) > context.index("</turn_context>")
+        # Nothing follows it: it is the last text before the question.
+        assert context.rstrip().splitlines()[-1].startswith(LINE_START)
+
+    def test_another_language_is_named_as_itself(self):
+        context = _context_message("Qu'est-ce que ce projet et quelle est sa classe?")
+
+        assert "Answer in French" in context
+        assert LINE_START not in context
+
+    @pytest.mark.parametrize(
+        "question",
+        ["Worum geht es in diesem Projekt?", "Wie hoch darf ich bauen", "?", "ok", "Matthias Bigl", "GK5", "ok danke"],
+    )
+    def test_a_german_or_ambiguous_question_gets_none(self, question):
+        context = _context_message(question)
+
+        assert "Answer in" not in context
+        assert context.rstrip().endswith("</turn_context>")
+
+    def test_the_system_prompt_is_the_same_bytes_either_way(self):
+        english = render_turn_prompt(system_prompt_template(), _holzbau_state("What is this project about?"), TOOLS)
+        german = render_turn_prompt(system_prompt_template(), _holzbau_state("Worum geht es?"), TOOLS)
+
+        assert english.system == german.system
+        assert LINE_START not in english.system
+
+
 @tool
 def knowledge_search(query: str) -> str:
     """Search the knowledge base."""
@@ -195,3 +284,34 @@ class TestThroughTheAgent:
         # Request-only: the stored transcript carries no turn context.
         for result in (first, second):
             assert not any("<turn_context>" in str(message.content) for message in result.messages)
+
+    async def test_the_request_carries_the_line_and_the_trace_names_the_call(self, agent, llm):
+        token = begin_trace_contributions()
+        try:
+            await agent.run(_holzbau_state("What is this project about?"))
+            contributed = snapshot_contributions()
+        finally:
+            end_trace_contributions(token)
+
+        sent = llm.ainvoke.call_args_list[0][0][0]
+        assert sent[-1].content == "What is this project about?"
+        assert str(sent[-2].content).rstrip().splitlines()[-1].startswith(LINE_START)
+        assert contributed is not None
+        metadata = contributed["metadata"]
+        assert metadata["question_language"] == "en"
+        assert metadata["answer_language_instructed"] is True
+        assert metadata["question_language_confidence"] >= 0.9
+
+    async def test_a_german_turn_is_recorded_as_not_instructed(self, agent, llm):
+        token = begin_trace_contributions()
+        try:
+            await agent.run(_holzbau_state("Worum geht es in diesem Projekt?"))
+            contributed = snapshot_contributions()
+        finally:
+            end_trace_contributions(token)
+
+        sent = llm.ainvoke.call_args_list[0][0][0]
+        assert "Answer in" not in str(sent[-2].content)
+        assert contributed is not None
+        assert contributed["metadata"]["question_language"] == "de"
+        assert contributed["metadata"]["answer_language_instructed"] is False

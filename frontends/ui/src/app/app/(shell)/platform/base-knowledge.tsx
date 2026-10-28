@@ -75,6 +75,7 @@ import { SectionCard } from '@/features/platform/components/section-card'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import {
   DOC_CLASSES,
@@ -125,7 +126,7 @@ type TypeFilter = typeof ALL | 'binding' | 'other' | DocClass
 type StateFilter = typeof ALL | 'issues' | 'pending'
 
 export function BaseKnowledge(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const docClassLabel = useDocClassLabel()
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)
@@ -1095,7 +1096,7 @@ function KnowledgeSummary({
   files: readonly KnowledgeFile[]
   loading: boolean
 }): JSX.Element | null {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   if (loading) {
     return (
@@ -1152,7 +1153,7 @@ function KnowledgeSummary({
 
 /** The targets of a bulk confirm, by name, capped with "and N more". */
 function NameList({ names }: { names: readonly string[] }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const shown = names.slice(0, CONFIRM_LIST_MAX)
   const rest = names.length - shown.length
   return (

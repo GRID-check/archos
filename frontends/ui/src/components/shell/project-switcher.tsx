@@ -15,6 +15,8 @@ import {
 import { useLayoutStore } from '@/features/layout/store'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectStatus } from '@/lib/projects/project-status'
 import { cn } from '@/lib/utils'
 import { useShellOverlays } from './shell-overlays'
@@ -69,8 +71,8 @@ const TRIGGER_CLASS = cn(
 
 export function ProjectSwitcher({ projects, activeProjectId, collapsed }: ProjectSwitcherProps) {
   const router = useRouter()
-  const t = useTranslations('nav')
-  const tProjects = useTranslations('projects')
+  const t = useTranslations(navCopy)
+  const tProjects = useTranslations(projectsCopy)
   const active = projects.find((p) => p.id === activeProjectId)
   const offered = switchableProjects(projects, activeProjectId)
   const [open, setOpen] = React.useState(false)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   describeNameMatch,
   describeQuarantineReason,
@@ -19,7 +19,7 @@ import {
 } from './quarantine'
 import { classifyIngestFailure } from '@/features/documents/lib/ingest-failure'
 
-const t = createTranslator(de, 'files')
+const t = translatorFor(filesCopy, 'de')
 
 /** A row from before migration 0148 that its backfill could not convert: only the message says why. */
 const parseQuarantine = (errorMessage: string | null) => quarantineVerdictOf({ errorMessage })

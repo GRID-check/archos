@@ -8,13 +8,13 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { FileUploadConfig } from '@/shared/context'
 import { validateFileUpload, type ValidationContext } from '../validation'
 import { summarizeValidation } from './validation-messages'
 
-const t = createTranslator(de, 'files')
+const t = translatorFor(filesCopy, 'de')
 
 const context = (overrides: Partial<ValidationContext> = {}): ValidationContext => ({
   existingTotalSize: 0,

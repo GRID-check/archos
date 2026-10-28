@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { render, screen, within } from '@/test-utils'
-import { en } from '@/i18n/dictionaries'
+import { referencesCopy } from '@/i18n/namespaces/references'
 import { fingerprintOf } from '@/lib/cross-project/fingerprint'
 import type { SimilarProject, SimilarProjectsPage } from '@/lib/references/types'
 
@@ -75,27 +75,27 @@ describe('SimilarProjects', () => {
 
   test('marks an edition read from the documents as unconfirmed, and leaves a confirmed one unmarked', () => {
     const { unmount } = render(<SimilarProjects projectId="current" page={page([{ ...WOHNHAUS, sharedTraits: [] }])} />)
-    expect(screen.getByText(en.references.fields.unconfirmed)).toBeInTheDocument()
+    expect(screen.getByText(referencesCopy.messages.en.fields.unconfirmed)).toBeInTheDocument()
     unmount()
 
     render(<SimilarProjects projectId="current" page={page([CONFIRMED])} />)
-    expect(screen.queryByText(en.references.fields.unconfirmed)).not.toBeInTheDocument()
+    expect(screen.queryByText(referencesCopy.messages.en.fields.unconfirmed)).not.toBeInTheDocument()
     expect(screen.getByText('OIB guidelines 2015')).toBeInTheDocument()
   })
 
   test('shows the decision with its origin and its source, and the permit with its requirement', () => {
     render(<SimilarProjects projectId="current" page={page([WOHNHAUS])} />)
     expect(screen.getByText('Fluchttreppe außen in Stahl statt eines zweiten Stiegenhauses.')).toBeInTheDocument()
-    expect(screen.getByText(en.references.decisions.origin.documents)).toBeInTheDocument()
+    expect(screen.getByText(referencesCopy.messages.en.decisions.origin.documents)).toBeInTheDocument()
     expect(screen.getByText('Bescheid.pdf, p. 3')).toBeInTheDocument()
     expect(screen.getByText('Brandschutzkonzept vor Baubeginn vorlegen.')).toBeInTheDocument()
   })
 
   test('says so, and offers no project to open, when the office has no closed project', () => {
     render(<SimilarProjects projectId="current" page={page([])} />)
-    expect(screen.getByText(en.references.empty.title)).toBeInTheDocument()
-    expect(screen.getByText(en.references.empty.description)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: en.references.ask.action })).not.toBeInTheDocument()
+    expect(screen.getByText(referencesCopy.messages.en.empty.title)).toBeInTheDocument()
+    expect(screen.getByText(referencesCopy.messages.en.empty.description)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: referencesCopy.messages.en.ask.action })).not.toBeInTheDocument()
   })
 
   test('says what it compared, names the open facts and links to the brief that fills them', () => {
@@ -114,12 +114,12 @@ describe('SimilarProjects', () => {
   test('marks a shared trait only one side has from its documents as unconfirmed', () => {
     render(<SimilarProjects projectId="current" page={page([WOHNHAUS])} />)
     // The edition and „GK 4“: two marks, the confirmed Land and Holzbau none.
-    expect(screen.getAllByText(en.references.fields.unconfirmed)).toHaveLength(2)
+    expect(screen.getAllByText(referencesCopy.messages.en.fields.unconfirmed)).toHaveLength(2)
   })
 
   test('lists a project with nothing in common apart from the alike ones, never as one of them', () => {
     render(<SimilarProjects projectId="current" page={page([WOHNHAUS, UNRELATED], 4)} />)
-    const others = screen.getByRole('region', { name: en.references.others.title })
+    const others = screen.getByRole('region', { name: referencesCopy.messages.en.others.title })
     expect(within(others).getByRole('link', { name: 'Halle Wels' })).toBeInTheDocument()
     expect(within(others).queryByRole('link', { name: 'Wohnhaus Mödling' })).not.toBeInTheDocument()
     expect(screen.getByText('… and 4 more closed projects, which Piloti also searches in chat.')).toBeInTheDocument()
@@ -132,14 +132,14 @@ describe('SimilarProjects', () => {
 
   test('says when no closed project shares anything, and still lists them', () => {
     render(<SimilarProjects projectId="current" page={page([UNRELATED])} />)
-    expect(screen.getByText(en.references.noneAlike)).toBeInTheDocument()
+    expect(screen.getByText(referencesCopy.messages.en.noneAlike)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Halle Wels' })).toBeInTheDocument()
   })
 
   test('counts what the project holds, not what the card shows, and asks Piloti in a new chat of THIS project', () => {
     render(<SimilarProjects projectId="current" page={page([WOHNHAUS])} />)
     expect(screen.getByText('7 decisions · 1 permit')).toBeInTheDocument()
-    const ask = screen.getByRole('link', { name: en.references.ask.action })
+    const ask = screen.getByRole('link', { name: referencesCopy.messages.en.ask.action })
     const href = new URL(ask.getAttribute('href') ?? '', 'https://piloti.test')
     expect(href.pathname).toBe('/app/projects/current/chat')
     expect(href.searchParams.get('new')).toBe('1')

@@ -20,6 +20,7 @@ import { Plus } from 'lucide-react'
 import { ProjectSectionActions } from '@/components/shell/project-section-frame'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { listSkillCategories, type SkillCategoryListItem, type SkillListItem } from '@/adapters/api/skills-client'
 import { SkillEditorDialog } from './skill-editor-dialog'
 import { SkillToolbox } from './skill-toolbox'
@@ -30,7 +31,7 @@ interface SkillsPanelProps {
 }
 
 export function SkillsPanel({ canManageOrgSkills }: SkillsPanelProps): JSX.Element {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   // Editor dialog state: a null skill means creating.
   const [editorOpen, setEditorOpen] = useState(false)
   const [editSkill, setEditSkill] = useState<SkillListItem | null>(null)

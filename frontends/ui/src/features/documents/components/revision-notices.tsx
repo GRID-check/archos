@@ -3,6 +3,7 @@
 import type { JSX } from 'react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { RevisionLinks } from '@/lib/documents/revision-links'
 
 /**
@@ -23,7 +24,7 @@ export function SuggestionNotice({
   /** `true` links the two documents, `false` dismisses the suggestion. */
   onDecide: (olderId: string, linked: boolean) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div className="flex flex-col gap-2 rounded-md border border-dashed px-3 py-2.5" data-testid="revision-suggestion">
       <p className="text-foreground text-[13px] leading-snug">{t('preview.revision.suggestion', { name: suggestion.of.filename })}</p>

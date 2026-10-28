@@ -5,8 +5,8 @@
  * sanitizer a reload goes through; and the words of each row.
  */
 import { describe, expect, test } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { de, en } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { sanitizeThinkingSteps, type StoredAction } from '@/lib/conversations/message-provenance'
 import {
   foldScene,
@@ -311,7 +311,7 @@ describe('the link between rows and cards', () => {
 })
 
 describe('workParts', () => {
-  const t = createTranslator(de, 'chat')
+  const t = translatorFor(chatCopy, 'de')
   const text = (action: StoredAction, options?: Parameters<typeof workParts>[2]) =>
     workPartsText(workParts(t, action, options))
 
@@ -402,7 +402,7 @@ describe('workParts', () => {
     expect(text({ verb: 'model', status: 'ok', query: 'Fläche' })).toBe(
       'Fragt das Gebäudemodell ab: „Fläche“'
     )
-    const tEn = createTranslator(en, 'chat')
+    const tEn = translatorFor(chatCopy, 'en')
     const textEn = (action: StoredAction) => workPartsText(workParts(tEn, action))
     expect(textEn({ verb: 'law', status: 'ok', query: 'Garagengesetz' })).toBe(
       'Searches the RIS for “Garagengesetz”'
@@ -490,12 +490,12 @@ describe('workParts', () => {
     expect(text({ verb: 'search', status: 'ok', query: '„Brandabschnitt“ Tiefgarage' })).toBe(
       'Sucht „‚Brandabschnitt‘ Tiefgarage“'
     )
-    expect(quoteQuery(createTranslator(en, 'chat'), '"a" b')).toBe('‘a’ b')
+    expect(quoteQuery(translatorFor(chatCopy, 'en'), '"a" b')).toBe('‘a’ b')
   })
 
   test('a look’s region reads in the reader’s language; an unknown phrase stands', () => {
-    expect(regionWords(createTranslator(en, 'chat'), 'oben rechts')).toBe('top right')
-    expect(regionWords(createTranslator(en, 'chat'), 'in der Seitenmitte')).toBe('page center')
+    expect(regionWords(translatorFor(chatCopy, 'en'), 'oben rechts')).toBe('top right')
+    expect(regionWords(translatorFor(chatCopy, 'en'), 'in der Seitenmitte')).toBe('page center')
     expect(regionWords(t, 'oben rechts')).toBe('oben rechts')
     expect(regionWords(t, '25 %')).toBe('25 %')
   })
@@ -508,16 +508,16 @@ describe('workParts', () => {
       'Gesucht: „x“ im Projekt'
     )
     expect(settledHead(t, { verb: 'read', status: 'ok' })).toBe('Ein Dokument gelesen')
-    const tEn = createTranslator(en, 'chat')
+    const tEn = translatorFor(chatCopy, 'en')
     expect(settledHead(tEn, { verb: 'law', status: 'ok', query: 'x' })).toBe('Searched the RIS: “x”')
     for (const verb of ['search', 'list', 'read', 'look', 'lookup', 'law', 'web', 'model', 'workspace'] as const) {
-      expect(de.chat.thinking.work.done[verb]).toMatch(/\{name\}/)
-      expect(en.chat.thinking.work.done[verb]).toMatch(/\{name\}/)
+      expect(chatCopy.messages.de.thinking.work.done[verb]).toMatch(/\{name\}/)
+      expect(chatCopy.messages.en.thinking.work.done[verb]).toMatch(/\{name\}/)
     }
   })
 
   test('the English twin reads', () => {
-    const tEn = createTranslator(en, 'chat')
+    const tEn = translatorFor(chatCopy, 'en')
     expect(
       workPartsText(
         workParts(tEn, {

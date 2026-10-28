@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { en } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   failedCallScene,
   foldScene,
@@ -12,7 +12,7 @@ import { basisLines, cardForTarget, cardName, openPoints } from './derivation-ba
 import { workRounds } from './work-list'
 
 describe('basisLines', () => {
-  const t = createTranslator(en, 'chat')
+  const t = translatorFor(chatCopy, 'en')
 
   test('a line keeps its numbers apart from its text, so the card draws the marker', () => {
     const basis = basisLines(t, buildCitationModel({ citations: mockupCitations() }))
@@ -31,7 +31,7 @@ describe('basisLines', () => {
 })
 
 describe('openPoints name a document as its card does', () => {
-  const t = createTranslator(en, 'chat')
+  const t = translatorFor(chatCopy, 'en')
   const cards = buildCitationModel({ citations: mockupCitations() })
   const oib = cards.find((doc) => /oib-rl_2_ausgabe/i.test(doc.fileName ?? ''))!
 
@@ -65,7 +65,7 @@ describe('openPoints name a document as its card does', () => {
 })
 
 describe('openPoints say which call failed or broke off, as a noun', () => {
-  const t = createTranslator(en, 'chat')
+  const t = translatorFor(chatCopy, 'en')
 
   test('a failed RIS lookup names the lookup and its query', () => {
     const open = openPoints(t, workRounds(foldScene(failedCallScene())))

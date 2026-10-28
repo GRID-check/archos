@@ -11,6 +11,9 @@ import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
 import { useFeedbackAvailable, useOpenFeedback } from '@/features/product-feedback/components'
 import { InboxBadge } from '@/features/collaboration/components'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { TOUR_ANCHORS, type TourAnchor } from '@/lib/onboarding/product-tour'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { cn } from '@/lib/utils'
@@ -68,10 +71,10 @@ export function OrgHeader({
   canAccessInbox,
 }: OrgHeaderProps): JSX.Element {
   const pathname = usePathname() ?? ''
-  const t = useTranslations('nav')
-  const tCollaboration = useTranslations('collaboration')
+  const t = useTranslations(navCopy)
+  const tCollaboration = useTranslations(collaborationCopy)
   const { pending: inboxPending } = useInboxBadge(canAccessInbox)
-  const tFeedback = useTranslations('feedback')
+  const tFeedback = useTranslations(feedbackCopy)
   const openFeedback = useOpenFeedback()
   const feedbackAvailable = useFeedbackAvailable()
   const isMobile = useIsMobile()

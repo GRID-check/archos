@@ -21,6 +21,7 @@ import { Bookmark, History, Search, Users } from 'lucide-react'
 
 import { CommandGroup, CommandItem } from '@/components/ui/command'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SEARCH_KINDS, type SearchHit, type SearchResponse, type SearchScopeQuery } from '@/lib/search/search-wire'
 import { PALETTE_HITS_PER_KIND } from '../hooks/use-palette-search'
@@ -122,7 +123,7 @@ export function PaletteSearchResults({
   allShortcut,
   itemClassName,
 }: PaletteSearchResultsProps): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const words = text.trim()
   const stale = answered !== words
   const shown = paletteHits(response, perKind)
@@ -198,7 +199,7 @@ export interface PaletteSearchStartProps {
  * searched), then the reader's recent and saved searches.
  */
 export function PaletteSearchStart({ inProject, recent, saved, onRecent, onSaved, onOpenSearch, itemClassName }: PaletteSearchStartProps): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   return (
     <>
       <CommandGroup forceMount>

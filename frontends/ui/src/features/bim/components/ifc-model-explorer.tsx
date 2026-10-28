@@ -19,6 +19,7 @@ import { CountPill } from '@/components/ui/count-pill'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { formatMeasure, formatPropertyValue } from '../lib/format-value'
 import type { BimModelSummary } from '@/lib/bim/types'
@@ -56,7 +57,7 @@ export interface IfcModelOverviewProps {
 }
 
 export function IfcModelOverview({ summary, filename }: IfcModelOverviewProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const areaUnit = summary.units.area?.symbol ?? 'm²'
   const volumeUnit = summary.units.volume?.symbol ?? 'm³'
@@ -154,7 +155,7 @@ export function IfcModelHealthPanel({
   compact = false,
   onShowElements,
 }: IfcModelHealthPanelProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const order = { error: 0, warning: 1, info: 2 } as const
   const issues = [...health.issues]
     .filter((issue) => !compact || issue.severity !== 'info')
@@ -242,7 +243,7 @@ export function IfcSpatialTree({
   selectedStorey,
   onSelectStorey,
 }: IfcSpatialTreeProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const rows = useMemo(() => flattenSpatialTree(summary.spatial), [summary.spatial])
 
@@ -381,7 +382,7 @@ export function IfcElementTable({
   error = false,
   onRetry,
 }: IfcElementTableProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('')
 
@@ -579,7 +580,7 @@ export interface IfcPropertyPanelProps {
 }
 
 export function IfcPropertyPanel({ element, isLoading, error }: IfcPropertyPanelProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
 
   if (error) {

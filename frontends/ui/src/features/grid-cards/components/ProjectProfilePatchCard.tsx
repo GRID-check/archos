@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { selectCardConversationId, useCardDecision } from '../hooks/use-card-decision'
 import { useChatStore } from '@/features/chat/store'
@@ -76,7 +77,7 @@ function BrowserAppliedProfileCard({
   cardKey,
   decisionsMustPersist,
 }: Omit<ProjectProfilePatchCardProps, 'proposalId'>) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { decision, decide, canDecide } = useCardDecision(messageId, cardKey, {
     mustPersist: decisionsMustPersist,
   })

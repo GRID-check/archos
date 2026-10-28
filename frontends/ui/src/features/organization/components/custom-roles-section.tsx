@@ -30,6 +30,8 @@ import { Item, ItemActions, ItemList } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { useOrganizationRoles } from '../hooks/use-organization-roles'
 import { permissionLabel } from '../lib/permission-labels'
 import { CustomRoleDialog } from './custom-role-dialog'
@@ -37,8 +39,8 @@ import { CustomRoleDialog } from './custom-role-dialog'
 type Editing = { mode: 'create' } | { mode: 'edit'; role: OrganizationRole } | null
 
 export const CustomRolesSection: FC = () => {
-  const t = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const { data, failed, reload } = useOrganizationRoles()
   const [editing, setEditing] = useState<Editing>(null)
   const [deleting, setDeleting] = useState<OrganizationRole | null>(null)
@@ -194,7 +196,7 @@ const RoleRow: FC<{ role: OrganizationRole; compact?: boolean; actions?: ReactNo
   compact = false,
   actions,
 }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const permissions = role.permissions ?? []
   return (
     // Name and actions share the top line; the description and the permissions

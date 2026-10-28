@@ -44,6 +44,7 @@ import { ClipboardCheck } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { CARD_SHELL } from './card-chrome'
 import { ClampedText } from './ClampedText'
@@ -74,7 +75,7 @@ export const TaskCreatedCard: FC<TaskCreatedCardProps> = ({
   goal,
   dueAt,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
 
   // An unparseable date renders as no date at all rather than „Invalid Date":

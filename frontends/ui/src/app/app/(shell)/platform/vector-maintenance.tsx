@@ -26,6 +26,7 @@ import {
   type MaintenanceOutcome,
 } from '@/features/platform/components/maintenance-action-card'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 
 /** Mirrors `VectorReconcileResult` in `@/lib/platform/vector-reconcile`. */
 export interface ReconcileResult {
@@ -61,7 +62,7 @@ export interface VectorMaintenanceProps {
 }
 
 export function VectorMaintenance({ initialResult = null }: VectorMaintenanceProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
 
   const copy = useMemo<MaintenanceActionCopy>(

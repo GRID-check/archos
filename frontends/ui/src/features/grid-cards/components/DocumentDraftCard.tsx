@@ -77,6 +77,7 @@ import { useChatStore } from '@/features/chat/store'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { documentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import { cn } from '@/lib/utils'
@@ -193,7 +194,7 @@ export const DocumentDraftCard: FC<DocumentDraftCardProps> = ({
   cardKey,
   decisionsMustPersist,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const projectId = useChatStore((s) => s.projectId)
   const conversationId = useChatStore((s) => s.currentConversation?.id ?? null)
   const isMobile = useIsMobile()

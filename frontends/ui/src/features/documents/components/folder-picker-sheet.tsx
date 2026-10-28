@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { SearchField } from '@/components/ui/search-field'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import type { FolderDestination } from '../lib/folder-path-label'
 
@@ -73,7 +74,7 @@ export function FolderPickerSheet({
   pending = false,
   onPick,
 }: FolderPickerSheetProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [query, setQuery] = useState('')
   const rows = useMemo(() => matching(destinations, query), [destinations, query])
   const allFiles = t('folders.allFiles')
@@ -157,7 +158,7 @@ function PickerRow({
   testId: string
   root?: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const Icon = here ? Check : root ? FolderOpen : Folder
   return (
     <li>

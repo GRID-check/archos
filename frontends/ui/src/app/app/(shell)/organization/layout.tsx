@@ -25,6 +25,7 @@ import {
 } from '@/lib/authz/organizations'
 import { BackLink, ShellContent } from '@/components/shell'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import {
   OrganizationNav,
   type OrganizationSectionKey,
@@ -36,7 +37,7 @@ export default async function OrganizationLayout({
   children: React.ReactNode
 }): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
 
     // Capability flags decide the nav, exactly as they decide each route: a custom
     // role holding a single granular permission (e.g. org:models:manage) sees that

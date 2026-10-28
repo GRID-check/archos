@@ -38,6 +38,9 @@ import {
 } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { jobsCopy } from '@/i18n/namespaces/jobs'
+import { tasksCopy } from '@/i18n/namespaces/tasks'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { deleteJob, runJob, JobApiError, type Job } from '@/adapters/api/jobs-client'
 import { capturePosthog } from '@/lib/analytics/posthog'
@@ -81,9 +84,9 @@ export function ScheduleDetail({
   onEdit,
   onClose,
 }: ScheduleDetailProps): JSX.Element {
-  const t = useTranslations('tasks')
-  const tj = useTranslations('jobs')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(tasksCopy)
+  const tj = useTranslations(jobsCopy)
+  const tCommon = useTranslations(commonCopy)
 
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
@@ -140,8 +143,8 @@ function ScheduleDetailBody({
   onDeleted: ((jobId: string) => void) | undefined
   onEdit: ((job: Job) => void) | undefined
 }): JSX.Element {
-  const t = useTranslations('tasks')
-  const tj = useTranslations('jobs')
+  const t = useTranslations(tasksCopy)
+  const tj = useTranslations(jobsCopy)
   const { locale } = useLocale()
   const [running, setRunning] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)

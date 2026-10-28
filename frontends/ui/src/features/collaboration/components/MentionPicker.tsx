@@ -50,6 +50,7 @@ import {
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import type { MentionCandidate } from '@/lib/mentions/types'
 import { cn } from '@/lib/utils'
 
@@ -317,7 +318,7 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
     },
     ref,
   ) {
-    const t = useTranslations('collaboration')
+    const t = useTranslations(collaborationCopy)
     const agentLabel = t('mentions.picker.agentName')
     const resultsAria = t('mentions.picker.resultsAria')
 

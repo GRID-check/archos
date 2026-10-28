@@ -25,7 +25,7 @@ import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { FEATURE_FLAGS, isFeatureEnabled, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { getLocale } from '@/i18n/server'
-import { getDictionary } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 import './globals.css'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { postHogConfigFromEnv, type PostHogConfig, type PostHogIdentity } from '@/lib/analytics/posthog-config'
@@ -96,7 +96,7 @@ export const metadata: Metadata = {
     'Workspace for planning offices: projects, files, the building model, tasks and research, with Office filing and building law at hand. Every answer cites its source.',
   // Icons come from the file conventions beside this layout (favicon.ico,
   // icon.svg, apple-icon.png) and manifest.ts; all are rendered from
-  // shared/brand/piloti-mark.svg. The app is behind sign-in: see robots.ts.
+  // packages/brand/mark.svg. The app is behind sign-in: see robots.ts.
   robots: { index: false, follow: false },
   // Added to the home screen, iOS runs the app standalone under this name. The
   // status bar is `default`: dark glyphs on the warm paper, which `themeColor`
@@ -228,7 +228,7 @@ const RootLayout = async ({ children }: RootLayoutProps): Promise<ReactNode> => 
   await connection()
   const locale = await getLocale()
   const config = await getAppConfig(locale)
-  const t = getDictionary(locale).common
+  const t = commonCopy.messages[locale]
 
   return (
     <html

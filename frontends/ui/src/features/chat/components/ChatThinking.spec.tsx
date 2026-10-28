@@ -2,8 +2,8 @@ import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { ChatThinking } from './ChatThinking'
-import { createTranslator } from '@/i18n/translate'
-import { en } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { useLayoutStore } from '@/features/layout/store'
 import { storedStep } from '@/test-utils/wire-v2-steps'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
@@ -19,7 +19,7 @@ import {
 } from '@/test-utils/work-list-scenes'
 
 /** The copy as the English dictionary words it, so a retune of a phrase is not a broken spec. */
-const tEn = createTranslator(en, 'chat')
+const tEn = translatorFor(chatCopy, 'en')
 /** Text as read, with the no-break spaces that hold a count to its noun as plain ones. */
 const plain = (text: string | null): string => (text ?? '').replace(/\u00A0/g, ' ')
 

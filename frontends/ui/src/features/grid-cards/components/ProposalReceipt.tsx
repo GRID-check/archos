@@ -22,6 +22,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { formatAbsoluteTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { ApplyProposalRequest, ProposedChangeKind, ProposedChangeStatus } from '@/lib/proposals/types'
@@ -83,7 +84,7 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
   alternative,
   acceptBlocked,
 }: ProposalReceiptProps<K>) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const { proposal, problem, busy, overtaken, decide } = server
 

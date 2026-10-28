@@ -5,7 +5,7 @@
  * The same store-free driver the canvas uses (`createTurnSocket`), over Node's
  * `ws`, which can set the upgrade's headers a browser cannot: the signed
  * `X-Grid-Request-Context` envelope (with the conversation, or the canvas
- * tools have no subject) and `X-AIQ-Mode: headless`, which marks the caller
+ * tools have no subject) and `X-Chat-Mode: headless`, which marks the caller
  * headless so the clarifier is skipped and `ask_user` refuses instead of
  * waiting thirty minutes on a socket nobody reads.
  *
@@ -55,7 +55,7 @@ export interface HeadlessTurnRequest {
   url: string
   conversationId: string
   projectId?: string
-  /** The upgrade's headers: the turn context (`turnContextHeaders`) and `x-aiq-mode`. */
+  /** The upgrade's headers: the turn context (`turnContextHeaders`) and `HEADLESS_MODE_HEADERS` (`headless-mode.ts`). */
   headers: Record<string, string>
   message: HeadlessUserMessage
   /** Hello entries the server must name before the message is sent (`user_message.if_idle`). */
@@ -189,7 +189,7 @@ export interface HeadlessCancelRequest {
   conversationId: string
   /** The turn to stop: for a wake, the wake id. */
   turnId: string
-  /** The upgrade's headers, built by the caller: the signed envelope (naming the conversation) and `x-aiq-mode`. */
+  /** The upgrade's headers, built by the caller: the signed envelope (naming the conversation) and `HEADLESS_MODE_HEADERS` (`headless-mode.ts`). */
   headers: Record<string, string>
   /** How long after sending a refusal is waited for. */
   graceMs?: number

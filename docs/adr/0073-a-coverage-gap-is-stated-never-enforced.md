@@ -132,4 +132,4 @@ would let the threshold be set for this question rather than borrowed, and when
 rerank scores are carried and measured, which would make option 4 a real
 candidate.
 
-The code-level rule for producers: [`sources/AGENTS.md`](../../sources/AGENTS.md).
+The code-level rule for producers: [`sources/AGENTS.md`](../../packages/AGENTS.md).

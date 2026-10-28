@@ -8,7 +8,7 @@ import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
-import { en } from '@/i18n/dictionaries'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   loadUploadScreeningPolicy,
   UploadScreeningPolicyUnavailableError,
@@ -91,7 +91,7 @@ describe('DocumentRoleField upload', () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(fetchSpy).not.toHaveBeenCalled()
-    expect(vi.mocked(toast.error).mock.calls[0][0]).toBe(en.files.errors.screeningPolicyUnavailable)
+    expect(vi.mocked(toast.error).mock.calls[0][0]).toBe(filesCopy.messages.en.errors.screeningPolicyUnavailable)
   })
 
   it('opens an upload batch, stamps every upload with it and seals it, so the upload gets its summary', async () => {

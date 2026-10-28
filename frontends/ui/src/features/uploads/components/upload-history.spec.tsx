@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, within } from '@/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FIXTURE_PROJECT_ID, FIXTURE_USER_ID, HISTORY } from '@/app/dev/_fixtures/upload-batches'
-import { en } from '@/i18n/dictionaries'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 import { UploadHistory, UploadHistoryList } from './upload-history'
 
 function pillCount(row: HTMLElement, key: string): string | null | undefined {
@@ -19,7 +21,7 @@ describe('UploadHistoryList', () => {
     expect(pillCount(first, 'failed')).toBe('2')
     expect(pillCount(first, 'unchanged')).toBe('4')
     expect(pillCount(first, 'excluded')).toBe('4')
-    expect(within(first).getByTestId('upload-pill-ready')).toHaveTextContent(en.files.status.ready)
+    expect(within(first).getByTestId('upload-pill-ready')).toHaveTextContent(filesCopy.messages.en.status.ready)
 
     const colleague = screen.getByTestId(`upload-history-row-${HISTORY[1].id}`)
     expect(pillCount(colleague, 'ready')).toBe('37')
@@ -35,10 +37,10 @@ describe('UploadHistoryList', () => {
     ])
     const colleague = screen.getByTestId(`upload-history-row-${HISTORY[1].id}`)
     expect(within(colleague).queryByRole('link')).not.toBeInTheDocument()
-    expect(within(colleague).queryByText(en.uploadBatches.history.you)).not.toBeInTheDocument()
+    expect(within(colleague).queryByText(uploadBatchesCopy.messages.en.history.you)).not.toBeInTheDocument()
     expect(within(colleague).getByText('Jonas Berger')).toBeInTheDocument()
     const own = screen.getByTestId(`upload-history-row-${HISTORY[0].id}`)
-    expect(within(own).getByText(en.uploadBatches.history.you)).toBeInTheDocument()
+    expect(within(own).getByText(uploadBatchesCopy.messages.en.history.you)).toBeInTheDocument()
   })
 
   it('links nothing when the reader is unknown', () => {
@@ -48,7 +50,7 @@ describe('UploadHistoryList', () => {
 
   it('says so when the project has no uploads yet', () => {
     render(<UploadHistoryList uploads={[]} currentUserId={FIXTURE_USER_ID} />)
-    expect(screen.getByTestId('upload-history-empty')).toHaveTextContent(en.uploadBatches.history.empty.title)
+    expect(screen.getByTestId('upload-history-empty')).toHaveTextContent(uploadBatchesCopy.messages.en.history.empty.title)
   })
 })
 
@@ -74,7 +76,7 @@ describe('UploadHistory', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<UploadHistory projectId={FIXTURE_PROJECT_ID} currentUserId={FIXTURE_USER_ID} />)
 
-    const more = await screen.findByRole('button', { name: en.uploadBatches.history.more })
+    const more = await screen.findByRole('button', { name: uploadBatchesCopy.messages.en.history.more })
     expect(screen.queryByTestId(`upload-history-row-${HISTORY[2].id}`)).not.toBeInTheDocument()
     fireEvent.click(more)
 
@@ -94,10 +96,10 @@ describe('UploadHistory', () => {
       )
     )
     render(<UploadHistory projectId={FIXTURE_PROJECT_ID} currentUserId={FIXTURE_USER_ID} />)
-    fireEvent.click(await screen.findByRole('button', { name: en.uploadBatches.history.more }))
-    expect(await screen.findByTestId('upload-history-more-error')).toHaveTextContent(en.uploadBatches.history.moreError)
+    fireEvent.click(await screen.findByRole('button', { name: uploadBatchesCopy.messages.en.history.more }))
+    expect(await screen.findByTestId('upload-history-more-error')).toHaveTextContent(uploadBatchesCopy.messages.en.history.moreError)
     expect(screen.getByTestId(`upload-history-row-${HISTORY[0].id}`)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: en.uploadBatches.history.more })).toBeEnabled()
+    expect(screen.getByRole('button', { name: uploadBatchesCopy.messages.en.history.more })).toBeEnabled()
   })
 
   it('does not call a first page with nothing visible „no uploads yet" while older ones remain', async () => {
@@ -111,7 +113,7 @@ describe('UploadHistory', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 500 })))
     render(<UploadHistory projectId={FIXTURE_PROJECT_ID} currentUserId={FIXTURE_USER_ID} />)
     const error = await screen.findByTestId('upload-history-error')
-    expect(error).toHaveTextContent(en.uploadBatches.history.error)
-    expect(within(error).getByRole('button', { name: en.common.actions.retry })).toBeInTheDocument()
+    expect(error).toHaveTextContent(uploadBatchesCopy.messages.en.history.error)
+    expect(within(error).getByRole('button', { name: commonCopy.messages.en.actions.retry })).toBeInTheDocument()
   })
 })

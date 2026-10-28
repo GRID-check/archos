@@ -9,10 +9,11 @@
  */
 
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import type { RatingsFilters } from '@/lib/feedback/filters'
 
 export function useRatingsFilterLabels(filters: RatingsFilters): string[] {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const or = (values: string[]): string => values.join(t('answerFeedback.filters.or'))
   const labels: string[] = []
   if (filters.verdict) {

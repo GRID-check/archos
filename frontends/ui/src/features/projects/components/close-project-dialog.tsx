@@ -36,6 +36,7 @@ import { MonthInput } from '@/components/ui/month-input'
 import { Stepper } from '@/components/ui/stepper'
 import { CleanupRequestError, requestCleanupProposal, runCleanup } from '@/adapters/api/project-cleanup-client'
 import { useLocale, useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { CleanupProposal } from '@/lib/projects/cleanup-types'
 import { CLEANUP_PARTIALLY_UNDONE_REASON } from '@/lib/projects/cleanup-types'
 import { currentMonth, isMonth } from '@/lib/projects/month'
@@ -72,7 +73,7 @@ export function CloseProjectDialog({
   onClose,
   children,
 }: CloseProjectDialogProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const thisMonth = currentMonth()
   const [step, setStep] = useState(0)

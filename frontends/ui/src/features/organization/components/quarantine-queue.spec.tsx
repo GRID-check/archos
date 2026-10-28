@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { en } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { describeQuarantineReason, type QuarantineReason } from '@/lib/upload-screening/quarantine'
 import { QuarantineQueue } from './quarantine-queue'
 
@@ -71,15 +72,15 @@ describe('QuarantineQueue', () => {
   it('renders each reason in the phrase the upload summary uses', async () => {
     stubApi()
     render(<QuarantineQueue />)
-    const tFiles = createTranslator(en, 'files')
+    const tFiles = translatorFor(filesCopy, 'en')
     const first = await screen.findByTestId('quarantine-row-doc-1')
     expect(within(first).getByText(describeQuarantineReason(TERM, tFiles))).toBeInTheDocument()
     expect(within(first).getByText('“Honorarvereinbarung” in the text · pages 1, 4')).toBeInTheDocument()
     const second = screen.getByTestId('quarantine-row-doc-2')
     expect(within(second).getByText(describeQuarantineReason(IBAN, tFiles))).toBeInTheDocument()
     // A partly checked scan says so; a verdict that could not be read says that.
-    expect(within(second).getByText(en.files.screening.partial)).toBeInTheDocument()
-    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText(en.organization.quarantine.noReason)).toBeInTheDocument()
+    expect(within(second).getByText(filesCopy.messages.en.screening.partial)).toBeInTheDocument()
+    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText(organizationCopy.messages.en.quarantine.noReason)).toBeInTheDocument()
   })
 
   it('says the findings through the same component as the preview, pages as text, and when the list is cut', async () => {
@@ -91,7 +92,7 @@ describe('QuarantineQueue', () => {
     // The pages are buttons only where the document is open beside them.
     expect(within(findings).queryByRole('button')).toBeNull()
     // The queue does not explain holding back to the people who decide about it.
-    expect(within(findings).queryByText(en.files.ingestFailure.quarantined)).toBeNull()
+    expect(within(findings).queryByText(filesCopy.messages.en.ingestFailure.quarantined)).toBeNull()
   })
 
   it('says where each file was uploaded, by project name when it can', async () => {
@@ -159,8 +160,8 @@ describe('QuarantineQueue', () => {
     stubApi([{ ...ITEMS[2], id: 'doc-f', held: 'unscreened' }, ITEMS[2]])
     render(<QuarantineQueue />)
     const unscreened = await screen.findByTestId('quarantine-row-doc-f')
-    expect(within(unscreened).getByText(en.organization.quarantine.unscreened)).toBeInTheDocument()
-    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText(en.organization.quarantine.noReason)).toBeInTheDocument()
+    expect(within(unscreened).getByText(organizationCopy.messages.en.quarantine.unscreened)).toBeInTheDocument()
+    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText(organizationCopy.messages.en.quarantine.noReason)).toBeInTheDocument()
     expect(within(unscreened).getByTestId('quarantine-release-doc-f')).toBeInTheDocument()
   })
 

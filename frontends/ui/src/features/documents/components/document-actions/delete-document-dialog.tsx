@@ -10,7 +10,8 @@
 import type { JSX } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
-import type { DocumentActions, DocumentScope } from './use-document-actions'
+import type { DocumentActions } from './use-document-actions'
+import { DOCUMENT_SCOPE_COPY, type DocumentScope } from './document-scope'
 
 export interface DeleteDocumentDialogProps {
   open: boolean
@@ -20,7 +21,7 @@ export interface DeleteDocumentDialogProps {
 }
 
 export function DeleteDocumentDialog({ open, onOpenChange, scope, actions }: DeleteDocumentDialogProps): JSX.Element {
-  const t = useTranslations(scope)
+  const t = useTranslations(DOCUMENT_SCOPE_COPY[scope])
   return (
     <ConfirmDialog
       open={open}

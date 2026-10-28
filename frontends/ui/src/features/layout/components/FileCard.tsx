@@ -15,6 +15,7 @@ import { ChevronDown, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { useLocale, useTranslations } from '@/i18n'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { formatTime } from '@/shared/utils/format-time'
 
 /** File artifact information from SSE events */
@@ -55,7 +56,7 @@ const isMarkdownFile = (filename: string): boolean => {
  */
 export const FileCard: FC<FileCardProps> = ({ file }) => {
   const [isExpanded, setIsExpanded] = useState(false)
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const { locale } = useLocale()
 
   // Content preview (first 100 chars)

@@ -1,6 +1,6 @@
 import { render, screen } from '@/test-utils'
 import { describe, expect, it } from 'vitest'
-import { en } from '@/i18n/dictionaries'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import { QuarantineFindings } from './quarantine-findings'
 
@@ -19,8 +19,8 @@ describe('QuarantineFindings', () => {
     render(<QuarantineFindings verdict={twoTerms} />)
     // Not a tooltip: a chip is no focus target and a touch has no hover.
     expect(screen.getAllByTestId('quarantine-findings-basis').map((line) => line.textContent)).toEqual([
-      en.files.screening.basisTerm,
-      en.files.screening.basisIban,
+      filesCopy.messages.en.screening.basisTerm,
+      filesCopy.messages.en.screening.basisIban,
     ])
   })
 
@@ -36,25 +36,25 @@ describe('QuarantineFindings', () => {
 
   it('claims nothing about the content when the reason cannot be read', () => {
     render(<QuarantineFindings verdict={null} />)
-    expect(screen.getByText(en.files.ingestFailure.quarantinedUnreadable)).toBeInTheDocument()
-    expect(screen.queryByText(en.files.ingestFailure.quarantined)).toBeNull()
+    expect(screen.getByText(filesCopy.messages.en.ingestFailure.quarantinedUnreadable)).toBeInTheDocument()
+    expect(screen.queryByText(filesCopy.messages.en.ingestFailure.quarantined)).toBeNull()
   })
 
   it('does not call a verdict unreadable when it only left its reasons out', () => {
     render(<QuarantineFindings verdict={{ reasons: [], omitted: 2 }} />)
-    expect(screen.getByText(en.files.ingestFailure.quarantined)).toBeInTheDocument()
+    expect(screen.getByText(filesCopy.messages.en.ingestFailure.quarantined)).toBeInTheDocument()
   })
 
   it('does not claim no model saw a file caught in its scanned pages\' transcript', () => {
     render(<QuarantineFindings verdict={{ ...verdict, checked: 'partial', after_transcription: true }} />)
     expect(screen.getByTestId('quarantine-findings-sentence')).toHaveTextContent(
-      en.files.ingestFailure.quarantinedAfterTranscription
+      filesCopy.messages.en.ingestFailure.quarantinedAfterTranscription
     )
-    expect(screen.queryByText(en.files.ingestFailure.quarantined)).toBeNull()
+    expect(screen.queryByText(filesCopy.messages.en.ingestFailure.quarantined)).toBeNull()
   })
 
   it('gives the explaining sentence when reasons are listed', () => {
     render(<QuarantineFindings verdict={verdict} />)
-    expect(screen.getByText(en.files.ingestFailure.quarantined)).toBeInTheDocument()
+    expect(screen.getByText(filesCopy.messages.en.ingestFailure.quarantined)).toBeInTheDocument()
   })
 })

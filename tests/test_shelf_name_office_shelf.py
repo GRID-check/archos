@@ -102,7 +102,7 @@ class TestTheOldNamesStayOut:
         what its code says about itself.
         """
         offenders: list[str] = []
-        for path in sorted((REPO_ROOT / "sources" / "knowledge_layer" / "src").rglob("*.py")):
+        for path in sorted((REPO_ROOT / "packages" / "knowledge-layer" / "src").rglob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"))
             docstrings = {
                 id(node.body[0].value)

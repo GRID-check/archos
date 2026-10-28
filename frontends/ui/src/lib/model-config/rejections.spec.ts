@@ -2,12 +2,12 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { de, en } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { describeRejections, isZdrListUnavailableResponse, MODEL_REJECTION_CODES, readRejectionDetails } from './rejections'
 
-const tEn = createTranslator(en, 'organization')
-const tDe = createTranslator(de, 'organization')
+const tEn = translatorFor(organizationCopy, 'en')
+const tDe = translatorFor(organizationCopy, 'de')
 
 describe('rejection codes', () => {
   it('every code has copy in both languages', () => {

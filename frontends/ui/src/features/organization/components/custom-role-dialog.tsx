@@ -40,6 +40,8 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { ROLE_DESCRIPTION_MAX, ROLE_NAME_MAX } from '@/lib/authz/role-limits'
 import { permissionLabel } from '../lib/permission-labels'
 
@@ -123,8 +125,8 @@ const CustomRoleForm: FC<{
   onClose: () => void
   onSaved: (role: OrganizationRole) => void
 }> = ({ role, assignable, closeGuard, onClose, onSaved }) => {
-  const t = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const creating = !role
   const initial = useMemo(() => draftOf(role), [role])
   const [draft, setDraft] = useState<Draft>(initial)

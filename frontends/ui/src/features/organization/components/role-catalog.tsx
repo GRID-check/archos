@@ -47,6 +47,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { ROLES, findPermissionSpec, type PermissionTier, type RoleSpec } from '@/lib/authz/catalog'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 /**
  * Reading order for the tier groups: the organization you administer, then the
@@ -76,7 +77,7 @@ export function groupByTier<T extends { readonly tier: PermissionTier }>(
 }
 
 export function RoleCatalog({ roles = ROLES }: RoleCatalogProps): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const groups = groupByTier(roles)
 
   return (

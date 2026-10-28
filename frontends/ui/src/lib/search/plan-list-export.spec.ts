@@ -8,7 +8,8 @@ vi.mock('./document-search', () => ({ listSearchDocumentsForExport: vi.fn() }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/i18n/server', () => ({ getLocale: vi.fn().mockResolvedValue('de') }))
 
-import { getDictionary } from '@/i18n/dictionaries'
+import { dossierCopy } from '@/i18n/namespaces/dossier'
+import { searchExportCopy } from '@/i18n/namespaces/search-export'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { listSearchDocumentsForExport } from './document-search'
@@ -48,7 +49,7 @@ const hit = (overrides: Partial<DocumentHit> = {}): DocumentHit => ({
   ...overrides,
 })
 
-const de = getDictionary('de')
+const de = { dossier: dossierCopy.messages.de, searchExport: searchExportCopy.messages.de }
 
 beforeEach(() => vi.clearAllMocks())
 

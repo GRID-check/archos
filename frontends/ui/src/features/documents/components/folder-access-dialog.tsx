@@ -53,6 +53,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { FolderItem } from './project-file-workspace'
 
 type Mode = 'inherit' | 'custom'
@@ -133,8 +135,8 @@ function useFolderAccessData(projectId: string, folderId: string, hasOwnList: bo
 const FolderAccessForm: FC<
   Omit<FolderAccessDialogProps, 'open' | 'onOpenChange' | 'folder'> & { folder: FolderItem; onClose: () => void }
 > = ({ folder, projectId, onSaved, onClose }) => {
-  const t = useTranslations('files')
-  const tc = useTranslations('common')
+  const t = useTranslations(filesCopy)
+  const tc = useTranslations(commonCopy)
   const initialMode: Mode = folder.ownAccess ? 'custom' : 'inherit'
   const { loaded, failed, retry } = useFolderAccessData(projectId, folder.id, Boolean(folder.ownAccess))
   const [mode, setMode] = useState<Mode>(initialMode)
