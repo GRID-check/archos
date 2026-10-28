@@ -132,7 +132,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **Cluster & images** | | |
 | 🔒 **`kubeconfig`** | — | Target-cluster kubeconfig. For CI use the non-expiring SA token (guide §2b) |
 | `namespace` | `grid` | Namespace for all app + data workloads |
-| `imageRegistry` | `ghcr.io/grid-check` | Registry for the app images |
+| `imageRegistry` | `ghcr.io/archos-at` | Registry for the app images |
 | `imageTag` | `latest` | Tag for all images. CI pins `sha-<commit>` |
 | `backendImage` / `frontendImage` / `webImage` | — | Full image-ref overrides (registry+tag ignored) |
 | `imagePullPolicy` | auto | Explicit override only; the default derives per image ref — `Always` for a moving tag (`latest`/untagged), `IfNotPresent` for a pinned one — so mixed refs (SHA `imageTag` + `:latest` override) each get the right policy |

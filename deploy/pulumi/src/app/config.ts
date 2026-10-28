@@ -48,7 +48,7 @@ export function buildRegistryPullSecret(
   const creds = cfg.images.pullCredentials;
   if (!creds) return undefined;
   // Registry server = first path segment of the image registry
-  // ("ghcr.io/grid-check" → "ghcr.io").
+  // ("ghcr.io/archos-at" → "ghcr.io").
   const server = cfg.images.registry.split("/")[0];
   const dockerConfigJson = creds.password.apply((pw) =>
     JSON.stringify({

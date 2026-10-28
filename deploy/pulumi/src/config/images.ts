@@ -48,7 +48,7 @@ export function pullPolicyFor(image: string): string {
 }
 
 export interface ImagesConfig {
-  /** e.g. ghcr.io/grid-check */
+  /** e.g. ghcr.io/archos-at */
   registry: string;
   /** Immutable tag both images share (a git SHA in CI, or "latest"). */
   tag: string;
@@ -90,7 +90,7 @@ export function loadImages(cfg: pulumi.Config): ImagesConfig {
     );
   }
       return {
-    registry: cfg.get("imageRegistry") ?? "ghcr.io/grid-check",
+    registry: cfg.get("imageRegistry") ?? "ghcr.io/archos-at",
     tag: imageTag,
     backend: cfg.get("backendImage"),
     frontend: cfg.get("frontendImage"),
