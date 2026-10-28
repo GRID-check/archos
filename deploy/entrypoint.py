@@ -8,31 +8,64 @@ import subprocess
 import sys
 from collections.abc import MutableMapping
 
-#: The values of ``GRID_ROLE``; the two web roles both start ``start_web.py``.
+#: The values of ``PROCESS_ROLE``; the two web roles both start ``start_web.py``.
 ROLES = ("chat", "api", "worker", "ingest-worker")
 
-#: The prefix the variables carried before they took the house prefix ``GRID_``.
-#: Read for one release, then this fallback goes (ADR-0145 row 10b).
-LEGACY_PREFIX = "AIQ_"
-PREFIX = "GRID_"
+#: The prefixes the variables carried before they lost the product's name,
+#: newest first: ``GRID_X``, then ``AIQ_X``, is read as ``X`` for one release,
+#: then this fallback goes. Mirrored, with ``RENAMED``, in
+#: ``frontends/ui/scripts/legacy-env-names.cjs`` for the UI image's processes.
+LEGACY_PREFIXES = ("GRID_", "AIQ_")
+
+#: Where the bare name would collide with a variable a library or the platform
+#: already reads (``ROLE``, ``VERBOSE``, the ``LANGFUSE_`` namespace), or would
+#: still carry the product's name, the variable got a name of its own.
+RENAMED = {
+    "ROLE": "PROCESS_ROLE",
+    "VERBOSE": "AGENT_VERBOSE",
+    "LANGFUSE_TRACE_RETENTION_DAYS": "TRACE_RETENTION_DAYS",
+    "PILOTI_ASK_MAX_SECONDS": "AGENT_ASK_MAX_SECONDS",
+}
+
+#: Off until the change that moves the deployments to the new names: until every
+#: reader reads them, "rename it" would be advice that breaks the process.
+WARN = False
+
+
+def current_name(legacy: str) -> str | None:
+    """The name ``legacy`` is read as now (`GRID_MAX_ACTIVE_JOBS_PER_ORG` → `MAX_ACTIVE_JOBS_PER_ORG`), or None."""
+    for prefix in LEGACY_PREFIXES:
+        rest = legacy.removeprefix(prefix)
+        if rest != legacy and rest:
+            return RENAMED.get(rest, rest)
+    return None
+
+
+def _warn(line: str) -> None:
+    if WARN:
+        print(line, file=sys.stderr, flush=True)
 
 
 def adopt_legacy_names(environ: MutableMapping[str, str]) -> list[str]:
-    """Copy each ``AIQ_X`` onto ``GRID_X`` where that is unset, warning once per name.
+    """Copy each old name onto its current one where that is unset, warning once per name.
 
     The one place an old name is still read: every process of the image starts
     here and inherits the result, so no reader in the code knows the old names.
-    Returns the new names it set.
+    A name already set wins over ``GRID_X``, which wins over ``AIQ_X``. Returns
+    the current names it set.
     """
     adopted = []
-    for legacy in sorted(name for name in environ if name.startswith(LEGACY_PREFIX)):
-        name = PREFIX + legacy.removeprefix(LEGACY_PREFIX)
-        if name in environ:
-            print(f"WARNING: {legacy} is deprecated and ignored, {name} is set", file=sys.stderr, flush=True)
-            continue
-        environ[name] = environ[legacy]
-        adopted.append(name)
-        print(f"WARNING: {legacy} is deprecated; rename it to {name}", file=sys.stderr, flush=True)
+    for prefix in LEGACY_PREFIXES:
+        for legacy in sorted(name for name in environ if name.startswith(prefix)):
+            name = current_name(legacy)
+            if name is None:
+                continue
+            if name in environ:
+                _warn(f"WARNING: {legacy} is deprecated and ignored, {name} is set")
+                continue
+            environ[name] = environ[legacy]
+            adopted.append(name)
+            _warn(f"WARNING: {legacy} is deprecated; rename it to {name}")
     return adopted
 
 
@@ -55,18 +88,18 @@ def main() -> int:
     # roles (the plugin mounts what each serves, `aiq_api.roles`), `worker` and
     # `ingest-worker` claim jobs from the database. There is no default: a
     # process that does not say what it is stops here rather than guess.
-    role = os.getenv("GRID_ROLE", "").strip().lower()
+    role = os.getenv("PROCESS_ROLE", "").strip().lower()
     if role not in ROLES:
-        raise SystemExit(f"GRID_ROLE={role!r} is not a role of this image: set it to one of {', '.join(ROLES)}")
+        raise SystemExit(f"PROCESS_ROLE={role!r} is not a role of this image: set it to one of {', '.join(ROLES)}")
     # A dedicated worker container runs the DB-claimed research worker — no web
     # server (ADR-0021).
     if role == "worker":
-        print("Starting DB-claimed research worker (GRID_ROLE=worker)...", flush=True)
+        print("Starting DB-claimed research worker (PROCESS_ROLE=worker)...", flush=True)
         os.execvp("python", ["python", "-m", "aiq_api.jobs.worker"])
     # The ingestion tier (ADR-0076): claims from the durable ingest queue, fairly
     # across organisations. No web server; scaled on the queue's depth.
     if role == "ingest-worker":
-        print("Starting DB-claimed ingest worker (GRID_ROLE=ingest-worker)...", flush=True)
+        print("Starting DB-claimed ingest worker (PROCESS_ROLE=ingest-worker)...", flush=True)
         os.execvp("python", ["python", "-m", "aiq_api.jobs.ingest_worker"])
 
     config_file = os.getenv(
@@ -77,7 +110,7 @@ def main() -> int:
     port = int(os.getenv("PORT", "8000"))
 
     print("============================================", flush=True)
-    print("Grid agent web tier", flush=True)
+    print("Agent web tier", flush=True)
     print(f"Config: {config_file}", flush=True)
     print(f"API:    http://{host}:{port}", flush=True)
     print("============================================", flush=True)

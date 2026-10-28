@@ -356,8 +356,11 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Find passages like one in the office’s documents',
     description:
-      'Given a passage (its document by id or legal-corpus file name, and its text), finds similar passages across the projects ' +
-      'and documents the person may read, grouped project, document, passage. Shows how the office handled it before.',
+      'Given a passage (its document by id or legal-corpus file name, and its text), finds similar passages across every project ' +
+      'and document the person may read, grouped project, document, passage. Shows how the office handled it before. ' +
+      '`projectId` does not narrow the search: it names the project the person is working in, whose group comes first ' +
+      'as `current`; a stored project document names its own project and wins over it. `projectsSearched` counts the projects ' +
+      'besides that one.',
     method: 'POST',
     path: '/api/passages/similar',
     body: similarPassagesRequestSchema,

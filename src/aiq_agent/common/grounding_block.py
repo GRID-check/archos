@@ -38,11 +38,11 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
+from aiq_agent.common.action_rows import current_action_call
 from aiq_agent.common.provenance import AGENT_AUTHOR
 from aiq_agent.common.provenance import AgentProvenance
 from aiq_agent.common.provenance import provenance_label
 from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import current_action_call
 from aiq_agent.common.turn_status import current_retrieval_round
 from aiq_agent.common.turn_status import emit_step
 from aiq_agent.common.wire_v2 import SourcesStep

@@ -15,6 +15,8 @@ Two things are worth pinning here, and they are not the same thing:
 import json
 
 import pytest
+from agent_testing.langfuse import ENDPOINT
+from agent_testing.langfuse import _make_config
 
 from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
 from aiq_agent.observability.langfuse_trace_attributes import SESSION_ID_ATTRIBUTE
@@ -24,14 +26,6 @@ from aiq_agent.observability.langfuse_trace_attributes import identity_attribute
 from aiq_agent.observability.langfuse_trace_attributes import langfuse_attributes_for
 from aiq_agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
 from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
-
-ENDPOINT = "http://otel-collector:4318/v1/traces"
-
-
-def _make_config() -> OtelCollectorRedactionTelemetryExporter:
-    return OtelCollectorRedactionTelemetryExporter(
-        _type="otelcollector_redaction", project="backend-chat", endpoint=ENDPOINT
-    )
 
 
 class TestAttributeMapping:

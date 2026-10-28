@@ -89,6 +89,7 @@ from pydantic import ValidationError
 from starlette.websockets import WebSocketDisconnect
 
 from aiq_agent.auth.errors import AuthError
+from aiq_agent.common.action_rows import is_literal_search
 from aiq_agent.common.content_screen import ScreeningRules
 from aiq_agent.common.content_screen import findings_summary
 from aiq_agent.common.content_screen import mask_text
@@ -98,7 +99,6 @@ from aiq_agent.common.steering import SteerInbox
 from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import bind_steer_inbox
 from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.turn_status import is_literal_search
 from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 from aiq_agent.common.wire_v2 import CLIENT_MESSAGE
 from aiq_agent.common.wire_v2 import CLOSE_CLIENT_OUTDATED
@@ -169,6 +169,8 @@ from aiq_agent.turn.payload import thread_reply_requested
 from aiq_agent.turn.payload import turn_surface
 from aiq_agent.turn.response import answer_message_id
 from aiq_agent.turn.streaming import TurnTextFold
+from aiq_api.after_terminal_writes import drain_after_terminal
+from aiq_api.after_terminal_writes import in_background
 from aiq_api.auth.middleware import build_request_trace_tags
 from aiq_api.auth.middleware import detect_internal_caller
 from aiq_api.auth.middleware import resolve_request_user
@@ -484,10 +486,6 @@ def _org_id_from_scope(scope: Mapping[str, Any]) -> str | None:
 #: stored unkeyed, and a queue notice or a run hand-off is not an answer.
 _NOT_METADATA = {"message_id", "text", "cards", "job_admission_rejected", "retry_after_seconds", "run"}
 
-#: Background writes after a terminal still in flight: the answer row and what
-#: follows it (:func:`_after_terminal`). The loop holds only weak references.
-_PERSIST_TASKS: set[asyncio.Task[Any]] = set()
-
 
 def turn_row_metadata(finished: RunFinishedBody) -> dict[str, Any] | None:
     """The message row's metadata for a finished turn, or None when nothing is written.
@@ -544,18 +542,11 @@ async def persist_turn_result(
     )
 
 
-def _in_background(work: Awaitable[Any]) -> asyncio.Task[Any]:
-    task = asyncio.ensure_future(work)
-    _PERSIST_TASKS.add(task)
-    task.add_done_callback(_PERSIST_TASKS.discard)
-    return task
-
-
 def _persist_in_background(
     conversation_id: str, organization_id: str | None, finished: RunFinishedBody, guard: WriteFence | None = None
 ) -> asyncio.Task[Any]:
     """Persist off the frame's path: the stage events behind it must not wait on the BFF."""
-    return _in_background(
+    return in_background(
         persist_turn_result(
             conversation_id=conversation_id, organization_id=organization_id, finished=finished, guard=guard
         )
@@ -863,7 +854,7 @@ class RunningTurn:
         if self._followed or self.wire.terminal is None:
             return
         self._followed = True
-        _in_background(_after_terminal(self))
+        in_background(_after_terminal(self))
 
     async def ask(self, prompt: InteractionPrompt) -> HumanResponse:
         """NAT's ``user_input_callback``: put the prompt to the asker and wait for their answer."""
@@ -1299,15 +1290,16 @@ class ChatRegistry:
         with the process.
         """
         running = [turn.task for turn in list(self._turns.values()) if turn.task is not None and not turn.task.done()]
-        if not running:
-            return 0
-        logger.info("Draining %d chat turn(s), up to %.0fs", len(running), timeout)
-        _, pending = await asyncio.wait(running, timeout=timeout)
+        pending: set[asyncio.Task[None]] = set()
+        if running:
+            logger.info("Draining %d chat turn(s), up to %.0fs", len(running), timeout)
+            _, pending = await asyncio.wait(running, timeout=timeout)
         for task in pending:
             task.cancel()
         if pending:
             logger.warning("Cancelling %d chat turn(s) still running after the drain", len(pending))
             await asyncio.wait(pending, timeout=DRAIN_CANCEL_GRACE_SECONDS)
+        await drain_after_terminal()
         return len(pending)
 
     def _supersede_local(self, conversation_id: str, newer_turn_id: str) -> None:

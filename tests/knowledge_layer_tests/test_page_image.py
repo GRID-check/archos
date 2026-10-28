@@ -12,9 +12,8 @@ import io
 import pytest
 from knowledge_layer import page_image
 from knowledge_layer import view_image
+from knowledge_layer_testing.pdf_fixtures import build_pdf
 from PIL import Image
-
-from .pdf_fixtures import build_pdf
 
 COLLECTION = "proj_a"
 LOCATION = ("proj_a/doc/Grundriss.pdf", "bucket-a")
