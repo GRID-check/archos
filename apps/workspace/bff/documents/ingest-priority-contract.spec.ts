@@ -1,4 +1,4 @@
-// @disk-inputs: ../backend/src/agent_host/models/requests.py
+// @disk-inputs: ../agent-host/src/agent_host/models/requests.py
 /**
  * @vitest-environment node
  */

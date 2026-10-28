@@ -1,4 +1,4 @@
-// @disk-inputs: ../backend/src/agent_host/chat_socket.py
+// @disk-inputs: ../agent-host/src/agent_host/chat_socket.py
 /**
  * @vitest-environment node
  */
