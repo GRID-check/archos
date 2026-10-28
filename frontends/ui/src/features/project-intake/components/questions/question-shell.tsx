@@ -4,6 +4,7 @@ import type { JSX, ReactNode } from 'react'
 import { BusyButton } from '@/components/ui/busy-button'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { intakeQuestionsStepCopy } from '@/i18n/namespaces/intake-questions-step'
 import { ASIDE_ACTION_CLASS, PRIMARY_ACTION_CLASS, StepFooter, type StepProgress } from '../setup-frame'
 
 /** Where the shown question sits in the round, and why it is asked („entscheidet die Gebäudeklasse"). */
@@ -69,7 +70,7 @@ export function QuestionShell({
   /** Quiet links under the question on a phone (the folded interview, „Rest später"). */
   after?: ReactNode
 }): JSX.Element {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   const isMobile = useIsMobile()
   const submit = (
     <BusyButton

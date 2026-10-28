@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { QuestionControl } from '@/features/projects/components/intake-question-field'
 import { useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import { isIntakeAnswerProvided } from '@/lib/project-profile/intake-conditions'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import type { IntakeDecision, Suggestion } from '@/lib/project-intake/types'
@@ -29,8 +31,8 @@ export function EditValue({
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
 }): JSX.Element | null {
-  const t = useTranslations('intakeProfileStep')
-  const tIntake = useTranslations('projectIntake')
+  const t = useTranslations(intakeProfileStepCopy)
+  const tIntake = useTranslations(projectIntakeCopy)
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<ProjectPrimitiveValue>(item.value)
   const [saving, save] = usePressed()

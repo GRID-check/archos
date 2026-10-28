@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SpendTrendChart } from '@/components/charts/spend-trend-chart'
 import { useLocale, useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { formatCredits, formatTokens } from '@/lib/format'
 import { BudgetMeter } from './budget-meter'
 
@@ -300,7 +301,7 @@ export interface SpendFormat {
  * credits otherwise. Every number on the card goes through this.
  */
 export function useSpendFormat(unit: BudgetUnit): SpendFormat {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
   return useMemo(() => {
     const onOwnKey = unit === 'token'
@@ -323,7 +324,7 @@ export function useSpendFormat(unit: BudgetUnit): SpendFormat {
  * `grid-spend-viz` scope, which the caller owns.
  */
 export const UsageOverviewView: FC<{ usage: UsageResponse }> = ({ usage }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { onOwnKey, amountLabel, requestsLabel } = useSpendFormat(usage.unit)
 
   const modelSeries = useMemo(() => buildModelSeries(usage.summary.perModel), [usage])

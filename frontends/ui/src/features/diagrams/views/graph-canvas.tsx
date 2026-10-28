@@ -45,6 +45,7 @@ import dagre from '@dagrejs/dagre'
 
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { useTranslations } from '@/i18n'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 
 /** Same ink as the Herleitung's edges: foreground at 30%, on any surface. */
 export const EDGE_STROKE = 'color-mix(in oklch, var(--foreground) 30%, transparent)'
@@ -224,7 +225,7 @@ function Canvas({
   width,
   arrows = true,
 }: GraphCanvasProps) {
-  const t = useTranslations('diagrams')
+  const t = useTranslations(diagramsCopy)
   const initial = useMemo<Node[]>(
     () =>
       nodes.map((node) => ({

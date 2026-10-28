@@ -37,6 +37,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { useModifierLabel } from '@/components/shell/shortcut-keys'
 import { useTranslations } from '@/i18n'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
 import { capturePosthog, getPosthogSupportContext } from '@/lib/analytics/posthog'
 import {
   captureFeedbackContext,
@@ -100,7 +101,7 @@ export function FeedbackForm({
   onCancel,
   onSendingChange,
 }: FeedbackFormProps): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const mod = useModifierLabel()
   const messageId = React.useId()
   const contactId = React.useId()
@@ -285,7 +286,7 @@ export function FeedbackForm({
  * it is disclosure, not a question, and most reporters never need to open it.
  */
 function CapturedContext({ pagePath, context }: ReturnType<typeof captureFeedbackContext>): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const rows: Array<[string, string | undefined | null]> = [
     [t('dialog.context.page'), pagePath],
     [t('dialog.context.browser'), context.userAgent],

@@ -22,6 +22,7 @@ import type { FC } from 'react'
 import { PageRegionThumbnail } from '@/features/knowledge/components/page-region-thumbnail'
 import type { PageRegion } from '@/features/knowledge/lib/page-region'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { CitationTarget } from '../lib/citations'
 
 /** Drawn width in CSS pixels: the peek's content column (`w-80` less its padding). */
@@ -46,7 +47,7 @@ export const CitationPageThumbnail: FC<{
   /** CSS colour of the marks: the tint of the source, as in the viewer. */
   color?: string
 }> = ({ documentId, page, regions, color }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <PageRegionThumbnail
       data-citation-thumbnail=""

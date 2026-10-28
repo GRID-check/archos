@@ -17,6 +17,7 @@ import { Chip } from '@/components/ui/chip'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useTranslations } from '@/i18n'
+import { intakeProjectStepCopy } from '@/i18n/namespaces/intake-project-step'
 
 export interface PersonDraft {
   name: string
@@ -37,7 +38,7 @@ export function FunctionField({
   onChange: (value: string) => void
   autoFocus?: boolean
 }): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
+  const t = useTranslations(intakeProjectStepCopy)
   const id = useId()
   return (
     <Field>
@@ -84,7 +85,7 @@ export function PersonForm({
   onSubmit: (draft: PersonDraft) => void
   onCancel: () => void
 }): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
+  const t = useTranslations(intakeProjectStepCopy)
   const id = useId()
   const [draft, setDraft] = useState(initial)
   const set = (key: keyof PersonDraft) => (value: string) => setDraft((current) => ({ ...current, [key]: value }))

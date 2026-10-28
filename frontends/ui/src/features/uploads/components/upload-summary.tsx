@@ -27,6 +27,8 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 import { useProjectName, useUploadSummary, type UploadSummaryState } from '../hooks/use-upload-summary'
 import {
   documentHref,
@@ -53,7 +55,7 @@ function Section({ label, testId, children }: { label: string; testId: string; c
 }
 
 export function UploadSummaryView({ summary }: { summary: UploadSummary }): JSX.Element {
-  const t = useTranslations('uploadBatches')
+  const t = useTranslations(uploadBatchesCopy)
   const tallyLabel = useTallyLabel()
   const tally = useMemo(() => tallySummary(summary), [summary])
   const groups = useMemo(() => groupByFolder(summary.documents), [summary.documents])
@@ -138,7 +140,7 @@ export function UploadSummaryMeta({
   summary: UploadSummary
   projectName: string | null
 }): JSX.Element {
-  const t = useTranslations('uploadBatches')
+  const t = useTranslations(uploadBatchesCopy)
   const { locale } = useLocale()
   const place = summary.scope === 'project' ? (projectName ?? t('summary.place.project')) : t(`summary.place.${summary.scope}`)
   const href = placeHref(summary)
@@ -172,7 +174,7 @@ export function UploadSummaryMeta({
 }
 
 function UploadSummarySkeleton(): JSX.Element {
-  const t = useTranslations('uploadBatches')
+  const t = useTranslations(uploadBatchesCopy)
   return (
     <div className="space-y-7" aria-busy="true" aria-label={t('summary.loading')} data-testid="upload-summary-loading">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -191,8 +193,8 @@ function UploadSummarySkeleton(): JSX.Element {
 
 /** Whatever the summary's state calls for: the summary, its skeleton, the not-found answer, or a retry. */
 export function UploadSummaryBody({ state, retry }: { state: UploadSummaryState; retry: () => void }): JSX.Element {
-  const t = useTranslations('uploadBatches')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(uploadBatchesCopy)
+  const tCommon = useTranslations(commonCopy)
   switch (state.status) {
     case 'loading':
       return <UploadSummarySkeleton />
@@ -228,8 +230,8 @@ export function UploadSummaryBody({ state, retry }: { state: UploadSummaryState;
  * `/app/uploads/<id>`; closing it then lands where the upload went.
  */
 export function UploadSummaryDialog({ batchId, standalone }: { batchId: string; standalone: boolean }): JSX.Element {
-  const t = useTranslations('uploadBatches')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(uploadBatchesCopy)
+  const tCommon = useTranslations(commonCopy)
   const { state, retry } = useUploadSummary(batchId)
   const summary = state.status === 'ready' ? state.summary : null
   const projectName = useProjectName(summary?.scope === 'project' ? summary.projectId : null)

@@ -11,6 +11,7 @@ import { Check, FolderPlus, X } from 'lucide-react'
 import { motion, useIconSwapTransition } from '@/components/motion'
 import { Chip } from '@/components/ui/chip'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   operationLabel,
   type FileOperationItem,
@@ -39,7 +40,7 @@ function OperationRow({
   item: FileOperationItem
   result?: FileOperationResult
 }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const root = t('cards.fileOperationProposal.root')
 
   const subject =
@@ -96,7 +97,7 @@ function OperationRow({
  * folder as well as the files, so it is named first, with what it is for.
  */
 function NewFolderNote({ folder }: { folder: FileOperationNewFolder }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <li className="card-caption text-foreground flex flex-col gap-0.5" data-testid="file-operation-new-folder">
       <div className="flex items-baseline gap-x-1.5">

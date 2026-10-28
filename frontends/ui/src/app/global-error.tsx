@@ -4,8 +4,8 @@ import { useEffect, useSyncExternalStore } from 'react'
 
 import { StatusScreen } from '@/components/brand/status-screen'
 import { Button } from '@/components/ui/button'
-import { defaultLocale, getActiveLocale, getDictionary, type Locale } from '@/i18n'
-import { createTranslator } from '@/i18n/translate'
+import { defaultLocale, getActiveLocale, translatorFor, type Locale } from '@/i18n'
+import { errorsCopy } from '@/i18n/namespaces/errors'
 import { capturePosthogException } from '@/lib/analytics/posthog'
 import { THEME_BOOT_SCRIPT } from './theme-boot'
 import './globals.css'
@@ -66,7 +66,7 @@ export default function GlobalError({
  * the `/dev/global-error` preview can render the same thing inside the app.
  */
 export function GlobalErrorScreen({ locale, retry }: { locale: Locale; retry: () => void }) {
-  const t = createTranslator(getDictionary(locale), 'errors')
+  const t = translatorFor(errorsCopy, locale)
   return (
     <StatusScreen
       code={t('appError.code')}

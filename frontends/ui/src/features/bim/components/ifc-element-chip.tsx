@@ -20,6 +20,7 @@ import Link from 'next/link'
 import { Box } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import type { BimElementLink } from '../lib/element-question'
 import { elementLinkHref } from '../lib/element-question'
 
@@ -29,7 +30,7 @@ export interface IfcElementChipProps {
 }
 
 export function IfcElementChip({ link, children }: IfcElementChipProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const view = link.view
   // What the chip promises to do, spelled out for a screen reader — "Wand W-12"
   // alone does not say that following it opens the 3D model.

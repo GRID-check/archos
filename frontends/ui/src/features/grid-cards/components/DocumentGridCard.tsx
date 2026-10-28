@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { searchHref } from '@/features/search/lib/search-hrefs'
 import type { SearchScopeQuery } from '@/lib/search/search-wire'
 import { FileCard } from '@/features/documents/components/file-card'
@@ -46,7 +47,7 @@ export function documentGridSearchHref(search: DocumentGridSearch, projectId: st
  * workspace search, the card offers that search with every result.
  */
 export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _query, documents, search, projectId }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const { resolved, isLoading, error, retry } = useSurfacedDocuments(documents, projectId ?? null)
   const peekedOnce = useRef<string | null>(null)

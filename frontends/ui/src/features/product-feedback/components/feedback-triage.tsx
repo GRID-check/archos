@@ -63,6 +63,7 @@ import {
 import { TimeAgo } from '@/components/ui/time-ago'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { useLocale, useTranslations } from '@/i18n'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
 import {
   fetchPlatformFeedback,
   fetchPlatformFeedbackReport,
@@ -147,7 +148,7 @@ export function FeedbackTriage({
   claimTicketId = null,
   client = defaultClient,
 }: FeedbackTriageProps): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const [status, setStatus] = React.useState<StatusFilter>('active')
   const [kind, setKind] = React.useState<KindFilter>('all')
   const [assignee, setAssignee] = React.useState<AssigneeFilter>('all')
@@ -578,7 +579,7 @@ function ReportRow({
   claiming?: boolean
   onClaim?: () => void
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const { locale } = useLocale()
   const ref = React.useRef<HTMLLIElement>(null)
   const KindIcon = FEEDBACK_KIND_ICONS[report.kind]
@@ -746,7 +747,7 @@ function CaseLine({
   claiming: boolean
   onClaim?: () => void
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const { locale } = useLocale()
   const { assignee } = ticket
   const holder = !assignee

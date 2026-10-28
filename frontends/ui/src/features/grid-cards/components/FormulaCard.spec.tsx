@@ -22,8 +22,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '@/i18n'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
 import { A2uiCard } from '@/features/a2ui/A2uiCard'
 import cases from '../lib/formula-cases.json'
@@ -345,9 +344,8 @@ describe('the copy', () => {
       node && typeof node === 'object'
         ? Object.entries(node).flatMap(([key, value]) => keys(value, `${prefix}${key}.`))
         : [prefix.slice(0, -1)]
-    const formulaOf = (dictionary: unknown) =>
-      (dictionary as { chat: { cards: { formula: unknown } } }).chat.cards.formula
-    expect(keys(formulaOf(en)).sort()).toEqual(keys(formulaOf(de)).sort())
-    expect((de as unknown as { chat: { cards: { formula: { eyebrow: string } } } }).chat.cards.formula.eyebrow).toBe('Was wäre, wenn')
+    const formulaOf = (chat: unknown) => (chat as { cards: { formula: unknown } }).cards.formula
+    expect(keys(formulaOf(chatCopy.messages.en)).sort()).toEqual(keys(formulaOf(chatCopy.messages.de)).sort())
+    expect((chatCopy.messages.de as unknown as { cards: { formula: { eyebrow: string } } }).cards.formula.eyebrow).toBe('Was wäre, wenn')
   })
 })

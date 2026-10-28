@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { CommentPin } from '@/components/ui/comment-pin'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatDayRange } from '@/lib/format'
 import { isForReader, isLive, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
 import type { RevisionRef } from '@/lib/documents/revision-links'
@@ -44,7 +45,7 @@ function CheckFixedButton({
   from: RevisionRef | null
   onCheckFixed: CheckFixed
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const target = from?.id ?? review.documentId
   const running = review.piloti.asks.some(
     (ask) => ask.status === 'thinking' && ask.checkFixed?.documentId === target
@@ -115,7 +116,7 @@ function Pages({
   review: DocumentReview
   onOpen: OpenMark
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const pages = [...new Set(marks.map((annotation) => annotation.page))]
   const headed = new Set(review.annotations.map((annotation) => annotation.page)).size > 1
   return (
@@ -169,7 +170,7 @@ function useCarrying(review: DocumentReview) {
  * Fassung übernehmen" does.
  */
 function EarlierBar({ review, onCheckFixed }: { review: DocumentReview; onCheckFixed?: CheckFixed }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { busy, failed, carry } = useCarrying(review)
   const marks = review.annotations.filter((annotation) => !annotation.onCurrentRevision && annotation.carryTarget)
   if (marks.length === 0) return null
@@ -213,7 +214,7 @@ function CarriedFrom({
   group: CarriedGroup
   onCheckFixed?: CheckFixed
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const { busy, failed, carry } = useCarrying(review)
   const [resolveFailed, setResolveFailed] = useState(false)
@@ -357,7 +358,7 @@ function CarriedFrom({
  * it is how the person reads a check of what is fixed („In … behoben: …").
  */
 function PilotiVerdict({ annotation, viewerId }: { annotation: AnnotationView; viewerId: string | null }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const newest = annotation.replies.at(-1)
   if (newest?.authorKind !== 'piloti') return null
   return (
@@ -422,7 +423,7 @@ export function ReviewPanel({
    */
   presentation?: 'rail' | 'sheet'
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { listed, filter, setFilter, load, mine, setMine } = review
   const counts = tabCounts(review.annotations, { on: mine, me: review.me })
   const [proposalsOpen, setProposalsOpen] = useState(true)
@@ -537,7 +538,7 @@ function ListedMarks({
   onOpen: OpenMark
   onWalkProposals?: () => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <>
       {proposals.length > 0 && (
@@ -589,7 +590,7 @@ function ListedMarks({
 
 /** What an empty list says depends on why it is empty: nothing yet, nothing left, or nothing in this view. */
 function EmptyList({ review }: { review: DocumentReview }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { counts, filter, annotations, mine } = review
   // A finger has no C or R: the touch copy names the button instead.
   const touch = useMediaQuery('(pointer: coarse)')

@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Quote } from '@/components/ui/quote'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 import { cn } from '@/lib/utils'
 import { ENERGY_CLASSES } from '@/lib/text/answer-directives'
 import type { StatusTone } from './status-marks'
@@ -45,7 +46,7 @@ export interface ValueBarProps {
  * much. What the acoustic, thermal and area cards drew per row.
  */
 export const ValueBar: FC<ValueBarProps> = ({ value, limit, bound, pass, valueText, limitText }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const top = Math.max(Math.abs(value), Math.abs(limit)) * 1.1 || 1
   const fill = Math.min(100, (Math.max(0, value) / top) * 100)
   const tick = Math.min(100, (Math.max(0, limit) / top) * 100)
@@ -186,7 +187,7 @@ export const StepLine: FC<{
   open,
   expandable,
 }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <>
       <span className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1">
@@ -333,7 +334,7 @@ export const FigureTile: FC<{
   /** The verdict in words, beside its swatch: colour never travels alone. */
   verdict?: string
 }> = ({ tone, value, label, limit, verdict }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <div data-testid="figure-tile" data-tone={tone} className="flex min-w-0 flex-col gap-1 rounded-lg bg-muted/40 px-3.5 py-3">
       <span className={cn('card-figure-24 break-words', FIGURE_INK[tone])}>{value}</span>
@@ -362,7 +363,7 @@ export const FigureTile: FC<{
 
 /** The Energieeffizienzklasse as the certificate prints it: the letter on its band's colour. */
 export const EnergyClassChip: FC<{ rating: string }> = ({ rating }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const band = (ENERGY_CLASSES as readonly string[]).indexOf(rating) + 1
   if (band <= 0) return <>{rating}</>
   return (
@@ -420,7 +421,7 @@ export const ExcerptFigure: FC<{
 
 /** The margin note itself: „Fundstelle", the document, its place, an action. */
 export const ExcerptMargin: FC<{ title: ReactNode; locus?: ReactNode; action?: ReactNode }> = ({ title, locus, action }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <div className="flex flex-col gap-1">
       <SectionLabel as="p">{t('markdown.excerptSource')}</SectionLabel>
@@ -456,7 +457,7 @@ export const CompareVariantCard: FC<{ recommended: boolean; children: ReactNode 
 )
 
 export const CompareVariantTitle: FC<{ recommended: boolean; children: ReactNode }> = ({ recommended, children }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <p className="card-title text-foreground">
       {children}
@@ -520,7 +521,7 @@ export const dataCellClass = ({ align, recommended }: { align?: string; recommen
 
 /** The renderer's own outcome words (`directive-shape.ts`), in the reader's language. */
 export function useOutcomeLabel(): (word: string, where: 'cell' | 'tally') => string {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (word, where) => {
     if (word === '@pass') return t('markdown.limitKept')
     if (word === '@fail') return t('markdown.limitMissed')
@@ -534,7 +535,7 @@ export function useOutcomeLabel(): (word: string, where: 'cell' | 'tally') => st
  * erfüllt"), the rows behind it. Nothing to decide is not worth a screen.
  */
 export const PassedCheck: FC<{ passed: number; children: ReactNode }> = ({ passed, children }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const [open, setOpen] = useState(false)
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="my-4">
@@ -589,7 +590,7 @@ export const ProjectValueChip: FC<{
   /** Fill the composer with a request to set the fact; absent where there is no composer. */
   onFill?: () => void
 }> = ({ state, children, label, reason, onFill }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const base = 'mx-0.5 inline-flex h-[1.375rem] max-w-full items-center gap-1 rounded-md border px-1.5 align-[1px] text-[0.8125rem] font-medium leading-none tabular-nums'
   if (state === 'missing') {
     const body = (
@@ -639,7 +640,7 @@ export const ProjectValueChip: FC<{
  * 10,8 m · Wohnen").
  */
 export const ProjectStrip: FC<{ children: ReactNode }> = ({ children }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <div data-testid="project-strip" className="flex flex-wrap items-center gap-x-1 gap-y-1.5 border-b border-base pb-2.5">
       <SectionLabel as="span" className="mr-1">
@@ -659,7 +660,7 @@ export const StripSeparator: FC = () => (
 
 /** „Ihr Projekt: GK 4" over a cases block, the value the renderer marks the case from. */
 export const CaseProjectLine: FC<{ children: ReactNode }> = ({ children }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <p data-testid="case-project" className="card-caption flex flex-wrap items-center gap-1 text-muted-foreground">
       {t('markdown.project.yours')}
@@ -687,7 +688,7 @@ export const ThresholdRuler: FC<{
   /** The fact's name, for the accessible name. */
   label: string
 }> = ({ ruler, valueText, format, label }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const nearest = ruler.nearest
   const note = nearest
     ? t(nearest.direction === 'below' ? 'markdown.ruler.below' : 'markdown.ruler.above', {
@@ -819,7 +820,7 @@ export const NotFoundPane: FC<{ label: string; pane: string; children: ReactNode
 
 /** The documents „Gesucht in" lists, from the turn's own retrieval record. */
 export const SearchedList: FC<{ items: readonly { title: string; detail?: string }[]; more: number }> = ({ items, more }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   if (items.length === 0) return <p className="card-caption text-muted-foreground">{t('markdown.notFound.nothingRecorded')}</p>
   return (
     <ul className="flex list-none flex-col gap-1 pl-0" data-testid="searched-list">
@@ -891,7 +892,7 @@ export const QuoteStampLine: FC<{ verbatim: boolean; number?: number; locus?: st
   locus,
   action,
 }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <p data-testid="quote-stamp" data-status={verbatim ? 'verbatim' : 'not_found'} className="flex flex-wrap items-center gap-1.5 pl-4">
       <Chip size="sm" variant={verbatim ? 'success' : 'warning'}>
@@ -910,7 +911,7 @@ export const QuoteStampLine: FC<{ verbatim: boolean; number?: number; locus?: st
 
 /** „Stelle öffnen": the passage, with the quoted sentence marked. */
 export const OpenPassageButton: FC<{ onOpen: () => void }> = ({ onOpen }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <button
       type="button"

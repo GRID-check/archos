@@ -17,10 +17,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { profileCopy } from '@/i18n/namespaces/profile'
 import { autoPreference, setViewerActionsAuto, useViewerActionStore } from '@/features/chat/lib/viewer-actions'
 
 export const ViewerActionsSettings: FC = () => {
-  const t = useTranslations('profile.viewerActions')
+  const t = useTranslations(profileCopy, 'viewerActions')
   const auto = useViewerActionStore(autoPreference)
   return (
     <Card>

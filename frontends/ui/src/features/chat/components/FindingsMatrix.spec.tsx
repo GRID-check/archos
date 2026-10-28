@@ -1,7 +1,7 @@
 import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
-import { en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { Findings } from '@/lib/conversations/message-findings'
 import { FindingsMatrix } from './FindingsMatrix'
 import { CurrentProjectProvider } from '@/features/projects/lib/current-project'
@@ -26,10 +26,10 @@ describe('FindingsMatrix', () => {
   test('one row per finding, the status in words and the count line in numbers', () => {
     render(<FindingsMatrix findings={findings} anchorPrefix="src-" />)
     expect(screen.getAllByTestId('finding-row')).toHaveLength(2)
-    expect(screen.getByText(en.chat.findings.status.met)).toBeInTheDocument()
-    expect(screen.getByText(en.chat.findings.status.open)).toBeInTheDocument()
+    expect(screen.getByText(chatCopy.messages.en.findings.status.met)).toBeInTheDocument()
+    expect(screen.getByText(chatCopy.messages.en.findings.status.open)).toBeInTheDocument()
     expect(
-      screen.getByText(`1 ${en.chat.findings.status.met} · 1 ${en.chat.findings.status.open}`)
+      screen.getByText(`1 ${chatCopy.messages.en.findings.status.met} · 1 ${chatCopy.messages.en.findings.status.open}`)
     ).toBeInTheDocument()
     expect(screen.getByText('REI 60')).toBeInTheDocument()
   })
@@ -44,10 +44,10 @@ describe('FindingsMatrix', () => {
     }
     render(<FindingsMatrix findings={results} anchorPrefix="src-" />)
     expect(screen.getByTestId('findings-matrix')).toHaveAttribute('data-judged', 'false')
-    expect(screen.getByText(en.chat.findings.labelResults)).toBeInTheDocument()
-    expect(screen.queryByText(en.chat.findings.columns.status)).not.toBeInTheDocument()
-    expect(screen.getByText(en.chat.findings.columns.note)).toBeInTheDocument()
-    expect(screen.queryByText(en.chat.findings.status.open)).not.toBeInTheDocument()
+    expect(screen.getByText(chatCopy.messages.en.findings.labelResults)).toBeInTheDocument()
+    expect(screen.queryByText(chatCopy.messages.en.findings.columns.status)).not.toBeInTheDocument()
+    expect(screen.getByText(chatCopy.messages.en.findings.columns.note)).toBeInTheDocument()
+    expect(screen.queryByText(chatCopy.messages.en.findings.status.open)).not.toBeInTheDocument()
   })
 
   test('the [N] jumps to the answer’s own sources row', () => {
@@ -80,7 +80,7 @@ describe('FindingsMatrix', () => {
     }
     render(<FindingsMatrix findings={findings} previous={previous} />)
     const marks = screen.getAllByTestId('finding-change').map((chip) => chip.textContent)
-    expect(marks).toEqual([en.chat.findings.change.changed, en.chat.findings.change.new])
+    expect(marks).toEqual([chatCopy.messages.en.findings.change.changed, chatCopy.messages.en.findings.change.new])
     expect(screen.getByTestId('findings-dropped')).toHaveTextContent('Barrierefreiheit')
   })
 
@@ -90,7 +90,7 @@ describe('FindingsMatrix', () => {
         <FindingsMatrix findings={findings} />
       </CurrentProjectProvider>
     )
-    expect(screen.getByTestId('findings-closed-project')).toHaveTextContent(en.chat.findings.clarifyClosed)
+    expect(screen.getByTestId('findings-closed-project')).toHaveTextContent(chatCopy.messages.en.findings.clarifyClosed)
     expect(screen.queryByTestId('finding-commission')).not.toBeInTheDocument()
   })
 
@@ -108,7 +108,7 @@ describe('FindingsMatrix', () => {
 
   test('an unsourced finding says so beside its status', () => {
     render(<FindingsMatrix findings={findings} />)
-    expect(screen.getByText(en.chat.findings.grounding.open)).toBeInTheDocument()
+    expect(screen.getByText(chatCopy.messages.en.findings.grounding.open)).toBeInTheDocument()
   })
 
   test('a row with a comment is opened by a real control, reachable by keyboard', async () => {
@@ -129,7 +129,7 @@ describe('FindingsMatrix', () => {
     render(<FindingsMatrix findings={findings} anchorPrefix="src-" />)
     const [row] = screen.getAllByTestId('finding-row')
     const labels = Array.from(row!.querySelectorAll('td[data-label]')).map((cell) => cell.getAttribute('data-label'))
-    expect(labels).toEqual([en.chat.findings.columns.value, en.chat.findings.columns.reference])
+    expect(labels).toEqual([chatCopy.messages.en.findings.columns.value, chatCopy.messages.en.findings.columns.reference])
   })
 
   test('stacks below 30rem of its own container, in one DOM with the table', () => {

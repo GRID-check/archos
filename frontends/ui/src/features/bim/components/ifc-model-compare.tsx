@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { compareBimModel } from '@/adapters/api/bim-client'
 import type { BimComparison } from '@/lib/bim/compare'
 import type { BimModelHeaderView } from '../hooks/use-bim-model'
@@ -62,7 +63,7 @@ const VISIBLE_ROWS = 8
  * computed from the array is a remainder of a cap.
  */
 function DiffElided({ shown, total }: { shown: number; total: number }): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const listed = Math.min(shown, VISIBLE_ROWS)
   if (total <= listed) return null
   const elided = total - listed
@@ -78,7 +79,7 @@ export function IfcModelCompare({
   candidates,
   requested = null,
 }: IfcModelCompareProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const [baseModelId, setBaseModelId] = useState<string>(candidates[0]?.id ?? '')
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
   /**

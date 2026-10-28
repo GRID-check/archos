@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { FolderItem } from '../file-types'
 import { takeDroppedFiles } from '../lib/dropped-file-handover'
 import { filesToUpload, samePlanOutcome, type FolderUploadPlan, type PlannedMove } from '../lib/folder-upload-plan'
@@ -92,7 +93,7 @@ export function useShelfUpload({
   loadFiles,
   uploading = false,
 }: ShelfUploadOptions) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const decision = useUploadDecision({ projectId: shelf.projectId ?? null })
   const { propose, setReleased, settle, changeRevision, plan, setOpen, setPending } = decision
   const { uploadFiles } = upload

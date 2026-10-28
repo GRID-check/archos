@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import type { ActiveFilter } from '../lib/active-filters'
 import { savedSearchSummary } from '../lib/saved-search-summary'
@@ -12,7 +13,7 @@ const SELF_NAMING = new Set<ActiveFilter['value']['kind']>(['documentType', 'rea
 
 /** The line under a saved search's name: what it asks, in the chips' words (`savedSearchSummary`). */
 export function useSavedSearchSummary(): (item: SavedSearchView) => string {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const labels = useSearchLabels()
   return useMemo(() => {
     const words = {

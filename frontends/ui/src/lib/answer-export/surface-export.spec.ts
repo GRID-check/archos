@@ -5,7 +5,7 @@
  * as a finding the answer never made.
  */
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import { cardBlocks, cardsBlocks } from './cards'
 import type { DocBlock } from './blocks'
 
@@ -14,7 +14,7 @@ const t = (key: string): string =>
     .split('.')
     .reduce<unknown>(
       (node, part) => (node as Record<string, unknown>)[part],
-      de.answerExport
+      answerExportCopy.messages.de
     ) as string
 
 const text = (blocks: DocBlock[]): string =>

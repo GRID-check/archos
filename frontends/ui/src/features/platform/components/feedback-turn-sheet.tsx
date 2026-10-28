@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/sheet'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatAbsoluteTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
@@ -40,7 +41,7 @@ export function FeedbackVerdictBadge({
 }: {
   turn: Pick<FeedbackHealthTurn, 'verdict' | 'reason'>
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const landed = turn.verdict === 'up'
   return (
     <Badge variant={landed ? 'success' : 'warning'} data-testid="feedback-verdict">
@@ -64,7 +65,7 @@ export function FeedbackTurnSheet({
   open,
   onOpenChange,
 }: FeedbackTurnSheetProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
 
   return (

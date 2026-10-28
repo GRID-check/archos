@@ -6,6 +6,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyStateDisc } from '@/components/ui/empty-state'
 import { useTranslations } from '@/i18n'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import type { IntakeView } from '@/lib/project-intake/types'
 
 /** `2019-03` as the office writes a month: `03/2019`. */
@@ -16,7 +17,7 @@ export const formatMonth = (month: string): string => `${month.slice(5, 7)}/${mo
  * decide: what happened, and the way on to the project's overview.
  */
 export function CompletedNote({ view }: { view: IntakeView }): JSX.Element {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   return (
     <section
       role="status"

@@ -55,6 +55,7 @@ import { SearchField } from '@/components/ui/search-field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { qualityScopeQuery, readQualityScope, type QualityScope } from '@/lib/quality/scope'
 import { cn } from '@/lib/utils'
@@ -187,7 +188,7 @@ export function barGeometry(
 }
 
 function KindLegend(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label={t('profiler.legendAria')}>
       {KIND_ORDER.map((kind) => {
@@ -209,7 +210,7 @@ function KindLegend(): JSX.Element {
 }
 
 function TurnWaterfall({ turn, locale }: { turn: TurnDto; locale: string }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   // The server always sends a root now; a null one only comes from a server
   // that predates the synthetic root.
   if (!turn.root) return <p className="text-muted-foreground text-sm">{t('profiler.noSpans')}</p>
@@ -362,7 +363,7 @@ export function AgentProfiler({
   scope: QualityScope
   initialConversationId?: string
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const scopeLabel = useQualityScopeLabel()
   const searchParams = useSearchParams()

@@ -12,6 +12,8 @@
 import { type FC } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { researchCopy } from '@/i18n/namespaces/research'
 
 export interface StopResearchConfirmationModalProps {
   /** Whether the modal is open */
@@ -31,8 +33,8 @@ export const StopResearchConfirmationModal: FC<StopResearchConfirmationModalProp
   onOpenChange,
   onConfirm,
 }) => {
-  const t = useTranslations('research')
-  const tc = useTranslations('common')
+  const t = useTranslations(researchCopy)
+  const tc = useTranslations(commonCopy)
 
   return (
     <ConfirmDialog

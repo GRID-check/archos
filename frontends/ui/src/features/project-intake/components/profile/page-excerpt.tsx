@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { RegionMarks } from '@/features/knowledge/components/region-marks'
 import { PageSheet } from '@/features/knowledge/components/pdf-viewer-atoms'
 import { useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
 import { cn } from '@/lib/utils'
 import { EvidenceProjectContext } from '../evidence-chips'
 import { drawExcerpt, type DocumentEvidence, type DrawnExcerpt } from './excerpt-loader'
@@ -51,7 +52,7 @@ export function PageExcerpt({
   evidence: DocumentEvidence & { page: number }
   className?: string
 }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const projectId = useContext(EvidenceProjectContext) ?? null
   const frameRef = useRef<HTMLElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

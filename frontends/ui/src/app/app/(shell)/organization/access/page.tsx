@@ -42,10 +42,11 @@ import {
   type OrganizationMemberWithRole,
 } from '@/lib/organizations/service'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 export default async function OrganizationAccessPage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
 
     const header = (
       <PageHeader title={t('sections.access.title')} subtitle={t('sections.access.subtitle')} />

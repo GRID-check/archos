@@ -31,6 +31,8 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { formatCredits, formatTokens } from '@/lib/format'
 import { fetchPlatformOrgBudget, PlatformBudgetRequestError } from '@/lib/budgets/platform-client'
@@ -57,8 +59,8 @@ export function PlatformOrgBudgetDialog({
   organization: { id: string; name: string }
   onClose: () => void
 }): JSX.Element {
-  const t = useTranslations('platform')
-  const tc = useTranslations('common')
+  const t = useTranslations(platformCopy)
+  const tc = useTranslations(commonCopy)
   const { locale } = useLocale()
   const mayManage = usePlatformCan(PLATFORM_PERMISSIONS.organizationsManage)
   const [budget, setBudget] = useState<PlatformOrgBudget | null>(null)

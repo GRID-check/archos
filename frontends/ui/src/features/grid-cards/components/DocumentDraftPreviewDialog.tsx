@@ -25,6 +25,7 @@ import { RotateCcw } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { FileTextPage } from '@/features/documents/components/file-text-page'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { formatBytes } from '@/lib/format'
 
 interface DocumentDraftPreviewDialogProps {
@@ -57,7 +58,7 @@ export const DocumentDraftPreviewDialog: FC<DocumentDraftPreviewDialogProps> = (
   failed,
   onRetry,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
 
   return (

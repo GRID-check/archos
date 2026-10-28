@@ -3,6 +3,7 @@
 import type { JSX, KeyboardEvent, PointerEvent, RefObject } from 'react'
 import { ChevronsLeftRight } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { percentAlong, swipeKeyTarget } from './lib/swipe'
 
 export interface SwipeDividerProps {
@@ -29,7 +30,7 @@ export interface SwipeDividerProps {
  * 44 px under a finger.
  */
 export function SwipeDivider({ value, onChange, trackRef }: SwipeDividerProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
 
   const move = (event: PointerEvent<HTMLElement>): void => {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return

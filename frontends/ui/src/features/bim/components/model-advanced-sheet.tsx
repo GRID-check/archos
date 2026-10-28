@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import type { BimViewerElement } from '../lib/model-index'
 import type { BimModelTab } from '../lib/model-link'
@@ -124,7 +125,7 @@ export function ModelAdvancedSheet({
   onShowElements,
   onOpenModel,
 }: ModelAdvancedSheetProps): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const modelId = model.status === 'ready' ? model.id : null
 
   // Each heavy table is fetched only once its tab is open: a Raumbuch over a

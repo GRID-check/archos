@@ -34,6 +34,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { RaisedCard, RaisedCardBody, RaisedCardFooter } from '@/components/ui/raised-card'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import { setCuratedSkillEnabled, type SkillCategoryListItem, type SkillListItem } from '@/adapters/api/skills-client'
 import { agentScopeLabelKey } from '../lib/agent-scope'
@@ -58,7 +59,7 @@ export function CuratedSkills({
   onSelect,
   onToggled,
 }: CuratedSkillsProps): JSX.Element | null {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   /** Names mid-flight, so a switch cannot be flipped twice. */
   const [pending, setPending] = useState<string[]>([])
   if (skills.length === 0) return null
@@ -148,7 +149,7 @@ function CuratedSkillCard({
   onSelect,
   onToggle,
 }: CuratedSkillCardProps): JSX.Element {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   return (
     // The same card as an org skill, on purpose: a curated skill is not a
     // lesser thing to be listed, it is the same kind of object with a
