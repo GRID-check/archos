@@ -28,7 +28,8 @@
 
 import 'server-only'
 import { withTenant } from '@/lib/db/tenant-context'
-import { INGEST_DISPATCH_FAILED_MESSAGE, redispatchStuckDocument } from './service'
+import { INGEST_DISPATCH_FAILED_MESSAGE } from './ingest-dispatch'
+import { redispatchStuckDocument } from './ingest-recovery'
 import { listStuckProcessingDocuments, markDocumentIngestFailed, type StuckProcessingDocument } from './repository'
 
 /** A row must have sat at `processing` this long before the sweep touches it. */

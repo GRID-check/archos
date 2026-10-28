@@ -345,8 +345,8 @@ def test_reap_exhausted_leader_lock_id_is_distinct():
     checkpoint locks — a shared id would make two unrelated reapers mutually
     exclude each other across replicas."""
     from aiq_api.jobs.checkpoint_retention import _PG_CHECKPOINT_LOCK_ID
-    from aiq_api.routes.jobs import _PG_ADVISORY_LOCK_ID
-    from aiq_api.routes.jobs import _PG_REAPER_LOCK_ID
+    from aiq_api.routes.job_reaper import _PG_REAPER_LOCK_ID
+    from aiq_api.routes.job_reaper import PG_ADVISORY_LOCK_ID
 
-    others = {_PG_ADVISORY_LOCK_ID, _PG_REAPER_LOCK_ID, _PG_CHECKPOINT_LOCK_ID}
+    others = {PG_ADVISORY_LOCK_ID, _PG_REAPER_LOCK_ID, _PG_CHECKPOINT_LOCK_ID}
     assert queue._PG_REAP_EXHAUSTED_LOCK_ID not in others

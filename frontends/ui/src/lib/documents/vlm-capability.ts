@@ -7,7 +7,7 @@
  *
  * The final accepted-types list must be identical for the two BFF surfaces that
  * consume it — the server-rendered picker/validation config (layout.tsx) and
- * the server-side upload allow-list (documents/service.ts). To keep ONE source
+ * the server-side upload allow-list (documents/upload-type.ts). To keep ONE source
  * of truth, BOTH resolve the capability here and feed it into the SAME
  * `getFileUploadConfigFromEnv({ imageUploadEnabled, vlmAvailable })`. (This is
  * why the design fetches the capability server-side rather than composing the

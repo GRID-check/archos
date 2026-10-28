@@ -9,11 +9,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('./repository', () => ({ listTransientFailures: vi.fn() }))
-vi.mock('./service', () => ({ retryTransientFailure: vi.fn() }))
+vi.mock('./ingest-recovery', () => ({
+  retryTransientFailure: vi.fn(),
+}))
 
 import { getTenantContext } from '@/lib/db/tenant-context'
 import { listTransientFailures } from './repository'
-import { retryTransientFailure } from './service'
+import { retryTransientFailure } from './ingest-recovery'
 import {
   TRANSIENT_BATCH,
   TRANSIENT_FIRST_BACKOFF_MINUTES,

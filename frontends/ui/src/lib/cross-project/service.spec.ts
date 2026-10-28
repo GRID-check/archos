@@ -109,8 +109,8 @@ vi.mock('@/lib/projects/repository', () => ({
 // `joinHitsToFiles`. A mock that handed back already-joined hits carrying their
 // own `collectionName` is what let a hit from a restricted folder's collection
 // be labelled with an open collection (a newer same-named row) unnoticed.
-vi.mock('@/lib/documents/service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/documents/service')>()
+vi.mock('@/lib/documents/semantic-search', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/documents/semantic-search')>()
   const projectOf = (projectId: string) => [...state.reachable, ...state.outOfReach].find((one) => one.id === projectId)
   // The rows the database answers for a project: its hit documents and any same-named siblings.
   const rowsOf = (projectId: string) =>
@@ -225,7 +225,7 @@ import {
   crossProjectSearchRequestSchema,
 } from './types'
 import { SIMILARITY_WEIGHTS } from './similarity'
-import { BACKEND_SEARCH_MAX_COLLECTIONS } from '@/lib/documents/service'
+import { BACKEND_SEARCH_MAX_COLLECTIONS } from '@/lib/documents/semantic-search'
 import { projectFactsOf } from './project-facts-mirror'
 
 const ORG = 'org_1'

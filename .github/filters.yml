@@ -37,6 +37,18 @@ backend:
   # The recorded wire v2 turns and their schema: the contract fixtures
   # tests/aiq_agent/common/test_wire_v2.py holds the producer to.
   - 'shared/wire/**'
+  # BFF source and fixtures the apps/backend tests read to hold both sides of
+  # a contract to one number or schema. #1318 split documents/service.ts and
+  # merged without this suite, which then failed on the next backend PR.
+  - 'frontends/ui/src/lib/cross-project/project-facts-mirror.ts'
+  - 'frontends/ui/src/lib/documents/semantic-search.ts'
+  - 'frontends/ui/src/lib/platform/vector-reconcile.ts'
+  - 'frontends/ui/src/lib/request-context.ts'
+  - 'frontends/ui/src/lib/runs/run-envelope-types.ts'
+  - 'frontends/ui/tests/fixtures/run-envelope.schema.json'
+  - 'frontends/ui/tests/fixtures/run-ledger.schema.json'
+  - 'frontends/ui/tests/fixtures/turn-outcome.schema.json'
+  - 'frontends/ui/workers/jobs/index.js'
   # Read by tests/aiq_agent/tools/workspace/test_english_only.py.
   - 'ci/german_stems.json'
   # The Python packages (ADR-0145 row 6); ifc-spatial-py is the packages tier's.
@@ -149,6 +161,35 @@ infra:
   - 'apps/site/runtime/server.mjs'
   # deploy/pulumi/src/data/qdrant-alerts.spec.ts reads the runbook it links.
   - 'docs/deployment/qdrant-runbook.md'
+  # The other side of a contract the manifest specs read as source: the env
+  # names and defaults the Python and BFF tiers read, the queue tables KEDA
+  # counts. #1275 renamed a helper in adapter.py and three specs went red on
+  # the next deploy PR. deploy/pulumi/src/ci-filter.spec.ts holds this list to
+  # every file a spec reads.
+  - 'apps/backend/entrypoint.py'
+  - 'apps/backend/src/aiq_api/chat_socket.py'
+  - 'apps/backend/src/aiq_api/jobs/ingest_dispatch.py'
+  - 'apps/backend/src/aiq_api/jobs/ingest_worker.py'
+  - 'apps/backend/src/aiq_api/jobs/queue.py'
+  - 'apps/backend/src/aiq_api/jobs/worker.py'
+  - 'apps/backend/src/aiq_api/roles.py'
+  - 'apps/backend/src/aiq_api/routes/chat_occupancy.py'
+  - 'apps/backend/src/aiq_api/routes/internal_auth.py'
+  - 'apps/backend/src/aiq_api/routes/jobs.py'
+  - 'frontends/ui/deploy/Dockerfile'
+  - 'frontends/ui/drizzle/0104_bff_job_queue.sql'
+  - 'frontends/ui/server.js'
+  - 'frontends/ui/workers/app-database.js'
+  - 'frontends/ui/workers/housekeeping-clock.js'
+  - 'frontends/ui/workers/job-queue.js'
+  - 'frontends/ui/workers/jobs/index.js'
+  - 'frontends/ui/workers/langfuse-traces.js'
+  - 'packages/knowledge-layer/src/llamaindex/adapter.py'
+  - 'packages/knowledge-layer/src/llamaindex/processing.py'
+  - 'src/aiq_agent/common/claim_queue.py'
+  - 'src/aiq_agent/common/provider_limiter.py'
+  - 'src/aiq_agent/knowledge/ingest_queue.py'
+  - 'src/aiq_agent/knowledge/ingest_scheduler.py'
   - 'Taskfile.yml'
   - 'taskfiles/infra.yml'
   - '.github/workflows/ci.yml'

@@ -9,7 +9,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
 }))
 
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-storage-keys', () => ({
   findDocumentStorageKey: vi.fn(),
   findDocumentImageStorageKey: vi.fn(),
 }))
@@ -28,7 +28,7 @@ vi.mock('@/lib/db/tenant-context', async (importOriginal) => ({
 import { GET } from './route'
 import { drawableRestrictedCollections } from '@/lib/conversations/restricted-use'
 import { withTenant } from '@/lib/db/tenant-context'
-import { findDocumentImageStorageKey, findDocumentStorageKey } from '@/lib/documents/service'
+import { findDocumentImageStorageKey, findDocumentStorageKey } from '@/lib/documents/document-storage-keys'
 import { GRID_HEADER_NAMES, buildGridRequestContextEnvelope } from '@/lib/request-context'
 
 const request = (

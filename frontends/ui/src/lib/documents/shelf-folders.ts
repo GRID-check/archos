@@ -544,7 +544,7 @@ async function rewriteDescendantPaths(
  * subtree at the shelf root — what a delete does to a folder's children.
  *
  * BEST-EFFORT, with the same ordering argument as the display-title mirror in
- * `@/lib/documents/service`: the durable truth is the rows this function is
+ * `@/lib/documents/document-edits`: the durable truth is the rows this function is
  * called after, and a backend that is down must not fail a folder rename the
  * user is entitled to. The bounded consequence is that the agent's inventory
  * and its `knowledge_search folder=` filter keep the old path until the next

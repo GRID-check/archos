@@ -42,14 +42,18 @@ vi.mock('@/lib/documents/collection-file-ref', async (importOriginal) => ({
 // The document's own erasure is the document delete's (its specs cover the
 // object store); here it deletes the row, through the hold trigger.
 vi.mock('@/lib/documents/folder-path', () => ({ resolveDocumentFolderPath: vi.fn(async () => null) }))
-vi.mock('@/lib/documents/service', () => ({
-  INGEST_DISPATCH_FAILED_MESSAGE: 'dispatch failed',
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn(async () => ({ jobId: 'job', status: 'pending' })),
+}))
+vi.mock('@/lib/documents/document-edits', () => ({
   eraseProjectDocument: vi.fn(async (doc: { id: string; organizationId: string; projectId: string }) => {
     const { deleteProjectDocument } = await import('@/lib/documents/repository')
     await deleteProjectDocument(doc.id, doc.organizationId, doc.projectId)
     return true
   }),
+}))
+vi.mock('@/lib/documents/ingest-dispatch', () => ({
+  INGEST_DISPATCH_FAILED_MESSAGE: 'dispatch failed',
 }))
 // Project permissions are WorkOS's; each session here states which it holds,
 // and a denial is the real one's: not found.
@@ -141,7 +145,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
   let restrictedUse: typeof import('@/lib/conversations/restricted-use')
   let setting: typeof import('@/lib/organizations/deleted-folder-content-service')
   let collectionRef: typeof import('@/lib/documents/collection-file-ref')
-  let documentService: typeof import('@/lib/documents/service')
+  let documentService: typeof import('@/lib/documents/document-dispatch')
   let lifecycle: typeof import('@/lib/documents/lifecycle')
   let jobs: typeof import('./folder-bin-jobs')
   let projectId: string
@@ -366,7 +370,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     restrictedUse = inTenant(await import('@/lib/conversations/restricted-use'))
     setting = inTenant(await import('@/lib/organizations/deleted-folder-content-service'))
     collectionRef = await import('@/lib/documents/collection-file-ref')
-    documentService = await import('@/lib/documents/service')
+    documentService = await import('@/lib/documents/document-dispatch')
     lifecycle = await import('@/lib/documents/lifecycle')
     jobs = inTenant(await import('./folder-bin-jobs'))
 

@@ -150,7 +150,7 @@ def job_exists(job_id: str, db_url: str) -> bool:
         if row is not None:
             return True
         # job_info is created lazily by NAT's JobStore; on a fresh database it
-        # may not exist yet (same guard as _find_research_runs).
+        # may not exist yet (same guard as research_runs.find_research_runs).
         if inspect(conn.engine).has_table("job_info"):
             row = conn.execute(text("SELECT 1 FROM job_info WHERE job_id = :job_id"), {"job_id": job_id}).first()
             return row is not None

@@ -9,7 +9,7 @@
  * dispatcher (`dispatchDocument`), the server-side upload allow-list (`assertUploadTypeAllowed`),
  * status reconciliation (`reconcileDocumentStatuses`), and the item routes
  * (download/preview/status/reingest/tags, which are scope-aware in
- * `lib/documents/service`). The ONLY thing that differs is authorization scope:
+ * `lib/documents/`). The ONLY thing that differs is authorization scope:
  * org-level (`org:office_shelf:manage` for writes, any member for reads) instead of
  * per-project FGA.
  *

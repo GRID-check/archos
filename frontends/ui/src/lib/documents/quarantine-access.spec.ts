@@ -72,18 +72,9 @@ import {
   type DocumentListRow,
 } from './repository'
 import { reconcileDocumentStatuses } from './reconcile-status'
-import {
-  deleteDocument,
-  getDocumentDownload,
-  getDocumentPreview,
-  getDocumentTextPreview,
-  getDocumentThumbnail,
-  listDocumentsPage,
-  probeProjectDocumentNames,
-  renameDocument,
-  resolveProjectDocumentsByName,
-  streamDocumentImage,
-} from './service'
+import { getDocumentDownload, getDocumentPreview, getDocumentTextPreview, getDocumentThumbnail, streamDocumentImage } from './document-delivery'
+import { deleteDocument, renameDocument } from './document-edits'
+import { listDocumentsPage, probeProjectDocumentNames, resolveProjectDocumentsByName } from './document-listing'
 
 const personOf = (userId: string, permissions: string[] = []): AuthorizedSession =>
   ({ organizationId: 'org-1', userId, email: `${userId}@example.com`, permissions }) as unknown as AuthorizedSession

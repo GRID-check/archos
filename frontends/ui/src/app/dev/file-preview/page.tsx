@@ -491,7 +491,7 @@ Ergebnis
  * A structured analysis as ingestion stores it (snake_case, the ingestion
  * schema's own vocabulary). The shim below serves it through
  * `normalizeDrawingStructured`, which is what the BFF does before it answers
- * (`lib/documents/service.ts`). Serving the raw shape, as this preview once
+ * (`lib/documents/document-details.ts`). Serving the raw shape, as this preview once
  * did, crashed the route the moment „Detaillierte Informationen" opened: the
  * pane reads `segment.entityGroups`, which only the normalizer produces.
  */

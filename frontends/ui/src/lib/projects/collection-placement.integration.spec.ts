@@ -25,8 +25,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend:8000' }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job', status: 'pending' }),
+}))
+vi.mock('@/lib/documents/ingest-dispatch', () => ({
   INGEST_DISPATCH_FAILED_MESSAGE: 'dispatch failed',
 }))
 vi.mock('@/lib/documents/collection-file-ref', async (importOriginal) => ({
@@ -47,7 +49,7 @@ describe.skipIf(!url)('collection placement against Postgres', () => {
   let placement: typeof import('./collection-placement')
   let sweep: typeof import('./placement-sweep')
   let purge: typeof import('@/lib/documents/collection-file-ref').purgeIngestedChunks
-  let dispatch: typeof import('@/lib/documents/service').dispatchDocument
+  let dispatch: typeof import('@/lib/documents/document-dispatch').dispatchDocument
   let reconcile: typeof import('@/lib/documents/reconcile-status').reconcileDocumentStatuses
   let restrictedCollectionName: typeof import('@/lib/authz/folder-access').restrictedCollectionName
   let projectId: string
@@ -139,7 +141,7 @@ describe.skipIf(!url)('collection placement against Postgres', () => {
     placement = await import('./collection-placement')
     sweep = await import('./placement-sweep')
     purge = (await import('@/lib/documents/collection-file-ref')).purgeIngestedChunks
-    dispatch = (await import('@/lib/documents/service')).dispatchDocument
+    dispatch = (await import('@/lib/documents/document-dispatch')).dispatchDocument
     reconcile = (await import('@/lib/documents/reconcile-status')).reconcileDocumentStatuses
     restrictedCollectionName = (await import('@/lib/authz/folder-access')).restrictedCollectionName
 

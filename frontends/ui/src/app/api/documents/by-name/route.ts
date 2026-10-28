@@ -6,7 +6,7 @@
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { resolveProjectDocumentsByName } from '@/lib/documents/service'
+import { resolveProjectDocumentsByName } from '@/lib/documents/document-listing'
 import { toDocumentWireRows } from '@/lib/documents/list-projection'
 import { byNameRequestSchema } from '@/lib/documents/by-name-types'
 import { shelfOf } from '@/lib/documents/shelf-scope'
