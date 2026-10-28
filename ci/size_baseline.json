@@ -256,8 +256,6 @@
     "apps/backend/src/aiq_api/routes/maintenance.py::add_maintenance_routes": 78,
     "apps/backend/src/aiq_api/routes/maintenance.py::reconcile_orphaned_summaries": 73,
     "apps/backend/src/aiq_api/routes/norms.py::add_norm_routes": 112,
-    "apps/backend/src/aiq_api/routes/oib.py::add_oib_routes": 374,
-    "apps/backend/src/aiq_api/routes/oib.py::add_oib_routes.upload_oib_document": 63,
     "apps/backend/src/aiq_api/routes/revision_compare.py::add_revision_compare_routes": 75,
     "apps/backend/src/aiq_api/routes/skill_review.py::add_skill_review_routes": 105,
     "apps/backend/src/aiq_api/routes/skill_review.py::add_skill_review_routes.skill_review": 90,
