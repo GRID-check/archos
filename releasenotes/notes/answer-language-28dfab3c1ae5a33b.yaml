@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    A question asked in English, or another language, in a project whose
+    documents are German is now answered in the language you asked in. Short
+    replies such as "ok" or a name still get a German answer.

@@ -4,6 +4,7 @@ import { useState, type JSX } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { intakeProjectStepCopy } from '@/i18n/namespaces/intake-project-step'
 import { createParticipantsClient, type ParticipantsClient } from '@/lib/projects/participants-client'
 import { PRIMARY_ACTION_CLASS, StepFooter } from '../setup-frame'
 import { DialogFactsSection } from '../project/dialog-facts-section'
@@ -30,7 +31,7 @@ export interface ProjectStepProps extends SetupStepProps {
  * cards sit side by side on a desk and one under the other on a phone.
  */
 export function ProjectStep({ view, projectId, busy, canDecide, onDecide, onNext, client: given }: ProjectStepProps): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
+  const t = useTranslations(intakeProjectStepCopy)
   const [client] = useState(() => given ?? createParticipantsClient())
   const participants = useParticipants(projectId, client)
 

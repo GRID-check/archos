@@ -24,6 +24,7 @@
 
 import { type FC } from 'react'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { SectionLabel } from '@/components/ui/section-label'
 import { cn } from '@/lib/utils'
 import { renderSkillDocumentParts, type SkillDocumentInput } from '../lib/skill-document'
@@ -39,7 +40,7 @@ export const SkillDocumentPreview: FC<SkillDocumentPreviewProps> = ({
   metadata,
   className,
 }) => {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   const { frontmatter, body: renderedBody } = renderSkillDocumentParts({
     // Placeholders keep the document well-formed while it is being typed, so
     // the pane never flickers between valid and broken YAML mid-keystroke.

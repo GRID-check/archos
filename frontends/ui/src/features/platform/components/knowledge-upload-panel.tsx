@@ -33,6 +33,7 @@ import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
 import { KnowledgeStateBadge } from '@/features/platform/components/knowledge-atoms'
 import type { WatchItem } from '@/features/platform/components/knowledge-ingest-watch'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import type { KnowledgeUploadResult } from '@/lib/knowledge/service'
 import { cn } from '@/lib/utils'
 
@@ -72,7 +73,7 @@ export function KnowledgeUploadPanel({
   onDismissMissing,
   lastUploads,
 }: KnowledgeUploadPanelProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const done = items.filter((item) => item.phase !== 'working').length
@@ -247,7 +248,7 @@ export function KnowledgeUploadPanel({
 }
 
 function WatchBadge({ item }: { item: WatchItem }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   if (item.phase === 'missing')
     return <Badge variant="warning">{t('knowledge.indexingMissing')}</Badge>
   if (item.phase === 'done' && item.state) return <KnowledgeStateBadge state={item.state} />

@@ -1,15 +1,13 @@
 /**
- * The view carries only three dictionary namespaces (`dictionaries-stand-in.ts`,
- * ADR-0142). Every card the view draws, open and decided, read-only, and the
- * frame's own lines, in both languages, is drawn here with exactly that module
- * in place of Piloti's dictionaries, and fails on any key it does not hold
- * (the translator warns `[i18n] Missing translation` and shows the key path).
+ * The view carries only the dictionary namespaces its components import
+ * (ADR-0142, `src/i18n/namespace.ts`). Every card the view draws, open and
+ * decided, read-only, and the frame's own lines, in both languages, is drawn
+ * here, and fails on any key a namespace does not hold (the translator warns
+ * `[i18n] Missing translation` and shows the key path).
  */
 
 import { render, screen, waitFor } from '@/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-
-vi.mock('@/i18n/dictionaries', async () => import('../dictionaries-stand-in'))
 
 import type { CallToolResult } from '@modelcontextprotocol/client'
 import { ProposalCardFrame } from './ProposalCardApp'

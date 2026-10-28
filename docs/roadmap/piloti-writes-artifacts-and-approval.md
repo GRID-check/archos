@@ -338,7 +338,7 @@ compared against YAML is the weak end of the ratchet. What survives:
 
 - `_INTERACTION_TOOL_BASENAMES` is the one runtime-read classification and
   gains the file verbs. No second table.
-- `sources/*` stays where it is: evidence sources are packages. Workspace
+- The evidence sources stay packages under `packages/`. Workspace
   tools live under `src/aiq_agent/tools/`: `documents/` (the working
   directory backend and the `file_draft` tool), `tasks/` (`create_task`),
   `files/` (the proposal-card tools), beside the BIM tools already there.

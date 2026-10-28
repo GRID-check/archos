@@ -22,6 +22,7 @@ import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { FileView } from '../hooks/use-view-preference'
 import { FileSearchField } from './file-search-bar'
 
@@ -70,7 +71,7 @@ export function FilesHeaderControls({
   moreEntries,
   advancedEntries,
 }: FilesHeaderControlsProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const choose = (value: string): void => {
     if (value === 'cards' || value === 'list') onViewChange(value)
   }

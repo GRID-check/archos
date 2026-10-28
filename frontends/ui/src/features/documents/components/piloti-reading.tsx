@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS } from '@/lib/documents/tag-vocabulary'
 import type { FileItem } from '../file-types'
 import { DocumentTagsEditor } from './document-tags-editor'
@@ -51,7 +52,7 @@ export function PilotiReading({
   /** The resolved references, where the caller already holds them (a preview); else read from the project. */
   dossierLinks?: DocumentLinks | null
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const [correcting, setCorrecting] = useState(false)
   // The rail is reused across files; a correction in progress belongs to one.
@@ -183,7 +184,7 @@ function readingFacts(file: FileItem, locale: string, t: ReturnType<typeof useTr
  * shown here and nowhere a model reads it (`photo_facts.py`).
  */
 function CaptureLine({ capture }: { capture: PhotoCapture }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const when = capture.capturedAt ? formatCapturedAt(capture.capturedAt, locale) : null
   const located = capture.latitude !== undefined && capture.longitude !== undefined

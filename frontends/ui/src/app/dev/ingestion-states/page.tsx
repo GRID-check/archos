@@ -32,6 +32,7 @@ import type { FileItem } from '@/features/documents/components/project-file-work
 import type { TrackedFile } from '@/features/documents/types'
 import { FileReferencePeek } from '@/features/chat/components/FileReferencePeek'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __ingestionStatesShim?: boolean }
@@ -210,7 +211,7 @@ const PEEKS: { note: string; file: FileItem }[] = [
 
 export default function IngestionStatesDevPage(): JSX.Element {
   const { locale } = useLocale()
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-8 md:px-8" data-testid="ingestion-states">
       <div>

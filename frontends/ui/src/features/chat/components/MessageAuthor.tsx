@@ -39,6 +39,7 @@ import { avatarColorStyle, personInitials } from '@/components/ui/avatar-identit
 import { isOptimizableAvatarUrl } from '@/lib/images/avatar-hosts'
 import { formatTime } from '@/shared/utils/format-time'
 import { useLocale, useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { cn } from '@/lib/utils'
 
 export interface MessageAuthorProps {
@@ -84,7 +85,7 @@ export const MessageAuthor: FC<MessageAuthorProps> = ({
   side = 'end',
   className,
 }) => {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   // `formatTime` without a locale falls back to the RUNTIME default, so a
   // German user on an en-US browser read "03:35 PM" here while the HITL prompt
   // directly below it read "15:35". Every research card already passes it.

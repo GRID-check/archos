@@ -27,6 +27,8 @@ import { IngestFailureNotice } from '@/features/documents/components/ingest-fail
 import { QuarantineFindings } from '@/features/documents/components/quarantine-findings'
 import { RequestReviewButton } from '@/features/documents/components/request-review-button'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import { displayNameOf, otherTags } from '../lib/upload-summary'
 import { FacetChip, useTallyLabel } from './upload-atoms'
@@ -57,8 +59,8 @@ export function UploadedFileRow({
   /** The shelf the link opens, which its title names. */
   shelf: UploadSummary['scope']
 }): JSX.Element {
-  const t = useTranslations('uploadBatches')
-  const tFiles = useTranslations('files')
+  const t = useTranslations(uploadBatchesCopy)
+  const tFiles = useTranslations(filesCopy)
   const tallyLabel = useTallyLabel()
   const name = displayNameOf(document)
   const Icon = fileTypeIcon(null, document.filename)

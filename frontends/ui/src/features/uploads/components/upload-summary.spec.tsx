@@ -2,8 +2,9 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@/t
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FIXTURE_PROJECT_ID, MIXED_SUMMARY, SETTLED_SUMMARY } from '@/app/dev/_fixtures/upload-batches'
 import { classifyIngestFailure, ingestFailureSentence } from '@/features/documents/lib/ingest-failure'
-import { en } from '@/i18n/dictionaries/en'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 import { describeQuarantineReason, type QuarantineReason } from '@/lib/upload-screening/quarantine'
 import { UPLOAD_SUMMARY_POLL_MS, useUploadSummary } from '../hooks/use-upload-summary'
 import { UploadSummaryDialog, UploadSummaryView } from './upload-summary'
@@ -14,7 +15,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() } }))
 import { toast } from 'sonner'
 
-const tFiles = createTranslator(en, 'files')
+const tFiles = translatorFor(filesCopy, 'en')
 
 function tile(key: string): HTMLElement {
   return screen.getByTestId(`upload-tally-${key}`)
@@ -24,8 +25,8 @@ describe('UploadSummaryView', () => {
   it('headlines every count in the status words the file badges use', () => {
     render(<UploadSummaryView summary={MIXED_SUMMARY} />)
     expect(within(tile('ready')).getByText('3')).toBeInTheDocument()
-    expect(within(tile('ready')).getByText(en.files.status.ready)).toBeInTheDocument()
-    expect(within(tile('reading')).getByText(en.files.status.processing)).toBeInTheDocument()
+    expect(within(tile('ready')).getByText(filesCopy.messages.en.status.ready)).toBeInTheDocument()
+    expect(within(tile('reading')).getByText(filesCopy.messages.en.status.processing)).toBeInTheDocument()
     expect(within(tile('quarantined')).getByText('1')).toBeInTheDocument()
     // One document whose reading failed, one upload that never arrived.
     expect(within(tile('failed')).getByText('2')).toBeInTheDocument()
@@ -38,17 +39,17 @@ describe('UploadSummaryView', () => {
   it('headlines the changed and the protected files, and marks each such file', () => {
     render(<UploadSummaryView summary={MIXED_SUMMARY} />)
     expect(within(tile('changed')).getByText('1')).toBeInTheDocument()
-    expect(within(tile('changed')).getByText(en.uploadBatches.summary.counts.changed)).toBeInTheDocument()
+    expect(within(tile('changed')).getByText(uploadBatchesCopy.messages.en.summary.counts.changed)).toBeInTheDocument()
     expect(within(tile('protected')).getByText('2')).toBeInTheDocument()
-    expect(within(tile('protected')).getByText(en.uploadBatches.summary.counts.protected)).toBeInTheDocument()
+    expect(within(tile('protected')).getByText(uploadBatchesCopy.messages.en.summary.counts.protected)).toBeInTheDocument()
 
     const replaced = screen.getByTestId('upload-file-doc-brandschutz')
     expect(within(replaced).getByTestId('upload-facet-changed')).toHaveAttribute(
       'title',
-      en.uploadBatches.summary.files.changedHint
+      uploadBatchesCopy.messages.en.summary.files.changedHint
     )
     expect(within(replaced).getByTestId('upload-facet-protected')).toHaveTextContent(
-      en.uploadBatches.summary.counts.protected
+      uploadBatchesCopy.messages.en.summary.counts.protected
     )
     const fresh = screen.getByTestId('upload-file-doc-grundriss-eg')
     expect(within(fresh).queryByTestId('upload-facet-changed')).not.toBeInTheDocument()
@@ -72,7 +73,7 @@ describe('UploadSummaryView', () => {
     // server's and an e-mail import's (ADR-0086). Never „held back“.
     expect(within(excluded).getByText('The name check did not upload these files', { exact: false })).toBeInTheDocument()
     expect(excluded).not.toHaveTextContent(/held back|kept back/i)
-    const terms = within(excluded).getByRole('list', { name: en.uploadBatches.summary.excluded.listLabel })
+    const terms = within(excluded).getByRole('list', { name: uploadBatchesCopy.messages.en.summary.excluded.listLabel })
     expect(within(terms).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Rechnung3', 'Lohnzettel1'])
   })
 
@@ -90,7 +91,7 @@ describe('UploadSummaryView', () => {
   it('shows the document type and the other tags of a file, and its summary', () => {
     render(<UploadSummaryView summary={MIXED_SUMMARY} />)
     const row = screen.getByTestId('upload-file-doc-grundriss-eg')
-    expect(within(row).getByTitle(en.files.preview.indexed.documentType)).toHaveTextContent('Grundriss')
+    expect(within(row).getByTitle(filesCopy.messages.en.preview.indexed.documentType)).toHaveTextContent('Grundriss')
     expect(within(row).getByText('Nutzungssicherheit/Barrierefreiheit')).toBeInTheDocument()
     expect(within(row).getByTestId('upload-file-summary-doc-grundriss-eg')).toHaveTextContent('Einreichplan Erdgeschoss')
     // The types section counts the detected types across the batch.
@@ -106,7 +107,7 @@ describe('UploadSummaryView', () => {
       expect(within(quarantine).getByText(describeQuarantineReason(reason, tFiles))).toBeInTheDocument()
     }
     expect(within(quarantine).getByText('“Honorar” in the text · pages 1, 4')).toBeInTheDocument()
-    expect(within(quarantine).getByText(en.files.ingestFailure.quarantined)).toBeInTheDocument()
+    expect(within(quarantine).getByText(filesCopy.messages.en.ingestFailure.quarantined)).toBeInTheDocument()
   })
 
   // T4.2: the uploader of a file held back can ask the people who may release it.
@@ -120,11 +121,11 @@ describe('UploadSummaryView', () => {
       stubAsk(2)
       render(<UploadSummaryView summary={MIXED_SUMMARY} />)
       const button = screen.getByTestId('upload-file-request-release-doc-honorar')
-      expect(button).toHaveTextContent(en.uploadBatches.summary.files.requestRelease)
+      expect(button).toHaveTextContent(uploadBatchesCopy.messages.en.summary.files.requestRelease)
 
       fireEvent.click(button)
 
-      await waitFor(() => expect(button).toHaveTextContent(en.uploadBatches.summary.files.releaseRequested))
+      await waitFor(() => expect(button).toHaveTextContent(uploadBatchesCopy.messages.en.summary.files.releaseRequested))
       expect(button).toBeDisabled()
       expect(fetch).toHaveBeenCalledWith('/api/documents/doc-honorar/quarantine/request-release', { method: 'POST' })
       expect(toast.success).toHaveBeenCalled()
@@ -171,8 +172,8 @@ describe('UploadSummaryView', () => {
 
   it('notes a partly checked and an unchecked file in the screening sentences', () => {
     render(<UploadSummaryView summary={MIXED_SUMMARY} />)
-    expect(screen.getByTestId('upload-file-screening-doc-schnitt-aa')).toHaveTextContent(en.files.screening.partial)
-    expect(screen.getByTestId('upload-file-screening-doc-foto')).toHaveTextContent(en.files.screening.unchecked)
+    expect(screen.getByTestId('upload-file-screening-doc-schnitt-aa')).toHaveTextContent(filesCopy.messages.en.screening.partial)
+    expect(screen.getByTestId('upload-file-screening-doc-foto')).toHaveTextContent(filesCopy.messages.en.screening.unchecked)
     expect(screen.queryByTestId('upload-file-screening-doc-grundriss-eg')).not.toBeInTheDocument()
   })
 })
@@ -246,7 +247,7 @@ describe('UploadSummaryDialog', () => {
     )
     render(<UploadSummaryDialog batchId="gone" standalone={false} />)
     expect(await screen.findByTestId('upload-summary-not-found')).toHaveTextContent(
-      en.uploadBatches.summary.notFound.description
+      uploadBatchesCopy.messages.en.summary.notFound.description
     )
   })
 
@@ -266,7 +267,7 @@ describe('UploadSummaryDialog', () => {
       `/app/projects/${FIXTURE_PROJECT_ID}/files`
     )
     // The settled fixture holds a file back: "everything has been read" would be untrue of it.
-    expect(screen.getByTestId('upload-summary-state')).toHaveTextContent(en.uploadBatches.summary.state.doneHeld)
+    expect(screen.getByTestId('upload-summary-state')).toHaveTextContent(uploadBatchesCopy.messages.en.summary.state.doneHeld)
     // Settled is settled: no clock that reads as still working.
     expect(screen.getByTestId('upload-summary-state').querySelector('svg')).toBeNull()
   })
@@ -278,6 +279,6 @@ describe('UploadSummaryDialog', () => {
     }
     vi.stubGlobal('fetch', vi.fn(async () => Response.json(nothingHeld)))
     render(<UploadSummaryDialog batchId={nothingHeld.id} standalone={false} />)
-    expect(await screen.findByTestId('upload-summary-state')).toHaveTextContent(en.uploadBatches.summary.state.done)
+    expect(await screen.findByTestId('upload-summary-state')).toHaveTextContent(uploadBatchesCopy.messages.en.summary.state.done)
   })
 })

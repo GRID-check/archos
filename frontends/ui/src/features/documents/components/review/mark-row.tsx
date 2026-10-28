@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import { Clock, MessageCircle, UserRound } from 'lucide-react'
 import { CommentPin } from '@/components/ui/comment-pin'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
@@ -43,7 +44,7 @@ export function MarkRowContent({
   /** News on it the reader has not read (`DocumentReview.unread`): a dot on the pin, and words for a screen reader. */
   unread?: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const byline = usePilotiByline()
   const overdue = isOverdue(annotation, localCalendarDay())

@@ -16,6 +16,7 @@ import { useEffect } from 'react'
 import { PageHeader } from '@/components/ui/page-header'
 import { NormRegistry } from '@/features/platform/components/norm-registry'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 
 /** The remaining state building acts — enough rows that the pager appears. */
 const stateAct = (
@@ -204,7 +205,7 @@ export default function PlatformNormsDevPage(): JSX.Element {
 }
 
 function Preview(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   // `?editor=1` shows the authoring flow; without it the list itself. There
   // is no prop to open the editor, so drive the real affordance once the
   // catalog has loaded, exactly as a reviewer would.

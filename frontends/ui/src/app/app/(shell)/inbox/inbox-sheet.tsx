@@ -23,6 +23,8 @@ import { withPageSession } from '@/lib/auth/require-auth'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { inboxIsReachable } from '@/lib/inbox/registry'
 import { getTranslations } from '@/i18n/server'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { commonCopy } from '@/i18n/namespaces/common'
 import { RoutePageSheet } from '@/components/shell/route-page-sheet'
 import { InboxList } from '@/features/collaboration/components'
 
@@ -32,8 +34,8 @@ export async function InboxSheet({ standalone }: { standalone: boolean }): Promi
       notFound()
     }
 
-    const t = await getTranslations('collaboration')
-    const tCommon = await getTranslations('common')
+    const t = await getTranslations(collaborationCopy)
+    const tCommon = await getTranslations(commonCopy)
 
     return (
       <RoutePageSheet

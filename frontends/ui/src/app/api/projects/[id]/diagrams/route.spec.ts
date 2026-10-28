@@ -50,7 +50,8 @@ vi.mock('@/lib/sharing/access', () => ({
 import { createInProcessStore, setLimitStore } from '@/lib/limits'
 import { MAX_DIAGRAM_SVG_BYTES } from '@/lib/diagrams/diagram-sources'
 import { DiagramSvgError } from '@/lib/diagrams/svg'
-import { de } from '@/i18n/dictionaries/de'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
+import { errorsCopy } from '@/i18n/namespaces/errors'
 import { POST } from './route'
 
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
@@ -109,7 +110,7 @@ describe('POST /api/projects/[id]/diagrams', () => {
 
     expect(response.status).toBe(201)
     expect(fileDiagramDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceKind: 'excalidraw', marking: de.diagrams.markingEdited })
+      expect.objectContaining({ sourceKind: 'excalidraw', marking: diagramsCopy.messages.de.markingEdited })
     )
     expect(recordDiagramScore).toHaveBeenCalledWith({
       organizationId: 'org-1',
@@ -122,14 +123,14 @@ describe('POST /api/projects/[id]/diagrams', () => {
   it('keeps „Von Piloti erstellt" on a drawing filed as drawn', async () => {
     recordDiagramScore.mockReset()
     await post(submission())
-    expect(fileDiagramDocuments).toHaveBeenCalledWith(expect.objectContaining({ marking: de.diagrams.marking }))
+    expect(fileDiagramDocuments).toHaveBeenCalledWith(expect.objectContaining({ marking: diagramsCopy.messages.de.marking }))
     expect(recordDiagramScore).toHaveBeenCalledWith(expect.objectContaining({ answerId: null, edited: false }))
   })
 
   it('marks a sketch Piloti drew, filed as drawn, as not to scale', async () => {
     await post(submission({ sourceKind: 'excalidraw', source: '{"type":"excalidraw","elements":[]}' }))
     expect(fileDiagramDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceKind: 'excalidraw', marking: de.diagrams.markingSketch })
+      expect.objectContaining({ sourceKind: 'excalidraw', marking: diagramsCopy.messages.de.markingSketch })
     )
   })
 
@@ -141,7 +142,7 @@ describe('POST /api/projects/[id]/diagrams', () => {
     const response = await post(submission())
 
     expect(response.status).toBe(400)
-    expect(await response.json()).toMatchObject({ error: de.diagrams.rejected['too-deep'] })
+    expect(await response.json()).toMatchObject({ error: diagramsCopy.messages.de.rejected['too-deep'] })
   })
 })
 
@@ -217,14 +218,14 @@ describe('a diagram from a conversation (ADR-0087)', () => {
   it('relays the refusal as a typed 403 with the reader’s sentence', async () => {
     requireResourceAccess.mockReset().mockResolvedValue({})
     const { ConversationConfinedError } = await import('@/lib/api/errors')
-    fileDiagramDocuments.mockRejectedValueOnce(new ConversationConfinedError('filing', de.errors.confinement.filing))
+    fileDiagramDocuments.mockRejectedValueOnce(new ConversationConfinedError('filing', errorsCopy.messages.de.confinement.filing))
 
     const response = await post(submission({ conversationId: 's_conv_1' }))
 
     expect(response.status).toBe(403)
     expect(await response.json()).toMatchObject({
       code: 'CONVERSATION_CONFINED',
-      error: de.errors.confinement.filing,
+      error: errorsCopy.messages.de.confinement.filing,
     })
   })
 

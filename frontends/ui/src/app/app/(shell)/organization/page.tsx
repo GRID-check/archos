@@ -33,12 +33,13 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/ui/page-header'
 import { SectionLabel } from '@/components/ui/section-label'
 import { getLocale, getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { OrgInstructionsForm } from './org-instructions-form'
 import { OrgSettingsForm } from './org-settings-form'
 
 export default async function OrganizationOverviewPage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
     const locale = await getLocale()
 
     const admin = isOrgAdmin(session)

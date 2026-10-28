@@ -36,6 +36,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { useTranslations } from '@/i18n'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import {
   readSketchFence,
   streamedSketchElements,
@@ -107,7 +108,7 @@ function useRenderedSketch(elements: readonly SceneSkeleton[] | null) {
 }
 
 export function SketchFigure({ source, isStreaming = false, refused = false }: SketchFigureProps) {
-  const t = useTranslations('diagrams')
+  const t = useTranslations(diagramsCopy)
   const fence = useMemo(() => (isStreaming || refused ? null : readSketchFence(source)), [source, isStreaming, refused])
   const streamed = useMemo(() => (isStreaming ? streamedSketchElements(source) : null), [source, isStreaming])
   const elements = fence?.ok ? fence.elements : streamed

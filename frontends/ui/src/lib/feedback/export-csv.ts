@@ -11,9 +11,8 @@
  * decimals with a dot.
  */
 
-import type { Dictionary } from '@/i18n/dictionaries'
 import { csvCell } from '@/lib/text/csv-cell'
-import type { ExportCell, ExportColumn, ExportFormat } from './export-columns'
+import type { Dictionary, ExportCell, ExportColumn, ExportFormat } from './export-columns'
 
 /** Decimal places per numeric format; enough for the value, never scientific notation. */
 const DECIMALS: Partial<Record<ExportFormat, number>> = {

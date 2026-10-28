@@ -22,9 +22,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { makeWidgetTokenFetcher } from '@/lib/workos/widget-token'
 import { useResolvedAppearance, widgetTheme } from '@/lib/workos/use-widget-appearance'
 import { useTranslations } from '@/i18n'
+import { profileCopy } from '@/i18n/namespaces/profile'
 
 export const AccountWidgets = (): React.ReactNode => {
-  const t = useTranslations('profile')
+  const t = useTranslations(profileCopy)
   const appearance = useResolvedAppearance()
   const fetchWidgetToken = useMemo(() => makeWidgetTokenFetcher(), [])
 

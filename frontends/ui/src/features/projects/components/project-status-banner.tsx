@@ -20,6 +20,7 @@ import { Lock, LockOpen, PauseCircle, PlayCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectLifecycleView } from '@/lib/projects/project-status'
 import { useCurrentProject } from '../lib/current-project'
 import { useProjectLifecycle } from '../lib/use-project-lifecycle'
@@ -58,7 +59,7 @@ function StatusBanner({
   readsBecauseClosed: boolean
   canChangeStatus: boolean
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const controls = useProjectLifecycle({ projectId, lifecycle })
   const paused = lifecycle.status === 'paused'

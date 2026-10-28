@@ -23,6 +23,7 @@ import { FolderSymlink } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { RestrictingOtherProject } from '@/adapters/api/conversations-client'
 
 export interface OtherProjectsNoticeProps {
@@ -30,7 +31,7 @@ export interface OtherProjectsNoticeProps {
 }
 
 export const OtherProjectsNotice: FC<OtherProjectsNoticeProps> = ({ projects }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const titleId = useId()
   const bodyId = useId()

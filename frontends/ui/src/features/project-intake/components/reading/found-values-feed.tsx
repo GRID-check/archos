@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { intakeReadingStepCopy } from '@/i18n/namespaces/intake-reading-step'
 import type { FoundValue } from './found-values'
 
 /**
@@ -25,7 +26,7 @@ export function FoundValuesFeed({
   total: number
   onShowAll: () => void
 }): JSX.Element {
-  const t = useTranslations('intakeReadingStep')
+  const t = useTranslations(intakeReadingStepCopy)
   return (
     <section aria-labelledby="reading-found-heading" data-testid="reading-found">
       <div className="flex items-baseline justify-between gap-3">

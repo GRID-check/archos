@@ -34,6 +34,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { ORG_INSTRUCTIONS_MAX_CHARS } from '@/lib/org-instructions/constants'
 import { cn } from '@/lib/utils'
 
@@ -43,8 +45,8 @@ interface OrgInstructionsFormProps {
 }
 
 export const OrgInstructionsForm: FC<OrgInstructionsFormProps> = ({ initialInstructions }) => {
-  const t = useTranslations('organization')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tCommon = useTranslations(commonCopy)
 
   const [text, setText] = useState(initialInstructions ?? '')
   const [baseline, setBaseline] = useState(initialInstructions ?? '')

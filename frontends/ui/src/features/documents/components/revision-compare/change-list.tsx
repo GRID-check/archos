@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { ChangeBadge } from './compare-atoms'
 import type { ChangeGroup, ChangeRow } from './lib/regions'
@@ -49,7 +50,7 @@ export function ChangeList({
   action,
   className,
 }: ChangeListProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const listRef = useRef<HTMLElement | null>(null)
   const count = groups.reduce((sum, group) => sum + group.rows.length, 0)
   const { pinned } = activeRegion
@@ -134,7 +135,7 @@ function PageGroup({
   onShow: (number: number) => void
   loading: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div className="space-y-1" data-testid="compare-page-group" data-page={group.page}>
       <h3 className="flex items-baseline gap-2 text-xs font-medium">
@@ -177,7 +178,7 @@ function ChangeRowButton({
   activeRegion: ActiveRegion
   onShow: (number: number) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { number, region, sentence } = row
   const { active, pinned, preview } = activeRegion
   const isActive = active === number

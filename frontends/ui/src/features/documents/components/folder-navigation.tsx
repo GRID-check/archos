@@ -31,6 +31,7 @@ import { AnimatePresence, motion, motionQuick } from '@/components/motion'
 import { BackControl } from '@/components/shell/back-link'
 import { useTranslations } from '@/i18n'
 import { useLocale } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { folderDragProps, useFolderDropTarget, type FileDropAim } from '../hooks/use-document-drag'
 import { cn } from '@/lib/utils'
 import { TimeAgo } from '@/components/ui/time-ago'
@@ -117,7 +118,7 @@ export function FolderBreadcrumbRow({
   /** Whether the reader may write at a level (ADR-0088); a level they may not is no target. Defaults to yes. */
   mayWriteAt?: (folderId: string | null) => boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const path = useMemo(() => folderPath(folders, currentFolderId), [folders, currentFolderId])
   /** Every way up is a drop target, offered while there is somewhere to come back FROM. */
   const crumb = (folderId: string | null, label: string, children: ReactNode) => (
@@ -267,7 +268,7 @@ function NewFolderControl({
   currentFolderId,
   onCreateFolder,
 }: Pick<FolderNavProps, 'currentFolderId' | 'onCreateFolder'>): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -412,7 +413,7 @@ function CrumbDropTarget({
   onFileAim?: (aim: FileDropAim | null) => void
   children: ReactNode
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const drop = useFolderDropTarget({
     folderId,
     onDropDocument: onDropDocument ?? (() => {}),
@@ -442,7 +443,7 @@ function CrumbDropTarget({
  * so in both. Null `lockLabel` draws no lock.
  */
 function useFolderLabels(folder: FolderItem): { openLabel: string; lockLabel: string | null } {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const ownAccessLabel = useFolderOwnAccessLabel()
   const lockLabel = folder.ownAccess ? ownAccessLabel(folder.ownAccess) : null
   return {
@@ -465,7 +466,7 @@ function FolderNameEditor({
   onDone: () => void
   className?: string
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [value, setValue] = useState(folder.name)
   const [isRenaming, setIsRenaming] = useState(false)
 
@@ -521,7 +522,7 @@ function FolderActionsMenu({
   onStartRename: () => void
   onDeleteFolder: FolderNavProps['onDeleteFolder']
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -602,7 +603,7 @@ export function FolderCard({
   onDropFiles,
   onFileAim,
 }: FolderTileProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { openLabel, lockLabel } = useFolderLabels(folder)
   const { locale } = useLocale()
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false)
@@ -781,7 +782,7 @@ export function FolderRow({
   onDropFiles,
   onFileAim,
 }: FolderTileProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { openLabel, lockLabel } = useFolderLabels(folder)
   const { locale } = useLocale()
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false)
@@ -968,7 +969,7 @@ export function FolderRowSkeleton(): JSX.Element {
  * word will be.
  */
 export function FolderBreadcrumbRowSkeleton(): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div
       className="flex shrink-0 items-center justify-between gap-2 border-b bg-card/50 px-4 py-2.5 backdrop-blur-sm"

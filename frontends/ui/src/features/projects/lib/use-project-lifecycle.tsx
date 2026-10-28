@@ -29,6 +29,8 @@ import {
 } from '@/adapters/api/project-lifecycle-client'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectProfile } from '@/lib/project-profile/types'
 import type { ProjectLifecycleView } from '@/lib/projects/project-status'
 import { CloseProjectDialog } from '../components/close-project-dialog'
@@ -62,8 +64,8 @@ export function useProjectLifecycle({
   profile = null,
   canWriteMemory = false,
 }: UseProjectLifecycleOptions): ProjectLifecycleControls {
-  const t = useTranslations('projects')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(projectsCopy)
+  const tCommon = useTranslations(commonCopy)
   const router = useRouter()
   const [closing, setClosing] = useState(false)
   const [reopening, setReopening] = useState(false)

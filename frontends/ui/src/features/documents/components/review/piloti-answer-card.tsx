@@ -10,6 +10,8 @@ import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { liveLine } from '@/features/chat/lib/turn-events'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
@@ -54,9 +56,9 @@ export function PilotiAnswerCard({
   ask: CanvasAsk
   placement: CardPlacement
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const headerId = useId()
-  const tChat = useTranslations('chat')
+  const tChat = useTranslations(chatCopy)
   const { piloti } = review
   const [adopting, setAdopting] = useState(false)
   const [adoptFailed, setAdoptFailed] = useState(false)

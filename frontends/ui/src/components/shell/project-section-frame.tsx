@@ -22,6 +22,7 @@ import { usePathname } from 'next/navigation'
 
 import { PageHeader } from '@/components/ui/page-header'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { cn } from '@/lib/utils'
 
 const PROJECT_SECTION_KEYS = [
@@ -103,7 +104,7 @@ export function ProjectSectionFrame({
   children: ReactNode
 }): JSX.Element {
   const pathname = usePathname() ?? ''
-  const t = useTranslations('nav')
+  const t = useTranslations(navCopy)
   const [actions, setActions] = useState<ReactNode>(null)
 
   if (isProjectChatPath(pathname, projectId)) {

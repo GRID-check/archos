@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/suggestion-panel'
 import { useServerProposal, type ProposalOfKind } from '@/features/grid-cards/hooks/use-server-proposal'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { FilingFolderSuggestion, FilingSuggestionView } from '../lib/filing-suggestions'
 
 /** The last segment of a folder path: what fits on a chip. */
@@ -193,7 +194,7 @@ export function FilingSuggestionsProvider({
  * it away.
  */
 export function useFilingDecision(suggestion: FilingSuggestionView, onSettled: () => void) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const settled = useCallback((_proposal: ProposalOfKind<'file_operation'>) => onSettled(), [onSettled])
   const { proposal, problem, busy, decide } = useServerProposal(suggestion.proposalId, 'file_operation', settled)
   const status = proposal?.status ?? 'proposed'
@@ -261,7 +262,7 @@ function FilingSuggestionChip({
   defaultOpen: boolean
   className?: string
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [open, setOpen] = useState(defaultOpen)
   const others = useMemo(
     () => suggestion.documentIds.filter((id) => id !== documentId),
@@ -309,7 +310,7 @@ function FilingDecisionBody({
   onSettled: () => void
   folderPath: string | undefined
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const decision = useFilingDecision(suggestion, onSettled)
   const others = suggestion.fileCount - 1
   const from =

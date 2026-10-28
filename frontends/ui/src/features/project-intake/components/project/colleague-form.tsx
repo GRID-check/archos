@@ -20,6 +20,8 @@ import { Field, FieldLabel } from '@/components/ui/field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useTranslations } from '@/i18n'
+import { intakeProjectStepCopy } from '@/i18n/namespaces/intake-project-step'
+import { membersCopy } from '@/i18n/namespaces/members'
 import { PROJECT_MEMBER_ROLES, type ProjectMemberRoleSlug, type RosterMember } from '@/lib/projects/participants-client'
 import { DEFAULT_COLLEAGUE_ROLE } from './participants'
 import { FunctionField } from './person-form'
@@ -41,8 +43,8 @@ export function ColleagueForm({
   onSubmit: (choice: ColleagueChoice) => void
   onCancel: () => void
 }): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
-  const tMembers = useTranslations('members')
+  const t = useTranslations(intakeProjectStepCopy)
+  const tMembers = useTranslations(membersCopy)
   const id = useId()
   const [picking, setPicking] = useState(false)
   const [member, setMember] = useState<RosterMember | null>(null)

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { LoadError } from '@/components/ui/load-error'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { ApiRequestError } from '@/adapters/api/api-error'
 import {
   listDeletions,
@@ -30,7 +31,7 @@ interface RecentlyDeletedProps {
  * a small retryable error state when the list genuinely fails to load.
  */
 export function RecentlyDeleted({ canManageCompliance = false }: RecentlyDeletedProps) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const [entries, setEntries] = useState<DeletionEntry[]>([])
   const [error, setError] = useState(false)

@@ -62,6 +62,8 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { tasksCopy } from '@/i18n/namespaces/tasks'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import type { ScheduleDraft } from '@/features/jobs/lib/schedule-draft'
 import { RunBlock } from '@/features/runs/components/RunBlock'
@@ -114,8 +116,8 @@ export function TaskDetail({
   onPromoteToTask,
   onClose,
 }: TaskDetailProps): JSX.Element {
-  const t = useTranslations('tasks')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(tasksCopy)
+  const tCommon = useTranslations(commonCopy)
 
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
@@ -173,7 +175,7 @@ function TaskDetailBody({
   canManageJobs: boolean
   onPromoteToTask: ((draft: ScheduleDraft) => void) | undefined
 }): JSX.Element {
-  const t = useTranslations('tasks')
+  const t = useTranslations(tasksCopy)
   const { locale } = useLocale()
   const result = taskResultTarget(projectId, task)
   const ResultIcon = result ? RESULT_ICON[result.kind] : null
@@ -328,7 +330,7 @@ function TaskDetailBody({
  * that is all there ever was.
  */
 function TaskDetailFallback({ task, failed }: { task: TaskRunView; failed: boolean }): JSX.Element {
-  const t = useTranslations('tasks')
+  const t = useTranslations(tasksCopy)
 
   return (
     <div className="flex flex-col gap-4">

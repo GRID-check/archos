@@ -16,7 +16,7 @@
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { BadRequestError, PayloadTooLargeError } from '@/lib/api/errors'
-import { getDictionary } from '@/i18n/dictionaries'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { getLocale } from '@/i18n/server'
 import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from '@/lib/diagrams/diagram-sources'
 import { fileDiagramSchema } from '@/lib/diagrams/diagram-wire'
@@ -71,7 +71,7 @@ export const POST = apiRoute<Params>(
     refuseOversizedBody(request)
     const body = await parseJsonBody(request, fileDiagramSchema)
     const locale = await getLocale()
-    const dictionary = getDictionary(locale)
+    const diagrams = diagramsCopy.messages[locale]
     if (body.conversationId) {
       await requireResourceAccess(session, 'conversation', body.conversationId, 'viewer')
     }
@@ -90,10 +90,10 @@ export const POST = apiRoute<Params>(
         // sketch Piloti drew (ADR-0146) says „nicht maßstäblich", not
         // „Schematisch": it places things by hand.
         marking: body.edited
-          ? dictionary.diagrams.markingEdited
+          ? diagrams.markingEdited
           : body.sourceKind === 'excalidraw'
-            ? dictionary.diagrams.markingSketch
-            : dictionary.diagrams.marking,
+            ? diagrams.markingSketch
+            : diagrams.marking,
         request,
         origin: body.conversationId ? { conversationId: body.conversationId, locale } : undefined,
       })
@@ -117,7 +117,7 @@ export const POST = apiRoute<Params>(
       // 500 would tell it to retry the same bytes forever, so the rejection is
       // mapped to a 400 that names the rule in the reader's language.
       if (error instanceof DiagramSvgError) {
-        throw new BadRequestError(dictionary.diagrams.rejected[error.rejection])
+        throw new BadRequestError(diagrams.rejected[error.rejection])
       }
       throw error
     }

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SuggestInput, type SuggestOption } from '@/components/ui/suggest-input'
 import { Switch } from '@/components/ui/switch'
 import { useLocale, useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { DOSSIER_FACT_KEYS, type DossierFactKey } from '@/lib/documents/dossier'
 import { DOCUMENT_REFERENCE_KINDS } from '@/lib/documents/dossier'
 import type { DocumentFilters, FacetCount, SuggestDimension } from '@/lib/search/search-wire'
@@ -43,7 +44,7 @@ function numberOrUndefined(value: string): number | undefined {
  * they are typed rather than counted and are what an office reaches for first.
  */
 export function SearchKeyFilters({ state, onChange }: Pick<SearchFilterFormProps, 'state' | 'onChange'>): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const f = state.filters
   const set = (patch: Partial<DocumentFilters>): void => onChange({ ...state, filters: compactFilters({ ...f, ...patch }) })
   return (
@@ -91,7 +92,7 @@ export function SearchKeyFilters({ state, onChange }: Pick<SearchFilterFormProps
  * run on every keystroke of a number.
  */
 export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen = false }: SearchFilterFormProps): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const f = state.filters
   const set = (patch: Partial<DocumentFilters>): void => onChange({ ...state, filters: compactFilters({ ...f, ...patch }) })
 
@@ -182,7 +183,7 @@ function CommitText(props: CommitTextProps): JSX.Element {
 
 /** The words a completion shows: the documents' own spelling, and for a reference its kind. */
 function useSuggestOptions(dimension: SuggestDimension | undefined): (values: readonly FacetCount[]) => SuggestOption[] {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   return (values) =>
     values.map((facet) => {
       const kind = dimension === 'cites' ? facet.value.slice(0, facet.value.indexOf(':')) : ''
@@ -207,7 +208,7 @@ function CommitTextField({
   list = false,
   testId,
 }: CommitTextProps): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const id = useId()
   const [draft, setDraft] = useState(value)
   const [focused, setFocused] = useState(false)
@@ -279,7 +280,7 @@ function DateRange({
   onChange: (range: { from?: string; to?: string } | undefined) => void
   testId?: string
 }): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const { locale } = useLocale()
   const id = useId()
   const tokens = { day: t('dateTokens.day'), month: t('dateTokens.month'), year: t('dateTokens.year') }
@@ -330,7 +331,7 @@ function NumberRange({
   max: number | undefined
   onChange: (min: number | undefined, max: number | undefined) => void
 }): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const id = useId()
   const [draftMin, setDraftMin] = useState(min === undefined ? '' : String(min))
   const [draftMax, setDraftMax] = useState(max === undefined ? '' : String(max))
@@ -372,7 +373,7 @@ function Flag({ label, checked, onChange, testId }: { label: string; checked: bo
  * a name is typed. Enter adds it as a chip and empties the field for the next.
  */
 export function PartyNameFilter({ state, onChange }: Pick<SearchFilterFormProps, 'state' | 'onChange'>): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const f = state.filters
   return (
     <RailBody>
@@ -398,7 +399,7 @@ export function PartyNameFilter({ state, onChange }: Pick<SearchFilterFormProps,
  * as they are, which the filter matches in any reference's number or label.
  */
 export function CitesFilter({ state, onChange }: Pick<SearchFilterFormProps, 'state' | 'onChange'>): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const f = state.filters
   return (
     <RailBody>
@@ -418,7 +419,7 @@ export function CitesFilter({ state, onChange }: Pick<SearchFilterFormProps, 'st
 }
 
 function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: string; min?: number; max?: number }) => void }): JSX.Element {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const labels = useSearchLabels()
   const id = useId()
   const [key, setKey] = useState<DossierFactKey>('building_class')

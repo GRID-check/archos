@@ -31,6 +31,8 @@ import { Card } from '@/components/ui/card'
 import { EmptyStateDisc } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { onboardingCopy } from '@/i18n/namespaces/onboarding'
 import type { JSX } from 'react'
 
 export interface OrganizationSetupProps {
@@ -55,8 +57,8 @@ export function OrganizationSetup({
   onCreate,
   onSignOut,
 }: OrganizationSetupProps): JSX.Element {
-  const t = useTranslations('onboarding')
-  const tc = useTranslations('common')
+  const t = useTranslations(onboardingCopy)
+  const tc = useTranslations(commonCopy)
 
   return (
     <main id="main-content" className="bg-background flex min-h-dvh flex-col">
@@ -109,7 +111,7 @@ function SetupForm({
   error: string | null
   onCreate: (name: string) => Promise<void>
 }): JSX.Element {
-  const t = useTranslations('onboarding')
+  const t = useTranslations(onboardingCopy)
 
   const schema = z.object({
     name: z.string().trim().min(1, t('validation.nameRequired')).max(100, t('validation.nameTooLong')),
@@ -189,8 +191,8 @@ function SetupForm({
 }
 
 function InviteOnly({ onSignOut }: { onSignOut: () => void }): JSX.Element {
-  const t = useTranslations('onboarding')
-  const tc = useTranslations('common')
+  const t = useTranslations(onboardingCopy)
+  const tc = useTranslations(commonCopy)
   return (
     <div>
       <SetupHeading eyebrow={t('inviteOnly.eyebrow')} title={t('inviteOnly.title')}>
@@ -206,7 +208,7 @@ function InviteOnly({ onSignOut }: { onSignOut: () => void }): JSX.Element {
 }
 
 function SetupDone({ name }: { name: string }): JSX.Element {
-  const t = useTranslations('onboarding')
+  const t = useTranslations(onboardingCopy)
   return (
     <div role="status" aria-live="polite">
       <EmptyStateDisc icon={Check} />

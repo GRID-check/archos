@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { CreateProjectForm, type CreateProjectFormProps } from './create-project-form'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 interface CreateProjectDialogProps {
   /** Open on mount — wired to `/app/projects?new=1` from the project switcher. */
@@ -40,7 +41,7 @@ export function CreateProjectDialog({
   addressClients,
   initial,
 }: CreateProjectDialogProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(defaultOpen)

@@ -25,6 +25,8 @@
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { DOCUMENT_SCOPE_COPY, type DocumentScope } from './document-scope'
 import { startDocumentDownload } from '@/lib/documents/download'
 import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 import { documentDisplayName, type NamedDocument } from '@/lib/documents/display-name'
@@ -33,8 +35,6 @@ import { INGEST_RUNNING } from '@/lib/documents/reingest-codes'
 import { requestReingest } from '../../lib/reingest-request'
 import { requestCancelIngest } from '../../lib/cancel-request'
 
-/** Which corpus the document belongs to — and so which words and which route. */
-export type DocumentScope = 'files' | 'officeShelf'
 
 /** The least a surface has to know about a document to act on it. */
 export interface ActionableDocument extends NamedDocument {
@@ -131,9 +131,9 @@ export function useDocumentActions({
   onCancelled,
   onMoved,
 }: UseDocumentActionsOptions): DocumentActions {
-  const t = useTranslations(scope)
+  const t = useTranslations(DOCUMENT_SCOPE_COPY[scope])
   // Folders are a project concept, so the one refusal a move can meet is worded there.
-  const tFiles = useTranslations('files')
+  const tFiles = useTranslations(filesCopy)
   const [isRenaming, setIsRenaming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)

@@ -6,6 +6,7 @@ import { Download, FileSpreadsheet, FileText } from 'lucide-react'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import type { SearchExportFormat } from '../lib/search-client'
 
 /**
@@ -20,7 +21,7 @@ export function SearchExportMenu({
   onExport: (format: SearchExportFormat) => void
   busy: boolean
 }): JSX.Element {
-  const t = useTranslations('search.export')
+  const t = useTranslations(searchCopy, 'export')
   return (
     <ActionMenu
       mode="dropdown"

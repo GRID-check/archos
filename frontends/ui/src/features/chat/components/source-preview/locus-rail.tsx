@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { SectionLabel } from '@/components/ui/section-label'
 import { sourceSignalStyle } from '@/features/layout/components/SourceSignalChip'
 import type { CitationLocus, CitedDocument } from '../../lib/citations'
@@ -45,7 +46,7 @@ export const LocusRail: FC<{
   activeKey: string | undefined
   onSelect: (locus: CitationLocus) => void
 }> = ({ document: doc, activeKey, onSelect }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const loci = navigableLoci(doc)
   // Nothing that names a page is nothing to point at: the passage box says what
   // was read, and a rail of one unplaceable entry would say it again, emptier.

@@ -29,6 +29,7 @@ import { useSearchParams } from 'next/navigation'
 
 import { PageHeader } from '@/components/ui/page-header'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import {
   FeedbackTriage,
   type FeedbackTriageClient,
@@ -253,7 +254,7 @@ function memoryClient(
 
 /** The real page's header, so the capture shows the card in its context. */
 function PreviewHeader(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return (
     <PageHeader title={t('sections.feedback.title')} subtitle={t('sections.feedback.subtitle')} />
   )

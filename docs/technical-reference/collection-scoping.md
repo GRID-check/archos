@@ -272,7 +272,7 @@ The fallback calls `_resolve_target_collections()` from the `knowledge_layer` re
 
 ## Python Legacy: `_resolve_target_collections()`
 
-**File**: `sources/knowledge_layer/src/register.py` (line 220)
+**File**: `packages/knowledge-layer/src/register.py` (line 220)
 
 Config-based collection resolution when no scope header is present:
 
