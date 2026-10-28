@@ -236,7 +236,11 @@ latency one.
 
 **[LANDED]** The three awaits are gathered; the in-flight ingest read rides
 the outer gather too, and only the wait it may trigger stays after it. The
-digest version cache and the empty-memory shortcut are still open.
+empty-memory shortcut **[LANDED 2026-10-27]**: the query embed starts beside a
+recency read and is dropped when no row in scope carries a vector
+(`buildProjectMemoryDigest`). The digest version cache is still open, and the
+embed itself (280-1000 ms) still sits on the path for a project whose memory
+carries vectors.
 
 `register.py:1143` gathers three branches, which is right. Inside the first
 branch, `_load_project_context` awaits three independent things one after

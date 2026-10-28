@@ -540,11 +540,12 @@ class LlamaIndexRetriever(BaseRetriever):
         return [(scope, [self._grouped_chunk(hit) for hit in hits]) for scope, hits in grouped]
 
     def _grouped_chunk(self, hit: Any) -> Chunk:
-        """A grouped hit as a Chunk that also states its place in the one fused ranking."""
+        """A grouped hit as a Chunk stating its place in the fused ranking and whether it holds the words."""
         from aiq_agent.knowledge.base import FUSED_SCORE_KEY
+        from aiq_agent.knowledge.base import LEXICAL_MATCH_KEY
 
         chunk = self._chunk_from_hit(hit)
-        chunk.metadata[FUSED_SCORE_KEY] = float(hit.fused)
+        chunk.metadata.update({FUSED_SCORE_KEY: float(hit.fused), LEXICAL_MATCH_KEY: bool(hit.lexical)})
         return chunk
 
     def embed_query(self, text: str) -> list[float]:

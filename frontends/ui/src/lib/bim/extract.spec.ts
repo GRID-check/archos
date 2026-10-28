@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/ifc/sample-building.ifc
 /**
  * Extraction is the foundation every other IFC surface stands on — the viewer,
  * the query tool and the digest all read what this produces — so it is pinned

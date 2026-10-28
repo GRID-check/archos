@@ -23,6 +23,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import Field
 from pydantic import field_validator
 
+from aiq_agent.citations.entries import EmptySourceRegistryError
 from aiq_agent.common import AgentGroup
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
@@ -34,7 +35,6 @@ from aiq_agent.common import is_verbose
 from aiq_agent.common import unavailable_source_ids
 from aiq_agent.common import validate_tool_availability
 from aiq_agent.common.agent_tools import load_agent_tools
-from aiq_agent.common.citation_verification import EmptySourceRegistryError
 from aiq_agent.common.client_tools import KNOWN_CLIENT_TOOLS
 from aiq_agent.common.client_tools import client_tool_declared
 from aiq_agent.common.data_source_registry import get_all_sources
@@ -44,8 +44,8 @@ from aiq_agent.common.openrouter import PLATFORM_FIXED
 from aiq_agent.common.openrouter import pin_chat_model
 from aiq_agent.common.reasoning_settings import effort_of
 from aiq_agent.common.request_llm_context import read_request_llm_context
+from aiq_agent.common.tool_calls import tool_basename
 from aiq_agent.common.tool_validation import format_no_sources_message
-from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.knowledge.restricted_use import current_cross_project_turn
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata

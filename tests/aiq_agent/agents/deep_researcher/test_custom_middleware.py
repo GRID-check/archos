@@ -19,8 +19,8 @@ from aiq_agent.agents.deep_researcher.custom_middleware import is_retryable_tool
 from aiq_agent.agents.deep_researcher.models import ResearchNotes
 from aiq_agent.agents.deep_researcher.tools.source_registry import build_get_verified_sources_tool
 from aiq_agent.agents.deep_researcher.tools.source_registry import render_source_list
+from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.citation_verification import SourceEntry
 from aiq_agent.common.cost_tracking import BudgetExceededError
 from aiq_agent.common.data_source_registry import populate_from_config
 from aiq_agent.common.data_source_registry import reset_registry
@@ -859,9 +859,9 @@ class TestExcludedDocumentsNeverBecomeSources:
     @pytest.mark.asyncio
     async def test_a_document_read_in_an_earlier_turn_is_not_read_by_this_run(self):
         """In conversation mode the active registry is the session's, which spans turns."""
-        from aiq_agent.common.citation_verification import SourceRegistry
-        from aiq_agent.common.citation_verification import reset_session_registry
-        from aiq_agent.common.citation_verification import set_session_registry
+        from aiq_agent.citations.registry import SourceRegistry
+        from aiq_agent.citations.session import reset_session_registry
+        from aiq_agent.citations.session import set_session_registry
 
         session = SourceRegistry()
         session.add(SourceEntry(citation_key="frueher.pdf, p.1", title="frueher.pdf"))

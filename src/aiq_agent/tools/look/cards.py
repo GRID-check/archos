@@ -1,7 +1,7 @@
 """The ``look`` card and the ``look`` step: where Piloti looked, shown twice (ADR-0128).
 
 Every look that rendered leaves a Herleitung row at once
-(``turn_status.emit_look_step``): the reader sees Piloti look while it looks.
+(``retrieval_status.emit_look_step``): the reader sees Piloti look while it looks.
 The CARD waits for the answer, because it shows only the looks the answer
 relies on, and that is known once the answer is final.
 
@@ -52,7 +52,7 @@ from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import extend_or_add
 from aiq_agent.cards.registry import get_card_registry
 from aiq_agent.common.page_region_words import where_on_the_page
-from aiq_agent.common.turn_status import emit_look_step
+from aiq_agent.common.retrieval_status import emit_look_step
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def clamp_region(region: Any) -> list[float] | None:
         return None
     try:
         x, y, w, h = (min(1.0, max(0.0, float(share))) for share in region)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     w, h = min(w, 1 - x), min(h, 1 - y)
     if w <= 0 or h <= 0:
@@ -228,7 +228,7 @@ def take_looks() -> list[dict[str, Any]]:
 
 def _cited_names(cited: Iterable[Any]) -> set[str]:
     """The file names (basename, case-folded) of the answer's cited sources."""
-    from aiq_agent.common.citation_verification import source_entry_to_wire
+    from aiq_agent.citations.wire import source_entry_to_wire
 
     names: set[str] = set()
     for source in cited:
@@ -338,7 +338,7 @@ def drawing_value_status(
     overview or nothing (ADR-0128, the ``looked-before-measurement`` score).
     """
     try:
-        from aiq_agent.common.citation_verification import source_entry_to_wire
+        from aiq_agent.citations.wire import source_entry_to_wire
 
         drawn = [
             source.entry

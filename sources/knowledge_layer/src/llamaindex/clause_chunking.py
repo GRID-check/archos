@@ -258,7 +258,7 @@ def _collect_lines(text_pages: list[dict[str, Any]]) -> list[tuple[int, str]]:
         # which breaks the citation contract silently rather than loudly.
         try:
             page_number = int(page.get("page_number"))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             page_number = 0
         for line in text.splitlines():
             stripped = line.strip()

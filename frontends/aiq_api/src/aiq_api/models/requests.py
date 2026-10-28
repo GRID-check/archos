@@ -107,6 +107,9 @@ _DocumentId = Annotated[
     ),
 ]
 
+#: A document's file name as the chunks' ``file_name`` holds it.
+_FileName = Annotated[str, StringConstraints(min_length=1, max_length=500)]
+
 #: What a person names a reference by, or a ``kind:key`` token.
 _ReferenceText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
@@ -144,7 +147,7 @@ class ProjectFacts(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _english_tokens(self) -> "ProjectFacts":
+    def _english_tokens(self) -> ProjectFacts:
         """A German token (``wien``) from a BFF that has not rolled yet is read as the English one."""
         if self.federal_state is not None:
             self.federal_state = normalize_profile_token("federal_state", self.federal_state)
@@ -314,24 +317,6 @@ class IngestRequest(BaseModel):
     )
 
 
-class DocumentSearchRequest(BaseModel):
-    """Request body for deterministic semantic document search within a collection."""
-
-    query: str = Field(..., min_length=1, max_length=1000, description="Natural-language search query")
-    top_k: int = Field(40, ge=1, le=100, description="Max chunks to retrieve before document-centric aggregation")
-    top_k_files: int = Field(20, ge=1, le=100, description="Max documents to return after aggregation")
-    snippet_max_chars: int = Field(
-        300,
-        ge=100,
-        le=1500,
-        description=(
-            "Max characters kept from each document's best-matching chunk. 300 for a hit list a person scans; "
-            "the cross-project lookups (ADR-0094) ask for more, because their snippet is the evidence the agent "
-            "answers from and cites: it cannot open another project's document further."
-        ),
-    )
-
-
 class SimilarityWeights(BaseModel):
     """The BFF's hand-set ``SIMILARITY_WEIGHTS``, sent with each boosted search so they live in one place."""
 
@@ -390,6 +375,14 @@ class GroupedSearchFilters(BaseModel):
         default_factory=list,
         max_length=1000,
         description="Only passages of these documents (the BFF's document ids, `grid_document_id` on the chunks).",
+    )
+    file_names: list[_FileName] = Field(
+        default_factory=list,
+        max_length=1000,
+        description=(
+            "The same documents' file names, for the passages that carry no `grid_document_id` (written before "
+            "the field existed, or copied from Chroma): any of `document_ids` or of these. Only with `document_ids`."
+        ),
     )
     reading_types: list[DocumentType] = Field(
         default_factory=list,
@@ -455,27 +448,6 @@ class ProjectFactsResult(BaseModel):
             "False when no point of the collection exists yet: nothing to write, and the first document's "
             "ingest job carries the facts itself."
         ),
-    )
-
-
-class DocumentSearchHit(BaseModel):
-    """One document-centric search hit (a file's best-matching chunk)."""
-
-    file_name: str = Field(..., description="Original filename of the matched document")
-    score: float = Field(..., description="Similarity score (0.0 to 1.0) of the file's best-matching chunk")
-    snippet: str = Field(..., description="Snippet (300 chars unless asked for more) of the best-matching chunk")
-    page_number: int | None = Field(None, description="Page number of the best-matching chunk (None if N/A)")
-    collection: str = Field(..., description="Collection the document belongs to")
-    grid_document_id: str | None = Field(
-        None, description="The BFF's id of the document, when its chunks carry it (the search joins hits by it)"
-    )
-
-
-class DocumentSearchResponse(BaseModel):
-    """Response for semantic document search: document-centric hits, best score first."""
-
-    hits: list[DocumentSearchHit] = Field(
-        default_factory=list, description="Matched documents (one per file), sorted by score descending"
     )
 
 

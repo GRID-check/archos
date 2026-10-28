@@ -62,8 +62,8 @@ import regex
 from pydantic import Field
 
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.common.source_kinds import canonical_shelf_value
-from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.page_count import page_number
 from aiq_agent.knowledge.title_block import display_date
 from aiq_agent.knowledge.title_block import document_key
@@ -1430,7 +1430,7 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
 
 async def compare_revisions(older: FileRow, newer: FileRow) -> str:
     """The compare of two Fassungen the turn may list, from their stored chunks and title blocks (ADR-0104)."""
-    from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+    from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
     from aiq_agent.knowledge.restricted_use import note_collections_read
     from aiq_agent.knowledge.revision_diff import diff_revisions
     from aiq_agent.knowledge.revision_diff import render_diff
@@ -2197,7 +2197,7 @@ class ListFilesConfig(FunctionBaseConfig, name="list_files"):
 def _coerce_int(value: Any, default: int, *, low: int, high: int) -> int:
     try:
         number = int(str(value).strip()) if value not in (None, "") else default
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         number = default
     return max(low, min(high, number))
 

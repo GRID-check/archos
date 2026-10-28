@@ -19,7 +19,7 @@ import 'server-only'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { documents, type Document } from '@/lib/db/schema'
+import { documents, type Document } from '@/lib/db/schema/documents'
 import { DOCUMENT_LIST_LIMIT, type DocumentListRow } from '@/lib/documents/repository'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 

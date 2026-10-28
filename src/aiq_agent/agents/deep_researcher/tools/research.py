@@ -25,9 +25,9 @@ from aiq_agent.common import RunBudgetExceededError
 from aiq_agent.common import extract_json
 from aiq_agent.common.cost_tracking import BudgetExceededError
 from aiq_agent.common.retrieval_rounds import repeat_fetches
-from aiq_agent.common.turn_status import emit_repeat_fetch
-from aiq_agent.common.turn_status import fetch_signature
-from aiq_agent.common.turn_status import record_round_announcement
+from aiq_agent.common.retrieval_status import record_round_announcement
+from aiq_agent.common.tool_calls import fetch_signature
+from aiq_agent.common.turn_notices import emit_repeat_fetch
 from aiq_agent.common.turn_status import retrieval_round_scope
 from aiq_agent.common.turn_status import subagent_run
 
@@ -68,7 +68,7 @@ def _positive_int_env(name: str, default: int) -> int:
     """Positive-int env override; falls back to ``default`` when unset/invalid/<=0."""
     try:
         value = int(os.environ.get(name, ""))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
     return value if value > 0 else default
 
@@ -117,7 +117,7 @@ class RetrievalRounds:
     """
 
     #: One entry per announced batch, in dispatch order, as
-    #: ``turn_status.record_round_announcement`` shapes it. Its position is the
+    #: ``retrieval_status.record_round_announcement`` shapes it. Its position is the
     #: round index the hits of that batch are stamped with.
     announcements: list[dict[str, Any]] = field(default_factory=list)
     #: Fetch signature to the note that signature's first execution returned,
@@ -239,7 +239,7 @@ async def _run_research_query(
             result = await researcher_runnable.ainvoke(
                 researcher_invoke_state(query, runtime), config=_worker_config(callbacks)
             )
-        except (RunBudgetExceededError, BudgetExceededError):
+        except RunBudgetExceededError, BudgetExceededError:
             raise
         except GraphRecursionError:
             raise ResearcherExhaustedError(

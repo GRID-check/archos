@@ -5,14 +5,11 @@
 // resolved to the same labels. Deriving at render time (rather than reading the
 // stored profile_display) means every project benefits immediately — no
 // re-save required.
-import {
-  BUILDING_ID_IN_KEY,
-  buildingTag,
-  flattenIntakeQuestions,
-  formatIntakeAnswer,
-  projectIntakeDefinitionV1,
-} from './intake-definition'
-import type { ProjectIntakeQuestion } from './intake-definition'
+import { BUILDING_ID_IN_KEY, buildingTag } from './intake-building-keys'
+import { flattenIntakeQuestions } from './intake-conditions'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { formatIntakeAnswer } from './intake-vocabulary'
+import type { ProjectIntakeQuestion } from './intake-types'
 import { ProjectProfileSchema } from './types'
 import type { ProjectAssumption, ProjectFact, ProjectProfile } from './types'
 

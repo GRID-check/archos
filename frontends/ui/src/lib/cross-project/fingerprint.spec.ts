@@ -9,7 +9,8 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { buildIntakeProfile, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { buildIntakeProfile } from '@/lib/project-profile/intake-profile'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import { FINGERPRINT_KEYS, factLabel, fingerprintLabels, fingerprintOf, type FingerprintFact } from './fingerprint'
 

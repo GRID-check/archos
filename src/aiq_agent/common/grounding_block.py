@@ -18,7 +18,7 @@ The lookup is per turn and per context: :func:`begin_grounding_capture` opens
 it where the turn's other captures open (``turn_status.begin_lane_capture``),
 and a miss is normal, not an error. A stored turn replayed from Postgres, a
 cached registry and the job runner's callback all hold the text without the
-records, so ``citation_verification`` keeps its text parsers for them.
+records, so ``citations.text_parsers`` keeps its text parsers for them.
 """
 
 from __future__ import annotations
@@ -38,11 +38,11 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
+from aiq_agent.common.action_rows import current_action_call
 from aiq_agent.common.provenance import AGENT_AUTHOR
 from aiq_agent.common.provenance import AgentProvenance
 from aiq_agent.common.provenance import provenance_label
 from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import current_action_call
 from aiq_agent.common.turn_status import current_retrieval_round
 from aiq_agent.common.turn_status import emit_step
 from aiq_agent.common.wire_v2 import SourcesStep
@@ -97,7 +97,7 @@ class SourceRegion:
             return None
         try:
             x0, y0, x1, y1 = (float(part) for part in box)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         if not all(math.isfinite(part) for part in (x0, y0, x1, y1)):
             return None
@@ -283,7 +283,7 @@ COVERAGE_GAP_NOTE = (
 #: Appended to the ``Herkunft:`` line of a Piloti-authored document, so every
 #: tool that returns one (a search hit, a grep passage, a read) says it where
 #: the passage is. The line still starts with the frozen ``Piloti-Dokument``
-#: token the text parser reads (``citation_verification._parse_kl_authored_by``).
+#: token the text parser reads (``citations.grounding_text._parse_kl_authored_by``).
 AGENT_DOCUMENT_NOTE = "what the office decided, never a source for a normative value"
 
 #: The heading of the fan-out JSON every rendered block carries.

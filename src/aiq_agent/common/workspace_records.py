@@ -28,7 +28,7 @@ model read:
   PROPOSAL, whose record is the input the model proposed;
 - a ``list_files`` LISTING, or an ``ls`` or ``glob`` of the estate (ADR-0133
   slice 6), is its rendered text, cut at :data:`LISTING_MAX_CHARS`. It stays an
-  index, never cited, and registers no source (``citation_verification``);
+  index, never cited, and registers no source (``citations.text_parsers``);
 - anything else (a refusal, which the tool words „Error …", or a notice the
   agent's own guards answered the call with) is no JSON and no record.
 
@@ -124,7 +124,7 @@ ESTATE_LISTING_TOOLS = ("ls", "glob")
 def is_estate_listing(tool_name: str, call: dict[str, Any] | None) -> bool:
     """Whether a result is an ``ls`` or ``glob`` of the estate; one of the drafts or the skills lists no files."""
     from aiq_agent.common.estate_paths import call_mount
-    from aiq_agent.common.turn_status import tool_basename
+    from aiq_agent.common.tool_calls import tool_basename
 
     base = tool_basename(tool_name or "")
     if base not in ESTATE_LISTING_TOOLS or call is None:

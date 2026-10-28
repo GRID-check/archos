@@ -54,7 +54,7 @@ import { useComposerMetrics } from '@/features/layout/hooks/use-composer-metrics
 import { ComposerScrim } from '@/features/layout/components/ComposerScrim'
 import { selectThreadPhase } from '@/features/layout/lib/thread-phase'
 import { motion } from '@/components/motion'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useAnswerRevealStore } from '@/features/chat/stores/answer-reveal-store'
 import type { ChatMessage, Conversation } from '@/features/chat/types'
 import { isErrorPhase, isStreamScenario, type ErrorPhase, type StreamScenario } from '../_fixtures/v2-scenarios'
@@ -70,7 +70,7 @@ const config: AppConfig = {
 // `useWebSocketChat` resets any other user id on mount, and the cross-user
 // guard then empties the thread (gotchas.md).
 const USER = 'default-user'
-const HARNESS_STORAGE_KEY = 'aiq-chat-store:stream-socket'
+const HARNESS_STORAGE_KEY = 'chat-store:stream-socket'
 const CONVERSATION_ID = 'stream-socket'
 /** The conversation `switch=` opens while the turn runs. */
 const OTHER_CONVERSATION_ID = 'stream-socket-other'

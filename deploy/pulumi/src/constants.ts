@@ -13,6 +13,7 @@
  * (your values), then `config.ts` (every knob + default), then this file
  * (fixed decisions). The full knob reference lives in README.md.
  */
+import { objectName } from "./names";
 
 /** Container UIDs baked into the images (verified against the Dockerfiles). */
 export const UID = {
@@ -26,7 +27,7 @@ export const UID = {
   backend: 1000,
   /** Frontend image (`frontends/ui/deploy/Dockerfile`): user `nextjs` = 1001. */
   frontend: 1001,
-  /** Web (landing/blog) image (`frontends/web/Dockerfile`): user `piloti` = 1001. */
+  /** Web (landing/blog) image (`apps/site/Dockerfile`): user `piloti` = 1001. */
   web: 1001,
   /** Gotenberg image (upstream `build/Dockerfile`): user `gotenberg` = 1001. */
   gotenberg: 1001,
@@ -43,7 +44,7 @@ export const UID = {
 export const PORT = {
   backend: 8000,
   frontend: 3000,
-  /** Astro Node standalone adapter default port (`frontends/web/Dockerfile`). */
+  /** Astro Node standalone adapter default port (`apps/site/Dockerfile`). */
   web: 4321,
   redis: 6379,
   postgres: 5432,
@@ -353,7 +354,7 @@ export const LANGFUSE = {
    * HTTPRoute name. The SecurityPolicy attaches to it by name, so the two are
    * one decision.
    */
-  routeName: "grid-langfuse",
+  routeName: objectName("langfuseRoute"),
   /** Gateway listener name for the Langfuse hostname. */
   listenerName: "https-langfuse",
   /**
@@ -606,7 +607,7 @@ export const POSTGRES_TUNING = {
  */
 export const POSTGRES_POOLER = {
   /** The CNPG `Pooler` resource, and the Service the pooled DSNs name. */
-  name: "grid-pg-pooler-rw",
+  name: objectName("pgPoolerRw"),
   /** Client connections one PgBouncer accepts. A few KB each, so far above what every tier opens. */
   maxClientConn: "2000",
   /**
@@ -651,8 +652,8 @@ export const POSTGRES_POOLER = {
  * `app` is the owner login (`pgAppUser`), `runtime` is `grid_app_rw` (ADR-0041).
  */
 export const POOLED_POOLS = [
-  { database: "aiq_jobs", login: "app" },
-  { database: "aiq_checkpoints", login: "app" },
+  { database: "jobs", login: "app" },
+  { database: "checkpoints", login: "app" },
   { database: "grid_app", login: "runtime" },
 ] as const;
 
@@ -756,10 +757,10 @@ export const QDRANT = {
    * listener's `certificateRefs`, so each of these is one decision.
    */
   dashboard: {
-    routeName: "grid-qdrant-dashboard",
+    routeName: objectName("qdrantDashboardRoute"),
     listenerName: "https-qdrant",
-    tlsSecret: "grid-qdrant-tls", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
-    policyName: "grid-qdrant-dashboard-auth",
+    tlsSecret: objectName("qdrantTls"), // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+    policyName: objectName("qdrantDashboardAuth"),
     /** Holds the platform Connect application's client secret, key `client-secret`. */
     oidcSecret: "qdrant-dashboard-oidc", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
     /** Where the Qdrant server serves the dashboard's static files. */

@@ -1,3 +1,4 @@
+// @disk-inputs: ../../sources/ris_adapter/src/client.py
 /**
  * The in-app RIS reader's host promise, pinned to the backend's enforcement.
  *

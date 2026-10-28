@@ -24,7 +24,7 @@ import { NotFoundError, ResourceRightsLostError } from '@/lib/api/errors'
 import { isFolderVisibleTo } from '@/lib/authz/folder-access'
 import { requireProjectAccess, type ProjectRole } from '@/lib/authz/projects'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { ResourceRole, ResourceVisibility, ShareableResourceType } from '@/lib/db/schema'
+import type { ResourceRole, ResourceVisibility, ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import { describeResource, roleSatisfies, strongerRole, type ShareableDescriptor } from './registry'
 import { findGrantForSubject } from './repository'
 

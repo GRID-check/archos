@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/turn-outcome.schema.json
 /**
  * @vitest-environment node
  */

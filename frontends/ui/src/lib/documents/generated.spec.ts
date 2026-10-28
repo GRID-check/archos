@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * @vitest-environment node
  */
@@ -90,7 +91,7 @@ import {
   NotFoundError,
 } from '@/lib/api/errors'
 import { folderReadOnlyError, requireFolderWrite } from '@/lib/authz/folder-access'
-import type { NewDocument } from '@/lib/db/schema'
+import type { NewDocument } from '@/lib/db/schema/documents'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { makeProject } from '@/test-utils/db-fixtures'
 import { AUDIT_SCHEMAS } from '@/lib/audit/schemas.mjs'

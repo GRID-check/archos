@@ -23,7 +23,7 @@ def unit_score(score: Any) -> float:
     """
     try:
         value = float(score)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0.0
     if not math.isfinite(value):
         return 0.0
@@ -90,7 +90,7 @@ def _page_number(label: Any) -> int | None:
         return None
     try:
         return int(label)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 

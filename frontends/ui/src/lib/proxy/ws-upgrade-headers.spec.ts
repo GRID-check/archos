@@ -1,3 +1,4 @@
+// @disk-inputs: server.js
 /**
  * @vitest-environment node
  */
@@ -30,6 +31,20 @@ describe('stripClientContextHeaders', () => {
 
     expect(headers).toEqual({})
     expect(removed).toHaveLength(7)
+  })
+
+  it('removes the same headers under their names without the product name', () => {
+    const headers: Record<string, string> = {
+      'x-model-overrides': 'forged',
+      'x-budget': 'forged',
+      'x-disabled-sources': 'forged',
+      'x-organization-id': 'org_someone_else',
+      'x-request-context': 'forged',
+      'x-request-context-sig': 'forged',
+    }
+
+    expect(stripClientContextHeaders(headers)).toHaveLength(6)
+    expect(headers).toEqual({})
   })
 
   it('removes a client bearer and the service-token header', () => {

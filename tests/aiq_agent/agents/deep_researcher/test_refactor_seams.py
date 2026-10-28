@@ -30,12 +30,12 @@ from aiq_agent.agents.deep_researcher.tools.research import _batch_failure_messa
 from aiq_agent.agents.deep_researcher.tools.research import _largest_string_leaf
 from aiq_agent.agents.deep_researcher.tools.source_registry import dedupe_sources
 from aiq_agent.agents.deep_researcher.tools.source_registry import render_source_list
+from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.turn_status import CUTOFF_RUN_BUDGET
-from aiq_agent.common.turn_status import CUTOFF_STEP_LIMIT
-from aiq_agent.common.turn_status import CUTOFF_UPSTREAM_TIMEOUT
-from aiq_agent.common.turn_status import CUTOFF_WALL_CLOCK
+from aiq_agent.common.turn_notices import CUTOFF_RUN_BUDGET
+from aiq_agent.common.turn_notices import CUTOFF_STEP_LIMIT
+from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
+from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
 
 
 @pytest.mark.asyncio

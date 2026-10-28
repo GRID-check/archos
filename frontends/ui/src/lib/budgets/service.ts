@@ -40,8 +40,8 @@
  */
 
 import 'server-only'
-import type { BudgetPolicy, BudgetScope, BudgetUnit, NewLlmUsageEvent } from '@/lib/db/schema'
-import { UNBILLED_USAGE_ACTIVITIES } from '@/lib/db/schema'
+import type { BudgetPolicy, BudgetScope, BudgetUnit, NewLlmUsageEvent } from '@/lib/db/schema/budgets'
+import { UNBILLED_USAGE_ACTIVITIES } from '@/lib/db/schema/budgets'
 import { getCached, invalidateCached, invalidateCachedPrefix } from '@/lib/cache'
 import { canManageBudgets } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'

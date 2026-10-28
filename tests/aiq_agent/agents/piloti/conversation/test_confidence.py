@@ -12,6 +12,7 @@ the contract; nothing here is re-parsed from the answer text.
 """
 
 import pytest
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
@@ -20,9 +21,8 @@ from aiq_agent.agents.piloti.conversation import ConversationGraph
 from aiq_agent.agents.piloti.conversation import _finalize_answer
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import EmptySourceRegistryError
 from aiq_agent.common.canned_replies import GENERIC_ERROR_MESSAGE
-from aiq_agent.common.citation_verification import EmptySourceRegistryError
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 
 def _signals(**fields) -> ResearchAgentState:

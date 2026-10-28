@@ -26,6 +26,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
@@ -41,10 +42,10 @@ from aiq_agent.agents.piloti.agent import TurnConfig
 from aiq_agent.agents.piloti.conversation import ConversationGraph
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.data_source_registry import populate_from_config
 from aiq_agent.common.data_source_registry import reset_registry
 from aiq_agent.common.data_sources import disabled_source_notice
@@ -53,13 +54,12 @@ from aiq_agent.common.steering import SteerInbox
 from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import bind_steer_inbox
 from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 from aiq_agent.knowledge import restricted_use as ru
 from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
 from aiq_agent.knowledge.restricted_use import RestrictedUse
 from aiq_agent.knowledge.restricted_use import bind_restricted_use
 from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 _PROMPT = "Du bist Piloti."
 _ANSWER = AIMessage(content='```answer_json\n{"answer": "Fertig.", "kind": "walkthrough"}\n```')

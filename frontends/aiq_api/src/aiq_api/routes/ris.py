@@ -147,10 +147,10 @@ def _clip_around_passage(text: str, passage: str) -> tuple[str, bool]:
 #: a deployment without it an empty client cache turns each dialog open into a
 #: live fetch from ris.bka.gv.at. A few entries keep that deployment working and
 #: still bound the memory.
-_RIS_CLIENT: "RisClient | None" = None
+_RIS_CLIENT: RisClient | None = None
 
 
-def _client() -> "RisClient":
+def _client() -> RisClient:
     global _RIS_CLIENT
     if _RIS_CLIENT is None:
         from ris_adapter.client import RisClient

@@ -16,7 +16,7 @@
 import 'server-only'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
-import type { UploadBatch } from '@/lib/db/schema'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import { withTenant } from '@/lib/db/tenant-context'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BFF_JOB_PRIORITY, requesterOf, type ProjectIntakeReadPayload } from '@/lib/jobs-queue/types'

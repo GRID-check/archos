@@ -52,7 +52,7 @@ import { isFolderVisibleTo } from '@/lib/authz/folder-access'
 import { findDocumentTenancy } from '@/lib/documents/repository'
 import { findConversationTenancy } from '@/lib/conversations/repository'
 import type { ProjectRole } from '@/lib/authz/projects'
-import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema'
+import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import { isShared, requireResourceAccess, resolveResourceAccess } from './access'
 import { findGrantForSubject } from './repository'
 

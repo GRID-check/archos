@@ -8,7 +8,7 @@ const repository = vi.hoisted(() => ({
   documentFacetCounts: vi.fn(),
   countUnreadDocuments: vi.fn(),
   readReferenceSubject: vi.fn(),
-  listCandidateDocumentIds: vi.fn(),
+  listCandidateDocuments: vi.fn(),
 }))
 vi.mock('./document-repository', async (importOriginal) => ({
   contentKey: (await importOriginal<typeof import('./document-repository')>()).contentKey,
@@ -36,7 +36,7 @@ vi.mock('@/lib/documents/service', () => ({
 
 import { UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { fetchGroupedSemanticHits } from '@/lib/documents/service'
 import {
   contentPrefilter,
@@ -120,7 +120,7 @@ beforeEach(() => {
 describe('runSearch', () => {
   it('narrows annotations through their document and sets aside the kinds a document filter cannot narrow', async () => {
     vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
-    repository.listCandidateDocumentIds.mockResolvedValue(['d1'])
+    repository.listCandidateDocuments.mockResolvedValue([{ id: 'd1', filename: 'bsk.pdf' }])
     const filters = { documentTypes: ['submission_drawing' as const], planNumber: 'EP-0' }
 
     const answer = await runSearch(session, {}, { text: 'Brandschutz', filters })
@@ -151,7 +151,7 @@ describe('runSearch', () => {
 
   it('sets nothing aside for a project filter, which narrows every kind, nor names a kind it would not have searched', async () => {
     vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
-    repository.listCandidateDocumentIds.mockResolvedValue(['d1'])
+    repository.listCandidateDocuments.mockResolvedValue([{ id: 'd1', filename: 'bsk.pdf' }])
     expect((await runSearch(session, {}, { text: 'Brandschutz', filters: { projectIds: [PROJECT], includeArchived: true } })).setAside).toEqual({})
     expect(providers.searchFolders).toHaveBeenCalled()
     // Without words no folder is searched anyway: nothing to set aside.
@@ -173,7 +173,7 @@ describe('runSearch', () => {
     const answer = await runSearch(session, {}, { text: 'Fluchtweg', kinds: ['document'] })
 
     expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400, { purpose: 'workspace_search' })
-    expect(repository.listCandidateDocumentIds).not.toHaveBeenCalled()
+    expect(repository.listCandidateDocuments).not.toHaveBeenCalled()
     const query = repository.searchDocumentPage.mock.calls[0][1]
     expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u001fbsk.pdf'], contentIds: [''] })
     expect(repository.searchDocumentPage.mock.calls[0][2]).toEqual({ sort: 'relevance', dir: 'desc', limit: 25, offset: 0 })
@@ -197,6 +197,17 @@ describe('runSearch', () => {
       ['Grundrisse', '03 Einreichung/Grundrisse'],
       [null, ''],
     ])
+  })
+
+  it('says a passage matched by meaning alone when the content search found none of the words in it', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
+      { file_name: 'bsk.pdf', collection: 'proj_a', snippet: 'Reisekostenabrechnung', page_number: 1, score: 0.4, rank: 0, lexical: false },
+    ])
+    repository.searchDocumentPage.mockResolvedValue({ rows: [row({ matchedReading: false })], total: 1 })
+
+    const answer = await runSearch(session, {}, { text: 'Rechnung', kinds: ['document'] })
+
+    expect(answer.sections.document?.hits[0].matchedOn).toEqual(['meaning'])
   })
 
   it('joins a hit that names its document by id, whatever the file is called now', async () => {
@@ -233,7 +244,7 @@ describe('runSearch', () => {
     const other = { ...reach.projects[0], project: { ...reach.projects[0].project, id: 'p-other' } }
     vi.mocked(reachFor).mockResolvedValue({ ...reach, projects: [...reach.projects, other] })
     vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
-    repository.listCandidateDocumentIds.mockResolvedValue(['d1'])
+    repository.listCandidateDocuments.mockResolvedValue([{ id: 'd1', filename: 'bsk.pdf' }])
 
     await runSearch(session, {}, { text: 'Einreichung', filters: { projectIds: [PROJECT] } })
 
@@ -369,24 +380,40 @@ describe('contentPrefilter', () => {
   const base = { text: null, citedBy: null, citing: null }
 
   it('narrows the content search to the filtered documents when they are few', async () => {
-    repository.listCandidateDocumentIds.mockResolvedValue(['d1', 'd2'])
+    repository.listCandidateDocuments.mockResolvedValue([
+      { id: 'd1', filename: null },
+      { id: 'd2', filename: null },
+    ])
     expect(await contentPrefilter(reach, { ...base, filters: { documentTypes: ['permit'] } })).toEqual({
       filters: { document_ids: ['d1', 'd2'] },
     })
   })
 
+  it('names the uploads by file name too, for their passages that carry no document id', async () => {
+    // A currentOnly search lost „Screenshot … .png“: its passages, copied from Chroma, carry no grid_document_id.
+    repository.listCandidateDocuments.mockResolvedValue([
+      { id: 'd1', filename: 'Screenshot 2026-08-28 175733.png' },
+      { id: 'd2', filename: 'sample.pdf' },
+      { id: 'd3', filename: 'sample.pdf' },
+      { id: 'd4', filename: null },
+    ])
+    expect(await contentPrefilter(reach, { ...base, filters: { currentOnly: true } })).toEqual({
+      filters: { document_ids: ['d1', 'd2', 'd3', 'd4'], file_names: ['Screenshot 2026-08-28 175733.png', 'sample.pdf'] },
+    })
+  })
+
   it('narrows by the payload when the filtered documents are too many to name, and skips a search none can match', async () => {
-    repository.listCandidateDocumentIds.mockResolvedValue(Array.from({ length: 1001 }, (_, i) => `d${i}`))
+    repository.listCandidateDocuments.mockResolvedValue(Array.from({ length: 1001 }, (_, i) => ({ id: `d${i}`, filename: null })))
     expect(
       await contentPrefilter(reach, { ...base, filters: { documentTypes: ['permit'], cites: ['ÖNORM B 1600'], currentOnly: true } })
     ).toEqual({ filters: { reading_types: ['permit'], refers_to: ['ÖNORM B 1600'] } })
 
-    repository.listCandidateDocumentIds.mockResolvedValue([])
+    repository.listCandidateDocuments.mockResolvedValue([])
     expect(await contentPrefilter(reach, { ...base, filters: { planNumber: 'XX-99' } })).toBeNull()
   })
 
   it('does not narrow a search without filters', async () => {
     expect(await contentPrefilter(reach, { ...base, filters: { includeArchived: true } })).toEqual({ filters: undefined })
-    expect(repository.listCandidateDocumentIds).not.toHaveBeenCalled()
+    expect(repository.listCandidateDocuments).not.toHaveBeenCalled()
   })
 })

@@ -25,14 +25,14 @@ from knowledge_layer.qdrant.payload import chunk_metadata
 from knowledge_layer.qdrant.scope import scope_filter
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import vector
+from knowledge_layer_testing.qdrant import write
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.inventory import set_turn_documents
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import vector
-from sources.knowledge_layer.tests.qdrant_testing import write
 
 PROJECT = "proj_stem"
 BASE = "oib_knowledge"

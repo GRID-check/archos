@@ -9,7 +9,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { makeProject } from '@/test-utils/db-fixtures'
 
 vi.mock('server-only', () => ({}))
@@ -111,6 +111,25 @@ describe('the backend’s collection cap', () => {
     expect(collections[0]).toBe('proj_1')
     expect(collections).toContain('archiv_org_1')
     expect(response.projectsSearched).toBe(0)
+  })
+})
+
+describe('projectId', () => {
+  it('names the current project without narrowing the search, and the operation says so', async () => {
+    state.reach = state.reach.slice(0, 9)
+    const legal = { ...request, document: { kind: 'base' as const, fileName: 'oib-rl_2_ausgabe_mai_2023.pdf' } }
+
+    const without = await findSimilarPassages(session, legal)
+    const within = await findSimilarPassages(session, { ...legal, projectId: 'p3' })
+
+    // Nine projects either way: the current one is walked first, the count is of the others.
+    expect(state.asked[0].slice().sort()).toEqual(state.asked[1].slice().sort())
+    expect(state.asked[1][0]).toBe('proj_3')
+    expect([without.projectsSearched, within.projectsSearched]).toEqual([9, 8])
+
+    const operation = (await import('@/lib/agent-api/catalog')).findOperation('passage-similar-search')
+    expect(operation?.description).toMatch(/`projectId` does not narrow the search/)
+    expect(operation?.description).toMatch(/`projectsSearched` counts the projects besides that one/)
   })
 })
 

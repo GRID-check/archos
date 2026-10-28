@@ -8,6 +8,7 @@ therefore seed the shallow path directly; nothing routes ahead of it.
 """
 
 import pytest
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
@@ -19,7 +20,6 @@ from aiq_agent.agents.piloti.markers import ESCALATION_MARKER
 from aiq_agent.agents.piloti.models import ClarifyResult
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 
 def _research_result(messages, answer: str, *, escalating: bool = False, direct: bool = False):
@@ -725,7 +725,7 @@ class TestAFollowUpAnsweredFromTheTranscript:
         from langchain_core.messages import ToolMessage
 
         from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-        from aiq_agent.common.citation_verification import SourceRegistry
+        from aiq_agent.citations.registry import SourceRegistry
 
         call = {"name": "knowledge_search", "args": {"query": "Fluchtweg"}, "id": "c1"}
         messages = [

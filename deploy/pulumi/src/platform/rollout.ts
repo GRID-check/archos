@@ -1,6 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { createHash } from "node:crypto";
+import { objectName } from "../names";
 
 /**
  * Rolling-update safety primitives.
@@ -51,7 +52,7 @@ import { createHash } from "node:crypto";
  * is to change when the Secret's contents change, so the workload controller
  * performs a rolling update instead of silently keeping stale credentials.
  */
-export const SECRET_CHECKSUM_ANNOTATION = "grid.bigls.net/secret-checksum"; // pragma: allowlist secret (annotation key name, not a credential)
+export const SECRET_CHECKSUM_ANNOTATION = objectName("secretChecksumAnnotation"); // pragma: allowlist secret (annotation key name, not a credential)
 
 /** Old ReplicaSets/ControllerRevisions kept for `kubectl rollout undo`. */
 export const REVISION_HISTORY_LIMIT = 5;
@@ -247,7 +248,7 @@ export const ROLLOUT = {
   },
 
   /**
-   * Astro landing + blog (frontends/web): stateless static site behind a
+   * Astro landing + blog (apps/site): stateless static site behind a
    * Service + HPA, surge-only like the frontend. Node boot is fast and there
    * are no long-lived connections, so the shortest grace that still covers the
    * endpoint-drain preStop suffices.

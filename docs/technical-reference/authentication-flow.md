@@ -173,14 +173,17 @@ The `buildCollectionScopeFromRequest()` helper constructs the collection scope f
 
 ## Python JWT validation
 
-`src/aiq_agent/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS:
+`frontends/aiq_api/src/aiq_api/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS,
+and the `aiq_api.validators` entry point in `frontends/aiq_api/pyproject.toml` hands it to the
+middleware (ADR-0002: another package can register its own):
 
 ```python
 JWTValidator(
-    issuer_url="https://api.workos.com",
+    issuer_url=f"https://api.workos.com/user_management/{client_id}",
     jwks_uri=f"https://api.workos.com/sso/jwks/{client_id}",
-    audience=client_id,
+    audience=None,  # AuthKit access tokens carry no `aud`
     algorithms=["RS256"],
+    verify_iss=True,
 )
 ```
 
@@ -188,15 +191,15 @@ JWTValidator(
 
 1. Fetches JWKS from WorkOS (cached for 6 hours, cache-busted on kid miss)
 2. Extracts the signing key matching the JWT `kid`
-3. Verifies signature, `exp`, `iss`, and `aud`
+3. Verifies signature, `exp` and `iss`; `aud` only when an audience is configured, which the WorkOS validator does not
 4. Returns a dict with claims (`type: "jwt"`, `sub`, `email`, `name`, `token`) on success
 5. Returns error code `token_expired` or `token_invalid` on failure
 
-The validated principal is accessible in Python via `get_current_principal()` from `src/aiq_agent/auth/utils.py:200`, which reads the `aiq_api.auth.middleware` context.
+The validated principal is accessible in Python via `get_current_principal()` from `src/aiq_agent/auth/utils.py`, which reads the caller identity the middleware binds in `aiq_agent.auth.request_identity`.
 
 ## Token retrieval chain
 
-`get_auth_token()` in `src/aiq_agent/auth/utils.py:149` returns a token from the first available source, checked in priority order:
+`get_auth_token()` in `src/aiq_agent/auth/utils.py` returns a token from the first available source, checked in priority order:
 
 1. **Registered token fetchers** — custom fetchers registered via `register_token_fetcher(fn, priority)`, sorted high-to-low
 2. **NAT Context cookies** — `idToken` cookie from the NAT context (browser / web-UI mode)

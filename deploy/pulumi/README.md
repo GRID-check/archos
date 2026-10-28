@@ -13,7 +13,7 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 | Layer | Resources |
 |-------|-----------|
 | Platform | namespace `grid` (+ default-deny NetworkPolicies), cert-manager (Gateway-API) + Let's Encrypt `ClusterIssuer`, Envoy Gateway, observability (ADR-0029: `otel-collector` Deployment + Service + ConfigMap — only when `observabilityEnabled` **and** something consumes it: Langfuse, `posthogLogsEnabled` or `posthogMetricsEnabled`; with metrics, ADR-0119, an `otel-agent` DaemonSet and a read-only ServiceAccount and ClusterRole for each), Langfuse (ADR-0044: `langfuse-web` + `langfuse-worker` Deployments, `clickhouse` StatefulSet, a dedicated ingestion queue, HTTPRoute + SecurityPolicy — only when `langfuseEnabled` **and** its config deps are set; flag **on by default**), (metrics-server only on bare clusters) |
-| Data | CloudNativePG operator + `Cluster` (`aiq_jobs`, `aiq_checkpoints`, `grid_app`) with optional PITR backups to SeaweedFS (`ScheduledBackup`), Dragonfly, SeaweedFS (one StatefulSet under `seaweedfsTopology=single`; master + volume + filer StatefulSets, and a `seaweedfs_filer` CNPG database + role, under `split`) + bucket-init Job, Qdrant, the one vector store (ADR-0115: `qdrant` StatefulSet + headless and ClusterIP Services + PDB + `qdrant-snapshot` CronJob + `qdrant-alert-rules` ConfigMap, always; operating it: [`qdrant-runbook.md`](../../docs/deployment/qdrant-runbook.md)). No Chroma: `chromaMigration` copies the retired store into Qdrant on the deploy that removes it, and its volume `data-chroma-0` is kept, unmanaged, as the way back |
+| Data | CloudNativePG operator + `Cluster` (`jobs`, `checkpoints`, `grid_app`) with optional PITR backups to SeaweedFS (`ScheduledBackup`), Dragonfly, SeaweedFS (one StatefulSet under `seaweedfsTopology=single`; master + volume + filer StatefulSets, and a `seaweedfs_filer` CNPG database + role, under `split`) + bucket-init Job, Qdrant, the one vector store (ADR-0115: `qdrant` StatefulSet + headless and ClusterIP Services + PDB + `qdrant-snapshot` CronJob + `qdrant-alert-rules` ConfigMap, always; operating it: [`qdrant-runbook.md`](../../docs/deployment/qdrant-runbook.md)). No Chroma: `chromaMigration` copies the retired store into Qdrant on the deploy that removes it, and its volume `data-chroma-0` is kept, unmanaged, as the way back |
 | App | `aiq-agent` StatefulSet (no PVC; +PDB/spread in db mode), `frontend` Deployment + HPA + PDB, `agent-worker` Deployment + HPA + PDB (db mode), `purger`, `skill-scheduler`, a one-shot `drizzle-kit migrate` Job, a one-shot WorkOS audit-schema reconcile Job (when `requireAuth`), the one-shot `chroma-migration` Job + its `chroma-migration-exporter` ConfigMap (only when `chromaMigration`) |
 | Edge | Gateway API (Envoy Gateway, HA: 2 replicas + PDB) + HTTPRoutes with cert-manager TLS for `app.<baseDomain>` and `s3.<baseDomain>` |
 | DNS | Cloudflare A records for exactly the Gateway's HTTPS listener hosts, plus optionally the zone-level `www` / `_dmarc` / apex-redirect records — only when `dnsEnabled` (off by default; records are otherwise maintained by hand) |
@@ -137,7 +137,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **Storage** | | |
 | **`storageClass`** | — | Provider class for every PVC: `premium` (3 replicas) / `standard` (2) / `single-replica` (1) |
 | **Ingress / TLS** | | |
-| **`baseDomain`** | — | Single source for every public host: `app.`/`s3.`/`otel.` subdomains derive from it, so a domain move is a one-key change. The **apex** itself is the landing site's host (frontends/web) |
+| **`baseDomain`** | — | Single source for every public host: `app.`/`s3.`/`otel.` subdomains derive from it, so a domain move is a one-key change. The **apex** itself is the landing site's host (apps/site) |
 | `appDomain` / `s3Domain` / `webDomain` | derived from `baseDomain` | Optional per-host overrides (e.g. an S3 endpoint on a different zone); `webDomain` defaults to the bare `baseDomain` |
 | **`letsEncryptEmail`** | — | ACME account email (placeholder rejected) |
 | `useStagingIssuer` | `true` | LE staging CA until DNS/TLS verified, then flip false |
@@ -285,7 +285,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `frontendRequestsCpu/Memory`, `frontendLimitsCpu/Memory` | 100m / 256Mi / 1 / 1Gi | Sizing |
 | `frontendMinReplicas` / `frontendMaxReplicas` | 2 / 6 | HPA bounds |
 | `frontendHpaCpuTargetPercent` | `70` | HPA target |
-| **Web (landing site, frontends/web)** | | |
+| **Web (landing site, apps/site)** | | |
 | `webRequestsCpu/Memory`, `webLimitsCpu/Memory` | 50m / 128Mi / 250m / 256Mi | Sizing — static-first Astro site, near-idle CPU |
 | `webMinReplicas` / `webMaxReplicas` | 2 / 4 | HPA bounds |
 | `webHpaCpuTargetPercent` | `70` | HPA target |
@@ -396,10 +396,23 @@ src/app/                 config (Secret + env), migrations Job,
                          audit-schemas Job, chroma-migration Job,
                          backend, frontend (+HPA),
                          workers, httproutes
+src/names.ts             every object name, legacy and brand-free (ADR-0147)
 scripts/                 deploy.yml's helpers: GHCR tag lookup, the staging
                          image resolver + downgrade guard (reads the
-                         `deployedImages` output), CR schema validation
+                         `deployedImages` output), CR schema validation,
+                         the workspace stack file and ESC environment
+workspace/               the `workspace` project (ADR-0147): this program
+                         again, for the namespace `workspace`
 ```
+
+**Two projects, one program (ADR-0147).** While the namespace moves from `grid`
+to `workspace`, this directory is the project `grid-oib` (the running stacks)
+and `workspace/` is the project `workspace`, whose `Pulumi.yaml` points `main`
+back here. `src/names.ts` gives each project its own object names. The
+workspace stack files are generated at deploy time from `Pulumi.<stack>.yaml`
+by `scripts/workspace-stack-file.mjs` and are never committed; edit the legacy
+file and both stacks get the change. Until the expand step, the deploy job only
+**previews** the workspace stack.
 
 ## Notes
 

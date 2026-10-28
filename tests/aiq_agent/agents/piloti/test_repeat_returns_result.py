@@ -31,11 +31,11 @@ from aiq_agent.agents.piloti.agent import _REPEAT_FETCH_MESSAGE
 from aiq_agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 
 _PROMPT = "Du bist Piloti."
 

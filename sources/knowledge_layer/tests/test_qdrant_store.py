@@ -28,7 +28,7 @@ from knowledge_layer.qdrant.search import phrase
 from knowledge_layer.qdrant.store import QdrantStore
 
 DIM = 8
-IDENTITY = {"aiq:embed_fingerprint": "test-fp", "aiq:embed_model": "test-model"}
+IDENTITY = {"embed_fingerprint": "test-fp", "embed_model": "test-model"}
 
 
 def _server_url() -> str:
@@ -256,6 +256,61 @@ def test_grouped_search_ranks_projects_in_one_call(store):
     assert len(by_scope["proj_a"]) == 2
 
 
+def test_grouped_search_says_which_hits_hold_the_words(store):
+    """The fusion fills its candidates from the dense channel whatever the words; ``lexical`` tells them apart."""
+    store.upsert(
+        "proj_a",
+        [_record("Fluchttreppe Holzbau", "a1.pdf"), _record("Fassade Glas", "a2.pdf"), _record("Dach", "a3.pdf")],
+    )
+
+    def lexical_by_file(lexical_text: str, exact_terms: tuple[str, ...] = ()) -> dict[str, bool]:
+        groups = grouped_search(
+            store,
+            ["proj_a"],
+            vector=_vector("Fluchttreppe"),
+            lexical_text=lexical_text,
+            group_by="scope",
+            groups=1,
+            group_size=3,
+            exact_terms=exact_terms,
+        )
+        return {hit.payload["file_name"]: hit.lexical for _, hits in groups for hit in hits}
+
+    assert lexical_by_file("Fluchttreppe") == {"a1.pdf": True, "a2.pdf": False, "a3.pdf": False}
+    assert lexical_by_file("qwxzv") == {"a1.pdf": False, "a2.pdf": False, "a3.pdf": False}
+    assert lexical_by_file("", ("Fassade Glas",)) == {"a1.pdf": False, "a2.pdf": True, "a3.pdf": False}
+
+
+def test_a_document_filter_reaches_the_points_written_without_a_document_id(store):
+    """Points copied from Chroma carry no ``grid_document_id``; the BFF names them by file name beside the ids."""
+    doc = "0e8b1c2a-1111-4222-8333-444455556666"
+    store.upsert(
+        "proj_a",
+        [
+            _record("Schnitt neu", "neu.pdf", grid_document_id=doc),
+            _record("Schnitt alt", "alt.png"),
+            _record("Schnitt fremd", "fremd.pdf"),
+        ],
+    )
+
+    def files(filters: dict) -> set[str]:
+        groups = grouped_search(
+            store,
+            ["proj_a"],
+            vector=_vector("Schnitt"),
+            lexical_text="Schnitt",
+            group_by="scope",
+            groups=1,
+            group_size=5,
+            filters=filters,
+        )
+        return {hit.payload["file_name"] for _, hits in groups for hit in hits}
+
+    by_id = {"grid_document_id": {"$in": [doc]}}
+    assert files(by_id) == {"neu.pdf"}
+    assert files({"$or": [by_id, {"file_name": {"$in": ["alt.png"]}}]}) == {"neu.pdf", "alt.png"}
+
+
 def test_file_names_facet_one_scope_only(store):
     store.upsert("proj_a", [_record("x", "a.pdf"), _record("y", "a.pdf"), _record("z", "b.pdf")])
     store.upsert("proj_b", [_record("w", "c.pdf")])
@@ -277,7 +332,7 @@ def test_strict_mode_refuses_an_unindexed_filter_at_the_server(store):
 
 def test_a_foreign_embedder_is_refused(store):
     store.upsert("proj_a", [_record("x", "a.pdf")])
-    other = QdrantStore(store.client, {"aiq:embed_fingerprint": "other", "aiq:embed_model": "other-model"})
+    other = QdrantStore(store.client, {"embed_fingerprint": "other", "embed_model": "other-model"})
     with pytest.raises(RuntimeError, match="embedding mismatch"):
         other.check_identity("proj_a")
     with pytest.raises(RuntimeError, match="embedding mismatch"):

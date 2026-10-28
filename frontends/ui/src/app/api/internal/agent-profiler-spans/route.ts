@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod'
-import { SPAN_KINDS, SPAN_STATUSES } from '@/lib/db/schema'
+import { SPAN_KINDS, SPAN_STATUSES } from '@/lib/db/schema/agent-profiler'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withOptionalTenant } from '@/lib/db/tenant-context'
 import { recordProfilerSpans } from '@/lib/profiler/service'

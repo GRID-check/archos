@@ -40,9 +40,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { useTranslations } from '@/i18n'
 import { isConfirmedMemory, memoryOriginOf } from '@/lib/cross-project/decision-origin'
 import { factLabel, fingerprintOf, type FingerprintKey } from '@/lib/cross-project/fingerprint'
-import type { ProjectMemoryItem } from '@/lib/db/schema'
-import type { ProjectExperienceError, ProjectExperienceResult } from '@/lib/project-experience/types'
+import type { ProjectExperienceError } from '@/lib/project-experience/types'
 import type { ProjectAssumption, ProjectFact, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
+import {
+  addProjectMemoryItem,
+  extractProjectExperience,
+  listProjectMemory,
+  updateProjectMemoryItem,
+  type ProjectMemoryEntry,
+} from '@/adapters/api/project-memory-client'
+import { applyProjectProfileFact } from '@/adapters/api/project-profile-client'
 
 export interface ClosingDebriefProps {
   projectId: string
@@ -52,10 +59,7 @@ export interface ClosingDebriefProps {
 }
 
 /** A memory item as the list route sends it. */
-type DebriefItem = Pick<
-  ProjectMemoryItem,
-  'id' | 'kind' | 'content' | 'status' | 'verification' | 'pinned' | 'provenanceType' | 'evidence'
->
+type DebriefItem = ProjectMemoryEntry
 
 /** The memory kinds that are experience for other projects: what the lookups search. */
 const KEPT_KINDS = new Set(['decision', 'constraint'])
@@ -93,15 +97,6 @@ function suggestionFor(profile: ProjectProfile | null, key: string): ProjectAssu
   return assumption?.source === 'agent_suggested' && assumption.value !== null ? assumption : null
 }
 
-async function send<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
-  })
-  if (!res.ok) throw new Error(String(res.status))
-  return (await res.json()) as T
-}
-
 export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDebriefProps): JSX.Element {
   const t = useTranslations('projects')
   const router = useRouter()
@@ -111,14 +106,10 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
   const [extracting, setExtracting] = useState(false)
   const [extraction, setExtraction] = useState<Extraction | null>(null)
   const [lesson, setLesson] = useState('')
-  const memoryUrl = `/api/projects/${projectId}/memory`
-
   const loadMemory = useCallback(async () => {
-    const loaded = await collectPages<DebriefItem>((cursor) =>
-      send(`${memoryUrl}?limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`)
-    )
+    const loaded = await collectPages<DebriefItem>((cursor) => listProjectMemory(projectId, { limit: 200, cursor }))
     setItems(loaded.filter((item) => KEPT_KINDS.has(item.kind) && item.status === 'active'))
-  }, [memoryUrl])
+  }, [projectId])
 
   useEffect(() => {
     void loadMemory().catch(() => setFailed(true))
@@ -128,7 +119,7 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
     setExtracting(true)
     setExtraction(null)
     try {
-      const result = await send<ProjectExperienceResult>(`/api/projects/${projectId}/experience`, { method: 'POST' })
+      const result = await extractProjectExperience(projectId)
       if (result.error) {
         setExtraction({ status: 'failed', error: result.error })
         return
@@ -153,10 +144,7 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
     async (item: DebriefItem) => {
       setBusy(item.id)
       try {
-        const { item: saved } = await send<{ item: DebriefItem }>(`${memoryUrl}/${item.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ verification: 'user_confirmed' }),
-        })
+        const { item: saved } = await updateProjectMemoryItem(projectId, item.id, { verification: 'user_confirmed' })
         setItems((current) => current?.map((entry) => (entry.id === saved.id ? saved : entry)) ?? null)
       } catch {
         toast.error(t('lifecycle.debrief.errors.save'))
@@ -164,17 +152,14 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
         setBusy(null)
       }
     },
-    [memoryUrl, t]
+    [projectId, t]
   )
 
   const dismiss = useCallback(
     async (item: DebriefItem) => {
       setBusy(item.id)
       try {
-        await send<{ item: DebriefItem }>(`${memoryUrl}/${item.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ status: 'dismissed' }),
-        })
+        await updateProjectMemoryItem(projectId, item.id, { status: 'dismissed' })
         setItems((current) => current?.filter((entry) => entry.id !== item.id) ?? null)
       } catch {
         toast.error(t('lifecycle.debrief.errors.save'))
@@ -182,17 +167,14 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
         setBusy(null)
       }
     },
-    [memoryUrl, t]
+    [projectId, t]
   )
 
   const accept = useCallback(
     async (key: string, value: ProjectPrimitiveValue) => {
       setBusy(`fact:${key}`)
       try {
-        await send<unknown>(`/api/projects/${projectId}/profile/patches`, {
-          method: 'POST',
-          body: JSON.stringify({ patch: [{ op: 'add', path: `/facts/${key}`, value }] }),
-        })
+        await applyProjectProfileFact(projectId, key, value)
         router.refresh()
       } catch {
         toast.error(t('lifecycle.debrief.errors.save'))
@@ -208,10 +190,7 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
     if (!content) return
     setBusy('lesson')
     try {
-      const { item } = await send<{ item: DebriefItem }>(memoryUrl, {
-        method: 'POST',
-        body: JSON.stringify({ kind: 'decision', content }),
-      })
+      const { item } = await addProjectMemoryItem(projectId, { kind: 'decision', content })
       setItems((current) => [item, ...(current ?? [])])
       setLesson('')
       toast.success(t('lifecycle.debrief.lesson.added'))
@@ -220,7 +199,7 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
     } finally {
       setBusy(null)
     }
-  }, [lesson, memoryUrl, t])
+  }, [lesson, projectId, t])
 
   const valueText = (key: string, value: ProjectPrimitiveValue): string => {
     if (key === OIB_KEY) return t('lifecycle.debrief.fingerprint.oibEdition', { edition: String(value) })

@@ -41,7 +41,7 @@ with the reason. The design text stays as written; this section is the delta.
 | Stored page text and the chunk rebuild | `sources/knowledge_layer/src/stored_pages.py` |
 | The tools, the `CompositeBackend`, the `/drafts/` route | `src/aiq_agent/tools/documents/filesystem.py`, `tools.py` |
 | Citations on `ToolMessage.artifact` | `src/aiq_agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
-| `ToolStep.mount` | `common/wire_v2.py`, `turn_status.ToolStepCallback`; the UI's `executed-steps.ts` |
+| `ToolStep.mount` | `common/wire_v2.py`, `action_rows.ToolStepCallback`; the UI's `executed-steps.ts` |
 | Config | `filesystem: knowledge_search` on `shallow_research_agent` (`configs/config_oib_openrouter.yml`) |
 
 Departures, each with its reason:
@@ -146,7 +146,7 @@ the evidence tool surface went from 5,560 to 3,111 tokens per call (o200k).
 | `knowledge_search` (ranked only, `path`) and `list_files` (no tree view) where the estate is read | `sources/knowledge_layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` only when `filesystem` is set (`estate_paths.reads_the_estate`) |
 | A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `src/aiq_agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
 | Shared hints state facts and name no tool | `read_passage.py`, `register.py`, `browse.py`, `document_groups.py`, `chunk_noise.py`, `qdrant/folders.py`, `already_read.py`, `revision_diff.py` |
-| A citation written as a path resolves to its key | `common/citation_verification.citation_key_of_path` |
+| A citation written as a path resolves to its key | `citations/citation_keys.py::citation_key_of_path` |
 | The coverage line and the `Herkunft:` line say what they mean | `common/grounding_block.COVERAGE_GAP_NOTE`, `AGENT_DOCUMENT_NOTE` |
 | The literal prefetch of a quoted term or a code | `agents/piloti/decisions._corpus_prefetch`: a `grep` with `output_mode="content"` on the shelf's mount, narrowed to the open document by `glob` |
 

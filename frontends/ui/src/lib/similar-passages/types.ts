@@ -36,7 +36,15 @@ export const similarPassagesRequestSchema = z.object({
    * (a legal-corpus citation in a project's chat). A stored project document's
    * own project always wins.
    */
-  projectId: z.string().min(1).max(100).nullable().optional(),
+  projectId: z
+    .string()
+    .min(1)
+    .max(100)
+    .nullable()
+    .optional()
+    .describe(
+      'The project the person is working in, listed first as the current group. It does not narrow the search, which covers every project the person may read; a stored project document names its own project instead.'
+    ),
 })
 
 export type SimilarPassagesRequest = z.infer<typeof similarPassagesRequestSchema>

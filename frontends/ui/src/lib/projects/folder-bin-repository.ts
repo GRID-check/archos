@@ -19,7 +19,10 @@ import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
 import { executeRows } from '@/lib/db/execute-rows'
 import { withTenant } from '@/lib/db/tenant-context'
-import { deletionQueue, documents, projectFolders, projects, type Document } from '@/lib/db/schema'
+import { deletionQueue } from '@/lib/db/schema/deletion-queue'
+import { documents, type Document } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import { projects } from '@/lib/db/schema/projects'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 
 /**

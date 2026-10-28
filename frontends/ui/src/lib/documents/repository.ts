@@ -33,17 +33,12 @@ import {
   type ShelfFolderTally,
   type ShelfSummary,
 } from './shelf-summary-types'
-import {
-  bffJobQueue,
-  documentQuarantineDecisions,
-  documents,
-  documentVersions,
-  projectFolders,
-  type Document,
-  type DocumentAuthor,
-  type DocumentLifecycle,
-  type ResourceVisibility,
-} from '@/lib/db/schema'
+import { bffJobQueue } from '@/lib/db/schema/bff-job-queue'
+import { documentQuarantineDecisions } from '@/lib/db/schema/document-quarantine-decisions'
+import { documentVersions } from '@/lib/db/schema/document-versions'
+import { documents, type Document, type DocumentAuthor, type DocumentLifecycle } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import type { ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import type { DocumentScope, DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import {
   auditedQuarantineReasons,
@@ -486,20 +481,20 @@ export function afterDocumentLevelCursor(cursor: DocumentLevelCursor): SQL {
 }
 
 /**
- * Documents whose file name or rename contains `q`, case-insensitively, in
- * either Unicode form (a name off a Mac is decomposed). `strpos` and not
- * `LIKE`, so a `%` or `_` in what the reader typed is a character, not a
- * wildcard. Nothing for an empty query.
+ * Documents whose file name or rename contains `q`, both sides folded by
+ * `grid_fold_german` (migration 0188): case, either Unicode form (a name off a
+ * Mac is decomposed), and ä ö ü ß as ae oe ue ss, so „Abgabepläne“ and
+ * „Abgabeplaene“ find the same files, as the agent's file listing does
+ * (`knowledge_layer/browse.py`, `fold`). `strpos` and not `LIKE`, so a `%` or
+ * `_` in what the reader typed is a character, not a wildcard. Nothing for an
+ * empty query.
  */
 export function nameContains(q: string | undefined): SQL | undefined {
   const needle = q?.trim() ?? ''
   if (needle === '') return undefined
-  const variants = [...new Set([needle.normalize('NFC'), needle.normalize('NFD')])]
   return or(
-    ...variants.flatMap((variant) => [
-      sql`strpos(lower(${documents.filename}), lower(${variant})) > 0`,
-      sql`strpos(lower(coalesce(${documents.displayName}, '')), lower(${variant})) > 0`,
-    ]),
+    sql`strpos(grid_fold_german(${documents.filename}), grid_fold_german(${needle})) > 0`,
+    sql`strpos(grid_fold_german(coalesce(${documents.displayName}, '')), grid_fold_german(${needle})) > 0`,
   )
 }
 

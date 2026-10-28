@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * @vitest-environment node
  *
@@ -43,7 +44,6 @@ const ERROR_MESSAGE_CHILD_ALLOWED: Record<string, string> = {
 
 const TOAST_OF_BODY_ALLOWED: Record<string, string> = {
   'features/platform/components/norm-registry.tsx': 'platform staff surface, off the project path: known debt',
-  'features/projects/components/recently-deleted.tsx': 'restoring a deleted project, off the create path: known debt',
 }
 
 function sourceFiles(dir: string): string[] {

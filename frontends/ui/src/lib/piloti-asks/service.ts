@@ -39,7 +39,7 @@ import {
   insertConversation,
   insertMessages,
 } from '@/lib/conversations/repository'
-import type { PilotiAskRow } from '@/lib/db/schema'
+import type { PilotiAskRow } from '@/lib/db/schema/piloti-asks'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { isUuid } from '@/lib/ids'
 import { memberReader } from '@/lib/documents/visibility'
@@ -54,7 +54,11 @@ import type { TurnOutcomeRequest } from '@/lib/turns/outcome-types'
 import { askAnswerMessageId } from '@/lib/turns/answer-ids'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
+import { projectFactResolver } from '@/lib/project-profile/answer-bindings'
+import { findProjectProfile } from '@/lib/projects/repository'
+import { projectKeysIn, type ProjectKey } from '@/lib/text/answer-directives'
 import { answerEvidence } from './answer-evidence'
+import { answerTextForAgent } from './answer-text'
 import {
   ASK_WAIT_SECONDS,
   DEFAULT_ASK_MAX_SECONDS,
@@ -281,7 +285,8 @@ async function viewOf(session: AuthorizedSession, row: PilotiAskRow): Promise<As
         projectId: conversation?.projectId ?? null,
         origin: configuredAppOrigin(),
       })
-      answer = { messageId, text: message.content, ...evidence }
+      const projectValue = await projectValuesFor(message.content, conversation?.projectId ?? null, row.organizationId)
+      answer = { messageId, text: answerTextForAgent(message.content, { projectValue }), ...evidence }
     }
   }
   return {
@@ -289,6 +294,21 @@ async function viewOf(session: AuthorizedSession, row: PilotiAskRow): Promise<As
     answer,
     documents: await listAskDocuments(row, memberReader(session.userId)),
   }
+}
+
+/**
+ * The project's values for the `:project[key]` bindings an answer holds, or
+ * undefined when it holds none (no profile read). A key the profile lacks
+ * stays the key, as in the copy: a value is never invented.
+ */
+async function projectValuesFor(
+  content: string,
+  projectId: string | null,
+  organizationId: string
+): Promise<((key: ProjectKey) => string | null) | undefined> {
+  if (!projectId || projectKeysIn(content).length === 0) return undefined
+  const resolve = projectFactResolver(await findProjectProfile(projectId, organizationId))
+  return (key) => resolve(key).text
 }
 
 /** The parts of a view the row alone answers. */

@@ -22,10 +22,10 @@ from pydantic import Field
 from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.common.estate_paths import estate_path
-from aiq_agent.common.turn_status import CONCLUSION_ARG
-from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
-from aiq_agent.common.turn_status import ActionRow
+from aiq_agent.common.tool_calls import CONCLUSION_ARG
+from aiq_agent.common.tool_calls import CONCLUSION_DESCRIPTION
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
 from nat.plugin_api import Builder
@@ -1469,7 +1469,7 @@ def _lane_source(hit, detail: str | None, *, opened: bool) -> TraceLaneSource:
     producing tool is read off its scope, never passed (``record_lane_hit``).
     """
     from aiq_agent.common.provenance import provenance_metadata
-    from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
+    from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
     from aiq_agent.common.turn_status import current_retrieval_round
     from aiq_agent.common.turn_status import lane_tool_scope
     from aiq_agent.common.turn_status import record_lane_hit
@@ -1569,7 +1569,7 @@ def _stored_image_index(metadata: dict) -> int | None:
         return None
     try:
         return int(index)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         logger.warning("Ignoring unreadable stored_image_index %r", index)
         return None
 
@@ -1613,7 +1613,7 @@ def _hit_regions(chunk) -> tuple:
     try:
         segment = json.loads(raw).get("segment") or {}
         coords = [float(part) for part in segment.get("bbox") or ()]
-    except (TypeError, ValueError, AttributeError):
+    except TypeError, ValueError, AttributeError:
         return ()
     # Finite before clamped: ``min(1.0, max(0.0, nan))`` is 0.0 and an infinity
     # clamps to an edge, so either would pass the geometry checks below as a
@@ -1787,7 +1787,7 @@ def _format_results(
 
     from aiq_agent.common.grounding_block import GroundingBlock
     from aiq_agent.common.grounding_block import render_grounding_block
-    from aiq_agent.common.turn_status import KNOWLEDGE_SEARCH_TOOL
+    from aiq_agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
     from aiq_agent.common.turn_status import current_lane_tool
 
     hits = _grounding_hits(retrieval_result.chunks)
@@ -2288,7 +2288,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
     ) -> str:
         # `conclusion` is deliberately unread HERE. It is a checkpoint channel,
         # not a retrieval parameter: the researcher's agent node reads it off
-        # the tool CALL (`turn_status.emit_retrieval`) before this coroutine
+        # the tool CALL (`retrieval_status.emit_retrieval`) before this coroutine
         # runs, and it must not influence what is searched — a sentence that
         # changed the result would make the Herleitung a cause instead of a
         # record of one.
@@ -2395,7 +2395,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
 
         # The literal modes: same scope, same narrowing, no ranking at all.
         if mode in {"exact", "regex"}:
-            from aiq_agent.common.turn_status import emit_literal_search
+            from aiq_agent.common.action_rows import emit_literal_search
 
             from .browse import exact_search
 
@@ -2776,7 +2776,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                             "one firing per turn already spent, keeping the first pool"
                         )
                     else:
-                        from aiq_agent.common.turn_status import emit_retrieval_requery
+                        from aiq_agent.common.retrieval_status import emit_retrieval_requery
 
                         emit_retrieval_requery(query_count=len(verdict.queries))
                         extra = await asyncio.gather(
@@ -3027,7 +3027,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # back as success=False, partial loss as error_message set — both must
             # reach `_format_results`, which renders the failure/warning, rather
             # than the retry-hint below, which would read as "nothing matched".
-            from aiq_agent.common.turn_status import KNOWLEDGE_SEARCH_TOOL
+            from aiq_agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
             from aiq_agent.common.turn_status import lane_tool_scope
 
             folders_trailer = await folder_task if folder_task is not None else ""
@@ -3080,7 +3080,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             return formatted
 
         except Exception as e:
-            from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+            from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 
             logger.error(f"Knowledge search failed: {e}")
             outcome.failed = True

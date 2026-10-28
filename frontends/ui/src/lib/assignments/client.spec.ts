@@ -1,3 +1,4 @@
+// @disk-inputs: src/adapters/**, src/components/**, src/features/**, src/hooks/**
 /**
  * @vitest-environment node
  */

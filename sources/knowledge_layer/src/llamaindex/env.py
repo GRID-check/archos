@@ -33,7 +33,7 @@ def env_float(name: str, fallback: float, *, minimum: float = _POSITIVE) -> floa
     raw = os.environ.get(name, "")
     try:
         value = float(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         if raw:
             logger.warning("%s=%r is not a number; using %s", name, raw, fallback)
         return fallback

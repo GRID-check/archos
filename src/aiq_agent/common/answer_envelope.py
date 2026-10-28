@@ -78,10 +78,10 @@ from pydantic import ValidationError
 from pydantic import field_validator
 
 from aiq_agent.common.provenance import normalize_document_name
-from aiq_agent.common.turn_status import VERDICT_DROP_AGENT_AUTHORED
-from aiq_agent.common.turn_status import VERDICT_DROP_UNREFERENCED_WITH_AGENT_SOURCE
-from aiq_agent.common.turn_status import emit_anatomy_dropped
-from aiq_agent.common.turn_status import emit_verdict_dropped
+from aiq_agent.common.turn_notices import VERDICT_DROP_AGENT_AUTHORED
+from aiq_agent.common.turn_notices import VERDICT_DROP_UNREFERENCED_WITH_AGENT_SOURCE
+from aiq_agent.common.turn_notices import emit_anatomy_dropped
+from aiq_agent.common.turn_notices import emit_verdict_dropped
 
 logger = logging.getLogger(__name__)
 
@@ -435,7 +435,7 @@ class GateContext:
 
     prose_chars: int
     #: Normalised names of the AGENT-AUTHORED documents this turn captured
-    #: (``citation_verification.agent_authored_document_names``). Empty on
+    #: (``citations.binding.agent_authored_document_names``). Empty on
     #: every turn that retrieved none, which is nearly all of them — and an
     #: empty set makes the verdict gate below a no-op, so a caller that cannot
     #: reach a registry loses nothing it had.
@@ -889,7 +889,7 @@ def _parse_object(raw: str) -> dict | None:
     try:
         payload = json.loads(raw, strict=False)
         return payload if isinstance(payload, dict) else None
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         pass
     start = raw.find("{")
     if start == -1:
@@ -899,7 +899,7 @@ def _parse_object(raw: str) -> dict | None:
         return None
     try:
         payload = json.loads(raw[start:end], strict=False)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         return None
     return payload if isinstance(payload, dict) else None
 
@@ -1110,7 +1110,7 @@ def gate_answer_meta(
     judges the answer, not its apparatus.
 
     ``agent_authored_documents`` is what the turn retrieved that PILOTI wrote
-    (``citation_verification.agent_authored_document_names``); a verdict whose
+    (``citations.binding.agent_authored_document_names``); a verdict whose
     Fundstelle resolves into it is dropped, and so is a verdict that names no
     Fundstelle at all — see :func:`_verdict_drop_reason` for why the second
     refusal is not the first one being over-eager. Defaulted so a caller with no

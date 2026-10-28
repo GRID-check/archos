@@ -35,12 +35,12 @@ import signal
 from collections.abc import Callable
 from collections.abc import Mapping
 from typing import Any
+from typing import override
 
 from fastapi import APIRouter
 from fastapi import FastAPI
 from pydantic import Field
 from pydantic import model_validator
-from typing_extensions import override
 
 from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
@@ -48,6 +48,7 @@ from aiq_agent.observability import posthog_exceptions
 from aiq_agent.stages.delivery import register_stage_frame_sink
 from aiq_api.auth.middleware import AuthMiddleware
 from aiq_api.context_envelope import GridContextEnvelopeMiddleware
+from aiq_api.legacy_headers import LegacyHeaderNamesMiddleware
 from nat.builder.workflow_builder import WorkflowBuilder
 from nat.cli.register_workflow import register_front_end  # noqa: TID251
 from nat.data_models.config import Config
@@ -222,7 +223,7 @@ class AIQAPIConfig(FastApiFrontEndConfig, name="aiq_api"):
     step_adaptor: StepAdaptorConfig = StepAdaptorConfig(mode=StepAdaptorMode.OFF)
 
     @model_validator(mode="after")
-    def _the_chat_socket_is_the_only_turn_route(self) -> "AIQAPIConfig":
+    def _the_chat_socket_is_the_only_turn_route(self) -> AIQAPIConfig:
         """Refuse a config that puts a NAT route in front of the workflow, rather than serve it.
 
         NAT's defaults put the workflow behind ``/v1/workflow*``, ``/generate*``,
@@ -386,6 +387,28 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
     )
 
 
+def _add_request_middleware(app: FastAPI, *, validators: list, require_auth: bool, role: WebRole) -> None:
+    """The request middleware, innermost first.
+
+    Starlette's add_middleware() makes each newly added middleware the new
+    OUTERMOST layer, so whichever is added LAST runs FIRST on the way in.
+    GridContextEnvelopeMiddleware is added BEFORE AuthMiddleware so that
+    AuthMiddleware (added, and therefore outer, second) always resolves
+    scope["state"]["user"] before the envelope-enforcement middleware reads it
+    for HTTP requests. See aiq_api.context_envelope's module docstring for the
+    full enforcement design (matrix, WebSocket handling, exemptions).
+    """
+    app.add_middleware(GridContextEnvelopeMiddleware, require_auth=require_auth, validators=validators)
+    app.add_middleware(AuthMiddleware, validators=validators, require_auth=require_auth)
+    # Outside both: a service header that arrives under its new name is copied
+    # onto the old one before auth and the envelope read it (aiq_api.legacy_headers).
+    app.add_middleware(LegacyHeaderNamesMiddleware)
+    # Added last, so outermost: it counts every HTTP request this process
+    # takes, the ones auth refuses included, which is the load the scaling
+    # signal must see. See aiq_api.inflight.
+    app.add_middleware(InFlightMiddleware, role=role.value)
+
+
 class AIQAPIWorker(FastApiFrontEndPluginWorker):
     """
     Worker that adds the AI-Q routes of one web role to the FastAPI app.
@@ -458,20 +481,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
                 "Either call aiq_api.plugin.register_validator() before starting the server, "
                 "or declare an 'aiq_api.validators' entry point in your package."
             )
-        # NOTE on ordering: Starlette's add_middleware() makes each newly
-        # added middleware the new OUTERMOST layer, so whichever is added
-        # LAST runs FIRST on the way in. GridContextEnvelopeMiddleware is
-        # added BEFORE AuthMiddleware here so that AuthMiddleware (added,
-        # and therefore outer, second) always resolves scope["state"]["user"]
-        # before the envelope-enforcement middleware reads it for HTTP
-        # requests. See aiq_api.context_envelope's module docstring for the
-        # full enforcement design (matrix, WebSocket handling, exemptions).
-        app.add_middleware(GridContextEnvelopeMiddleware, require_auth=require_auth, validators=validators)
-        app.add_middleware(AuthMiddleware, validators=validators, require_auth=require_auth)
-        # Added last, so outermost: it counts every HTTP request this process
-        # takes, the ones auth refuses included, which is the load the scaling
-        # signal must see. See aiq_api.inflight.
-        app.add_middleware(InFlightMiddleware, role=self._role.value)
+        _add_request_middleware(app, validators=validators, require_auth=require_auth, role=self._role)
         if self._role is WebRole.CHAT:
             configure_websocket_auth(validators=validators, require_auth=require_auth)
         logger.info(

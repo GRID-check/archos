@@ -3,14 +3,10 @@
 // current profile — never from a model-authored `preview`. A prompt-injected
 // research context could otherwise show a benign preview while the patch writes
 // a different fact, so what the user consents to must equal what gets applied.
-import {
-  flattenIntakeQuestions,
-  formatIntakeAnswer,
-  humanizeProfileKey,
-  labelForProfileKey,
-  projectIntakeDefinitionV1,
-} from './intake-definition'
-import type { ProjectIntakeQuestion } from './intake-definition'
+import { flattenIntakeQuestions } from './intake-conditions'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { formatIntakeAnswer, humanizeProfileKey, labelForProfileKey } from './intake-vocabulary'
+import type { ProjectIntakeQuestion } from './intake-types'
 import { formatBareValue } from './brief-view'
 import { normalizeProfilePatchOperation } from './legacy-names'
 import type { ProjectPrimitiveValue, ProjectProfile, ProjectProfilePatchOperation } from './types'

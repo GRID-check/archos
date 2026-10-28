@@ -14,6 +14,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pytest
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import answering
+from agent_testing.look import room  # noqa: F401 - autouse: the canvas route answers
+from agent_testing.look import stored  # noqa: F401 - fixture, used by `pytestmark`
 
 from aiq_agent.common import image_view_budget
 from aiq_agent.common import turn_status
@@ -26,10 +30,6 @@ from aiq_agent.tools.look.cards import place_look_cards
 from aiq_agent.tools.look.cards import relied_on
 from aiq_agent.tools.look.cards import take_looks
 from aiq_agent.tools.look.register import run_look
-from tests.aiq_agent.tools.canvas.conftest import DOCUMENT
-from tests.aiq_agent.tools.canvas.conftest import answering
-from tests.aiq_agent.tools.look.test_register import room  # noqa: F401 - autouse: the canvas route answers
-from tests.aiq_agent.tools.look.test_register import stored  # noqa: F401 - fixture, used by `pytestmark`
 
 OG = "22222222-0000-4000-8000-000000000002"
 
@@ -64,7 +64,7 @@ class _Cited:
 
 
 def _cited(*file_names: str) -> list:
-    from aiq_agent.common.citation_verification import SourceEntry
+    from aiq_agent.citations.entries import SourceEntry
 
     return [_Cited(SourceEntry(citation_key=f"{name}, p.1", source_type="knowledge_layer")) for name in file_names]
 

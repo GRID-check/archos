@@ -1,3 +1,4 @@
+// @disk-inputs: src/adapters/api/**, src/features/chat/**
 /**
  * @vitest-environment node
  */

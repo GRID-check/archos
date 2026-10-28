@@ -21,7 +21,7 @@ import {
   type StoredQuarantineVerdict,
 } from '@/lib/upload-screening/quarantine'
 import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
-import type { DocumentAuthor } from '@/lib/db/schema'
+import type { DocumentAuthor } from '@/lib/db/schema/documents'
 import { collectionFileRef, type CollectionFileRef } from './collection-file-ref'
 import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
 import { parseRevisionLinkNames, type RevisionLinkNames, type RawRevisionLinkFields } from './revision-links'
@@ -41,6 +41,7 @@ import { publishShelfChanged } from './shelf-live'
 import { projectReadings } from '@/lib/search/facets-projector'
 import { listCollectionDocumentsForProjection } from '@/lib/search/facets-repository'
 import { parseIngestFailureCategory, type IngestFailureFacts } from './retry-policy'
+import { readHeader } from '@/lib/http/legacy-header-names'
 
 /**
  * DB statuses that mean "ingestion outcome not yet known".
@@ -448,7 +449,7 @@ interface CollectionFiles {
 }
 
 /** The header the backend sets on a listing whose reading could not be merged. */
-const READING_UNAVAILABLE_HEADER = 'x-grid-reading-unavailable'
+const READING_UNAVAILABLE_HEADER = 'x-reading-unavailable'
 
 interface RawBackendFile extends RawRevisionLinkFields {
   file_name?: string
@@ -504,7 +505,7 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       revision: parseRevisionLinkNames(file),
     })
   }
-  return { byName, ambiguousNames, readingUnavailable: result.headers?.get(READING_UNAVAILABLE_HEADER) === '1' }
+  return { byName, ambiguousNames, readingUnavailable: (result.headers ? readHeader(result.headers, READING_UNAVAILABLE_HEADER) : null) === '1' }
 }
 
 // ---------------------------------------------------------------------------

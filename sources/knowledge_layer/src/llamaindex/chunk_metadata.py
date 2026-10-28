@@ -104,7 +104,7 @@ def apply_metadata_exclusions(document: Any) -> None:
         merged = existing + [key for key in EMBED_EXCLUDED_METADATA_KEYS if key not in existing]
         try:
             setattr(document, attribute, merged)
-        except (AttributeError, ValueError):  # pragma: no cover - non-llama-index document
+        except AttributeError, ValueError:  # pragma: no cover - non-llama-index document
             logger.debug("Could not set %s on %r", attribute, type(document).__name__)
 
 

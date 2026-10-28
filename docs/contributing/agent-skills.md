@@ -59,7 +59,7 @@ was deleted rather than moved.
 | `aiq-maintain-ci` | moved | CI maintenance is contributor knowledge, and [ci.md](ci.md) already held most of it | [ci.md, "Changing CI"](ci.md#changing-ci) |
 | `aiq-add-tool`, `aiq-add-data-source` | merged and moved | One procedure, needed by anyone extending the agent | [adding-a-tool.md](../architecture/adding-a-tool.md) |
 | `aiq-customize-prompts-models` | moved | Prompt and model configuration is architecture knowledge | [llm-providers.md](../architecture/llm-providers.md#which-model-each-role-uses) and the prompt section of [backend-deep-dive.md](../architecture/backend-deep-dive.md#prompts-three-layers-and-where-each-is-authored) |
-| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`frontends/web/art/riso/README.md`](../../frontends/web/art/riso/README.md#making-a-print) |
+| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`apps/site/art/riso/README.md`](../../apps/site/art/riso/README.md#making-a-print) |
 | `aiq-deploy` | deleted | A deployment runbook, and the upstream blueprint's: it cloned NVIDIA's repository and deployed with Helm | [`docs/deployment/`](../deployment/), [`scripts/README.md`](../../scripts/README.md) |
 
 ## Installed

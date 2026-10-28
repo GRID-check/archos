@@ -37,7 +37,7 @@ from aiq_agent.common.agent_tools import load_agent_tools
 from aiq_agent.common.fenced_checkpointer import FencedCheckpointer
 from aiq_agent.common.profiler import flush_after_answer
 from aiq_agent.common.profiler import track_agent_profile
-from aiq_agent.common.turn_status import documents_loading_step
+from aiq_agent.common.retrieval_status import documents_loading_step
 from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.common.wire_v2 import RunFinishedBody
 from aiq_agent.common.wire_v2 import StatusStep
@@ -501,7 +501,7 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
     """The per-turn entry point NAT calls, composed from ``aiq_agent.turn``."""
     any_stage_llm = any(llm is not None for llm in stage_llms.values())
 
-    async def _run(query: object) -> Annotated[AsyncGenerator[EventBody, None], Streaming(convert=fold_turn)]:
+    async def _run(query: object) -> Annotated[AsyncGenerator[EventBody], Streaming(convert=fold_turn)]:
         conversation_id = Context.get().conversation_id
         thread_id = thread_id_for_turn(conversation_id)
         # The signed request-context envelope, parsed ONCE per turn (base64 +

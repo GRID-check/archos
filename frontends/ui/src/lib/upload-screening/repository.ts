@@ -7,7 +7,7 @@
 import 'server-only'
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documentQuarantineDecisions, type DocumentQuarantineDecision } from '@/lib/db/schema'
+import { documentQuarantineDecisions, type DocumentQuarantineDecision } from '@/lib/db/schema/document-quarantine-decisions'
 import { withTenant } from '@/lib/db/tenant-context'
 
 /** The decisions about these documents that the trail does not have yet. */

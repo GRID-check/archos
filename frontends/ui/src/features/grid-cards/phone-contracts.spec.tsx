@@ -1,3 +1,4 @@
+// @disk-inputs: src/features/grid-cards/**
 /**
  * What the chat cards keep on a phone, held where the source shows it.
  *

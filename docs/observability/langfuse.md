@@ -111,9 +111,11 @@ as above): its input the query's length in `text_chars` and `text_tokens`
 candidates named by id; `payload`: too many to name, so what they are and cite;
 `none`), how many `document_ids` and which `filter_fields`; its output
 `candidates` (the passages ranked), `documents` handed back, `with_document_id`,
-`collections_with_hits` and `hits_per_collection` (the 50 collections with most,
-by name: `proj_<uuid>`, `office_shelf_<org>`). Metadata: `prefilter`,
-`collections`, `candidates`, `documents`. A grouped search without the purpose
+`collections_with_hits`, `hits_per_collection` (the 50 collections with most,
+by name: `proj_<uuid>`, `office_shelf_<org>`) and `below_meaning_floor` (the
+documents dropped because they matched by meaning alone below the floor).
+Metadata: `prefilter`, `collections`, `candidates`, `documents`,
+`below_meaning_floor`. A grouped search without the purpose
 (the cross-project lookup) is traced where it runs, as
 `retrieve.project_lookup`, never twice. The browser's side of the same search
 is PostHog's `search_issued`, and the route's `Server-Timing` header splits its
@@ -160,6 +162,12 @@ before the LangGraph run; inside it `history.trim` in the graph's first node,
 and in Piloti's own function `setup.skills`, `setup.file_tools` and
 `setup.llm_provider` beside `decide.turn`. Input is a few counts, output
 `outcome` (`ok`, `error`, `cancelled`), `ms` and counts; never turn content.
+`setup.project_context` is one call to the BFF's turn-context route, so its
+output also carries that route's `Server-Timing`: `bff_<read>_ms` for
+`session`, `access` and each read it runs at once (`profile`, `instructions`,
+`memory`, `decisions`, `reviews`, `cross_project`, `references`, `folders`,
+`workspace`), `bff_total_ms`, and `bff_memory_desc`, whether the memory read
+waited for the query embed (`ranked`, `skipped`, `unavailable`, `no-query`).
 A `decide.<slot>` generation also spans its call now (its `latency_ms`), where
 it used to read 1 ms. "Where did the first turn's seconds go" is a read of
 these rows: `docs/audit/turn-latency-measured-2026-09.md` §3.6.

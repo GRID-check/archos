@@ -10,7 +10,7 @@ vi.mock('./version-repository', () => ({ findOpenVersion: vi.fn(), listDocumentV
 
 import { ConflictError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { DocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import { makeDocument } from '@/test-utils/db-fixtures'
 import { getAccessibleDocument } from './access'
 import { forkDraftVersion } from './lifecycle'

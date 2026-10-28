@@ -87,7 +87,8 @@ RAW_HTTPX_HOMES = {
 def _python_files() -> list[Path]:
     files: list[Path] = []
     for base in SCANNED:
-        files.extend(p for p in base.rglob("*.py") if "tests" not in p.relative_to(ROOT).parts)
+        # Tests and their support packages (`testing/`) are not call sites.
+        files.extend(p for p in base.rglob("*.py") if not {"tests", "testing"} & set(p.relative_to(ROOT).parts))
     return files
 
 
@@ -287,8 +288,9 @@ async def test_a_chat_model_from_the_seam_holds_a_slot_for_every_call(pool, monk
 
 async def test_a_per_request_copy_of_a_seam_model_still_holds_a_slot(pool):
     """The model-override and ZDR seams `model_copy` the model; the copy must keep the limiter."""
+    from agent_testing.llm_factory import _resolved_through_nat
+
     from aiq_agent.common.model_overrides import override_model
-    from tests.aiq_agent.common.test_llm_factory import _resolved_through_nat
 
     llm = await _resolved_through_nat(base_url="https://openrouter.ai/api/v1")
     copy = override_model(llm, "x-ai/grok-4.5")

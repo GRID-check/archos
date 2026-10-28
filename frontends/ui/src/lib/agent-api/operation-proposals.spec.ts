@@ -54,7 +54,7 @@ vi.mock('@/lib/authz/folder-access-rule', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authz/folder-access-rule')>()),
   DOCUMENT_WRITE_PERMISSIONS: ['project:documents:write'],
 }))
-vi.mock('@/lib/project-profile/intake-definition', () => ({
+vi.mock('@/lib/project-profile/intake-vocabulary', () => ({
   validateProfilePatchVocabulary: vi.fn(),
 }))
 vi.mock('@/lib/proposals/repository', () => ({

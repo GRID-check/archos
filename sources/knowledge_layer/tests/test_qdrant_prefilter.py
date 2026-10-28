@@ -27,13 +27,13 @@ from knowledge_layer.qdrant.prefilter import Pushdown
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import _folder_matches
 from knowledge_layer.register import knowledge_retrieval
+from knowledge_layer_testing.qdrant import vector as _vector
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.inventory import set_turn_documents
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.tests.qdrant_testing import vector as _vector
 
 PROJECT = "proj_prefilter"
 BASE = "oib_knowledge"

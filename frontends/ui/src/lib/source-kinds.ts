@@ -1,6 +1,8 @@
 /**
- * Canonical source-kind taxonomy — frontend mirror of the backend
- * `src/aiq_agent/common/source_kinds.py` (ADR-0026).
+ * Canonical source-kind taxonomy — the frontend half of the backend
+ * `src/aiq_agent/common/source_kinds.py` (ADR-0026). The kinds and the shelves
+ * themselves are generated from it (`shared/vocabularies.generated.ts`); what
+ * the UI makes of them (tints, badges, labels) lives here.
  *
  * The coarse KIND drives the chip **color** (the provenance/trust family:
  * Baurecht / Büroablage / Projektwissen / Web — one of the `--source-*` tint
@@ -14,6 +16,8 @@
  * document sits on (ADR-0047) — "whose document is this?". It is neither
  * derived from nor merged into the display taxonomy above.
  */
+
+import { SHELVES, SOURCE_KINDS } from '@/shared/vocabularies.generated'
 
 /**
  * The provenance signal a source belongs to (spec §4 `--source-*` family).
@@ -52,31 +56,9 @@ export type SourceTint = SourceSignal | 'oib'
  * that already renders off `kind` picks it up; it is deliberately NOT a
  * citation on the backend (`aiq_agent/tools/bim/measurement_sources.py`).
  */
-export type SourceKind = 'building_law' | 'office' | 'project' | 'web' | 'measurement'
+export type SourceKind = (typeof SOURCE_KINDS)[number]
 
-const SOURCE_KINDS: ReadonlySet<SourceKind> = new Set([
-  'building_law',
-  'office',
-  'project',
-  'web',
-  'measurement',
-])
-
-/**
- * The German kinds a stored citation, a trace lane or an older pod's wire still
- * carries. Read-only: nothing writes these, `modernizeSourceKind` maps them on
- * the way in.
- */
-export const LEGACY_SOURCE_KIND: Readonly<Record<string, SourceKind>> = {
-  baurecht: 'building_law',
-  buero: 'office',
-  projekt: 'project',
-  messung: 'measurement',
-}
-
-/** A kind (or lane-kind) value spelled the English way, whichever spelling it came in. */
-export const modernizeSourceKind = (value: string | null | undefined): string | null | undefined =>
-  value && Object.hasOwn(LEGACY_SOURCE_KIND, value) ? LEGACY_SOURCE_KIND[value] : value
+const SOURCE_KIND_SET: ReadonlySet<string> = new Set<string>(SOURCE_KINDS)
 
 /**
  * The German fine-lane keys, as exact keys. A lane is `<family>[_<tier>]`, so the
@@ -113,7 +95,7 @@ export const modernizeLane = (value: string | null | undefined): string | null |
 
 /** Narrow an untrusted wire value to a SourceKind, else undefined. */
 export const asSourceKind = (value: string | null | undefined): SourceKind | undefined =>
-  value && SOURCE_KINDS.has(value as SourceKind) ? (value as SourceKind) : undefined
+  value && SOURCE_KIND_SET.has(value) ? (value as SourceKind) : undefined
 
 /**
  * Coarse kind → the `--source-*` tint family (`SourceSignal`). This is the one
@@ -197,22 +179,13 @@ export const kindForLane = (lane: string | null | undefined): SourceKind => {
 // dropped into the chat); a `building_law`-kind document sits on `base`. Neither
 // enum is derivable from the other, so neither is defined in terms of the other.
 
-/** The four shelves a retrieved chunk can come from. */
-export type Shelf = 'office_shelf' | 'project' | 'session' | 'base'
+/** The four shelves a retrieved chunk can come from: `Shelf` in `source_kinds.py`, generated. */
+export type Shelf = (typeof SHELVES)[number]
 
-/** Every shelf, for iteration. Kept in step with {@link Shelf} by `satisfies`. */
-export const SHELVES = ['office_shelf', 'project', 'session', 'base'] as const satisfies readonly Shelf[]
+/** Every shelf, for iteration. */
+export { SHELVES }
 
 const SHELF_SET: ReadonlySet<string> = new Set<string>(SHELVES)
-
-/**
- * The shelf's wire value before it had an English name. A message, citation or
- * peer from before the rename still says `archiv`; it reads as the office
- * shelf and nothing writes it. Python twin: `LEGACY_SHELF_VALUES` in
- * `src/aiq_agent/common/source_kinds.py` (parity: `source-kinds.spec.ts`).
- * Remove after one release.
- */
-export const LEGACY_SHELF_VALUES: Readonly<Record<string, Shelf>> = { archiv: 'office_shelf' }
 
 /**
  * Narrow an untrusted wire value to a Shelf, else undefined.
@@ -223,8 +196,7 @@ export const LEGACY_SHELF_VALUES: Readonly<Record<string, Shelf>> = { archiv: 'o
  * the strongest provenance claim this UI can make.
  */
 export const asShelf = (value: string | null | undefined): Shelf | undefined => {
-  const raw = (value ?? '').trim().toLowerCase()
-  const key = LEGACY_SHELF_VALUES[raw] ?? raw
+  const key = (value ?? '').trim().toLowerCase()
   return SHELF_SET.has(key) ? (key as Shelf) : undefined
 }
 
