@@ -39,15 +39,15 @@ const PREDICATE = 'documentVisibleTo'
  */
 const SEES_EVERY_ROW: Record<string, string> = {
   // --- The quarantine itself -------------------------------------------------
-  'lib/documents/repository.ts#listQuarantinedDocuments':
+  'lib/documents/repository/quarantine-and-retry.ts#listQuarantinedDocuments':
     "The reviewers' queue: held rows are what it lists, and `listQuarantineQueue` authorizes each row with `mayReviewQuarantine`.",
 
   // --- Sweeps over every organization or every stuck row ---------------------
-  'lib/documents/repository.ts#listStuckProcessingDocuments':
+  'lib/documents/repository/ingest-state.ts#listStuckProcessingDocuments':
     'Sweep: re-dispatches rows left at `processing`, which are held by definition. Returns ids to a worker, nothing to a person.',
-  'lib/documents/repository.ts#listTransientFailures':
+  'lib/documents/repository/ingest-state.ts#listTransientFailures':
     'Sweep: re-reads documents whose read failed for a passing reason, each through `retryTransientFailure`. Ids only, to a worker.',
-  'lib/documents/repository.ts#listFailedDocumentPageInOrg':
+  'lib/documents/repository/quarantine-and-retry.ts#listFailedDocumentPageInOrg':
     'Sweep: the failed-ingestion rescan re-dispatches each id through `reingestDocument`. Ids only, to a job.',
   'lib/platform/vector-reconcile.ts#liveFilenamesByCollection':
     'Sweep: which filenames still have a row, so chunks of deleted documents are purged. A held row is not deleted.',
@@ -64,9 +64,9 @@ const SEES_EVERY_ROW: Record<string, string> = {
     "Staleness probe: a count and newest change per shelf, compared with the projection's last sync. Numbers to a job, nothing to a person.",
 
   // --- Orphan checks: a held document is not gone ---------------------------
-  'lib/documents/repository.ts#documentIdsExisting':
+  'lib/documents/repository/lookup.ts#documentIdsExisting':
     "The sharing registry's `exists`: the orphan sweep deletes grants of documents that are gone, and a held one is not.",
-  'lib/documents/repository.ts#listDocumentIdsForProject':
+  'lib/documents/repository/lookup.ts#listDocumentIdsForProject':
     "The sharing registry's `listIdsInProject`: a leaver's grants go on every document of the project, held ones included.",
   'lib/sharing/repository.ts#deleteOrphanedGrants': 'Orphan sweep: NOT EXISTS over every row, or a held document loses its grants.',
   'lib/inbox/repository.ts#deleteOrphanedInboxItems': 'Orphan sweep: NOT EXISTS over every row, or a held document loses its inbox rows.',
@@ -244,27 +244,27 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
     makes: ['internal:identity'],
     why: "Whether a run's Unterlagen name a file in a restricted folder: every row by that name, held ones included, and only ever a refusal.",
   },
-  'lib/documents/repository.ts#findDocumentAuthoredByRef': {
+  'lib/documents/repository/lookup-by-ref.ts#findDocumentAuthoredByRef': {
     makes: ['internal:identity'],
     why: "Idempotency of Piloti's filing by its run reference, which a unique index answers over every row.",
   },
-  'lib/documents/repository.ts#findLiveDocumentByFilename': {
+  'lib/documents/repository/lookup-by-ref.ts#findLiveDocumentByFilename': {
     makes: ['internal:identity'],
     why: 'The name probe of an upload; a held row of another person answers as taken (`assertMayReplaceHeld`).',
   },
-  'lib/documents/repository.ts#findProjectCollectionsHoldingFilename': {
+  'lib/documents/repository/lookup-by-ref.ts#findProjectCollectionsHoldingFilename': {
     makes: ['internal:identity'],
     why: 'Which collections already hold a filename: identity, over every row.',
   },
-  'lib/documents/repository.ts#findStorageKeyByIdAndCollection': {
+  'lib/documents/repository/storage.ts#findStorageKeyByIdAndCollection': {
     makes: ['internal:ingest'],
     why: 'The pipeline presigns a raster slot for the file it is reading (service token, no person).',
   },
-  'lib/documents/repository.ts#findPageTextTarget': {
+  'lib/documents/repository/storage.ts#findPageTextTarget': {
     makes: ['internal:ingest'],
     why: 'The pipeline presigns the page-text slots for the file it is reading (service token, no person).',
   },
-  'lib/documents/repository.ts#documentExistsInCollection': {
+  'lib/documents/repository/storage.ts#documentExistsInCollection': {
     makes: ['internal:ingest'],
     why: 'The pipeline asks whether the file it just indexed still exists (service token, no person).',
   },
@@ -315,6 +315,8 @@ const COMPOSING_HELPERS: Record<string, string> = {
     "The search reach's documents predicate (ADR-0136): every search provider joins `documents` under it, and it ANDs `documentVisibleTo(reachReader(reach))`.",
   'lib/search/document-repository.ts#documentSearchWhere':
     "The document search's whole WHERE (ADR-0136): `reachWhere` and the filters; annotations narrow through their document with it, so they inherit the same `documentVisibleTo`.",
+  'lib/documents/repository/list.ts#listingWhere':
+    "The documents listing's WHERE: every shelf read of the repository (the level, the summary, the failed tally, the filename lookup) ANDs it, and it ANDs `documentVisibleTo(reader)`.",
 }
 
 /** A relative or `@/` import, as a path under `src`; null for a package. */
@@ -747,7 +749,7 @@ describe('every read of documents states its reader (ADR-0086)', () => {
 
   it('finds the reads it guards (the scan is not vacuous)', () => {
     expect(documentReads.length).toBeGreaterThan(40)
-    expect(documentReads.map((read) => read.key)).toContain('lib/documents/repository.ts#findDocumentInOrg')
+    expect(documentReads.map((read) => read.key)).toContain('lib/documents/repository/lookup.ts#findDocumentInOrg')
     expect(factReads.map((read) => read.table)).toEqual(
       expect.arrayContaining([
         'documentVersions',

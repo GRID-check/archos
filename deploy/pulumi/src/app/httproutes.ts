@@ -151,7 +151,7 @@ function perClientRules(
  * Gateway API HTTPRoutes (replacing the legacy Ingress resources):
  *   - appDomain → frontend:3000 (UI + BFF + WebSocket chat upgrades)
  *   - s3Domain  → seaweedfs:8333 (browser presigned preview/download URLs)
- *   - webDomain → web:4321 (landing site + blog, frontends/web)
+ *   - webDomain → web:4321 (landing site + blog, apps/site)
  *
  * Each route attaches to its dedicated HTTPS listener on the shared Gateway.
  * WebSocket upgrades pass through natively; Envoy Gateway streams large bodies

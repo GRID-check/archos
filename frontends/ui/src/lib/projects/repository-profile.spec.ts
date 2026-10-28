@@ -14,10 +14,8 @@ vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
 
 import { getDb } from '@/lib/db'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
-import {
-  answersFromProfile,
-  projectIntakeDefinitionV1,
-} from '@/lib/project-profile/intake-definition'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { answersFromProfile } from '@/lib/project-profile/intake-profile'
 import { asDb } from '@/test-utils/db-fixtures'
 import { findProjectInOrg, findProjectProfile } from './repository'
 

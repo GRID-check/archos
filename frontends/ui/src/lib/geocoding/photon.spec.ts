@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, it, vi } from 'vitest'
-import { FEDERAL_STATE_TOKENS } from '@/lib/project-profile/intake-definition'
+import { FEDERAL_STATE_TOKENS } from '@/lib/project-profile/intake-conditions'
 import { parsePhotonResponse, searchPhoton } from './photon'
 import {
   PHOTON_BERLIN,

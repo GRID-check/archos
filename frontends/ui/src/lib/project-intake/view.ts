@@ -13,13 +13,8 @@
  * among the contradictions.
  */
 
-import {
-  formatIntakeAnswer,
-  labelForProfileKey,
-  type ProjectIntakeDefinition,
-  type ProjectIntakeQuestion,
-  type ProjectIntakeStage,
-} from '@/lib/project-profile/intake-definition'
+import type { ProjectIntakeDefinition, ProjectIntakeQuestion, ProjectIntakeStage } from '@/lib/project-profile/intake-types'
+import { formatIntakeAnswer, labelForProfileKey } from '@/lib/project-profile/intake-vocabulary'
 import type { ProjectAssumption, ProjectFact, ProjectProfile } from '@/lib/project-profile/types'
 import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
 import { getApplicableStandards } from '@/lib/oib/applicable-standards'

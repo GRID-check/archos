@@ -60,6 +60,8 @@ MOVED = {
     "docs/superpowers/": "docs/specs, then deleted (#1250, #1252)",
     "frontends/benchmarks/": "evals/ (row 2)",
     "tests/benchmarks/": "evals/ (row 2)",
+    "frontends/web/": "apps/site (row 3)",
+    "shared/brand/": "packages/brand (row 3)",
 }
 
 #: Where an old path may still be named: the record of what was true then.

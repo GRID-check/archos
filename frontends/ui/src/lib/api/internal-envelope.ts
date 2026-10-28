@@ -35,17 +35,14 @@ import 'server-only'
 import { BadRequestError, ForbiddenError, UnauthorizedError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import {
-  GRID_HEADER_NAMES,
-  verifyGridRequestContextEnvelope,
-  type VerifiedGridRequestContext,
-} from '@/lib/request-context'
+import { readHeader } from '@/lib/http/legacy-header-names'
+import { verifyGridRequestContextEnvelope, type VerifiedGridRequestContext } from '@/lib/request-context'
 
 /** The verified envelope, or a 401. Never says which check failed. */
 export function requireVerifiedContext(request: Request): VerifiedGridRequestContext {
   const context = verifyGridRequestContextEnvelope(
-    request.headers.get(GRID_HEADER_NAMES.REQUEST_CONTEXT),
-    request.headers.get(GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG),
+    readHeader(request.headers, 'X-Request-Context'),
+    readHeader(request.headers, 'X-Request-Context-Sig'),
     process.env.GRID_INTERNAL_API_TOKEN,
   )
   if (!context) throw new UnauthorizedError('Missing or invalid request context envelope')

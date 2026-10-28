@@ -16,8 +16,10 @@
  */
 
 import { PROJECT_KEYS, type ProjectKey } from '@/lib/text/answer-directives'
-import { flattenIntakeQuestions, formatIntakeAnswer, projectIntakeDefinitionV1 } from './intake-definition'
-import type { ProjectIntakeQuestion } from './intake-definition'
+import { flattenIntakeQuestions } from './intake-conditions'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { formatIntakeAnswer } from './intake-vocabulary'
+import type { ProjectIntakeQuestion } from './intake-types'
 import { ProjectProfileSchema } from './types'
 import type { ProjectPrimitiveValue, ProjectProfile } from './types'
 
