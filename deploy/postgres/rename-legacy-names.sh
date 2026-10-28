@@ -36,7 +36,16 @@
 # these roles here rather than in the Cluster's `managed.roles`, which would
 # create the new names as new, empty roles before the rename ran.
 #
-# Usage: rename-legacy-names.sh [after-migrate]
+# A third mode, `normalize-ownership`, also runs at the end of the default mode:
+# every function, table, view, materialized view and sequence in `public` that
+# the migration role does not own is handed to it. The migrations run as that
+# role (`OWNER_ROLE`, default `agent`) and `ALTER FUNCTION … RENAME`, `ALTER
+# TABLE` and `DROP` need ownership, so an object a superuser created (a
+# restore, a hand-run script) fails the next migration with `42501 must be owner
+# of function …` and the migrate Job crash-loops. Objects an extension owns are
+# left alone. Idempotent: owned objects are not touched.
+#
+# Usage: rename-legacy-names.sh [after-migrate | normalize-ownership]
 set -eu
 PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 export PGOPTIONS
@@ -185,8 +194,64 @@ rename_rls_roles() {
   set_rls_passwords
 }
 
+# Hand every object in `public` of the application database to the migration
+# role. The database may not exist yet (a fresh install is created by the
+# operator or Compose after this), and the role may not either.
+normalize_ownership() {
+  owner=${OWNER_ROLE:-agent}
+  db=${OWNER_DATABASE:-app}
+  if ! database_exists "$db" || ! role_exists "$owner"; then
+    echo "ownership: $db or role $owner absent, nothing to normalize"
+    return
+  fi
+  # psql does not substitute :'owner' inside a dollar-quoted body, so the role
+  # travels as a session setting.
+  psql -X -v ON_ERROR_STOP=1 -tAq -d "$db" -v owner="$owner" <<'SQL'
+SELECT set_config('ownership.target', :'owner', false) \gset
+DO $do$
+DECLARE
+  target text := current_setting('ownership.target');
+  o record;
+BEGIN
+  FOR o IN
+    SELECT format('ALTER %s %s OWNER TO %I',
+             CASE c.relkind WHEN 'v' THEN 'VIEW' WHEN 'm' THEN 'MATERIALIZED VIEW'
+                            WHEN 'S' THEN 'SEQUENCE' ELSE 'TABLE' END,
+             c.oid::regclass, target) AS stmt, c.oid::regclass::text AS name, r.rolname AS held_by
+      FROM pg_class c
+      JOIN pg_roles r ON r.oid = c.relowner
+     WHERE c.relnamespace = 'public'::regnamespace
+       AND c.relkind IN ('r', 'p', 'v', 'm', 'S')
+       AND r.rolname <> target
+       AND NOT EXISTS (SELECT 1 FROM pg_depend d
+                        WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid
+                          AND d.deptype IN ('e', 'a')) -- extension member; sequence that follows its column's table
+    UNION ALL
+    SELECT format('ALTER %s %s OWNER TO %I',
+             CASE p.prokind WHEN 'p' THEN 'PROCEDURE' WHEN 'a' THEN 'AGGREGATE' ELSE 'FUNCTION' END,
+             p.oid::regprocedure, target), p.oid::regprocedure::text, r.rolname
+      FROM pg_proc p
+      JOIN pg_roles r ON r.oid = p.proowner
+     WHERE p.pronamespace = 'public'::regnamespace
+       AND r.rolname <> target
+       AND NOT EXISTS (SELECT 1 FROM pg_depend d
+                        WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+  LOOP
+    RAISE WARNING 'ownership: % held by %, now %', o.name, o.held_by, target;
+    EXECUTE o.stmt;
+  END LOOP;
+END
+$do$;
+SQL
+  echo "ownership: $db is owned by $owner"
+}
+
 wait_for_server
 log_in
+if [ "${1:-}" = normalize-ownership ]; then
+  normalize_ownership
+  exit 0
+fi
 if [ "${1:-}" = after-migrate ]; then
   rename_rls_roles
   echo "rename of the row-level-security roles: done"
@@ -200,4 +265,5 @@ set_password agent
 [ -z "${ENSURE_RLS_ROLES:-}" ] || ensure_rls_roles
 # Left behind only by a run that died between creating and dropping it.
 q -c "DROP ROLE IF EXISTS rename_helper"
+normalize_ownership
 echo "rename of the legacy names: done"
