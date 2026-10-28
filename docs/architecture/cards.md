@@ -86,7 +86,7 @@ answer it has just written.
 | `surface` | Variants the reader picks one of, or cards that read together in one slot (ADR-0065). An A2UI v0.9 component list: a `Row`, `Column` or `Tabs` root whose leaves are content cards or `Text`; see [Every card is drawn through A2UI](#every-card-is-drawn-through-a2ui) | `title`, `components[]` |
 
 **Schematic cards** — eight programmatically-drawn technical diagrams (SVG kit
-in `features/grid-cards/schematics/`, Rough.js sketch stroke). The model emits
+in `features/cards/schematics/`, Rough.js sketch stroke). The model emits
 **parameters only**; the renderer draws to scale and does every piece of
 geometry and ratio arithmetic itself, so a card cannot show a diagram that
 disagrees with its own numbers. Each measured dimension is a `DimensionCheck`
@@ -156,7 +156,7 @@ persisted on the message; see
 
 `formula` is `calculation` with a name instead of operations, and inputs the
 reader may change. The name picks one of four rules in
-`apps/workspace/ui/features/grid-cards/lib/formulas.ts`, each of which compiles
+`apps/workspace/ui/features/cards/lib/formulas.ts`, each of which compiles
 to `CalculationStepData`: the same `evaluate`, the same `verdictFor` and the one
 derivation renderer (`components/Derivation.tsx`) serve both cards. The rule's
 bounds are not on the wire at all. They are typed tables in `formulas.ts`,
@@ -263,7 +263,7 @@ the caveat has to travel with it.
 The four data cards go one step further: their payload is a file name, a
 GlobalId or a pair of revisions **and nothing else**, and the component fetches
 the figures from the model when it renders
-(`features/grid-cards/components/IfcDataCards.tsx`). The agent therefore cannot
+(`features/cards/components/IfcDataCards.tsx`). The agent therefore cannot
 state a floor area, get a fire rating wrong or invent a delta, because it never
 supplies one — the worst it can do is point at the wrong table, which is visible
 immediately. That also keeps a card honest after the fact: re-open a
@@ -667,7 +667,7 @@ lines of prose.
 ## How cards render
 
 The frontend validates the wire cards (`validateAnswerCards`) and renders them
-through the `features/grid-cards/` component set — one renderer per card type.
+through the `features/cards/` component set — one renderer per card type.
 
 ### Every card is drawn through A2UI
 
@@ -752,7 +752,7 @@ had to scroll past every drawing to reach the sentence they asked for.
 Each `emit_card` call now returns a marker naming the card by its POSITION in
 this turn's registry (`[[card:2]]` for the second card emitted). A marker written
 on a line of its own in the answer body is consumed by a remark plugin
-(`grid-cards/card-markers.ts`) and the card is spliced in at that point; the
+(`cards/card-markers.ts`) and the card is spliced in at that point; the
 cards no marker claimed still follow the prose as a block, which is also what
 happens when the answer places none. While the answer streams, that block is
 drawn as soon as "unplaced" is final: a live frame carries cards only once the
@@ -788,7 +788,7 @@ and one figure. They exist as classes in `src/app/globals.css`, declared in
 | Figure | `card-figure-15/20/24/30` | 600 / tabular-nums — **one per card, and it must be the card's answer** |
 
 Reach for a step; never write a `text-*` size in a card. The audit behind the
-charter counted thirteen distinct sizes in `features/grid-cards/`, ten of them
+charter counted thirteen distinct sizes in `features/cards/`, ten of them
 arbitrary values, with `text-[12px]` beside `text-xs`.
 
 `grid/card-type-scale` (`eslint-rules/card-type-scale.mjs`) makes that an error
@@ -855,7 +855,7 @@ HITL prompt.
 | piece | where |
 |---|---|
 | The stored decision | `ChatMessage.cardInteractions: Record<cardKey, { decision, decidedAt }>` |
-| The closed set of outcomes | `CARD_DECISIONS` in `features/grid-cards/card-decision.ts` |
+| The closed set of outcomes | `CARD_DECISIONS` in `features/cards/card-decision.ts` |
 | Card identity within a message | `` cardKey(card, index) `` → `` `${type}-${index}` `` (also the React key) |
 | One item's decision, for a card that asks per item | `` itemDecisionKey(cardKey, itemId) `` → `` `${type}-${index}#${itemId}` `` (`canvas_activity`: one per proposed mark). It lives and dies with its card in `reconcileCardInteractions` |
 | Keeping keys honest mid-stream | `reconcileCardInteractions` — a streaming turn replaces `cards` wholesale, so a decision is kept only while the card at its index is byte-identical to the one it was made about |
@@ -909,7 +909,7 @@ Three guards, on both sides of the stack:
 ## Design intent (why it's a layer, not a feature)
 
 Adding a new card type should be: **define the model** (a module under `cards/`, joined in `cards/models.py`) → **add
-a renderer** (`features/grid-cards/`). No pipeline surgery. That keeps the set open
+a renderer** (`features/cards/`). No pipeline surgery. That keeps the set open
 to future types (requirement checklists, comparison tables, applicability panels)
 without re-plumbing generation or transport.
 
@@ -926,10 +926,10 @@ without re-plumbing generation or transport.
    derived from the union.
 2. Regenerate the schema: `uv run python scripts/generate_card_schema.py`, then
    `cd apps/workspace && npm run generate:cards`.
-3. **Classify it in `CARD_INTERACTIVITY`** (`features/grid-cards/card-decision.ts`).
+3. **Classify it in `CARD_INTERACTIVITY`** (`features/cards/card-decision.ts`).
    `tsc` fails until you do — see [Interactive cards](#interactive-cards-the-answer-must-be-persisted)
    for how to decide, and for what an `'interactive'` classification obliges.
-4. Add the renderer under `features/grid-cards/` and wire the `AnswerCards`
+4. Add the renderer under `features/cards/` and wire the `AnswerCards`
    dispatcher (interactive cards get `messageId={messageId} cardKey={key}`).
    Type it with the [`card-*` ramp](#type-sizes-six-classes-and-lint-per-card)
    and add the file to the `grid/card-type-scale` override in `.oxlintrc.json`.
@@ -1016,7 +1016,7 @@ endpoint, and the request-a-card link sits in the header and again at the foot.
 | piece | where |
 |---|---|
 | The page | `src/app/app/platform/cards/page.tsx` + `platform-cards.tsx` |
-| The sample cards | `features/grid-cards/preview-fixtures.ts` — authored in schema-INPUT shape, then run through `validateAnswerCards`, so a fixture that stops matching the union is holed (absent from the map) rather than rendered |
+| The sample cards | `features/cards/preview-fixtures.ts` — authored in schema-INPUT shape, then run through `validateAnswerCards`, so a fixture that stops matching the union is holed (absent from the map) rather than rendered |
 | Coverage guard | `preview-fixtures.spec.ts` — every type in `CARD_INTERACTIVITY` needs a fixture or an entry in `PREVIEW_EXCLUDED` |
 | Not previewed | all five IFC cards + `document_grid`: they carry identifiers resolved against a loaded model or real document rows, and a fabricated preview would show a building that does not exist |
 | Preview evidence | `/dev/platform-cards` + the `platform-cards` screenshot target |

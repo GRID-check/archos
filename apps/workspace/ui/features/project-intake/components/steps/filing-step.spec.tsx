@@ -13,7 +13,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/mocks/server'
-import { resetKit, useFakeStream } from '@/features/grid-cards/components/proposal-test-kit'
+import { resetKit, useFakeStream } from '@/features/cards/components/proposal-test-kit'
 import { suggestionsByFolder } from '@/features/documents/lib/filing-suggestions'
 import {
   INTAKE_COMPLETED,

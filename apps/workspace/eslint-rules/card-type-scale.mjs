@@ -3,7 +3,7 @@
  * six.
  *
  * `docs/design/answer-card-charter.md` §A2 fixes the scale for
- * `ui/features/grid-cards/**`: Eyebrow 10.5, Meta 11, Caption 12, Body 13.5,
+ * `ui/features/cards/**`: Eyebrow 10.5, Meta 11, Caption 12, Body 13.5,
  * Title 14, Figure 15/20/24/30 — expressed as the `card-*` classes in
  * `app/globals.css`. The audit that produced the charter found THIRTEEN
  * distinct sizes in the folder, ten of them arbitrary values, with

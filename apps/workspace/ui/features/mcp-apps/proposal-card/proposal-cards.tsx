@@ -20,7 +20,7 @@ import type { ReactNode } from 'react'
 import { answerCardSchema, type AnswerCard } from '@/shared/cards/schemas'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import type { CardRenderer } from '@/features/a2ui/catalog'
-import { FileOperationReceipt, MemoryReceipt, OperationReceipt } from '@/features/grid-cards/components/ProposalReceipts'
+import { FileOperationReceipt, MemoryReceipt, OperationReceipt } from '@/features/cards/components/ProposalReceipts'
 
 export interface ProposalTitles {
   /** A file proposal carries no title of its own: `{count} changes to files`. */

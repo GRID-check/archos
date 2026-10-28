@@ -65,7 +65,7 @@ const FIXTURES = {
   ].join('\n'),
   // A file that imported the db before the rule existed stays allowed.
   'app/api/internal/usage/route.ts': "import { db } from '@/lib/db'\nexport const handle = db",
-  'ui/features/grid-cards/schematics/kit.tsx': "export const size = 'text-sm'",
+  'ui/features/cards/schematics/kit.tsx': "export const size = 'text-sm'",
   'tests/canary.test.ts': 'export const fixture: any = {}',
   'bff/canary-repository.ts': "import { projects } from '@/lib/db/schema'\nexport const table = projects",
   'bff/canary-table.ts': "import { projects } from '@/lib/db/schema/projects'\nexport const table = projects",
@@ -83,7 +83,7 @@ const EXPECTED = [
   ['bff/canary.ts', 'grid(no-restricted-syntax)'],
   ['app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
   ['bff/canary-repository.ts', 'eslint(no-restricted-imports)'],
-  ['ui/features/grid-cards/schematics/kit.tsx', 'grid(card-type-scale)'],
+  ['ui/features/cards/schematics/kit.tsx', 'grid(card-type-scale)'],
   ['tests/canary.test.ts', 'typescript(no-explicit-any)'],
 ]
 

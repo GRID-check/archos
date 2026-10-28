@@ -22,7 +22,7 @@ from agent.cards.models import answer_card_adapter
 from agent.observability.langfuse_scores import card_validity_score
 from agent.observability.langfuse_scores import formula_provenance_score
 
-FIXTURE_PATH = Path(__file__).resolve().parents[4] / "apps/workspace/ui/features/grid-cards/lib/formula-cases.json"
+FIXTURE_PATH = Path(__file__).resolve().parents[4] / "apps/workspace/ui/features/cards/lib/formula-cases.json"
 FIXTURE = json.loads(FIXTURE_PATH.read_text("utf-8"))
 
 

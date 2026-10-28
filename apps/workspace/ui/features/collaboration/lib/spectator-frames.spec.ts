@@ -12,7 +12,7 @@ import type { WireEvent } from '@/adapters/api/wire-v2'
 import { foldTurnEvents, type TurnView } from '@/features/chat/lib/turn-fold'
 import { WIRE_TURN_FILES, eventOf, frameOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
 import { foldSpectatedEvent, hasSomethingToShow, observerCards, orderedSteps } from './spectator-frames'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 
 const spectate = (events: readonly WireEvent[]): TurnView | null =>
   events.reduce<TurnView | null>(foldSpectatedEvent, null)

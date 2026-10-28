@@ -195,7 +195,7 @@ cycle below.
 (3,048 dependents counting type edges, 0 at runtime) and `lib/auth/types.ts`
 (2,985 vs 2). Counting type edges, one strongly connected component holds 372
 modules (142 in `features/documents`, 89 in `features/chat`, 38 in
-`features/grid-cards`, 26 in `features/search`). Without type edges, the largest
+`features/cards`, 26 in `features/search`). Without type edges, the largest
 runtime cycle is 31 modules, in `lib/documents`. That component is why
 `bun check src/features/documents/store.ts` checks 1,130 files. A leaf like
 `components/shell/route-dialog.tsx` checks 8.
@@ -428,7 +428,7 @@ would drop.
    import a tiny `lib/api/forbidden.ts`. Each such leaf then stops dragging
    `errors.ts`'s 390-importer cone along, and vice versa.
 5. **Break the 372-module type-only cycle** in `features/documents`,
-   `features/chat`, `features/grid-cards` and `features/search`. It costs nothing
+   `features/chat`, `features/cards` and `features/search`. It costs nothing
    at test time but makes `bun check` of one store check 1,130 files.
    `features/documents/index.ts` (75 lines of re-exports) is the first barrel to
    delete: import from the defining file.

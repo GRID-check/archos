@@ -55,7 +55,7 @@ produces a file rather than a long message: `write_file` into a per-conversation
 working folder (`packages/agent/src/agent/tools/documents/tools.py`, bound per turn at
 `packages/agent/src/agent/agents/piloti/register.py:325`), with a `document_draft` card
 beside the answer naming what was written
-(`apps/workspace/ui/features/grid-cards/components/DocumentDraftCard.tsx`).
+(`apps/workspace/ui/features/cards/components/DocumentDraftCard.tsx`).
 „Kürze Punkt 3" edits that file in place instead of printing a second copy
 (`piloti-working-directory`).
 

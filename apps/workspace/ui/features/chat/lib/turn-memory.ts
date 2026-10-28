@@ -37,8 +37,8 @@
  */
 
 import type { AnswerCard } from '@/shared/cards/schemas'
-import { cardKey, type CardInteractions } from '@/features/grid-cards/card-decision'
-import type { DecidedProposals } from '@/features/grid-cards/decided-proposals'
+import { cardKey, type CardInteractions } from '@/features/cards/card-decision'
+import type { DecidedProposals } from '@/features/cards/decided-proposals'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 
 /**

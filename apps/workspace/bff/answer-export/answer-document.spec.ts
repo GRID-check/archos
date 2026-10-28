@@ -31,7 +31,7 @@ import type { DocBlock } from './blocks'
 import { buildAnswerDocument, type AnswerDocumentInput } from './answer-document'
 import { CARD_EXPORT, isCheck, SKIPPED_FIELDS, skippedNested } from './cards'
 import { answerCardSchema } from '@/shared/cards/schemas'
-import { previewFixtureFor } from '@/features/grid-cards/preview-fixtures'
+import { previewFixtureFor } from '@/features/cards/preview-fixtures'
 
 const german = translatorFor(answerExportCopy, 'de')
 const english = translatorFor(answerExportCopy, 'en')

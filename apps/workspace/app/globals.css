@@ -640,7 +640,7 @@ body {
 /* =============================================================================
    The card type ramp — `docs/design/answer-card-charter.md` §A2
 
-   Six steps and one figure, for `ui/features/grid-cards/**`. The audit that
+   Six steps and one figure, for `ui/features/cards/**`. The audit that
    produced the charter counted THIRTEEN distinct sizes across the card set,
    ten of them arbitrary values, with `text-[12px]` sitting beside `text-xs`
    and `text-[14px]` beside `text-sm` — the same size written two ways. That

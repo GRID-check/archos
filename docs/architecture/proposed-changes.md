@@ -50,7 +50,7 @@ deciding person's session, and the decision is one row every reader sees.
 | Inbox items | `apps/workspace/bff/proposals/attention.ts` |
 | The decision score | `apps/workspace/bff/langfuse/decision-score.ts`, called from `apps/workspace/bff/proposals/service.ts` |
 | Decisions as Piloti reads them | `apps/workspace/bff/projects/proposal-decision-rows.ts` (the rows), `apps/workspace/bff/projects/proposal-decisions.ts` (the `PROPOSAL_DECISIONS` block) |
-| The receipt card | `apps/workspace/ui/features/grid-cards/components/ProposalReceipt.tsx` (the frame), `ProposalReceipts.tsx` (the three bodies), `hooks/use-server-proposal.ts` (the hook) |
+| The receipt card | `apps/workspace/ui/features/cards/components/ProposalReceipt.tsx` (the frame), `ProposalReceipts.tsx` (the three bodies), `hooks/use-server-proposal.ts` (the hook) |
 | Piloti's filing suggestions: the trigger, the judgement, the gates, the row | `apps/workspace/bff/filing/` (`trigger.ts`, `service.ts`, `plan.ts`, `judge.ts`, `conventions.ts`); the model call `apps/agent-host/src/agent_host/routes/filing_fit.py`; the row `apps/workspace/ui/features/documents/components/filing-suggestion.tsx` |
 
 ## The data
@@ -453,7 +453,7 @@ what must not drift between them:
 - A decision is a write to the proposal and nothing else. It writes no
   `cardInteractions`: a decision kept on the message would be a second truth
   beside the object. What the rest of the answer needs to know of it, the
-  „Piloti hat sich gemerkt“ chip, it reads from `features/grid-cards/decided-proposals.ts`:
+  „Piloti hat sich gemerkt“ chip, it reads from `features/cards/decided-proposals.ts`:
   `useServerProposal` records every decided object it holds (first read,
   re-read, hint, own click), and `turnMemoryItems` lists a memory card with a
   `proposal_id` only when that copy says `applied`. Cards without a
@@ -476,7 +476,7 @@ operation the Files list is.
 **In another assistant.** The same receipts are drawn inside Claude, ChatGPT or
 VS Code as an MCP App (ADR-0142, [`agent-surface.md`](agent-surface.md#mcp-apps-cards-in-the-persons-own-assistant)):
 `useServerProposal` reads and decides through a `ProposalTransport`
-(`features/grid-cards/hooks/proposal-transport.ts`), the HTTP client here and
+(`features/cards/hooks/proposal-transport.ts`), the HTTP client here and
 `tools/call` to the door there, so the route and its rules are the same; the
 host frame has no realtime channel, so an open card re-reads once in the
 background (a host may replay a stored result), and a colleague's decision

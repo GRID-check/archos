@@ -45,7 +45,7 @@ import {
   SuggestionPopoverContent,
   SuggestionReason,
 } from '@/components/ui/suggestion-panel'
-import { useServerProposal, type ProposalOfKind } from '@/features/grid-cards/hooks/use-server-proposal'
+import { useServerProposal, type ProposalOfKind } from '@/features/cards/hooks/use-server-proposal'
 import { useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
 import type { FilingFolderSuggestion, FilingSuggestionView } from '../lib/filing-suggestions'

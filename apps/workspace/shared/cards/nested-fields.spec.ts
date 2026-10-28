@@ -152,7 +152,7 @@ describe('nested card fields are validated, not waved through', () => {
     // The other half of the guard: tightening must not start dropping cards
     // that render fine today. `preview-fixtures.ts` runs its raw fixtures
     // through `validateAnswerCards`, so a rejected one is simply absent.
-    const { CARD_PREVIEW_FIXTURES, PREVIEW_EXCLUDED } = await import('@/features/grid-cards/preview-fixtures')
+    const { CARD_PREVIEW_FIXTURES, PREVIEW_EXCLUDED } = await import('@/features/cards/preview-fixtures')
     const previewable = [...discriminatedOptions(answerCardSchema).keys()]
       .filter((type): type is string => typeof type === 'string')
       .filter((type) => !(type in PREVIEW_EXCLUDED))

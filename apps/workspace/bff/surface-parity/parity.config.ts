@@ -62,7 +62,7 @@ export interface SurfaceCapability {
 }
 
 const REVIEW = 'features/documents/components/review'
-const ACTIVITY_CARD = 'features/grid-cards/components/CanvasActivityCard.tsx'
+const ACTIVITY_CARD = 'features/cards/components/CanvasActivityCard.tsx'
 
 export const SURFACE_CAPABILITIES = {
   look: {
@@ -167,7 +167,7 @@ export const SURFACE_CAPABILITIES = {
     operations: ['document-revision-compare', 'document-revision-candidates', 'document-revision-link-set'],
     canvas: { component: 'features/documents/components/document-revisions.tsx' },
     // The result of Piloti's comparison is the card: both pages side by side, the changes boxed on each.
-    chat: { card: 'revision_compare', component: 'features/grid-cards/components/RevisionCompareCard.tsx' },
+    chat: { card: 'revision_compare', component: 'features/cards/components/RevisionCompareCard.tsx' },
   },
   askAboutBox: {
     summary: 'Draw a box on a page and ask about it; Piloti answers in context of that box',

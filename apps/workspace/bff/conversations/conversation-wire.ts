@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod'
-import { CARD_DECISIONS } from '@/features/grid-cards/card-decision'
+import { CARD_DECISIONS } from '@/features/cards/card-decision'
 import { CONVERSATION_ENGAGEMENTS } from '@/lib/db/schema/conversations'
 import { MAX_MENTIONS_PER_MESSAGE, MAX_MESSAGES_PER_REQUEST } from '@/lib/limits'
 

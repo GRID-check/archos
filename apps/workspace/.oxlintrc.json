@@ -334,12 +334,12 @@
       // title, note and norm footer — so one migration moves all of them onto
       // the ramp at once.
       "files": [
-        "ui/features/grid-cards/components/KeyTakeawaysCard.tsx",
-        "ui/features/grid-cards/components/VerdictHeaderCard.tsx",
-        "ui/features/grid-cards/components/CalloutCard.tsx",
-        "ui/features/grid-cards/components/ProposalShell.tsx",
-        "ui/features/grid-cards/schematics/kit.tsx",
-        "ui/features/grid-cards/components/CanvasActivityCard.tsx"
+        "ui/features/cards/components/KeyTakeawaysCard.tsx",
+        "ui/features/cards/components/VerdictHeaderCard.tsx",
+        "ui/features/cards/components/CalloutCard.tsx",
+        "ui/features/cards/components/ProposalShell.tsx",
+        "ui/features/cards/schematics/kit.tsx",
+        "ui/features/cards/components/CanvasActivityCard.tsx"
       ],
       "rules": { "grid/card-type-scale": "error" }
     }

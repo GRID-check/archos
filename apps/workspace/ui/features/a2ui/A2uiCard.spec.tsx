@@ -12,8 +12,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { AnswerCard } from '@/shared/cards/schemas'
 import { A2uiCard } from './A2uiCard'
-import { ACTING_CARD_TYPES } from '@/features/grid-cards/card-decision'
-import { AnswerCardItem } from '@/features/grid-cards/components/AnswerCards'
+import { ACTING_CARD_TYPES } from '@/features/cards/card-decision'
+import { AnswerCardItem } from '@/features/cards/components/AnswerCards'
 import { DrawnProvider, SURFACE_EXCLUDED_LEAVES, preflight, structuralRefusal } from './catalog'
 import { surfaceLeaves } from './surface-messages'
 

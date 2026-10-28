@@ -9,7 +9,7 @@ import {
   proposalBase,
   resetKit,
   useFakeStream,
-} from '@/features/grid-cards/components/proposal-test-kit'
+} from '@/features/cards/components/proposal-test-kit'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import { FilingSuggestionsProvider, FilingSuggestionSlot, folderLeaf, useFilingHighlighted } from './filing-suggestion'
 import { FileCard } from './file-card'

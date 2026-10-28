@@ -5,7 +5,7 @@
  *
  * Two components draw model-authored mermaid now — the fence in an answer
  * (`components/mermaid-diagram.tsx`) and the `diagram` CARD
- * (`features/grid-cards/components/DiagramCard.tsx`) — and the render is the
+ * (`features/cards/components/DiagramCard.tsx`) — and the render is the
  * half they must not each own. `render-diagram.ts` is already the single
  * mermaid path; this is the single way of DRIVING it, which is a different
  * thing and the one that would have drifted: the fresh id per render, the

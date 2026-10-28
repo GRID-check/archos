@@ -34,7 +34,7 @@ vi.mock('@/shared/components/MarkdownRenderer/markdown-blocks', async (importOri
 
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { remarkCitationMarkers } from '@/features/layout/lib/citation-markers'
-import { remarkCardMarkers } from '@/features/grid-cards/card-markers'
+import { remarkCardMarkers } from '@/features/cards/card-markers'
 import { remarkFileReferences } from '@/features/layout/lib/file-reference-markers'
 import { splitAnswerBody } from '../lib/citations/views'
 

@@ -12,7 +12,7 @@ import type {
 import type { DraftMention } from '@/lib/mentions/mention-text'
 import type { ShownAnswer, WireEvent } from '@/adapters/api/wire-v2'
 import { deferChatStorageWrites } from './chat-storage'
-import type { CardDecision, CardInteractions } from '@/features/grid-cards/card-decision'
+import type { CardDecision, CardInteractions } from '@/features/cards/card-decision'
 import { errorConcernsTheThread, getErrorMeta } from '../lib/error-registry'
 import { foldTurnEvents, initialTurnView, stopTurnView, type TurnView } from '../lib/turn-fold'
 import { projectTurn } from '../lib/turn-projection'
