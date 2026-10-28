@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useLocale, useTranslations } from '@/i18n'
+import { referencesCopy } from '@/i18n/namespaces/references'
 import { formatCalendarDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type {
@@ -52,7 +53,7 @@ export function ReferenceRow({ label, children }: { label: string; children: Rea
 
 /** The mark beside a value that came from the documents and that no person has checked. */
 export function UnconfirmedMark(): JSX.Element {
-  const t = useTranslations('references')
+  const t = useTranslations(referencesCopy)
   return (
     <Chip variant="warning" size="sm">
       {t('fields.unconfirmed')}
@@ -78,7 +79,7 @@ export function ReferenceFactText({
 
 /** Where a decision came from, as a chip. A person's word is the strongest; a note of Piloti's the weakest. */
 export function OriginChip({ origin }: { origin: ReferenceOrigin }): JSX.Element {
-  const t = useTranslations('references')
+  const t = useTranslations(referencesCopy)
   const variant = origin === 'person' ? 'success' : origin === 'documents' ? 'info' : 'muted'
   return (
     <Chip variant={variant} size="sm">
@@ -110,7 +111,7 @@ export function ReferenceSection({ title, children }: { title: string; children:
 
 /** One recorded decision or constraint, its origin and the files it was read from. */
 export function ReferenceDecisionItem({ decision }: { decision: ReferenceDecision }): JSX.Element {
-  const t = useTranslations('references')
+  const t = useTranslations(referencesCopy)
   return (
     <li className="grid min-w-0 gap-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -137,7 +138,7 @@ export function ReferenceDecisionItem({ decision }: { decision: ReferenceDecisio
 
 /** One permit record: its kind, issuer and day, and the requirements it sets. */
 export function ReferencePermitItem({ permit }: { permit: ReferencePermit }): JSX.Element {
-  const t = useTranslations('references')
+  const t = useTranslations(referencesCopy)
   const { locale } = useLocale()
   const issuer = [permit.authority, permit.issuedOn ? t('permits.issuedOn', { date: formatCalendarDate(permit.issuedOn, locale) }) : null]
     .filter(Boolean)

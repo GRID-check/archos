@@ -78,44 +78,21 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
  * renderer's own `RenderOptions` the contract. A misspelled option is now a
  * type error at the call site, which is where it was always meant to be caught.
  */
-import type { Camera, RenderOptions, Renderer, SceneContents } from '@ifc-lite/renderer'
+import type { RenderOptions } from '@ifc-lite/renderer'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import type { BimViewerElement, Rgba } from '../lib/model-index'
 import { MeasureOverlay } from '../lib/measure-overlay'
-import {
-  completeMeasurement,
-  MEASURE_SNAP_OPTIONS,
-  type MeasureAnchor,
-  type MeasureSnapKind,
-  type Measurement,
-} from '../lib/viewer-measure'
-import {
-  boundsCentre,
-  downloadWithProgress,
-  dragSlopFor,
-  isDoubleTap,
-  keyboardCameraStep,
-  pointerDragged,
-  rendererPreset,
-  rendererSectionPlane,
-  wheelZoomDelta,
-  type BimCameraView,
-  type BimSection,
-} from '../lib/viewer-camera'
+import { completeMeasurement, MEASURE_SNAP_OPTIONS, type MeasureAnchor, type MeasureSnapKind, type Measurement } from '../lib/viewer-measure'
+import { boundsCentre, downloadWithProgress, dragSlopFor, isDoubleTap, keyboardCameraStep, pointerDragged, rendererPreset, rendererSectionPlane, wheelZoomDelta, type BimCameraView, type BimSection } from '../lib/viewer-camera'
 import { unwrapModelSource } from '../lib/model-source'
 import { captureFrameOptions, interactiveFrameOptions } from '../lib/viewer-performance'
-import {
-  observeViewerTheme,
-  readViewerTheme,
-  VIEWER_CLEAR_COLOR,
-  viewerEnhancement,
-  viewerEnhancementCompact,
-  viewerEnvironment,
-} from '../lib/viewer-scene'
+import { observeViewerTheme, readViewerTheme, VIEWER_CLEAR_COLOR, viewerEnhancement, viewerEnhancementCompact, viewerEnvironment } from '../lib/viewer-scene'
 
+import { RendererLike, HOVER_BUDGET_MS, KEY_ORBIT_PX, KEY_PAN_PX, modelBoundsMetres } from './ifc-viewer-canvas-helpers'
 export interface IfcViewerCanvasProps {
   /** Presigned URL of the raw `.ifc`. */
   sourceUrl: string
@@ -220,130 +197,6 @@ export interface IfcViewerStatus {
   bytes?: { loaded: number; total: number }
 }
 
-/**
- * What this component uses of the renderer — the real types, narrowed.
- *
- * Narrowed rather than `Renderer` itself for one reason: the class carries
- * private fields, so a structural stand-in can never satisfy it and the specs
- * would have to cast their fake through `unknown`, which throws away exactly
- * the checking this exists for. Each member below is `Renderer`'s own
- * signature, so a change in the package still lands here as a type error.
- */
-type RendererLike = Pick<
-  Renderer,
-  | 'init'
-  | 'addMeshes'
-  | 'fitToView'
-  | 'render'
-  | 'resize'
-  | 'destroy'
-  | 'pick'
-  | 'raycastScene'
-  | 'onDeviceLost'
-  | 'getModelBounds'
-  | 'getGPUDevice'
-  | 'getPipeline'
-  | 'captureScreenshot'
-  | 'enableQuantizedBatches'
-> & {
-  getCamera(): CameraLike
-  getScene(): SceneLike
-}
-
-/** The camera surface this component drives. Signatures are `Camera`'s own. */
-type CameraLike = Pick<
-  Camera,
-  /**
-   * `addVelocity` feeds the renderer's own inertia system. Omitting it — which
-   * the old hand-written declaration forced, by not declaring the parameter —
-   * makes every drag a raw per-event jump with no momentum and no damping.
-   */
-  | 'orbit'
-  | 'pan'
-  /**
-   * The cursor arguments are the difference between "zoom toward what I am
-   * pointing at" and "zoom toward the middle of the screen, and watch the
-   * detail I wanted slide off the edge". They were absent from the old
-   * declaration, so the call site could not pass them and nobody could see
-   * that the renderer had supported it all along.
-   */
-  | 'zoom'
-  /**
-   * Advance inertia and any running tween; true while still moving.
-   *
-   * Nothing called this, which is why momentum never existed AND why
-   * `zoomExtent` and the preset views did not animate: both are tweens that
-   * only advance when something drives them, and the on-demand renderer drew
-   * exactly one frame and stopped.
-   */
-  | 'update'
-  /** Rotate about this point instead of the scene centre. `null` restores it. */
-  | 'setOrbitCenter'
-  | 'setAspect'
-  /** Zoom to fit a box while KEEPING the current view direction. */
-  | 'frameBounds'
-  | 'zoomExtent'
-  | 'setPresetView'
-  | 'setProjectionMode'
-  /** Adaptive home pose — isometric for a building, along-axis for a corridor. */
-  | 'fitBoundsAdaptive'
-  | 'stopInertia'
-  | 'setSceneBounds'
-  /** World point → canvas pixel, for the DOM overlays drawn over the model. */
-  | 'projectToScreen'
-  | 'getPosition'
-  | 'getFOV'
-  | 'enableFirstPersonMode'
-  | 'moveFirstPerson'
->
-
-type SceneLike = Pick<
-  SceneContents,
-  | 'setColorOverrides'
-  | 'clearColorOverrides'
-  | 'getEntityBoundingBox'
-  | 'setLodBuildsEnabled'
-  /**
-   * What turns the streaming fragments into batches that can carry an LOD1
-   * range — without it `setLodBuildsEnabled` above has nothing to build for.
-   * See the call in the load effect.
-   */
-  | 'finalizeStreamingAsync'
->
-
-/**
- * How long one synchronous hover raycast may take before hover is abandoned.
- *
- * The first `raycastScene` on a model builds a BVH over every triangle, and on
- * a large building that is not a frame's worth of work. Rather than guess a
- * size threshold, the first call is TIMED: if it blew the budget, hover turns
- * itself off for this model and the viewport keeps its cursor as a grab hand.
- * Losing a cursor affordance is a much smaller failure than a viewport that
- * stutters whenever the mouse moves.
- */
-const HOVER_BUDGET_MS = 24
-
-
-/** Pixels of orbit per arrow-key press. One press should be visible, not violent. */
-const KEY_ORBIT_PX = 24
-const KEY_PAN_PX = 32
-
-/**
- * The model's vertical extent, in the renderer's own Y-up world metres.
- *
- * One reader for two consumers that MUST agree: the cut slider's range, and
- * the plane the cut resolves to. When those two disagree the readout lies —
- * which is the whole class of bug the section plane kept landing in.
- */
-function modelBoundsMetres(
-  renderer: RendererLike | null
-): { minMetres: number; maxMetres: number } | null {
-  const bounds = renderer?.getModelBounds()
-  if (!bounds) return null
-  if (!Number.isFinite(bounds.min.y) || !Number.isFinite(bounds.max.y)) return null
-  return { minMetres: bounds.min.y, maxMetres: bounds.max.y }
-}
-
 export function IfcViewerCanvas({
   sourceUrl,
   elements,
@@ -370,7 +223,7 @@ export function IfcViewerCanvas({
   onCapture,
   className,
 }: IfcViewerCanvasProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const keysId = useId()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

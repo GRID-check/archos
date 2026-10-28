@@ -702,7 +702,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
+    "from": "src/features/chat/components/agent-response/use-agent-response-controller.tsx",
     "to": "src/features/grid-cards/components/GridCards.tsx",
     "unresolvedTo": "@/features/grid-cards/components/GridCards",
     "dependencyTypes": [
@@ -719,7 +719,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
+    "from": "src/features/chat/components/agent-response/use-agent-response-controller.tsx",
     "to": "src/features/layout/lib/citation-markers.ts",
     "unresolvedTo": "@/features/layout/lib/citation-markers",
     "dependencyTypes": [
@@ -736,26 +736,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
+    "from": "src/features/chat/components/agent-response/use-agent-response-controller.tsx",
     "to": "src/features/layout/lib/file-reference-markers.ts",
     "unresolvedTo": "@/features/layout/lib/file-reference-markers",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
-    "to": "src/features/skills/components/SkillsUsedDisclosure.tsx",
-    "unresolvedTo": "@/features/skills/components/SkillsUsedDisclosure",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -3412,41 +3395,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/chat/components/FollowUpsRail.tsx",
-    "unresolvedTo": "@/features/chat/components/FollowUpsRail",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/chat/components/UserMessage.tsx",
-    "unresolvedTo": "@/features/chat/components/UserMessage",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/layout/components/chat-area/message-renderer.tsx",
     "to": "src/features/chat/components/UserMessage.tsx",
     "unresolvedTo": "@/features/chat/components/UserMessage",
@@ -3456,23 +3404,6 @@
       "aliased-tsconfig-paths",
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/chat/lib/file-note-chip.ts",
-    "unresolvedTo": "@/features/chat/lib/file-note-chip",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
       "import"
     ],
     "rule": {
@@ -3501,161 +3432,8 @@
   {
     "type": "dependency",
     "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/chat/stores/answer-reveal-store.ts",
-    "unresolvedTo": "@/features/chat/stores/answer-reveal-store",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/components/AwaitingBanner.tsx",
-    "unresolvedTo": "@/features/collaboration/components/AwaitingBanner",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/components/EngagementNotice.tsx",
-    "unresolvedTo": "@/features/collaboration/components/EngagementNotice",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/components/HandbackOffer.tsx",
-    "unresolvedTo": "@/features/collaboration/components/HandbackOffer",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/components/SpectatedTurn.tsx",
-    "unresolvedTo": "@/features/collaboration/components/SpectatedTurn",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
     "to": "src/features/collaboration/components/TypingPresence.tsx",
     "unresolvedTo": "@/features/collaboration/components/TypingPresence",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/hooks/use-message-anchor.ts",
-    "unresolvedTo": "@/features/collaboration/hooks/use-message-anchor",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/hooks/use-shared-thread.ts",
-    "unresolvedTo": "@/features/collaboration/hooks/use-shared-thread",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/hooks/use-sharing.ts",
-    "unresolvedTo": "@/features/collaboration/hooks/use-sharing",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/collaboration/hooks/use-spectated-turn.ts",
-    "unresolvedTo": "@/features/collaboration/hooks/use-spectated-turn",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -3673,40 +3451,6 @@
     "from": "src/features/layout/components/chat-area/message-renderer.tsx",
     "to": "src/features/runs/components/RunBlockMessage.tsx",
     "unresolvedTo": "@/features/runs/components/RunBlockMessage",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/runs/hooks/use-commission-run.ts",
-    "unresolvedTo": "@/features/runs/hooks/use-commission-run",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/ChatArea.tsx",
-    "to": "src/features/runs/lib/carry-forward.ts",
-    "unresolvedTo": "@/features/runs/lib/carry-forward",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -6606,6 +6350,279 @@
     "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
     "to": "src/features/skills/hooks/use-slash-command.ts",
     "unresolvedTo": "@/features/skills/hooks/use-slash-command",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/chat-message-list.tsx",
+    "to": "src/features/chat/components/FollowUpsRail.tsx",
+    "unresolvedTo": "@/features/chat/components/FollowUpsRail",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/chat-message-list.tsx",
+    "to": "src/features/chat/lib/file-note-chip.ts",
+    "unresolvedTo": "@/features/chat/lib/file-note-chip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/chat-message-list.tsx",
+    "to": "src/features/collaboration/components/AwaitingBanner.tsx",
+    "unresolvedTo": "@/features/collaboration/components/AwaitingBanner",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/chat-message-list.tsx",
+    "to": "src/features/collaboration/components/EngagementNotice.tsx",
+    "unresolvedTo": "@/features/collaboration/components/EngagementNotice",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/chat-message-list.tsx",
+    "to": "src/features/collaboration/components/HandbackOffer.tsx",
+    "unresolvedTo": "@/features/collaboration/components/HandbackOffer",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/chat-message-list.tsx",
+    "to": "src/features/collaboration/components/SpectatedTurn.tsx",
+    "unresolvedTo": "@/features/collaboration/components/SpectatedTurn",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/chat-message-list.tsx",
+    "to": "src/features/runs/lib/carry-forward.ts",
+    "unresolvedTo": "@/features/runs/lib/carry-forward",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/chat/components/UserMessage.tsx",
+    "unresolvedTo": "@/features/chat/components/UserMessage",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/chat/stores/answer-reveal-store.ts",
+    "unresolvedTo": "@/features/chat/stores/answer-reveal-store",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/collaboration/hooks/use-message-anchor.ts",
+    "unresolvedTo": "@/features/collaboration/hooks/use-message-anchor",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/collaboration/hooks/use-shared-thread.ts",
+    "unresolvedTo": "@/features/collaboration/hooks/use-shared-thread",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/collaboration/hooks/use-sharing.ts",
+    "unresolvedTo": "@/features/collaboration/hooks/use-sharing",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/collaboration/hooks/use-spectated-turn.ts",
+    "unresolvedTo": "@/features/collaboration/hooks/use-spectated-turn",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/runs/hooks/use-commission-run.ts",
+    "unresolvedTo": "@/features/runs/hooks/use-commission-run",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
+    "to": "src/features/runs/lib/carry-forward.ts",
+    "unresolvedTo": "@/features/runs/lib/carry-forward",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/agent-response/answer-details.tsx",
+    "to": "src/features/skills/components/SkillsUsedDisclosure.tsx",
+    "unresolvedTo": "@/features/skills/components/SkillsUsedDisclosure",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

@@ -3,7 +3,7 @@
 The escalation step of docs/design/cross-project-escalation.md: the model
 climbs from this project to the office's reference projects on its own, when
 the question is comparative or the project's own sources are thin. The turn
-context lists the closest closed projects (``<referenzprojekte>``), so the
+context lists the closest closed projects (``<reference_projects>``), so the
 model knows what is there before it looks.
 
 ## One tool, three actions
@@ -234,7 +234,7 @@ _DESCRIPTION = (
     "their own access list (default: off). The search also returns Bescheide of earlier procedures "
     "(conditions, information requests with authority, municipality and date). `find` lists projects with "
     "status, period and address (`query` searches name and address). `brief` reads a project's confirmed key "
-    "facts and its summary (`project_id` from `<referenzprojekte>`, `find` or a hit).\n"
+    "facts and its summary (`project_id` from `<reference_projects>`, `find` or a hit).\n"
     "Returns passages with citation keys, project and year. A hit is a precedent, not a norm. Only the passage "
     "is available: documents of other projects cannot be opened further. The whole office may read closed "
     "projects; content from RUNNING projects makes the chat shareable only with people who may open those "
@@ -248,7 +248,7 @@ _UNREACHABLE = (
 )
 _NOT_FOUND = (
     "This project does not exist, or not everyone who reads this chat may open it. Use a "
-    "project_id from `<referenzprojekte>` or `find`."
+    "project_id from `<reference_projects>` or `find`."
 )
 
 #: Said once per answer that handed out content narrowing the chat's readers: the doors it shut.
@@ -739,7 +739,7 @@ def _render_search(
         preamble.append(_CLOSED_DOORS)
     if not hits:
         return "\n".join([*preamble, "Keine passenden Dokumente, Entscheidungen oder Bescheide in diesen Projekten."])
-    from knowledge_layer.register import _trace_lanes_for_hits
+    from knowledge_layer.trace_lanes import trace_lanes_for_hits
 
     # Handed out by the BFF, which recorded every one before it answered: what
     # the admission lets through for this turn, and what shuts its doors.
@@ -753,7 +753,7 @@ def _render_search(
             preamble="\n".join(preamble),
             degraded_banner="",
             hits=hits,
-            lanes=_trace_lanes_for_hits(list(hits)),
+            lanes=trace_lanes_for_hits(list(hits)),
             tool=PROJECT_LOOKUP_TOOL,
         )
     )
@@ -872,7 +872,7 @@ def _render_brief(body: dict[str, Any]) -> str:
     if not (summary or facts) or not project.get("collection"):
         # Nothing recorded is nothing to cite: the line stands as the answer.
         return "\n".join([preamble[0], content, *preamble[1:]])
-    from knowledge_layer.register import _trace_lanes_for_hits
+    from knowledge_layer.trace_lanes import trace_lanes_for_hits
 
     hit = _brief_hit(project, content)
     return render_grounding_block(
@@ -880,7 +880,7 @@ def _render_brief(body: dict[str, Any]) -> str:
             preamble="\n".join(preamble),
             degraded_banner="",
             hits=(hit,),
-            lanes=_trace_lanes_for_hits([hit]),
+            lanes=trace_lanes_for_hits([hit]),
             tool=PROJECT_LOOKUP_TOOL,
         )
     )

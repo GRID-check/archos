@@ -38,204 +38,34 @@
 import type { JSX } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import {
-  Boxes,
-  Camera,
-  Check,
-  Eye,
-  Home,
-  Layers,
-  Link2,
-  MonitorX,
-  MoreHorizontal,
-  PanelLeft,
-  Ruler,
-  Scissors,
-  SlidersHorizontal,
-  TriangleAlert,
-  Undo2,
-  X,
-} from 'lucide-react'
+import { Boxes, Camera, Check, Eye, Home, Layers, Link2, MonitorX, MoreHorizontal, PanelLeft, Ruler, Scissors, SlidersHorizontal, TriangleAlert, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { DocumentActionsMenu } from '@/features/documents/components/document-actions'
 import { ModelFileOwnership } from './model-file-ownership'
-import {
-  storeyKey,
-  supportsWebGpu,
-  type BimViewerElement,
-  type ViewerVisibility,
-} from '../lib/model-index'
-import {
-  buildModelQuery,
-  parseModelView,
-  withModelView,
-  type BimModelTab,
-  type BimModelView,
-} from '../lib/model-link'
-import {
-  formatLevelElevation,
-  levelElevation,
-  pickStageModel,
-  stageLevels,
-  stageModelLabel,
-  stageModelMatched,
-} from '../lib/stage-model'
+import { storeyKey, supportsWebGpu, type BimViewerElement } from '../lib/model-index'
+import { buildModelQuery, parseModelView, withModelView, type BimModelTab, type BimModelView } from '../lib/model-link'
+import { formatLevelElevation, levelElevation, pickStageModel, stageLevels, stageModelLabel, stageModelMatched } from '../lib/stage-model'
 import { formatMetresIn } from '../lib/format-value'
 import { measurementText } from '../lib/measure-overlay'
 import { screenshotFilename } from '../lib/viewer-performance'
-import {
-  useBimElementDetail,
-  useBimElements,
-  useBimModelSource,
-  useDocumentBimModel,
-  useProjectBimModels,
-} from '../hooks/use-bim-model'
+import { useBimElementDetail, useBimElements, useBimModelSource, useDocumentBimModel, useProjectBimModels } from '../hooks/use-bim-model'
 import { useModelViewport } from '../hooks/use-model-viewport'
 import { useStageLayout } from '../hooks/use-stage-layout'
-import { IfcViewerCanvasLazy, ModelViewportProgress, ViewerRetry } from './ifc-model-viewer'
+
 import { ModelInspector } from './model-inspector'
 import { ModelAdvancedSheet } from './model-advanced-sheet'
 import { PhoneMoreRows, PhoneTools, type PhoneSheet } from './stage-phone-chrome'
 import { StageViewMenu } from './stage-view-menu'
-import {
-  ViewerDock,
-  ViewerDockSeparator,
-  ViewerIconButton,
-  ViewerIconButtonBase,
-  ViewerLegend,
-  ViewerNotice,
-  ViewerRail,
-  ViewerRailItem,
-  ViewerRailSection,
-  ViewerSheet,
-  ViewerSlider,
-  ViewerSurface,
-  type ViewerSheetSnap,
-} from './viewer'
-
-/** One shared empty array, so "no elements yet" has a stable identity. */
-const NO_ELEMENTS: readonly BimViewerElement[] = []
-
-/**
- * How many steps back the stage remembers.
- *
- * A bound rather than a policy: nobody presses Undo forty times, and an
- * unbounded array of views and id sets held for as long as a model is open is
- * a leak with no upper limit on a surface people leave open all day.
- */
-const STAGE_HISTORY_DEPTH = 40
-
-/**
- * One thing the reader changed on purpose, and how to put it back.
- *
- * Two halves, because the stage's state has two homes. The view is the URL —
- * which model, which level, which element, where the cut is — and taking a
- * step back through it is a navigation. What has been taken out of the way is
- * deliberately NOT in the URL (see `ModelVisibility`), so a step through that
- * is a state the viewport is handed back.
- *
- * Either half is `null` when the step did not touch it, which is what makes
- * one press undo one action: going back over a level filter must not also
- * restore the elements the reader hid afterwards. Both are filled when one
- * gesture changed both — see `asOneStep`.
- */
-interface StageStep {
-  view: BimModelView | null
-  visibility: ViewerVisibility | null
-}
-
-/**
- * Where the legend sits, given how many pills the dock has stacked above
- * itself.
- *
- * Written out as whole class strings rather than composed, because Tailwind
- * scans source text: a computed `bottom-${n}` produces no CSS at all.
- */
-const DOCK_ABOVE_OFFSET: Record<0 | 1 | 2, string> = {
-  0: 'bottom-20 sm:bottom-24',
-  1: 'bottom-36 sm:bottom-40',
-  2: 'bottom-52 sm:bottom-56',
-}
-
-/**
- * Hide and isolate, bound to whatever is selected right now.
- *
- * Both are omitted rather than disabled when nothing is selected: the card
- * they live on only exists when there IS a selection, so a disabled pair would
- * be a state the reader can never reach — except in the one frame between
- * hiding the selected element and the selection clearing itself, which is
- * exactly when a live button would act on a component that is already gone.
- *
- * ## Why the two verbs read two different ids
- *
- * Hiding needs the element to be ON SCREEN. "Take this out of the way" said
- * about something already out of the way is not an act, and the id it would
- * use is the renderer's, which is deliberately null the moment a selection
- * stops being drawn.
- *
- * Isolating does not — with one exception. "Show me nothing but this" is
- * exactly what a reader means about an element that is not currently visible
- * BECAUSE SOMETHING ELSE IS ISOLATED, which is the only way to reach that
- * state through the rail. Reading the renderer's id for both left that card
- * with no visibility controls at all: the reader had isolated one wall,
- * picked another to look at, and arrived at a card whose two buttons had
- * silently disappeared — the isolate button among them, which is what would
- * have got them out.
- *
- * The exception is an element the reader HID. Isolating that means "show
- * nothing but this thing I have also taken away", and the honest rendering of
- * it is an empty viewport. So a hidden selection offers neither verb, exactly
- * as it did before isolate learned to read past the renderer.
- */
-function visibilityActions(
-  viewport: ReturnType<typeof useModelViewport>,
-  clearSelection: () => void,
-  focusViewport: () => void,
-  asOneStep: (gesture: () => void) => void
-): { onHide?: () => void; onIsolate?: () => void; isolated?: boolean } {
-  const elementId = viewport.selectedElementExpressId
-  if (elementId === null || viewport.visibility.hidden.has(elementId)) return {}
-  const isolated = viewport.visibility.isolated
-  const actions = {
-    // The MANUAL isolation only, never the level filter — the filter isolates
-    // a whole floor and this button did not do it, so a button reporting
-    // itself pressed for it would be claiming an act it cannot take back.
-    isolated: isolated !== null && isolated.size === 1 && isolated.has(elementId),
-    onIsolate: () => viewport.visibility.isolate([elementId]),
-  }
-
-  const expressId = viewport.selectedExpressId
-  if (expressId === null) return actions
-  return {
-    ...actions,
-    // Hiding CLEARS the selection. The card is mounted on the URL's
-    // `element=`, not on the renderer id, so without this the reader hid a
-    // wall and kept a card describing it — the highlight gone, the pivot
-    // reset, and the Hide button itself silently removed from the card that
-    // was still open.
-    //
-    // Both writes are ONE step, so one Undo puts the wall back AND re-opens
-    // the card describing it — the state the reader was actually in.
-    onHide: () => {
-      asOneStep(() => {
-        viewport.visibility.hide(expressId)
-        clearSelection()
-      })
-      // Hide destroys the card the button lives in. Without this the reader's
-      // focus ring is thrown to the top of a full-screen dialog holding
-      // fifteen controls, with nothing said about what happened — the control
-      // vanishing IS the only feedback, and it takes their place with it.
-      focusViewport()
-    },
-  }
-}
-
+import { ViewerDock, ViewerDockSeparator, ViewerIconButton, ViewerIconButtonBase, ViewerLegend, ViewerRail, ViewerRailItem, ViewerRailSection, ViewerSheet, ViewerSlider, ViewerSurface, type ViewerSheetSnap } from './viewer'
+import { NO_ELEMENTS, STAGE_HISTORY_DEPTH, StageStep, DOCK_ABOVE_OFFSET, visibilityActions } from './model-stage-helpers'
+import { StageCanvas } from './stage-canvas'
 export interface ModelStageProps {
   /**
    * The project the stage is opened from, or `null` in the org-wide Archiv.
@@ -280,7 +110,7 @@ export function ModelStage({
   onModelDeleted,
   canCollaborate = false,
 }: ModelStageProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -517,7 +347,6 @@ export function ModelStage({
     const timer = setTimeout(() => setCaptureFailed(false), 4000)
     return () => clearTimeout(timer)
   }, [captureFailed])
-
 
   /**
    * Where focus goes when a viewer control removes itself.
@@ -1827,171 +1656,5 @@ export function ModelStage({
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-/**
- * The canvas, or the honest sentence that replaces it.
- *
- * Five different situations end without a building on screen, and they are
- * five different facts: the list has not arrived, the list failed, the project
- * has no model, the model is still being read, and this browser cannot render.
- * Collapsing any two of them tells the reader something untrue about their own
- * upload, which is why each gets its own branch and its own words.
- */
-function StageCanvas({
-  isLoading,
-  error,
-  onRetry,
-  onClose,
-  hasModels,
-  model,
-  source,
-  viewport,
-}: {
-  isLoading: boolean
-  error: string | null
-  onRetry: () => void
-  /** Closes the stage — the way back to Dateien, where a model is uploaded. */
-  onClose: () => void
-  hasModels: boolean
-  model: { status: string; errorMessage: string | null } | null
-  source: { data: string | null; error: string | null; reload: () => void }
-  viewport: ReturnType<typeof useModelViewport>
-}): JSX.Element {
-  const t = useTranslations('bim')
-
-  // `isLoading && nothing to show yet`, not `isLoading`.
-  //
-  // The model list polls every four seconds while ANY model in the project is
-  // extracting, and each tick sets `isLoading` while deliberately keeping the
-  // previous `data` — the hook's comment explains at length why. Keying the
-  // veil on the flag alone undid that: uploading revision v3 while looking at
-  // v2 swapped the canvas for "Modell wird geladen…" every four seconds,
-  // unmounting the viewport, destroying the WebGPU device and re-streaming up
-  // to 149 MB, losing the camera, the cut and every measurement each time.
-  if (isLoading && !hasModels) {
-    return <ModelViewportProgress phase="downloading" percent={null} />
-  }
-  if (error) {
-    return (
-      <ViewerNotice
-        icon={Boxes}
-        title={t('loadFailed.title')}
-        description={t('loadFailed.description')}
-        // Every error state in this viewer used to be terminal: the notices
-        // took no action, `reload` on the hook had no caller, and the string
-        // for this button had sat unused in both dictionaries since it was
-        // written. Closing and reopening the stage was the only escape, and
-        // nothing on screen suggested it.
-        action={<ViewerRetry onClick={onRetry} />}
-      />
-    )
-  }
-  if (!hasModels || !model) {
-    return (
-      <ViewerNotice
-        icon={Boxes}
-        title={t('empty.title')}
-        description={t('empty.description')}
-        // A project with no model got a sentence and no way forward: the
-        // notice says "upload an .ifc under Dateien" while sitting on top of
-        // Dateien, with the × in the corner as the only exit anyone could
-        // find. `empty.action` has existed in both dictionaries the whole
-        // time with nothing rendering it.
-        action={
-          <Button type="button" size="sm" variant="secondary" onClick={onClose}>
-            {t('empty.action')}
-          </Button>
-        }
-      />
-    )
-  }
-  if (model.status !== 'ready') {
-    return (
-      <ViewerNotice
-        icon={Boxes}
-        title={t(`status.${model.status}`)}
-        description={
-          model.errorMessage ??
-          // A FAILED extraction that stored no message used to fall through to
-          // "Das Modell wird noch gelesen" — printed directly under "Modell
-          // konnte nicht gelesen werden", so the notice contradicted its own
-          // heading and the reader was left waiting for something that had
-          // already stopped.
-          (model.status === 'failed' ? t('stage.readFailed') : t('stage.notReady'))
-        }
-      />
-    )
-  }
-  if (!viewport.webGpu) {
-    return (
-      <ViewerNotice
-        icon={MonitorX}
-        title={t('viewer.unsupported.title')}
-        description={t('viewer.unsupported.description')}
-      />
-    )
-  }
-  if (viewport.status.phase === 'error') {
-    return (
-      <ViewerNotice
-        icon={MonitorX}
-        title={t('viewer.unavailable.title')}
-        description={t('viewer.unavailable.description')}
-        detail={
-          viewport.status.message
-            ? t('viewer.unavailable.reason', { message: viewport.status.message })
-            : undefined
-        }
-        // Re-signing mints a NEW url, and a new url is what resets the stored
-        // status and remounts the canvas — the recovery path existed and had
-        // nothing to trigger it. A device loss (a driver reset, a laptop
-        // waking) is the common way to land here, and it is entirely
-        // recoverable.
-        action={<ViewerRetry onClick={source.reload} />}
-      />
-    )
-  }
-  // A presigned URL that could not be minted — an expired session, a
-  // withdrawn feature flag, a dropped connection. Its own branch, because the
-  // fallthrough below renders an indeterminate progress bar, and a progress
-  // bar that will never finish is the least honest thing this surface can do.
-  if (source.error) {
-    return (
-      <ViewerNotice
-        icon={MonitorX}
-        title={t('viewer.unavailable.title')}
-        description={t('viewer.unavailable.description')}
-        action={<ViewerRetry onClick={source.reload} />}
-      />
-    )
-  }
-  if (!viewport.canvasProps) {
-    return <ModelViewportProgress phase="downloading" percent={null} />
-  }
-  // The reader stopped the download. The canvas stays unmounted — the unmount
-  // is what aborts the request — and the way back is one press, not a reopen.
-  if (viewport.download.cancelled) {
-    return (
-      <ViewerNotice
-        icon={Boxes}
-        title={t('stage.download.cancelled.title')}
-        description={t('stage.download.cancelled.description')}
-        action={<ViewerRetry onClick={viewport.download.restart} label={t('stage.download.restart')} />}
-      />
-    )
-  }
-
-  return (
-    <>
-      <IfcViewerCanvasLazy {...viewport.canvasProps} className="size-full" />
-      <ModelViewportProgress
-        phase={viewport.status.phase}
-        percent={viewport.status.percent}
-        bytes={viewport.status.bytes}
-        onCancel={viewport.download.cancel}
-      />
-    </>
   )
 }

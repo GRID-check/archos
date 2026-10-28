@@ -65,6 +65,7 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import {
   createSkill,
@@ -236,7 +237,7 @@ export function SkillEditorDialog({
   categories = [],
   onSaved,
 }: SkillEditorDialogProps): JSX.Element {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   const isEdit = skill !== null
   /**
    * The row every field starts from. Null for a new skill.

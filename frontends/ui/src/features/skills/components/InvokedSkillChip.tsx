@@ -25,6 +25,7 @@
 import type { JSX } from 'react'
 import { X } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 
 export interface InvokedSkillChipProps {
   name: string
@@ -38,7 +39,7 @@ export function InvokedSkillChip({
   description,
   onRemove,
 }: InvokedSkillChipProps): JSX.Element {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
 
   return (
     <div

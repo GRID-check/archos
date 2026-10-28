@@ -22,8 +22,8 @@ export const files: typeof en.files = {
     heading: {
       transferringOne: '1 Dokument wird hochgeladen',
       transferringOther: '{count} Dokumente werden hochgeladen',
-      processingOne: 'Piloti liest 1 Dokument',
-      processingOther: 'Piloti liest {count} Dokumente',
+      processingOne: '{productName} liest 1 Dokument',
+      processingOther: '{productName} liest {count} Dokumente',
       doneOne: '1 Dokument hinzugefügt',
       doneOther: '{count} Dokumente hinzugefügt',
       mixed: '{ready} hinzugefügt · {failed} fehlgeschlagen',
@@ -102,7 +102,7 @@ export const files: typeof en.files = {
   toast: {
     // Sobald die asynchrone Verarbeitung abgeschlossen ist und das Dokument
     // zitierbar wird – die bislang fehlende Bestätigung des Abschlusses.
-    ingestionComplete: '„{name}“ ist jetzt in Pilotis Wissen – zitierbar',
+    ingestionComplete: '„{name}“ ist jetzt in {productName}s Wissen – zitierbar',
     modelReady: '„{name}“ ist gelesen. Sie können jetzt Fragen zum Gebäude stellen.',
   },
   // Karten-Thumbnail-Fallbacks: ein warmer Platzhalter-Chip, wenn kein Thumbnail
@@ -146,12 +146,12 @@ export const files: typeof en.files = {
     suggestionsLabel: 'Schlagwort-Vorschläge',
     noTagMatch: 'Kein passendes Schlagwort – bitte einen der Vorschläge wählen.',
     reading: {
-      classifiedAs: 'Piloti hält es für',
-      noType: 'Piloti hat keine Dokumentart erkannt.',
+      classifiedAs: '{productName} hält es für',
+      noType: '{productName} hat keine Dokumentart erkannt.',
       correct: 'Korrigieren',
       assign: 'Zuordnen',
       done: 'Fertig',
-      correctionKept: 'Ihre Zuordnung bleibt, auch wenn Piloti die Datei neu liest.',
+      correctionKept: 'Ihre Zuordnung bleibt, auch wenn {productName} die Datei neu liest.',
       topics: 'Themen',
       addTopic: 'Thema hinzufügen',
       topicsSaveError: 'Die Themen konnten nicht gespeichert werden.',
@@ -168,11 +168,11 @@ export const files: typeof en.files = {
       changedSince: 'Was sich gegenüber {name} geändert hat:',
       changedSincePrevious: 'Was sich gegenüber der vorigen Fassung geändert hat:',
       changeHint:
-        'Zusammenfassung von Piloti, aus beiden Fassungen gelesen. Maße und Werte prüfen Sie bitte im Dokument selbst.',
+        'Zusammenfassung von {productName}, aus beiden Fassungen gelesen. Maße und Werte prüfen Sie bitte im Dokument selbst.',
       suggestion: 'Ist das eine neuere Fassung von {name}?',
       basisTitleBlock: 'Plannummer und Index im Plankopf sprechen dafür.',
       basisName: 'Index und Datum im Dateinamen sprechen dafür.',
-      basisContent: 'Piloti hat beide gelesen:',
+      basisContent: '{productName} hat beide gelesen:',
       confirm: 'Ja, neuere Fassung',
       dismiss: 'Nein',
       askEditor: 'Bestätigen kann, wer diesen Ordner bearbeiten darf.',
@@ -204,12 +204,12 @@ export const files: typeof en.files = {
         // Nur wenn der Name wirklich unbekannt ist. Nie „jemand“.
         someone: 'ein Teammitglied',
         answer: {
-          this: 'Piloti antwortet aus dieser Fassung.',
-          older: 'Piloti antwortet weiter aus Fassung {number}.',
-          newer: 'Piloti antwortet aus der neueren Fassung {number}; diese bleibt lesbar, auch für Vergleiche.',
-          notYet: 'Piloti antwortet erst daraus, wenn sie freigegeben ist.',
-          notYetRead: 'Piloti antwortet daraus, sobald sie gelesen ist.',
-          never: 'Piloti antwortet nicht daraus.',
+          this: '{productName} antwortet aus dieser Fassung.',
+          older: '{productName} antwortet weiter aus Fassung {number}.',
+          newer: '{productName} antwortet aus der neueren Fassung {number}; diese bleibt lesbar, auch für Vergleiche.',
+          notYet: '{productName} antwortet erst daraus, wenn sie freigegeben ist.',
+          notYetRead: '{productName} antwortet daraus, sobald sie gelesen ist.',
+          never: '{productName} antwortet nicht daraus.',
         },
         // {name} kommt mit dem Datum: „Anna Berger · 14.08.2026“, untrennbar.
         act: '{act} von {name}',
@@ -218,15 +218,15 @@ export const files: typeof en.files = {
         bySomeone: 'einem Teammitglied',
         rowMenu: 'Weitere Aktionen zu Fassung {number}',
         approveExplain:
-          'Freigeben heißt: Das Büro steht für den Inhalt ein. Ab dann antwortet Piloti aus dieser Fassung.',
+          'Freigeben heißt: Das Büro steht für den Inhalt ein. Ab dann antwortet {productName} aus dieser Fassung.',
         changedSince: 'Geändert gegenüber Fassung {number}:',
         archive: 'Datei stilllegen …',
       },
     },
     indexed: {
-      title: 'Von Piloti gelesen',
+      title: 'Von {productName} gelesen',
       documentType: 'Dokumenttyp',
-      pending: 'Piloti liest das Dokument noch – Zusammenfassung und Merkmale erscheinen hier, sobald es fertig ist.',
+      pending: '{productName} liest das Dokument noch – Zusammenfassung und Merkmale erscheinen hier, sobald es fertig ist.',
     },
     contentTypeNames: {
       text: 'Text',
@@ -338,7 +338,7 @@ export const files: typeof en.files = {
     heldTitle: 'Von der Inhaltsprüfung zurückgehalten',
     heldDecided: 'Über diese Datei hat schon jemand entschieden.',
     ingestionFailedPreviousVersionKept:
-      'Die Suche und Piloti verwenden weiterhin die vorige Fassung. Der Download liefert die neue Datei.',
+      'Die Suche und {productName} verwenden weiterhin die vorige Fassung. Der Download liefert die neue Datei.',
     retryIngestion: 'Erneut lesen',
     retryWouldFailAgain:
       'Diese Datei liefert beim erneuten Lesen dasselbe Ergebnis. Laden Sie eine neue Fassung hoch.',
@@ -355,10 +355,10 @@ export const files: typeof en.files = {
     // The length, in the facts line under the name in the chat peek.
     pageCount: '{count, plural, one {# Seite} other {# Seiten}}',
     resizePeek: 'Breite der Dateivorschau ändern',
-    peekIndexingHint: 'Piloti kann diese Datei erst zitieren, wenn sie gelesen ist.',
-    peekFailedHint: 'Lesen fehlgeschlagen. Piloti kann diese Datei nicht zitieren.',
+    peekIndexingHint: '{productName} kann diese Datei erst zitieren, wenn sie gelesen ist.',
+    peekFailedHint: 'Lesen fehlgeschlagen. {productName} kann diese Datei nicht zitieren.',
     peekFailedPreviousVersionHint:
-      'Die neue Datei konnte nicht gelesen werden – Piloti zitiert weiterhin die vorige Fassung.',
+      'Die neue Datei konnte nicht gelesen werden – {productName} zitiert weiterhin die vorige Fassung.',
     peekFailedAction: 'Details',
   },
   /**
@@ -375,13 +375,13 @@ export const files: typeof en.files = {
     unreadable_pages:
       '{failed} von {total} Seiten ließen sich nicht lesen. Erneut lesen. Klappt es wieder nicht, ist die PDF vermutlich beschädigt.',
     vision_not_configured:
-      'Für gescannte Seiten und Bilder braucht Piloti ein Bildmodell, und es ist keins eingerichtet. Bitte die Admins, eins zu konfigurieren.',
+      'Für gescannte Seiten und Bilder braucht {productName} ein Bildmodell, und es ist keins eingerichtet. Bitte die Admins, eins zu konfigurieren.',
     dispatch_failed: 'Das Lesen ließ sich nicht starten. Bitte erneut lesen.',
     timeout: 'Das Lesen hat zu lange gedauert und wurde abgebrochen. Erneut lesen. Sehr große Dateien besser aufteilen.',
     empty: 'In dieser Datei war kein Text zu finden. Sie ist vielleicht passwortgeschützt, beschädigt oder leer.',
-    deleted: 'Die Datei wurde gelöscht, während Piloti sie las.',
+    deleted: 'Die Datei wurde gelöscht, während {productName} sie las.',
     quarantined:
-      'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+      'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat. {productName} hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     // Gefunden im Text, den das Bildmodell aus gescannten Seiten gelesen hat
     // (`after_transcription`): dieses Modell hat die Seiten gesehen, kein anderes.
     quarantinedAfterTranscription:
@@ -389,12 +389,12 @@ export const files: typeof en.files = {
     // Der Grund ist nicht gespeichert oder nicht lesbar: nichts behaupten, was
     // die Zeile darüber nicht belegt.
     quarantinedUnreadable:
-      'Die Inhaltsprüfung hat diese Datei zurückgehalten. Der Grund ist nicht gespeichert oder nicht lesbar. Solange sie zurückgehalten ist, zeigt Piloti sie keinem Modell. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+      'Die Inhaltsprüfung hat diese Datei zurückgehalten. Der Grund ist nicht gespeichert oder nicht lesbar. Solange sie zurückgehalten ist, zeigt {productName} sie keinem Modell. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     // Die Prüfregeln des Büros ließen sich nicht anwenden: die Datei wurde gar
     // nicht gelesen und wartet wie eine zurückgehaltene (ADR-0086).
     screening_unavailable:
-      'Die Prüfung auf sensible Daten ließ sich nicht durchführen, daher hat Piloti diese Datei nicht gelesen und keinem Modell gezeigt. Erneut lesen, oder die Büro- oder Projektadministration entscheidet, ob sie bleibt.',
-    unknown: 'Piloti konnte dieses Dokument nicht lesen, daher findet die Suche es nicht.',
+      'Die Prüfung auf sensible Daten ließ sich nicht durchführen, daher hat {productName} diese Datei nicht gelesen und keinem Modell gezeigt. Erneut lesen, oder die Büro- oder Projektadministration entscheidet, ob sie bleibt.',
+    unknown: '{productName} konnte dieses Dokument nicht lesen, daher findet die Suche es nicht.',
     details: 'Details',
   },
   screening: {
@@ -443,7 +443,7 @@ export const files: typeof en.files = {
       'Laden Sie hier Dokumente hoch oder wählen Sie einen anderen Ordner in der Seitenleiste.',
     noDocumentsTitle: 'Noch keine Dokumente',
     noDocumentsDescription:
-      'Laden Sie die Unterlagen Ihres Projekts hoch: Zeichnungen, Bescheide, Gutachten, Berichte. Piloti liest sie und zitiert daraus, statt aus allgemeinen Hinweisen zu antworten.',
+      'Laden Sie die Unterlagen Ihres Projekts hoch: Zeichnungen, Bescheide, Gutachten, Berichte. {productName} liest sie und zitiert daraus, statt aus allgemeinen Hinweisen zu antworten.',
     searchPlaceholder: 'Suchen…',
     /** Das Feld einer Ablage mit der Suche: Tippen filtert Namen, Enter durchsucht alles. */
     searchPlaceholderEverything: 'Filtern, Enter sucht alles…',
@@ -541,7 +541,7 @@ export const files: typeof en.files = {
       lockoutEveryoneReads:
         'Stehen Sie selbst nicht mit „Bearbeiten“ auf der Liste, dürfen Sie den Ordner nach dem Speichern nur noch lesen, außer Sie sind Organisations-Admin.',
       moveNotice:
-        'Ändert sich, wer lesen darf, verschiebt Piloti die Dokumente des Ordners und liest sie neu ein. Bei einem großen Ordner dauert das einige Minuten; so lange stehen die Dokumente auf „Wird gelesen“.',
+        'Ändert sich, wer lesen darf, verschiebt {productName} die Dokumente des Ordners und liest sie neu ein. Bei einem großen Ordner dauert das einige Minuten; so lange stehen die Dokumente auf „Wird gelesen“.',
       ifcNotice:
         'Ordner, die nicht alle Projektmitglieder lesen dürfen, können noch keine Gebäudemodelle (IFC) enthalten. Legen Sie IFC-Modelle in Ordner, die alle lesen dürfen.',
       /** Der 409 der IFC-Sperre (ADR-0087): einschränken, hochladen oder verschieben in einen eingeschränkten Ordner. */
@@ -566,7 +566,7 @@ export const files: typeof en.files = {
     /** Was in einen Ordner gehört (Migration 0145): Piloti legt Uploads danach ab. */
     description: {
       title: 'Was gehört in „{name}“?',
-      hint: 'Ein, zwei Sätze, was in diesem Ordner liegt. Alle, die den Ordner öffnen, lesen sie, und Piloti schlägt danach vor, wohin ein Upload gehört.',
+      hint: 'Ein, zwei Sätze, was in diesem Ordner liegt. Alle, die den Ordner öffnen, lesen sie, und {productName} schlägt danach vor, wohin ein Upload gehört.',
       label: 'Beschreibung',
       placeholder: 'z. B. Bescheide und Stellungnahmen der Baubehörde',
       count: '{count} / {max} Zeichen',
@@ -582,7 +582,7 @@ export const files: typeof en.files = {
    * row, the popover it opens, and the filing bar that decides per folder.
    */
   filing: {
-    label: 'Ablagevorschlag von Piloti',
+    label: 'Ablagevorschlag von {productName}',
     /** The chip's accessible name; it shows only the folder's last segment. */
     chip: 'Ablagevorschlag: {folder}',
     new: 'neu',
@@ -592,7 +592,7 @@ export const files: typeof en.files = {
     /** Spoken before the two paths of the popover, which a screen reader cannot see struck through. */
     from: 'Liegt jetzt in',
     to: 'Würde verschoben nach',
-    barHeading: '{count, plural, one {Piloti schlägt vor, # Datei abzulegen} other {Piloti schlägt vor, # Dateien abzulegen}}',
+    barHeading: '{count, plural, one {{productName} schlägt vor, # Datei abzulegen} other {{productName} schlägt vor, # Dateien abzulegen}}',
     fileCount: '{count, plural, one {# Datei} other {# Dateien}}',
     others: '{count, plural, one {mit # weiteren Datei} other {mit # weiteren Dateien}}',
     move: 'Verschieben',
@@ -630,7 +630,7 @@ export const files: typeof en.files = {
     purge: 'Endgültig löschen',
     purgeTitle: '„{name}“ endgültig löschen?',
     purgeDescription:
-      'Der Ordner, seine Unterordner und {documents, plural, one {# Dokument} other {# Dokumente}} werden sofort gelöscht, mit allen Fassungen und Vorschauen. Das lässt sich nicht rückgängig machen. Was Piloti daraus abgeleitet hat, folgt der Einstellung Ihrer Organisation.',
+      'Der Ordner, seine Unterordner und {documents, plural, one {# Dokument} other {# Dokumente}} werden sofort gelöscht, mit allen Fassungen und Vorschauen. Das lässt sich nicht rückgängig machen. Was {productName} daraus abgeleitet hat, folgt der Einstellung Ihrer Organisation.',
     purged: '„{name}“ ist endgültig gelöscht.',
     held: 'Für diesen Ordner gilt eine Aufbewahrungspflicht. Er kann gerade nicht gelöscht werden.',
     purgeError: 'Der Ordner konnte nicht endgültig gelöscht werden. Bitte versuchen Sie es erneut.',
@@ -657,7 +657,7 @@ export const files: typeof en.files = {
     deleteFolderIndexDown:
       'Der Ordner wurde nicht gelöscht, weil der Suchindex nicht geantwortet hat. Bitte versuchen Sie es erneut.',
     openBin: 'Papierkorb',
-    corpusSubtitle: 'Projektwissen: Dokumente, die Piloti liest und zitiert.',
+    corpusSubtitle: 'Projektwissen: Dokumente, die {productName} liest und zitiert.',
     uploadDocuments: 'Dokumente hochladen',
     uploadProblem: 'Upload-Problem',
     dismissError: 'Fehler ausblenden',
@@ -731,7 +731,7 @@ export const files: typeof en.files = {
       'Diese Datei liefert beim erneuten Lesen dasselbe Ergebnis. Laden Sie eine neue Fassung hoch.',
     reingestConfirmTitle: '„{name}“ erneut lesen?',
     reingestConfirmDescription:
-      'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis Piloti damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
+      '{productName} liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis {productName} damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
     reingestConfirmAction: 'Erneut lesen',
     reingestError:
       'Das erneute Lesen konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
@@ -742,7 +742,7 @@ export const files: typeof en.files = {
     cancelling: 'Wird abgebrochen …',
     cancelled: 'Lesen von „{name}“ abgebrochen',
     cancelFinished: 'Nichts abzubrechen – das Lesen war bereits beendet',
-    cancelUnavailable: 'Für diese Datei lässt sich das Lesen nicht abbrechen – Piloti wandelt sie auf diesem Server um',
+    cancelUnavailable: 'Für diese Datei lässt sich das Lesen nicht abbrechen – {productName} wandelt sie auf diesem Server um',
     cancelError: 'Das Lesen konnte nicht abgebrochen werden. Bitte versuchen Sie es erneut.',
     label: 'Dateiaktionen für „{name}“',
     menuLabel: 'Dateiaktionen',
@@ -757,7 +757,7 @@ export const files: typeof en.files = {
   rename: {
     title: 'Dokument umbenennen',
     description:
-      'Ändert den Namen, der in Piloti überall angezeigt wird — auch in Zitaten. Die Datei selbst und alles daraus Gelesene bleiben unverändert.',
+      'Ändert den Namen, der in {productName} überall angezeigt wird — auch in Zitaten. Die Datei selbst und alles daraus Gelesene bleiben unverändert.',
     label: 'Name',
     hint: 'Die Dateiendung bleibt erhalten.',
     save: 'Umbenennen',
@@ -816,7 +816,7 @@ export const files: typeof en.files = {
       updateExplain:
         '„{name}“ liegt hier bereits unter diesem Namen. Die neue Datei wird die aktuelle Fassung; die bisherige bleibt unter „Fassungen und Freigabe“ lesbar.',
       revisionExplain:
-        '„{file}“ setzt „{name}“ fort: Index oder Datum im Namen sind neuer. Die ältere Fassung bleibt lesbar, Piloti antwortet aus der neuen und hält fest, was sich geändert hat; die Verknüpfung lässt sich später lösen.',
+        '„{file}“ setzt „{name}“ fort: Index oder Datum im Namen sind neuer. Die ältere Fassung bleibt lesbar, {productName} antwortet aus der neuen und hält fest, was sich geändert hat; die Verknüpfung lässt sich später lösen.',
       unclearTitle: 'Ist „{file}“ eine neue Fassung?',
       unclearExplain:
         'Nach dem Namen kommen mehrere Dokumente in Frage. Wählen Sie das, das diese Datei fortsetzt, oder laden Sie sie als eigenes Dokument hoch.',
@@ -857,7 +857,7 @@ export const files: typeof en.files = {
     // „Zurückgehalten“ gehört der Inhaltsprüfung.
     excluded: '{count, plural, one {# Datei nicht hochgeladen} other {# Dateien nicht hochgeladen}}',
     excludedExplain:
-      'Ihr Büro hat diese Begriffe als sensibel eingestuft, deshalb werden die Dateien nicht hochgeladen: Sie verlassen Ihren Rechner nicht. Gehört eine davon doch nach Piloti, haken Sie sie an.',
+      'Ihr Büro hat diese Begriffe als sensibel eingestuft, deshalb werden die Dateien nicht hochgeladen: Sie verlassen Ihren Rechner nicht. Gehört eine davon doch nach {productName}, haken Sie sie an.',
     releaseFile: 'Trotzdem hochladen',
     // Dateien, die als neue Fassung eines vorhandenen Dokuments hereinkommen: mit
     // gleichem Namen (ADR-0054) oder über eine Namensreihe unter anderem Namen
@@ -866,7 +866,7 @@ export const files: typeof en.files = {
     revision: {
       title: '{count, plural, one {# neue Fassung} other {# neue Fassungen}}',
       consequence:
-        'Die ältere Fassung bleibt lesbar, Piloti antwortet aus der neuen und hält fest, was sich geändert hat; abgewählte Dateien kommen als eigene Dokumente hinein, und jede Verknüpfung lässt sich später lösen.',
+        'Die ältere Fassung bleibt lesbar, {productName} antwortet aus der neuen und hält fest, was sich geändert hat; abgewählte Dateien kommen als eigene Dokumente hinein, und jede Verknüpfung lässt sich später lösen.',
       sameNameTitle:
         '{count, plural, one {# Datei mit gleichem Namen als neue Fassung} other {# Dateien mit gleichem Namen als neue Fassung}}',
       sameNameReason:
@@ -919,16 +919,16 @@ export const files: typeof en.files = {
     tooLarge: '„{name}“ ist größer als {size}.',
     sending: '{sent} von {total} gesendet…',
     sendingHint:
-      'Sie können in Piloti inzwischen weiterarbeiten; lassen Sie nur diesen Tab offen, bis das Outlook-Archiv gesendet ist. Das Ablegen läuft danach im Hintergrund.',
+      'Sie können in {productName} inzwischen weiterarbeiten; lassen Sie nur diesen Tab offen, bis das Outlook-Archiv gesendet ist. Das Ablegen läuft danach im Hintergrund.',
     sendingLabel: '„{name}“ wird gesendet',
-    joining: 'Gesendet. Piloti setzt das Outlook-Archiv zusammen…',
+    joining: 'Gesendet. {productName} setzt das Outlook-Archiv zusammen…',
     sendErrors: {
       busy: 'Dieser Tab sendet noch ein anderes Outlook-Archiv. Warten Sie, bis es gesendet ist, und wählen Sie dann dieses.',
       alreadyRunning: 'Ein Import von Ihnen läuft in diesem Projekt noch. Setzen Sie ihn zuerst fort oder brechen Sie ihn ab.',
       cancelled: 'Der Import wurde abgebrochen, während er gesendet wurde.',
       quota: 'Der Speicher der Organisation ist voll, daher kann das Outlook-Archiv nicht importiert werden.',
       forbidden: 'Sie dürfen diesem Projekt keine Dokumente hinzufügen.',
-      rejected: 'Piloti hat dieses Outlook-Archiv nicht angenommen. Prüfen Sie, ob es eine Outlook-.pst- oder -.ost-Datei ist.',
+      rejected: '{productName} hat dieses Outlook-Archiv nicht angenommen. Prüfen Sie, ob es eine Outlook-.pst- oder -.ost-Datei ist.',
       connection:
         'Die Verbindung ist abgebrochen. Wählen Sie die Datei mit „Weiter senden“ erneut, um dort fortzusetzen, wo es aufgehört hat.',
       unknown: 'Das Outlook-Archiv konnte nicht gesendet werden. Versuchen Sie es mit „Weiter senden“ erneut.',
@@ -944,7 +944,7 @@ export const files: typeof en.files = {
     cancelConfirm: {
       title: 'Diesen Import abbrechen?',
       description:
-        'Was bisher abgelegt wurde, bleibt. Das Outlook-Archiv wird aus Piloti gelöscht; für den Rest müsste „{name}“ erneut gesendet werden.',
+        'Was bisher abgelegt wurde, bleibt. Das Outlook-Archiv wird aus {productName} gelöscht; für den Rest müsste „{name}“ erneut gesendet werden.',
       confirm: 'Import abbrechen',
       keep: 'Weiter importieren',
     },
@@ -1088,16 +1088,16 @@ export const files: typeof en.files = {
     showTag: 'Alle Dokumente „{tag}“ in diesem Ordner und seinen Unterordnern zeigen',
     pages: '{count, plural, one {{formatted} Seite gelesen} other {{formatted} Seiten gelesen}}',
     aboutTitle: 'Worum es hier geht',
-    noTypes: 'Piloti hat hier noch keine Dokumentart erkannt.',
+    noTypes: '{productName} hat hier noch keine Dokumentart erkannt.',
     /** „Worum es hier geht“, solange nur die Zahlen des Ordners geladen sind (ADR-0102). */
     aboutDeferred: 'Dokumentarten, Fachbereiche und Themen',
     aboutDeferredHint:
-      'Was Piloti in den Dokumenten erkannt hat, steht bei jedem Dokument. Für einen großen Ordner wird es erst geladen, wenn Sie es ansehen wollen.',
+      'Was {productName} in den Dokumenten erkannt hat, steht bei jedem Dokument. Für einen großen Ordner wird es erst geladen, wenn Sie es ansehen wollen.',
     loadDetails: 'Laden',
     loadingDetails: 'Wird geladen …',
     contains: 'Enthält {list}',
     needsTitle: 'Hier sind Sie gefragt',
-    failedLine: '{count, plural, one {Piloti konnte # Dokument nicht lesen.} other {Piloti konnte # Dokumente nicht lesen.}}',
+    failedLine: '{count, plural, one {{productName} konnte # Dokument nicht lesen.} other {{productName} konnte # Dokumente nicht lesen.}}',
     readAgainAll: '{count, plural, one {Erneut lesen} other {Alle # erneut lesen}}',
     readAgainProgress: '{done} von {count} gestartet…',
     readAgainDone: '{count, plural, one {# Dokument wird neu gelesen} other {# Dokumente werden neu gelesen}}',
@@ -1105,16 +1105,16 @@ export const files: typeof en.files = {
     heldLine:
       '{count, plural, one {# Dokument wird von der Inhaltsprüfung zurückgehalten, bis es jemand prüft.} other {# Dokumente werden von der Inhaltsprüfung zurückgehalten, bis sie jemand prüft.}}',
     unplacedLine:
-      '{count, plural, one {Piloti konnte # Dokument keiner Dokumentart zuordnen.} other {Piloti konnte # Dokumente keiner Dokumentart zuordnen.}}',
+      '{count, plural, one {{productName} konnte # Dokument keiner Dokumentart zuordnen.} other {{productName} konnte # Dokumente keiner Dokumentart zuordnen.}}',
     unplacedHint:
-      'Sie müssen nichts eintragen, Piloti ordnet selbst ein. Bei diesen hilft nur Ihre Angabe: Öffnen Sie das Dokument und wählen Sie „Zuordnen“.',
+      'Sie müssen nichts eintragen, {productName} ordnet selbst ein. Bei diesen hilft nur Ihre Angabe: Öffnen Sie das Dokument und wählen Sie „Zuordnen“.',
     show: 'Anzeigen',
-    missingTitle: 'Was Piloti noch fehlt',
-    missingLead: 'Nach den Projektangaben erwartet Piloti diese Unterlagen und kennt sie noch nicht:',
+    missingTitle: 'Was {productName} noch fehlt',
+    missingLead: 'Nach den Projektangaben erwartet {productName} diese Unterlagen und kennt sie noch nicht:',
     missingMore: '+{count} weitere',
     missingHint:
-      'Liegt eine davon schon hier, weiß Piloti nur nicht, welche Datei es ist, und meldet sie in Antworten als fehlend. Gelesen heißt nicht, dass Piloti sie einer Rolle des Projekts zuordnen kann.',
-    topicsTitle: 'Themen, die Piloti erkannt hat',
+      'Liegt eine davon schon hier, weiß {productName} nur nicht, welche Datei es ist, und meldet sie in Antworten als fehlend. Gelesen heißt nicht, dass {productName} sie einer Rolle des Projekts zuordnen kann.',
+    topicsTitle: 'Themen, die {productName} erkannt hat',
     photos: '{count, plural, one {# Foto} other {# Fotos}} vom {span}',
     whereTitle: 'Wo es hakt',
     expand: 'Ausklappen',
@@ -1198,14 +1198,14 @@ export const files: typeof en.files = {
     pageGroupShown: 'angezeigt',
     changeShow: 'Änderung {number}: {label}. Auf der Seite zeigen.',
     changeTag: 'Änderung {number}: {label}',
-    markPage: 'Seite {page} mit Piloti vergleichen',
-    markingPage: 'Piloti vergleicht Seite {page}…',
+    markPage: 'Seite {page} mit {productName} vergleichen',
+    markingPage: '{productName} vergleicht Seite {page}…',
     markedPage: 'Seite {page} ist markiert',
     markPageMissing: 'Seite {page} gibt es nur in einer Fassung',
     markSlow: 'Das dauert meist einige Sekunden.',
-    caveat: 'Von Piloti markiert. Prüfen Sie Maße am Dokument.',
+    caveat: 'Von {productName} markiert. Prüfen Sie Maße am Dokument.',
     markNotRead: 'Diese Fassung wird noch gelesen. Sobald sie zitierbar ist, können Sie den Vergleich starten.',
-    markUnavailable: 'Piloti ist gerade nicht erreichbar. Versuchen Sie es in einer Minute erneut.',
+    markUnavailable: '{productName} ist gerade nicht erreichbar. Versuchen Sie es in einer Minute erneut.',
     markFailed: 'Der Vergleich ist fehlgeschlagen. Bitte versuchen Sie es erneut.',
   },
   filters: {
@@ -1259,21 +1259,21 @@ export const files: typeof en.files = {
   // ist eine ganz normale unvergebene Datei – in der Fußzeile steht daneben
   // weiterhin „Unvergeben“.
   authorship: {
-    byPiloti: 'Von Piloti erstellt',
-    filter: 'Von Piloti',
+    byPiloti: 'Von {productName} erstellt',
+    filter: 'Von {productName}',
     /**
      * Die Frage, die dieser Filter bisher unbeantwortet ließ: WELCHE Dateien
      * das wären. Ohne diesen Leerzustand zeigte ein leeres Ergebnis „Dieser
      * Ordner ist leer" über einem Ordner voller Dokumente.
      */
-    emptyTitle: 'Piloti hat hier noch nichts abgelegt',
+    emptyTitle: '{productName} hat hier noch nichts abgelegt',
     emptyDescription:
-      'Hier erscheinen die Dateien, die Piloti selbst erstellt hat: abgelegte Rechercheberichte und Diagramme. Hochgeladene Dokumente zählen nicht dazu, auch wenn Piloti sie gelesen hat.',
+      'Hier erscheinen die Dateien, die {productName} selbst erstellt hat: abgelegte Rechercheberichte und Diagramme. Hochgeladene Dokumente zählen nicht dazu, auch wenn {productName} sie gelesen hat.',
     // Warum „Piloti dazu fragen“ deaktiviert ist – deaktiviert, nicht
     // versteckt, wie beim noch nicht zitierbaren Dokument. Der Unterschied:
     // Hier gibt es kein „noch nicht“. Der Bericht wurde absichtlich nicht
     // indexiert, damit Piloti den eigenen Text nicht als Beleg zitiert.
-    notInKnowledge: 'Von Piloti erstellt — nicht in der Wissensbasis',
+    notInKnowledge: 'Von {productName} erstellt — nicht in der Wissensbasis',
   },
   lifecycle: {
     title: 'Fassungen und Freigabe',
@@ -1303,7 +1303,7 @@ export const files: typeof en.files = {
       // Dieselbe Entscheidung wie „Änderungen anfordern“, mit einem Zusatz:
       // Piloti übernimmt die Überarbeitung. Deshalb steht der Knopf daneben und
       // verlangt dieselbe Begründung.
-      delegateRevision: 'Piloti überarbeiten lassen',
+      delegateRevision: '{productName} überarbeiten lassen',
       reject: 'Ablehnen',
       publish: 'Veröffentlichen',
       archive: 'Stilllegen',
@@ -1353,7 +1353,7 @@ export const files: typeof en.files = {
     // Nur eine veröffentlichte Fassung wird in die Wissensbasis gelesen (ADR-0054).
     publishSection: {
       heading: 'Veröffentlichung',
-      blurb: 'Veröffentlichen macht Fassung {number} zu der Fassung, aus der Piloti antwortet.',
+      blurb: 'Veröffentlichen macht Fassung {number} zu der Fassung, aus der {productName} antwortet.',
     },
     // Archivieren ist der einzige Akt in diesem Abschnitt, der sich im Haus
     // nicht zurücknehmen lässt: Die Einträge in der Wissensbasis werden
@@ -1370,7 +1370,7 @@ export const files: typeof en.files = {
         listing:
           'Die Datei verschwindet aus der Dateiliste. Über den Filter „Stillgelegte auch zeigen“ finden Sie sie wieder.',
         knowledge:
-          'Piloti zitiert sie nicht mehr: Die Einträge in der Wissensbasis werden entfernt.',
+          '{productName} zitiert sie nicht mehr: Die Einträge in der Wissensbasis werden entfernt.',
         kept: 'Die Datei und alle Fassungen bleiben erhalten. Das ist kein Löschen.',
         permanent: 'Rückgängig machen lässt sich das hier nicht.',
       },
@@ -1381,31 +1381,31 @@ export const files: typeof en.files = {
     // veröffentlichte Fassung wird in die Wissensbasis gelesen (ADR-0054); steht
     // keine hinter der neuesten, kann der Satz nicht auf sie verweisen („Alone“).
     meaning: {
-      draftLive: 'Entwurf einer neuen Fassung. Piloti antwortet weiter aus der veröffentlichten Fassung.',
-      draftAlone: 'Entwurf. Piloti antwortet erst daraus, wenn sie freigegeben ist.',
-      inReviewLive: 'Wartet auf Freigabe. Piloti antwortet aus der veröffentlichten Fassung.',
-      inReviewAlone: 'Wartet auf Freigabe. Bis dahin antwortet Piloti nicht daraus.',
+      draftLive: 'Entwurf einer neuen Fassung. {productName} antwortet weiter aus der veröffentlichten Fassung.',
+      draftAlone: 'Entwurf. {productName} antwortet erst daraus, wenn sie freigegeben ist.',
+      inReviewLive: 'Wartet auf Freigabe. {productName} antwortet aus der veröffentlichten Fassung.',
+      inReviewAlone: 'Wartet auf Freigabe. Bis dahin antwortet {productName} nicht daraus.',
       changesRequestedLive:
-        'Änderungen angefordert. Piloti antwortet aus der veröffentlichten Fassung, bis die überarbeitete freigegeben ist.',
+        'Änderungen angefordert. {productName} antwortet aus der veröffentlichten Fassung, bis die überarbeitete freigegeben ist.',
       changesRequestedAlone:
-        'Änderungen angefordert. Piloti antwortet erst aus der überarbeiteten Fassung, wenn sie freigegeben ist.',
+        'Änderungen angefordert. {productName} antwortet erst aus der überarbeiteten Fassung, wenn sie freigegeben ist.',
       approvedLive:
-        'Freigegeben, wartet auf Veröffentlichung. Bis dahin antwortet Piloti aus der veröffentlichten Fassung.',
-      approvedAlone: 'Freigegeben, wartet auf Veröffentlichung. Erst danach antwortet Piloti daraus.',
-      published: 'Piloti antwortet aus dieser Fassung.',
-      rejectedLive: 'Abgelehnt. Piloti antwortet aus der veröffentlichten Fassung.',
-      rejectedAlone: 'Abgelehnt. Piloti antwortet nicht daraus.',
+        'Freigegeben, wartet auf Veröffentlichung. Bis dahin antwortet {productName} aus der veröffentlichten Fassung.',
+      approvedAlone: 'Freigegeben, wartet auf Veröffentlichung. Erst danach antwortet {productName} daraus.',
+      published: '{productName} antwortet aus dieser Fassung.',
+      rejectedLive: 'Abgelehnt. {productName} antwortet aus der veröffentlichten Fassung.',
+      rejectedAlone: 'Abgelehnt. {productName} antwortet nicht daraus.',
       superseded: 'Durch eine neuere Fassung ersetzt.',
       // NICHT „archiviert“: siehe `states.archived`.
-      archived: 'Stillgelegt. Nicht mehr in der Dateiliste, Piloti zitiert sie nicht mehr.',
+      archived: 'Stillgelegt. Nicht mehr in der Dateiliste, {productName} zitiert sie nicht mehr.',
       none: 'Noch keine Fassung.',
-      olderRevision: 'Ältere Fassung. Piloti antwortet aus der neueren.',
+      olderRevision: 'Ältere Fassung. {productName} antwortet aus der neueren.',
     },
     comment: {
       reasonLabel: 'Grund der Ablehnung',
       changesLabel: 'Was geändert werden soll',
       delegateNote:
-        'Piloti schreibt daraufhin die nächste Fassung und legt sie zur Freigabe vor.',
+        '{productName} schreibt daraufhin die nächste Fassung und legt sie zur Freigabe vor.',
       placeholder: 'Die nächste Fassung liest das hier.',
       cancel: 'Abbrechen',
     },
@@ -1464,7 +1464,7 @@ export const files: typeof en.files = {
     // sprechen will. Piloti kann jetzt auch eine unveröffentlichte Fassung lesen.
     // „Besprechen“ allein sagte nicht, MIT WEM: neben „Kollegin fragen“ las es
     // sich wie eine Besprechung im Team. Der Name steht deshalb im Knopf.
-    discuss: 'Mit Piloti besprechen',
+    discuss: 'Mit {productName} besprechen',
     askColleague: 'Kollegin fragen',
     copyLink: 'Link kopieren',
     linkCopied: 'Link kopiert',
@@ -1485,7 +1485,7 @@ export const files: typeof en.files = {
     welcomeAbout:
       'Dieser Chat dreht sich um {name}. Fragen Sie danach — die Antwort zitiert die Unterlage und das Recht.',
     subjectHint:
-      'Piloti sucht in dieser Unterlage. Andere Projektakten und die Büroablage bleiben außen vor.',
+      '{productName} sucht in dieser Unterlage. Andere Projektakten und die Büroablage bleiben außen vor.',
     subjectClear: 'Nicht mehr auf diese Datei beschränken',
     loadingPeople: 'Personen werden geladen…',
     noPeople: 'Noch niemand in diesem Projekt',
@@ -1518,7 +1518,7 @@ export const files: typeof en.files = {
     annotateHint: 'Eine Anmerkung auf die Seite setzen',
     workOn: 'Anmerken und prüfen',
     workOnAll: 'Alle {count} ansehen und prüfen',
-    empty: 'Setzen Sie Anmerkungen direkt auf Seiten und Ausschnitte – für sich, mit Kolleg:innen oder mit Piloti.',
+    empty: 'Setzen Sie Anmerkungen direkt auf Seiten und Ausschnitte – für sich, mit Kolleg:innen oder mit {productName}.',
     joinIn: 'Dazukommen',
     peopleHere: '{count, plural, one {{names} ist gerade in diesem Dokument} other {{names} sind gerade in diesem Dokument}}',
     replies: '{count, plural, one {# Antwort} other {# Antworten}}',
@@ -1580,8 +1580,8 @@ export const files: typeof en.files = {
       documents: 'Dokumente',
       status: {
         open: 'Offene Anmerkungen',
-        proposed: 'Vorschläge von Piloti',
-        'all-live': 'Offene Anmerkungen und Vorschläge von Piloti',
+        proposed: 'Vorschläge von {productName}',
+        'all-live': 'Offene Anmerkungen und Vorschläge von {productName}',
       },
       assignee: 'Zuständig: {name}',
       due: {
@@ -1607,22 +1607,22 @@ export const files: typeof en.files = {
     follow: '{name} folgen',
     unfollow: 'Nicht mehr {name} folgen',
     following: 'Sie folgen {name} · Esc beendet',
-    pilotiWorking: 'Piloti arbeitet am Dokument',
-    reviewWithPiloti: 'Piloti prüfen lassen',
+    pilotiWorking: '{productName} arbeitet am Dokument',
+    reviewWithPiloti: '{productName} prüfen lassen',
     reviewSeed:
       'Dieses Dokument prüfen und die Befunde als Anmerkungen an die Stellen setzen (vorher die Seite ansehen), um die es geht: Mängel, Rückfragen an die Fachplanung, Hinweise. Bei einem Befund, der auf einer Norm beruht, die Fundstelle nennen.',
     tools: {
       select: 'Auswählen',
       point: 'Anmerken',
       region: 'Bereich anmerken',
-      ask: 'Piloti fragen',
+      ask: '{productName} fragen',
     },
     // Unter jedem Werkzeug auf einem Touchscreen: ein Wort, das unter 56px passt.
     toolsShort: {
       select: 'Auswählen',
       point: 'Anmerken',
       region: 'Bereich',
-      ask: 'Piloti',
+      ask: '{productName}',
       chat: 'Sagen',
     },
     toolsIntroFold: 'Beschriftung ausblenden',
@@ -1630,12 +1630,12 @@ export const files: typeof en.files = {
     toolHint: {
       point: 'Klicken Sie auf die Stelle · Esc bricht ab',
       region: 'Ziehen Sie einen Rahmen um das Detail · Esc bricht ab',
-      ask: 'Ziehen Sie einen Rahmen um das Detail, zu dem Sie Piloti fragen · Esc bricht ab',
+      ask: 'Ziehen Sie einen Rahmen um das Detail, zu dem Sie {productName} fragen · Esc bricht ab',
     },
     toolHintTouch: {
       point: 'Tippen Sie auf die Stelle',
       region: 'Ziehen Sie mit einem Finger einen Rahmen um das Detail',
-      ask: 'Ziehen Sie mit einem Finger einen Rahmen um das Detail, zu dem Sie Piloti fragen',
+      ask: 'Ziehen Sie mit einem Finger einen Rahmen um das Detail, zu dem Sie {productName} fragen',
     },
     popout: 'In neuem Fenster öffnen',
     copyReviewLink: 'Link zur Prüfansicht kopieren',
@@ -1653,22 +1653,22 @@ export const files: typeof en.files = {
     // Piloti in der Prüfansicht: ein Ausschnitt, nach dem gefragt wird, die Antwort daneben, und Piloti im Verlauf.
     piloti: {
       conversationTitle: '{name} · Prüfansicht',
-      ask: 'Piloti fragen',
-      mention: 'Piloti erwähnen',
-      mentionHint: 'Piloti antwortet in diesem Verlauf',
-      replying: 'Piloti antwortet …',
-      replyFailed: 'Piloti konnte nicht antworten.',
-      replyingFor: 'Piloti antwortet … · für {name}',
-      workQueued: 'Piloti ist dran · für {name}',
+      ask: '{productName} fragen',
+      mention: '{productName} erwähnen',
+      mentionHint: '{productName} antwortet in diesem Verlauf',
+      replying: '{productName} antwortet …',
+      replyFailed: '{productName} konnte nicht antworten.',
+      replyingFor: '{productName} antwortet … · für {name}',
+      workQueued: '{productName} ist dran · für {name}',
       // Warum ein geweckter Piloti nicht geantwortet hat, nach der Klasse des Grundes (`wakeEndReasonKind`).
       workFailed: {
-        budget: 'Piloti konnte nicht antworten: Das Nutzungsbudget ist aufgebraucht. Wer die Organisation verwaltet, kann es erhöhen.',
-        busy: 'Piloti ist nicht rechtzeitig dazu gekommen. Fragen Sie später noch einmal.',
-        access: 'Piloti konnte sich nicht für {name} anmelden. Fragen Sie noch einmal.',
-        error: 'Piloti hat abgebrochen, bevor es eine Antwort hatte. Fragen Sie noch einmal oder bearbeiten Sie es selbst.',
+        budget: '{productName} konnte nicht antworten: Das Nutzungsbudget ist aufgebraucht. Wer die Organisation verwaltet, kann es erhöhen.',
+        busy: '{productName} ist nicht rechtzeitig dazu gekommen. Fragen Sie später noch einmal.',
+        access: '{productName} konnte sich nicht für {name} anmelden. Fragen Sie noch einmal.',
+        error: '{productName} hat abgebrochen, bevor es eine Antwort hatte. Fragen Sie noch einmal oder bearbeiten Sie es selbst.',
       },
-      wakeHeld: 'Piloti antwortet hier gerade nicht: zu viele Anfragen in kurzer Zeit.',
-      delegateChip: 'Piloti arbeitet daran · für {name}',
+      wakeHeld: '{productName} antwortet hier gerade nicht: zu viele Anfragen in kurzer Zeit.',
+      delegateChip: '{productName} arbeitet daran · für {name}',
       retry: 'Erneut fragen',
       close: 'Schließen',
       stop: 'Anhalten',
@@ -1688,41 +1688,41 @@ export const files: typeof en.files = {
         oib: 'Diesen Ausschnitt gegen die einschlägigen OIB-Richtlinien prüfen und die Fundstelle nennen.',
         question: 'Zu diesem Ausschnitt eine präzise Rückfrage an die Fachplanung formulieren.',
       },
-      busy: 'Piloti antwortet noch auf die vorige Frage.',
+      busy: '{productName} antwortet noch auf die vorige Frage.',
       // Während Piloti arbeitet, geht, was die Person ergänzt, in die laufende
       // Antwort statt als neue Frage: Piloti liest es vor dem nächsten Schritt.
-      busySteer: 'Piloti arbeitet noch: Ihre Frage geht als Ergänzung in die laufende Antwort.',
-      steerPlaceholder: 'Piloti lenken …',
+      busySteer: '{productName} arbeitet noch: Ihre Frage geht als Ergänzung in die laufende Antwort.',
+      steerPlaceholder: '{productName} lenken …',
       steerSend: 'Ergänzen',
       steerNotes: 'Ihre Ergänzungen',
       steerWaiting: 'wird berücksichtigt',
       steerApplied: 'übernommen in Runde {round}',
       thinking: 'Sieht sich den Ausschnitt an …',
       thinkingDocument: 'Geht das Dokument durch …',
-      needsInput: 'Piloti hat eine Rückfrage an Sie. Sie können sie im Chat beantworten.',
-      failed: 'Piloti konnte nicht antworten.',
+      needsInput: '{productName} hat eine Rückfrage an Sie. Sie können sie im Chat beantworten.',
+      failed: '{productName} konnte nicht antworten.',
       sources: 'Quellen',
       source: 'Quelle',
       adopt: 'Als Anmerkung behalten',
       adoptReply: 'In den Verlauf übernehmen',
       continueInChat: 'Im Chat öffnen',
-      reopen: 'Antwort von Piloti öffnen',
-      reviewing: 'Piloti prüft das Dokument …',
-      reviewDone: 'Piloti ist fertig',
-      reviewFound: '{count, plural, one {Piloti hat # Punkt gefunden} other {Piloti hat # Punkte gefunden}}',
-      busyTooltip: 'Piloti beantwortet gerade Ihre Frage',
+      reopen: 'Antwort von {productName} öffnen',
+      reviewing: '{productName} prüft das Dokument …',
+      reviewDone: '{productName} ist fertig',
+      reviewFound: '{count, plural, one {{productName} hat # Punkt gefunden} other {{productName} hat # Punkte gefunden}}',
+      busyTooltip: '{productName} beantwortet gerade Ihre Frage',
       reviewFailed: 'Prüfung fehlgeschlagen',
       // „Was behoben ist“: Piloti antwortet im Verlauf jeder Anmerkung, nicht in einer Liste.
-      checkingFixed: 'Piloti prüft, was behoben ist …',
-      checkFixedDone: 'Piloti hat in den Verläufen geantwortet',
+      checkingFixed: '{productName} prüft, was behoben ist …',
+      checkFixedDone: '{productName} hat in den Verläufen geantwortet',
       openConversation: 'Chat',
-      declined: 'Piloti hat das nicht übernommen. Den Grund lesen Sie oben.',
-      handedOff: 'Piloti recherchiert das ausführlich. Das Ergebnis kommt im Chat.',
+      declined: '{productName} hat das nicht übernommen. Den Grund lesen Sie oben.',
+      handedOff: '{productName} recherchiert das ausführlich. Das Ergebnis kommt im Chat.',
       stopped: 'Diese Antwort wurde angehalten.',
-      empty: 'Piloti hat am Dokument gearbeitet statt in Worten zu antworten.',
-      degradedRegion: 'Piloti konnte den markierten Ausschnitt nicht sehen und hat zum ganzen Dokument geantwortet.',
+      empty: '{productName} hat am Dokument gearbeitet statt in Worten zu antworten.',
+      degradedRegion: '{productName} konnte den markierten Ausschnitt nicht sehen und hat zum ganzen Dokument geantwortet.',
       degradedThread: 'Diese Antwort ist nicht im Verlauf angekommen. Sie können sie selbst übernehmen.',
-      failedConnection: 'Die Verbindung zu Piloti ist abgebrochen. Was angekommen ist, bleibt.',
+      failedConnection: 'Die Verbindung zu {productName} ist abgebrochen. Was angekommen ist, bleibt.',
       failedSession: 'Ihre Sitzung ist abgelaufen. Laden Sie die Seite neu und fragen Sie noch einmal.',
     },
     peerSelected: '{names} hat das offen',
@@ -1736,8 +1736,8 @@ export const files: typeof en.files = {
     peerRegion: 'markiert einen Bereich',
     // Piloti nennt auf dem Dokument, für wen es schreibt (ADR-0105; EU AI Act Art. 50).
     attribution: {
-      pilotiFor: 'Piloti · für {name}',
-      proposalFor: 'Vorschlag von Piloti · für {name}',
+      pilotiFor: '{productName} · für {name}',
+      proposalFor: 'Vorschlag von {productName} · für {name}',
       woken: {
         thread_mention: 'Geweckt durch eine Erwähnung',
         thread_reply: 'Geweckt durch eine Antwort',
@@ -1763,7 +1763,7 @@ export const files: typeof en.files = {
       label: {
         point: 'Stelle wählen. Pfeiltasten bewegen das Fadenkreuz, mit Umschalt in größeren Schritten. Eingabe setzt den Punkt, Escape bricht ab.',
         region: 'Bereich wählen. Pfeiltasten bewegen das Fadenkreuz. Eingabe hält die erste Ecke, die Pfeiltasten ziehen den Rahmen auf, Eingabe setzt ihn. Escape bricht ab.',
-        ask: 'Bereich für Piloti wählen. Pfeiltasten bewegen das Fadenkreuz. Eingabe hält die erste Ecke, die Pfeiltasten ziehen den Rahmen auf, Eingabe fragt Piloti dazu. Escape bricht ab.',
+        ask: 'Bereich für {productName} wählen. Pfeiltasten bewegen das Fadenkreuz. Eingabe hält die erste Ecke, die Pfeiltasten ziehen den Rahmen auf, Eingabe fragt {productName} dazu. Escape bricht ab.',
       },
       hint: {
         point: 'Klicken oder ↵ · Pfeiltasten · Esc',
@@ -1774,12 +1774,12 @@ export const files: typeof en.files = {
       box: 'Rahmen {w} % breit, {h} % hoch',
     },
     announce: {
-      pilotiProposed: 'Piloti hat {count, plural, one {einen Vorschlag} other {# Vorschläge}} gesetzt',
+      pilotiProposed: '{productName} hat {count, plural, one {einen Vorschlag} other {# Vorschläge}} gesetzt',
       created: '{name}: {count, plural, one {neue Anmerkung {numbers}} other {# neue Anmerkungen}}',
       replied: '{name}: {count, plural, one {neue Antwort zu Anmerkung {numbers}} other {neue Antworten zu Anmerkungen {numbers}}}',
       updated: '{name} hat {count, plural, one {Anmerkung {numbers}} other {Anmerkungen {numbers}}} geändert',
       deleted: '{name} hat {count, plural, one {Anmerkung {numbers}} other {Anmerkungen {numbers}}} gelöscht',
-      pilotiAnswered: 'Piloti hat geantwortet',
+      pilotiAnswered: '{productName} hat geantwortet',
     },
     page: 'Seite {page}',
     draftPlaceholder: 'Anmerkung schreiben … (Enter zum Speichern)',
@@ -1809,9 +1809,9 @@ export const files: typeof en.files = {
     more: 'Mehr',
     closeThread: 'Schließen',
     makeKind: 'Als {kind} führen',
-    askPiloti: 'Piloti dazu fragen',
-    delegateToPiloti: 'An Piloti delegieren',
-    takeBackFromPiloti: 'Von Piloti zurücknehmen',
+    askPiloti: '{productName} dazu fragen',
+    delegateToPiloti: 'An {productName} delegieren',
+    takeBackFromPiloti: 'Von {productName} zurücknehmen',
     copyLink: 'Link kopieren',
     linkCopied: 'Link kopiert',
     linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
@@ -1843,15 +1843,15 @@ export const files: typeof en.files = {
     // ändert keinen Status: Erledigen bleibt bei der Person. Die Frage geht so,
     // wie sie hier steht, an Piloti und steht im Gespräch.
     checkFixed: {
-      action: 'Piloti prüfen lassen, was behoben ist',
-      running: 'Piloti prüft, was behoben ist …',
+      action: '{productName} prüfen lassen, was behoben ist',
+      running: '{productName} prüft, was behoben ist …',
       currentRevision: 'der aktuellen Fassung',
       seed:
         'Prüfen, ob {count, plural, one {die offene Anmerkung {numbers}} other {die offenen Anmerkungen {numbers}}} aus einer früheren Fassung in {current} behoben {count, plural, one {ist} other {sind}}. Je Anmerkung lesen, die Stelle in diesem Dokument ansehen und im Verlauf der Anmerkung antworten, beginnend mit „In {current} behoben:“ oder „Weiterhin offen:“, und in einem Satz sagen, woran das zu sehen ist. Keine Anmerkung erledigen oder sonst ändern: Das entscheiden wir selbst.',
       seedFrom:
         'Prüfen, ob {count, plural, one {die offene Anmerkung {numbers}} other {die offenen Anmerkungen {numbers}}} auf „{from}“ in diesem Dokument, „{current}“, behoben {count, plural, one {ist} other {sind}}. Je Anmerkung auf „{from}“ lesen, die Stelle hier ansehen und im Verlauf der Anmerkung auf „{from}“ antworten, beginnend mit „In {current} behoben:“ oder „Weiterhin offen:“, und in einem Satz sagen, woran das zu sehen ist. Keine Anmerkung erledigen oder sonst ändern: Das entscheiden wir selbst.',
       // Was Piloti zu einer Anmerkung des ersetzten Dokuments geantwortet hat, in ihrer Zeile.
-      verdict: 'Antwort von Piloti',
+      verdict: 'Antwort von {productName}',
       resolve: 'Erledigen',
       resolveMark: 'Anmerkung {number} auf „{name}“ erledigen',
       resolveFailed: 'Die Anmerkung konnte nicht erledigt werden. Bitte noch einmal.',
@@ -1873,10 +1873,10 @@ export const files: typeof en.files = {
     replyMore: 'Weitere Aktionen zu Ihrer Antwort',
     replyEditLabel: 'Ihre Antwort',
     // Eine Bearbeitung ist kein neues Ereignis: Piloti wird davon nicht geweckt, auch nicht durch ein neues @Piloti.
-    replyEditNoWake: 'Eine bearbeitete Antwort erreicht Piloti nicht. Fragen Sie Piloti mit einer neuen Antwort.',
+    replyEditNoWake: 'Eine bearbeitete Antwort erreicht {productName} nicht. Fragen Sie {productName} mit einer neuen Antwort.',
     replyDeleteConfirm: 'Ihre Antwort löschen?',
     replyDeleteHint: 'Wer darin erwähnt wurde, sieht den Hinweis darauf nicht mehr.',
-    replyTakenUp: 'Piloti hat diese Antwort schon aufgenommen. Sie bleibt, wie sie ist; schreiben Sie eine neue.',
+    replyTakenUp: '{productName} hat diese Antwort schon aufgenommen. Sie bleibt, wie sie ist; schreiben Sie eine neue.',
     // Neben der Zeit einer Antwort, die ihre Verfasserin geändert hat.
     edited: 'bearbeitet',
     // Die Zuständige ist die lesende Person selbst, solange ihr Name noch nicht da ist.
@@ -1896,11 +1896,11 @@ export const files: typeof en.files = {
     },
     // Dieselben Wörter wie der Chip in Dateien („4 offen · 2 für Sie“): die Anmerkungen, für die Sie zuständig sind.
     mine: 'Für Sie',
-    proposalsGroup: '{count, plural, one {# Vorschlag von Piloti} other {# Vorschläge von Piloti}}',
+    proposalsGroup: '{count, plural, one {# Vorschlag von {productName}} other {# Vorschläge von {productName}}}',
     walkProposals: 'Durchgehen',
     walkPosition: '{index}/{total}',
     walkNext: 'Weiter',
-    proposalsLegend: 'Gestrichelt = Vorschlag von Piloti, noch nicht übernommen',
+    proposalsLegend: 'Gestrichelt = Vorschlag von {productName}, noch nicht übernommen',
     empty: {
       noneTitle: 'Noch keine Anmerkungen',
       noneBody: 'Drücken Sie C und klicken Sie auf die Stelle, um die es geht, oder R und ziehen Sie einen Bereich auf.',
@@ -1930,7 +1930,7 @@ export const files: typeof en.files = {
         current: 'Aktuelle Fassung',
         all: 'Alle Fassungen',
       },
-      includeProposals: 'Vorschläge von Piloti anhängen',
+      includeProposals: 'Vorschläge von {productName} anhängen',
       formatLabel: 'Herunterladen als',
       formats: {
         pdf: 'PDF',
@@ -1971,7 +1971,7 @@ export const files: typeof en.files = {
           // Auch Erledigtes, aber nur der aktuellen Fassung: was aus früheren noch offen ist, steht trotzdem drin.
           currentWithOpenFromEarlier: 'aktuelle Fassung, dazu Offenes aus früheren Fassungen',
         },
-        withProposals: 'mit Vorschlägen von Piloti',
+        withProposals: 'mit Vorschlägen von {productName}',
         exportedAt: 'Exportiert am',
         exportedBy: 'Exportiert von',
         marks: 'Anmerkungen',
@@ -1984,20 +1984,20 @@ export const files: typeof en.files = {
           proposed: 'Vorschlag',
         },
         setBy: 'Gesetzt von {name} · {date}',
-        pilotiSetFor: 'von Piloti gesetzt · für {name} · {date}',
-        pilotiSet: 'von Piloti gesetzt · {date}',
-        proposalFor: 'Vorschlag von Piloti · für {name} · {date}',
-        proposal: 'Vorschlag von Piloti · {date}',
+        pilotiSetFor: 'von {productName} gesetzt · für {name} · {date}',
+        pilotiSet: 'von {productName} gesetzt · {date}',
+        proposalFor: 'Vorschlag von {productName} · für {name} · {date}',
+        proposal: 'Vorschlag von {productName} · {date}',
         closedResolved: 'Erledigt von {name} · {date}',
         closedDismissed: 'Verworfen von {name} · {date}',
-        delegated: 'Piloti arbeitet daran · für {name}',
+        delegated: '{productName} arbeitet daran · für {name}',
         basis: 'Grundlage',
         assignee: 'Zuständig',
         due: 'Termin',
         thread: 'Verlauf',
-        proposals: 'Vorschläge von Piloti, nicht geprüft',
+        proposals: 'Vorschläge von {productName}, nicht geprüft',
         proposalsNote:
-          'Diese Stellen hat Piloti vorgeschlagen, und niemand im Büro hat sie übernommen. Sie sind keine Anmerkungen des Büros.',
+          'Diese Stellen hat {productName} vorgeschlagen, und niemand im Büro hat sie übernommen. Sie sind keine Anmerkungen des Büros.',
       },
     },
   },
@@ -2006,7 +2006,7 @@ export const files: typeof en.files = {
     advanced: 'Erweitert',
     menuItem: 'Alle Dateien in Ordner einsortieren…',
     title: 'Dateien in Ordner einsortieren',
-    description: 'Piloti schlägt für jede Datei im Stammordner einen Ordner vor. Verschoben wird erst, wenn Sie übernehmen.',
+    description: '{productName} schlägt für jede Datei im Stammordner einen Ordner vor. Verschoben wird erst, wenn Sie übernehmen.',
     close: 'Schließen',
     cancel: 'Abbrechen',
     start: 'Starten',
@@ -2020,12 +2020,12 @@ export const files: typeof en.files = {
       reading: 'Der Stammordner wird gelesen …',
       files: '{count, plural, one {# Datei im Stammordner} other {# Dateien im Stammordner}}',
       folders: '{count, plural, one {# Ordner} other {# Ordner}}',
-      unreadable: '{count, plural, one {# Datei hat Piloti noch nicht gelesen und bleibt außen vor.} other {# Dateien hat Piloti noch nicht gelesen und sie bleiben außen vor.}}',
+      unreadable: '{count, plural, one {# Datei hat {productName} noch nicht gelesen und bleibt außen vor.} other {# Dateien hat {productName} noch nicht gelesen und sie bleiben außen vor.}}',
       truncated: 'Im Stammordner liegen mehr Dateien, als ein Lauf sortiert. Der Rest wartet auf den nächsten Lauf.',
-      noFolders: 'Legen Sie zuerst die Ordner an. Piloti sortiert Dateien in Ordner, und ohne Ordner gibt es kein Ziel.',
+      noFolders: 'Legen Sie zuerst die Ordner an. {productName} sortiert Dateien in Ordner, und ohne Ordner gibt es kein Ziel.',
       nothing: 'Im Stammordner liegt keine Datei. Es gibt nichts einzusortieren.',
       loadFailed: 'Der Stammordner konnte nicht gelesen werden.',
-      steps: 'Piloti ordnet zuerst jede Datei einem Ordner zu und schlägt für den Rest neue Ordner vor. Dann sehen Sie alles durch: Verschoben wird erst, wenn Sie übernehmen. Bei vielen Dateien dauert das einige Minuten, und Sie können währenddessen weiterarbeiten.',
+      steps: '{productName} ordnet zuerst jede Datei einem Ordner zu und schlägt für den Rest neue Ordner vor. Dann sehen Sie alles durch: Verschoben wird erst, wenn Sie übernehmen. Bei vielen Dateien dauert das einige Minuten, und Sie können währenddessen weiterarbeiten.',
     },
     stages: {
       judge: 'Zuordnen',
@@ -2034,20 +2034,20 @@ export const files: typeof en.files = {
       move: 'Verschieben',
     },
     progress: {
-      judging: 'Piloti ordnet die Dateien Ordnern zu',
-      grouping: 'Piloti schlägt neue Ordner vor',
-      applying: 'Piloti verschiebt die Dateien',
-      undoing: 'Piloti legt die Dateien zurück',
+      judging: '{productName} ordnet die Dateien Ordnern zu',
+      grouping: '{productName} schlägt neue Ordner vor',
+      applying: '{productName} verschiebt die Dateien',
+      undoing: '{productName} legt die Dateien zurück',
       count: '{done} von {total}',
-      starting: 'Piloti liest die ersten Dateien …',
+      starting: '{productName} liest die ersten Dateien …',
       groupingDetail: '{count, plural, one {Für # Datei passt kein bestehender Ordner.} other {Für # Dateien passt kein bestehender Ordner.}} Bei vielen Dateien dauert das bis zu vier Minuten.',
       elapsed: 'Läuft seit {duration}',
       remaining: 'Noch etwa {duration}',
       waiting: 'In der Warteschlange: Die Sortierung beginnt von selbst, sobald ein Platz frei ist.',
       recent: 'Zuletzt zugeordnet',
       recentItem: '{name} nach {folder}',
-      keepOpen: 'Sie können das Fenster schließen und weiterarbeiten. Sobald Sie durchsehen können, meldet sich Piloti im Postfach.',
-      keepOpenMoving: 'Sie können das Fenster schließen und weiterarbeiten. Piloti arbeitet weiter, und Sie finden den Stand hier wieder.',
+      keepOpen: 'Sie können das Fenster schließen und weiterarbeiten. Sobald Sie durchsehen können, meldet sich {productName} im Postfach.',
+      keepOpenMoving: 'Sie können das Fenster schließen und weiterarbeiten. {productName} arbeitet weiter, und Sie finden den Stand hier wieder.',
     },
     cancelled: 'Die Sortierung ist abgebrochen. Verschoben wurde nichts.',
     failed: 'Die Sortierung ist fehlgeschlagen.',
@@ -2066,11 +2066,11 @@ export const files: typeof en.files = {
       onlyUnsure: 'Nur unsichere anzeigen',
       hint: 'Haken entfernen, was bleiben soll. Mit „Verschieben nach …“ wählen Sie für eine Datei einen anderen Ordner.',
       newFoldersNote: 'Neue Ordner werden erst beim Verschieben angelegt.',
-      empty: 'Piloti hat für keine Datei einen Ordner gefunden.',
-      allFailed: 'Piloti konnte keine der Dateien beurteilen. Alle bleiben im Stammordner.',
+      empty: '{productName} hat für keine Datei einen Ordner gefunden.',
+      allFailed: '{productName} konnte keine der Dateien beurteilen. Alle bleiben im Stammordner.',
       failed: '{count, plural, one {# Datei konnte nicht beurteilt werden und bleibt im Stammordner.} other {# Dateien konnten nicht beurteilt werden und bleiben im Stammordner.}}',
-      groupingFailed: 'Piloti konnte für die übrigen Dateien keine neuen Ordner vorschlagen. Sie bleiben im Stammordner; ein neuer Lauf kann es erneut versuchen.',
-      onlyUnsureEmpty: 'Nichts ist unsicher: Piloti ist sich bei jedem Vorschlag sicher.',
+      groupingFailed: '{productName} konnte für die übrigen Dateien keine neuen Ordner vorschlagen. Sie bleiben im Stammordner; ein neuer Lauf kann es erneut versuchen.',
+      onlyUnsureEmpty: 'Nichts ist unsicher: {productName} ist sich bei jedem Vorschlag sicher.',
       treeLabel: 'Vorschlag als Ordnerbaum',
       staysLabel: 'Bleibt im Stammordner',
     },
@@ -2089,7 +2089,7 @@ export const files: typeof en.files = {
       moveTo: 'Verschieben nach …',
       moveAria: 'Ordner für „{name}“ wählen',
       stayInRoot: 'Bleibt im Stammordner',
-      restore: 'Zum Vorschlag von Piloti zurück',
+      restore: 'Zum Vorschlag von {productName} zurück',
       noReason: 'Kein Ordner passt.',
     },
     apply: {

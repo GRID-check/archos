@@ -79,9 +79,9 @@ def resolve_api_key(base_url: str, model: str) -> str:
     checkout that has not installed the knowledge layer.
     """
     try:
-        from knowledge_layer.llamaindex.adapter import _resolve_embed_api_key
+        from knowledge_layer.llamaindex.embedding import resolve_embed_api_key
 
-        key = _resolve_embed_api_key(base_url, model)
+        key = resolve_embed_api_key(base_url, model)
         if key:
             return key
     except Exception:  # noqa: BLE001 - the hand chain below is the whole point

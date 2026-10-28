@@ -41,6 +41,7 @@ import 'server-only'
 import { getLocale, getTranslations } from '@/i18n/server'
 import type { Locale } from '@/i18n/config'
 import type { Translator } from '@/i18n/translate'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import { PDF_MEDIA_TYPE, renderMarkdownPdf } from '@/lib/pdf/markdown-pdf'
 import type { DocumentFact } from '@/lib/answer-export/answer-document'
 import { AI_GENERATOR_NAME } from '@/lib/ai-provenance'
@@ -76,7 +77,7 @@ export interface FileResearchReportInput {
    * reasons. It is UNKNOWN because these are jsonb that crossed a process
    * boundary and `@/lib/pdf/legal-basis` is the module that narrows them. It is
    * OPTIONAL because a run need not have produced any — `JobReportResponse`
-   * (`frontends/aiq_api/src/aiq_api/routes/jobs.py`) now returns `cards`
+   * (`apps/backend/src/aiq_api/routes/jobs.py`) now returns `cards`
    * alongside the report, but returns it null when the run generated none, and
    * a scheduled or replayed run may pass none at all. A section that cannot be
    * built prints nothing rather than an empty heading, so absent is a
@@ -389,7 +390,7 @@ async function renderAndFileReport(
   const { session, projectId, runId, report, cards, request } = input
   const { title, body } = splitReportTitle(report)
   const [t, locale, organizationName] = await Promise.all([
-    getTranslations('answerExport'),
+    getTranslations(answerExportCopy),
     getLocale(),
     getOrganizationDisplayName(session.organizationId),
   ])

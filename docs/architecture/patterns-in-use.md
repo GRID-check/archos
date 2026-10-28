@@ -63,7 +63,7 @@ fail on a difference.
 | Artifact | Generated from | Guarded |
 |---|---|---|
 | `frontends/ui/src/lib/skills/platform-skills.ts` | `src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
-| `shared/cards/schemas.json` | `src/aiq_agent/cards/models.py`, via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
+| `shared/cards/schemas.json` | the card models (`src/aiq_agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
 | `frontends/ui/src/shared/cards/generated.ts` | `shared/cards/schemas.json`, via `frontends/ui/scripts/generate-card-schemas.mjs` | yes, the same hook |
 
 The card schema is a two-stage pipeline from Pydantic models to Zod. Neither
@@ -103,7 +103,7 @@ content, whose value is the same whichever tenant or turn asks, or a
 process-lifetime handle holding no tenant or turn data:
 
 - the query-embedding LRU with its in-flight dedupe, keyed by (model, text), on
-  the retriever in `packages/knowledge-layer/src/llamaindex/adapter.py`;
+  the retriever in `packages/knowledge-layer/src/llamaindex/query_embeddings.py`;
 - `knowledge/factory._SEARCH_RETRIEVER`, the retriever handle recorded when the
   knowledge tool is built;
 - `agents/piloti/register._WARMING`, strong references to running warm-ups, so

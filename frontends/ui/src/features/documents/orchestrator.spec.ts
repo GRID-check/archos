@@ -5,13 +5,14 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { UploadOrchestrator } from './orchestrator'
 import { onDocumentsChanged } from '@/lib/documents/document-changes'
 import { getStoreTranslator } from '@/i18n/store-translator'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { TrackedFile } from './types'
 
 const mockToast = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn() }))
 vi.mock('sonner', () => ({ toast: mockToast }))
 
 /** The localized notice, resolved the way the orchestrator resolves it. */
-const STILL_READING = getStoreTranslator('files')('uploads.stillReading')
+const STILL_READING = getStoreTranslator(filesCopy)('uploads.stillReading')
 
 // Mock the documents client
 const mockClient = {
@@ -574,7 +575,7 @@ describe('UploadOrchestrator', () => {
       await vi.advanceTimersByTimeAsync(5000)
 
       // The job's own text is English and for logs; the line says its category.
-      expect(mockDocumentsStore.setError).toHaveBeenCalledWith(getStoreTranslator('files')('ingestFailure.unknown'))
+      expect(mockDocumentsStore.setError).toHaveBeenCalledWith(getStoreTranslator(filesCopy)('ingestFailure.unknown'))
     })
 
     /**

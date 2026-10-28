@@ -81,7 +81,7 @@ def test_a_lazy_package_exports_no_name_a_submodule_has(package):
     assert set(getattr(module, "__all__", ())) & submodules == set()
 
 
-@pytest.mark.parametrize("conftest", ["tests/conftest.py", "frontends/aiq_api/tests/conftest.py"], ids=["core", "api"])
+@pytest.mark.parametrize("conftest", ["tests/conftest.py", "apps/backend/tests/conftest.py"], ids=["core", "api"])
 def test_a_conftest_every_test_loads_loads_nothing_heavy(conftest):
     loaded = _loaded_by(
         "import importlib.util\n"

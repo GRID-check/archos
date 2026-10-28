@@ -30,6 +30,8 @@ import { Chip, ChipCount } from '@/components/ui/chip'
 import { CountPill } from '@/components/ui/count-pill'
 import { StatCardIcon } from '@/components/ui/stat-card'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 import { surfaceStateLabel } from '@/lib/documents/surface-state'
 import type { CountKey } from '../lib/upload-summary'
 
@@ -50,8 +52,8 @@ const TALLY_LOOK: Record<CountKey, { icon: LucideIcon; tone: Tone }> = {
 
 /** The word for each count, from the dictionary that already says it. */
 export function useTallyLabel(): (key: CountKey) => string {
-  const tFiles = useTranslations('files')
-  const t = useTranslations('uploadBatches')
+  const tFiles = useTranslations(filesCopy)
+  const t = useTranslations(uploadBatchesCopy)
   return (key) => {
     switch (key) {
       case 'ready':

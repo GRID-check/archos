@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 
 export interface NewFolderDialogProps {
   open: boolean
@@ -28,7 +29,7 @@ export interface NewFolderDialogProps {
 }
 
 export function NewFolderDialog({ open, onOpenChange, onCreate }: NewFolderDialogProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [name, setName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 

@@ -27,6 +27,7 @@ import { PRESSABLE } from '@/components/ui/press'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTransientFlag } from '@/hooks/use-transient-flag'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -129,7 +130,7 @@ export const CopyActionFace: FC<{
  * reliably announced.
  */
 export const CopiedAnnouncement: FC<{ copied: boolean }> = ({ copied }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <span role="status" className="sr-only">
       {copied ? t('answerSources.copied') : ''}
@@ -139,7 +140,7 @@ export const CopiedAnnouncement: FC<{ copied: boolean }> = ({ copied }) => {
 
 /** Per-row copy: the Fachtext citation of one source. */
 export const CopySourceCitationButton: FC<{ citation: CitationRef }> = ({ citation }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [copied, flashCopied] = useTransientFlag()
 
   const handleCopy = async (): Promise<void> => {
@@ -174,7 +175,7 @@ export const CopySourceCitationButton: FC<{ citation: CitationRef }> = ({ citati
 
 /** Block-level copy: every source of the answer, in a chosen citation format. */
 export const CopyCitationsMenu: FC<{ citations: CitationRef[] }> = ({ citations }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const swap = useIconSwapTransition()
   const [copied, flashCopied] = useTransientFlag()
 

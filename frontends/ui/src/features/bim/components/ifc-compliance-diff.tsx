@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import type { BimComplianceChange, BimComplianceTrend } from '@/lib/bim/rules'
 import type { BimModelHeaderView } from '../hooks/use-bim-model'
 
@@ -67,7 +68,7 @@ export function IfcComplianceDiff({
   error,
   onRun,
 }: IfcComplianceDiffProps): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   if (!baseModel) return null
 
   return (

@@ -6,6 +6,7 @@ import { Check, Video } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { BIM_CAMERA_VIEWS, type BimCameraView } from '../lib/viewer-camera'
 import { ViewerIconButtonBase, ViewerToolButton } from './viewer'
@@ -45,7 +46,7 @@ export function StageViewMenu({
   /** Which edge of the trigger the menu opens from: above a bar, beside a column. */
   side?: 'top' | 'right'
 }): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   /**
    * Controlled so choosing a view CLOSES the menu.
    *

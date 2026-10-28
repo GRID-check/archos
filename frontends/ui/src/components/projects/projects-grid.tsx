@@ -44,6 +44,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Project } from '@/lib/db/schema/projects'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { useSwapFade } from '@/hooks/use-swap-fade'
 import { TOUR_ANCHORS } from '@/lib/onboarding/product-tour'
 import { CreateProjectDialog } from './create-project-dialog'
@@ -91,7 +92,7 @@ export function ProjectsGrid({
   viewerActivity = {},
   autoOpenCreate = false,
 }: ProjectsGridProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>(() => defaultProjectStatusFilter(projects))
   const statusCounts = useMemo(() => countByStatus(projects), [projects])

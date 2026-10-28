@@ -24,6 +24,8 @@ import { getNavFlags } from '@/lib/authz/nav'
 import { BackLink, ShellContent } from '@/components/shell'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PlatformNav } from '@/features/platform/components/platform-nav'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { platformPermissions } from '@/lib/authz/platform'
@@ -43,8 +45,8 @@ export default async function PlatformLayout({
       redirect('/')
     }
     const navFlags = await getNavFlags(session)
-    const t = await getTranslations('platform')
-    const tOrg = await getTranslations('organization')
+    const t = await getTranslations(platformCopy)
+    const tOrg = await getTranslations(organizationCopy)
 
     const shell = (body: React.ReactNode): JSX.Element => (
       <ShellContent>

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import type { Dossier } from '@/lib/documents/dossier'
 import type { DocumentMetadata } from '@/lib/documents/reconcile-status'

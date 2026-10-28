@@ -24,7 +24,7 @@ from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 
 BOUNDARY_ANCHOR = "<turn_context>"
-HEADING = "## Anweisungen des Büros"
+HEADING = "## Office instructions"
 TOOLS = [{"name": "knowledge_search", "description": "Search the knowledge base."}]
 INSTRUCTIONS = "Antworten kurz halten.\nImmer die Wiener Bauordnung zuerst prüfen."
 

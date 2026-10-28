@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from knowledge_layer.register import _ambiguous_file_names
-from knowledge_layer.register import _format_results
+from knowledge_layer.grounding_hits import _ambiguous_file_names
+from knowledge_layer.search_results import format_results
 
 from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.citations.extraction import extract_sources_from_tool_result
@@ -40,7 +40,7 @@ def _chunk(*, file_name: str, collection: str, shelf: str | None = None, page: i
 
 
 def _format(chunks) -> str:
-    return _format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
+    return format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
 
 
 def test_a_name_held_on_one_shelf_is_not_qualified():

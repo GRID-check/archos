@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, test } from 'vitest'
 import type { SkillCategoryListItem, SkillListItem } from '@/adapters/api/skills-client'
 import { groupSkillsByCategory, matchesSkillQuery } from './skill-categories'

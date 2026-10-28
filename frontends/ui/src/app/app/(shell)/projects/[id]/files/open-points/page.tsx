@@ -8,6 +8,7 @@ import { listProjectAnnotations } from '@/lib/annotations/project-marks'
 import { PROJECT_MARKS_PAGE_SIZE } from '@/lib/annotations/project-types'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { getTranslations } from '@/i18n/server'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { OpenPointsPanel } from '@/features/documents/components/open-points/open-points-panel'
 
 interface OpenPointsPageProps {
@@ -15,7 +16,7 @@ interface OpenPointsPageProps {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('files')
+  const t = await getTranslations(filesCopy)
   return { title: t('openPoints.title') }
 }
 

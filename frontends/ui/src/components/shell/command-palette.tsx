@@ -46,6 +46,9 @@ import {
 import { SEARCH_KINDS } from '@/lib/search/search-wire'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { navCopy } from '@/i18n/namespaces/nav'
+import { shortcutsCopy } from '@/i18n/namespaces/shortcuts'
 import { paletteSections } from './project-sections'
 import { ShortcutKeys } from './shortcut-keys'
 import { LEADER_KEY, MOD } from './shortcuts'
@@ -143,9 +146,9 @@ export function CommandPalette({
   const { signOut } = useAuth()
   const theme = useLayoutStore((s) => s.theme)
   const setTheme = useLayoutStore((s) => s.setTheme)
-  const t = useTranslations('shortcuts.palette')
-  const tNav = useTranslations('nav')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(shortcutsCopy, 'palette')
+  const tNav = useTranslations(navCopy)
+  const tCommon = useTranslations(commonCopy)
 
   // What the reader typed is also a workspace search: the hits arrive under
   // the field as they type, grouped by kind and drawn as the search page draws

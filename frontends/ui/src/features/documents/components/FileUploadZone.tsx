@@ -12,6 +12,8 @@ import { type ChangeEvent, type FC, useCallback, useEffect, useId, useMemo, useR
 import { FileText, Upload } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { captureCopy } from '@/i18n/namespaces/capture'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatBytes } from '@/lib/format'
 import { useDocumentsStore } from '../store'
 import { useIsCurrentSessionBusy } from '@/features/chat'
@@ -99,7 +101,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
   isUploading = false,
   label,
 }) => {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const row = useMotionToken(rowTransition)
   // Check if current session is busy with operations
@@ -136,7 +138,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
 
   const uploadDisabled = isUploading || isBusy
 
-  const tCapture = useTranslations('capture')
+  const tCapture = useTranslations(captureCopy)
   const handleValueChange = useCallback(
     (selected: File[]) => {
       if (selected.length === 0) return

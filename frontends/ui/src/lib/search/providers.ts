@@ -26,7 +26,7 @@ import { lockedConversationIds } from '@/lib/conversations/restricted-use'
 import { CONVERSATION_TAG_KEYS, LEGACY_CONVERSATION_TAG_KEYS } from '@/lib/conversations/tags'
 import { withTenant } from '@/lib/db/tenant-context'
 import { documentDisplayName } from '@/lib/documents/display-name'
-import { dictionaries } from '@/i18n/dictionaries'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { excerptAround } from '@/lib/text/excerpt'
 import {
   searchAnnotationRows,
@@ -186,9 +186,8 @@ export function conversationTagsNamedBy(text: string): string[] {
     ...Object.entries(LEGACY_CONVERSATION_TAG_KEYS)
       .filter(([, current]) => current === key)
       .map(([legacy]) => legacy),
-    ...Object.values(dictionaries).map(
-      (dictionary) =>
-        (dictionary.platform.answerFeedback.topics as Record<string, string>)[key] ?? key
+    ...Object.values(platformCopy.messages).map(
+      (platform) => (platform.answerFeedback.topics as Record<string, string>)[key] ?? key
     ),
   ]
   return CONVERSATION_TAG_KEYS.filter((key) =>

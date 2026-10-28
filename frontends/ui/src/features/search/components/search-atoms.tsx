@@ -37,6 +37,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { keepUnitsTogether } from '@/lib/text/keep-units'
 import type { TextSegment } from '@/lib/text/term-segments'
 import { sourceTint } from '@/lib/ui/source-tint'
@@ -598,7 +599,7 @@ export function WherePart({ children, label }: { children: ReactNode; label: str
  * spends on the Büroablage (design language, principle 2).
  */
 export function SupersededMark({ className }: { className?: string }): JSX.Element {
-  const t = useTranslations('search.document')
+  const t = useTranslations(searchCopy, 'document')
   return (
     <Chip size="sm" variant="outline" className={cn('gap-1 text-muted-foreground', className)} title={t('supersededHint')} data-testid="superseded-mark">
       <History aria-hidden />

@@ -72,7 +72,7 @@ export const diagrams = {
    * export makes for its first-page block.
    */
   marking:
-    'Created by Piloti — AI-generated, not reviewed. Schematic: no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+    'Created by {productName} — AI-generated, not reviewed. Schematic: no dimensions are claimed. Not a certificate; check every statement before passing this on.',
   /**
    * The same block for a drawing a person reworked in the sketch editor before
    * filing it. „Created by Piloti" would be half false; editing is not a review
@@ -80,14 +80,14 @@ export const diagrams = {
    * can now have drawn anything, a site outline included.
    */
   markingEdited:
-    'Drafted by Piloti, edited by a person — AI-assisted, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+    'Drafted by {productName}, edited by a person — AI-assisted, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
   /**
    * The same block for a sketch Piloti drew itself (an ```excalidraw fence,
    * ADR-0146) and the reader filed as drawn. „Sketch: not to scale" rather than
    * „Schematic": a sketch places things by hand, a site outline included.
    */
   markingSketch:
-    'Created by Piloti — AI-generated, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+    'Created by {productName} — AI-generated, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
   /**
    * The sketch editor: Excalidraw, opened on a drawing Piloti made, so a person
    * can rework it and file their own version. Only flows and Gliederungen have
@@ -96,7 +96,7 @@ export const diagrams = {
   sketch: {
     action: 'Edit as sketch',
     title: 'Edit sketch',
-    description: 'Starts from Piloti’s drawing. A sketch is not to scale and claims no dimensions.',
+    description: 'Starts from {productName}’s drawing. A sketch is not to scale and claims no dimensions.',
     loading: 'Loading the canvas…',
     loadFailed: 'The canvas could not be loaded.',
     save: 'File in project',
@@ -110,7 +110,7 @@ export const diagrams = {
     defaultTitle: 'Sketch',
     /** Beside a sketch Piloti drew, where the reader is: the doctrine in one line. */
     notToScale: 'Sketch — not to scale, no dimensions.',
-    fallback: 'This sketch could not be drawn. Ask Piloti to draw it again.',
+    fallback: 'This sketch could not be drawn. Ask {productName} to draw it again.',
   },
   rejected: {
     empty: 'The diagram was empty.',

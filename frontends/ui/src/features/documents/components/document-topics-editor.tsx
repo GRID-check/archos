@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 
 /** Mirrors the backend's `MAX_TOPICS`, `MAX_TOPIC_CHARS`, `MAX_TOPIC_WORDS` (document_classification.py). */
 export const MAX_TOPICS = 6
@@ -39,7 +40,7 @@ export function DocumentTopicsEditor({
   initialTopics: readonly string[]
   onSaved?: (fileId: string, topics: string[]) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [topics, setTopics] = useState<string[]>([...initialTopics])
   const [input, setInput] = useState('')
   const [saving, setSaving] = useState(false)

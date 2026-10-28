@@ -10,7 +10,7 @@ and what a read or a search returns.
 
 **Tenant and scope come from the turn, never from an argument.** The rows are the
 turn's inventory (``browse._turn_rows``), the collections its signed scope names
-(``register._resolve_scoped_collections``, narrowed to the turn's shelves), read
+(``search_scope.resolve_scoped_collections``, narrowed to the turn's shelves), read
 from the per-turn context like every other knowledge-layer tool. The same
 backend instance therefore serves every turn of every tenant.
 
@@ -284,14 +284,14 @@ class EstateBackend(BackendProtocol):
     def entries(self) -> list[Any]:
         """The collections this turn may read, with their shelves, narrowed to the turn's shelves."""
         from .browse import _session_collection
-        from .register import _resolve_base_collection
-        from .register import _resolve_scoped_collections
-        from .register import _restrict_scope_to_turn
+        from .search_scope import resolve_base_collection
+        from .search_scope import resolve_scoped_collections
+        from .search_scope import restrict_scope_to_turn
 
         config = self.search_config
         return list(
-            _restrict_scope_to_turn(
-                _resolve_scoped_collections(config, _session_collection(), _resolve_base_collection(config))
+            restrict_scope_to_turn(
+                resolve_scoped_collections(config, _session_collection(), resolve_base_collection(config))
             )
         )
 
@@ -1029,7 +1029,7 @@ def _page_hit(file: EstateFile, page: stored_pages.Page, *, budget: int, paged: 
     from aiq_agent.common.grounding_block import GroundingHit
     from aiq_agent.common.source_kinds import parse_shelf
 
-    from .register import _citation_key_for
+    from .grounding_hits import _citation_key_for
 
     number = page.number if paged and page.number > 0 else None
     shelf = parse_shelf(file.row.shelf)
@@ -1061,9 +1061,9 @@ def _chunk_hit(file: EstateFile, chunk: Any) -> Any:
     from aiq_agent.common.grounding_block import GroundingHit
     from aiq_agent.common.source_kinds import parse_shelf
 
-    from .register import _CHUNK_TRUNCATE_CHARS
-    from .register import _citation_key_for
-    from .register import _hit_provenance
+    from .grounding_hits import _CHUNK_TRUNCATE_CHARS
+    from .grounding_hits import _citation_key_for
+    from .grounding_hits import _hit_provenance
 
     shelf = parse_shelf(file.row.shelf)
     page = chunk.page_number if chunk.page_number and chunk.page_number > 0 else None
@@ -1096,7 +1096,7 @@ def _render(hits: tuple[Any, ...], *, preamble: str, notices: Sequence[str], tra
     from aiq_agent.common.grounding_block import GroundingBlock
     from aiq_agent.common.grounding_block import render_grounding_block
 
-    from .register import _trace_lanes_for_hits
+    from .trace_lanes import trace_lanes_for_hits
 
     banner = "".join(f"{line}\n\n" for line in notices if line)
     text = render_grounding_block(
@@ -1104,7 +1104,7 @@ def _render(hits: tuple[Any, ...], *, preamble: str, notices: Sequence[str], tra
             preamble=preamble,
             degraded_banner=banner,
             hits=hits,
-            lanes=_trace_lanes_for_hits(hits),
+            lanes=trace_lanes_for_hits(hits),
             tool=tool,
             trailer=trailer,
         )

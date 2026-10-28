@@ -27,6 +27,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { PRESSABLE } from '@/components/ui/press'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { markdownHeadings, type MarkdownHeading } from '@/shared/components/MarkdownRenderer/headings'
 import { OutlineProvider } from '@/shared/components/MarkdownRenderer/outline-context'
@@ -54,7 +55,7 @@ export const AnswerOutline: FC<{
   enabled: boolean
   children: ReactNode
 }> = ({ markdown, scopeRef, enabled, children }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [open, setOpen] = useState(false)
   const headings = useMemo(() => (enabled ? outlineHeadings(markdown) : []), [enabled, markdown])
   const offered = headings.length > 0

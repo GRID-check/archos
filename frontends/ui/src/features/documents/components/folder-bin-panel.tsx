@@ -30,6 +30,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { PageHeader } from '@/components/ui/page-header'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatCalendarDate } from '@/lib/format'
 import { FOLDER_NAME_TAKEN_REASON } from '@/lib/projects/folder-bin-codes'
 
@@ -40,7 +41,7 @@ export interface FolderBinPanelProps {
 }
 
 export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const [listing, setListing] = useState<FolderBinListing | null>(initial)
   const [loadFailed, setLoadFailed] = useState(initial === null)

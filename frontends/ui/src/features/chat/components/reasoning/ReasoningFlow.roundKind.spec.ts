@@ -1,10 +1,13 @@
+/**
+ * @vitest-environment node
+ */
 /** `roundKind` (ADR-0132): a round that only listed folders is no „Kein Treffer“. */
 import { describe, expect, test } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries/de'
-import { roundKind } from './ReasoningFlow'
+import { translatorFor } from '@/i18n/namespace'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { roundKind } from './flow/round-kind'
 
-const t = createTranslator(de, 'chat')
+const t = translatorFor(chatCopy, 'de')
 
 describe('roundKind', () => {
   test('a list_files-only round is a folder opened, even when the ledger accounts for it', () => {

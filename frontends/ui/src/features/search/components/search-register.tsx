@@ -17,6 +17,7 @@ import {
 import { LoadMore } from '@/components/ui/load-more'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { documentReadFamily } from '@/lib/documents/document-status'
 import type { DocumentHit } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
@@ -87,7 +88,7 @@ const SUPERSEDED_REM = 5.5
  * its longest value among the rows shown, by the same text each cell draws.
  */
 function useColumnFits(columns: readonly RegisterColumn[], hits: readonly DocumentHit[]): ColumnFit[] {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const labels = useSearchLabels()
   const text = (column: RegisterColumn, hit: DocumentHit): string | null => {
     switch (column) {
@@ -156,7 +157,7 @@ export function SearchRegisterBar({
   onStateChange: (next: SearchUrlState) => void
   hideProject?: boolean
 }): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const isMobile = useIsMobile()
   return (
     <RegisterBar
@@ -181,7 +182,7 @@ export function SearchRegisterBar({
 
 /** Which columns show: a check per column, kept open while the reader picks several. */
 function ColumnMenu({ state, onStateChange, hideProject }: { state: SearchUrlState; onStateChange: (next: SearchUrlState) => void; hideProject: boolean }): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   // On a phone there are no columns, only the fields of each entry: the button says so.
   const isMobile = useIsMobile()
   const visible = new Set(visibleRegisterColumns(state.columns))
@@ -223,7 +224,7 @@ function ColumnMenu({ state, onStateChange, hideProject }: { state: SearchUrlSta
 
 /** The order on a phone: the visible columns as choices; the active one again turns it round. */
 function SortMenu({ state, onStateChange, hideProject }: { state: SearchUrlState; onStateChange: (next: SearchUrlState) => void; hideProject: boolean }): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const columns = visibleRegisterColumns(state.columns, { hideProject })
   const order = effectiveSort(state)
   const active = columns.find((column) => COLUMN_SORT[column] === order.sort) ?? null
@@ -269,7 +270,7 @@ function SortMenu({ state, onStateChange, hideProject }: { state: SearchUrlState
  * It is a view of what Piloti read, not a list anyone maintains.
  */
 export function SearchRegister({ state, section, onStateChange, onLoadMore, hideProject = false, activeKey, listId, optionId }: SearchRegisterProps): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const isMobile = useIsMobile()
   const columns = visibleRegisterColumns(state.columns, { hideProject })
   const menus = useHitMenus()
@@ -346,7 +347,7 @@ function useReadException(hit: DocumentHit): string | null {
 
 function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
   const from = useSearchReturn()
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const menus = useHitMenus()
   const labels = useSearchLabels()
   const exception = useReadException(hit)
@@ -418,7 +419,7 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
 /** On a phone: the number and Index over the name; the other chosen columns on one muted line. */
 function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
   const from = useSearchReturn()
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const labels = useSearchLabels()
   const exception = useReadException(hit)
   const menus = useHitMenus()

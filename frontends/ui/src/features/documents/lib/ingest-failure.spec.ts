@@ -2,9 +2,8 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { en } from '@/i18n/dictionaries/en'
-import { de } from '@/i18n/dictionaries/de'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   BFF_FAILURE_PHRASES,
   classifyIngestFailure,
@@ -113,11 +112,8 @@ describe('ingestFailureSentence', () => {
     'unknown',
   ])
 
-  it.each([
-    ['en', en],
-    ['de', de],
-  ] as const)('has a sentence for every category in %s', (_locale, dictionary) => {
-    const t = createTranslator(dictionary, 'files')
+  it.each(['en', 'de'] as const)('has a sentence for every category in %s', (locale) => {
+    const t = translatorFor(filesCopy, locale)
     for (const kind of kinds) {
       const failure =
         kind === 'unreadable_pages' ? { kind, failed: 1, total: 2, raw: 'x' } : { kind, raw: 'x' }
@@ -128,7 +124,7 @@ describe('ingestFailureSentence', () => {
   })
 
   it('puts the page counts in the sentence', () => {
-    const t = createTranslator(de, 'files')
+    const t = translatorFor(filesCopy, 'de')
     const failure = classifyIngestFailure('pdf_pages_unreadable: 7 of 12 pages could not be read')
     expect(failure && ingestFailureSentence(failure, t)).toMatch(/^7 von 12 Seiten/)
   })

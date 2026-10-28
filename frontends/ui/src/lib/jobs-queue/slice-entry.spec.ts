@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConflictError, NotFoundError, ServiceUnavailableError, UpstreamError } from '@/lib/api/errors'
 import { getTenantContext, withTenant } from '@/lib/db/tenant-context'

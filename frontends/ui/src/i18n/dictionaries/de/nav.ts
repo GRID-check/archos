@@ -4,7 +4,7 @@ import type { en } from '../en'
 export const nav: typeof en.nav = {
   projectNavigation: 'Projektnavigation',
   projectSections: 'Projektbereiche',
-  allProjects: 'Piloti — alle Projekte',
+  allProjects: '{productName} — alle Projekte',
   collapseSidebar: 'Seitenleiste einklappen',
   expandSidebar: 'Seitenleiste ausklappen',
   resizeSidebar: 'Breite der Seitenleiste ändern',
@@ -13,7 +13,7 @@ export const nav: typeof en.nav = {
   openNavigation: 'Navigation öffnen',
   closeNavigation: 'Navigation schließen',
   sections: {
-    chat: 'Frag Piloti',
+    chat: 'Frag {productName}',
     files: 'Dateien',
     knowledge: 'Wissen',
     research: 'Recherche',
@@ -38,13 +38,13 @@ export const nav: typeof en.nav = {
     org: 'Organisation',
   },
   sectionSubtitles: {
-    files: 'Die Unterlagen dieses Projekts. Piloti liest sie und zitiert daraus.',
+    files: 'Die Unterlagen dieses Projekts. {productName} liest sie und zitiert daraus.',
     automation:
-      'Was Piloti erledigt hat, während Sie weg waren, was als Nächstes ansteht — und die Skills, mit denen es arbeitet.',
+      'Was {productName} erledigt hat, während Sie weg waren, was als Nächstes ansteht — und die Skills, mit denen es arbeitet.',
     knowledge: 'Was die Wissensbasis derzeit enthält.',
     settings: 'Wo dieses Projekt steht und wie es eingerichtet ist.',
     intake: 'Geführtes Briefing für dieses Projekt.',
-    setup: 'Projekt, Ablage, Erfassung, Rückfragen, Steckbrief: Piloti liest, Sie prüfen und bestätigen.',
+    setup: 'Projekt, Ablage, Erfassung, Rückfragen, Steckbrief: {productName} liest, Sie prüfen und bestätigen.',
   },
   backTo: 'Zurück zu {label}',
   returnTargets: {
@@ -58,8 +58,8 @@ export const nav: typeof en.nav = {
   tabTitle: {
     intake: 'Einrichtung',
     setup: 'Einrichtung',
-    researchProgress: '{percent}% · {label} — Piloti',
-    researchActive: '⏳ {label} — Piloti',
+    researchProgress: '{percent}% · {label} — {productName}',
+    researchActive: '⏳ {label} — {productName}',
   },
   projectSwitcher: {
     select: 'Projekt auswählen',

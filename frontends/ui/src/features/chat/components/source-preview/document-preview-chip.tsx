@@ -3,6 +3,7 @@
 import type { FC, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
 import type { SourceTint } from '@/lib/source-kinds'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
@@ -52,7 +53,7 @@ export const DocumentPreviewChip: FC<{
   detail,
   onUnrenderable,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { isResolving, openPreview, dialog } = useDocumentPreview(target, citation)
   const peek = useHoverPopover()
   const showBusy = useDelayedFlag(isResolving)

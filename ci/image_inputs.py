@@ -13,7 +13,7 @@ the commit before it and rebuild only the images whose paths changed. Two things
 broke that, both silently:
 
 - The path lists were written by hand, twice, and disagreed with the
-  Dockerfile. `deploy/Dockerfile` copies `packages/ifc-spatial-py/`, and neither
+  Dockerfile. `apps/backend/Dockerfile` copies `packages/ifc-spatial-py/`, and neither
   list watched it, so a change there never reached a published image.
 - A push that is superseded while queued is dropped, and the next push diffs
   only against its own parent. On 2026-10-09 a merge train of nine commits
@@ -71,7 +71,7 @@ class Image:
 
 
 IMAGES = (
-    Image("backend", context=".", dockerfile="deploy/Dockerfile", target="release"),
+    Image("backend", context=".", dockerfile="apps/backend/Dockerfile", target="release"),
     Image("frontend", context="frontends/ui", dockerfile="frontends/ui/deploy/Dockerfile"),
     Image("web", context="apps/site", dockerfile="apps/site/Dockerfile"),
 )

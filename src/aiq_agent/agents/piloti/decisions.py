@@ -266,7 +266,7 @@ class TurnFacts:
     #: The opening of the assistant's previous answer, bounded — the subject
     #: a follow-up continues, which the previous question alone may not name.
     previous_answer: str | None = None
-    #: How many reference projects the turn's catalog lists (``<referenzprojekte>``):
+    #: How many reference projects the turn's catalog lists (``<reference_projects>``):
     #: none, and the precedent question is not asked and nothing is prefetched.
     reference_projects: int = 0
     #: The catalog itself, for the reference fit (``reference_fit``); never part

@@ -17,6 +17,7 @@ import { summarizeDocumentVersions } from '@/lib/documents/lifecycle'
 import { resolveDocumentLifecyclePermissions } from '@/lib/documents/lifecycle-permissions'
 import { toDocumentWireRow, toFolderWireRow } from '@/lib/documents/list-projection'
 import { getTranslations } from '@/i18n/server'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { ProjectFileWorkspace } from '@/features/documents/components/project-file-workspace'
 
 interface FilesPageProps {
@@ -28,7 +29,7 @@ interface FilesPageProps {
 const FOLDER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
+  const t = await getTranslations(navCopy)
   return { title: t('sections.files') }
 }
 

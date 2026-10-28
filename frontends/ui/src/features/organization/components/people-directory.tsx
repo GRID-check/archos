@@ -66,6 +66,7 @@ import type { OrganizationMemberWithRole } from '@/lib/organizations/service'
 import { makeWidgetTokenFetcher } from '@/lib/workos/widget-token'
 import { useResolvedAppearance, widgetTheme } from '@/lib/workos/use-widget-appearance'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 export interface PeopleDirectoryProps {
   members: readonly OrganizationMemberWithRole[]
@@ -77,7 +78,7 @@ export interface PeopleDirectoryProps {
 
 /** A role slug as the reader should see it: the catalog's name over the slug, or the slug alone. */
 function RoleLabel({ slug }: { slug: string | null }): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   if (!slug) return <span className="text-muted-foreground">{t('access.people.noRole')}</span>
   const roleName = findRoleSpec(slug)?.name
   return (
@@ -100,7 +101,7 @@ export function PeopleDirectory({
   error = false,
   showManagement = true,
 }: PeopleDirectoryProps): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const appearance = useResolvedAppearance()
   const usersToken = useMemo(() => makeWidgetTokenFetcher(['widgets:users-table:manage']), [])
 

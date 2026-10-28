@@ -3,6 +3,7 @@ import { Item, ItemList } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ShellContent } from '@/components/shell'
 import { getTranslations } from '@/i18n/server'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 /**
  * Route-level loading state for the projects list. The page is a server
@@ -21,7 +22,7 @@ import { getTranslations } from '@/i18n/server'
  * which is what keeps the fallback from collapsing and jumping (CLS).
  */
 export default async function ProjectsLoading(): Promise<JSX.Element> {
-  const t = await getTranslations('projects')
+  const t = await getTranslations(projectsCopy)
   return (
     <ShellContent width="wide" aria-busy="true">
       <span className="sr-only" role="status">

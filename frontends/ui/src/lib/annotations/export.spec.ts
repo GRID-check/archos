@@ -20,11 +20,10 @@ vi.mock('@/lib/documents/version-repository', () => ({ listDocumentVersions: vi.
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/i18n/server', async () => {
-  const { getDictionary } = await import('@/i18n/dictionaries')
-  const { createTranslator } = await import('@/i18n/translate')
+  const { translatorFor } = await import('@/i18n/namespace')
   return {
     getLocale: vi.fn().mockResolvedValue('de'),
-    getTranslations: vi.fn(async (namespace?: string) => createTranslator(getDictionary('de'), namespace)),
+    getTranslations: vi.fn(async (namespace: Namespace, scope?: string) => translatorFor(namespace, 'de', scope)),
   }
 })
 vi.mock('./service', () => ({ listAnnotations: vi.fn() }))
@@ -35,8 +34,8 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { listDocumentVersions } from '@/lib/documents/version-repository'
-import { getDictionary } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor, type Namespace } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { makeDocument, makeProject } from '@/test-utils/db-fixtures'
 import { readPdf } from '@/test-utils/read-pdf'
@@ -60,7 +59,7 @@ const SESSION = {
   name: 'Anna Berger',
 } as AuthorizedSession
 
-const t = createTranslator(getDictionary('de'), 'files')
+const t = translatorFor(filesCopy, 'de')
 
 const reply = (overrides: Partial<AnnotationReplyView> = {}): AnnotationReplyView => ({
   id: 'reply_1',

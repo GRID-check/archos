@@ -28,7 +28,7 @@ import userEvent from '@testing-library/user-event'
 import { act, render, screen, waitFor, within } from '@/test-utils'
 import { toast } from 'sonner'
 import { I18nProvider } from '@/i18n'
-import { de } from '@/i18n/dictionaries/de'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { EMPTY_REVISION_LINKS, type RevisionLinks, type RevisionRef } from '@/lib/documents/revision-links'
 import { DocumentLifecycleError, type DocumentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import type {
@@ -69,7 +69,7 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 
-const copy = de.files
+const copy = filesCopy.messages.de
 const fill = (template: string, params: Record<string, string | number>) =>
   template.replace(/\{(\w+)\}/g, (_, key: string) => String(params[key]))
 

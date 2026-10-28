@@ -62,7 +62,7 @@ LIST_FIELDS = frozenset({"tags", "topics", FOLDER_FIELD, PARAGRAPH_FIELD, "refer
 
 #: Payload field keeping the Dokumentart the chunk was ingested with (its own
 #: ``doc_class`` metadata, "" for none), so clearing a person's class can put
-#: back what ``register._hit_doc_class`` falls back to (``writes.refresh_facts``).
+#: back what ``hit_metadata.hit_doc_class`` falls back to (``writes.refresh_facts``).
 #: Stored, not indexed: nothing filters on it.
 CHUNK_DOC_CLASS_FIELD = "chunk_doc_class"
 
@@ -392,7 +392,7 @@ def chunk_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     ``doc_class`` is the chunk's own, as the chunker stamped it, not the
     person's class a pre-filter matches: the reader resolves the stored class itself
-    and falls back to this one (``register._hit_doc_class``). A point written
+    and falls back to this one (``hit_metadata.hit_doc_class``). A point written
     before :data:`CHUNK_DOC_CLASS_FIELD` existed keeps the payload's.
     """
     metadata = {key: value for key, value in payload.items() if key not in STORE_ONLY_FIELDS}

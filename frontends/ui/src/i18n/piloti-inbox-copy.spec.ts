@@ -23,8 +23,7 @@
 import { describe, expect, it } from 'vitest'
 import { WAKE_END_REASON_KINDS } from '@/lib/annotations/wake-end-reason'
 import { PROPOSAL_NOTICE_VARIANTS } from '@/lib/proposals/types'
-import { de } from './dictionaries/de'
-import { en } from './dictionaries/en'
+import { de, en } from './dictionaries'
 import { getByPath } from './translate'
 
 const TYPES = 'collaboration.inbox.types'

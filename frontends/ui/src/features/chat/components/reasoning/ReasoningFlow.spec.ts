@@ -2,22 +2,20 @@
  * @vitest-environment node
  */
 import { describe, test, expect } from 'vitest'
-import {
-  animateFrontier,
-  buildGraph,
-  defaultFoldedRounds,
-  keepEdgeIdentity,
-  planFan,
-  type ReasoningFlowProps,
-  type SpineFolding,
-  sameNodeData,
-} from './ReasoningFlow'
+import { animateFrontier, buildGraph, keepEdgeIdentity, sameNodeData } from './flow/build-graph'
+import { defaultFoldedRounds, type SpineFolding } from './flow/round-kind'
+import { planFan } from './flow/flow-layout'
+import type { ReasoningFlowProps } from './flow/reasoning-flow-props'
 import type { CitedDocument } from '../../lib/citations'
 import type { FanCard } from '../../lib/retrieval-rounds'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { storedStep } from '@/test-utils/wire-v2-steps'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
+
+/** The chat namespace in the dictionary's shape, which is all this spec reads. */
+const en = { chat: chatCopy.messages.en }
+const de = { chat: chatCopy.messages.de }
 import { createTranslator, getByPath } from '@/i18n/translate'
 import type { Translator } from '@/i18n'
 
