@@ -110,7 +110,7 @@ node -e '
   const j = require("./migrations/meta/_journal.json");
   console.log(j.entries.map((e) => e.tag).join("\n"));
 ' | while read -r tag; do
-  $MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
+  $MIGRATE -v ON_ERROR_STOP=1 -q -f "migrations/$tag.sql" >/dev/null || {
     echo "MIGRATION FAILED at $tag — re-run without -q to see the error" >&2
     exit 1
   }
@@ -298,7 +298,7 @@ clone_chain_at() {
   fi
   for ((i = CHAIN_AT + 1; i <= target; i++)); do
     $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_chain -v ON_ERROR_STOP=1 -q \
-      -f "drizzle/${JOURNAL[$i]}.sql" >/dev/null || {
+      -f "migrations/${JOURNAL[$i]}.sql" >/dev/null || {
       echo "SETUP OF $db FAILED at ${JOURNAL[$i]} — re-run without -q to see the error" >&2
       exit 1
     }
@@ -330,7 +330,7 @@ migrate_before() {
 # ---------------------------------------------------------------------------
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
-  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q -f "drizzle/$2" >/dev/null || {
+  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q -f "migrations/$2" >/dev/null || {
     echo "MIGRATION $2 FAILED on $1 — re-run without -q to see the error" >&2
     exit 1
   }
