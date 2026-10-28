@@ -25,18 +25,19 @@ export const APP = path.resolve(WEB, '..', '..', 'apps', 'workspace');
  * and has no manifest.
  *
  *   site  the public site, apps/site: pages read src/data/art.json
- *   app   the product app, apps/workspace: components read src/lib/art/art.json
+ *   app   the product app, apps/workspace: components read bff/art/art.json
  *
  * One source of truth: every file in both folders is exported from a work
  * under art/riso/, and check.mjs holds both manifests to the JOBS tables.
  */
 export const DESTS = {
-  site: { root: WEB, art: PUBLIC_ART, manifest: MANIFEST, src: path.join(WEB, 'src') },
+  site: { root: WEB, art: PUBLIC_ART, manifest: MANIFEST, srcs: [path.join(WEB, 'src')] },
   app: {
     root: APP,
     art: path.join(APP, 'public', 'art'),
-    manifest: path.join(APP, 'src', 'lib', 'art', 'art.json'),
-    src: path.join(APP, 'src'),
+    manifest: path.join(APP, 'bff', 'art', 'art.json'),
+    // The app's source is split by job (ADR-0145 row 9), not held under one src/.
+    srcs: ['app', 'ui', 'bff', 'i18n', 'shared', 'types', 'utils'].map((dir) => path.join(APP, dir)),
   },
 };
 /** Folders under art/riso/ that are not works. */

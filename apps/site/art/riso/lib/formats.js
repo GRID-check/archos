@@ -16,7 +16,7 @@
                 committed, lossless for 'out' and separations)
      dest       'site' -> apps/site/public/art/, committed, in src/data/art.json
                 'app'  -> apps/workspace/public/art/, committed, in the app's
-                          src/lib/art/art.json (the product app, Next.js)
+                          bff/art/art.json (the product app, Next.js)
                 'out'  -> art/riso/out/<work>/, gitignored, reproducible
      file       name template: {base} {w} {h}
      numeral    false leaves the plate numeral off (tiny formats)

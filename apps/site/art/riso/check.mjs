@@ -156,7 +156,7 @@ for (const [dest, d] of Object.entries(DESTS)) {
 
   // references from this destination's source tree: by id, and only ids it has
   const ids = new Set(Object.keys(manifest.art || {}));
-  for (const file of files(d.src, new Set([d.manifest, DOWNLOADS_MANIFEST]))) {
+  for (const file of d.srcs.flatMap((dir) => [...files(dir, new Set([d.manifest, DOWNLOADS_MANIFEST]))])) {
     const text = fs.readFileSync(file, 'utf8');
     for (const m of text.matchAll(idRe)) if (!ids.has(m[1])) fail(`${rel(file)}: art id "${m[1]}" is not in the ${dest} manifest`);
     for (const m of text.matchAll(pathRe)) fail(`${rel(file)}: names the file ${m[0].slice(1)}; reference art by id`);
