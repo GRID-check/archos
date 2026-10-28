@@ -7,9 +7,20 @@
  */
 
 import { internalApiRoute } from '@/lib/api/handler'
-import { sweepUploadBatches } from '@/lib/upload-batches/sweep'
+import { MAX_SWEEP_WINDOW_DAYS, sweepUploadBatches } from '@/lib/upload-batches/sweep'
 
-export const POST = internalApiRoute('Upload Sweep', () => sweepUploadBatches(), {
+/**
+ * `?windowDays=N` looks back N days instead of the default week: the catch-up an
+ * operator runs once for batches that aged out while their documents sat in
+ * flight (`docs/deployment/stuck-pending-documents-runbook.md`). The scheduler
+ * never sends it.
+ */
+const windowMsOf = (request: Request): number | undefined => {
+  const days = Number(new URL(request.url).searchParams.get('windowDays'))
+  return Number.isInteger(days) && days > 0 ? Math.min(days, MAX_SWEEP_WINDOW_DAYS) * 24 * 60 * 60_000 : undefined
+}
+
+export const POST = internalApiRoute('Upload Sweep', ({ request }) => sweepUploadBatches(new Date(), windowMsOf(request)), {
   tenancy: {
     crossTenant:
       'discovery only: lists the open upload batches and the quarantine decisions owed to the audit trail of ' +

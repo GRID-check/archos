@@ -94,6 +94,15 @@ describe('sweepUploadBatches', () => {
     expect(result).toMatchObject({ completed: 1, failed: 0 })
   })
 
+  it('looks back as far as an operator asks, and a week by default', async () => {
+    vi.mocked(listOpenBatchesBetween).mockResolvedValue([])
+    await sweepUploadBatches(NOW)
+    await sweepUploadBatches(NOW, 30 * 24 * 60 * 60_000)
+    const [[weekAgo], [monthAgo]] = vi.mocked(listOpenBatchesBetween).mock.calls
+    expect(NOW.getTime() - weekAgo.getTime()).toBe(7 * 24 * 60 * 60_000)
+    expect(NOW.getTime() - monthAgo.getTime()).toBe(30 * 24 * 60 * 60_000)
+  })
+
   it('keeps going past a batch that fails', async () => {
     vi.mocked(listOpenBatchesBetween).mockResolvedValue([batch('bad', 10 * 60_000, true), batch('good', 10 * 60_000, true)])
     vi.mocked(settleUploadBatches)
