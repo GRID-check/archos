@@ -278,8 +278,8 @@ The renderer runs the production permit pen over the precedent fixture office, *
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `BACKEND_URL` | Yes | `http://aiq-api:8000` (Docker), `http://localhost:8000` (local) | The backend's **`api` role** (ADR-0082): every HTTP call of the BFF, the purger, the housekeeping clock and the workers goes here. It serves no chat socket. |
-| `BACKEND_CHAT_URL` | Yes (the gateway, `server.js`) | `http://aiq-agent:8000` (Docker), `http://localhost:8001` (local) | The backend's **`chat` role**, dialled by the WebSocket proxy and by the wake job of the `bff-jobs` pod (`lib/turns/headless-turn.ts`, ADR-0106), and by nothing else. Required with no fallback to `BACKEND_URL`: the gateway refuses to start without it. |
+| `BACKEND_URL` | Yes | `http://api:8000` (Docker), `http://localhost:8000` (local) | The backend's **`api` role** (ADR-0082): every HTTP call of the BFF, the purger, the housekeeping clock and the workers goes here. It serves no chat socket. |
+| `BACKEND_CHAT_URL` | Yes (the gateway, `server.js`) | `http://chat:8000` (Docker), `http://localhost:8001` (local) | The backend's **`chat` role**, dialled by the WebSocket proxy and by the wake job of the `bff-jobs` pod (`lib/turns/headless-turn.ts`, ADR-0106), and by nothing else. Required with no fallback to `BACKEND_URL`: the gateway refuses to start without it. |
 | `BACKEND_REPLICAS` | No | `1` | Kubernetes only (Pulumi-injected). The modulus of the conversation-id hash while `GRID_CHAT_AFFINITY` is on, so it must equal the StatefulSet's replica count. With one replica, or with affinity off, every socket goes to `BACKEND_CHAT_URL`. |
 | `BACKEND_POD_WS_TEMPLATE` | No | unset | Kubernetes only (Pulumi-injected). The per-pod WebSocket address with a literal `{i}`, e.g. `ws://aiq-agent-{i}.aiq-agent-headless:8000`. Unset means every socket goes to `BACKEND_CHAT_URL`. |
 | `GRID_CHAT_AFFINITY` | No | `1` (on) | See [Backend Configuration](#backend-configuration). Read by the gateway at start-up: off sends every chat socket to `BACKEND_CHAT_URL`. |
