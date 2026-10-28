@@ -153,7 +153,7 @@ ADR-0038. **Enforced by:** the `workos-drift` workflow and `authz-coverage.spec.
 
 The platform prompt follows the same shape without the drift gate.
 `scripts/prompts_push.py` (`task prompts:push`) checks by default and publishes
-the committed `piloti_static.md` under a Langfuse label only with `--apply`. It
+the committed `chat_static.md` under a Langfuse label only with `--apply`. It
 never overwrites a Langfuse version that did not come from git. Provenance is
 read off the version itself: what Langfuse serves must be byte-identical to a
 committed text, either the file at the commit the version's message names or

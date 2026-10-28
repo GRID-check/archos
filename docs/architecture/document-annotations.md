@@ -892,7 +892,7 @@ reads Piloti's work off the server. The inbox has no Piloti to ask, so a
 Rückfrage answered from there would reach nobody: its row leads to the
 Prüfansicht instead (`answerIn: 'review'`, below).
 
-**Piloti's work is the server's to say** (`lib/annotations/piloti-work.ts`).
+**Piloti's work is the server's to say** (`lib/annotations/agent-work.ts`).
 Every mark's view carries `pilotiWork`, read off its newest wake, so everyone
 in the room reads the same line, after a reload too:
 

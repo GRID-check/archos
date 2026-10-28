@@ -49,7 +49,7 @@ The complaint "same box, different content" is half wrong, and that is why it ha
 | `Card` + hand-composed `SectionLabel` | key_takeaways, verdict_header, callout. *At the audit also:* follow_ups (now `FollowUpChips.tsx`, flat) | KeyTakeawaysCard.tsx, VerdictHeaderCard.tsx, CalloutCard.tsx |
 | Flat, no chrome at all | *At the audit:* summary, requirement_checklist, legal_basis (all retired, ADR-0069) | — |
 | `ProposalShell` | memory_proposal, project_profile_patch | ProposalShell.tsx:25–38 |
-| Borrowed from another feature | document_grid (FileCard/FileGrid), the 6 IFC cards | DocumentGridCard.tsx:6–8 |
+| Borrowed from another feature | document_grid (FileCard/FileGrid), the 6 IFC cards | DocumentAnswerCard.tsx:6–8 |
 
 Cards in group 1 and group 2 render an identical silhouette — `rounded-lg border bg-card p-5 shadow-xs`, eyebrow, 14px title, body — from two different code paths. That is the worst of both worlds: no visual variety and no shared implementation.
 
@@ -235,7 +235,7 @@ This is the mechanism that makes twenty voices one family. **The eyebrow is demo
 
 Governed by `design-language.md` §Motion vocabulary. Card-specific rulings:
 
-- **Arrival**: `FadeIn distance={6}` at the dispatcher (GridCards.tsx:97), applied uniformly. No card animates its own entrance. The `ProposalShell` spring (ProposalShell.tsx:35) is the documented exception, because those two cards *ask* for something.
+- **Arrival**: `FadeIn distance={6}` at the dispatcher (AnswerCards.tsx:97), applied uniformly. No card animates its own entrance. The `ProposalShell` spring (ProposalShell.tsx:35) is the documented exception, because those two cards *ask* for something.
 - **Nothing inside a card animates on arrival.** No staggered rows, no bars filling to their value, no counting numbers. Three reasons and they compound: a bar animating to a legal value is a legal value in motion; the design language forbids animating a § reference at all; and a card renders mid-stream while the prose above it is still arriving, so a mount animation re-fires as flicker in the middle of an answer.
 - **Permitted in-card motion, exhaustively**: `Collapsible` height at `duration-base`, chevron rotation at `duration-quick`, hover `transition-colors` at `duration-quick`. All `motion-reduce:` guarded, as they already are.
 - **Springs are forbidden in every card body.** The design language's own veto: anything carrying legal, evidentiary, provenance or error content is tween-only.
@@ -458,7 +458,7 @@ Rationale beyond aesthetics: this is the one card that is **not evidence** and m
 
 #### `document_grid` (system card)
 **Job.** The project files this answer leaned on.
-**Grammar.** **Leave it.** It borrows `FileCard`/`FileGrid` from the documents feature (DocumentGridCard.tsx:6–8) and its distinctiveness is precisely that it looks like the Files page — a file should look the same everywhere in the product. Its unresolved and error states (document-surface.tsx:24–79) are already better-designed than most of the generic family. One check only: it must be **flat register**, because a frame around a grid of file cards is a card-in-card (§A4). Unframe if framed.
+**Grammar.** **Leave it.** It borrows `FileCard`/`FileGrid` from the documents feature (DocumentAnswerCard.tsx:6–8) and its distinctiveness is precisely that it looks like the Files page — a file should look the same everywhere in the product. Its unresolved and error states (document-surface.tsx:24–79) are already better-designed than most of the generic family. One check only: it must be **flat register**, because a frame around a grid of file cards is a card-in-card (§A4). Unframe if framed.
 **Effort: S.**
 
 #### `memory_proposal` / `project_profile_patch`

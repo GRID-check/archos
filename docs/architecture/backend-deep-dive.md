@@ -407,7 +407,7 @@ validated against the shared schema and pushed into the conversation-scoped
 `CardRegistry`, which the chat entrypoint reads after the turn. There is no
 separate card-generation LLM call on that path, and no `card_generator_llm`
 config key any more. The result rides `ChatResponse.cards` → `message.cards`
-→ the frontend `validateGridCards` → `GridCards.tsx`.
+→ the frontend `validateGridCards` → `AnswerCards.tsx`.
 
 ### Deep-research cards (async path: closed; sync inline path: open)
 
@@ -1453,7 +1453,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   already holds, and the doctrine is constant per deployment, so it belongs in
   the cacheable prefix. Piloti renders the applicability section alone
   (`prompt.oib_applicability`, derived from this project's `confirmed:` facts)
-  and keeps the doctrine in its system prompt, `piloti_static.md`
+  and keeps the doctrine in its system prompt, `chat_static.md`
   (`<building_law>`). See the ADR-0060 amendment.
 - **Jurisdiction** — `resolve_country(project_context)` regexes the structured
    `country=<cc>` fact from the prompt text (`at`/`de`/`ch`/`other`, authored
@@ -1854,7 +1854,7 @@ transcript). So the system prompt and every earlier turn are a prefix the next
 round and the next turn share byte for byte, and the provider's cache reaches
 past the system prompt into the history.
 
-1. **The platform prompt** — the system prompt, `piloti_static.md` (≤ 5,000
+1. **The platform prompt** — the system prompt, `chat_static.md` (≤ 5,000
    tokens plus the envelope schema rendered from the models). Identical for
    every tenant and every turn, which is what makes it both cacheable by the
    provider and manageable outside a release. **Authored and versioned in
@@ -1892,7 +1892,7 @@ which lives in the tool description that owns it (ADR-0060 (d)), a rail code
 enforces, or gone; the 2026-10 audit lists each line.
 
 **Git is the source of truth** (ADR-0060 (a)).
-`packages/agent/src/agent/agents/piloti/prompts/piloti_static.md` is the prompt review
+`packages/agent/src/agent/agents/piloti/prompts/chat_static.md` is the prompt review
 reads, and it is pushed to Langfuse, where labels carry experiments. It is also
 what a process renders when prompt management is off (the default), when the
 Langfuse keys are absent, when Langfuse is unreachable, or when it holds no

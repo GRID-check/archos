@@ -227,7 +227,7 @@ stays with the schematic cards, where the renderer draws to scale
 ([diagrams.md](diagrams.md)).
 
 The rest of what the retired cards carried is Markdown the model declares with
-a small directive dialect, taught in `piloti_static.md` <formatting> (RICH
+a small directive dialect, taught in `chat_static.md` <formatting> (RICH
 BLOCKS) and drawn by the frontend: `:::check` around a check table (a value
 against a `≥`/`≤` limit draws as a bar), `:::procedure` around a straight
 Verfahren's numbered list (the current step marked `:current`, its Unterlagen in
@@ -319,7 +319,7 @@ the same word in any other column stays a word. The details:
 `docs/design/answer-visuals.md`. The shape rules for the prose (first line
 answers, `###` headings that state, a Fundstelle column, the status vocabulary
 including `trifft zu` and `aktuell`, the directive dialect) live in the
-`<formatting>` block of `piloti_static.md`.
+`<formatting>` block of `chat_static.md`.
 
 Deep research can still emit cards via the **`emit_card` tool**
 (`cards/register.py`); Piloti (chat) no longer binds it, and its cards travel
@@ -437,7 +437,7 @@ The checklist:
    its entry in the frontend's `SURFACE_EXCLUDED_LEAVES` if it had one
    (`test_interactive_card_parity.py` and `test_surface_excluded_parity.py`
    hold the two halves together);
-6. teach the replacement in `piloti_static.md` if it is Markdown.
+6. teach the replacement in `chat_static.md` if it is Markdown.
 
 `packages/agent/tests/cards/test_retired_card_types.py` holds every retired name to
 every channel.

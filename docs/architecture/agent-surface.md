@@ -1086,7 +1086,7 @@ What Piloti knows before its first call, and how it reports
   question about filing or finding it closes with the office's conventions,
   counted from its projects and stated as "usually" (ADR-0129, behind
   the `office-conventions` flag).
-- **The prompt's `<workspace>` facts** (`piloti_static.md`): queries in English,
+- **The prompt's `<workspace>` facts** (`chat_static.md`): queries in English,
   in the catalog's words; search and describe in one round, call in the next;
   a record is named, never cited; files and memory have their own native doors.
 - **Native tools first.** What Piloti does with a tool of its own (memory,

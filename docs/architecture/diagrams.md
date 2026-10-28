@@ -356,7 +356,7 @@ refuses, and every diagram already stored in a thread is one.
 ### Since 2026-09-24: the fence first
 
 The chat prompt now teaches the fence as THE way to draw
-(`piloti_static.md` <formatting>), and the chat envelope no longer teaches the
+(`chat_static.md` <formatting>), and the chat envelope no longer teaches the
 `diagram` card (it left the union later that month, `catalog.RETIRED_CARD_TYPES`). Each of the card's three
 arguments above was re-checked against the fence:
 
@@ -455,7 +455,7 @@ transition touches is still drawn.
    64). A model that depends on anything else is served stale.
 5. **A new grammar**, not only a new view, also needs `DiagramGrammar` in
    `packages/agent/src/agent/cards/models.py`, the grammar list in the prompt
-   (`piloti_static.md` `<formatting>`), and a browser capture in
+   (`chat_static.md` `<formatting>`), and a browser capture in
    `lib/diagrams/__fixtures__/` that prints through `svg-to-pdf.spec.tsx`
    (next section).
 

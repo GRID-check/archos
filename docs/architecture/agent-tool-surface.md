@@ -349,7 +349,7 @@ been uploaded and read).
 - **`documents_missing:` names unassigned roles, not absent files.** It is
   recommended document roles minus bound ones, and a document read under
   another name and never assigned is in it. `<project_record>` in
-  `piloti_static.md` now tells the agent to look (`list_files`,
+  `chat_static.md` now tells the agent to look (`list_files`,
   `knowledge_search`) before calling a document missing, and that absence
   from every list is never proof a file does not exist. The folder brief in
   Dateien shows people the same list.
