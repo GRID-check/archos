@@ -26,7 +26,7 @@ export const bim: typeof en.bim = {
   empty: {
     title: 'Noch kein IFC-Modell',
     description:
-      'Laden Sie unter „Dateien“ eine .ifc-Datei hoch. Piloti liest die Struktur ein, macht das Gebäude im Chat abfragbar und zeigt es hier in 3D.',
+      'Laden Sie unter „Dateien“ eine .ifc-Datei hoch. {productName} liest die Struktur ein, macht das Gebäude im Chat abfragbar und zeigt es hier in 3D.',
     action: 'Zu den Dateien',
   },
   status: {
@@ -399,7 +399,7 @@ export const bim: typeof en.bim = {
       hide: 'Ausblenden',
       isolate: 'Isolieren',
       technical: 'Technische Details',
-      ask: 'Piloti dazu fragen',
+      ask: '{productName} dazu fragen',
     },
   },
   viewer: {
@@ -460,7 +460,7 @@ export const bim: typeof en.bim = {
     unsupported: {
       title: '3D-Ansicht in diesem Browser nicht verfügbar',
       description:
-        'Die 3D-Ansicht benötigt WebGPU, das dieser Browser nicht bereitstellt. Am Modell selbst liegt es nicht — Piloti beantwortet weiterhin Fragen dazu, und in Chrome, Edge oder einem aktuellen Safari wird das Modell angezeigt.',
+        'Die 3D-Ansicht benötigt WebGPU, das dieser Browser nicht bereitstellt. Am Modell selbst liegt es nicht — {productName} beantwortet weiterhin Fragen dazu, und in Chrome, Edge oder einem aktuellen Safari wird das Modell angezeigt.',
     },
   },
   facts: {
@@ -471,7 +471,7 @@ export const bim: typeof en.bim = {
   preview: {
     loading: 'Modell wird geladen…',
     extracting:
-      'Piloti liest dieses Modell gerade ein. Sobald das abgeschlossen ist, erscheint das Gebäude hier.',
+      '{productName} liest dieses Modell gerade ein. Sobald das abgeschlossen ist, erscheint das Gebäude hier.',
     extractionFailed:
       'Dieses Modell konnte nicht eingelesen werden. Die Datei selbst ist unverändert und kann weiterhin heruntergeladen werden.',
     noModel: 'Zu dieser Datei wurde kein Modell eingelesen.',

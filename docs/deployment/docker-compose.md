@@ -57,7 +57,7 @@ Every other HTTP route is [`api`](#api-the-api-role)'s.
 |----------|-------|
 | Image | `backend:local` (override with `BACKEND_IMAGE`) |
 | Build context | `../../` (repo root) |
-| Dockerfile | `deploy/Dockerfile` |
+| Dockerfile | `apps/backend/Dockerfile` |
 | Build target | `${BUILD_TARGET:-dev}` (dev = CLI included, release = web only) |
 | Container name | (auto-generated) |
 | Ports | `${CHAT_PORT:-8001}:8000` (the WebSocket, for a client that dials it directly, such as `task be:eval:loop`) |
@@ -311,7 +311,7 @@ The Next.js UI application.
 |----------|-------|
 | Image | `frontend:local` (override with `FRONTEND_IMAGE`) |
 | Build context | `../../frontends/ui` |
-| Dockerfile | `deploy/Dockerfile` |
+| Dockerfile | `apps/backend/Dockerfile` |
 | Container name | (auto-generated) |
 | Ports | `${FRONTEND_PORT:-3000}:3000` |
 | Networks | `app`, `gotenberg-internal` |
@@ -323,7 +323,7 @@ The Next.js UI application.
 | `REQUIRE_AUTH` | `${REQUIRE_AUTH:-false}` |
 | `BACKEND_URL` | `${BACKEND_URL:-http://api:8000}` (the api role: every HTTP call) |
 | `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://chat:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
-| `APP_DATABASE_URL` | `${APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `APP_MIGRATION_DATABASE_URL`, set only on `migrate`, straight to `postgres`. |
+| `APP_DATABASE_URL` | `${APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `APP_MIGRATION_DATABASE_URL`, set only on `migrate`, straight to `postgres`. |
 | `WORKOS_CLIENT_ID` | `${WORKOS_CLIENT_ID}` |
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}` |
@@ -496,7 +496,7 @@ Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 ## Build Targets
 
-The backend `deploy/Dockerfile` defines two build targets:
+The backend `apps/backend/Dockerfile` defines two build targets:
 
 ### dev (default)
 

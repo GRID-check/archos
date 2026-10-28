@@ -9,12 +9,12 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
 }))
 
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-details', () => ({
   documentStillExists: vi.fn(),
 }))
 
 import { GET } from './route'
-import { documentStillExists } from '@/lib/documents/service'
+import { documentStillExists } from '@/lib/documents/document-details'
 
 const DOC_ID = '4f9c1d2e-3b4a-4c5d-8e6f-7a8b9c0d1e2f'
 

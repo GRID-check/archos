@@ -86,7 +86,7 @@ worktree, and validates the wrong code while appearing to pass. `pyproject.toml`
 **The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
 Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
-`frontends/aiq_api/tests/test_research_queue_fair.py` run every scenario on
+`apps/backend/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
 SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
@@ -98,14 +98,14 @@ joins the task's list.
 
 **The base-corpus tests run on SQLite by default, and the Postgres paths need
 `TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
-`test_oib_status.py` and `frontends/aiq_api/tests/test_oib_documents_routes.py`
+`test_oib_status.py` and `apps/backend/tests/test_oib_documents_routes.py`
 keep the corpus table, the ingest queue and the ingest status store in a throwaway SQLite file and the object store in memory.
 The Postgres upsert, the conditional update that records an ingested hash and the
 advisory locks behind `keyed_lock` (SQLite has none) are only exercised when you
 point `TEST_CORPUS_DB` at a scratch database, for example
 `postgresql://postgres@127.0.0.1:5432/corpus_test`. Prefer the IP to `localhost`: in
 the sandbox this was written in, `localhost` resolved to another host under the
-`frontends/aiq_api` suite and the first test hung on the connect. The table is emptied before each test, so never
+`apps/backend` suite and the first test hung on the connect. The table is emptied before each test, so never
 aim it at a database that holds a real corpus.
 
 **Lazy schema creation is tested against a real Postgres, from several processes.**

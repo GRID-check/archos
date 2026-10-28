@@ -14,7 +14,7 @@ import {
  * the backend's citation-quality emitter (src/aiq_agent/common/citation_events.py
  * — the quality sibling of the timing ledger in agent-profiler.ts and the cost
  * ledger in budgets.ts). Append-only, written only via the token-guarded
- * internal endpoint POST /api/internal/citation-events; grid_app stays
+ * internal endpoint POST /api/internal/citation-events; `app` stays
  * single-writer.
  *
  * Every observed research turn writes exactly one `turn_verified` row — the

@@ -13,7 +13,7 @@ GRID has no working deletion story. Today:
 - Session/conversation deletion leaks LangGraph checkpoints.
 - There is no organization offboarding at all.
 
-Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art. 17 / security questionnaires). Deletion must span five stores that cannot be updated atomically: `grid_app` Postgres, `jobs` Postgres, `checkpoints` Postgres, SeaweedFS, the vector store (Chroma then, Qdrant since ADR-0115), plus WorkOS (FGA resources / orgs).
+Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art. 17 / security questionnaires). Deletion must span five stores that cannot be updated atomically: `app` Postgres, `jobs` Postgres, `checkpoints` Postgres, SeaweedFS, the vector store (Chroma then, Qdrant since ADR-0115), plus WorkOS (FGA resources / orgs).
 
 ## Design principles
 
@@ -24,7 +24,7 @@ Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art.
 
 ## Architecture
 
-### Central deletion queue (grid_app Postgres)
+### Central deletion queue (`app` Postgres)
 
 New table `deletion_queue` — simultaneously tombstone, work queue, and surviving audit record:
 
@@ -44,11 +44,11 @@ New table `deletion_queue` — simultaneously tombstone, work queue, and survivi
 | `last_error` | text nullable | |
 | `payload` | jsonb | pointers snapshot (collection name, SeaweedFS prefix, conversation ids) captured at enqueue time as a fallback |
 
-Rationale for a central table (vs per-table columns only): organizations have **no DB row** in grid_app (ADR-0007 — they live in WorkOS), so there is nothing to put a `deleted_at` column on. The queue also gives one audit trail and one poller for all entity types.
+Rationale for a central table (vs per-table columns only): organizations have **no DB row** in `app` (ADR-0007 — they live in WorkOS), so there is nothing to put a `deleted_at` column on. The queue also gives one audit trail and one poller for all entity types.
 
 Entities that do have rows additionally get a `deleted_at timestamptz` column (`projects`, `conversations`) used **only** for query filtering — the reaper never scans entity tables. `documents` had one too (migration 0009) but never soft-deleted — every document delete is a hard DELETE — and migration 0077 dropped the column, because a filter over a column nothing writes hides rows the day something does.
 
-### Legal holds (grid_app Postgres)
+### Legal holds (`app` Postgres)
 
 New table `legal_holds`: `id`, `entity_type`, `entity_id`, `organization_id`, `reason`, `created_by`, `created_at`, `released_at` (nullable). A hold is **active** while `released_at IS NULL`.
 
@@ -56,7 +56,7 @@ Semantics: a hold does **not** block soft delete (a folder still goes to the Pap
 
 This doubles as GDPR **Art. 18 (restriction of processing)** support: restricted data is preserved but not actively processed.
 
-**What a hold covers, and who asks (migration 0093).** "Covered" is one database function, `grid_legal_hold_blocks(entity_type, entity_id, organization_id)`, and every reader calls it rather than restating it. An entity is covered by an active hold of its own organization on: the organization; the entity itself; what contains it (a document's project and conversation, a conversation's project); what it contains, since erasing it erases that too (a conversation's attachments; a project's documents, chats and the chats' attachments; for an organization, any hold in it at all); and the user who created it (a custodian hold: `documents.created_by`, `conversations.created_by`). Since migration 0115 a **folder** is covered by a hold on the folder, on a folder above it (which contains it) or below it, on a document in its subtree, on the project, on the creator of a document in it, or on the organization; a document is also covered by a hold on any folder on its path, and a project by a hold on any of its folders (`grid_folder_subtree`, `grid_folder_ancestry`). Three readers:
+**What a hold covers, and who asks (migration 0093).** "Covered" is one database function, `legal_hold_blocks(entity_type, entity_id, organization_id)`, and every reader calls it rather than restating it. An entity is covered by an active hold of its own organization on: the organization; the entity itself; what contains it (a document's project and conversation, a conversation's project); what it contains, since erasing it erases that too (a conversation's attachments; a project's documents, chats and the chats' attachments; for an organization, any hold in it at all); and the user who created it (a custodian hold: `documents.created_by`, `conversations.created_by`). Since migration 0115 a **folder** is covered by a hold on the folder, on a folder above it (which contains it) or below it, on a document in its subtree, on the project, on the creator of a document in it, or on the organization; a document is also covered by a hold on any folder on its path, and a project by a hold on any of its folders (`folder_subtree`, `folder_ancestry`). Three readers:
 
 - **The purger** — its claim query and the TOCTOU re-checks in `purge-project.js` and `purge-conversation.js`. The predicate used to be written out in `purger/db.js` and saw only the project and the organization, so a held document inside a deleted project was purged with it.
 - **The BFF's immediate deletes** — documents, Archiv documents, conversations and chat attachments are hard-deleted in the request, not queued, and a folder is purged in the request by „Endgültig löschen", so each calls `assertNoActiveHold` (`lib/compliance/holds.ts`) after its access check and before its first destructive step. A covered entity answers **409** `{ code: 'CONFLICT', details: { reason: 'legal_hold' } }` and nothing is erased; the chat is not even marked deleting. The response never names the hold or its reason.
@@ -86,7 +86,7 @@ Grace periods are config values; the architecture is identical at 0. All grace p
 
 ### Purger service
 
-New docker-compose service `purger`: **same image as the frontend, different command** (`node purger/index.js`). *(Revised from the original `aiq_api`-image idea during implementation planning: `grid_app` Postgres is owned by the frontend — single-writer rule — so the purger is plain-JS in `frontends/ui/purger/`, and the Python backend instead exposes one internal maintenance endpoint for its stores.)* No new codebase, no inbound ports. It holds all credentials (grid_app DB, jobs DB, checkpoints DB, SeaweedFS, the vector store's API, WorkOS API key) — acceptable as a privileged internal service. "Spawn on demand" was rejected: it requires docker-socket access from an app container (root-equivalent, fails enterprise security review). A sleeping poll loop costs ~zero.
+New docker-compose service `purger`: **same image as the frontend, different command** (`node purger/index.js`). *(Revised from the original `aiq_api`-image idea during implementation planning: `app` Postgres is owned by the frontend — single-writer rule — so the purger is plain-JS in `frontends/ui/purger/`, and the Python backend instead exposes one internal maintenance endpoint for its stores.)* No new codebase, no inbound ports. It holds all credentials (`app` DB, jobs DB, checkpoints DB, SeaweedFS, the vector store's API, WorkOS API key) — acceptable as a privileged internal service. "Spawn on demand" was rejected: it requires docker-socket access from an app container (root-equivalent, fails enterprise security review). A sleeping poll loop costs ~zero.
 
 Loop, every 60s:
 
@@ -248,7 +248,7 @@ purger never sees it. So the scheduler (`scheduler/index.js`,
 'conversation'`, `status = 'purged'`, `purged_at` within the last 35 days and at
 least 15 minutes ago (a turn that was still streaming exports spans for a
 little after the delete), no `payload.langfuseTracesErasedAt` yet, and not
-blocked by `grid_legal_hold_blocks`. For each it asks the hold predicate once
+blocked by `legal_hold_blocks`. For each it asks the hold predicate once
 more, deletes the chat's traces with the same client, and stamps
 `payload.langfuseTracesErasedAt` on the row (a jsonb merge; no column). A chat
 under a hold keeps its traces and is looked at again, inside the 35 days, after
@@ -338,7 +338,7 @@ Beside it, `POST /v1/maintenance/reconcile-summaries` (same guard) forgets summa
 - **Delete project** action in project settings; **delete document** in the documents list/file views; conversation delete wired through the upgraded flow; **delete organization** in org settings (owner only).
 - **Recently deleted** (org admins): lists pending project/org deletions with time-remaining and a **Restore** button. Without this, the grace period would require DB surgery to be useful.
 
-### Migrations (grid_app)
+### Migrations (`app`)
 
 1. `deletion_queue` table.
 2. `deleted_at` on `projects`, `documents`, `conversations` (the `documents` one was never written and is dropped again by 0077).

@@ -264,7 +264,7 @@ itself.
 
 | Column | Holds |
 |---|---|
-| `id` uuid pk, `organization_id`, `project_id` unique | composite FK `(project_id, organization_id)` → `projects` on delete cascade; RLS by `grid_secure_table` |
+| `id` uuid pk, `organization_id`, `project_id` unique | composite FK `(project_id, organization_id)` → `projects` on delete cascade; RLS by `secure_table` |
 | `created_by` | who created it |
 | `mode` | `active` or `closing`; CHECK `(mode = 'closing') = (closing IS NOT NULL)` |
 | `description` | the person's „Worum geht es?", ≤ 500 |

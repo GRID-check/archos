@@ -212,7 +212,7 @@ Flow (fire-and-forget background task on the event loop):
    in-prompt (the §3.2 embed-based consolidation still applies at write time).
 3. Each qualifying finding is validated (kind/scope/confidence vocab, one concise
    sentence, scope has a writable target) and written through the same
-   token-guarded internal endpoint the `remember` tool uses — `grid_app` stays
+   token-guarded internal endpoint the `remember` tool uses — `app` stays
    single-writer; the backend never touches its database.
 
 Guarantees: **never blocks the answer**, **never crashes the turn** (every path

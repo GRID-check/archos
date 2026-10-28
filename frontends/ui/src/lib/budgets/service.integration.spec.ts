@@ -6,7 +6,7 @@
  * under `task db:test:rls` as the restricted runtime role; skipped unless
  * TEST_DATABASE_URL is set.
  *
- *   TEST_DATABASE_URL=postgres://user@host:port/grid_app npx vitest run \
+ *   TEST_DATABASE_URL=postgres://user@host:port/app npx vitest run \
  *     src/lib/budgets/service.integration.spec.ts
  */
 

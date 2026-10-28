@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: the PostHog usage export's SQL against a REAL
  * Postgres with the whole migration chain applied, as the restricted runtime
  * role. The cursor is claimed once while a run holds it, moves only when told

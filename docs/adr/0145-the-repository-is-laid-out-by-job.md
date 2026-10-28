@@ -279,7 +279,7 @@ open PRs touching that tree have drained or been rebased by their authors.
 | 4 | `shared/cards`, `shared/wire` → `contracts/` | 211 | open card and wire PRs |
 | 5 | Import hygiene: `sources.<pkg>.src.X` → the installed name (338 lines), and the 69 dotted `tests.aiq_agent.…` imports → an importable helpers module: one `<distribution>_testing` support package per suite family, on pytest's `pythonpath`, held by `tests/test_test_imports.py`. This ends the double identity and makes rows 6 and 7 pure renames | ~410 | open retrieval and agent-test PRs |
 | 6 | `sources/*` → `packages/<distribution>`, named by rule 3. The Python packages are listed, not globbed (`packages/*` also holds the IFC packages), and `tests/test_python_packages.py` holds the three lists together. `tests/knowledge_layer_tests` stays for now: its 105 files are agent integration tests (651 `aiq_agent` references) that run in the core shards, and moving them into the package would also move them to the `sources` job and make the package's suite depend on the agent. That is its own decision | ~470 | row 5 |
-| 7 | `frontends/aiq_api`, `deploy/Dockerfile` with `entrypoint.py` and `start_web.py` → `apps/backend`. Paths only | ~220 | open backend-route PRs |
+| 7 | `frontends/aiq_api`, `deploy/Dockerfile` with `entrypoint.py` and `start_web.py` → `apps/backend`. Paths only: the package keeps its name (`aiq_api`, row 10a) and the CI suite its `aiq_api` name. Inside the image the two scripts move with the directory to `/app/apps/backend/`; nothing outside the Dockerfile named their old in-image path | ~220 | open backend-route PRs |
 | 8 | `src/aiq_agent` + `tests/aiq_agent` → `packages/agent`: the `git mv`, then the pyproject split as its own commit. The distribution stays `aiq-agent` until 10a; the layout test allowlists that. Re-keys the brand baseline | ~1,020 | row 5; open agent PRs |
 | 9 | `frontends/ui` → `apps/workspace`, with `app/ ui/ bff/` inside, in two commits; task namespace `fe:` → `workspace:` and CI tier `frontend` → `workspace` | 1,464 | the in-flight UI queue |
 | 10a | Python rename: imports, distributions, symbols, entry points | ~10,800 | an empty Python PR queue |
@@ -312,6 +312,53 @@ expand, switch, contract:
 `frontend` → `workspace` and `web` → `site` follow the same three steps, with
 the Gateway routes switching in step 2. Each deploy is applied by an operator.
 An agent runs `npm run preview`, never `npm run up`.
+
+Row 10d leaves temporary machinery behind, each piece with the step that
+removes it. Tick these off in order; none may reach production before the
+release that put it there has run there:
+
+- [ ] **Postgres superuser.** The rename Job `pg-rename-legacy-names` (#1335)
+  logs in as CNPG's superuser, so the Cluster carries
+  `enableSuperuserAccess: true`. Once production has run the rename, a contract
+  PR sets it back to `false` and deletes the Job and
+  `deploy/postgres/rename-legacy-names.sh` (and the Compose `postgres-rename`
+  service). Never in the same promotion as #1335.
+- [ ] **Table views.** 0189 leaves `piloti_wakes`, `piloti_changes` and
+  `piloti_asks` as views over the `agent_*` tables (#1338). The next release
+  drops them in a migration.
+- [ ] **Function wrappers.** 0190 keeps each `grid_` function's old name as a
+  wrapper (#1342). The next release drops every function whose comment starts
+  `Old name, kept for one release by migration 0190`.
+- [ ] **Browser keys.** `storage-rename-boot.ts` and the `grid-locale` cookie
+  read (#1358) are deleted the release after.
+- [ ] **Role-name fallback.** The deploy renames the row-level-security roles
+  after the migrations (`rename-legacy-names.sh after-migrate`), because the
+  migrations written before the rename grant to `grid_app_rw` and
+  `grid_app_platform` by name. So a fresh database still bootstraps those names
+  (`init-db.sql`, `ensure_rls_roles`, `ensure-rls-roles.mjs`), and `rls_role()`
+  (0191) answers whichever exists. This stays until a squashed baseline
+  migration replaces the chain; then the bootstrap creates `app_*` directly and
+  `rls_role()` goes.
+
+Persisted names the inventory above did not list, still carrying a brand, each
+its own change with its own migration or read-both:
+
+- [ ] **Session settings** `grid.organization_id` and `grid.user_id`: written by
+  every BFF transaction and read by every policy (`current_org()`), so a
+  read-both in `current_org()` first, then the writers.
+- [ ] **Skill frontmatter keys** `grid-agents`, `grid-hidden`,
+  `grid-auto-invoke`, `grid-execution`, `grid-catalog`, `grid-schedulable`
+  (`lib/skills/types.ts`), stored in skill files and the database.
+- [ ] **Cache keys** `grid:run:*` and `grid:mcp-request-state:v1`: rename and
+  accept one cold cache, or read both for a TTL.
+- [ ] **Secret names** `grid-llm-credential-<org>-<id>` (`llm-credentials/secret-store.ts`):
+  stored per organization, so a copy-then-delete migration.
+- [ ] **Buckets** `grid-documents`, `grid-pg-backups` and the per-organization
+  `grid-org-*` prefix: an object-store copy (ADR-0147 leaves them out of the
+  namespace move).
+- [ ] **Notification tokens** `piloti.work_done`, `piloti.work_failed`,
+  `piloti.asks_you` (`lib/annotations/attention.ts`), where they are stored on
+  inbox rows.
 
 ### Per-move checklist
 

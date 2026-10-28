@@ -4,7 +4,7 @@
  * A chat's use of OTHER projects (ADR-0094, migration 0125) against a REAL
  * Postgres, through the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/conversations/cross-project-use.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -306,7 +306,7 @@ describe.skipIf(!url)('cross-project use against Postgres (migration 0125)', () 
 
     expect(await marks(restrictedAnswer)).toBe(1)
     // Another project's open content is not restricted use: the project record
-    // stays outside `grid_conversation_restricted_use`.
+    // stays outside `conversation_restricted_use`.
     expect(await marks(openAnswer)).toBe(0)
   })
 

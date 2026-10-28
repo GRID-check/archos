@@ -32,7 +32,7 @@ def harness(monkeypatch):
     monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
     monkeypatch.setattr(
-        "knowledge_layer.register._format_results",
+        "knowledge_layer.search_results.format_results",
         lambda merged, query, notice="", *_rest: notice + "no results",
     )
     monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)

@@ -698,7 +698,7 @@ functions:
   # resolves the file or the folder against what the turn can already see,
   # renders ONE `file_operation_proposal` card, and changes nothing. Accepting the card runs the operation through the routes
   # the Files pane already uses, in the reader's own session — the BFF stays
-  # the single writer of `grid_app` (ADR-0003), which is why there is no
+  # the single writer of `app` (ADR-0003), which is why there is no
   # backend path here to write with.
   #
   # Bound on Piloti only. Deep research runs unattended on the
@@ -716,7 +716,7 @@ functions:
   # `POST /api/internal/document-versions`, echoing the BFF-signed request
   # envelope, so the write happens in the requesting person's pinned session
   # under their permissions and their audit actor (ADR-0054 §4). The BFF stays
-  # the single writer of `grid_app`.
+  # the single writer of `app`.
   #
   # Bound on Piloti only, for the same reason as the proposal
   # tool and one more: the envelope is minted per chat turn, so an unattended

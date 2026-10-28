@@ -19,7 +19,7 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:pgAppPassword         "$(openssl rand -base64 24)" --secret
 
-#   # Password for the least-privilege `grid_app_rw` runtime role (ADR-0041).
+#   # Password for the least-privilege `app_rw` runtime role (ADR-0041).
 
 #   # Required, no fallback — a stack without it fails at `pulumi preview`:
 
@@ -377,7 +377,7 @@ config:
 
   #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:otelPrimaryApiKey "$(openssl rand -hex 32)" --secret
 
-  # dashboardImage/collectorImage default to digest-pinned versions in src/config.ts —
+  # dashboardImage/collectorImage default to digest-pinned versions in src/config/ —
 
   # only override here when deliberately upgrading.
 
@@ -462,7 +462,7 @@ config:
   grid-oib:langfuseInitUserEmail: matthias@bigls.net
   grid-oib:langfuseOrgId: grid
   grid-oib:langfuseProjectId: grid-oib
-  # ClickHouse PVC for Langfuse. Matches the program default (src/config.ts);
+  # ClickHouse PVC for Langfuse. Matches the program default (src/config/langfuse.ts);
   # pinned here so the prod size is visible. Live volume was grown 20Gi -> 50Gi.
   grid-oib:clickhouseStorageSize: 50Gi
   grid-oib:otelOidcIssuer: https://prestigious-energy-03.authkit.app

@@ -4,7 +4,7 @@
  * Upload batches and the quarantine release, against a REAL Postgres
  * (ADR-0086, migrations 0109 and 0110), through the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/upload-batches/upload-batches.integration.spec.ts
  *
  * The unit specs mock the repository; these prove the SQL the claims rest on:

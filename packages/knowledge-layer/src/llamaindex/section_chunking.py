@@ -637,9 +637,9 @@ def join_lines(lines: list[Line]) -> str:
 def apply_exclusions(document: Any) -> None:
     """The adapter's embed/LLM exclusions plus this module's own (see ``clause_chunking``)."""
     try:
-        from knowledge_layer.llamaindex.adapter import _apply_metadata_exclusions
+        from knowledge_layer.llamaindex.chunk_metadata import apply_metadata_exclusions
 
-        _apply_metadata_exclusions(document)
+        apply_metadata_exclusions(document)
     except ImportError:  # pragma: no cover - the adapter is always present in practice
         pass
     for attribute in ("excluded_embed_metadata_keys", "excluded_llm_metadata_keys"):

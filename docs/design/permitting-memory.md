@@ -54,7 +54,7 @@ ingest (per document, adapter.py loop)
 | column | type | notes |
 |---|---|---|
 | `id` | uuid pk default gen_random_uuid() | |
-| `organization_id` | text not null | RLS: `organization_id = grid_current_org()` |
+| `organization_id` | text not null | RLS: `organization_id = current_org()` |
 | `project_id` | uuid not null | composite FK `(project_id, organization_id)` → `projects (id, organization_id)` on delete cascade |
 | `document_id` | uuid not null unique | FK → `documents(id)` on delete cascade |
 | `collection_name` | text not null | the document's collection (a restricted folder has its own) |

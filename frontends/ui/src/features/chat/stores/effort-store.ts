@@ -79,7 +79,7 @@ export const useEffortStore = create<EffortState>()(
       },
     }),
     {
-      name: 'piloti-chat-effort',
+      name: 'chat-effort',
       version: 1,
       // The org default is re-read every session; persisting it would pin a
       // stale one after an admin changes it.

@@ -169,7 +169,7 @@ resolver (`EMBED_API_KEY`, else the key inferred from `EMBED_BASE_URL`).
 ### What's Needed For VLM Features
 
 Vision-Language Model features (table extraction, image extraction, chart
-extraction) are on by default (`GRID_EXTRACT_*`, set `false` to disable one);
+extraction) are on by default (`EXTRACT_*`, set `false` to disable one);
 they need only a VLM key, and the model and host default to OpenRouter:
 
 ```bash

@@ -119,7 +119,7 @@ already read.
 * `frontends/ui/tests/fixtures/project-intake.schema.json` is generated from the
   zod schemas. `tests/aiq_agent/agents/intake/` validates every body the tools
   build against it, and refuses a quote not found in the text read.
-* `rls-coverage.spec.ts` covers `project_intakes` through `grid_secure_table`.
+* `rls-coverage.spec.ts` covers `project_intakes` through `secure_table`.
   Its CHECKs are exercised by `task db:test:rls`.
 
 ## Pros and Cons of the Options

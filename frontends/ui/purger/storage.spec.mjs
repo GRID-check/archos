@@ -64,7 +64,7 @@ describe('deleteStoragePrefix', () => {
 
   // The branch the module exists to get right. `Quiet: true` means a 200 can
   // still carry per-key errors; swallowing them makes the purge "succeed", the
-  // grid_app pointer disappear, and the surviving objects unreachable orphans.
+  // `app` pointer disappear, and the surviving objects unreachable orphans.
   it('throws when the batch delete reports per-key errors', async () => {
     const s3 = makeS3([{ Contents: [{ Key: 'a' }], IsTruncated: false }], {
       deleteResult: { Errors: [{ Key: 'a', Code: 'AccessDenied' }] },
@@ -101,7 +101,7 @@ describe('deleteStoragePrefix', () => {
   // port instead of the S3 port, or an ingress that lost its route, answers
   // 404 — and a guard that keyed on the STATUS rather than the code would call
   // that "already erased", let the purge delete the WorkOS resource and the
-  // grid_app rows, and mark the queue row purged with every object intact.
+  // `app` rows, and mark the queue row purged with every object intact.
   it('does not treat a bare 404 from a misrouted endpoint as an empty bucket', async () => {
     const s3 = makeS3([s3Error('NotFound', 404)])
     await expect(deleteStoragePrefix(s3, 'grid-documents', 'org/o1/')).rejects.toThrow('NotFound')

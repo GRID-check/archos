@@ -76,7 +76,7 @@ a library for first. The prior exploration reached the same verdict
 
 **Storage.** `langgraph.store.postgres.PostgresStore` on `CHECKPOINT_DB`
 (the Python service's own Postgres database, `checkpoints`, already
-pooled in `common/__init__.py`). No table in `grid_app`; the single-writer
+pooled in `common/__init__.py`). No table in `app`; the single-writer
 rule holds. Namespace `("conversation", <id>, "drafts")`. A byte ceiling per
 conversation. Cleanup rides the conversation's deletion cascade through one
 internal call.
@@ -175,7 +175,7 @@ later `scheduled` state attaches to publish without touching approval.
 `tasks_review_complete`); published requires `approved_by` and `approved_at`;
 changes requested and rejected require a comment; one open draft per item and
 one published version per item as partial unique indexes with `COMMENT ON
-INDEX`. `grid_secure_table` in the same migration, the table listed in
+INDEX`. `secure_table` in the same migration, the table listed in
 `BOUNDARY_MIGRATIONS`, a `.down.sql`, the journal entry. No new permission.
 
 **No state-machine library.** The authority is Postgres (the CHECKs plus a

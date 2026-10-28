@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * First-boot provisioning of the platform default model.
  *
  * The cases here are the ones that decide whether this is safe to run on a

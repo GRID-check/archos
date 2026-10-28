@@ -265,7 +265,7 @@ async function askAboutABox(piloti: ReturnType<typeof scriptedPiloti>) {
 
   const card = await screen.findByTestId('piloti-card')
   expect(within(card).getByTestId('piloti-composer')).toBeInTheDocument()
-  expect(within(screen.getByTestId('sheet')).getByTestId('piloti-ask-box')).toHaveAttribute('data-status', 'composing')
+  expect(within(screen.getByTestId('sheet')).getByTestId('agent-ask-box')).toHaveAttribute('data-status', 'composing')
   await userEvent.click(within(card).getByTestId('piloti-quick-dimensions'))
   await waitFor(() => expect(piloti.questions()).toHaveLength(1))
 }
@@ -677,7 +677,7 @@ describe('the review', () => {
 
     const card = screen.getByTestId('piloti-card')
     expect(within(card).getByTestId('piloti-card-thinking')).toBeInTheDocument()
-    expect(within(screen.getByTestId('sheet')).getByTestId('piloti-ask-box')).toHaveAttribute('data-status', 'thinking')
+    expect(within(screen.getByTestId('sheet')).getByTestId('agent-ask-box')).toHaveAttribute('data-status', 'thinking')
 
     piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
     piloti.deliver(2, { type: 'TEXT_MESSAGE_START', message_id: 'a-1' })
@@ -726,7 +726,7 @@ describe('the review', () => {
       ])
     )
     await waitFor(() => expect(screen.queryByTestId('piloti-card')).toBeNull())
-    expect(within(screen.getByTestId('sheet')).queryByTestId('piloti-ask-box')).toBeNull()
+    expect(within(screen.getByTestId('sheet')).queryByTestId('agent-ask-box')).toBeNull()
     expect(await screen.findByTestId('review-thread')).toBeInTheDocument()
   })
 

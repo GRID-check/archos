@@ -2,7 +2,7 @@
 
 ``POST /api/internal/document-versions``, ops ``create``, ``update`` and
 ``submit``. Nothing here writes a row: the BFF is the single writer of
-``grid_app`` (ADR-0003) and this module is a CLIENT of the route the browser's
+``app`` (ADR-0003) and this module is a CLIENT of the route the browser's
 own filing goes through (ADR-0055).
 
 Beside the write door, the READ one:

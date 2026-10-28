@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { logicalName, objectName } from "../names";
 
 /** The single namespace holding every app + data workload. */

@@ -20,7 +20,7 @@
  */
 
 /** The zustand `persist` name of the layout store (`features/layout/store.ts`). */
-export const LAYOUT_STORE_KEY = 'grid-layout'
+export const LAYOUT_STORE_KEY = 'layout'
 
 /**
  * The browser-chrome colour per theme: `--background` in `styles/tokens.css`
@@ -44,4 +44,4 @@ export const THEME_COLOR = { light: '#f6f6f4', dark: '#191816' } as const
  * the literal and the constant to the same key.
  */
 export const THEME_BOOT_SCRIPT =
-  '(function(){var t;try{var s=JSON.parse(localStorage.getItem("grid-layout")||"null");t=s&&s.state&&s.state.theme}catch(e){}var dark=t==="dark"||(t!=="light"&&!!window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",dark)})()'
+  '(function(){var t;try{var s=JSON.parse(localStorage.getItem("layout")||"null");t=s&&s.state&&s.state.theme}catch(e){}var dark=t==="dark"||(t!=="light"&&!!window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",dark)})()'

@@ -4,7 +4,7 @@
  * The folder cards against a REAL Postgres (migration 0180, ADR-0127), through
  * the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     bunx vitest run src/lib/folder-cards/repository.integration.spec.ts
  *
  * Proves the SQL the route rests on: a path resolves to its folder inside the

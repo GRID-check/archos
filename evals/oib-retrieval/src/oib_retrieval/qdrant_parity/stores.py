@@ -49,7 +49,7 @@ class IndexedChunk:
 
 def identity(model: str, base_url: str) -> dict[str, str]:
     """The embedder fingerprint the collection records, as production computes it."""
-    from knowledge_layer.llamaindex.adapter import embed_fingerprint_metadata
+    from knowledge_layer.llamaindex.embedding import embed_fingerprint_metadata
 
     return embed_fingerprint_metadata(model, base_url)
 
@@ -167,14 +167,12 @@ def retriever(model: str, base_url: str, queries: Sequence[str], query_vectors: 
     ``_retrieve_sync`` then runs exactly as in production, minus the embedding round
     trip: the store calls are what is timed and scored.
     """
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     from llama_index.core.embeddings import MockEmbedding
 
     instance = LlamaIndexRetriever({"embed_model": model, "embed_base_url": base_url, "hybrid_search": True})
     instance._embed_model = MockEmbedding(embed_dim=int(query_vectors.shape[1]))
     instance._initialized = True
     for query, vector in zip(queries, query_vectors, strict=True):
-        key = (model, query)
-        instance._embed_cache[key] = [float(value) for value in vector]
-        instance._embed_cache_order.append(key)
+        instance._query_embeddings.seed((model, query), [float(value) for value in vector])
     return instance

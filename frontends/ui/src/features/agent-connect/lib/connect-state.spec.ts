@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { deriveAgentConnectState, loadAgentConnectState } from './connect-state'
 

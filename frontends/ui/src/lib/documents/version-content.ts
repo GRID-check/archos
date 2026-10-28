@@ -74,8 +74,8 @@ import {
 /**
  * Ceiling on the chunk purges this tier runs against the backend.
  *
- * Its own constant rather than an import of `documents/service.ts`'s
- * `BACKEND_FETCH_TIMEOUT_MS`, which is module-private there, and the same ten
+ * Its own constant rather than an import of `documents/ingest-dispatch.ts`'s
+ * `BACKEND_FETCH_TIMEOUT_MS`, and the same ten
  * seconds for the same reason: an unreachable backend must not hold a BFF
  * request past Cloudflare's ~100s origin timeout. The purge is best-effort, so
  * exceeding it costs a superseded version's chunks lingering until the
@@ -214,7 +214,7 @@ export async function renderVersionBytes(
   const marking = generatedDocumentMarking(producer, document.authoredByRef ?? document.id)
   // No locale, for the reason `fileAgentDocumentDraft` states: this path's
   // callers are the agent's internal route and a revision run, neither of which
-  // sends a `grid-locale` cookie, so the office's own `default_locale` is what
+  // sends a `locale` cookie, so the office's own `default_locale` is what
   // the header line should inherit rather than the app default.
   const organizationName = await getOrganizationDisplayName(document.organizationId)
   const branding = await resolveDocumentBranding({

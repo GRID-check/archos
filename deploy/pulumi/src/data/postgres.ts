@@ -1,18 +1,18 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, assertPgConnectionBudget } from "../config";
+import { GridConfig } from '../config'
+import { assertPgConnectionBudget } from '../config/pg-connection-budget'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedJobSecurityContext } from "../platform/security";
 import { scrapeAnnotations } from "../platform/scrape";
-import { CHECKPOINTS_DB, JOBS_DB, installPostgresRename } from "./postgres-rename";
-export { CHECKPOINTS_DB, JOBS_DB };
+import { APP_DB, CHECKPOINTS_DB, JOBS_DB, RUNTIME_ROLE, installPostgresRename, installRlsRoleRename } from "./postgres-rename";
+export { APP_DB, CHECKPOINTS_DB, JOBS_DB, RUNTIME_ROLE };
 import { CHECKPOINTS_SQL, JOBS_SQL, seaweedFilerSql } from "./postgres-sql";
 import {
   BOOTSTRAP_JOB_RESOURCES,
   DATA_RESOURCES,
   JOB_DEFAULTS,
-  KEDA_SCALER_CONNECTION_LIMIT,
   KEDA_SCALER_ROLE,
   LANGFUSE,
   PLATFORM_RESOURCES,
@@ -55,6 +55,11 @@ export interface Postgres {
   cluster: k8s.apiextensions.CustomResource;
   /** Job that ensures job/checkpoint tables exist (idempotent). */
   initJob: k8s.batch.v1.Job;
+  /**
+   * The Job that renames the row-level-security roles once the migrations have
+   * run (`postgres-rename.ts`). Everything that logs in as one of them waits on it.
+   */
+  renameRlsRoles: (dependsOn: pulumi.Resource[]) => k8s.batch.v1.Job;
   /** The transaction pooler (ADR-0083); the pooled DSNs name its Service. */
   pooler: k8s.apiextensions.CustomResource;
   /** Read/write service host (the CNPG primary), e.g. `grid-pg-rw`. */
@@ -191,14 +196,9 @@ export function installPostgres(
   );
 
   /**
-   * Login for `grid_app_rw`, the least-privilege role the app tier connects as
-   * under row-level security (ADR-0041).
-   *
-   * CloudNativePG reads this and reconciles the role's password itself, as
-   * superuser. That is the whole reason the roles are declared on the Cluster
-   * rather than created by a migration: `grid_app_platform` needs BYPASSRLS,
-   * and Postgres only lets a role grant an attribute it already holds — which
-   * the application user does not, and must not.
+   * Login for `app_rw`, the least-privilege role the app tier connects as
+   * under row-level security (ADR-0041). The rename Jobs set the role's
+   * password from it, as superuser (`postgres-rename.ts`).
    */
   const runtimeCredentials = new k8s.core.v1.Secret(
     "pg-runtime-credentials",
@@ -206,7 +206,7 @@ export function installPostgres(
       metadata: { name: `${CLUSTER_NAME}-runtime-credentials`, namespace },
       type: "kubernetes.io/basic-auth",
       stringData: {
-        username: "grid_app_rw",
+        username: RUNTIME_ROLE,
         password: cfg.postgres.runtimePassword,
       },
     },
@@ -214,13 +214,12 @@ export function installPostgres(
   );
 
   /**
-   * Login for `grid_keda_scaler`, the read-only role KEDA's `postgresql` scaler
+   * Login for `keda_scaler`, the read-only role KEDA's `postgresql` scaler
    * counts the queue tables with (ADR-0079), where it used to borrow the owner
-   * (`jobs`) and the schema owner (`grid_app`): a credential held by an
+   * (`jobs`) and the schema owner (`app`): a credential held by an
    * operator in another namespace that could write every table in both.
    *
-   * Declared here, with the other roles, because CloudNativePG reconciles it as
-   * superuser and so the role exists before the grants Job
+   * The rename Jobs keep the role, as superuser, before the grants Job
    * (`app/queue-scaler-grants.ts`) tries to grant it anything. It has no
    * attribute beyond LOGIN: what it may read is exactly what that Job grants,
    * which is SELECT on the queue tables and nothing else. One role for both
@@ -242,7 +241,7 @@ export function installPostgres(
    * Its own role and its own database, deliberately not one of the three
    * application databases and deliberately not the application login. The
    * filer store holds an AES key for every chunk in the object store, so a
-   * credential that reaches it must not also reach `grid_app`, and vice versa:
+   * credential that reaches it must not also reach `app`, and vice versa:
    * compromising the storage daemon should not yield the tenant database, and
    * compromising the app should not yield the keys to decrypt objects it was
    * never authorized to read.
@@ -276,7 +275,7 @@ export function installPostgres(
    * above. Langfuse runs Prisma migrations at startup — `CREATE TABLE`,
    * `ALTER TABLE`, `DROP` — so whatever credential it holds is a credential
    * with DDL rights. Confining that to a database it owns is what keeps a
-   * third-party image's migrator away from `grid_app`, where every tenant's
+   * third-party image's migrator away from `app`, where every tenant's
    * conversations live. It has no CREATEDB and no CREATEROLE, so it cannot
    * give itself another database either.
    */
@@ -399,45 +398,17 @@ export function installPostgres(
           size: cfg.postgres.storageSize,
           storageClass: cfg.storage.className,
         },
-        // Row-level-security roles (ADR-0041). Declared here, NOT in a migration:
-        // creating a BYPASSRLS role requires the creator to hold BYPASSRLS
-        // itself, and the application user has neither that nor CREATEROLE.
-        // The operator reconciles these as superuser, so they exist before the
-        // migration Job runs — and migration 0030 asserts exactly that rather
-        // than trying to create them.
-        // `<cluster>-superuser`, the only login that can rename a database or
-        // the agent role (`postgres-rename.ts`).
+        // Row-level-security roles (ADR-0041) are NOT declared here: the
+        // operator creates a role by the name it is given, and their names
+        // change after the migrations (ADR-0145 row 10d), so the rename Jobs
+        // keep them instead (`postgres-rename.ts`). Not in a migration either:
+        // creating a BYPASSRLS role takes a creator that holds BYPASSRLS, which
+        // the application user does not. Migration 0030 asserts they exist.
+        // `<cluster>-superuser` is the login those Jobs use, the only one that
+        // can rename a database or a role (`postgres-rename.ts`).
         enableSuperuserAccess: true,
         managed: {
           roles: [
-            { name: "grid_app_owner", ensure: "present", login: true, superuser: false, createdb: false, createrole: false },
-            { name: "grid_app_platform", ensure: "present", login: false, bypassrls: true },
-            {
-              name: "grid_app_rw",
-              ensure: "present",
-              login: true,
-              inherit: false,
-              bypassrls: false,
-              inRoles: ["grid_app_platform"],
-              passwordSecret: { name: runtimeCredentials.metadata.apply((m) => m!.name!) },
-            },
-            // KEDA's read-only queue counter (ADR-0079). LOGIN and nothing else:
-            // no BYPASSRLS (its one read of a tenant table is a policy of its
-            // own, written by the grants Job), no DDL, no role membership, and a
-            // connection limit, because the operator opens one per poll.
-            {
-              name: KEDA_SCALER_ROLE,
-              ensure: "present",
-              login: true,
-              inherit: false,
-              superuser: false,
-              createdb: false,
-              createrole: false,
-              replication: false,
-              bypassrls: false,
-              connectionLimit: KEDA_SCALER_CONNECTION_LIMIT,
-              passwordSecret: { name: scalerCredentials.metadata.apply((m) => m!.name!) },
-            },
             // The SeaweedFS filer's own login (ADR-0043). It owns exactly one
             // database and needs DDL inside it — the `[postgres2]` store
             // creates a table per S3 bucket on demand, which is what makes
@@ -483,7 +454,7 @@ export function installPostgres(
             secret: { name: appSecret.metadata.name },
             postInitSQL: [
               `CREATE DATABASE ${CHECKPOINTS_DB} OWNER ${cfg.postgres.appUser}`,
-              `CREATE DATABASE grid_app OWNER ${cfg.postgres.appUser}`,
+              `CREATE DATABASE ${APP_DB} OWNER ${cfg.postgres.appUser}`,
             ],
           },
         },
@@ -611,7 +582,7 @@ export function installPostgres(
   /**
    * The filer's database, declared rather than bootstrapped.
    *
-   * `bootstrap.initdb.postInitSQL` — where `checkpoints` and `grid_app` are
+   * `bootstrap.initdb.postInitSQL` — where `checkpoints` and `app` are
    * created — runs EXACTLY ONCE, at cluster initialisation. Adding a fourth
    * database there would create it on a fresh stack and silently do nothing on
    * every existing one, which is the worst of both: the manifest would claim a
@@ -785,12 +756,20 @@ export function installPostgres(
     { provider },
   );
 
-  const renameJob = installPostgresRename(cfg, provider, namespace, {
+  const renameWiring = {
     rwHost,
     superuserSecret: `${CLUSTER_NAME}-superuser`,
     appSecret: appSecret.metadata.name,
-    dependsOn: [cluster, appSecret],
-  });
+    runtimeSecret: runtimeCredentials.metadata.name,
+    scalerSecret: scalerCredentials.metadata.name,
+    passwords: { runtime: cfg.postgres.runtimePassword, scaler: cfg.postgres.scalerPassword },
+  };
+  const { job: renameJob, script: renameScript } = installPostgresRename(cfg, provider, namespace, renameWiring, [
+    cluster,
+    appSecret,
+    runtimeCredentials,
+    scalerCredentials,
+  ]);
 
   const initJob = new k8s.batch.v1.Job(
     "pg-init-tables",
@@ -875,6 +854,8 @@ export function installPostgres(
     operator,
     cluster,
     initJob,
+    renameRlsRoles: (dependsOn) =>
+      installRlsRoleRename(cfg, provider, namespace, renameWiring, renameScript, [renameJob, ...dependsOn]),
     pooler,
     rwHost,
     dsn,

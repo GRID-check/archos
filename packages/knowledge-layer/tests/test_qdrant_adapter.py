@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import math
 import re
+from pathlib import Path
 from typing import Any
 
 import pytest
 from knowledge_layer.llamaindex import adapter as adapter_module
-from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+from knowledge_layer.llamaindex import embedding as embedding_module
+from knowledge_layer.llamaindex.lexical_query import bm25_text
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.qdrant import writes
 from knowledge_layer.qdrant.payload import ChunkRecord
@@ -94,10 +97,10 @@ def test_bm25_terms_are_priced_like_the_german_mirror(retriever):
     rows += [_row("Ausgabe Mai 2023: Fluchtwege sind zu kennzeichnen.", "rl.pdf")]
     _ingest(retriever, "oib_knowledge", rows)
 
-    text, _terms = retriever._qdrant_lexical_inputs("oib-rl_2_ausgabe_mai_2023.pdf", "oib_knowledge")
+    text, _terms = retriever._lexical_inputs("oib-rl_2_ausgabe_mai_2023.pdf", "oib_knowledge")
     assert text == "", "every term is on the whole corpus or on none of it"
 
-    text, _terms = retriever._qdrant_lexical_inputs("Fluchtwege Ausgabe", "oib_knowledge")
+    text, _terms = retriever._lexical_inputs("Fluchtwege Ausgabe", "oib_knowledge")
     assert text == "fluchtwege"
     assert ("oib_knowledge", 28, "fluchtwege") in retriever._qdrant_term_df, "a priced term is cached per size"
 
@@ -110,8 +113,8 @@ def test_unmeasurable_term_frequencies_leave_the_lexical_channels_unpriced(retri
         raise ConnectionError("qdrant down")
 
     monkeypatch.setattr(qdrant_retrieval, "term_frequencies", down)
-    text, terms = retriever._qdrant_lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
-    assert text == retriever._bm25_text("Was regelt § 3 zur Fluchttreppe?")
+    text, terms = retriever._lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
+    assert text == bm25_text("Was regelt § 3 zur Fluchttreppe?")
     assert terms == ["§ 3"]
 
 
@@ -216,9 +219,10 @@ def test_a_write_the_store_refuses_raises(retriever, monkeypatch):
 
 
 def test_adapter_never_imports_qdrant_client():
-    """The adapter reaches Qdrant only through ``knowledge_layer.qdrant`` (ADR-0115)."""
-    source = open(adapter_module.__file__, encoding="utf-8").read()
-    assert not re.search(r"^\s*(from|import)\s+qdrant_client\b", source, re.MULTILINE)
+    """The ingestor and the retriever reach Qdrant only through ``knowledge_layer.qdrant`` (ADR-0115)."""
+    for module in Path(adapter_module.__file__).parent.glob("*.py"):
+        source = module.read_text(encoding="utf-8")
+        assert not re.search(r"^\s*(from|import)\s+qdrant_client\b", source, re.MULTILINE), module.name
 
 
 def test_refresh_facts_copies_a_persons_edit_onto_the_points(retriever, monkeypatch):
@@ -316,9 +320,9 @@ async def test_numeric_legal_references_reach_the_exact_term_channel(retriever):
 
     _ingest(retriever, "proj_a", [_row(text, f"{index}.pdf") for index, text in enumerate(NUMBERED)])
 
-    _, terms = retriever._qdrant_lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
+    _, terms = retriever._lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
     assert terms == ["§ 3"]
-    _, terms = retriever._qdrant_lexical_inputs('Was sagt die OIB-Richtlinie 2 in "5.1.1"? Und "43 cm"?', "proj_a")
+    _, terms = retriever._lexical_inputs('Was sagt die OIB-Richtlinie 2 in "5.1.1"? Und "43 cm"?', "proj_a")
     assert terms == ["OIB-Richtlinie 2", "5.1.1", "43 cm"]
 
     total, frequencies = qdrant_retrieval.term_frequencies("proj_a", ["§ 3", "5.1.1", "43 cm", "OIB-Richtlinie 2"])
@@ -513,7 +517,7 @@ def test_clearing_a_dokumentart_puts_the_chunks_own_back(retriever, metadata_sto
     set_document_doc_class("proj_a", "plan.pdf", None)
     set_document_doc_class("proj_a", "brief.pdf", None)
 
-    # What register._hit_doc_class falls back to once the stored class is gone.
+    # What hit_metadata.hit_doc_class falls back to once the stored class is gone.
     assert store.count("proj_a", {"doc_class": "einreichplan"}) == 1
     assert store.count("proj_a", {"doc_class": "bescheid"}) == 0
     assert store.count("proj_a", {"doc_class": "korrespondenz"}) == 0
@@ -577,8 +581,8 @@ def test_either_spelling_prices_the_spelling_the_documents_use(retriever):
     rows = [_row("Die Flächenwidmung erlaubt Wohnen.", "fwp.pdf"), _row("Die Garage hat zwei Ebenen.", "g.pdf")]
     _ingest(retriever, "proj_a", rows)
 
-    typed_without, _ = retriever._qdrant_lexical_inputs("Flaechenwidmung", "proj_a")
-    typed_with, _ = retriever._qdrant_lexical_inputs("Flächenwidmung", "proj_a")
+    typed_without, _ = retriever._lexical_inputs("Flaechenwidmung", "proj_a")
+    typed_with, _ = retriever._lexical_inputs("Flächenwidmung", "proj_a")
 
     assert typed_without.split() == typed_with.split() == ["flächenwidmung"]
 
@@ -588,7 +592,7 @@ def test_umlaut_stopwords_never_reach_bm25_whatever_their_frequency(retriever):
     rows += [_row(f"Fluchtwege führen über das Dach {i}.", "rl.pdf") for i in range(4)]
     _ingest(retriever, "oib_knowledge", rows)
 
-    text, _terms = retriever._qdrant_lexical_inputs("Fluchtwege über das Dach", "oib_knowledge")
+    text, _terms = retriever._lexical_inputs("Fluchtwege über das Dach", "oib_knowledge")
 
     assert "über" not in text.split() and "fluchtwege" in text.split()
 
@@ -742,7 +746,7 @@ def test_embed_query_initializes_without_reaching_any_store(monkeypatch):
             return _vector(text)
 
     monkeypatch.delenv("QDRANT_URL", raising=False)
-    monkeypatch.setattr(adapter_module, "make_embed_model", lambda **kwargs: Embedder())
+    monkeypatch.setattr(embedding_module, "make_embed_model", lambda **kwargs: Embedder())
     monkeypatch.setattr(store_module, "get_store", lambda *a, **k: pytest.fail("embedding reached the store"))
     instance = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})
 

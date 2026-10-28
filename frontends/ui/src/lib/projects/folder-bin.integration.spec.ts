@@ -4,7 +4,7 @@
  * The Papierkorb against a REAL Postgres (migration 0115, ADR-0088), through
  * the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/folder-bin.integration.spec.ts
  *
  * Every rule here is a claim about SQL: which rows a listing leaves out, what
@@ -42,14 +42,18 @@ vi.mock('@/lib/documents/collection-file-ref', async (importOriginal) => ({
 // The document's own erasure is the document delete's (its specs cover the
 // object store); here it deletes the row, through the hold trigger.
 vi.mock('@/lib/documents/folder-path', () => ({ resolveDocumentFolderPath: vi.fn(async () => null) }))
-vi.mock('@/lib/documents/service', () => ({
-  INGEST_DISPATCH_FAILED_MESSAGE: 'dispatch failed',
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn(async () => ({ jobId: 'job', status: 'pending' })),
+}))
+vi.mock('@/lib/documents/document-edits', () => ({
   eraseProjectDocument: vi.fn(async (doc: { id: string; organizationId: string; projectId: string }) => {
     const { deleteProjectDocument } = await import('@/lib/documents/repository')
     await deleteProjectDocument(doc.id, doc.organizationId, doc.projectId)
     return true
   }),
+}))
+vi.mock('@/lib/documents/ingest-dispatch', () => ({
+  INGEST_DISPATCH_FAILED_MESSAGE: 'dispatch failed',
 }))
 // Project permissions are WorkOS's; each session here states which it holds,
 // and a denial is the real one's: not found.
@@ -141,7 +145,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
   let restrictedUse: typeof import('@/lib/conversations/restricted-use')
   let setting: typeof import('@/lib/organizations/deleted-folder-content-service')
   let collectionRef: typeof import('@/lib/documents/collection-file-ref')
-  let documentService: typeof import('@/lib/documents/service')
+  let documentService: typeof import('@/lib/documents/document-dispatch')
   let lifecycle: typeof import('@/lib/documents/lifecycle')
   let jobs: typeof import('./folder-bin-jobs')
   let projectId: string
@@ -266,7 +270,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     const claimed: string[] = []
     try {
       await client.begin(async (tx) => {
-        await tx.unsafe('SET LOCAL ROLE grid_app_platform')
+        await tx.unsafe('SET LOCAL ROLE app_platform')
         for (let i = 0; i < 1000; i += 1) {
           const entry = await claimNext(tx as never)
           if (!entry) break
@@ -366,7 +370,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     restrictedUse = inTenant(await import('@/lib/conversations/restricted-use'))
     setting = inTenant(await import('@/lib/organizations/deleted-folder-content-service'))
     collectionRef = await import('@/lib/documents/collection-file-ref')
-    documentService = await import('@/lib/documents/service')
+    documentService = await import('@/lib/documents/document-dispatch')
     lifecycle = await import('@/lib/documents/lifecycle')
     jobs = inTenant(await import('./folder-bin-jobs'))
 
@@ -999,7 +1003,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
       const [entityType, entityId] = target()
       await hold(entityType, entityId)
       const [covered] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
       )
       expect(covered.held).toBe(true)
     })
@@ -1007,7 +1011,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     it('does not cover a folder for a hold elsewhere in the project', async () => {
       await hold('document', doc.plan)
       const [covered] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
       )
       expect(covered.held).toBe(false)
     })
@@ -1015,10 +1019,10 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     it('covers a document through a hold on a folder above it, and a project through a hold on one of its folders', async () => {
       await hold('folder', folder.admin)
       const [document] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('document', ${doc.old}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('document', ${doc.old}, ${ORG}) AS held`)
       )
       const [project] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('project', ${projectId}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('project', ${projectId}, ${ORG}) AS held`)
       )
       expect([document.held, project.held]).toEqual([true, true])
     })

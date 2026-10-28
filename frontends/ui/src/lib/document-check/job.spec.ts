@@ -22,7 +22,7 @@ vi.mock('@/lib/annotations/repository', () => ({ listDocumentAnnotations: vi.fn(
 vi.mock('@/lib/annotations/document-thread', () => ({ ensureDocumentThread: vi.fn() }))
 vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn() }))
 vi.mock('@/lib/langfuse/document-check-score', () => ({ recordDocumentCheckScore: vi.fn() }))
-vi.mock('@/lib/piloti-asks/service', () => ({
+vi.mock('@/lib/agent-asks/service', () => ({
   askAnswerMessageId: (conversationId: string, askId: string) => `answer:${conversationId}:${askId}`,
 }))
 vi.mock('@/lib/turns/headless-turn', () => ({ chatSocketUrl: vi.fn(() => 'ws://chat/websocket'), runHeadlessTurn: vi.fn() }))

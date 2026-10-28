@@ -3,7 +3,7 @@
  * posts every headless turn's outcome to `POST /api/internal/turns/outcome`,
  * and this is what the BFF does with it.
  *
- * The BFF detaches from a woken turn once it runs, so `piloti_wakes` stayed at
+ * The BFF detaches from a woken turn once it runs, so `agent_wakes` stayed at
  * `started` for ever. The turn id is the wake id (`wakeTurnId`), so the outcome
  * names its wake. It is mapped to the wake's final word with `endWake`:
  *
@@ -47,7 +47,7 @@ import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { memberReader } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { announcePilotiWork } from '@/lib/annotations/piloti-work'
-import { recordAskOutcome } from '@/lib/piloti-asks/service'
+import { recordAskOutcome } from '@/lib/agent-asks/service'
 import type { TurnOutcomeRequest, TurnOutcomeResponse } from './outcome-types'
 
 /** What the wake records when a turn failed or was refused without saying why. */

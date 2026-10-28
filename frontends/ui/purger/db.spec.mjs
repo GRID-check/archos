@@ -66,7 +66,7 @@ describe('claimNext', () => {
     // The hold guard is the shared database predicate, not a copy of it
     // (migration 0093): the BFF's deletes and the delete triggers call it too.
     expect(select.text).toContain(
-      'AND NOT grid_legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)',
+      'AND NOT legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)',
     )
     expect(select.text).not.toContain('FROM legal_holds')
     expect(select.text).toContain('FOR UPDATE SKIP LOCKED')
@@ -101,7 +101,7 @@ describe('hasActiveHold', () => {
     await expect(hasActiveHold(fn, entry)).resolves.toBe(true)
 
     expect(executed).toHaveLength(1)
-    expect(executed[0].text).toBe('SELECT grid_legal_hold_blocks($, $, $) AS held')
+    expect(executed[0].text).toBe('SELECT legal_hold_blocks($, $, $) AS held')
     expect(executed[0].values).toEqual(['project', 'p1', 'org_1'])
   })
 
@@ -215,7 +215,7 @@ describe('platform scope', () => {
     ]) {
       const { fn, executed } = makeSql()
       await run(fn)
-      expect(executed[0].text).toBe('SET LOCAL ROLE grid_app_platform')
+      expect(executed[0].text).toBe('SET LOCAL ROLE app_platform')
       expect(executed).toHaveLength(2)
     }
   })

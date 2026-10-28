@@ -1,7 +1,7 @@
 /**
  * Run one check of a new document (ADR-0130, second slice): the
  * `document_check` job of the bff-jobs pool, as the person whose upload
- * finished. A headless turn (ADR-0106's driver, the one `piloti-asks` uses), so
+ * finished. A headless turn (ADR-0106's driver, the one `agent-asks` uses), so
  * Piloti reads, searches and proposes marks with the same tools and the same
  * rules as in a chat, and the turn is booked to the person's budget.
  *

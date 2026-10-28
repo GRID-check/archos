@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Project re-index route.
  *
  * The route is a thin adapter: it names the project from the path, and answers
@@ -11,7 +14,9 @@ import { describe, expect, test, vi, beforeEach } from 'vitest'
 
 const reindexProject = vi.fn()
 
-vi.mock('@/lib/documents/service', () => ({ reindexProject }))
+vi.mock('@/lib/documents/reindex', () => ({
+  reindexProject,
+}))
 vi.mock('@/lib/api/handler', () => ({
   apiRoute:
     (

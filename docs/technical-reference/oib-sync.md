@@ -2,7 +2,7 @@
 
 How the base corpus (the OIB, Österreichisches Institut für Bautechnik, Richtlinien and the other documents the platform owner uploads) is stored and ingested into the `oib_knowledge` collection in Qdrant. ADR-0082 step A2.
 
-There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `src/aiq_agent/corpus_store.py` (storage, table, cache), `src/aiq_agent/oib_sync.py` (ingestion), `src/aiq_agent/oib_status.py` (the status view) and `frontends/aiq_api/src/aiq_api/routes/oib.py` (the routes).
+There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `src/aiq_agent/corpus_store.py` (storage, table, cache), `src/aiq_agent/oib_sync.py` (ingestion), `src/aiq_agent/oib_status.py` (the status view) and `apps/backend/src/aiq_api/routes/oib.py` (the routes).
 
 ---
 
@@ -194,7 +194,7 @@ The adapter reaches Qdrant at `QDRANT_URL`, in every deployment and in local dev
 ## Dependency graph
 
 ```
-frontends/aiq_api routes/oib.py  ·  routes/jobs.py (housekeeping/base-corpus)
+apps/backend routes/oib.py  ·  routes/jobs.py (housekeeping/base-corpus)
        │
        ▼
 src/aiq_agent/oib_sync.py ──────────► src/aiq_agent/corpus_store.py

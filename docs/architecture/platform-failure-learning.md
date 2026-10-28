@@ -112,7 +112,7 @@ model read a menu of short prose descriptions.
 ## Data model
 
 Three global tables (no `organization_id`), secured with
-`grid_secure_platform_table` and then **tightened past the platform-table
+`secure_platform_table` and then **tightened past the platform-table
 norm**: migration `0068` revokes even the tenant-role read grant, because
 nothing tenant-facing queries these tables (the digest is built under the
 platform role behind the internal route) and a candidate lesson is exactly
@@ -138,7 +138,7 @@ construction, and crossing back to raw is a privileged act.
 Before any of them, a down-vote on an answer that drew on a folder with
 restricted access is never read: its question and answer may quote a folder
 some of the tenant's own members may not read, and a lesson reaches every
-tenant. The database decides, from one rule (`grid_feedback_restricted_use`,
+tenant. The database decides, from one rule (`feedback_restricted_use`,
 migration 0124, ADR-0093): the vote's message is marked in
 `message_restricted_use`, or the voted message's conversation, or the one the
 vote names, holds a `conversation_restricted_folders` record (written when the
@@ -359,7 +359,7 @@ means anything.
 |---|---|
 | Pipeline service + digest | `frontends/ui/src/lib/platform-lessons/service.ts` |
 | Repository (all SQL) | `frontends/ui/src/lib/platform-lessons/repository.ts` |
-| Distiller/auditor route | `frontends/aiq_api/src/aiq_api/routes/lesson_distill.py` |
+| Distiller/auditor route | `apps/backend/src/aiq_api/routes/lesson_distill.py` |
 | PII scrub | `frontends/ui/src/lib/text/redact-pii.ts` |
 | Schema | `frontends/ui/src/lib/db/schema/platform-lessons.ts`, migration `0068` |
 | Trigger | `frontends/ui/src/app/api/feedback/answers/route.ts` (`after()`) |

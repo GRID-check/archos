@@ -12,7 +12,7 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    // The OWNER credential — migrations run DDL and backfills, and `grid_app_rw`
+    // The OWNER credential — migrations run DDL and backfills, and `app_rw`
     // can do neither (ADR-0041). The fallback exists only so a local checkout
     // pointed at a single-credential throwaway database still works; it is not a
     // supported way to migrate a deployment.
@@ -25,7 +25,7 @@ export default defineConfig({
 - **Schema source:** `./src/lib/db/schema/*.ts` (6 files, barrel-exported)
 - **Output directory:** `./drizzle/`
 - **Dialect:** PostgreSQL
-- **Connection:** via `APP_MIGRATION_DATABASE_URL` — the schema OWNER, and what every deployment must use. `APP_DATABASE_URL` is only a fallback for a local single-credential database; it is the DML-only runtime role, which cannot run DDL and whose backfills would touch zero rows under row-level security (ADR-0041). Either way it must point at the `grid_app` database.
+- **Connection:** via `APP_MIGRATION_DATABASE_URL` — the schema OWNER, and what every deployment must use. `APP_DATABASE_URL` is only a fallback for a local single-credential database; it is the DML-only runtime role, which cannot run DDL and whose backfills would touch zero rows under row-level security (ADR-0041). Either way it must point at the `app` database.
 
 ---
 
@@ -47,7 +47,7 @@ This reads the current schema, diffs against the last snapshot in `drizzle/meta/
 ### 3. Apply Migration
 
 > **Migrations connect as the schema OWNER.** `APP_DATABASE_URL` now points
-> at `grid_app_rw`, which holds DML only and is subject to row-level security —
+> at `app_rw`, which holds DML only and is subject to row-level security —
 > correct for serving requests, useless for DDL, and actively dangerous for a
 > data backfill, which would silently touch zero rows. Set
 > `APP_MIGRATION_DATABASE_URL` to the owner credential; `drizzle.config.ts`
@@ -55,7 +55,7 @@ This reads the current schema, diffs against the last snapshot in `drizzle/meta/
 > database. See [row-level-security.md](row-level-security.md) and ADR-0041.
 >
 > **A new table must join the tenant boundary in the same migration that creates
-> it** — one `SELECT grid_secure_table('<table>', '<predicate>');` line.
+> it** — one `SELECT secure_table('<table>', '<predicate>');` line.
 > `src/lib/db/rls-coverage.spec.ts` fails by name until it does.
 
 ```bash
@@ -226,9 +226,9 @@ Timestamps from journal:
 This is **not** a Drizzle migration — it is a PostgreSQL `psql` entrypoint script that runs on **first container startup** of the database container. It is:
 
 - **Idempotent** — all statements use `IF NOT EXISTS` / `CREATE ... IF NOT EXISTS`.
-- **Responsible for:** creating the `checkpoints` and `grid_app` databases (if absent), granting privileges, and creating tables in `jobs` and `checkpoints`.
+- **Responsible for:** creating the `checkpoints` and `app` databases (if absent), granting privileges, and creating tables in `jobs` and `checkpoints`.
 
-These tables are separate from Drizzle ORM (the Next.js app only manages `grid_app`). The `jobs` and `checkpoints` databases are managed by the Python backend but must exist before the backend connects.
+These tables are separate from Drizzle ORM (the Next.js app only manages `app`). The `jobs` and `checkpoints` databases are managed by the Python backend but must exist before the backend connects.
 
 ---
 
@@ -246,7 +246,7 @@ This table was originally named `summaries` (class `SummaryStore`) and has since
   - **PostgreSQL** — `ALTER TABLE document_metadata ADD COLUMN IF NOT EXISTS <col> TEXT`.
   - **SQLite** — no `IF NOT EXISTS` for columns, so a `PRAGMA table_info(document_metadata)` existence check runs first, then `ALTER TABLE ... ADD COLUMN` only when missing.
 
-The migration reports success/failure: the store URL is added to the in-memory `_tables_initialized` cache **only when the schema is confirmed ready**, so a failed migration is retried on the next access instead of caching a half-initialized store. This mirrors the `job_access` migration pattern in `frontends/aiq_api/src/aiq_api/jobs/access.py`. `init-db.sql` now pre-creates `document_metadata` (with only `summary`) on fresh deployments; the rename path above is what carries an already-running deployment across the name change, and the column-adds are still exercised on every deployment.
+The migration reports success/failure: the store URL is added to the in-memory `_tables_initialized` cache **only when the schema is confirmed ready**, so a failed migration is retried on the next access instead of caching a half-initialized store. This mirrors the `job_access` migration pattern in `apps/backend/src/aiq_api/jobs/access.py`. `init-db.sql` now pre-creates `document_metadata` (with only `summary`) on fresh deployments; the rename path above is what carries an already-running deployment across the name change, and the column-adds are still exercised on every deployment.
 
 > **Back-compat note:** the DB *file* (default `summaries.db`), the `SUMMARY_DB` env var, and the NAT `summary_db` config field intentionally keep their names — they identify the *database*, not the table, and renaming them would orphan existing databases / break deployment configs.
 

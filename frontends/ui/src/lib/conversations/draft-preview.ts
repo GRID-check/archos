@@ -4,7 +4,7 @@
  * The draft lives in the agent service's LangGraph store, namespaced by
  * conversation id — the BFF cannot reach that store, so this service proxies
  * the Python tier's read door (`GET /v1/drafts/{conversation_id}/{path...}`,
- * `frontends/aiq_api/src/aiq_api/routes/drafts.py`) with the internal
+ * `apps/backend/src/aiq_api/routes/drafts.py`) with the internal
  * service token, exactly as `discardConversationDrafts` does for the delete
  * door (`./working-directory`).
  *
@@ -12,7 +12,7 @@
  * (`@/lib/sharing/access`), checked BEFORE the backend is addressed, so only
  * drafts of conversations the reader may access are proxied. Denials are
  * `NotFoundError`, so a refused id is indistinguishable from an absent one
- * (spec SH-6). There is no repository here — nothing in `grid_app` is read or
+ * (spec SH-6). There is no repository here — nothing in `app` is read or
  * written; the conversation row is only the gate, never the source.
  */
 

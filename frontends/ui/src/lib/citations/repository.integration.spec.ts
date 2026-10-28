@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: the citation-health reads against a REAL Postgres
  * with every migration applied, as the restricted runtime role.
  *
@@ -9,7 +12,7 @@
  * organization, and that an event with no conversation drops out of a
  * project-filtered view.
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/citations/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database.

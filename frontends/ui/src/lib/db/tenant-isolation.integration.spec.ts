@@ -4,11 +4,11 @@
  *
  * Unit tests can show that the context is plumbed. Only this can show that the
  * database refuses, which is the entire claim. It therefore connects as
- * `grid_app_rw` — the role the BFF actually runs as — because connecting as the
+ * `app_rw` — the role the BFF actually runs as — because connecting as the
  * owner would pass every assertion below while proving nothing: owners are
  * exempt from row-level security.
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/db/tenant-isolation.integration.spec.ts
  *
  * Setting up that database is `task db:test:rls` (see Taskfile.yml), which
@@ -137,13 +137,41 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
    * So: every secured table, selected as the role the app actually uses. Not a
    * sample.
    */
+  /**
+   * Two permissive policies on one table OR together, so a second isolation
+   * policy silently widens the first. 0191 renamed `grid_tenant_isolation` to
+   * `tenant_isolation`, and `secure_table` drops both names before it creates
+   * one; this holds every table under row-level security to exactly one, by
+   * the new name, and no policy to the old prefix.
+   */
+  it('gives every table under row-level security exactly one isolation policy', async () => {
+    const rows = await withPlatformAccess('test: count isolation policies', () =>
+      db.execute(sql`
+        SELECT c.relname AS table_name,
+               count(p.polname) FILTER (WHERE p.polname = 'tenant_isolation')::int AS isolation,
+               count(p.polname) FILTER (WHERE left(p.polname, 5) = 'grid_')::int AS old_named
+        FROM pg_class c
+        LEFT JOIN pg_policy p ON p.polrelid = c.oid
+        WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'r' AND c.relrowsecurity
+        GROUP BY c.relname
+      `)
+    )
+    const tables = [...rows].map((row) => ({
+      table: String(row.table_name),
+      isolation: Number(row.isolation),
+      oldNamed: Number(row.old_named),
+    }))
+    expect(tables.length).toBeGreaterThanOrEqual(28)
+    expect(tables.filter((row) => row.isolation !== 1 || row.oldNamed !== 0)).toEqual([])
+  })
+
   it('can SELECT from every table inside the boundary', async () => {
     const secured = await withPlatformAccess('test: enumerate secured tables', () =>
       db.execute(sql`
         SELECT c.relname AS table_name
         FROM pg_policy p
         JOIN pg_class c ON c.oid = p.polrelid
-        WHERE p.polname = 'grid_tenant_isolation'
+        WHERE p.polname = 'tenant_isolation'
           AND c.relnamespace = 'public'::regnamespace
         ORDER BY 1
       `)
@@ -431,7 +459,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
             where organization_id in (${ORG_A}, ${ORG_B}) group by 1`
       )
     )
-    expect([...rows][0]).toMatchObject({ role: 'grid_app_platform', n: 2 })
+    expect([...rows][0]).toMatchObject({ role: 'app_platform', n: 2 })
   })
 
   it('rejects database access with no context at all', async () => {

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { fixtureSteps, storedStep } from '@/test-utils/wire-v2-steps'
 import { deriveTraceLanes } from './trace-lanes'

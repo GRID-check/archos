@@ -3,7 +3,7 @@
  *
  * „Ausmisten" against a REAL Postgres (ADR-0092), through the restricted role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/cleanup.integration.spec.ts
  *
  * What the database must show: a confirmed document lands in a subfolder of its
@@ -30,8 +30,10 @@ vi.mock('@/lib/documents/collection-file-ref', async (importOriginal) => ({
 }))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn(async (rows: unknown[]) => rows) }))
 vi.mock('@/lib/documents/folder-path', () => ({ resolveDocumentFolderPath: vi.fn(async () => null) }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn(async () => ({ jobId: 'job', status: 'pending' })),
+}))
+vi.mock('@/lib/documents/document-edits', () => ({
   eraseProjectDocument: vi.fn(async () => true),
 }))
 vi.mock('@/lib/authz/projects', async () => {

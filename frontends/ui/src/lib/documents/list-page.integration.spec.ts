@@ -9,7 +9,7 @@
  * than a millisecond — the case a cursor built from a JS `Date` gets wrong.
  * It runs under `task db:test:rls`, through the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/documents/list-page.integration.spec.ts
  */
 

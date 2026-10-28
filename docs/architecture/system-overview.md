@@ -100,7 +100,7 @@ flowchart TB
     end
 
     subgraph Data["Stateful infrastructure"]
-        PG[("PostgreSQL<br/>grid_app · jobs · checkpoints")]
+        PG[("PostgreSQL<br/>`app` · jobs · checkpoints")]
         SEAWEED[("SeaweedFS — grid-documents bucket")]
         QDRANT[("Qdrant — vector store")]
     end
@@ -124,9 +124,9 @@ flowchart TB
 
 | Container | Tech | Responsibility |
 |---|---|---|
-| **frontend** | Next.js 16, React 18, TypeScript | The UI, the BFF (all `/api/*`), and the `server.js` gateway. System of record for `grid_app`. |
+| **frontend** | Next.js 16, React 18, TypeScript | The UI, the BFF (all `/api/*`), and the `server.js` gateway. System of record for `app`. |
 | **aiq-agent / aiq-api** | Python 3.14, FastAPI, NAT, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
-| **postgres** | PostgreSQL 16 | Three logical DBs: `grid_app` (app state), `jobs` (jobs/events/summaries), `checkpoints` (LangGraph state). |
+| **postgres** | PostgreSQL 16 | Three logical DBs: `app` (app state), `jobs` (jobs/events/summaries), `checkpoints` (LangGraph state). |
 | **seaweedfs** | SeaweedFS (S3-compatible) | Object storage for OIB PDFs and uploaded documents (`grid-documents` bucket). |
 | **Qdrant** | shared `qdrant` server (HTTP) | Vector store: two physical collections behind aliases, `piloti_corpus` and `piloti_office`, persisted to a volume and queried by every backend role (ADR-0115). |
 | **purger** | same image as frontend, `node purger/index.js` | Scheduled worker that hard-deletes soft-deleted projects after the grace period. |
@@ -137,7 +137,7 @@ The **gateway (`server.js`)** is the seam that makes the two-tier model work:
 on each WebSocket upgrade (and REST proxy) it calls an internal BFF endpoint to
 resolve the caller's session, computes the collection scope + project context +
 memory digest, and forwards them to the Python backend as headers. The backend
-never opens a session or a `grid_app` connection itself.
+never opens a session or a `app` connection itself.
 
 ---
 
@@ -146,15 +146,15 @@ never opens a session or a `grid_app` connection itself.
 This is the decision everything else hangs off (ADR 0003).
 
 - **The BFF owns tenancy and durability.** Auth (WorkOS AuthKit), authorization
-  (WorkOS FGA), the application database (`grid_app` via Drizzle), file storage
+  (WorkOS FGA), the application database (`app` via Drizzle), file storage
   (SeaweedFS presigning), and all write paths live here. There is exactly **one
-  writer** of `grid_app`.
+  writer** of `app`.
 - **The agent backend is stateless per request.** It receives *what it may see*
   (collection scope) and *what it knows* (project context + memory) as headers,
   does its work, and returns. Its only durable stores are the vector index and
   its own job/checkpoint DBs — not tenant data.
 - **The one exception, made explicit:** the agent's `remember` tool must persist
-  memory into `grid_app`. Rather than give the backend a database connection, it
+  memory into `app`. Rather than give the backend a database connection, it
   calls a **token-guarded internal BFF endpoint**. The single-writer rule holds;
   the boundary is an HTTP call, not a shared DB. (ADR 0008.)
 
@@ -213,7 +213,7 @@ level invisible outside its owner. This containment is the structural fact of
 the knowledge architecture; the source-kind chips (`building_law | office |
 project | web`) are a labelling dimension *within* it, not a second hierarchy:
 
-| Level | Documents (Qdrant) | Learned state (`grid_app`) | Visible to |
+| Level | Documents (Qdrant) | Learned state (`app`) | Visible to |
 |---|---|---|---|
 | Platform | `oib_knowledge` (OIB corpus) | platform lessons | everyone |
 | Organization | `archiv_<org>` (Archiv, ADR-0024, feature-gated) | — | that org |
@@ -265,7 +265,7 @@ The project row is deleted last so a failed purge stays recoverable. (ADR 0011.)
 ### 5.8 Auth & multi-tenancy
 Identity is **WorkOS AuthKit** (SSO); authorization is **WorkOS FGA**
 (fine-grained, per-project permissions like `project:view/edit/manage`). Tenancy
-is enforced two ways: every `grid_app` row carries an `organization_id`, and
+is enforced two ways: every `app` row carries an `organization_id`, and
 every backend request is bounded by the collection scope the BFF computed under
 `requireProjectAccess`. Projects map to a WorkOS FGA resource. (ADRs 0002, 0004.)
 
@@ -322,7 +322,7 @@ The Jobs tab retired into Aufgaben; `?tab=jobs` still lands there. Review
 happens in the inbox, where the person was told about the result.
 
 Two naming collisions to keep straight. The `task_definitions`/`task_runs`
-tables live in `grid_app` (the collapsed successor of `jobs`/`job_runs`/
+tables live in `app` (the collapsed successor of `jobs`/`job_runs`/
 `tasks`); the backend async jobs live in `jobs` (deep-research runs,
 §5.5) — a `task_runs.backend_job_id` value names one of the latter. And
 `compliance_check` is a **task kind**, not a chat tool or an agent: the
@@ -358,7 +358,7 @@ as the memory header.
 **Project deletion.** User deletes a project → BFF soft-deletes it and enqueues
 `deletion_queue` with `purge_after = now + grace` → after the grace period the
 purger claims the row (backoff + legal-hold check), destroys external stores
-(backend resources, SeaweedFS prefix, WorkOS resource) then `grid_app` rows, and
+(backend resources, SeaweedFS prefix, WorkOS resource) then `app` rows, and
 marks it purged. Restore is possible only while the row is un-claimed.
 
 ---
@@ -367,11 +367,11 @@ marks it purged. Restore is possible only while the row is un-claimed.
 
 | Store | Owner | Holds |
 |---|---|---|
-| **`grid_app`** (Postgres) | BFF (single writer) | projects, conversations, messages, documents, folders, **project_memory**, **platform_lessons** (+ reports/events), **deletion_queue**, **legal_holds**, user_preferences, **tasks** (the work object), **jobs** (recurring triggers) + **job_runs** (receipts), **skills** |
+| **`app`** (Postgres) | BFF (single writer) | projects, conversations, messages, documents, folders, **project_memory**, **platform_lessons** (+ reports/events), **deletion_queue**, **legal_holds**, user_preferences, **tasks** (the work object), **jobs** (recurring triggers) + **job_runs** (receipts), **skills** |
 | **`jobs`** (Postgres) | backend | backend async-run info/access/events (deep research) — not the BFF `jobs` schedule table (§5.12), document summaries |
 | **`checkpoints`** (Postgres) | backend | LangGraph conversation checkpoints (thread state) |
 | **SeaweedFS** (`grid-documents`) | BFF writes, backend/purger read | OIB PDFs + uploaded documents, keyed by org/project |
-| **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0116). Memory and lessons are not in Qdrant — they live in `grid_app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
+| **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0116). Memory and lessons are not in Qdrant — they live in `app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
 
 Schema evolves via Drizzle migrations (`frontends/ui/drizzle/`, applied on
 frontend start). → `docs/database/`.
@@ -380,12 +380,12 @@ frontend start). → `docs/database/`.
 
 ## 8. Cross-cutting concerns
 
-- **Security boundaries.** One writer for `grid_app`; the backend reaches it only
+- **Security boundaries.** One writer for `app`; the backend reaches it only
   through the token-guarded internal API (the well-known dev token is refused
   outside dev). Multi-line context headers are base64url-encoded (ADR 0013) so
   they can't break the HTTP/WS layer. Legal claims cite the OIB corpus, never
   unverified memory. Tenancy on every row + every request scope.
-- **Tenancy.** `organization_id` on every `grid_app` row; collection scope +
+- **Tenancy.** `organization_id` on every `app` row; collection scope +
   `requireProjectAccess` on every backend request; org-scoped memory never
   crosses organizations.
 - **Verification / CI.** `task verify` is the local gate, host-native, defined
@@ -461,7 +461,7 @@ What lives where in the checkout.
 | `packages/knowledge-layer`, `packages/ris-adapter`, `packages/tavily-web-search` | The Python packages of the uv workspace: the knowledge layer, the RIS adapter and web search, each a NAT plugin |
 | `frontends/ui/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
 | `apps/site/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
-| `frontends/aiq_api/` | The backend FastAPI front-end plugin (`_type: aiq_api`): REST routes, async jobs, `/v1/ingest` |
+| `apps/backend/` | The backend FastAPI front-end plugin (`_type: aiq_api`): REST routes, async jobs, `/v1/ingest` |
 | `evals/` | Piloti's evals, each with its tests: `oib-retrieval` and the live `turn-shapes` check |
 | `packages/` | Libraries outside the uv and bun workspaces: `ifc-spatial` and `ifc-spatial-py` (the IFC spatial engine, ADR-0045) and `brand` (the Piloti mark and the script that renders every icon from it) |
 | `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (`config_grid_oib.yml`/Kimi is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |

@@ -12,7 +12,7 @@ PRODUCTION'S EMBEDDER, THROUGH PRODUCTION'S SEAM
 ``make_embed_model`` from the knowledge layer is the only embedding client the
 process builds, and its HTTP clients pin every OpenRouter request to zero-data-
 retention endpoints (``aiq_agent.common.openrouter.PLATFORM_FIXED``). The key comes
-from the same chain the retriever resolves (``_resolve_embed_api_key``). Nothing
+from the same chain the retriever resolves (``resolve_embed_api_key``). Nothing
 here opens its own HTTP client to the provider.
 
 The chunk text is embedded as production embeds it: the node's text under
@@ -51,7 +51,7 @@ EMBED_BATCH = 64
 
 def embed_text(text: str, metadata: dict[str, Any]) -> str:
     """The string production embeds for one chunk: the EMBED header, then the body."""
-    from knowledge_layer.llamaindex.adapter import EMBED_EXCLUDED_METADATA_KEYS
+    from knowledge_layer.llamaindex.chunk_metadata import EMBED_EXCLUDED_METADATA_KEYS
     from knowledge_layer.llamaindex.clause_chunking import CLAUSE_EMBED_EXCLUDED_METADATA_KEYS
     from llama_index.core.schema import MetadataMode
     from llama_index.core.schema import TextNode
@@ -155,10 +155,10 @@ class Embedder:
 
     def _production_client(self) -> Any:
         if self._client is None:
-            from knowledge_layer.llamaindex.adapter import _resolve_embed_api_key
-            from knowledge_layer.llamaindex.adapter import make_embed_model
+            from knowledge_layer.llamaindex.embedding import make_embed_model
+            from knowledge_layer.llamaindex.embedding import resolve_embed_api_key
 
-            api_key = _resolve_embed_api_key(self.base_url, self.model)
+            api_key = resolve_embed_api_key(self.base_url, self.model)
             if not api_key:
                 raise SystemExit(
                     "No embeddings key: set OPENROUTER_API_KEY (or EMBED_API_KEY), or run with --embedder hashed"

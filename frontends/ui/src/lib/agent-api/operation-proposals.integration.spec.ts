@@ -4,7 +4,7 @@
  * Piloti's writes through the MCP surface, filed as proposals against a REAL
  * Postgres through the restricted runtime role (ADR-0122, ADR-0105):
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/agent-api/operation-proposals.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

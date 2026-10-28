@@ -40,7 +40,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -83,7 +83,7 @@ services:
       # On by default; fails open to local delivery. Set to 0 to opt out.
       CONVERSATION_BUS: ${CONVERSATION_BUS:-${GRID_CONVERSATION_BUS:-1}}
       # Project Memory: the `remember` tool writes via the frontend's internal
-      # API (single-writer separation — the backend never touches grid_app).
+      # API (single-writer separation — the backend never touches app).
       FRONTEND_INTERNAL_URL: ${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
       # Object storage, for `look` (ADR-0039): the tool asks the
@@ -169,7 +169,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -212,7 +212,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -265,7 +265,7 @@ services:
     image: ${BACKEND_IMAGE:-backend:local}
     build:
       context: ../..
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       target: ${BUILD_TARGET:-release}
     env_file:
       - ../.env
@@ -535,7 +535,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -544,10 +544,10 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://agent:aiq_dev@postgres:5432/grid_app}}
-      # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
+      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://agent:aiq_dev@postgres:5432/app}}
+      # Read only so `ensure-rls-roles` can keep app_rw's login in step
       # with the credential the app actually uses.
-      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -586,7 +586,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -606,7 +606,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     # The image CMD migrates then serves; migration has moved to migrate,
     # so this container only serves.
     command: ["node", "server.js"]
@@ -631,7 +631,7 @@ services:
       # Runtime connection: the least-privilege role, subject to row-level
       # security (ADR-0041). A repository that forgets its organization
       # predicate returns no rows instead of another tenant's.
-      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}}
       # Shared service token for the internal memory endpoint (must match chat)
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
       # S1 security default: agent org-wide memory writes are OFF unless explicitly
@@ -742,7 +742,7 @@ services:
       # The only way into gotenberg; see that service.
       - gotenberg-internal
     depends_on:
-      migrate:
+      postgres-rename-roles:
         condition: service_completed_successfully
       # Wait for the WorkOS audit schemas before serving. A rejected
       # `document.generated` event unfiles the document it was about, so an
@@ -800,7 +800,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
       - sh
@@ -816,7 +816,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://agent:aiq_dev@postgres:5432/grid_app}}
+      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://agent:aiq_dev@postgres:5432/app}}
     depends_on:
       frontend:
         condition: service_healthy
@@ -844,7 +844,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/jobs/index.js"]
     environment: *frontend-environment
     networks:
@@ -855,7 +855,7 @@ services:
     # before it stops the BFF; docker's default 10 s would kill it first.
     stop_grace_period: 90s
     depends_on:
-      migrate:
+      postgres-rename-roles:
         condition: service_completed_successfully
       api:
         condition: service_healthy
@@ -881,13 +881,13 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "purger/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
-      # organization, so it steps up to grid_app_platform per transaction
+      # organization, so it steps up to app_platform per transaction
       # — see frontends/ui/workers/platform-scope.js.
-      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}}
       - BACKEND_URL=${BACKEND_URL:-http://api:8000}
       # A chat erasure the delete request could not finish is retried through
       # the BFF, which owns its steps.
@@ -906,7 +906,7 @@ services:
     networks:
       - app
     depends_on:
-      migrate:
+      postgres-rename-roles:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
@@ -933,13 +933,13 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "scheduler/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
-      # organization, so it steps up to grid_app_platform per transaction
+      # organization, so it steps up to app_platform per transaction
       # — see frontends/ui/workers/platform-scope.js.
-      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
       # Object storage, for `look` (ADR-0039): the tool asks the
@@ -959,7 +959,7 @@ services:
     networks:
       - app
     depends_on:
-      migrate:
+      postgres-rename-roles:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
@@ -987,7 +987,7 @@ services:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
       context: ../../frontends/ui
-      dockerfile: deploy/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
       - BACKEND_URL=${BACKEND_URL:-http://api:8000}
@@ -1153,6 +1153,27 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Renames the row-level-security roles (grid_app_rw -> app_rw and the rest,
+  # ADR-0145 row 10d) once the migrations have run: the ones written before the
+  # rename grant to the old names, which a fresh volume creates (init-db.sql).
+  # Everything that logs in as app_rw waits on this. The same script runs as the
+  # Kubernetes Job `pg-rename-rls-roles`.
+  postgres-rename-roles:
+    image: postgres:16-alpine
+    command: ["sh", "/rename-legacy-names.sh", "after-migrate"]
+    environment:
+      PGHOST: postgres
+      PGUSER: agent
+      PGPASSWORD: aiq_dev  # pragma: allowlist secret (local compose default, the POSTGRES_PASSWORD above)
+    volumes:
+      - ../postgres/rename-legacy-names.sh:/rename-legacy-names.sh:ro
+    networks:
+      - app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   # Transaction pooler in front of the pooled DSNs (ADR-0083): the same
   # PgBouncer parameters Kubernetes runs through the CloudNativePG `Pooler`
   # (`deploy/pulumi/src/data/postgres.ts`), so a session feature that only works
@@ -1170,7 +1191,7 @@ services:
   pgbouncer:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
     environment:
-      DATABASE_URLS: postgres://agent:aiq_dev@postgres:5432/jobs,postgres://agent:aiq_dev@postgres:5432/checkpoints,postgres://grid_app_rw:${APP_RUNTIME_PASSWORD:-${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}}@postgres:5432/grid_app  # pragma: allowlist secret (compose dev default)
+      DATABASE_URLS: postgres://agent:aiq_dev@postgres:5432/jobs,postgres://agent:aiq_dev@postgres:5432/checkpoints,postgres://app_rw:${APP_RUNTIME_PASSWORD:-${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}}@postgres:5432/app  # pragma: allowlist secret (compose dev default)
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "2000"
@@ -1274,7 +1295,7 @@ services:
     # v4 with its default write mode, events_only: a local volume left from v3
     # is cut over on first start. Local traces are disposable; the cluster
     # migrates in stages (kubernetes.md §9b, "Upgrading to Langfuse v4").
-    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config.ts);
+    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config/langfuse.ts);
     # web and worker must stay on the same one, so bump the two lines together.
     image: ghcr.io/langfuse/langfuse:4.71.0
     profiles: [langfuse]
@@ -1282,7 +1303,7 @@ services:
       - "3100:3000" # 3000 is taken by the frontend
     environment:
       # `langfuse_app`, not `aiq`: Langfuse runs its own Prisma migrations, so
-      # its credential holds DDL rights and must not reach grid_app. The role
+      # its credential holds DDL rights and must not reach app. The role
       # and database come from init-db.sql.
       DATABASE_URL: postgresql://langfuse_app:langfuse_dev@postgres:5432/langfuse  # pragma: allowlist secret (compose dev default, fixed by init-db.sql)
       CLICKHOUSE_URL: http://clickhouse:8123

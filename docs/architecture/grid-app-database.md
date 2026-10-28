@@ -1,12 +1,12 @@
-# Grid Application Database (`grid_app`)
+# Grid Application Database (`app`)
 
 This document describes the Next.js BFF's application database: what it stores, how it connects, and how schemas are managed.
 
 ---
 
-## What `grid_app` stores
+## What `app` stores
 
-`grid_app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all Grid-specific application state that is not already owned by the Python AI-Q agent:
+`app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all Grid-specific application state that is not already owned by the Python AI-Q agent:
 
 | Area | Tables |
 |---|---|
@@ -27,7 +27,7 @@ The Python agent continues to own `jobs` (job metadata, summaries) and `checkpoi
 The BFF connects via **Drizzle ORM** with the **`postgres` driver**.
 
 - **Environment variable:** `APP_DATABASE_URL`
-- **Role:** `grid_app_rw` — DML only, no DDL, and **subject to row-level
+- **Role:** `app_rw` — DML only, no DDL, and **subject to row-level
   security** (ADR-0041). Migrations use the owner credential in
   `APP_MIGRATION_DATABASE_URL` instead.
 - **Client file:** `frontends/ui/src/lib/db/index.ts`
@@ -112,11 +112,11 @@ Generated migrations are written to `frontends/ui/drizzle/` and committed to git
 
 ## Docker setup
 
-The `grid_app` database is created alongside `jobs` and `checkpoints` in the PostgreSQL container defined in `deploy/compose/docker-compose.yaml`.
+The `app` database is created alongside `jobs` and `checkpoints` in the PostgreSQL container defined in `deploy/compose/docker-compose.yaml`.
 
 - **Init script:** `deploy/compose/init-db.sql`
 - **Mount point:** `/docker-entrypoint-initdb.d/init-db.sql` inside the `postgres` container
-- **Databases created:** `jobs`, `checkpoints`, `grid_app`
+- **Databases created:** `jobs`, `checkpoints`, `app`
 - **Default user/password:** `aiq` / `aiq_dev`
 
 The init script is idempotent (`IF NOT EXISTS`) and runs automatically when the PostgreSQL container starts with an empty data directory. The BFF service receives `APP_DATABASE_URL` via the environment.

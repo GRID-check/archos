@@ -53,7 +53,7 @@ vi.mock('./repository', () => ({
  * suite that doubles the repository, and the effect's `instanceof` reads the
  * SAME mocked class it is handed, so the branch under test is the real one.
  */
-vi.mock('./service', () => ({
+vi.mock('./document-dispatch', () => ({
   dispatchDocument: vi.fn(),
   AgentAuthoredDocumentNotIndexableError: class AgentAuthoredDocumentNotIndexableError extends Error {},
 }))
@@ -135,7 +135,7 @@ import { versionBytesPassedScreening } from './document-reader'
 import { findDocumentInOrg } from './repository'
 import { discardObject } from '@/lib/storage/discard'
 import { purgeIngestedChunks } from './collection-file-ref'
-import { dispatchDocument } from './service'
+import { dispatchDocument } from './document-dispatch'
 import { announceNewRevision } from './revision-notify'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { requireProjectAccess } from '@/lib/authz/projects'
@@ -1113,7 +1113,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
   })
 
   it('does not fail the publish when the dispatcher refuses the document', async () => {
-    const { AgentAuthoredDocumentNotIndexableError } = await import('./service')
+    const { AgentAuthoredDocumentNotIndexableError } = await import('./document-dispatch')
     vi.mocked(dispatchDocument).mockRejectedValue(new AgentAuthoredDocumentNotIndexableError('doc_1'))
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),

@@ -2,7 +2,7 @@
  * INTERNAL service endpoint — the single write path into the `citation_events`
  * ledger. The backend's citation-health emitter
  * (src/aiq_agent/common/citation_events.py) POSTs one batch per research turn,
- * mirroring `api/internal/agent-profiler-spans/route.ts`; grid_app stays
+ * mirroring `api/internal/agent-profiler-spans/route.ts`; `app` stays
  * single-writer.
  */
 

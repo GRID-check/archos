@@ -5,7 +5,7 @@
  * A stage runs after the answer exists and produces at most one payload
  * addressed to that turn. The payload lands in `messages.metadata.stages`
  * rather than in a table of its own, for two hard reasons: `messages` is
- * already covered by `grid_secure_table`, so tenant isolation comes for free
+ * already covered by `secure_table`, so tenant isolation comes for free
  * and correct (§7.3), and `server-message-mapper` already restores that column,
  * so `stages` is one more key on a path that exists.
  *
@@ -36,7 +36,7 @@ export interface StoredFollowUpsStage {
  * One `project_memory` row the post-answer reflection stage wrote for this turn.
  *
  * A NOTIFICATION, not the record: the row itself lives in `project_memory`,
- * where `grid_app` is the single writer and the memory panel is where a reader
+ * where `app` is the single writer and the memory panel is where a reader
  * curates it. What is stored on the message is the fact that THIS TURN produced
  * it — the identity the row has never had (§1.6), and the reason the chip could
  * only ever say the same „Piloti hat sich gemerkt 5" against every answer in

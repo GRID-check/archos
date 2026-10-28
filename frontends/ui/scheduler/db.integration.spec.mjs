@@ -1,12 +1,12 @@
 /**
  * @vitest-environment node
  *
- * The scheduler's claim (`claimDue`) against a real Postgres as `grid_app_rw`:
+ * The scheduler's claim (`claimDue`) against a real Postgres as `app_rw`:
  * what `db.spec.mjs` asserts about the SQL text, proved with the SQL. The claim
  * is "each due occurrence fires once, on whichever replica", which only row
  * locks and a committed advance can make true.
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run scheduler/db.integration.spec.mjs
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

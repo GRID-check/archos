@@ -1,6 +1,9 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, backendAutoscaled, backendImage, toResourceRequirements } from "../config";
+import { GridConfig } from '../config'
+import { backendAutoscaled } from '../config/chat-tier'
+import { appPullPolicy, backendImage } from '../config/images'
+import { toResourceRequirements } from '../config/resources'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";

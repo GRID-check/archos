@@ -4,7 +4,7 @@
  * Piloti's workspace reads in a conversation, against a REAL Postgres through
  * the restricted runtime role (ADR-0093, ADR-0094, ADR-0122):
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/agent-api/read-gate.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -67,8 +67,8 @@ vi.mock('@/lib/authz/project-membership', async (importOriginal) => ({
 }))
 // The lookup's backend: the vector search answers one passage of the document named here.
 const searchHit = vi.hoisted(() => ({ collection: '', fileName: '' }))
-vi.mock('@/lib/documents/service', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/documents/service')>()),
+vi.mock('@/lib/documents/semantic-search', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/documents/semantic-search')>()),
   fetchGroupedSemanticHits: vi.fn(async (collections: readonly string[]) =>
     collections.includes(searchHit.collection)
       ? [{ file_name: searchHit.fileName, score: 0.9, snippet: 'Brandabschnitt', page_number: 1, collection: searchHit.collection, rank: 0 }]

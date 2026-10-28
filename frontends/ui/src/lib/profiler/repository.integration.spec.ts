@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: the profiler's conversation directory against a
  * REAL Postgres with every migration applied, as the restricted runtime role.
  *
@@ -7,7 +10,7 @@
  * to the span's when the conversation row is gone, and that a project filter
  * resolves through `conversations.project_id`.
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/profiler/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database.

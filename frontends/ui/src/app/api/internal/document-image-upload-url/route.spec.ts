@@ -9,12 +9,12 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
 }))
 
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-storage-keys', () => ({
   presignDocumentImageUpload: vi.fn(),
 }))
 
 import { POST } from './route'
-import { presignDocumentImageUpload } from '@/lib/documents/service'
+import { presignDocumentImageUpload } from '@/lib/documents/document-storage-keys'
 
 const DOC_ID = '4f9c1d2e-3b4a-4c5d-8e6f-7a8b9c0d1e2f'
 

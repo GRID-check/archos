@@ -130,7 +130,7 @@ describe('visibleOperations', () => {
   })
 
   it('hides the asks from Piloti, and only from Piloti: Piloti never asks Piloti (ADR-0124)', () => {
-    for (const name of ['piloti-ask-create', 'piloti-ask-get', 'piloti-ask-cancel']) {
+    for (const name of ['agent-ask-create', 'agent-ask-get', 'agent-ask-cancel']) {
       const ask = { ...op('project-list'), name, domain: 'conversations' as const }
       expect(canSee(piloti, ask), name).toBe(false)
       expect(canSee(person(), ask), name).toBe(true)

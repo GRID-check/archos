@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, foreignKey, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
-import { ASK_STATES, type AskState } from '@/lib/piloti-asks/ask-wire'
+import { ASK_STATES, type AskState } from '@/lib/agent-asks/ask-wire'
 import { conversations } from './conversations'
 
 const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${value}'`).join(', '))
@@ -8,7 +8,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
 /**
  * A question another agent asked Piloti on a person's behalf (ADR-0124,
  * migration 0179): one row per ask, whether it came through the MCP door
- * (`piloti-ask-create`) or the A2A door (`SendMessage`), which calls the same
+ * (`agent-ask-create`) or the A2A door (`SendMessage`), which calls the same
  * route.
  *
  * The row is the A2A task. Its id is three things at once: the ask, the turn
@@ -21,7 +21,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
  * for `failed` and `rejected`; `ended_at` exactly for a terminal state.
  */
 export const pilotiAsks = pgTable(
-  'piloti_asks',
+  'agent_asks',
   {
     id: uuid('id').primaryKey(),
     organizationId: text('organization_id').notNull(),
@@ -37,27 +37,27 @@ export const pilotiAsks = pgTable(
   },
   (table) => ({
     conversationFk: foreignKey({
-      name: 'piloti_asks_conversation_fkey',
+      name: 'agent_asks_conversation_fkey',
       columns: [table.conversationId, table.organizationId],
       foreignColumns: [conversations.id, conversations.organizationId],
     }).onDelete('cascade'),
-    requesterIdx: index('idx_piloti_asks_requester_created').on(
+    requesterIdx: index('idx_agent_asks_requester_created').on(
       table.organizationId,
       table.requestedBy,
       table.createdAt,
     ),
-    conversationIdx: index('idx_piloti_asks_conversation').on(table.conversationId),
-    stateKnown: check('piloti_asks_state_known', sql`${table.state} IN (${list(ASK_STATES)})`),
+    conversationIdx: index('idx_agent_asks_conversation').on(table.conversationId),
+    stateKnown: check('agent_asks_state_known', sql`${table.state} IN (${list(ASK_STATES)})`),
     reasonWhenRefused: check(
-      'piloti_asks_reason_when_refused',
+      'agent_asks_reason_when_refused',
       sql`(${table.state} IN ('failed', 'rejected')) = (${table.reason} IS NOT NULL)`,
     ),
     reasonLength: check(
-      'piloti_asks_reason_length',
+      'agent_asks_reason_length',
       sql`${table.reason} IS NULL OR char_length(${table.reason}) BETWEEN 1 AND 500`,
     ),
     endedWhenTerminal: check(
-      'piloti_asks_ended_when_terminal',
+      'agent_asks_ended_when_terminal',
       sql`(${table.state} IN ('submitted', 'working')) = (${table.endedAt} IS NULL)`,
     ),
   }),

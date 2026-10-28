@@ -10,7 +10,7 @@ and what a read or a search returns.
 
 **Tenant and scope come from the turn, never from an argument.** The rows are the
 turn's inventory (``browse._turn_rows``), the collections its signed scope names
-(``register._resolve_scoped_collections``, narrowed to the turn's shelves), read
+(``search_scope.resolve_scoped_collections``, narrowed to the turn's shelves), read
 from the per-turn context like every other knowledge-layer tool. The same
 backend instance therefore serves every turn of every tenant.
 
@@ -31,12 +31,8 @@ the citation key stays ``<file>, p.N``. Pages come from the stored page text
 from __future__ import annotations
 
 import asyncio
-import difflib
 import logging
-import re
 from collections.abc import Sequence
-from dataclasses import dataclass
-from dataclasses import field
 from dataclasses import replace
 from typing import TYPE_CHECKING
 from typing import Any
@@ -50,57 +46,65 @@ from deepagents.backends.protocol import LsResult
 from deepagents.backends.protocol import ReadResult
 from deepagents.backends.protocol import WriteResult
 
-from aiq_agent.common.citation_collector import note_citations
-from aiq_agent.common.estate_paths import ESTATE_MOUNTS
-from aiq_agent.common.estate_paths import MOUNT_ROOTS
-from aiq_agent.common.estate_paths import SHELF_MOUNTS
-from aiq_agent.common.estate_paths import TEXT_EXTENSIONS
 from aiq_agent.common.estate_paths import EstatePath
 from aiq_agent.common.estate_paths import Mount
 from aiq_agent.common.estate_paths import PathRefused
 from aiq_agent.common.estate_paths import action_place
 from aiq_agent.common.estate_paths import asked_document
-from aiq_agent.common.estate_paths import estate_path
-from aiq_agent.common.estate_paths import file_name_candidates
 from aiq_agent.common.estate_paths import parse_estate_path
 
 from . import stored_pages
 from .browse import FileRow
 from .browse import file_rows
 from .browse import fold
+from .estate_constants import _PAGES_ITEM  # noqa: F401
+from .estate_constants import DEFAULT_LINE_LIMIT  # noqa: F401
+from .estate_constants import GLOB_TOOL  # noqa: F401
+from .estate_constants import GREP_TOOL  # noqa: F401
+from .estate_constants import IMAGE_EXTENSIONS  # noqa: F401
+from .estate_constants import LS_TOOL  # noqa: F401
+from .estate_constants import MAX_READ_CHARS  # noqa: F401
+from .estate_constants import MAX_READ_PAGES  # noqa: F401
+from .estate_constants import MAX_SUGGESTIONS  # noqa: F401
+from .estate_constants import MODEL_EXTENSIONS  # noqa: F401
+from .estate_constants import READ_FILE_TOOL  # noqa: F401
+from .estate_constants import SUGGESTION_CUTOFF  # noqa: F401
+from .estate_files import EstateFile  # noqa: F401
+from .estate_files import Resolution  # noqa: F401
+from .estate_files import ToolOutput  # noqa: F401
+from .estate_files import _content_type  # noqa: F401
+from .estate_files import estate_file  # noqa: F401
+from .estate_files import no_such_file  # noqa: F401
+from .estate_glob import _glob_flags  # noqa: F401
+from .estate_glob import _names_of  # noqa: F401
+from .estate_glob import _suggestions  # noqa: F401
+from .estate_glob import children  # noqa: F401
+from .estate_glob import glob_files  # noqa: F401
+from .estate_glob import resolve_in  # noqa: F401
+from .estate_pages import PagesRefused  # noqa: F401
+from .estate_pages import pages_for_lines  # noqa: F401
+from .estate_pages import pages_label  # noqa: F401
+from .estate_pages import parse_pages  # noqa: F401
+from .estate_render import ReadRowFacts  # noqa: F401
+from .estate_render import _chunk_hit  # noqa: F401
+from .estate_render import _directory_message  # noqa: F401
+from .estate_render import _empty_message  # noqa: F401
+from .estate_render import _model_message  # noqa: F401
+from .estate_render import _older_revision_notice  # noqa: F401
+from .estate_render import _page_hit  # noqa: F401
+from .estate_render import _pages_field  # noqa: F401
+from .estate_render import _read_preamble  # noqa: F401
+from .estate_render import _read_trailer  # noqa: F401
+from .estate_render import _rebuilt_line  # noqa: F401
+from .estate_render import _render  # noqa: F401
+from .estate_render import _settle_listing  # noqa: F401
+from .estate_render import _settle_read  # noqa: F401
+from .estate_render import _store_down  # noqa: F401
 
 if TYPE_CHECKING:
     from .estate_listing import Listing
 
 logger = logging.getLogger(__name__)
-
-#: The tool names, spelled once: the hits' lane stamp and the Herleitung read them.
-READ_FILE_TOOL = "read_file"
-LS_TOOL = "ls"
-GLOB_TOOL = "glob"
-GREP_TOOL = "grep"
-
-#: Characters one read returns (about 6k tokens), today's ``read_passage._MAX_READ_CHARS``. A read stops at
-#: a page boundary past it and names the next call.
-MAX_READ_CHARS = 24_000
-
-#: Pages one ``pages=`` may ask for, today's ``read_passage._MAX_RANGE_PAGES``.
-MAX_READ_PAGES = 30
-
-#: Lines a text file read returns by default, the stock ``read_file``'s default.
-DEFAULT_LINE_LIMIT = 100
-
-#: How many paths a miss suggests, and how alike a name must be to be suggested.
-MAX_SUGGESTIONS = 3
-SUGGESTION_CUTOFF = 0.6
-
-#: Image files: served as their caption, page-less (agent-filesystem.md §2).
-IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".heic", ".heif")
-
-#: An IFC model is a measurement source, not a passage: it gets no citable block.
-MODEL_EXTENSIONS = (".ifc",)
-
-_PAGES_ITEM = re.compile(r"^\s*(\d+)\s*(?:[-–—]\s*(\d+))?\s*$")
 
 
 # ---------------------------------------------------------------------------
@@ -108,138 +112,14 @@ _PAGES_ITEM = re.compile(r"^\s*(\d+)\s*(?:[-–—]\s*(\d+))?\s*$")
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class EstateFile:
-    """One document as the estate serves it: its row, its mount and its path."""
-
-    row: FileRow
-    mount: Mount
-    path: str
-    #: A restricted folder's document; resolvable only once its collection may be named.
-    restricted: bool = False
-
-    @property
-    def leaf(self) -> str:
-        return self.path.rsplit("/", 1)[-1]
-
-    @property
-    def paged(self) -> bool:
-        """Whether the document has pages to address; a text file has lines, an image has neither."""
-        name = self.row.file_name.lower()
-        return not name.endswith((*TEXT_EXTENSIONS, *IMAGE_EXTENSIONS, *MODEL_EXTENSIONS))
-
-
-def estate_file(row: FileRow, *, restricted: bool = False) -> EstateFile | None:
-    """``row`` placed in the namespace, or ``None`` when its shelf has no mount."""
-    shelf = row.shelf or ""
-    mount = SHELF_MOUNTS.get(shelf)
-    path = estate_path(shelf, row.folder, row.file_name)
-    if mount is None or path is None:
-        return None
-    return EstateFile(row=row, mount=mount, path=path, restricted=restricted)
-
-
-@dataclass
-class Resolution:
-    """What a path resolved to: one file, or a miss with the names to suggest."""
-
-    file: EstateFile | None
-    #: A line the read says ahead of the text (the file has moved to another folder).
-    note: str = ""
-    suggestions: list[str] = field(default_factory=list)
-
-
 # ---------------------------------------------------------------------------
 # What a tool returns
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class ToolOutput:
-    """The text the model reads, and the passages in it."""
-
-    text: str
-    hits: tuple[Any, ...] = ()
-    #: ``ok`` | ``empty`` | ``error``: the call's Herleitung outcome and whether the result is an error.
-    status: str = "ok"
-
-
-def no_such_file(path: str, suggestions: Sequence[str] = ()) -> str:
-    """The one answer for a path that names nothing the turn may see: a miss and a restricted guess alike."""
-    text = f'No file "{path}".'
-    if suggestions:
-        text += " Did you mean:\n" + "\n".join(f"- {name}" for name in suggestions[:MAX_SUGGESTIONS])
-    return (
-        text + "\n`ls` a folder or `glob` by name to see what exists; `grep` finds wording, `knowledge_search` meaning."
-    )
-
-
 # ---------------------------------------------------------------------------
 # Page addresses
 # ---------------------------------------------------------------------------
-
-
-class PagesRefused(ValueError):
-    """A ``pages=`` the reader cannot serve; the message is what the model reads."""
-
-
-def parse_pages(raw: Any) -> list[int] | None:
-    """``"3"``, ``"3-5"`` or ``"3,7,11"`` as the page numbers, in the order asked, without repeats. Pure.
-
-    ``None`` for no ``pages``. More than :data:`MAX_READ_PAGES` pages, or an
-    item that is not a page or a range, raises :class:`PagesRefused`.
-    """
-    if raw is None:
-        return None
-    text = str(raw).strip()
-    if not text:
-        return None
-    numbers: list[int] = []
-    for item in text.split(","):
-        found = _PAGES_ITEM.match(item.strip().lower().removeprefix("p.").removeprefix("s."))
-        if found is None:
-            raise PagesRefused(f'`pages` takes "3", "3-5" or "3,7,11"; got {text!r}.')
-        first = int(found.group(1))
-        last = int(found.group(2) or first)
-        if first < 1 or last < first:
-            raise PagesRefused(f"`pages` counts from 1, first page before last; got {text!r}.")
-        numbers.extend(range(first, last + 1))
-        if len(numbers) > MAX_READ_PAGES:
-            raise PagesRefused(f"At most {MAX_READ_PAGES} pages per read; split {text!r} into several reads.")
-    return list(dict.fromkeys(numbers))
-
-
-def pages_label(numbers: Sequence[int]) -> str:
-    """``[3, 4, 5, 9]`` as ``"3-5, 9"``. Pure."""
-    ordered = sorted(set(numbers))
-    parts: list[str] = []
-    start = previous = None
-    for number in ordered:
-        if start is None:
-            start = previous = number
-            continue
-        if number == previous + 1:
-            previous = number
-            continue
-        parts.append(str(start) if start == previous else f"{start}-{previous}")
-        start = previous = number
-    if start is not None:
-        parts.append(str(start) if start == previous else f"{start}-{previous}")
-    return ", ".join(parts)
-
-
-def pages_for_lines(pages: Sequence[stored_pages.Page], offset: int, limit: int) -> list[int]:
-    """The pages a line window ``[offset, offset+limit)`` falls on, counting the pages' lines in order. Pure."""
-    first_line = max(0, offset)
-    last_line = first_line + max(1, limit)
-    out: list[int] = []
-    position = 0
-    for page in pages:
-        lines = max(1, page.text.count("\n") + 1)
-        if position < last_line and position + lines > first_line:
-            out.append(page.number)
-        position += lines
-    return out or ([pages[-1].number] if pages else [])
 
 
 # ---------------------------------------------------------------------------
@@ -284,14 +164,14 @@ class EstateBackend(BackendProtocol):
     def entries(self) -> list[Any]:
         """The collections this turn may read, with their shelves, narrowed to the turn's shelves."""
         from .browse import _session_collection
-        from .register import _resolve_base_collection
-        from .register import _resolve_scoped_collections
-        from .register import _restrict_scope_to_turn
+        from .search_scope import resolve_base_collection
+        from .search_scope import resolve_scoped_collections
+        from .search_scope import restrict_scope_to_turn
 
         config = self.search_config
         return list(
-            _restrict_scope_to_turn(
-                _resolve_scoped_collections(config, _session_collection(), _resolve_base_collection(config))
+            restrict_scope_to_turn(
+                resolve_scoped_collections(config, _session_collection(), resolve_base_collection(config))
             )
         )
 
@@ -711,116 +591,6 @@ class EstateBackend(BackendProtocol):
 # ---------------------------------------------------------------------------
 
 
-def _names_of(file: EstateFile) -> set[str]:
-    names = {fold(file.leaf), fold(file.row.file_name), fold(file.row.file_name.rsplit("/", 1)[-1])}
-    if file.row.display_title:
-        names.add(fold(file.row.display_title))
-    return names
-
-
-def resolve_in(files: Sequence[EstateFile], parsed: EstatePath) -> Resolution:
-    """:meth:`EstateBackend.resolve` over a given list of files. Pure."""
-    if parsed.mount is None or parsed.leaf is None:
-        return Resolution(file=None)
-    wanted = {fold(name) for name in file_name_candidates(parsed.leaf)} | {fold(parsed.leaf)}
-    in_mount = [file for file in files if file.mount == parsed.mount]
-    matches = [file for file in in_mount if _names_of(file) & wanted]
-    folder = fold(parsed.folder)
-    same_folder = [file for file in matches if parsed.mount == "law" or fold(file.row.folder) == folder]
-    listable = [file for file in matches if not file.restricted]
-    chosen = (same_folder or listable or [None])[0]
-    if chosen is None:
-        return Resolution(file=None, suggestions=_suggestions(in_mount, parsed))
-    note = ""
-    if parsed.mount != "law" and fold(chosen.row.folder) != folder and folder:
-        note = f"Moved: {parsed.path} is now {chosen.path}."
-    return Resolution(file=chosen, note=note)
-
-
-def _suggestions(files: Sequence[EstateFile], parsed: EstatePath) -> list[str]:
-    """Up to three listable paths whose leaf is close to the asked one; never a restricted document's."""
-    wanted = fold(parsed.leaf or "")
-    scored: list[tuple[float, str]] = []
-    for file in files:
-        if file.restricted:
-            continue
-        ratio = difflib.SequenceMatcher(None, wanted, fold(file.leaf)).ratio()
-        if ratio >= SUGGESTION_CUTOFF:
-            scored.append((ratio, file.path))
-    scored.sort(key=lambda item: (-item[0], item[1]))
-    return [path for _ratio, path in scored[:MAX_SUGGESTIONS]]
-
-
-def children(files: Sequence[EstateFile], path: str | None) -> list[str]:
-    """The entries directly below ``path``: subfolders (ending in ``/``) and files, sorted. Pure."""
-    try:
-        parsed = parse_estate_path(path, directory=True)
-    except PathRefused:
-        return []
-    if parsed.mount is None:
-        return [MOUNT_ROOTS[mount] for mount in ESTATE_MOUNTS if any(file.mount == mount for file in files)]
-    prefix = parsed.path if parsed.path.endswith("/") else parsed.path + "/"
-    out: set[str] = set()
-    for file in files:
-        if file.mount != parsed.mount or not fold(file.path).startswith(fold(prefix)):
-            continue
-        rest = file.path[len(prefix) :]
-        head, _, tail = rest.partition("/")
-        out.add(prefix + head + ("/" if tail else ""))
-    return sorted(out)
-
-
-def _glob_flags() -> int:
-    """The glob dialect: ``*`` ``**`` ``?`` ``[abc]`` ``{a,b}``, as the stock ``glob`` tool reads it.
-
-    Deep Agents matches with wcmatch too, so a pattern means here what it means
-    to the stock tool. Case is folded by :func:`fold` on both sides, so no
-    IGNORECASE flag is needed.
-    """
-    from wcmatch import glob as wcglob
-
-    return wcglob.GLOBSTAR | wcglob.BRACE | wcglob.DOTGLOB
-
-
-def glob_files(files: Sequence[EstateFile], pattern: str, path: str | None = None) -> list[EstateFile]:
-    """The files ``pattern`` matches below ``path`` (default: every estate mount), in path order. Pure.
-
-    A pattern without ``/`` matches the file's name at any depth, as the stock
-    tool's does; one with ``/`` matches the path below the search root, and an
-    absolute one (``/project/**/*.pdf``) the whole path. Names compare folded
-    (case, NFC, ä/ae, ß/ss), and a document matches by its served leaf
-    (``Plan.pdf.md``) or its file name (``Plan.pdf``), so ``*.pdf`` finds PDFs.
-    """
-    from wcmatch import glob as wcglob
-
-    wanted = fold((pattern or "").strip())
-    if not wanted:
-        return []
-    try:
-        root = parse_estate_path(path, directory=True) if path else None
-    except PathRefused:
-        return []
-    prefix = fold(root.path) if root is not None and root.mount is not None else ""
-    flags = _glob_flags()
-    out: list[EstateFile] = []
-    for file in files:
-        full = fold(file.path)
-        if prefix and not full.startswith(prefix):
-            continue
-        names = {fold(file.leaf), fold(file.row.file_name.rsplit("/", 1)[-1])}
-        stem = full[: -len(fold(file.leaf))]
-        if "/" not in wanted:
-            candidates = names
-        elif wanted.startswith("/"):
-            candidates = {stem + name for name in names}
-        else:
-            relative_stem = stem[len(prefix) :] if prefix else stem.lstrip("/")
-            candidates = {relative_stem + name for name in names}
-        if any(wcglob.globmatch(candidate, wanted, flags=flags) for candidate in candidates):
-            out.append(file)
-    return sorted(out, key=lambda file: file.path)
-
-
 # ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
@@ -837,68 +607,6 @@ async def _in_flight(files: Sequence[EstateFile]) -> list[str]:
         return await asyncio.to_thread(in_flight, collections)
     except Exception:  # noqa: BLE001 - a status read never costs the listing
         return []
-
-
-def _settle_listing(row: Any, listing: Listing) -> None:
-    """A listing's Herleitung row: ``list`` with its file and folder counts (ADR-0132).
-
-    A folder that is not there is ``empty`` and ``missing`` („nicht gefunden“), not
-    a failure; a restricted folder answers exactly so (listing is not use,
-    ADR-0088). A folder that is there and holds nothing (a new project, a chat
-    without uploads) is ``ok`` with its zeros: it was found, and it is empty.
-    """
-    if listing.error:
-        row.finish("empty", missing=True)
-        return
-    row.finish("ok", counts={"files": listing.files, "folders": listing.folders})
-
-
-@dataclass(frozen=True)
-class ReadRowFacts:
-    """What a ``read_file`` row may say about the read, beside the blocks it served (ADR-0132, ADR-0088)."""
-
-    #: The document by name: the resolved one only when ``may_name``; on a miss, the leaf the model asked for.
-    target: str | None = None
-    shelf: str | None = None
-    #: The path resolved to nothing (or to a restricted file, which answers the same).
-    missing: bool = False
-    #: The ``pages`` value was refused: the model's mistake, never printed on the row.
-    refused_pages: bool = False
-    #: A folder card (``<folder>/README.md``): the folder, and the listing it answered with.
-    card_folder: str | None = None
-    card: Listing | None = None
-
-
-def _settle_read(row: Any, output: ToolOutput, facts: ReadRowFacts, *, asked: str | None) -> None:
-    """A read's Herleitung row (ADR-0132): the document it may name, the pages it SERVED, what it found.
-
-    The pages are the ones the blocks hold, not the ones asked for: a read without
-    ``pages`` serves the opening page, and one cut at the character budget serves
-    fewer than it was asked. A Punkt stays a Punkt; a refused ``pages`` value is
-    the model's mistake, never printed. A miss is ``empty`` („nicht gefunden“).
-    """
-    if facts.card is not None:
-        # A folder card is the folder's listing, and its row says so.
-        counts = {"files": facts.card.files, "folders": facts.card.folders}
-        row.finish("ok", counts=counts, verb="list", **action_place(facts.card_folder))
-        return
-    if facts.missing:
-        row.finish("empty", missing=True, target=facts.target)
-        return
-    fields: dict[str, Any] = {key: value for key, value in (("target", facts.target), ("shelf", facts.shelf)) if value}
-    served = sorted({hit.page for hit in output.hits if getattr(hit, "page", None)})
-    if asked and asked.startswith("Pkt."):
-        fields["pages"] = asked
-    elif served:
-        fields["pages"] = pages_label(served)
-    elif asked and not facts.refused_pages:
-        fields["pages"] = asked
-    counts = {"hits": len(output.hits), "documents": 1} if output.hits else None
-    row.finish(output.status, counts=counts, **fields)
-
-
-def _store_down(file: EstateFile) -> str:
-    return f"Could not read {file.path} just now: the store did not answer. Try again; this is not a no."
 
 
 def _entry_shelf(entry: Any) -> str | None:
@@ -925,189 +633,3 @@ async def _rows_of(entries: Sequence[Any]) -> list[FileRow]:
             data = doc.model_dump() if hasattr(doc, "model_dump") else dict(doc)
             rows.append({**data, "collection": entry.collection, "shelf": _entry_shelf(entry)})
     return file_rows(rows)
-
-
-def _pages_field(pages: Any, clause: Any) -> str | None:
-    if clause is not None and str(clause).strip():
-        return f"Pkt. {str(clause).strip()}"
-    return str(pages).strip() or None if pages is not None else None
-
-
-def _directory_message(path: str) -> str:
-    return f'"{path}" is a folder, not a file: `ls("{path}")` lists it, `glob` finds files by name.'
-
-
-def _model_message(file: EstateFile) -> str:
-    return (
-        f"{file.path} is a building model (IFC), not a text: its numbers are measured, not read. "
-        f'`ifc_query` and `ifc_measure` answer from it (document="{file.row.file_name}").'
-    )
-
-
-def _empty_message(file: EstateFile) -> str:
-    return (
-        f"{file.path} holds no readable text yet: it may still be being read, or nothing could be read from it. "
-        "Not readable here is not the same as not in the project; say it could not be read."
-    )
-
-
-def _rebuilt_line(text: stored_pages.PageText) -> str:
-    if not text.rebuilt:
-        return ""
-    return "Rebuilt from the index; page breaks inside a passage are approximate."
-
-
-def _read_preamble(file: EstateFile, text: stored_pages.PageText, served: Sequence[stored_pages.Page]) -> str:
-    numbers = [page.number for page in served]
-    what = f"page {numbers[0]}" if len(numbers) == 1 else f"pages {pages_label(numbers)}"
-    count = f" of {text.page_count}" if text.page_count else ""
-    lines = [f"{file.path}, {what}{count}. Each block is one citable passage; cite its Citation line."]
-    if rebuilt := _rebuilt_line(text):
-        lines.append(rebuilt)
-    scans = [page.number for page in served if page.source == stored_pages.SOURCE_OCR]
-    if scans:
-        lines.append(f"Page(s) {pages_label(scans)} are a scan, transcribed by a vision model.")
-    drawings = [page.number for page in served if page.is_drawing]
-    if drawings:
-        lines.append(
-            f"Page(s) {pages_label(drawings)} are a drawing: the text is a vision model's reading of the sheet, "
-            "not its printed text. Read off, not measured; "
-            f'`look(document="{file.row.file_name}", page={drawings[0]})` shows it.'
-        )
-    return "\n".join(lines)
-
-
-def _read_trailer(
-    file: EstateFile,
-    text: stored_pages.PageText,
-    served: Sequence[stored_pages.Page],
-    wanted: Sequence[int],
-    missing: Sequence[int],
-    stopped_at: int | None,
-    outline: str,
-) -> str:
-    numbers = [page.number for page in served]
-    lines = [f"Read {('page ' + str(numbers[0])) if len(numbers) == 1 else 'pages ' + pages_label(numbers)}."]
-    if stopped_at is not None:
-        rest = [number for number in wanted if number >= stopped_at]
-        lines.append(f'Stopped at the read limit. Next: pages="{pages_label(rest)}".')
-    elif text.page_count and numbers[-1] < text.page_count:
-        following = numbers[-1] + 1
-        lines.append(f'Next: pages="{following}-{min(text.page_count, following + 2)}".')
-    empty = [number for number in missing if not text.page_count or number <= text.page_count]
-    if empty:
-        lines.append(f"Page(s) {pages_label(empty)} hold no text.")
-    if outline:
-        lines.append(outline)
-    elif not text.rebuilt and len(numbers) == 1 and len(wanted) == 1 and file.paged:
-        lines.append("pages= reads further; clause= reads one Punkt.")
-    return "\n".join(lines)
-
-
-def _older_revision_notice(file: EstateFile) -> str:
-    from aiq_agent.knowledge.restricted_use import may_name
-
-    from .read_passage import older_revision_line
-
-    current = file.row.superseded_by
-    if not current or not may_name(file.row.collection):
-        return ""
-    return older_revision_line(file.row.file_name, current).strip()
-
-
-def _content_type(page: stored_pages.Page) -> str:
-    if page.is_drawing:
-        return "drawing"
-    for kind in ("table", "image", "chart"):
-        if page.content_types and set(page.content_types) == {kind}:
-            return kind
-    return "text"
-
-
-def _page_hit(file: EstateFile, page: stored_pages.Page, *, budget: int, paged: bool = True) -> Any:
-    """One page as a grounding record: the page's text, the file's own row, the ``file, p.N`` key."""
-    from aiq_agent.common.grounding_block import GroundingHit
-    from aiq_agent.common.source_kinds import parse_shelf
-
-    from .register import _citation_key_for
-
-    number = page.number if paged and page.number > 0 else None
-    shelf = parse_shelf(file.row.shelf)
-    body = page.text.strip()
-    truncated = len(body) > budget
-    return GroundingHit(
-        citation_key=_citation_key_for(file.row.file_name, shelf, number, set()),
-        file_name=file.row.file_name,
-        page=number,
-        shelf=shelf,
-        collection=file.row.collection or None,
-        doc_class=file.row.doc_class,
-        display_title=file.row.display_title or file.row.file_name,
-        folder_path=file.row.folder or None,
-        clause=None,
-        score=1.0,
-        content_type=_content_type(page),
-        provenance=None,
-        stored_image_index=None,
-        status_note=None,
-        body=body[:budget] if truncated else body,
-        body_truncated=truncated,
-        path=file.path,
-    )
-
-
-def _chunk_hit(file: EstateFile, chunk: Any) -> Any:
-    """A Punkt's chunk as a record, with the file's row and path."""
-    from aiq_agent.common.grounding_block import GroundingHit
-    from aiq_agent.common.source_kinds import parse_shelf
-
-    from .register import _CHUNK_TRUNCATE_CHARS
-    from .register import _citation_key_for
-    from .register import _hit_provenance
-
-    shelf = parse_shelf(file.row.shelf)
-    page = chunk.page_number if chunk.page_number and chunk.page_number > 0 else None
-    content = chunk.content or ""
-    truncated = len(content) > _CHUNK_TRUNCATE_CHARS
-    clause = (chunk.metadata or {}).get("clause_id")
-    return GroundingHit(
-        citation_key=_citation_key_for(file.row.file_name, shelf, page, set()),
-        file_name=file.row.file_name,
-        page=page,
-        shelf=shelf,
-        collection=file.row.collection or None,
-        doc_class=file.row.doc_class,
-        display_title=file.row.display_title or file.row.file_name,
-        folder_path=file.row.folder or None,
-        clause=str(clause) if clause else None,
-        score=1.0,
-        content_type=getattr(chunk.content_type, "value", str(chunk.content_type)),
-        provenance=_hit_provenance(chunk),
-        stored_image_index=None,
-        status_note=None,
-        body=content[:_CHUNK_TRUNCATE_CHARS] if truncated else content,
-        body_truncated=truncated,
-        path=file.path,
-    )
-
-
-def _render(hits: tuple[Any, ...], *, preamble: str, notices: Sequence[str], trailer: str, tool: str) -> ToolOutput:
-    """The block, rendered and filed (ADR-0061); the hits noted for the call's artifact."""
-    from aiq_agent.common.grounding_block import GroundingBlock
-    from aiq_agent.common.grounding_block import render_grounding_block
-
-    from .register import _trace_lanes_for_hits
-
-    banner = "".join(f"{line}\n\n" for line in notices if line)
-    text = render_grounding_block(
-        GroundingBlock(
-            preamble=preamble,
-            degraded_banner=banner,
-            hits=hits,
-            lanes=_trace_lanes_for_hits(hits),
-            tool=tool,
-            trailer=trailer,
-        )
-    )
-    note_citations(hits)
-    return ToolOutput(text=text, hits=hits, status="ok")

@@ -39,8 +39,8 @@ function topNames(query: string, limit = 3): string[] {
 const FOUND_IN_THE_FIRST_THREE: ReadonlyArray<readonly [string, string]> = [
   ['which OIB guidelines apply to project', 'knowledge-search'],
   ['what does the project require under building law', 'knowledge-search'],
-  ['ask piloti', 'piloti-ask-create'],
-  ['ask Piloti a question about the project', 'piloti-ask-create'],
+  ['ask piloti', 'agent-ask-create'],
+  ['ask Piloti a question about the project', 'agent-ask-create'],
   ['passage read exact match in building law text', 'passage-read'],
   ['quote a clause from an OIB guideline', 'passage-read'],
   ['Austrian law paragraph Bauordnung', 'law-lookup'],
@@ -63,7 +63,7 @@ describe('search-operations for the requests agents typed', () => {
   })
 
   it('ranks the operation whose summary opens with the verb first among same-named ones', () => {
-    expect(topNames('ask piloti')[0]).toBe('piloti-ask-create')
+    expect(topNames('ask piloti')[0]).toBe('agent-ask-create')
   })
 
   it('never ranks by a fragment inside a word: "to" is not in "restore"', () => {
@@ -71,6 +71,6 @@ describe('search-operations for the requests agents typed', () => {
   })
 
   it('points a content question that matches nothing at the operations that read content', () => {
-    expect(nothingMatched(ctx)).toMatch(/knowledge-search .*law-lookup .*piloti-ask-create/)
+    expect(nothingMatched(ctx)).toMatch(/knowledge-search .*law-lookup .*agent-ask-create/)
   })
 })

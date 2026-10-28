@@ -991,14 +991,14 @@ no direct write route called, judge `pending`, „Behörde“. Langfuse: `work-r
 is connected to the office's MCP door (`/api/mcp`) as that person. Claude has
 no access to the documents' text and asks Piloti.
 
-**Question** (from Claude, through `piloti-ask-create`):
+**Question** (from Claude, through `agent-ask-create`):
 
 > Welche Geschäftszahl hat die Baubewilligung für die Hubergasse 14, und welche Fassung der Einreichpläne hat sie bewilligt?
 
 **Trajectory.**
 
-- Outside: `piloti-ask-create {projectId, question}` → `202 {id, state: "working"}`
-  → `piloti-ask-get {id, waitSeconds: 30}` → `200 {state: "completed", answer}`.
+- Outside: `agent-ask-create {projectId, question}` → `202 {id, state: "working"}`
+  → `agent-ask-get {id, waitSeconds: 30}` → `200 {state: "completed", answer}`.
 - Inside, the same turn a typed question gets: `read_passage(document="Bescheid_MA37_Baubewilligung.pdf", page=1)`.
   The inventory names the Bescheid, so it is read, not searched.
 
@@ -1033,7 +1033,7 @@ Herleitung, so what Claude wrote into the letter can be traced back.
 **Checks.** Row `ns-piloti-ask` runs the turn the ask starts, as a chat turn
 in the fixture project (the same turn, prompt and tools): „567812“ and „Index
 B“, no look, at most two rounds. The door around it (states, polling, the
-recursion lock) is held by `lib/piloti-asks/service.spec.ts`. Langfuse: the
+recursion lock) is held by `lib/agent-asks/service.spec.ts`. Langfuse: the
 trace carries the trigger `agent_consult`; `answer-confidence` high.
 
 ---

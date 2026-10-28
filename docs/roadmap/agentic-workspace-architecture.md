@@ -426,7 +426,7 @@ Behind the release layer, the backend items that are real and were confirmed:
 |---|---|---|
 | A plan attached in chat is answered before it is ingested; nothing tells the agent the file is in flight | `InputArea.tsx` ("send is never blocked"), `ingest_status_store` unread on the chat path | The first event trigger (L5) fixes this and PF-2 at once |
 | `research_job_queue` has no migration, no RLS, one index whose predicate the claim query cannot use | `queue.py:63-91` | It becomes the task queue |
-| `ResearchWorker`'s loop and heartbeat cancellation have no test | `worker.py:68-102`; `grep ResearchWorker frontends/aiq_api/tests/` is empty | The most safety-critical code in the tier |
+| `ResearchWorker`'s loop and heartbeat cancellation have no test | `worker.py:68-102`; `grep ResearchWorker apps/backend/tests/` is empty | The most safety-critical code in the tier |
 | No cross-service contract test for the fire path | ADR-0046 Risks records the 403 that broke every scheduled run in a real deployment | The lesson was written down; the test was not |
 | `sources/` (90 tests) and `packages/` (~636 tests) run in no CI job | `Taskfile.yml:347-352`, `packages/AGENTS.md` | `sources/` is where every agent tool lives; `packages/ifc-spatial*` backs a default-on feature that renders compliance verdicts |
 | `backend-deep-dive.md` describes a card-generation LLM call that no longer exists and a `card_generator_llm` key that nothing reads | `backend-deep-dive.md:355-368`, `piloti/conversation_register.py:639,816` | An agent working this repo acts on the doc |
@@ -520,7 +520,7 @@ The one new table, and the seams that already exist hung off it.
 
 | Change | Module | Kind |
 |---|---|---|
-| `tasks` table with lifecycle, pinned requester, plan, budget, deadline, concurrency policy; `jobs` creates tasks | `frontends/ui/src/lib/db/schema/tasks.ts`, `lib/tasks/`, migration with `grid_secure_table` | new row, generalises `jobs`/`job_runs`/`mention_requests` |
+| `tasks` table with lifecycle, pinned requester, plan, budget, deadline, concurrency policy; `jobs` creates tasks | `frontends/ui/src/lib/db/schema/tasks.ts`, `lib/tasks/`, migration with `secure_table` | new row, generalises `jobs`/`job_runs`/`mention_requests` |
 | Persist the clarifier's plan on the task; approval is a row transition resolved by an event, not a socket future | `piloti/clarify.py` (`preview_plan`), `lib/tasks/` | generalisation |
 | File the run's artifact at completion as the pinned requester, off the interactive GET | `lib/documents/research-report.ts`, `api/jobs/async/[...path]/route.ts:247` | generalisation; the route comment names this as "v1.1, decision 10" |
 | Audit actions `task.created … task.accepted`; per-task budget and deadline enforced by `GridCostTracker` and `BudgetGuardCallback` | `lib/audit/schemas.mjs`, `common/budget_guard.py`, `lib/request-context.ts` | generalisation |

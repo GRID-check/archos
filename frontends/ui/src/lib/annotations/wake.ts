@@ -192,7 +192,7 @@ export const wakeOutcomeOf = (wake: EnqueuedWake | null): WakeOutcome => (wake ?
 /**
  * A wake held before Piloti was asked (the person's own act, a rule or a cap,
  * at enqueue or when its job claims it) has no model call and so no trace: it
- * is on its `piloti_wakes` row, and here, in the organization's audit trail,
+ * is on its `agent_wakes` row, and here, in the organization's audit trail,
  * so an admin can see that it was held and why. A wake Piloti was asked and
  * did not answer (the job refused it or gave up, or its turn ended) is
  * `piloti.wake.ended`; one whose turn started is `piloti.wake.started`

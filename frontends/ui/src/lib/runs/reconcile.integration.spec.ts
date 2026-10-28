@@ -12,7 +12,7 @@
  * reached its block is claimed once, and its block — a real message, written
  * through the lock-held merge — ends.
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/runs/reconcile.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

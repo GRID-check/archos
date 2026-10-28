@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
 /**

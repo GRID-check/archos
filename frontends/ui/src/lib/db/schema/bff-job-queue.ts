@@ -11,7 +11,7 @@ import { integer, jsonb, pgTable, smallint, text, timestamp, uuid } from 'drizzl
  * reading a job's state back.
  *
  * `lane` is the organization id: the unit of fairness AND of tenancy, which is
- * why the table's policy compares it to `grid_current_org()`.
+ * why the table's policy compares it to `current_org()`.
  */
 
 /** `0` goes before `1` inside one lane. A person's request is interactive, a sweep is bulk. */

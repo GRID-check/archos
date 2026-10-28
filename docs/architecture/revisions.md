@@ -312,9 +312,9 @@ The agent reads the same facts the UI does, through the knowledge layer.
 
 | Tool | What it does with Fassungen | Code |
 |---|---|---|
-| `list_files` | Marks a row that a person replaced („ersetzt durch X (bestätigt)“), then rows that share a title-block number („aktuelle / ältere Fassung laut Plankopf“), then the name reading. A confirmed link beats the sheets, which beat the name. Prints `Plankopf: Nr. …, Index …, Stand …` | `packages/knowledge-layer/src/browse.py`, `confirmed_revision_marks`, `title_block_marks` |
-| `list_files(revisions_of=…)` | The whole chain of one document, newest first, with Index and date, upload date and what changed against the one before. The chain follows a confirmed link in both directions, the same title-block number and the name series, transitively | `browse.py`, `render_fassungen`, `_chain_members`, `_chain_order` |
-| `list_files(revisions_of=…, compare_to=…)` | What changed between two Fassungen of the chain: the Plankopf, pages aligned by their text, values that moved in printed lines, and quantities and dimension strings from the drawing analysis. No model call; the stored change line rides along when its basis is exactly that older file | `browse.py`, `resolve_compare`, `compare_revisions`; `src/aiq_agent/knowledge/revision_diff.py` |
+| `list_files` | Marks a row that a person replaced („ersetzt durch X (bestätigt)“), then rows that share a title-block number („aktuelle / ältere Fassung laut Plankopf“), then the name reading. A confirmed link beats the sheets, which beat the name. Prints `Plankopf: Nr. …, Index …, Stand …` | `packages/knowledge-layer/src/browse_rows.py`, `confirmed_revision_marks`, `title_block_marks` |
+| `list_files(revisions_of=…)` | The whole chain of one document, newest first, with Index and date, upload date and what changed against the one before. The chain follows a confirmed link in both directions, the same title-block number and the name series, transitively | `browse_revisions.py`, `render_revisions`, `_chain_members`, `_chain_order` |
+| `list_files(revisions_of=…, compare_to=…)` | What changed between two Fassungen of the chain: the Plankopf, pages aligned by their text, values that moved in printed lines, and quantities and dimension strings from the drawing analysis. No model call; the stored change line rides along when its basis is exactly that older file | `browse_compare.py`, `resolve_compare`, `compare_revisions`; `src/aiq_agent/knowledge/revision_diff.py` |
 | `knowledge_search` | Leaves confirmed older Fassungen out of the ranking on the user shelves, so an older state cannot outrank its replacement on similarity. Says „Ältere Fassungen ausgeblendet: …“. `file_name=…` bypasses the exclusion, and when the named file is an older Fassung the result carries the same line `read_passage` gives („Ältere Fassung: … ist durch … ersetzt“, the end of the chain). The base corpus is untouched | `packages/knowledge-layer/src/register.py`, `_superseded_files`, `_named_older_revision_notice`; `document_metadata_store.get_superseded_files` |
 | `read_passage` | Reading an older Fassung is allowed, because „Index B“ and „die alte Fassung“ ask for it. A one-line notice names the current one and tells the answer to say it read the older state | `packages/knowledge-layer/src/read_passage.py`, `_current_revision`, `_older_revision_notice` |
 | Inventory | A row suffix carries only the confirmed link, never a suggestion | `src/aiq_agent/knowledge/inventory.py` |
@@ -470,7 +470,7 @@ an earlier upload's bytes is kept on its version: `document_versions.screened_ha
 | Change summary at confirmation | `PUT /v1/collections/{c}/revision` | Generation `change-summary` |
 | Visual compare | `POST /v1/collections/{c}/revision-compare` | Generation `revision-visual-compare`, pixels left out |
 
-`frontends/aiq_api/tests/test_model_calls_are_traced.py` keeps both route calls
+`apps/backend/tests/test_model_calls_are_traced.py` keeps both route calls
 observable. The catalogue of trace names is in
 [`langfuse.md`](../observability/langfuse.md).
 
@@ -527,7 +527,7 @@ sequenceDiagram
   such a version today; a reviewer's release is per document, not per version.
 
 - **A re-read after a failed first ingest loses `revision_of`.** `reingestDocument`
-  dispatches without it (`frontends/ui/src/lib/documents/service.ts`), so the
+  dispatches without it (`frontends/ui/src/lib/documents/reingest.ts`), so the
   confirmed link is never written. The file falls back to the ordinary path: a
   title-block, name or content suggestion, which a person must confirm again. If
   none of the three fires, nothing is offered.

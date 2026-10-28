@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, test } from 'vitest'
 import { scrubDeep, scrubSensitiveQuery } from './posthog-scrub'
 

@@ -33,8 +33,8 @@ async function load() {
 }
 
 const pythonSources = [
-  read("frontends", "aiq_api", "src", "aiq_api", "jobs", "ingest_dispatch.py"),
-  read("frontends", "aiq_api", "src", "aiq_api", "jobs", "ingest_worker.py"),
+  read("apps", "backend", "src", "aiq_api", "jobs", "ingest_dispatch.py"),
+  read("apps", "backend", "src", "aiq_api", "jobs", "ingest_worker.py"),
   // The per-organisation cap is read where the in-process pool and the queue share it.
   read("src", "aiq_agent", "knowledge", "ingest_scheduler.py"),
   // The in-process pool's size, read by the knowledge layer's adapter.
@@ -100,7 +100,7 @@ describe("the ingest-worker tier", () => {
   });
 
   it("runs the role the entrypoint knows", () => {
-    expect(read("deploy", "entrypoint.py")).toContain('role == "ingest-worker"');
+    expect(read("apps", "backend", "entrypoint.py")).toContain('role == "ingest-worker"');
     expect(configSource).toContain('{ name: "PROCESS_ROLE", value: "ingest-worker" }');
   });
 
@@ -111,7 +111,7 @@ describe("the ingest-worker tier", () => {
     // tests' `cfg.providerLimits`.
     const cfg = await load();
     const python = read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py").match(
-      /MAX_IMAGE_PIXELS = _env_int\("MAX_IMAGE_PIXELS", ([\d_]+)/,
+      /MAX_IMAGE_PIXELS = env_int\("MAX_IMAGE_PIXELS", ([\d_]+)/,
     )?.[1];
     expect(python).toBeDefined();
     expect(cfg.ingestWorker.maxImagePixels).toBe(Number(python!.replace(/_/g, "")));

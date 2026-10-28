@@ -27,7 +27,7 @@ bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
 | Add an `app/api` route | Declare `authz` on the factory from `@/lib/api/handler` | `apiRoute` does not compile; `authz-coverage.spec.ts` |
 | Add a permission | `lib/authz/catalog.ts`. The deploy applies it to its environment (Job `grid-app-authz-catalog`); a new **resource type** is a dashboard step per environment, before the deploy | WorkOS drifts from the code. A project-tier permission that exists only in the catalog is held by nobody |
 | Decide access | Check a permission through `lib/authz/decide.ts`, the single decision point. Adoption is incremental, so gates still call `hasPermission` / `requireProjectAccess` / `requirePlatformPermission` (ADR-0038 §6) | A role-name check breaks every custom role |
-| Create a table | `SELECT grid_secure_table('<table>','<predicate>');` in the same migration | `rls-coverage.spec.ts`, by name |
+| Create a table | `SELECT secure_table('<table>','<predicate>');` in the same migration | `rls-coverage.spec.ts`, by name |
 | Read tenant rows | Context from `getGridSession()`, or state it (`withTenant`, `withPlatformAccess`, `withOptionalTenant`) | `internalApiRoute` does not compile |
 | Add an `app/api` route a person calls | Add its operation in `src/lib/agent-api/catalog/` in the same change, sharing the route's zod schema from a `lib/` wire module, or exempt it in `NOT_AN_AGENT_CAPABILITY` with a reason. [`headless-first.md`](../../docs/contributing/headless-first.md) | `lib/agent-api/agent-reachability.spec.ts` |
 | Add or change a capability on the review canvas or in the chat (a mark action, a pointer, a look, a compare, a box to ask about) | Give it an entry in `src/lib/surface-parity/parity.config.ts`: its canvas form and its chat form, each a rendering, an `exempt` reason or a `gap` naming the slice that closes it. Regenerate `tests/fixtures/surface-parity.json` (`UPDATE_FIXTURES=1 bunx vitest run src/lib/surface-parity/parity.config.spec.ts`). [`agent-surface.md`](../../docs/architecture/agent-surface.md#surface-parity-canvas-and-chat) | `surface-parity/parity.config.spec.ts`; `tests/aiq_agent/tools/test_surface_parity.py` for a canvas-group tool or `look` |
@@ -69,7 +69,7 @@ holding every `org:*` permission, and grants any role that shares the name.
 
 **Stepping up is not authorization.** Row-level security guards application
 bugs, the missing `WHERE` and the widened join. Anything running arbitrary SQL as
-`grid_app_rw` can name any tenant, so every platform-scope caller keeps its own
+`app_rw` can name any tenant, so every platform-scope caller keeps its own
 check. RLS is the backstop, never the plan.
 
 **Put the organization in every cache key.** `getCached` returns before the
@@ -95,8 +95,10 @@ built by `resolvePinnedRequesterSession`. Never call `runAsActingSession`
 anywhere else, and never pass it a session a request supplied: that is a way past
 every route's `authz`. [`agent-surface.md`](../../docs/architecture/agent-surface.md#the-acting-session).
 
-**The product's name is copy, never a name in code.** User-facing strings say
-Piloti, read from `lib/brand.ts`, the single source. No identifier, env var,
+**The product's name is copy, never a name in code.** `PRODUCT_NAME` in
+`lib/brand.ts` is the single source: a dictionary string says `{productName}`
+and the registry fills it in (`withProductName`, beside it; `i18n/product-name.spec.ts`
+fails a string that spells the name), and code reads the constant. No identifier, env var,
 header, CSS variable or route carries a product name (`aiq`, `grid`, `piloti`):
 the old `GRID_*` variables and `x-grid-*` headers are being renamed, and the
 `brand-names` ratchet stops new ones

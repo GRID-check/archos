@@ -10,7 +10,7 @@
  * project and the Archiv the same row. It runs under `task db:test:rls`, through
  * the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/documents/shelf-folders.integration.spec.ts
  */
 

@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * The purger's and the scheduler's postgres-js client: one per process,
- * connecting as `grid_app_rw` like the BFF. Their work spans tenants, so every
+ * connecting as `app_rw` like the BFF. Their work spans tenants, so every
  * transaction steps up to the platform role explicitly (`./platform-scope.js`)
  * rather than this connection being privileged (ADR-0041).
  *

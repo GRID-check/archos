@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The boundary between a card payload and the viewer.
  *
  * Two things are being defended here. The generated zod renders a nested

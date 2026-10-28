@@ -1,6 +1,6 @@
 """Project Memory client — backend write access via the internal BFF endpoint.
 
-Strict separation of concerns: the ``grid_app`` database has exactly ONE
+Strict separation of concerns: the ``app`` database has exactly ONE
 writer, the Next.js BFF. The backend never opens a connection to it. The
 ``remember`` tool posts findings to the internal endpoint
 ``POST /api/internal/memory`` over the compose network, authenticated with a

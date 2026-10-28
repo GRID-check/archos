@@ -28,8 +28,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { en } from './dictionaries/en'
-import { de } from './dictionaries/de'
+import { en, de } from './dictionaries'
 import { getByPath } from './translate'
 
 /**

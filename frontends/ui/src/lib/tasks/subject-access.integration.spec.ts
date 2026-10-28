@@ -4,7 +4,7 @@
  * A revision task is judged when it is read, by the folder its document is in
  * NOW (ADR-0093), against a REAL Postgres through the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/tasks/subject-access.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -19,7 +19,7 @@
  *   - its thread reads as a conversation that drew on that folder, so the
  *     shared-chat lock closes it for the same member;
  *   - moving the document back opens both again: nothing was stored;
- *   - the staff views ask the database's rule (`grid_conversation_restricted_use`):
+ *   - the staff views ask the database's rule (`conversation_restricted_use`):
  *     a vote in the thread is shown, and the profiler names the thread, while
  *     the document sits at the project's root, and both are withheld once it
  *     sits in a folder of a project with an access list of its own;

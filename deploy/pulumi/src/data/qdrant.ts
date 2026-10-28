@@ -1,6 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, pullPolicyFor } from "../config";
+import { GridConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { AUTOSCALER_SAFE_TO_EVICT, BOOTSTRAP_JOB_RESOURCES, JOB_DEFAULTS, PORT, QDRANT, UID } from "../constants";
 import { commonLabels } from "../platform/namespaces";
 import {

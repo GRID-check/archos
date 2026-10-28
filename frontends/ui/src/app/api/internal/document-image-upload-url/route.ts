@@ -23,7 +23,7 @@ import { z } from 'zod'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withOptionalTenant } from '@/lib/db/tenant-context'
 import { NotFoundError } from '@/lib/api/errors'
-import { presignDocumentImageUpload } from '@/lib/documents/service'
+import { presignDocumentImageUpload } from '@/lib/documents/document-storage-keys'
 
 const bodySchema = z.object({
   documentId: z.guid(),

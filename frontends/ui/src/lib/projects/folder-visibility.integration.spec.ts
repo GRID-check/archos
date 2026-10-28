@@ -4,7 +4,7 @@
  * The project overview and the document-role bindings against a REAL Postgres
  * (ADR-0087), through the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/folder-visibility.integration.spec.ts
  *
  * Each reads `documents` beside the listing repository: the overview's recent

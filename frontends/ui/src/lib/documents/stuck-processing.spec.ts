@@ -13,14 +13,16 @@ vi.mock('./repository', () => ({
   listStuckProcessingDocuments: vi.fn(),
   markDocumentIngestFailed: vi.fn(),
 }))
-vi.mock('./service', () => ({
+vi.mock('./ingest-dispatch', () => ({
   INGEST_DISPATCH_FAILED_MESSAGE: 'Ingestion could not be started',
+}))
+vi.mock('./ingest-recovery', () => ({
   redispatchStuckDocument: vi.fn(),
 }))
 
 import { getTenantContext } from '@/lib/db/tenant-context'
 import { listStuckProcessingDocuments, markDocumentIngestFailed, type StuckProcessingDocument } from './repository'
-import { redispatchStuckDocument } from './service'
+import { redispatchStuckDocument } from './ingest-recovery'
 import { STUCK_AFTER_MINUTES, STUCK_BATCH, recoverStuckProcessing } from './stuck-processing'
 
 const row = (over: Partial<StuckProcessingDocument> = {}): StuckProcessingDocument => ({

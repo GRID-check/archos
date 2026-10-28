@@ -23,7 +23,7 @@
  * gets its SIGTERM after the drain; in process, the bundle flushes after it.
  *
  * Environment (the BFF's own, `frontendEnv`, plus):
- *   APP_DATABASE_URL            - grid_app Postgres DSN (the queue lives there)
+ *   APP_DATABASE_URL            - `app` Postgres DSN (the queue lives there)
  *   BFF_JOBS_MODE               - `http` (default) or `inprocess`: where a slice runs
  *   INTERNAL_API_TOKEN          - shared token for the internal run route (http mode)
  *   BFF_JOBS_URL                - the pod's own BFF (http mode; default http://127.0.0.1:$PORT)

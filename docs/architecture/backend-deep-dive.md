@@ -9,7 +9,7 @@
 
 Docker Compose (`deploy/compose/docker-compose.yaml`):
 
-- **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `grid_app`.
+- **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `app`.
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
@@ -22,7 +22,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
   citation-registry snapshots. Cache-only semantics; both tiers fail open to
   in-process fallbacks when it is down or `REDIS_URL` is unset.
 
-The **real** backend front-end plugin is `frontends/aiq_api` (`_type: aiq_api`).
+The **real** backend front-end plugin is `apps/backend` (`_type: aiq_api`).
 (The old `src/aiq_agent/fastapi_extensions/` duplicate was deleted 2026-07-03,
 commit `2570b1b`; its one live route, `/v1/ingest`, was ported into `aiq_api`.)
 
@@ -60,7 +60,7 @@ Browser WebSocket
     neutrally as "Assistant" (getDisplayName in intermediate-step-parser.ts),
     not "Research Agent" — a greeting is not a research run.
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
-      frontends/aiq_api/src/aiq_api/chat_socket.py
+      apps/backend/src/aiq_api/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
   → frontends/ui/src/features/layout/components/ChatArea.tsx → AgentResponse.tsx
 ```
@@ -231,7 +231,7 @@ invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to the individual headers exactly as
 before the envelope existed.
 
-`frontends/aiq_api/src/aiq_api/context_envelope.py`'s
+`apps/backend/src/aiq_api/context_envelope.py`'s
 `GridContextEnvelopeMiddleware` (raw ASGI, same pattern as `AuthMiddleware` —
 never buffers the response body, so SSE routes are unaffected) fail-closed
 rejects (403 / WS policy-violation close) a workflow-invoking request when
@@ -413,7 +413,7 @@ config key any more. The result rides `ChatResponse.cards` → `message.cards`
 
 With `use_async_deep_research: true` (the working config), any query routed to
 deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
-**real** answer is produced later by `frontends/aiq_api/src/aiq_api/jobs/agent_job.py`
+**real** answer is produced later by `apps/backend/src/aiq_api/jobs/agent_job.py`
 (`run_agent_job`), which now generates cards post-hoc from the final report
 (`_generate_grid_cards` → `aiq_agent.cards.generate_cards`), re-emits the
 report artifact with cards attached over the job SSE stream, and stores
@@ -495,7 +495,7 @@ The agent keeps the brief current by emitting a `project_profile_patch` card
 (via `emit_card`) whenever the conversation establishes a durable hard fact —
 Piloti's prompt has an explicit "Keeping the Project Brief
 current" policy, and the card model carries the canonical fact-key vocabulary
-(`PROFILE_FACT_VOCABULARY` in `cards/models.py`, mirroring the intake
+(`PROFILE_FACT_VOCABULARY` in `cards/proposal_cards.py`, mirroring the intake
 definition). The card only proposes. At the end of the turn the patch is
 stored as a `project_profile` proposal (`register_envelope_card`,
 [`proposed-changes.md`](proposed-changes.md), ADR-0105) and the card carries its
@@ -513,7 +513,7 @@ Accept is live wherever the card renders.
 
 Summary generation: the intake wizard fires
 `POST /api/projects/{id}/generate-summary` → backend `/v1/generate-summary`
-(`frontends/aiq_api/.../routes/generate_summary.py`, registered in `plugin.py`)
+(`apps/backend/.../routes/generate_summary.py`, registered in `plugin.py`)
 → result stored into `profile_display.summary`.
 
 ### The bug that was fixed (summary wiped on every save)
@@ -1060,7 +1060,7 @@ passage body under that last line, and one `## Trace-Lanes` object at the end.
 The hit is now a record and the text is its rendering.
 `common/grounding_block.py` holds `GroundingHit`, `GroundingBlock` and the one
 renderer, `render_grounding_block`. Both producers build records and call it:
-`knowledge_layer.register._format_results` turns chunks into hits
+`knowledge_layer.search_results.format_results` turns chunks into hits
 (`_grounding_hit`, which is also where the Trace-Lanes fan-out reads a hit's
 shelf, Dokumentart and title from, so the header and the fan-out cannot
 disagree), and `ris_adapter.lookup.render.format_passages` turns `Passage`
@@ -1085,7 +1085,7 @@ The text parsers in `citations/text_parsers.py`
 (`_parse_knowledge_layer` and the eleven `_KL_*` regexes) stay for the callers
 that hold the bytes without the records: a registry hydrated from the shared
 cache, a turn replayed out of Postgres, and the job runner's callback in
-`frontends/aiq_api/src/aiq_api/jobs/callbacks.py`. A text those parsers find no
+`apps/backend/src/aiq_api/jobs/callbacks.py`. A text those parsers find no
 `Citation:` line in carries no sources at all; the generic URL extractor beneath
 them reads the tools with no registered parser (web search), never a passage
 body. Nothing reads a FAILED call either: both capture loops skip a
@@ -1137,7 +1137,7 @@ words, overview nouns and edition words around it), asks
 `read_passage.family_overview` for every member the corpus holds, and renders
 those members' scope passages ahead of its own hits in ONE grounding block,
 with one `## Gliederung` per member as the trailer. Beside the overview the
-block keeps at most four ranked hits (`_FAMILY_RANKED_HITS`), and the requery
+block keeps at most four ranked hits (`family_branch.FAMILY_RANKED_HITS`), and the requery
 judge never runs on it. One search round, then one round of Punkt opens. Membership is derived from what is indexed
 (`oib_families`), so a deployment without 2.3 is never told it has one, and a
 query that also names a topic, a Punkt, a page, a table or a file is an
@@ -1191,8 +1191,8 @@ countable in a trace.
 
 ### Agentic retrieval quality package (ADR-0039)
 
-Five retrieval-quality improvements sit in the knowledge layer's `register.py`
-(`knowledge_search` / `knowledge_retrieval`) and `llamaindex` package, all
+Five retrieval-quality improvements sit in the knowledge layer's ranked search
+(`knowledge_search.py`, `ranked_search.py`, `fusion.py`) and `llamaindex` package, all
 **fail-open** (any error degrades to the previous plain behavior, never raises):
 
 1. **Agentic filters** — `knowledge_search` is the evidence tool (read/cite).
@@ -1420,7 +1420,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   config (a `file_name NOT IN [...]` filter on the base collection only —
   session/project collections are never filtered). The same base-collection
   filter always carries `chunking != "page"`
-  (`_NON_EVIDENCE_CHUNKING` in the knowledge layer's `register.py`): the Punkt
+  (`_NON_EVIDENCE_CHUNKING` in the knowledge layer's `search_scope.py`): the Punkt
   chunker emits each Richtlinie's cover page and Impressum as per-page chunks,
   they are the only chunks still carrying the running title, and a title-shaped
   query therefore returned four cover pages at page 1 and nothing citable. `$ne`
@@ -1772,7 +1772,7 @@ runner). And the research tab can 403 — see §9.
 `f8093a0`)**: the `X-Grid-Collection-Scope` header is captured once at submit
 time (`piloti/conversation_register.py`) and threaded into the async job payload
 as `collection_scope`. The research worker only re-injects it into its own
-request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py`
+request context conditionally — `apps/backend/src/aiq_api/jobs/agent_job_setup.py`
 (`_inject_scope_headers`) does `if collection_scope is not None:` before base64url-encoding it back
 onto the header. When the scope is absent, `knowledge_retrieval` inside the
 worker falls back to legacy config-based resolution (base collection +
@@ -1797,7 +1797,7 @@ job, so after a reclaim they are the new owner's resume point.
 **Agent Skills and Jobs (ADR-0046)**: project-level **jobs** — a prompt on a
 timer, with a skill optionally attached — can fire this same async pipeline on
 a cron schedule. A dedicated `skill-scheduler` container claims due `jobs` rows
-in `grid_app` (`FOR UPDATE SKIP LOCKED`) and fires through the BFF's internal
+in `app` (`FOR UPDATE SKIP LOCKED`) and fires through the BFF's internal
 endpoint into `POST /v1/internal/skills/submit` (internal-token-guarded wrapper
 around `submit_agent_job`, so admission control and cost tracking apply
 unchanged). The agent follows the job's `output` (`chat` →
@@ -1947,7 +1947,7 @@ loads and renders it. Which model each role runs on is config:
 The agent can now persist curated findings across turns. Full design:
 `docs/architecture/project-memory-design.md`. Key facts:
 
-- **Single-writer**: the `grid_app` DB has exactly one writer, the Next.js BFF.
+- **Single-writer**: the `app` DB has exactly one writer, the Next.js BFF.
   The backend `remember` tool never touches the DB — it POSTs to the internal
   BFF endpoint `POST /api/internal/memory`
   (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the
@@ -2259,4 +2259,4 @@ checks that sit outside `verify`, and the traps `task --list` does not carry:
 
 Runtime-behavioural changes (deep-research cards, agent refactor, research 403)
 still need a running stack before merge: the `.devcontainer` (VS Code,
-`deploy/Dockerfile` target `dev-builder`) or `docker compose … up -d --build`.
+`apps/backend/Dockerfile` target `dev-builder`) or `docker compose … up -d --build`.

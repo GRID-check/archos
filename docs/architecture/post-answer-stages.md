@@ -696,8 +696,8 @@ read-merge-write, which is precisely the concurrency-safe primitive this needs.
 Two reasons, both hard:
 
 - **Tenant isolation comes for free and correct.** `messages` is covered by
-  `grid_secure_table('messages', 'EXISTS (SELECT 1 FROM conversations c WHERE
-  c.id = conversation_id AND c.organization_id = grid_current_org())')`
+  `secure_table('messages', 'EXISTS (SELECT 1 FROM conversations c WHERE
+  c.id = conversation_id AND c.organization_id = current_org())')`
   (`drizzle/0031_row_level_security.sql:268-269`). A new table means a new
   policy, a new entry in the tenant-isolation suite, and a new way to get it
   wrong. See §7.3.
@@ -728,7 +728,7 @@ and the chip becomes per-turn instead of per-conversation — which is what it
 always claimed to be.
 
 **The DB write stays the source of truth.** The frame is a notification, not a
-transfer of authority. `grid_app` stays single-writer.
+transfer of authority. `app` stays single-writer.
 
 > **[as built, slice 4b]** Four corrections, all small and all in the same
 > direction: the frame has to carry enough that nobody asks the database again.
@@ -976,24 +976,24 @@ The answer is complete and being streamed before any stage task runs
 ### 7.3 Tenant isolation
 
 - **`follow_ups` writes no table.** Its output lands in `messages.metadata`,
-  covered by `grid_secure_table('messages', 'EXISTS (SELECT 1 FROM conversations
-  c WHERE c.id = conversation_id AND c.organization_id = grid_current_org())')`
+  covered by `secure_table('messages', 'EXISTS (SELECT 1 FROM conversations
+  c WHERE c.id = conversation_id AND c.organization_id = current_org())')`
   (`drizzle/0031_row_level_security.sql:268-269`), through a route that already
   calls `requireResourceAccess(session, 'conversation', id, 'collaborator')`
   (`lib/conversations/service.ts:591`). **No new policy, no new CI surface.**
 - **`memory_reflection` writes `project_memory`**, covered by
-  `'organization_id = grid_current_org() AND (project_id IS NULL OR EXISTS
+  `'organization_id = current_org() AND (project_id IS NULL OR EXISTS
   (SELECT 1 FROM projects p WHERE p.id = project_id AND p.organization_id =
-  grid_current_org()))'` (`0031_row_level_security.sql:238-239`) — unchanged, and
-  it keeps writing through the token-guarded internal route so `grid_app` stays
+  current_org()))'` (`0031_row_level_security.sql:238-239`) — unchanged, and
+  it keeps writing through the token-guarded internal route so `app` stays
   single-writer.
 - **Telemetry (§7.4) reuses `agent_profiler_spans`**, already covered by
-  `'organization_id = grid_current_org()'` (`0031_row_level_security.sql:219`).
+  `'organization_id = current_org()'` (`0031_row_level_security.sql:219`).
 - **The frame itself:** delivered by `conversation_id` to a socket whose upgrade
   was already org-scoped (`_org_id_from_scope`,
   `websocket_reconnect.py:475-488`). A stage never chooses a recipient.
 
-**Net: this design adds zero rows to `grid_secure_table`.** That is the claim
+**Net: this design adds zero rows to `secure_table`.** That is the claim
 the tenant-isolation suite (`task db:test:rls`, a step of CI's Frontend job) would otherwise
 have to re-prove, and it is deliberate.
 

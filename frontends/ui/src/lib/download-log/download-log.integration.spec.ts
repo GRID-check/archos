@@ -4,7 +4,7 @@
  * The download log against a REAL Postgres with every migration applied, as the
  * restricted runtime role (migration 0114, ADR-0088):
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/download-log/download-log.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -106,7 +106,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
     const sqlClient = postgres(url as string, { prepare: false, max: 1 })
     try {
       await sqlClient.begin(async (tx) => {
-        await tx.unsafe('SET LOCAL ROLE grid_app_platform')
+        await tx.unsafe('SET LOCAL ROLE app_platform')
         await tx`DELETE FROM document_access_log WHERE organization_id LIKE ${`${ORG}%`}`
       })
     } finally {

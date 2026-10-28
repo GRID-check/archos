@@ -4,13 +4,13 @@
  *
  * The rule of the codebase:
  *   - Something an operator tunes per environment → a `grid-oib:` config key,
- *     declared and defaulted in `config.ts`, set in `Pulumi.<stack>.yaml`.
+ *     declared and defaulted in `config/<concern>.ts`, set in `Pulumi.<stack>.yaml`.
  *   - Something that is a fixed platform decision (a port, a UID, a resource
  *     envelope for a helper, a shared timeout) → a NAMED constant here, with
  *     the reasoning attached. No inline magic numbers in the modules.
  *
  * If you are looking for "where do I configure X": first `Pulumi.<stack>.yaml`
- * (your values), then `config.ts` (every knob + default), then this file
+ * (your values), then `config/` (every knob + default), then this file
  * (fixed decisions). The full knob reference lives in README.md.
  */
 import { objectName } from "./names";
@@ -23,7 +23,7 @@ export const UID = {
    * it writes is on the data PVC (owned via `fsGroup`) or an emptyDir.
    */
   qdrant: 1000,
-  /** Backend image (`deploy/Dockerfile`): `USER 1000:1000`. */
+  /** Backend image (`apps/backend/Dockerfile`): `USER 1000:1000`. */
   backend: 1000,
   /** Frontend image (`frontends/ui/deploy/Dockerfile`): user `nextjs` = 1001. */
   frontend: 1001,
@@ -294,7 +294,7 @@ export const DATA_RESOURCES = {
 /**
  * Langfuse (ADR-0044) — the fixed parts of the LLM-observability tier.
  *
- * What is a knob (`config.ts` → `langfuse`): the hostname, the images, the
+ * What is a knob (`config/langfuse.ts`): the hostname, the images, the
  * storage sizes, and every credential. What is here: the names and layout that
  * several modules must agree on, and the resource envelopes.
  */
@@ -318,7 +318,7 @@ export const LANGFUSE = {
    * `SEAWEED_FILER_DB` is not: it is referenced from the CNPG `managed.roles`
    * entry, the `Database` CR and the DSN, and those three must agree exactly.
    *
-   * Its own database and its own login rather than a schema in `grid_app`:
+   * Its own database and its own login rather than a schema in `app`:
    * Langfuse runs its own Prisma migrations as the database owner, so handing
    * it the application role would hand a third-party image DDL rights over
    * every tenant table in the product.
@@ -378,7 +378,7 @@ export const LANGFUSE = {
 /**
  * Edge rate limiting (ADR-0040, layer L1) — the fixed parts.
  *
- * The per-route budgets themselves are knobs (`config.ts` → `rateLimit.limits`)
+ * The per-route budgets themselves are knobs (`config/dragonfly.ts` → `rateLimit.limits`)
  * because they are the numbers an operator retunes from observed traffic. What
  * lives here is the machinery that must not drift: where the counter store is,
  * how long Envoy waits for a verdict, and the path prefixes the rules select on.
@@ -398,7 +398,7 @@ export const EDGE_RATE_LIMIT = {
    * How long Envoy waits for the rate limit service before giving up. Short on
    * purpose: this sits in front of EVERY request, so a slow store must cost
    * milliseconds, not seconds. Combined with fail-open (see `failClosed` in
-   * `config.ts`), a dead store degrades to "not limited", never to "down".
+   * `config/dragonfly.ts`), a dead store degrades to "not limited", never to "down".
    */
   timeout: "250ms",
   /** Request-path prefixes the per-route rules select on. */
@@ -478,7 +478,7 @@ export const GOTENBERG = {
   /**
    * The container args. Only the LibreOffice route is used, by the frontend
    * BFF alone; every other way Gotenberg can reach the network is switched off:
-   *   - The `-libreoffice` image (config.ts) has no Chromium, so the HTML/URL
+   *   - The `-libreoffice` image (config/workers.ts) has no Chromium, so the HTML/URL
    *     → PDF routes, the SSRF surface, do not exist. That binary also rejects
    *     every `--chromium-*` flag at boot, so none belongs here.
    *   - download-from / webhooks: it never fetches an input from a URL nor
@@ -519,16 +519,16 @@ export const GOTENBERG = {
 
 /**
  * The read-only Postgres login KEDA's `postgresql` scaler counts the queues with
- * (ADR-0079). It is the one name the Cluster's managed roles, the grants Job and
- * the DSNs in `grid-secrets` must agree on. Its password is
- * `postgres.scalerPassword` (`config.ts`).
+ * (ADR-0079): the one name the rename Jobs (`data/postgres-rename.ts`), the grants
+ * Job and the DSNs in `grid-secrets` agree on; `grid_keda_scaler` before ADR-0145. Its password is
+ * `postgres.scalerPassword` (`config/postgres.ts`).
  */
-export const KEDA_SCALER_ROLE = "grid_keda_scaler";
+export const KEDA_SCALER_ROLE = "keda_scaler";
 
 /**
  * `CONNECTION LIMIT` on {@link KEDA_SCALER_ROLE}: the operator opens one
  * connection per poll, and the role's own cap is the most it can ever hold.
- * Declared on the Cluster's managed role and counted in the pooler budget's
+ * Set by the rename Jobs and counted in the pooler budget's
  * direct-connection reserve (`pgConnectionBudget`), so the two cannot disagree.
  */
 export const KEDA_SCALER_CONNECTION_LIMIT = 8;
@@ -603,7 +603,7 @@ export const POSTGRES_TUNING = {
 /**
  * The transaction pooler in front of the pooled DSNs (ADR-0083). The two sizes
  * that differ per stack (`pgPoolerInstances`, `pgPoolerPoolSize`) are knobs in
- * `config.ts`; these are fixed.
+ * `config/postgres.ts`; these are fixed.
  */
 export const POSTGRES_POOLER = {
   /** The CNPG `Pooler` resource, and the Service the pooled DSNs name. */
@@ -649,12 +649,12 @@ export const POSTGRES_POOLER = {
  * pooled env vars in `grid-secrets` and fails when the two differ, so a new
  * pooled DSN cannot be added without paying for it here.
  *
- * `app` is the owner login (`pgAppUser`), `runtime` is `grid_app_rw` (ADR-0041).
+ * `app` is the owner login (`pgAppUser`), `runtime` is `app_rw` (ADR-0041).
  */
 export const POOLED_POOLS = [
   { database: "jobs", login: "app" },
   { database: "checkpoints", login: "app" },
-  { database: "grid_app", login: "runtime" },
+  { database: "app", login: "runtime" },
 ] as const;
 
 /**
@@ -715,7 +715,7 @@ export const POSTGRES_DIRECT_RESERVE = {
 /**
  * Qdrant (ADR-0115) — the fixed parts of the vector store that replaces Chroma.
  *
- * What is a knob (`config.ts` → `qdrant`): the image, the replica count, the
+ * What is a knob (`config/qdrant.ts`): the image, the replica count, the
  * envelope, the volume size, the snapshot schedule and retention, and every
  * credential. What is here: the names that the StatefulSet, the Services, the
  * NetworkPolicies, the S3 identity catalogue and the snapshot CronJob must all
@@ -807,8 +807,8 @@ export const QDRANT = {
 /**
  * The one-shot move of the retired Chroma store into Qdrant (ADR-0115,
  * `app/chroma-migration-job.ts`). Fixed parts only; whether it runs, how much
- * scratch it gets and how long the deploy waits for it are knobs (`config.ts`
- * → `chromaMigration`). Remove with the Job once every stack has run it.
+ * scratch it gets and how long the deploy waits for it are knobs
+ * (`config/qdrant.ts` → `chromaMigration`). Remove with the Job once every stack has run it.
  */
 export const CHROMA_MIGRATION = {
   /** Job name and `app.kubernetes.io/name` of its pod: a named caller in `allow-app-to-qdrant`. */

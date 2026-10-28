@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { defaultLocale, getActiveLocale, translatorFor, type Locale } from '@/i18n'
 import { errorsCopy } from '@/i18n/namespaces/errors'
 import { capturePosthogException } from '@/lib/analytics/posthog'
+import { STORAGE_RENAME_BOOT_SCRIPT } from './storage-rename-boot'
 import { THEME_BOOT_SCRIPT } from './theme-boot'
 import './globals.css'
 
@@ -52,6 +53,7 @@ export default function GlobalError({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: STORAGE_RENAME_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body className="bg-surface-base text-foreground font-sans antialiased">

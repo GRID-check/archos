@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The job envelope signs the project only for a caller who may steer its runs.
  *
  * ADR-0084 lets anyone signed into a project's scope read and control that

@@ -16,7 +16,9 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend:8000' }))
 vi.mock('@/lib/db', () => ({ getDb: () => ({}) }))
 vi.mock('@/lib/db/tenant-context', () => ({ withTenant: (_scope: unknown, run: () => unknown) => run() }))
-vi.mock('@/lib/documents/service', () => ({ dispatchDocument: vi.fn() }))
+vi.mock('@/lib/documents/document-dispatch', () => ({
+  dispatchDocument: vi.fn(),
+}))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn() }))
 vi.mock('@/lib/documents/collection-file-ref', () => ({ collectionFileRef: vi.fn(), purgeIngestedChunks: vi.fn() }))
 vi.mock('@/lib/authz/folder-access-repository', () => ({ listProjectFolderTree: vi.fn() }))

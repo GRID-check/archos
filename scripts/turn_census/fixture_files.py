@@ -160,8 +160,8 @@ def seed(project: FilesProject | None = None, *, embed: Any = None) -> dict[str,
     ``embed`` is texts -> vectors (default: the deployment's embedder, as ``production_embedder`` builds it).
     """
     from fixture_bff import production_embedder
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-    from knowledge_layer.llamaindex.adapter import embed_fingerprint_metadata
+    from knowledge_layer.llamaindex.embedding import embed_fingerprint_metadata
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     from knowledge_layer.qdrant.payload import ChunkRecord
     from knowledge_layer.qdrant.store import get_store
     from knowledge_layer.qdrant.writes import write_chunks

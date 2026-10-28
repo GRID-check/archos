@@ -25,12 +25,9 @@ import 'server-only'
 import type { ZodType } from 'zod'
 import { resolvePinnedRequesterSession, resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import {
-  runBimExtractJob,
-  runOfficeRenditionJob,
-  runReindexSlice,
-  runReingestFailedSlice,
-} from '@/lib/documents/service'
+import { runBimExtractJob, runOfficeRenditionJob } from '@/lib/documents/extraction-jobs'
+import { runReingestFailedSlice } from '@/lib/documents/ingest-recovery'
+import { runReindexSlice } from '@/lib/documents/reindex'
 import { runPurgeBinnedChunksSlice, runRestoreFolderSlice } from '@/lib/projects/folder-bin-jobs'
 import { runPlacementReingestSlice } from '@/lib/projects/collection-placement'
 import { runMailImportSlice } from '@/lib/mail-import/job'
@@ -154,7 +151,7 @@ const mailImportHandler: JobHandler = async ({ organizationId, payload }) => {
 /**
  * A wake of Piloti (ADR-0106). Not {@link handler}: it resolves the person
  * itself, because a person who left ends the wake WITH a record on its
- * `piloti_wakes` row, and it may answer „not yet" (`notBefore`) while another
+ * `agent_wakes` row, and it may answer „not yet" (`notBefore`) while another
  * turn of the person's thread runs.
  */
 const pilotiWakeHandler: JobHandler = async ({ organizationId, payload, attempts }) =>

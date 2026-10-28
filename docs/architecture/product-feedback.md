@@ -317,7 +317,7 @@ destination's `assignee_names` map, else from the assignee's PostHog profile.
 
 ## No GitHub issues
 
-Bug reports used to be filed as GitHub issues too (`GRID_FEEDBACK_ISSUES_REPO`,
+Bug reports used to be filed as GitHub issues too (`FEEDBACK_ISSUES_REPO`,
 err2issue's token). That is gone: it was off in production, borrowed another
 tool's PAT, and the issue could not be traced back to the report. A bug keeps
 its Postgres record, the platform owners' inbox row and its Support ticket.

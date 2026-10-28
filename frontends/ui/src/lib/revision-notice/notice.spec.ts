@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { MAX_PROPOSALS_PER_CALL, annotationProposalSchema } from '@/lib/annotations/types'
 import {

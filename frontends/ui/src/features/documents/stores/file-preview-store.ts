@@ -58,7 +58,7 @@ export function defaultPeekWidth(): number {
 }
 
 /** Where the dragged width is remembered between sessions. */
-export const FILE_PEEK_WIDTH_STORAGE_KEY = 'grid.filePeek.width'
+export const FILE_PEEK_WIDTH_STORAGE_KEY = 'filePeek.width'
 
 export function clampPeekWidth(width: number): number {
   return Math.min(FILE_PEEK_WIDTH_MAX, Math.max(FILE_PEEK_WIDTH_MIN, Math.round(width)))

@@ -250,9 +250,9 @@ export const FEATURE_FLAGS = {
   platformAgentMcp: 'platform-agent-mcp',
   /**
    * Agents consult Piloti (ADR-0124): an agent acting for a person asks Piloti
-   * a question (`piloti-ask-create` on the agent door, `SendMessage` on the
+   * a question (`agent-ask-create` on the agent door, `SendMessage` on the
    * A2A door) and Piloti answers in a turn run as that person, on their
-   * budget. Read from the person's session on `POST /api/piloti-asks`.
+   * budget. Read from the person's session on `POST /api/agent-asks`.
    *
    * An entitlement, off until an operator targets the organization: every ask
    * is a model turn nobody typed, paid from the organization's budget. With it

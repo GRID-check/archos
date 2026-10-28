@@ -105,7 +105,7 @@ class MemoryReflectionPayload(BaseModel):
     """What the stage produced: the memory items it wrote, in write order.
 
     The DB write stays the source of truth — this payload is a notification of
-    what happened, never a transfer of authority. ``grid_app`` stays
+    what happened, never a transfer of authority. ``app`` stays
     single-writer, and a client may not create, edit or delete an item through
     this channel; it only learns that one exists.
 

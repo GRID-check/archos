@@ -45,7 +45,7 @@ COVERAGE_MIN = 0.8
 BOXES = ("found", "given")
 CATEGORIES = ("dimension", "count", "plankopf", "legend", "fassung", "skip")
 #: Where the look card and step of V3 are declared; until both are, parity is not applicable.
-CARD_MODELS = ROOT / "src" / "aiq_agent" / "cards" / "models.py"
+CARD_MODELS = ROOT / "src" / "aiq_agent" / "cards" / "look_card.py"
 WIRE_MODELS = ROOT / "src" / "aiq_agent" / "common" / "wire_v2.py"
 
 Box = tuple[float, float, float, float]

@@ -4,7 +4,7 @@
  * The inbox list's paging against a REAL Postgres, through the restricted
  * runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/inbox/repository.integration.spec.ts
  *
  * What it proves, a claim about SQL a mocked handle cannot disagree with:

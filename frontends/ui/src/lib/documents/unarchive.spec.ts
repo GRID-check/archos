@@ -11,14 +11,19 @@ vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('./folder-path', () => ({ resolveDocumentFolderPath: vi.fn().mockResolvedValue('Pläne') }))
 vi.mock('./lifecycle', () => ({ redispatchPublishedVersion: vi.fn() }))
 vi.mock('./repository', () => ({ markDocumentIngestFailed: vi.fn() }))
-vi.mock('./service', () => ({ INGEST_DISPATCH_FAILED_MESSAGE: 'failed', dispatchDocument: vi.fn() }))
+vi.mock('./document-dispatch', () => ({
+  dispatchDocument: vi.fn(),
+}))
+vi.mock('./ingest-dispatch', () => ({
+  INGEST_DISPATCH_FAILED_MESSAGE: 'failed',
+}))
 vi.mock('./shelf-live', () => ({ publishShelfChanged: vi.fn() }))
 vi.mock('./version-repository', () => ({ setDocumentLifecycle: vi.fn() }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { getAccessibleDocument } from './access'
-import { dispatchDocument } from './service'
+import { dispatchDocument } from './document-dispatch'
 import { unarchiveDocument } from './unarchive'
 import { setDocumentLifecycle } from './version-repository'
 

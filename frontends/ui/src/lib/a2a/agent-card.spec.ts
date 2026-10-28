@@ -72,7 +72,7 @@ describe('agentCardResponse', () => {
     for (const example of skill?.examples ?? []) {
       if (/project/i.test(example)) expect(example, example).toMatch(/projectId/)
     }
-    expect(findOperation('piloti-ask-create')?.description).toMatch(/without it Piloti answers for the office/)
+    expect(findOperation('agent-ask-create')?.description).toMatch(/without it Piloti answers for the office/)
   })
 
   it('answers the card in the 1.0 JSON serialization, public and cacheable', async () => {

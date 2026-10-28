@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
 /** localStorage key holding the `{ [projectId]: section }` map. */
-export const LAST_SECTION_STORAGE_KEY = 'grid.project.last-section'
+export const LAST_SECTION_STORAGE_KEY = 'project.last-section'
 
 /**
  * Sections we are willing to remember. `overview` is the project root; the

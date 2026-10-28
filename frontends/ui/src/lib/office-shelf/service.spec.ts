@@ -73,10 +73,7 @@ vi.mock('@/lib/audit/service', () => ({
 // (`@/lib/documents/upload-admission`) imports them from there.
 vi.mock('@/lib/documents/upload-type', () => ({ assertUploadTypeAllowed: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('@/lib/documents/service', () => ({
-  // The ONE model-vs-ingest dispatcher every shelf shares. The Archiv used to
-  // call `dispatchIngest` with its own `isIfcFilename` branch beside it; the
-  // branch now lives in `dispatchDocument`, which is what this asserts on.
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job-1', status: 'pending' }),
 }))
 
@@ -112,7 +109,7 @@ vi.mock('@/lib/storage/admission', () => ({
   admitReplacementOrDiscard: vi.fn().mockResolvedValue(undefined),
 }))
 
-// The hold predicate is SQL (`grid_legal_hold_blocks`, migration 0093) and is
+// The hold predicate is SQL (`legal_hold_blocks`, migration 0093) and is
 // exercised against Postgres in `legal-hold.integration.spec.ts`; here the gate
 // itself runs for real over a doubled answer.
 // The erasure of a document's objects is `object-cleanup.spec.ts`'s subject;
@@ -134,7 +131,7 @@ vi.mock('./repository', () => ({
 }))
 
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
-import { dispatchDocument } from '@/lib/documents/service'
+import { dispatchDocument } from '@/lib/documents/document-dispatch'
 import { assertUploadTypeAllowed } from '@/lib/documents/upload-type'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { recordAuditEvent } from '@/lib/audit/service'

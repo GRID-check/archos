@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: a chat marked deleting is queued for the purger, and
  * the purger's claim picks it up — or leaves it, under a legal hold — against a
  * REAL Postgres with every migration applied, as the restricted runtime role.
@@ -7,10 +10,10 @@
  * can prove the SQL: that the mark and the queue row land together under
  * row-level security, that `deletion_queue_active_entity_idx` keeps one active
  * row per chat, that closing it leaves the purger's own claim alone, that the
- * claim query (`purger/db.js`) with its `grid_legal_hold_blocks` guard treats a
+ * claim query (`purger/db.js`) with its `legal_hold_blocks` guard treats a
  * conversation row the way it treats a project.
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/conversations/erasure-queue.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -80,7 +83,7 @@ describe.skipIf(!url)('chat erasure retry queue against live Postgres (migration
     const claimed: string[] = []
     try {
       await client.begin(async (tx) => {
-        await tx.unsafe('SET LOCAL ROLE grid_app_platform')
+        await tx.unsafe('SET LOCAL ROLE app_platform')
         for (let i = 0; i < 1000; i += 1) {
           const entry = await claimNext(tx as never)
           if (!entry) break

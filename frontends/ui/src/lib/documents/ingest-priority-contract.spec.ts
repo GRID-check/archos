@@ -1,4 +1,7 @@
-// @disk-inputs: ../aiq_api/src/aiq_api/models/requests.py
+// @disk-inputs: ../../apps/backend/src/aiq_api/models/requests.py
+/**
+ * @vitest-environment node
+ */
 /**
  * The ingest priority the BFF sends, pinned to the one the backend accepts.
  *
@@ -12,11 +15,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { INGEST_PRIORITIES } from './service'
+import { INGEST_PRIORITIES } from './ingest-dispatch'
 
 /** Repo root, from this spec's own location. */
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..', '..')
-const REQUESTS = join(REPO_ROOT, 'frontends', 'aiq_api', 'src', 'aiq_api', 'models', 'requests.py')
+const REQUESTS = join(REPO_ROOT, 'apps', 'backend', 'src', 'aiq_api', 'models', 'requests.py')
 
 const backendPriorities = (): string[] => {
   const source = readFileSync(REQUESTS, 'utf8')

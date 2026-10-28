@@ -27,7 +27,7 @@ the provider sent no cost at all.
 
 Events are written to the auditable ``llm_usage_events`` ledger via the
 token-guarded internal BFF endpoint ``POST /api/internal/usage`` — the
-``grid_app`` database keeps exactly one writer (the BFF), mirroring the
+``app`` database keeps exactly one writer (the BFF), mirroring the
 project-memory client.
 
 Budget enforcement: the BFF resolves the caller's remaining budget at the WS

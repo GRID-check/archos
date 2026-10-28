@@ -175,7 +175,7 @@ passages as hits.
 
 The words are matched in one German spelling: ä ö ü ß and ae oe ue ss are the
 same letters in a name, in the reading's full-text vector (both through
-`grid_fold_german`, migration 0188) and in the BM25 channel, which asks both
+`fold_german`, migration 0188) and in the BM25 channel, which asks both
 spellings and keeps the one the documents hold
 (`german_text.umlaut_spellings`).
 
@@ -485,7 +485,7 @@ way back, which are this reader's), and a toast says it did. A
 Büroablage document has no chat to start, so it offers no „Piloti fragen".
 With a row marked, Shift+F10 or the menu key opens its ⋯ while the focus
 stays in the field. Each action is an operation that already exists
-(`piloti-ask-create`, `document-status`, `annotation-list`); none is new.
+(`agent-ask-create`, `document-status`, `annotation-list`); none is new.
 
 In the chat composer, `#` and a word search the workspace for a document as
 `@` finds a person (`useDocumentReference`): the palette's live results,
@@ -536,7 +536,7 @@ Planfred-style "who received which Index" from the version access log.
 ## Measured
 
 `task fe:search:latency` seeds a throwaway Postgres migrated with the repo's
-chain and times the repository functions themselves, as `grid_app_rw` under
+chain and times the repository functions themselves, as `app_rw` under
 row-level security, pool and per-statement `SET LOCAL` included
 (`frontends/ui/src/lib/search/search-latency.integration.spec.ts`; a spec
 rather than a script, so it measures the SQL the builders make, not a copy).

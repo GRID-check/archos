@@ -160,7 +160,7 @@ vi.mock('./reconcile-status', async (importOriginal) => ({
 // audited and its reviewers told) is `upload-batches/settle`'s subject.
 vi.mock('@/lib/upload-batches/settle', () => ({ onDocumentsSettled: vi.fn().mockResolvedValue(undefined) }))
 
-// The hold predicate is SQL (`grid_legal_hold_blocks`, migration 0093), proven
+// The hold predicate is SQL (`legal_hold_blocks`, migration 0093), proven
 // against Postgres in `legal-hold.integration.spec.ts`; the gate runs for real.
 // The erasure of a document's objects is `object-cleanup.spec.ts`'s subject;
 // here it is what the delete asks for, and what the delete does when it fails.
@@ -207,35 +207,16 @@ import {
   requireFolderWrite,
   type ProjectFolderAccess,
 } from '@/lib/authz/folder-access'
-import {
-  listDocumentsPage,
-  probeProjectDocumentNames,
-  uploadDocument,
-  reingestDocument,
-  deleteDocument,
-  renameDocument,
-  getDocumentStatus,
-  getDocumentVisualDetails,
-  updateDocumentTags,
-  reindexProject,
-  runReindexSlice,
-  reingestFailedOrgDocuments,
-  runReingestFailedSlice,
-  REINDEX_SLICE_DOCUMENTS,
-  REINGEST_SLICE_DOCUMENTS,
-  resolveProjectDocumentsByName,
-  fetchGroupedSemanticHits,
-  joinHitsToFiles,
-  dispatchDocument,
-  getDocumentTextPreview,
-  getDocumentThumbnail,
-  getDocumentDownload,
-  getDocumentPreview,
-  streamDocumentFile,
-  streamDocumentImage,
-  AgentAuthoredDocumentNotIndexableError,
-  INGEST_DISPATCH_FAILED_MESSAGE,
-} from './service'
+import { getDocumentTextPreview, getDocumentThumbnail, getDocumentDownload, getDocumentPreview, streamDocumentFile, streamDocumentImage } from './document-delivery'
+import { getDocumentStatus, getDocumentVisualDetails } from './document-details'
+import { uploadDocument, dispatchDocument, AgentAuthoredDocumentNotIndexableError } from './document-dispatch'
+import { deleteDocument, renameDocument, updateDocumentTags } from './document-edits'
+import { listDocumentsPage, probeProjectDocumentNames, resolveProjectDocumentsByName } from './document-listing'
+import { INGEST_DISPATCH_FAILED_MESSAGE } from './ingest-dispatch'
+import { reingestFailedOrgDocuments, runReingestFailedSlice, REINGEST_SLICE_DOCUMENTS } from './ingest-recovery'
+import { reindexProject, runReindexSlice, REINDEX_SLICE_DOCUMENTS } from './reindex'
+import { reingestDocument } from './reingest'
+import { fetchGroupedSemanticHits, joinHitsToFiles } from './semantic-search'
 import { deleteOfficeShelfDocument } from '@/lib/office-shelf/service'
 import { encodeDocumentLevelCursor } from './list-cursor'
 import {
@@ -1537,7 +1518,7 @@ describe('reingestDocument', () => {
  * retrying a failed document silently un-files it.
  *
  * The backend twin asserting the same `folder_path` key is
- * `frontends/aiq_api/tests/test_ingest_folder_path.py`.
+ * `apps/backend/tests/test_ingest_folder_path.py`.
  */
 describe('the folder a document is filed in reaches the ingest dispatch', () => {
   const ingestBody = (): Record<string, unknown> => {

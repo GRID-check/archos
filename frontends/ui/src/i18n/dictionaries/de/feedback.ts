@@ -7,7 +7,7 @@ export const feedback: typeof en.feedback = {
   dialog: {
     title: 'Sagen Sie uns Ihre Meinung',
     description:
-      'Ihre Nachricht geht direkt an das Team, das Piloti baut. Jede Meldung wird gelesen.',
+      'Ihre Nachricht geht direkt an das Team, das {productName} baut. Jede Meldung wird gelesen.',
     kindLabel: 'Worum geht es?',
     messageLabel: 'Ihre Nachricht',
     counter: '{count} / {max}',
@@ -65,7 +65,7 @@ export const feedback: typeof en.feedback = {
   threads: {
     open: 'Mein Feedback',
     title: 'Mein Feedback',
-    description: 'Was Sie gemeldet haben und was das Piloti-Team antwortet. Sie können direkt hier zurückschreiben.',
+    description: 'Was Sie gemeldet haben und was das {productName}-Team antwortet. Sie können direkt hier zurückschreiben.',
     newCount: '{count} neu',
     empty: {
       title: 'Noch kein Feedback',
@@ -77,7 +77,7 @@ export const feedback: typeof en.feedback = {
       title: 'Meldung auswählen',
       description: 'Wählen Sie links eine Meldung, um den Chat mit dem Team zu lesen, oder senden Sie neues Feedback.',
     },
-    sent: 'Vielen Dank! Ihr Feedback ist beim Piloti-Team angekommen. Die Antwort erscheint hier.',
+    sent: 'Vielen Dank! Ihr Feedback ist beim {productName}-Team angekommen. Die Antwort erscheint hier.',
     loadError: 'Ihr Feedback konnte nicht geladen werden.',
     threadLoadError: 'Dieser Chat konnte nicht geladen werden.',
     retry: 'Erneut versuchen',
@@ -87,8 +87,8 @@ export const feedback: typeof en.feedback = {
     back: 'Alle Meldungen',
     hasUpdate: 'Neu',
     me: 'Sie',
-    team: 'Piloti-Team',
-    teamMember: '{name}, Piloti-Team',
+    team: '{productName}-Team',
+    teamMember: '{name}, {productName}-Team',
     notLive: 'Die Antworten des Teams können gerade nicht geladen werden. Ihre Meldung ist angekommen und sicher.',
     cannotReply: 'Auf diese Meldung kann hier nicht geantwortet werden. Senden Sie neues Feedback, um den Chat fortzusetzen.',
     waiting: 'Das Team hat noch nicht geantwortet. Die Antwort erscheint hier.',
@@ -167,7 +167,7 @@ export const feedback: typeof en.feedback = {
     viewerNotInPosthog: {
       title: 'Ihnen ist in PostHog nichts zugewiesen.',
       description:
-        'Niemand in PostHog hat Ihre Piloti-E-Mail. Melden Sie sich mit derselben Adresse bei PostHog an, dann erscheinen Ihre Tickets hier.',
+        'Niemand in PostHog hat Ihre {productName}-E-Mail. Melden Sie sich mit derselben Adresse bei PostHog an, dann erscheinen Ihre Tickets hier.',
     },
     openInPosthog: 'In PostHog öffnen',
     empty: {
@@ -185,7 +185,7 @@ export const feedback: typeof en.feedback = {
     noContact: 'Möchte nicht kontaktiert werden',
     claimed: 'Ticket #{number} ist Ihnen jetzt in PostHog zugewiesen.',
     claimedUnnumbered: 'Das Ticket ist Ihnen jetzt in PostHog zugewiesen.',
-    claimError: 'Das Ticket konnte Ihnen nicht zugewiesen werden. Ist Ihre Piloti-E-Mail auch Ihr PostHog-Login?',
+    claimError: 'Das Ticket konnte Ihnen nicht zugewiesen werden. Ist Ihre {productName}-E-Mail auch Ihr PostHog-Login?',
     statusLabel: 'Status',
     triaged: 'Auf „{status}“ gesetzt.',
     triageError: 'Der Status konnte nicht geändert werden.',

@@ -1081,7 +1081,7 @@ export function ReviewPageLayer({
                 works a band of light travels across it. */}
             <span
               aria-hidden
-              data-testid="piloti-ask-box"
+              data-testid="agent-ask-box"
               data-status={ask.status}
               className={cn(
                 'border-paper-ink absolute z-20 rounded-[3px] border-[1.5px] border-dashed',
@@ -1092,7 +1092,7 @@ export function ReviewPageLayer({
             {ask.id !== openAsk?.id && focused && (
               <button
                 type="button"
-                data-testid="piloti-ask-reopen"
+                data-testid="agent-ask-reopen"
                 aria-label={t('review.piloti.reopen')}
                 title={t('review.piloti.reopen')}
                 onClick={() => piloti.open(ask.id)}

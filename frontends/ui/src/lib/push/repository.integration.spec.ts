@@ -4,7 +4,7 @@
  * Push subscriptions against a REAL Postgres (migration 0147, ADR-0112), through
  * the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/push/repository.integration.spec.ts
  *
  * The unit specs use an in-memory table; these prove the SQL the privacy claims

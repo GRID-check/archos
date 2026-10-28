@@ -26,7 +26,7 @@ filed, not indexed, not citable, and it does not appear in the Files explorer.
 A draft becomes a document only through the **document lifecycle API**, which a
 person gates — the agent may propose, never publish. The Python tier holds no
 second path to that API and must not grow one: the BFF is the single writer of
-`grid_app` (ADR-0003).
+`app` (ADR-0003).
 
 The card the working directory emits (`document_draft`) reports a file. Once
 `file_draft` has run it also names the project document, and its two controls —
@@ -71,7 +71,7 @@ requester, inside the encrypted job payload; the worker injects those two
 strings at claim under the names a chat turn uses, and asks the BFF
 (`POST /api/internal/runs/{runId}/envelope`) for a fresh one when the carried one
 is over an hour old. Every refusal or failure leaves the run without an
-envelope. The whole path is `frontends/aiq_api/src/aiq_api/jobs/run_envelope.py`;
+envelope. The whole path is `apps/backend/src/aiq_api/jobs/run_envelope.py`;
 nothing on it builds or signs an envelope.
 
 The BFF decides identity and permission. This tier decides only *which bytes* and
@@ -242,6 +242,6 @@ as `project_lookup` does.
 | Write a rule about how one of these tools is used | Put it in that tool's DESCRIPTION. The prompt blocks that used to hold these rules (`<drafts>`, `<aufraeumen>`, `<delegieren>`) are gone: every one of them restated a bound tool's contract in prose charged on every call of every turn (ADR-0060 (d) and its amendment). The prompt keeps only what no description can carry: an antecedent that lives in the transcript | Review, and 1,500 tokens per turn. The rule also half-applies: a description reaches the model with the call, a prompt paragraph competes with everything else on the page |
 | Add a canvas tool that WRITES something everyone who opens the document sees | Call `policy.shared_write_refusal()` before the request, as `mark`, `update`, `delete`, `reply`, `highlight` and a labelled `point` do | Nothing local: a thread or a highlight is read by the document's whole audience, and a conversation that drew on a restricted folder would leak it there. `tests/aiq_agent/tools/canvas/test_targets_and_policy.py` covers the six that exist |
 | Call the BFF from a tool that acts as a PERSON | Go through `common/bff_http.py` and pass `SignedEnvelope(header, signature).headers()`: echo `GridRequestContext.envelope_header` / `envelope_signature` unchanged. Never build or sign an envelope here, and never read the acting user off the unsigned `x-grid-user-id` header | Nothing local, and everything downstream: the internal token is the signing secret, so a self-signed envelope is a tool choosing whose permissions it runs under |
-| Delete a conversation's working directory | Go through `DELETE /v1/drafts/{conversation_id}` (`frontends/aiq_api/routes/drafts.py`), which sweeps the store namespace. Nothing else may reach into `("conversation", id, "drafts")` | Nothing local. The drafts outlive the conversation as bytes under a key that names nothing |
+| Delete a conversation's working directory | Go through `DELETE /v1/drafts/{conversation_id}` (`apps/backend/routes/drafts.py`), which sweeps the store namespace. Nothing else may reach into `("conversation", id, "drafts")` | Nothing local. The drafts outlive the conversation as bytes under a key that names nothing |
 | Change the shape of a proposal request or response | Nothing by hand: the contract is `frontends/ui/tests/fixtures/proposals.schema.json`, exported from `lib/proposals/types.ts`. There is no Pydantic twin | `tests/aiq_agent/tools/files/test_proposals.py`, which validates the bodies the client really builds, for all three kinds, against that file; `tests/aiq_agent/memory/test_register.py` and `tests/aiq_agent/cards/test_register_envelope_card.py` for the two other creators |
 | Change the shape of a lifecycle request or response | Nothing by hand — the contract is `frontends/ui/tests/fixtures/document-lifecycle.schema.json`, generated from the BFF's zod (ADR-0055). There is no Pydantic twin | `tests/aiq_agent/tools/documents/test_wire_contract.py`, which validates the payloads the tool really builds against that file |

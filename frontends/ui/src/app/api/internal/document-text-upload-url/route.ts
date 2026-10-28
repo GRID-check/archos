@@ -17,7 +17,7 @@ import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withOptionalTenant } from '@/lib/db/tenant-context'
 import { NotFoundError } from '@/lib/api/errors'
 import { PAGE_TEXT_PARTS } from '@/lib/s3'
-import { presignDocumentPageTextUpload } from '@/lib/documents/service'
+import { presignDocumentPageTextUpload } from '@/lib/documents/document-storage-keys'
 
 const bodySchema = z.object({
   documentId: z.guid(),

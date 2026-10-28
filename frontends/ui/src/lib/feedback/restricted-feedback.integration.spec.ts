@@ -6,7 +6,7 @@
  * database's one rule of each vote (ADR-0093, ADR-0087, ADR-0088), against a
  * REAL Postgres through the restricted runtime role:
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/feedback/restricted-feedback.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

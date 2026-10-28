@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { purgerEnv, schedulerEnv, type AppWiring } from "./config";
-import type { GridConfig } from "../config";
+import type { GridConfig } from '../config'
 
 const here = __dirname;
 // src/app -> src -> deploy/pulumi -> deploy -> repo root
@@ -172,7 +172,7 @@ describe("backendEnv extraction switches", () => {
 
   it("relies on the adapter reading each as on-unless-false", () => {
     for (const name of switches) {
-      expect(adapterSource).toContain(`_env_switch("${name}")`);
+      expect(adapterSource).toContain(`env_switch("${name}")`);
     }
   });
 });

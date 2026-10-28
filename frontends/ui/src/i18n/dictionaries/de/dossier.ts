@@ -100,7 +100,7 @@ export const dossier: typeof en.dossier = {
   findings: {
     title: 'Befunde aus den Dokumenten',
     count: '{count, plural, one {1 Befund} other {# Befunde}}',
-    hint: 'Hinweise aus dem, was Piloti gelesen hat, keine Urteile. Prüfen Sie sie im Dokument.',
+    hint: 'Hinweise aus dem, was {productName} gelesen hat, keine Urteile. Prüfen Sie sie im Dokument.',
     contradiction: '{fact}: Die Dokumente nennen verschiedene Werte',
     missingDocument: '{label} wird genannt, liegt im Projekt aber nicht vor',
     missingPlan: 'Plannummer {label} wird genannt, kein Dokument passt dazu',

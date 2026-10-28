@@ -20,12 +20,12 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from knowledge_layer.llamaindex.adapter import EMBED_EXCLUDED_METADATA_KEYS
-from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-from knowledge_layer.llamaindex.adapter import _apply_metadata_exclusions
-from knowledge_layer.llamaindex.adapter import embed_fingerprint
-from knowledge_layer.llamaindex.adapter import embed_fingerprint_metadata
-from knowledge_layer.llamaindex.adapter import unit_score
+from knowledge_layer.llamaindex.chunk_metadata import EMBED_EXCLUDED_METADATA_KEYS
+from knowledge_layer.llamaindex.chunk_metadata import apply_metadata_exclusions
+from knowledge_layer.llamaindex.embedding import embed_fingerprint
+from knowledge_layer.llamaindex.embedding import embed_fingerprint_metadata
+from knowledge_layer.llamaindex.retrieved_chunks import unit_score
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant.schema import identity_mismatch
 from knowledge_layer.qdrant.search import Hit
 
@@ -114,7 +114,7 @@ def test_noise_metadata_is_excluded_from_the_embedded_text() -> None:
             "doc_class": "oib_guideline",
         },
     )
-    _apply_metadata_exclusions(doc)
+    apply_metadata_exclusions(doc)
 
     embedded = doc.get_content(metadata_mode=MetadataMode.EMBED)
     assert "1975942" not in embedded, "a byte count carries no retrieval signal"
@@ -131,7 +131,7 @@ def test_exclusions_extend_rather_than_replace_existing_ones() -> None:
         excluded_llm_metadata_keys=[],
         metadata={},
     )
-    _apply_metadata_exclusions(doc)
+    apply_metadata_exclusions(doc)
     assert "creation_date" in doc.excluded_embed_metadata_keys
     assert "file_size" in doc.excluded_embed_metadata_keys
 
@@ -143,8 +143,8 @@ def test_the_ingest_temp_path_is_never_embedded() -> None:
 
 def test_exclusions_are_idempotent() -> None:
     doc = SimpleNamespace(excluded_embed_metadata_keys=[], excluded_llm_metadata_keys=[], metadata={})
-    _apply_metadata_exclusions(doc)
-    _apply_metadata_exclusions(doc)
+    apply_metadata_exclusions(doc)
+    apply_metadata_exclusions(doc)
     assert len(doc.excluded_embed_metadata_keys) == len(set(doc.excluded_embed_metadata_keys))
 
 

@@ -1,7 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, frontendImage } from "../config";
+import { GridConfig } from '../config'
+import { appPullPolicy, frontendImage } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { JOB_DEFAULTS, LIGHT_WORKER_RESOURCES, UID } from "../constants";
@@ -20,7 +21,7 @@ import { logicalName } from "../names";
  * nine actions (issues #255/#256) stayed broken behind a manual "run this once
  * per environment" runbook step. Tying it to the deploy makes the environment
  * follow the code by construction, the same way the drizzle Job does for the
- * schema of grid_app.
+ * schema of `app`.
  *
  * The script reconciles (reads first, writes only what is missing or changed),
  * which is what makes per-deploy execution safe: an unchanged registry writes

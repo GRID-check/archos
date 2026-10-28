@@ -12,9 +12,16 @@
  * So this runs BEFORE `drizzle-kit migrate`, with the migration credential
  * (a superuser in compose), and:
  *
- *   1. creates `grid_app_platform` and `grid_app_rw` if they are absent,
+ *   1. creates the platform and the runtime role if they are absent,
  *   2. grants the membership that makes the platform step-up legal,
- *   3. syncs `grid_app_rw`'s password to whatever `APP_DATABASE_URL` says.
+ *   3. syncs the runtime role's password to whatever `APP_DATABASE_URL` says.
+ *
+ * Each role has two names (ADR-0145 rule 5): `app_platform` and `app_rw`, and
+ * before the deploy renamed them, `grid_app_platform` and `grid_app_rw`. The
+ * migrations written before the rename grant to the old names, so a role that
+ * exists under neither is created under the OLD one, and the Compose service
+ * `postgres-rename-roles` renames it once the migrations have run
+ * (`deploy/postgres/rename-legacy-names.sh after-migrate`).
  *
  * The password is not a separate variable to keep in sync: it is read from the
  * URL the app is about to connect with, so the two cannot drift.
@@ -28,9 +35,9 @@
 
 import postgres from "postgres";
 
-/** Only ever these roles — never a name taken from a URL. */
-const RUNTIME_ROLE = "grid_app_rw";
-const PLATFORM_ROLE = "grid_app_platform";
+/** Only ever these roles, new name and old — never a name taken from a URL. */
+const RUNTIME_ROLES = { current: "app_rw", legacy: "grid_app_rw" };
+const PLATFORM_ROLES = { current: "app_platform", legacy: "grid_app_platform" };
 
 const runtimeUrl = process.env.APP_DATABASE_URL;
 const ownerUrl = process.env.APP_MIGRATION_DATABASE_URL;
@@ -59,10 +66,10 @@ try {
 const runtimeUser = decodeURIComponent(parsed.username || "");
 const runtimePassword = decodeURIComponent(parsed.password || "");
 
-if (runtimeUser !== RUNTIME_ROLE) {
+if (runtimeUser !== RUNTIME_ROLES.current && runtimeUser !== RUNTIME_ROLES.legacy) {
   // Deliberately not an error: pointing the app at the owner credential is the
   // documented break-glass rollback, and it must not fail the boot.
-  log(`runtime user is "${runtimeUser}", not ${RUNTIME_ROLE} — skipping.`);
+  log(`runtime user is "${runtimeUser}", not ${RUNTIME_ROLES.current} — skipping.`);
   process.exit(0);
 }
 if (!runtimePassword) {
@@ -71,7 +78,19 @@ if (!runtimePassword) {
 }
 
 const sql = postgres(ownerUrl, { max: 1, prepare: false, connect_timeout: 10 });
+
+/** The name a role has in this database: the new one, else the old, else null. */
+async function existingName(names) {
+  const rows = await sql`SELECT rolname FROM pg_roles WHERE rolname IN (${names.current}, ${names.legacy})`;
+  const found = new Set(rows.map((row) => row.rolname));
+  return found.has(names.current) ? names.current : found.has(names.legacy) ? names.legacy : null;
+}
+
+let RUNTIME_ROLE = RUNTIME_ROLES.legacy;
+let PLATFORM_ROLE = PLATFORM_ROLES.legacy;
 try {
+  RUNTIME_ROLE = (await existingName(RUNTIME_ROLES)) ?? RUNTIME_ROLES.legacy;
+  PLATFORM_ROLE = (await existingName(PLATFORM_ROLES)) ?? PLATFORM_ROLES.legacy;
   // Unconditionally, and BEFORE the runtime role is considered: the two roles
   // are provisioned independently, and an upgraded volume can easily have one
   // without the other. Creating the platform role only when the runtime role is
@@ -79,6 +98,7 @@ try {
   // earlier release, `grid_app_platform` never created — failing the GRANT
   // below, which the catch swallows, so migration 0030 aborted with "row-level
   // security roles are missing" and nothing said why.
+  // Created under the old name when it has neither: see the header.
   await sql.unsafe(`CREATE ROLE ${PLATFORM_ROLE} NOLOGIN BYPASSRLS`).catch((error) => {
     // Already there is the common case on a re-run.
     if (!/already exists/i.test(error.message)) throw error;

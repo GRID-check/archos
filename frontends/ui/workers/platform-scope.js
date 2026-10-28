@@ -6,7 +6,7 @@
  * deletion queue that spans every organization, the other scans every
  * organization's workflows for the ones due now. Neither has a single tenant to
  * answer as, so neither can satisfy the row-level security policies that
- * `grid_app_rw` is subject to.
+ * `app_rw` is subject to.
  *
  * They step up to the BYPASSRLS role instead, per transaction. `SET LOCAL` ends
  * with the transaction, so a pooled connection never carries the privilege to
@@ -22,7 +22,7 @@
  * the Next.js build.
  */
 
-const PLATFORM_ROLE = 'grid_app_platform'
+const PLATFORM_ROLE = 'app_platform'
 
 /**
  * Step up inside an OPEN transaction. Must be the first statement, so nothing

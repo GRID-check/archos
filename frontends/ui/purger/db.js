@@ -20,7 +20,7 @@ const STALE_CLAIM_MINUTES = 15
 
 /**
  * Claim one due queue entry. Guards:
- * - legal holds, through `grid_legal_hold_blocks` (migration 0093) — the one
+ * - legal holds, through `legal_hold_blocks` (migration 0093) — the one
  *   predicate the BFF's immediate deletes and the delete triggers share. For a
  *   project that is a hold on the project, on anything in it (a document, a
  *   chat, a chat's attachment), on the user who created any of those, or on
@@ -53,7 +53,7 @@ async function claimNext(tx) {
         OR (q.status = 'purging' AND q.claimed_at < now() - make_interval(mins => ${STALE_CLAIM_MINUTES}))
       )
       AND q.attempts < ${MAX_ATTEMPTS}
-      AND NOT grid_legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)
+      AND NOT legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)
     ORDER BY q.requested_at
     FOR UPDATE SKIP LOCKED
     LIMIT 1
@@ -81,7 +81,7 @@ async function claimNext(tx) {
  */
 async function hasActiveHold(tx, entry) {
   const rows = await tx`
-    SELECT grid_legal_hold_blocks(${entry.entity_type}, ${entry.entity_id}, ${entry.organization_id}) AS held
+    SELECT legal_hold_blocks(${entry.entity_type}, ${entry.entity_id}, ${entry.organization_id}) AS held
   `
   return rows[0]?.held === true
 }

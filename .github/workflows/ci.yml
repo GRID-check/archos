@@ -388,7 +388,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # ONE interpreter, the one the backend image ships (deploy/Dockerfile).
+      # ONE interpreter, the one the backend image ships (apps/backend/Dockerfile).
       - uses: ./.github/actions/setup-python-env
         with:
           python-version: "3.14"
@@ -574,7 +574,7 @@ jobs:
           EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
         run: |
           # The named test files that belong to this suite, in its first shard.
-          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^frontends/aiq_api/tests/' ;; sources) root='^packages/(knowledge-layer|ris-adapter|tavily-web-search)/' ;; esac
+          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^apps/backend/tests/' ;; sources) root='^packages/(knowledge-layer|ris-adapter|tavily-web-search)/' ;; esac
           extra=""
           if [ -z "$SHARD" ] || [ "${SHARD%%/*}" = 1 ]; then
             extra="$(jq -r --arg root "$root" '[.[] | select(test($root))] | join(" ")' <<<"$EXTRA_JSON")"
@@ -818,7 +818,7 @@ jobs:
       # credentials and run in deploy.yml.
       - run: task infra:types
       # The collector build the image digest pins (`collectorImage` in
-      # deploy/pulumi/src/config.ts): `collector-validate.spec.ts` runs every
+      # deploy/pulumi/src/config/observability.ts): `collector-validate.spec.ts` runs every
       # rendered config through its `validate`, which is what refuses an
       # unknown component or key before the collector would at start. Bump the
       # version and checksum together with that digest.

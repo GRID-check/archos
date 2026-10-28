@@ -14,13 +14,13 @@
  * suite counts rows.
  *
  * It also runs the semantic gate through the real driver. That gate is raw SQL
- * over `grid_cosine_similarity`, and a mocked `execute` returns whatever shape
+ * over `cosine_similarity`, and a mocked `execute` returns whatever shape
  * the spec author expected; only a real result shows what postgres-js hands
  * back. The embedder itself is stubbed deterministically — the backend is not
  * part of this harness, and the claim under test is what the service does with
  * a near-identical vector, not how one is produced.
  *
- *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/memory-service.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs

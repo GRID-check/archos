@@ -12,11 +12,15 @@ const runReindexSlice = vi.fn()
 const runReingestFailedSlice = vi.fn()
 const runBimExtractJob = vi.fn()
 const runOfficeRenditionJob = vi.fn()
-vi.mock('@/lib/documents/service', () => ({
-  runReindexSlice: (...args: unknown[]) => runReindexSlice(...args),
-  runReingestFailedSlice: (...args: unknown[]) => runReingestFailedSlice(...args),
+vi.mock('@/lib/documents/extraction-jobs', () => ({
   runBimExtractJob: (...args: unknown[]) => runBimExtractJob(...args),
   runOfficeRenditionJob: (...args: unknown[]) => runOfficeRenditionJob(...args),
+}))
+vi.mock('@/lib/documents/ingest-recovery', () => ({
+  runReingestFailedSlice: (...args: unknown[]) => runReingestFailedSlice(...args),
+}))
+vi.mock('@/lib/documents/reindex', () => ({
+  runReindexSlice: (...args: unknown[]) => runReindexSlice(...args),
 }))
 
 const runRestoreFolderSlice = vi.fn()

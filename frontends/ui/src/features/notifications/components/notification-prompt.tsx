@@ -28,7 +28,7 @@ import { notificationsCopy } from '@/i18n/namespaces/notifications'
 import { cn } from '@/lib/utils'
 import { usePushNotifications, type UsePushNotificationsResult } from '../hooks/use-push-notifications'
 
-const DISMISSED_KEY = 'piloti.push-prompt.dismissed'
+const DISMISSED_KEY = 'push-prompt.dismissed'
 
 function readDismissed(): boolean {
   try {

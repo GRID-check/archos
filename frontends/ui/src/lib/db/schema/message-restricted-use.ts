@@ -5,7 +5,7 @@ import { index, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core
  * with restricted access (ADR-0093, migration 0124).
  *
  * Written by the SERVER, never by a client, from one rule
- * (`grid_conversation_restricted_use`): the BFF marks the id of the answer a
+ * (`conversation_restricted_use`): the BFF marks the id of the answer a
  * turn is writing when restricted content is admitted into it, before the
  * model reads it (`markAnswerRestrictedUse`); a trigger on `messages` marks a
  * row inserted, or its `content` rewritten, while the conversation answers

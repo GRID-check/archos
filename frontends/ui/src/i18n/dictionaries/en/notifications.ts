@@ -6,10 +6,10 @@
 export const notifications = {
   title: 'Notifications',
   description:
-    'Piloti tells you on this device as soon as something lands in your inbox, even when Piloti is not open.',
+    '{productName} tells you on this device as soon as something lands in your inbox, even when {productName} is not open.',
   push: {
     /** A notification with the lock-screen preview off: no name, no subject. */
-    genericTitle: 'New message in Piloti',
+    genericTitle: 'New message in {productName}',
   },
   device: {
     label: 'Notify me on this device',
@@ -27,12 +27,12 @@ export const notifications = {
       body: 'Use a current version of Chrome, Edge, Firefox or Safari to be notified here.',
     },
     denied: {
-      title: 'Notifications are blocked for Piloti',
+      title: 'Notifications are blocked for {productName}',
       body: 'Allow them in your browser: open the site settings next to the address (the lock icon), set Notifications to Allow and reload this page.',
     },
     needsInstall: {
-      title: 'Add Piloti to your Home Screen first',
-      body: 'On iPhone and iPad, notifications only work for an installed app. In Safari tap Share, choose Add to Home Screen, open Piloti from there and turn them on here.',
+      title: 'Add {productName} to your Home Screen first',
+      body: 'On iPhone and iPad, notifications only work for an installed app. In Safari tap Share, choose Add to Home Screen, open {productName} from there and turn them on here.',
     },
   },
   devices: {
@@ -45,10 +45,10 @@ export const notifications = {
     removeLabel: 'Remove {device}',
   },
   categories: {
-    title: 'What Piloti notifies you about',
+    title: 'What {productName} notifies you about',
     requests: {
       label: 'Requests to you',
-      hint: 'Someone asks for your view, Piloti has a question, something waits for your decision.',
+      hint: 'Someone asks for your view, {productName} has a question, something waits for your decision.',
     },
     results: {
       label: 'Results',
@@ -74,7 +74,7 @@ export const notifications = {
   preferencesFailed: 'Your choice could not be saved. Please try again.',
   prompt: {
     title: 'Get notified when something arrives?',
-    body: 'Piloti tells you on this device when someone needs you.',
+    body: '{productName} tells you on this device when someone needs you.',
     turnOn: 'Turn on',
     dismiss: 'Not now',
     /** The browser said no: one line to the page that says how to change it (the profile). */
@@ -83,9 +83,9 @@ export const notifications = {
   /** The same offer, once, as a toast the first time something waits on the person. */
   offer: {
     mentioned: '{actor} mentioned you. Do you want to be notified on this device?',
-    actor: '{actor} needs you in Piloti. Do you want to be notified on this device?',
-    someone: 'Someone needs you in Piloti. Do you want to be notified on this device?',
-    piloti: 'Piloti has a question for you. Do you want to be notified on this device?',
+    actor: '{actor} needs you in {productName}. Do you want to be notified on this device?',
+    someone: 'Someone needs you in {productName}. Do you want to be notified on this device?',
+    piloti: '{productName} has a question for you. Do you want to be notified on this device?',
     turnOn: 'Turn on',
     notNow: 'Not now',
   },

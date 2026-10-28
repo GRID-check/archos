@@ -69,7 +69,7 @@ describe('purger tick during a database outage', () => {
 
   it('keeps a claim that failed for any other reason at ERROR', async () => {
     const { error } = spies()
-    const missing = Object.assign(new Error('function grid_legal_hold_blocks does not exist'), { code: '42883' })
+    const missing = Object.assign(new Error('function legal_hold_blocks does not exist'), { code: '42883' })
     const sql = { begin: vi.fn().mockRejectedValue(missing) }
 
     await purgerOver(sql, createFailureStreak({ label: '[purger] queue', escalateAfter: ESCALATE_AFTER })).tick()

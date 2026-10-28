@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
 import { stampRelativePath } from './dropped-entries'

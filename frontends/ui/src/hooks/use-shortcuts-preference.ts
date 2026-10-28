@@ -13,10 +13,10 @@
 
 import { useCallback, useSyncExternalStore } from 'react'
 
-export const SHORTCUTS_PREFERENCE_KEY = 'grid.keyboard-shortcuts.enabled'
+export const SHORTCUTS_PREFERENCE_KEY = 'keyboard-shortcuts.enabled'
 
 /** Same-tab change notification (the `storage` event only fires cross-tab). */
-const CHANGE_EVENT = 'grid:keyboard-shortcuts-preference'
+const CHANGE_EVENT = 'keyboard-shortcuts-preference'
 
 function readEnabled(): boolean {
   if (typeof window === 'undefined') return true

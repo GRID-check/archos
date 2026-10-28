@@ -14,7 +14,7 @@
  *
  * ## The API shapes, and where they were checked
  *
- * Checked against the version `deploy/pulumi/src/config.ts` pins (Langfuse
+ * Checked against the version `deploy/pulumi/src/config/langfuse.ts` pins (Langfuse
  * 4.48.0), its OpenAPI spec (`web/public/generated/api/openapi.yml`), its route
  * source (`web/src/pages/api/public/traces/index.ts`,
  * `.../v2/observations/index.ts`) and the v3 -> v4 upgrade guide:

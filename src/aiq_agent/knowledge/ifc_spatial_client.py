@@ -11,7 +11,7 @@ file, and the engine that reads it (IfcOpenShell/OCCT, roadmap §13b) is Python.
 
 ## How a model becomes bytes
 
-The agent backend owns no object storage — ADR-0045 puts `grid_app` and the
+The agent backend owns no object storage — ADR-0045 puts `app` and the
 bucket behind the BFF — so it obtains the source exactly as the viewer does:
 it asks for a short-lived presigned URL and reads it. The route is
 ``POST /api/internal/bim/source``, the service-token twin of the viewer's

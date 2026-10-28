@@ -147,7 +147,7 @@ policy. Those routes are no longer mounted at all: this socket is the only way
 a turn runs (`aiq_api.plugin.AIQAPIConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
 internal-token-authenticated service calls.
 See `docs/architecture/backend-deep-dive.md` and
-`frontends/aiq_api/src/aiq_api/context_envelope.py`'s module docstring for the
+`apps/backend/src/aiq_api/context_envelope.py`'s module docstring for the
 full design.
 
 ### Environment Variables
@@ -309,7 +309,7 @@ does not matter which write lands first.
 
 A running turn heartbeats, and the client trusts the heartbeat, so a turn the
 server never ends is a spinner that never stops. Four things make sure it
-ends, each pinned by a test in `frontends/aiq_api/tests/test_chat_socket.py`:
+ends, each pinned by a test in `apps/backend/tests/test_chat_socket.py`:
 
 - **One terminal, structurally.** `run_turn`'s `finally` sends a `RUN_ERROR` if
   no terminal went out, whatever escaped (a `BaseExceptionGroup` from a task
@@ -545,7 +545,7 @@ question asked while the socket has given up opens a new one with a fresh ladder
 
 A run — a deep-research run, a task run — streams its own events from
 `job_events` rather than over the socket: `GET /v1/jobs/async/{jobId}/events`
-(`aiq_api.routes.jobs.stream_job_events`), replayable from `last_event_id`. That
+(`aiq_api.routes.job_handlers.JobRouteHandlers.stream_job_events`), replayable from `last_event_id`. That
 stream carries the `job.*` lifecycle events (`job.phase`, `job.heartbeat`,
 `job.degraded`, `job.error`, `job.cancelled`), the `artifact.update` events the
 agent callbacks emit, and one more:
@@ -727,7 +727,7 @@ pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
   `duplicate_turn`: done. `RUN_FINISHED{refused}`: recorded `refused`.
   `auth_expired` / `conversation_mismatch`: the job throws, the queue retries
   with a fresh envelope, and the last attempt records `failed`. Each outcome
-  is on the `piloti_wakes` row and in the audit trail: one that started as
+  is on the `agent_wakes` row and in the audit trail: one that started as
   `piloti.wake.started`, one the job refused or gave up on as
   `piloti.wake.ended`, one held before it was sent as `piloti.wake.suppressed`.
 

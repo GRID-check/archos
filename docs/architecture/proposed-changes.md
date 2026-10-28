@@ -51,11 +51,11 @@ deciding person's session, and the decision is one row every reader sees.
 | The decision score | `frontends/ui/src/lib/langfuse/decision-score.ts`, called from `frontends/ui/src/lib/proposals/service.ts` |
 | Decisions as Piloti reads them | `frontends/ui/src/lib/projects/proposal-decision-rows.ts` (the rows), `frontends/ui/src/lib/projects/proposal-decisions.ts` (the `PROPOSAL_DECISIONS` block) |
 | The receipt card | `frontends/ui/src/features/grid-cards/components/ProposalReceipt.tsx` (the frame), `ProposalReceipts.tsx` (the three bodies), `hooks/use-server-proposal.ts` (the hook) |
-| Piloti's filing suggestions: the trigger, the judgement, the gates, the row | `frontends/ui/src/lib/filing/` (`trigger.ts`, `service.ts`, `plan.ts`, `judge.ts`, `conventions.ts`); the model call `frontends/aiq_api/src/aiq_api/routes/filing_fit.py`; the row `frontends/ui/src/features/documents/components/filing-suggestion.tsx` |
+| Piloti's filing suggestions: the trigger, the judgement, the gates, the row | `frontends/ui/src/lib/filing/` (`trigger.ts`, `service.ts`, `plan.ts`, `judge.ts`, `conventions.ts`); the model call `apps/backend/src/aiq_api/routes/filing_fit.py`; the row `frontends/ui/src/features/documents/components/filing-suggestion.tsx` |
 
 ## The data
 
-`proposed_changes` sits under `grid_secure_table` RLS: the organization, and for
+`proposed_changes` sits under `secure_table` RLS: the organization, and for
 a project's proposal the project's organization; a Büroablage proposal is the
 organization's alone, as a Büroablage folder is (0146). Both foreign keys are
 composite with the organization
@@ -102,7 +102,7 @@ The CHECKs hold the lifecycle, so no code path can break it:
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key
 against a real PostgreSQL, applies the down migrations, and re-applies the up
 migrations twice. `src/lib/proposals/repository.integration.spec.ts` runs the
-repository as `grid_app_rw`. The down migration of 0143 is lossy: it deletes the
+repository as `app_rw`. The down migration of 0143 is lossy: it deletes the
 proposals of the two newer kinds, which the older build cannot read (their cards
 fall back to deciding in the browser), and forgets which card made which
 proposal.

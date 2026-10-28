@@ -11,7 +11,7 @@ position to be keyed by.
 import re
 from pathlib import Path
 
-from aiq_agent.cards.models import SURFACE_EXCLUDED_LEAVES
+from aiq_agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TS_CATALOG = REPO_ROOT / "frontends" / "ui" / "src" / "features" / "a2ui" / "catalog.tsx"

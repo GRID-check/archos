@@ -13,7 +13,7 @@
  */
 
 import { publicApiRoute } from '@/lib/api/handler'
-import { streamDocumentImage } from '@/lib/documents/service'
+import { streamDocumentImage } from '@/lib/documents/document-delivery'
 
 type Params = { id: string }
 

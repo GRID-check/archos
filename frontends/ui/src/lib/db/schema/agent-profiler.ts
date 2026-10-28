@@ -5,7 +5,7 @@ import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-o
  * call / tool call) captured by the backend's unified profiler
  * (src/aiq_agent/common/profiler.py — the timing sibling of the LLM cost
  * ledger in budgets.ts). Append-only, written only via the token-guarded
- * internal endpoint POST /api/internal/agent-profiler-spans; grid_app stays
+ * internal endpoint POST /api/internal/agent-profiler-spans; `app` stays
  * single-writer.
  *
  * No FK to `conversations`: like `llm_usage_events`, this is ops/forensics

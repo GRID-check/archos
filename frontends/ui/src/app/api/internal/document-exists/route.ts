@@ -21,7 +21,7 @@
 
 import { z } from 'zod'
 import { internalApiRoute, parseQuery } from '@/lib/api/handler'
-import { documentStillExists } from '@/lib/documents/service'
+import { documentStillExists } from '@/lib/documents/document-details'
 
 const querySchema = z.object({
   documentId: z.guid(),

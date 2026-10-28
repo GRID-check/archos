@@ -18,7 +18,7 @@ export const presence: typeof en.presence = {
    */
   piloti: {
     /** The tooltip on Piloti's face in a presence stack. */
-    onBehalfOf: 'Piloti · für {name}',
+    onBehalfOf: '{productName} · für {name}',
     /** After the words on Piloti's cursor tag („Piloti“, „Treppe“), never clipped: „Treppe · für Anna“. */
     forSuffix: '· für {name}',
     /** Was Pilotis Zeiger sagt, während es eine Seite oder einen Ausschnitt liest, nach seinem Namen. */

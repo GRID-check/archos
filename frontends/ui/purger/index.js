@@ -3,12 +3,12 @@
  * GRID purger service.
  *
  * Dedicated container (frontend image, `node purger/index.js`) that polls the
- * deletion_queue in grid_app and hard-deletes soft-deleted entities across all
+ * deletion_queue in `app` and hard-deletes soft-deleted entities across all
  * stores after their grace period. See
  * docs/adr/0011-deletion-pipeline.md (the design was never committed).
  *
  * Environment:
- *   APP_DATABASE_URL   - grid_app Postgres DSN
+ *   APP_DATABASE_URL   - `app` Postgres DSN
  *   BACKEND_URL             - aiq-api base URL (Python-side purge endpoint)
  *   FRONTEND_INTERNAL_URL   - BFF base URL (chat erasure retries, folder purges; default http://frontend:3000)
  *   INTERNAL_API_TOKEN - shared token for the internal endpoint
@@ -90,7 +90,7 @@ function createPurger({ sql, deps, streak }) {
     const claimed = await withPlatformScope(sql, (tx) => claimNext(tx))
     if (!claimed) return false
 
-    // Phase B: purge. grid_app row deletes are atomic within this transaction;
+    // Phase B: purge. `app` row deletes are atomic within this transaction;
     // external steps are idempotent so a mid-flight crash re-runs safely after
     // the 15-minute stale-claim window.
     // Unsupported entity types are a config/programming error, not a transient
@@ -162,7 +162,7 @@ function createPurger({ sql, deps, streak }) {
       // Drain everything due, one at a time.
       //
       // A claim that throws (the database is down, or a migration this image
-      // needs — 0093's `grid_legal_hold_blocks` — has not run yet) is logged and
+      // needs — 0093's `legal_hold_blocks` — has not run yet) is logged and
       // retried on the next tick. Unhandled, it was a rejected `void tick()`,
       // which ends the Node process instead of waiting for the database.
       while (await processOne()) {

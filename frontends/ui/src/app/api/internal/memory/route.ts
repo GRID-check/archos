@@ -1,6 +1,6 @@
 /**
  * INTERNAL service endpoint — the write path for the backend agent's
- * `remember` tool. Keeps grid_app single-writer: the Python backend never
+ * `remember` tool. Keeps `app` single-writer: the Python backend never
  * touches the database; it calls this route over the compose network,
  * authenticated by a shared service token (INTERNAL_API_TOKEN on both
  * services). Not user-facing; requests without the token are rejected, and
