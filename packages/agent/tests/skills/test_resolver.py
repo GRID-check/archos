@@ -6,10 +6,10 @@ from unittest import mock
 
 import pytest
 
-from aiq_agent.common import cache as shared_cache
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.resolver import SkillResolver
-from aiq_agent.skills.resolver import resolve_served_skills
+from agent.common import cache as shared_cache
+from agent.skills.models import Skill
+from agent.skills.resolver import SkillResolver
+from agent.skills.resolver import resolve_served_skills
 
 BUILTIN = (
     Skill(name="calc", description="Base calculator.", body="body-1", origin="platform", collection="research"),
@@ -63,7 +63,7 @@ def test_invalid_org_row_is_dropped(resolver: SkillResolver) -> None:
     assert "bad name!" not in {s.name for s in resolved}
 
 
-def test_grid_agents_filter_applies_to_builtin_and_org(resolver: SkillResolver) -> None:
+def test_agents_filter_applies_to_builtin_and_org(resolver: SkillResolver) -> None:
     smart = Skill(
         name="smart",
         description="Deep only.",
@@ -82,7 +82,7 @@ def test_grid_agents_filter_applies_to_builtin_and_org(resolver: SkillResolver) 
     assert "org-deep" not in {s.name for s in resolved}
 
 
-def test_a_leftover_grid_execution_is_ignored_not_honoured(resolver: SkillResolver) -> None:
+def test_a_leftover_legacy_execution_is_ignored_not_honoured(resolver: SkillResolver) -> None:
     """``grid-execution`` is gone from the model, and a stored one changes nothing.
 
     It used to gate availability, then it meant "what a scheduled run produces",
@@ -109,7 +109,7 @@ def test_a_leftover_grid_execution_is_ignored_not_honoured(resolver: SkillResolv
         assert {"chat-mode", "deep-research-mode"} <= names
 
 
-def test_org_row_with_a_stored_grid_execution_still_resolves(resolver: SkillResolver) -> None:
+def test_org_row_with_a_stored_legacy_execution_still_resolves(resolver: SkillResolver) -> None:
     """The whole point of dropping validation: a stale stored key must not 404 a skill.
 
     Org rows are not migrated in lockstep with the code. A row still carrying
@@ -136,7 +136,7 @@ def test_org_row_with_a_stored_grid_execution_still_resolves(resolver: SkillReso
     assert resolved["legacy-row"].metadata["grid-execution"] == "deep-research"
 
 
-def test_grid_agents_is_the_only_scope(resolver: SkillResolver) -> None:
+def test_agents_is_the_only_scope(resolver: SkillResolver) -> None:
     """An un-migrated org row is scoped by ``grid-agents`` alone, nothing else."""
     scheduled_report = Skill(
         name="monthly-report",
@@ -191,7 +191,7 @@ def test_result_is_cached_in_shared_cache(resolver: SkillResolver) -> None:
 
 
 def test_cache_tty_default_is_60(resolver: SkillResolver, monkeypatch: pytest.MonkeyPatch) -> None:
-    from aiq_agent.skills.resolver import _cache_ttl_seconds
+    from agent.skills.resolver import _cache_ttl_seconds
 
     assert _cache_ttl_seconds() == 60.0
     monkeypatch.setenv("SKILLS_CACHE_TTL_SECONDS", "120")
@@ -261,9 +261,9 @@ def test_fetch_omits_agent_entirely_when_unset(monkeypatch: pytest.MonkeyPatch) 
     assert query["organization_id"] == "org-42"
 
 
-def test_unknown_grid_agents_names_do_not_delete_the_skill(resolver: SkillResolver) -> None:
+def test_unknown_agents_names_do_not_delete_the_skill(resolver: SkillResolver) -> None:
     """A typo in `grid-agents` must not silently hide a skill from every agent."""
-    from aiq_agent.skills.resolver import _agent_allows
+    from agent.skills.resolver import _agent_allows
 
     typo = Skill(name="typo", description="d", body="b", metadata={"grid-agents": "shallow_reseacher"})
     assert _agent_allows(typo, "researcher") is True
@@ -282,7 +282,7 @@ def test_the_retired_agent_name_still_scopes_a_skill_to_the_chat_agent() -> None
     forward migration rewrites the rows we can see; this is what covers a row
     written by an older BFF mid-deploy, or restored from a backup.
     """
-    from aiq_agent.skills.resolver import _agent_allows
+    from agent.skills.resolver import _agent_allows
 
     retired = Skill(name="voice", description="d", body="b", metadata={"grid-agents": "shallow_researcher"})
     assert _agent_allows(retired, "researcher") is True
@@ -303,7 +303,7 @@ def test_a_caller_still_asking_under_the_retired_name_gets_the_same_answer() -> 
     migrated row for that caller — the same skill blackout, in the other
     direction, for the length of the deploy.
     """
-    from aiq_agent.skills.resolver import _agent_allows
+    from agent.skills.resolver import _agent_allows
 
     migrated = Skill(name="voice", description="d", body="b", metadata={"grid-agents": "researcher"})
     assert _agent_allows(migrated, "shallow_researcher") is True
@@ -408,7 +408,7 @@ def test_served_skills_leave_the_builtin_FILES_where_they_are(monkeypatch: pytes
     assert {s.origin for s in served} == {"org"}
 
 
-def test_served_skills_still_honour_grid_agents(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_served_skills_still_honour_agents(monkeypatch: pytest.MonkeyPatch) -> None:
     """One gate, read the same way for both agents."""
     monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     with mock.patch.object(

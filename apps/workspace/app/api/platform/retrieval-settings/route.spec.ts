@@ -21,7 +21,7 @@ const session = {
   permissions: [] as string[],
 }
 
-vi.mock('@/lib/auth/session', () => ({ getGridSession: async () => session }))
+vi.mock('@/lib/auth/session', () => ({ getUserSession: async () => session }))
 vi.mock('@/lib/auth/require-auth', () => ({}))
 
 const requirePlatformPermission = vi.fn().mockResolvedValue(undefined)

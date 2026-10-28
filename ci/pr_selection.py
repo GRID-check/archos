@@ -113,8 +113,8 @@ PY_FULL = (
 # Where testmon sees Python: the packages under test and the tests themselves.
 PY_TRACKED = (
     "tests/**",
-    "apps/backend/src/**",
-    "apps/backend/tests/**",
+    "apps/agent-host/src/**",
+    "apps/agent-host/tests/**",
     "packages/*/src/**",
     "packages/*/tests/**",
     "packages/*/testing/**",
@@ -122,7 +122,7 @@ PY_TRACKED = (
 )
 
 # Where a test reads a non-Python file it does not import.
-PY_TEST_ROOTS = ("tests", "apps/backend/tests", "packages", "evals")
+PY_TEST_ROOTS = ("tests", "apps/agent-host/tests", "packages", "evals")
 
 # Test data. A test reads a fixture by name or a whole directory of them, so one
 # no test names, directly or by a directory, forces a full run.
@@ -130,7 +130,7 @@ PY_FIXTURES = "tests/fixtures/"
 
 # A non-Python file under these that no test names is code testmon cannot see
 # (package data read at runtime), so it forces a full run rather than none.
-PY_PACKAGE_SRC = ("apps/backend/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
+PY_PACKAGE_SRC = ("apps/agent-host/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
 
 # What every UI spec loads before its own imports, so no graph sees it.
 UI_FULL = (
@@ -162,7 +162,7 @@ UI_INPUTS = (
     "configs/**",
     "contracts/**",
     "scripts/**",
-    "packages/agent/src/aiq_agent/cards/**",
+    "packages/agent/src/agent/cards/**",
     "tests/fixtures/**",
 )
 

@@ -20,24 +20,24 @@ from langgraph.graph import MessagesState
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
-from aiq_agent.common import action_rows
-from aiq_agent.common import decisions
-from aiq_agent.common import retrieval_status
-from aiq_agent.common import turn_status
-from aiq_agent.common.grounding_block import GroundingBlock
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.wire_v2 import RetrievalStep
-from aiq_agent.common.wire_v2 import SkillStep
-from aiq_agent.common.wire_v2 import SourcesStep
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.common.wire_v2 import StepStartedBody
-from aiq_agent.common.wire_v2 import ToolStep
-from aiq_agent.common.wire_v2 import TraceLane
-from aiq_agent.common.wire_v2 import TraceLaneSource
-from aiq_agent.skills.events import emit_skill_activated
-from aiq_agent.skills.models import Skill
+from agent.common import action_rows
+from agent.common import decisions
+from agent.common import retrieval_status
+from agent.common import turn_status
+from agent.common.grounding_block import GroundingBlock
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import render_grounding_block
+from agent.common.wire_v2 import RetrievalStep
+from agent.common.wire_v2 import SkillStep
+from agent.common.wire_v2 import SourcesStep
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import StepFinishedBody
+from agent.common.wire_v2 import StepStartedBody
+from agent.common.wire_v2 import ToolStep
+from agent.common.wire_v2 import TraceLane
+from agent.common.wire_v2 import TraceLaneSource
+from agent.skills.events import emit_skill_activated
+from agent.skills.models import Skill
 from tests.conftest import stream_custom
 
 

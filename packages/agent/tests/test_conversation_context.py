@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.conversation_context import MAX_CONTEXT_AUTHOR_CHARS
-from aiq_agent.conversation_context import MAX_CONTEXT_MESSAGE_CHARS
-from aiq_agent.conversation_context import ContextOnlyMessage
-from aiq_agent.conversation_context import append_conversation_context
-from aiq_agent.conversation_context import format_context_turn
-from aiq_agent.conversation_context import get_context_appender
-from aiq_agent.conversation_context import register_context_appender
+from agent.conversation_context import MAX_CONTEXT_AUTHOR_CHARS
+from agent.conversation_context import MAX_CONTEXT_MESSAGE_CHARS
+from agent.conversation_context import ContextOnlyMessage
+from agent.conversation_context import append_conversation_context
+from agent.conversation_context import format_context_turn
+from agent.conversation_context import get_context_appender
+from agent.conversation_context import register_context_appender
 
 
 @pytest.fixture(autouse=True)

@@ -17,7 +17,7 @@ import {
  * The stored messages, verbatim from the tiers that write them:
  * `packages/knowledge-layer/src/renditions.py` OFFICE_RENDITION_REQUIRED,
  * `packages/knowledge-layer/src/deferred_files.py` ORIGINAL_DOWNLOAD_FAILED,
- * `packages/agent/src/aiq_agent/knowledge/ingest_status_store.py` INTERRUPTED_MESSAGE,
+ * `packages/agent/src/agent/knowledge/ingest_status_store.py` INTERRUPTED_MESSAGE,
  * `adapter.py`'s pdf_pages_unreadable format and DOCUMENT_DELETED_DURING_INGEST, `transcription.py`
  * SCAN_NEEDS_VLM and the adapter's image variant. The Python parity test
  * holds the prefixes; these hold the exact sentences.

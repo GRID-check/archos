@@ -20,7 +20,7 @@ from knowledge_layer.requery import judge_sufficiency
 from knowledge_layer.requery import requery_notice
 from knowledge_layer.search_results import coverage_gap
 
-from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
+from agent.common.retrieval_settings import reset_retrieval_settings_cache
 
 
 class _FakeLLM:
@@ -40,7 +40,7 @@ class _RaisingLLM:
 
 def _chunk(text: str, chunk_id: str = "c1"):
     # A real Chunk: the merge builds a real RetrievalResult, which validates.
-    from aiq_agent.knowledge.schema import Chunk
+    from agent.knowledge.schema import Chunk
 
     return Chunk(
         chunk_id=chunk_id,
@@ -183,15 +183,15 @@ def loop_harness(monkeypatch):
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
         monkeypatch.setattr("knowledge_layer.search_results.format_results", _grounding)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
         async def _resolve(_builder, name):
             return judge
 
-        monkeypatch.setattr("aiq_agent.common.get_langchain_llm", _resolve)
+        monkeypatch.setattr("agent.common.get_langchain_llm", _resolve)
 
     return install
 
@@ -361,7 +361,7 @@ class TestLaneToolScope:
     """
 
     async def test_the_renderer_sees_the_tool_that_called_it(self, loop_harness, monkeypatch):
-        from aiq_agent.common.turn_status import current_lane_tool
+        from agent.common.turn_status import current_lane_tool
 
         seen: list[str | None] = []
 
@@ -378,7 +378,7 @@ class TestLaneToolScope:
         assert seen == ["knowledge_search"]
 
     async def test_the_scope_does_not_outlive_the_search(self, loop_harness):
-        from aiq_agent.common.turn_status import current_lane_tool
+        from agent.common.turn_status import current_lane_tool
 
         loop_harness(_FakeRetriever({"Fluchtweg GK4": [_chunk("a", "a")]}), None)
 
@@ -404,7 +404,7 @@ class _Decider:
         return {"type": "noul", "instructions": instructions}
 
     async def decide_many(self, states, questions, **_):
-        from aiq_agent.common.decisions import Decision
+        from agent.common.decisions import Decision
 
         self.calls.append({"count": len(states), "questions": set(questions)})
         p = self.rounds[min(len(self.calls), len(self.rounds)) - 1]
@@ -523,7 +523,7 @@ class TestTheSearchRetrieverHandle:
     async def test_teardown_clears_the_warm_up_handle(self, loop_harness):
         """The handle was last-wins and never cleared: a torn-down tool's
         retriever stayed alive and kept being warmed."""
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         retriever = _FakeRetriever({})
         loop_harness(retriever, None)
@@ -534,7 +534,7 @@ class TestTheSearchRetrieverHandle:
         assert factory._SEARCH_RETRIEVER is None
 
     async def test_teardown_leaves_a_later_tools_handle(self, loop_harness, monkeypatch):
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         # Restored even when the assert fails, so no later test inherits the handle.
         monkeypatch.setattr(factory, "_SEARCH_RETRIEVER", None)
@@ -552,7 +552,7 @@ def test_the_prefetch_requery_switch_stays_removed():
     applied to (turn-latency-measured-2026-09.md §3.5) and removed with its
     marker; the PR that measured it carries the
     implementation if it is ever needed again."""
-    from aiq_agent.common import turn_status
+    from agent.common import turn_status
 
     assert "requery_on_prefetch" not in KnowledgeRetrievalConfig.model_fields
     assert not hasattr(turn_status, "in_prefetch") and not hasattr(turn_status, "prefetch_scope")

@@ -1,6 +1,6 @@
-"""Tests for aiq_agent.common.legal_terms.extract_exact_terms."""
+"""Tests for agent.common.legal_terms.extract_exact_terms."""
 
-from aiq_agent.common.legal_terms import extract_exact_terms
+from agent.common.legal_terms import extract_exact_terms
 
 
 class TestParagraphReferences:

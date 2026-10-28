@@ -104,8 +104,8 @@ def _chunk_ordinal(chunk: Any) -> int | None:
 
 
 def _chunk_position(chunk: Any) -> tuple[int, int, int, int, int, int, str]:
-    """The chunk's :func:`~aiq_agent.knowledge.base.document_position`: what ranged reads sort, cut and continue by."""
-    from aiq_agent.knowledge.base import document_position
+    """The chunk's :func:`~agent.knowledge.base.document_position`: what ranged reads sort, cut and continue by."""
+    from agent.knowledge.base import document_position
 
     return document_position(getattr(chunk, "metadata", None), getattr(chunk, "chunk_id", ""))
 

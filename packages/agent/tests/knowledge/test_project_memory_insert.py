@@ -12,8 +12,8 @@ import urllib.error
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge import project_memory as pm
+from agent.common import bff_http
+from agent.knowledge import project_memory as pm
 
 
 class _FakeResponse(io.BytesIO):

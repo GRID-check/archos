@@ -25,9 +25,9 @@ from pathlib import Path
 DOC = Path("docs/deployment/environment-variables.md")
 
 SCOPE = (
-    "apps/backend/src/aiq_api/jobs/*.py",
-    "packages/agent/src/aiq_agent/knowledge/ingest_*.py",
-    "packages/agent/src/aiq_agent/knowledge/folder_cards/*.py",
+    "apps/agent-host/src/agent_host/jobs/*.py",
+    "packages/agent/src/agent/knowledge/ingest_*.py",
+    "packages/agent/src/agent/knowledge/folder_cards/*.py",
     "apps/workspace/workers/*.js",
     "apps/workspace/purger/*.js",
     "apps/workspace/scheduler/*.js",

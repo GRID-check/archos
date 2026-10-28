@@ -2,7 +2,7 @@
 
 Every test loads this file, so it imports only what every test needs. A fixture
 that needs a heavy package imports it in its body, and the model doubles live in
-``tests/provider_doubles.py``: loading LangChain, NAT and the Qdrant client here
+``tests/provider_doubles.py``: loading LangChain, the agent runtime and the Qdrant client here
 cost every test, a one-line harness test included, about 4.6 s of a 5.7 s run
 (docs/audit/blast-radius-2026-10.md). ``tests/test_import_weight.py`` holds it.
 """
@@ -19,7 +19,7 @@ from knowledge_layer_testing.qdrant_fixtures import qdrant_store  # noqa: F401 -
 
 def _reset_shared_cache() -> None:
     # Only a cache some import already loaded holds anything to reset.
-    cache = sys.modules.get("aiq_agent.common.cache")
+    cache = sys.modules.get("agent.common.cache")
     if cache is not None:
         cache.reset_local_store()
 
@@ -29,7 +29,7 @@ def _isolate_shared_cache():
     """Reset the shared cache around every test.
 
     The ingest pipeline reads/writes the fail-open shared cache
-    (``aiq_agent.common.cache``, ADR-0020) — notably the content-hash VLM
+    (``agent.common.cache``, ADR-0020) — notably the content-hash VLM
     caption cache. Its in-process fallback store (``REDIS_URL`` unset, which is
     how the suite runs) is a module global, so without this a caption produced
     by one test is served to the next whenever the two feed the VLM identical
@@ -53,7 +53,7 @@ def strict_provider_llm():
     inputs production never sees.
     """
 
-    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+    from agent.common.llm_factory import enforce_chat_request_contract
     from tests.provider_doubles import StrictProviderChatModel
 
     def _make(responses: list[Any] | None = None, *, with_contract: bool = True) -> Any:
@@ -98,7 +98,7 @@ def emitted(monkeypatch) -> Emitted:
     runs it in a compiled graph instead (:func:`stream_custom`).
     """
     bodies = Emitted()
-    monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.append)
+    monkeypatch.setattr("agent.common.turn_status.get_stream_writer", lambda: bodies.append)
     return bodies
 
 

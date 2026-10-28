@@ -130,7 +130,7 @@ describe.skipIf(!url)('platform default bootstrap against live Postgres', () => 
       modelSnapshot: { shallow_research: { id: 'vendor/owner-pick' } },
       note: 'owner choice',
       actorUserId: 'user_owner',
-      actorEmail: 'owner@grid.test',
+      actorEmail: 'owner@example.test',
     })
 
     expect(await bootstrapPlatformModelDefaults()).toEqual([])

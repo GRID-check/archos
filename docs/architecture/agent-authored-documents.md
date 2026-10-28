@@ -12,7 +12,7 @@ Related: file-native work objects (removed; in git history at `56ee3329`)
 [ADR-0038](../adr/0038-one-authorization-catalog-and-decision-point.md),
 [ADR-0011](../adr/0011-deletion-pipeline.md).
 Long-form exploration this narrows:
-[`piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md).
+[`filesystem-design.md`](../architecture/filesystem-design.md).
 
 ## Problem
 
@@ -21,7 +21,7 @@ produces exactly one thing the office wanted: a report. That report is written
 by `writer-agent` to `/shared/output.md`, read back out by
 `_extract_final_markdown`, returned as a chat message, and **discarded** — the
 run's whole file system with it
-(`packages/agent/src/aiq_agent/agents/deep_researcher/agent.py`, `deepagents_runtime.py`).
+(`packages/agent/src/agent/agents/deep_researcher/agent.py`, `deepagents_runtime.py`).
 There is even a fallback that mines the last assistant message when the file is
 missing, which is the code saying the file, not the message, was the artifact.
 
@@ -351,7 +351,7 @@ step, and it is why the audit commit lands first.
    lands` — there is no submit form (see *What the build changed about this design* §1,
    and [As built §1](#1-the-disclosure-verbatim) for the copy).
 5. `feat(export): a generated document says so, in the file itself`.
-6. `feat(files): Piloti-authored files read as unclaimed` — authorship line,
+6. `feat(files): agent-authored files read as unclaimed` — authorship line,
    the `stored` state, toast actions, `/dev` preview.
 7. `docs:` schema, ADR-0032/0047 addenda, the `filed` field in
    `docs/api/bff-routes.md`, the user guide, and the exploration doc marked as
@@ -500,7 +500,7 @@ deployment, which is why they are recorded rather than folded into a fix:
   object and the `projectId` query parameter.
 - [`docs/user-guides/agent-authored-reports.md`](../user-guides/agent-authored-reports.md)
   — what an architect sees.
-- [`docs/architecture/piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md)
+- [`docs/architecture/filesystem-design.md`](../architecture/filesystem-design.md)
   — the exploration marked as narrowed **and built**, with the parts that remain
   unbuilt named so it is not read as a plan of record.
 

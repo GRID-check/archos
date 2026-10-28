@@ -587,8 +587,8 @@ async def test_stored_raster_fetch_failure_returns_text_only(monkeypatch, tmp_pa
 
 @pytest.mark.asyncio
 async def test_per_turn_cap_stops_the_tool_before_any_work(monkeypatch, tmp_path) -> None:
-    from aiq_agent.common.image_view_budget import begin_image_view_budget
-    from aiq_agent.common.image_view_budget import end_image_view_budget
+    from agent.common.image_view_budget import begin_image_view_budget
+    from agent.common.image_view_budget import end_image_view_budget
 
     calls: list[str] = []
 
@@ -623,7 +623,7 @@ async def test_per_turn_cap_stops_the_tool_before_any_work(monkeypatch, tmp_path
 
 
 def test_find_pdf_fetches_a_base_corpus_file_that_is_not_local(monkeypatch, tmp_path) -> None:
-    from aiq_agent import corpus_store
+    from agent import corpus_store
     from tests.object_corpus_fakes import install
 
     install(monkeypatch, tmp_path)
@@ -645,7 +645,7 @@ def test_find_pdf_for_a_file_the_corpus_does_not_list_is_none(monkeypatch, tmp_p
 
 
 def test_find_pdf_is_fail_open_when_the_corpus_lookup_breaks(monkeypatch) -> None:
-    from aiq_agent import corpus_store
+    from agent import corpus_store
 
     def broken(_name):
         raise RuntimeError("database down")

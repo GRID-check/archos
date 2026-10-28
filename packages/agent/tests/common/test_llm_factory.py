@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 from agent_testing.llm_factory import _resolved_through_nat
 
-from aiq_agent.common.llm_factory import apply_openrouter_structured_defaults
+from agent.common.llm_factory import apply_openrouter_structured_defaults
 
 
 class FakeLLM:
@@ -74,13 +74,13 @@ def test_base_url_falls_back_to_client():
 
 @pytest.mark.asyncio
 async def test_get_langchain_llm_resolves_and_hardens_the_chat_model_itself():
-    """NAT 1.9 hands back a `RunnableConfigurableFields` wrapper. Hardening that
+    """The agent runtime 1.9 hands back a `RunnableConfigurableFields` wrapper. Hardening that
     lands on the wrapper fails or no-ops, and a per-request `model_copy` of it
     keeps sending the original model, so the seam must return the chat model,
-    still retry-patched the way NAT patched the wrapper."""
+    still retry-patched the way the agent runtime patched the wrapper."""
     from langchain_openai import ChatOpenAI
 
-    from aiq_agent.common.model_overrides import override_model
+    from agent.common.model_overrides import override_model
 
     llm = await _resolved_through_nat(base_url="https://openrouter.ai/api/v1")
 
@@ -102,7 +102,7 @@ async def test_get_langchain_llm_resolves_and_hardens_the_chat_model_itself():
 def _openrouter_chat_model(model="openai/gpt-5.6-luna", **kwargs):
     from langchain_openai import ChatOpenAI
 
-    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+    from agent.common.llm_factory import enforce_chat_request_contract
 
     llm = ChatOpenAI(
         model=model,
@@ -230,7 +230,7 @@ def test_a_non_openrouter_model_sends_no_cache_routing():
     # endpoint would be handed a parameter it never declared.
     from langchain_openai import ChatOpenAI
 
-    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+    from agent.common.llm_factory import enforce_chat_request_contract
 
     llm = enforce_chat_request_contract(
         ChatOpenAI(
@@ -248,7 +248,7 @@ def test_cache_routing_composes_with_zdr_provider_routing():
     # (`model_overrides.apply_zdr_routing`), which sets `provider.zdr`. The two
     # must compose: a tenant on ZDR still gets a cache key, and the key must not
     # displace the routing policy that keeps its data out of training sets.
-    from aiq_agent.common.model_overrides import apply_zdr_routing
+    from agent.common.model_overrides import apply_zdr_routing
 
     llm = apply_zdr_routing(_openrouter_chat_model())
     payload = _sent_payload(llm, _messages(), tools=DEFERRED_TOOLS)
@@ -263,7 +263,7 @@ def test_cache_routing_composes_with_zdr_provider_routing():
 def test_a_model_override_changes_the_key():
     # A re-pointed group (ADR-0014) is a different cache, so it must not be
     # pinned to the previous model's shard.
-    from aiq_agent.common.model_overrides import override_model
+    from agent.common.model_overrides import override_model
 
     llm = _openrouter_chat_model()
     before = _sent_payload(llm, _messages(), tools=DEFERRED_TOOLS)
@@ -273,14 +273,14 @@ def test_a_model_override_changes_the_key():
 
 # -- previous_response_id on the OpenRouter Responses path ---------------------
 #
-# NAT hands every `api_type: responses` client `use_previous_response_id=True`,
+# The agent runtime hands every `api_type: responses` client `use_previous_response_id=True`,
 # which langchain-openai fills from the last `resp_…` AIMessage id. OpenRouter
 # rejects the field outright, so `get_langchain_llm` must turn it off — and only
 # for OpenRouter, where a direct OpenAI endpoint keeps the feature it supports.
 
 
 async def _resolved_responses_client(base_url):
-    """An `api_type: responses` client, built by NAT."""
+    """An `api_type: responses` client, built by the agent runtime."""
     return await _resolved_through_nat(base_url=base_url, api_type="responses")
 
 
@@ -331,7 +331,7 @@ async def test_a_non_openrouter_responses_client_is_untouched():
 #
 # OpenRouter reports an upstream rate limit on the Responses path as an `error`
 # event mid-stream; langchain-openai turns it into a bare ValueError with no
-# status code and no "429" in it. NAT's default filters missed it, so the turn
+# status code and no "429" in it. The agent runtime's default filters missed it, so the turn
 # ended on the generic error instead of waiting a moment (#826).
 
 _STREAMED_RATE_LIMIT = (
@@ -368,7 +368,7 @@ async def test_a_rate_limit_raised_inside_the_stream_is_retried():
 
 
 def test_the_configured_retry_messages_survive_the_merge():
-    from aiq_agent.common.llm_factory import retry_messages
+    from agent.common.llm_factory import retry_messages
 
     assert retry_messages(["Too Many Requests", "429"]) == ["Too Many Requests", "429", "rate_limit_exceeded"]
     assert retry_messages(None) == ["rate_limit_exceeded"]
@@ -394,7 +394,7 @@ def _efforts_sent(llm, monkeypatch, *, refuse=_REASONING_MANDATORY_400):
     from langchain_core.outputs import ChatGeneration
     from langchain_core.outputs import ChatResult
 
-    from aiq_agent.common import llm_factory
+    from agent.common import llm_factory
 
     monkeypatch.setattr(llm_factory, "_REASONING_MANDATORY", llm_factory.OrderedDict())
     sent = []

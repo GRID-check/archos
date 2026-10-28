@@ -19,13 +19,13 @@ import re
 
 import pytest
 
-from aiq_agent.common import retrieval_status
-from aiq_agent.common import status_keys
-from aiq_agent.common import tool_calls
-from aiq_agent.common import turn_notices
-from aiq_agent.common import turn_status
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.skills.events import ALL_SKILL_KEYS
+from agent.common import retrieval_status
+from agent.common import status_keys
+from agent.common import tool_calls
+from agent.common import turn_notices
+from agent.common import turn_status
+from agent.common.wire_v2 import StatusStep
+from agent.skills.events import ALL_SKILL_KEYS
 
 
 @pytest.fixture(autouse=True)
@@ -264,7 +264,7 @@ class TestRetrieval:
 
     def test_the_skills_root_is_the_skills_packages(self) -> None:
         """Spelled out in turn_status because the skills package imports it; the two must agree."""
-        from aiq_agent.skills import SKILLS_ROOT
+        from agent.skills import SKILLS_ROOT
 
         assert tool_calls.SKILLS_ROOT == SKILLS_ROOT
         assert tool_calls.is_skill_read({"name": "read_file", "args": {"file_path": f"{SKILLS_ROOT}o/x/SKILL.md"}})

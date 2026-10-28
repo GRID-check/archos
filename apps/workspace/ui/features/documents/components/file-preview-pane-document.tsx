@@ -267,7 +267,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
             </div>
           </PeekStage>
 
-          {/* WHAT PILOTI MADE OF IT, in the peek.
+          {/* WHAT AGENT MADE OF IT, in the peek.
               The peek dropped the whole rail — properties, tags, the lot — which
               is right: a 320px column beside a conversation is not where a
               reader edits metadata. But it dropped the SUMMARY with it, and the

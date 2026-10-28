@@ -2,19 +2,19 @@
 
 import asyncio
 
-from aiq_agent.common.wire_v2 import CitationsRemoved
-from aiq_agent.common.wire_v2 import KeyedCard
-from aiq_agent.common.wire_v2 import QuoteStamp
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.common.wire_v2 import WireSource
-from aiq_agent.observability.turn_outcome import OBSERVATION_OUTPUT_ATTRIBUTE
-from aiq_agent.observability.turn_outcome import TAGS_ATTRIBUTE
-from aiq_agent.observability.turn_outcome import begin_turn_outcome
-from aiq_agent.observability.turn_outcome import current_turn_outcome
-from aiq_agent.observability.turn_outcome import end_turn_outcome
-from aiq_agent.observability.turn_outcome import outcome_attributes
-from aiq_agent.observability.turn_outcome import record_turn_finished
+from agent.common.wire_v2 import CitationsRemoved
+from agent.common.wire_v2 import KeyedCard
+from agent.common.wire_v2 import QuoteStamp
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import TurnResult
+from agent.common.wire_v2 import WireSource
+from agent.observability.turn_outcome import OBSERVATION_OUTPUT_ATTRIBUTE
+from agent.observability.turn_outcome import TAGS_ATTRIBUTE
+from agent.observability.turn_outcome import begin_turn_outcome
+from agent.observability.turn_outcome import current_turn_outcome
+from agent.observability.turn_outcome import end_turn_outcome
+from agent.observability.turn_outcome import outcome_attributes
+from agent.observability.turn_outcome import record_turn_finished
 
 META = "langfuse.trace.metadata."
 
@@ -145,7 +145,7 @@ class TestFactsOnlyTheWorkflowKnows:
     """`record_turn_facts`: the workflow's own facts (``focus_region_viewed``) on the root."""
 
     def test_a_fact_rides_beside_the_terminal_whichever_comes_first(self):
-        from aiq_agent.observability.turn_outcome import record_turn_facts
+        from agent.observability.turn_outcome import record_turn_facts
 
         token = begin_turn_outcome()
         try:
@@ -161,7 +161,7 @@ class TestFactsOnlyTheWorkflowKnows:
         assert "__turn_facts__" not in attributes
 
     def test_a_fact_recorded_in_a_child_context_reaches_the_box(self):
-        from aiq_agent.observability.turn_outcome import record_turn_facts
+        from agent.observability.turn_outcome import record_turn_facts
 
         async def workflow():
             record_turn_facts(focus_region_viewed=False)
@@ -176,7 +176,7 @@ class TestFactsOnlyTheWorkflowKnows:
         assert attributes == {"langfuse.trace.metadata.focus_region_viewed": False}
 
     def test_outside_a_turn_nothing_is_recorded(self):
-        from aiq_agent.observability.turn_outcome import record_turn_facts
+        from agent.observability.turn_outcome import record_turn_facts
 
         record_turn_facts(focus_region_viewed=True)
 

@@ -5,7 +5,7 @@
  * FLAT, as answer typography (the verdict as the answer's masthead, the
  * callout as an anchored aside, the takeaways as the closing block — see
  * `components/AnswerAnatomy.tsx`). But the SHAPES for a verdict, a callout
- * and a takeaway block already exist, charter-reviewed, in the grid-cards
+ * and a takeaway block already exist, charter-reviewed, in the cards
  * types, and two prop contracts for one thing is the drift this repo keeps
  * hunting down. So the anatomy is mapped onto the retired card shapes here —
  * purely as render props, never entering the `cards` array, the card-marker

@@ -351,7 +351,7 @@ export function seriesColorsFor(
   placeableSchedules(jobs).forEach((job, index) => {
     slots.set(
       job.id,
-      index < slotCount ? `var(--grid-series-${index + 1})` : 'var(--grid-series-other)',
+      index < slotCount ? `var(--chart-series-${index + 1})` : 'var(--chart-series-other)',
     )
   })
   return slots

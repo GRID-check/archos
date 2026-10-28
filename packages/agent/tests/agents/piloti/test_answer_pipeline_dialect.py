@@ -16,18 +16,18 @@ import pytest
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti import answer_pipeline
-from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-from aiq_agent.agents.piloti.answer_pipeline import settle_streamed_citations
-from aiq_agent.agents.piloti.conversation import ANSWER_LIFTS
-from aiq_agent.agents.piloti.ledger import assemble_result
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.turn.response import build_result
+from agent.agents.piloti import answer_pipeline
+from agent.agents.piloti.answer_pipeline import finalize_answer
+from agent.agents.piloti.answer_pipeline import settle_streamed_citations
+from agent.agents.piloti.conversation import ANSWER_LIFTS
+from agent.agents.piloti.ledger import assemble_result
+from agent.agents.piloti.models import ConversationState
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.turn.response import build_result
 
 PASSAGE = "Brandabschnitte dürfen eine Nettogrundfläche von höchstens 1.200 m² aufweisen."
 SOURCES = "**Quellen:**\n- [1] rl2.pdf, p.3"

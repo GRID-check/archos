@@ -1,4 +1,4 @@
-"""Tests for the PilotiAgent."""
+"""Tests for the ChatAgent."""
 
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -9,20 +9,20 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
-from aiq_agent.citations.entries import EmptySourceRegistryError
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.session import reset_session_registry
-from aiq_agent.citations.session import set_session_registry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common.answer_envelope import render_envelope_response_format
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.retrieval_rounds import assistant_checkpoint
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import DROPPED_CITATION_MARKER
+from agent.citations.entries import EmptySourceRegistryError
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.citations.session import reset_session_registry
+from agent.citations.session import set_session_registry
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common.answer_envelope import render_envelope_response_format
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.retrieval_rounds import assistant_checkpoint
 from tests.fixtures.drafting_turns import COMMISSION
 from tests.fixtures.drafting_turns import FILE
 from tests.fixtures.drafting_turns import REVISE
@@ -82,10 +82,10 @@ def describe_card(card_types: str) -> str:
     return f"Shapes for: {card_types}"
 
 
-def _piloti_prompt_source() -> str:
+def _chat_prompt_source() -> str:
     """Piloti's bundled prompt as ONE template: the system prompt, then the turn context.
 
-    The system prompt is `piloti_static.md`, the bundled fallback for the
+    The system prompt is `chat_static.md`, the bundled fallback for the
     platform prompt Langfuse serves; `piloti.j2` is the turn context, sent as
     its own message before the newest human message. Rendering them as one
     template lets these tests assert about everything the model reads in a
@@ -93,23 +93,23 @@ def _piloti_prompt_source() -> str:
     """
     from pathlib import Path
 
-    from aiq_agent.agents.piloti import agent as piloti_agent
+    from agent.agents.piloti import agent as chat_agent
 
-    prompts = Path(piloti_agent.__file__).parent / "prompts"
-    static = (prompts / "piloti_static.md").read_text(encoding="utf-8")
+    prompts = Path(chat_agent.__file__).parent / "prompts"
+    static = (prompts / "chat_static.md").read_text(encoding="utf-8")
     return static + "\n" + (prompts / "piloti.j2").read_text(encoding="utf-8")
 
 
 def _bundled_static_block() -> str:
     """The static half of Piloti's prompt, rendered the way the agent renders it.
 
-    The prompt is two files now: `piloti_static.md` (the bundled fallback for
+    The prompt is two files now: `chat_static.md` (the bundled fallback for
     the platform prompt Langfuse serves) and `piloti.j2` (the dynamic half,
     which opens with `{{ static_block }}`). A test that renders the template
     directly has to supply the half the prompt store would have resolved.
     """
-    from aiq_agent.agents.piloti.prompt import bundled_static_block
-    from aiq_agent.agents.piloti.prompt import render_static_block
+    from agent.agents.piloti.prompt import bundled_static_block
+    from agent.agents.piloti.prompt import render_static_block
 
     return render_static_block(bundled_static_block().text)
 
@@ -121,14 +121,14 @@ def _bundled_prompt_text() -> str:
     KV-cache boundary is resolved per render — so asserting prompt content
     against it would silently stop seeing most of the prompt.
     """
-    from aiq_agent.agents.piloti.prompt import bundled_static_block
-    from aiq_agent.agents.piloti.prompt import system_prompt_template
+    from agent.agents.piloti.prompt import bundled_static_block
+    from agent.agents.piloti.prompt import system_prompt_template
 
     return bundled_static_block().text + "\n" + system_prompt_template()
 
 
-class TestPilotiAgent:
-    """Tests for the PilotiAgent class."""
+class TestChatAgent:
+    """Tests for the ChatAgent class."""
 
     @pytest.fixture(autouse=True)
     def _bypass_citation_pipeline(self):
@@ -140,8 +140,8 @@ class TestPilotiAgent:
         """
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
             mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -171,8 +171,8 @@ class TestPilotiAgent:
         return web_search_tool
 
     def test_init_with_defaults(self, mock_llm_provider, real_tool):
-        """Test PilotiAgent initialization with defaults."""
-        agent = PilotiAgent(
+        """Test ChatAgent initialization with defaults."""
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -185,9 +185,9 @@ class TestPilotiAgent:
         assert agent.system_prompt is not None
 
     def test_init_with_custom_prompt(self, mock_llm_provider, real_tool):
-        """Test PilotiAgent initialization with custom system prompt."""
+        """Test ChatAgent initialization with custom system prompt."""
         custom_system = "Custom system prompt"
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             system_prompt=custom_system,
@@ -196,7 +196,7 @@ class TestPilotiAgent:
 
     def test_init_with_custom_limits(self, mock_llm_provider, real_tool):
         """The research budget IS the ceiling; nothing else bounds the loop."""
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             max_tool_iterations=3,
@@ -206,9 +206,9 @@ class TestPilotiAgent:
         assert agent.tool_iteration_ceiling == 3
 
     def test_init_with_callbacks(self, mock_llm_provider, real_tool):
-        """Test PilotiAgent initialization with callbacks."""
+        """Test ChatAgent initialization with callbacks."""
         callbacks = [MagicMock()]
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             callbacks=callbacks,
@@ -217,8 +217,8 @@ class TestPilotiAgent:
         assert agent.callbacks == callbacks
 
     def test_init_with_empty_tools(self, mock_llm_provider):
-        """Test PilotiAgent initialization with empty tools."""
-        agent = PilotiAgent(
+        """Test ChatAgent initialization with empty tools."""
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[],
         )
@@ -228,7 +228,7 @@ class TestPilotiAgent:
 
     def test_build_tools_info(self, mock_llm_provider, real_tool):
         """Test _build_tools_info correctly extracts tool information."""
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -239,7 +239,7 @@ class TestPilotiAgent:
 
     def test_get_llm(self, mock_llm_provider, mock_llm, real_tool):
         """Test _get_llm returns LLM from provider."""
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -251,7 +251,7 @@ class TestPilotiAgent:
 
     def test_graph_property(self, mock_llm_provider, real_tool):
         """Test graph property returns compiled graph."""
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -266,7 +266,7 @@ class TestPilotiAgent:
         agent_response = AIMessage(content="CUDA is a parallel computing platform.")
         mock_llm.ainvoke = AsyncMock(return_value=agent_response)
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -285,7 +285,7 @@ class TestPilotiAgent:
         mock_llm.ainvoke = AsyncMock(return_value=agent_response)
 
         mock_callback = MagicMock()
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             callbacks=[mock_callback],
@@ -316,7 +316,7 @@ class TestPilotiAgent:
                 self.reports.append(content)
 
         emit_callback = _EmitCallback()
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             callbacks=[emit_callback],
@@ -345,7 +345,7 @@ class TestPilotiAgent:
     async def test_run_without_markers_sets_neutral_structured_signals(self, mock_llm_provider, mock_llm, real_tool):
         """A clean answer still marks extraction done, with neutral signals."""
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content="A clean grounded answer [1]."))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -370,7 +370,7 @@ class TestPilotiAgent:
             ]
         )
         mock_llm.ainvoke = AsyncMock(return_value=agent_response)
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -437,7 +437,7 @@ class TestPilotiAgent:
                 self.reports.append(content)
 
         emit_callback = _EmitCallback()
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool], callbacks=[emit_callback])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool], callbacks=[emit_callback])
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Geländerhöhe Terrasse?")]))
 
@@ -468,7 +468,7 @@ class TestPilotiAgent:
     async def test_run_accepts_the_bare_object_json_mode_produces(self, mock_llm_provider, mock_llm, real_tool):
         """Provider JSON mode emits an UNFENCED object; the chain must not care."""
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content=self._envelope_reply(fenced=False)))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -488,7 +488,7 @@ class TestPilotiAgent:
             "## References\n- [1] https://example.com"
         )
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content=self._envelope_reply(answer=prose)))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -501,7 +501,7 @@ class TestPilotiAgent:
         """A marker with nothing behind it must never reach the reader."""
         prose = "Die Antwort [1].\n\n[[callout]]\n\nMehr Text.\n\n## References\n- [1] https://example.com"
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content=self._envelope_reply(answer=prose, callout=None)))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -511,7 +511,7 @@ class TestPilotiAgent:
     async def test_run_envelope_escalation_discards_the_anatomy(self, mock_llm_provider, mock_llm, real_tool):
         """`escalate_to_deep: true` sets the signal and drops the decoration."""
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content=self._envelope_reply(escalate_to_deep=True)))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -540,7 +540,7 @@ class TestPilotiAgent:
         """Budget exhausted on a research turn → the synthesis call requests JSON."""
         bound = self._bindable(mock_llm, self._envelope_reply(fenced=False))
         # Ceiling 0: the very first agent_node call is forced synthesis.
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_tool_iterations=0)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_tool_iterations=0)
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -560,7 +560,7 @@ class TestPilotiAgent:
         rejected.status_code = 400
         bound.ainvoke = AsyncMock(side_effect=rejected)
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content=self._envelope_reply()))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_tool_iterations=0)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_tool_iterations=0)
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
@@ -582,7 +582,7 @@ class TestPilotiAgent:
         bound = self._bindable(mock_llm, "")
         bound.ainvoke = AsyncMock(side_effect=ConnectionError("upstream reset"))
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content=self._envelope_reply()))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_tool_iterations=0)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_tool_iterations=0)
 
         with pytest.raises(ConnectionError):
             await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
@@ -595,13 +595,13 @@ class TestPilotiAgent:
         """Default OFF on tool-bound calls (silent tool-suppression risk); flag turns it on."""
         mock_llm.bind = MagicMock()
         mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content=self._envelope_reply()))
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         await agent.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
         mock_llm.bind.assert_not_called()
 
         bound = self._bindable(mock_llm, self._envelope_reply())
-        opted_in = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool], envelope_json_mode_with_tools=True)
+        opted_in = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool], envelope_json_mode_with_tools=True)
         result = await opted_in.run(ResearchAgentState(messages=[HumanMessage(content="Frage?")]))
 
         mock_llm.bind.assert_called_once_with(response_format=render_envelope_response_format())
@@ -616,7 +616,7 @@ class TestPilotiAgent:
 
         # Use custom system_prompt that doesn't require email field
         custom_prompt = "You are an assistant. User: {{ user_info }}."
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             system_prompt=custom_prompt,
@@ -637,7 +637,7 @@ class TestPilotiAgent:
         agent_response = AIMessage(content="Answer")
         mock_llm.ainvoke = AsyncMock(return_value=agent_response)
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -657,8 +657,8 @@ class TestPilotiAgent:
 
     def test_a_missing_prompt_is_a_boot_failure(self, mock_llm_provider, real_tool):
         """No stub prompt, ever: production must not run on three lines of filler."""
-        from aiq_agent.agents.piloti import prompt as prompt_module
-        from aiq_agent.common.prompt_utils import PromptError
+        from agent.agents.piloti import prompt as prompt_module
+        from agent.common.prompt_utils import PromptError
 
         prompt_module.system_prompt_template.cache_clear()
         try:
@@ -666,19 +666,19 @@ class TestPilotiAgent:
                 patch.object(prompt_module, "load_prompt", side_effect=PromptError("piloti.j2 missing")),
                 pytest.raises(PromptError),
             ):
-                PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+                ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
         finally:
             prompt_module.system_prompt_template.cache_clear()
 
     def test_the_prompt_template_is_read_once_per_process(self, mock_llm_provider, real_tool):
         """Two agents, one disk read: the 43 KB template is cached by name."""
-        from aiq_agent.agents.piloti import prompt as prompt_module
+        from agent.agents.piloti import prompt as prompt_module
 
         prompt_module.system_prompt_template.cache_clear()
         try:
             with patch.object(prompt_module, "load_prompt", wraps=prompt_module.load_prompt) as reads:
-                first = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
-                second = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+                first = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+                second = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
         finally:
             prompt_module.system_prompt_template.cache_clear()
 
@@ -692,7 +692,7 @@ class TestPilotiAgent:
 
     def test_default_prompt_requires_tool_result_references(self, mock_llm_provider, real_tool):
         """Default prompt tells the model to cite non-URL tool results by the tool's name."""
-        PilotiAgent(
+        ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -702,7 +702,7 @@ class TestPilotiAgent:
 
     def test_default_prompt_matches_user_language(self, mock_llm_provider, real_tool):
         """Default prompt instructs the model to answer in the user's language."""
-        PilotiAgent(
+        ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -725,7 +725,7 @@ class TestPilotiAgent:
         """
         import re
 
-        PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
         examples = re.findall(r"<example type=\"[a-z]+\">\nUser: (.*?)\n(.*?)</example>", _bundled_prompt_text(), re.S)
         english = [body for question, body in examples if question.startswith(("What ", "How ", "Which "))]
 
@@ -738,7 +738,7 @@ class TestPilotiAgent:
         Live QA 2026-10-27: „max_building_height=3" stood in an answer, in the
         UI and over MCP alike.
         """
-        PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         assert "Name a fact in words, never as its key" in _bundled_prompt_text()
 
@@ -748,7 +748,7 @@ class TestPilotiAgent:
         The legacy bracket grammar (`[ESCALATE_TO_DEEP]`) is still stripped by
         the parser but no longer taught: the envelope field is the one channel.
         """
-        PilotiAgent(
+        ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -763,9 +763,9 @@ class TestPilotiAgent:
         *,
         project_context: str | None = None,
     ) -> str:
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
         # Both messages the turn sends besides the transcript: the system
         # prompt, then the turn context.
         return (
@@ -872,7 +872,7 @@ class TestPilotiAgent:
         final_response = AIMessage(content="Final answer")
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -894,7 +894,7 @@ class TestPilotiAgent:
         final_response = AIMessage(content="Forced synthesis response")
         mock_llm.ainvoke = AsyncMock(return_value=final_response)
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             max_tool_iterations=3,
@@ -941,7 +941,7 @@ class TestPilotiAgent:
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[search_round, card_round, AIMessage(content="Final answer")])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool, emit_card, describe_card],
             max_tool_iterations=3,
@@ -980,7 +980,7 @@ class TestPilotiAgent:
         agent_response = AIMessage(content="Answer")
         mock_llm.ainvoke = AsyncMock(return_value=agent_response)
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
@@ -1006,7 +1006,7 @@ class TestPilotiAgent:
 
         mock_llm.ainvoke = AsyncMock(side_effect=capture_messages)
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
             max_tool_iterations=2,
@@ -1084,7 +1084,7 @@ def spy_search_tool(query: str) -> str:
     return f"Results for: {query}"
 
 
-class TestPilotiSourceRegistryGating:
+class TestChatSourceRegistryGating:
     """Tests that source capture is gated by data_source_registry."""
 
     @pytest.fixture(autouse=True)
@@ -1124,7 +1124,7 @@ class TestPilotiSourceRegistryGating:
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[mcp_time__get_current_time],
         )
@@ -1145,7 +1145,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="Your project **test 1** is a Neubau, Beherbergung, GK3 building.")
         mock_llm.ainvoke = AsyncMock(side_effect=[final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[mcp_time__get_current_time],
         )
@@ -1179,7 +1179,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="Hallo! Bei mir läuft alles super.")
         mock_llm.ainvoke = AsyncMock(side_effect=[final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[empty_web_search_tool, remember_tool],
         )
@@ -1220,7 +1220,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="Hallo! Bei mir läuft alles super.")
         mock_llm.ainvoke = AsyncMock(side_effect=[search_call, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[spy_search_tool, remember_tool],
             repair_pass=False,
@@ -1255,7 +1255,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="Answer [1].\n\n**References:**\n- [1] Results for: OIB 2.2")
         mock_llm.ainvoke = AsyncMock(side_effect=[search_call, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[spy_search_tool, remember_tool],
             # This test is about tool GATING. The answer's "[1]" resolves to
@@ -1289,7 +1289,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="Answer from context.")
         mock_llm.ainvoke = AsyncMock(side_effect=[final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[empty_web_search_tool, remember_tool],
         )
@@ -1330,7 +1330,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="Hochhäuser regelt die OIB-RL 2.3 [1].\n\n## Quellen\n- [1] oib-rl_2.3.pdf")
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[empty_web_search_tool],
         )
@@ -1360,7 +1360,7 @@ class TestPilotiSourceRegistryGating:
                 AIMessage(content=ruling),
             ]
         )
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[empty_web_search_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[empty_web_search_tool])
 
         with pytest.raises(EmptySourceRegistryError):
             await agent.run(ResearchAgentState(messages=[HumanMessage(content="Wie lang darf der Fluchtweg sein?")]))
@@ -1391,7 +1391,7 @@ class TestPilotiSourceRegistryGating:
                 AIMessage(content=honest),
             ]
         )
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[project_lookup])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[project_lookup])
 
         result = await agent.run(
             ResearchAgentState(
@@ -1422,7 +1422,7 @@ class TestPilotiSourceRegistryGating:
                 AIMessage(content="Die OIB-RL 2.2 verlangt …"),
             ]
         )
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[project_lookup, empty_web_search_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[project_lookup, empty_web_search_tool])
 
         result = await agent.run(
             ResearchAgentState(messages=[HumanMessage(content="Was verlangt die OIB für Garagen?")])
@@ -1442,7 +1442,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="To fill in hohe_gebaeude_details I need the exact building height.")
         mock_llm.ainvoke = AsyncMock(side_effect=[final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[mcp_time__get_current_time],
         )
@@ -1478,7 +1478,7 @@ class TestPilotiSourceRegistryGating:
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[mcp_time__get_current_time],
         )
@@ -1513,7 +1513,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="It's currently 4:54 AM in Tokyo.")
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[mcp_time__get_current_time],
         )
@@ -1555,7 +1555,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="CUDA is a parallel computing platform.")
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[mcp_time__get_current_time, web_search_with_urls],
         )
@@ -1589,7 +1589,7 @@ class TestPilotiSourceRegistryGating:
         final_response = AIMessage(content="The weather is clear.\n\n## Sources\n[1] weather_observation_tool")
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[weather_observation_tool],
         )
@@ -1604,7 +1604,7 @@ class TestPilotiSourceRegistryGating:
         assert result.messages[-1].content.rstrip().endswith("[1] weather_observation_tool")
 
 
-class TestPilotiSourceCaptureIntegration:
+class TestChatSourceCaptureIntegration:
     """Integration tests verifying source capture through the full pipeline.
 
     These tests do NOT bypass the citation pipeline — they verify that
@@ -1658,7 +1658,7 @@ class TestPilotiSourceCaptureIntegration:
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[web_search_with_urls],
         )
@@ -1692,7 +1692,7 @@ class TestPilotiSourceCaptureIntegration:
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[web_search_with_urls],
         )
@@ -1712,7 +1712,7 @@ class TestPilotiSourceCaptureIntegration:
 # ---------------------------------------------------------------------------
 
 
-class TestPilotiSessionRegistry:
+class TestChatSessionRegistry:
     """Tests verifying session-scoped SourceRegistry integration.
 
     These tests do NOT use the _bypass_citation_pipeline fixture — they verify
@@ -1736,7 +1736,7 @@ class TestPilotiSessionRegistry:
     @pytest.mark.asyncio
     async def test_run_uses_session_registry_when_set(self, mock_llm_provider, mock_llm):
         """When session registry is set via ContextVar, run() uses it and doesn't raise."""
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import set_session_registry
 
         # Pre-populate a session registry with a source from a "prior turn"
         session_reg = SourceRegistry()
@@ -1752,7 +1752,7 @@ class TestPilotiSessionRegistry:
         )
         mock_llm.ainvoke = AsyncMock(return_value=agent_response)
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[web_search_tool],
         )
@@ -1771,7 +1771,7 @@ class TestPilotiSessionRegistry:
     async def test_standalone_runs_never_share_a_registry(self, mock_llm_provider, mock_llm):
         """Without a session registry every run gets a fresh one: a source the
         previous run captured must not be auto-appended as this run's citation."""
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import set_session_registry
 
         set_session_registry(None)  # Ensure no session registry
         populate_from_config(
@@ -1794,7 +1794,7 @@ class TestPilotiSessionRegistry:
                     AIMessage(content="Answer without sources"),
                 ]
             )
-            agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[web_search_with_urls])
+            agent = ChatAgent(llm_provider=mock_llm_provider, tools=[web_search_with_urls])
 
             first = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Q1")]))
             second = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Q2")]))
@@ -1808,8 +1808,8 @@ class TestPilotiSessionRegistry:
     @pytest.mark.asyncio
     async def test_the_session_registry_is_left_bound_after_the_run(self, mock_llm_provider, mock_llm):
         """A run reads the session registry and never unbinds or replaces it."""
-        from aiq_agent.citations.session import get_session_registry
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import get_session_registry
+        from agent.citations.session import set_session_registry
 
         session_reg = SourceRegistry()
         session_reg.add(SourceEntry(url="https://session.example.com/doc"))
@@ -1817,7 +1817,7 @@ class TestPilotiSessionRegistry:
         agent_response = AIMessage(content=("Answer [1].\n\n## Sources\n[1] Doc: https://session.example.com/doc"))
         mock_llm.ainvoke = AsyncMock(return_value=agent_response)
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[web_search_tool],
         )
@@ -1832,11 +1832,11 @@ class TestPilotiSessionRegistry:
             set_session_registry(None)
 
 
-class TestPilotiAnswerGrounding:
+class TestChatAnswerGrounding:
     """The ``answer_citation_grounded`` overconfidence-guard signal set by run().
 
     This class deliberately does NOT inherit the citation-bypass autouse fixture
-    of TestPilotiAgent: each test controls the verification outcome
+    of TestChatAgent: each test controls the verification outcome
     and registry contents itself.
     """
 
@@ -1882,7 +1882,7 @@ class TestPilotiAnswerGrounding:
     def _agent(self, provider, **kwargs):
         # The fallback tests script exactly one search and one answer; the
         # repair pass would spend a third call and is not what they test.
-        return PilotiAgent(llm_provider=provider, tools=[web_search_tool], **kwargs)
+        return ChatAgent(llm_provider=provider, tools=[web_search_tool], **kwargs)
 
     @pytest.mark.asyncio
     async def test_grounded_when_verification_keeps_valid_citation(self, mock_llm_provider, mock_llm):
@@ -1893,7 +1893,7 @@ class TestPilotiAnswerGrounding:
         # its registry SourceEntry.
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="OIB-Richtlinie 2 regelt Brandschutz [1].",
@@ -1913,7 +1913,7 @@ class TestPilotiAnswerGrounding:
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Answer without any citation.",
@@ -1933,7 +1933,7 @@ class TestPilotiAnswerGrounding:
         ]
         with (
             patch.object(SourceRegistry, "all_sources", return_value=sources),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Answer.",
@@ -1991,7 +1991,7 @@ class TestPilotiAnswerGrounding:
                 tool_name="ris_search",
             )
         )
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Hallo! Wie kann ich helfen?",
                 valid_citations=[],
@@ -2020,7 +2020,7 @@ class TestPilotiAnswerGrounding:
         registry.add(SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool"))
         registry.add(cited)
         registry.add(SourceEntry(url="https://example.com/c", title="C", tool_name="web_search_tool"))
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
                 valid_citations=[{"number": 1, "url": "https://example.com/b", "citation_key": None, "line": "[1]"}],
@@ -2038,7 +2038,7 @@ class TestPilotiAnswerGrounding:
         registry = SourceRegistry()
         registry.add(SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool"))
         registry.add(SourceEntry(citation_key="oib-richtlinie-2.pdf#p3", title="OIB 2", tool_name="kb_search"))
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
                 valid_citations=[
@@ -2065,7 +2065,7 @@ class TestPilotiAnswerGrounding:
         registry = SourceRegistry()
         only = SourceEntry(url="https://example.com/only", title="Only", tool_name="web_search_tool")
         registry.add(only)
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Answer without any citation.",
                 valid_citations=[],
@@ -2103,7 +2103,7 @@ class TestPilotiAnswerGrounding:
         registry = SourceRegistry()
         registry.add(SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool"))
         registry.add(SourceEntry(citation_key="oib-rl_4.pdf, p.9", title="OIB 4", tool_name="kb_search"))
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1][2].",
                 valid_citations=[
@@ -2152,7 +2152,7 @@ class TestPilotiAnswerGrounding:
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
@@ -2177,7 +2177,7 @@ class TestPilotiAnswerGrounding:
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
@@ -2220,7 +2220,7 @@ def knowledge_search(query: str) -> str:
     )
 
 
-class TestPilotiQuoteVerification:
+class TestChatQuoteVerification:
     """Piloti annotates fabricated quotes and flips answer_quotes_verified."""
 
     @pytest.fixture
@@ -2269,7 +2269,7 @@ class TestPilotiQuoteVerification:
             )
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), final])
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[knowledge_search])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[knowledge_search])
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
         result = await _run_with_bound_registry(agent, state, SourceRegistry())
 
@@ -2288,7 +2288,7 @@ class TestPilotiQuoteVerification:
             )
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), final])
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[knowledge_search])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[knowledge_search])
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
         result = await _run_with_bound_registry(agent, state, SourceRegistry())
 
@@ -2304,7 +2304,7 @@ class TestPilotiQuoteVerification:
         assert state.answer_quotes_verified is True
 
 
-class TestPilotiRepairPass:
+class TestChatRepairPass:
     """The one repair (ADR-0067): a misremembered quote corrected in place against its passage."""
 
     @pytest.fixture
@@ -2375,7 +2375,7 @@ class TestPilotiRepairPass:
     @pytest.mark.asyncio
     async def test_a_misremembered_quote_is_corrected_in_place(self, mock_llm_provider, mock_llm, patch_llm):
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), self.MISQUOTED])
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
 
         result = await _run_with_bound_registry(agent, state, SourceRegistry())
@@ -2396,7 +2396,7 @@ class TestPilotiRepairPass:
         # Invented, not misremembered: "correcting" it would put the passage's
         # different claim in the model's mouth.
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), self.FABRICATED])
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
 
         result = await _run_with_bound_registry(agent, state, SourceRegistry())
@@ -2413,7 +2413,7 @@ class TestPilotiRepairPass:
             return_value=AIMessage(content="Die lichte Durchgangshoehe von Treppen muss mindestens 2,50 m betragen")
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), self.MISQUOTED])
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
 
         result = await _run_with_bound_registry(agent, state, SourceRegistry())
@@ -2426,7 +2426,7 @@ class TestPilotiRepairPass:
     @pytest.mark.asyncio
     async def test_a_clean_answer_costs_no_extra_call(self, mock_llm_provider, mock_llm, patch_llm):
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), self.VERBATIM])
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[knowledge_search], card_repair_llm=patch_llm)
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
 
         await _run_with_bound_registry(agent, state, SourceRegistry())
@@ -2437,7 +2437,7 @@ class TestPilotiRepairPass:
     @pytest.mark.asyncio
     async def test_switched_off_ships_the_marker_as_before(self, mock_llm_provider, mock_llm, patch_llm):
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), self.MISQUOTED])
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider, tools=[knowledge_search], repair_pass=False, card_repair_llm=patch_llm
         )
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
@@ -2452,12 +2452,12 @@ class TestPilotiRepairPass:
         # Switched on, but with no card model to run it on: the frontier model
         # is never borrowed for the patch, and the marker ships.
         mock_llm.ainvoke = AsyncMock(side_effect=[self._tool_call(), self.MISQUOTED])
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider, tools=[knowledge_search], repair_pass=True, card_repair_llm=None
         )
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
 
-        with patch("aiq_agent.agents.piloti.agent.quote_patcher") as patcher:
+        with patch("agent.agents.piloti.agent.quote_patcher") as patcher:
             result = await _run_with_bound_registry(agent, state, SourceRegistry())
 
         assert "[nicht wörtlich in der Quelle belegt]" in result.messages[-1].content
@@ -2478,9 +2478,9 @@ class TestClarificationGuidance:
 
     def _render(self, *, project_context):
 
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
-        prompt = _piloti_prompt_source()
+        prompt = _chat_prompt_source()
         return render_prompt_template(
             prompt,
             user_info={"name": "Alex", "email": "a@example.com"},
@@ -2516,9 +2516,9 @@ class TestOffTopicDeclineShape:
 
     def _render(self):
 
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
-        prompt = _piloti_prompt_source()
+        prompt = _chat_prompt_source()
         return render_prompt_template(
             prompt,
             user_info={"name": "Alex", "email": "a@example.com"},
@@ -2588,8 +2588,8 @@ class TestADirectReplyMayStillEmitACard:
 
     def test_the_card_contract_is_in_every_system_prompt(self):
         """The card contract is rendered from the catalog into the static half, so no turn can lack it."""
-        from aiq_agent.agents.piloti.prompt import bundled_static_block
-        from aiq_agent.agents.piloti.prompt import render_static_block
+        from agent.agents.piloti.prompt import bundled_static_block
+        from agent.agents.piloti.prompt import render_static_block
 
         system = render_static_block(bundled_static_block().text)
         assert "CARDS (the `cards` field)" in system
@@ -2682,7 +2682,7 @@ class TestKnowledgeInventoryIsNotCitable:
     """
 
     def _render(self, prompt: str, documents: list[dict]) -> str:
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
         return render_prompt_template(
             prompt,
@@ -2705,15 +2705,15 @@ class TestKnowledgeInventoryIsNotCitable:
         """The prompt source at this path; for Piloti, both halves recombined."""
         from pathlib import Path
 
-        import aiq_agent
+        import agent
 
         if path == "piloti/prompts/piloti.j2":
-            return _piloti_prompt_source()
-        return (Path(aiq_agent.__file__).parent / "agents" / path).read_text(encoding="utf-8")
+            return _chat_prompt_source()
+        return (Path(agent.__file__).parent / "agents" / path).read_text(encoding="utf-8")
 
     DOCUMENTS = [{"file_name": "oib-rl_2_ausgabe_mai_2023.pdf", "summary": "Brandschutz.", "tags": []}]
 
-    def test_piloti_prompt_marks_the_inventory_as_not_a_source(self):
+    def test_chat_prompt_marks_the_inventory_as_not_a_source(self):
         rendered = self._render(self._prompt("piloti/prompts/piloti.j2"), self.DOCUMENTS)
 
         # The inventory still lists the file — the agent must know it exists.
@@ -2726,7 +2726,7 @@ class TestKnowledgeInventoryIsNotCitable:
         assert "the citation key exactly as the tool returned it" in citations
         assert "Cite only what a tool returned" in citations
 
-    def test_piloti_prompt_asks_for_disagreement_between_sources_to_be_shown(self):
+    def test_chat_prompt_asks_for_disagreement_between_sources_to_be_shown(self):
         """The everyday chat surface had no rule about contradictory sources.
 
         In a legal product a smoothed-over difference is the dangerous failure:
@@ -2793,7 +2793,7 @@ class TestKnowledgeInventoryIsNotCitable:
             source = self._prompt(path)
             assert "Uploaded Documents" not in source, path
 
-    def test_piloti_prompt_teaches_the_four_shelves(self):
+    def test_chat_prompt_teaches_the_four_shelves(self):
         """The shelves themselves are taught where they are listed (the inventory block); the prompt names them."""
         source = self._prompt("piloti/prompts/piloti.j2")
         for mount, name in (("/project/", "Projektwissen"), ("/office/", "Büroablage"), ("/chat/", "Private Sitzung")):
@@ -2830,21 +2830,21 @@ class TestTheModelCardsAreActuallyAskedFor:
     def _ifc_skill(self) -> str:
         from pathlib import Path
 
-        import aiq_agent
+        import agent
 
         return (
-            Path(aiq_agent.__file__).parent / "skills" / "builtin" / "bim" / "ifc-spatial-reasoning" / "SKILL.md"
+            Path(agent.__file__).parent / "skills" / "builtin" / "bim" / "ifc-spatial-reasoning" / "SKILL.md"
         ).read_text(encoding="utf-8")
 
     def test_the_static_prompt_does_not_teach_the_model_cards(self):
-        from aiq_agent.cards.catalog import MODEL_BACKED_CARD_TYPES
+        from agent.cards.catalog import MODEL_BACKED_CARD_TYPES
 
-        static = _piloti_prompt_source().split("<turn_context>")[0]
+        static = _chat_prompt_source().split("<turn_context>")[0]
         for card_type in MODEL_BACKED_CARD_TYPES:
             assert card_type not in static, card_type
 
     def test_every_model_backed_card_is_named_in_the_skill(self):
-        from aiq_agent.cards.catalog import MODEL_BACKED_CARD_TYPES
+        from agent.cards.catalog import MODEL_BACKED_CARD_TYPES
 
         body = self._ifc_skill()
         for card_type in MODEL_BACKED_CARD_TYPES:
@@ -2887,7 +2887,7 @@ _MEASURED_MODEL = {"model": {"filename": "Institut.ifc", "schemaVersion": "IFC4"
 @tool
 def ifc_measure(operation: str = "measure") -> str:
     """Measure the project's IFC/BIM model and report the provenance."""
-    from aiq_agent.tools.bim.measure_register import _render
+    from agent.tools.bim.measure_register import _render
 
     return _render(
         "measure",
@@ -2962,7 +2962,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
             mock_llm,
             "Der Keller ist 2,70 m hoch und erfüllt damit die Mindestraumhöhe nach OIB-Richtlinie 4.",
         )
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=tools)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=tools)
         state = ResearchAgentState(
             messages=[HumanMessage(content="Wie hoch ist der Keller?")],
         )
@@ -2985,7 +2985,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
         because the registry is what ``[N]`` resolves through.
         """
         tools = self._measuring_turn(mock_llm, "Der Keller ist 2,70 m hoch.")
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=tools)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=tools)
         state = ResearchAgentState(
             messages=[HumanMessage(content="Wie hoch ist der Keller?")],
         )
@@ -3028,7 +3028,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
                 AIMessage(content="Der Keller ist 2,70 m hoch."),
             ]
         )
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[ifc_measure, empty_web_search_tool],
         )
@@ -3046,7 +3046,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
     async def test_the_card_carries_the_audit_trail_the_envelope_had(self, mock_llm_provider, mock_llm):
         """Value, tolerance, German provenance, method, GlobalIds, model, caveat."""
         tools = self._measuring_turn(mock_llm, "Der Keller ist 2,70 m hoch.")
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=tools)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=tools)
         state = ResearchAgentState(
             messages=[HumanMessage(content="Wie hoch ist der Keller?")],
         )
@@ -3075,11 +3075,11 @@ class TestMeasurementSourcesDoNotGroundCitations:
         citation would report one cited source out of zero retrieved.
         """
         tools = self._measuring_turn(mock_llm, "Der Keller ist 2,70 m hoch.")
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=tools)
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=tools)
         state = ResearchAgentState(
             messages=[HumanMessage(content="Wie hoch ist der Keller?")],
         )
-        with patch("aiq_agent.agents.piloti.ledger.citation_events") as events:
+        with patch("agent.agents.piloti.ledger.citation_events") as events:
             result, _ = await _run_with_captured_registry(agent, state)
 
         assert self._measurement_sources(result)
@@ -3112,7 +3112,7 @@ class TestTheResearchBudgetIsOneNumber:
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
         return (
-            PilotiAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=iterations),
+            ChatAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=iterations),
             llm,
         )
 
@@ -3125,7 +3125,7 @@ class TestTheResearchBudgetIsOneNumber:
         """Not "reserve zero": the knob is gone, so nothing can put one back."""
         import inspect
 
-        assert "reserved_tool_iterations" not in inspect.signature(PilotiAgent.__init__).parameters
+        assert "reserved_tool_iterations" not in inspect.signature(ChatAgent.__init__).parameters
 
 
 class TestTruncationIsObservable:
@@ -3142,8 +3142,8 @@ class TestTruncationIsObservable:
     def _bypass_citation_pipeline(self):
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
         ):
             verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -3158,7 +3158,7 @@ class TestTruncationIsObservable:
         llm.ainvoke = AsyncMock(return_value=AIMessage(content="Die Antwort [1]."))
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=provider,
             tools=[web_search_tool],
             max_tool_iterations=5,
@@ -3190,7 +3190,7 @@ class TestTruncationIsObservable:
     async def test_the_log_says_what_was_cut_off_and_on_what_shape(self, caplog):
         import logging
 
-        with caplog.at_level(logging.WARNING, logger="aiq_agent.agents.piloti.agent"):
+        with caplog.at_level(logging.WARNING, logger="agent.agents.piloti.agent"):
             await self._truncated_run()
 
         lines = [m for m in caplog.messages if "Forcing synthesis (rounds)" in m]
@@ -3249,7 +3249,7 @@ class TestTruncationIsObservable:
         llm.ainvoke = AsyncMock(return_value=AIMessage(content="Die Antwort [1]."))
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        agent = PilotiAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=2)
+        agent = ChatAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=2)
 
         truncated = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Wie tief?")], tool_iterations=2))
         assert truncated.research_truncated is True
@@ -3263,7 +3263,7 @@ class TestTruncationIsObservable:
         llm.ainvoke = AsyncMock(return_value=AIMessage(content="Die Antwort [1]."))
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        agent = PilotiAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=3)
+        agent = ChatAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=3)
 
         finished = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Kurz gefragt")]))
         assert finished.research_truncated is None
@@ -3276,7 +3276,7 @@ class TestTruncationIsObservable:
         llm.ainvoke = AsyncMock(return_value=AIMessage(content="Die Antwort [1]."))
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        agent = PilotiAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=3)
+        agent = ChatAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=3)
 
         await agent.run(ResearchAgentState(messages=[HumanMessage(content="Kurz gefragt")]))
 
@@ -3313,9 +3313,9 @@ class TestAssistantCheckpoint:
 def _render_researcher_prompt(*, drafting_enabled: bool = False) -> str:
     """The default prompt, rendered with the working directory on or off."""
 
-    from aiq_agent.common import render_prompt_template
+    from agent.common import render_prompt_template
 
-    prompt = _piloti_prompt_source()
+    prompt = _chat_prompt_source()
     return render_prompt_template(
         prompt,
         tools=[],
@@ -3357,7 +3357,7 @@ class TestTheWorkingDirectoryBlock:
     def test_a_conversation_without_a_project_is_told_by_the_refusal(self):
         from pathlib import Path
 
-        from aiq_agent.tools.documents import register as documents
+        from agent.tools.documents import register as documents
 
         assert "There is no project in this conversation" in Path(documents.__file__).read_text(encoding="utf-8")
         assert "Without a project" not in _drafts_block()
@@ -3371,8 +3371,8 @@ class TestTheWorkingDirectoryBlock:
 
     def test_the_block_follows_the_tools_and_not_a_second_switch(self):
         """The flag is derived from what is bound, by the renderer itself."""
-        from aiq_agent.agents.piloti.prompt import render_turn_context
-        from aiq_agent.agents.piloti.prompt import system_prompt_template
+        from agent.agents.piloti.prompt import render_turn_context
+        from agent.agents.piloti.prompt import system_prompt_template
 
         state = ResearchAgentState(messages=[HumanMessage(content="Schreib den Aktenvermerk")])
         with_tools = render_turn_context(
@@ -3399,7 +3399,7 @@ class TestTheDraftingRulesLiveInTheTools:
 
     @staticmethod
     def _draft_verbs() -> dict[str, str]:
-        from aiq_agent.tools.documents.tools import _TOOL_DESCRIPTIONS
+        from agent.tools.documents.tools import _TOOL_DESCRIPTIONS
 
         return _TOOL_DESCRIPTIONS
 
@@ -3429,7 +3429,7 @@ class TestTheDraftingRulesLiveInTheTools:
         assert "wrote itself" not in verbs["ls"]
 
     def test_file_draft_says_filing_happens_on_request(self):
-        from aiq_agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
+        from agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
 
         for phrase in ("leg das ins Projekt", "ablegen", "abspeichern"):
             assert phrase in _FILE_DRAFT_DESCRIPTION
@@ -3440,7 +3440,7 @@ class TestTheDraftingRulesLiveInTheTools:
 
     def test_submitting_needs_an_explicit_request(self):
         """`submit_draft` merged into `file_draft(submit=true)`; its rules came with it."""
-        from aiq_agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
+        from agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
 
         assert "Call with `submit=true` only when the user asks for approval" in _FILE_DRAFT_DESCRIPTION
         # „ablegen" alone must not flip the flag.
@@ -3457,7 +3457,7 @@ class TestTheDelegationRulesLiveInTheTool:
 
     @staticmethod
     def _description() -> str:
-        from aiq_agent.tools.tasks.register import _CREATE_TASK_DESCRIPTION
+        from agent.tools.tasks.register import _CREATE_TASK_DESCRIPTION
 
         return _CREATE_TASK_DESCRIPTION
 
@@ -3507,7 +3507,7 @@ class TestTheWorkingDirectoryBudget:
 
     def test_the_recursion_limit_derives_from_the_ceiling_alone(self):
         """Nothing else moves when the ceiling does."""
-        from aiq_agent.agents.piloti.agent import _recursion_limit
+        from agent.agents.piloti.agent import _recursion_limit
 
         assert _recursion_limit(5) == (5 * 2) + 10
 
@@ -3520,7 +3520,7 @@ class TestTheWorkingDirectoryBudget:
         (``get_source_id_for_tool``) is what actually holds, because the file
         verbs ARE in the turn's bound tool set.
         """
-        from aiq_agent.agents.piloti.agent import _capture_sources
+        from agent.agents.piloti.agent import _capture_sources
 
         registry = SourceRegistry()
         for verb in ("ls", "read_file", "write_file", "edit_file"):
@@ -3563,7 +3563,7 @@ class TestAFailedCallIsNotASource:
         binding = SimpleNamespace(source_tool_names=frozenset({"web_search_tool"}))
         state = ResearchAgentState(messages=[])
         # ``self`` is unread: the capture loop is a function of the four.
-        PilotiAgent._capture_round(None, [message], binding, registry, state)
+        ChatAgent._capture_round(None, [message], binding, registry, state)
         return list(registry.all_sources())
 
     def test_an_errored_result_registers_nothing(self):
@@ -3645,8 +3645,8 @@ class TestATurnThatWritesADraft:
     def _bypass_citation_pipeline(self):
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
             mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -3670,9 +3670,9 @@ class TestATurnThatWritesADraft:
 
     @pytest.fixture
     def cards(self):
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import reset_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import reset_card_registry
+        from agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
         token = set_card_registry(registry)
@@ -3685,8 +3685,8 @@ class TestATurnThatWritesADraft:
     def working_directory(self):
         from langgraph.store.memory import InMemoryStore
 
-        from aiq_agent.tools.documents.draft_store import DraftBackend
-        from aiq_agent.tools.documents.tools import draft_tools
+        from agent.tools.documents.draft_store import DraftBackend
+        from agent.tools.documents.tools import draft_tools
 
         backend = DraftBackend(store=InMemoryStore(), conversation_id="conv-1")
         return backend, draft_tools(backend)
@@ -3723,7 +3723,7 @@ class TestATurnThatWritesADraft:
             ]
         )
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=provider,
             tools=[web_search_tool, *tools],
             max_tool_iterations=3,
@@ -3761,7 +3761,7 @@ class TestATurnThatWritesADraft:
         """
         from langchain_core.tools import StructuredTool
 
-        from aiq_agent.tools.documents import register as filing_tools
+        from agent.tools.documents import register as filing_tools
 
         backend, tools = working_directory
         posted: list[dict] = []
@@ -3780,9 +3780,9 @@ class TestATurnThatWritesADraft:
         )
         _bind_signed_turn(monkeypatch, conversation_id="conv-1")
 
-        # A NAT function is bound as a plain tool here: the graph only needs a
-        # `BaseTool` with the right NAME, and building the NAT wrapper would test
-        # NAT rather than the turn.
+        # An agent-runtime function is bound as a plain tool here: the graph only
+        # needs a `BaseTool` with the right NAME, and building the agent-runtime
+        # wrapper would test the agent runtime rather than the turn.
         file_draft_tool = StructuredTool.from_function(
             coroutine=filing_tools.run_file_draft, name="file_draft", description="legt ab"
         )
@@ -3799,7 +3799,7 @@ class TestATurnThatWritesADraft:
             ]
         )
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=provider,
             tools=[web_search_tool, *tools, file_draft_tool],
             max_tool_iterations=3,
@@ -3829,7 +3829,7 @@ class TestATurnThatWritesADraft:
 
 
 def _file_verb_descriptions() -> dict[str, str]:
-    from aiq_agent.tools.files import register as files_register
+    from agent.tools.files import register as files_register
 
     # One tool since the merge; the rules below are what its description must
     # still carry for every operation it proposes.
@@ -3899,8 +3899,8 @@ class TestTheThreeDraftingTurnShapes:
     def _bypass_citation_pipeline(self):
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
             mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -3924,9 +3924,9 @@ class TestTheThreeDraftingTurnShapes:
 
     @pytest.fixture
     def cards(self):
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import reset_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import reset_card_registry
+        from agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
         token = set_card_registry(registry)
@@ -3939,8 +3939,8 @@ class TestTheThreeDraftingTurnShapes:
     def working_directory(self):
         from langgraph.store.memory import InMemoryStore
 
-        from aiq_agent.tools.documents.draft_store import DraftBackend
-        from aiq_agent.tools.documents.tools import draft_tools
+        from agent.tools.documents.draft_store import DraftBackend
+        from agent.tools.documents.tools import draft_tools
 
         backend = DraftBackend(store=InMemoryStore(), conversation_id="conv-1")
         return backend, draft_tools(backend)
@@ -3960,7 +3960,7 @@ class TestTheThreeDraftingTurnShapes:
         # A research budget of ONE: writing is not researching, so a turn that
         # charged the file verbs to it would be forced into synthesis before it
         # reached the second call.
-        return PilotiAgent(llm_provider=provider, tools=[web_search_tool, *tools], max_tool_iterations=1)
+        return ChatAgent(llm_provider=provider, tools=[web_search_tool, *tools], max_tool_iterations=1)
 
     async def _seed(self, backend, case):
         for path, content in case.seed.items():
@@ -3970,7 +3970,7 @@ class TestTheThreeDraftingTurnShapes:
         """`file_draft` with only the HTTP call doubled, as the filing test does."""
         from langchain_core.tools import StructuredTool
 
-        from aiq_agent.tools.documents import register as filing_tools
+        from agent.tools.documents import register as filing_tools
 
         async def _same_backend(conversation_id: str, dsn: str | None = None):
             return backend

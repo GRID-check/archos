@@ -4,7 +4,7 @@ Provides a DRY, extensible extraction pipeline that:
 - Runs VLM captioning concurrently for embedded images AND rendered drawing pages
   within a single file (biggest latency win: a 20-page plan set goes from 20+
   serial round-trips to 4 concurrent workers per file).
-- Content-hash caches every VLM result via ``aiq_agent.common.cache`` so a
+- Content-hash caches every VLM result via ``agent.common.cache`` so a
   re-ingest or cross-document duplicate image skips the API call entirely. The
   VLM model is part of the cache identity, so a model switch never serves
   stale captions produced by a different model.
@@ -50,8 +50,8 @@ from concurrent.futures import as_completed
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.cache import get_json
-from aiq_agent.common.cache import set_json
+from agent.common.cache import get_json
+from agent.common.cache import set_json
 
 from .pdfium_lock import detached_pil
 from .pdfium_lock import pdfium_lock

@@ -5,7 +5,7 @@
  * Use this constant for every user-visible brand mention (wordmark, tab
  * titles, aria labels); the dictionaries say `{productName}` and get it from
  * here (`withProductName` below), and the agent's prompts carry the same string
- * (`aiq_agent.common.brand`, held equal by `tests/test_product_name_parity.py`).
+ * (`agent.common.brand`, held equal by `tests/test_product_name_parity.py`).
  * No internal identifier carries a product name at all
  * (env vars, headers, CSS variables, storage keys, DB identifiers): the
  * `brand-names` ratchet holds that (docs/contributing/code-conventions.md#no-brand-names).

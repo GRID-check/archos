@@ -3,7 +3,7 @@
 /**
  * Agent profiler (platform staff): cross-organization conversation directory
  * plus a per-turn execution timeline, backed by the `agent_profiler_spans`
- * ledger (packages/agent/src/aiq_agent/common/profiler.py, the timing sibling of the LLM cost
+ * ledger (packages/agent/src/agent/common/profiler.py, the timing sibling of the LLM cost
  * ledger).
  *
  * One tab of Platform → Answer quality ("timing"). Two cards side by side on a
@@ -128,9 +128,9 @@ const KIND_STYLE: Record<SpanKind, { icon: LucideIcon; color: string }> = {
     icon: MessageSquare,
     color: 'color-mix(in oklab, var(--muted-foreground) 45%, transparent)',
   },
-  node: { icon: Workflow, color: 'var(--grid-series-1)' },
-  llm: { icon: Bot, color: 'var(--grid-series-3)' },
-  tool: { icon: Wrench, color: 'var(--grid-series-2)' },
+  node: { icon: Workflow, color: 'var(--chart-series-1)' },
+  llm: { icon: Bot, color: 'var(--chart-series-3)' },
+  tool: { icon: Wrench, color: 'var(--chart-series-2)' },
 }
 const KIND_ORDER: SpanKind[] = ['turn', 'node', 'llm', 'tool']
 
@@ -629,7 +629,7 @@ export function AgentProfiler({
     // the whole conversation, not from one.
     const firstTurnNumber = totalTurns - timeline.turns.length + 1
     return (
-      <div className="grid-usage-viz animate-in fade-in-0 duration-base flex flex-col gap-5 ease-out motion-reduce:animate-none">
+      <div className="usage-viz animate-in fade-in-0 duration-base flex flex-col gap-5 ease-out motion-reduce:animate-none">
         <SeriesPaletteStyle />
         <KindLegend />
         {timeline.capped || totalTurns > timeline.turns.length ? (

@@ -13,9 +13,9 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_turn_context
-from aiq_agent.agents.piloti.prompt import system_prompt_template
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.prompt import render_turn_context
+from agent.agents.piloti.prompt import system_prompt_template
 
 ROOT = Path(__file__).resolve().parents[5]
 #: The block the production renderer writes (`workspace-block.fixture.spec.ts`).
@@ -52,8 +52,8 @@ def test_no_block_renders_no_section():
 
 
 def test_the_conversation_state_hands_the_block_to_the_research_state():
-    from aiq_agent.agents.piloti.conversation import ConversationGraph
-    from aiq_agent.agents.piloti.models.conversation import ConversationState
+    from agent.agents.piloti.conversation import ConversationGraph
+    from agent.agents.piloti.models.conversation import ConversationState
 
     state = ConversationState(messages=[HumanMessage(content="Wie?")], workspace_block=BLOCK)
     research = ConversationGraph._research_input(object.__new__(ConversationGraph), state, list(state.messages))
@@ -69,9 +69,9 @@ def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
     server enforces it (a write never runs), so the static prompt no longer
     repeats it.
     """
-    from aiq_agent.tools.workspace.register import DESCRIPTIONS
+    from agent.tools.workspace.register import DESCRIPTIONS
 
-    static = (ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
+    static = (ROOT / "packages/agent/src/agent/agents/piloti/prompts/chat_static.md").read_text(encoding="utf-8")
     rules = static.split("<rules>")[1].split("</rules>")[0]
     # English is for finding an operation; a document search runs over German documents.
     assert "look one up (`workspace__search`) in English" in rules

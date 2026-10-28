@@ -44,7 +44,7 @@ import {
   reportIntakeProgress,
 } from '@/lib/project-intake/service'
 import { INTERNAL_INTAKE_RESPONSE_SCHEMAS, type InternalIntakeRequest } from '@/lib/project-intake/types'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import { POST } from './route'
 
 const SECRET = 'test-internal-token-intake'
@@ -58,7 +58,7 @@ const CONTEXT = {
   conversationId: null,
   issuedAt: Date.now(),
   collectionScope: ['proj_main'],
-} as Partial<VerifiedGridRequestContext> as VerifiedGridRequestContext
+} as Partial<VerifiedRequestContext> as VerifiedRequestContext
 
 const post = (body: unknown, token = SECRET) =>
   POST(
@@ -147,7 +147,7 @@ describe('POST /api/internal/project-intake', () => {
   })
 
   it('answers a typed 422 for a run outside a project', async () => {
-    vi.mocked(requireVerifiedContext).mockReturnValue({ ...CONTEXT, projectId: null } as Partial<VerifiedGridRequestContext> as VerifiedGridRequestContext)
+    vi.mocked(requireVerifiedContext).mockReturnValue({ ...CONTEXT, projectId: null } as Partial<VerifiedRequestContext> as VerifiedRequestContext)
     const response = await post({ op: 'needs', jobId: JOB })
     expect(response.status).toBe(422)
     expect(await response.json()).toMatchObject({ details: { reason: 'no-project' } })

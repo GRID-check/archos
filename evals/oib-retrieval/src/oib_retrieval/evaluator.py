@@ -1,6 +1,6 @@
-"""NAT evaluator: grade an agent answer's CITATIONS against the retrieval golden set.
+"""Agent-runtime evaluator: grade an agent answer's CITATIONS against the retrieval golden set.
 
-Registers ``oib_retrieval_citation_evaluator`` with NAT (see ``register.py`` for the plugin
+Registers ``oib_retrieval_citation_evaluator`` with the agent runtime (see ``register.py`` for the plugin
 entry point). It makes no LLM calls: an answer's
 References section names ``file_name, p.N`` units, those units are compared against the
 same ``(richtlinie, punkt, grade)`` labels the offline runner uses, and the score is the
@@ -15,7 +15,7 @@ asks whether the answer the model wrote actually cited it, which needs a real wo
 numbers have to be separable to know which half to fix.
 
 All scoring lives in :mod:`metrics`, :mod:`qrels` and :mod:`citations`, none of which
-import NAT — this module only unwraps ``EvalInputItem`` and rewraps ``EvalOutputItem``.
+import the agent runtime — this module only unwraps ``EvalInputItem`` and rewraps ``EvalOutputItem``.
 """
 
 import logging

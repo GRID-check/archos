@@ -45,12 +45,12 @@ import { z } from 'zod'
 import { z as z3 } from 'zod-v3'
 import { Catalog, componentId, type ComponentApi } from '@a2ui/web_core/v0_9'
 
-import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
+import { answerCardSchema, type AnswerCard } from '@/shared/cards/schemas'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer/MarkdownRenderer'
 import { useNestedMarkdownPlugins } from '@/shared/components/MarkdownRenderer/nested-plugins-context'
 
 /** The catalog's identity on the wire; `createSurface.catalogId` must equal it. */
-export const PILOTI_CATALOG_ID = 'https://piloti.at/a2ui/catalogs/cards/v1'
+export const CARDS_CATALOG_ID = 'https://piloti.at/a2ui/catalogs/cards/v1'
 
 /**
  * The A2UI protocol version the catalog and every surface speak: v0.9, the
@@ -69,7 +69,7 @@ export const TEXT_COMPONENT = 'Text'
  * Draws one card. `leafId` is the component's id inside its surface: `root`
  * for a lone card, the model's own id for a card inside a composition.
  */
-export type CardRenderer = (card: GridCard, leafId: string) => ReactNode
+export type CardRenderer = (card: AnswerCard, leafId: string) => ReactNode
 
 const CardRendererContext = createContext<CardRenderer | null>(null)
 export const CardRendererProvider = CardRendererContext.Provider
@@ -91,7 +91,7 @@ export function useReportDrawn() {
   useLayoutEffect(() => report?.(), [report])
 }
 
-export type CardSchema = (typeof gridCardSchema.options)[number]
+export type CardSchema = (typeof answerCardSchema.options)[number]
 
 /** A card schema's `type` literal; one card defaults it, which wraps the literal. */
 export function cardTypeOf(schema: CardSchema): string {
@@ -166,14 +166,14 @@ export function TextBlock({ text }: { text: string }) {
  * own components by `cardToSurfaceMessages`.
  */
 export function catalogCardSchemas(): CardSchema[] {
-  return gridCardSchema.options.filter((schema) => cardTypeOf(schema) !== 'surface')
+  return answerCardSchema.options.filter((schema) => cardTypeOf(schema) !== 'surface')
 }
 
 let catalogApi: Catalog<ComponentApi> | null = null
 
 /** The catalog's components as schemas only, built once: what `preflight` checks a surface against. */
-export function pilotiCatalogApi(): Catalog<ComponentApi> {
-  catalogApi ??= new Catalog(PILOTI_CATALOG_ID, A2UI_PROTOCOL_VERSION, [
+export function cardsCatalogApi(): Catalog<ComponentApi> {
+  catalogApi ??= new Catalog(CARDS_CATALOG_ID, A2UI_PROTOCOL_VERSION, [
     ...catalogCardSchemas().map(cardComponentApi),
     RowApi,
     ColumnApi,
@@ -185,7 +185,7 @@ export function pilotiCatalogApi(): Catalog<ComponentApi> {
 
 /**
  * Card types that may not be a leaf of a surface. Mirrors
- * `SURFACE_EXCLUDED_LEAVES` in `packages/agent/src/aiq_agent/cards/models.py`, which refuses
+ * `SURFACE_EXCLUDED_LEAVES` in `packages/agent/src/agent/cards/models.py`, which refuses
  * them when the surface is written: system cards are pushed by tools, and an
  * interactive card's decision is
  * keyed by its position in the message (`card-decision.ts`), which a card
@@ -223,7 +223,7 @@ export const SURFACE_EXCLUDED_LEAVES: ReadonlySet<string> = new Set([
  * `summary` or `memory_proposal` draws through the catalog like any other card.
  */
 export function preflight(components: Record<string, unknown>[], { surface = true } = {}): string | null {
-  const registry = pilotiCatalogApi().components
+  const registry = cardsCatalogApi().components
   for (const { id, component, ...props } of components) {
     if (surface && SURFACE_EXCLUDED_LEAVES.has(String(component))) {
       return `'${String(id)}': a '${String(component)}' cannot sit inside a surface`

@@ -1,6 +1,6 @@
-"""Tests for NAT trace parsing and phase inference.
+"""Tests for agent-runtime trace parsing and phase inference.
 
-Module under test: packages/agent/src/aiq_agent/tokenomics/nat_adapter.py
+Module under test: packages/agent/src/agent/tokenomics/nat_adapter.py
 """
 
 import json
@@ -8,15 +8,15 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.tokenomics.nat_adapter import _build_task_windows
-from aiq_agent.tokenomics.nat_adapter import _extract_subagent_type
-from aiq_agent.tokenomics.nat_adapter import _infer_phase
-from aiq_agent.tokenomics.nat_adapter import _TaskWindow
-from aiq_agent.tokenomics.nat_adapter import parse_trace
-from aiq_agent.tokenomics.pricing import PricingRegistry
-from aiq_agent.tokenomics.profile import PHASE_ORCHESTRATOR
-from aiq_agent.tokenomics.profile import PHASE_PLANNER
-from aiq_agent.tokenomics.profile import PHASE_RESEARCHER
+from agent.tokenomics.nat_adapter import _build_task_windows
+from agent.tokenomics.nat_adapter import _extract_subagent_type
+from agent.tokenomics.nat_adapter import _infer_phase
+from agent.tokenomics.nat_adapter import _TaskWindow
+from agent.tokenomics.nat_adapter import parse_trace
+from agent.tokenomics.pricing import PricingRegistry
+from agent.tokenomics.profile import PHASE_ORCHESTRATOR
+from agent.tokenomics.profile import PHASE_PLANNER
+from agent.tokenomics.profile import PHASE_RESEARCHER
 
 
 def _payload(

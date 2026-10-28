@@ -15,13 +15,13 @@ import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 PROJECT = "proj_1"
 OFFICE_SHELF = "archiv_1"
@@ -82,15 +82,15 @@ class _Store:
 @pytest.fixture
 def search(monkeypatch):
     """Install a scope (base + project, optionally the Büroablage), the pools, and the store's replaced files."""
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
 
     def install(pools, replaced: dict[str, dict[str, str]] | None = None, scope=None, documents=DOCS):
         scope = scope or [ScopedCollection(BASE, Shelf.BASE), ScopedCollection(PROJECT, Shelf.PROJECT)]
-        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
+        monkeypatch.setattr("agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
         asked: list[str] = []
 
         def get_superseded_files(collection):
@@ -99,7 +99,7 @@ def search(monkeypatch):
                 raise replaced
             return (replaced or {}).get(collection, {})
 
-        monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", get_superseded_files)
+        monkeypatch.setattr("agent.knowledge.get_superseded_files", get_superseded_files)
         store = _Store(pools)
         set_turn_documents(documents)
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: store)

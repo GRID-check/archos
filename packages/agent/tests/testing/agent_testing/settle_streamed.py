@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
 
 
 def _registry() -> SourceRegistry:

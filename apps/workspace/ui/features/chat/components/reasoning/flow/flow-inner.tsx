@@ -8,6 +8,7 @@ import {
   type NodeChange,
   type Edge,
 } from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { HandleSpec } from './flow-node-data'

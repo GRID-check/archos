@@ -2,11 +2,11 @@
 
 import asyncio
 
-from aiq_agent.agents.deep_researcher.control import bind_write_now
-from aiq_agent.agents.deep_researcher.control import reset_write_now
-from aiq_agent.agents.deep_researcher.control import write_now_requested
-from aiq_agent.agents.deep_researcher.finalize import _prepend_honesty_banner
-from aiq_agent.common.turn_notices import CUTOFF_USER_REQUESTED
+from agent.agents.deep_researcher.control import bind_write_now
+from agent.agents.deep_researcher.control import reset_write_now
+from agent.agents.deep_researcher.control import write_now_requested
+from agent.agents.deep_researcher.finalize import _prepend_honesty_banner
+from agent.common.turn_notices import CUTOFF_USER_REQUESTED
 
 
 def test_nothing_bound_means_nothing_requested():
@@ -39,10 +39,10 @@ def test_the_banner_names_the_readers_choice_not_a_limit():
 
 
 def test_added_documents_are_drained_once_and_the_binding_is_per_run():
-    from aiq_agent.agents.deep_researcher.control import bind_added_documents
-    from aiq_agent.agents.deep_researcher.control import reset_added_documents
-    from aiq_agent.agents.deep_researcher.control import take_added_documents
-    from aiq_agent.common.plan_documents import PlanDocument
+    from agent.agents.deep_researcher.control import bind_added_documents
+    from agent.agents.deep_researcher.control import reset_added_documents
+    from agent.agents.deep_researcher.control import take_added_documents
+    from agent.common.plan_documents import PlanDocument
 
     assert take_added_documents() == []
     queue: list[PlanDocument] = []
@@ -60,7 +60,7 @@ def test_added_documents_are_drained_once_and_the_binding_is_per_run():
 
 
 def test_the_report_names_the_basis_it_never_reached():
-    from aiq_agent.agents.deep_researcher.finalize import _append_unread_basis
+    from agent.agents.deep_researcher.finalize import _append_unread_basis
 
     german = _append_unread_basis("# Bericht\n\nDer Fluchtweg ist zulässig.", ["Einreichplan.pdf"])
     assert german.rstrip().endswith(
@@ -76,11 +76,11 @@ def test_the_report_names_the_basis_it_never_reached():
 
 
 def test_every_addition_stays_countable_after_it_was_taken():
-    from aiq_agent.agents.deep_researcher.control import all_added_documents
-    from aiq_agent.agents.deep_researcher.control import bind_added_documents
-    from aiq_agent.agents.deep_researcher.control import reset_added_documents
-    from aiq_agent.agents.deep_researcher.control import take_added_documents
-    from aiq_agent.common.plan_documents import PlanDocument
+    from agent.agents.deep_researcher.control import all_added_documents
+    from agent.agents.deep_researcher.control import bind_added_documents
+    from agent.agents.deep_researcher.control import reset_added_documents
+    from agent.agents.deep_researcher.control import take_added_documents
+    from agent.common.plan_documents import PlanDocument
 
     queue = [PlanDocument(name="a.pdf")]
     token = bind_added_documents(queue)
@@ -95,10 +95,10 @@ def test_every_addition_stays_countable_after_it_was_taken():
 
 
 def test_a_request_is_honoured_only_once_a_batch_was_refused():
-    from aiq_agent.agents.deep_researcher.control import begin_write_now_record
-    from aiq_agent.agents.deep_researcher.control import end_write_now_record
-    from aiq_agent.agents.deep_researcher.control import note_write_now_honoured
-    from aiq_agent.agents.deep_researcher.control import write_now_honoured
+    from agent.agents.deep_researcher.control import begin_write_now_record
+    from agent.agents.deep_researcher.control import end_write_now_record
+    from agent.agents.deep_researcher.control import note_write_now_honoured
+    from agent.agents.deep_researcher.control import write_now_honoured
 
     note_write_now_honoured()  # nothing recording: a no-op
     assert write_now_honoured() is False

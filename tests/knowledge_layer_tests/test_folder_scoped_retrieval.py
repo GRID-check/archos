@@ -22,13 +22,13 @@ from knowledge_layer.register import knowledge_retrieval
 from knowledge_layer.search_results import empty_search_message
 from knowledge_layer.search_results import format_results
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 
 def _chunk(file_name: str, collection: str = "proj_abc") -> SimpleNamespace:
@@ -46,7 +46,7 @@ def _chunk(file_name: str, collection: str = "proj_abc") -> SimpleNamespace:
 def _folders(monkeypatch, mapping: dict[str, str]) -> None:
     """Stub the batched store read the folder filter and the Ordner line use."""
     monkeypatch.setattr(
-        "aiq_agent.knowledge.factory.get_document_folder_paths",
+        "agent.knowledge.factory.get_document_folder_paths",
         lambda collection, file_names: {k: v for k, v in mapping.items() if k in file_names},
     )
 
@@ -135,7 +135,7 @@ class TestFolderFilter:
         def _boom(collection, file_names):
             raise RuntimeError("store down")
 
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_document_folder_paths", _boom)
+        monkeypatch.setattr("agent.knowledge.factory.get_document_folder_paths", _boom)
 
         kept = apply_agent_filters([_chunk("in.pdf")], doc_class=None, title_contains=None, folder="Brandschutz")
 
@@ -249,13 +249,13 @@ class _RankedStore:
 def ranked(monkeypatch):
     """A project shelf beside the base corpus, the turn's inventory, and the store's folder map."""
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(BASE, Shelf.BASE), ScopedCollection(PROJECT, Shelf.PROJECT)],
     )
     for name in ("get_document_doc_classes", "get_document_display_titles"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
 
     def install(documents: list[AvailableDocument], pools: dict[str, list[Chunk]]) -> _RankedStore:

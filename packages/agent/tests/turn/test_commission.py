@@ -10,10 +10,10 @@ leaving the reader with nothing.
 
 import pytest
 
-from aiq_agent.tools.tasks.client import DelegationError
-from aiq_agent.turn import commission
-from aiq_agent.turn.commission import CommissionRefused
-from aiq_agent.turn.commission import commission_research_run
+from agent.tools.tasks.client import DelegationError
+from agent.turn import commission
+from agent.turn.commission import CommissionRefused
+from agent.turn.commission import commission_research_run
 
 QUESTION = "Gilt für das Atrium in Haus A OIB 2 oder OIB 2.3?"
 OK_BODY = {
@@ -78,8 +78,8 @@ class TestWhatItAsksFor:
         assert "context" not in commissioning[0][0]
 
     async def test_the_frame_and_the_documents_ride_the_commission(self, commissioning):
-        from aiq_agent.common.plan_documents import PlanDocument
-        from aiq_agent.common.plan_documents import PlanDocuments
+        from agent.common.plan_documents import PlanDocument
+        from agent.common.plan_documents import PlanDocuments
 
         docs = PlanDocuments(
             basis=[PlanDocument(name="Einreichplan.pdf", title="Einreichplan EG", shelf="project")],
@@ -95,7 +95,7 @@ class TestWhatItAsksFor:
         }
 
     async def test_an_empty_documents_list_is_absent(self, commissioning):
-        from aiq_agent.common.plan_documents import PlanDocuments
+        from agent.common.plan_documents import PlanDocuments
 
         await commission_research_run(QUESTION, documents=PlanDocuments())
 

@@ -2,13 +2,13 @@
 
 import pytest
 
-from aiq_agent.common import applicability
-from aiq_agent.common.applicability import OibVerdict
-from aiq_agent.common.applicability import facts_from_project_context
-from aiq_agent.common.applicability import render_project_block
-from aiq_agent.common.applicability import resolve_oib_applicability
-from aiq_agent.common.applicability import trigger_hints
-from aiq_agent.project_context import compose_project_context
+from agent.common import applicability
+from agent.common.applicability import OibVerdict
+from agent.common.applicability import facts_from_project_context
+from agent.common.applicability import render_project_block
+from agent.common.applicability import resolve_oib_applicability
+from agent.common.applicability import trigger_hints
+from agent.project_context import compose_project_context
 
 
 def _by_code(facts: dict) -> dict[str, OibVerdict]:

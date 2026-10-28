@@ -2,7 +2,7 @@
 
 The turn is the real ``_run``: the request parse, the setup phase, admission,
 the registries, the conversation graph under ``astream``, the result lift. The
-answering agent is the one seam: it crosses NAT's function boundary the way
+answering agent is the one seam: it crosses the agent runtime's function boundary the way
 ``Function.ainvoke`` does (``Context.push_active_function``) into an inner
 LangGraph run with a config of its own, the shape of Piloti's
 ``agent._graph_config``, and there a fake LLM streams a recorded envelope
@@ -31,20 +31,20 @@ from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import StateGraph
 
-from aiq_agent.agents.piloti import conversation_register as register_mod
-from aiq_agent.agents.piloti.answer_pipeline import SettledStream
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common import turn_status
-from aiq_agent.common.wire_v2 import WIRE_EVENT
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import RunStartedBody
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import TextMessageStartBody
-from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.common.wire_v2 import stamp
-from aiq_agent.common.wire_v2 import to_frame
-from aiq_agent.turn import answer_stream
-from aiq_agent.turn.answer_stream import streaming_call
+from agent.agents.piloti import conversation_register as register_mod
+from agent.agents.piloti.answer_pipeline import SettledStream
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common import turn_status
+from agent.common.wire_v2 import WIRE_EVENT
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import RunStartedBody
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import TextMessageStartBody
+from agent.common.wire_v2 import UserMessage
+from agent.common.wire_v2 import stamp
+from agent.common.wire_v2 import to_frame
+from agent.turn import answer_stream
+from agent.turn.answer_stream import streaming_call
 from nat.plugin_api import Context
 
 GOLDEN = Path(__file__).resolve().parents[6] / "tests" / "fixtures" / "wire_v2" / "golden_turn.jsonl"
@@ -119,8 +119,8 @@ class _OwnCallbacks(AsyncCallbackHandler):
     """Piloti's inner graph passes callbacks of its own (``agent._graph_config``)."""
 
 
-async def _piloti_behind_its_nat_function(state):
-    """What NAT's ``Function.ainvoke`` does around Piloti: push the function, await it in the same task."""
+async def _chat_behind_its_function(state):
+    """What the runtime's ``Function.ainvoke`` does around Piloti: push the function, await it in the same task."""
     with Context.get().push_active_function("shallow_research_agent", input_data=None):
         config = {"recursion_limit": 50, "configurable": {"binding": object()}, "callbacks": [_OwnCallbacks()]}
         await _INNER.ainvoke({}, config=config)
@@ -150,7 +150,7 @@ async def _golden_turn(workflow_harness, monkeypatch) -> list[dict]:
     monkeypatch.setattr(register_mod, "answer_streaming_enabled", lambda: True)
     loading = StatusStep(id="status:documents", slot="documents", key="status.documents.project")
     monkeypatch.setattr(register_mod, "documents_loading_step", lambda _shelves: loading)
-    workflow_harness["shallow"] = _piloti_behind_its_nat_function
+    workflow_harness["shallow"] = _chat_behind_its_function
     bodies = await workflow_harness["turn"](
         UserMessage(conversation_id="conv-1", message_id="msg-1", text="Wie lang darf der Fluchtweg in GK 4 sein?")
     )

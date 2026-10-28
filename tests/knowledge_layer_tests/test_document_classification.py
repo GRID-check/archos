@@ -11,17 +11,17 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from aiq_agent.common import decisions
-from aiq_agent.knowledge import document_classification
-from aiq_agent.knowledge.document_classification import ALLOWED_TAGS
-from aiq_agent.knowledge.document_classification import DISCIPLINE_TAGS
-from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
-from aiq_agent.knowledge.document_classification import MAX_TAGS
-from aiq_agent.knowledge.document_classification import _build_tag_prompt
-from aiq_agent.knowledge.document_classification import classify_document_tags
-from aiq_agent.knowledge.document_classification import fallback_summary_from_text
-from aiq_agent.knowledge.document_classification import reconcile_image_tags
-from aiq_agent.knowledge.document_classification import summarize_document_text
+from agent.common import decisions
+from agent.knowledge import document_classification
+from agent.knowledge.document_classification import ALLOWED_TAGS
+from agent.knowledge.document_classification import DISCIPLINE_TAGS
+from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+from agent.knowledge.document_classification import MAX_TAGS
+from agent.knowledge.document_classification import _build_tag_prompt
+from agent.knowledge.document_classification import classify_document_tags
+from agent.knowledge.document_classification import fallback_summary_from_text
+from agent.knowledge.document_classification import reconcile_image_tags
+from agent.knowledge.document_classification import summarize_document_text
 
 # =============================================================================
 # Deterministic fallback summary (used to anchor a tags-only row)

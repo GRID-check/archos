@@ -48,7 +48,7 @@ const SETTINGS: SettingFixture[] = DEFINITIONS.map((definition) => {
     defaultValue: definition.defaultValue,
     overridden: pinned !== undefined,
     note: pinned?.note ?? null,
-    updatedByEmail: pinned ? 'owner@grid.example' : null,
+    updatedByEmail: pinned ? 'owner@app.example' : null,
     updatedAt: pinned ? '2026-07-28T09:00:00Z' : null,
   }
 })

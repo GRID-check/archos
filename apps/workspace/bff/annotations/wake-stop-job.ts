@@ -19,16 +19,16 @@
  */
 
 import 'server-only'
-import type { JobAttempt, PilotiWakeStopPayload } from '@/lib/jobs-queue/types'
+import type { JobAttempt, AgentWakeStopPayload } from '@/lib/jobs-queue/types'
 import { cancelHeadlessTurn, chatSocketUrl } from '@/lib/turns/headless-turn'
 import { HEADLESS_MODE_HEADERS } from '@/lib/turns/headless-mode'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import { documentThreadConversationId } from './wake-ids'
 import { findWake } from './wake-repository'
 
-export async function runPilotiWakeStop(
+export async function runAgentWakeStop(
   organizationId: string,
-  payload: PilotiWakeStopPayload,
+  payload: AgentWakeStopPayload,
   _attempt: JobAttempt
 ): Promise<void> {
   const wake = await findWake(organizationId, payload.wakeId)

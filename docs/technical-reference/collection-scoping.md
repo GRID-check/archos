@@ -43,7 +43,7 @@ The Archiv collection is injected in `buildCollectionScopeFromRequest` (which ha
      │ X-Grid-Collection-Scope header                          │ calls /api/auth/websocket-scope
      ▼                                                          ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                   Python Backend (NAT context)                  │
+│                   Python Backend (runtime context)              │
 │                                                                  │
 │  get_collection_scope_from_context() → list[str] | None         │
 │    Reads X-Grid-Collection-Scope from Context.metadata.headers   │
@@ -69,7 +69,7 @@ Builds an ordered deduplicated list of collection names:
 
 ```typescript
 function computeCollectionScope(
-  session: GridSession | null,
+  session: UserSession | null,
   context: ScopeContext
 ): string[]
 ```
@@ -114,7 +114,7 @@ The main entry point for SSE and WebSocket routes. It:
 
 ```typescript
 async function buildCollectionScopeFromRequest(
-  session: GridSession | null,
+  session: UserSession | null,
   context: RequestContext
 ): Promise<{ scope: string[], headerValue: string, projectId?: string, conversationId?: string }>
 ```
@@ -166,13 +166,13 @@ share and an admission cannot both go through:
 - at turn start the agent offers the restricted collections of its signed
   scope and gets back the ones it may draw on (`drawable`) and whether the
   conversation already recorded a folder (`recorded`). It binds the answer per
-  turn (`aiq_agent.knowledge.restricted_use`), and
+  turn (`agent.knowledge.restricted_use`), and
   `get_scoped_collections_from_context` keeps only the drawable ones, so every
   read path searches only what everyone reading the conversation may read. A
   thread shared since the socket was signed loses those collections from the
   next turn on; the socket is not closed;
 - a tool round's results are admitted before the model reads them
-  (`PilotiAgent._tools_node` → `admit_tool_results`); a result carrying a
+  (`ChatAgent._tools_node` → `admit_tool_results`); a result carrying a
   refused collection is replaced by a notice;
 - restricted memory served into the digest, and a subject document from a
   restricted folder, are admitted by the BFF before they are sent;
@@ -240,11 +240,11 @@ The pattern is used in:
 
 ## Python: `scoping.py`
 
-**File**: `packages/agent/src/aiq_agent/knowledge/scoping.py`
+**File**: `packages/agent/src/agent/knowledge/scoping.py`
 
 ### `get_collection_scope_from_context()`
 
-Reads and decodes the `X-Grid-Collection-Scope` header from NAT context:
+Reads and decodes the `X-Grid-Collection-Scope` header from the runtime context:
 
 ```python
 def get_collection_scope_from_context() -> list[str] | None:
@@ -310,13 +310,13 @@ read **once, at job submit time**, in `piloti/conversation_register.py`, and
 carried through as a `collection_scope` field on the job payload rather than
 as a live header.
 
-When the research worker later runs the job, `apps/backend/src/aiq_api/jobs/runner.py:641`
+When the research worker later runs the job, `apps/agent-host/src/agent_host/jobs/runner.py:641`
 re-injects it into the worker's own request context **only when present**:
 
 ```python
 if collection_scope is not None:
     encoded = base64.urlsafe_b64encode(json.dumps(collection_scope).encode()).rstrip(b"=").decode()
-    # ... set back onto the header the worker's NAT context reads
+    # ... set back onto the header the worker's runtime context reads
 ```
 
 If `collection_scope` is `None` at submit time (e.g. the request bypassed the
@@ -342,4 +342,4 @@ invisible.
 | 1 (highest) | `X-Grid-Collection-Scope` header | Present on proxied HTTP requests and WebSocket upgrades |
 | 2 | `_resolve_target_collections()` config | Header absent (legacy/fallback) |
 
-The header is always set for proxied HTTP requests (`/api/v1/*`, `/api/jobs/async/*`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the NAT context has no metadata headers.
+The header is always set for proxied HTTP requests (`/api/v1/*`, `/api/jobs/async/*`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the runtime context has no metadata headers.

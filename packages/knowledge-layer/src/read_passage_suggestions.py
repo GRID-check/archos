@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.action_outcome import ActionOutcome
+from agent.common.action_outcome import ActionOutcome
 
 from .read_passage_models import PassageTarget
 from .read_passage_models import ReadPassageInput
@@ -138,7 +138,7 @@ def _empty_document_message(document: str) -> str:
 
 def _store_silent_message(query: str) -> str:
     """Every fetch for this locus raised. Not an empty document; an unanswered store."""
-    from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
+    from agent.common.tool_calls import FETCH_FAILED_MARKER
 
     # Marked so the agent's duplicate-fetch guard can tell this apart from a
     # passage that was actually read: without the marker the retry this
@@ -151,7 +151,7 @@ def _store_silent_message(query: str) -> str:
 
 def _nameable(targets: Sequence[PassageTarget]) -> PassageTarget | None:
     """The first target whose document may be named to the model this turn (:func:`may_name`), or ``None``."""
-    from aiq_agent.knowledge.restricted_use import may_name
+    from agent.knowledge.restricted_use import may_name
 
     return next((target for target in targets if may_name(target.collection)), None)
 

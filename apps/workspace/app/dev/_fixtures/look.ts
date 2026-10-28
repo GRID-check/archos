@@ -8,7 +8,7 @@
  * at the plan's lower left, and the hatched stair core in its middle.
  */
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 
 /** The stored document the shim answers with the A1 sheet. */
 export const LOOK_SHEET_ID = 'dev-look-sheet'
@@ -16,7 +16,7 @@ export const LOOK_SHEET_ID = 'dev-look-sheet'
 export const LOOK_HIDDEN_ID = 'dev-look-hidden'
 export const LOOK_SHEET_NAME = 'WBN_Grundriss_1OG_Index_C.pdf'
 
-type LookCardData = Extract<GridCard, { type: 'look' }>
+type LookCardData = Extract<AnswerCard, { type: 'look' }>
 
 const PLANKOPF = [0.765, 0.852, 0.225, 0.135]
 const TOP_1 = [0.084, 0.62, 0.13, 0.225]

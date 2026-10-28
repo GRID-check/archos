@@ -21,21 +21,21 @@ addopts = "--import-mode=importlib -m 'not live'"
 # `pytest` console script, and an IDE runner — instead of
 # depending on which of those happens to put the repo root on sys.path.
 #
-# `packages/agent/src` is the same guard for `aiq_agent`. The venv installs it editable from
+# `packages/agent/src` is the same guard for `agent`. The venv installs it editable from
 # whichever checkout ran `uv sync`, so a bare `pytest` in a worktree without its
 # own venv tested the MAIN checkout's code while everything passed. This puts
 # the checkout's own `packages/agent/src/` ahead of that install (the editable `.pth` is
-# appended to sys.path, so it loses). `apps/backend/src` is the same guard
-# for `aiq_api`, which `packages/agent/tests` imports too (the worker's header
+# appended to sys.path, so it loses). `apps/agent-host/src` is the same guard
+# for `agent_host`, which `packages/agent/tests` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
-# those tests against the MAIN checkout's `aiq_api`. `evals/oib-retrieval/src`
+# those tests against the MAIN checkout's `agent_host`. `evals/oib-retrieval/src`
 # is the same guard for the retrieval harness, a finder-style editable the evals
 # import by name. `knowledge_layer` is a finder-style editable too and is NOT
 # covered by this; see docs/contributing/gotchas.md.
 # The test-support packages come last: `<distribution>_testing`, one per suite
 # family, so a suite imports its helpers by a name that no directory move changes
 # (ADR-0145 row 5; tests/test_test_imports.py holds it).
-pythonpath = [".", "packages/agent/src", "apps/backend/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "packages/agent/tests/testing"]
+pythonpath = [".", "packages/agent/src", "apps/agent-host/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "packages/agent/tests/testing"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
@@ -50,7 +50,7 @@ markers = [
 
 [tool.ruff]
 # Ruff's default `src` is [".", "src"]; the agent's source root moved with it, and isort
-# keeps `aiq_agent` first-party only if it can find it.
+# keeps `agent` first-party only if it can find it.
 src = [".", "packages/agent/src"]
 # Set the maximum line length to 120.
 line-length = 120
@@ -119,9 +119,9 @@ extend-ignore = [
 "nat.data_models.evaluator".msg = "Import from nat.plugin_api"
 "nat.data_models.function".msg = "Import from nat.plugin_api"
 "nat.data_models.interactive".msg = "Import from nat.plugin_api"
-# NAT's socket and HTTP frame models. The chat wire is `aiq_agent.common.wire_v2`
+# NAT's socket and HTTP frame models. The chat wire is `agent.common.wire_v2`
 # (ADR-0068); nothing here reads or writes a NAT frame.
-"nat.data_models.api_server".msg = "The chat wire is aiq_agent.common.wire_v2 (ADR-0068), not NAT's frame models"
+"nat.data_models.api_server".msg = "The chat wire is agent.common.wire_v2 (ADR-0068), not NAT's frame models"
 
 # Notebooks: allow long lines (shell/code) and imports after other statements
 [tool.ruff.lint.per-file-ignores]
@@ -131,7 +131,7 @@ extend-ignore = [
 combine-as-imports = true
 default-section = "third-party"
 force-single-line = true
-known-first-party = ["aiq", "aiq_api", "nat", "nat_*", "_utils"]
+known-first-party = ["agent", "agent_host", "nat", "nat_*", "_utils"]
 known-third-party = [
   "agno",
   "autogen",
@@ -152,7 +152,7 @@ order-by-type = true
 # gone fails the run (import-linter's default), so these lists only shrink.
 # docs/contributing/module-seams.md
 [tool.importlinter]
-root_packages = ["aiq_agent", "aiq_api", "knowledge_layer"]
+root_packages = ["agent", "agent_host", "knowledge_layer"]
 # Third-party packages become nodes too, so a contract can name one.
 include_external_packages = true
 
@@ -160,7 +160,7 @@ include_external_packages = true
 id = "qdrant-client-confined"
 name = "Only knowledge_layer.qdrant imports qdrant_client"
 type = "forbidden"
-source_modules = ["aiq_agent", "aiq_api", "knowledge_layer"]
+source_modules = ["agent", "agent_host", "knowledge_layer"]
 forbidden_modules = ["qdrant_client"]
 # Who names the client, not who reaches a module that does: everything reaches
 # knowledge_layer.qdrant, which is the point of confining the client there.
@@ -169,42 +169,42 @@ ignore_imports = ["knowledge_layer.qdrant.** -> qdrant_client"]
 
 [[tool.importlinter.contracts]]
 id = "agent-api-seam"
-name = "aiq_agent never imports aiq_api: the API tier hosts the agent, not the reverse"
+name = "agent never imports agent_host: the API tier hosts the agent, not the reverse"
 type = "forbidden"
-source_modules = ["aiq_agent"]
-forbidden_modules = ["aiq_api"]
+source_modules = ["agent"]
+forbidden_modules = ["agent_host"]
 
 [[tool.importlinter.contracts]]
 id = "agent-knowledge-port"
-name = "aiq_agent reaches knowledge_layer only through the retriever and ingestor port (ADR-0072)"
+name = "agent reaches knowledge_layer only through the retriever and ingestor port (ADR-0072)"
 type = "forbidden"
-source_modules = ["aiq_agent"]
+source_modules = ["agent"]
 forbidden_modules = ["knowledge_layer"]
-# Direct imports only: aiq_agent reaching knowledge_layer through aiq_api is the
+# Direct imports only: agent reaching knowledge_layer through agent_host is the
 # API tier's business, and the agent-api-seam contract already bounds that edge.
 allow_indirect_imports = true
 ignore_imports = [
-  # The port: `aiq_agent.knowledge.factory` builds the BaseRetriever and
+  # The port: `agent.knowledge.factory` builds the BaseRetriever and
   # BaseIngestor the agent talks to, so it is the one module that should.
-  "aiq_agent.knowledge.factory -> knowledge_layer.**",
+  "agent.knowledge.factory -> knowledge_layer.**",
   # Known bypasses of the port, from before this contract. Route each one
   # through the port and delete its line; a new one fails the build.
-  "aiq_agent.agents.piloti.register -> knowledge_layer.chat_binding",
-  "aiq_agent.agents.piloti.register -> knowledge_layer.estate",
-  "aiq_agent.knowledge.collection_pages -> knowledge_layer.chunk_positions",
-  "aiq_agent.knowledge.collection_pages -> knowledge_layer.qdrant.payload",
-  "aiq_agent.knowledge.collection_pages -> knowledge_layer.qdrant.reads",
-  "aiq_agent.knowledge.folder_cards.inputs -> knowledge_layer.browse",
-  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.browse",
-  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.folders",
-  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.store",
-  "aiq_agent.knowledge.scoping -> knowledge_layer.search_scope",
-  "aiq_agent.oib_sync -> knowledge_layer.llamaindex.adapter",
-  "aiq_agent.tools.cross_project.hit_judge -> knowledge_layer.decisions",
-  "aiq_agent.tools.cross_project.register -> knowledge_layer.trace_lanes",
-  "aiq_agent.tools.look.reading -> knowledge_layer.llamaindex.adapter",
-  "aiq_agent.tools.look.register -> knowledge_layer.view_image",
-  "aiq_agent.tools.look.resolve -> knowledge_layer.view_image",
+  "agent.agents.piloti.register -> knowledge_layer.chat_binding",
+  "agent.agents.piloti.register -> knowledge_layer.estate",
+  "agent.knowledge.collection_pages -> knowledge_layer.chunk_positions",
+  "agent.knowledge.collection_pages -> knowledge_layer.qdrant.payload",
+  "agent.knowledge.collection_pages -> knowledge_layer.qdrant.reads",
+  "agent.knowledge.folder_cards.inputs -> knowledge_layer.browse",
+  "agent.knowledge.folder_cards.worker -> knowledge_layer.browse",
+  "agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.folders",
+  "agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.store",
+  "agent.knowledge.scoping -> knowledge_layer.search_scope",
+  "agent.oib_sync -> knowledge_layer.llamaindex.adapter",
+  "agent.tools.cross_project.hit_judge -> knowledge_layer.decisions",
+  "agent.tools.cross_project.register -> knowledge_layer.trace_lanes",
+  "agent.tools.look.reading -> knowledge_layer.llamaindex.adapter",
+  "agent.tools.look.register -> knowledge_layer.view_image",
+  "agent.tools.look.resolve -> knowledge_layer.view_image",
 ]
 
 [tool.yapf]
@@ -220,27 +220,27 @@ indent_dictionary_value = true
 #
 # Usage:
 #   uv sync                              # Install root + all workspace members
-#   uv sync --package aiq-agent  # Install only the agent
+#   uv sync --package agent  # Install only the agent
 #   uv pip install -e ./packages/ris-adapter  # Install a specific package
-#   uv pip install -e "./apps/backend[postgres]"  # With extras
+#   uv pip install -e "./apps/agent-host[postgres]"  # With extras
 # -----------------------------------------------------------------------------
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
-    "pytest-env>=1.1.0",
+    "pytest-env>=1.8.1",
     "pre-commit>=3.5.0",
-    "ruff~=0.17.0",
+    "ruff~=0.17.1",
     "yapf>=0.40.0",
     "mypy>=2.3.0",
-    "fakeredis[lua]>=2.20.0",
+    "fakeredis[lua]>=2.40.0",
     # Workspace packages for testing
-    "aiq-agent",
+    "agent",
     "tavily-web-search",
     "ris-adapter",
     "knowledge-layer[all]",
-    "aiq-api",
+    "agent-host",
     # The eval harness (evals/), so its tests and `task be:eval:*` import it
     # by name. Path sources, not workspace members: the backend image's
     # `uv sync --all-packages` would otherwise need evals/ in its build context.
@@ -286,13 +286,13 @@ members = [
     "packages/knowledge-layer",
     "packages/ris-adapter",
     "packages/tavily-web-search",
-    "apps/backend",
+    "apps/agent-host",
 ]
 
 [tool.uv.sources]
-aiq-agent = { workspace = true }
+agent = { workspace = true }
 tavily-web-search = { workspace = true }
 ris-adapter = { workspace = true }
 knowledge-layer = { workspace = true }
-aiq-api = { workspace = true }
+agent-host = { workspace = true }
 oib-retrieval = { path = "evals/oib-retrieval", editable = true }

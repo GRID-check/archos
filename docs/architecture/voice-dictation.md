@@ -51,7 +51,7 @@ would have typed.
 ## How a recording travels
 
 ```
-Browser (features/dictation)          BFF (lib/dictation)                 Python (aiq_api/routes/dictation.py)        OpenRouter
+Browser (features/dictation)          BFF (lib/dictation)                 Python (agent_host/routes/dictation.py)        OpenRouter
 ───────────────────────────           ───────────────────                 ────────────────────────────────────        ──────────
 MediaRecorder, ≤45 s, 64 kbit/s
 level meter: silent? → stop here
@@ -75,8 +75,8 @@ insertTranscript at caret ◀──────────
 | Where the text goes | `apps/workspace/ui/features/dictation/lib/insert-transcript.ts` |
 | Bounds shared by both sides | `apps/workspace/bff/dictation/contract.ts` |
 | The BFF route and service | `apps/workspace/app/api/dictation/route.ts`, `apps/workspace/bff/dictation/service.ts` |
-| The provider call, models, fallback, ledger row | `apps/backend/src/aiq_api/routes/dictation.py` |
-| Filler removal and silence phrases | `apps/backend/src/aiq_api/routes/_dictation_text.py` |
+| The provider call, models, fallback, ledger row | `apps/agent-host/src/agent_host/routes/dictation.py` |
+| Filler removal and silence phrases | `apps/agent-host/src/agent_host/routes/_dictation_text.py` |
 | The composer's side | `apps/workspace/ui/features/layout/components/InputArea.tsx` (`handleTranscript`) |
 | Preview | `/dev/dictation` |
 

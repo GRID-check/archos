@@ -13,18 +13,18 @@ import dataclasses
 
 import pytest
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.session import _registry_from_cached_entries
-from aiq_agent.citations.wire import read_source_to_wire
-from aiq_agent.citations.wire import source_entry_to_wire
-from aiq_agent.common.grounding_block import GroundingBlock
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import SourceRegion
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import render_grounding_block
+from agent.citations.entries import SourceEntry
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.registry import SourceRegistry
+from agent.citations.session import _registry_from_cached_entries
+from agent.citations.wire import read_source_to_wire
+from agent.citations.wire import source_entry_to_wire
+from agent.common.grounding_block import GroundingBlock
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import SourceRegion
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import render_grounding_block
 
 FLOOR_PLAN = SourceRegion(box=(0.1, 0.2, 0.5, 0.6), label="Grundriss EG")
 SECTION = SourceRegion(box=(0.55, 0.2, 0.9, 0.6), label=None)

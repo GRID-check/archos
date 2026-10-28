@@ -48,7 +48,7 @@ import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 
 const ANNA: DraftMention = { targetId: 'user_anna', display: 'Anna Berger' }
 const TOBIAS: DraftMention = { targetId: 'user_tobias', display: 'Tobias Kern' }
-const PILOTI: DraftMention = { targetId: AGENT_MENTION_ID, display: 'Piloti' }
+const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: 'Piloti' }
 
 /**
  * The composer's chrome, reproduced. Only the action row matters for this preview,
@@ -194,7 +194,7 @@ function Previews(): JSX.Element {
       <section className="space-y-3">
         <Eyebrow>Person und Piloti erwähnt — beide werden adressiert</Eyebrow>
         <MockComposer text="@Anna Berger @Piloti bitte gemeinsam prüfen.">
-          <AddresseeIndicator mentions={[ANNA, PILOTI]} awaitingHuman />
+          <AddresseeIndicator mentions={[ANNA, AGENT]} awaitingHuman />
         </MockComposer>
       </section>
     </>

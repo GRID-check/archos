@@ -28,7 +28,7 @@ import { findFiledResearchReport, findReportFilingRefusal, queueResearchReportFi
 const READER = {
   userId: 'user-1',
   organizationId: 'org-1',
-  email: 'user@grid.example',
+  email: 'user@app.example',
   name: 'Test User',
   accessToken: 'token-abc',
   organizationMembershipId: 'membership-1',

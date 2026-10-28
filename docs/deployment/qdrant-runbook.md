@@ -761,7 +761,7 @@ Qdrant cannot skip a minor, and a snapshot restores only into the same or the
 next minor, so a failed upgrade is undone by restoring the snapshot taken
 before it, on the old version.
 
-1. Read the release notes of the next minor, and diff `data/qdrant.ts` against
+1. Read the release notes of the next minor, and diff `deploy/pulumi/src/data/qdrant.ts` against
    `qdrant-helm` at that version (probes, the bootstrap script, new config).
 2. If the notes change internal (p2p) authentication, the roll must run with
    `ENFORCE_INTERNAL_AUTH` off (remove it in `qdrantEnv` for this deploy and

@@ -19,10 +19,10 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from pydantic import Field
 
-from aiq_agent.common import provider_limiter as pl
-from aiq_agent.common.llm_factory import enforce_chat_request_contract
-from aiq_agent.common.openrouter import pinned_async_http_client
-from aiq_agent.common.openrouter import pinned_http_client
+from agent.common import provider_limiter as pl
+from agent.common.llm_factory import enforce_chat_request_contract
+from agent.common.openrouter import pinned_async_http_client
+from agent.common.openrouter import pinned_http_client
 from tests.provider_doubles import StrictProviderChatModel
 
 
@@ -242,7 +242,7 @@ def test_a_429_response_is_recorded_and_its_slot_is_free_for_the_retry(store, mo
 
 
 def test_the_model_of_a_request_labels_its_429(monkeypatch):
-    from aiq_agent.common.openrouter import _request_model
+    from agent.common.openrouter import _request_model
 
     big = b'{"messages": [{"image": "' + b"A" * 2_000_000 + b'"}], "model": "vendor/vision", "x": 1}'
     request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions", content=big)
@@ -310,7 +310,7 @@ async def test_the_async_transport_records_a_429(store, monkeypatch):
 
 
 def test_a_chat_turn_runs_in_the_chat_class():
-    from aiq_agent.turn import admission
+    from agent.turn import admission
 
     seen: list[str] = []
 
@@ -329,7 +329,7 @@ def test_a_chat_turn_runs_in_the_chat_class():
 
 
 def test_a_research_job_runs_in_the_research_class():
-    from aiq_api.jobs import agent_job
+    from agent_host.jobs import agent_job
 
     assert getattr(agent_job.run_agent_job, "__wrapped__", None) is not None
     assert inspect.iscoroutinefunction(agent_job.run_agent_job)
@@ -338,9 +338,9 @@ def test_a_research_job_runs_in_the_research_class():
 def test_a_queued_ingest_job_runs_in_the_class_of_its_priority(monkeypatch):
     import threading
 
-    import aiq_api.jobs.ingest_dispatch as dispatch
-    from aiq_agent.knowledge.base import PreparedIngestJob
-    from aiq_api.jobs.ingest_dispatch import QueueSource
+    import agent_host.jobs.ingest_dispatch as dispatch
+    from agent.knowledge.base import PreparedIngestJob
+    from agent_host.jobs.ingest_dispatch import QueueSource
 
     seen: list[str] = []
 

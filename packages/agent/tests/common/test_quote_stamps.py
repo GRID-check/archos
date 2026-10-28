@@ -8,10 +8,10 @@ against says nothing, and the passage the line cites wins a tie.
 
 from __future__ import annotations
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.common.quote_stamps import quote_lines
-from aiq_agent.common.quote_stamps import stamp_quote_lines
-from aiq_agent.common.quote_stamps import verification_for
+from agent.citations.entries import SourceEntry
+from agent.common.quote_stamps import quote_lines
+from agent.common.quote_stamps import stamp_quote_lines
+from agent.common.quote_stamps import verification_for
 
 PASSAGE = (
     "3.1.1 Brandabschnitte dürfen eine Nettogrundfläche von höchstens 1.200 m² und eine "

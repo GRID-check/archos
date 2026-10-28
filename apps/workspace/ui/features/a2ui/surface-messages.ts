@@ -9,25 +9,25 @@
 
 import type { A2uiMessage } from '@a2ui/web_core/v0_9'
 
-import type { GridCard } from '@/shared/cards/schemas'
-import { gridCardSchema } from '@/shared/cards/schemas'
-import { modernizeGridCard } from '@/shared/cards/legacy'
-import { cardTypeOf, PILOTI_CATALOG_ID, SURFACE_EXCLUDED_LEAVES, TEXT_COMPONENT } from './catalog'
+import type { AnswerCard } from '@/shared/cards/schemas'
+import { answerCardSchema } from '@/shared/cards/schemas'
+import { modernizeAnswerCard } from '@/shared/cards/legacy'
+import { cardTypeOf, CARDS_CATALOG_ID, SURFACE_EXCLUDED_LEAVES, TEXT_COMPONENT } from './catalog'
 
-const CARD_TYPES: ReadonlySet<string> = new Set(gridCardSchema.options.map(cardTypeOf))
+const CARD_TYPES: ReadonlySet<string> = new Set(answerCardSchema.options.map(cardTypeOf))
 
-type SurfaceCard = Extract<GridCard, { type: 'surface' }>
+type SurfaceCard = Extract<AnswerCard, { type: 'surface' }>
 
 /** The component list a card is drawn from. */
-export function surfaceComponents(card: GridCard): Record<string, unknown>[] {
+export function surfaceComponents(card: AnswerCard): Record<string, unknown>[] {
   if (card.type === 'surface') return (card as SurfaceCard).components
   const { type, ...props } = card
   return [{ id: 'root', component: type, ...props }]
 }
 
-export function cardToSurfaceMessages(card: GridCard, surfaceId: string): A2uiMessage[] {
+export function cardToSurfaceMessages(card: AnswerCard, surfaceId: string): A2uiMessage[] {
   return [
-    { version: 'v0.9', createSurface: { surfaceId, catalogId: PILOTI_CATALOG_ID } },
+    { version: 'v0.9', createSurface: { surfaceId, catalogId: CARDS_CATALOG_ID } },
     { version: 'v0.9', updateComponents: { surfaceId, components: surfaceComponents(card) } },
   ] as A2uiMessage[]
 }
@@ -40,7 +40,7 @@ export interface TextLeaf {
 /** One leaf of a surface, under the id the surface gave it. */
 export interface SurfaceLeaf {
   id: string
-  leaf: GridCard | TextLeaf
+  leaf: AnswerCard | TextLeaf
 }
 
 /**
@@ -51,19 +51,19 @@ export interface SurfaceLeaf {
  * (`SURFACE_EXCLUDED_LEAVES`): the fallback is what a refused surface draws,
  * and an interactive card refused there must not come back through it. A card
  * leaf that fails its own schema is dropped too, with a warning as
- * `validateGridCards` leaves: a surface's components are typed as open records,
+ * `validateAnswerCards` leaves: a surface's components are typed as open records,
  * so nothing upstream checked the leaf, and `preflight` refusing it is exactly
  * what sends the surface here. A kept leaf is the parsed card, defaults applied.
  */
-export function surfaceLeaves(card: GridCard): SurfaceLeaf[] {
+export function surfaceLeaves(card: AnswerCard): SurfaceLeaf[] {
   return surfaceComponents(card).flatMap(({ id, component, ...props }): SurfaceLeaf[] => {
     const leafId = String(id)
     if (component === TEXT_COMPONENT && typeof props.text === 'string') return [{ id: leafId, leaf: { text: props.text } }]
     const type = String(component)
     if (!CARD_TYPES.has(type) || SURFACE_EXCLUDED_LEAVES.has(type)) return []
-    const result = gridCardSchema.safeParse(modernizeGridCard({ ...props, type }))
+    const result = answerCardSchema.safeParse(modernizeAnswerCard({ ...props, type }))
     if (result.success) return [{ id: leafId, leaf: result.data }]
-    console.warn('[GridCards] Dropping surface leaf that failed schema validation', type, leafId, result.error.issues)
+    console.warn('[AnswerCards] Dropping surface leaf that failed schema validation', type, leafId, result.error.issues)
     return []
   })
 }

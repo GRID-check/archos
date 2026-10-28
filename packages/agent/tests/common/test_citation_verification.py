@@ -5,23 +5,23 @@ from urllib.parse import urlparse
 
 import pytest
 
-from aiq_agent.citations.binding import source_lane
-from aiq_agent.citations.binding import source_origin_token
-from aiq_agent.citations.citation_keys import parse_citation_key
-from aiq_agent.citations.citation_keys import parse_citation_ref
-from aiq_agent.citations.entries import EmptySourceRegistryError
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.references import is_knowledge_citation
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.report_layout import format_registry_reference
-from aiq_agent.citations.sanitize import sanitize_report
-from aiq_agent.citations.text_parsers import _PARSER_REGISTRY
-from aiq_agent.citations.text_parsers import register_source_parser
-from aiq_agent.citations.verification import cited_document_entries
-from aiq_agent.citations.verification import verify_citations
-from aiq_agent.citations.wire import source_entry_to_wire
+from agent.citations.binding import source_lane
+from agent.citations.binding import source_origin_token
+from agent.citations.citation_keys import parse_citation_key
+from agent.citations.citation_keys import parse_citation_ref
+from agent.citations.entries import EmptySourceRegistryError
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import normalize_url
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.references import is_knowledge_citation
+from agent.citations.registry import SourceRegistry
+from agent.citations.report_layout import format_registry_reference
+from agent.citations.sanitize import sanitize_report
+from agent.citations.text_parsers import _PARSER_REGISTRY
+from agent.citations.text_parsers import register_source_parser
+from agent.citations.verification import cited_document_entries
+from agent.citations.verification import verify_citations
+from agent.citations.wire import source_entry_to_wire
 
 
 @pytest.fixture(autouse=True)
@@ -1802,29 +1802,29 @@ class TestSessionRegistry:
 
     def setup_method(self):
         """Clear session registries before each test."""
-        from aiq_agent.citations.session import _session_registries
-        from aiq_agent.citations.session import _session_registries_lock
+        from agent.citations.session import _session_registries
+        from agent.citations.session import _session_registries_lock
 
         with _session_registries_lock:
             _session_registries.clear()
 
     def test_get_or_create_returns_same_instance(self):
-        from aiq_agent.citations.session import get_or_create_session_registry
+        from agent.citations.session import get_or_create_session_registry
 
         r1 = get_or_create_session_registry("session-1")
         r2 = get_or_create_session_registry("session-1")
         assert r1 is r2
 
     def test_different_sessions_different_registries(self):
-        from aiq_agent.citations.session import get_or_create_session_registry
+        from agent.citations.session import get_or_create_session_registry
 
         r1 = get_or_create_session_registry("session-a")
         r2 = get_or_create_session_registry("session-b")
         assert r1 is not r2
 
     def test_contextvar_set_and_get(self):
-        from aiq_agent.citations.session import get_session_registry
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import get_session_registry
+        from agent.citations.session import set_session_registry
 
         assert get_session_registry() is None
         reg = SourceRegistry()
@@ -1834,10 +1834,10 @@ class TestSessionRegistry:
         assert get_session_registry() is None
 
     def test_lru_eviction(self):
-        from aiq_agent.citations.session import _MAX_SESSION_REGISTRIES
-        from aiq_agent.citations.session import _session_registries
-        from aiq_agent.citations.session import _session_registries_lock
-        from aiq_agent.citations.session import get_or_create_session_registry
+        from agent.citations.session import _MAX_SESSION_REGISTRIES
+        from agent.citations.session import _session_registries
+        from agent.citations.session import _session_registries_lock
+        from agent.citations.session import get_or_create_session_registry
 
         # Fill to max + 10
         for i in range(_MAX_SESSION_REGISTRIES + 10):
@@ -1847,7 +1847,7 @@ class TestSessionRegistry:
 
     def test_sources_persist_across_calls(self):
         """Sources added to a session registry persist when retrieved again."""
-        from aiq_agent.citations.session import get_or_create_session_registry
+        from agent.citations.session import get_or_create_session_registry
 
         reg = get_or_create_session_registry("persist-test")
         reg.add(SourceEntry(url="https://example.com/first"))
@@ -1918,7 +1918,7 @@ class TestSourceLane:
         assert source_lane(entry) == ("building_law_ris", "Rechtsquelle (RIS)")
 
     def test_explicit_doc_class_wire_kind_is_baurecht(self):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         entry = SourceEntry(
             citation_key="randomname.pdf, p.1",
@@ -1949,8 +1949,8 @@ class TestPrecedentLandOnTheWire:
     )
 
     def _hit(self, federal_state_note: str | None):
-        from aiq_agent.common.grounding_block import GroundingHit
-        from aiq_agent.common.grounding_block import SourceProject
+        from agent.common.grounding_block import GroundingHit
+        from agent.common.grounding_block import SourceProject
 
         return GroundingHit(
             citation_key="Detail Traufe.pdf (Wohnbau Graz), p.3",
@@ -1977,8 +1977,8 @@ class TestPrecedentLandOnTheWire:
         )
 
     def test_the_producers_federal_state_note_reaches_the_wire_verbatim(self):
-        from aiq_agent.citations.extraction import _entry_from_hit
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.extraction import _entry_from_hit
+        from agent.citations.wire import source_entry_to_wire
 
         entry = _entry_from_hit(self._hit(self.FEDERAL_STATE_NOTE), "project_lookup")
 
@@ -1990,15 +1990,15 @@ class TestPrecedentLandOnTheWire:
         }
 
     def test_the_wire_states_no_federal_state_note_the_producer_did_not_state(self):
-        from aiq_agent.citations.extraction import _entry_from_hit
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.extraction import _entry_from_hit
+        from agent.citations.wire import source_entry_to_wire
 
         entry = _entry_from_hit(self._hit(None), "project_lookup")
 
         assert "federalStateNote" not in source_entry_to_wire(entry)["project"]
 
     def test_a_replayed_turn_reads_the_land_back_from_its_text(self):
-        from aiq_agent.citations.grounding_text import parse_knowledge_layer
+        from agent.citations.grounding_text import parse_knowledge_layer
 
         text = self.RESULT.format(project=self.PROJECT_LINE, federal_state=f"Bundesland: {self.FEDERAL_STATE_NOTE}\n")
 
@@ -2007,7 +2007,7 @@ class TestPrecedentLandOnTheWire:
         assert entry.project_federal_state_note == self.FEDERAL_STATE_NOTE
 
     def test_a_replayed_hit_without_a_federal_state_line_states_none(self):
-        from aiq_agent.citations.grounding_text import parse_knowledge_layer
+        from agent.citations.grounding_text import parse_knowledge_layer
 
         (entry,) = parse_knowledge_layer(
             self.RESULT.format(project=self.PROJECT_LINE, federal_state=""), "project_lookup"
@@ -2020,13 +2020,13 @@ class TestWireCitationNumber:
     """The wire carries the [N] label a source has in the answer prose."""
 
     def test_number_is_emitted_when_known(self):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         entry = SourceEntry(citation_key="oib-rl_4_ausgabe_mai_2023.pdf, p.9", source_type="knowledge_layer")
         assert source_entry_to_wire(entry, number=3)["number"] == 3
 
     def test_number_is_absent_when_unknown(self):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         entry = SourceEntry(url="https://example.com/a", title="A")
         assert "number" not in source_entry_to_wire(entry)
@@ -2036,7 +2036,7 @@ class TestKnowledgeLayerDocClassParsing:
     """The knowledge-layer parser reads the Dokumentart field into doc_class."""
 
     def test_parses_doc_class_key_and_label(self):
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         content = (
             "--- Result 1 ---\n"
@@ -2074,7 +2074,7 @@ class TestAgentAuthoredProvenanceParsing:
         (entry,) = extract_sources_from_tool_result("knowledge_search", "\n".join(lines) + "\n")
         return entry
 
-    def test_a_marked_hit_carries_its_author_and_takes_the_piloti_lane(self):
+    def test_a_marked_hit_carries_its_author_and_takes_the_agent_lane(self):
         entry = self._entry("Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026")
         assert entry.authored_by == "agent"
         # And the lane beats the project shelf the same hit states.
@@ -2120,7 +2120,7 @@ class TestAgentAuthoredDocumentNames:
         return registry
 
     def test_both_identities_a_model_could_name_are_included(self):
-        from aiq_agent.citations.binding import agent_authored_document_names
+        from agent.citations.binding import agent_authored_document_names
 
         registry = self._registry(
             SourceEntry(
@@ -2136,7 +2136,7 @@ class TestAgentAuthoredDocumentNames:
         assert agent_authored_document_names(registry) == frozenset({"brandschutzkonzept haus b"})
 
     def test_human_documents_are_never_listed(self):
-        from aiq_agent.citations.binding import agent_authored_document_names
+        from agent.citations.binding import agent_authored_document_names
 
         registry = self._registry(
             SourceEntry(citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.12", source_type="knowledge_layer"),
@@ -2145,7 +2145,7 @@ class TestAgentAuthoredDocumentNames:
         assert agent_authored_document_names(registry) == frozenset()
 
     def test_no_registry_is_an_empty_set_not_a_failure(self):
-        from aiq_agent.citations.binding import agent_authored_document_names
+        from agent.citations.binding import agent_authored_document_names
 
         assert agent_authored_document_names(None) == frozenset()
 
@@ -2154,7 +2154,7 @@ class TestAgentAuthoredDocumentNames:
         a field lost there is a gate that silently stops firing mid-conversation."""
         import dataclasses
 
-        from aiq_agent.citations.session import _registry_from_cached_entries
+        from agent.citations.session import _registry_from_cached_entries
 
         entry = SourceEntry(
             citation_key="piloti/doc-42/konzept.md, p.1", source_type="knowledge_layer", authored_by="agent"
@@ -2167,10 +2167,10 @@ class TestTurnCaptureLog:
     """Per-turn retrieval, kept apart from the cumulative session registry."""
 
     def _capture(self, *entries: SourceEntry) -> list[SourceEntry]:
-        from aiq_agent.citations.session import begin_turn_capture
-        from aiq_agent.citations.session import end_turn_capture
-        from aiq_agent.citations.session import get_turn_captures
-        from aiq_agent.citations.session import record_turn_capture
+        from agent.citations.session import begin_turn_capture
+        from agent.citations.session import end_turn_capture
+        from agent.citations.session import get_turn_captures
+        from agent.citations.session import record_turn_capture
 
         token = begin_turn_capture()
         try:
@@ -2201,8 +2201,8 @@ class TestTurnCaptureLog:
         assert len(captured) == 1
 
     def test_outside_a_turn_nothing_is_recorded(self):
-        from aiq_agent.citations.session import get_turn_captures
-        from aiq_agent.citations.session import record_turn_capture
+        from agent.citations.session import get_turn_captures
+        from agent.citations.session import record_turn_capture
 
         record_turn_capture([SourceEntry(citation_key="stray.pdf", source_type="knowledge_layer")])
         assert get_turn_captures() == []
@@ -2256,7 +2256,7 @@ class TestKnowledgeCitationLineFormats:
         ],
     )
     def test_line_is_kept_and_resolves_to_the_cited_page(self, line, expected_page):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         registry = self._registry()
         result = verify_citations(f"Antwort [1].\n\n## Quellen\n{line}\n", registry)
@@ -2283,7 +2283,7 @@ class TestKnowledgeCitationLineFormats:
         assert result.removed_citations[0]["reason"] == "citation_key_not_in_registry"
 
     def test_the_more_specific_registered_filename_wins(self):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         reg = SourceRegistry()
         reg.add(SourceEntry(citation_key="plan.pdf, p.1", source_type="knowledge_layer"))
@@ -2309,14 +2309,14 @@ class TestCitedPageResolution:
         assert entry is not None and entry.citation_key == "oib-rl_2.pdf, p.30"
 
     def test_wire_page_matches_the_cited_page(self):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         entry = self._registry().entry_for_citation_key("oib-rl_2.pdf, p.30")
         assert source_entry_to_wire(entry)["page"] == 30
 
     def test_unretrieved_page_still_resolves_to_a_retrieved_one(self):
         """A page the retrieval never returned must not deep-link to itself."""
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         entry = self._registry().entry_for_citation_key("oib-rl_2.pdf, p.47")
         assert entry is not None
@@ -2549,7 +2549,7 @@ class TestKnowledgeLayerFieldsAreBlockScoped:
     )
 
     def _entries(self):
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         return extract_sources_from_tool_result("knowledge_search", self.MIXED_OUTPUT)
 
@@ -2573,7 +2573,7 @@ class TestKnowledgeLayerFieldsAreBlockScoped:
 
     def test_project_upload_is_not_rendered_as_building_law(self):
         """The user-visible consequence: chip colour and authority badge."""
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         first, second = self._entries()
         assert source_lane(first) == ("project", "Projektwissen")
@@ -2597,7 +2597,7 @@ class TestKnowledgeLayerFieldsAreBlockScoped:
         OPENED rather than searched was then dropped as
         ``citation_key_not_in_registry``.
         """
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         content = "--- Result 1 ---\nSource: real.pdf\nCitation: real.pdf, p.1\nRelevance Score: 0.9\n\nbody\n"
         for tool_name in ("knowledge_search", "ris_lookup", "read_passage"):
@@ -2605,7 +2605,7 @@ class TestKnowledgeLayerFieldsAreBlockScoped:
             assert [(e.citation_key, e.source_type) for e in entries] == [("real.pdf, p.1", "knowledge_layer")]
 
     def test_block_without_a_citation_field_is_skipped(self):
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         content = (
             "--- Result 1 ---\nSource: orphan.pdf\nRelevance Score: 0.5\n\nbody\n\n"
@@ -2616,7 +2616,7 @@ class TestKnowledgeLayerFieldsAreBlockScoped:
 
     def test_output_without_block_markers_still_parses(self):
         """A non-``_format_results`` producer keeps the legacy positional path."""
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         content = "Source: legacy.pdf\nCollection: oib_knowledge\nCitation: legacy.pdf, p.2\n"
         entries = extract_sources_from_tool_result("knowledge_search", content)
@@ -2644,7 +2644,7 @@ class TestVerifyQuotedSpans:
     )
 
     def _registry(self, *chunks: str) -> SourceRegistry:
-        from aiq_agent.citations.entries import SourceEntry
+        from agent.citations.entries import SourceEntry
 
         reg = SourceRegistry()
         for i, chunk in enumerate(chunks, 1):
@@ -2673,7 +2673,7 @@ class TestVerifyQuotedSpans:
         drawing. The confidence chip was collateral: the same flags cap the turn
         at "low" on an otherwise well-sourced answer.
         """
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = (
@@ -2690,14 +2690,14 @@ class TestVerifyQuotedSpans:
     def test_an_untagged_code_fence_is_skipped_too(self):
         # The model opens a fence bare at least as often as it tags it, so the
         # skip cannot be keyed on the language.
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = 'Beispiel:\n\n```\nprint("eine voellig erfundene Behauptung")\n```\n\n## Sources\n[1] doc1.pdf, p.1'
         assert verify_quoted_spans(answer, reg) == []
 
     def test_inline_code_is_skipped(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = 'Schreiben Sie `A["erfundener Knoten"]` in den Graphen.\n\n## Sources\n[1] doc1.pdf, p.1'
@@ -2706,7 +2706,7 @@ class TestVerifyQuotedSpans:
     def test_an_unterminated_fence_runs_to_the_end(self):
         # A streaming answer meets this function mid-fence routinely; half a
         # diagram is still code.
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = 'Der Ablauf:\n\n```mermaid\nflowchart TD\n  A["noch unfertig"] --> B["zweiter Knoten"]'
@@ -2714,7 +2714,7 @@ class TestVerifyQuotedSpans:
 
     def test_prose_around_a_fence_is_still_verified(self):
         """The guard must survive the fix — this is its whole purpose."""
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = (
@@ -2726,7 +2726,7 @@ class TestVerifyQuotedSpans:
         assert [q.quote for q in unverified] == ["Bauwerke muessen mit einer Loeschanlage ausgestattet sein"]
 
     def test_verbatim_quote_passes(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = (
@@ -2736,7 +2736,7 @@ class TestVerifyQuotedSpans:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_fabricated_quote_flagged(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = (
@@ -2764,9 +2764,9 @@ class TestVerifyQuotedSpans:
         """PB-7 adversarial: a quote spliced from phrases scattered across the
         chunk's clauses must FAIL verification (fails on the old summed-block
         metric, passes with the local-window metric)."""
-        from aiq_agent.citations.quote_matching import normalize_for_quote_match
-        from aiq_agent.citations.quote_matching import normalized_coverage
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_matching import normalize_for_quote_match
+        from agent.citations.quote_matching import normalized_coverage
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.SPLICE_CHUNK)
         answer = f'Die Norm verlangt „{self.SPLICE_QUOTE}" [1].\n\n## Sources\n[1] doc1.pdf, p.1'
@@ -2809,9 +2809,9 @@ class TestVerifyQuotedSpans:
         ("der Massnahme.") is skipped over — the quote is genuinely NOT a
         substring of the chunk, i.e. a fabrication rather than a retrieval miss.
         """
-        from aiq_agent.citations.quote_matching import normalize_for_quote_match
-        from aiq_agent.citations.quote_matching import normalized_coverage
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_matching import normalize_for_quote_match
+        from agent.citations.quote_matching import normalized_coverage
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.ADJACENT_SPLICE_CHUNK)
         answer = f'Die Regel lautet „{self.ADJACENT_SPLICE_QUOTE}" [1].\n\n## Sources\n[1] doc1.pdf, p.1'
@@ -2834,9 +2834,9 @@ class TestVerifyQuotedSpans:
 
     def test_verbatim_substring_quote_verified(self):
         """A quote that IS a verbatim substring of the chunk scores ~1.0."""
-        from aiq_agent.citations.quote_matching import normalize_for_quote_match
-        from aiq_agent.citations.quote_matching import normalized_coverage
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_matching import normalize_for_quote_match
+        from agent.citations.quote_matching import normalized_coverage
+        from agent.citations.quote_verification import verify_quoted_spans
 
         chunk = f"Vorbemerkung. {self.SPLICE_QUOTE} Weitere Hinweise folgen im Anhang."
         reg = self._registry(chunk)
@@ -2855,7 +2855,7 @@ class TestVerifyQuotedSpans:
         extra whitespace, a hyphenation line-wrap in the chunk, German „…“ marks,
         and a single OCR character swap all still land above threshold.
         """
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         # Chunk carries a hyphenation line-wrap ("Feuerwiderstands-\ndauer") plus a
         # single OCR char swap ("betragan" for "betragen").
@@ -2873,7 +2873,7 @@ class TestVerifyQuotedSpans:
 
     def test_wholly_fabricated_quote_unverified(self):
         """A quote whose words do not appear in the chunk is unverified."""
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.SPLICE_CHUNK)
         answer = (
@@ -2885,7 +2885,7 @@ class TestVerifyQuotedSpans:
         assert unverified[0].best_coverage < 0.90
 
     def test_german_and_ascii_quotes_both_scanned(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         # A curly “…”, a German „…", and an ASCII "…" — all fabricated.
@@ -2899,7 +2899,7 @@ class TestVerifyQuotedSpans:
         assert len(unverified) == 3
 
     def test_short_quote_skipped(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         # "§ 3 Abs 1" normalizes below MIN_QUOTE_LEN (20) → never scanned.
@@ -2907,7 +2907,7 @@ class TestVerifyQuotedSpans:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_paraphrase_without_quotes_not_flagged(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         # Paraphrase in prose, NO quote marks → nothing to scan.
@@ -2918,7 +2918,7 @@ class TestVerifyQuotedSpans:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_whole_registry_match_across_multiple_sources(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         # The quote matches source 2's chunk even though source 1 is unrelated.
         reg = self._registry(
@@ -2932,8 +2932,8 @@ class TestVerifyQuotedSpans:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_no_chunk_text_fails_open(self):
-        from aiq_agent.citations.entries import SourceEntry
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.entries import SourceEntry
+        from agent.citations.quote_verification import verify_quoted_spans
 
         # URL-only web sources carry no chunk_text: nothing to verify against, so
         # even a wild fabricated quote must NOT be flagged (fail-open).
@@ -2943,7 +2943,7 @@ class TestVerifyQuotedSpans:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_quotes_in_sources_section_not_scanned(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         # The fabricated-looking quote lives in the Sources section → ignored.
@@ -2954,9 +2954,9 @@ class TestVerifyQuotedSpans:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_annotation_inserted_after_the_right_span(self):
-        from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
-        from aiq_agent.citations.quote_verification import annotate_unverified_quotes
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.entries import UNVERIFIED_QUOTE_MARKER
+        from agent.citations.quote_verification import annotate_unverified_quotes
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = (
@@ -2975,9 +2975,9 @@ class TestVerifyQuotedSpans:
         assert "ein voellig erfundener Satz ohne jede Deckung in der Quelle" in annotated
 
     def test_annotation_idempotent(self):
-        from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
-        from aiq_agent.citations.quote_verification import annotate_unverified_quotes
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.entries import UNVERIFIED_QUOTE_MARKER
+        from agent.citations.quote_verification import annotate_unverified_quotes
+        from agent.citations.quote_verification import verify_quoted_spans
 
         reg = self._registry(self.CHUNK)
         answer = 'Er sagt „ein voellig frei erfundener Satz ohne jeden Beleg hier" [1].'
@@ -2988,7 +2988,7 @@ class TestVerifyQuotedSpans:
         assert twice.count(UNVERIFIED_QUOTE_MARKER) == 1
 
     def test_empty_unverified_returns_answer_unchanged(self):
-        from aiq_agent.citations.quote_verification import annotate_unverified_quotes
+        from agent.citations.quote_verification import annotate_unverified_quotes
 
         assert annotate_unverified_quotes("hello world", []) == "hello world"
 
@@ -3024,7 +3024,7 @@ class TestKnowledgeLayerChunkTextCapture:
         )
 
     def test_chunk_text_captured_per_block(self):
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         entries = extract_sources_from_tool_result("knowledge_search", self._tool_output())
         assert len(entries) == 2
@@ -3035,7 +3035,7 @@ class TestKnowledgeLayerChunkTextCapture:
         assert "lanes" not in entries[1].chunk_text
 
     def test_truncated_marker_stripped(self):
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         body = "A" * 1500
         content = (
@@ -3052,7 +3052,7 @@ class TestKnowledgeLayerChunkTextCapture:
         assert "[truncated]" not in entries[0].chunk_text
 
     def test_dedup_same_page_appends_chunk_text(self):
-        from aiq_agent.citations.entries import SourceEntry
+        from agent.citations.entries import SourceEntry
 
         reg = SourceRegistry()
         reg.add(SourceEntry(citation_key="d.pdf, p.5", source_type="knowledge_layer", chunk_text="first chunk body"))
@@ -3064,8 +3064,8 @@ class TestKnowledgeLayerChunkTextCapture:
         assert "second chunk body" in kb[0].chunk_text
 
     def test_chunk_text_round_trips_through_cache(self):
-        from aiq_agent.citations.entries import SourceEntry
-        from aiq_agent.citations.session import _registry_from_cached_entries
+        from agent.citations.entries import SourceEntry
+        from agent.citations.session import _registry_from_cached_entries
 
         original = SourceEntry(
             citation_key="d.pdf, p.1",
@@ -3086,8 +3086,8 @@ class TestKnowledgeLayerChunkTextCapture:
         """
         import dataclasses
 
-        from aiq_agent.citations.entries import SourceEntry
-        from aiq_agent.citations.session import _registry_from_cached_entries
+        from agent.citations.entries import SourceEntry
+        from agent.citations.session import _registry_from_cached_entries
 
         original = SourceEntry(
             citation_key="oib-rl_2.pdf, p.12",
@@ -3365,13 +3365,13 @@ class TestBindingClassification:
 
     @staticmethod
     def _registry(*entries):
-        from aiq_agent.common.norm_registry import NormEntry
-        from aiq_agent.common.norm_registry import NormRegistry
+        from agent.common.norm_registry import NormEntry
+        from agent.common.norm_registry import NormRegistry
 
         return NormRegistry(entries=[NormEntry(**e) for e in entries])
 
     def test_ris_federal_law_is_binding(self):
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         registry = self._registry(
             {
@@ -3392,7 +3392,7 @@ class TestBindingClassification:
         # The OIB corpus is NOT in the registry, but a curated entry can catalogue
         # it: matching WIDENS beyond RIS URLs to the entry's alias against the
         # source's filename. behoerdliche_info (the OIB-covering lane) -> declared binding.
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         registry = self._registry(
             {
@@ -3416,7 +3416,7 @@ class TestBindingClassification:
         # No registry entry at all: the OIB Richtlinie is recognised from its
         # corpus filename convention. rank stays None (the corpus carries no RIS
         # rank) but the role is honest — the Richtlinie is what a Land declares binding.
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         entry = SourceEntry(
             citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.5",
@@ -3427,7 +3427,7 @@ class TestBindingClassification:
         assert result.binding_status == "declared_binding"
 
     def test_oib_guide_is_interpretive(self):
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         entry = SourceEntry(
             citation_key="oib-rl_6-leitfaden_ausgabe_mai_2023.pdf, p.2",
@@ -3441,7 +3441,7 @@ class TestBindingClassification:
         # The whole point: a source matching no catalogued norm is honestly
         # unknown, NEVER a guessed rank. A fabricated "binding" badge would be a
         # false legal claim.
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         entry = SourceEntry(
             citation_key="internes_projektmemo.pdf, p.1",
@@ -3455,7 +3455,7 @@ class TestBindingClassification:
         # Bundesland is respected: a Wien landesgesetz entry must never lend its
         # rank to a Tyrolean project. It matches for Wien, and falls through to
         # unknown for Tirol rather than lying.
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         registry = self._registry(
             {
@@ -3480,7 +3480,7 @@ class TestBindingClassification:
         assert for_tirol.binding_status == "unknown"
 
     def test_external_standard_is_interpretive(self):
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         registry = self._registry(
             {
@@ -3497,7 +3497,7 @@ class TestBindingClassification:
         assert result.binding_status == "interpretive"
 
     def test_plain_web_source_is_unknown(self):
-        from aiq_agent.citations.binding import binding_classification_for_entry
+        from agent.citations.binding import binding_classification_for_entry
 
         entry = SourceEntry(url="https://example.com/some-blog", title="A blog post")
         result = binding_classification_for_entry(entry, self._registry())
@@ -3507,8 +3507,8 @@ class TestBindingClassification:
     def test_fail_open_when_registry_load_raises(self, monkeypatch):
         # A binding classification must never take a turn down: a registry that
         # raises on load yields unknown, not an exception.
-        from aiq_agent.citations.binding import binding_classification_for_entry
-        from aiq_agent.common import norm_registry
+        from agent.citations.binding import binding_classification_for_entry
+        from agent.common import norm_registry
 
         def boom(*_args, **_kwargs):
             raise RuntimeError("registry unavailable")
@@ -3520,8 +3520,8 @@ class TestBindingClassification:
         assert result.binding_status == "unknown"
 
     def test_fail_open_when_registry_is_none(self, monkeypatch):
-        from aiq_agent.citations.binding import binding_classification_for_entry
-        from aiq_agent.common import norm_registry
+        from agent.citations.binding import binding_classification_for_entry
+        from agent.common import norm_registry
 
         monkeypatch.setattr(norm_registry, "load_registry", lambda *a, **k: None)
         entry = SourceEntry(citation_key="internes_memo.pdf, p.1", source_type="knowledge_layer")
@@ -3533,7 +3533,7 @@ class TestWireCarriesBindingStatus:
     """``source_entry_to_wire`` emits rank + binding_status alongside binding_note."""
 
     def test_oib_guideline_wire_binding_status(self):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         entry = SourceEntry(
             citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.5",
@@ -3545,7 +3545,7 @@ class TestWireCarriesBindingStatus:
         assert "rank" not in wire
 
     def test_unknown_source_wire_binding_status_is_unknown(self):
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         entry = SourceEntry(url="https://example.com/blog", title="Blog")
         wire = source_entry_to_wire(entry)
@@ -3569,7 +3569,7 @@ class TestQuoteWordElision:
     )
 
     def _registry(self) -> SourceRegistry:
-        from aiq_agent.citations.entries import SourceEntry
+        from agent.citations.entries import SourceEntry
 
         reg = SourceRegistry()
         reg.add(
@@ -3583,7 +3583,7 @@ class TestQuoteWordElision:
         return reg
 
     def test_a_dropped_nicht_is_not_a_verified_quote(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         answer = (
             "Die Richtlinie sagt: „Tragende Bauteile muessen brennbar sein, wenn das "
@@ -3595,13 +3595,13 @@ class TestQuoteWordElision:
         ]
 
     def test_an_inserted_nicht_is_not_a_verified_quote_either(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         answer = 'Es gilt: „Abweichungen sind nicht nur mit Nachweis zulaessig" [1].\n\n## Sources\n[1] rl2.pdf, p.4'
         assert len(verify_quoted_spans(answer, self._registry())) == 1
 
     def test_the_verbatim_negated_sentence_still_verifies(self):
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         answer = (
             "Es gilt: „Tragende Bauteile muessen nicht brennbar sein, wenn das Gebaeude "
@@ -3612,7 +3612,7 @@ class TestQuoteWordElision:
     def test_sub_word_noise_is_still_tolerated(self):
         """The OCR tolerance the calibration doc measured must survive: a lost
         inflection ending and a swapped character are noise, not an edit."""
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         answer = (
             "Es gilt: „Tragende Bauteil muessen nicht brennbar sein, wenn das Gebaeude "
@@ -3622,7 +3622,7 @@ class TestQuoteWordElision:
 
     def test_a_dropped_article_is_an_edit_too(self):
         """No vocabulary decides which words matter; any whole word does."""
-        from aiq_agent.citations.quote_verification import verify_quoted_spans
+        from agent.citations.quote_verification import verify_quoted_spans
 
         answer = (
             "Es gilt: „Tragende Bauteile muessen nicht brennbar sein, wenn Gebaeude "
@@ -3652,7 +3652,7 @@ class TestClauseAndScoreReachTheWire:
     )
 
     def test_clause_and_score_are_parsed_from_a_knowledge_block(self):
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         entries = extract_sources_from_tool_result("knowledge_search", self.BLOCK)
         assert len(entries) == 1
@@ -3660,7 +3660,7 @@ class TestClauseAndScoreReachTheWire:
         assert entries[0].score == 0.87
 
     def test_a_block_without_a_clause_line_carries_none(self):
-        from aiq_agent.citations.extraction import extract_sources_from_tool_result
+        from agent.citations.extraction import extract_sources_from_tool_result
 
         block = self.BLOCK.replace("Punkt: 3.5.2\n", "")
         entries = extract_sources_from_tool_result("knowledge_search", block)
@@ -3668,7 +3668,7 @@ class TestClauseAndScoreReachTheWire:
         assert entries[0].score == 0.87
 
     def test_page_dedup_keeps_the_first_clause_and_the_best_score(self):
-        from aiq_agent.citations.entries import SourceEntry
+        from agent.citations.entries import SourceEntry
 
         registry = SourceRegistry()
         registry.add(
@@ -3689,8 +3689,8 @@ class TestClauseAndScoreReachTheWire:
         assert entries[0].score == 0.87
 
     def test_the_wire_carries_both_and_omits_them_when_absent(self):
-        from aiq_agent.citations.entries import SourceEntry
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.entries import SourceEntry
+        from agent.citations.wire import source_entry_to_wire
 
         with_clause = SourceEntry(
             citation_key="oib_rl2.pdf, p.7", source_type="knowledge_layer", clause="3.5.2", score=0.87
@@ -3724,7 +3724,7 @@ class TestAFileListingIsNeverASource:
 
 class TestTheSessionCacheFromBeforeTheRename:
     def test_a_cached_entry_with_german_names_reads_as_the_english_ones(self):
-        from aiq_agent.citations.session import _registry_from_cached_entries
+        from agent.citations.session import _registry_from_cached_entries
 
         registry = _registry_from_cached_entries(
             [

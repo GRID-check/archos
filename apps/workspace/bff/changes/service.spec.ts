@@ -24,7 +24,7 @@ const SESSION = vi.hoisted(() => ({
   userId: 'user_1',
   organizationId: 'org_1',
   organizationMembershipId: 'om_1',
-  email: 'anna@grid.test',
+  email: 'anna@example.test',
   name: 'Anna Berger',
   role: 'member',
   permissions: [] as string[],
@@ -44,9 +44,9 @@ vi.mock('@/lib/annotations/service', async (original) => ({
   deleteReply: vi.fn(),
 }))
 vi.mock('@/lib/changes/repository', () => ({
-  insertPilotiChanges: vi.fn(),
+  insertAgentChanges: vi.fn(),
   listTurnChangeRows: vi.fn(),
-  findPilotiChange: vi.fn(),
+  findAgentChange: vi.fn(),
   claimUndo: vi.fn(),
   releaseUndo: vi.fn(),
 }))
@@ -54,7 +54,7 @@ vi.mock('@/lib/changes/repository', () => ({
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { createAnnotation, deleteAnnotation, deleteReply, listAnnotations, updateAnnotation } from '@/lib/annotations/service'
 import type { AnnotationReplyView, AnnotationView, CreateAnnotationRequest, UpdateAnnotationRequest } from '@/lib/annotations/types'
-import type { PilotiChangeRow } from '@/lib/db/schema/piloti-changes'
+import type { AgentChangeRow } from '@/lib/db/schema/piloti-changes'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
 import { expectRegistered } from '@/test-utils/audit'
@@ -62,7 +62,7 @@ import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { DirectoryPerson } from '@/lib/sharing/types'
 import { ChangeRequestError, getTurnChanges, undoChange } from './client'
-import { claimUndo, findPilotiChange, listTurnChangeRows, releaseUndo } from './repository'
+import { claimUndo, findAgentChange, listTurnChangeRows, releaseUndo } from './repository'
 import { markState } from './state'
 
 import { GET as listChanges } from '@/app/api/conversations/[id]/messages/[messageId]/changes/route'
@@ -151,7 +151,7 @@ const reply = (patch: Partial<AnnotationReplyView> = {}): AnnotationReplyView =>
 const setOpenForAsker = (patch: Partial<AnnotationView> = {}) =>
   mark({ authorKind: 'piloti', status: 'open', createdBy: 'user_1', acceptedBy: 'user_1', canDelete: true, ...patch })
 
-const row = (extra: Partial<PilotiChangeRow> = {}): PilotiChangeRow => ({
+const row = (extra: Partial<AgentChangeRow> = {}): AgentChangeRow => ({
   id: change(1),
   organizationId: 'org_1',
   documentId: DOC,
@@ -171,7 +171,7 @@ const row = (extra: Partial<PilotiChangeRow> = {}): PilotiChangeRow => ({
 })
 
 /** The CHECKs of migration 0142, held against every row the fake stores. */
-function assertChecks(stored: PilotiChangeRow): void {
+function assertChecks(stored: AgentChangeRow): void {
   expect(stored.objectKind !== 'annotation_reply' || stored.op === 'create', 'agent_changes_reply_is_created').toBe(true)
   expect(stored.objectKind !== 'annotation' || stored.objectId === stored.annotationId, 'agent_changes_annotation_is_object').toBe(true)
   const states =
@@ -183,8 +183,8 @@ function assertChecks(stored: PilotiChangeRow): void {
 }
 
 /** The record, in memory, with the repository's compare-and-swap. */
-let changes: Map<string, PilotiChangeRow>
-const put = (next: PilotiChangeRow) => {
+let changes: Map<string, AgentChangeRow>
+const put = (next: AgentChangeRow) => {
   assertChecks(next)
   changes.set(next.id, next)
   return next
@@ -194,7 +194,7 @@ let documents: Map<string, Map<string, AnnotationView>>
 const marksOf = (documentId: string) => documents.get(documentId) ?? new Map<string, AnnotationView>()
 const current = (id = MARK) => marksOf(DOC).get(id)
 
-const person = (userId: string, name: string): DirectoryPerson => ({ userId, name, email: `${userId}@grid.test`, profilePictureUrl: null })
+const person = (userId: string, name: string): DirectoryPerson => ({ userId, name, email: `${userId}@example.test`, profilePictureUrl: null })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -202,7 +202,7 @@ beforeEach(() => {
   changes = new Map()
   documents = new Map([[DOC, new Map([[MARK, mark({ status: 'resolved', closedBy: 'user_1', closedAt: NOW.toISOString() })]])]])
 
-  vi.mocked(findPilotiChange).mockImplementation(async (_org, id) => changes.get(id) ?? null)
+  vi.mocked(findAgentChange).mockImplementation(async (_org, id) => changes.get(id) ?? null)
   vi.mocked(listTurnChangeRows).mockImplementation(async (_org, conversationId, messageId) =>
     [...changes.values()]
       .filter((entry) => entry.originConversationId === conversationId && entry.originMessageId === messageId)
@@ -605,7 +605,7 @@ describe('an undo in the audit trail', () => {
       {
         action: 'piloti.change.undone',
         organizationId: 'org_1',
-        actor: { userId: 'user_1', email: 'anna@grid.test' },
+        actor: { userId: 'user_1', email: 'anna@example.test' },
         targetType: 'document_annotation',
         targetId: MARK,
         alsoTargets: [

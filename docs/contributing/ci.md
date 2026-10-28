@@ -69,11 +69,11 @@ It also lists the third-party image pins the change adds or moves
 | Plan (`changes`) | always | the three answers above, written to the run summary with the reason for each |
 | Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, the tests of `ci/`, the workflows and the release-note pipeline (`task be:test:harness`), release-note lint and (PRs) the release-note requirement, gitleaks over the commits a PR adds (a push: its full history) |
 | SAST (`semgrep`) | PRs touching code | Semgrep, diff-aware: blocks findings the PR introduces |
-| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, aiq_api, `sources`, the Python packages), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
+| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, agent_host, `sources`, the Python packages), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
 | Backend test database (`backend-testmon`) | every push to `develop` | records which test runs which code (`task be:test:testmon`) and caches it when green. Not a check |
 | Backend core (`backend`) | backend tier: pushes, and PRs testmon cannot select for | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
-| Backend suites (`backend-suites`) | backend tier | three jobs side by side: the aiq_api suite, the Python packages' suites (`sources`), and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
+| Backend suites (`backend-suites`) | backend tier | three jobs side by side: the agent_host suite, the Python packages' suites (`sources`), and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Workspace (`workspace`) | workspace tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
 | Workspace tests (`workspace-test`) | workspace tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task workspace:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task workspace:test:related`) |
 | Workspace coverage | PRs, workspace tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
@@ -192,7 +192,7 @@ An image already in GHCR under its `inputs-<hash>` is not rebuilt when the
 secret is added later, so its maps are never uploaded. Wait for the weekly
 rebuild, or bump `SCHEME` in `ci/image_inputs.py`.
 
-Python (`aiq_agent`) has no source maps; PostHog links its exceptions to a
+Python (`agent`) has no source maps; PostHog links its exceptions to a
 release through `POSTHOG_RELEASE_ID`, which the SDK (`posthog>=7.59`) sends as
 `$release_id`. The staging deploy runs
 [`PostHog/resolve-release`](https://posthog.com/docs/error-tracking/link-releases/python)
@@ -257,7 +257,7 @@ replace CodeQL. Turning one of them off is a setting
 ## The backend lane
 
 Measured on 2026-10-19: CI runs took 13 to 15 minutes, and the one `backend`
-job was 13 to 14 of them. It ran the core suite (7:30 to 8:00), then aiq_api
+job was 13 to 14 of them. It ran the core suite (7:30 to 8:00), then agent_host
 (1:20), then the Python packages (`sources`, 3:30), in one job, while every other check was done by
 minute three. Job-level queueing was under three seconds in every run looked at,
 so the runner cap was not what made the run long; this one job was.

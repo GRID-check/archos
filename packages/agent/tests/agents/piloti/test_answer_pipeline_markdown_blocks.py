@@ -16,12 +16,12 @@ import json
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
+from agent.agents.piloti.answer_pipeline import finalize_answer
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
 
 DRAWING = (
     "```mermaid\n"

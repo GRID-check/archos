@@ -56,7 +56,7 @@ interface CitationDefectChartProps {
  * its rank in the current window. Filtering the window must never repaint the
  * surviving series.
  */
-const seriesVar = (index: number): string => `var(--grid-series-${(index % 8) + 1})`
+const seriesVar = (index: number): string => `var(--chart-series-${(index % 8) + 1})`
 
 export const CitationDefectChart: FC<CitationDefectChartProps> = ({
   points,
@@ -96,9 +96,9 @@ export const CitationDefectChart: FC<CitationDefectChartProps> = ({
 
   return (
     // The palette scope wraps the plot AND the legend: the series variables
-    // only resolve under `.grid-usage-viz`, and a legend outside it drew its
+    // only resolve under `.usage-viz`, and a legend outside it drew its
     // swatches in no colour at all, leaving the labels to stand alone.
-    <div className="grid-usage-viz">
+    <div className="usage-viz">
       <SeriesPaletteStyle />
       {/* The selected day. Turns observed, then how many of them carried a
           finding: the stack counts findings, and without both lines a

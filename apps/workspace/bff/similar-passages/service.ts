@@ -57,7 +57,7 @@ import type { Project } from '@/lib/db/schema/projects'
 import { revisionTag } from '@/lib/documents/revision-timeline'
 import { listChatProjects } from '@/lib/projects/service'
 import { toProjectStatus } from '@/lib/projects/project-status'
-import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
+import { buildRequestContextWireHeaders } from '@/lib/request-context'
 import type {
   SimilarDocument,
   SimilarGroup,
@@ -121,7 +121,7 @@ export function otherProjectsToSearch(reach: readonly Project[], current: Pick<P
   return rankBySimilarity(current?.profile ?? null, others).slice(0, SIMILAR_MAX_PROJECTS - (current ? 1 : 0))
 }
 
-/** One document of the backend's answer (`SimilarDocument` in `aiq_api/models/similar.py`). */
+/** One document of the backend's answer (`SimilarDocument` in `agent_host/models/similar.py`). */
 interface BackendSimilarDocument {
   collection: string
   file_name: string
@@ -144,7 +144,7 @@ async function fetchSimilarFromBackend(
   collections: readonly string[]
 ): Promise<BackendSimilarResponse> {
   const scope = [...new Set([source.collection, ...collections])]
-  const headers = buildGridRequestContextWireHeaders({ collectionScope: scope }, process.env.INTERNAL_API_TOKEN)
+  const headers = buildRequestContextWireHeaders({ collectionScope: scope }, process.env.INTERNAL_API_TOKEN)
   let res: Response
   try {
     res = await fetch(`${getBackendUrl()}/v1/collections/similar`, {

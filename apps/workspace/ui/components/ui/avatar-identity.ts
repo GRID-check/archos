@@ -16,7 +16,7 @@
  * derivation would make one colleague two colours.
  *
  * How it stays inside the design language, which reserves chroma for the
- * provenance signal system (`docs/design/grid-design-language.md` §2):
+ * provenance signal system (`docs/design/design-language.md` §2):
  *
  *   1. **Identity is not signal.** These tints never carry meaning — they are a
  *      recognition aid on a disc that also always shows initials or a photo, so a

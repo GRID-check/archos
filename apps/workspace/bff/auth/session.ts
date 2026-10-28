@@ -7,7 +7,7 @@ import { currentActingSession } from '@/lib/agent-api/acting-session'
 import { lookupSubjectMembership, type SubjectMembership } from '@/lib/authz/project-membership'
 import { clearTenantContext, enterTenantContext } from '@/lib/db/tenant-context'
 import { SessionRequiredError } from '@/lib/api/errors'
-import type { GridSession } from './types'
+import type { UserSession } from './types'
 
 /**
  * The session's membership, id and roles, from the one membership lookup
@@ -42,7 +42,7 @@ export function sessionRoles(fromAuth: unknown, fromClaims: unknown, single: str
  * Uses `withAuth()` (and `getTokenClaims()` for raw JWT claims) from AuthKit v4.
  * Returns `null` when the user is not signed in.
  */
-export async function getGridSession(): Promise<GridSession | null> {
+export async function getUserSession(): Promise<UserSession | null> {
   // A call dispatched by Piloti's MCP server (ADR-0122) runs the browser's
   // route handler as the person the endpoint already authenticated.
   const actingSession = currentActingSession()
@@ -76,7 +76,7 @@ export async function getGridSession(): Promise<GridSession | null> {
   const membership = organizationId ? await membershipOf(organizationId, auth.user.id) : undefined
   const tokenRole = auth.role ?? (typeof claims.role === 'string' ? claims.role : null)
 
-  const session: GridSession = {
+  const session: UserSession = {
     userId: auth.user.id,
     email: auth.user.email,
     name,
@@ -110,8 +110,8 @@ export async function getGridSession(): Promise<GridSession | null> {
  *
  * @throws {SessionRequiredError} when no WorkOS session is present.
  */
-export async function requireGridSession(): Promise<GridSession> {
-  const session = await getGridSession()
+export async function requireUserSession(): Promise<UserSession> {
+  const session = await getUserSession()
 
   if (!session) {
     throw new SessionRequiredError()

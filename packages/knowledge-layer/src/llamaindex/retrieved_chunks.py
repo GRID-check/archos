@@ -5,8 +5,8 @@ import math
 import uuid
 from typing import Any
 
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
 
 logger = logging.getLogger(__name__)
 

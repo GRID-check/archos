@@ -15,7 +15,7 @@ import type { DigestTiming } from '@/lib/projects/memory-recall'
 import { buildProposalDecisionsBlock, composeMemoryContext } from '@/lib/projects/proposal-decisions'
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
 import { buildFolderDescriptionsBlock } from '@/lib/filing/folder-descriptions-block'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import { getDb } from '@/lib/db'
 import { isSoloAudience } from '@/lib/conversations/cross-project-use'
 import { readConversationAudience } from '@/lib/conversations/restricted-use-repository'
@@ -55,7 +55,7 @@ async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | nu
  */
 async function loadWorkspaceBlock(
   session: AuthorizedSession,
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
   projectAccess: ProjectAccess | null,
   query: string | undefined,
 ): Promise<string> {
@@ -101,7 +101,7 @@ async function loadWorkspaceBlock(
 }
 
 /** Today's requester may read this project and this conversation; the project access feeds the WORKSPACE block. */
-async function checkAccess(session: AuthorizedSession, context: VerifiedGridRequestContext): Promise<ProjectAccess | null> {
+async function checkAccess(session: AuthorizedSession, context: VerifiedRequestContext): Promise<ProjectAccess | null> {
   const { organizationId, projectId, conversationId } = context
   const projectAccess = projectId ? await requireProjectAccess(session, projectId, CHAT_PERMISSIONS) : null
   if (conversationId) {
@@ -127,7 +127,7 @@ async function checkAccess(session: AuthorizedSession, context: VerifiedGridRequ
  */
 export async function loadTurnContext(
   session: AuthorizedSession,
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
   input: TurnContextRequest,
   timing: TurnContextTiming = new TurnContextTiming(),
 ): Promise<TurnContextResponse> {

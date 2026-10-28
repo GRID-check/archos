@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const session = { userId: 'user_operator', organizationId: 'org_platform' }
-vi.mock('@/lib/auth/session', () => ({ getGridSession: async () => session }))
+vi.mock('@/lib/auth/session', () => ({ getUserSession: async () => session }))
 
 const requirePlatformPermission = vi.fn()
 vi.mock('@/lib/authz/platform', () => {

@@ -262,7 +262,7 @@ export function documentBadgeState(
  * A track shows the order, so the badge stops being trivia and becomes a
  * position. Four segments, no chroma — ink for what is behind the document,
  * paper for what is ahead, which is the same vocabulary the diff uses and for
- * the same reason (`docs/design/grid-design-language.md`: colour is provenance).
+ * the same reason (`docs/design/design-language.md`: colour is provenance).
  *
  * Off-track states map ONTO the track rather than adding segments to it:
  * „Änderungen erbeten" is a draft that has been round once, „Abgelehnt" is a

@@ -10,14 +10,14 @@ from sqlalchemy import create_engine
 from sqlalchemy import inspect
 from sqlalchemy import text
 
-from aiq_agent.common import redact_db_url
-from aiq_agent.common.db_utils import SCHEMA_LOCK_TIMEOUT
-from aiq_agent.common.db_utils import ensure_schema
-from aiq_agent.common.db_utils import lock_schema
-from aiq_agent.common.db_utils import present_columns
-from aiq_agent.common.db_utils import present_indexes
-from aiq_agent.common.db_utils import redact_db_url as redact_db_url_direct
-from aiq_agent.common.db_utils import schema_lock_key
+from agent.common import redact_db_url
+from agent.common.db_utils import SCHEMA_LOCK_TIMEOUT
+from agent.common.db_utils import ensure_schema
+from agent.common.db_utils import lock_schema
+from agent.common.db_utils import present_columns
+from agent.common.db_utils import present_indexes
+from agent.common.db_utils import redact_db_url as redact_db_url_direct
+from agent.common.db_utils import schema_lock_key
 
 
 def test_postgres_password_redacted_but_metadata_retained():

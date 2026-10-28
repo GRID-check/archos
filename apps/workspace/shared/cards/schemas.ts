@@ -1,19 +1,19 @@
 // The Grid card schema is generated from the canonical Pydantic models. This
 // module re-exports the generated Zod schemas under the stable public API and
 // derives the TypeScript types consumed across the app. To change the schema,
-// edit the card models in `packages/agent/src/aiq_agent/cards/`, regenerate `contracts/cards/schemas.json`
+// edit the card models in `packages/agent/src/agent/cards/`, regenerate `contracts/cards/schemas.json`
 // (`uv run python scripts/generate_card_schema.py`), then run
 // `npm run generate:cards`.
 
 import { z } from 'zod'
-import { gridCardSchema, projectProfilePatchCardSchema, type CalculationStepData, type DimensionCheckData } from './generated'
-import { modernizeGridCard } from './legacy'
+import { answerCardSchema, projectProfilePatchCardSchema, type CalculationStepData, type DimensionCheckData } from './generated'
+import { modernizeAnswerCard } from './legacy'
 
-export { gridCardSchema, projectProfilePatchCardSchema }
+export { answerCardSchema, projectProfilePatchCardSchema }
 /** Every card model and sub-structure as `<ModelName>Data`, inferred from its schema. */
 export type * from './generated'
 
-export type GridCard = z.infer<typeof gridCardSchema>
+export type AnswerCard = z.infer<typeof answerCardSchema>
 
 /** A dimension's verdict: `DimStatus` in `cards/schematic_cards.py`. */
 export type DimStatus = DimensionCheckData['status']
@@ -34,7 +34,7 @@ export type CalculationOperation = CalculationStepData['operation']
  * one card would draw another — silently, in cards whose own types shipped
  * and work — and a persisted Accept would rebind to a proposal the user never
  * saw on reload. Holes fail closed instead: a marker pointing at one renders
- * nothing (`AgentResponse` skips missing slots, `GridCards` skips missing
+ * nothing (`AgentResponse` skips missing slots, `AnswerCards` skips missing
  * items), and a decision whose card became a hole matches nothing and is
  * dropped by `reconcileCardInteractions`.
  *
@@ -42,10 +42,10 @@ export type CalculationOperation = CalculationStepData['operation']
  * (localStorage, `messages.metadata` jsonb) — every consumer guards with a
  * truthiness check, never `=== undefined`, so both read as "no card here".
  */
-export function validateGridCards(raw: unknown): (GridCard | undefined)[] {
+export function validateAnswerCards(raw: unknown): (AnswerCard | undefined)[] {
   if (!Array.isArray(raw)) return []
   return raw.map((item) => {
-    const result = gridCardSchema.safeParse(modernizeGridCard(item))
+    const result = answerCardSchema.safeParse(modernizeAnswerCard(item))
     if (result.success) {
       return result.data
     }
@@ -54,7 +54,7 @@ export function validateGridCards(raw: unknown): (GridCard | undefined)[] {
     // card is NOT removed (see above): the hole holds its index.
     const cardType =
       typeof item === 'object' && item !== null && 'type' in item ? (item as { type: unknown }).type : 'unknown'
-    console.warn('[GridCards] Dropping card that failed schema validation', cardType, result.error.issues)
+    console.warn('[AnswerCards] Dropping card that failed schema validation', cardType, result.error.issues)
     return undefined
   })
 }

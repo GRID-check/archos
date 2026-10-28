@@ -1,7 +1,7 @@
 """What happens when two turns reach the spatial engine at the same moment.
 
 ``ifc_measure`` runs its blocking work through ``asyncio.to_thread``, so every
-module global in :mod:`aiq_agent.knowledge.ifc_spatial_client` is touched by
+module global in :mod:`agent.knowledge.ifc_spatial_client` is touched by
 real worker threads. Two of them were touched without the lock the module
 already owns, and both were reproduced before they were fixed:
 
@@ -53,7 +53,7 @@ MODELS = {
 @pytest.fixture()
 def engine():
     pytest.importorskip("ifc_spatial.tools", reason="the spatial engine is not installed")
-    from aiq_agent.knowledge import ifc_spatial_client
+    from agent.knowledge import ifc_spatial_client
 
     missing = [str(p) for p in MODELS.values() if not p.is_file()]
     if missing:
@@ -246,7 +246,7 @@ class TestTheDownloaderCannotSpeakAnythingButHttp:
     @staticmethod
     def _client():
         pytest.importorskip("ifc_spatial.tools", reason="the spatial engine is not installed")
-        from aiq_agent.knowledge import ifc_spatial_client
+        from agent.knowledge import ifc_spatial_client
 
         return ifc_spatial_client
 
@@ -274,7 +274,7 @@ class TestTheDownloaderCannotSpeakAnythingButHttp:
     def test_the_string_guard_still_answers_first(self, tmp_path) -> None:
         """Belt and braces: the caller-facing refusal is the German one about an
         unusable source, not a `URLError` leaking out of the transport."""
-        from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
+        from agent.knowledge.bim_query import BimQueryUnavailableError
 
         secret = tmp_path / "secret.txt"
         secret.write_text("x", encoding="utf-8")

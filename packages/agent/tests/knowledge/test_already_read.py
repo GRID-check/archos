@@ -7,15 +7,15 @@ wiring (persist, lift, forward) lives in
 ``conversation/test_already_read_digest.py``.
 """
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.knowledge.already_read import DIGEST_HEADING
-from aiq_agent.knowledge.already_read import MAX_DIGEST_DOCS
-from aiq_agent.knowledge.already_read import MAX_DIGEST_TOKENS
-from aiq_agent.knowledge.already_read import estimate_tokens
-from aiq_agent.knowledge.already_read import format_digest_line
-from aiq_agent.knowledge.already_read import merge_digest
-from aiq_agent.knowledge.already_read import parse_digest_line
-from aiq_agent.knowledge.already_read import render_already_read_block
+from agent.citations.entries import SourceEntry
+from agent.knowledge.already_read import DIGEST_HEADING
+from agent.knowledge.already_read import MAX_DIGEST_DOCS
+from agent.knowledge.already_read import MAX_DIGEST_TOKENS
+from agent.knowledge.already_read import estimate_tokens
+from agent.knowledge.already_read import format_digest_line
+from agent.knowledge.already_read import merge_digest
+from agent.knowledge.already_read import parse_digest_line
+from agent.knowledge.already_read import render_already_read_block
 
 
 def _entry(

@@ -19,7 +19,7 @@ import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import http from 'node:http'
 import path from 'node:path'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { verifyGridRequestContextEnvelope } from '../../bff/request-context'
+import { verifyRequestContextEnvelope } from '../../bff/request-context'
 
 const UI_ROOT = path.resolve(__dirname, '../..')
 
@@ -259,7 +259,7 @@ describe('gateway compact turn-context transport', () => {
     for (const field of ['projectContext', 'projectMemory', 'orgInstructions']) {
       expect(payload).not.toHaveProperty(field)
     }
-    expect(verifyGridRequestContextEnvelope(
+    expect(verifyRequestContextEnvelope(
       header, backendHeaders['x-request-context-sig'] as string, SECRET,
     )).toMatchObject({ organizationId: 'org_1', userId: 'user_1' })
     expect(Buffer.byteLength(header)).toBeLessThan(1000)

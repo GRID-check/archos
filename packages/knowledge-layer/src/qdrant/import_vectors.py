@@ -54,7 +54,7 @@ from typing import Any
 
 from qdrant_client import models
 
-from aiq_agent.common.source_kinds import office_shelf_organization_id
+from agent.common.source_kinds import office_shelf_organization_id
 
 from .payload import ChunkRecord
 from .payload import document_facts
@@ -289,7 +289,7 @@ def _record(entry: CollectionEntry, path: Path, line: str) -> ChunkRecord:
 
 def facts_by_file(scope: str) -> dict[str, dict[str, Any]]:
     """The person-set facts of every file in ``scope``, from the metadata store (their authority)."""
-    from aiq_agent.knowledge import get_available_documents
+    from agent.knowledge import get_available_documents
 
     return {document.file_name: document_facts(document) for document in get_available_documents(scope)}
 

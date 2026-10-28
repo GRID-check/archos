@@ -289,7 +289,7 @@ describe('AwaitingBanner — always a way out (MN-9)', () => {
     expect(onAskAgent).toHaveBeenCalledTimes(1)
   })
 
-  test('hides the ask-Piloti action when the host does not offer one', () => {
+  test('hides the ask-Agent action when the host does not offer one', () => {
     render(<AwaitingBanner awaiting={state([request()])} onRelease={vi.fn()} />)
     expect(screen.queryByRole('button', { name: 'Ask Piloti instead' })).not.toBeInTheDocument()
   })

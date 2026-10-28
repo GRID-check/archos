@@ -7,8 +7,8 @@ import json
 
 import pytest
 
-from aiq_agent import corpus_store
-from aiq_agent import legacy_corpus_import as importer
+from agent import corpus_store
+from agent import legacy_corpus_import as importer
 
 
 @pytest.fixture

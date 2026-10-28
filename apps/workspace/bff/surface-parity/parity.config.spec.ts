@@ -1,4 +1,4 @@
-// @disk-inputs: ui/features/chat/components/ViewerActionRow.tsx, ui/features/chat/components/reasoning/LookStepRow.tsx, ui/features/chat/lib/canvas-bridge.ts, ui/features/documents/components/document-revisions.tsx, ui/features/documents/components/file-preview-pane.tsx, ui/features/documents/components/review/composer.tsx, ui/features/documents/components/review/cursor-chat.tsx, ui/features/documents/components/review/document-review.tsx, ui/features/documents/components/review/mark-row.tsx, ui/features/documents/components/review/review-export-menu.tsx, ui/features/documents/components/review/review-page-layer.tsx, ui/features/documents/components/review/review-panel.tsx, ui/features/documents/components/review/thread-card.tsx, ui/features/documents/hooks/use-canvas-ask.ts, ui/features/documents/lib/review-focus.ts, ui/features/grid-cards/components/CanvasActivityCard.tsx, ui/features/grid-cards/components/RevisionCompareCard.tsx, ui/features/knowledge/components/page-place-button.tsx, ui/features/search/components/composer-search-picker.tsx, tests/fixtures/surface-parity.json
+// @disk-inputs: ui/features/chat/components/ViewerActionRow.tsx, ui/features/chat/components/reasoning/LookStepRow.tsx, ui/features/chat/lib/canvas-bridge.ts, ui/features/documents/components/document-revisions.tsx, ui/features/documents/components/file-preview-pane.tsx, ui/features/documents/components/review/composer.tsx, ui/features/documents/components/review/cursor-chat.tsx, ui/features/documents/components/review/document-review.tsx, ui/features/documents/components/review/mark-row.tsx, ui/features/documents/components/review/review-export-menu.tsx, ui/features/documents/components/review/review-page-layer.tsx, ui/features/documents/components/review/review-panel.tsx, ui/features/documents/components/review/thread-card.tsx, ui/features/documents/hooks/use-canvas-ask.ts, ui/features/documents/lib/review-focus.ts, ui/features/cards/components/CanvasActivityCard.tsx, ui/features/cards/components/RevisionCompareCard.tsx, ui/features/knowledge/components/page-place-button.tsx, ui/features/search/components/composer-search-picker.tsx, tests/fixtures/surface-parity.json
 /**
  * @vitest-environment node
  */
@@ -26,7 +26,7 @@ vi.mock('server-only', () => ({}))
 import { BACKEND_OPERATIONS } from '@/lib/agent-api/backend-operations'
 import { AGENT_OPERATIONS } from '@/lib/agent-api/catalog'
 import { internalAnnotationRequestSchema } from '@/lib/annotations/types'
-import { gridCardSchema } from '@/shared/cards/schemas'
+import { answerCardSchema } from '@/shared/cards/schemas'
 import {
   isCanvasOperation,
   SURFACE_CAPABILITIES,
@@ -49,7 +49,7 @@ const kindOf = (form: SurfaceForm): 'exempt' | 'gap' | 'rendering' =>
 /** The `type` literal of each member of the generated card union. */
 function cardTypes(): Set<string> {
   const types = new Set<string>()
-  for (const option of gridCardSchema.options) {
+  for (const option of answerCardSchema.options) {
     const field = (option as unknown as { shape: { type: { parse: (value: unknown) => unknown } } }).shape.type
     for (const probe of [undefined, '']) {
       try {

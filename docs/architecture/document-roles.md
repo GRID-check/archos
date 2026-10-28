@@ -158,7 +158,7 @@ Bestand and one Neubau recommends Bestandspläne for the first only.
   `folder_path` already uses into chunk metadata.
 - **A per-role retrieval tool.** The context deliberately tells the agent that a
   slot holds 47 documents without naming them, which leaves it no way to reach
-  the 47. A NAT tool taking `(role, scope_instance?)` and returning that slot's
+  the 47. A tool taking `(role, scope_instance?)` and returning that slot's
   documents is the missing half: the block says what exists, the tool fetches it
   when there is a reason to. Until it exists, the agent can still reach those
   files through ordinary retrieval — it just cannot ask for them *by role*.

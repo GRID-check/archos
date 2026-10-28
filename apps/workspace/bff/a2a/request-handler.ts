@@ -127,7 +127,7 @@ function* artifactUpdates(view: AskView): Generator<StreamResponse> {
   }
 }
 
-export class PilotiA2ARequestHandler implements A2ARequestHandler {
+export class AgentA2ARequestHandler implements A2ARequestHandler {
   private readonly session: AuthorizedSession
 
   constructor(

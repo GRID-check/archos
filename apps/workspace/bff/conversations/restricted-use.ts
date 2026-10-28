@@ -483,7 +483,7 @@ export interface RestrictedUseRequest {
   /**
    * The id of the answer this turn is writing, when the agent sends it. The
    * agent derives it from the conversation and the turn
-   * (`aiq_agent.turn.response.answer_message_id`), the same id it streams and
+   * (`agent.turn.response.answer_message_id`), the same id it streams and
    * persists, so the server can mark that answer at admission, before the
    * model reads anything (ADR-0093). Absent off the chat path.
    */

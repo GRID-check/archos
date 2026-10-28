@@ -16,13 +16,13 @@ from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.conversation import _finalize_answer
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import EmptySourceRegistryError
-from aiq_agent.common.canned_replies import GENERIC_ERROR_MESSAGE
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.conversation import _finalize_answer
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import EmptySourceRegistryError
+from agent.common.canned_replies import GENERIC_ERROR_MESSAGE
 
 
 def _signals(**fields) -> ResearchAgentState:
@@ -154,7 +154,7 @@ class TestConfidenceEndToEnd:
         checked: str | None = None,
     ):
         """The real Piloti state: the answer text is already marker-free and
-        the signals arrive on structured fields, as ``PilotiAgent.run()`` sets them."""
+        the signals arrive on structured fields, as ``ChatAgent.run()`` sets them."""
 
         async def research(state_input):
             return ResearchAgentState(

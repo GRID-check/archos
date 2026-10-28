@@ -3,7 +3,7 @@
 An answer is Markdown prose; a card carries what Markdown cannot (an
 interaction, geometry drawn to scale, a computed number, a live model binding).
 The table-, list- and quote-shaped cards, the envelope's former card twins and
-`follow_ups` were deleted from the `GridCard` union
+`follow_ups` were deleted from the `AnswerCard` union
 (`catalog.RETIRED_CARD_TYPES`). Deleting them makes every channel refuse them as
 unknown; the refusal must still TELL the model what to write instead, and no
 model-facing surface may offer one.
@@ -17,22 +17,22 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.cards.catalog import RETIRED_CARD_REPLACEMENTS
-from aiq_agent.cards.catalog import RETIRED_CARD_TYPES
-from aiq_agent.cards.catalog import model_facing_card_types
-from aiq_agent.cards.catalog import render_card_details
-from aiq_agent.cards.catalog import render_card_doctrine
-from aiq_agent.cards.catalog import render_card_index
-from aiq_agent.cards.envelope import REFUSED_RETIRED_TYPE
-from aiq_agent.cards.envelope import render_envelope_cards_contract
-from aiq_agent.cards.envelope import validate_model_card
-from aiq_agent.cards.models import GridCard
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.models import validate_cards
-from aiq_agent.cards.prompt import build_card_generation_prompt
-from aiq_agent.cards.registry import get_or_create_card_registry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
+from agent.cards.catalog import RETIRED_CARD_REPLACEMENTS
+from agent.cards.catalog import RETIRED_CARD_TYPES
+from agent.cards.catalog import model_facing_card_types
+from agent.cards.catalog import render_card_details
+from agent.cards.catalog import render_card_doctrine
+from agent.cards.catalog import render_card_index
+from agent.cards.envelope import REFUSED_RETIRED_TYPE
+from agent.cards.envelope import render_envelope_cards_contract
+from agent.cards.envelope import validate_model_card
+from agent.cards.models import AnswerCard
+from agent.cards.models import answer_card_adapter
+from agent.cards.models import validate_cards
+from agent.cards.prompt import build_card_generation_prompt
+from agent.cards.registry import get_or_create_card_registry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
 
 RETIRED = sorted(RETIRED_CARD_TYPES)
 GOOD = {"type": "ifc_model_picker", "title": "Welches Modell öffnen?"}
@@ -73,10 +73,10 @@ def test_the_set_is_the_one_the_product_owner_retired():
 @pytest.mark.parametrize("card_type", RETIRED)
 class TestEveryChannelRefusesIt:
     def test_it_is_no_union_member(self, card_type):
-        members = {card.model_fields["type"].annotation.__args__[0] for card in GridCard.__args__}
+        members = {card.model_fields["type"].annotation.__args__[0] for card in AnswerCard.__args__}
         assert card_type not in members
         with pytest.raises(ValueError):
-            grid_card_adapter.validate_python(_payload(card_type))
+            answer_card_adapter.validate_python(_payload(card_type))
 
     def test_the_envelope_refuses_it_by_name_with_its_replacement(self, card_type):
         validated, refusal = validate_model_card(_payload(card_type))
@@ -88,8 +88,8 @@ class TestEveryChannelRefusesIt:
         assert RETIRED_CARD_REPLACEMENTS[card_type] in refusal.message
 
     async def test_emit_card_refuses_it_with_its_replacement(self, card_type):
-        from aiq_agent.cards.register import EmitCardConfig
-        from aiq_agent.cards.register import emit_card
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
 
         registry = get_or_create_card_registry(f"conv-retired-{card_type}")
         registry.clear()
@@ -108,7 +108,7 @@ class TestEveryChannelRefusesIt:
         assert [card["type"] for card in validate_cards([_payload(card_type), GOOD])] == ["ifc_model_picker"]
 
     def test_the_dsml_salvage_drops_it(self, card_type):
-        from aiq_agent.agents.piloti.dsml import _salvage_card
+        from agent.agents.piloti.dsml import _salvage_card
 
         registry = get_or_create_card_registry(f"conv-dsml-retired-{card_type}")
         registry.clear()
@@ -158,7 +158,7 @@ class TestRetiredContentIsKept:
     """A retired card's content, laid out as Markdown (``retired_card_markdown``)."""
 
     def test_a_legal_basis_becomes_its_title_and_a_quote_line(self):
-        from aiq_agent.cards.catalog import retired_card_markdown
+        from agent.cards.catalog import retired_card_markdown
 
         markdown = retired_card_markdown(
             {
@@ -171,13 +171,13 @@ class TestRetiredContentIsKept:
         assert markdown == "**OIB-RL 2** · 3.1\n\n> „Fluchtwege führen ins Freie.“"
 
     def test_a_list_of_records_becomes_a_table_with_pipes_escaped(self):
-        from aiq_agent.cards.catalog import retired_card_markdown
+        from agent.cards.catalog import retired_card_markdown
 
         markdown = retired_card_markdown({"type": "process_map", "steps": [{"name": "A|B"}, {"name": "C"}]})
         assert markdown == "| name |\n|---|\n| A\\|B |\n| C |"
 
     def test_a_live_type_or_an_empty_card_yields_nothing(self):
-        from aiq_agent.cards.catalog import retired_card_markdown
+        from agent.cards.catalog import retired_card_markdown
 
         assert retired_card_markdown({"type": "stair_diagram", "title": "x"}) is None
         assert retired_card_markdown({"type": "typed_table"}) is None

@@ -17,7 +17,7 @@ import { AnimatePresence, motion, motionBase, springGlide, useMotionToken } from
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { LiveCursor } from '@/components/ui/live-cursor'
-import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { WorkingDots } from '@/components/ui/working-dots'
 import { useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
@@ -34,7 +34,7 @@ import {
   type RoomPeerState,
   type ShownHighlight,
 } from '../../hooks/use-document-room'
-import { usePilotiByline } from './piloti-attribution'
+import { useAgentByline } from './agent-attribution'
 
 /** A region smaller than this share of the page, in both directions, was a click: it becomes a point. */
 const MIN_REGION = 0.012
@@ -54,14 +54,14 @@ const box = (x: number, y: number, w: number, h: number): CSSProperties => ({
 const roomTool = (tool: ReviewTool) => (tool === 'ask' ? 'region' : tool)
 
 /** Whether a peer is Piloti at work on the document. */
-export const isPilotiPeer = (state: RoomPeerState): boolean => state.peer.kind === 'piloti'
+export const isAgentPeer = (state: RoomPeerState): boolean => state.peer.kind === 'piloti'
 
 /**
  * The first name of the person Piloti acts for, short enough for a tag beside
  * a pointer: „Anna" for „Anna Berger", the local part for a bare address.
  * Null when the server could not name them.
  */
-export function pilotiForShort(peer: Pick<RoomPeerState['peer'], 'forName'>): string | null {
+export function agentForShort(peer: Pick<RoomPeerState['peer'], 'forName'>): string | null {
   const first = peer.forName?.trim().split(/\s+/)[0]?.split('@')[0]
   return first || null
 }
@@ -72,21 +72,21 @@ export function pilotiForShort(peer: Pick<RoomPeerState['peer'], 'forName'>): st
  * („Piloti · für Anna", „Treppe · für Anna"; ADR-0105, EU AI Act Art. 50).
  * The words truncate; the „für Anna" after them never does.
  */
-function PilotiCursor({ state, idle }: { state: RoomPeerState; idle?: boolean }): JSX.Element {
+function AgentCursor({ state, idle }: { state: RoomPeerState; idle?: boolean }): JSX.Element {
   const tPresence = useTranslations(presenceCopy)
-  const forShort = pilotiForShort(state.peer)
+  const forShort = agentForShort(state.peer)
   const dots = state.activity ? <WorkingDots className="ml-0.5" /> : undefined
   return (
     <LiveCursor
       // Paper ink, never `--foreground`: the page stays white in dark mode.
       color="var(--paper-ink)"
       idle={idle}
-      label={pilotiCursorLabel(state, tPresence('piloti.reading', { page: state.activity?.box?.page ?? 1 }))}
+      label={agentCursorLabel(state, tPresence('piloti.reading', { page: state.activity?.box?.page ?? 1 }))}
       icon={<Sparkles className="size-3" aria-hidden />}
       busy={
         forShort ? (
           <>
-            <span data-testid="piloti-cursor-for" className="shrink-0">
+            <span data-testid="agent-cursor-for" className="shrink-0">
               {tPresence('piloti.forSuffix', { name: forShort })}
             </span>
             {dots}
@@ -104,7 +104,7 @@ function PilotiCursor({ state, idle }: { state: RoomPeerState; idle?: boolean })
  * „Fluchtweg" is never mistaken for a colleague called that, then what it
  * points at, or what it reads.
  */
-export function pilotiCursorLabel(state: Pick<RoomPeerState, 'label' | 'activity'>, reading: string): string {
+export function agentCursorLabel(state: Pick<RoomPeerState, 'label' | 'activity'>, reading: string): string {
   const doing = state.label || state.activity?.label || (state.activity?.state === 'reading' ? reading : null)
   return doing ? `Piloti · ${doing}` : 'Piloti'
 }
@@ -128,7 +128,7 @@ export function useRestedFor(movedAt: number | null, ms: number): boolean {
 export const CURSOR_IDLE_MS = 8_000
 
 /** How long Piloti's pointer may rest, with nothing in hand, before it quiets: it is parked, not pointing. */
-export const PILOTI_REST_MS = 3_000
+export const AGENT_REST_MS = 3_000
 
 /**
  * Whether Piloti's pointer is parked: no activity of its own, no question of
@@ -136,12 +136,12 @@ export const PILOTI_REST_MS = 3_000
  * parked pointer quiets like a person's idle one, so it stops reading as a
  * gesture once the answer is in.
  */
-export function pilotiResting(
+export function agentResting(
   state: Pick<RoomPeerState, 'activity' | 'movedAt'>,
   now: number,
   thinking: boolean
 ): boolean {
-  return !thinking && !state.activity && state.movedAt !== null && now - state.movedAt > PILOTI_REST_MS
+  return !thinking && !state.activity && state.movedAt !== null && now - state.movedAt > AGENT_REST_MS
 }
 
 /** The card beside a mark: 20rem, and the 16px gap to the mark's edge. */
@@ -224,7 +224,7 @@ export function peerSelections(
 ): Map<string, RoomPeerState[]> {
   const byMark = new Map<string, RoomPeerState[]>()
   for (const state of peers) {
-    if (!state.selected || isPilotiPeer(state) || state.peer.userId === selfUserId) continue
+    if (!state.selected || isAgentPeer(state) || state.peer.userId === selfUserId) continue
     const here = byMark.get(state.selected) ?? []
     if (!here.some((other) => other.peer.userId === state.peer.userId)) byMark.set(state.selected, [...here, state])
   }
@@ -352,21 +352,21 @@ const PeerPointer = memo(function PeerPointer({
   state,
   size,
   focused,
-  pilotiThinking,
+  agentThinking,
 }: {
   state: RoomPeerState & { cursor: NonNullable<RoomPeerState['cursor']> }
   size: { width: number; height: number }
   focused: boolean
-  pilotiThinking: boolean
+  agentThinking: boolean
 }): JSX.Element {
   const t = useTranslations(filesCopy)
-  const piloti = isPilotiPeer(state)
-  const rested = useRestedFor(state.movedAt, piloti ? PILOTI_REST_MS : CURSOR_IDLE_MS)
+  const piloti = isAgentPeer(state)
+  const rested = useRestedFor(state.movedAt, piloti ? AGENT_REST_MS : CURSOR_IDLE_MS)
   return (
     <GlidingCursor x={state.cursor.x} y={state.cursor.y} size={size}>
       {piloti ? (
         // People's pointers go idle when they rest; Piloti's when it is parked with nothing in hand.
-        <PilotiCursor state={state} idle={rested && !pilotiThinking && !state.activity} />
+        <AgentCursor state={state} idle={rested && !agentThinking && !state.activity} />
       ) : (
         <LiveCursor
           color={identityInk(state.peer.userId)}
@@ -441,7 +441,7 @@ const PageCompany = memo(function PageCompany({
   size,
   marks,
   selfUserId,
-  pilotiThinking,
+  agentThinking,
 }: {
   room: Pick<DocumentRoom, 'peers'>
   page: number
@@ -449,7 +449,7 @@ const PageCompany = memo(function PageCompany({
   size: { width: number; height: number }
   marks: readonly AnnotationView[]
   selfUserId: string | null
-  pilotiThinking: boolean
+  agentThinking: boolean
 }): JSX.Element {
   const here = usePeersOnPage(room, page)
   const selections = usePeerSelections(room, selfUserId)
@@ -478,7 +478,7 @@ const PageCompany = memo(function PageCompany({
 
       {/* The boxes the others are drawing right now, in their colour, with whose they are. */}
       {pointers.map((state) =>
-        state.draft && !isPilotiPeer(state) ? (
+        state.draft && !isAgentPeer(state) ? (
           <span
             key={`draft-${state.peer.peerId}`}
             data-testid="review-peer-draft"
@@ -508,7 +508,7 @@ const PageCompany = memo(function PageCompany({
 
       {size.width > 0 &&
         pointers.map((state) => (
-          <PeerPointer key={state.peer.peerId} state={state} size={size} focused={focused} pilotiThinking={pilotiThinking} />
+          <PeerPointer key={state.peer.peerId} state={state} size={size} focused={focused} agentThinking={agentThinking} />
         ))}
     </div>
   )
@@ -545,7 +545,7 @@ const PageMarks = memo(function PageMarks({
   onHover: (annotationId: string | null) => void
 }): JSX.Element {
   const t = useTranslations(filesCopy)
-  const byline = usePilotiByline()
+  const byline = useAgentByline()
   return (
     <>
       {marks.map((annotation) => {
@@ -553,7 +553,7 @@ const PageMarks = memo(function PageMarks({
         const ink = markInk(annotation)
         const proposed = annotation.status === 'proposed'
         // Piloti's mark says for whom it was set, as a tooltip and to a screen reader.
-        const pilotiLine =
+        const agentLine =
           annotation.authorKind === 'piloti' ? byline(annotation.createdByName, { proposal: proposed }) : undefined
         const done = !isLive(annotation)
         const openBy = selections.get(annotation.id)
@@ -598,14 +598,14 @@ const PageMarks = memo(function PageMarks({
                 ghost={ghost}
                 unread={unread.has(annotation.id) && annotation.id !== selectedId}
                 active={annotation.id === selectedId}
-                aria-label={pinLabel(t, annotation, pilotiLine, openBy, {
+                aria-label={pinLabel(t, annotation, agentLine, openBy, {
                   ghost,
                   unread: unread.has(annotation.id) && annotation.id !== selectedId,
                 })}
                 // A pin opens its card, a dialog beside it: expanded while it is open.
                 aria-haspopup="dialog"
                 aria-expanded={focused ? annotation.id === selectedId : undefined}
-                title={pilotiLine}
+                title={agentLine}
                 onPointerEnter={() => onHover(annotation.id)}
                 onPointerLeave={() => onHover(null)}
                 data-peer-selected={openBy ? true : undefined}
@@ -634,7 +634,7 @@ type Translate = ReturnType<typeof useTranslations>
 export function pinLabel(
   t: Translate,
   annotation: Pick<AnnotationView, 'number' | 'kind' | 'status' | 'revisionNumber'>,
-  pilotiLine: string | undefined,
+  agentLine: string | undefined,
   openBy: readonly RoomPeerState[] | undefined,
   { ghost = false, unread = false }: { ghost?: boolean; unread?: boolean } = {}
 ): string {
@@ -656,7 +656,7 @@ export function pinLabel(
     earlier,
     state,
     unread ? t('review.pinState.unread') : null,
-    pilotiLine,
+    agentLine,
     openBy && openBy.length > 0
       ? t('review.pinOpenBy', { names: openBy.map((other) => other.peer.name).join(', ') })
       : null,
@@ -887,7 +887,7 @@ export function ReviewPageLayer({
         : [],
     [annotations, page, focused, filter, review.documentId]
   )
-  const pilotiThinking = piloti.asks.some((ask) => ask.status === 'thinking')
+  const agentThinking = piloti.asks.some((ask) => ask.status === 'thinking')
   const onPin = useCallback(
     (annotationId: string, byKeyboard: boolean) => {
       if (!focused) {
@@ -1100,7 +1100,7 @@ export function ReviewPageLayer({
                 style={at(ask.region.x + ask.region.w, ask.region.y)}
               >
                 {/* On the page: paper ink, which the theme does not flip. */}
-                <PilotiGlyph size="xs" working={thinking} className="bg-paper-ink text-paper-ink-foreground" />
+                <AgentGlyph size="xs" working={thinking} className="bg-paper-ink text-paper-ink-foreground" />
               </button>
             )}
           </div>
@@ -1111,7 +1111,7 @@ export function ReviewPageLayer({
         {highlights.map((highlight) => (
           <motion.span
             key={highlight.key}
-            data-testid="piloti-highlight"
+            data-testid="agent-highlight"
             aria-hidden
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1126,7 +1126,7 @@ export function ReviewPageLayer({
             {highlight.label && (
               // Top-right, where no pin stands; inside the box when the box touches the top of the page.
               <span
-                data-testid="piloti-highlight-label"
+                data-testid="agent-highlight-label"
                 className={cn(
                   'bg-paper-ink text-paper-ink-foreground absolute right-0 max-w-56 truncate px-1.5 py-0.5 text-[11px] leading-4 font-medium',
                   tagFitsAbove(highlight.y, size.height) ? '-top-px -translate-y-full rounded-t-[3px]' : 'top-0 rounded-bl-[3px]'
@@ -1146,7 +1146,7 @@ export function ReviewPageLayer({
         size={size}
         marks={marks}
         selfUserId={selfUserId}
-        pilotiThinking={pilotiThinking}
+        agentThinking={agentThinking}
       />
 
       {focused && aim && tool !== 'select' && !draft && (

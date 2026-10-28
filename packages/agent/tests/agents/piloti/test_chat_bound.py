@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
 
-from aiq_agent.agents.piloti.register import ResearchAgentConfig
-from aiq_agent.agents.piloti.register import _chat_bound
+from agent.agents.piloti.register import ResearchAgentConfig
+from agent.agents.piloti.register import _chat_bound
 
 
 class _Search(BaseModel):

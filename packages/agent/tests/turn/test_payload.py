@@ -6,13 +6,13 @@ The chat socket hands the turn the v2 `user_message` with flat, typed fields;
 
 import pytest
 
-from aiq_agent.common.data_sources import unavailable_source_ids
-from aiq_agent.common.focus_file import get_focused_file_name
-from aiq_agent.common.focus_file import get_turn_shelves
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.turn import payload as payload_module
-from aiq_agent.turn.payload import extract_turn_inputs
+from agent.common.data_sources import unavailable_source_ids
+from agent.common.focus_file import get_focused_file_name
+from agent.common.focus_file import get_turn_shelves
+from agent.common.focus_file import set_turn_intent
+from agent.common.wire_v2 import UserMessage
+from agent.turn import payload as payload_module
+from agent.turn.payload import extract_turn_inputs
 
 
 def _message(text: str = "fass zusammen", **fields) -> UserMessage:
@@ -29,7 +29,7 @@ class TestTheTurnsClientTools:
     """``user_message.client_tools`` (AG-UI's RunAgentInput.tools) sets what the turn may offer (ADR-0144)."""
 
     def test_a_declared_tool_is_the_turns_and_a_plain_question_declares_none(self):
-        from aiq_agent.common.client_tools import client_tool_declared
+        from agent.common.client_tools import client_tool_declared
 
         extract_turn_inputs(_message(client_tools=["show_in_viewer", "unknown_tool"]))
         assert client_tool_declared("show_in_viewer") and not client_tool_declared("unknown_tool")
@@ -38,7 +38,7 @@ class TestTheTurnsClientTools:
         assert not client_tool_declared("show_in_viewer")
 
     def test_a_question_without_the_field_declares_none(self):
-        from aiq_agent.common.client_tools import client_tool_declared
+        from agent.common.client_tools import client_tool_declared
 
         extract_turn_inputs(_message(client_tools=["show_in_viewer"]))
         extract_turn_inputs(_message())
@@ -151,14 +151,14 @@ class TestTurnReasoningEffort:
     """The composer's Aufwand dial reaches the turn through the same lift."""
 
     def test_the_stated_level_is_the_turns(self):
-        from aiq_agent.common.reasoning_settings import get_turn_reasoning_effort
+        from agent.common.reasoning_settings import get_turn_reasoning_effort
 
         extract_turn_inputs(_message(reasoning_effort="high"))
 
         assert get_turn_reasoning_effort() == "high"
 
     def test_a_turn_without_one_clears_the_previous_turns(self):
-        from aiq_agent.common.reasoning_settings import get_turn_reasoning_effort
+        from agent.common.reasoning_settings import get_turn_reasoning_effort
 
         extract_turn_inputs(_message(reasoning_effort="xhigh"))
         extract_turn_inputs(_message())
@@ -201,7 +201,7 @@ class TestTheReviewCanvas:
         assert extract_turn_inputs("Wie hoch?").surface == "chat"
 
     def test_the_canvas_document_is_set_for_the_tools_and_cleared_next_turn(self):
-        from aiq_agent.common.focus_file import get_focused_document_id
+        from agent.common.focus_file import get_focused_document_id
 
         extract_turn_inputs(_message(focus_document_id="11111111-0000-4000-8000-000000000001"))
         assert get_focused_document_id() == "11111111-0000-4000-8000-000000000001"

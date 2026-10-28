@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Editable Grid-side organization settings (admin only): a display-name
+ * Editable app-side organization settings (admin only): a display-name
  * override, the default interface language for new members, and the
  * org-level web-search toggle (ADR-0022), and where a new chat's Aufwand dial
  * starts. Persists to

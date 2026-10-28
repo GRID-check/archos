@@ -10,8 +10,8 @@ import pytest
 from pydantic import BaseModel
 from pydantic import ValidationError
 
-from aiq_agent.common.tool_errors import render_error_detail
-from aiq_agent.common.tool_errors import render_tool_error
+from agent.common.tool_errors import render_error_detail
+from agent.common.tool_errors import render_tool_error
 
 
 class _TwoFields(BaseModel):

@@ -1,8 +1,8 @@
 """The stage channel, from the agent tier's sink call to the socket (chat wire v2).
 
-`aiq_agent` owns the graph and never learns what a WebSocket is; `aiq_api` owns
+`agent` owns the graph and never learns what a WebSocket is; `agent_host` owns
 the socket and publishes an implementation of
-``aiq_agent.stages.delivery.StageFrameSink`` to it at start-up. Nothing else
+``agent.stages.delivery.StageFrameSink`` to it at start-up. Nothing else
 connects the two halves, so nothing else can say whether they are connected:
 the runner tests stub the sink. This file is where the real sink meets the real
 registry and the turn's own sequencer.
@@ -17,16 +17,16 @@ See docs/architecture/post-answer-stages.md §2.7, §4, §7.1.
 
 from __future__ import annotations
 
-from aiq_agent.common.wire_v2 import WIRE_EVENT
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import RunStartedBody
-from aiq_agent.common.wire_v2 import StageValue
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.stages import delivery
-from aiq_api import chat_socket
-from aiq_api.chat_socket import ChatRegistry
-from aiq_api.chat_socket import RunningTurn
-from aiq_api.chat_socket import TurnWire
+from agent.common.wire_v2 import WIRE_EVENT
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import RunStartedBody
+from agent.common.wire_v2 import StageValue
+from agent.common.wire_v2 import TurnResult
+from agent.stages import delivery
+from agent_host import chat_socket
+from agent_host.chat_socket import ChatRegistry
+from agent_host.chat_socket import RunningTurn
+from agent_host.chat_socket import TurnWire
 
 CONVERSATION_ID = "conv-stage-sink"
 TURN_ID = "msg_1755600000000_3"
@@ -65,7 +65,7 @@ async def _answered_turn(monkeypatch, socket: _Socket | None) -> ChatRegistry:
 
 class TestTheStageReachesTheSocket:
     async def test_the_published_sink_is_the_one_the_agent_tier_calls(self) -> None:
-        import aiq_api.plugin  # noqa: F401 — registers the sink at import
+        import agent_host.plugin  # noqa: F401 — registers the sink at import
 
         assert delivery.get_stage_frame_sink() is chat_socket.send_stage
 

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from aiq_agent.agents.deep_researcher import finalize
-from aiq_agent.agents.deep_researcher.finalize import _summarize_removed_citations
-from aiq_agent.agents.deep_researcher.finalize import verify_report
-from aiq_agent.citations.entries import DUPLICATE_REASON_PREFIX
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
+from agent.agents.deep_researcher import finalize
+from agent.agents.deep_researcher.finalize import _summarize_removed_citations
+from agent.agents.deep_researcher.finalize import verify_report
+from agent.citations.entries import DUPLICATE_REASON_PREFIX
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
 
 MERGED = {"number": 5, "line": "- [5] a.pdf, p.4", "reason": f"{DUPLICATE_REASON_PREFIX}1"}
 PASSAGE = "Die lichte Durchgangshöhe von Treppen muss mindestens 2,10 m betragen."

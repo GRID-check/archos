@@ -35,19 +35,19 @@ from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti import prompt as prompt_module
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import TurnPrompt
-from aiq_agent.agents.piloti.prompt import render_turn_prompt
-from aiq_agent.agents.piloti.prompt import request_messages
-from aiq_agent.agents.piloti.prompt import system_prompt_template
-from aiq_agent.common import LLMProvider
-from aiq_agent.common.prompt_store import PromptStore
-from aiq_agent.common.steering import AppliedSteer
-from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+from agent.agents.piloti import prompt as prompt_module
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.prompt import TurnPrompt
+from agent.agents.piloti.prompt import render_turn_prompt
+from agent.agents.piloti.prompt import request_messages
+from agent.agents.piloti.prompt import system_prompt_template
+from agent.common import LLMProvider
+from agent.common.prompt_store import PromptStore
+from agent.common.steering import AppliedSteer
+from agent.observability.langfuse_trace_attributes import begin_trace_contributions
+from agent.observability.langfuse_trace_attributes import end_trace_contributions
+from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
 TOOLS = [{"name": "knowledge_search"}, {"name": "workspace__search"}, {"name": "project_lookup"}]
 PROMPT = TurnPrompt(system="SYSTEM", context="<turn_context>\nCTX\n</turn_context>")
@@ -259,7 +259,7 @@ class TestThroughTheAgent:
     def agent(self, llm):
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        return PilotiAgent(llm_provider=provider, tools=[knowledge_search])
+        return ChatAgent(llm_provider=provider, tools=[knowledge_search])
 
     async def test_two_turns_send_the_same_system_prompt_and_store_no_context(self, agent, llm):
         first = await agent.run(

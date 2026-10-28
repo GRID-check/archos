@@ -796,7 +796,7 @@ def format_comparison(before: Sequence[Observation], after: Sequence[Observation
 #
 # A turn runs on the chat socket and nowhere else (ADR-0068): the wire v2
 # protocol of `docs/api/websocket-protocol.md`, read through the contract's own
-# models (`aiq_agent.common.wire_v2`) rather than a second description of it.
+# models (`agent.common.wire_v2`) rather than a second description of it.
 
 #: The sources a turn may consult. A `user_message` names them, and one that
 #: names none consults none (`parse_data_sources`), so these are the three the
@@ -836,7 +836,7 @@ def read_event(turn: SocketTurn, event: object) -> object | None:
     Raises on the two ends that are not an answer: a ``RUN_ERROR`` and a
     ``rejected`` of this turn's question.
     """
-    from aiq_agent.common import wire_v2
+    from agent.common import wire_v2
 
     if getattr(event, "turn_id", None) != turn.message_id:
         return None
@@ -869,7 +869,7 @@ def step_records(turn: SocketTurn) -> list[dict]:
     reached, comes from the turn's own ledger (``result.retrieval_ledger``), placed
     after the round's own step so a fetch still follows the cap that preceded it.
     """
-    from aiq_agent.common import wire_v2
+    from agent.common import wire_v2
 
     ledger = {
         entry.get("index"): entry
@@ -908,7 +908,7 @@ def _socket_turn(base_url: str, question: str, timeout: float) -> tuple[list[dic
 
     from websockets.sync.client import connect
 
-    from aiq_agent.common import wire_v2
+    from agent.common import wire_v2
 
     conversation_id = f"loop-eval-{uuid.uuid4().hex[:12]}"
     turn = SocketTurn(message_id=f"loop-eval-{uuid.uuid4().hex}")

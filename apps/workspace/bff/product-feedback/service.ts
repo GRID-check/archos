@@ -23,7 +23,7 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { ConflictError, NotFoundError, UpstreamError } from '@/lib/api/errors'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 import { authorize, can } from '@/lib/authz/decide'
 import { ORG_PERMISSIONS, PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { requirePlatformPermission } from '@/lib/authz/platform'
@@ -261,7 +261,7 @@ async function membersOrNull(config: PosthogSupportConfig): Promise<PosthogMembe
   }
 }
 
-async function viewerContext(config: PosthogSupportConfig, session: GridSession | null): Promise<ViewerContext> {
+async function viewerContext(config: PosthogSupportConfig, session: UserSession | null): Promise<ViewerContext> {
   return { members: await membersOrNull(config), viewerEmail: session?.email?.trim() || null }
 }
 
@@ -330,7 +330,7 @@ async function ticketViews(
 async function oneTicketView(
   config: PosthogSupportConfig,
   ticket: SupportTicket | null,
-  session: GridSession | null
+  session: UserSession | null
 ): Promise<ProductFeedbackTicketView | null> {
   if (!ticket) return null
   const views = await ticketViews(config, [ticket], await viewerContext(config, session))
@@ -447,7 +447,7 @@ function assigneeFilterOf(
 async function listFromPosthog(
   query: ListProductFeedbackQuery,
   config: PosthogSupportConfig,
-  session: GridSession | null
+  session: UserSession | null
 ): Promise<ProductFeedbackListResponse> {
   const offset = decodeOffset(query.cursor)
   const context = await viewerContext(config, session)
@@ -497,7 +497,7 @@ async function listFromPosthog(
  * the platform owner, only a read-only page.
  */
 export async function listProductFeedbackForPlatform(
-  session: GridSession | null,
+  session: UserSession | null,
   query: ListProductFeedbackQuery
 ): Promise<ProductFeedbackListResponse> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsView)
@@ -528,7 +528,7 @@ async function ticketFor(row: ProductFeedbackRow, config: PosthogSupportConfig |
 
 /** One report, for the deep link an inbox row lands on. */
 export async function getProductFeedbackForPlatform(
-  session: GridSession | null,
+  session: UserSession | null,
   id: string
 ): Promise<ProductFeedbackReportView> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsView)
@@ -544,7 +544,7 @@ export async function getProductFeedbackForPlatform(
  * report without a ticket has nothing to move.
  */
 export async function triageProductFeedback(
-  session: GridSession | null,
+  session: UserSession | null,
   id: string,
   status: SupportTicketStatus
 ): Promise<ProductFeedbackReportView> {
@@ -864,7 +864,7 @@ export async function replyToOwnProductFeedback(
  * the one with the same email. No Slack identity is involved.
  */
 export async function claimProductFeedbackTicket(
-  session: GridSession | null,
+  session: UserSession | null,
   ticketId: string
 ): Promise<ProductFeedbackReportView> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsManage)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common import lease_slots
+from agent.common import lease_slots
 
 
 class FakeStore:

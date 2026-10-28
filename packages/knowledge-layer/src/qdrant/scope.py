@@ -42,7 +42,7 @@ from typing import Literal
 
 from qdrant_client import models
 
-from aiq_agent.profile_names import legacy_profile_token
+from agent.profile_names import legacy_profile_token
 
 from .payload import coerce_field
 from .schema import DATETIME_FIELDS

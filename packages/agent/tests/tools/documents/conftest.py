@@ -17,14 +17,14 @@ from typing import Any
 import pytest
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.tools.documents import draft_store
-from aiq_agent.tools.documents import filing
-from aiq_agent.tools.documents import register as filing_tools
-from aiq_agent.tools.documents.draft_store import DRAFT_ROOT
-from aiq_agent.tools.documents.draft_store import DraftBackend
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.tools.documents import draft_store
+from agent.tools.documents import filing
+from agent.tools.documents import register as filing_tools
+from agent.tools.documents.draft_store import DRAFT_ROOT
+from agent.tools.documents.draft_store import DraftBackend
 
 DRAFT = f"{DRAFT_ROOT}aktenvermerk.md"
 BODY = "# Aktenvermerk – Fluchtweg\n\nDie Länge beträgt 42 m.\n"
@@ -58,7 +58,7 @@ class _Metadata:
 
 
 class _Context:
-    """The half of NAT's Context these tools read."""
+    """The half of the agent runtime's Context these tools read."""
 
     def __init__(self, headers: dict[str, str], conversation_id: str | None) -> None:
         self.metadata = _Metadata(headers)

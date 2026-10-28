@@ -21,10 +21,10 @@ import { peerSide, walkPosition } from './document-review'
 import {
   CURSOR_IDLE_MS,
   draftTagPlace,
-  PILOTI_REST_MS,
+  AGENT_REST_MS,
   useRestedFor,
   peerSelections,
-  pilotiResting,
+  agentResting,
   placeCard,
   ReviewPageLayer,
   selectionTagged,
@@ -131,11 +131,11 @@ describe('a colleague’s pointer', () => {
 
   it("parks Piloti's pointer once the answer is in and it has stopped moving, never while it works", () => {
     const rested = { activity: null, movedAt: 1_000 }
-    const later = 1_000 + PILOTI_REST_MS + 1
-    expect(pilotiResting(rested, later, false)).toBe(true)
-    expect(pilotiResting(rested, later, true)).toBe(false)
-    expect(pilotiResting(rested, 1_000 + PILOTI_REST_MS - 1, false)).toBe(false)
-    expect(pilotiResting({ ...rested, activity: { state: 'reading', label: null, box: null } }, later, false)).toBe(false)
+    const later = 1_000 + AGENT_REST_MS + 1
+    expect(agentResting(rested, later, false)).toBe(true)
+    expect(agentResting(rested, later, true)).toBe(false)
+    expect(agentResting(rested, 1_000 + AGENT_REST_MS - 1, false)).toBe(false)
+    expect(agentResting({ ...rested, activity: { state: 'reading', label: null, box: null } }, later, false)).toBe(false)
   })
 
   it('says whose box is being dragged out', () => {

@@ -191,7 +191,7 @@ export function bcfDescription(result: BimRuleResultWithConfirmation, model: Bcf
 
   sections.push(
     '',
-    'Aus dem GRID-Prüfbuch exportiert. Orientierung, keine Rechtsberatung — die Werte stammen aus dem Modell und ersetzen keine Prüfung.'
+    'Aus dem Prüfbuch exportiert. Orientierung, keine Rechtsberatung — die Werte stammen aus dem Modell und ersetzen keine Prüfung.'
   )
   return sections.join('\n')
 }

@@ -16,20 +16,20 @@
  * of one (AGENTS.md).
  */
 import { describe, expect, it } from 'vitest'
-import type { GridCard } from '@/shared/cards/schemas'
-import type { CardInteractions } from '@/features/grid-cards/card-decision'
-import type { DecidedProposals } from '@/features/grid-cards/decided-proposals'
+import type { AnswerCard } from '@/shared/cards/schemas'
+import type { CardInteractions } from '@/features/cards/card-decision'
+import type { DecidedProposals } from '@/features/cards/decided-proposals'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import { turnMemoryItems } from './turn-memory'
 
-const proposal = (content: string): GridCard =>
+const proposal = (content: string): AnswerCard =>
   ({
     type: 'memory_proposal',
     title: 'Neue Erkenntnis merken',
     content,
     kind: 'constraint',
     confidence: 'high',
-  }) as GridCard
+  }) as AnswerCard
 
 const reflected = {
   memoryReflection: {
@@ -46,8 +46,8 @@ const answered = (decision: string): CardInteractions => ({
 const PROPOSAL_ID = '00000000-0000-4000-8000-0000000000a1'
 
 /** A memory card the server holds (`proposal_id`): the card is the receipt of a stored proposal. */
-const serverProposal = (content: string): GridCard =>
-  ({ ...proposal(content), proposal_id: PROPOSAL_ID }) as GridCard
+const serverProposal = (content: string): AnswerCard =>
+  ({ ...proposal(content), proposal_id: PROPOSAL_ID }) as AnswerCard
 
 const stored = (status: ProposedChangeView['status']): DecidedProposals => ({
   [PROPOSAL_ID]: { id: PROPOSAL_ID, kind: 'memory', status } as ProposedChangeView,
@@ -91,14 +91,14 @@ describe('turnMemoryItems', () => {
     const correction = {
       ...proposal('Die Fluchtwegbreite ist mit 1,50 m vorgegeben.'),
       supersedes: 'Die Fluchtwegbreite ist mit 1,20 m vorgegeben.',
-    } as GridCard
+    } as AnswerCard
     const [item] = turnMemoryItems({ cards: [correction], cardInteractions: answered('savedProject') })
     expect(item?.supersedes).toBe('Die Fluchtwegbreite ist mit 1,20 m vorgegeben.')
   })
 
   it('treats a blank or null supersedes as a new note, not a correction', () => {
     for (const supersedes of [null, '   ']) {
-      const card = { ...proposal('Neu.'), supersedes } as GridCard
+      const card = { ...proposal('Neu.'), supersedes } as AnswerCard
       const [item] = turnMemoryItems({ cards: [card], cardInteractions: answered('savedProject') })
       expect(item).not.toHaveProperty('supersedes')
     }
@@ -130,7 +130,7 @@ describe('turnMemoryItems', () => {
     // A `calculation` is not a memory, and the fallback block of an answer
     // holds cards of every kind.
     const items = turnMemoryItems({
-      cards: [{ type: 'calculation', title: 'Schrittmaß', steps: [] } as unknown as GridCard],
+      cards: [{ type: 'calculation', title: 'Schrittmaß', steps: [] } as unknown as AnswerCard],
       cardInteractions: { 'calculation-0': { decision: 'savedOrg', decidedAt: 'x' } as CardInteractions[string] },
     })
     expect(items).toEqual([])

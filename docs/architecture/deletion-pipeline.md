@@ -86,7 +86,7 @@ Grace periods are config values; the architecture is identical at 0. All grace p
 
 ### Purger service
 
-New docker-compose service `purger`: **same image as the frontend, different command** (`node purger/index.js`). *(Revised from the original `aiq_api`-image idea during implementation planning: `app` Postgres is owned by the frontend — single-writer rule — so the purger is plain-JS in `apps/workspace/purger/`, and the Python backend instead exposes one internal maintenance endpoint for its stores.)* No new codebase, no inbound ports. It holds all credentials (`app` DB, jobs DB, checkpoints DB, SeaweedFS, the vector store's API, WorkOS API key) — acceptable as a privileged internal service. "Spawn on demand" was rejected: it requires docker-socket access from an app container (root-equivalent, fails enterprise security review). A sleeping poll loop costs ~zero.
+New docker-compose service `purger`: **same image as the frontend, different command** (`node purger/index.js`). *(Revised from the original `agent_host`-image idea during implementation planning: `app` Postgres is owned by the frontend — single-writer rule — so the purger is plain-JS in `apps/workspace/purger/`, and the Python backend instead exposes one internal maintenance endpoint for its stores.)* No new codebase, no inbound ports. It holds all credentials (`app` DB, jobs DB, checkpoints DB, SeaweedFS, the vector store's API, WorkOS API key) — acceptable as a privileged internal service. "Spawn on demand" was rejected: it requires docker-socket access from an app container (root-equivalent, fails enterprise security review). A sleeping poll loop costs ~zero.
 
 Loop, every 60s:
 

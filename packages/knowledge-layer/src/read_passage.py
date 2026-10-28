@@ -1,4 +1,4 @@
-"""NAT function for opening a NAMED passage: the locator beside the search.
+"""Agent-runtime function for opening a NAMED passage: the locator beside the search.
 
 `knowledge_search` is the only way this agent could reach a passage, and it is
 a semantic search. So a second round that already knows what it wants — "the
@@ -62,8 +62,8 @@ from typing import Any
 
 from pydantic import Field
 
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig
@@ -250,7 +250,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         neither suggested nor counted until this turn admitted its collection,
         because listing is not use (ADR-0088).
         """
-        from aiq_agent.knowledge.restricted_use import may_name
+        from agent.knowledge.restricted_use import may_name
 
         nameable = [entry for entry in _entries() if may_name(entry.collection)]
         listings = await asyncio.gather(*(_documents_in(entry.collection) for entry in nameable))
@@ -331,8 +331,8 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         return result
 
     async def _read_body(arguments: ReadPassageInput, outcome: ActionOutcome) -> str:
-        from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
-        from aiq_agent.common.turn_status import lane_tool_scope
+        from agent.common.tool_calls import READ_PASSAGE_TOOL
+        from agent.common.turn_status import lane_tool_scope
 
         # `conclusion` is unread here on purpose — see the note in
         # `register.search`. It is a checkpoint channel read off the tool CALL,
@@ -551,7 +551,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
 
 
 def _session_collection() -> str | None:
-    """This conversation's own collection, when a NAT context states one."""
+    """This conversation's own collection, when an agent-runtime context states one."""
     try:
         ctx = Context.get()
         return ctx.conversation_id if ctx else None
@@ -561,6 +561,6 @@ def _session_collection() -> str | None:
 
 def _passage_result(chunks: list[Any], query: str):
     """The located chunks as the ``RetrievalResult`` the formatter expects."""
-    from aiq_agent.knowledge.schema import RetrievalResult
+    from agent.knowledge.schema import RetrievalResult
 
     return RetrievalResult(chunks=chunks, query=query, backend="read_passage", success=True)

@@ -29,11 +29,11 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.markers import ESCALATION_MARKER
-from aiq_agent.agents.piloti.models import ClarifyResult
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.markers import ESCALATION_MARKER
+from agent.agents.piloti.models import ClarifyResult
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
 
 PROCEDURAL_QUESTION = "Wie läuft das Baubewilligungsverfahren in Wien ab?"
 SHALLOW_ANSWER = "Das Verfahren läuft in fünf Schritten ab [1]."
@@ -128,7 +128,7 @@ class TestRejectionDegradesToAnAnswer:
         )
 
     @pytest.mark.asyncio
-    async def test_piloti_receives_the_original_question(self, parts):
+    async def test_chat_agent_receives_the_original_question(self, parts):
         """Not a paraphrase and not the plan: the words the user actually typed."""
         calls, _research, deep, clarifier = parts
         seen: dict[str, object] = {}

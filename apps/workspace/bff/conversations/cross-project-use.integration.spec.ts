@@ -108,7 +108,7 @@ describe.skipIf(!url)('cross-project use against Postgres (migration 0125)', () 
 
   const session = (userId = OWNER): AuthorizedSession => ({
     userId,
-    email: `${userId}@grid.test`,
+    email: `${userId}@example.test`,
     name: 'Owner',
     accessToken: 'token',
     organizationId: ORG,

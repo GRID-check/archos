@@ -50,7 +50,7 @@ const ANNA = 'user_anna'
 const session = {
   userId: ME,
   organizationId: 'org_1',
-  email: 'me@grid.test',
+  email: 'me@example.test',
 } as unknown as AuthorizedSession
 
 function allowAccess(visibility: 'private' | 'project' | 'organization' = 'private'): void {

@@ -41,9 +41,9 @@ NOTES_PREFIX = "releasenotes/notes/"
 
 # Product surfaces: touching one of these is what makes a note mandatory.
 PRODUCT_PATTERNS = [
-    re.compile(r"^packages/agent/src/aiq_agent/"),
+    re.compile(r"^packages/agent/src/agent/"),
     re.compile(r"^sources/[^/]+/src/"),
-    re.compile(r"^apps/backend/src/"),
+    re.compile(r"^apps/agent-host/src/"),
     re.compile(r"^apps/workspace/(app|bff|ui|i18n|shared)/"),
 ]
 

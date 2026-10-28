@@ -35,7 +35,7 @@ from typing import Any
 
 from knowledge_layer.rerank import _build_user_prompt
 
-from aiq_agent.common.message_utils import response_text
+from agent.common.message_utils import response_text
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ _JUDGE_CANDIDATES = 12
 #: model gets, not the judge's head, because the block's claim is about that
 #: pool: judging the first 12 of 16 and saying "none of the 16" was false for
 #: four of them. The decider runs twelve calls at a time
-#: (``aiq_agent.common.decisions.DEFAULT_CONCURRENCY``), so the default
+#: (``agent.common.decisions.DEFAULT_CONCURRENCY``), so the default
 #: ``top_k`` of 16 is one batch in two waves; past this bound (an admin's
 #: ``top_k`` up to 50) the rest is named as not judged rather than judged in
 #: three more waves.
@@ -478,7 +478,7 @@ _REQUERY_TURN_ID: ContextVar[str | None] = ContextVar("knowledge_requery_turn", 
 
 
 def _current_turn_id() -> str | None:
-    """This turn's id when the NAT context states one, else ``None``.
+    """This turn's id when the agent-runtime context states one, else ``None``.
 
     Prefers the per-turn user message id and falls back to the workflow run
     id. The conversation id alone is per-conversation, not per-turn, so it

@@ -51,7 +51,7 @@ import { CreateProjectDialog } from './create-project-dialog'
 import { ProjectCard } from './project-card'
 import { ProjectListRow } from './project-list-row'
 
-interface ProjectsGridProps {
+interface ProjectsViewProps {
   projects: Project[]
   /** Ingested document count per project id. */
   docCounts: Record<string, number>
@@ -91,7 +91,7 @@ export function ProjectsGrid({
   docCounts,
   viewerActivity = {},
   autoOpenCreate = false,
-}: ProjectsGridProps): JSX.Element {
+}: ProjectsViewProps): JSX.Element {
   const t = useTranslations(projectsCopy)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>(() => defaultProjectStatusFilter(projects))

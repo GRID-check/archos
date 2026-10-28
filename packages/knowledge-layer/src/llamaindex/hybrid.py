@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 RRF_K = 60
 
 try:
-    from aiq_agent.common.legal_terms import extract_exact_terms  # type: ignore
-except ImportError:  # knowledge_layer usable without the aiq_agent package
+    from agent.common.legal_terms import extract_exact_terms  # type: ignore
+except ImportError:  # knowledge_layer usable without the agent package
     extract_exact_terms = None  # type: ignore
 
 
@@ -110,10 +110,10 @@ def reciprocal_rank_fusion(
 
 
 try:
-    from aiq_agent.common.german_text import DEFAULT_DF_CEILING_MIN_TOTAL  # type: ignore
-    from aiq_agent.common.german_text import DEFAULT_DF_CEILING_RATIO  # type: ignore
-except ImportError:  # knowledge_layer usable without the aiq_agent package
-    #: Mirrors ``aiq_agent.common.german_text`` for the standalone-package case only.
+    from agent.common.german_text import DEFAULT_DF_CEILING_MIN_TOTAL  # type: ignore
+    from agent.common.german_text import DEFAULT_DF_CEILING_RATIO  # type: ignore
+except ImportError:  # knowledge_layer usable without the agent package
+    #: Mirrors ``agent.common.german_text`` for the standalone-package case only.
     #: Change the numbers THERE; these exist so the import failure degrades to the same
     #: behaviour rather than to no ceiling at all.
     DEFAULT_DF_CEILING_RATIO = 0.25  # type: ignore[assignment]

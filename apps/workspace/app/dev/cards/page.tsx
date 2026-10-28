@@ -15,21 +15,21 @@
 import { notFound } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
-import { KeyTakeawaysCard } from '@/features/grid-cards/components/KeyTakeawaysCard'
-import { VerdictHeaderCard } from '@/features/grid-cards/components/VerdictHeaderCard'
-import { CalloutCard } from '@/features/grid-cards/components/CalloutCard'
-import { CalculationCard } from '@/features/grid-cards/components/CalculationCard'
-import { BuildingSectionCard } from '@/features/grid-cards/schematics/BuildingSectionCard'
-import { StairDiagramCard } from '@/features/grid-cards/schematics/StairDiagramCard'
-import { DimensionDiagramCard } from '@/features/grid-cards/schematics/DimensionDiagramCard'
-import { SetbackPlanCard } from '@/features/grid-cards/schematics/SetbackPlanCard'
-import { EgressDiagramCard } from '@/features/grid-cards/schematics/EgressDiagramCard'
-import { DaylightIncidenceCard } from '@/features/grid-cards/schematics/DaylightIncidenceCard'
-import { GuardrailCheckCard } from '@/features/grid-cards/schematics/GuardrailCheckCard'
-import { FireAccessPlanCard } from '@/features/grid-cards/schematics/FireAccessPlanCard'
-import { GridCards } from '@/features/grid-cards/components/GridCards'
+import { KeyTakeawaysCard } from '@/features/cards/components/KeyTakeawaysCard'
+import { VerdictHeaderCard } from '@/features/cards/components/VerdictHeaderCard'
+import { CalloutCard } from '@/features/cards/components/CalloutCard'
+import { CalculationCard } from '@/features/cards/components/CalculationCard'
+import { BuildingSectionCard } from '@/features/cards/schematics/BuildingSectionCard'
+import { StairDiagramCard } from '@/features/cards/schematics/StairDiagramCard'
+import { DimensionDiagramCard } from '@/features/cards/schematics/DimensionDiagramCard'
+import { SetbackPlanCard } from '@/features/cards/schematics/SetbackPlanCard'
+import { EgressDiagramCard } from '@/features/cards/schematics/EgressDiagramCard'
+import { DaylightIncidenceCard } from '@/features/cards/schematics/DaylightIncidenceCard'
+import { GuardrailCheckCard } from '@/features/cards/schematics/GuardrailCheckCard'
+import { FireAccessPlanCard } from '@/features/cards/schematics/FireAccessPlanCard'
+import { AnswerCards } from '@/features/cards/components/AnswerCards'
 import { DEMO, DEMO_PROJECT_ID, useFakeProposalClient } from '../_fixtures/fake-proposals'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 
 const OIB2 = { document: 'OIB-Richtlinie 2', section: 'Pkt. 3.1', edition: 'Ausgabe Mai 2023' }
 const OIB3 = { document: 'OIB-Richtlinie 3', section: 'Pkt. 9.1.1', edition: 'Ausgabe Mai 2023' }
@@ -442,7 +442,7 @@ function Gallery() {
           and „Zur Freigabe einreichen" — are judged on
           `/dev/document-draft-card`, which draws all three. */}
       <Section id="document_draft">
-        <GridCards
+        <AnswerCards
           cards={[
             {
               type: 'document_draft',
@@ -451,7 +451,7 @@ function Gallery() {
               bytes: 4820,
               version: 3,
             },
-          ] as GridCard[]}
+          ] as AnswerCard[]}
           projectId={null}
         />
       </Section>
@@ -461,7 +461,7 @@ function Gallery() {
           purpose — the row exists by the time the card renders, so there is
           nothing to accept (see `TaskCreatedCard`'s header). */}
       <Section id="task_created">
-        <GridCards
+        <AnswerCards
           cards={[
             {
               type: 'task_created',
@@ -472,19 +472,19 @@ function Gallery() {
               due_at: '2026-09-18T23:59:59.999Z',
               conversation_id: 's_00000000_0000_4000_8000_0000000000f2',
             },
-          ] as GridCard[]}
+          ] as AnswerCard[]}
           projectId={null}
         />
       </Section>
 
-      {/* The three proposal cards go through the GridCards dispatcher rather
+      {/* The three proposal cards go through the AnswerCards dispatcher rather
           than being rendered directly, so the gallery exercises the same
           wiring the chat uses. Each carries a `proposal_id` and is a receipt of
           a proposal the faked API holds: clickable here, and it moves the
           proposal as the server would. */}
       <Section id="project_profile_patch">
         {proposalsReady && (
-          <GridCards
+          <AnswerCards
             cards={[
               {
                 type: 'project_profile_patch',
@@ -496,7 +496,7 @@ function Gallery() {
                   { op: 'add', path: '/facts/escape_level_m', value: 25 },
                 ],
               },
-            ] as GridCard[]}
+            ] as AnswerCard[]}
             projectId={DEMO_PROJECT_ID}
           />
         )}
@@ -504,7 +504,7 @@ function Gallery() {
 
       <Section id="memory_proposal">
         {proposalsReady && (
-          <GridCards
+          <AnswerCards
             cards={[
               {
                 type: 'memory_proposal',
@@ -514,7 +514,7 @@ function Gallery() {
                 kind: 'preference',
                 confidence: 'high',
               },
-            ] as GridCard[]}
+            ] as AnswerCard[]}
             projectId={DEMO_PROJECT_ID}
           />
         )}
@@ -526,7 +526,7 @@ function Gallery() {
           section shows is the list under one question. */}
       <Section id="file_operation_proposal">
         {proposalsReady && (
-          <GridCards
+          <AnswerCards
             cards={[
               {
                 type: 'file_operation_proposal',
@@ -555,7 +555,7 @@ function Gallery() {
                 ],
                 note: 'Vorschlag — es wurde noch nichts verschoben.',
               },
-            ] as GridCard[]}
+            ] as AnswerCard[]}
             projectId={DEMO_PROJECT_ID}
           />
         )}
@@ -569,7 +569,7 @@ function Gallery() {
           document does not exist, so the live read fails soft: the marks stay
           „proposed" and page 1 is drawn as a plain sheet. */}
       <Section id="canvas_activity">
-        <GridCards
+        <AnswerCards
           cards={[
             {
               type: 'canvas_activity',
@@ -646,7 +646,7 @@ function Gallery() {
                 { action: 'deleted', number: 6, body: 'Doppelt gesetzt, siehe Nr. 4.' },
               ],
             },
-          ] as GridCard[]}
+          ] as AnswerCard[]}
           projectId={null}
         />
       </Section>

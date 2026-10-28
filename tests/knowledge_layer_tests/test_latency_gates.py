@@ -23,7 +23,7 @@ from knowledge_layer.requery import reset_requery_slot_for_turn
 from knowledge_layer.requery import scores_decisively_strong
 from knowledge_layer.requery import should_skip_judge
 
-from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
+from agent.common.retrieval_settings import reset_retrieval_settings_cache
 
 
 @pytest.fixture(autouse=True)
@@ -247,7 +247,7 @@ class _FakeLLM:
 
 
 def _chunk(text: str, chunk_id: str = "c1", score: float = 0.5):
-    from aiq_agent.knowledge.schema import Chunk
+    from agent.knowledge.schema import Chunk
 
     return Chunk(
         chunk_id=chunk_id,
@@ -300,15 +300,15 @@ def loop_harness(monkeypatch):
                 notice + preamble_note + ("|".join(c.chunk_id for c in merged.chunks) or "no results") + trailer
             ),
         )
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
         async def _resolve(_builder, name):
             return judge
 
-        monkeypatch.setattr("aiq_agent.common.get_langchain_llm", _resolve)
+        monkeypatch.setattr("agent.common.get_langchain_llm", _resolve)
 
     return install
 
@@ -458,7 +458,7 @@ class TestSpanEnrichment:
             captured["input"] = dict(search_input)
             captured["picks"] = dict(picks)
 
-        monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
+        monkeypatch.setattr("agent.observability.retrieval_trace.emit_retrieval_span", _capture)
         retriever = _FakeRetriever({"Fluchtweg GK4": [_chunk("a", "a")]})
         loop_harness(retriever, _FakeLLM('{"sufficient": true, "queries": []}'))
 
@@ -475,7 +475,7 @@ class TestSpanEnrichment:
         def _capture(*, tool_name, search_input, picks):
             captured["input"] = dict(search_input)
 
-        monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
+        monkeypatch.setattr("agent.observability.retrieval_trace.emit_retrieval_span", _capture)
         retriever = _FakeRetriever({"OIB-RL 2 Pkt 5.1": [_chunk("a", "a")]})
         loop_harness(retriever, _FakeLLM('{"sufficient": false, "queries": ["x"]}'))
 
@@ -487,33 +487,33 @@ class TestSpanEnrichment:
 
 class TestCardSuppression:
     def test_short_overview_without_verdict_is_suppressed(self):
-        from aiq_agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
+        from agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
 
         assert _should_suppress_meta_cards("Kurzer Überblick. " * 10, {"takeaways": [{"text": "x"}]}) is True
 
     def test_long_prose_keeps_its_cards(self):
-        from aiq_agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
+        from agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
 
         assert _should_suppress_meta_cards("x" * 2000, {"takeaways": [{"text": "x"}]}) is False
 
     def test_a_copyable_verdict_keeps_its_cards(self):
-        from aiq_agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
+        from agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
 
         meta = {"verdict": {"value": "40 m", "subject": "Fluchtweglänge"}}
         assert _should_suppress_meta_cards("kurz", meta) is False
         assert _should_suppress_meta_cards("kurz", {"kind": "ruling", "summary": "s"}) is False
 
     def test_nothing_to_drop_is_not_suppression(self):
-        from aiq_agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
+        from agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
 
         assert _should_suppress_meta_cards("kurz", None) is False
         assert _should_suppress_meta_cards("kurz", {}) is False
 
     def test_suppression_clears_the_registry_and_strips_markers(self):
-        from aiq_agent.agents.piloti.answer_pipeline import _suppress_cards
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import get_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.agents.piloti.answer_pipeline import _suppress_cards
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import get_card_registry
+        from agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
         registry.add({"type": "summary", "text": "x"})
@@ -529,12 +529,12 @@ class TestCardSuppression:
             assert get_card_registry() is not None
             assert len(get_card_registry()) == 0
         finally:
-            from aiq_agent.cards.registry import reset_card_registry
+            from agent.cards.registry import reset_card_registry
 
             reset_card_registry(token)
 
     def test_no_suppression_leaves_content_and_meta_untouched(self):
-        from aiq_agent.agents.piloti.answer_pipeline import _suppress_cards
+        from agent.agents.piloti.answer_pipeline import _suppress_cards
 
         content, meta, suppressed = _suppress_cards("x" * 2000, {"takeaways": [{"text": "x"}]})
         assert (suppressed, meta) == (False, {"takeaways": [{"text": "x"}]})
@@ -547,10 +547,10 @@ class TestCardSuppression:
         (short direct prose, no verdict) matches a drafting turn exactly, but
         the draft card is the product announcement, not trailer decoration.
         """
-        from aiq_agent.agents.piloti.answer_pipeline import _suppress_cards
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import get_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.agents.piloti.answer_pipeline import _suppress_cards
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import get_card_registry
+        from agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
         registry.add({"type": "document_draft", "title": "t", "path": "/drafts/x.md", "bytes": 3, "version": 1})
@@ -562,6 +562,6 @@ class TestCardSuppression:
             assert out_meta == meta
             assert len(get_card_registry()) == 1
         finally:
-            from aiq_agent.cards.registry import reset_card_registry
+            from agent.cards.registry import reset_card_registry
 
             reset_card_registry(token)

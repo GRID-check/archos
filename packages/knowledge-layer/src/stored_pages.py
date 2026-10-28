@@ -115,7 +115,7 @@ async def _resolve(collection: str, file_name: str) -> Any:
 
 def _fetch(key: str, bucket: str | None, byte_range: tuple[int, int] | None) -> bytes | None:
     """One object (or a byte range of it) on the read-only credential; ``None`` on any failure, NoSuchKey included."""
-    from aiq_agent.common import seaweed_s3
+    from agent.common import seaweed_s3
 
     try:
         client = seaweed_s3.s3_client()
@@ -132,8 +132,8 @@ def _fetch(key: str, bucket: str | None, byte_range: tuple[int, int] | None) -> 
 
 def _read_chunks(collection: str, file_name: str) -> list[tuple[Any, str, dict[str, Any]]] | None:
     """The file's chunks in reading order, as their own text: no breadcrumb, no repeated overlap."""
-    from aiq_agent.knowledge.collection_pages import _document_hits
-    from aiq_agent.knowledge.collection_pages import own_page_texts
+    from agent.knowledge.collection_pages import _document_hits
+    from agent.knowledge.collection_pages import own_page_texts
 
     hits = _document_hits(collection, file_name)
     rows = [

@@ -7,7 +7,7 @@
  *   RISO_KIT_DIR=/some/dir node art/riso/setup.mjs
  *
  * 1. Clones kit.json's repo at exactly kit.json's commit into kitDir()
- *    (default ~/.cache/piloti-riso/riso-windowseat-<commit>, shared by worktrees).
+ *    (default ~/.cache/riso-kit/riso-windowseat-<commit>, shared by worktrees).
  * 2. npm ci in its tools/ with --ignore-scripts: stills need playwright-core
  *    only, not the ffmpeg binary the kit's film tools download.
  * 3. Finds a browser: Firefox (the kit's primary engine, and the one the

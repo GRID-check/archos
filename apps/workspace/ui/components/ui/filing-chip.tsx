@@ -4,13 +4,13 @@ import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type JSX } 
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from './focus-ring'
 import { PRESSABLE } from './press'
-import { PilotiGlyph } from './piloti-glyph'
+import { AgentGlyph } from './agent-glyph'
 
 /**
  * NewMark — the quiet „neu" beside a folder that a move would create. A dashed
  * edge in the strongest hairline and muted ink, no fill: it qualifies the name
  * beside it and must not outshout it. No colour either, because chroma in this
- * product says where a source comes from (`grid-design-language.md`), and a
+ * product says where a source comes from (`design-language.md`), and a
  * green „neu" would read as „Projekt".
  */
 export function NewMark({ className, ...props }: HTMLAttributes<HTMLSpanElement>): JSX.Element {
@@ -73,7 +73,7 @@ export const FilingChip = forwardRef<HTMLButtonElement, FilingChipProps>(functio
       )}
       {...props}
     >
-      <PilotiGlyph size="xs" className="size-4" />
+      <AgentGlyph size="xs" className="size-4" />
       <span className="min-w-0 truncate">
         <span aria-hidden>→ </span>
         {target}

@@ -19,7 +19,7 @@
 const { monitorEventLoopDelay } = require('node:perf_hooks')
 const { collectorEndpoint, resourceAttributes, signalUrl } = require('./otlp')
 
-const PROVIDER_KEY = Symbol.for('grid.otel.meterProvider')
+const PROVIDER_KEY = Symbol.for('app.otel.meterProvider')
 /** How often readings leave the process; PostHog charts at minute resolution. */
 const EXPORT_INTERVAL_MS = 30_000
 

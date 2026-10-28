@@ -17,17 +17,17 @@ from langgraph.errors import GraphInterrupt
 from langgraph.graph import END
 from langgraph.graph import StateGraph
 
-from aiq_agent.common.action_rows import ToolStepCallback
-from aiq_agent.common.turn_status import SUBAGENT_FAILED_MESSAGE
-from aiq_agent.common.turn_status import current_subagent
-from aiq_agent.common.turn_status import emit_step
-from aiq_agent.common.turn_status import subagent_run
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.common.wire_v2 import StepStartedBody
-from aiq_agent.common.wire_v2 import SubagentErrorBody
-from aiq_agent.common.wire_v2 import SubagentFinishedBody
-from aiq_agent.common.wire_v2 import SubagentStartedBody
+from agent.common.action_rows import ToolStepCallback
+from agent.common.turn_status import SUBAGENT_FAILED_MESSAGE
+from agent.common.turn_status import current_subagent
+from agent.common.turn_status import emit_step
+from agent.common.turn_status import subagent_run
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import StepFinishedBody
+from agent.common.wire_v2 import StepStartedBody
+from agent.common.wire_v2 import SubagentErrorBody
+from agent.common.wire_v2 import SubagentFinishedBody
+from agent.common.wire_v2 import SubagentStartedBody
 
 
 class _State(TypedDict, total=False):

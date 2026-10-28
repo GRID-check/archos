@@ -3,7 +3,7 @@
 The model's grading is not what these tests are about: they test what the
 pipeline hands the check and what it does with the reply. The stub answers a
 fixed level (``high`` unless told otherwise) and records every
-:class:`~aiq_agent.common.claim_judge.Evidence` it was asked about.
+:class:`~agent.common.claim_judge.Evidence` it was asked about.
 """
 
 from __future__ import annotations
@@ -12,12 +12,12 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from aiq_agent.common.claim_judge import Check
-from aiq_agent.common.claim_judge import Evidence
-from aiq_agent.common.claim_judge import Finding
-from aiq_agent.common.claim_judge import JudgeFn
-from aiq_agent.common.claim_judge import Level
-from aiq_agent.common.claim_judge import Passage
+from agent.common.claim_judge import Check
+from agent.common.claim_judge import Evidence
+from agent.common.claim_judge import Finding
+from agent.common.claim_judge import JudgeFn
+from agent.common.claim_judge import Level
+from agent.common.claim_judge import Passage
 
 #: The measurement set: twelve stored answers with what their turns registered (ADR-0139).
 REPO_ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())

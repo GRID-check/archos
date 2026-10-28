@@ -40,7 +40,7 @@ export function announcementOf(
   }
   const lines = [...groups.values()].map(({ actor, change, ids }) => {
     const count = ids.size
-    if (change === 'created' && actor.kind === 'piloti') return t('review.announce.pilotiProposed', { count })
+    if (change === 'created' && actor.kind === 'piloti') return t('review.announce.agentProposed', { count })
     const numbers = [...ids]
       .map(numberOf)
       .filter((number): number is number => number !== null)
@@ -49,7 +49,7 @@ export function announcementOf(
     const name = actor.kind === 'piloti' ? 'Piloti' : actor.name
     return t(`review.announce.${change}`, { name, count, numbers }).replace(/\s+$/, '').replace(/\s{2,}/g, ' ')
   })
-  if (answered) lines.push(t('review.announce.pilotiAnswered'))
+  if (answered) lines.push(t('review.announce.agentAnswered'))
   return lines.join('. ')
 }
 

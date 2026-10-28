@@ -36,7 +36,7 @@ import {
   PRESENCE_TTL_MS,
   roomEventSchema,
   roomPostSchema,
-  type PilotiActivityState,
+  type AgentActivityState,
   type RoomBox,
   type RoomCursor,
   type RoomEvent,
@@ -138,7 +138,7 @@ export async function publishToDocumentRoom(documentId: string, event: RoomEvent
  * working on one document are two, carrying the name of the person it acts
  * for when there is one.
  */
-export function pilotiPeer(conversationId: string, onBehalfOf: string, forName?: string | null): RoomPeer {
+export function agentPeer(conversationId: string, onBehalfOf: string, forName?: string | null): RoomPeer {
   const id = conversationId.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 56)
   const name = forName?.trim().slice(0, 120)
   return {
@@ -167,7 +167,7 @@ export type AgentRoomOp =
   /** Point at a spot, with a few words beside the pointer; `null` takes the pointer off the pages. */
   | { op: 'cursor'; cursor: RoomCursor | null; label?: string }
   /** Say what it is doing („sieht sich Seite 2 an"), optionally with the region it reads; `idle` clears it. */
-  | { op: 'activity'; label?: string; state?: PilotiActivityState; box?: RoomBox }
+  | { op: 'activity'; label?: string; state?: AgentActivityState; box?: RoomBox }
   /** Draw a box for a moment to show what it means. */
   | { op: 'highlight'; box: RoomBox; label?: string; ttlMs?: number }
 
@@ -201,7 +201,7 @@ export async function publishAsAgent(
   op: AgentRoomOp
 ): Promise<RoomEvent> {
   const forName = await actingName(organizationId, agent.onBehalfOf)
-  const event = agentRoomEvent(pilotiPeer(agent.conversationId, agent.onBehalfOf, forName), op)
+  const event = agentRoomEvent(agentPeer(agent.conversationId, agent.onBehalfOf, forName), op)
   await publishToDocumentRoom(documentId, event)
   observeRoom(documentId, organizationId, [event])
   return event

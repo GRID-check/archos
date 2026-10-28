@@ -445,10 +445,10 @@ The server refuses, and the menu is not offered:
   the browser asked Piloti itself, and only Piloti's answer in the thread says
   so: the server lets a delete through in the moment between the ask and the
   answer, and Piloti answers a reply that is gone. The card reads the same
-  facts (`pilotiRepliedSince`, `pilotiWork` for the reply's author) to keep
+  facts (`agentRepliedSince`, `pilotiWork` for the reply's author) to keep
   from offering what the server would refuse, and withholds the change too
   while this tab's own ask of Piloti in that thread is thinking
-  (`pilotiAskingIn`), which leaves that moment to another tab only. The
+  (`agentAskingIn`), which leaves that moment to another tab only. The
   refusal says so in the card, not as a colleague's move.
 
 The write is a compare-and-swap on the words the service read
@@ -673,7 +673,7 @@ the way a design tool shows its collaborators:
 | The mark a colleague has open | a ring round the pin (an outline round a region) in their colour, with their first name at its top-right; „Anna +1" for several; a person whose own pointer is within 48 px of the mark is not named twice (`selectionTagged`); never the reader's own tabs, never Piloti | `peerSelections`, `PeerSelection` |
 | A box being dragged out | dashed in their colour, with their first name over its top-right corner; beside the box when the box is narrower than the name, so the name never lies over a pin next to it (`draftTagPlace`) | `review-page-layer.tsx` |
 | A colleague out of view | a chip at the edge that leads to them („Lena · Seite 2"), decided by whether their point is on screen (`peerSide`); a click jumps there; the face's tooltip names the page. Never over the open card: the card keeps out of the foot, and a row that would still lie over it steps aside (`covers`) | `Elsewhere` in `document-review.tsx` |
-| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`pilotiResting`); the box it reads glows while it reads it (`look` sends the `look` op for a workspace document, from the canvas or the chat: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
+| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`agentResting`); the box it reads glows while it reads it (`look` sends the `look` op for a workspace document, from the canvas or the chat: presence and a `reading` activity) | `AgentCursor`, `tools/canvas/presence.py` `show_reading` |
 
 A write sends an `annotations.changed` hint. A hint is a nudge to re-read, never
 the state itself, so a dropped hint costs a few seconds, not a wrong list. The
@@ -717,12 +717,12 @@ left the room it sends nothing more under its peer, so a late send from a timer
 
 Piloti reaches marks in two ways.
 
-**By tool.** The `canvas` function group (`packages/agent/src/aiq_agent/tools/canvas/`) calls
+**By tool.** The `canvas` function group (`packages/agent/src/agent/tools/canvas/`) calls
 `/api/internal/document-annotations`: `canvas__marks` (`list`), `canvas__mark`
 (`propose`, or `create` with `open=true`), `canvas__update` (`update`),
 `canvas__delete` (`delete`), `canvas__reply` (`reply`), `canvas__room`
 (`room`), and the gestures `canvas__point` and `canvas__highlight`.
-`look` (`packages/agent/src/aiq_agent/tools/look/`, ADR-0128), a tool of its own bound in every
+`look` (`packages/agent/src/agent/tools/look/`, ADR-0128), a tool of its own bound in every
 context, renders the page or a box on it and makes the box glow here. The turn sends `leave` when it ends, so Piloti's cursor goes with it.
 
 - A tool may name a document (`document`: a file name from the turn's inventory, or an id); the name is resolved against the inventory and its id read from `GET /api/internal/document-file` with the envelope echoed. Without one it acts on the document open on the canvas (`focus_document_id`), then on the conversation's *subject*. The server checks a named document against the asker's access and the turn's signed scope (`lib/annotations/agent.ts`).
@@ -742,7 +742,7 @@ service functions the person's own routes use (`lib/annotations/agent.ts`):
 | Asked for | Op | Runs | Recorded as |
 |---|---|---|---|
 | Set a mark | `create` | `setAnnotationsForAsker`: born `open`, `author_kind = piloti` | `created_by` and `accepted_by`/`accepted_at` = the asker |
-| Resolve, reopen, dismiss a proposal, take one over, assign, set or clear a date, reword, change the kind | `update` | `updateAnnotationForAsker`, which runs `updateAnnotation` with `actor = PILOTI`, then posts `note` as Piloti's reply | `closed_by` / `accepted_by` = the asker |
+| Resolve, reopen, dismiss a proposal, take one over, assign, set or clear a date, reword, change the kind | `update` | `updateAnnotationForAsker`, which runs `updateAnnotation` with `actor = AGENT`, then posts `note` as Piloti's reply | `closed_by` / `accepted_by` = the asker |
 | Delete a mark | `delete` | `deleteAnnotation`, which allows only a mark the asker set themselves, while nobody else wrote in its thread and it was not carried | nothing left |
 
 Findings Piloti makes on its own initiative, including a whole-document review
@@ -892,7 +892,7 @@ reads Piloti's work off the server. The inbox has no Piloti to ask, so a
 Rückfrage answered from there would reach nobody: its row leads to the
 Prüfansicht instead (`answerIn: 'review'`, below).
 
-**Piloti's work is the server's to say** (`lib/annotations/piloti-work.ts`).
+**Piloti's work is the server's to say** (`lib/annotations/agent-work.ts`).
 Every mark's view carries `pilotiWork`, read off its newest wake, so everyone
 in the room reads the same line, after a reload too:
 
@@ -905,7 +905,7 @@ in the room reads the same line, after a reload too:
 | `answered`, `stopped` | none | the answer is in the thread |
 
 Every transition of a wake (started, ended, held at claim) tells the room
-(`announcePilotiWork`), so the line moves without a reload.
+(`announceAgentWork`), so the line moves without a reload.
 
 ### How a woken turn ends
 
@@ -959,8 +959,8 @@ audit trail, as the person who took the mark back.
 
 A turn asked from a thread, whose model did not call `canvas__reply`, posts its
 answer into that thread at the end, when the turn ended `answered`
-(`packages/agent/src/aiq_agent/turn/annotation_reply.py`, posted by `post_fallback_reply` in
-`apps/backend/src/aiq_api/chat_socket.py`). It does so only when nothing
+(`packages/agent/src/agent/turn/annotation_reply.py`, posted by `post_fallback_reply` in
+`apps/agent-host/src/agent_host/chat_socket.py`). It does so only when nothing
 Piloti did in that thread already spoke there, and only where everyone who
 opens the document reads. The reply goes through the route the tool uses, as
 the person who asked.
@@ -1168,7 +1168,7 @@ they link to.
 A failure says why. `onWakeEnded` classes the wake's stored reason with
 `wakeEndReasonKind` (`apps/workspace/bff/annotations/wake-end-reason.ts`) and
 stores the class as the item's `variant`; the row reads
-`pilotiWorkFailed.variants.<class>.body`, never the stored reason, which is
+`agentWorkFailed.variants.<class>.body`, never the stored reason, which is
 English and meant for the audit trail:
 
 | Class | Stored reasons | The body says |
@@ -1566,4 +1566,4 @@ it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 - Over the chat, a canvas question whose server reads no box is not told so (`onDegraded` is the stand-alone canvas client's).
 - The Python side posts to internal routes through several near-identical helpers.
 - A change Piloti makes and its note are two writes in one request, not one transaction (`updateAnnotationForAsker`). Every refusal the service can foresee (rights, a stale status, a full thread) comes before the change; a database failure between the two writes would still leave the change without its note.
-- The change record is a third write, after the annotations service has committed the change and its note (`recordPilotiChanges`, `apps/workspace/bff/changes/service.ts`). The service offers no hook into its transaction, and a failed record is logged, not thrown: the change then lands without a row, so the card cannot undo it from the record.
+- The change record is a third write, after the annotations service has committed the change and its note (`recordAgentChanges`, `apps/workspace/bff/changes/service.ts`). The service offers no hook into its transaction, and a failed record is logged, not thrown: the change then lands without a row, so the card cannot undo it from the record.

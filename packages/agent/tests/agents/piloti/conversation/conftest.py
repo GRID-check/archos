@@ -1,4 +1,4 @@
-"""The chat workflow driven the way NAT drives it, for the tests that need a whole turn."""
+"""The chat workflow driven the way the agent runtime drives it, for the tests that need a whole turn."""
 
 from __future__ import annotations
 
@@ -7,15 +7,15 @@ from types import SimpleNamespace
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
-from aiq_agent.agents.piloti import conversation_register as register_mod
-from aiq_agent.agents.piloti.conversation_register import ChatDeepResearcherConfig
-from aiq_agent.agents.piloti.conversation_register import chat_deepresearcher_agent
-from aiq_agent.common import profiler as profiler_mod
-from aiq_agent.common.platform_lessons import LessonsResolution
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.turn import context as context_mod
-from aiq_agent.turn import inventory as inventory_mod
+from agent.agents.piloti import conversation_register as register_mod
+from agent.agents.piloti.conversation_register import ChatDeepResearcherConfig
+from agent.agents.piloti.conversation_register import chat_deepresearcher_agent
+from agent.common import profiler as profiler_mod
+from agent.common.platform_lessons import LessonsResolution
+from agent.knowledge import ingest_status_store
+from agent.project_context import RequestContext
+from agent.turn import context as context_mod
+from agent.turn import inventory as inventory_mod
 
 
 class _Fn:
@@ -24,7 +24,7 @@ class _Fn:
 
 
 class _Builder:
-    """Just enough of NAT's Builder for the chat workflow to wire itself."""
+    """Just enough of the agent runtime's Builder for the chat workflow to wire itself."""
 
     def __init__(self, shallow):
         self._shallow = shallow
@@ -78,13 +78,13 @@ def workflow_harness(monkeypatch):
     )
     # The scoping module parses the envelope on its own account; count only this module's parse.
     monkeypatch.setattr(register_mod, "get_scoped_collections_from_context", lambda: None)
-    real_from_context = GridRequestContext.from_context.__func__
+    real_from_context = RequestContext.from_context.__func__
 
     def counting(cls):
         seen["from_context"] += 1
         return real_from_context(cls)
 
-    monkeypatch.setattr(GridRequestContext, "from_context", classmethod(counting))
+    monkeypatch.setattr(RequestContext, "from_context", classmethod(counting))
 
     async def workflow(shallow):
         config = ChatDeepResearcherConfig()
@@ -99,7 +99,7 @@ def workflow_harness(monkeypatch):
             await gen.aclose()
 
     async def single(query, shallow=None):
-        """What `nat run` and `nat eval` get: NAT's own fold of the stream."""
+        """What `nat run` and `nat eval` get: the agent runtime's own fold of the stream."""
         gen, info = await workflow(shallow or seen["shallow"])
         try:
             return await info.single_fn(query)

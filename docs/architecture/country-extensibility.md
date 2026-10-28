@@ -4,7 +4,7 @@ Status: Active (2026-07-18). Companion to ADR-0025 v2 and `backend-deep-dive.md`
 
 Piloti ships Austria-first, but the product goal is multi-jurisdiction. This
 document is the honest map of what that takes: the binding contract that already
-exists (`packages/agent/src/aiq_agent/common/country_profile.py`, Austria = implementation #1),
+exists (`packages/agent/src/agent/common/country_profile.py`, Austria = implementation #1),
 and the complete inventory of remaining Austria/German couplings a second
 country must address — so "add Germany" is a checklist, not archaeology.
 
@@ -18,7 +18,7 @@ what kept the previous country abstraction honest-free and got it deleted).
 |---|---|---|
 | `states` / `state_probe_order` | data (registry-overridable) | jurisdiction resolution (`extract_federal_state`/`resolve_federal_state`) |
 | `language` | data | classification/prompt language (consumer grows with i18n work below) |
-| `doctrine` | data | `{{ norm_doctrine }}` in researcher/planner/writer prompts. Piloti holds the AT text inline in its system prompt `prompts/piloti_static.md` (`<building_law>`), because only `at` is registered and the text is therefore constant per deployment. **Registering a second country moves it back to a rendered variable in the turn context (`piloti.j2`)** — ADR-0060 amendment |
+| `doctrine` | data | `{{ norm_doctrine }}` in researcher/planner/writer prompts. Piloti holds the AT text inline in its system prompt `prompts/chat_static.md` (`<building_law>`), because only `at` is registered and the text is therefore constant per deployment. **Registering a second country moves it back to a rendered variable in the turn context (`piloti.j2`)** — ADR-0060 amendment |
 | `corpus_collection` | data | retrieval base-collection routing; admin store |
 | `corpus_note` | data | catalog prompt block corpus section |
 | `parcel_tags` | data | `parcel_note` per-parcel source-of-truth signal |
@@ -63,7 +63,7 @@ Phase 3 — vocabulary and language surfaces (scoped per country):
 7. Agent identity prompts: the j2 prompts hardcode "Austrian building
    regulations / RIS / OIB" framing — template off the profile
    (`country_name`, `legal_source_tools`) when country #2 ships.
-8. Request envelope: `GridRequestContext.federal_state` is AT-vocabulary; add a
+8. Request envelope: its `federal_state` is AT-vocabulary; add a
    `country` envelope field alongside it (the structured `country=<cc>` prompt
    fact is already parsed by `resolve_country`).
 

@@ -2,7 +2,7 @@
 
 Before this, every skills-enabled turn (every production turn: the builtin
 skills always resolve, so the skill tool is always folded in) constructed a
-fresh ``PilotiAgent``: the 43 KB prompt re-read from disk inside
+fresh ``ChatAgent``: the 43 KB prompt re-read from disk inside
 the async request, the LangGraph recompiled, every tool schema rebound, the
 BM25 index rebuilt. The "bind once at construction" comments were true of a
 path production never took. These tests count what a turn costs.
@@ -19,17 +19,17 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-import aiq_agent.agents.piloti.register as register_module
-from aiq_agent.agents.piloti import prompt as prompt_module
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.agent import TurnConfig
-from aiq_agent.agents.piloti.agent import _recursion_limit
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.register import ResearchAgentConfig
-from aiq_agent.agents.piloti.register import research_agent
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
+import agent.agents.piloti.register as register_module
+from agent.agents.piloti import prompt as prompt_module
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.agent import TurnConfig
+from agent.agents.piloti.agent import _recursion_limit
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.register import ResearchAgentConfig
+from agent.agents.piloti.register import research_agent
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -63,7 +63,7 @@ def _mock_llm():
 
 
 def _skill_runtime():
-    from aiq_agent.skills.backend import SkillsBackend
+    from agent.skills.backend import SkillsBackend
 
     runtime = MagicMock()
     runtime.prompt_block.return_value = "## Skills"
@@ -78,8 +78,8 @@ def _skill_runtime():
 def _bypass_citation_pipeline():
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
@@ -93,8 +93,8 @@ def counters(monkeypatch):
     """How many times the expensive parts ran: prompt reads, graph compiles, constructions."""
     counts = {"prompt_reads": 0, "graph_compiles": 0, "agents_built": 0}
     real_load = prompt_module.load_prompt
-    real_build = PilotiAgent._build_graph
-    real_init = PilotiAgent.__init__
+    real_build = ChatAgent._build_graph
+    real_init = ChatAgent.__init__
 
     def counting_load(path, name):
         counts["prompt_reads"] += 1
@@ -115,8 +115,8 @@ def counters(monkeypatch):
     prompt_module.system_prompt_template.cache_clear()
     prompt_module.bundled_static_block.cache_clear()
     monkeypatch.setattr(prompt_module, "load_prompt", counting_load)
-    monkeypatch.setattr(PilotiAgent, "_build_graph", counting_build)
-    monkeypatch.setattr(PilotiAgent, "__init__", counting_init)
+    monkeypatch.setattr(ChatAgent, "_build_graph", counting_build)
+    monkeypatch.setattr(ChatAgent, "__init__", counting_init)
     yield counts
     prompt_module.system_prompt_template.cache_clear()
     prompt_module.bundled_static_block.cache_clear()
@@ -162,7 +162,7 @@ async def test_a_turn_that_varies_nothing_reuses_the_boot_binding():
     llm = _mock_llm()
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    agent = PilotiAgent(llm_provider=provider, tools=[web_search_tool])
+    agent = ChatAgent(llm_provider=provider, tools=[web_search_tool])
     llm.bind_tools.reset_mock()
 
     await agent.run(ResearchAgentState(messages=[HumanMessage(content="Q")]))
@@ -186,7 +186,7 @@ async def test_the_ceiling_is_the_research_budget_and_nothing_is_added_to_it():
     llm = _mock_llm()
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    agent = PilotiAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=3)
+    agent = ChatAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=3)
     assert agent.tool_iteration_ceiling == 3
     assert "reserved_tool_iterations" not in TurnConfig.__dataclass_fields__
 

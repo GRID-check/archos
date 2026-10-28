@@ -32,8 +32,8 @@ import { runPurgeBinnedChunksSlice, runRestoreFolderSlice } from '@/lib/projects
 import { runPlacementReingestSlice } from '@/lib/projects/collection-placement'
 import { runMailImportSlice } from '@/lib/mail-import/job'
 import { runReportFilingJob } from '@/lib/tasks/service'
-import { runPilotiWake } from '@/lib/annotations/wake-job'
-import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
+import { runAgentWake } from '@/lib/annotations/wake-job'
+import { runAgentWakeStop } from '@/lib/annotations/wake-stop-job'
 import { runIntakeReadSlice } from '@/lib/project-intake/service'
 import { runFilingReviewSlice } from '@/lib/filing/job'
 import { endRunOfDepartedRequester, runRootSortSlice } from '@/lib/filing/root-sort-run'
@@ -51,8 +51,8 @@ import {
   inboxPushPayloadSchema,
   mailImportPayloadSchema,
   officeRenditionPayloadSchema,
-  pilotiWakePayloadSchema,
-  pilotiWakeStopPayloadSchema,
+  agentWakePayloadSchema,
+  agentWakeStopPayloadSchema,
   placementReingestPayloadSchema,
   projectIntakeReadPayloadSchema,
   purgeBinnedChunksPayloadSchema,
@@ -154,8 +154,8 @@ const mailImportHandler: JobHandler = async ({ organizationId, payload }) => {
  * `agent_wakes` row, and it may answer „not yet" (`notBefore`) while another
  * turn of the person's thread runs.
  */
-const pilotiWakeHandler: JobHandler = async ({ organizationId, payload, attempts }) =>
-  runPilotiWake(organizationId, pilotiWakePayloadSchema.parse(payload), { last: isLastAttempt(attempts) })
+const agentWakeHandler: JobHandler = async ({ organizationId, payload, attempts }) =>
+  runAgentWake(organizationId, agentWakePayloadSchema.parse(payload), { last: isLastAttempt(attempts) })
 
 /**
  * A root sort's slice (ADR-0121). Not {@link handler}: a membership lookup the
@@ -186,8 +186,8 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   office_rendition: systemHandler(officeRenditionPayloadSchema, runOfficeRenditionJob),
   file_research_report: systemHandler(fileResearchReportPayloadSchema, runReportFilingJob),
   mail_import: mailImportHandler,
-  piloti_wake: pilotiWakeHandler,
-  piloti_wake_stop: systemHandler(pilotiWakeStopPayloadSchema, runPilotiWakeStop),
+  piloti_wake: agentWakeHandler,
+  piloti_wake_stop: systemHandler(agentWakeStopPayloadSchema, runAgentWakeStop),
   project_intake_read: handler(projectIntakeReadPayloadSchema, runIntakeReadSlice),
   filing_review: handler(filingReviewPayloadSchema, runFilingReviewSlice),
   root_sort: rootSortHandler,

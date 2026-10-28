@@ -871,10 +871,10 @@ describe('OfficeShelfWorkspace — folders', () => {
     render(<OfficeShelfWorkspace canManage />)
     const folder = await screen.findByTestId('folder-card-f-1')
 
-    const store: Record<string, string> = { 'application/x-grid-document-id': 'doc-2' }
+    const store: Record<string, string> = { 'application/x-document-id': 'doc-2' }
     const dataTransfer = {
-      types: ['application/x-grid-document-id'],
-      items: [{ kind: 'string', type: 'application/x-grid-document-id' }],
+      types: ['application/x-document-id'],
+      items: [{ kind: 'string', type: 'application/x-document-id' }],
       getData: (key: string) => store[key] ?? '',
       setData: (key: string, value: string) => {
         store[key] = value

@@ -1,5 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { logicalName } from "../names";
 
 /**
@@ -10,7 +10,7 @@ import { logicalName } from "../names";
  * `kubectl` context — it targets exactly the cluster whose kubeconfig is in
  * `grid-oib:kubeconfig`.
  */
-export function makeProvider(cfg: GridConfig): k8s.Provider {
+export function makeProvider(cfg: DeployConfig): k8s.Provider {
   return new k8s.Provider(logicalName("grid-k8s"), {
     kubeconfig: cfg.kubeconfig,
     // Server-side apply gives us cleaner diffs and avoids the last-applied

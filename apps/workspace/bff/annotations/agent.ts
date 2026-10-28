@@ -44,21 +44,21 @@
 import 'server-only'
 import { ApiError, BadRequestError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { isPilotiActsEnabled } from '@/lib/authz/feature-flags'
-import { recordPilotiChanges, type AppliedChange, type ChangeOrigin } from '@/lib/changes/service'
+import { isAgentActsEnabled } from '@/lib/authz/feature-flags'
+import { recordAgentChanges, type AppliedChange, type ChangeOrigin } from '@/lib/changes/service'
 import { fieldsOf, markState, replyState } from '@/lib/changes/state'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { admitSubjectRead } from '@/lib/documents/version-content'
-import { type AgentRoomOp, pilotiPeer, publishAsAgent, roomSnapshot } from '@/lib/realtime/document-channel'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
-import { onPilotiWrote } from './attention'
+import { type AgentRoomOp, agentPeer, publishAsAgent, roomSnapshot } from '@/lib/realtime/document-channel'
+import type { VerifiedRequestContext } from '@/lib/request-context'
+import { onAgentWrote } from './attention'
 import {
   deleteAnnotation,
   listAnnotationsForAgent,
-  PILOTI,
+  AGENT,
   proposeAnnotations,
   readAnnotation,
   replyToAnnotation,
@@ -77,7 +77,7 @@ export class NoDocumentSubjectError extends UnprocessableError {
   }
 }
 
-/** The machine-readable reason of {@link PilotiActsOffError}: the tool keys its sentence on it. */
+/** The machine-readable reason of {@link AgentActsOffError}: the tool keys its sentence on it. */
 export const PILOTI_ACTS_OFF = 'piloti-acts-off'
 
 /** The ops that apply a change in the asker's name, and so wait for `piloti-acts`. */
@@ -88,7 +88,7 @@ const ACTING_OPS: ReadonlySet<InternalAnnotationRequest['op']> = new Set(['creat
  * code, so the tool can tell it from a missing permission: the person may well
  * make the change themselves, Piloti may not make it for them.
  */
-export class PilotiActsOffError extends ApiError {
+export class AgentActsOffError extends ApiError {
   constructor(op: InternalAnnotationRequest['op']) {
     super(
       403,
@@ -112,7 +112,7 @@ export interface AgentDocument {
  * named, or else the conversation's subject.
  */
 export async function resolveAgentDocument(
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
   requestedId: string | null,
   answerMessageId: string | null
 ): Promise<AgentDocument> {
@@ -149,7 +149,7 @@ interface AgentInRoom {
 async function readRoom(session: AuthorizedSession, document: AgentDocument, agent: AgentInRoom) {
   const { annotations } = await listAnnotationsForAgent(session, document.id)
   const numbers = new Map(annotations.map((annotation) => [annotation.id, annotation.number]))
-  const self = pilotiPeer(agent.conversationId, agent.onBehalfOf).peerId
+  const self = agentPeer(agent.conversationId, agent.onBehalfOf).peerId
   const peers = (await roomSnapshot(document.id, agent.organizationId)).filter((peer) => peer.peerId !== self)
   return {
     documentId: document.id,
@@ -224,7 +224,7 @@ async function tellAttention(
   what: 'mark' | 'question' | 'reply',
   replyId: string | null
 ): Promise<void> {
-  await onPilotiWrote({
+  await onAgentWrote({
     organizationId: turn.origin.organizationId,
     documentId: turn.document.id,
     annotationId: mark.id,
@@ -247,7 +247,7 @@ const markChange = (mark: AnnotationView, change: Pick<AppliedChange, 'op' | 'be
 
 /** Marks Piloti set, proposed or open: a `create` each, and each one's attention. */
 async function afterSet(turn: Turn, marks: readonly AnnotationView[]): Promise<void> {
-  await recordPilotiChanges(
+  await recordAgentChanges(
     turn.origin,
     marks.map((mark) => markChange(mark, { op: 'create', before: null, after: markState(mark) }))
   )
@@ -270,7 +270,7 @@ async function update(session: AuthorizedSession, turn: Turn, request: UpdateReq
     note
   )
   if (changed.length > 0) {
-    await recordPilotiChanges(turn.origin, [
+    await recordAgentChanges(turn.origin, [
       markChange(after, { op: 'update', before: fieldsOf(before, changed), after: fieldsOf(after, changed) }),
     ])
   }
@@ -292,16 +292,16 @@ async function remove(session: AuthorizedSession, turn: Turn, annotationId: stri
   // record's `before`: once deleted, the mark and its thread are gone. The
   // delete applies the asker's rule.
   const mark = await readAnnotation(session, document.id, annotationId)
-  await deleteAnnotation(session, document.id, annotationId, PILOTI)
-  await recordPilotiChanges(turn.origin, [markChange(mark, { op: 'delete', before: markState(mark), after: null })])
+  await deleteAnnotation(session, document.id, annotationId, AGENT)
+  await recordAgentChanges(turn.origin, [markChange(mark, { op: 'delete', before: markState(mark), after: null })])
   return { documentId: document.id, documentName: document.name, annotationId: mark.id, number: mark.number, body: mark.body }
 }
 
 async function reply(session: AuthorizedSession, turn: Turn, annotationId: string, body: string) {
   const { document } = turn
-  const { annotation, replyId } = await replyToAnnotation(session, document.id, annotationId, { body }, PILOTI)
+  const { annotation, replyId } = await replyToAnnotation(session, document.id, annotationId, { body }, AGENT)
   const stored = annotation.replies.find((entry) => entry.id === replyId)
-  await recordPilotiChanges(turn.origin, [
+  await recordAgentChanges(turn.origin, [
     {
       objectKind: 'annotation_reply',
       objectId: replyId,
@@ -329,7 +329,7 @@ export async function runAgentAnnotationRequest(
   request: InternalAnnotationRequest,
   agent: AgentInRoom
 ) {
-  if (ACTING_OPS.has(request.op) && !isPilotiActsEnabled(session)) throw new PilotiActsOffError(request.op)
+  if (ACTING_OPS.has(request.op) && !isAgentActsEnabled(session)) throw new AgentActsOffError(request.op)
   const documentId = document.id
   const turn: Turn = {
     document,

@@ -9,7 +9,7 @@
  * recording's own terminal, the retired whole-answer rewrite, is
  * `?scenario=rewrite`. Every frame is one
  * typed fact, so no frame's size depends on the prompt; the old `heavy` mode,
- * NAT's step adaptor with the prompt in every token frame, has no v2 form.
+ * the agent runtime's step adaptor with the prompt in every token frame, has no v2 form.
  *
  * `?scenario=` picks another shape of the same recording
  * (`_fixtures/v2-scenarios.ts`), and `?error=` ends it with a `RUN_ERROR` at

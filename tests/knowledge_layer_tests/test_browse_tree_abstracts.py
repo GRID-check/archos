@@ -13,11 +13,11 @@ from knowledge_layer.browse import list_files
 from knowledge_layer.browse import render_tree
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.folder_cards import ListedAbstract
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.folder_cards import ListedAbstract
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.scoping import ScopedCollection
 
 
 def _doc(name: str, folder: str | None = None) -> AvailableDocument:
@@ -51,18 +51,18 @@ def test_no_abstracts_is_the_tier_zero_tree():
 @pytest.fixture
 def scope(monkeypatch):
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection("proj_1", Shelf.PROJECT)],
     )
-    monkeypatch.setattr("aiq_agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
-    monkeypatch.setattr("aiq_agent.project_context.get_organization_id_from_context", lambda: "org_1")
+    monkeypatch.setattr("agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
+    monkeypatch.setattr("agent.project_context.get_organization_id_from_context", lambda: "org_1")
     yield
     set_turn_documents(None)
 
 
 def _flag(monkeypatch, on: bool) -> None:
     """The ``folder-cards`` flag as the BFF answers it for the turn's organization."""
-    from aiq_agent.knowledge.folder_cards import gate
+    from agent.knowledge.folder_cards import gate
 
     gate.forget()
     monkeypatch.setattr(gate, "_fetch", lambda organization_id: on and organization_id == "org_1")
@@ -83,7 +83,7 @@ async def test_the_tool_reads_the_turns_collections_cards(scope, monkeypatch):
         return {"Gutachten": {"abstract": "Gutachten zum Wohnhaus.", "status": "fresh", "generated_at": None}}
 
     _flag(monkeypatch, True)
-    monkeypatch.setattr("aiq_agent.knowledge.folder_cards.client.get_cards", get_cards)
+    monkeypatch.setattr("agent.knowledge.folder_cards.client.get_cards", get_cards)
     set_turn_documents(DOCS)
 
     text = await _tree()
@@ -96,7 +96,7 @@ async def test_off_or_unreachable_the_listing_is_tier_zero_alone(scope, monkeypa
     def unreachable(*args, **kwargs):
         raise OSError("down")
 
-    monkeypatch.setattr("aiq_agent.knowledge.folder_cards.client.get_cards", unreachable)
+    monkeypatch.setattr("agent.knowledge.folder_cards.client.get_cards", unreachable)
     set_turn_documents(DOCS)
 
     _flag(monkeypatch, False)

@@ -14,7 +14,7 @@ Two destinations, and they answer different questions:
   the chunks (``unregister_summary``), which is what makes a superseded or
   archived version's provenance go with the passages it described.
 
-The keys are spelled once, in ``aiq_agent.common.provenance``, and both sides
+The keys are spelled once, in ``agent.common.provenance``, and both sides
 read them from there.
 """
 
@@ -70,7 +70,7 @@ class TestDocumentMetadataStore:
 
     @pytest.fixture()
     def store(self, tmp_path):
-        from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+        from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
         store = DocumentMetadataStore(f"sqlite:///{tmp_path / 'meta.db'}")
         store.register("proj_abc", "piloti/doc_1/aktenvermerk-2026-09-01.md", "Ein Aktenvermerk.")

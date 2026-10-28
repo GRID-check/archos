@@ -34,12 +34,12 @@ from knowledge_layer_testing.estate_read import _backend
 from knowledge_layer_testing.estate_read import _capture  # noqa: F401 - autouse fixture
 from knowledge_layer_testing.estate_read import _page_reader
 
-from aiq_agent.common.citation_collector import collect_citations
-from aiq_agent.common.grounding_block import get_grounding_block
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.citation_collector import collect_citations
+from agent.common.grounding_block import get_grounding_block
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_restricted_use
+from agent.knowledge.scoping import ScopedCollection
 
 
 class TestTenancy:

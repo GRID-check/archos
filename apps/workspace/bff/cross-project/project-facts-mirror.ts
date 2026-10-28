@@ -35,7 +35,7 @@ import { getBackendUrl } from '@/lib/backend-proxy'
 import type { Project } from '@/lib/db/schema/projects'
 import { findProjectInOrg, listProjectFactsPage, type ProjectFactsRow } from '@/lib/projects/repository'
 import { toProjectStatus, type ProjectStatus } from '@/lib/projects/project-status'
-import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
+import { buildRequestContextWireHeaders } from '@/lib/request-context'
 import { SIMILARITY_WEIGHTS, similarityFacts } from './similarity'
 
 /** A project's fingerprint as the Python tier reads it (`ProjectFacts` in `models/requests.py`). */
@@ -144,7 +144,7 @@ async function putFacts(collection: string, body: ProjectFactsUpdateWire): Promi
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        ...buildGridRequestContextWireHeaders({ collectionScope: [collection] }, process.env.INTERNAL_API_TOKEN),
+        ...buildRequestContextWireHeaders({ collectionScope: [collection] }, process.env.INTERNAL_API_TOKEN),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),

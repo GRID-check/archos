@@ -4,7 +4,7 @@ The admission (``restricted_use.admit_tool_results``) works on what a tool call
 REPORTS it read (``note_collections_read``) and, as a backstop, on restricted
 collection names in the result's text. A new tool that returns a restricted
 folder's content without reporting it, and without naming the collection,
-would pass both. So every NAT function this deployment registers is classified
+would pass both. So every agent-runtime function this deployment registers is classified
 here, and the classification names the test that pins it: a new tool fails
 this file until somebody decides which kind it is and points at the proof.
 
@@ -92,7 +92,7 @@ TOOLS: dict[str, tuple[str, str]] = {
     # CONDITION, not yet pinned by a test here: the server's catalog must not expose
     # a route that returns a restricted folder's file content to a turn that has not
     # been admitted for it (ADR-0088); the BFF owns that gate, as for project_lookup.
-    "piloti_workspace": (
+    "workspace_tools": (
         "no_collection_content",
         "returns workspace records and proposals, not passages; the BFF catalog owns the restricted-folder gate",
     ),
@@ -134,13 +134,15 @@ _KINDS = {"reports", "lists_nothing_restricted", "no_collection_content", "exter
 
 
 def _registered_tool_types() -> set[str]:
-    """Every registered NAT function AND function group: a group's tools reach the model like any other."""
+    """Every registered agent-runtime function AND function group: a group's tools reach the model like any other."""
     for entry_point in importlib.metadata.entry_points(group="nat.plugins"):
         entry_point.load()
     registry = GlobalTypeRegistry.get()
     infos = [*registry.get_registered_functions(), *registry.get_registered_function_groups()]
     return {
-        info.config_type.static_type() for info in infos if not info.config_type.static_type().startswith("grid_test_")
+        info.config_type.static_type()
+        for info in infos
+        if not info.config_type.static_type().startswith("test_fixture_")
     }
 
 

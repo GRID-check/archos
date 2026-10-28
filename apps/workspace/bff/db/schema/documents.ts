@@ -440,7 +440,7 @@ export const documents = pgTable('documents', {
   screeningReleasedAt: timestamp('screening_released_at', { withTimezone: true }),
   /**
    * Why the last read failed, as the backend classified it (migration 0134,
-   * `aiq_agent/knowledge/ingest_failures.py`): `transient`, `configuration`,
+   * `agent/knowledge/ingest_failures.py`): `transient`, `configuration`,
    * `deterministic`, `quarantined` or `unknown`. NULL while the row has not
    * failed, and on every row from before the column. Written by the reconcile
    * with the status; `lib/documents/retry-policy.ts` reads it to decide

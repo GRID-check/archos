@@ -40,7 +40,7 @@
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { useChatStore } from '@/features/chat/store'
-import { DocumentDraftCard } from '@/features/grid-cards/components/DocumentDraftCard'
+import { DocumentDraftCard } from '@/features/cards/components/DocumentDraftCard'
 
 function Panel({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {
   return (

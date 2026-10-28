@@ -1,5 +1,5 @@
 {
-  "name": "piloti-web",
+  "name": "site-web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,19 +12,19 @@
     "test": "node --test runtime/*.test.mjs"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.4",
-    "@astrojs/mdx": "^8.0.3",
-    "@astrojs/node": "^11.1.7",
-    "@astrojs/react": "^7.0.1",
+    "@astrojs/check": "^0.9.11",
+    "@astrojs/mdx": "^8.1.0",
+    "@astrojs/node": "^11.1.9",
+    "@astrojs/react": "^7.1.0",
     "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.4",
     "@keystatic/astro": "^6.0.0",
     "@keystatic/core": "^0.6.7",
     "archiver": "^8.0.0",
-    "astro": "^7.3.8",
+    "astro": "^7.4.1",
     "gsap": "^3.15.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "sharp": "^0.35.3",
     "typescript": "^6.0.3"
   },

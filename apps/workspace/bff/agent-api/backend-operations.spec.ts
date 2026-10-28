@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { NotFoundError } from '@/lib/api/errors'
-import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
+import { verifyRequestContextEnvelope } from '@/lib/request-context'
 import { AGENT_OPERATIONS } from './catalog'
 import {
   backendRefusal,
@@ -183,7 +183,7 @@ describe('callBackendOperation', () => {
     expect(url).toBe('http://aiq-api:8000/v1/internal/tools/knowledge_search')
     const headers = init.headers as Record<string, string>
     expect(headers['x-internal-token']).toBe(SECRET)
-    const verified = verifyGridRequestContextEnvelope(
+    const verified = verifyRequestContextEnvelope(
       headers['x-request-context'],
       headers['x-request-context-sig'],
       SECRET

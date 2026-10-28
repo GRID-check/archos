@@ -20,18 +20,18 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
 import nat.plugins.langchain.tool_wrapper  # noqa: F401  registers the LangChain wrapper
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common.agent_tools import load_agent_tools
-from aiq_agent.knowledge import restricted_use as ru
-from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import note_collections_read
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common.agent_tools import load_agent_tools
+from agent.knowledge import restricted_use as ru
+from agent.knowledge.restricted_use import WITHHELD_NOTICE
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import note_collections_read
+from agent.knowledge.restricted_use import reset_restricted_use
 from nat.builder.workflow_builder import WorkflowBuilder
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
@@ -61,8 +61,8 @@ def knowledge_search(query: str) -> str:
 def _bypass_citation_pipeline():
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
@@ -71,7 +71,7 @@ def _bypass_citation_pipeline():
         yield
 
 
-def _agent(tools: list[Any] | None = None) -> PilotiAgent:
+def _agent(tools: list[Any] | None = None) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
@@ -83,7 +83,7 @@ def _agent(tools: list[Any] | None = None) -> PilotiAgent:
     )
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=tools or [knowledge_search], max_tool_iterations=4)
+    return ChatAgent(llm_provider=provider, tools=tools or [knowledge_search], max_tool_iterations=4)
 
 
 async def _run(monkeypatch, answer: dict[str, Any] | None) -> tuple[list[str], RestrictedUse, list[dict]]:
@@ -124,18 +124,18 @@ async def test_an_admitted_result_reaches_the_model_and_confines_the_conversatio
 
 
 # ---------------------------------------------------------------------------
-# The side channel, through NAT's real tool wrapper and the compiled graph
+# The side channel, through the agent runtime's real tool wrapper and the compiled graph
 # ---------------------------------------------------------------------------
 #
 # A tool reports what it read (`note_collections_read`); the ToolNode's call
 # wrapper stamps it onto the result; the tools node admits it. Each half has a
 # unit test, and each would pass with the join broken: a wrapper the ToolNode
-# never runs, or a note the wrapper's context never sees because NAT ran the
-# tool in a context of its own. Only a call through NAT's LangChain wrapper and
+# never runs, or a note the wrapper's context never sees because the agent runtime ran the
+# tool in a context of its own. Only a call through the agent runtime's LangChain wrapper and
 # the compiled graph can fail on that (docs/contributing/gotchas.md).
 
 
-class _QuietReaderConfig(FunctionBaseConfig, name="grid_test_quiet_restricted_reader"):
+class _QuietReaderConfig(FunctionBaseConfig, name="test_fixture_quiet_restricted_reader"):
     pass
 
 

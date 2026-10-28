@@ -11,13 +11,13 @@ from deepagents.backends import CompositeBackend
 from deepagents.backends import StateBackend
 from pydantic import ValidationError
 
-from aiq_agent.agents.deep_researcher.deepagents_runtime import SHARED_ROUTE
-from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
-from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-from aiq_agent.agents.deep_researcher.deepagents_runtime import discover_skill_collections
-from aiq_agent.agents.deep_researcher.deepagents_runtime import resolve_skill_collections
-from aiq_agent.skills import SKILLS_ROOT
+from agent.agents.deep_researcher.deepagents_runtime import SHARED_ROUTE
+from agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
+from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+from agent.agents.deep_researcher.deepagents_runtime import discover_skill_collections
+from agent.agents.deep_researcher.deepagents_runtime import resolve_skill_collections
+from agent.skills import SKILLS_ROOT
 
 SYNTHESIS_SKILL_SOURCE = f"{SKILLS_ROOT}synthesis/"
 
@@ -105,8 +105,8 @@ class TestDeepAgentsRuntimeRouting:
         assert not any("submission-check" in path for path in grep_paths)
 
     def test_a_taken_up_offer_is_an_office_skill(self) -> None:
-        from aiq_agent.skills.builtin import discover_builtin_skills
-        from aiq_agent.skills.resolver import _is_curated
+        from agent.skills.builtin import discover_builtin_skills
+        from agent.skills.resolver import _is_curated
 
         offer = next(s for s in discover_builtin_skills() if _is_curated(s))
         runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}))
@@ -143,7 +143,7 @@ class TestDeepAgentsRuntimeRouting:
     def test_sandbox_only_adds_shared_route(self) -> None:
         fake_sandbox = MagicMock()
         with patch(
-            "aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
+            "agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
             return_value=fake_sandbox,
         ):
             runtime = DeepAgentsRuntime(sandbox=DeepResearchSandboxConfig())
@@ -158,7 +158,7 @@ class TestDeepAgentsRuntimeRouting:
         fake_sandbox = MagicMock()
         skills = DeepResearchSkillsConfig(agents={"researcher-agent": ("research",)})
         with patch(
-            "aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
+            "agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
             return_value=fake_sandbox,
         ):
             runtime = DeepAgentsRuntime(skills=skills, sandbox=DeepResearchSandboxConfig())
@@ -279,7 +279,7 @@ class TestDeepAgentsRuntimeJobId:
 
     def test_explicit_job_id_is_kept(self) -> None:
         sandbox = DeepResearchSandboxConfig()
-        with patch("aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend") as create_backend:
+        with patch("agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend") as create_backend:
             runtime = DeepAgentsRuntime(sandbox=sandbox, job_id="job-abc-123")
             _ = runtime.backend_for(None)
 
@@ -288,7 +288,7 @@ class TestDeepAgentsRuntimeJobId:
     def test_missing_job_id_generates_uuid(self) -> None:
         sandbox_a = DeepResearchSandboxConfig()
         sandbox_b = DeepResearchSandboxConfig()
-        with patch("aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend") as create_backend:
+        with patch("agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend") as create_backend:
             runtime_a = DeepAgentsRuntime(sandbox=sandbox_a)
             runtime_b = DeepAgentsRuntime(sandbox=sandbox_b)
             _ = runtime_a.backend_for(None)
@@ -306,9 +306,7 @@ class TestDeepAgentsRuntimeJobId:
             return object()
 
         with (
-            patch(
-                "aiq_agent.agents.deep_researcher.deepagents_runtime.importlib.util.find_spec", side_effect=find_spec
-            ),
+            patch("agent.agents.deep_researcher.deepagents_runtime.importlib.util.find_spec", side_effect=find_spec),
             pytest.raises(ImportError, match="langchain-modal"),
         ):
             _ = DeepAgentsRuntime(sandbox=DeepResearchSandboxConfig()).backend_for(None)

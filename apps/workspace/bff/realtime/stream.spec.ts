@@ -30,7 +30,7 @@ import type { RealtimeFrame } from './types'
 const SESSION = {
   userId: 'user_1',
   organizationId: 'org_1',
-  email: 'a@grid.test',
+  email: 'a@example.test',
   name: 'Anna Berger',
 } as Partial<AuthorizedSession> as AuthorizedSession
 

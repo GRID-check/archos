@@ -26,9 +26,9 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.scoping import _base64url_decode
-from aiq_agent.knowledge.scoping import _parse_scope_payload
+from agent.common.source_kinds import Shelf
+from agent.knowledge.scoping import _base64url_decode
+from agent.knowledge.scoping import _parse_scope_payload
 
 _FIXTURE = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "collection_scope" / "scope_header.json"
 

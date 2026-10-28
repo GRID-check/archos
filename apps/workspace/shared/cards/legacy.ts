@@ -57,7 +57,7 @@ export const modernizeDraftPath = (path: string): string => {
 }
 
 /** A card with the English field names and values, whichever spelling it came in. */
-export function modernizeGridCard(card: unknown): unknown {
+export function modernizeAnswerCard(card: unknown): unknown {
   if (!isRecord(card)) return card
   switch (card.type) {
     case 'fire_access_plan': {

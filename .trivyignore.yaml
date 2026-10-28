@@ -18,8 +18,9 @@
 # ~two weeks, and that is exactly how it emptied: the pin moved 0.157.0 ->
 # 0.160.0 and twelve of its thirteen entries went with it, and 0.161.0 took
 # the last (amqp091-go). Three Go 1.26.8 boxes followed and went the same way,
-# with 0.163.2 (2026-10-22). It is empty now; keep it that way by bumping the
-# pin, not by boxing what a newer tag already fixes.
+# with 0.163.2 (2026-10-22). It was empty until go-jose 4.1.5 on 2026-10-28;
+# keep it empty by bumping the pin, not by boxing what a newer tag already
+# fixes.
 vulnerabilities:
   # ── OpenTelemetry Collector contrib (ADR-0029) ────────────────────────────
   #
@@ -57,6 +58,26 @@ vulnerabilities:
   # (`sha256:7f22d2a6…`), whose amd64 binary reads go1.26.10 and x/net v0.61.0
   # under `go version -m`, and a local trivy 0.61.1 scan of that digest with
   # this file EMPTY reports no fixable HIGH/CRITICAL. The three boxes are gone.
+  #
+  # 2026-10-28: go-jose/v4 4.1.5 (CVE-2026-116587, published 2026-10-26) drew
+  # one HIGH against 0.163.2, and the newest release, 0.164.0
+  # (`sha256:340c9ca6…`), still carries 4.1.5 (local trivy 0.61.1 scan with this
+  # file EMPTY). go-jose 4.1.6 is out, but 0.165.0 exists only as a nightly, so
+  # there is nothing released to move to. Boxed for the 14-day maximum.
+  - id: CVE-2026-116587
+    expired_at: 2026-11-11
+    statement: |
+      github.com/go-jose/go-jose/v4 4.1.5 (GHSA-mgcc-cww5-fp2q) in the
+      otelcol-contrib binary — CPU-cubic validation of crafted RSA parameters
+      when parsing a JWK from an untrusted source. Fixed in 4.1.6.
+      Not exploitable here: the library is compiled into contrib but nothing in
+      our collector parses a JWK. `collector-config.ts` enables a single
+      extension, `health_check`; no OIDC, OAuth2 or bearer-token authenticator
+      is configured, so there is no JWKS fetch and no JOSE parsing on any path,
+      authenticated or not. The OIDC flow that gates the dashboards runs in
+      Envoy Gateway, not in the collector.
+      Drop as soon as a release ships go-jose >= 4.1.6 (0.165.0 is the first
+      expected); bump the pin and delete this entry rather than extending it.
 
   # ── Langfuse web/worker images (ADR-0044) ─────────────────────────────────
   #
@@ -89,6 +110,27 @@ vulnerabilities:
   # public API) is reachable only from the pods a NetworkPolicy names: the
   # collector, the BFF, the backend tiers, the purger and the scheduler. There
   # is no unauthenticated surface.
+  - id: CVE-2026-116693
+    expired_at: 2026-11-11
+    statement: |
+      dd-trace 5.109.0 (GHSA-x94g-w73q-hpcw, published 2026-10-27) — the default
+      DD_TRACE_OBFUSCATION_QUERY_STRING_REGEXP backtracks excessively on a
+      crafted URL query string, applied synchronously while recording HTTP URL
+      metadata: a denial of service against the instrumented process. Fixed in
+      5.131.1 and 6.20.1. Both images, the same bundled copy.
+      No release clears it: 4.71.0 is the newest Langfuse tag and `latest`
+      resolves to the same digests as our pin (checked against ghcr.io on
+      2026-10-28). The finding comes from the promotion's CI scan of those
+      digests; trivy 0.61.1 run locally could not pull from ghcr.io.
+      Not reachable by an outsider: the web UI sits behind the Envoy Gateway
+      OIDC flow, so a crafted URL needs a signed-in person with
+      `platform:organizations:view` or `platform:observability:view`, and the
+      API and OTLP receiver answer only the pods a NetworkPolicy names, all
+      ours. The worker serves no user-supplied URL. Note this rests on the
+      network boundary, NOT on dd-trace being switched off: Langfuse's
+      `observability.config.ts` imports it unconditionally and we did not
+      verify the tracer is disabled in the running pods.
+      Drop as soon as a Langfuse release bundles dd-trace >= 5.131.1.
 
   - id: CVE-2026-40345
     expired_at: 2026-11-09

@@ -1,6 +1,6 @@
 """An in-memory inverted index over the real corpus, built from the SHIPPED German analyzer.
 
-Every lexeme here — indexed or queried — comes from ``aiq_agent.common.german_text``, the
+Every lexeme here — indexed or queried — comes from ``agent.common.german_text``, the
 module the production lexical channel uses: :func:`fold`, :func:`analyze`,
 :func:`query_terms`, :func:`select_terms`, :func:`build_tsquery`. Nothing about German is
 reimplemented, so a change to the stemmer or the document-frequency ceiling moves these
@@ -51,7 +51,7 @@ from oib_retrieval.corpus import Chunk
 # the harness reporting stable results while production behaviour had already moved.
 # Retrieval's term pricing (`lexical_query.lexical_inputs`) reads it the same way.
 try:
-    from aiq_agent.common.german_text import DEFAULT_DF_CEILING_RATIO
+    from agent.common.german_text import DEFAULT_DF_CEILING_RATIO
 except ImportError:  # pragma: no cover - the harness can run without the backend package
     DEFAULT_DF_CEILING_RATIO = 0.25
 
@@ -78,7 +78,7 @@ class LexicalIndex:
 
 def build_index(chunks: list[Chunk]) -> LexicalIndex:
     """Analyze every chunk body once and invert it."""
-    from aiq_agent.common.german_text import analyze
+    from agent.common.german_text import analyze
 
     index = LexicalIndex(chunks=list(chunks))
     postings: dict[str, set[int]] = defaultdict(set)
@@ -101,8 +101,8 @@ def selected_terms(
     ``extra_terms`` is the cross-lingual glossary seam ``german_text`` exposes; the harness
     passes nothing through it today, so the English arm measures the channel as it ships.
     """
-    from aiq_agent.common.german_text import analyze_query
-    from aiq_agent.common.german_text import select_terms
+    from agent.common.german_text import analyze_query
+    from agent.common.german_text import select_terms
 
     candidates = analyze_query(question, extra_terms=extra_terms)
     return select_terms(
@@ -125,7 +125,7 @@ def tsquery_for(
     so the offline arm and the production SQL cannot silently disagree about which lexemes
     survive selection.
     """
-    from aiq_agent.common.german_text import build_tsquery
+    from agent.common.german_text import build_tsquery
 
     return build_tsquery(selected_terms(index, question, extra_terms, df_ceiling_ratio))
 

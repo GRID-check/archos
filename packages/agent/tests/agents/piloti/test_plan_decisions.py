@@ -6,8 +6,8 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from aiq_agent.agents.piloti.plan_decisions import decide_plan_shape
-from aiq_agent.common import decisions
+from agent.agents.piloti.plan_decisions import decide_plan_shape
+from agent.common import decisions
 
 
 @pytest.fixture(autouse=True)

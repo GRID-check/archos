@@ -10,7 +10,7 @@
 ## The doctrine, first, because it is the constraint everything else obeys
 
 This repository has fifteen **schematic cards**
-(`apps/workspace/ui/features/grid-cards/schematics/`) where the model emits
+(`apps/workspace/ui/features/cards/schematics/`) where the model emits
 **parameters only** and the renderer does every piece of geometry. `cards.md`
 states what that buys: *"a card cannot show a diagram that disagrees with its
 own numbers."* It exists because the card is what gets screenshotted into an
@@ -356,7 +356,7 @@ refuses, and every diagram already stored in a thread is one.
 ### Since 2026-09-24: the fence first
 
 The chat prompt now teaches the fence as THE way to draw
-(`piloti_static.md` <formatting>), and the chat envelope no longer teaches the
+(`chat_static.md` <formatting>), and the chat envelope no longer teaches the
 `diagram` card (it left the union later that month, `catalog.RETIRED_CARD_TYPES`). Each of the card's three
 arguments above was re-checked against the fence:
 
@@ -454,8 +454,8 @@ transition touches is still drawn.
    caches it at module level keyed by the source text (`MODEL_CACHE_LIMIT`,
    64). A model that depends on anything else is served stale.
 5. **A new grammar**, not only a new view, also needs `DiagramGrammar` in
-   `packages/agent/src/aiq_agent/cards/models.py`, the grammar list in the prompt
-   (`piloti_static.md` `<formatting>`), and a browser capture in
+   `packages/agent/src/agent/cards/models.py`, the grammar list in the prompt
+   (`chat_static.md` `<formatting>`), and a browser capture in
    `lib/diagrams/__fixtures__/` that prints through `svg-to-pdf.spec.tsx`
    (next section).
 
@@ -511,7 +511,7 @@ published bundle, gzipped):
 `@dagrejs/dagre` lays out the flow and map canvases. Graph layout is someone
 else's domain, so it is a dependency; ELK does the same job at about 28 times
 the gzip size. dagre is imported statically by `views/diagram-views.tsx`, so it
-ships with the card components (`GridCards` → `DiagramCard`) as well as with
+ships with the card components (`AnswerCards` → `DiagramCard`) as well as with
 the fence's dynamic import.
 
 `mermaid` is a production dependency, imported dynamically through
@@ -567,7 +567,7 @@ spatial or free-form; flows and hierarchies stay mermaid. The doctrine holds by
 subject: a sketch claims no dimension, and says so.
 
 - **Taught by a skill.** `excalidraw-sketch`
-  (`packages/agent/src/aiq_agent/skills/builtin/drawing/`) holds the format, the layout rules
+  (`packages/agent/src/agent/skills/builtin/drawing/`) holds the format, the layout rules
   and the recurring shapes, read on demand (ADR-0135); the static prompt only
   points at it.
 - **Checked twice.** `common/sketch_fence.py` runs in the dialect pass and

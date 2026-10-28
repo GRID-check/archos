@@ -1,7 +1,7 @@
 /**
  * The sweep that reads a document again when its read failed for a passing reason.
  *
- * The backend says why a read failed (`aiq_agent/knowledge/ingest_failures.py`), and
+ * The backend says why a read failed (`agent/knowledge/ingest_failures.py`), and
  * `transient` means the bytes were never the problem: the job was interrupted, a
  * download or a provider call timed out. Until now such a document stayed failed
  * until a person noticed it and pressed "Erneut lesen", and an office uploading a

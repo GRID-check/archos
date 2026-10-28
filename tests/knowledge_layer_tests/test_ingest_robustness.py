@@ -23,12 +23,12 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer.llamaindex.adapter import PdfTextPages
 from knowledge_layer.llamaindex.adapter import unreadable_pdf_verdict
 
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_agent.knowledge.schema import stable_file_id
+from agent.knowledge import ingest_status_store
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent.knowledge.schema import stable_file_id
 
 # ---------------------------------------------------------------------------
 # Per-page PDF reading
@@ -127,8 +127,8 @@ def test_a_plain_page_list_has_nothing_to_report():
 
 @pytest.fixture()
 def stores(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -151,7 +151,7 @@ def quiet_pdf_pipeline(monkeypatch):
     """No images, no rendered pages, no VLM: only the text stage speaks."""
     import knowledge_layer.llamaindex.processing as processing_module
 
-    from aiq_agent.common.credential_resolution import ResolvedCredential
+    from agent.common.credential_resolution import ResolvedCredential
 
     none = ResolvedCredential(api_key="", base_url="https://vlm.test/v1", model="test-vlm", source="none")
     monkeypatch.setattr(adapter_module, "resolve_vlm_credential", lambda organization_id=None: none)

@@ -10,7 +10,7 @@ Three things are pinned here:
    information beyond ADR-0029's accepted posture and would widen the blast
    radius of every trace consumer for nothing.
 3. **Fail-open emission** - the step pair is balanced (one END per START, same
-   UUID) so NAT's span-stack bookkeeping survives, and any failure inside the
+   UUID) so the agent runtime's span-stack bookkeeping survives, and any failure inside the
    helper is absorbed rather than allowed to break a search.
 """
 
@@ -18,14 +18,14 @@ import json
 
 import pytest
 
-from aiq_agent.observability.retrieval_trace import PICK_LIMIT
-from aiq_agent.observability.retrieval_trace import build_retrieval_input
-from aiq_agent.observability.retrieval_trace import build_retrieval_output
-from aiq_agent.observability.retrieval_trace import emit_retrieval_span
+from agent.observability.retrieval_trace import PICK_LIMIT
+from agent.observability.retrieval_trace import build_retrieval_input
+from agent.observability.retrieval_trace import build_retrieval_output
+from agent.observability.retrieval_trace import emit_retrieval_span
 
 
 class _Shelf:
-    """Stands in for ``aiq_agent.common.source_kinds.Shelf`` (a StrEnum)."""
+    """Stands in for ``agent.common.source_kinds.Shelf`` (a StrEnum)."""
 
     def __init__(self, value):
         self.value = value
@@ -38,7 +38,7 @@ class _ScopedCollection:
 
 
 class _Chunk:
-    """Stands in for ``aiq_agent.knowledge.schema.Chunk`` (attribute access)."""
+    """Stands in for ``agent.knowledge.schema.Chunk`` (attribute access)."""
 
     def __init__(self, *, chunk_id="c1", file_name="oib-rl-2.pdf", page_number=12, score=0.87, metadata=None):
         self.chunk_id = chunk_id
@@ -178,5 +178,5 @@ class TestEmission:
         emit_retrieval_span(tool_name="knowledge_search", search_input={}, picks={})
 
     def test_no_context_at_all_is_absorbed(self):
-        """Outside a NAT run (tests, ingest threads) there is nothing to push to."""
+        """Outside an agent-runtime run (tests, ingest threads) there is nothing to push to."""
         emit_retrieval_span(tool_name="x", search_input={}, picks={})

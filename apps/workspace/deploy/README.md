@@ -1,6 +1,6 @@
-# AI-Q Blueprint UI - Docker Deployment
+# Workspace UI - Docker Deployment
 
-This directory contains the Dockerfile to build and deploy the AI-Q Blueprint UI as a Docker container.
+This directory contains the Dockerfile to build and deploy the workspace UI as a Docker container.
 
 ## Architecture
 
@@ -35,8 +35,8 @@ docker build -f deploy/Dockerfile -t frontend:latest .
 
 ```bash
 docker run -p 3000:3000 \
-  -e BACKEND_URL=http://backend:8000 \
-  -e BACKEND_CHAT_URL=http://backend-chat:8000 \
+  -e BACKEND_URL=http://api:8000 \
+  -e BACKEND_CHAT_URL=http://chat:8000 \
   -e REQUIRE_AUTH=false \
   frontend:latest
 ```
@@ -45,8 +45,8 @@ docker run -p 3000:3000 \
 
 ```bash
 docker run -p 3000:3000 \
-  -e BACKEND_URL=http://backend:8000 \
-  -e BACKEND_CHAT_URL=http://backend-chat:8000 \
+  -e BACKEND_URL=http://api:8000 \
+  -e BACKEND_CHAT_URL=http://chat:8000 \
   -e REQUIRE_AUTH=true \
   -e WORKOS_CLIENT_ID=client_xxx \
   -e WORKOS_API_KEY=sk_test_xxx \
@@ -88,8 +88,8 @@ services:
   frontend:
     image: frontend:latest
     environment:
-      - BACKEND_URL=http://backend:8000
-      - BACKEND_CHAT_URL=http://backend-chat:8000
+      - BACKEND_URL=http://api:8000
+      - BACKEND_CHAT_URL=http://chat:8000
       - REQUIRE_AUTH=${REQUIRE_AUTH:-false}
       - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
       - WORKOS_API_KEY=${WORKOS_API_KEY}

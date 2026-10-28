@@ -20,7 +20,7 @@ So authorship is its own axis, and it beats both.
 ## The metadata contract
 
 Four keys, stamped by the BFF at publish and parsed by
-`packages/agent/src/aiq_agent/common/provenance.py`:
+`packages/agent/src/agent/common/provenance.py`:
 
 | Key | Value |
 |---|---|
@@ -95,5 +95,5 @@ yields `null` and the label degrades to the bare `Piloti-Dokument` rather than
 printing a WorkOS id at an architect.
 
 See ADR-0054 § Indexing for the door, and
-[`docs/roadmap/piloti-writes-artifacts-and-approval.md`](../roadmap/piloti-writes-artifacts-and-approval.md)
+[`docs/roadmap/agent-writes-artifacts-and-approval.md`](../roadmap/agent-writes-artifacts-and-approval.md)
 §3 for the design of record.

@@ -121,7 +121,7 @@ describe.skipIf(!url)('restricted use against Postgres (migrations 0112, 0111)',
 
   const session: AuthorizedSession = {
     userId: OWNER,
-    email: 'owner@grid.test',
+    email: 'owner@example.test',
     name: 'Owner',
     accessToken: 'token',
     organizationId: ORG,

@@ -44,11 +44,11 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { expectRegistered } from '@/test-utils/audit'
 import { insertMessages } from '@/lib/conversations/repository'
-import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import type { PilotiWakePayload } from '@/lib/jobs-queue/types'
-import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
+import type { AgentWakePayload } from '@/lib/jobs-queue/types'
+import { verifyRequestContextEnvelope } from '@/lib/request-context'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { runHeadlessTurn, type HeadlessTurnRequest } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
@@ -56,7 +56,7 @@ import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { onWakeEnded } from './attention'
 import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
-import { MAX_WAKE_WAITS, runPilotiWake, waitAfter, WAKE_REQUIRES } from './wake-job'
+import { MAX_WAKE_WAITS, runAgentWake, waitAfter, WAKE_REQUIRES } from './wake-job'
 import { countWakes, findWake, handBackDelegation, settleWake } from './wake-repository'
 import { delegationEventId, documentThreadConversationId, wakeTurnId } from './wake-ids'
 
@@ -67,7 +67,7 @@ const REPLY_ID = '33333333-3333-4333-8333-333333333333'
 const WAKE_ID = wakeTurnId(REPLY_ID)
 const THREAD = documentThreadConversationId(DOC_ID, 'user_anna')
 
-const PAYLOAD: PilotiWakePayload = {
+const PAYLOAD: AgentWakePayload = {
   wakeId: WAKE_ID,
   trigger: 'thread_mention',
   eventId: REPLY_ID,
@@ -105,7 +105,7 @@ const MARK = {
   replies: [{ id: REPLY_ID, body: '  Stimmt die Breite?  ' }],
 } as Partial<AnnotationRecord> as AnnotationRecord
 
-const WAKE = { id: WAKE_ID, status: 'queued', createdAt: new Date('2026-10-13T10:00:00Z') } as Partial<PilotiWakeRow> as PilotiWakeRow
+const WAKE = { id: WAKE_ID, status: 'queued', createdAt: new Date('2026-10-13T10:00:00Z') } as Partial<AgentWakeRow> as AgentWakeRow
 
 const NOT_LAST = { last: false }
 
@@ -148,7 +148,7 @@ const sentRequest = (): HeadlessTurnRequest => vi.mocked(runHeadlessTurn).mock.c
 
 describe('a wake that runs', () => {
   it('sends the user_message the contract names, as the person, in their thread', async () => {
-    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
+    await expect(runAgentWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
 
     const request = sentRequest()
     expect(request.url).toBe('ws://aiq-agent:8000/websocket')
@@ -173,7 +173,7 @@ describe('a wake that runs', () => {
   })
 
   it('opens the socket headless, with the signed envelope naming the person and their thread', async () => {
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     const { headers } = sentRequest()
     expect(headers['x-chat-mode']).toBe('headless')
@@ -181,7 +181,7 @@ describe('a wake that runs', () => {
     expect(headers['x-user-id']).toBe('user_anna')
     // No browser cookie and no bearer: the backend reads an internal caller and trusts the envelope.
     expect(headers).not.toHaveProperty('authorization')
-    const envelope = verifyGridRequestContextEnvelope(
+    const envelope = verifyRequestContextEnvelope(
       headers['x-request-context'],
       headers['x-request-context-sig'],
       SECRET
@@ -192,7 +192,7 @@ describe('a wake that runs', () => {
   })
 
   it('writes the trigger into the thread once, under the turn id: who, which mark, what they wrote', async () => {
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(insertMessages).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -212,7 +212,7 @@ describe('a wake that runs', () => {
     const delegatedAt = new Date('2026-10-13T09:59:00Z')
     const eventId = delegationEventId(MARK_ID, delegatedAt)
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_1', delegatedAt })
-    await runPilotiWake('org_1', { ...PAYLOAD, trigger: 'assigned', eventId }, NOT_LAST)
+    await runAgentWake('org_1', { ...PAYLOAD, trigger: 'assigned', eventId }, NOT_LAST)
 
     expect(sentRequest().message).toMatchObject({
       text: 'Türbreite prüfen',
@@ -228,7 +228,7 @@ describe('a wake that runs', () => {
     ]) {
       vi.mocked(runHeadlessTurn).mockClear()
       vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, ...now })
-      await runPilotiWake('org_1', { ...PAYLOAD, trigger: 'assigned', eventId: queuedFor }, NOT_LAST)
+      await runAgentWake('org_1', { ...PAYLOAD, trigger: 'assigned', eventId: queuedFor }, NOT_LAST)
       expect(runHeadlessTurn).not.toHaveBeenCalled()
       expect(settleWake).toHaveBeenLastCalledWith('org_1', WAKE_ID, { status: 'suppressed', reason: 'taken back' })
     }
@@ -240,7 +240,7 @@ describe('what the socket answers', () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
     const before = Date.now()
 
-    const result = await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    const result = await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(result.done).toBe(false)
     expect(result.payload).toEqual({ ...PAYLOAD, waits: 1 })
@@ -252,7 +252,7 @@ describe('what the socket answers', () => {
   it('busy past the last wait: gives up, and says so on the row', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
 
-    const result = await runPilotiWake('org_1', { ...PAYLOAD, waits: MAX_WAKE_WAITS }, NOT_LAST)
+    const result = await runAgentWake('org_1', { ...PAYLOAD, waits: MAX_WAKE_WAITS }, NOT_LAST)
 
     expect(result.done).toBe(true)
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'failed', reason: expect.stringMatching(/^gave up waiting/) })
@@ -261,14 +261,14 @@ describe('what the socket answers', () => {
   it('duplicate_turn: that turn ran or runs, the wake is done', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'duplicate' })
 
-    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toMatchObject({ done: true })
+    await expect(runAgentWake('org_1', PAYLOAD, NOT_LAST)).resolves.toMatchObject({ done: true })
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'started' })
   })
 
   it('a refused turn is recorded as refused, with the reason, in the audit trail too', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'refused', reason: 'Budget erschöpft.' })
 
-    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toMatchObject({ done: true })
+    await expect(runAgentWake('org_1', PAYLOAD, NOT_LAST)).resolves.toMatchObject({ done: true })
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'refused', reason: 'Budget erschöpft.' })
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'piloti.wake.ended', metadata: expect.objectContaining({ outcome: 'refused' }) })
@@ -278,10 +278,10 @@ describe('what the socket answers', () => {
   it('a rejected envelope is retried by the queue, and recorded on the last attempt', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'rejected', code: 'auth_expired', message: null })
 
-    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).rejects.toThrow(/auth_expired/)
+    await expect(runAgentWake('org_1', PAYLOAD, NOT_LAST)).rejects.toThrow(/auth_expired/)
     expect(settleWake).not.toHaveBeenCalled()
 
-    await expect(runPilotiWake('org_1', PAYLOAD, { last: true })).resolves.toMatchObject({ done: true })
+    await expect(runAgentWake('org_1', PAYLOAD, { last: true })).resolves.toMatchObject({ done: true })
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'failed', reason: 'rejected: auth_expired' })
   })
 })
@@ -290,7 +290,7 @@ describe('asked again when the job runs', () => {
   it('the person’s spent budget refuses the wake before any socket opens', async () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
 
-    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toMatchObject({ done: true })
+    await expect(runAgentWake('org_1', PAYLOAD, NOT_LAST)).resolves.toMatchObject({ done: true })
     expect(runHeadlessTurn).not.toHaveBeenCalled()
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'refused', reason: expect.stringMatching(/^budget: /) })
   })
@@ -298,16 +298,16 @@ describe('asked again when the job runs', () => {
   it('a person who may no longer write the document wakes nothing', async () => {
     vi.mocked(getAccessibleDocument).mockRejectedValue(new ForbiddenError())
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
     expect(runHeadlessTurn).not.toHaveBeenCalled()
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'suppressed', reason: expect.stringMatching(/write/) })
   })
 
   it('a person who left, or a switch turned off since, wakes nothing', async () => {
     vi.mocked(resolvePinnedRequesterSession).mockResolvedValueOnce(null)
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
     vi.mocked(resolvePinnedRequesterSession).mockResolvedValueOnce({ ...SESSION, featureFlags: [] })
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(runHeadlessTurn).not.toHaveBeenCalled()
     expect(vi.mocked(settleWake).mock.calls.map((call) => call[2])).toEqual([
@@ -319,7 +319,7 @@ describe('asked again when the job runs', () => {
   it('the caps hold at claim too, counting only the wakes recorded ahead of this one', async () => {
     vi.mocked(countWakes).mockImplementation(async (_db, query) => (query.actorUserId ? 50 : 0))
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(runHeadlessTurn).not.toHaveBeenCalled()
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'suppressed', reason: 'cap:person-day' })
@@ -332,7 +332,7 @@ describe('asked again when the job runs', () => {
   it('a suppressed wake tells nobody: the person’s own act, a rule or a cap held it', async () => {
     vi.mocked(getAccessibleDocument).mockRejectedValue(new ForbiddenError())
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
     expect(onWakeEnded).not.toHaveBeenCalled()
     expect(handBackDelegation).not.toHaveBeenCalled()
   })
@@ -340,7 +340,7 @@ describe('asked again when the job runs', () => {
   it('a wake already settled by an earlier run does nothing', async () => {
     vi.mocked(findWake).mockResolvedValue({ ...WAKE, status: 'started' })
 
-    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
+    await expect(runAgentWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
     expect(runHeadlessTurn).not.toHaveBeenCalled()
   })
@@ -354,7 +354,7 @@ describe('the audit trail of a wake that started', () => {
   })
 
   it('records the start once, as the person whose act woke Piloti, on the mark, its document, project and thread', async () => {
-    await runPilotiWake('org_1', { ...PAYLOAD, waits: 2 }, NOT_LAST)
+    await runAgentWake('org_1', { ...PAYLOAD, waits: 2 }, NOT_LAST)
 
     expect(recordAuditEvent).toHaveBeenCalledTimes(1)
     expect(started()[0][0]).toEqual({
@@ -374,16 +374,16 @@ describe('the audit trail of a wake that started', () => {
 
   it('records nothing when another run, or the turn’s own end, settled the wake first', async () => {
     vi.mocked(settleWake).mockResolvedValue(false)
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'duplicate' })
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
 
   it('records nothing for a busy thread: the wake has not started', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
@@ -392,7 +392,7 @@ describe('the audit trail of a wake that started', () => {
     vi.mocked(recordAuditEvent).mockRejectedValueOnce(new Error('WorkOS down'))
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 
-    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
+    await expect(runAgentWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
     await vi.waitFor(() => expect(warn).toHaveBeenCalled())
     warn.mockRestore()
   })
@@ -405,7 +405,7 @@ describe('a wake that ends without an answer', () => {
   it('tells the person who woke Piloti why, with the mark it was about', async () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(onWakeEnded).toHaveBeenCalledTimes(1)
     expect(onWakeEnded).toHaveBeenCalledWith({
@@ -428,7 +428,7 @@ describe('a wake that ends without an answer', () => {
   ] as const)('tells after %s too', async (_case, outcome, waits) => {
     vi.mocked(runHeadlessTurn).mockResolvedValue(outcome)
 
-    await runPilotiWake('org_1', { ...PAYLOAD, waits }, NOT_LAST)
+    await runAgentWake('org_1', { ...PAYLOAD, waits }, NOT_LAST)
 
     expect(onWakeEnded).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed', reason: expect.any(String) }))
   })
@@ -437,7 +437,7 @@ describe('a wake that ends without an answer', () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_anna', delegatedAt: DELEGATED_AT })
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
 
-    await runPilotiWake('org_1', DELEGATION, NOT_LAST)
+    await runAgentWake('org_1', DELEGATION, NOT_LAST)
 
     expect(handBackDelegation).toHaveBeenCalledWith(expect.anything(), 'org_1', MARK_ID, DELEGATED_AT)
     expect(publishToDocumentRoom).toHaveBeenCalledWith(
@@ -449,14 +449,14 @@ describe('a wake that ends without an answer', () => {
 
   it('hands nothing back for a mention, and still tells when the hand-back fails', async () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
     expect(handBackDelegation).not.toHaveBeenCalled()
 
     vi.mocked(onWakeEnded).mockClear()
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_anna', delegatedAt: DELEGATED_AT })
     vi.mocked(handBackDelegation).mockRejectedValue(new Error('database down'))
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    await expect(runPilotiWake('org_1', DELEGATION, NOT_LAST)).resolves.toMatchObject({ done: true })
+    await expect(runAgentWake('org_1', DELEGATION, NOT_LAST)).resolves.toMatchObject({ done: true })
     expect(onWakeEnded).toHaveBeenCalledTimes(1)
     expect(log).toHaveBeenCalled()
     log.mockRestore()
@@ -466,7 +466,7 @@ describe('a wake that ends without an answer', () => {
     vi.mocked(settleWake).mockResolvedValue(false)
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(onWakeEnded).not.toHaveBeenCalled()
   })
@@ -483,7 +483,7 @@ describe('the audit trail of a wake the job ended', () => {
   it('records a refusal once as piloti.wake.ended, like a turn’s end, with the class of its reason', async () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(audited()).toEqual([
       {
@@ -518,7 +518,7 @@ describe('the audit trail of a wake the job ended', () => {
   ] as const)('records %s with its outcome and class', async (_case, outcome, waits, recorded, reasonKind) => {
     vi.mocked(runHeadlessTurn).mockResolvedValue(outcome)
 
-    await runPilotiWake('org_1', { ...PAYLOAD, waits }, NOT_LAST)
+    await runAgentWake('org_1', { ...PAYLOAD, waits }, NOT_LAST)
 
     expect(audited()).toHaveLength(1)
     expect(audited()[0]).toMatchObject({ action: 'piloti.wake.ended', metadata: { outcome: recorded, reasonKind } })
@@ -527,13 +527,13 @@ describe('the audit trail of a wake the job ended', () => {
   it('says the delegation went back with it, and not when the hand-back failed', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_anna', delegatedAt: DELEGATED_AT })
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
-    await runPilotiWake('org_1', DELEGATION, NOT_LAST)
+    await runAgentWake('org_1', DELEGATION, NOT_LAST)
     expect(audited()[0].metadata).toMatchObject({ trigger: 'assigned', handedBack: true })
 
     vi.mocked(recordAuditEvent).mockClear()
     vi.mocked(handBackDelegation).mockRejectedValue(new Error('database down'))
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    await runPilotiWake('org_1', DELEGATION, NOT_LAST)
+    await runAgentWake('org_1', DELEGATION, NOT_LAST)
     log.mockRestore()
     expect(audited()).toHaveLength(1)
     expect(audited()[0].metadata).toMatchObject({ handedBack: false })
@@ -543,7 +543,7 @@ describe('the audit trail of a wake the job ended', () => {
     vi.mocked(settleWake).mockResolvedValue(false)
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
@@ -551,7 +551,7 @@ describe('the audit trail of a wake the job ended', () => {
   it('keeps piloti.wake.suppressed for a wake held before Piloti was asked', async () => {
     vi.mocked(getAccessibleDocument).mockRejectedValue(new ForbiddenError())
 
-    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    await runAgentWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(audited().map((input) => input.action)).toEqual(['piloti.wake.suppressed'])
     expect(audited()[0].metadata).toMatchObject({ status: 'suppressed', stage: 'claim' })
@@ -561,13 +561,13 @@ describe('the audit trail of a wake the job ended', () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
     const anonymous = { ...PAYLOAD, actor: { userId: 'user_anna', email: null } }
 
-    await runPilotiWake('org_1', anonymous, NOT_LAST)
+    await runAgentWake('org_1', anonymous, NOT_LAST)
     await vi.waitFor(() => expect(recordAuditEvent).toHaveBeenCalledTimes(1))
     expect(audited()[0].actor).toEqual({ userId: 'user_anna', email: 'anna@example.at' })
 
     vi.mocked(recordAuditEvent).mockClear()
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map())
-    await runPilotiWake('org_1', anonymous, NOT_LAST)
+    await runAgentWake('org_1', anonymous, NOT_LAST)
     await vi.waitFor(() => expect(recordAuditEvent).toHaveBeenCalledTimes(1))
     expect(audited()[0].actor).toEqual({ userId: 'user_anna', email: null })
   })

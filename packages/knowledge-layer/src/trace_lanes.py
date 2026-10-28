@@ -7,8 +7,8 @@ from knowledge_layer.grounding_hits import grounding_hit
 from knowledge_layer.hit_metadata import resolve_display_titles
 from knowledge_layer.hit_metadata import resolve_doc_classes
 
-from aiq_agent.common.wire_v2 import TraceLane
-from aiq_agent.common.wire_v2 import TraceLaneSource
+from agent.common.wire_v2 import TraceLane
+from agent.common.wire_v2 import TraceLaneSource
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def _trace_lanes_for_chunks(
     """The lane fan-out of raw chunks, for a producer that has no records yet (RIS).
 
     It turns the chunks into the same
-    :class:`~aiq_agent.common.grounding_block.GroundingHit` records the header
+    :class:`~agent.common.grounding_block.GroundingHit` records the header
     lines are rendered from and hands them to :func:`trace_lanes_for_hits`, so
     a hit's shelf, Dokumentart and title are derived once (ADR-0061).
     ``resolved`` and ``resolved_titles`` are the store-authoritative doc_class
@@ -52,7 +52,7 @@ def trace_lanes_for_hits(hits, opened_files: frozenset[str] = frozenset()) -> tu
     Each lane carries BOTH classifications the reader needs: the fine ``key``
     /``label`` from ``lane_for_hit`` (the authority sub-tier: OIB-Richtlinie
     vs. Rechtsquelle (RIS) vs. …) and the coarse ``kind`` from
-    :func:`~aiq_agent.common.source_kinds.kind_for_lane`, the same taxonomy
+    :func:`~agent.common.source_kinds.kind_for_lane`, the same taxonomy
     ``source_entry_to_wire`` puts on every citation (ADR-0026), so the fan-out
     and the "Belegt durch" chips cannot drift apart.
 
@@ -64,8 +64,8 @@ def trace_lanes_for_hits(hits, opened_files: frozenset[str] = frozenset()) -> tu
     ranked (the members of a family overview); their hits are stamped as
     locator reads on the turn's ledger.
     """
-    from aiq_agent.common.norm_registry import lane_for_knowledge_hit
-    from aiq_agent.common.source_kinds import kind_for_lane
+    from agent.common.norm_registry import lane_for_knowledge_hit
+    from agent.common.source_kinds import kind_for_lane
 
     lanes: dict[str, tuple[str, list]] = {}
     for hit in hits:
@@ -133,11 +133,11 @@ def _lane_source(hit, detail: str | None, *, opened: bool) -> TraceLaneSource:
     documents as opened, or a later read of one of them is not a repeat. The
     producing tool is read off its scope, never passed (``record_lane_hit``).
     """
-    from aiq_agent.common.provenance import provenance_metadata
-    from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
-    from aiq_agent.common.turn_status import current_retrieval_round
-    from aiq_agent.common.turn_status import lane_tool_scope
-    from aiq_agent.common.turn_status import record_lane_hit
+    from agent.common.provenance import provenance_metadata
+    from agent.common.tool_calls import READ_PASSAGE_TOOL
+    from agent.common.turn_status import current_retrieval_round
+    from agent.common.turn_status import lane_tool_scope
+    from agent.common.turn_status import record_lane_hit
 
     source = TraceLaneSource(
         name=hit.file_name,

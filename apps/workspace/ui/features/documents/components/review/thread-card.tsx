@@ -23,7 +23,7 @@ import {
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
-import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { FieldError } from '@/components/ui/field'
@@ -39,28 +39,28 @@ import {
   ANNOTATION_KINDS,
   isGhostMark,
   isLive,
-  pilotiRepliedSince,
+  agentRepliedSince,
   REPLY_TAKEN_UP_REASON,
-  replyIsForPiloti,
+  replyIsForAgent,
   type AnnotationKind,
   type AnnotationReplyView,
   type AnnotationView,
   type MarkMention,
-  type PilotiWakeTrigger,
+  type AgentWakeTrigger,
 } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { cn } from '@/lib/utils'
 import { liveLine } from '@/features/chat/lib/turn-events'
 import type { FileAssignee } from '../../file-types'
 import { askRegionOf, stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
-import { answerAsBody } from '../../lib/piloti-answer-text'
+import { answerAsBody } from '../../lib/agent-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
 import { useFollowEnd } from '../../hooks/use-follow-end'
 import { AssignPopover } from '../assign-popover'
 import { Composer, type ComposerSend } from './composer'
 import { otherReviewHref } from '../../lib/revision-links'
 import { MarkBody } from './mark-body'
-import { usePilotiByline } from './piloti-attribution'
+import { useAgentByline } from './agent-attribution'
 import type { CardSide } from './review-page-layer'
 import { useFocusBackOnClose } from './focus-return'
 import { useCardFit } from './review-stage'
@@ -99,7 +99,7 @@ function Message({
   /** Piloti's finding nobody has taken over: it says so in its byline. */
   proposal?: boolean
   /** The reply was written by a turn an event woke, and where (`number` of the Anmerkung). */
-  woken?: { trigger: PilotiWakeTrigger; number: number } | null
+  woken?: { trigger: AgentWakeTrigger; number: number } | null
   /** Its author reworded it then: the byline says „bearbeitet“. */
   editedAt?: string | null
   /** What its author may do with it (`ReplyActions`), at the end of the byline. */
@@ -107,7 +107,7 @@ function Message({
 }): JSX.Element {
   const t = useTranslations(filesCopy)
   const { locale } = useLocale()
-  const byline = usePilotiByline()
+  const byline = useAgentByline()
   const wokenTitle = woken
     ? name
       ? t('review.attribution.wokenTitle', { name, number: woken.number })
@@ -116,7 +116,7 @@ function Message({
   return (
     <div className="flex gap-2.5">
       {authorKind === 'piloti' ? (
-        <PilotiGlyph />
+        <AgentGlyph />
       ) : (
         <PersonAvatar
           size="sm"
@@ -441,7 +441,7 @@ export function ReviewCard({
  * to ask again. An answer whose thread target never reached the server stays
  * here, to be added to the thread by hand.
  */
-function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentReview }): JSX.Element {
+function AgentThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentReview }): JSX.Element {
   const t = useTranslations(filesCopy)
   const tChat = useTranslations(chatCopy)
   const [adopting, setAdopting] = useState(false)
@@ -461,8 +461,8 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
     const annotationId = ask.annotationId
     const body = answerAsBody(ask.view.text)
     return (
-      <div className="flex gap-2.5" data-testid="thread-piloti-unposted" role="status">
-        <PilotiGlyph />
+      <div className="flex gap-2.5" data-testid="thread-agent-unposted" role="status">
+        <AgentGlyph />
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-muted-foreground text-[11px] leading-4">{t('review.piloti.degradedThread')}</p>
           <p className="text-foreground text-sm leading-5 break-words whitespace-pre-line">{body}</p>
@@ -495,8 +495,8 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
     )
   }
   return (
-    <div className="flex items-center gap-2.5" data-testid="thread-piloti-pending" role="status">
-      <PilotiGlyph working={ask.status === 'thinking'} />
+    <div className="flex items-center gap-2.5" data-testid="thread-agent-pending" role="status">
+      <AgentGlyph working={ask.status === 'thinking'} />
       {ask.status === 'thinking' ? (
         <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
       ) : (
@@ -518,7 +518,7 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
  * A delegation already says „Piloti arbeitet daran" in its chip, so only how it
  * ended is said here.
  */
-function PilotiWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Element | null {
+function AgentWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Element | null {
   const t = useTranslations(filesCopy)
   const work = annotation.pilotiWork
   if (!work) return null
@@ -527,8 +527,8 @@ function PilotiWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Elem
   const name = work.forName ?? t('review.someone')
   if (work.state === 'failed') {
     return (
-      <div className="flex items-start gap-2.5" data-testid="thread-piloti-work" data-state={work.state} role="status">
-        <PilotiGlyph />
+      <div className="flex items-start gap-2.5" data-testid="thread-agent-work" data-state={work.state} role="status">
+        <AgentGlyph />
         <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-5">
           {t(`review.piloti.workFailed.${work.reasonKind ?? 'error'}`, { name })}
         </span>
@@ -536,8 +536,8 @@ function PilotiWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Elem
     )
   }
   return (
-    <div className="flex items-center gap-2.5" data-testid="thread-piloti-work" data-state={work.state} role="status">
-      <PilotiGlyph working={work.state !== 'held'} />
+    <div className="flex items-center gap-2.5" data-testid="thread-agent-work" data-state={work.state} role="status">
+      <AgentGlyph working={work.state !== 'held'} />
       {work.state === 'held' ? (
         <span className="text-muted-foreground min-w-0 flex-1 text-xs">{t('review.piloti.wakeHeld')}</span>
       ) : (
@@ -568,7 +568,7 @@ export function DraftCard({
   const self = useSelfAssignee(review)
   const { piloti } = review
   /** The draft's place handed to Piloti: asked at once with what was typed, or a card waiting for the question. */
-  const askPiloti = piloti.available
+  const askAgent = piloti.available
     ? (body: string) => {
         const region = askRegionOf(draft)
         if (body) piloti.ask({ text: body, region })
@@ -585,7 +585,7 @@ export function DraftCard({
           placeholder={t('review.draftPlaceholder')}
           submitLabel={t('review.set')}
           onEscape={() => review.setDraft(null)}
-          onAskPiloti={askPiloti}
+          onAskAgent={askAgent}
           documentId={review.documentId}
           onSubmit={async (body, { mentions }) => {
             const created = await review.create({ kind, body, mentions, assigneeUserId: assignee?.userId ?? null, dueOn })
@@ -704,9 +704,9 @@ function RevisionLines({
  * before a browser ask's answer lands; the card keeps the author from
  * changing what Piloti is reading.
  */
-function takenUpByPiloti(annotation: AnnotationView, reply: AnnotationReplyView, asking: boolean): boolean {
-  if (!replyIsForPiloti(annotation, reply)) return false
-  if (asking || pilotiRepliedSince(annotation.replies, reply)) return true
+function takenUpByAgent(annotation: AnnotationView, reply: AnnotationReplyView, asking: boolean): boolean {
+  if (!replyIsForAgent(annotation, reply)) return false
+  if (asking || agentRepliedSince(annotation.replies, reply)) return true
   const work = annotation.pilotiWork
   return Boolean(
     work && (work.state === 'queued' || work.state === 'working') && work.trigger !== 'assigned' && work.forUserId === reply.createdBy
@@ -714,7 +714,7 @@ function takenUpByPiloti(annotation: AnnotationView, reply: AnnotationReplyView,
 }
 
 /** Whether this tab's own ask of Piloti, answering in this mark's thread, is still thinking. */
-const pilotiAskingIn = (review: DocumentReview, annotationId: string): boolean =>
+const agentAskingIn = (review: DocumentReview, annotationId: string): boolean =>
   review.piloti.asks.some((ask) => ask.replyInThread && ask.annotationId === annotationId && ask.status === 'thinking')
 
 /**
@@ -742,7 +742,7 @@ function ReplyEntry({
     isLive(annotation) &&
     reply.authorKind === 'person' &&
     reply.createdBy === review.me &&
-    !takenUpByPiloti(annotation, reply, pilotiAskingIn(review, annotation.id))
+    !takenUpByAgent(annotation, reply, agentAskingIn(review, annotation.id))
   // Saved or let go, the box goes and the reply's ⋯ comes back: the focus goes with it.
   const moreRef = useFocusBackOnClose<HTMLButtonElement>(editing && mayChange)
   const failureOf = (error: unknown) =>
@@ -879,7 +879,7 @@ export function ThreadCard({
   const proposed = annotation.status === 'proposed'
   const live = isLive(annotation)
   const { piloti } = review
-  const pilotiReplies = annotation.replies.filter((reply) => reply.authorKind === 'piloti').length
+  const agentReplies = annotation.replies.filter((reply) => reply.authorKind === 'piloti').length
   // Piloti was brought into this thread by this tab and has not answered in it yet,
   // or answered without the thread target reaching it (its answer is only here).
   const threadAsk = piloti.asks.find(
@@ -889,7 +889,7 @@ export function ThreadCard({
       (ask.status === 'failed' ||
         ask.status === 'declined' ||
         (ask.status === 'answered' && ask.degraded.includes('thread')) ||
-        (ask.status === 'thinking' && pilotiReplies <= ask.baseline))
+        (ask.status === 'thinking' && agentReplies <= ask.baseline))
   )
   // What lands at the end of the thread: a reply, Piloti's work line, its answer. Kept in view for a reader at the end.
   const thread = useFollowEnd<HTMLDivElement>(
@@ -925,7 +925,7 @@ export function ThreadCard({
       region: askRegionOf(annotation),
       annotationId: annotation.id,
       replyInThread: true,
-      baseline: pilotiReplies,
+      baseline: agentReplies,
       ...(replyId ? { turnId: wakeTurnId(replyId) } : {}),
     })
     return kept
@@ -987,7 +987,7 @@ export function ThreadCard({
           {
             type: 'item' as const,
             id: 'ask',
-            label: t('review.askPiloti'),
+            label: t('review.askAgent'),
             icon: Sparkles,
             onSelect: () => void piloti.compose(askRegionOf(annotation), { annotationId: annotation.id }),
           },
@@ -1000,7 +1000,7 @@ export function ThreadCard({
           {
             type: 'item' as const,
             id: 'delegate',
-            label: annotation.delegatedBy ? t('review.takeBackFromPiloti') : t('review.delegateToPiloti'),
+            label: annotation.delegatedBy ? t('review.takeBackFromAgent') : t('review.delegateToPiloti'),
             icon: annotation.delegatedBy ? Undo2 : Sparkles,
             onSelect: () =>
               void act(() => review.update(annotation.id, { delegateToPiloti: !annotation.delegatedBy })),
@@ -1162,7 +1162,7 @@ export function ThreadCard({
       {annotation.delegatedBy && (
         <div className="border-b px-3 py-1.5" data-testid="thread-delegate">
           <Chip size="sm" variant="secondary" className="gap-1">
-            <PilotiGlyph size="xs" />
+            <AgentGlyph size="xs" />
             {t('review.piloti.delegateChip', { name: annotation.delegatedByName ?? t('review.someone') })}
           </Chip>
         </div>
@@ -1213,8 +1213,8 @@ export function ThreadCard({
         {annotation.replies.map((reply) => (
           <ReplyEntry key={reply.id} review={review} annotation={annotation} reply={reply} />
         ))}
-        <PilotiWorkRow annotation={annotation} />
-        {threadAsk && <PilotiThreadRow ask={threadAsk} review={review} />}
+        <AgentWorkRow annotation={annotation} />
+        {threadAsk && <AgentThreadRow ask={threadAsk} review={review} />}
       </div>
 
       {proposed && annotation.canEdit && (
@@ -1265,7 +1265,7 @@ export function ThreadCard({
             testId="thread-reply"
             placeholder={t('review.replyPlaceholder')}
             submitLabel={t('review.send')}
-            mentionPiloti={piloti.available}
+            mentionAgent={piloti.available}
             documentId={review.documentId}
             pickerSide="above"
             onSubmit={sendReply}

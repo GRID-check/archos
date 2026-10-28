@@ -3,7 +3,7 @@
 **Status:** Accepted working spec (2026-07-17). Owner: product/frontend.
 **Sources:** the team's click dummy `Ask_Piloti_v6_standalone2.html` (external, not in
 repo — a self-contained React bundle; fully reverse-engineered for this spec),
-the current `apps/workspace` implementation, `docs/design/grid-design-language.md`,
+the current `apps/workspace` implementation, `docs/design/design-language.md`,
 `docs/audit/feedback-backlog.md` (FB-2/4/6/8/9/10/11/12), `docs/audit/ux-system-audit.md`.
 
 **Scope guard:** the **Herleitung reasoning-trace** (chain-of-thought UI, §7) is
@@ -241,7 +241,7 @@ don't churn):
   slightly darker, white cards; dark mode: warm charcoal equivalents, derived,
   not shipped-in-dummy — we design them, `.dark` stays).
 - `--primary`/action → near-black ink (dark mode: paper-white on ink).
-  `--grid-blue` ceases to be the action color; blue is reassigned to the
+  `--law-blue` ceases to be the action color; blue is reassigned to the
   **Baurecht** source signal.
 - New token family:
   `--source-law`, `--source-project`, `--source-office`, `--source-auto`,
@@ -255,7 +255,7 @@ don't churn):
   `--elevation-*`; retune values).
 - Motion: keep 150–250ms vocabulary; add `nodeIn`-style fade-rise for
   cards/trace nodes; respect reduced motion (existing infra).
-- `docs/design/grid-design-language.md` is updated in the same change as the
+- `docs/design/design-language.md` is updated in the same change as the
   token retune (docs obligation).
 
 ---
@@ -296,7 +296,7 @@ string in the WS's own namespace files, dark mode + mobile + a11y parity,
 update user-guide docs it invalidates.
 
 - **WS-1 Design tokens & language** — `src/styles/tokens.css`,
-  `src/app/globals.css`, `docs/design/grid-design-language.md`. Retune to §4.
+  `src/app/globals.css`, `docs/design/design-language.md`. Retune to §4.
   No component file changes.
 - **WS-2 IA / navigation** — `src/components/shell/*`, project `layout.tsx`,
   new `settings/` + `history/` pages, `research` redirect, `i18n/*/nav.ts`,
@@ -334,7 +334,7 @@ Design: `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`.
 
 **Shipped in v1:** collapsible bar `Herleitung · n Zwischenschritte · m Quellen`;
 parallel per-document source cards (lane tab · name · detail · Treffer) from KB
-`## Trace-Lanes` (+ FE fallbacks); technical NAT steps secondary; multi-turn safe;
+`## Trace-Lanes` (+ FE fallbacks); technical agent runtime steps secondary; multi-turn safe;
 no timer theatrics. Captured lanes survive storage prune.
 
 **Still contract target (not v1):** full stage spine

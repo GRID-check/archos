@@ -1,4 +1,4 @@
-# Backend tier (src/, the Python packages, apps/backend, evals/), Langfuse/prompts.
+# Backend tier (src/, the Python packages, apps/agent-host, evals/), Langfuse/prompts.
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
 # (`be:test`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
@@ -17,11 +17,11 @@ vars:
   TESTMON_PATHS:
     map:
       core: tests/ packages/agent/tests/ evals/
-      api: apps/backend/tests/
+      api: apps/agent-host/tests/
       sources: packages/knowledge-layer packages/ris-adapter packages/tavily-web-search --dist loadfile
 
 tasks:
-  # ── backend (src/, the Python packages, apps/backend) ───────────────────
+  # ── backend (src/, the Python packages, apps/agent-host) ───────────────────
 
   be:lint:
     desc: 'Ruff lint + format check, and the package seams (import-linter). CI: task be:lint -- --output-format=github'
@@ -30,8 +30,8 @@ tasks:
       # --output-format unstable and warns about it.
       - '{{.RUFF}} check . {{.CLI_ARGS}}'
       - '{{.RUFF}} format --check .'
-      # The contracts in pyproject.toml's [tool.importlinter]: aiq_agent reaches
-      # aiq_api and knowledge_layer only through their seams. About a second.
+      # The contracts in pyproject.toml's [tool.importlinter]: agent reaches
+      # agent_host and knowledge_layer only through their seams. About a second.
       # docs/contributing/module-seams.md
       - '{{.LINT_IMPORTS}} --no-cache'
 
@@ -116,7 +116,7 @@ tasks:
     cmds:
       # Git is the platform prompt's source of truth (ADR-0060 (a)). This only
       # ever READS Langfuse: it writes the version under a label into
-      # `agents/piloti/prompts/piloti_static.md`, so an edit made in Langfuse
+      # `agents/piloti/prompts/chat_static.md`, so an edit made in Langfuse
       # can be committed and reviewed like any other.
       - '{{.PY}} scripts/prompts_pull.py {{.CLI_ARGS}}'
 
@@ -210,7 +210,7 @@ tasks:
 
   be:eval:root-sort:
     desc: 'Root-sort eval — placement precision, coverage and the sure-threshold sweep on a labelled synthetic shelf, plus the new-folder grouping (NEEDS OPENROUTER_API_KEY; no backend)'
-    dir: '{{.ROOT_DIR}}/apps/backend'
+    dir: '{{.ROOT_DIR}}/apps/agent-host'
     cmds:
       # Sets SURE_CONFIDENCE (apps/workspace/bff/filing/root-sort-types.ts).
       # Run before and after a change to the sort prompt, the scoring or the
@@ -300,7 +300,7 @@ tasks:
     cmds:
       - >-
         {{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}}
-        --cov=packages/agent/src/aiq_agent --cov-report=xml:coverage.xml --cov-report=term
+        --cov=packages/agent/src/agent --cov-report=xml:coverage.xml --cov-report=term
         --cov-fail-under=65
 
   be:test:shard:
@@ -320,7 +320,7 @@ tasks:
         {{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}}
         --splits {{.TOTAL}} --group {{.INDEX}} --splitting-algorithm least_duration
         --durations-path tests/.test_durations
-        --cov=packages/agent/src/aiq_agent --cov-report=
+        --cov=packages/agent/src/agent --cov-report=
 
   be:test:coverage:
     desc: Combine the core shards' coverage data and apply the gate CI enforces
@@ -340,9 +340,9 @@ tasks:
         d = json.loads(p.read_text()); p.write_text(json.dumps({k: round(v, 3) for k, v in sorted(d.items())}, indent=0) + chr(10))"
 
   be:test:api:
-    desc: aiq_api plugin suite
+    desc: agent_host plugin suite
     cmds:
-      - '{{.PY}} -X faulthandler -m pytest apps/backend/tests/ -q {{.XDIST}}'
+      - '{{.PY}} -X faulthandler -m pytest apps/agent-host/tests/ -q {{.XDIST}}'
 
   be:verify:
     desc: Everything CI runs for the backend tier
@@ -365,6 +365,6 @@ tasks:
         bash scripts/rls-test-db.sh --exec "{{.PY}}" -X faulthandler -m pytest -q
         packages/agent/tests/common/test_claim_queue.py
         tests/knowledge_layer_tests/test_ingest_queue.py
-        apps/backend/tests/test_research_queue_fair.py
+        apps/agent-host/tests/test_research_queue_fair.py
         packages/agent/tests/knowledge/folder_cards
         tests/test_postgres_rename_legacy_names.py

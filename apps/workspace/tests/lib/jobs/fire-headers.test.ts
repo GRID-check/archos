@@ -32,8 +32,8 @@ import fixture from '../../fixtures/job_fire_headers.json'
 
 import { submitJob, type JobSubmitPayload } from '@/lib/jobs/backend-client'
 import {
-  buildGridRequestContextWireHeaders,
-  type GridRequestContextInput,
+  buildRequestContextWireHeaders,
+  type RequestContextInput,
 } from '@/lib/request-context'
 
 const INTERNAL_TOKEN = 'test-internal-token'
@@ -43,7 +43,7 @@ const INTERNAL_TOKEN = 'test-internal-token'
  * something, so every optional header is present. The fixture's `sentByBff` is
  * the ceiling of what goes out, and this is the case that reaches it.
  */
-const CONTEXT_INPUT: GridRequestContextInput = {
+const CONTEXT_INPUT: RequestContextInput = {
   organizationId: 'org_123',
   userId: 'user_456',
   projectId: 'proj_789',
@@ -61,7 +61,7 @@ const PAYLOAD: JobSubmitPayload = {
   skills: [],
   output: 'deep-research',
   data_sources: ['knowledge_layer'],
-  // `GridRequestContextInput.collectionScope` is a readonly union that also
+  // `RequestContextInput.collectionScope` is a readonly union that also
   // admits the ADR-0047 object shape; the submit payload takes bare names, the
   // same narrowing `computeCollectionScope` produces for this path.
   collection_scope: ['oib_knowledge', 'proj_proj_789'],
@@ -80,7 +80,7 @@ const lower = (names: string[]): string[] => names.map((name) => name.toLowerCas
 
 /** Fire once through the real client and return the headers that went out. */
 async function capturedFireHeaders(
-  input: GridRequestContextInput = CONTEXT_INPUT
+  input: RequestContextInput = CONTEXT_INPUT
 ): Promise<Record<string, string>> {
   let sent: Record<string, string> = {}
   const fetchSpy = vi.fn(async (_url: unknown, init: RequestInit) => {
@@ -91,7 +91,7 @@ async function capturedFireHeaders(
   })
   vi.stubGlobal('fetch', fetchSpy)
 
-  const headers = buildGridRequestContextWireHeaders(input, process.env.INTERNAL_API_TOKEN)
+  const headers = buildRequestContextWireHeaders(input, process.env.INTERNAL_API_TOKEN)
   await submitJob(PAYLOAD, headers)
 
   expect(fetchSpy).toHaveBeenCalledTimes(1)
@@ -191,7 +191,7 @@ describe('the fire path in lib/jobs/background-run.ts', () => {
   const fire = read('background-run.ts')
 
   it('builds its headers with the shared wire builder', () => {
-    expect(fire).toContain('buildGridRequestContextWireHeaders(')
+    expect(fire).toContain('buildRequestContextWireHeaders(')
     expect(fire).toContain('process.env.INTERNAL_API_TOKEN')
   })
 

@@ -46,8 +46,8 @@ class QdrantOutage:
 
 @pytest.fixture
 def env(tmp_path, monkeypatch, qdrant_store):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     summary_db = f"sqlite:///{tmp_path / 'summaries.db'}"
     monkeypatch.setenv("SUMMARY_DB", summary_db)
@@ -66,7 +66,7 @@ def env(tmp_path, monkeypatch, qdrant_store):
 
 def _seed(file_name: str, count: int = 3, *, stored_as: str | None = None, scope: str = SCOPE) -> list[str]:
     """``count`` chunks of ``file_name`` in Qdrant and its row in the metadata store."""
-    from aiq_agent.knowledge import register_summary
+    from agent.knowledge import register_summary
 
     stored = stored_as or file_name
     records = [record(f"{file_name} Abschnitt {index}", stored, page_label=str(index + 1)) for index in range(count)]
@@ -81,7 +81,7 @@ def _ids(file_name: str | None = None, scope: str = SCOPE) -> set[str]:
 
 
 def _summary_rows(scope: str = SCOPE) -> set[str]:
-    from aiq_agent.knowledge import get_available_documents
+    from agent.knowledge import get_available_documents
 
     return {document.file_name for document in get_available_documents(scope)}
 
@@ -122,7 +122,7 @@ def test_delete_file_takes_every_stored_spelling_of_the_name(env):
 
 
 def test_delete_file_by_its_listed_id_resolves_the_name(env):
-    from aiq_agent.knowledge.schema import stable_file_id
+    from agent.knowledge.schema import stable_file_id
 
     _seed("plan.pdf")
     assert env["ingestor"].delete_file(stable_file_id(SCOPE, "plan.pdf"), SCOPE) is True
@@ -131,7 +131,7 @@ def test_delete_file_by_its_listed_id_resolves_the_name(env):
 
 def test_delete_file_with_no_chunks_still_clears_its_row(env):
     """A row with no chunks lists a file nobody can retrieve: the delete takes it whatever the store holds."""
-    from aiq_agent.knowledge import register_summary
+    from agent.knowledge import register_summary
 
     register_summary(SCOPE, "ghost.pdf", "Nur eine Zeile")
     assert env["ingestor"].delete_file("ghost.pdf", SCOPE) is False  # nothing of the file was in the store

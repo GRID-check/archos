@@ -32,8 +32,8 @@ from knowledge_layer_testing.estate_grep import _backend
 from knowledge_layer_testing.estate_grep import _chunks
 from knowledge_layer_testing.estate_grep import _setup  # noqa: F401 - autouse fixture
 
-from aiq_agent.common import turn_status
-from aiq_agent.common.citation_collector import collect_citations
+from agent.common import turn_status
+from agent.common.citation_collector import collect_citations
 
 
 def _occurrences_in_pages(word: str) -> int:

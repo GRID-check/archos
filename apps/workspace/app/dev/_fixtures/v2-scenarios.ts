@@ -19,7 +19,7 @@
  * only; `stampTurn` makes them a turn.
  */
 
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 import type { RecordedTurn } from './stream-frames'
 import { answerBodies, asSettled, keyed, stampTurn, stepBodies, type TimedBody, type TimedFrame } from './v2-turn'
 

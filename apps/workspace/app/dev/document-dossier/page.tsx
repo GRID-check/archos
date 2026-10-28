@@ -20,7 +20,7 @@
 import type { JSX } from 'react'
 import { I18nProvider } from '@/i18n'
 import { InspectorGroup } from '@/components/ui/inspector-group'
-import { PilotiReading } from '@/features/documents/components/piloti-reading'
+import { AgentReading } from '@/features/documents/components/agent-reading'
 import { DocumentFindingsList } from '@/features/documents/components/document-findings-panel'
 import type { FileItem } from '@/features/documents/file-types'
 import { deriveDocumentFindings, referencedBy, resolveReferences, toFindingsDocument } from '@/lib/documents/findings'
@@ -161,7 +161,7 @@ function Rail({ file, title }: { file: FileItem; title: string }): JSX.Element {
     <div className="flex w-[360px] flex-col gap-2">
       <p className="text-muted-foreground px-1 text-xs">{title}</p>
       <InspectorGroup className="p-3">
-        <PilotiReading file={file} canManage projectId={PROJECT_ID} dossierLinks={linksOf(file)} />
+        <AgentReading file={file} canManage projectId={PROJECT_ID} dossierLinks={linksOf(file)} />
       </InspectorGroup>
     </div>
   )

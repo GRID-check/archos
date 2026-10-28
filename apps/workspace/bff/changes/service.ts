@@ -32,16 +32,16 @@ import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import {
   claimUndo,
-  findPilotiChange,
-  insertPilotiChanges,
+  findAgentChange,
+  insertAgentChanges,
   listTurnChangeRows,
   releaseUndo,
-  type NewPilotiChange,
-  type PilotiChangeRow,
+  type NewAgentChange,
+  type AgentChangeRow,
 } from './repository'
 import { auditAppliedChanges, auditUndoneChange } from './audit'
 import { planUndo, type UndoPlan } from './undo'
-import type { ChangeState, PilotiChangeObject, PilotiChangeOp, PilotiChangeView, UndoRefusal } from './types'
+import type { ChangeState, AgentChangeObject, AgentChangeOp, AgentChangeView, UndoRefusal } from './types'
 
 // ---------------------------------------------------------------------------
 // Recording
@@ -64,10 +64,10 @@ export interface ChangeOrigin {
 
 /** One change a call applied. */
 export interface AppliedChange {
-  objectKind: PilotiChangeObject
+  objectKind: AgentChangeObject
   objectId: string
   annotationId: string
-  op: PilotiChangeOp
+  op: AgentChangeOp
   before: ChangeState | null
   after: ChangeState | null
   /** The mark's running number, for the audit trail. */
@@ -81,7 +81,7 @@ let warnedWithoutAnswer = false
  * `agent_changes` row each, then a `piloti.change.applied` audit event each
  * (`./audit`). Never throws: the change already stands.
  */
-export async function recordPilotiChanges(origin: ChangeOrigin, changes: readonly AppliedChange[]): Promise<void> {
+export async function recordAgentChanges(origin: ChangeOrigin, changes: readonly AppliedChange[]): Promise<void> {
   if (changes.length === 0) return
   const rows = await insertLedgerRows(origin, changes)
   auditAppliedChanges(
@@ -112,7 +112,7 @@ export async function recordPilotiChanges(origin: ChangeOrigin, changes: readonl
  * the record (no answer id), and none when the insert failed. The change was
  * applied either way, so the audit trail still hears of it.
  */
-async function insertLedgerRows(origin: ChangeOrigin, changes: readonly AppliedChange[]): Promise<PilotiChangeRow[]> {
+async function insertLedgerRows(origin: ChangeOrigin, changes: readonly AppliedChange[]): Promise<AgentChangeRow[]> {
   if (!origin.answerMessageId) {
     if (!warnedWithoutAnswer) {
       warnedWithoutAnswer = true
@@ -120,7 +120,7 @@ async function insertLedgerRows(origin: ChangeOrigin, changes: readonly AppliedC
     }
     return []
   }
-  const rows: NewPilotiChange[] = changes.map((change) => ({
+  const rows: NewAgentChange[] = changes.map((change) => ({
     organizationId: origin.organizationId,
     documentId: origin.documentId,
     annotationId: change.annotationId,
@@ -134,7 +134,7 @@ async function insertLedgerRows(origin: ChangeOrigin, changes: readonly AppliedC
     onBehalfOf: origin.onBehalfOf,
   }))
   try {
-    return await insertPilotiChanges(origin.organizationId, rows)
+    return await insertAgentChanges(origin.organizationId, rows)
   } catch (error) {
     console.error('[changes] could not record what the turn applied', origin.answerMessageId, error)
     return []
@@ -181,7 +181,7 @@ function mayRun(plan: UndoPlan, marks: DocumentMarks, current: AnnotationView | 
   }
 }
 
-function toView(row: PilotiChangeRow, marks: DocumentMarks, names: Names, userId: string): PilotiChangeView {
+function toView(row: AgentChangeRow, marks: DocumentMarks, names: Names, userId: string): AgentChangeView {
   const current = marks.marks.get(row.annotationId)
   const outcome = row.undoneAt ? null : planUndo(row, current)
   return {
@@ -205,7 +205,7 @@ function toView(row: PilotiChangeRow, marks: DocumentMarks, names: Names, userId
 }
 
 /** The rows as this reader sees them, oldest first; rows on documents they may not see are left out. */
-async function viewsFor(session: AuthorizedSession, rows: readonly PilotiChangeRow[]): Promise<PilotiChangeView[]> {
+async function viewsFor(session: AuthorizedSession, rows: readonly AgentChangeRow[]): Promise<AgentChangeView[]> {
   const documents = new Map<string, DocumentMarks | null>()
   for (const documentId of new Set(rows.map((row) => row.documentId))) {
     documents.set(documentId, await readDocumentMarks(session, documentId))
@@ -222,7 +222,7 @@ export async function listTurnChanges(
   session: AuthorizedSession,
   conversationId: string,
   messageId: string
-): Promise<PilotiChangeView[]> {
+): Promise<AgentChangeView[]> {
   await requireResourceAccess(session, 'conversation', conversationId, 'viewer')
   const rows = await listTurnChangeRows(session.organizationId, conversationId, messageId)
   return viewsFor(session, rows)
@@ -251,8 +251,8 @@ export class UndoRefusedError extends ConflictError {
 async function loadReadable(
   session: AuthorizedSession,
   id: string
-): Promise<{ row: PilotiChangeRow; marks: DocumentMarks }> {
-  const row = await findPilotiChange(session.organizationId, id)
+): Promise<{ row: AgentChangeRow; marks: DocumentMarks }> {
+  const row = await findAgentChange(session.organizationId, id)
   if (!row) throw new NotFoundError()
   await requireResourceAccess(session, 'conversation', row.originConversationId, 'viewer')
   const marks = await readDocumentMarks(session, row.documentId)
@@ -261,7 +261,7 @@ async function loadReadable(
 }
 
 /** Run the inverse through the annotations service, as the person clicking. */
-async function runPlan(session: AuthorizedSession, row: PilotiChangeRow, plan: UndoPlan): Promise<void> {
+async function runPlan(session: AuthorizedSession, row: AgentChangeRow, plan: UndoPlan): Promise<void> {
   switch (plan.kind) {
     case 'dismiss':
     case 'revert':
@@ -291,7 +291,7 @@ const movedUnderneath = (error: unknown) => error instanceof ConflictError || er
  * left it. 409 `already-undone` / `moved-on` otherwise; 403 for a reader who
  * may not edit the mark.
  */
-export async function undoChange(session: AuthorizedSession, id: string): Promise<PilotiChangeView> {
+export async function undoChange(session: AuthorizedSession, id: string): Promise<AgentChangeView> {
   const { row, marks } = await loadReadable(session, id)
   if (row.undoneAt) throw new UndoRefusedError('already-undone')
   const current = marks.marks.get(row.annotationId)

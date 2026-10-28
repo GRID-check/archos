@@ -19,13 +19,13 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.agent import _shelf_label
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import render_prompt_template
-from aiq_agent.common.data_source_registry import populate_from_config
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.agent import _shelf_label
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common import LLMProvider
+from agent.common import render_prompt_template
+from agent.common.data_source_registry import populate_from_config
 
 SUBJECT = "220724_Aufsicht_1_100.pdf"
 
@@ -62,9 +62,9 @@ def real_tool():
     return searching_tool
 
 
-def _render(agent: PilotiAgent, **overrides) -> str:
+def _render(agent: ChatAgent, **overrides) -> str:
     kwargs = {
-        # The static half is its own file now (`piloti_static.md`, the bundled
+        # The static half is its own file now (`chat_static.md`, the bundled
         # fallback for the prompt Langfuse serves). The subject block this test
         # is about sits BELOW the KV-cache boundary, so rendering the template
         # with an empty static half changes nothing it asserts.
@@ -79,9 +79,9 @@ def _render(agent: PilotiAgent, **overrides) -> str:
     return render_prompt_template(agent.system_prompt, **kwargs)
 
 
-class TestPilotiPromptNamesTheSubject:
+class TestChatAgentPromptNamesTheSubject:
     def test_focused_file_is_named_with_its_shelf(self, mock_llm_provider, real_tool):
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         rendered = _render(agent, focus_file_name=SUBJECT, focus_shelf_label="Projektwissen")
 
@@ -98,7 +98,7 @@ class TestPilotiPromptNamesTheSubject:
         """
         from knowledge_layer.register import _KNOWLEDGE_SEARCH_DESCRIPTION
 
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         rendered = _render(agent, focus_file_name=SUBJECT, focus_shelf_label="Projektwissen")
 
@@ -107,14 +107,14 @@ class TestPilotiPromptNamesTheSubject:
 
     def test_shelf_is_omitted_rather_than_invented(self, mock_llm_provider, real_tool):
         """An unknown shelf names the file alone — never a guessed shelf."""
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         rendered = _render(agent, focus_file_name=SUBJECT, focus_shelf_label=None)
 
         assert f"## This turn's subject: **{SUBJECT}**\n" in rendered
 
     def test_no_subject_renders_no_subject_block(self, mock_llm_provider, real_tool):
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         rendered = _render(agent, focus_file_name=None, focus_shelf_label=None)
 
@@ -122,7 +122,7 @@ class TestPilotiPromptNamesTheSubject:
 
     def test_render_survives_callers_that_pass_no_focus_at_all(self, mock_llm_provider, real_tool):
         """The template is rendered under StrictUndefined; the guards must hold."""
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
         rendered = _render(agent)
 
@@ -170,7 +170,7 @@ class TestSubjectKeepsTheSearchTools:
         )
         mock_llm.ainvoke = AsyncMock(side_effect=[AIMessage(content="Zusammenfassung.")])
 
-        agent = PilotiAgent(
+        agent = ChatAgent(
             llm_provider=mock_llm_provider,
             tools=[searching_tool, remember_tool],
         )
@@ -194,7 +194,7 @@ class TestSubjectSurvivesTheGraphHandoff:
 
     @pytest.mark.asyncio
     async def test_shallow_node_forwards_the_subject(self):
-        from aiq_agent.agents.piloti.conversation import ConversationGraph
+        from agent.agents.piloti.conversation import ConversationGraph
 
         captured: dict = {}
 

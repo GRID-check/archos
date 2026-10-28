@@ -68,7 +68,7 @@ license_report.pdf
 .gitlab-ci.yml
 .github/
 .pre-commit-config.yaml*
-apps/backend/Dockerfile
+apps/agent-host/Dockerfile
 deploy/compose/
 deploy/helm/
 deploy/*.sh

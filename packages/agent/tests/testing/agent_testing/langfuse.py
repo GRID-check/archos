@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aiq_agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
+from agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
 
 ENDPOINT = "http://otel-collector:4318/v1/traces"
 

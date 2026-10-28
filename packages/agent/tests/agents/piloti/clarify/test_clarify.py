@@ -12,25 +12,25 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 from langgraph.config import get_stream_writer
 
-from aiq_agent.agents.piloti.clarify import CLARIFICATION_PROMPT
-from aiq_agent.agents.piloti.clarify import MAX_TOOL_ROUNDS
-from aiq_agent.agents.piloti.clarify import PLAN_GENERATION_PROMPT
-from aiq_agent.agents.piloti.clarify import SKIP_COMMANDS
-from aiq_agent.agents.piloti.clarify import ClarifierSettings
-from aiq_agent.agents.piloti.clarify import ClarifyDeps
-from aiq_agent.agents.piloti.clarify import build_deps
-from aiq_agent.agents.piloti.clarify import clarify
-from aiq_agent.agents.piloti.clarify import fallback_clarification
-from aiq_agent.agents.piloti.clarify import format_plan_for_user
-from aiq_agent.agents.piloti.clarify import parse_json_response
-from aiq_agent.agents.piloti.clarify import parse_plan_reply
-from aiq_agent.agents.piloti.models import ClarificationResponse
-from aiq_agent.agents.piloti.models import ClarifyRequest
-from aiq_agent.agents.piloti.models import PlanResponse
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common.wire_v2 import ClarificationStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
+from agent.agents.piloti.clarify import CLARIFICATION_PROMPT
+from agent.agents.piloti.clarify import MAX_TOOL_ROUNDS
+from agent.agents.piloti.clarify import PLAN_GENERATION_PROMPT
+from agent.agents.piloti.clarify import SKIP_COMMANDS
+from agent.agents.piloti.clarify import ClarifierSettings
+from agent.agents.piloti.clarify import ClarifyDeps
+from agent.agents.piloti.clarify import build_deps
+from agent.agents.piloti.clarify import clarify
+from agent.agents.piloti.clarify import fallback_clarification
+from agent.agents.piloti.clarify import format_plan_for_user
+from agent.agents.piloti.clarify import parse_json_response
+from agent.agents.piloti.clarify import parse_plan_reply
+from agent.agents.piloti.models import ClarificationResponse
+from agent.agents.piloti.models import ClarifyRequest
+from agent.agents.piloti.models import PlanResponse
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common.wire_v2 import ClarificationStep
+from agent.common.wire_v2 import StepFinishedBody
 from tests.conftest import stream_custom
 
 
@@ -158,7 +158,7 @@ class TestPrompts:
         assert "TWO clarification questions" not in CLARIFICATION_PROMPT
 
     def test_the_rendered_turn_limit_is_the_configured_one(self):
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
         rendered = render_prompt_template(
             CLARIFICATION_PROMPT,
@@ -211,7 +211,7 @@ class TestPrompts:
 
     def test_localization_contract_comments_stay_out_of_rendered_prompts(self):
         """The byte-stable contract notes are Jinja comments — never sent to the model."""
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
         rendered_clarification = render_prompt_template(
             CLARIFICATION_PROMPT,
@@ -904,9 +904,9 @@ class TestThePlanCard:
         ]
 
     def test_the_documents_edits_land_and_resolve_against_the_inventory(self):
-        from aiq_agent.agents.piloti.clarify import apply_plan_edits
-        from aiq_agent.agents.piloti.clarify import plan_data_sources
-        from aiq_agent.agents.piloti.clarify import plan_documents
+        from agent.agents.piloti.clarify import apply_plan_edits
+        from agent.agents.piloti.clarify import plan_data_sources
+        from agent.agents.piloti.clarify import plan_documents
 
         plan = PlanResponse(title="T", sections=["A"])
         reply = (
@@ -930,16 +930,16 @@ class TestThePlanCard:
         assert plan_data_sources('{"sections": ["A"]}') is None
 
     def test_an_excluded_name_beats_the_same_name_in_the_basis(self):
-        from aiq_agent.agents.piloti.clarify import plan_documents
+        from agent.agents.piloti.clarify import plan_documents
 
         plan = PlanResponse(title="T", sections=["A"], basis=["a.pdf"], excluded=["a.pdf"])
         docs = plan_documents(plan, [{"file_name": "a.pdf"}])
         assert docs is not None and docs.basis == [] and [d.name for d in docs.excluded] == ["a.pdf"]
 
     def test_the_approved_context_names_the_documents(self):
-        from aiq_agent.agents.piloti.clarify import approved_plan_context
-        from aiq_agent.common.plan_documents import PlanDocument
-        from aiq_agent.common.plan_documents import PlanDocuments
+        from agent.agents.piloti.clarify import approved_plan_context
+        from agent.common.plan_documents import PlanDocument
+        from agent.common.plan_documents import PlanDocuments
 
         docs = PlanDocuments(
             basis=[PlanDocument(name="Einreichplan.pdf", title="Einreichplan EG", shelf="project")],
@@ -956,7 +956,7 @@ class TestThePlanCard:
         assert json.loads(edits) == {"sections": ["Nur Wien"], "depth": "expert_report"}
 
     def test_the_edits_land_on_the_plan_and_the_title_stays(self):
-        from aiq_agent.agents.piloti.clarify import apply_plan_edits
+        from agent.agents.piloti.clarify import apply_plan_edits
 
         plan = PlanResponse(title="T", sections=["A", "B"])
         edited = apply_plan_edits(plan, '{"sections": ["B", " C "], "genre": "file_note", "depth": "quick_check"}')
@@ -965,7 +965,7 @@ class TestThePlanCard:
         assert edited.genre == "file_note" and edited.depth == "quick_check"
 
     def test_an_old_tab_and_a_checkpointed_plan_still_speak_german(self):
-        from aiq_agent.agents.piloti.clarify import apply_plan_edits
+        from agent.agents.piloti.clarify import apply_plan_edits
 
         plan = PlanResponse(title="T", sections=["A"])
         edited = apply_plan_edits(
@@ -987,7 +987,7 @@ class TestThePlanCard:
         assert (stored.genre, stored.depth, stored.basis) == ("inspection_report", "expert_report", ["c.pdf"])
 
     def test_unreadable_or_invalid_edits_run_the_plan_as_shown(self):
-        from aiq_agent.agents.piloti.clarify import apply_plan_edits
+        from agent.agents.piloti.clarify import apply_plan_edits
 
         plan = PlanResponse(title="T", sections=["A"])
         assert apply_plan_edits(plan, "not json") == plan
@@ -995,7 +995,7 @@ class TestThePlanCard:
         assert apply_plan_edits(plan, '{"sections": []}') == plan
 
     def test_the_approved_context_binds_genre_depth_and_the_points(self):
-        from aiq_agent.agents.piloti.clarify import approved_plan_context
+        from agent.agents.piloti.clarify import approved_plan_context
 
         text = approved_plan_context(
             PlanResponse(title="T", sections=["A", "B"], genre="comparison", depth="expert_report")

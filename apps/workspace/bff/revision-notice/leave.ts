@@ -31,7 +31,7 @@ export interface NoticeLeaving {
   /** The marks the notice stands for, the first one anchors the inbox row. */
   marks: ReadonlyArray<{ id: string }>
   excerpt: string | null
-  /** The inbox row's words (`inbox.types.pilotiRevisionChecked.variants.<variant>`). */
+  /** The inbox row's words (`inbox.types.agentRevisionChecked.variants.<variant>`). */
   variant: string
   /** The second name of the row (the older Fassung); absent for a check of one document. */
   related?: string

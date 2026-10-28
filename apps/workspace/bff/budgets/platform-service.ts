@@ -1,5 +1,5 @@
 import 'server-only'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import type { BudgetPolicy } from '@/lib/db/schema/budgets'
 import { hasPlatformPermission, requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
@@ -33,7 +33,7 @@ async function requireOrganization(organizationId: string): Promise<void> {
   }
 }
 
-async function readBudget(session: GridSession, organizationId: string): Promise<PlatformOrgBudget> {
+async function readBudget(session: UserSession, organizationId: string): Promise<PlatformOrgBudget> {
   return withTenant({ organizationId, userId: session.userId }, async () => {
     const [budget, spend, canManage] = await Promise.all([
       getOrgBudget(organizationId),
@@ -53,14 +53,14 @@ async function readBudget(session: GridSession, organizationId: string): Promise
   })
 }
 
-export async function getPlatformOrgBudget(session: GridSession, organizationId: string): Promise<PlatformOrgBudget> {
+export async function getPlatformOrgBudget(session: UserSession, organizationId: string): Promise<PlatformOrgBudget> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.organizationsView)
   await requireOrganization(organizationId)
   return readBudget(session, organizationId)
 }
 
 export async function savePlatformOrgBudget(
-  session: GridSession,
+  session: UserSession,
   organizationId: string,
   input: PlatformOrgBudgetInput,
   request: Request,
@@ -111,7 +111,7 @@ export async function savePlatformOrgBudget(
  * the 30-day trend, the model mix and the member table, for the platform's
  * per-organization view. Read-only; limits stay on the budget dialog.
  */
-export async function getPlatformOrgUsage(session: GridSession, organizationId: string): Promise<PlatformOrgUsage> {
+export async function getPlatformOrgUsage(session: UserSession, organizationId: string): Promise<PlatformOrgUsage> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.usageView)
   await requireOrganization(organizationId)
   const [usage, name, members] = await Promise.all([

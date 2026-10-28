@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { backendAutoscaled } from '../config/chat-tier'
 import { appPullPolicy, backendImage } from '../config/images'
 import { toResourceRequirements } from '../config/resources'
@@ -28,7 +28,7 @@ export interface Backend {
 
 /**
  * The chat tier (`PROCESS_ROLE=chat`, ADR-0082), under `name` (`tier-names.ts`):
- * the chat socket and the answers running on it, plus NAT's own routes. Every
+ * the chat socket and the answers running on it, plus the agent runtime's own routes. Every
  * other backend route is the api tier's (`api.ts`). It keeps no files: the vectors
  * live in the shared Qdrant cluster, the base corpus in SeaweedFS and a Postgres
  * table (ADR-0082 step A2), and what it caches on its own disk
@@ -45,7 +45,7 @@ export interface Backend {
  */
 export function installBackend(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
   name: string = CHAT_TIER,

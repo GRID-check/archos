@@ -6,7 +6,7 @@
  * same in both. The rationale for its form (a meter, not a chart; fill colour
  * carries severity, never identity) is in `organization/budget-usage-card.tsx`.
  *
- * Its colours are the `--spend-meter*` tokens, scoped by the `grid-spend-viz`
+ * Its colours are the `--spend-meter*` tokens, scoped by the `spend-viz`
  * class: a caller wraps it in an element carrying that class.
  */
 

@@ -12,15 +12,15 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.common.steering import MAX_STEERS_PER_TURN
-from aiq_agent.common.steering import AppliedSteer
-from aiq_agent.common.steering import SteerInbox
-from aiq_agent.common.steering import SteerNote
-from aiq_agent.common.steering import current_steer_inbox
-from aiq_agent.common.steering import is_write_call
-from aiq_agent.common.steering import render_note
-from aiq_agent.common.steering import with_steering
-from aiq_agent.common.wire_v2 import FocusRegion
+from agent.common.steering import MAX_STEERS_PER_TURN
+from agent.common.steering import AppliedSteer
+from agent.common.steering import SteerInbox
+from agent.common.steering import SteerNote
+from agent.common.steering import current_steer_inbox
+from agent.common.steering import is_write_call
+from agent.common.steering import render_note
+from agent.common.steering import with_steering
+from agent.common.wire_v2 import FocusRegion
 
 
 def _note(steer_id: str, text: str = "die Treppe") -> SteerNote:

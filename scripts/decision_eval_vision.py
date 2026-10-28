@@ -23,7 +23,7 @@ IT IS NOT IN THE PATH
 Image input is behind TypeSafe's experimental header
 (``TypeSafe-Danger-Zone-Images: true``), Box exists only on 1.14, and TypeSafe
 does not recommend images for production yet. So the production client
-(``aiq_agent.common.decisions``) does not send images, and this script posts to
+(``agent.common.decisions``) does not send images, and this script posts to
 the endpoint itself. Re-run it on a new Jev release; adopt a use when its floors
 hold on the fixtures AND on a set of real sheets (``--sheets``).
 
@@ -93,8 +93,8 @@ sys.path.insert(0, str(ROOT / "scripts" / "turn_census"))
 from render_fixture_drawings import load_spec  # noqa: E402
 from render_fixture_drawings import render_page  # noqa: E402
 
-from aiq_agent.common.openrouter import PLATFORM_FIXED  # noqa: E402
-from aiq_agent.common.openrouter import limited_async_http_client  # noqa: E402
+from agent.common.openrouter import PLATFORM_FIXED  # noqa: E402
+from agent.common.openrouter import limited_async_http_client  # noqa: E402
 
 MODEL = "typesafe/jev-1.14"
 URL = "https://openrouter.ai/api/alpha/decisions"

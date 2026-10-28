@@ -4,7 +4,7 @@
  * Citation health (platform staff): how often citation verification had to
  * intervene, what it caught, why, on which retrieval lanes, for which
  * organizations. Backed by the `citation_events` ledger
- * (packages/agent/src/aiq_agent/common/citation_events.py, the quality sibling of the timing
+ * (packages/agent/src/agent/common/citation_events.py, the quality sibling of the timing
  * ledger behind `agent-profiler.tsx`).
  *
  * One tab of Platform → Answer quality. The page owns the title and the scope
@@ -333,7 +333,7 @@ function RankedBars({
 }): JSX.Element {
   const max = Math.max(...rows.map((row) => row.value), 1)
   return (
-    <ul className="grid-usage-viz flex flex-col gap-3">
+    <ul className="usage-viz flex flex-col gap-3">
       <SeriesPaletteStyle />
       {rows.map((row) => (
         <li key={row.key} className="flex flex-col gap-1.5">
@@ -350,7 +350,7 @@ function RankedBars({
             <div
               className="h-1.5 rounded-full"
               style={{
-                backgroundColor: 'var(--grid-series-1)',
+                backgroundColor: 'var(--chart-series-1)',
                 width: `${Math.max((row.value / max) * 100, 2)}%`,
               }}
             />

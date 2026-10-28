@@ -1,6 +1,6 @@
 """Tests for auth utilities: token fetcher registry and user info extraction.
 
-Module under test: packages/agent/src/aiq_agent/auth/utils.py
+Module under test: packages/agent/src/agent/auth/utils.py
 """
 
 import base64
@@ -8,14 +8,14 @@ import json
 
 import pytest
 
-from aiq_agent.auth import clear_token_fetchers
-from aiq_agent.auth import decode_unverified_jwt_payload
-from aiq_agent.auth import get_auth_token
-from aiq_agent.auth import get_current_principal
-from aiq_agent.auth import get_current_user_info
-from aiq_agent.auth import get_user_info_from_unverified_token
-from aiq_agent.auth import register_token_fetcher
-from aiq_agent.auth.request_identity import user_context
+from agent.auth import clear_token_fetchers
+from agent.auth import decode_unverified_jwt_payload
+from agent.auth import get_auth_token
+from agent.auth import get_current_principal
+from agent.auth import get_current_user_info
+from agent.auth import get_user_info_from_unverified_token
+from agent.auth import register_token_fetcher
+from agent.auth.request_identity import user_context
 
 
 def _make_jwt(payload: dict) -> str:

@@ -15,7 +15,7 @@
  * the single entry point across the tiers.
  */
 
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import {
   ORG_PERMISSION_SPECS,
   PLATFORM_PERMISSION_SPECS,
@@ -147,7 +147,7 @@ export function acceptedPermissionSlugs(permission: string): readonly string[] {
  * handed a role named `admin` the whole Admin bundle whatever WorkOS said it
  * held, and it outlived the gap it was written for.
  */
-export function hasPermission(session: Pick<GridSession, 'permissions'>, permission: KnownPermission): boolean {
+export function hasPermission(session: Pick<UserSession, 'permissions'>, permission: KnownPermission): boolean {
   return acceptedPermissionSlugs(permission).some((slug) => session.permissions.includes(slug))
 }
 

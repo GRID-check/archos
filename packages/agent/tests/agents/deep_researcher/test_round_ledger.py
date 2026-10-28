@@ -23,15 +23,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.agents.deep_researcher.models import ResearchQuery
-from aiq_agent.agents.deep_researcher.tools.research import RetrievalRounds
-from aiq_agent.agents.deep_researcher.tools.research import build_research_batch_tool
-from aiq_agent.common.retrieval_ledger import build_retrieval_ledger
-from aiq_agent.common.turn_status import begin_lane_capture
-from aiq_agent.common.turn_status import end_lane_capture
-from aiq_agent.common.turn_status import get_lane_captures
-from aiq_agent.common.turn_status import lane_tool_scope
-from aiq_agent.common.turn_status import record_lane_hit
+from agent.agents.deep_researcher.models import ResearchQuery
+from agent.agents.deep_researcher.tools.research import RetrievalRounds
+from agent.agents.deep_researcher.tools.research import build_research_batch_tool
+from agent.common.retrieval_ledger import build_retrieval_ledger
+from agent.common.turn_status import begin_lane_capture
+from agent.common.turn_status import end_lane_capture
+from agent.common.turn_status import get_lane_captures
+from agent.common.turn_status import lane_tool_scope
+from agent.common.turn_status import record_lane_hit
 
 FIXTURE = Path(__file__).resolve().parents[5] / "tests/fixtures/derivation/retrieval_ledger_wire.json"
 

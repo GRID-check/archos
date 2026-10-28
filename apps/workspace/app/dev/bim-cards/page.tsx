@@ -34,7 +34,7 @@ import {
   IfcDiffCard,
   IfcElementCard,
   IfcScheduleCard,
-} from '@/features/grid-cards/components/IfcDataCards'
+} from '@/features/cards/components/IfcDataCards'
 
 const PROJECT_ID = 'dev-project'
 

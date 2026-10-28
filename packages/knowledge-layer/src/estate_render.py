@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.citation_collector import note_citations
-from aiq_agent.common.estate_paths import action_place
+from agent.common.citation_collector import note_citations
+from agent.common.estate_paths import action_place
 
 from . import stored_pages
 from .estate_files import EstateFile
@@ -162,7 +162,7 @@ def _read_trailer(
 
 
 def _older_revision_notice(file: EstateFile) -> str:
-    from aiq_agent.knowledge.restricted_use import may_name
+    from agent.knowledge.restricted_use import may_name
 
     from .read_passage import older_revision_line
 
@@ -174,8 +174,8 @@ def _older_revision_notice(file: EstateFile) -> str:
 
 def _page_hit(file: EstateFile, page: stored_pages.Page, *, budget: int, paged: bool = True) -> Any:
     """One page as a grounding record: the page's text, the file's own row, the ``file, p.N`` key."""
-    from aiq_agent.common.grounding_block import GroundingHit
-    from aiq_agent.common.source_kinds import parse_shelf
+    from agent.common.grounding_block import GroundingHit
+    from agent.common.source_kinds import parse_shelf
 
     from .grounding_hits import _citation_key_for
 
@@ -206,8 +206,8 @@ def _page_hit(file: EstateFile, page: stored_pages.Page, *, budget: int, paged: 
 
 def _chunk_hit(file: EstateFile, chunk: Any) -> Any:
     """A Punkt's chunk as a record, with the file's row and path."""
-    from aiq_agent.common.grounding_block import GroundingHit
-    from aiq_agent.common.source_kinds import parse_shelf
+    from agent.common.grounding_block import GroundingHit
+    from agent.common.source_kinds import parse_shelf
 
     from .grounding_hits import _CHUNK_TRUNCATE_CHARS
     from .grounding_hits import _citation_key_for
@@ -241,8 +241,8 @@ def _chunk_hit(file: EstateFile, chunk: Any) -> Any:
 
 def _render(hits: tuple[Any, ...], *, preamble: str, notices: Sequence[str], trailer: str, tool: str) -> ToolOutput:
     """The block, rendered and filed (ADR-0061); the hits noted for the call's artifact."""
-    from aiq_agent.common.grounding_block import GroundingBlock
-    from aiq_agent.common.grounding_block import render_grounding_block
+    from agent.common.grounding_block import GroundingBlock
+    from agent.common.grounding_block import render_grounding_block
 
     from .trace_lanes import trace_lanes_for_hits
 

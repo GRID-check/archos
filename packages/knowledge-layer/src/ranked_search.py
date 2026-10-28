@@ -99,7 +99,7 @@ class RankedSearch:
         try:
             return await self._ranked()
         except Exception as e:
-            from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
+            from agent.common.tool_calls import FETCH_FAILED_MARKER
 
             logger.error(f"Knowledge search failed: {e}")
             self.outcome.failed = True
@@ -137,7 +137,7 @@ class RankedSearch:
         )
         self._start_side_reads()
         # Per-turn requery budget: one firing per turn. Reset per turn id when
-        # the NAT context states one (user message id), falling back to the
+        # the agent-runtime context states one (user message id), falling back to the
         # executing-round stamp (round zero opens a new turn); unstamped
         # callers (tests, standalone) get a slot rather than inheriting a
         # spent cap. Fail-open when neither is visible.
@@ -151,7 +151,7 @@ class RankedSearch:
 
     def _start_side_reads(self) -> None:
         """The family overview and the folder routes, read BESIDE the ranked search."""
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         from .folder_channel import folder_routes
 
@@ -285,7 +285,7 @@ class RankedSearch:
         So similarity is not the only path to that file. Explicit name wins when both are set.
         """
         try:
-            from aiq_agent.common.focus_file import get_focused_file_name
+            from agent.common.focus_file import get_focused_file_name
 
             focused = self.args.file_name or get_focused_file_name()
         except Exception:
@@ -421,7 +421,7 @@ class RankedSearch:
                     "one firing per turn already spent, keeping the first pool"
                 )
                 return merged, reranked
-            from aiq_agent.common.retrieval_status import emit_retrieval_requery
+            from agent.common.retrieval_status import emit_retrieval_requery
 
             emit_retrieval_requery(query_count=len(verdict.queries))
             extra = await asyncio.gather(
@@ -482,7 +482,7 @@ class RankedSearch:
         judge that reads the question against the text (`coverage_gap`), not a
         threshold on a distance; calibrate with the retrieval-eval harness first.
         """
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        from agent.common.retrieval_settings import get_retrieval_setting
 
         floor_pct = get_retrieval_setting("knowledge.relevance_floor_pct", 0)
         if floor_pct <= 0:
@@ -544,8 +544,8 @@ class RankedSearch:
         return notice
 
     async def _rendered(self, merged, branch, overview, coverage, groups_trailer: str) -> str:
-        from aiq_agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
-        from aiq_agent.common.turn_status import lane_tool_scope
+        from agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
+        from agent.common.turn_status import lane_tool_scope
 
         notice = self._notice(merged, branch)
         folders_trailer = await self.folder_task if self.folder_task is not None else ""
@@ -600,7 +600,7 @@ def _cross_lingual_query(query: str) -> str:
     query comes back untouched. ONLY the matching query is augmented: the
     reranker judges, and the grounding block reports, the question as asked.
     """
-    from aiq_agent.common.query_expansion import augmented_query
+    from agent.common.query_expansion import augmented_query
 
     retrieval_query = augmented_query(query)
     if retrieval_query != query:

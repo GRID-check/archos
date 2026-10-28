@@ -12,22 +12,22 @@ from agent_testing.canvas import PROPOSAL
 from agent_testing.canvas import PROPOSE_BODY
 from agent_testing.canvas import answering
 
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.knowledge.restricted_use import CrossProjectTurn
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import current_restricted_use
-from aiq_agent.tools.canvas import calls as canvas_calls
-from aiq_agent.tools.canvas import target as canvas_target
-from aiq_agent.tools.canvas.policy import withhold_restricted_for_thread
-from aiq_agent.tools.canvas.register import run_delete
-from aiq_agent.tools.canvas.register import run_highlight
-from aiq_agent.tools.canvas.register import run_mark
-from aiq_agent.tools.canvas.register import run_marks
-from aiq_agent.tools.canvas.register import run_point
-from aiq_agent.tools.canvas.register import run_reply
-from aiq_agent.tools.canvas.register import run_update
+from agent.common.focus_file import set_turn_intent
+from agent.knowledge.restricted_use import CrossProjectTurn
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_cross_project_turn
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import current_restricted_use
+from agent.tools.canvas import calls as canvas_calls
+from agent.tools.canvas import target as canvas_target
+from agent.tools.canvas.policy import withhold_restricted_for_thread
+from agent.tools.canvas.register import run_delete
+from agent.tools.canvas.register import run_highlight
+from agent.tools.canvas.register import run_mark
+from agent.tools.canvas.register import run_marks
+from agent.tools.canvas.register import run_point
+from agent.tools.canvas.register import run_reply
+from agent.tools.canvas.register import run_update
 
 
 def _use(**fields) -> RestrictedUse:

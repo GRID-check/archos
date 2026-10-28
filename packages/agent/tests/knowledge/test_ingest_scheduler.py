@@ -12,9 +12,9 @@ import time
 
 import pytest
 
-from aiq_agent.knowledge.ingest_scheduler import PLATFORM_LANE
-from aiq_agent.knowledge.ingest_scheduler import FairIngestScheduler
-from aiq_agent.knowledge.ingest_scheduler import per_org_cap_from_env
+from agent.knowledge.ingest_scheduler import PLATFORM_LANE
+from agent.knowledge.ingest_scheduler import FairIngestScheduler
+from agent.knowledge.ingest_scheduler import per_org_cap_from_env
 
 TIMEOUT = 5
 

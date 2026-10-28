@@ -7,11 +7,11 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-from aiq_agent.observability.langfuse_catalog import JUDGES
-from aiq_agent.observability.langfuse_catalog import QUEUES
-from aiq_agent.observability.langfuse_catalog import RULES
-from aiq_agent.observability.langfuse_catalog import golden_dataset_items
-from aiq_agent.observability.langfuse_scores import SCORE_DEFINITIONS
+from agent.observability.langfuse_catalog import JUDGES
+from agent.observability.langfuse_catalog import QUEUES
+from agent.observability.langfuse_catalog import RULES
+from agent.observability.langfuse_catalog import golden_dataset_items
+from agent.observability.langfuse_scores import SCORE_DEFINITIONS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

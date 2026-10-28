@@ -34,31 +34,31 @@ ruleTester.run('require-tenant-scope', rule, {
       filename: PAGE,
       code:
         "import { runWithTenantSlot } from '@/lib/db/tenant-context'\n" +
-        "import { getGridSession } from '@/lib/auth/session'\n" +
-        'export default function Page() { return runWithTenantSlot(async () => getGridSession()) }',
+        "import { getUserSession } from '@/lib/auth/session'\n" +
+        'export default function Page() { return runWithTenantSlot(async () => getUserSession()) }',
     },
     {
       // An aliased import is still the real opener.
       filename: PAGE,
       code:
         "import { runWithTenantSlot as slot } from '@/lib/db/tenant-context'\n" +
-        "import { getGridSession } from '@/lib/auth/session'\n" +
-        'export default function Page() { return slot(async () => getGridSession()) }',
+        "import { getUserSession } from '@/lib/auth/session'\n" +
+        'export default function Page() { return slot(async () => getUserSession()) }',
     },
     {
       // Route handlers get their slot from the route factories.
       filename: 'app/api/projects/route.ts',
-      code: "import { getGridSession } from '@/lib/auth/session'\nexport const GET = () => getGridSession()",
+      code: "import { getUserSession } from '@/lib/auth/session'\nexport const GET = () => getUserSession()",
     },
     {
       // Library code inherits its caller's scope by design.
       filename: 'bff/projects/service.ts',
-      code: "import { getGridSession } from '@/lib/auth/session'\nexport const load = () => getGridSession()",
+      code: "import { getUserSession } from '@/lib/auth/session'\nexport const load = () => getUserSession()",
     },
     {
       // Specs are not entry points.
       filename: 'app/projects/page.spec.tsx',
-      code: "import { getGridSession } from '@/lib/auth/session'\ngetGridSession()",
+      code: "import { getUserSession } from '@/lib/auth/session'\ngetUserSession()",
     },
     {
       // A streamed child that opens its own slot (the fix for issue #1097).
@@ -83,42 +83,42 @@ ruleTester.run('require-tenant-scope', rule, {
       // Issues #342 and #344: the session resolved with no slot open.
       filename: PAGE,
       code:
-        "import { getGridSession } from '@/lib/auth/session'\n" +
-        'export default async function Page() { const session = await getGridSession(); return session }',
+        "import { getUserSession } from '@/lib/auth/session'\n" +
+        'export default async function Page() { const session = await getUserSession(); return session }',
       errors: [{ messageId: 'unscoped' }],
     },
     {
       // A server action is an entry point too.
       filename: 'app/projects/actions.ts',
       code:
-        "'use server'\nimport { requireGridSession } from '@/lib/auth/session'\n" +
-        'export async function rename() { return requireGridSession() }',
+        "'use server'\nimport { requireUserSession } from '@/lib/auth/session'\n" +
+        'export async function rename() { return requireUserSession() }',
       errors: [{ messageId: 'unscoped' }],
     },
     {
       // A local function that merely shares the opener's NAME opens nothing.
       filename: PAGE,
       code:
-        "import { getGridSession } from '@/lib/auth/session'\n" +
+        "import { getUserSession } from '@/lib/auth/session'\n" +
         'const withPageSession = (fn) => fn()\n' +
-        'export default function Page() { return withPageSession(() => getGridSession()) }',
+        'export default function Page() { return withPageSession(() => getUserSession()) }',
       errors: [{ messageId: 'unscoped' }],
     },
     {
       // Nor does an import of that name from somewhere else.
       filename: PAGE,
       code:
-        "import { getGridSession } from '@/lib/auth/session'\n" +
+        "import { getUserSession } from '@/lib/auth/session'\n" +
         "import { withTenant } from './local-helpers'\n" +
-        'export default function Page() { return withTenant(() => getGridSession()) }',
+        'export default function Page() { return withTenant(() => getUserSession()) }',
       errors: [{ messageId: 'unscoped' }],
     },
     {
       // Nor a member call that shares the name.
       filename: PAGE,
       code:
-        "import { getGridSession } from '@/lib/auth/session'\n" +
-        'export default function Page() { return helpers.withTenant(() => getGridSession()) }',
+        "import { getUserSession } from '@/lib/auth/session'\n" +
+        'export default function Page() { return helpers.withTenant(() => getUserSession()) }',
       errors: [{ messageId: 'unscoped' }],
     },
     {

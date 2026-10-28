@@ -26,7 +26,7 @@ vi.mock('@/lib/limits/enforce', async (original) => ({
   ...(await original<typeof import('@/lib/limits/enforce')>()),
   enforceLimit: vi.fn(async () => undefined),
 }))
-vi.mock('@/lib/agent-asks/service', () => ({ askPiloti: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
+vi.mock('@/lib/agent-asks/service', () => ({ askAgent: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
 vi.mock('@/lib/agent-api/telemetry', async (original) => ({
   ...(await original<typeof import('@/lib/agent-api/telemetry')>()),
   recordOperationCalled: vi.fn(),
@@ -39,7 +39,7 @@ import { resolvePrincipal, type AgentPrincipal } from '@/lib/agent-api/principal
 import { recordOperationCalled } from '@/lib/agent-api/telemetry'
 import { enforceLimit, MCP_REQUEST_LIMIT, memberSubject } from '@/lib/limits'
 import type { AskView } from '@/lib/agent-asks/ask-wire'
-import { askPiloti, cancelAsk, getAsk } from '@/lib/agent-asks/service'
+import { askAgent, cancelAsk, getAsk } from '@/lib/agent-asks/service'
 import { GET, POST } from './route'
 
 const URL_ = 'https://app.piloti.test/api/a2a'
@@ -110,11 +110,11 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(askPiloti).mockReset()
+  vi.mocked(askAgent).mockReset()
   process.env.WORKOS_AUTHKIT_DOMAIN = 'auth.piloti.test'
   process.env.MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
   vi.mocked(resolvePrincipal).mockResolvedValue(PERSON)
-  vi.mocked(askPiloti).mockResolvedValue(view())
+  vi.mocked(askAgent).mockResolvedValue(view())
   vi.mocked(getAsk).mockResolvedValue(view())
 })
 
@@ -126,7 +126,7 @@ describe('who is turned away', () => {
     })
     const response = await POST(rpc('SendMessage', { message: userMessage('Hallo?') }, V1))
     expect(response.status).toBe(401)
-    expect(askPiloti).not.toHaveBeenCalled()
+    expect(askAgent).not.toHaveBeenCalled()
     expect(enforceLimit).not.toHaveBeenCalled()
   })
 
@@ -135,7 +135,7 @@ describe('who is turned away', () => {
     const response = await POST(rpc('SendMessage', { message: userMessage('Hallo?') }, V1))
     expect(response.status).toBe(503)
     expect(await response.json()).toMatchObject({ code: 'SERVICE_UNAVAILABLE' })
-    expect(askPiloti).not.toHaveBeenCalled()
+    expect(askAgent).not.toHaveBeenCalled()
   })
 
   it('refuses Piloti’s own credential: Piloti never asks Piloti', async () => {
@@ -143,7 +143,7 @@ describe('who is turned away', () => {
     const response = await POST(rpc('SendMessage', { message: userMessage('Hallo?') }, V1))
     expect(response.status).toBe(403)
     expect((await response.json()).error).toMatch(/Piloti cannot ask Piloti/)
-    expect(askPiloti).not.toHaveBeenCalled()
+    expect(askAgent).not.toHaveBeenCalled()
   })
 
   it('answers 503 while the agent door is not configured', async () => {
@@ -171,7 +171,7 @@ describe('A2A 1.0', () => {
       rpc('SendMessage', { message: userMessage('Welche Fluchtweglänge gilt?', { metadata: { projectId: '44444444-4444-4444-8444-444444444444' } }) }, V1),
     )
     const body = (await response.json()) as Envelope
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, {
+    expect(askAgent).toHaveBeenCalledWith(SESSION, {
       question: 'Welche Fluchtweglänge gilt?',
       projectId: '44444444-4444-4444-8444-444444444444',
     })
@@ -184,16 +184,16 @@ describe('A2A 1.0', () => {
 
   it('a follow-up names the conversation as contextId', async () => {
     await POST(rpc('SendMessage', { message: userMessage('Und im Keller?', { contextId: THREAD }) }, V1))
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Und im Keller?', conversationId: THREAD })
+    expect(askAgent).toHaveBeenCalledWith(SESSION, { question: 'Und im Keller?', conversationId: THREAD })
   })
 
   it('returnImmediately asks with no wait and answers the task as it stands', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    vi.mocked(askAgent).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
     const response = await POST(
       rpc('SendMessage', { message: userMessage('Lang?'), configuration: { returnImmediately: true } }, V1),
     )
     const body = (await response.json()) as Envelope
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Lang?', waitSeconds: 0 })
+    expect(askAgent).toHaveBeenCalledWith(SESSION, { question: 'Lang?', waitSeconds: 0 })
     expect(body.result?.task).toMatchObject({ status: { state: 'TASK_STATE_WORKING' } })
     expect(getAsk).not.toHaveBeenCalled()
   })
@@ -202,17 +202,17 @@ describe('A2A 1.0', () => {
     const body = (await (
       await POST(rpc('SendMessage', { message: userMessage('Hallo?', { contextId: 'b3f1c2d4-ctx-from-client' }) }, V1))
     ).json()) as Envelope
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Hallo?' })
+    expect(askAgent).toHaveBeenCalledWith(SESSION, { question: 'Hallo?' })
     expect(body.result?.task).toMatchObject({ contextId: THREAD, status: { state: 'TASK_STATE_COMPLETED' } })
   })
 
   it('a contextId shaped like ours that no ask of the person started starts a new conversation too', async () => {
     const unknown = 's_99999999_9999_4999_8999_999999999999'
-    vi.mocked(askPiloti)
+    vi.mocked(askAgent)
       .mockRejectedValueOnce(new NotFoundError('No ask of yours started that conversation.'))
       .mockResolvedValueOnce(view())
     const body = (await (await POST(rpc('SendMessage', { message: userMessage('Hallo?', { contextId: unknown }) }, V1))).json()) as Envelope
-    expect(vi.mocked(askPiloti).mock.calls.map(([, input]) => input)).toEqual([
+    expect(vi.mocked(askAgent).mock.calls.map(([, input]) => input)).toEqual([
       { question: 'Hallo?', conversationId: unknown },
       { question: 'Hallo?' },
     ])
@@ -221,7 +221,7 @@ describe('A2A 1.0', () => {
 
   it('runs the ask route with the agent as its reader, so a refusal reaches the client in English', async () => {
     let agentReads: boolean | null = null
-    vi.mocked(askPiloti).mockImplementation(async () => {
+    vi.mocked(askAgent).mockImplementation(async () => {
       agentReads = actingReaderIsAgent()
       return view()
     })
@@ -230,7 +230,7 @@ describe('A2A 1.0', () => {
   })
 
   it('records each method’s call on the agent door, door a2a, and not the polls it waits with', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    vi.mocked(askAgent).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
     await POST(rpc('SendMessage', { message: userMessage('Lang?') }, V1))
     expect(getAsk).toHaveBeenCalled()
     expect(recordOperationCalled).toHaveBeenCalledTimes(1)
@@ -248,11 +248,11 @@ describe('A2A 1.0', () => {
     })
     const body = (await (await POST(request)).json()) as Envelope
     expect(body.error?.code).toBe(-32700)
-    expect(askPiloti).not.toHaveBeenCalled()
+    expect(askAgent).not.toHaveBeenCalled()
   })
 
   it('a blocking SendMessage polls until the task ends', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    vi.mocked(askAgent).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
     const response = await POST(rpc('SendMessage', { message: userMessage('Lang?') }, V1))
     const body = (await response.json()) as Envelope
     expect(getAsk).toHaveBeenCalledWith(SESSION, ID, 40)
@@ -263,7 +263,7 @@ describe('A2A 1.0', () => {
     const message = { messageId: 'm', role: 'ROLE_USER', parts: [{ url: 'https://x.test/a.pdf', mediaType: 'application/pdf' }] }
     const body = (await (await POST(rpc('SendMessage', { message }, V1))).json()) as Envelope
     expect(body.error?.code).toBe(-32005)
-    expect(askPiloti).not.toHaveBeenCalled()
+    expect(askAgent).not.toHaveBeenCalled()
   })
 
   it('GetTask of an ask that is not the person’s is TaskNotFound', async () => {
@@ -297,11 +297,11 @@ describe('A2A 1.0', () => {
       .map((line) => JSON.parse(line.slice('data: '.length)) as Envelope)
 
   it('SendStreamingMessage opens with the working task, then the artifact and the end', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    vi.mocked(askAgent).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
     const response = await POST(rpc('SendStreamingMessage', { message: userMessage('Welche Fluchtweglänge gilt?') }, V1))
     expect(response.headers.get('content-type')).toBe('text/event-stream')
     const events = await streamed(response)
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?', waitSeconds: 0 })
+    expect(askAgent).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?', waitSeconds: 0 })
     expect(events.map((event) => Object.keys(event.result ?? {})[0])).toEqual(['task', 'artifactUpdate', 'statusUpdate'])
     expect(events[0]?.result).toMatchObject({ task: { status: { state: 'TASK_STATE_WORKING' } } })
     expect(events.at(-1)?.result).toMatchObject({ statusUpdate: { status: { state: 'TASK_STATE_COMPLETED' } } })
@@ -320,16 +320,16 @@ describe('A2A 0.3, for clients that send no version', () => {
   it('message/send answers the task in the 0.3 shape', async () => {
     const response = await POST(rpc('message/send', { message: legacyMessage('Welche Fluchtweglänge gilt?') }))
     const body = (await response.json()) as Envelope
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?' })
+    expect(askAgent).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?' })
     expect(body.result).toMatchObject({ kind: 'task', id: ID, contextId: THREAD, status: { state: 'completed' } })
   })
 
   it('message/send with blocking false asks with no wait', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    vi.mocked(askAgent).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
     const body = (await (
       await POST(rpc('message/send', { message: legacyMessage('Lang?'), configuration: { blocking: false } }))
     ).json()) as Envelope
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Lang?', waitSeconds: 0 })
+    expect(askAgent).toHaveBeenCalledWith(SESSION, { question: 'Lang?', waitSeconds: 0 })
     expect(body.result).toMatchObject({ kind: 'task', status: { state: 'working' } })
     expect(getAsk).not.toHaveBeenCalled()
   })

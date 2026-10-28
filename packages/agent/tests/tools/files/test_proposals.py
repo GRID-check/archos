@@ -45,20 +45,20 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
-import aiq_agent.project_context as pc
-from aiq_agent.cards.file_operation_card import MAX_FILE_OPERATIONS
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.tools import proposals_client as client
-from aiq_agent.tools.files.cards import propose_file_operation
-from aiq_agent.tools.files.register import ProposeFileChangeConfig
-from aiq_agent.tools.files.register import propose_file_change
-from aiq_agent.turn.response import answer_message_id
+import agent.project_context as pc
+from agent.cards.file_operation_card import MAX_FILE_OPERATIONS
+from agent.cards.models import answer_card_adapter
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.common import bff_http
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.tools import proposals_client as client
+from agent.tools.files.cards import propose_file_operation
+from agent.tools.files.register import ProposeFileChangeConfig
+from agent.tools.files.register import propose_file_change
+from agent.turn.response import answer_message_id
 
 ROOT = Path(__file__).resolve().parents[5]
 PROPOSALS_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "proposals.schema.json"
@@ -428,7 +428,7 @@ class TestTheCardCarriesTheProposal:
         (card,) = registry.snapshot()
         assert card["proposal_id"] == FIRST
         assert card["operation"] == "move" and len(card["operations"]) == 1
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
         assert "NOTHING has been changed YET" in result
         assert "do not say it is done" in result
 

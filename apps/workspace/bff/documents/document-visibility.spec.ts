@@ -197,7 +197,7 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
   // reads below only fetch rows by turn or by id; nothing they return leaves the service before that gate ran.
   'lib/changes/repository.ts#listTurnChangeRows|pilotiChanges':
     "The rows of one turn's answer, which `listTurnChanges` then narrows by `viewsFor`: a row whose document `listAnnotations` refuses is dropped.",
-  'lib/changes/repository.ts#findPilotiChange|pilotiChanges':
+  'lib/changes/repository.ts#findAgentChange|pilotiChanges':
     "One row by id for `undoChange`, which reads its document through `listAnnotations` (`loadReadable`) before it plans or runs anything; a document the reader may not see is a 404.",
   'lib/langfuse/decision-score.ts#changeOriginMessage|pilotiChanges':
     "The answer message id of the turn that made a change, handed to Langfuse to find the trace. An id for a score, never a row for a person; the decision it scores was authorized by the caller.",

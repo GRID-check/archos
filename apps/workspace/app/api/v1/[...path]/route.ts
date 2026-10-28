@@ -100,7 +100,7 @@ const isRedirectError = (error: unknown): boolean => {
  * backend's `AuthMiddleware` classifies these requests as *internal* and skips
  * its `EXTERNAL_ALLOWED_PATHS` filter. A denylist of the two control-plane
  * prefixes (`admin`, `maintenance`) was therefore the only thing between a
- * browser cookie and the agent service's whole surface, NAT's agent-turn
+ * browser cookie and the agent service's whole surface, the agent runtime's agent-turn
  * endpoints (`/v1/chat/completions`, `/v1/workflow`) included — which ran
  * outside the signed context envelope, so with no organization, budget or
  * source policy. An allowlist closes those and whatever is mounted next.

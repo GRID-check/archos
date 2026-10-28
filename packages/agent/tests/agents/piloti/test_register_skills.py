@@ -15,11 +15,11 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-import aiq_agent.agents.piloti.register as register_module
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.register import ResearchAgentConfig
-from aiq_agent.agents.piloti.register import research_agent
-from aiq_agent.common import request_llm_context
+import agent.agents.piloti.register as register_module
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.register import ResearchAgentConfig
+from agent.agents.piloti.register import research_agent
+from agent.common import request_llm_context
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -47,7 +47,7 @@ class _FakeBuilder:
 
 
 def _make_agent_stub():
-    """PilotiAgent replacement whose .run echoes the input state.
+    """ChatAgent replacement whose .run echoes the input state.
 
     Records the tools each constructed instance was given so the test can
     assert the skill read was folded into the turn, never the boot build.
@@ -85,7 +85,7 @@ def _skill_runtime(resolved, *, activated=()):
     nothing, which is the honest default now that a turn can only be OFFERED a
     skill: a catalog the model read past activates none of it.
     """
-    from aiq_agent.skills.backend import SkillsBackend
+    from agent.skills.backend import SkillsBackend
 
     runtime = MagicMock()
     runtime.prompt_block.return_value = "## Skills"
@@ -124,7 +124,7 @@ async def test_research_turn_resolves_allows_and_folds_skill_tool():
     stub = _make_agent_stub()
 
     with (
-        patch.object(register_module, "PilotiAgent", stub),
+        patch.object(register_module, "ChatAgent", stub),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -173,7 +173,7 @@ async def test_the_catalog_is_announced_before_the_llm_runs():
     announced = []
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -200,7 +200,7 @@ async def test_a_turn_without_skills_announces_nothing():
     announced = []
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         patch.object(register_module, "SkillResolver") as ResolverCls,
         patch.object(register_module, "emit_skills_offered", side_effect=lambda rt: announced.append(rt)),
@@ -233,7 +233,7 @@ async def test_a_mentioned_skill_is_offered_like_any_other():
     runtime = _skill_runtime(resolved, activated=["forecast-analysis"])
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -263,7 +263,7 @@ async def test_skills_disabled_skips_resolution():
     )
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         run_fn, gen = await _get_run_fn(config, builder)
@@ -289,7 +289,7 @@ async def test_allowlist_narrows_resolved_set():
     runtime = _skill_runtime((resolved[0],))
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -323,7 +323,7 @@ async def test_a_name_the_allowlist_dropped_is_simply_not_in_the_catalog():
     runtime = _skill_runtime(resolved[:1])
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -359,7 +359,7 @@ async def test_the_turn_config_reserves_nothing_on_top_of_the_budget():
     stub = _make_agent_stub()
 
     with (
-        patch.object(register_module, "PilotiAgent", stub),
+        patch.object(register_module, "ChatAgent", stub),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -392,7 +392,7 @@ async def test_only_what_was_delivered_is_reported_as_used(caplog):
     runtime = _skill_runtime(resolved, activated=["piloti-voice"])
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -440,7 +440,7 @@ async def test_the_model_credential_and_zdr_lookups_overlap():
         return False
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(request_llm_context, "get_model_overrides_from_context", side_effect=_slow_overrides),
         patch.object(request_llm_context, "get_org_llm_credential_from_context", side_effect=_slow_reader),
         patch.object(request_llm_context, "get_zdr_only_from_context", side_effect=_slow_zdr),
@@ -463,7 +463,7 @@ async def test_one_bad_tenant_reader_does_not_poison_the_others():
         raise RuntimeError("BFF down")
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(request_llm_context, "get_model_overrides_from_context", return_value={"shallow_research": "x/y"}),
         patch.object(request_llm_context, "get_org_llm_credential_from_context", side_effect=_boom),
         patch.object(request_llm_context, "get_zdr_only_from_context", return_value=False),
@@ -492,7 +492,7 @@ async def test_the_skill_resolve_runs_off_the_event_loop():
         return resolved
 
     with (
-        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(register_module, "ChatAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -526,7 +526,7 @@ async def test_the_envelope_names_reach_the_runtime_after_the_run():
         return state
 
     with (
-        patch.object(register_module, "PilotiAgent", stub),
+        patch.object(register_module, "ChatAgent", stub),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -548,7 +548,7 @@ async def test_skills_disabled_offers_no_catalog_and_no_skill_read():
     config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=False)
     stub = _make_agent_stub()
 
-    with patch.object(register_module, "PilotiAgent", stub):
+    with patch.object(register_module, "ChatAgent", stub):
         run_fn, gen = await _get_run_fn(config, builder)
         state = ResearchAgentState(messages=[HumanMessage(content="Welche Gebäudeklasse?")])
         await run_fn(state)
@@ -564,7 +564,7 @@ async def test_a_real_runtime_serves_the_catalog_and_records_what_the_model_read
     """End to end through the register with the real runtime: catalog in, read out, activation reported."""
     from types import SimpleNamespace
 
-    from aiq_agent.skills.models import Skill
+    from agent.skills.models import Skill
 
     builder = _FakeBuilder({"web_search_tool": web_search_tool})
     config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=True)
@@ -583,7 +583,7 @@ async def test_a_real_runtime_serves_the_catalog_and_records_what_the_model_read
         return state
 
     with (
-        patch.object(register_module, "PilotiAgent", stub),
+        patch.object(register_module, "ChatAgent", stub),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):

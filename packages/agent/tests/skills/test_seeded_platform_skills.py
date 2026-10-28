@@ -4,13 +4,13 @@ A seeded standard skill (``apps/workspace/migrations/00XX_*_standard_skill.sql``
 a row of SQL text on one side of the stack and a :class:`Skill` on the other,
 and nothing in between type-checks it. Its ``metadata`` is a jsonb blob whose
 reserved keys only this package understands: ``grid-cards`` names card types
-from :mod:`aiq_agent.cards`, ``grid-agents`` names agents from the resolver,
+from :mod:`agent.cards`, ``grid-agents`` names agents from the resolver,
 ``grid-hidden`` is a boolean-ish token.
 
 Every one of those couplings fails SILENTLY in production. A renamed card type
 leaves the seed naming a card that no longer exists, and the BFF-served path is
 deliberately LENIENT — it logs and drops the bad entry so one stale name cannot
-delete a tenant's whole skill (see ``_validate_grid_cards``). Which is right at
+delete a tenant's whole skill (see ``_validate_answer_cards``). Which is right at
 runtime and useless as a warning: the skill keeps working, minus the shapes it
 was seeded to inline, and nobody hears about it. Same for a mistyped
 ``grid-hidden``, which drops to "visible" and puts a house skill back on the
@@ -37,16 +37,16 @@ from agent_testing.seeded_skill_rows import RETIRED_NAMES
 from agent_testing.seeded_skill_rows import SEEDS
 from agent_testing.seeded_skill_rows import effective_row as _effective_row
 
-from aiq_agent.cards.catalog import model_facing_card_types
-from aiq_agent.cards.catalog import render_card_details
-from aiq_agent.skills.models import MAX_DESCRIPTION_CHARS
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.models import _validate_metadata
-from aiq_agent.skills.models import preferred_cards
-from aiq_agent.skills.models import skill_hidden
-from aiq_agent.skills.models import split_metadata_list
-from aiq_agent.skills.resolver import KNOWN_AGENTS
-from aiq_agent.skills.resolver import canonical_agent
+from agent.cards.catalog import model_facing_card_types
+from agent.cards.catalog import render_card_details
+from agent.skills.models import MAX_DESCRIPTION_CHARS
+from agent.skills.models import Skill
+from agent.skills.models import _validate_metadata
+from agent.skills.models import preferred_cards
+from agent.skills.models import skill_hidden
+from agent.skills.models import split_metadata_list
+from agent.skills.resolver import KNOWN_AGENTS
+from agent.skills.resolver import canonical_agent
 
 SEED_IDS = [tag for tag, _ in SEEDS]
 #: Ids for the tests that must run over the row a live database HOLDS rather than
@@ -106,11 +106,11 @@ def test_seeded_row_loads_as_a_skill(tag: str, row: dict[str, str]):
 
 
 @pytest.mark.parametrize(("tag", "row"), EFFECTIVE_SEEDS, ids=EFFECTIVE_IDS)
-def test_seeded_grid_cards_survive_the_read_path(tag: str, row: dict[str, str]):
+def test_seeded_answer_cards_survive_the_read_path(tag: str, row: dict[str, str]):
     """Every named card type still exists, so nothing is dropped on read.
 
     ``preferred_cards`` filters against the live catalog, so a card renamed in
-    ``packages/agent/src/aiq_agent/cards`` — or retired into ``SYSTEM_CARD_TYPES`` — would
+    ``packages/agent/src/agent/cards`` — or retired into ``SYSTEM_CARD_TYPES`` — would
     quietly shorten this list, and the skill would go on running minus the shapes
     it was seeded to inline. Comparing against the raw metadata is what turns
     that into a failing test.
@@ -127,7 +127,7 @@ def test_seeded_grid_cards_survive_the_read_path(tag: str, row: dict[str, str]):
 
 
 @pytest.mark.parametrize(("tag", "row"), SEEDS, ids=SEED_IDS)
-def test_seeded_grid_agents_are_agents_the_resolver_knows(tag: str, row: dict[str, str]):
+def test_seeded_agents_are_agents_the_resolver_knows(tag: str, row: dict[str, str]):
     """An unknown agent name is logged and ignored at resolve time — never here.
 
     Through ``canonical_agent``, because a seed is history and the vocabulary
@@ -205,7 +205,7 @@ def test_the_generic_card_seed_carries_the_craft_the_tool_no_longer_states():
     visible in review and would quietly take the judgement out of the product,
     so the two are asserted against each other rather than separately.
     """
-    from aiq_agent.cards.register import _CARD_DOCTRINE
+    from agent.cards.register import _CARD_DOCTRINE
 
     body = next(row for _, row in SEEDS if row["name"] == "piloti-cards")["body"]
 
@@ -232,21 +232,21 @@ def test_the_generic_card_seed_carries_the_craft_the_tool_no_longer_states():
 #: tests ask what the prompt SAYS, so they read both — asserting against
 #: `piloti.j2` alone would silently stop seeing every section above the KV-cache
 #: boundary, which is most of them.
-PILOTI_PROMPT_FILES = (
-    REPO_ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md",
-    REPO_ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti.j2",
+CHAT_PROMPT_FILES = (
+    REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/chat_static.md",
+    REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/piloti.j2",
 )
-DEEP_WRITER_PROMPT = REPO_ROOT / "packages/agent/src/aiq_agent/agents/deep_researcher/prompts/writer.j2"
-DEEP_AGENT = REPO_ROOT / "packages/agent/src/aiq_agent/agents/deep_researcher/agent.py"
+DEEP_WRITER_PROMPT = REPO_ROOT / "packages/agent/src/agent/agents/deep_researcher/prompts/writer.j2"
+DEEP_AGENT = REPO_ROOT / "packages/agent/src/agent/agents/deep_researcher/agent.py"
 
 
-def _piloti_prompt_text() -> str:
+def _chat_prompt_text() -> str:
     """Both halves of Piloti's bundled prompt, in the order they are rendered."""
-    return "\n".join(path.read_text(encoding="utf-8") for path in PILOTI_PROMPT_FILES)
+    return "\n".join(path.read_text(encoding="utf-8") for path in CHAT_PROMPT_FILES)
 
 
 def _prompt_section(name: str) -> str:
-    prompt = _piloti_prompt_text()
+    prompt = _chat_prompt_text()
     match = re.search(rf"<{name}>.*?</{name}>", prompt, re.DOTALL)
     assert match is not None, f"Piloti's prompt no longer has a <{name}> section"
     return match.group(0)
@@ -263,7 +263,7 @@ def _agents_with_a_delivery_surface() -> set[str]:
     is a module constant, imported here so that renaming or removing it fails
     this test rather than silently shrinking the set.
     """
-    from aiq_agent.agents.deep_researcher.agent import SKILL_AGENT as DEEP_SKILL_AGENT
+    from agent.agents.deep_researcher.agent import SKILL_AGENT as DEEP_SKILL_AGENT
 
     agents = {
         agent
@@ -329,7 +329,7 @@ def test_the_prompt_carries_the_voice_craft_the_retired_seed_taught():
     assert "Entwurfsverfasser" in good
     assert "Behörde" in good
     assert "Bescheid" in good
-    assert "Einschätzung, nicht Empfehlung" not in _piloti_prompt_text()
+    assert "Einschätzung, nicht Empfehlung" not in _chat_prompt_text()
     # Notation: the rules a reader copies into an Einreichung.
     assert "Decimal comma" in section and "Thousands point" in section
     assert "U+00A0" in section
@@ -351,7 +351,7 @@ def test_the_prompt_carries_the_voice_craft_the_retired_seed_taught():
         assert rule in body
 
     # The old split's section is gone, pointer and all.
-    prompt = _piloti_prompt_text()
+    prompt = _chat_prompt_text()
     assert "<answer_shape>" not in prompt
     assert "writing skill active for this turn" not in prompt
 
@@ -417,7 +417,7 @@ def test_the_notation_rule_and_the_prompt_formatting_rule_stay_on_their_own_ques
     craft a platform owner may rewrite. Asserted against each other so that a
     second copy of either in the other's home fails here rather than drifting.
     """
-    prompt = _piloti_prompt_text()
+    prompt = _chat_prompt_text()
     match = re.search(r"<formatting>.*?</formatting>", prompt, re.DOTALL)
     assert match is not None, "Piloti's prompt no longer has a <formatting> section"
     formatting = match.group(0)
@@ -452,7 +452,7 @@ def test_the_voice_carries_the_certainty_split_the_confidence_field_cannot():
     prompt's ``<stimme>`` section (the live voice) and the retired seed body
     (the history it condenses).
     """
-    prompt = _piloti_prompt_text()
+    prompt = _chat_prompt_text()
     body = _unwrapped(_effective_row("piloti-voice")["body"])
 
     assert "Every researched answer carries `confidence`" in prompt
@@ -465,10 +465,10 @@ def test_the_voice_carries_the_certainty_split_the_confidence_field_cannot():
 
 
 @pytest.mark.parametrize(("tag", "row"), SEEDS, ids=SEED_IDS)
-def test_seeded_grid_agents_all_have_a_surface_that_delivers_the_skill(tag: str, row: dict[str, str]):
+def test_seeded_agents_all_have_a_surface_that_delivers_the_skill(tag: str, row: dict[str, str]):
     """Knowing an agent's name is not the same as being able to reach it.
 
-    ``test_seeded_grid_agents_are_agents_the_resolver_knows`` checks the
+    ``test_seeded_agents_are_agents_the_resolver_knows`` checks the
     vocabulary; this checks the plumbing behind each word, which is the failure
     that actually happened. ``piloti-voice`` and ``piloti-cards`` named
     ``deep_researcher`` from the day they were seeded, and for that whole time
@@ -515,7 +515,7 @@ def test_retiring_the_card_takes_its_craft_and_its_inlined_shape_together():
     A retirement that removed only the craft section would leave `follow_ups` in
     ``grid-cards``, where ``preferred_cards`` filters it against the live catalog
     and silently drops it — a seed naming a card the runtime never sees, which is
-    the exact drift ``test_seeded_grid_cards_survive_the_read_path`` exists to
+    the exact drift ``test_seeded_answer_cards_survive_the_read_path`` exists to
     catch. Removing only the list entry would leave a body arguing for a card the
     tool refuses. So both, in one migration, plus the description: since 0060 the
     L1 line names what the body teaches, and „Anschlussfragen als Regelfall" over
@@ -594,8 +594,8 @@ def test_the_card_skill_is_not_promised_to_a_surface_that_emits_no_cards():
     Pinned against the tool set rather than asserted in prose, so that building a
     card channel into deep research is what reopens the question.
     """
-    from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
-    from aiq_agent.agents.deep_researcher.factory import build_deep_research_tool_set
+    from agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
+    from agent.agents.deep_researcher.factory import build_deep_research_tool_set
 
     tool_set = build_deep_research_tool_set(
         [],
@@ -781,7 +781,7 @@ def test_the_card_seed_carries_the_craft_for_the_three_dossier_types():
     German prose and calls a thing what a reader would call it. Backticks are
     reserved for what the model literally writes.
     """
-    from aiq_agent.cards.register import _CARD_DOCTRINE
+    from agent.cards.register import _CARD_DOCTRINE
 
     body = _unwrapped(_effective_row("piloti-cards")["body"])
 
@@ -873,7 +873,7 @@ def test_every_card_type_with_a_trigger_has_its_craft_in_the_seed():
     by their German subject rather than their type name: the skill is German
     prose and calls a thing what a reader would call it.
     """
-    from aiq_agent.cards.register import _CARD_DOCTRINE
+    from agent.cards.register import _CARD_DOCTRINE
 
     # The LAST seed naming this skill is the current body — `SEEDS` is in
     # migration order and a later guarded DO UPDATE supersedes an earlier row.
@@ -916,8 +916,8 @@ def test_the_card_craft_the_retired_seed_taught_lives_in_the_tool():
     cards). Pinned against the doctrine's load-bearing sentences so a later
     tightening cannot silently drop one.
     """
-    from aiq_agent.cards.catalog import render_card_doctrine
-    from aiq_agent.cards.register import _build_tool_description
+    from agent.cards.catalog import render_card_doctrine
+    from agent.cards.register import _build_tool_description
 
     # The doctrine wraps its craft to the tool's column; compare on words.
     doctrine = " ".join(render_card_doctrine().split())
@@ -929,13 +929,13 @@ def test_the_card_craft_the_retired_seed_taught_lives_in_the_tool():
 
     # The card contract the model reads is rendered from the catalog into the
     # system prompt (placement included); the prompt file teaches no craft.
-    from aiq_agent.agents.piloti.prompt import bundled_static_block
-    from aiq_agent.agents.piloti.prompt import render_static_block
+    from agent.agents.piloti.prompt import bundled_static_block
+    from agent.agents.piloti.prompt import render_static_block
 
     system = render_static_block(bundled_static_block().text)
     assert "[[card:N]]" in system
     for craft in ("does ONE row hold", "stations must CARRY", "describe_card"):
-        assert craft not in _piloti_prompt_text(), craft
+        assert craft not in _chat_prompt_text(), craft
 
 
 def test_the_answer_envelope_replaces_the_envelope_cards():
@@ -946,10 +946,10 @@ def test_the_answer_envelope_replaces_the_envelope_cards():
     card-generating surface, and the tool's doctrine redirects rather than
     merely refuses.
     """
-    from aiq_agent.cards.catalog import RETIRED_CARD_TYPES
-    from aiq_agent.cards.catalog import model_facing_card_types
-    from aiq_agent.cards.catalog import render_card_catalog
-    from aiq_agent.cards.catalog import retired_refusal
+    from agent.cards.catalog import RETIRED_CARD_TYPES
+    from agent.cards.catalog import model_facing_card_types
+    from agent.cards.catalog import render_card_catalog
+    from agent.cards.catalog import retired_refusal
 
     section = _prompt_section("answer_envelope")
     # The rhetorical fields, each with its earning condition.

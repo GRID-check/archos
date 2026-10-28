@@ -32,7 +32,7 @@ export class UnauthorizedError extends ApiError {
 }
 
 /**
- * 401 — no signed-in session at all (`requireGridSession`).
+ * 401 — no signed-in session at all (`requireUserSession`).
  *
  * Its own class because the route wrapper answers it as `403 { error:
  * 'Forbidden' }`, the answer it got while the session guard threw a plain

@@ -18,19 +18,19 @@ import pytest
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.deep_researcher.custom_middleware import SelectiveToolRetryMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import ToolResultPruningMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import is_retryable_tool_error
-from aiq_agent.agents.deep_researcher.models import ResearchNotes
-from aiq_agent.agents.deep_researcher.models import ResearchQuery
-from aiq_agent.agents.deep_researcher.tools.research import _UNRESEARCHABLE_NARRATIVE
-from aiq_agent.agents.deep_researcher.tools.research import _UNRESEARCHABLE_SUMMARY
-from aiq_agent.agents.deep_researcher.tools.research import MAX_QUERY_SUBMISSIONS
-from aiq_agent.agents.deep_researcher.tools.research import RESEARCH_NOTE_MAX_CHARS
-from aiq_agent.agents.deep_researcher.tools.research import _research_note_files
-from aiq_agent.agents.deep_researcher.tools.research import _terminal_unresearchable_note
-from aiq_agent.agents.deep_researcher.tools.research import build_research_batch_tool
-from aiq_agent.common import RunBudgetExceededError
+from agent.agents.deep_researcher.custom_middleware import SelectiveToolRetryMiddleware
+from agent.agents.deep_researcher.custom_middleware import ToolResultPruningMiddleware
+from agent.agents.deep_researcher.custom_middleware import is_retryable_tool_error
+from agent.agents.deep_researcher.models import ResearchNotes
+from agent.agents.deep_researcher.models import ResearchQuery
+from agent.agents.deep_researcher.tools.research import _UNRESEARCHABLE_NARRATIVE
+from agent.agents.deep_researcher.tools.research import _UNRESEARCHABLE_SUMMARY
+from agent.agents.deep_researcher.tools.research import MAX_QUERY_SUBMISSIONS
+from agent.agents.deep_researcher.tools.research import RESEARCH_NOTE_MAX_CHARS
+from agent.agents.deep_researcher.tools.research import _research_note_files
+from agent.agents.deep_researcher.tools.research import _terminal_unresearchable_note
+from agent.agents.deep_researcher.tools.research import build_research_batch_tool
+from agent.common import RunBudgetExceededError
 
 
 @tool
@@ -493,10 +493,10 @@ class TestBudgetThroughBatchToolPath:
 class TestAddedDocumentsReachTheOrchestrator:
     @pytest.mark.asyncio
     async def test_a_live_addition_is_announced_on_the_next_batch_result(self):
-        from aiq_agent.agents.deep_researcher.control import bind_added_documents
-        from aiq_agent.agents.deep_researcher.control import reset_added_documents
-        from aiq_agent.agents.deep_researcher.tools.research import ADDED_DOCUMENTS_NOTICE
-        from aiq_agent.common.plan_documents import PlanDocument
+        from agent.agents.deep_researcher.control import bind_added_documents
+        from agent.agents.deep_researcher.control import reset_added_documents
+        from agent.agents.deep_researcher.tools.research import ADDED_DOCUMENTS_NOTICE
+        from agent.common.plan_documents import PlanDocument
 
         runnable = _fake_runnable(_structured_response())
         batch_tool = build_research_batch_tool(
@@ -526,12 +526,12 @@ class TestWriteNowIsHonouredOnlyByARefusal:
     async def test_a_refused_batch_is_recorded_and_a_ran_batch_is_not(self):
         import asyncio
 
-        from aiq_agent.agents.deep_researcher.control import begin_write_now_record
-        from aiq_agent.agents.deep_researcher.control import bind_write_now
-        from aiq_agent.agents.deep_researcher.control import end_write_now_record
-        from aiq_agent.agents.deep_researcher.control import reset_write_now
-        from aiq_agent.agents.deep_researcher.control import write_now_honoured
-        from aiq_agent.agents.deep_researcher.tools.research import WRITE_NOW_NOTICE
+        from agent.agents.deep_researcher.control import begin_write_now_record
+        from agent.agents.deep_researcher.control import bind_write_now
+        from agent.agents.deep_researcher.control import end_write_now_record
+        from agent.agents.deep_researcher.control import reset_write_now
+        from agent.agents.deep_researcher.control import write_now_honoured
+        from agent.agents.deep_researcher.tools.research import WRITE_NOW_NOTICE
 
         batch_tool = build_research_batch_tool(
             researcher_runnable=_fake_runnable(_structured_response()),

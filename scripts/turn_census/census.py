@@ -114,20 +114,20 @@ def run_stamp() -> str:
     return f"{time.strftime('%H%M%S')}-{os.getpid()}"
 
 
-# The NAT plugin a run loads from ``frontends/``: installed editable from ONE
+# The agent-runtime plugin a run loads from ``frontends/``: installed editable from ONE
 # checkout like the workspace packages, and loaded by every ``nat run`` through their entry
-# points. From a worktree of another commit the main checkout's ``aiq_api`` met
-# the worktree's ``aiq_agent`` and every turn died (``Unknown field name
+# points. From a worktree of another commit the main checkout's ``agent_host`` met
+# the worktree's ``agent`` and every turn died (``Unknown field name
 # front_end``), reported as a 0.0 s run.
-FRONTEND_PACKAGES = {"aiq_api": "apps/backend/src/aiq_api"}
+FRONTEND_PACKAGES = {"agent_host": "apps/agent-host/src/agent_host"}
 
 
 def source_packages() -> dict[str, Path]:
-    """Each package a run imports besides ``aiq_agent``, by import name, and the directory it imports from.
+    """Each package a run imports besides ``agent``, by import name, and the directory it imports from.
 
     Every Python workspace member (``[tool.uv.workspace]`` in the root
     ``pyproject.toml``; their package dirs are called ``src``) and the
-    NAT plugins under ``frontends/`` (``FRONTEND_PACKAGES``).
+    agent-runtime plugins under ``frontends/`` (``FRONTEND_PACKAGES``).
     """
     import tomllib
 
@@ -147,8 +147,8 @@ def source_packages() -> dict[str, Path]:
 def tree_pythonpath(out: Path) -> str:
     """A PYTHONPATH that imports THIS checkout's code, whatever the venv installed.
 
-    The venv installs ``aiq_agent``, the workspace packages under ``packages/`` and the
-    ``frontends/`` NAT plugins editable from ONE checkout. From a ``git worktree`` without its own venv, a run used to
+    The venv installs ``agent``, the workspace packages under ``packages/`` and the
+    ``frontends/`` plugins editable from ONE checkout. From a ``git worktree`` without its own venv, a run used to
     import the main checkout's code while the report named the worktree's
     commit. So ``packages/agent/src/`` goes first, and each workspace package is linked under
     its import name (their package dirs are called ``src``), ahead of the

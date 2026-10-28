@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.source_kinds import canonical_shelf_value
+from agent.common.source_kinds import canonical_shelf_value
 from nat.plugin_api import Context
 
 from .browse_rows import _SHELF_LABELS
@@ -47,13 +47,13 @@ def _entry_shelf(entry: Any) -> str | None:
 
 
 async def _readable_rows(search_config: Any) -> list[FileRow]:
-    from aiq_agent.knowledge.inventory import get_turn_documents
-    from aiq_agent.knowledge.restricted_use import without_restricted
+    from agent.knowledge.inventory import get_turn_documents
+    from agent.knowledge.restricted_use import without_restricted
 
     bound = get_turn_documents()
     if bound:
         return file_rows(bound)
-    from aiq_agent.knowledge import get_available_documents_async
+    from agent.knowledge import get_available_documents_async
 
     entries = without_restricted(_scope_entries(search_config))
     listings = await asyncio.gather(
@@ -89,7 +89,7 @@ def restrict_rows_to_turn(rows: Sequence[FileRow]) -> TurnRows:
     restriction that would leave nothing keeps everything.
     """
     try:
-        from aiq_agent.common.focus_file import get_turn_shelves
+        from agent.common.focus_file import get_turn_shelves
 
         allowed = get_turn_shelves()
     except Exception:  # noqa: BLE001 — no turn intent is a valid standalone run

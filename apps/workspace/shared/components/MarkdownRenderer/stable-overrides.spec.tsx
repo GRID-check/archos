@@ -19,7 +19,7 @@ vi.mock('@/features/diagrams/render-diagram', async (importOriginal) => ({
   diagramRendererFor: () => renderer,
 }))
 
-import { remarkCardMarkers } from '@/features/grid-cards/card-markers'
+import { remarkCardMarkers } from '@/features/cards/card-markers'
 import { CardSlot, CardSlotLiveProvider } from '@/features/chat/components/CardSlotArrival'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { MarkdownSlotProvider } from './slot-context'

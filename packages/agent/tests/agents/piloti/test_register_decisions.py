@@ -16,15 +16,15 @@ from unittest.mock import patch
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-import aiq_agent.agents.piloti.register as register_module
-from aiq_agent.agents.piloti.decisions import TurnDecisions
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.register import ResearchAgentConfig
-from aiq_agent.agents.piloti.register import _apply_decisions
-from aiq_agent.agents.piloti.register import _turn_facts
-from aiq_agent.agents.piloti.register import research_agent
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.runtime import SkillRuntime
+import agent.agents.piloti.register as register_module
+from agent.agents.piloti.decisions import TurnDecisions
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.register import ResearchAgentConfig
+from agent.agents.piloti.register import _apply_decisions
+from agent.agents.piloti.register import _turn_facts
+from agent.agents.piloti.register import research_agent
+from agent.skills.models import Skill
+from agent.skills.runtime import SkillRuntime
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -144,9 +144,9 @@ class TestTheEffects:
 
     def test_the_file_counts_read_the_shelf_the_inventory_stamps(self):
         """Stamped rows carry the shelf's string value; an `is` against the enum never matched."""
-        from aiq_agent.common.source_kinds import Shelf
-        from aiq_agent.knowledge.inventory import stamp_document
-        from aiq_agent.knowledge.schema import AvailableDocument
+        from agent.common.source_kinds import Shelf
+        from agent.knowledge.inventory import stamp_document
+        from agent.knowledge.schema import AvailableDocument
 
         def row(name: str, shelf: Shelf) -> AvailableDocument:
             return stamp_document(AvailableDocument(file_name=name), collection="c", shelf=shelf)
@@ -175,7 +175,7 @@ async def _run_turn(config: ResearchAgentConfig, decisions: TurnDecisions, messa
         return decisions
 
     with (
-        patch.object(register_module, "PilotiAgent", return_value=agent),
+        patch.object(register_module, "ChatAgent", return_value=agent),
         patch.object(register_module, "decide_turn", new_callable=AsyncMock, side_effect=_decided) as decide,
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -195,7 +195,7 @@ class TestTheTurn:
         agent = MagicMock()
         agent.run = AsyncMock(side_effect=lambda state, turn=None: state)
         with (
-            patch.object(register_module, "PilotiAgent", return_value=agent),
+            patch.object(register_module, "ChatAgent", return_value=agent),
             patch.object(register_module, "decide_turn", new_callable=AsyncMock) as decide,
             patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
             patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -210,10 +210,10 @@ class TestTheTurn:
         decide.assert_not_awaited()
 
     async def test_a_decision_skipped_as_too_short_is_logged_and_recorded(self, caplog, emitted):
-        from aiq_agent.agents.piloti.decisions import TurnFacts
+        from agent.agents.piloti.decisions import TurnFacts
 
         facts = TurnFacts(question="Hallo Piloti", previous_message=None)
-        with caplog.at_level("INFO", logger="aiq_agent.common.decisions"):
+        with caplog.at_level("INFO", logger="agent.common.decisions"):
             assert await register_module._decide_turn(facts) == TurnDecisions.none()
         assert "Decision turn did not run: too_short" in caplog.text
         (record,) = emitted.steps
@@ -242,7 +242,7 @@ class TestTheTurn:
     async def test_the_question_the_prefetch_searches_is_warmed_beside_the_decision(self):
         decided = TurnDecisions(decided=True, needs_evidence=0.9, corpus="baurecht", corpus_p=0.8)
         started_before_the_decision: list[bool] = []
-        with patch("aiq_agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
+        with patch("agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
             turn, _state, _decide = await _run_turn(
                 ResearchAgentConfig(llm="research_llm", tools=["knowledge_search"], skills_enabled=False),
                 decided,
@@ -256,7 +256,7 @@ class TestTheTurn:
     async def test_a_two_word_family_question_is_warmed_for_its_undecided_prefetch(self):
         """„OIB 2" skips the decision, and the undecided path still searches it:
         the search must find its embedding warm, not pay for it after."""
-        with patch("aiq_agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
+        with patch("agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
             turn, _state, decide = await _run_turn(
                 ResearchAgentConfig(llm="research_llm", tools=["knowledge_search"], skills_enabled=False),
                 TurnDecisions.none(),
@@ -267,7 +267,7 @@ class TestTheTurn:
         warm.assert_awaited_once_with("OIB 2")
 
     async def test_a_two_word_greeting_is_not_warmed(self):
-        with patch("aiq_agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
+        with patch("agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
             turn, _state, _decide = await _run_turn(
                 ResearchAgentConfig(llm="research_llm", tools=["knowledge_search"], skills_enabled=False),
                 TurnDecisions.none(),
@@ -277,7 +277,7 @@ class TestTheTurn:
         assert turn.prefetch == ()
 
     async def test_switched_off_means_no_warm_up(self):
-        with patch("aiq_agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
+        with patch("agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
             await _run_turn(
                 ResearchAgentConfig(
                     llm="research_llm", tools=["knowledge_search"], skills_enabled=False, turn_decisions=False
@@ -297,7 +297,7 @@ class TestTheTurn:
             AIMessage(content="Mindestens 1,20 m."),
             HumanMessage(content="Was sagt die OIB 2 dazu?"),
         ]
-        with patch("aiq_agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
+        with patch("agent.knowledge.factory.warm_search_query", new_callable=AsyncMock) as warm:
             turn, _state, _decide = await _run_turn(
                 ResearchAgentConfig(llm="research_llm", tools=["knowledge_search"], skills_enabled=False),
                 TurnDecisions.none(),
@@ -331,7 +331,7 @@ class TestTheTurn:
         agent = MagicMock()
         agent.run = AsyncMock(side_effect=lambda state, turn=None: state)
         with (
-            patch.object(register_module, "PilotiAgent", return_value=agent),
+            patch.object(register_module, "ChatAgent", return_value=agent),
             patch.object(register_module, "decide_turn", new_callable=AsyncMock, side_effect=RuntimeError("down")),
             patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
             patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -356,7 +356,7 @@ class TestTheBuildingModelToolsNeedAProject:
         return [SimpleNamespace(name=n) for n in ("knowledge_search", "ifc_query", "ifc_measure", "read_passage")]
 
     def test_a_turn_without_a_project_is_not_sent_them(self, monkeypatch):
-        from aiq_agent.agents.piloti import register
+        from agent.agents.piloti import register
 
         monkeypatch.setattr(register, "get_project_id_from_context", lambda: None)
         assert [t.name for t in register._tools_in_scope(self._tools())] == ["knowledge_search", "read_passage"]
@@ -364,14 +364,14 @@ class TestTheBuildingModelToolsNeedAProject:
     def test_a_grouped_deployment_is_not_sent_them_either(self, monkeypatch):
         from types import SimpleNamespace
 
-        from aiq_agent.agents.piloti import register
+        from agent.agents.piloti import register
 
         monkeypatch.setattr(register, "get_project_id_from_context", lambda: None)
         tools = [SimpleNamespace(name=n) for n in ("knowledge_search", "bim__ifc_query", "bim__ifc_measure")]
         assert [t.name for t in register._tools_in_scope(tools)] == ["knowledge_search"]
 
     def test_a_project_turn_keeps_them(self, monkeypatch):
-        from aiq_agent.agents.piloti import register
+        from agent.agents.piloti import register
 
         monkeypatch.setattr(register, "get_project_id_from_context", lambda: "proj-1")
         assert [t.name for t in register._tools_in_scope(self._tools())] == [
@@ -392,16 +392,16 @@ class TestTheViewerToolIsSentOnlyToAPageThatCanRunIt:
         return [SimpleNamespace(name=n) for n in ("knowledge_search", "show_in_viewer")]
 
     def test_a_turn_that_declared_nothing_is_not_sent_it(self, monkeypatch):
-        from aiq_agent.agents.piloti import register
-        from aiq_agent.common.client_tools import set_turn_client_tools
+        from agent.agents.piloti import register
+        from agent.common.client_tools import set_turn_client_tools
 
         monkeypatch.setattr(register, "get_project_id_from_context", lambda: "proj-1")
         set_turn_client_tools(None)
         assert [t.name for t in register._tools_in_scope(self._tools())] == ["knowledge_search"]
 
     def test_a_turn_whose_page_declared_it_is(self, monkeypatch):
-        from aiq_agent.agents.piloti import register
-        from aiq_agent.common.client_tools import set_turn_client_tools
+        from agent.agents.piloti import register
+        from agent.common.client_tools import set_turn_client_tools
 
         monkeypatch.setattr(register, "get_project_id_from_context", lambda: None)
         set_turn_client_tools(["show_in_viewer"])
@@ -410,7 +410,7 @@ class TestTheViewerToolIsSentOnlyToAPageThatCanRunIt:
 
 
 def test_the_catalog_is_counted_by_its_project_lines_not_its_tail():
-    from aiq_agent.agents.piloti.register import reference_project_count
+    from agent.agents.piloti.register import reference_project_count
 
     catalog = (
         "- Holzwohnbau Baden (id b1): 2020–2022, Niederösterreich\n"
@@ -423,7 +423,7 @@ def test_the_catalog_is_counted_by_its_project_lines_not_its_tail():
 
 def test_the_turn_start_records_the_catalog_the_precedent_and_whether_round_0_looked(monkeypatch):
     """Langfuse sees the office's experience at the start of a turn (ADR-0089): the lookup's own span cannot."""
-    from aiq_agent.agents.piloti.register import record_reference_decision
+    from agent.agents.piloti.register import record_reference_decision
 
     recorded: dict = {}
     tags: list[str] = []

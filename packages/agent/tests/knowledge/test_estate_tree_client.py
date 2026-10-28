@@ -15,9 +15,9 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.knowledge import estate_tree_client as client
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
+from agent.knowledge import estate_tree_client as client
 
 ROOT = Path(__file__).resolve().parents[4]
 SCHEMA = json.loads((ROOT / "apps/workspace/tests/fixtures/estate-tree.schema.json").read_text(encoding="utf-8"))

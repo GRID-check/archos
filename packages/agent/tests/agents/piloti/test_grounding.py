@@ -23,14 +23,14 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.answer_pipeline import prose_without_references
-from aiq_agent.agents.piloti.grounding import MEASUREMENT_TOOL_NAMES
-from aiq_agent.agents.piloti.grounding import tool_result_is_measurement
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common import LLMProvider
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.tools.bim.measure_register import _render
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.answer_pipeline import prose_without_references
+from agent.agents.piloti.grounding import MEASUREMENT_TOOL_NAMES
+from agent.agents.piloti.grounding import tool_result_is_measurement
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common import LLMProvider
+from agent.common.data_source_registry import reset_registry
+from agent.tools.bim.measure_register import _render
 
 FIXTURES = Path(__file__).resolve().parents[5] / "packages" / "ifc-spatial" / "test" / "fixtures"
 #: Geometry everywhere — the fixture that actually measures.
@@ -183,12 +183,12 @@ class TestMeasurementDetectionRejectsFailures:
 
     @staticmethod
     def _error_texts():
-        from aiq_agent.tools.bim.measure_register import ENGINE_UNAVAILABLE_TEXT
-        from aiq_agent.tools.bim.measure_register import UNAVAILABLE_TEXT
-        from aiq_agent.tools.bim.measure_register import _rejected_text
-        from aiq_agent.tools.bim.measure_register import _too_large_text
-        from aiq_agent.tools.bim.measure_register import _unrunnable_text
-        from aiq_agent.tools.bim.register import NO_PROJECT_TEXT
+        from agent.tools.bim.measure_register import ENGINE_UNAVAILABLE_TEXT
+        from agent.tools.bim.measure_register import UNAVAILABLE_TEXT
+        from agent.tools.bim.measure_register import _rejected_text
+        from agent.tools.bim.measure_register import _too_large_text
+        from agent.tools.bim.measure_register import _unrunnable_text
+        from agent.tools.bim.register import NO_PROJECT_TEXT
 
         return [
             UNAVAILABLE_TEXT,
@@ -248,7 +248,7 @@ class TestMeasurementDetectionIsScopedToTheMeasuringTool:
         assert tool_result_is_measurement("ifc_measure", refusal) is False
 
     def test_a_group_qualified_name_still_grants_grounding(self):
-        """NAT delivers a grouped/MCP tool as ``bim__ifc_measure``.
+        """The agent runtime delivers a grouped/MCP tool as ``bim__ifc_measure``.
 
         An exact compare against the bare name made measurement grounding a
         function of deployment topology: under function-group or MCP prefixing
@@ -341,7 +341,7 @@ class TestMeasurementSignalReachesTheState:
 
     async def _run(self, mock_llm_provider, mock_llm, responses, question="Wie hoch ist der Keller?"):
         mock_llm.ainvoke = AsyncMock(side_effect=responses)
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[ifc_measure])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[ifc_measure])
         return await agent.run(ResearchAgentState(messages=[HumanMessage(content=question)]))
 
     @pytest.mark.asyncio

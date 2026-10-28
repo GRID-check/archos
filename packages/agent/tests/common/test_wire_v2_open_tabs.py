@@ -16,7 +16,7 @@ from typing import Any
 
 import jsonschema
 
-from aiq_agent.agents.piloti.markers import CONFIDENCE_RULE_VERSION
+from agent.agents.piloti.markers import CONFIDENCE_RULE_VERSION
 
 FIXTURES = Path(__file__).parents[4] / "tests" / "fixtures" / "wire_v2"
 

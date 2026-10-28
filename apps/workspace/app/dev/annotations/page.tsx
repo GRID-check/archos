@@ -248,10 +248,10 @@ const mention = (person: { userId: string; name: string }) => ({ targetId: perso
 /**
  * Piloti's reply, as the service gives it: written in the session of the
  * person who asked, so `createdBy` is that person and the byline reads
- * „Piloti · für Miriam Hofer" (`usePilotiByline`). Never `createdByName:
+ * „Piloti · für Miriam Hofer" (`useAgentByline`). Never `createdByName:
  * 'Piloti'`, which no directory holds and which drew „Piloti · für Piloti".
  */
-const pilotiReply = (
+const agentReply = (
   annotationId: string,
   asker: { userId: string; name: string },
   id: string,
@@ -419,7 +419,7 @@ let indexB: AnnotationView[] = [
   },
 ]
 
-const PILOTI_PROPOSALS: AnnotationView[] = [
+const AGENT_PROPOSALS: AnnotationView[] = [
   {
     ...base,
     id: 'ann-p1',
@@ -473,7 +473,7 @@ const annaPeer = peer(ANNA, 'peer-anna-0001')
 const jakobPeer = peer(JAKOB, 'peer-jakob-001')
 const lenaPeer = peer(LENA, 'peer-lena-0001')
 /** Piloti in the room, as `publishAsAgent` names it: on behalf of the person who asked. */
-const pilotiPeer: RoomPeer = { peerId: 'piloti-dev-conv', userId: ME.userId, name: 'Piloti', kind: 'piloti' }
+const agentPeer: RoomPeer = { peerId: 'agent-dev-conv', userId: ME.userId, name: 'Piloti', kind: 'piloti' }
 
 /** `?wakes=1`: the organization lets events wake Piloti, so the server answers an @Piloti reply. */
 const WAKES = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('wakes')
@@ -488,7 +488,7 @@ const CARRIED_FAILS_UNTIL =
 
 /** The server's wake, answered: Piloti's reply arrives through the room, as it would from the job. */
 const wakeReply = (annotationId: string) => {
-  const answer = pilotiReply(
+  const answer = agentReply(
     annotationId,
     ME,
     `${annotationId}-wake-${Date.now()}`,
@@ -505,7 +505,7 @@ const wakeReply = (annotationId: string) => {
 
 /** Piloti's three findings, once: the `?piloti=1` script and a whole-document review both set them. */
 const proposeFindings = () => {
-  const fresh = PILOTI_PROPOSALS.filter((proposal) => !annotations.some((annotation) => annotation.id === proposal.id))
+  const fresh = AGENT_PROPOSALS.filter((proposal) => !annotations.some((annotation) => annotation.id === proposal.id))
   if (fresh.length === 0) return
   const proposed = fresh.map((proposal) => ({ ...proposal, number: nextNumber++, createdAt: new Date().toISOString() }))
   annotations = [...annotations, ...proposed]
@@ -526,7 +526,7 @@ const jakobDraft = (s: number) => {
 }
 
 let started = false
-function startRoom(withPiloti: boolean) {
+function startRoom(withAgent: boolean) {
   if (started) return
   started = true
   const t0 = performance.now()
@@ -563,9 +563,9 @@ function startRoom(withPiloti: boolean) {
       draft,
     })
   }, 80)
-  if (withPiloti) {
+  if (withAgent) {
     // Piloti joins, reads the corridor (pointer, activity, a highlight), then proposes; as `publishAsAgent` would say it.
-    const piloti = pilotiPeer
+    const piloti = agentPeer
     const corridor = { page: 1, ...region(50, 270, 570, 320) }
     broadcast({ kind: 'presence', peer: piloti, state: 'here', ttlMs: 25_000 })
     broadcast({ kind: 'activity', peer: piloti, state: 'reading', box: corridor, label: 'sieht sich den Gang an' })
@@ -722,7 +722,7 @@ const streamAnswer = (turn: ScriptedTurn, text: string): Array<readonly [number,
 const finish = (turn: ScriptedTurn, text: string, sources: (typeof OIB_RL_4)[]) => {
   emit(turn, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: turn.messageId, text, sources } })
   turn.done = true
-  broadcast({ kind: 'activity', peer: pilotiPeer, state: 'idle' })
+  broadcast({ kind: 'activity', peer: agentPeer, state: 'idle' })
 }
 
 const synthesis = { id: 'step-synthesis', kind: 'status', slot: 'synthesis', key: 'status.synthesis' } as const
@@ -758,11 +758,11 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
       150,
       () => {
         emit(turn, { type: 'RUN_STARTED', message_id: turn.messageId })
-        broadcast({ kind: 'presence', peer: pilotiPeer, state: 'here', ttlMs: 25_000 })
-        broadcast({ kind: 'activity', peer: pilotiPeer, state: 'reading', box: roomBox, label: 'sieht sich den Ausschnitt an' })
+        broadcast({ kind: 'presence', peer: agentPeer, state: 'here', ttlMs: 25_000 })
+        broadcast({ kind: 'activity', peer: agentPeer, state: 'reading', box: roomBox, label: 'sieht sich den Ausschnitt an' })
         broadcast({
           kind: 'cursor',
-          peer: pilotiPeer,
+          peer: agentPeer,
           tool: 'select',
           cursor: { page: box.page, x: box.x + box.w / 2, y: box.y + box.h / 2 },
           label: 'Hier',
@@ -775,7 +775,7 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
       () =>
         broadcast({
           kind: 'highlight',
-          peer: pilotiPeer,
+          peer: agentPeer,
           box: roomBox,
           label: mark,
           ttlMs: 8_000,
@@ -819,7 +819,7 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
       () => {
         emit(turn, { type: 'STEP_FINISHED', step: writing })
         if (thread) {
-          const answer = pilotiReply(thread.id, ME, `${thread.id}-${turn.messageId}`, text)
+          const answer = agentReply(thread.id, ME, `${thread.id}-${turn.messageId}`, text)
           annotations = annotations.map((one) => (one.id === thread.id ? { ...one, replies: [...one.replies, answer] } : one))
           broadcast({
             kind: 'annotations.changed',
@@ -844,10 +844,10 @@ const reviewDocument = (turn: ScriptedTurn) => {
       () => {
         emit(turn, { type: 'RUN_STARTED', message_id: turn.messageId })
         emit(turn, { type: 'STEP_STARTED', step: read })
-        broadcast({ kind: 'presence', peer: pilotiPeer, state: 'here', ttlMs: 25_000 })
+        broadcast({ kind: 'presence', peer: agentPeer, state: 'here', ttlMs: 25_000 })
         broadcast({
           kind: 'activity',
-          peer: pilotiPeer,
+          peer: agentPeer,
           state: 'reading',
           box: { page: 1, x: 0, y: 0, w: 1, h: 1 },
           label: 'geht das Dokument durch',
@@ -900,7 +900,7 @@ const checkFixed = (turn: ScriptedTurn, question: string) => {
   const replyStep = { id: 'step-reply', kind: 'status', slot: 'annotations', key: 'status.action.annotationsReply' } as const
   const answer = (one: AnnotationView): AnnotationView => {
     const verdict = FIXED_VERDICTS[one.id] ?? 'Weiterhin offen: An der Stelle hat sich in dieser Fassung nichts geändert.'
-    return { ...one, replies: [...one.replies, pilotiReply(one.id, ME, `${one.id}-check-${turn.messageId}`, verdict)] }
+    return { ...one, replies: [...one.replies, agentReply(one.id, ME, `${one.id}-check-${turn.messageId}`, verdict)] }
   }
   const text = 'Ich habe die Anmerkungen an der Stelle in der aktuellen Fassung angesehen und in jedem Verlauf geantwortet. Erledigen müssen Sie sie selbst.'
   play(turn, [
@@ -909,8 +909,8 @@ const checkFixed = (turn: ScriptedTurn, question: string) => {
       () => {
         emit(turn, { type: 'RUN_STARTED', message_id: turn.messageId })
         emit(turn, { type: 'STEP_STARTED', step: read })
-        broadcast({ kind: 'presence', peer: pilotiPeer, state: 'here', ttlMs: 25_000 })
-        broadcast({ kind: 'activity', peer: pilotiPeer, state: 'reading', box: { page: 1, x: 0, y: 0, w: 1, h: 1 }, label: 'prüft, was behoben ist' })
+        broadcast({ kind: 'presence', peer: agentPeer, state: 'here', ttlMs: 25_000 })
+        broadcast({ kind: 'activity', peer: agentPeer, state: 'reading', box: { page: 1, x: 0, y: 0, w: 1, h: 1 }, label: 'prüft, was behoben ist' })
       },
     ],
     [
@@ -971,7 +971,7 @@ const stopTurn = (turn: ScriptedTurn) => {
   if (turn.done) return
   emit(turn, { type: 'RUN_FINISHED', outcome: 'cancelled', result: { message_id: turn.messageId, text: turn.text } })
   turn.done = true
-  broadcast({ kind: 'activity', peer: pilotiPeer, state: 'idle' })
+  broadcast({ kind: 'activity', peer: agentPeer, state: 'idle' })
 }
 
 const stringOf = (value: unknown): string | null => (typeof value === 'string' && value ? value : null)
@@ -1246,8 +1246,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         // The rule is the server's (`replyTrigger`): an @Piloti, or an answer to
         // Piloti's own open Rückfrage. With the switch off it says `off`, and the
         // thread asks Piloti itself (Anmerkung 5).
-        const answersPiloti = current.authorKind === 'piloti' && current.kind === 'question' && current.status !== 'resolved' && current.status !== 'dismissed'
-        const wake = !added.addressesPiloti && !answersPiloti ? 'none' : WAKES ? 'queued' : 'off'
+        const answersAgent = current.authorKind === 'piloti' && current.kind === 'question' && current.status !== 'resolved' && current.status !== 'dismissed'
+        const wake = !added.addressesPiloti && !answersAgent ? 'none' : WAKES ? 'queued' : 'off'
         if (wake === 'queued') setTimeout(() => wakeReply(current.id), 4_000)
         return json({ annotation: next, replyId: added.id, wake }, 201)
       }

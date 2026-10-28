@@ -18,8 +18,8 @@ from knowledge_layer_testing.qdrant import write
 @pytest.fixture()
 def stores(tmp_path):
     """A temp SQLite metadata store for the whole job."""
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -39,10 +39,10 @@ def live_ingestor(qdrant_store):
 
 def _seed_previous_version(ing, stores, collection_name: str, file_name: str) -> None:
     """The version already live: two chunks and a row a person edited."""
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import set_document_display_title
-    from aiq_agent.knowledge import set_document_doc_class
-    from aiq_agent.knowledge import set_document_folder_path
+    from agent.knowledge import register_summary
+    from agent.knowledge import set_document_display_title
+    from agent.knowledge import set_document_doc_class
+    from agent.knowledge import set_document_folder_path
 
     write(
         collection_name,

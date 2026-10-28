@@ -63,7 +63,7 @@ export const METADATA_CARDS = 'grid-cards'
  * `grid-catalog` — whether a PLATFORM skill is offered to organizations.
  *
  * Only meaningful on a platform skill (a file under
- * `packages/agent/src/aiq_agent/skills/builtin/`), because only those have two possible
+ * `packages/agent/src/agent/skills/builtin/`), because only those have two possible
  * audiences:
  *
  *   absent            Machinery. The pipeline's own instructions. Never listed
@@ -95,7 +95,7 @@ export function isCuratedPlatformSkill(metadata: Record<string, string>): boolea
 /**
  * `grid-hidden` — keep a skill's activation OUT OF THE NOISY LIVE LINE.
  *
- * A boolean-ish flag mirroring the Python `GRID_HIDDEN_KEY`. Some skills apply
+ * A boolean-ish flag mirroring the Python `HIDDEN_KEY`. Some skills apply
  * on every single answer (a house voice is the type case), so announcing them
  * live under every turn is pure noise. A hidden skill's activation is routed to
  * the technical channel instead of the live one (backend `events.py`), so it
@@ -174,7 +174,7 @@ export const CHAT_SKILL_AGENT: KnownSkillAgent = 'researcher'
  * from chat instead.
  *
  * Mirrored in `features/skills/lib/agent-scope.ts` (client-side, dependency-free
- * by design) and in `packages/agent/src/aiq_agent/skills/resolver.py::AGENT_ALIASES`.
+ * by design) and in `packages/agent/src/agent/skills/resolver.py::AGENT_ALIASES`.
  */
 const SKILL_AGENT_ALIASES: Record<string, KnownSkillAgent> = {
   shallow_researcher: 'researcher',

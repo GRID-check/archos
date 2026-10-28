@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { assertPgConnectionBudget } from '../config/pg-connection-budget'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
@@ -109,7 +109,7 @@ export function sslParamFor(driver: string): "ssl" | "sslmode" {
 }
 
 export function installPostgres(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   /** Gate the ScheduledBackup on the SeaweedFS bucket-init when backups are on. */
@@ -894,7 +894,7 @@ export function installPostgres(
  * `bucketInitJob`, is what makes the first backup succeed in every topology.
  */
 export function installScheduledBackup(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   /** The cluster, and the Job that proves the archive bucket exists. */

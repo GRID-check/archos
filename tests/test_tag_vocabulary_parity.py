@@ -10,8 +10,8 @@ the single source of truth and a stale TS copy is caught in CI.
 import re
 from pathlib import Path
 
-from aiq_agent.knowledge.document_classification import DISCIPLINE_TAGS
-from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+from agent.knowledge.document_classification import DISCIPLINE_TAGS
+from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TS_VOCAB = REPO_ROOT / "apps" / "workspace" / "bff" / "documents" / "tag-vocabulary.ts"

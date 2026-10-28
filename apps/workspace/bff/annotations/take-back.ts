@@ -25,16 +25,16 @@
 import 'server-only'
 import type { DbExecutor } from '@/lib/db/executor'
 import { getDb } from '@/lib/db'
-import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
-import { BFF_JOB_PRIORITY, type PilotiWakeStopPayload } from '@/lib/jobs-queue/types'
+import { BFF_JOB_PRIORITY, type AgentWakeStopPayload } from '@/lib/jobs-queue/types'
 import { withTenant } from '@/lib/db/tenant-context'
 import { auditWakeStopped, type WakeStopper } from './wake-audit'
 import { delegationEventId } from './wake-ids'
 import { findLiveDelegationWake, settleWake } from './wake-repository'
 
 /** The job kind a stop runs as. */
-export const PILOTI_WAKE_STOP_JOB = 'piloti_wake_stop'
+export const AGENT_WAKE_STOP_JOB = 'piloti_wake_stop'
 
 /** The reason recorded on a wake a take-back kept from starting. */
 export const TAKEN_BACK = 'taken back'
@@ -51,9 +51,9 @@ export interface EndedDelegation {
 /** What the take-back found, to act on once it committed. */
 export interface TakeBack {
   /** The wake still waiting for its job, to settle after the commit. */
-  queuedWake: PilotiWakeRow | null
+  queuedWake: AgentWakeRow | null
   /** The started wake whose stop was enqueued in the take-back's transaction. */
-  stoppingWake: PilotiWakeRow | null
+  stoppingWake: AgentWakeRow | null
 }
 
 /** Who took the mark back, and what the trail says about the mark. */
@@ -65,7 +65,7 @@ export interface TakeBackAudit extends WakeStopper {
 const NOTHING: TakeBack = { queuedWake: null, stoppingWake: null }
 
 /** One stopped wake into the trail. */
-function auditStopped(wake: PilotiWakeRow, status: 'queued' | 'started', by: TakeBackAudit): void {
+function auditStopped(wake: AgentWakeRow, status: 'queued' | 'started', by: TakeBackAudit): void {
   auditWakeStopped(
     {
       organizationId: wake.organizationId,
@@ -82,17 +82,17 @@ function auditStopped(wake: PilotiWakeRow, status: 'queued' | 'started', by: Tak
   )
 }
 
-const stopPayload = (wake: PilotiWakeRow): PilotiWakeStopPayload => ({
+const stopPayload = (wake: AgentWakeRow): AgentWakeStopPayload => ({
   wakeId: wake.id,
   documentId: wake.documentId,
   annotationId: wake.annotationId,
   actorUserId: wake.actorUserId,
 })
 
-function enqueueStop(executor: DbExecutor, organizationId: string, wake: PilotiWakeRow): Promise<unknown> {
+function enqueueStop(executor: DbExecutor, organizationId: string, wake: AgentWakeRow): Promise<unknown> {
   return enqueueJob(
     {
-      kind: PILOTI_WAKE_STOP_JOB,
+      kind: AGENT_WAKE_STOP_JOB,
       organizationId,
       payload: { ...stopPayload(wake) },
       // A person pressed the button: ahead of the lane's bulk walks.

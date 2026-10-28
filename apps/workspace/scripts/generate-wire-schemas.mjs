@@ -1,7 +1,7 @@
 /**
  * Generate the chat wire v2 Zod module (`ui/adapters/api/wire-v2.generated.ts`)
  * from `contracts/wire/v2.schema.json`, which is itself generated from the Pydantic
- * models in `packages/agent/src/aiq_agent/common/wire_v2.py`. One contract, one source.
+ * models in `packages/agent/src/agent/common/wire_v2.py`. One contract, one source.
  *
  * Run with: `npm run generate:wire`
  *

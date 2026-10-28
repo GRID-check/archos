@@ -307,7 +307,7 @@ function HeroTile({
         <Button asChild>
           <Link href={`${projectPath}/chat?new=1`}>
             <MessageSquare className="size-4" aria-hidden />
-            {t('project.overview.askPiloti')}
+            {t('project.overview.askAgent')}
           </Link>
         </Button>
         <Button asChild variant="outline">

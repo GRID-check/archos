@@ -3,7 +3,7 @@
  * @vitest-environment node
  */
 /**
- * The committed JSON Schema is what Piloti's file tool (`packages/agent/src/aiq_agent/tools/files/`)
+ * The committed JSON Schema is what Piloti's file tool (`packages/agent/src/agent/tools/files/`)
  * is tested against, and this keeps it from going stale: it REWRITES the
  * fixture when `UPDATE_FIXTURES=1` and otherwise compares.
  */

@@ -151,7 +151,7 @@ export function toIngestScreening(
 }
 
 /**
- * `GET /api/internal/chat-screening`, exactly as `aiq_api.internal_api.chat_screening_from`
+ * `GET /api/internal/chat-screening`, exactly as `agent_host.internal_api.chat_screening_from`
  * reads it: the switch, and the content half of the policy. The chat socket
  * masks a message's text with it; `enabled: false` masks nothing.
  */

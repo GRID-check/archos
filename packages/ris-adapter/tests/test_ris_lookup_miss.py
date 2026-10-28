@@ -150,7 +150,7 @@ class TestActionRow:
     @pytest.fixture
     def rows(self, monkeypatch):
         bodies = []
-        monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.append)
+        monkeypatch.setattr("agent.common.turn_status.get_stream_writer", lambda: bodies.append)
         return bodies
 
     @staticmethod

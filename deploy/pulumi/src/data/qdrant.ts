@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { pullPolicyFor } from '../config/images'
 import { AUTOSCALER_SAFE_TO_EVICT, BOOTSTRAP_JOB_RESOURCES, JOB_DEFAULTS, PORT, QDRANT, UID } from "../constants";
 import { commonLabels } from "../platform/namespaces";
@@ -65,7 +65,7 @@ const CURL_UID = 100;
  * `docs/deployment/qdrant-runbook.md`.
  */
 export function installQdrant(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   /** In-cluster S3 endpoint the snapshots are uploaded to. */
@@ -210,7 +210,7 @@ export function installQdrant(
  * rotated OpenRouter key must not restart a Raft cluster.
  */
 function qdrantSecret(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): { secret: k8s.core.v1.Secret; checksum: pulumi.Output<string> } {
@@ -263,7 +263,7 @@ export function bootstrapScript(namespace: string, replicas: number): string {
 }
 
 /** Qdrant's configuration, as env. Exported for the spec. */
-export function qdrantEnv(cfg: GridConfig, s3Endpoint: pulumi.Input<string>): EnvVar[] {
+export function qdrantEnv(cfg: DeployConfig, s3Endpoint: pulumi.Input<string>): EnvVar[] {
   const clustered = cfg.qdrant.replicas > 1;
   return [
     // Where `entrypoint.sh` marks a finished start; the root is read-only.
@@ -325,7 +325,7 @@ export function qdrantEnv(cfg: GridConfig, s3Endpoint: pulumi.Input<string>): En
  * otherwise, so a small unplaced cluster can still schedule mid node-replacement.
  */
 function antiAffinity(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   labels: pulumi.Input<{ [k: string]: string }>,
 ): k8s.types.input.core.v1.Affinity {
   const term = { labelSelector: { matchLabels: labels }, topologyKey: "kubernetes.io/hostname" };
@@ -336,7 +336,7 @@ function antiAffinity(
 }
 
 function qdrantPodSpec(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   namespace: pulumi.Output<string>,
   s3Endpoint: pulumi.Input<string>,
   labels: pulumi.Input<{ [k: string]: string }>,
@@ -512,7 +512,7 @@ exit "$failed"`;
  * the PVC at once.
  */
 function installSnapshotCronJob(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   s3Endpoint: pulumi.Input<string>,

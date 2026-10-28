@@ -17,7 +17,7 @@ vi.mock('@/lib/audit/service', () => ({ recordAuditEvent }))
 vi.mock('@/lib/authz/platform', () => ({ getPlatformOrganizationId }))
 
 import { ConflictError, UpstreamError } from '@/lib/api/errors'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { getNormRegistry, putNormRegistry, verifyNormPointer } from './service'
 import type { NormEntry, NormsFile } from './schemas'
 
@@ -51,7 +51,7 @@ const registry: NormsFile = {
   entries: [entry],
 }
 
-const session: GridSession = {
+const session: UserSession = {
   userId: 'user_1',
   email: 'admin@grid.at',
   name: 'Admin',

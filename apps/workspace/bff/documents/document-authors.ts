@@ -33,7 +33,7 @@ export type DocumentAuthor = (typeof DOCUMENT_AUTHORS)[number]
  * two documents. A perfectly good identity — just not a job id, with nothing in
  * the row saying so.
  *
- *   - `agent_run` — a backend async job id, in the `aiq_api` job store.
+ *   - `agent_run` — a backend async job id, in the `agent_host` job store.
  *   - `answer_artifact` — ONE artifact inside ONE chat answer.
  *
  * ## Two things this vocabulary is, at once

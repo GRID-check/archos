@@ -38,8 +38,8 @@ export type AnnotationStatus = (typeof ANNOTATION_STATUSES)[number]
  * (`thread_mention`), a reply on its own open question (`thread_reply`), or
  * being made the mark's delegate (`assigned`). The wire's `TurnTrigger.kind`.
  */
-export const PILOTI_WAKE_TRIGGERS = ['thread_mention', 'thread_reply', 'assigned'] as const
-export type PilotiWakeTrigger = (typeof PILOTI_WAKE_TRIGGERS)[number]
+export const AGENT_WAKE_TRIGGERS = ['thread_mention', 'thread_reply', 'assigned'] as const
+export type AgentWakeTrigger = (typeof AGENT_WAKE_TRIGGERS)[number]
 
 /**
  * What a wake came to (`agent_wakes.status`, migrations 0139 and 0141).
@@ -48,7 +48,7 @@ export type PilotiWakeTrigger = (typeof PILOTI_WAKE_TRIGGERS)[number]
  * `failed`. `suppressed` and `refused` never started a turn; `failed` can be
  * either (the job gave up, or the turn errored).
  */
-export const PILOTI_WAKE_STATUSES = [
+export const AGENT_WAKE_STATUSES = [
   'queued',
   'started',
   'answered',
@@ -57,7 +57,7 @@ export const PILOTI_WAKE_STATUSES = [
   'refused',
   'failed',
 ] as const
-export type PilotiWakeStatus = (typeof PILOTI_WAKE_STATUSES)[number]
+export type AgentWakeStatus = (typeof AGENT_WAKE_STATUSES)[number]
 
 /**
  * What the BFF did with an event that could wake Piloti, as the writer's
@@ -256,7 +256,7 @@ export const annotationReplyViewSchema = z.object({
    * event woke (a person's, or Piloti asked in the canvas). Derived on read
    * (`./wake-attribution.ts`); absent from a server that predates it.
    */
-  wokenBy: z.enum(PILOTI_WAKE_TRIGGERS).nullable().optional(),
+  wokenBy: z.enum(AGENT_WAKE_TRIGGERS).nullable().optional(),
   /** Whom it mentions, as the server kept them; absent from a server that predates mentions. */
   mentions: z.array(markMentionSchema).optional(),
   /** When its author last reworded it, or null; absent from a server that predates editing (migration 0152). */
@@ -265,17 +265,17 @@ export const annotationReplyViewSchema = z.object({
 export type AnnotationReplyView = z.infer<typeof annotationReplyViewSchema>
 
 /**
- * Piloti at work on a mark, as the server knows it (`./piloti-work.ts`), so
+ * Piloti at work on a mark, as the server knows it (`./agent-work.ts`), so
  * every reader sees the same line: `queued` until its turn starts, `working`
  * while it runs, `failed` for a while after it ended without an answer (the
  * class of why: `wakeEndReasonKind`), `held` briefly when a cap held it.
  */
-export const PILOTI_WORK_STATES = ['queued', 'working', 'failed', 'held'] as const
-export type PilotiWorkState = (typeof PILOTI_WORK_STATES)[number]
+export const AGENT_WORK_STATES = ['queued', 'working', 'failed', 'held'] as const
+export type AgentWorkState = (typeof AGENT_WORK_STATES)[number]
 
-export const pilotiWorkViewSchema = z.object({
-  state: z.enum(PILOTI_WORK_STATES),
-  trigger: z.enum(PILOTI_WAKE_TRIGGERS),
+export const agentWorkViewSchema = z.object({
+  state: z.enum(AGENT_WORK_STATES),
+  trigger: z.enum(AGENT_WAKE_TRIGGERS),
   /** The person whose act woke Piloti: it works for them. */
   forUserId: z.string(),
   forName: z.string().nullable(),
@@ -284,7 +284,7 @@ export const pilotiWorkViewSchema = z.object({
   /** When this state began: queued at, started at, or ended at. */
   since: z.string(),
 })
-export type PilotiWorkView = z.infer<typeof pilotiWorkViewSchema>
+export type AgentWorkView = z.infer<typeof agentWorkViewSchema>
 
 /**
  * The other end of a carry (migration 0151): the mark of the replaced document
@@ -361,7 +361,7 @@ export const annotationViewSchema = z.object({
   delegatedAt: z.string().nullable().default(null),
   replies: z.array(annotationReplyViewSchema),
   /** Piloti at work on it, as the server knows it; null when it is not. Absent from a server that predates it. */
-  pilotiWork: pilotiWorkViewSchema.nullable().optional(),
+  pilotiWork: agentWorkViewSchema.nullable().optional(),
   /** Where it went on from: the replaced document's mark, with its thread. Absent from a server that predates carrying. */
   carriedFrom: carryLinkViewSchema.nullable().optional(),
   /** Where it went on: the replacing document's mark. Absent from a server that predates carrying. */
@@ -440,14 +440,14 @@ export const REPLY_TAKEN_UP_REASON = 'piloti-took-it-up'
 export const REPLY_MARK_CLOSED_REASON = 'mark-closed'
 
 /** Whether a reply was for Piloti: its @Piloti, or an answer on Piloti's own Rückfrage. Pure. */
-export const replyIsForPiloti = (
+export const replyIsForAgent = (
   mark: { authorKind: AnnotationAuthor; kind: AnnotationKind },
   reply: { authorKind: AnnotationAuthor; addressesPiloti: boolean }
 ): boolean =>
   reply.authorKind === 'person' && (reply.addressesPiloti || (mark.authorKind === 'piloti' && mark.kind === 'question'))
 
 /** Whether Piloti wrote in the thread after this reply. Pure; `createdAt` as stored or as the view says it. */
-export const pilotiRepliedSince = (
+export const agentRepliedSince = (
   replies: ReadonlyArray<{ authorKind: AnnotationAuthor; createdAt: Date | string }>,
   reply: { createdAt: Date | string }
 ): boolean => {

@@ -23,7 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "turn_census"))
 
 import workspace_eval  # noqa: E402
-from agent_testing.exposure import piloti_tool_names  # noqa: E402
+from agent_testing.exposure import chat_tool_names  # noqa: E402
 from fixture_bff import FixtureBFF  # noqa: E402
 from fixture_workspace import FIXTURES  # noqa: E402
 from fixture_workspace import PROPOSED_TEXT  # noqa: E402
@@ -103,8 +103,8 @@ def test_a_read_answers_from_the_office_by_project() -> None:
 
 
 def test_the_agents_own_client_reads_the_doors_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from aiq_agent.common.bff_http import SignedEnvelope
-    from aiq_agent.tools.workspace.client import call_tool_result
+    from agent.common.bff_http import SignedEnvelope
+    from agent.tools.workspace.client import call_tool_result
 
     bff = FixtureBFF(TOKEN, tmp_path / "requests.jsonl", workspace=FixtureWorkspace()).start()
     try:
@@ -138,7 +138,7 @@ def test_turn_context_carries_the_rendered_workspace_block() -> None:
 
 def test_every_question_names_operations_and_ids_the_fixture_holds() -> None:
     names = {op["name"] for op in CATALOG["operations"]}
-    tools = piloti_tool_names()
+    tools = chat_tool_names()
     # A read the office answers under a name the catalog no longer has is a read that always fails.
     assert set(OFFICE["reads"]) <= names, set(OFFICE["reads"]) - names
     office_text = json.dumps(OFFICE, ensure_ascii=False)

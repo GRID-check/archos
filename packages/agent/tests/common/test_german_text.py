@@ -17,7 +17,7 @@ All offline: no database, no network.
 
 from __future__ import annotations
 
-from aiq_agent.common import german_text as g
+from agent.common import german_text as g
 
 # ===========================================================================
 # Folding and stemming

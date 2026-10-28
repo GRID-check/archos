@@ -5,7 +5,7 @@
  *
  * `directive-blocks.tsx` and the table overrides compose these and nothing
  * else, so the look of a check, a procedure or a figure is decided here, once,
- * in the tokens of `grid-design-language.md`. They carry the visual language
+ * in the tokens of `design-language.md`. They carry the visual language
  * of the cards they replace: `process_map`'s rail and node, `condition_tree`'s
  * tinted case, the checklist's pills, the energy label's ladder, the verdict's
  * figure scale. Colour never travels alone: every tint has its word beside it.

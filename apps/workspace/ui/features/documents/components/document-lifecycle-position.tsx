@@ -16,7 +16,7 @@
  * ## The one place chroma was let in, and the two it was not
  *
  * The design language spends colour on provenance
- * (`docs/design/grid-design-language.md`), and everything else in this feature
+ * (`docs/design/design-language.md`), and everything else in this feature
  * holds that line: the badge word is ink, and the diff marks a changed line with
  * a rule, a gutter glyph and ink weight. The track is the exception, asked for
  * and granted deliberately, because a bar that is ink from end to end says

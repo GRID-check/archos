@@ -109,7 +109,7 @@ describe("esc-workspace-env.sh", () => {
   it("carries the legacy stack file's secure values through the legacy stack", () => {
     const r = run();
     expect(r.calls).toContain("config get grid-oib:cloudflareApiToken --stack acme/grid-oib/dev --cwd " + ROOT);
-    expect(r.calls).toContain("env set acme/workspace/dev pulumiConfig.workspace:cloudflareApiToken plain-grid-oib:cloudflareApiToken --secret");
+    expect(r.calls).toContain("env set acme/workspace/dev pulumiConfig.workspace:cloudflareApiToken plain-grid-oib:cloudflareApiToken --secret --string");
     expect(r.out).toContain("::add-mask::plain-grid-oib:cloudflareApiToken");
   });
 

@@ -62,7 +62,7 @@ function jobRow(overrides: Record<string, unknown> = {}) {
     nextRunAt: new Date('2026-09-21T06:00:00.000Z'),
     lastRunAt: null,
     createdBy: 'user_1',
-    createdByEmail: 'p@grid.test',
+    createdByEmail: 'p@example.test',
     createdAt: new Date('2026-09-01T00:00:00.000Z'),
     updatedAt: new Date('2026-09-01T00:00:00.000Z'),
     ...overrides,

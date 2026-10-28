@@ -17,13 +17,13 @@ def _isolate_shared_cache():
     """Reset the shared cache around every test.
 
     ``ris_search`` / ``ris_fetch_document`` now read/write the fail-open shared
-    cache (``aiq_agent.common.cache``, ADR-0020). Its in-process fallback store
+    cache (``agent.common.cache``, ADR-0020). Its in-process fallback store
     is a module global, so without this a document/search cached in one test
     would be served in the next. No-op when the agent package is absent (the
     adapter used standalone), where the cache is a safe no-op anyway.
     """
     try:
-        from aiq_agent.common.cache import reset_local_store
+        from agent.common.cache import reset_local_store
     except Exception:
         yield
         return
@@ -118,7 +118,7 @@ class LookupHarness:
         self.client = client
 
     async def run(self, config=None, **kwargs) -> str:
-        """Invoke the tool through the real NAT runtime path (see test_register._call)."""
+        """Invoke the tool through the real agent-runtime path (see test_register._call)."""
         from ris_adapter.lookup import RisLookupToolConfig
         from ris_adapter.lookup import ris_lookup
 
@@ -131,7 +131,7 @@ class LookupHarness:
 
         Patching the resolver rather than the model: what a test needs to say is
         "the picker was never called", and going through `get_langchain_llm` to
-        say it would test NAT's builder instead of this tool's two paths.
+        say it would test the agent runtime's builder instead of this tool's two paths.
         """
 
         async def _resolve(tool_config, builder):
@@ -145,7 +145,7 @@ class LookupHarness:
     @staticmethod
     def body_of(output: str, index: int = 1) -> str:
         """The passage body of one ``--- Result N ---`` block, as the parser sees it."""
-        from aiq_agent.citations.grounding_text import _extract_kl_chunk_bodies
+        from agent.citations.grounding_text import _extract_kl_chunk_bodies
 
         return _extract_kl_chunk_bodies(output)[index - 1]
 
@@ -172,7 +172,7 @@ def lookup(monkeypatch):
 
 def norm_entry(**overrides):
     """One curated catalog entry, defaulted to the Wiener Bauordnung."""
-    from aiq_agent.common.norm_registry import NormEntry
+    from agent.common.norm_registry import NormEntry
 
     data = {
         "id": "bo-wien",
@@ -194,7 +194,7 @@ def norm_entry(**overrides):
 @pytest.fixture
 def catalog(monkeypatch):
     """Install a norm registry for ``ris_lookup``; returns a setter for its entries."""
-    from aiq_agent.common.norm_registry import NormRegistry
+    from agent.common.norm_registry import NormRegistry
 
     state: dict[str, NormRegistry] = {"registry": NormRegistry(entries=[norm_entry()])}
     monkeypatch.setattr("ris_adapter.lookup.candidates.load_registry", lambda path=None: state["registry"])

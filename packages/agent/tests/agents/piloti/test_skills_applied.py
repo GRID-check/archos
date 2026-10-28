@@ -11,15 +11,15 @@ import json
 
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.piloti.answer_pipeline import FinalAnswer
-from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-from aiq_agent.agents.piloti.ledger import assemble_result
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.register import _report_skills
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.runtime import SkillRuntime
+from agent.agents.piloti.answer_pipeline import FinalAnswer
+from agent.agents.piloti.answer_pipeline import finalize_answer
+from agent.agents.piloti.ledger import assemble_result
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.register import _report_skills
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.skills.models import Skill
+from agent.skills.runtime import SkillRuntime
 
 PROSE = "x" * 900 + " Die Antwort [1].\n\n## References\n- [1] https://example.com"
 

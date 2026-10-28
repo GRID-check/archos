@@ -60,7 +60,7 @@ export const SpendTrendChart: FC<SpendTrendChartProps> = ({
   }
 
   return (
-    <div className="grid-usage-viz">
+    <div className="usage-viz">
       <SeriesPaletteStyle />
       {/* The selected day. `aria-live` so a keyboard walk announces each one;
           the min-height keeps the plot from jumping when the text wraps. */}
@@ -98,7 +98,7 @@ export const SpendTrendChart: FC<SpendTrendChartProps> = ({
                 // end's radius is bounded by the mark's width.
                 className="block w-full rounded-t-[3px]"
                 style={{
-                  backgroundColor: 'var(--grid-series-1)',
+                  backgroundColor: 'var(--chart-series-1)',
                   height: `${Math.max((point.value / maxValue) * 100, 3)}%`,
                 }}
               />

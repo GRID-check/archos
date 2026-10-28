@@ -38,8 +38,8 @@ def emit_lookup_span(question: str, address: Address, trace: LookupTrace, passag
     try:
         from types import SimpleNamespace
 
-        from aiq_agent.observability.retrieval_trace import build_retrieval_input
-        from aiq_agent.observability.retrieval_trace import emit_retrieval_span
+        from agent.observability.retrieval_trace import build_retrieval_input
+        from agent.observability.retrieval_trace import emit_retrieval_span
 
         search_input = build_retrieval_input(
             query=question,
@@ -58,7 +58,7 @@ def emit_lookup_span(question: str, address: Address, trace: LookupTrace, passag
 
 def _span_context(question: str, address: Address, trace: LookupTrace, passages: list[Passage]) -> dict:
     """The half of the span that explains WHY these passages."""
-    from aiq_agent.common.turn_status import current_retrieval_round
+    from agent.common.turn_status import current_retrieval_round
 
     context = {
         "round": current_retrieval_round(),

@@ -9,7 +9,7 @@
  */
 
 import 'server-only'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 import { requesterOf } from '@/lib/jobs-queue/types'
 import { findProjectIdByCollectionName } from '@/lib/projects/repository'
 import { findFiledResearchReport, findReportFilingRefusal, queueResearchReportFiling } from './research-report'
@@ -110,7 +110,7 @@ function readCommissioningCollection(data: unknown): string | null {
  * The run's cards off the same body, for the filed PDF's „Rechtsgrundlagen".
  *
  * Only shape is checked, not card identity: the backend already validated these
- * at generation (`aiq_agent.cards.validate_cards`) and `legalBasisSection`
+ * at generation (`agent.cards.validate_cards`) and `legalBasisSection`
  * narrows them again at render, so a third opinion here could only reject a
  * card both of those accept. What it does do is refuse a non-array, so a
  * malformed body cannot reach `fileResearchReport` as something to iterate.
@@ -158,7 +158,7 @@ export async function fileCommissionedReport({
   /** The backend async job id whose report was read. */
   runId: string
   /** The reader's session; `null` in anonymous mode, which files nothing. */
-  session: GridSession | null
+  session: UserSession | null
   /** The backend's report response, as `JobReportResponse` defines it. */
   body: unknown
 }): Promise<ReportFilingOutcome | null> {

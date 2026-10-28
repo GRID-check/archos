@@ -10,7 +10,7 @@ from opentelemetry import trace as otel_trace
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode
 
-from aiq_agent.observability import direct_trace
+from agent.observability import direct_trace
 
 _MESSAGES = [
     {"role": "system", "content": "Name the chat."},

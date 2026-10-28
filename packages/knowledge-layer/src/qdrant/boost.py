@@ -55,7 +55,7 @@ from typing import Any
 
 from qdrant_client import models
 
-from aiq_agent.profile_names import legacy_profile_token
+from agent.profile_names import legacy_profile_token
 
 from .payload import project_payload
 from .schema import LEGACY_FIELDS

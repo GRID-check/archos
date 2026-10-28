@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import threading
 
-from aiq_agent.agents.piloti import answer_pipeline
+from agent.agents.piloti import answer_pipeline
 
 
 def test_the_verification_of_a_finished_answer_runs_off_the_loop(monkeypatch):

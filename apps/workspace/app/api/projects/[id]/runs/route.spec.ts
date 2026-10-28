@@ -8,7 +8,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockResolvedValue({
     userId: 'user_1',
     organizationId: 'org_1',
-    email: 'p@grid.test',
+    email: 'p@example.test',
     role: 'admin',
     featureFlags: ['deep-research'],
   }),
@@ -117,7 +117,7 @@ describe('POST /api/projects/[id]/runs', () => {
     vi.mocked(requireAuthorizedSession).mockResolvedValueOnce({
       userId: 'user_1',
       organizationId: 'org_1',
-      email: 'p@grid.test',
+      email: 'p@example.test',
       role: 'admin',
       featureFlags: [],
     } as never)

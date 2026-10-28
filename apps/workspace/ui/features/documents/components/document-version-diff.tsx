@@ -16,7 +16,7 @@
  * ## Why there is no red and no green
  *
  * The design language spends chroma on exactly one thing — provenance — and an
- * editorial change is not provenance (`docs/design/grid-design-language.md`:
+ * editorial change is not provenance (`docs/design/design-language.md`:
  * "Provenance signals are the only chroma"). It is the same reasoning that
  * keeps `document-version-badge.tsx` monochrome, and the same conclusion: a
  * green wash here would read as a source signal and would collide with

@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm'
 import { check, foreignKey, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import {
-  PILOTI_CHANGE_OBJECTS,
-  PILOTI_CHANGE_OPS,
+  AGENT_CHANGE_OBJECTS,
+  AGENT_CHANGE_OPS,
   type ChangeState,
-  type PilotiChangeObject,
-  type PilotiChangeOp,
+  type AgentChangeObject,
+  type AgentChangeOp,
 } from '@/lib/changes/types'
 import { conversations } from './conversations'
 import { documents } from './documents'
@@ -28,9 +28,9 @@ export const pilotiChanges = pgTable(
     organizationId: text('organization_id').notNull(),
     documentId: uuid('document_id').notNull(),
     annotationId: uuid('annotation_id').notNull(),
-    objectKind: text('object_kind').$type<PilotiChangeObject>().notNull(),
+    objectKind: text('object_kind').$type<AgentChangeObject>().notNull(),
     objectId: uuid('object_id').notNull(),
-    op: text('op').$type<PilotiChangeOp>().notNull(),
+    op: text('op').$type<AgentChangeOp>().notNull(),
     before: jsonb('before').$type<ChangeState>(),
     after: jsonb('after').$type<ChangeState>(),
     originConversationId: text('origin_conversation_id').notNull(),
@@ -55,8 +55,8 @@ export const pilotiChanges = pgTable(
     }).onDelete('cascade'),
     originIdx: index('idx_agent_changes_origin').on(table.organizationId, table.originMessageId, table.createdAt),
     annotationIdx: index('idx_agent_changes_annotation').on(table.annotationId, table.createdAt),
-    objectKnown: check('agent_changes_object_known', sql`${table.objectKind} IN (${list(PILOTI_CHANGE_OBJECTS)})`),
-    opKnown: check('agent_changes_op_known', sql`${table.op} IN (${list(PILOTI_CHANGE_OPS)})`),
+    objectKnown: check('agent_changes_object_known', sql`${table.objectKind} IN (${list(AGENT_CHANGE_OBJECTS)})`),
+    opKnown: check('agent_changes_op_known', sql`${table.op} IN (${list(AGENT_CHANGE_OPS)})`),
     replyIsCreated: check(
       'agent_changes_reply_is_created',
       sql`${table.objectKind} <> 'annotation_reply' OR ${table.op} = 'create'`
@@ -80,5 +80,5 @@ export const pilotiChanges = pgTable(
   })
 )
 
-export type PilotiChangeRow = typeof pilotiChanges.$inferSelect
-export type NewPilotiChangeRow = typeof pilotiChanges.$inferInsert
+export type AgentChangeRow = typeof pilotiChanges.$inferSelect
+export type NewAgentChangeRow = typeof pilotiChanges.$inferInsert

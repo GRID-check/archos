@@ -23,9 +23,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import get_args
 
-from aiq_agent.cards.workspace_cards import TaskKind
-from aiq_agent.common.source_kinds import SOURCE_KINDS
-from aiq_agent.common.source_kinds import Shelf
+from agent.cards.workspace_cards import TaskKind
+from agent.common.source_kinds import SOURCE_KINDS
+from agent.common.source_kinds import Shelf
 
 OUT_PATH = Path(__file__).resolve().parent.parent / "apps" / "workspace" / "shared" / "vocabularies.generated.ts"
 
@@ -34,18 +34,17 @@ VOCABULARIES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (
         "DELEGATABLE_TASK_KINDS",
         get_args(TaskKind),
-        "The kinds a person may delegate: `TaskKind` in `packages/agent/src/aiq_agent/cards/workspace_cards.py`.",
+        "The kinds a person may delegate: `TaskKind` in `packages/agent/src/agent/cards/workspace_cards.py`.",
     ),
     (
         "SOURCE_KINDS",
         tuple(SOURCE_KINDS),
-        "The coarse source kinds: the keys of `SOURCE_KINDS` in `packages/agent/src/aiq_agent/common/source_kinds.py`.",
+        "The coarse source kinds: the keys of `SOURCE_KINDS` in `packages/agent/src/agent/common/source_kinds.py`.",
     ),
     (
         "SHELVES",
         tuple(shelf.value for shelf in Shelf),
-        "The shelves a retrieved chunk can come from: `Shelf` in "
-        "`packages/agent/src/aiq_agent/common/source_kinds.py`.",
+        "The shelves a retrieved chunk can come from: `Shelf` in `packages/agent/src/agent/common/source_kinds.py`.",
     ),
 )
 

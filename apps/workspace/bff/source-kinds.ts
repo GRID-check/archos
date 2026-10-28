@@ -1,6 +1,6 @@
 /**
  * Canonical source-kind taxonomy — the frontend half of the backend
- * `packages/agent/src/aiq_agent/common/source_kinds.py` (ADR-0026). The kinds and the shelves
+ * `packages/agent/src/agent/common/source_kinds.py` (ADR-0026). The kinds and the shelves
  * themselves are generated from it (`shared/vocabularies.generated.ts`); what
  * the UI makes of them (tints, badges, labels) lives here.
  *
@@ -54,7 +54,7 @@ export type SourceTint = SourceSignal | 'oib'
  * derived from, the operator expression, a tolerance and a provenance, which is
  * a stronger audit trail than a quotation. It is a kind here so every surface
  * that already renders off `kind` picks it up; it is deliberately NOT a
- * citation on the backend (`aiq_agent/tools/bim/measurement_sources.py`).
+ * citation on the backend (`agent/tools/bim/measurement_sources.py`).
  */
 export type SourceKind = (typeof SOURCE_KINDS)[number]
 

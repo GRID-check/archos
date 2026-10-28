@@ -197,12 +197,12 @@ docker compose --env-file ../.env -f docker-compose.yaml up -d
 ## Custom Startup Script
 
 The container uses `start_web.py` instead of `nat serve` to avoid asyncio event loop conflicts between the
-NeMo Agent toolkit runtime and FastAPI/Starlette anyio event loop management. See [start_web.py](../../apps/backend/start_web.py)
+agent runtime and FastAPI/Starlette anyio event loop management. See [start_web.py](../../apps/agent-host/start_web.py)
 for details.
 
 ## Security
 
-- Non-root user (`aiq`, UID 1000)
+- Non-root user (UID 1000)
 - Read-only config mounts
 
 ## Next Steps

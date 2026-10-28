@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.decisions import Decision
-from aiq_agent.knowledge import fingerprint_verify
-from aiq_agent.knowledge.fingerprint_verify import verify_fingerprint
-from aiq_agent.knowledge.project_experience import Evidence
-from aiq_agent.knowledge.project_experience import FingerprintValue
-from aiq_agent.knowledge.project_experience import VocabularyEntry
-from aiq_agent.knowledge.project_experience import VocabularyOption
+from agent.common.decisions import Decision
+from agent.knowledge import fingerprint_verify
+from agent.knowledge.fingerprint_verify import verify_fingerprint
+from agent.knowledge.project_experience import Evidence
+from agent.knowledge.project_experience import FingerprintValue
+from agent.knowledge.project_experience import VocabularyEntry
+from agent.knowledge.project_experience import VocabularyOption
 
 VOCABULARY = {
     "federal_state": VocabularyEntry(
@@ -47,7 +47,7 @@ def _answering(monkeypatch: pytest.MonkeyPatch, by_value: dict[str, float | None
             for state in states
         ]
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many_blocking", decide)
+    monkeypatch.setattr("agent.common.decisions.decide_many_blocking", decide)
     return seen
 
 
@@ -101,7 +101,7 @@ def test_a_failing_client_leaves_the_reading_as_it_was(monkeypatch):
     def broken(*args, **kwargs):
         raise RuntimeError("down")
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many_blocking", broken)
+    monkeypatch.setattr("agent.common.decisions.decide_many_blocking", broken)
     value = _value("federal_state", "vienna", "Wien 7, Neubaugasse")
 
     assert verify_fingerprint([value], VOCABULARY) == [value]

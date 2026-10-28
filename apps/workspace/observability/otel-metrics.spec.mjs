@@ -4,7 +4,7 @@
 import { metrics } from '@opentelemetry/api'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const PROVIDER_KEY = Symbol.for('grid.otel.meterProvider')
+const PROVIDER_KEY = Symbol.for('app.otel.meterProvider')
 
 async function freshModule() {
   vi.resetModules()

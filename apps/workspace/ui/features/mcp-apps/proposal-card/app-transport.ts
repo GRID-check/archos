@@ -18,7 +18,7 @@ import type { CallToolResult } from '@modelcontextprotocol/client'
 import { PROPOSAL_CARD_TOOLS_BY_ROLE } from './tool-names'
 import { ProposalRequestError } from '@/lib/proposals/client'
 import { proposalResponseSchema, type ApplyProposalRequest, type ProposalResponse } from '@/lib/proposals/types'
-import type { ProposalTransport } from '@/features/grid-cards/hooks/proposal-transport'
+import type { ProposalTransport } from '@/features/cards/hooks/proposal-transport'
 
 /** The proposal a tool result carries (`structuredContent.proposal`), or null when it carries none. */
 export function proposalOfResult(result: Partial<Pick<CallToolResult, 'structuredContent' | 'isError'>> | null | undefined): ProposalResponse | null {

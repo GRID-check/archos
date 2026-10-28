@@ -1,6 +1,6 @@
 /**
  * Generates bff/skills/platform-skills.ts from the backend builtin skill
- * files under packages/agent/src/aiq_agent/skills/builtin (one SKILL.md per skill). Run from
+ * files under packages/agent/src/agent/skills/builtin (one SKILL.md per skill). Run from
  * the repo root:
  *
  *   node apps/workspace/scripts/sync-platform-skills.mjs         write
@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const uiRoot = join(here, '..')
-const backendRoot = join(uiRoot, '..', '..', 'packages', 'agent', 'src', 'aiq_agent', 'skills', 'builtin')
+const backendRoot = join(uiRoot, '..', '..', 'packages', 'agent', 'src', 'agent', 'skills', 'builtin')
 const outFile = join(uiRoot, 'bff', 'skills', 'platform-skills.ts')
 
 const LE = String.fromCharCode(10) // newline

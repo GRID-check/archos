@@ -1,6 +1,6 @@
 """``knowledge_search`` and ``list_files`` as a binding that reads the estate by path sees them (ADR-0133 slice 6).
 
-The same NAT functions, rebound: ranked search scoped by ``path`` (the literal modes are ``grep``),
+The same agent-runtime functions, rebound: ranked search scoped by ``path`` (the literal modes are ``grep``),
 and the listing without its tree view (that is ``ls(depth=…)``). The descriptions are the shared
 ones with one paragraph replaced; the schemas are the functions' own minus the fields that left,
 and forbid unknown arguments, so a retired one is an error naming it (``common.retired_calls``).
@@ -17,7 +17,7 @@ from pydantic import create_model
 from pydantic import model_validator
 from pydantic.json_schema import SkipJsonSchema
 
-from aiq_agent.common.tool_calls import CONCLUSION_DESCRIPTION
+from agent.common.tool_calls import CONCLUSION_DESCRIPTION
 
 from .browse import _LIST_FILES_DESCRIPTION
 from .browse import TREE_PARAGRAPH
@@ -40,7 +40,7 @@ DROPPED = {"knowledge_search": ("match", "stemmed", "context", "filters"), "list
 
 def _note_hidden(model: Any) -> Any:
     if any(getattr(model, name, None) for name in HIDDEN):
-        from aiq_agent.common.retired_calls import note_retired_call
+        from agent.common.retired_calls import note_retired_call
 
         note_retired_call()
     return model

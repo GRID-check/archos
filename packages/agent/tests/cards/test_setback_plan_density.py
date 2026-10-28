@@ -10,14 +10,14 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 
 REF = {"document": "Bebauungsplan", "section": "§ 3"}
 GFZ = {"label": "GFZ", "required": 1.5, "comparator": "<=", "status": "needs_input"}
 
 
 def test_a_pure_density_question_needs_no_plan_dimensions():
-    card = grid_card_adapter.validate_python(
+    card = answer_card_adapter.validate_python(
         {
             "type": "setback_plan",
             "title": "Dichte",
@@ -34,7 +34,7 @@ def test_a_pure_density_question_needs_no_plan_dimensions():
 
 def test_a_plan_with_sides_still_needs_its_dimensions():
     with pytest.raises(ValueError, match="required to draw the plan"):
-        grid_card_adapter.validate_python(
+        answer_card_adapter.validate_python(
             {
                 "type": "setback_plan",
                 "title": "Lageplan",
@@ -47,7 +47,7 @@ def test_a_plan_with_sides_still_needs_its_dimensions():
 
 
 def test_the_ratio_units_default_to_percent_and_none_never_cm():
-    card = grid_card_adapter.validate_python(
+    card = answer_card_adapter.validate_python(
         {
             "type": "setback_plan",
             "title": "Lageplan",
@@ -66,7 +66,7 @@ def test_the_ratio_units_default_to_percent_and_none_never_cm():
 
 
 def test_a_unit_the_model_gave_is_kept():
-    card = grid_card_adapter.validate_python(
+    card = answer_card_adapter.validate_python(
         {
             "type": "setback_plan",
             "title": "Dichte",

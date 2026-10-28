@@ -4,12 +4,12 @@ import typing
 
 from pydantic import ValidationError
 
-from aiq_agent.cards.card_model import CardModel
-from aiq_agent.cards.card_model import flatten_card_markup
-from aiq_agent.cards.models import GridCard
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.models import validate_cards
-from aiq_agent.cards.proposal_cards import MemoryProposalCard
+from agent.cards.card_model import CardModel
+from agent.cards.card_model import flatten_card_markup
+from agent.cards.models import AnswerCard
+from agent.cards.models import answer_card_adapter
+from agent.cards.models import validate_cards
+from agent.cards.proposal_cards import MemoryProposalCard
 
 
 class TestMemoryProposalCard:
@@ -32,7 +32,7 @@ class TestMemoryProposalCard:
             "kind": "preference",
             "confidence": "high",
         }
-        validated = grid_card_adapter.validate_python(raw)
+        validated = answer_card_adapter.validate_python(raw)
         assert isinstance(validated, MemoryProposalCard)
         assert validated.kind == "preference"
         assert validated.confidence == "high"
@@ -52,7 +52,7 @@ class TestMemoryProposalCard:
         ]
         assert validate_cards(raw) == []
         # The adapter itself (the sanctioned tool path) still accepts it.
-        assert grid_card_adapter.validate_python(raw[0]).confidence == "medium"
+        assert answer_card_adapter.validate_python(raw[0]).confidence == "medium"
 
 
 class TestValidateCards:
@@ -192,7 +192,7 @@ class TestAMeasuredNumberCarriesWhereItCameFrom:
     def test_the_three_provenances_are_the_engine_s_own(self):
         """Same three words as `ifc_spatial.envelope.Answer`, so the card and
         the sentence beside it cannot disagree about who is making the claim."""
-        from aiq_agent.cards.schematic_cards import DimensionCheck
+        from agent.cards.schematic_cards import DimensionCheck
 
         field = DimensionCheck.model_fields["provenance"]
         assert set(typing.get_args(typing.get_args(field.annotation)[0])) == {
@@ -202,7 +202,7 @@ class TestAMeasuredNumberCarriesWhereItCameFrom:
         }
 
     def test_a_measured_dimension_keeps_its_band(self):
-        from aiq_agent.cards.schematic_cards import DimensionCheck
+        from agent.cards.schematic_cards import DimensionCheck
 
         check = DimensionCheck(
             label="lichte Raumhöhe",
@@ -220,7 +220,7 @@ class TestAMeasuredNumberCarriesWhereItCameFrom:
     def test_all_three_are_optional_because_not_every_number_comes_from_a_model(self):
         """A limit read out of the Bestimmung has no provenance to state, and a
         null here means „not stated", never „declared"."""
-        from aiq_agent.cards.schematic_cards import DimensionCheck
+        from agent.cards.schematic_cards import DimensionCheck
 
         check = DimensionCheck(label="Mindestbreite laut OIB", required=80, unit="cm", status="needs_input")
         assert check.provenance is None
@@ -232,7 +232,7 @@ class TestAMeasuredNumberCarriesWhereItCameFrom:
         render a band that runs backwards across the limit line."""
         import pytest as _pytest
 
-        from aiq_agent.cards.schematic_cards import DimensionCheck
+        from agent.cards.schematic_cards import DimensionCheck
 
         with _pytest.raises(ValidationError):
             DimensionCheck(label="x", value=1.0, status="pass", provenance="computed", tolerance=-0.1)
@@ -244,7 +244,7 @@ class TestAMeasuredNumberCarriesWhereItCameFrom:
         and `status: 'needs_input'` — an empty slot, which reads as a fact about
         the building rather than a finding about the export.
         """
-        from aiq_agent.cards.schematic_cards import DimensionCheck
+        from agent.cards.schematic_cards import DimensionCheck
 
         check = DimensionCheck(
             label="lichte Durchgangsbreite",
@@ -264,7 +264,7 @@ class TestTheCatalogTellsTheModelToCopyNotGuess:
     """
 
     def test_the_measured_note_is_in_the_catalog_body(self):
-        from aiq_agent.cards.catalog import render_card_catalog
+        from agent.cards.catalog import render_card_catalog
 
         body = render_card_catalog()
         assert "ifc_measure" in body
@@ -303,9 +303,9 @@ class TestTheCalculationCardCannotStateItsOwnAnswer:
         }
 
     def test_no_field_anywhere_lets_the_model_state_a_result(self):
-        from aiq_agent.cards.calculation_card import CalculationCard
-        from aiq_agent.cards.calculation_card import CalculationLimit
-        from aiq_agent.cards.calculation_card import CalculationStep
+        from agent.cards.calculation_card import CalculationCard
+        from agent.cards.calculation_card import CalculationLimit
+        from agent.cards.calculation_card import CalculationStep
 
         for model in (CalculationCard, CalculationStep, CalculationLimit):
             assert not {"result", "value", "total", "outcome"} & set(model.model_fields) - {"value"}
@@ -321,7 +321,7 @@ class TestTheCalculationCardCannotStateItsOwnAnswer:
         assert "result" not in card["steps"][0], "a model-supplied result must not reach the renderer"
 
     def test_the_five_operations_are_the_whole_vocabulary(self):
-        from aiq_agent.cards.calculation_card import CalculationStep
+        from agent.cards.calculation_card import CalculationStep
 
         operation = CalculationStep.model_fields["operation"].annotation
         assert set(typing.get_args(operation)) == {"sum", "product", "quotient", "percent_of", "percent_ratio"}
@@ -367,7 +367,7 @@ class TestTheCalculationCardCannotStateItsOwnAnswer:
         # The 1 in a U-value's 1 ÷ R names itself. Everything a reader has to
         # look up gets its name under it in the derivation line, so the field
         # stays required — it is only the min-length that gives way.
-        from aiq_agent.cards.calculation_card import CalculationOperand
+        from agent.cards.calculation_card import CalculationOperand
 
         assert CalculationOperand.model_fields["label"].is_required()
         assert CalculationOperand(label="", value=1.0).label == ""
@@ -408,9 +408,9 @@ class TestTheCalculationCardCannotStateItsOwnAnswer:
             assert validate_cards([raw]) == [], limit
 
     def test_the_worked_example_round_trips(self):
-        from aiq_agent.cards.catalog import CARD_EXAMPLES
+        from agent.cards.catalog import CARD_EXAMPLES
 
-        card = grid_card_adapter.validate_python(CARD_EXAMPLES["calculation"])
+        card = answer_card_adapter.validate_python(CARD_EXAMPLES["calculation"])
         assert card.type == "calculation"
         # The example has to SHOW the provenance vocabulary, not just allow it —
         # a derived number is only as honest as the inputs it was built from.
@@ -418,7 +418,7 @@ class TestTheCalculationCardCannotStateItsOwnAnswer:
         assert measured and measured[0].tolerance == 2.0
 
     def test_render_card_details_spells_out_the_nested_blocks(self):
-        from aiq_agent.cards.catalog import render_card_details
+        from agent.cards.catalog import render_card_details
 
         detail = render_card_details(["calculation"])
         assert '"calculation"' in detail
@@ -432,7 +432,7 @@ class TestBothNewCardsAreInTheDoctrineAndNotInTheCraft:
         # Same rule the follow_ups trigger follows: the trigger is the tool's
         # contract, and what makes a card WORTH emitting belongs in the
         # `piloti-cards` skill, which is a database row rather than a deploy.
-        from aiq_agent.cards.register import _CARD_DOCTRINE
+        from agent.cards.register import _CARD_DOCTRINE
 
         assert "Ziviltechniker" not in _CARD_DOCTRINE
         assert "renderer" not in _CARD_DOCTRINE
@@ -453,7 +453,7 @@ class TestCardTextIsPlainText:
     """
 
     def test_the_shipped_defect_reaches_the_card_as_text(self):
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {
                 "type": "ifc_model_picker",
                 "title": "Modell",
@@ -467,7 +467,7 @@ class TestCardTextIsPlainText:
         # sanitiser on this surface must not do. The brackets go; the target
         # stays, as text — nothing downstream turns a bare URL in a card field
         # into an anchor, so the card gains no link it did not already build.
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {"type": "ifc_model_picker", "title": "X", "note": "siehe [§ 3](https://ris.bka.gv.at/x)"}
         )
         assert "https://ris.bka.gv.at/x" in card.note
@@ -475,7 +475,7 @@ class TestCardTextIsPlainText:
         assert "](" not in card.note
 
     def test_doubled_emphasis_and_code_spans_lose_their_delimiters(self):
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {"type": "ifc_model_picker", "title": "**OIB-Richtlinie 2**", "note": "Mindestens `REI 90`."}
         )
         assert card.title == "OIB-Richtlinie 2"
@@ -486,13 +486,13 @@ class TestCardTextIsPlainText:
         # punctuation in a file reference; the line is drawn at delimiters that
         # have no second reading.
         excerpt = "Die Anforderung *) gilt sinngemäß für Anlage_1."
-        card = grid_card_adapter.validate_python({"type": "ifc_model_picker", "title": "X", "note": excerpt})
+        card = answer_card_adapter.validate_python({"type": "ifc_model_picker", "title": "X", "note": excerpt})
         assert card.note == excerpt
 
     def test_it_is_the_class_and_not_just_one_card(self):
         # Same markup, a different card and a nested building block: the guard
         # is on the shared base, so it is not a per-card patch.
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {
                 "type": "building_section",
                 "title": "**Schnitt**",
@@ -508,7 +508,7 @@ class TestCardTextIsPlainText:
         # The point of putting it on a base class: a card type added next sprint
         # is covered by BEING a card, not by someone remembering to annotate its
         # fields. 177 free-text fields across 71 models is 177 chances to forget.
-        for card_cls in GridCard.__args__:
+        for card_cls in AnswerCard.__args__:
             assert issubclass(card_cls, CardModel), card_cls.__name__
 
     def test_flattening_is_idempotent_and_leaves_plain_text_untouched(self):

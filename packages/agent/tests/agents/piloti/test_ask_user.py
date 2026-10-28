@@ -15,10 +15,10 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.agents.piloti import ask_user as ask_user_module
-from aiq_agent.agents.piloti.ask_user import AskUserConfig
-from aiq_agent.agents.piloti.ask_user import ask_user
-from aiq_agent.auth.request_identity import user_context
+from agent.agents.piloti import ask_user as ask_user_module
+from agent.agents.piloti.ask_user import AskUserConfig
+from agent.agents.piloti.ask_user import ask_user
+from agent.auth.request_identity import user_context
 from nat.plugin_api import HumanPromptRadio
 from nat.plugin_api import HumanResponseRadio
 from nat.plugin_api import HumanResponseText
@@ -43,7 +43,7 @@ def _interaction_response(content) -> InteractionResponse:
 
 
 def _fake_context(prompt_user_input, *, conversation_id="conv-1", user_message_id="turn-1"):
-    """A NAT context whose interaction manager is the given prompt callable."""
+    """An agent-runtime context whose interaction manager is the given prompt callable."""
     manager = MagicMock()
     manager.prompt_user_input = prompt_user_input
     context = MagicMock()
@@ -56,9 +56,9 @@ def _fake_context(prompt_user_input, *, conversation_id="conv-1", user_message_i
 
 
 async def _call(prompt_user_input=None, *, context=None, **kwargs):
-    """Invoke the real tool body with a patched NAT context.
+    """Invoke the real tool body with a patched agent-runtime context.
 
-    NAT folds a multi-argument tool fn into one generated pydantic input
+    The agent runtime folds a multi-argument tool fn into one generated pydantic input
     model, so the call goes through `info.input_schema` — the same object the
     LLM's tool call is validated into.
     """
@@ -67,7 +67,7 @@ async def _call(prompt_user_input=None, *, context=None, **kwargs):
         if prompt_user_input is None and context is None:
             return await info.single_fn(payload)
         holder = context or _fake_context(prompt_user_input)
-        with patch("aiq_agent.agents.piloti.ask_user.Context", holder):
+        with patch("agent.agents.piloti.ask_user.Context", holder):
             return await info.single_fn(payload)
 
 
@@ -144,7 +144,7 @@ class TestAskUserRefusals:
 
     @pytest.mark.asyncio
     async def test_no_interaction_channel_degrades(self):
-        """The real NAT default callback raises NotImplementedError.
+        """The real agent-runtime default callback raises NotImplementedError.
 
         Entrypoints without HITL (async job runner, REST, CLI) hit this. The
         prompt would never be shown and no future would ever resolve, so the

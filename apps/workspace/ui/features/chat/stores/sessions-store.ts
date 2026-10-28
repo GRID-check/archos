@@ -28,7 +28,7 @@ import { mapServerMessagesToChatMessages } from '../lib/server-message-mapper'
 import { mergeRemoteMessages, turnStateFor } from './messages-store'
 import { encodeCitations } from '../lib/citations'
 import { markConversationMinted, markConversationOnServer } from '../lib/conversation-on-server'
-import type { CardInteractions } from '@/features/grid-cards/card-decision'
+import type { CardInteractions } from '@/features/cards/card-decision'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 
 export type SessionsSlice = {

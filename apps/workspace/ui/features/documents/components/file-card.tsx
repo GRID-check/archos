@@ -24,7 +24,7 @@ import { revisionCount } from '../lib/revision-chain'
 import { DocumentStatusBadge, isCitableStatus, isSettlingStatus } from './document-status'
 import { SemanticMatch } from './semantic-match'
 import { useIngestFailureText } from './ingest-failure-notice'
-import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
+import { FileTileBody, FileTileFooter, FileTileMedia, GridTileShell } from './file-tile'
 import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
 import { HIGHLIGHT_OUTLINE } from '@/components/ui/highlight'
 import { Check } from 'lucide-react'
@@ -385,8 +385,8 @@ export const FileCard = memo(function FileCard({
             leftover height showed as a band of dead surface underneath. Growing
             the white block instead puts every footer on the bottom edge, so the
             row reads as one strip whatever each card carries above it. */}
-        <GridTileBody className={cn('flex-1 p-0', hideFooter && 'rounded-none')}>
-          <GridTileMedia ref={mediaRef} className="h-[124px]">
+        <FileTileBody className={cn('flex-1 p-0', hideFooter && 'rounded-none')}>
+          <FileTileMedia ref={mediaRef} className="h-[124px]">
             <ThumbnailWithFallback file={file} visible={seen} />
             {showStatus && (
               <DocumentStatusBadge
@@ -406,7 +406,7 @@ export const FileCard = memo(function FileCard({
                 className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
               />
             )}
-          </GridTileMedia>
+          </FileTileMedia>
 
           <div className="px-3.5 pb-3 pt-[11px] phone:px-2.5">
             <div className="flex items-center gap-2">
@@ -498,7 +498,7 @@ export const FileCard = memo(function FileCard({
               )
             )}
           </div>
-        </GridTileBody>
+        </FileTileBody>
       </button>
       {/* The footer is the button's sibling, not its child: it carries
           Piloti's filing chip, a button of its own, on the left, and a button
@@ -515,7 +515,7 @@ export const FileCard = memo(function FileCard({
           document rather than a suggestion that comes and goes, so a row of
           tiles is uneven only where a document has open work. */}
       {!hideFooter && (
-        <GridTileFooter
+        <FileTileFooter
           onClick={onSelect}
           className="@container/foot group/foot cursor-pointer flex-wrap justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
           data-testid="file-card-footer"
@@ -541,7 +541,7 @@ export const FileCard = memo(function FileCard({
           <span className="flex basis-full empty:hidden">
             <OpenMarksChip file={file} name={name} />
           </span>
-        </GridTileFooter>
+        </FileTileFooter>
       )}
     </GridTileShell>
   )

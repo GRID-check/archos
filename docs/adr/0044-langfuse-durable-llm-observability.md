@@ -318,6 +318,9 @@ Two gaps this amendment deliberately does NOT close:
 - **Prompt management is deployed but not adopted.** Moving the agent's prompts
   behind Langfuse's registry is a separate decision with its own failure mode
   (a runtime dependency on the trace store for serving traffic).
+- **OTel 3 + Langfuse 6 (JS) / langfuse 5 (Python) migration**, deferred (was
+  #1413–#1416, #1209). Dependabot ignores their semver-major updates until it
+  lands.
 
 ## Amendment (2026-09-12): ClickHouse system logs TTL-bounded
 

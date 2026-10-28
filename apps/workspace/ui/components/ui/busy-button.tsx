@@ -26,7 +26,7 @@ export interface BusyButtonProps extends Omit<ButtonProps, 'loading' | 'children
 
 /**
  * A button that works without ever being `disabled`: the pattern the proposal
- * receipts wrote out by hand (docs/design/grid-design-language.md, „Busy is not
+ * receipts wrote out by hand (docs/design/design-language.md, „Busy is not
  * disabled"). While a request is in flight the control keeps its focus
  * (`aria-disabled` plus a guard in the handler, because Chrome blurs a button
  * the moment it becomes `disabled`) and its width (`StackedLabel` holds the

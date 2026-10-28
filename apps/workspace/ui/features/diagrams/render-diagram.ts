@@ -38,7 +38,7 @@
  * these sources are for diagrams that make **no dimensional claim** — process
  * flows, sequences, decision trees, org and relationship maps. Anything
  * dimensional (a section, a stair, an escape route, a fire compartment) belongs
- * to the schematic renderers in `features/grid-cards/schematics/`, where the
+ * to the schematic renderers in `features/cards/schematics/`, where the
  * model emits parameters and the RENDERER does the geometry, so that a card
  * cannot show a diagram that disagrees with its own numbers. Mermaid text IS
  * the geometry, so that guarantee does not exist here and no amount of care in

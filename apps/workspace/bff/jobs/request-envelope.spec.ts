@@ -13,15 +13,15 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import type { GridSession } from '@/lib/auth/types'
-import { GRID_HEADER_NAMES, verifyGridRequestContextEnvelope } from '@/lib/request-context'
+import type { UserSession } from '@/lib/auth/types'
+import { REQUEST_CONTEXT_HEADER_NAMES, verifyRequestContextEnvelope } from '@/lib/request-context'
 
 import { type AuthorizedJobScope, signJobRequestContext } from './request-envelope'
 
 const SECRET = 'request-envelope-spec-secret'
 const NOW = 1_800_000_000_000
 
-const session = { organizationId: 'org_1', userId: 'user_1' } as GridSession
+const session = { organizationId: 'org_1', userId: 'user_1' } as UserSession
 
 const scope: AuthorizedJobScope = {
   projectId: 'p-1',
@@ -36,9 +36,9 @@ const scope: AuthorizedJobScope = {
 
 function signed(jobScope: AuthorizedJobScope) {
   const headers = signJobRequestContext(session, jobScope, {}, NOW)
-  const verified = verifyGridRequestContextEnvelope(
-    headers[GRID_HEADER_NAMES.REQUEST_CONTEXT],
-    headers[GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG],
+  const verified = verifyRequestContextEnvelope(
+    headers[REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT],
+    headers[REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG],
     SECRET,
     NOW
   )
@@ -65,11 +65,11 @@ describe('signJobRequestContext', () => {
   })
 
   it('signs who the caller is, by name, for the agent to address them', () => {
-    const named = { ...session, name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' }
+    const named = { ...session, name: 'Anna Weber', email: 'anna@example.test', organizationName: 'Atelier Nord' }
     const headers = signJobRequestContext(named, scope, {}, NOW)
-    const payload = JSON.parse(Buffer.from(headers[GRID_HEADER_NAMES.REQUEST_CONTEXT], 'base64url').toString('utf8'))
+    const payload = JSON.parse(Buffer.from(headers[REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT], 'base64url').toString('utf8'))
 
-    expect(payload.requester).toEqual({ name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' })
+    expect(payload.requester).toEqual({ name: 'Anna Weber', email: 'anna@example.test', organizationName: 'Atelier Nord' })
   })
 
   it('signs no project for a caller who reads it only because it is closed', () => {

@@ -36,7 +36,7 @@ async def _structural_fetch(
     would have kept from the whole set. With ``start_from`` the read continues after that
     :func:`_chunk_position` instead (a ranged read's cursor).
     """
-    from aiq_agent.knowledge.base import READING_ORDER
+    from agent.knowledge.base import READING_ORDER
 
     fetch = getattr(retriever, "fetch", None)
     if fetch is None:
@@ -58,7 +58,7 @@ async def _fetch(
     The second value says whether it was a structural fetch. A backend that
     cannot read by filter is asked through ``retrieve`` with the probe text.
     """
-    from aiq_agent.knowledge.factory import get_active_retriever
+    from agent.knowledge.factory import get_active_retriever
 
     retriever = get_active_retriever()
     chunks = await _structural_fetch(retriever, target.collection, filters, top_k, start_from)

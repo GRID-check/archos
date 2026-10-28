@@ -27,8 +27,8 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer_testing.qdrant import FakeEmbedder
 from knowledge_layer_testing.qdrant import capture_indexed_documents
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.knowledge.schema import FileStatus
+from agent.common.credential_resolution import ResolvedCredential
+from agent.knowledge.schema import FileStatus
 
 from .test_upload_screening_ingestion import _pdf
 from .test_upload_screening_ingestion import _pdf_with_table_page
@@ -41,8 +41,8 @@ _PAYSLIP = ("Gehaltsabrechnung Maerz 2026", "Brutto 4.200,00 EUR", "Projekt Must
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")

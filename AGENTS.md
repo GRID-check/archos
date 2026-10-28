@@ -3,8 +3,8 @@
 Piloti is the workspace for architects: a planning office runs its work in it, every project and
 every process, and Piloti, the agent, is a colleague in that office. Building law is one capability
 among many. [`VISION.md`](VISION.md) says what the product is; read it before you describe Piloti
-anywhere. The code: a Next.js UI and BFF (`apps/workspace`), a Python agent on the NeMo Agent Toolkit
-(`packages/agent/src/aiq_agent`), and the knowledge layer that reads the office's documents and the legal corpus
+anywhere. The code: a Next.js UI and BFF (`apps/workspace`), a Python agent on a third-party agent runtime
+(`packages/agent/src/agent`), and the knowledge layer that reads the office's documents and the legal corpus
 (`packages/knowledge-layer`).
 
 ## Setup
@@ -42,7 +42,7 @@ to add here has no home yet: give it one under
 ## Where the scoped guides are
 
 Each service keeps its own `AGENTS.md` beside the code, and inside
-`packages/agent/src/aiq_agent/` so do the packages with invariants of their own, for what holds
+`packages/agent/src/agent/` so do the packages with invariants of their own, for what holds
 only there. **Read the one for the area you are about to touch, before you touch
 it.** They are additive: this file still applies.
 
@@ -179,7 +179,7 @@ ones that will fail your PR.
 | Change what a customer can **see** | Capture it and attach it to the PR — `agent-browser` to shoot, `before-and-after` to publish. Commit no image files. [`docs/ux/visual-screenshots.md`](docs/ux/visual-screenshots.md) | Review |
 | Add or edit anything under `skills/` | Add a skill only for agent-specific procedure; anything a contributor needs too is a document ([the rule](docs/contributing/agent-skills.md#skill-or-document)). Commit the re-locked `apm.lock.yaml` with it — `task agents:audit` rewrites it for you. The deployment is gitignored, so nothing else in your diff shows the lockfile went stale | `task lint:repo` and CI's **Repo checks** job for the lockfile; review for the rule |
 | Change behaviour a doc describes | Update the doc in the same commit | Review. Stale docs are a bug, because an agent acts on them |
-| Add a model call, a quality check, an agent step or a surface | Make it observable in Langfuse: a model call is a generation (`observed_generation` outside a NAT run), a check is a score declared in `SCORE_DEFINITIONS`, a dimension is trace metadata. Langfuse is our observability platform and this is not optional. [`docs/observability/langfuse.md`](docs/observability/langfuse.md) | `test_model_calls_are_traced.py`, `test_langfuse_scores.py`, review |
+| Add a model call, a quality check, an agent step or a surface | Make it observable in Langfuse: a model call is a generation (`observed_generation` outside a workflow run), a check is a score declared in `SCORE_DEFINITIONS`, a dimension is trace metadata. Langfuse is our observability platform and this is not optional. [`docs/observability/langfuse.md`](docs/observability/langfuse.md) | `test_model_calls_are_traced.py`, `test_langfuse_scores.py`, review |
 | Change what shapes an answer: the prompt, the card or envelope contract, retrieval, ingestion, the answer pipeline, a model or effort default | Run `task be:eval:answer-suite` before and after yourself and put the report in the PR. [The answer suite](docs/contributing/testing-and-verification.md#the-answer-suite) | Review. Nothing else sees seconds, reasoning spikes or a wrong value in a real answer |
 | Say a change is done, finished or ready, or open a PR | Clear [`definition-of-done.md`](docs/contributing/definition-of-done.md) and put its closing checklist, every line filled with evidence or with why not, in your summary | Review. "Done" without evidence is the one way to fail it |
 | Learn something the repo could have told you | Write it down where the next agent will already be looking, before you carry on | Nothing, once. Then everyone re-earns it. [The ratchet](docs/contributing/correction-ratchet.md#human-intervention-is-a-failure-signal) |
@@ -199,7 +199,7 @@ for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 ## Two rules that span services
 
 **One coarse `SourceKind` drives all rendering** (`building_law | office |
-project | web | measurement`), defined in `packages/agent/src/aiq_agent/common/source_kinds.py`.
+project | web | measurement`), defined in `packages/agent/src/agent/common/source_kinds.py`.
 The UI's `SOURCE_KINDS` and `SHELVES` are generated from it into
 `apps/workspace/shared/vocabularies.generated.ts` by
 `scripts/generate_vocabularies.py` (the `vocabularies` pre-commit hook), so a

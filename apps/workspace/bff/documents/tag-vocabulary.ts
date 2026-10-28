@@ -3,7 +3,7 @@
  * may assign in the Files metadata panel.
  *
  * SINGLE SOURCE OF TRUTH: the canonical vocabulary lives in the Python backend
- * (`packages/agent/src/aiq_agent/knowledge/document_classification.py` —
+ * (`packages/agent/src/agent/knowledge/document_classification.py` —
  * `DOCUMENT_TYPE_TAGS` / `DISCIPLINE_TAGS` / `ALLOWED_TAGS`), which the tag-edit
  * endpoint validates every write against. This file is a hand-kept TypeScript
  * mirror used only to render the editor's toggleable chips. The two are pinned

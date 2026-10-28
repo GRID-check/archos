@@ -26,25 +26,25 @@ import urllib.error
 
 import pytest
 
-from aiq_agent.knowledge.bim_query import BimQueryRejectedError
-from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-from aiq_agent.knowledge.ifc_spatial_client import ModelTooLargeError
-from aiq_agent.knowledge.ifc_spatial_client import SpatialEngineUnavailableError
-from aiq_agent.knowledge.ifc_spatial_client import SpatialToolError
-from aiq_agent.tools.bim.measure_register import ENGINE_UNAVAILABLE_TEXT
-from aiq_agent.tools.bim.measure_register import NON_MEASURING_OPERATIONS
-from aiq_agent.tools.bim.measure_register import OPERATIONS
-from aiq_agent.tools.bim.measure_register import UNAVAILABLE_TEXT
-from aiq_agent.tools.bim.measure_register import _build_call
-from aiq_agent.tools.bim.measure_register import _measured_count
-from aiq_agent.tools.bim.measure_register import _provenance_line
-from aiq_agent.tools.bim.measure_register import _rejected_text
-from aiq_agent.tools.bim.measure_register import _render
-from aiq_agent.tools.bim.measure_register import _render_answer
-from aiq_agent.tools.bim.measure_register import _render_unresolved
-from aiq_agent.tools.bim.measure_register import _unrunnable_text
-from aiq_agent.tools.bim.measurement_evidence import MEASUREMENT_EVIDENCE_PREFIX
-from aiq_agent.tools.bim.measurement_evidence import result_carries_measurement
+from agent.knowledge.bim_query import BimQueryRejectedError
+from agent.knowledge.bim_query import BimQueryUnavailableError
+from agent.knowledge.ifc_spatial_client import ModelTooLargeError
+from agent.knowledge.ifc_spatial_client import SpatialEngineUnavailableError
+from agent.knowledge.ifc_spatial_client import SpatialToolError
+from agent.tools.bim.measure_register import ENGINE_UNAVAILABLE_TEXT
+from agent.tools.bim.measure_register import NON_MEASURING_OPERATIONS
+from agent.tools.bim.measure_register import OPERATIONS
+from agent.tools.bim.measure_register import UNAVAILABLE_TEXT
+from agent.tools.bim.measure_register import _build_call
+from agent.tools.bim.measure_register import _measured_count
+from agent.tools.bim.measure_register import _provenance_line
+from agent.tools.bim.measure_register import _rejected_text
+from agent.tools.bim.measure_register import _render
+from agent.tools.bim.measure_register import _render_answer
+from agent.tools.bim.measure_register import _render_unresolved
+from agent.tools.bim.measure_register import _unrunnable_text
+from agent.tools.bim.measurement_evidence import MEASUREMENT_EVIDENCE_PREFIX
+from agent.tools.bim.measurement_evidence import result_carries_measurement
 
 
 def build(**overrides):
@@ -101,7 +101,7 @@ class TestBuildCall:
         it kept passing while testing nothing about it — the exact failure the
         test exists to catch, hidden inside the test.
         """
-        from aiq_agent.tools.bim.measure_register import MEASURES
+        from agent.tools.bim.measure_register import MEASURES
 
         assert len(MEASURES) >= 7
         for name in MEASURES:
@@ -119,7 +119,7 @@ class TestBuildCall:
         escape-route width into a passing one. The tool description was
         instructing the model to certify a clearance with the wrong number.
         """
-        from aiq_agent.tools.bim.measure_register import DISTANCE_MODES
+        from agent.tools.bim.measure_register import DISTANCE_MODES
 
         for name, text in DISTANCE_MODES.items():
             assert "what a lichte Breite check needs" not in text, name
@@ -233,7 +233,7 @@ class TestBuildCall:
 
     def test_the_german_room_kinds_and_fire_aspect_are_still_accepted_for_one_release(self):
         """Remove with ``_LEGACY_TOKENS``."""
-        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+        from agent.tools.bim.measure_register import IfcMeasureInput
 
         assert IfcMeasureInput(operation="room_inventory", room_kind="Aufenthaltsraum").room_kind == "habitable_room"
         assert IfcMeasureInput(operation="room_inventory", room_kind="erschliessung").room_kind == "circulation"
@@ -295,7 +295,7 @@ class TestTheEnumsMatchTheEngine:
     """The tool's vocabulary is a COPY of the package's, and copies drift.
 
     `measure_register` spells the enums out rather than importing them, so that
-    NAT's plugin discovery does not pull IfcOpenShell, numpy and shapely into
+    the agent runtime's plugin discovery does not pull IfcOpenShell, numpy and shapely into
     every process at startup. The price of that is this test: an operator
     renamed in the package has to fail HERE, in a sentence naming both sides,
     rather than at a user whose perfectly good call is refused by name.
@@ -306,34 +306,34 @@ class TestTheEnumsMatchTheEngine:
         return pytest.importorskip("ifc_spatial.tools", reason="the spatial engine is not installed")
 
     def test_the_relations_are_the_engine_s_relations(self):
-        from aiq_agent.tools.bim.measure_register import RELATIONS
+        from agent.tools.bim.measure_register import RELATIONS
 
         assert set(RELATIONS) == set(self._engine().RELATIONS)
 
     def test_the_geometric_relations_are_the_engine_s(self):
         # The ones the description warns cost ~7 s on a cold model. A relation
         # that quietly joined that set would be called speculatively.
-        from aiq_agent.tools.bim.measure_register import GEOMETRIC_RELATIONS
+        from agent.tools.bim.measure_register import GEOMETRIC_RELATIONS
 
         assert set(GEOMETRIC_RELATIONS) == set(self._engine().GEOMETRIC_RELATIONS)
 
     def test_the_measures_are_the_engine_s_measures(self):
-        from aiq_agent.tools.bim.measure_register import MEASURES
+        from agent.tools.bim.measure_register import MEASURES
 
         assert set(MEASURES) == set(self._engine().MEASURES)
 
     def test_the_kinds_are_the_engine_s_kinds(self):
-        from aiq_agent.tools.bim.measure_register import KINDS
+        from agent.tools.bim.measure_register import KINDS
 
         assert set(KINDS) == set(self._engine().KINDS)
 
     def test_the_fire_aspects_are_the_engine_s(self):
-        from aiq_agent.tools.bim.measure_register import FIRE_ASPECTS
+        from agent.tools.bim.measure_register import FIRE_ASPECTS
 
         assert set(FIRE_ASPECTS) == set(self._engine().FIRE_ASPECTS)
 
     def test_the_envelope_aspects_are_the_engine_s(self):
-        from aiq_agent.tools.bim.measure_register import ENVELOPE_ASPECTS
+        from agent.tools.bim.measure_register import ENVELOPE_ASPECTS
 
         assert set(ENVELOPE_ASPECTS) == set(self._engine().ENVELOPE_ASPECTS)
 
@@ -342,7 +342,7 @@ class TestTheEnumsMatchTheEngine:
         # file is fetched. A ceiling higher than the engine's would let the
         # expensive refusal through again; a lower one would refuse a call the
         # engine would have answered.
-        from aiq_agent.tools.bim.measure_register import MAX_BATCH
+        from agent.tools.bim.measure_register import MAX_BATCH
 
         assert MAX_BATCH == self._engine().MAX_BATCH
 
@@ -355,7 +355,7 @@ class TestTheEnumsMatchTheEngine:
         as an unknown tool — a failure the model cannot correct, because from
         where it stands the call was exactly what it was told to make.
         """
-        from aiq_agent.tools.bim.measure_register import VALID_OPERATIONS
+        from agent.tools.bim.measure_register import VALID_OPERATIONS
 
         engine_tools = {tool.name for tool in self._engine().create_tools()}
         # `open_model` is the host's job, not an operation the model picks.
@@ -376,7 +376,7 @@ class TestTheEnumsMatchTheEngine:
         and the second is what the user was told. The engine-side test that
         caught this for OPERATORS has no counterpart for TOOLS; this is it.
         """
-        from aiq_agent.tools.bim.measure_register import VALID_OPERATIONS
+        from agent.tools.bim.measure_register import VALID_OPERATIONS
 
         engine_tools = {tool.name for tool in self._engine().create_tools()}
         unreachable = engine_tools - VALID_OPERATIONS - {"open_model"}
@@ -394,8 +394,8 @@ class TestTheEnumsMatchTheEngine:
         the discovery mechanism — it is the only place the model learns an
         operation exists — so an undocumented one is shipped off.
         """
-        from aiq_agent.tools.bim.measure_register import _TOOL_DESCRIPTION
-        from aiq_agent.tools.bim.measure_register import VALID_OPERATIONS
+        from agent.tools.bim.measure_register import _TOOL_DESCRIPTION
+        from agent.tools.bim.measure_register import VALID_OPERATIONS
 
         undocumented = {name for name in VALID_OPERATIONS if name not in _TOOL_DESCRIPTION}
         assert not undocumented, (
@@ -578,7 +578,7 @@ class TestRendering:
         search that found nothing. The model file is that document, and the
         operation is its locus.
         """
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         token = turn_status.begin_lane_capture()
         try:
@@ -595,7 +595,7 @@ class TestRendering:
         assert [(hit["name"], hit.get("detail")) for hit in hits] == [("Haus-A_V3.ifc", "measure · clearHeight")]
 
     def test_a_result_naming_no_model_files_nothing(self):
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         token = turn_status.begin_lane_capture()
         try:
@@ -848,7 +848,7 @@ class TestRendering:
     def test_a_model_that_is_still_extracting_closes_the_turn(self):
         """„noch nicht abfragbar" beside a filename reads as an invitation to
         call again with that name, and extraction finishes after this turn."""
-        from aiq_agent.tools.bim.failures import NO_MODEL_TEXT
+        from agent.tools.bim.failures import NO_MODEL_TEXT
 
         rendered = _render_unresolved(
             {
@@ -1075,21 +1075,21 @@ class TestAConversationWithoutAProjectIsRefusedBeforeTheNetwork:
     """
 
     def test_both_halves_of_the_bim_surface_say_the_same_thing(self):
-        from aiq_agent.tools.bim.measure_register import NO_PROJECT_TEXT as measure_text
-        from aiq_agent.tools.bim.register import NO_PROJECT_TEXT as query_text
+        from agent.tools.bim.measure_register import NO_PROJECT_TEXT as measure_text
+        from agent.tools.bim.register import NO_PROJECT_TEXT as query_text
 
         # Literally the same string: an agent that learns it from one tool has
         # to read it correctly from the other.
         assert measure_text is query_text
 
     def test_it_forbids_the_retry_that_used_to_burn_the_turn(self):
-        from aiq_agent.tools.bim.register import NO_PROJECT_TEXT
+        from agent.tools.bim.register import NO_PROJECT_TEXT
 
         assert "Do not retry" in NO_PROJECT_TEXT
         assert "no argument to this tool can fix it" in NO_PROJECT_TEXT
 
     def test_it_tells_the_user_what_to_actually_do(self):
-        from aiq_agent.tools.bim.register import NO_PROJECT_TEXT
+        from agent.tools.bim.register import NO_PROJECT_TEXT
 
         assert "not attached to a project" in NO_PROJECT_TEXT
         assert "inside the project" in NO_PROJECT_TEXT
@@ -1098,7 +1098,7 @@ class TestAConversationWithoutAProjectIsRefusedBeforeTheNetwork:
         assert "Do not state anything about the building" in NO_PROJECT_TEXT
 
     def test_it_is_not_the_same_message_as_a_real_rejection(self):
-        from aiq_agent.tools.bim.register import NO_PROJECT_TEXT
+        from agent.tools.bim.register import NO_PROJECT_TEXT
 
         assert NO_PROJECT_TEXT != _rejected_text("Unrecognized key(s): 'storeys'")
         assert NO_PROJECT_TEXT != UNAVAILABLE_TEXT
@@ -1119,7 +1119,7 @@ class TestAModelTooBigToMeasureIsNotAnOutage:
         Sizing a 2 GB pod's ceiling for a 128 GB node is how a guard that exists
         to prevent an OOM causes one, silently, taking the conversation with it.
         """
-        from aiq_agent.knowledge import ifc_spatial_client as client
+        from agent.knowledge import ifc_spatial_client as client
 
         monkeypatch.delenv("BIM_SPATIAL_MAX_MODEL_BYTES", raising=False)
         monkeypatch.setattr(client, "_container_memory_bytes", lambda: 4 * 1024**3)
@@ -1141,26 +1141,26 @@ class TestAModelTooBigToMeasureIsNotAnOutage:
         guard would refuse a 30 MB model on a 4 GB pod — most real projects —
         and would have removed the capability instead of protecting it.
         """
-        from aiq_agent.knowledge.ifc_spatial_client import PARSE_FOOTPRINT_RATIO
+        from agent.knowledge.ifc_spatial_client import PARSE_FOOTPRINT_RATIO
 
         assert PARSE_FOOTPRINT_RATIO == 20
 
     def test_an_operator_who_sized_the_worker_can_override_the_arithmetic(self, monkeypatch):
-        from aiq_agent.knowledge import ifc_spatial_client as client
+        from agent.knowledge import ifc_spatial_client as client
 
         monkeypatch.setenv("BIM_SPATIAL_MAX_MODEL_BYTES", str(900 * 1024**2))
         assert client._derive_max_model_bytes() == 900 * 1024**2
 
     @pytest.mark.parametrize("value", ["", "   ", "viel", "-1", "0"])
     def test_an_unusable_override_falls_back_instead_of_crashing_the_tool(self, monkeypatch, value):
-        from aiq_agent.knowledge import ifc_spatial_client as client
+        from agent.knowledge import ifc_spatial_client as client
 
         monkeypatch.setenv("BIM_SPATIAL_MAX_MODEL_BYTES", value)
         monkeypatch.setattr(client, "_container_memory_bytes", lambda: 4 * 1024**3)
         assert client._derive_max_model_bytes() == (2 * 1024**3) // 20
 
     def test_a_cgroup_limit_wins_over_the_host(self, monkeypatch, tmp_path):
-        from aiq_agent.knowledge import ifc_spatial_client as client
+        from agent.knowledge import ifc_spatial_client as client
 
         limit = tmp_path / "memory.max"
         limit.write_text("2147483648\n", encoding="ascii")
@@ -1178,7 +1178,7 @@ class TestAModelTooBigToMeasureIsNotAnOutage:
     def test_an_unlimited_or_unparsable_cgroup_falls_through(self, monkeypatch, tmp_path, raw):
         """cgroup v1 writes a sentinel near 2^63 to mean "no limit"; taking it
         literally would derive a ceiling of several exabytes."""
-        from aiq_agent.knowledge import ifc_spatial_client as client
+        from agent.knowledge import ifc_spatial_client as client
 
         limit = tmp_path / "memory.max"
         limit.write_text(raw, encoding="ascii")
@@ -1191,7 +1191,7 @@ class TestAModelTooBigToMeasureIsNotAnOutage:
         assert value is None or value < (1 << 62)
 
     def test_the_message_is_about_the_file_and_names_both_numbers(self):
-        from aiq_agent.tools.bim.measure_register import _too_large_text
+        from agent.tools.bim.measure_register import _too_large_text
 
         text = _too_large_text(310 * 1024 * 1024, 100 * 1024 * 1024)
         assert "310 MB" in text and "100 MB" in text
@@ -1203,8 +1203,8 @@ class TestAModelTooBigToMeasureIsNotAnOutage:
         assert "Do not estimate dimensions" in text
 
     def test_it_is_still_an_unavailable_error_so_old_handlers_hold(self):
-        from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-        from aiq_agent.knowledge.ifc_spatial_client import ModelTooLargeError
+        from agent.knowledge.bim_query import BimQueryUnavailableError
+        from agent.knowledge.ifc_spatial_client import ModelTooLargeError
 
         error = ModelTooLargeError(310 * 1024 * 1024, 100 * 1024 * 1024)
         assert isinstance(error, BimQueryUnavailableError)
@@ -1214,8 +1214,8 @@ class TestAModelTooBigToMeasureIsNotAnOutage:
     def test_an_oversized_model_is_refused_before_a_byte_is_transferred(self, monkeypatch):
         """On the HEAD's byte count. Downloading 300 MB to then refuse it wastes
         the transfer and holds the turn open for the whole of it."""
-        from aiq_agent.knowledge import ifc_spatial_client as client
-        from aiq_agent.knowledge.ifc_spatial_client import ModelTooLargeError
+        from agent.knowledge import ifc_spatial_client as client
+        from agent.knowledge.ifc_spatial_client import ModelTooLargeError
 
         monkeypatch.setattr(
             client.urllib.request,
@@ -1284,13 +1284,13 @@ class TestTheSourceClientDrawsTheSameDistinction:
             raise error
 
         monkeypatch.setattr(
-            "aiq_agent.common.bff_http._opener",
+            "agent.common.bff_http._opener",
             type("O", (), {"open": staticmethod(opener)})(),
         )
 
     def test_a_correctable_400_is_a_rejection(self, monkeypatch):
-        from aiq_agent.knowledge.bim_query import BimQueryRejectedError
-        from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source
+        from agent.knowledge.bim_query import BimQueryRejectedError
+        from agent.knowledge.ifc_spatial_client import resolve_model_source
 
         self._raise(monkeypatch, self._http_error(400, {"error": "modelName must not be empty"}))
         with pytest.raises(BimQueryRejectedError) as caught:
@@ -1301,16 +1301,16 @@ class TestTheSourceClientDrawsTheSameDistinction:
     def test_everything_else_is_unavailable(self, monkeypatch, status):
         # A revoked `ifc-models` flag arrives as a 403 and is NOT something the
         # agent can fix by rewriting its arguments.
-        from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-        from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source
+        from agent.knowledge.bim_query import BimQueryUnavailableError
+        from agent.knowledge.ifc_spatial_client import resolve_model_source
 
         self._raise(monkeypatch, self._http_error(status, {"error": "nope"}))
         with pytest.raises(BimQueryUnavailableError):
             resolve_model_source(organization_id="org", project_id="p")
 
     def test_a_missing_service_token_never_reaches_the_network(self, monkeypatch):
-        from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-        from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source
+        from agent.knowledge.bim_query import BimQueryUnavailableError
+        from agent.knowledge.ifc_spatial_client import resolve_model_source
 
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         with pytest.raises(BimQueryUnavailableError):
@@ -1320,7 +1320,7 @@ class TestTheSourceClientDrawsTheSameDistinction:
         # ADR-0045: a UUID carried through a conversation is a reliable source
         # of hallucinated identifiers, so the tool names the model the way a
         # person does and the BFF resolves it.
-        from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source
+        from agent.knowledge.ifc_spatial_client import resolve_model_source
 
         sent: dict = {}
 
@@ -1341,7 +1341,7 @@ class TestTheSourceClientDrawsTheSameDistinction:
             return _Response()
 
         monkeypatch.setattr(
-            "aiq_agent.common.bff_http._opener",
+            "agent.common.bff_http._opener",
             type("O", (), {"open": staticmethod(opener)})(),
         )
 
@@ -1360,7 +1360,7 @@ class TestTheSourceIdentityDecidesWhatIsReused:
     """What "the same building as last time" means, and what it must not mean."""
 
     def test_the_object_s_etag_is_preferred(self):
-        from aiq_agent.knowledge.ifc_spatial_client import source_identity
+        from agent.knowledge.ifc_spatial_client import source_identity
 
         identity = source_identity(
             {"model": {"modelId": "m1", "updatedAt": "2026-05-04T09:30:15.400Z"}, "source": {"etag": "abc123"}}
@@ -1368,7 +1368,7 @@ class TestTheSourceIdentityDecidesWhatIsReused:
         assert identity == "etag:abc123"
 
     def test_it_falls_back_to_the_model_id_and_its_revision(self):
-        from aiq_agent.knowledge.ifc_spatial_client import source_identity
+        from agent.knowledge.ifc_spatial_client import source_identity
 
         identity = source_identity(
             {"model": {"modelId": "m1", "updatedAt": "2026-05-04T09:30:15.400Z"}, "source": {"etag": None}}
@@ -1379,7 +1379,7 @@ class TestTheSourceIdentityDecidesWhatIsReused:
         # Re-exporting under the same file name is the ordinary way an
         # architect works. Keying on the name would answer questions about a
         # building that no longer exists.
-        from aiq_agent.knowledge.ifc_spatial_client import source_identity
+        from agent.knowledge.ifc_spatial_client import source_identity
 
         name = "Haus-A.ifc"
         before = {"model": {"modelId": "m1", "filename": name, "updatedAt": "2026-05-04T09:30:15.400Z"}, "source": {}}
@@ -1405,7 +1405,7 @@ class TestTheSameModelIsParsedOncePerProcess:
     @pytest.fixture()
     def engine(self):
         pytest.importorskip("ifc_spatial.tools", reason="the spatial engine is not installed")
-        from aiq_agent.knowledge import ifc_spatial_client
+        from agent.knowledge import ifc_spatial_client
 
         ifc_spatial_client.reset_cache_for_tests()
         yield ifc_spatial_client
@@ -1446,7 +1446,7 @@ class TestTheSameModelIsParsedOncePerProcess:
     def test_a_file_url_is_never_read(self, engine, served):
         # The guard that keeps "resolve a model" from becoming "read any path
         # this process can reach".
-        from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
+        from agent.knowledge.bim_query import BimQueryUnavailableError
 
         fixture, _ = served
         source = self._source(served)
@@ -1498,7 +1498,7 @@ class TestWhatTheTraceRecords:
 
     @pytest.fixture(autouse=True)
     def _clean(self):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
 
         reset_contributions()
         yield
@@ -1506,12 +1506,12 @@ class TestWhatTheTraceRecords:
 
     @staticmethod
     def _recorded() -> dict:
-        from aiq_agent.observability.langfuse_trace_attributes import _CONTRIBUTED
+        from agent.observability.langfuse_trace_attributes import _CONTRIBUTED
 
         return _CONTRIBUTED.get() or {"metadata": {}, "tags": []}
 
     def test_a_call_records_its_operation_and_its_operator(self):
-        from aiq_agent.tools.bim.measure_register import _trace
+        from agent.tools.bim.measure_register import _trace
 
         _trace("measure", "clearHeight", outcome="resolved")
 
@@ -1527,7 +1527,7 @@ class TestWhatTheTraceRecords:
     def test_free_text_from_the_model_is_not_echoed_onto_the_trace(self):
         # An operation the model invented is not a fact about this call, and an
         # external observability service is not the place to discover it.
-        from aiq_agent.tools.bim.measure_register import _trace
+        from agent.tools.bim.measure_register import _trace
 
         _trace("measure the Wohnzimmer of Familie Mayr", "Brandabschnitt Nord", outcome="rejected")
 
@@ -1540,13 +1540,13 @@ class TestWhatTheTraceRecords:
         # The two mean opposite things — the file was read and cannot say,
         # versus nothing was read at all — and an operator auditing a wrong
         # answer needs to tell them apart after the fact.
-        from aiq_agent.tools.bim.measure_register import _trace
+        from agent.tools.bim.measure_register import _trace
 
         _trace("measure", "sillAndHead", outcome="undecidable")
         assert self._recorded()["metadata"]["ifc_outcome"] == "undecidable"
 
     def test_a_transport_failure_is_not_recorded_as_an_empty_building(self):
-        from aiq_agent.tools.bim.measure_register import _trace
+        from agent.tools.bim.measure_register import _trace
 
         _trace("relations", "opensTo", outcome="service_unavailable")
         assert self._recorded()["metadata"]["ifc_outcome"] == "service_unavailable"
@@ -1566,15 +1566,15 @@ class TestTheDescriptionDescribesTheRealTool:
 
         The parameters used to be read off `_ifc_measure`'s signature through
         the AST, because the function is nested inside a registration generator
-        and its signature is not reachable without standing up the whole NAT
+        and its signature is not reachable without standing up the whole agent-runtime
         builder. It now takes ONE argument — a validated
         :class:`IfcMeasureInput` — so the signature no longer names anything,
         and the spec moved to the model's fields. Which is the point: the model
         is a real object, importable without a builder, and the invariant gets
         cheaper rather than weaker.
         """
-        from aiq_agent.tools.bim.measure_register import _TOOL_DESCRIPTION
-        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+        from agent.tools.bim.measure_register import _TOOL_DESCRIPTION
+        from agent.tools.bim.measure_register import IfcMeasureInput
 
         return _TOOL_DESCRIPTION, list(IfcMeasureInput.model_fields)
 
@@ -1598,7 +1598,7 @@ class TestTheDescriptionDescribesTheRealTool:
         """
         import re
 
-        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+        from agent.tools.bim.measure_register import IfcMeasureInput
 
         fields = set(IfcMeasureInput.model_fields)
         shown = {
@@ -1621,8 +1621,8 @@ class TestTheDescriptionDescribesTheRealTool:
         import inspect
         import re
 
-        from aiq_agent.tools.bim import measure_register
-        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+        from agent.tools.bim import measure_register
+        from agent.tools.bim.measure_register import IfcMeasureInput
 
         source = inspect.getsource(measure_register)
         builders = source[source.index("def _selection_args") : source.index("def _refusal")]
@@ -1634,7 +1634,7 @@ class TestTheDescriptionDescribesTheRealTool:
     def test_every_operation_it_names_is_one_the_tool_accepts(self):
         import re
 
-        from aiq_agent.tools.bim.measure_register import VALID_OPERATIONS
+        from agent.tools.bim.measure_register import VALID_OPERATIONS
 
         description, _ = self._description_and_parameters()
         named = set(re.findall(r"'([a-z_]+)'\s+—", description))
@@ -2124,7 +2124,7 @@ class TestTheSchemaIsWhatTheModelActuallySees:
 
     The whole benefit of typing this tool's input is invisible unless the enums
     and the per-parameter text survive the trip from `IfcMeasureInput` through
-    NAT's `FunctionInfo`, through the framework wrapper, and into the JSON
+    the agent runtime's `FunctionInfo`, through the framework wrapper, and into the JSON
     schema handed to the model. Each of those three hops is somebody else's
     code, and the failure mode — a beautifully typed model, a bare schema on
     the wire, and no way to tell from inside the process — is exactly what this
@@ -2148,8 +2148,8 @@ class TestTheSchemaIsWhatTheModelActuallySees:
         from langchain_core.tools.structured import StructuredTool
         from langchain_core.utils.function_calling import convert_to_openai_tool
 
-        from aiq_agent.tools.bim.measure_register import IfcMeasureConfig
-        from aiq_agent.tools.bim.measure_register import ifc_measure
+        from agent.tools.bim.measure_register import IfcMeasureConfig
+        from agent.tools.bim.measure_register import ifc_measure
 
         async def build() -> dict:
             async with ifc_measure(IfcMeasureConfig(), MagicMock()) as info:
@@ -2181,14 +2181,14 @@ class TestTheSchemaIsWhatTheModelActuallySees:
         return None
 
     def test_the_enums_reach_the_wire_and_are_the_engine_s_own(self):
-        from aiq_agent.tools.bim.measure_register import ENVELOPE_ASPECTS
-        from aiq_agent.tools.bim.measure_register import FIRE_ASPECTS
-        from aiq_agent.tools.bim.measure_register import KINDS
-        from aiq_agent.tools.bim.measure_register import MEASURES
-        from aiq_agent.tools.bim.measure_register import OPERATIONS
-        from aiq_agent.tools.bim.measure_register import PROFILE_KINDS
-        from aiq_agent.tools.bim.measure_register import RELATIONS
-        from aiq_agent.tools.bim.measure_register import ROOM_KINDS
+        from agent.tools.bim.measure_register import ENVELOPE_ASPECTS
+        from agent.tools.bim.measure_register import FIRE_ASPECTS
+        from agent.tools.bim.measure_register import KINDS
+        from agent.tools.bim.measure_register import MEASURES
+        from agent.tools.bim.measure_register import OPERATIONS
+        from agent.tools.bim.measure_register import PROFILE_KINDS
+        from agent.tools.bim.measure_register import RELATIONS
+        from agent.tools.bim.measure_register import ROOM_KINDS
 
         properties = self._wire_schema()["properties"]
 
@@ -2214,7 +2214,7 @@ class TestTheSchemaIsWhatTheModelActuallySees:
         order no hash seed can move. (It replaced three fresh interpreters,
         50 s of every CI run, that proved the same.)
         """
-        from aiq_agent.tools.bim import measure_register
+        from agent.tools.bim import measure_register
 
         for name in (
             "OPERATIONS",
@@ -2331,7 +2331,7 @@ class TestAMalformedCallIsRefusedBeforeTheToolRuns:
 
     @staticmethod
     def _model():
-        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+        from agent.tools.bim.measure_register import IfcMeasureInput
 
         return IfcMeasureInput
 
@@ -2381,7 +2381,7 @@ class TestAMalformedCallIsRefusedBeforeTheToolRuns:
         and tessellating the model. Seconds and a turn, to be told to count."""
         import pydantic
 
-        from aiq_agent.tools.bim.measure_register import MAX_BATCH
+        from agent.tools.bim.measure_register import MAX_BATCH
 
         ids = ",".join(f"id{n}" for n in range(MAX_BATCH + 1))
         with pytest.raises(pydantic.ValidationError) as refused:
@@ -2460,7 +2460,7 @@ class TestAMalformedCallIsRefusedBeforeTheToolRuns:
 
     @staticmethod
     def _gaps_recorded_by(monkeypatch, pydantic, **arguments) -> list[dict]:
-        from aiq_agent.tools.bim import measure_register
+        from agent.tools.bim import measure_register
 
         recorded: list[dict] = []
         monkeypatch.setattr(measure_register, "record_gap", lambda **kwargs: recorded.append(kwargs))
@@ -2565,7 +2565,7 @@ class TestEveryWellFormedCallStillDispatchesIdentically:
     @staticmethod
     def _dispatch(**arguments):
         """Exactly what `_ifc_measure` does between the model and the engine."""
-        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+        from agent.tools.bim.measure_register import IfcMeasureInput
 
         parsed = IfcMeasureInput(**arguments)
         return _build_call(
@@ -2619,7 +2619,7 @@ class TestEveryWellFormedCallStillDispatchesIdentically:
     def test_every_operation_is_covered_by_a_row(self):
         """A parity table that quietly stops covering an operation proves
         nothing about the one it dropped."""
-        from aiq_agent.tools.bim.measure_register import VALID_OPERATIONS
+        from agent.tools.bim.measure_register import VALID_OPERATIONS
 
         assert {row[0]["operation"] for row in self.CALLS} == set(VALID_OPERATIONS)
 
@@ -2652,7 +2652,7 @@ class TestEveryWellFormedCallStillDispatchesIdentically:
         those shrugs as „somebody wanted a capability we lack", and drown the
         entries that mean it.
         """
-        from aiq_agent.tools.bim import measure_register
+        from agent.tools.bim import measure_register
 
         recorded: list[dict] = []
         monkeypatch.setattr(measure_register, "record_gap", lambda **kwargs: recorded.append(kwargs))
@@ -2678,7 +2678,7 @@ class TestEveryWellFormedCallStillDispatchesIdentically:
         `Literal` is case-sensitive, and a schema that started refusing calls
         the tool used to answer would be this refactor breaking the very thing
         it exists to make cheaper."""
-        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+        from agent.tools.bim.measure_register import IfcMeasureInput
 
         arguments = {"operation": "envelope"} | {field: written}
         assert getattr(IfcMeasureInput(**arguments), field) == canonical
@@ -2714,11 +2714,11 @@ class TestAPayloadNobodyRendersIsABug:
 
 
 class TestTheToolBody:
-    """`_measure` is the tool minus NAT: the guards, the engine call, the failure table."""
+    """`_measure` is the tool minus the agent runtime: the guards, the engine call, the failure table."""
 
     @pytest.fixture(autouse=True)
     def _context(self, monkeypatch):
-        from aiq_agent.tools.bim import measure_register
+        from agent.tools.bim import measure_register
 
         monkeypatch.setattr(measure_register, "get_organization_id_from_context", lambda: "org-1")
         monkeypatch.setattr(measure_register, "get_project_id_from_context", lambda: "proj-1")
@@ -2728,9 +2728,9 @@ class TestTheToolBody:
         """The answer and the traced outcome — read inside the task, where the ContextVar was written."""
         import asyncio
 
-        from aiq_agent.observability.langfuse_trace_attributes import _CONTRIBUTED
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.tools.bim import measure_register
+        from agent.observability.langfuse_trace_attributes import _CONTRIBUTED
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.tools.bim import measure_register
 
         monkeypatch.setattr(measure_register, "_run", run)
 
@@ -2742,8 +2742,8 @@ class TestTheToolBody:
         return asyncio.run(body())
 
     def test_no_project_is_refused_and_traced_before_the_model_is_touched(self, monkeypatch):
-        from aiq_agent.tools.bim import measure_register
-        from aiq_agent.tools.bim.register import NO_PROJECT_TEXT
+        from agent.tools.bim import measure_register
+        from agent.tools.bim.register import NO_PROJECT_TEXT
 
         monkeypatch.setattr(measure_register, "get_project_id_from_context", lambda: None)
         assert self._measure(monkeypatch, lambda *_: pytest.fail("ran"), operation="briefing") == (

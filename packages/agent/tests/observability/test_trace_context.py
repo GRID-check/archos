@@ -8,21 +8,21 @@ notices.
 
 import pytest
 
-from aiq_agent.observability.langfuse_trace_attributes import TAGS_ATTRIBUTE
-from aiq_agent.observability.langfuse_trace_attributes import TraceContextProcessor
-from aiq_agent.observability.langfuse_trace_attributes import context_attributes_for
-from aiq_agent.observability.langfuse_trace_attributes import merge_span_attributes
-from aiq_agent.observability.trace_context import ENVIRONMENT_ATTRIBUTE
-from aiq_agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
-from aiq_agent.observability.trace_context import RELEASE_ATTRIBUTE
-from aiq_agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
-from aiq_agent.observability.trace_context import langfuse_environment
-from aiq_agent.observability.trace_context import langfuse_release
-from aiq_agent.observability.trace_context import observation_type
-from aiq_agent.observability.trace_context import trace_name_for_root
-from aiq_agent.observability.turn_outcome import begin_turn_outcome
-from aiq_agent.observability.turn_outcome import end_turn_outcome
-from aiq_agent.observability.turn_outcome import record_turn_error
+from agent.observability.langfuse_trace_attributes import TAGS_ATTRIBUTE
+from agent.observability.langfuse_trace_attributes import TraceContextProcessor
+from agent.observability.langfuse_trace_attributes import context_attributes_for
+from agent.observability.langfuse_trace_attributes import merge_span_attributes
+from agent.observability.trace_context import ENVIRONMENT_ATTRIBUTE
+from agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
+from agent.observability.trace_context import RELEASE_ATTRIBUTE
+from agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
+from agent.observability.trace_context import langfuse_environment
+from agent.observability.trace_context import langfuse_release
+from agent.observability.trace_context import observation_type
+from agent.observability.trace_context import trace_name_for_root
+from agent.observability.turn_outcome import begin_turn_outcome
+from agent.observability.turn_outcome import end_turn_outcome
+from agent.observability.turn_outcome import record_turn_error
 
 
 class TestEnvironment:
@@ -68,7 +68,7 @@ class TestObservationType:
     def test_nat_kinds_map_to_langfuse_types(self, kind, expected):
         assert observation_type(name="x", kind=kind) == expected
 
-    def test_grid_retrieval_steps_are_retrievers_whatever_nat_calls_them(self):
+    def test_retrieval_steps_are_retrievers_whatever_the_framework_calls_them(self):
         assert observation_type(name="retrieve.knowledge_search", kind="FUNCTION") == "retriever"
 
     @pytest.mark.parametrize("kind", ["CUSTOM", "SPAN", "TASK", "UNKNOWN", None])
@@ -142,7 +142,7 @@ class TestProcessor:
     async def test_a_chat_root_needs_no_incoming_trace_context(self):
         """The BFF registers no trace provider, so no request carries a ``traceparent``.
 
-        A root is a NAT span with no NAT parent, not a span that continues a W3C
+        A root is an agent-runtime span with no agent-runtime parent, not a span that continues a W3C
         context, so the chat turn must still name its trace and carry its outcome
         with nothing ambient and nothing upstream.
         """
@@ -179,9 +179,9 @@ class TestProcessor:
 class TestPipelineWiring:
     @pytest.mark.parametrize("identity", ["true", ""])
     async def test_installed_whatever_the_identity_flag_and_ahead_of_redaction(self, monkeypatch, identity):
-        from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
-        from aiq_agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
-        from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
+        from agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
+        from agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
+        from agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 
         monkeypatch.setenv(IDENTITY_ATTRIBUTES_ENV, identity)
         config = OtelCollectorRedactionTelemetryExporter(
@@ -193,13 +193,13 @@ class TestPipelineWiring:
         async with otelcollector_redaction_telemetry_exporter(config, None) as exporter:
             positions = exporter._processor_names
 
-        assert positions["grid_trace_context"] < positions["header_redaction"]
+        assert positions["trace_context"] < positions["header_redaction"]
 
     async def test_tool_contributions_reach_the_trace_with_identity_off(self, monkeypatch):
         """The privacy switch must not also switch off cost and quality reporting."""
-        from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
-        from aiq_agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
-        from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
+        from agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
+        from agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
+        from agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 
         monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
         config = OtelCollectorRedactionTelemetryExporter(
@@ -211,5 +211,5 @@ class TestPipelineWiring:
         async with otelcollector_redaction_telemetry_exporter(config, None) as exporter:
             positions = exporter._processor_names
 
-        assert "grid_trace_contributions" in positions
+        assert "trace_contributions" in positions
         assert "langfuse_trace_attributes" not in positions

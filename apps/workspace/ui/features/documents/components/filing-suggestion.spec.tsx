@@ -9,7 +9,7 @@ import {
   proposalBase,
   resetKit,
   useFakeStream,
-} from '@/features/grid-cards/components/proposal-test-kit'
+} from '@/features/cards/components/proposal-test-kit'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import { FilingSuggestionsProvider, FilingSuggestionSlot, folderLeaf, useFilingHighlighted } from './filing-suggestion'
 import { FileCard } from './file-card'
@@ -126,7 +126,7 @@ describe('FilingChip', () => {
     renderSlot(current)
     const newChip = screen.getByRole('button', { name: 'Filing suggestion: Korrespondenz' })
     expect(within(newChip).getByText('new')).toBeInTheDocument()
-    expect(newChip.querySelector('[data-slot="piloti-glyph"]')?.className).toContain('shrink-0')
+    expect(newChip.querySelector('[data-slot="agent-glyph"]')?.className).toContain('shrink-0')
   })
 
   it('draws nothing for a file Piloti has nothing to say about', () => {

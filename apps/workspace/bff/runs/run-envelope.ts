@@ -59,7 +59,7 @@ import type { TaskRun } from '@/lib/db/schema/task-model'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { isUuid } from '@/lib/ids'
 import { resolveRunContext, runRequestContextInput, warnIfRunEnvelopeLarge } from '@/lib/jobs/run-context'
-import { buildGridRequestContextEnvelope } from '@/lib/request-context'
+import { buildRequestContextEnvelope } from '@/lib/request-context'
 import * as taskRepository from '@/lib/tasks/repository'
 import { isActiveTaskRunStatus } from '@/lib/tasks/task-vocabulary'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
@@ -177,11 +177,11 @@ async function signFor(run: TaskRun, now: number): Promise<RunEnvelopeOutcome> {
 
   const subject = { organizationId: run.organizationId, projectId: run.projectId, userId: run.requesterUserId }
   const context = await resolveRunContext(subject, run.plan.prompt)
-  const { header, signature } = buildGridRequestContextEnvelope(
+  const { header, signature } = buildRequestContextEnvelope(
     runRequestContextInput(subject, context, conversationId, now),
     process.env.INTERNAL_API_TOKEN,
   )
-  // An unsigned envelope is no acting identity (`verifyGridRequestContextEnvelope`
+  // An unsigned envelope is no acting identity (`verifyRequestContextEnvelope`
   // refuses it). The route's own token check already failed closed without the
   // secret, so reaching this is a deployment fault, not a refusal.
   if (!signature) throw new Error('INTERNAL_API_TOKEN is not configured; cannot sign a run envelope')

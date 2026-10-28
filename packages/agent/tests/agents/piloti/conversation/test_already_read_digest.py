@@ -12,12 +12,12 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from aiq_agent.agents.piloti.conversation import ANSWER_LIFTS
-from aiq_agent.agents.piloti.conversation import CONVERSATION_SCOPED_FIELDS
-from aiq_agent.agents.piloti.conversation import TURN_SCOPED_FIELDS
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.conversation import ANSWER_LIFTS
+from agent.agents.piloti.conversation import CONVERSATION_SCOPED_FIELDS
+from agent.agents.piloti.conversation import TURN_SCOPED_FIELDS
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
 
 DIGEST = ["oib-rl_2_ausgabe_mai_2023.pdf | oib_knowledge | Seiten 12 | Punkte 3.5.2 | Turn 1"]
 
@@ -111,12 +111,12 @@ class TestDigestTravelsTheGraph:
             )
 
         async def deep(state):
-            from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
+            from agent.agents.deep_researcher.models import DeepResearchAgentState
 
             return DeepResearchAgentState(messages=list(state.messages) + [AIMessage(content="Bericht.")])
 
         async def clarifier(request):
-            from aiq_agent.agents.piloti.models import ClarifyResult
+            from agent.agents.piloti.models import ClarifyResult
 
             return ClarifyResult(research_context="Kontext", outcome="approved")
 

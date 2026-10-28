@@ -30,7 +30,7 @@ import { ConflictError, ForbiddenError, isAuthzRefusal, NotFoundError } from '@/
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { configuredAppOrigin } from '@/lib/app-origin'
-import { isPilotiAskEnabled } from '@/lib/authz/feature-flags'
+import { isAgentAskEnabled } from '@/lib/authz/feature-flags'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import {
   deleteConversationInOrg,
@@ -39,7 +39,7 @@ import {
   insertConversation,
   insertMessages,
 } from '@/lib/conversations/repository'
-import type { PilotiAskRow } from '@/lib/db/schema/piloti-asks'
+import type { AgentAskRow } from '@/lib/db/schema/piloti-asks'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { isUuid } from '@/lib/ids'
 import { memberReader } from '@/lib/documents/visibility'
@@ -104,7 +104,7 @@ const clip = (text: string, max: number) => {
 }
 
 function requireEnabled(session: AuthorizedSession): void {
-  if (isPilotiAskEnabled(session)) return
+  if (isAgentAskEnabled(session)) return
   throw new ForbiddenError('Asking Piloti from another agent is not enabled for this organization (piloti-ask).', {
     reason: 'piloti-ask-off',
   })
@@ -192,7 +192,7 @@ export function askMaxSeconds(env: Record<string, string | undefined> = process.
  */
 async function startTurn(
   session: AuthorizedSession,
-  ask: PilotiAskRow,
+  ask: AgentAskRow,
   projectId: string | null,
   question: string,
 ): Promise<AskEnd | 'ended' | null> {
@@ -246,7 +246,7 @@ async function startTurn(
 }
 
 /** Read the row until it is terminal or `deadline` passes; the last row read. */
-async function waitForEnd(row: PilotiAskRow, deadline: number): Promise<PilotiAskRow> {
+async function waitForEnd(row: AgentAskRow, deadline: number): Promise<AgentAskRow> {
   let current = row
   while (!isTerminalAskState(current.state) && Date.now() < deadline) {
     await sleep(Math.min(POLL_MS, Math.max(0, deadline - Date.now())))
@@ -260,7 +260,7 @@ async function waitForEnd(row: PilotiAskRow, deadline: number): Promise<PilotiAs
  * ({@link askMaxSeconds}): its turn's outcome notice never arrived (a replica
  * died mid-turn), and without this the ask would read `working` forever.
  */
-async function expireIfLost(row: PilotiAskRow, now = Date.now()): Promise<PilotiAskRow> {
+async function expireIfLost(row: AgentAskRow, now = Date.now()): Promise<AgentAskRow> {
   if (isTerminalAskState(row.state)) return row
   const maxSeconds = askMaxSeconds()
   if (now - new Date(row.createdAt).getTime() < maxSeconds * 1_000) return row
@@ -273,7 +273,7 @@ async function expireIfLost(row: PilotiAskRow, now = Date.now()): Promise<Piloti
 }
 
 /** The view of `row` as its asker reads it: the answer once completed, and what Piloti filed meanwhile. */
-async function viewOf(session: AuthorizedSession, row: PilotiAskRow): Promise<AskView> {
+async function viewOf(session: AuthorizedSession, row: AgentAskRow): Promise<AskView> {
   const conversation = await findConversationInOrg(row.conversationId, row.organizationId)
   const question = await findMessageInConversation(row.conversationId, row.id)
   let answer: AskView['answer'] = null
@@ -313,7 +313,7 @@ async function projectValuesFor(
 }
 
 /** The parts of a view the row alone answers. */
-function baseView(row: PilotiAskRow, projectId: string | null, question: string | null): AskView {
+function baseView(row: AgentAskRow, projectId: string | null, question: string | null): AskView {
   const terminal = isTerminalAskState(row.state)
   return {
     id: row.id,
@@ -339,7 +339,7 @@ function baseView(row: PilotiAskRow, projectId: string | null, question: string 
  */
 async function endUnstarted(
   session: AuthorizedSession,
-  ask: PilotiAskRow,
+  ask: AgentAskRow,
   thread: { projectId: string | null; created: boolean },
   question: string,
   end: AskEnd,
@@ -358,7 +358,7 @@ async function endUnstarted(
  * with its reason, and leaves nothing in the person's conversations; a refusal
  * of the caller (the switch, the project) throws.
  */
-export async function askPiloti(
+export async function askAgent(
   session: AuthorizedSession,
   input: CreateAskRequest,
   options: { waitMs?: number } = {},
@@ -400,7 +400,7 @@ export async function askPiloti(
 }
 
 /** The asker's ask, or 404: nobody else reads it, the conversation's sharing aside. */
-async function requireOwnAsk(session: AuthorizedSession, id: string): Promise<PilotiAskRow> {
+async function requireOwnAsk(session: AuthorizedSession, id: string): Promise<AgentAskRow> {
   // An id of another shape names no ask: the same answer as one that is not the caller's.
   if (!isUuid(id)) throw new NotFoundError('Ask not found')
   const row = await findAsk(session.organizationId, id)
@@ -416,7 +416,7 @@ export async function getAsk(session: AuthorizedSession, id: string, waitSeconds
 }
 
 /** Send the stop for the ask's turn. Never throws: a deployment that cannot reach the chat service is `unavailable`. */
-async function stopTurn(row: PilotiAskRow): Promise<HeadlessCancelOutcome> {
+async function stopTurn(row: AgentAskRow): Promise<HeadlessCancelOutcome> {
   const target = socketTarget(row.conversationId)
   if ('unavailable' in target) return { kind: 'unavailable', reason: target.unavailable }
   return cancelHeadlessTurn({

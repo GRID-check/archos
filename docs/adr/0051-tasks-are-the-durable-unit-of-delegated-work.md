@@ -259,4 +259,4 @@ message, and the 404 that keeps the old path alive), `lib/tasks/task-thread.spec
   publish door), ADR-0055 (one HTTP surface per primitive), the
   agent-authored-documents design (decision 10),
   `docs/roadmap/agentic-workspace-architecture.md` §6 and Loop C, and
-  `docs/roadmap/piloti-writes-artifacts-and-approval.md` §5.
+  `docs/roadmap/agent-writes-artifacts-and-approval.md` §5.

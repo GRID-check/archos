@@ -12,7 +12,7 @@
 --
 -- Tables in jobs:
 --   - job_info      — NAT JobStore metadata (status, timestamps, expiry)
---   - job_access    — AIQ-owned job ownership/access control metadata
+--   - job_access    — agent-host-owned job ownership/access control metadata
 --   - job_events    — SSE streaming events and job event persistence
 --   - document_metadata — Per-document metadata: summary, tags, doc_class,
 --                     display_title (collection + filename keyed; was `summaries`)

@@ -409,7 +409,7 @@ const ITEMS: InboxItemView[] = [
   // mark in which document, why it did not work (the failure's `variant`),
   // and what to do now. The excerpt is what the mark says, or Piloti's question.
   {
-    id: 'i-piloti-failed',
+    id: 'i-agent-failed',
     type: 'piloti.work_failed',
     state: 'unread',
     archived: false,
@@ -431,7 +431,7 @@ const ITEMS: InboxItemView[] = [
     updatedAt: ago(3),
   },
   {
-    id: 'i-piloti-asks',
+    id: 'i-agent-asks',
     type: 'piloti.asks_you',
     state: 'unread',
     archived: false,
@@ -454,7 +454,7 @@ const ITEMS: InboxItemView[] = [
     updatedAt: ago(5),
   },
   {
-    id: 'i-piloti-done',
+    id: 'i-agent-done',
     type: 'piloti.work_done',
     state: 'read',
     archived: false,
@@ -670,7 +670,7 @@ const ITEMS: InboxItemView[] = [
     updatedAt: ago(180),
   },
   {
-    id: 'i-piloti-proposal',
+    id: 'i-agent-proposal',
     type: 'piloti.proposal_waiting',
     state: 'unread',
     archived: false,

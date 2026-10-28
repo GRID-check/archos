@@ -67,7 +67,7 @@ import {
 } from '@/lib/api/errors'
 import { captureServer, type ServerEvent } from '@/lib/analytics/posthog-server'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { DocumentAnnotationReplyRow, DocumentAnnotationRow, PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { DocumentAnnotationReplyRow, DocumentAnnotationRow, AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { canWriteDocument } from '@/lib/documents/can-write'
@@ -113,13 +113,13 @@ import {
   type MayOpen,
 } from './attention'
 import { auditMarkDecided } from './mark-audit'
-import { keepMentions, mentionsPiloti, newlyMentioned, noLongerMentioned } from './mentions'
+import { keepMentions, mentionsAgent, newlyMentioned, noLongerMentioned } from './mentions'
 import { enforceMentionBounds } from '@/lib/mentions/service'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
 import { delegationEventId, wakeTurnId } from './wake-ids'
 import { findWake } from './wake-repository'
-import { latestWakesFor, pilotiWorkOf } from './piloti-work'
+import { latestWakesFor, agentWorkOf } from './agent-work'
 import { wakeOfReply, wakeSpansFor, type WakeSpan } from './wake-attribution'
 import {
   auditDeletedWithMark,
@@ -138,10 +138,10 @@ import {
   MAX_ANNOTATIONS_PER_DOCUMENT,
   MAX_PROPOSALS_PER_CALL,
   MAX_REPLIES_PER_ANNOTATION,
-  pilotiRepliedSince,
+  agentRepliedSince,
   REPLY_MARK_CLOSED_REASON,
   REPLY_TAKEN_UP_REASON,
-  replyIsForPiloti,
+  replyIsForAgent,
   isLive,
   updateAnnotationRequestSchema,
   updateReplyRequestSchema,
@@ -158,7 +158,7 @@ import {
   type CreateReplyRequest,
   type InternalAnnotation,
   type MarkMention,
-  type PilotiWakeTrigger,
+  type AgentWakeTrigger,
   type UpdateAnnotationRequest,
   type UpdateReplyRequest,
   type WakeOutcome,
@@ -171,7 +171,7 @@ export interface AnnotationActor {
 }
 
 const PERSON: AnnotationActor = { kind: 'person' }
-export const PILOTI: AnnotationActor = { kind: 'piloti' }
+export const AGENT: AnnotationActor = { kind: 'piloti' }
 
 /**
  * Whether this person may delete the mark: one they set themselves, or one
@@ -248,7 +248,7 @@ function toView(
   writable: boolean,
   names: Names,
   wakes: readonly WakeSpan[] = [],
-  work: ReadonlyMap<string, PilotiWakeRow> = new Map(),
+  work: ReadonlyMap<string, AgentWakeRow> = new Map(),
   linked: LinkedDocuments = new Map(),
   carryWay: CarryWay | null = null
 ): AnnotationView {
@@ -292,7 +292,7 @@ function toView(
     delegatedByName: nameOf(names, record.delegatedBy),
     delegatedAt: record.delegatedAt ? record.delegatedAt.toISOString() : null,
     replies: record.replies.map((reply) => toReplyView(reply, names, wakes)),
-    pilotiWork: wake ? pilotiWorkOf(wake, nameOf(names, wake.actorUserId)) : null,
+    pilotiWork: wake ? agentWorkOf(wake, nameOf(names, wake.actorUserId)) : null,
     carriedFrom: linkView(record.carriedFrom, linked),
     carriedTo: linkView(record.carriedTo, linked),
     carryTarget: writable ? carryTargetOf(record, doc, carryWay) : null,
@@ -614,7 +614,7 @@ export async function proposeAnnotations(
   documentId: string,
   proposals: readonly AnnotationProposal[]
 ): Promise<{ annotations: AnnotationView[] }> {
-  return insertPilotiMarks(session, documentId, proposals, null)
+  return insertAgentMarks(session, documentId, proposals, null)
 }
 
 /**
@@ -627,10 +627,10 @@ export async function setAnnotationsForAsker(
   documentId: string,
   marks: readonly AnnotationProposal[]
 ): Promise<{ annotations: AnnotationView[] }> {
-  return insertPilotiMarks(session, documentId, marks, session.userId)
+  return insertAgentMarks(session, documentId, marks, session.userId)
 }
 
-async function insertPilotiMarks(
+async function insertAgentMarks(
   session: AuthorizedSession,
   documentId: string,
   proposals: readonly AnnotationProposal[],
@@ -651,7 +651,7 @@ async function insertPilotiMarks(
     marks: parsed.map(toMark),
   }).catch(limitReached)
   const ids = rows.map((row) => row.id)
-  announce(session, doc.id, ids, 'created', PILOTI)
+  announce(session, doc.id, ids, 'created', AGENT)
   for (const row of rows) {
     markEvent(session, 'annotation_created', doc.id, { author_kind: 'piloti', kind: row.kind, status: row.status })
   }
@@ -769,7 +769,7 @@ function traceMentioned(
     onMarkMentioned({
       ...markRefOf(session, doc, mark),
       actorUserId: session.userId,
-      byPiloti: false,
+      byAgent: false,
       markText: text,
       mentioned: told,
       text,
@@ -830,7 +830,7 @@ function traceAssigned(
     onAssigneeChanged({
       ...markRefOf(session, doc, mark),
       actorUserId: session.userId,
-      byPiloti: actor.kind === 'piloti',
+      byAgent: actor.kind === 'piloti',
       markText: mark.body,
       previousAssigneeUserId: previous,
       assigneeUserId: mark.assigneeUserId,
@@ -846,7 +846,7 @@ function traceRedated(session: AuthorizedSession, doc: Document, mark: ChangedMa
     onDueChanged({
       ...markRefOf(session, doc, mark),
       actorUserId: session.userId,
-      byPiloti: actor.kind === 'piloti',
+      byAgent: actor.kind === 'piloti',
       markText: mark.body,
       assigneeUserId: mark.assigneeUserId,
       dueOn: mark.dueOn,
@@ -893,7 +893,7 @@ function traceChange(
     onMarkMoved({
       ...markRefOf(session, doc, existing),
       actorUserId: session.userId,
-      byPiloti: actor.kind === 'piloti',
+      byAgent: actor.kind === 'piloti',
       markText: after.body,
       move,
       mark: existing,
@@ -1214,7 +1214,7 @@ function auditHeldWake(
   session: AuthorizedSession,
   documentId: string,
   annotationId: string,
-  trigger: PilotiWakeTrigger,
+  trigger: AgentWakeTrigger,
   wake: EnqueuedWake | null
 ): void {
   if (wake?.outcome !== 'suppressed') return
@@ -1364,13 +1364,13 @@ export async function updateAnnotationForAsker(
       ...(change.body !== undefined && { body: change.body }),
       expectedStatus: change.expectedStatus ?? before.status,
     },
-    PILOTI
+    AGENT
   )
   const changed = changedFields(before, after)
   if (changed.length === 0) return { before, after, changed }
   // The note says what the change did; the change already told whoever it
   // concerns, exactly as the asker's own PATCH would, so the note tells nobody twice.
-  await postReply(session, doc.id, annotationId, { body: noteBody }, PILOTI)
+  await postReply(session, doc.id, annotationId, { body: noteBody }, AGENT)
   return { before, after: await viewOf(session, doc, annotationId), changed }
 }
 
@@ -1397,7 +1397,7 @@ export async function replyToAnnotation(
     onMarkReplied({
       ...markRefOf(session, doc, existing),
       actorUserId: session.userId,
-      byPiloti: actor.kind === 'piloti',
+      byAgent: actor.kind === 'piloti',
       markText: existing.body,
       mark: existing,
       replyText: reply.body,
@@ -1430,8 +1430,8 @@ async function postReply(
   if (!existing) throw new NotFoundError()
   // Piloti mentions nobody: only a person's reply carries what they picked.
   const mentions = actor.kind === 'person' ? await keepMentions(session, doc, body, picked ?? [], { piloti: true }) : []
-  const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId), mentionsPiloti(mentions))
-  const addresses = actor.kind === 'person' && (Boolean(addressesPiloti) || mentionsPiloti(mentions))
+  const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId), mentionsAgent(mentions))
+  const addresses = actor.kind === 'person' && (Boolean(addressesPiloti) || mentionsAgent(mentions))
   const trigger = replyTrigger(existing, { authorKind: actor.kind, addressesPiloti: addresses })
   const enabled = trigger !== null && wakesEnabled(session)
   const enqueued: { wake: EnqueuedWake | null } = { wake: null }
@@ -1522,24 +1522,24 @@ async function removeReply(
 }
 
 /** Wakes that took a reply up: queued, running, or run to an answer or a stop (`listAnsweringWakes`' set). */
-const TAKEN_UP_WAKES: ReadonlySet<PilotiWakeRow['status']> = new Set(['queued', 'started', 'answered', 'stopped'])
+const TAKEN_UP_WAKES: ReadonlySet<AgentWakeRow['status']> = new Set(['queued', 'started', 'answered', 'stopped'])
 
 /**
  * Whether Piloti has taken a reply up, so its words are no longer its
- * author's alone to change: the reply was for Piloti ({@link replyIsForPiloti})
+ * author's alone to change: the reply was for Piloti ({@link replyIsForAgent})
  * and Piloti wrote in the thread after it, or the server's wake of it
  * (`wakeTurnId(reply.id)`, enqueued in the reply's own transaction) is queued,
  * running or ran. A wake a cap held, or one refused or failed before it
  * answered, took nothing up. With wakes off the browser asked Piloti, and only
  * Piloti's answer in the thread says so.
  */
-async function pilotiTookUp(
+async function agentTookUp(
   session: AuthorizedSession,
   mark: AnnotationRecord,
   reply: DocumentAnnotationReplyRow
 ): Promise<boolean> {
-  if (!replyIsForPiloti(mark, { authorKind: reply.authorKind, addressesPiloti: reply.addressesAgent })) return false
-  if (pilotiRepliedSince(mark.replies, reply)) return true
+  if (!replyIsForAgent(mark, { authorKind: reply.authorKind, addressesPiloti: reply.addressesAgent })) return false
+  if (agentRepliedSince(mark.replies, reply)) return true
   const wake = await findWake(session.organizationId, wakeTurnId(reply.id))
   return wake !== null && TAKEN_UP_WAKES.has(wake.status)
 }
@@ -1568,7 +1568,7 @@ async function ownReplyOf(
       reason: REPLY_MARK_CLOSED_REASON,
     })
   }
-  if (await pilotiTookUp(session, existing, reply)) {
+  if (await agentTookUp(session, existing, reply)) {
     throw new ConflictError('Piloti has taken this answer up: it stays as it was. Write a new one.', {
       reason: REPLY_TAKEN_UP_REASON,
     })
@@ -1600,7 +1600,7 @@ export async function editReply(
   const { body, mentions: picked } = updateReplyRequestSchema.parse(input)
   const { doc, existing, reply } = await ownReplyOf(session, documentId, annotationId, replyId)
   const mentions = await keepMentions(session, doc, body, picked ?? reply.mentions, {
-    piloti: mentionsPiloti(reply.mentions),
+    piloti: mentionsAgent(reply.mentions),
   })
   const mentioned = await spendMentions(session, newlyMentioned(mentions, reply.mentions, session.userId), false)
   const others = existing.replies.filter((candidate) => candidate.id !== reply.id)

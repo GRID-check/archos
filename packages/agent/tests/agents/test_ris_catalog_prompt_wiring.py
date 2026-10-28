@@ -13,16 +13,16 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from aiq_agent.agents.deep_researcher.factory import DeepResearchGraphContext
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.common.norm_registry import ENV_NORMS_DIR
-from aiq_agent.common.norm_registry import reset_registry_cache
-from aiq_agent.common.prompt_utils import render_prompt_template
+from agent.agents.deep_researcher.factory import DeepResearchGraphContext
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.common.norm_registry import ENV_NORMS_DIR
+from agent.common.norm_registry import reset_registry_cache
+from agent.common.prompt_utils import render_prompt_template
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-PILOTI_TEMPLATE = REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents" / "piloti" / "prompts" / "piloti.j2"
+CHAT_TEMPLATE = REPO_ROOT / "packages" / "agent" / "src" / "agent" / "agents" / "piloti" / "prompts" / "piloti.j2"
 DEEP_TEMPLATE = (
-    REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents" / "deep_researcher" / "prompts" / "researcher.j2"
+    REPO_ROOT / "packages" / "agent" / "src" / "agent" / "agents" / "deep_researcher" / "prompts" / "researcher.j2"
 )
 
 _HEADING = "## Normenregister (verifizierte Normen, Rang und Rolle annotiert)"
@@ -87,10 +87,10 @@ def test_the_deep_template_omits_the_registry_block_when_absent():
     assert _HEADING not in rendered
 
 
-def test_piloti_carries_no_catalog_variable_at_all():
+def test_chat_carries_no_catalog_variable_at_all():
     """Not "renders empty": the variable is gone from the template, so a
     caller cannot reintroduce 1,500 tokens by passing one."""
-    source = PILOTI_TEMPLATE.read_text(encoding="utf-8")
+    source = CHAT_TEMPLATE.read_text(encoding="utf-8")
 
     assert "ris_catalog" not in source
     assert _HEADING not in source

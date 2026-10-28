@@ -2,7 +2,7 @@
 
 /**
  * Dev preview — every card, drawn the way the chat draws it: through A2UI
- * (`GridCardItem` → `A2uiCard` → `A2uiSurface` on the Piloti catalog,
+ * (`AnswerCardItem` → `A2uiCard` → `A2uiSurface` on the Piloti catalog,
  * ADR-0065), plus compositions an answer may emit.
  *
  * Each section's `data-a2ui-surface` marks a card A2UI drew; a section without
@@ -16,14 +16,14 @@
 import { notFound } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
-import { GridCardItem } from '@/features/grid-cards/components/GridCards'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
-import { validateGridCards, type GridCard } from '@/shared/cards/schemas'
+import { AnswerCardItem } from '@/features/cards/components/AnswerCards'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
+import { validateAnswerCards, type AnswerCard } from '@/shared/cards/schemas'
 
 const OIB2 = { document: 'OIB-Richtlinie 2', section: 'Tabelle 1b', edition: 'Ausgabe Mai 2023' }
 
 /** Compositions: the shapes ADR-0065 lets an answer build. Values show form only. */
-const COMPOSITIONS = validateGridCards([
+const COMPOSITIONS = validateAnswerCards([
   {
     type: 'surface',
     title: 'Zweiter Fluchtweg — zwei Varianten',
@@ -97,9 +97,9 @@ const COMPOSITIONS = validateGridCards([
       },
     ],
   },
-]).filter((card): card is GridCard => Boolean(card))
+]).filter((card): card is AnswerCard => Boolean(card))
 
-const CARDS = Object.entries(CARD_PREVIEW_FIXTURES) as [string, GridCard][]
+const CARDS = Object.entries(CARD_PREVIEW_FIXTURES) as [string, AnswerCard][]
 
 export default function A2uiPreviewPage() {
   if (process.env.NODE_ENV !== 'development') notFound()
@@ -110,13 +110,13 @@ export default function A2uiPreviewPage() {
         {COMPOSITIONS.map((card, index) => (
           <section key={`composition-${index}`} data-card={`composition_${index}`} className="flex flex-col gap-2">
             <h2 className="text-muted-foreground font-mono text-xs">composition {index + 1}</h2>
-            <GridCardItem card={card} index={index} />
+            <AnswerCardItem card={card} index={index} />
           </section>
         ))}
         {CARDS.map(([type, card], index) => (
           <section key={type} data-card={type} className="flex flex-col gap-2">
             <h2 className="text-muted-foreground font-mono text-xs">{type}</h2>
-            <GridCardItem card={card} index={index + COMPOSITIONS.length} />
+            <AnswerCardItem card={card} index={index + COMPOSITIONS.length} />
           </section>
         ))}
       </main>

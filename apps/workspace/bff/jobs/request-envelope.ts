@@ -5,7 +5,7 @@
  * project access. This tier does, and signs what it decided: the project it
  * checked `CHAT_PERMISSIONS` on and the conversation it checked `viewer` on. The
  * backend then lets the caller reach a job that lies inside that scope, in the
- * same organization (`aiq_api/jobs/access.py`): read and steer it through the
+ * same organization (`agent_host/jobs/access.py`): read and steer it through the
  * project, only read it through the conversation.
  *
  * Every producer of such a request builds its envelope here: the async-job proxy
@@ -14,12 +14,12 @@
  * refuses an envelope without one as a grant.
  */
 
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import type { ScopedCollection } from '@/lib/retrieval-scope/collection-scope'
 import {
-  buildGridRequestContextWireHeaders,
+  buildRequestContextWireHeaders,
   requesterOf,
-  type GridRequestContextInput,
+  type RequestContextInput,
 } from '@/lib/request-context'
 
 /**
@@ -49,7 +49,7 @@ export interface AuthorizedJobScope {
  * project's Bundesland). A read or a control has no run to configure.
  */
 export type JobSubmitContext = Pick<
-  GridRequestContextInput,
+  RequestContextInput,
   'modelOverrides' | 'orgInstructions' | 'federalState'
 >
 
@@ -58,7 +58,7 @@ export type JobSubmitContext = Pick<
  * signed envelope, stamped with the time it was minted.
  */
 export function signJobRequestContext(
-  session: GridSession | null,
+  session: UserSession | null,
   scope: AuthorizedJobScope,
   submit: JobSubmitContext = {},
   now: number = Date.now()
@@ -67,7 +67,7 @@ export function signJobRequestContext(
   // collections (`derive_project_collection`), so withholding the project means
   // withholding those too, not only the id.
   const signsProject = !scope.projectReadOnly
-  const input: GridRequestContextInput = {
+  const input: RequestContextInput = {
     organizationId: session?.organizationId ?? null,
     userId: session?.userId ?? null,
     projectId: signsProject ? (scope.projectId ?? null) : null,
@@ -79,5 +79,5 @@ export function signJobRequestContext(
     requester: requesterOf(session),
     ...submit,
   }
-  return buildGridRequestContextWireHeaders(input, process.env.INTERNAL_API_TOKEN)
+  return buildRequestContextWireHeaders(input, process.env.INTERNAL_API_TOKEN)
 }

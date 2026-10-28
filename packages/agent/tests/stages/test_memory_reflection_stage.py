@@ -12,16 +12,16 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common.canned_replies import GENERIC_ERROR_MESSAGE
-from aiq_agent.memory.restriction import RestrictionEvidence
-from aiq_agent.stages import get_stage
-from aiq_agent.stages.flags import legacy_enabled_stages
-from aiq_agent.stages.flags import stages_for_flag_slug
-from aiq_agent.stages.memory_reflection import MEMORY_REFLECTION
-from aiq_agent.stages.memory_reflection import MemoryReflectionPayload
-from aiq_agent.stages.memory_reflection import matches_escalation_keywords
-from aiq_agent.stages.spec import StageContext
-from aiq_agent.stages.spec import TurnFacts
+from agent.common.canned_replies import GENERIC_ERROR_MESSAGE
+from agent.memory.restriction import RestrictionEvidence
+from agent.stages import get_stage
+from agent.stages.flags import legacy_enabled_stages
+from agent.stages.flags import stages_for_flag_slug
+from agent.stages.memory_reflection import MEMORY_REFLECTION
+from agent.stages.memory_reflection import MemoryReflectionPayload
+from agent.stages.memory_reflection import matches_escalation_keywords
+from agent.stages.spec import StageContext
+from agent.stages.spec import TurnFacts
 
 
 def _facts(**overrides) -> TurnFacts:
@@ -137,14 +137,14 @@ class TestGate:
 class TestHandler:
     @pytest.mark.asyncio
     async def test_nothing_durable_is_an_empty_payload_not_an_invention(self):
-        with patch("aiq_agent.memory.reflection.run_memory_reflection", return_value=[]) as run:
+        with patch("agent.memory.reflection.run_memory_reflection", return_value=[]) as run:
             payload = await MEMORY_REFLECTION.handler(StageContext(facts=_facts(), llm=object()))
         assert payload is None
         assert run.await_count == 1
 
     @pytest.mark.asyncio
     async def test_written_items_are_reported_as_the_payload(self):
-        with patch("aiq_agent.memory.reflection.run_memory_reflection", return_value=_WRITTEN):
+        with patch("agent.memory.reflection.run_memory_reflection", return_value=_WRITTEN):
             payload = await MEMORY_REFLECTION.handler(StageContext(facts=_facts(), llm=object()))
         assert payload == {"items": _WRITTEN}
         assert MemoryReflectionPayload.model_validate(payload).items[0].kind == "constraint"
@@ -158,7 +158,7 @@ class TestHandler:
         exists to delete — the poll would come back, wearing a frame as a
         trigger. The writer had the words in hand; it sends them.
         """
-        with patch("aiq_agent.memory.reflection.run_memory_reflection", return_value=_WRITTEN):
+        with patch("agent.memory.reflection.run_memory_reflection", return_value=_WRITTEN):
             payload = await MEMORY_REFLECTION.handler(StageContext(facts=_facts(), llm=object()))
         items = MemoryReflectionPayload.model_validate(payload).items
         assert [item.content for item in items] == [row["content"] for row in _WRITTEN]
@@ -167,7 +167,7 @@ class TestHandler:
     @pytest.mark.asyncio
     async def test_the_pass_sees_the_digest_the_agent_saw_this_turn(self):
         facts = _facts(memory_digest='- [decision | high | verified] "Flachdach"')
-        with patch("aiq_agent.memory.reflection.run_memory_reflection", return_value=[]) as run:
+        with patch("agent.memory.reflection.run_memory_reflection", return_value=[]) as run:
             await MEMORY_REFLECTION.handler(StageContext(facts=facts, llm="the-llm"))
         kwargs = run.await_args.kwargs
         assert kwargs["memory_digest"] == facts.memory_digest
@@ -220,6 +220,6 @@ class TestRestrictedContent:
             seen.update(kwargs)
             return []
 
-        with patch("aiq_agent.memory.reflection.run_memory_reflection", fake_reflection):
+        with patch("agent.memory.reflection.run_memory_reflection", fake_reflection):
             await MEMORY_REFLECTION.handler(StageContext(facts=_facts(restriction=self._EVIDENCE), llm=object()))
         assert seen["restriction"] is self._EVIDENCE

@@ -18,7 +18,7 @@
 
 import { NextResponse } from 'next/server'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { isAuthzRefusal } from '@/lib/api/errors'
 import { isAuthRequired } from '@/lib/backend-proxy'
@@ -29,7 +29,7 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
     const projectId = searchParams.get('projectId') || undefined
     const conversationId = searchParams.get('conversationId') || undefined
 
-    const session = await getGridSession()
+    const session = await getUserSession()
 
     if (isAuthRequired() && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -3,7 +3,7 @@
  */
 /**
  * The card-decision PATCH is the server half of interactive-card persistence
- * (see features/grid-cards/card-decision.ts). Two things must hold: the caller is
+ * (see features/cards/card-decision.ts). Two things must hold: the caller is
  * authorized as a `collaborator` on the conversation before the message row is
  * touched — answering a card is contributing, and `messages` has no organization
  * column of its own — and only decisions from the closed union can be written,

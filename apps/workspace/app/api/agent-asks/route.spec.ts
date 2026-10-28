@@ -29,14 +29,14 @@ vi.mock('@/lib/limits/enforce', async (original) => ({
   ...(await original<typeof import('@/lib/limits/enforce')>()),
   enforceLimit: vi.fn(async () => undefined),
 }))
-vi.mock('@/lib/agent-asks/service', () => ({ askPiloti: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
+vi.mock('@/lib/agent-asks/service', () => ({ askAgent: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
 
 import { UnauthorizedError } from '@/lib/api/errors'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { CHAT_TURN_LIMIT } from '@/lib/limits/catalog'
 import { enforceLimit } from '@/lib/limits/enforce'
 import type { AskView } from '@/lib/agent-asks/ask-wire'
-import { askPiloti, cancelAsk, getAsk } from '@/lib/agent-asks/service'
+import { askAgent, cancelAsk, getAsk } from '@/lib/agent-asks/service'
 import { POST as cancel } from './[id]/cancel/route'
 import { GET as read } from './[id]/route'
 import { POST as ask } from './route'
@@ -74,21 +74,21 @@ beforeEach(() => {
 
 describe('POST /api/agent-asks', () => {
   it('answers 202 while Piloti works, so the agent polls', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view())
+    vi.mocked(askAgent).mockResolvedValue(view())
     const response = await ask(post({ question: 'Welche Fluchtweglänge gilt?' }))
     expect(response.status).toBe(202)
     expect(await response.json()).toMatchObject({ id: ID, state: 'working', pollAfterSeconds: 10 })
-    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?' })
+    expect(askAgent).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?' })
   })
 
   it('answers 200 with the answer once the ask ended', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'completed', answer: { messageId: 'm', text: '40 m.' } }))
+    vi.mocked(askAgent).mockResolvedValue(view({ state: 'completed', answer: { messageId: 'm', text: '40 m.' } }))
     const response = await ask(post({ question: 'Welche Fluchtweglänge gilt?' }))
     expect(response.status).toBe(200)
   })
 
   it('charges the chat-turn budget: an ask is a turn', async () => {
-    vi.mocked(askPiloti).mockResolvedValue(view())
+    vi.mocked(askAgent).mockResolvedValue(view())
     await ask(post({ question: 'Hallo?' }))
     expect(enforceLimit).toHaveBeenCalledWith(CHAT_TURN_LIMIT, expect.anything())
   })
@@ -101,14 +101,14 @@ describe('POST /api/agent-asks', () => {
   ])('refuses %s with 400, before the service runs', async (_why, body) => {
     const response = await ask(post(body))
     expect(response.status).toBe(400)
-    expect(askPiloti).not.toHaveBeenCalled()
+    expect(askAgent).not.toHaveBeenCalled()
   })
 
   it('refuses a caller without a session', async () => {
     vi.mocked(requireAuthorizedSession).mockRejectedValueOnce(new UnauthorizedError())
     const response = await ask(post({ question: 'Hallo?' }))
     expect(response.status).toBe(401)
-    expect(askPiloti).not.toHaveBeenCalled()
+    expect(askAgent).not.toHaveBeenCalled()
   })
 })
 

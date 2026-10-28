@@ -6,8 +6,8 @@ retrieval returned did the answer actually cite, and which were ignored?
 
 from __future__ import annotations
 
-from aiq_agent.common.citation_events import CitationEvent
-from aiq_agent.common.citation_events import build_turn_events
+from agent.common.citation_events import CitationEvent
+from agent.common.citation_events import build_turn_events
 
 
 def _precision(events: list[CitationEvent]) -> CitationEvent:

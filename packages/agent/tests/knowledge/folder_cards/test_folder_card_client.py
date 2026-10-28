@@ -14,9 +14,9 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge.folder_cards import client
-from aiq_agent.knowledge.folder_cards.build import KeyFact
+from agent.common import bff_http
+from agent.knowledge.folder_cards import client
+from agent.knowledge.folder_cards.build import KeyFact
 
 
 def _validator(schema, name):

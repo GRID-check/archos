@@ -8,11 +8,11 @@ carry it to the wire for the "Gelesen, nicht zitiert" disclosure.
 
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.piloti.answer_pipeline import CitedSource
-from aiq_agent.agents.piloti.answer_pipeline import FinalAnswer
-from aiq_agent.agents.piloti.ledger import assemble_result
-from aiq_agent.agents.piloti.ledger import read_but_uncited
-from aiq_agent.citations.entries import SourceEntry
+from agent.agents.piloti.answer_pipeline import CitedSource
+from agent.agents.piloti.answer_pipeline import FinalAnswer
+from agent.agents.piloti.ledger import assemble_result
+from agent.agents.piloti.ledger import read_but_uncited
+from agent.citations.entries import SourceEntry
 
 
 def _kb(

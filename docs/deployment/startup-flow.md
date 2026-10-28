@@ -41,22 +41,22 @@ docker compose up -d --build
          │      • Container exits (one-shot)
          │
          ├── 5. chat starts (depends on postgres + seaweedfs healthy)
-         │      • ENTRYPOINT: python /app/apps/backend/entrypoint.py
+         │      • ENTRYPOINT: python /app/apps/agent-host/entrypoint.py
          │      │
          │      │   entrypoint.py:
          │      │   1. Reads CONFIG_FILE, HOST, PORT
-         │      │   2. Starts python /app/apps/backend/start_web.py as subprocess
+         │      │   2. Starts python /app/apps/agent-host/start_web.py as subprocess
          │      │
          │      │   start_web.py:
          │      │   1. Configures logging (LOG_LEVEL, format)
-         │      │   2. Registers Grid telemetry `_type`s, then load_config()
+         │      │   2. Registers the telemetry `_type`s, then load_config()
          │      │      • otelcollector_logs / otelcollector_redaction register at
          │      │        import; without that, load_config ValidationError's and
          │      │        the pod CrashLoopBackOffs
          │      │      • Validates with Pydantic
-         │      │   3. Sets NAT_CONFIG_FILE env var for NAT's FastAPI app
+         │      │   3. Sets NAT_CONFIG_FILE env var for the agent runtime's FastAPI app (`nat`, a third-party library)
          │      │   4. Reads runner_class from config.general.front_end
-         │      │      • Sets NAT_FRONT_END_WORKER (e.g., aiq_api.plugin.AIQAPIWorker)
+         │      │      • Sets NAT_FRONT_END_WORKER (e.g., agent_host.plugin.AgentHostWorker)
          │      │   5. Runs uvicorn directly:
          │      │      • App: nat.front_ends.fastapi.main:get_app (factory)
          │      │      • Host: 0.0.0.0, Port: 8000
@@ -67,7 +67,7 @@ docker compose up -d --build
          │      │   • /api/v1/collections/* (CRUD)
          │      │   • /api/v1/documents/* (management)
          │      │   • /api/v1/ingest/* (file ingestion)
-         │      └── AIQ API worker starts (async job processing with SSE)
+         │      └── agent-host API worker starts (async job processing with SSE)
          │
          ├── 6. migrate runs to completion (depends on postgres healthy)
          │      • One-shot (restart: "no"); everything below waits for it to exit 0

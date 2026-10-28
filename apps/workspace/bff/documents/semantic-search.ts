@@ -7,7 +7,7 @@ import 'server-only'
 import { getProjectFolderAccess } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getBackendUrl } from '@/lib/backend-proxy'
-import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
+import { buildRequestContextWireHeaders } from '@/lib/request-context'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import type { ProjectFactsWire, SearchBoostWire } from '@/lib/cross-project/project-facts-mirror'
 import { NotFoundError, UpstreamError } from '@/lib/api/errors'
@@ -75,7 +75,7 @@ export async function fetchGroupedSemanticHits(
 ): Promise<BackendSearchHit[]> {
   const unique = [...new Set(collections)]
   if (unique.length === 0) return []
-  const scopeHeaders = buildGridRequestContextWireHeaders(
+  const scopeHeaders = buildRequestContextWireHeaders(
     { collectionScope: unique },
     process.env.INTERNAL_API_TOKEN
   )
@@ -118,8 +118,8 @@ const GROUPED_SEARCH_MAX_FILES_PER_GROUP = 20
 /**
  * The most collections one backend search may name: `collections` is
  * `max_length=500` on both `GroupedDocumentSearchRequest`
- * (`aiq_api/models/requests.py`) and `SimilarPassagesRequest`
- * (`aiq_api/models/similar.py`). Past it the backend answers 422. A project
+ * (`agent_host/models/requests.py`) and `SimilarPassagesRequest`
+ * (`agent_host/models/similar.py`). Past it the backend answers 422. A project
  * brings its own collection and every restricted folder's the reader is
  * cleared for, so a page of projects can pass it.
  */
@@ -164,7 +164,7 @@ export interface GroupedSearchOptions {
   /**
    * Who asks, when the backend should trace the search itself: the workspace
    * search's call is a `retrieve.workspace_search` observation there, because
-   * no NAT run sees it. The cross-project lookup sends none: Piloti's
+   * no agent-runtime run sees it. The cross-project lookup sends none: Piloti's
    * `project_lookup` tool already traces it as `retrieve.project_lookup`.
    */
   purpose?: 'workspace_search'

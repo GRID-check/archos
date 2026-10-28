@@ -90,7 +90,7 @@ behavior with a warning):
    query has no case-law signal (VwGH, Erkenntnis, …), the tool returns the
    verified pointers directly — no HTTP call, no planner LLM.
 2. **`ris_catalog_lookup`**: explicit topic search in the catalog for the agent.
-3. **Prompt block**: `aiq_agent.common.norm_registry.render_block_for_prompt`
+3. **Prompt block**: `agent.common.norm_registry.render_block_for_prompt`
    renders the catalog — Bundesrecht lane, the project's own Bundesland lane
    (other states' law dropped), curated binding notes, and an OIB-corpus
    citation note — into Piloti's and the deep researcher's prompts.
@@ -123,7 +123,7 @@ uv run --no-project --with httpx --with pydantic --with beautifulsoup4 \
 
 1. Serves it from the **shared cache** when possible: the fetched full text is
    stored in the agent's fail-open Dragonfly/Redis cache
-   (`aiq_agent.common.cache`, ADR-0020), keyed by the document URL and
+   (`agent.common.cache`, ADR-0020), keyed by the document URL and
    `DOC_TEXT_VERSION` (bump it with any change to what `html_to_text` keeps),
    for `RIS_CACHE_TTL_DAYS` (default 7). URLs OGD-RIS states on its
    `ogd.ris.bka.gv.at` host are rewritten to `www.ris.bka.gv.at` first. A repeat of the same fetch — later in

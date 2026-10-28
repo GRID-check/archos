@@ -5,10 +5,10 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from aiq_agent.common.prompt_utils import PromptError
-from aiq_agent.common.prompt_utils import load_prompt
-from aiq_agent.common.prompt_utils import render_prompt_template
-from aiq_agent.common.source_kinds import Shelf
+from agent.common.prompt_utils import PromptError
+from agent.common.prompt_utils import load_prompt
+from agent.common.prompt_utils import render_prompt_template
+from agent.common.source_kinds import Shelf
 
 
 class TestLoadPrompt:
@@ -191,7 +191,7 @@ Description: {{ step.description }}
 
     def test_empty_docs_still_show_in_scope_empty_office_shelf(self, monkeypatch):
         """An authorized empty Büroablage must render as empty, not vanish."""
-        from aiq_agent.knowledge import inventory as inventory_mod
+        from agent.knowledge import inventory as inventory_mod
 
         monkeypatch.setattr(inventory_mod, "in_scope_shelves_from_context", lambda: [Shelf.OFFICE_SHELF, Shelf.BASE])
         rendered = render_prompt_template("{{ document_inventory }}", available_documents=[])

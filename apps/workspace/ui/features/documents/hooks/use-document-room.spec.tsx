@@ -33,7 +33,7 @@ function scriptedRoom() {
 }
 
 const ANNA = { peerId: 'peer_anna_0001', userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }
-const PILOTI = { peerId: 'piloti-run_42', userId: 'user_me', name: 'Piloti', kind: 'piloti' as const }
+const AGENT = { peerId: 'agent-run_42', userId: 'user_me', name: 'Piloti', kind: 'piloti' as const }
 
 const pointerPosts = (posts: RoomPost[]) => posts.filter((post) => post.cursor !== undefined || post.viewport)
 
@@ -47,7 +47,7 @@ describe('useDocumentRoom', () => {
     expect(room.posts.filter((post) => post.presence === 'here')).toHaveLength(1)
 
     // Piloti in the room is not company for the pointer: it reads the server's snapshot.
-    room.send({ kind: 'event', event: { kind: 'presence', peer: PILOTI, state: 'here', ttlMs: 25_000 } })
+    room.send({ kind: 'event', event: { kind: 'presence', peer: AGENT, state: 'here', ttlMs: 25_000 } })
     await waitFor(() => expect(result.current.peers.get()).toHaveLength(1))
 
     act(() => {
@@ -128,15 +128,15 @@ describe('useDocumentRoom', () => {
     const room = scriptedRoom()
     const { result } = renderHook(() => useDocumentRoom('doc_1', { enabled: true, transport: room.transport }))
     const box = { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.1 }
-    room.send({ kind: 'event', event: { kind: 'presence', peer: PILOTI, state: 'here', ttlMs: 25_000 } })
-    room.send({ kind: 'event', event: { kind: 'cursor', peer: PILOTI, cursor: { page: 1, x: 0.2, y: 0.25 }, label: 'Treppe' } })
-    room.send({ kind: 'event', event: { kind: 'activity', peer: PILOTI, state: 'reading', box, label: 'sieht sich Seite 1 an' } })
-    room.send({ kind: 'event', event: { kind: 'highlight', peer: PILOTI, box, label: 'Laufbreite', ttlMs: 6_000 } })
+    room.send({ kind: 'event', event: { kind: 'presence', peer: AGENT, state: 'here', ttlMs: 25_000 } })
+    room.send({ kind: 'event', event: { kind: 'cursor', peer: AGENT, cursor: { page: 1, x: 0.2, y: 0.25 }, label: 'Treppe' } })
+    room.send({ kind: 'event', event: { kind: 'activity', peer: AGENT, state: 'reading', box, label: 'sieht sich Seite 1 an' } })
+    room.send({ kind: 'event', event: { kind: 'highlight', peer: AGENT, box, label: 'Laufbreite', ttlMs: 6_000 } })
 
     await waitFor(() =>
       expect(result.current.peers.get()).toEqual([
         expect.objectContaining({
-          peer: PILOTI,
+          peer: AGENT,
           cursor: { page: 1, x: 0.2, y: 0.25 },
           label: 'Treppe',
           activity: { state: 'reading', box, label: 'sieht sich Seite 1 an' },
@@ -147,9 +147,9 @@ describe('useDocumentRoom', () => {
     // Piloti is not a stranger to answer: it does not listen.
     expect(room.posts.filter((post) => post.presence === 'here')).toHaveLength(1)
 
-    room.send({ kind: 'event', event: { kind: 'activity', peer: PILOTI, state: 'idle' } })
+    room.send({ kind: 'event', event: { kind: 'activity', peer: AGENT, state: 'idle' } })
     await waitFor(() => expect(result.current.peers.get()[0]?.activity).toBeNull())
-    room.send({ kind: 'event', event: { kind: 'presence', peer: PILOTI, state: 'gone', ttlMs: 25_000 } })
+    room.send({ kind: 'event', event: { kind: 'presence', peer: AGENT, state: 'gone', ttlMs: 25_000 } })
     await waitFor(() => expect(result.current.peers.get()).toEqual([]))
   })
 
@@ -232,7 +232,7 @@ describe('createHighlightTracker', () => {
   })
 
   const piloti = (box: { page: number; x: number; y: number; w: number; h: number }): RoomPeerState => ({
-    peer: PILOTI,
+    peer: AGENT,
     expiresAt: Date.now() + 25_000,
     cursor: null,
     movedAt: null,

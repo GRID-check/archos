@@ -50,7 +50,7 @@
    The same three queries are exported from `ui/hooks/use-is-mobile.ts` for the
    decisions CSS cannot make, and `breakpoints.spec.ts` holds the two copies to
    one string. Change them together. Which axis answers which question:
-   docs/design/grid-design-language.md, "Breakpoints". */
+   docs/design/design-language.md, "Breakpoints". */
 @custom-variant md {
   @media (width >= 48rem) {
     @media not all and (pointer: coarse) and (height <= 31.25rem) and (width < 64rem) {
@@ -638,9 +638,9 @@ body {
 }
 
 /* =============================================================================
-   The card type ramp — `docs/design/grid-card-charter.md` §A2
+   The card type ramp — `docs/design/answer-card-charter.md` §A2
 
-   Six steps and one figure, for `ui/features/grid-cards/**`. The audit that
+   Six steps and one figure, for `ui/features/cards/**`. The audit that
    produced the charter counted THIRTEEN distinct sizes across the card set,
    ten of them arbitrary values, with `text-[12px]` sitting beside `text-xs`
    and `text-[14px]` beside `text-sm` — the same size written two ways. That
@@ -785,7 +785,7 @@ body {
    label flickered at every step (stream audit 2026-09, defect 2). Two
    transforms keep the look and the cost, and touch no property anything else
    animates. */
-@keyframes grid-shimmer-window {
+@keyframes shimmer-window {
   from {
     transform: translateX(-100%);
   }
@@ -794,7 +794,7 @@ body {
   }
 }
 
-@keyframes grid-shimmer-copy {
+@keyframes shimmer-copy {
   from {
     transform: translateX(50%);
   }
@@ -804,7 +804,7 @@ body {
 }
 
 @utility animate-shimmer-window {
-  animation: grid-shimmer-window var(--motion-ambient-slow) linear infinite;
+  animation: shimmer-window var(--motion-ambient-slow) linear infinite;
   will-change: transform;
   /* Feathered edges: static in the window's own space, so they move with it. */
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 35%, #000 65%, transparent);
@@ -812,7 +812,7 @@ body {
 }
 
 @utility animate-shimmer-copy {
-  animation: grid-shimmer-copy var(--motion-ambient-slow) linear infinite;
+  animation: shimmer-copy var(--motion-ambient-slow) linear infinite;
   will-change: transform;
 }
 
@@ -823,7 +823,7 @@ body {
    under the period: at the 180 ms `--motion-quick` period a 240 ms delay
    wrapped, and the dots jittered in the order 2, 1, 3. Callers put three
    sibling dots side by side and write no `[animation-delay:…]` of their own. */
-@keyframes grid-typing-dot {
+@keyframes typing-dot {
   0%,
   60%,
   100% {
@@ -837,7 +837,7 @@ body {
 }
 
 @utility animate-typing-dot {
-  animation: grid-typing-dot var(--motion-ambient) var(--ease-cycle) infinite;
+  animation: typing-dot var(--motion-ambient) var(--ease-cycle) infinite;
 
   &:nth-child(2) {
     animation-delay: calc(var(--motion-ambient) / 10);
@@ -848,7 +848,7 @@ body {
   }
 }
 
-@keyframes grid-progress-sweep {
+@keyframes progress-sweep {
   0% {
     transform: translateX(-100%);
   }
@@ -861,7 +861,7 @@ body {
    curve was `--ease-cycle` written out as a literal bezier; it is the token now,
    on the ambient period, so a retune of the loop reaches it. */
 @utility animate-progress-sweep {
-  animation: grid-progress-sweep var(--motion-ambient) var(--ease-cycle) infinite;
+  animation: progress-sweep var(--motion-ambient) var(--ease-cycle) infinite;
 }
 
 /* The streaming caret: a calm breath, not a blink. Opacity only (the compositor
@@ -872,7 +872,7 @@ body {
    ambient loop while an answer streams, so nothing else should loop beside it.
    Callers add `motion-reduce:animate-none`; the global reduced-motion block
    below also collapses it, and the 100% keyframe leaves the caret at full ink. */
-@keyframes grid-caret-breathe {
+@keyframes caret-breathe {
   0%,
   100% {
     opacity: 1;
@@ -883,7 +883,7 @@ body {
 }
 
 @utility animate-caret-breathe {
-  animation: grid-caret-breathe var(--motion-ambient) var(--ease-cycle) infinite;
+  animation: caret-breathe var(--motion-ambient) var(--ease-cycle) infinite;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -908,7 +908,7 @@ body {
    rule above the animation collapses, which is why `--citation-pulse` also
    paints a static outline — the connection must survive without the motion.
    ============================================================================= */
-@keyframes grid-citation-pulse {
+@keyframes citation-pulse {
   0% {
     box-shadow:
       0 0 0 0 color-mix(in oklch, var(--citation-pulse, var(--ring)) 60%, transparent),
@@ -931,7 +931,7 @@ body {
      legible between beats and when motion is off entirely. */
   outline: 1.5px solid color-mix(in oklch, var(--citation-pulse, var(--ring)) 45%, transparent);
   outline-offset: 1px;
-  animation: grid-citation-pulse 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2;
+  animation: citation-pulse 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2;
 }
 
 /* =============================================================================
@@ -978,7 +978,7 @@ body {
   --passage-halo: 45%;
 }
 
-@keyframes grid-passage-ping {
+@keyframes passage-ping {
   0% {
     background-color: transparent;
     box-shadow: 0 0 0 0 color-mix(in oklch, var(--passage-tint, var(--passage-ink)) 70%, transparent);
@@ -1016,7 +1016,7 @@ body {
 }
 
 @utility animate-passage-ping {
-  animation: grid-passage-ping 1.15s cubic-bezier(0.16, 1, 0.3, 1) 2 both;
+  animation: passage-ping 1.15s cubic-bezier(0.16, 1, 0.3, 1) 2 both;
 }
 
 /* A region: the box around a depiction on a plan or photo that a cited
@@ -1245,7 +1245,7 @@ body {
    slots so a meter can never impersonate a series. `--spend-meter-over` is the
    critical step (4.80:1 on white, 3.31:1 on the dark card) and always ships
    beside the over-limit icon + sentence. */
-.grid-spend-viz {
+.spend-viz {
   --spend-series-1: #2a78d6; /* blue */
   --spend-series-2: #eb6834; /* orange */
   --spend-series-3: #1baf7a; /* aqua */
@@ -1259,7 +1259,7 @@ body {
   --spend-meter-over: #d03b3b; /* at or over the limit */
 }
 
-.dark .grid-spend-viz {
+.dark .spend-viz {
   --spend-series-1: #3987e5;
   --spend-series-2: #d95926;
   --spend-series-3: #199e70;
@@ -1275,16 +1275,16 @@ body {
 
 /* Storage (ADR-0042) asks the same question as the spend meter — am I about to
    be cut off — so it uses the same STATUS pair and the same values, in both
-   themes. Kept as its own scope rather than borrowing `.grid-spend-viz`: the
+   themes. Kept as its own scope rather than borrowing `.spend-viz`: the
    series slots there are for money by model and mean nothing here, and a card
    that opts into a palette it only half-uses invites someone to colour storage
    by category later. If one pair changes, change both. */
-.grid-storage-viz {
+.storage-viz {
   --storage-meter: #2a78d6; /* under the quota */
   --storage-meter-over: #d03b3b; /* at or over the quota */
 }
 
-.dark .grid-storage-viz {
+.dark .storage-viz {
   --storage-meter: #3987e5;
   --storage-meter-over: #d03b3b;
 }
@@ -1320,7 +1320,7 @@ body {
    its own, so a caller that places the element `absolute` keeps it. At rest
    the band sits out of sight to the left, so wherever the loop is removed
    (reduced motion, `animate-none`) the skeleton is a calm, static block. */
-@keyframes grid-skeleton-shimmer {
+@keyframes skeleton-shimmer {
   from {
     transform: translateX(-120%);
   }
@@ -1347,7 +1347,7 @@ body {
       transparent 100%
     );
     transform: translateX(-120%);
-    animation: grid-skeleton-shimmer var(--motion-ambient) var(--ease-cycle) infinite;
+    animation: skeleton-shimmer var(--motion-ambient) var(--ease-cycle) infinite;
   }
 
   @media (prefers-reduced-motion: reduce) {

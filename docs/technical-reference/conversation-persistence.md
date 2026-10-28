@@ -166,4 +166,4 @@ When the WebSocket connects, `server.js` calls `/api/auth/websocket-scope` which
 - `X-Grid-Organization-Id`
 - `Authorization: Bearer <token>`
 
-The Python backend uses these to identify the caller for message persistence and authorization checks. The conversation ID is included in every NAT protocol message as `conversation_id`.
+The Python backend uses these to identify the caller for message persistence and authorization checks. The conversation ID is included in every protocol message on the chat socket as `conversation_id`.

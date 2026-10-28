@@ -144,7 +144,7 @@ const message = (metadata: Record<string, unknown> | null): Message =>
 const session = {
   userId: 'user_1',
   organizationId: 'org_1',
-  email: 'a@grid.test',
+  email: 'a@example.test',
   role: 'admin',
   permissions: [],
   accessToken: 'wos-token',

@@ -308,7 +308,7 @@ says it worked.
 | The vision pool shared fairly between offices | 3 | `lease_slots.FAIR_ACQUIRE_LUA` |
 | The table pass skips drawings the vision model reads (0.68 s a page on a vector sheet, for no table) | speed | `adapter._table_pass_skips` |
 | References: norms, laws, plans, named documents, no model | 4 | `knowledge_layer/references.py` |
-| The dossier: one strict call over a digest of every page; its summary replaces the first-and-last-chunk one; printed drawing quantities lifted into facts | 5 | `aiq_agent/knowledge/dossier.py` |
+| The dossier: one strict call over a digest of every page; its summary replaces the first-and-last-chunk one; printed drawing quantities lifted into facts | 5 | `agent/knowledge/dossier.py` |
 | Findings derived per project (missing document, missing plan, contradiction, incomplete read), served to people and agents | 6 (first half) | `apps/workspace/bff/documents/findings.ts` |
 | Transient failures read again on their own, capped, at bulk priority | reliability | `lib/documents/transient-retry.ts` |
 | Piloti sees the type, facts, references and unread pages of each document | 5 | `browse.py`, `inventory.py` |

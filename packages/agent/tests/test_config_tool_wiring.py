@@ -1,7 +1,7 @@
 """Every registered tool an agent is meant to have must be BOUND in the config.
 
 A tool can be fully built, registered with ``@register_function``, imported
-eagerly, documented as default-on — and reachable by nobody. NAT binds only
+eagerly, documented as default-on — and reachable by nobody. The agent runtime binds only
 what a config declares under ``functions:`` and then lists in an agent's
 ``tools:``, so the gap between "written" and "callable" is two YAML lines and
 nothing complains about their absence.
@@ -27,7 +27,7 @@ CONFIG = Path(__file__).resolve().parents[3] / "configs" / "config_oib_openroute
 @pytest.fixture(scope="module")
 def config() -> dict:
     # `safe_load` chokes on nothing here: the file is plain YAML with `${VAR:-default}`
-    # strings that NAT expands later, and a string is all this needs them to be.
+    # strings that the agent runtime expands later, and a string is all this needs them to be.
     return yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
 
 

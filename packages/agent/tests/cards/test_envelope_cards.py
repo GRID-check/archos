@@ -13,15 +13,15 @@ from __future__ import annotations
 
 import json
 
-from aiq_agent.cards.catalog import CARD_EXAMPLES
-from aiq_agent.cards.envelope import ENVELOPE_SHAPE_TYPES
-from aiq_agent.cards.envelope import REFUSED_NOT_AN_OBJECT
-from aiq_agent.cards.envelope import REFUSED_RETIRED_TYPE
-from aiq_agent.cards.envelope import REFUSED_SHAPE
-from aiq_agent.cards.envelope import REFUSED_SYSTEM_TYPE
-from aiq_agent.cards.envelope import envelope_card_objects
-from aiq_agent.cards.envelope import render_envelope_cards_contract
-from aiq_agent.cards.envelope import validate_model_card
+from agent.cards.catalog import CARD_EXAMPLES
+from agent.cards.envelope import ENVELOPE_SHAPE_TYPES
+from agent.cards.envelope import REFUSED_NOT_AN_OBJECT
+from agent.cards.envelope import REFUSED_RETIRED_TYPE
+from agent.cards.envelope import REFUSED_SHAPE
+from agent.cards.envelope import REFUSED_SYSTEM_TYPE
+from agent.cards.envelope import envelope_card_objects
+from agent.cards.envelope import render_envelope_cards_contract
+from agent.cards.envelope import validate_model_card
 
 BASIS = CARD_EXAMPLES["calculation"]
 
@@ -96,7 +96,7 @@ class TestTheTaughtContract:
         assert "continue after the highest one" in contract
 
     def test_the_envelope_schema_teaches_the_field(self):
-        from aiq_agent.common.answer_envelope import render_envelope_schema
+        from agent.common.answer_envelope import render_envelope_schema
 
         schema = render_envelope_schema()
         assert "cards: [" in schema
@@ -105,7 +105,7 @@ class TestTheTaughtContract:
     def test_the_strict_schema_omits_the_field_it_cannot_express(self):
         """Strict mode cannot hold the 40-way union; the truncated turn ships
         without cards rather than with a schema that lies about them."""
-        from aiq_agent.common.answer_envelope import render_envelope_response_format
+        from agent.common.answer_envelope import render_envelope_response_format
 
         properties = render_envelope_response_format()["json_schema"]["schema"]["properties"]
         assert "cards" not in properties
@@ -114,7 +114,7 @@ class TestTheTaughtContract:
 
 class TestTheRenderedShapeIsTheValidatedShape:
     def test_the_card_discriminator_is_not_rendered_as_a_field(self):
-        from aiq_agent.cards.catalog import shape_hint_for
+        from agent.cards.catalog import shape_hint_for
 
         hint = shape_hint_for("stair_diagram") or ""
         assert "shape: { type" not in hint

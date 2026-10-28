@@ -40,7 +40,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { sessionCollectionName } from '@/lib/retrieval-scope/collection-scope'
 import { OFFICE_SHELF, projectShelf } from '@/lib/documents/shelf'
 import { officeShelfCollectionNames } from '@/lib/office-shelf/collection'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import { reachForAudience, type SearchReach } from '@/lib/search/reach'
 import type { SearchScope } from '@/lib/search/search-wire'
 import {
@@ -66,7 +66,7 @@ const noFolder = () => new NotFoundError('No folder with that path.')
 
 /** The reach a shelf is read under, and its own collection; a 404 when the turn does not hold the shelf. */
 async function resolveShelf(
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
   session: AuthorizedSession,
   request: EstateTreeRequest,
 ): Promise<{ source: TreeSource; collection: string }> {
@@ -159,7 +159,7 @@ function documentView(row: TreeDocumentRow): EstateTreeDocument {
 
 /** One shelf's tree as the conversation's audience may list it. Runs inside the caller's tenant scope. */
 export async function readEstateTree(
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
   session: AuthorizedSession,
   request: EstateTreeRequest,
 ): Promise<EstateTreeResponse> {

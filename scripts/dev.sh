@@ -11,34 +11,34 @@ case "$COMMAND" in
         ;;
     format)
         echo "Formatting code..."
-        uv run ruff check --fix --select I packages/agent/src/aiq_agent/
-        uv run yapf -i -r packages/agent/src/aiq_agent/
+        uv run ruff check --fix --select I packages/agent/src/agent/
+        uv run yapf -i -r packages/agent/src/agent/
         echo "Code formatted"
         ;;
     lint)
         echo "Running linters..."
         echo "Running ruff..."
-        uv run ruff check packages/agent/src/aiq_agent/
+        uv run ruff check packages/agent/src/agent/
         echo "Running yapf..."
-        uv run yapf -d -r packages/agent/src/aiq_agent/
+        uv run yapf -d -r packages/agent/src/agent/
         echo "Lint checks passed"
         ;;
     pre-commit)
         echo "Running pre-commit checks..."
         echo ""
         echo "Step 1: Formatting code..."
-        uv run ruff check --fix --select I packages/agent/src/aiq_agent/
-        uv run yapf -i -r packages/agent/src/aiq_agent/
+        uv run ruff check --fix --select I packages/agent/src/agent/
+        uv run yapf -i -r packages/agent/src/agent/
         echo "Code formatted"
         echo ""
         echo "Step 2: Running lint checks..."
-        uv run ruff check packages/agent/src/aiq_agent/
-        uv run yapf -d -r packages/agent/src/aiq_agent/
+        uv run ruff check packages/agent/src/agent/
+        uv run yapf -d -r packages/agent/src/agent/
         echo "All pre-commit checks passed"
         ;;
     ruff)
         echo "Running ruff..."
-        uv run ruff check packages/agent/src/aiq_agent/
+        uv run ruff check packages/agent/src/agent/
         ;;
     clean)
         echo "Cleaning build artifacts..."

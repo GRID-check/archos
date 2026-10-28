@@ -21,24 +21,24 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.common.grounding_block import COVERAGE_GAP_LABEL
-from aiq_agent.common.grounding_block import COVERAGE_GAP_NOTE
-from aiq_agent.common.grounding_block import GroundingBlock
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import _line
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import get_grounding_block
-from aiq_agent.common.grounding_block import record_grounding_block
-from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.provenance import AGENT_AUTHOR
-from aiq_agent.common.provenance import AgentProvenance
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import retrieval_round_scope
-from aiq_agent.common.wire_v2 import SourcesStep
-from aiq_agent.common.wire_v2 import TraceLane
-from aiq_agent.common.wire_v2 import TraceLaneSource
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.common.grounding_block import COVERAGE_GAP_LABEL
+from agent.common.grounding_block import COVERAGE_GAP_NOTE
+from agent.common.grounding_block import GroundingBlock
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import _line
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import get_grounding_block
+from agent.common.grounding_block import record_grounding_block
+from agent.common.grounding_block import render_grounding_block
+from agent.common.provenance import AGENT_AUTHOR
+from agent.common.provenance import AgentProvenance
+from agent.common.source_kinds import Shelf
+from agent.common.turn_status import retrieval_round_scope
+from agent.common.wire_v2 import SourcesStep
+from agent.common.wire_v2 import TraceLane
+from agent.common.wire_v2 import TraceLaneSource
 
 FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "citation_pipeline"
 
@@ -308,11 +308,11 @@ class TestTheCoverageGap:
             / "packages"
             / "agent"
             / "src"
-            / "aiq_agent"
+            / "agent"
             / "agents"
             / "piloti"
             / "prompts"
-        ) / "piloti_static.md"
+        ) / "chat_static.md"
         assert "Coverage: insufficient" not in prompt.read_text(encoding="utf-8")
         assert "Abdeckung: unzureichend" not in prompt.read_text(encoding="utf-8")
 
@@ -372,9 +372,9 @@ class TestTheSourcesStepNamesOnlyWhatTheModelMayBeTold:
     )
 
     def _render(self, admitted: set[str]) -> None:
-        from aiq_agent.knowledge.restricted_use import RestrictedUse
-        from aiq_agent.knowledge.restricted_use import bind_restricted_use
-        from aiq_agent.knowledge.restricted_use import reset_restricted_use
+        from agent.knowledge.restricted_use import RestrictedUse
+        from agent.knowledge.restricted_use import bind_restricted_use
+        from agent.knowledge.restricted_use import reset_restricted_use
 
         hits = (
             _hit(file_name="grundriss.pdf", collection="proj_1"),
@@ -416,7 +416,7 @@ class TestTheSourcesStepNamesOnlyWhatTheModelMayBeTold:
 class TestAuthorshipIsDerivedFromProvenance:
     """``authored_by`` cannot disagree with the provenance it is read off."""
 
-    def test_a_piloti_document_is_authored_by_the_agent(self):
+    def test_an_agent_document_is_authored_by_the_agent(self):
         assert _hit(provenance=AgentProvenance(approved_by="Maria Muster")).authored_by == AGENT_AUTHOR
 
     def test_a_document_with_no_provenance_claims_no_author(self):
@@ -462,7 +462,7 @@ class TestTheCapture:
 
     def test_a_turn_does_not_hold_every_block_it_ever_rendered(self, capturing):
         """The cap drops the oldest, so a runaway loop cannot grow the map without bound."""
-        from aiq_agent.common.grounding_block import _MAX_CAPTURED_BLOCKS
+        from agent.common.grounding_block import _MAX_CAPTURED_BLOCKS
 
         rendered = [
             render_grounding_block(
@@ -575,8 +575,8 @@ class TestAPassageAcrossAPageBreakShowsItsRange:
         assert "\nPage: 4\n" in self._render(page_end=end)
 
     def test_the_registry_entry_carries_the_range_and_the_wire_states_it(self):
-        from aiq_agent.citations.extraction import _entry_from_hit
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.extraction import _entry_from_hit
+        from agent.citations.wire import source_entry_to_wire
 
         entry = _entry_from_hit(
             _hit(citation_key="a.pdf, p.4", file_name="a.pdf", page=4, page_end=5), "knowledge_search"

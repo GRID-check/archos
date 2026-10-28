@@ -18,14 +18,14 @@ whose only job is enforcing the import direction, so a control needing a new
 shape makes the kit grow rather than the organism.
 
 Layers and rules:
-[`../design/grid-design-language.md`](../design/grid-design-language.md#component-layers-atomic-design).
+[`../design/design-language.md`](../design/design-language.md#component-layers-atomic-design).
 **Enforced by:** review only.
 
 ## Module seams
 
 The UI's layers point one way, `app` → `features` → `components` → `lib`, and a
 feature reaches another only through its index and never in a circle. In
-Python, `aiq_agent` never imports `aiq_api` (the API tier owns the request
+Python, `agent` never imports `agent_host` (the API tier owns the request
 identity's writes and hands its capabilities in) and reaches `knowledge_layer`
 only through the port in `knowledge/factory.py` (ADR-0072).
 The rules and the baselines that hold today's exceptions:
@@ -62,8 +62,8 @@ fail on a difference.
 
 | Artifact | Generated from | Guarded |
 |---|---|---|
-| `apps/workspace/bff/skills/platform-skills.ts` | `packages/agent/src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
-| `contracts/cards/schemas.json` | the card models (`packages/agent/src/aiq_agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
+| `apps/workspace/bff/skills/platform-skills.ts` | `packages/agent/src/agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
+| `contracts/cards/schemas.json` | the card models (`packages/agent/src/agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
 | `apps/workspace/shared/cards/generated.ts` | `contracts/cards/schemas.json`, via `apps/workspace/scripts/generate-card-schemas.mjs` | yes, the same hook |
 
 The card schema is a two-stage pipeline from Pydantic models to Zod. Neither
@@ -117,7 +117,7 @@ Anything keyed by a tenant, a user, a conversation or a turn goes behind a
 
 ## Idempotent global registration
 
-Registering a converter or an exporter with NAT is a process-global side effect,
+Registering a converter or an exporter with the agent runtime is a process-global side effect,
 and the modules that need it are imported from several entry points. The
 convention is a module-level `ensure_registered()` that is safe to call twice,
 called explicitly by each entry point rather than run at import time.
@@ -131,7 +131,7 @@ called explicitly by each entry point rather than run at import time.
 Agents, tools and data sources are found through `nat.plugins` entry points in
 the root `pyproject.toml`, not by importing a registry module. This is what lets
 a tool with heavy optional dependencies stay independently loadable:
-`aiq_bim_measure` is a second entry point precisely so `ifc_query` keeps working
+`bim_measure` is a second entry point precisely so `ifc_query` keeps working
 where ifcopenshell and shapely are not installed.
 
 A function that is registered but has no entry point does not exist at runtime.
@@ -153,7 +153,7 @@ ADR-0038. **Enforced by:** the `workos-drift` workflow and `authz-coverage.spec.
 
 The platform prompt follows the same shape without the drift gate.
 `scripts/prompts_push.py` (`task prompts:push`) checks by default and publishes
-the committed `piloti_static.md` under a Langfuse label only with `--apply`. It
+the committed `chat_static.md` under a Langfuse label only with `--apply`. It
 never overwrites a Langfuse version that did not come from git. Provenance is
 read off the version itself: what Langfuse serves must be byte-identical to a
 committed text, either the file at the commit the version's message names or

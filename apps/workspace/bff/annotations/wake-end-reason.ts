@@ -29,7 +29,7 @@
  * Anything else is `error`: the turn broke off without an answer.
  */
 
-import type { PilotiWakeStatus } from './types'
+import type { AgentWakeStatus } from './types'
 
 export const WAKE_END_REASON_KINDS = ['budget', 'busy', 'access', 'error'] as const
 export type WakeEndReasonKind = (typeof WAKE_END_REASON_KINDS)[number]
@@ -45,7 +45,7 @@ const BUSY_REFUSALS = [
  * The class of a failed or refused wake's stored reason. Null for a wake that
  * did not end that way, and for a missing reason.
  */
-export function wakeEndReasonKind(status: PilotiWakeStatus, reason: string | null): WakeEndReasonKind | null {
+export function wakeEndReasonKind(status: AgentWakeStatus, reason: string | null): WakeEndReasonKind | null {
   if (status !== 'failed' && status !== 'refused') return null
   const text = reason?.trim()
   if (!text) return null

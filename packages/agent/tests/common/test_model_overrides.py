@@ -8,13 +8,13 @@ import types
 import pytest
 from pydantic import BaseModel
 
-from aiq_agent.common.llm_provider import LLMProvider
-from aiq_agent.common.llm_provider import LLMRole
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.common.model_overrides import apply_model_override
-from aiq_agent.common.model_overrides import override_model
-from aiq_agent.common.model_overrides import parse_model_overrides
-from aiq_agent.common.model_overrides import sanitize_model_overrides
+from agent.common.llm_provider import LLMProvider
+from agent.common.llm_provider import LLMRole
+from agent.common.model_overrides import AgentGroup
+from agent.common.model_overrides import apply_model_override
+from agent.common.model_overrides import override_model
+from agent.common.model_overrides import parse_model_overrides
+from agent.common.model_overrides import sanitize_model_overrides
 
 
 def _encode(payload: object) -> str:
@@ -29,7 +29,7 @@ class FakeChatModel(BaseModel):
 
 
 class RetryPatchedChatModel(FakeChatModel):
-    """Stand-in for a NAT-built ChatOpenAI (patch_with_retry applied)."""
+    """Stand-in for an agent-runtime-built ChatOpenAI (patch_with_retry applied)."""
 
     def invoke_model(self) -> str:
         """Returns the model the request would actually go out with (self-bound)."""
@@ -37,7 +37,7 @@ class RetryPatchedChatModel(FakeChatModel):
 
 
 def _patch_with_retry_like_nat(llm: RetryPatchedChatModel) -> RetryPatchedChatModel:
-    """Replicate NAT's patch_with_retry: wrap every public method and store it
+    """Replicate the agent runtime's patch_with_retry: wrap every public method and store it
     in the instance __dict__ as a types.MethodType bound to THIS instance."""
     original_fn = type(llm).invoke_model
 
@@ -114,7 +114,7 @@ class TestOverrideModel:
         assert apply_model_override(llm, AgentGroup.RESEARCH, {"clarifier": "vendor/other"}) is llm
 
     def test_override_rebinds_instance_patched_methods(self):
-        """Regression: NAT's patch_with_retry stores public methods in the
+        """Regression: the agent runtime's patch_with_retry stores public methods in the
         instance __dict__ as MethodTypes bound to the ORIGINAL instance.
         model_copy shallow-copies __dict__, so the override copy kept invoking
         the original model (wire payload carried the old model name while logs
@@ -146,14 +146,14 @@ class FakeNonOpenRouterModel(BaseModel):
 
 class TestMergeZdrExtraBody:
     def test_sets_provider_zdr_and_data_collection(self, monkeypatch):
-        from aiq_agent.common.model_overrides import _merge_zdr_extra_body
+        from agent.common.model_overrides import _merge_zdr_extra_body
 
         monkeypatch.setenv("OPENROUTER_PREFERRED_PROVIDERS", "")
         merged = _merge_zdr_extra_body(None)
         assert merged == {"provider": {"zdr": True, "data_collection": "deny"}}
 
     def test_preserves_other_provider_and_plugins(self):
-        from aiq_agent.common.model_overrides import _merge_zdr_extra_body
+        from agent.common.model_overrides import _merge_zdr_extra_body
 
         merged = _merge_zdr_extra_body({"plugins": [{"id": "response-healing"}], "provider": {"order": ["a"]}})
         assert merged["plugins"] == [{"id": "response-healing"}]
@@ -162,7 +162,7 @@ class TestMergeZdrExtraBody:
 
 class TestApplyZdrRouting:
     def test_copies_openrouter_model_with_zdr(self, monkeypatch):
-        from aiq_agent.common.model_overrides import apply_zdr_routing
+        from agent.common.model_overrides import apply_zdr_routing
 
         monkeypatch.setenv("OPENROUTER_PREFERRED_PROVIDERS", "")
         llm = FakeOpenRouterModel(extra_body={"plugins": [{"id": "response-healing"}]})
@@ -174,19 +174,19 @@ class TestApplyZdrRouting:
         assert "provider" not in llm.extra_body
 
     def test_non_openrouter_model_unchanged(self):
-        from aiq_agent.common.model_overrides import apply_zdr_routing
+        from agent.common.model_overrides import apply_zdr_routing
 
         llm = FakeNonOpenRouterModel()
         assert apply_zdr_routing(llm) is llm
 
     def test_idempotent_when_already_zdr(self):
-        from aiq_agent.common.model_overrides import apply_zdr_routing
+        from agent.common.model_overrides import apply_zdr_routing
 
         llm = FakeOpenRouterModel(extra_body={"provider": {"zdr": True, "data_collection": "deny"}})
         assert apply_zdr_routing(llm) is llm
 
     def test_unrecognized_object_returned_unchanged(self):
-        from aiq_agent.common.model_overrides import apply_zdr_routing
+        from agent.common.model_overrides import apply_zdr_routing
 
         sentinel = object()
         assert apply_zdr_routing(sentinel) is sentinel
@@ -238,7 +238,7 @@ class TestProviderWithModelOverrides:
 
     def test_applied_overrides_are_logged(self, caplog):
         provider = self._provider()
-        with caplog.at_level("INFO", logger="aiq_agent.common.llm_provider"):
+        with caplog.at_level("INFO", logger="agent.common.llm_provider"):
             provider.with_model_overrides({"deep_research": "vendor/deep", "unknown_group": "x/y"})
         assert "Applying model overrides" in caplog.text
         assert "deep_research" in caplog.text and "vendor/deep" in caplog.text
@@ -267,16 +267,16 @@ class TestOrgScopedFallbackResolution:
     """Header absent -> resolve the org's overrides via the internal endpoint."""
 
     def setup_method(self):
-        from aiq_agent.common.model_overrides import reset_overrides_cache
+        from agent.common.model_overrides import reset_overrides_cache
 
         reset_overrides_cache()
 
     def test_header_takes_precedence_over_fetch(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         encoded = base64.urlsafe_b64encode(json.dumps({"shallow_research": "vendor/x"}).encode()).decode()
         monkeypatch.setattr(
-            "aiq_agent.project_context._read_header",
+            "agent.project_context._read_header",
             lambda name: encoded if name == M.MODEL_OVERRIDES_HEADER else None,
         )
         monkeypatch.setattr(M, "_fetch_org_config", lambda org: pytest.fail("must not fetch when header present"))
@@ -284,25 +284,25 @@ class TestOrgScopedFallbackResolution:
         assert M.get_model_overrides_from_context() == {"shallow_research": "vendor/x"}
 
     def test_absent_header_falls_back_to_org_resolution(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
-        monkeypatch.setattr("aiq_agent.project_context._read_header", lambda name: None)
-        monkeypatch.setattr("aiq_agent.project_context.get_organization_id_from_context", lambda: "org_ABC123")
+        monkeypatch.setattr("agent.project_context._read_header", lambda name: None)
+        monkeypatch.setattr("agent.project_context.get_organization_id_from_context", lambda: "org_ABC123")
         monkeypatch.setattr(M, "_fetch_org_config", lambda org: ({"deep_research": "x-ai/grok-4.5"}, False))
 
         assert M.get_model_overrides_from_context() == {"deep_research": "x-ai/grok-4.5"}
 
     def test_no_org_in_context_returns_empty_without_fetch(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
-        monkeypatch.setattr("aiq_agent.project_context._read_header", lambda name: None)
-        monkeypatch.setattr("aiq_agent.project_context.get_organization_id_from_context", lambda: None)
+        monkeypatch.setattr("agent.project_context._read_header", lambda name: None)
+        monkeypatch.setattr("agent.project_context.get_organization_id_from_context", lambda: None)
         monkeypatch.setattr(M, "_fetch_org_config", lambda org: pytest.fail("must not fetch without an org"))
 
         assert M.get_model_overrides_from_context() == {}
 
     def test_resolution_is_cached(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         calls = []
 
@@ -319,7 +319,7 @@ class TestOrgScopedFallbackResolution:
 
     def test_fetch_failure_opens_the_models_and_closes_zdr(self, monkeypatch):
         """The model choice fails open (YAML models); the privacy control fails closed."""
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         def boom(org):
             raise RuntimeError("bff down")
@@ -332,7 +332,7 @@ class TestOrgScopedFallbackResolution:
         assert M.resolve_org_model_overrides("org_A") == {}
 
     def test_fetch_sanitizes_payload_and_reads_zdr(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         class FakeResponse:
             def raise_for_status(self):
@@ -354,23 +354,23 @@ class TestOrgScopedFallbackResolution:
 
     def test_no_internal_token_is_yaml_models_with_zdr_pinned(self, monkeypatch):
         """Without a trust channel nobody was asked: the org's ZDR bit is unknown, so it is on."""
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         assert M.resolve_org_model_overrides("org_A") == {}
         assert M.resolve_org_zdr_only("org_A") is True
 
     def test_zdr_only_resolves_via_org_id(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
-        monkeypatch.setattr("aiq_agent.project_context.get_organization_id_from_context", lambda: "org_ZDR")
+        monkeypatch.setattr("agent.project_context.get_organization_id_from_context", lambda: "org_ZDR")
         monkeypatch.setattr(M, "_fetch_org_config", lambda org: ({}, True))
         assert M.get_zdr_only_from_context() is True
 
     def test_zdr_only_defaults_false_without_org(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
-        monkeypatch.setattr("aiq_agent.project_context.get_organization_id_from_context", lambda: None)
+        monkeypatch.setattr("agent.project_context.get_organization_id_from_context", lambda: None)
         assert M.get_zdr_only_from_context() is False
 
 
@@ -378,7 +378,7 @@ class TestCacheTtlConstants:
     """The propagation bounds docs/architecture/org-model-configuration.md promises."""
 
     def test_ttls(self):
-        from aiq_agent.common import model_overrides as M
+        from agent.common import model_overrides as M
 
         assert M._POSITIVE_TTL_SECONDS == 10
         assert M._NEGATIVE_TTL_SECONDS == 1
@@ -391,8 +391,8 @@ class TestSharedTier:
 
     @pytest.fixture(autouse=True)
     def _fresh(self):
-        from aiq_agent.common import cache
-        from aiq_agent.common.model_overrides import reset_overrides_cache
+        from agent.common import cache
+        from agent.common.model_overrides import reset_overrides_cache
 
         cache.reset_local_store()
         reset_overrides_cache()
@@ -401,7 +401,7 @@ class TestSharedTier:
         reset_overrides_cache()
 
     def test_a_fresh_process_reads_the_shared_copy_instead_of_fetching(self, monkeypatch):
-        from aiq_agent.common import model_overrides as M
+        from agent.common import model_overrides as M
 
         fetches = []
 
@@ -420,8 +420,8 @@ class TestSharedTier:
         assert second.zdr_only is True
 
     def test_the_bff_deleting_the_key_forces_a_refetch(self, monkeypatch):
-        from aiq_agent.common import cache
-        from aiq_agent.common import model_overrides as M
+        from agent.common import cache
+        from agent.common import model_overrides as M
 
         answers = iter([({"deep_research": "old/model"}, False), ({"deep_research": "new/model"}, False)])
         monkeypatch.setattr(M, "_fetch_org_config", lambda org: next(answers))
@@ -434,8 +434,8 @@ class TestSharedTier:
         assert M._resolve_org_config("org_1").overrides == {"deep_research": "new/model"}
 
     def test_a_failed_fetch_is_never_written_to_the_shared_tier(self, monkeypatch):
-        from aiq_agent.common import cache
-        from aiq_agent.common import model_overrides as M
+        from agent.common import cache
+        from agent.common import model_overrides as M
 
         def boom(org):
             raise RuntimeError("bff down")
@@ -448,8 +448,8 @@ class TestSharedTier:
     def test_missing_token_resolution_writes_nothing_to_the_shared_tier(self, monkeypatch):
         """No INTERNAL_API_TOKEN -> YAML models with ZDR pinned, and no L2
         write, so an unconfigured backend cannot shadow a real config for a full TTL."""
-        from aiq_agent.common import cache
-        from aiq_agent.common import model_overrides as M
+        from agent.common import cache
+        from agent.common import model_overrides as M
 
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         entry = M._resolve_org_config("org_1")
@@ -463,8 +463,8 @@ class TestSharedTier:
         populated it at all: every replica went back to the BFF every L1 TTL
         for every unconfigured org, which is exactly what L2 exists to stop.
         """
-        from aiq_agent.common import cache
-        from aiq_agent.common import model_overrides as M
+        from agent.common import cache
+        from agent.common import model_overrides as M
 
         calls = []
 
@@ -491,8 +491,8 @@ class TestSharedTier:
         import threading
         import time as stdlib_time
 
-        from aiq_agent.common import cache
-        from aiq_agent.common import model_overrides as M
+        from agent.common import cache
+        from agent.common import model_overrides as M
 
         cache.reset_local_store()
         calls = []
@@ -530,7 +530,7 @@ class TestSharedTier:
         YAML models and ZDR routing, and recovery is a second away, not ten."""
         import time as stdlib_time
 
-        from aiq_agent.common import model_overrides as M
+        from agent.common import model_overrides as M
 
         now = [1000.0]
         monkeypatch.setattr(stdlib_time, "monotonic", lambda: now[0])
@@ -552,8 +552,8 @@ class TestSharedTier:
         assert calls == ["org_1", "org_1"]
 
     def test_a_malformed_shared_value_is_ignored(self, monkeypatch):
-        from aiq_agent.common import cache
-        from aiq_agent.common import model_overrides as M
+        from agent.common import cache
+        from agent.common import model_overrides as M
 
         cache.set_json(M.shared_model_config_key("org_1"), {"overrides": "nope"}, 60)
         monkeypatch.setattr(M, "_fetch_org_config", lambda org: ({"deep_research": "x-ai/grok-4.5"}, False))
@@ -614,7 +614,7 @@ class TestProviderWithReasoningEfforts:
 
     def test_applied_efforts_are_logged(self, caplog):
         provider = self._provider()
-        with caplog.at_level("INFO", logger="aiq_agent.common.llm_provider"):
+        with caplog.at_level("INFO", logger="agent.common.llm_provider"):
             provider.with_reasoning_efforts({"deep_research": "low", "unknown_group": "high"})
         assert "Reasoning effort active" in caplog.text
         assert "deep_research" in caplog.text and "unknown_group" not in caplog.text
@@ -640,7 +640,7 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
         import hashlib
         import hmac
 
-        from aiq_agent import project_context as pc
+        from agent import project_context as pc
 
         def encode(value: object) -> str:
             return base64.urlsafe_b64encode(json.dumps(value).encode()).decode().rstrip("=")
@@ -656,7 +656,7 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
 
     def test_model_overrides_come_from_the_envelope(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         self._headers(
             monkeypatch,
@@ -668,7 +668,7 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
         assert M.get_model_overrides_from_context() == {"shallow_research": "vendor/org-choice"}
 
     def test_an_envelope_without_overrides_resolves_the_org_not_the_header(self, monkeypatch):
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         M.reset_overrides_cache()
         self._headers(
@@ -682,8 +682,8 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
 
     def test_a_forged_envelope_is_absent_and_the_header_path_applies(self, monkeypatch):
         """Only off the BFF is the header read; a bad signature is no envelope."""
-        import aiq_agent.common.model_overrides as M
-        from aiq_agent import project_context as pc
+        import agent.common.model_overrides as M
+        from agent import project_context as pc
 
         self._headers(monkeypatch, None, **{M.MODEL_OVERRIDES_HEADER: {"shallow_research": "vendor/worker"}})
 
@@ -691,8 +691,8 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
         assert M.get_model_overrides_from_context() == {"shallow_research": "vendor/worker"}
 
     def test_disabled_sources_come_from_the_envelope(self, monkeypatch):
-        from aiq_agent.common.data_sources import DISABLED_SOURCES_HEADER
-        from aiq_agent.common.data_sources import get_disabled_sources_from_context
+        from agent.common.data_sources import DISABLED_SOURCES_HEADER
+        from agent.common.data_sources import get_disabled_sources_from_context
 
         self._headers(
             monkeypatch,
@@ -703,25 +703,25 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
         assert get_disabled_sources_from_context() == {"web_search"}
 
     def test_an_envelope_with_nothing_disabled_ignores_the_header(self, monkeypatch):
-        from aiq_agent.common.data_sources import DISABLED_SOURCES_HEADER
-        from aiq_agent.common.data_sources import get_disabled_sources_from_context
+        from agent.common.data_sources import DISABLED_SOURCES_HEADER
+        from agent.common.data_sources import get_disabled_sources_from_context
 
         self._headers(monkeypatch, {"organizationId": "org-1"}, **{DISABLED_SOURCES_HEADER: ["web_search"]})
 
         assert get_disabled_sources_from_context() == set()
 
     def test_budget_and_user_come_from_the_envelope(self, monkeypatch):
-        from aiq_agent.common.cost_tracking import BUDGET_HEADER
-        from aiq_agent.common.cost_tracking import USER_ID_HEADER
-        from aiq_agent.common.cost_tracking import BudgetSnapshot
-        from aiq_agent.common.cost_tracking import capture_usage_context
+        from agent.common.cost_tracking import BUDGET_HEADER
+        from agent.common.cost_tracking import USER_ID_HEADER
+        from agent.common.cost_tracking import BudgetSnapshot
+        from agent.common.cost_tracking import capture_usage_context
 
         self._headers(
             monkeypatch,
             {"organizationId": "org-1", "userId": "u-real", "budget": {"remainingOrgUsd": 1.5}},
             **{BUDGET_HEADER: {"remainingOrgUsd": 1_000_000}},
         )
-        from aiq_agent import project_context as pc
+        from agent import project_context as pc
 
         signed = pc._read_header
         monkeypatch.setattr(pc, "_read_header", lambda name: "u-spoofed" if name == USER_ID_HEADER else signed(name))
@@ -733,8 +733,8 @@ class TestSignedEnvelopeBeatsTheRawHeaders:
         assert BudgetSnapshot.from_header(captured["budget_header"]).remaining_org_usd == 1.5
 
     def test_an_envelope_without_a_budget_carries_none(self, monkeypatch):
-        from aiq_agent.common.cost_tracking import BUDGET_HEADER
-        from aiq_agent.common.cost_tracking import capture_usage_context
+        from agent.common.cost_tracking import BUDGET_HEADER
+        from agent.common.cost_tracking import capture_usage_context
 
         self._headers(
             monkeypatch,

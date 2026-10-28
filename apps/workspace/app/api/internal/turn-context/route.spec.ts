@@ -52,22 +52,22 @@ import type { ProposedChangeRow } from '@/lib/proposals/repository'
 import { loadReferenceBrief } from '@/lib/cross-project/reference-brief'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import {
-  buildGridRequestContextEnvelopeHeaders, REQUEST_CONTEXT_MAX_AGE_MS,
-  type GridRequestContextInput,
+  buildRequestContextEnvelopeHeaders, REQUEST_CONTEXT_MAX_AGE_MS,
+  type RequestContextInput,
 } from '@/lib/request-context'
 import { turnContextResponseSchema } from '@/lib/turn-context/wire'
 import { POST } from './route'
 
 const SECRET = 'turn-context-test-token' // pragma: allowlist secret
 const SESSION = {
-  userId: 'user_1', organizationId: 'org_1', email: 'requester@grid.test', name: null,
+  userId: 'user_1', organizationId: 'org_1', email: 'requester@example.test', name: null,
   organizationMembershipId: 'om_1', role: 'member', permissions: [],
   accessToken: '', featureFlags: null,
 }
 const LARGE_PROFILE = 'PROJECT_CONTEXT v1\n' + 'ä'.repeat(4000)
 
-function signedHeaders(overrides: GridRequestContextInput = {}) {
-  return buildGridRequestContextEnvelopeHeaders({
+function signedHeaders(overrides: RequestContextInput = {}) {
+  return buildRequestContextEnvelopeHeaders({
     organizationId: 'org_1', userId: 'user_1', projectId: 'proj_1',
     conversationId: 's_text-conversation', issuedAt: Date.now(), contextTransport: 'bff',
     ...overrides,

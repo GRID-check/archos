@@ -44,7 +44,7 @@ function primaryTitle(standard: ApplicableStandard, locale: Locale): string {
 }
 
 /** Build the deep link that prefills the chat composer with a question about a Richtlinie. */
-function askGridHref(
+function askAgentHref(
   projectId: string,
   standard: ApplicableStandard,
   locale: Locale,
@@ -120,9 +120,9 @@ export function ApplicableStandards({
                     </Chip>
                     <Chip asChild interactive variant="outline" size="sm">
                       <Link
-                        href={askGridHref(projectId, standard, locale, t)}
-                        aria-label={t('applicableStandards.askGridAria', { code: standard.code })}
-                        title={t('applicableStandards.askGridTitle')}
+                        href={askAgentHref(projectId, standard, locale, t)}
+                        aria-label={t('applicableStandards.askAgentAria', { code: standard.code })}
+                        title={t('applicableStandards.askAgentTitle')}
                       >
                         <MessageSquareText aria-hidden />
                         {t('applicableStandards.askGrid')}

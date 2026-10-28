@@ -2,7 +2,7 @@
 
 The UI's copy reads ``PRODUCT_NAME`` from ``apps/workspace/bff/brand.ts``
 (through ``{productName}`` in the dictionaries); the agent's prompts read it
-from ``aiq_agent.common.brand`` (through ``{{ product_name }}``). A rename that
+from ``agent.common.brand`` (through ``{{ product_name }}``). A rename that
 reaches one and not the other would have the agent introduce itself by a name
 the screen around it no longer uses.
 """
@@ -12,8 +12,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from aiq_agent.common import render_prompt_template
-from aiq_agent.common.brand import PRODUCT_NAME
+from agent.common import render_prompt_template
+from agent.common.brand import PRODUCT_NAME
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_BRAND = ROOT / "apps" / "workspace" / "bff" / "brand.ts"

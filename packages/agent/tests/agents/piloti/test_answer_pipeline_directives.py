@@ -1,7 +1,7 @@
 """The answer's Markdown directives pass the pipeline as inert text.
 
 The prompt teaches a small directive dialect the renderer draws richly
-(``piloti_static.md`` <formatting>, RICH BLOCKS): ``:::check`` around a check
+(``chat_static.md`` <formatting>, RICH BLOCKS): ``:::check`` around a check
 table, ``:::procedure`` around a Verfahren's list, ``:energy-class[B]``, and a cited
 quote line ``> „…“ [N]``. None of the post-answer passes knows the dialect, and
 none may need to: the fence lines must reach the reader byte-equal, the ``[N]``
@@ -16,14 +16,14 @@ import json
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.sanitize import sanitize_report
+from agent.agents.piloti.answer_pipeline import finalize_answer
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.citations.entries import DROPPED_CITATION_MARKER
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.citations.sanitize import sanitize_report
 
 PASSAGE_A = "Brandabschnitte dürfen eine Nettogrundfläche von höchstens 1.200 m² aufweisen."
 PASSAGE_B = "Die Luftschalldämmung zwischen Wohnungen muss mindestens 55 dB betragen."

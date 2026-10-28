@@ -23,8 +23,8 @@ from knowledge_layer.view_image import parse_region
 from knowledge_layer.view_image import region_render_args
 from PIL import Image
 
-from aiq_agent.common import image_view_budget
-from aiq_agent.common import model_vision
+from agent.common import image_view_budget
+from agent.common import model_vision
 
 A4 = (595.0, 842.0)
 A0 = (2384.0, 3370.0)

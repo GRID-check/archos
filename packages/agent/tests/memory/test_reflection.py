@@ -6,14 +6,14 @@ import threading
 
 import pytest
 
-from aiq_agent.common import AgentGroup
-from aiq_agent.knowledge.project_memory import VALID_CONFIDENCES
-from aiq_agent.knowledge.project_memory import VALID_KINDS
-from aiq_agent.memory import reflection as R
-from aiq_agent.stages import TurnFacts
-from aiq_agent.stages import registry as stage_registry
-from aiq_agent.stages import schedule_post_answer_stages
-from aiq_agent.stages.memory_reflection import MEMORY_REFLECTION
+from agent.common import AgentGroup
+from agent.knowledge.project_memory import VALID_CONFIDENCES
+from agent.knowledge.project_memory import VALID_KINDS
+from agent.memory import reflection as R
+from agent.stages import TurnFacts
+from agent.stages import registry as stage_registry
+from agent.stages import schedule_post_answer_stages
+from agent.stages.memory_reflection import MEMORY_REFLECTION
 
 
 class _FakeResponse:
@@ -739,7 +739,7 @@ class TestRestrictedReflection:
     )
 
     def _evidence(self, *, read=()):
-        from aiq_agent.memory.restriction import restriction_evidence
+        from agent.memory.restriction import restriction_evidence
 
         return restriction_evidence(
             ["proj-1", self._RESTRICTED],

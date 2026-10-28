@@ -1,9 +1,9 @@
-"""A thread question is answered in its thread (``aiq_agent.turn.annotation_reply``).
+"""A thread question is answered in its thread (``agent.turn.annotation_reply``).
 
 The record, the decision and the post are driven directly; the canvas tools
 marking the record are in ``packages/agent/tests/tools/canvas/test_thread_reply.py``,
 and the chat socket calling it at the end of a turn in
-``apps/backend/tests/test_chat_socket.py``. The body the fallback builds is
+``apps/agent-host/tests/test_chat_socket.py``. The body the fallback builds is
 validated against the schema the BFF's route exports, as the tool's own are.
 """
 
@@ -18,31 +18,31 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.wire_v2 import FocusRegion
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_cross_project_turn
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
-from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.turn import annotation_reply
-from aiq_agent.turn.annotation_reply import MAX_REPLY_CHARS
-from aiq_agent.turn.annotation_reply import ThreadReply
-from aiq_agent.turn.annotation_reply import bind_thread_reply
-from aiq_agent.turn.annotation_reply import current_thread_reply
-from aiq_agent.turn.annotation_reply import fallback_reply_request
-from aiq_agent.turn.annotation_reply import note_thread_post
-from aiq_agent.turn.annotation_reply import post_fallback_reply
-from aiq_agent.turn.annotation_reply import reset_thread_reply
-from aiq_agent.turn.annotation_reply import settle_thread_reply
-from aiq_agent.turn.annotation_reply import thread_text
+from agent.common.bff_http import SignedEnvelope
+from agent.common.wire_v2 import FocusRegion
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import TurnResult
+from agent.common.wire_v2 import UserMessage
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_cross_project_turn
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_cross_project_turn
+from agent.knowledge.restricted_use import reset_restricted_use
+from agent.observability.langfuse_trace_attributes import begin_trace_contributions
+from agent.observability.langfuse_trace_attributes import end_trace_contributions
+from agent.observability.langfuse_trace_attributes import snapshot_contributions
+from agent.tools.canvas.client import CanvasRequestError
+from agent.turn import annotation_reply
+from agent.turn.annotation_reply import MAX_REPLY_CHARS
+from agent.turn.annotation_reply import ThreadReply
+from agent.turn.annotation_reply import bind_thread_reply
+from agent.turn.annotation_reply import current_thread_reply
+from agent.turn.annotation_reply import fallback_reply_request
+from agent.turn.annotation_reply import note_thread_post
+from agent.turn.annotation_reply import post_fallback_reply
+from agent.turn.annotation_reply import reset_thread_reply
+from agent.turn.annotation_reply import settle_thread_reply
+from agent.turn.annotation_reply import thread_text
 
 ROOT = Path(__file__).resolve().parents[4]
 ANNOTATIONS_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "document-annotations.schema.json"

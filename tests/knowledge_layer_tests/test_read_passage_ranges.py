@@ -32,11 +32,11 @@ from knowledge_layer.read_passage import encode_cursor
 from knowledge_layer.read_passage import read_passage
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.tool_calls import fetch_signature
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.common.tool_calls import fetch_signature
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 REPORT = "Brandschutzkonzept.pdf"
 OTHER = "Gutachten.pdf"
@@ -108,14 +108,14 @@ def harness(monkeypatch):
         async def _documents(collection: str):
             return [_document(name) for name in documents]
 
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+        monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: retriever)
+        monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
         monkeypatch.setattr(
-            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            "agent.knowledge.scoping.get_scoped_collections_from_context",
             lambda: [ScopedCollection(COLLECTION, Shelf.PROJECT)],
         )
         for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-            monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+            monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
         return retriever
 
     return build
@@ -511,7 +511,7 @@ class TestLegacyDocument:
         chunks = [_chunk(1 + index // 2, index, f"Abschnitt {index}. " + "x" * 5_000) for index in range(10)]
         retriever = _FilteringRetriever(chunks, legacy=True)
         harness([])
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
+        monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: retriever)
 
         first = await _read(document=REPORT, pages="1-5", conclusion="x")
         second = await _read(document=REPORT, cursor=_cursor_of(first), conclusion="x")
@@ -531,7 +531,7 @@ class TestLookBackFillsTheFetch:
         wanted = [_chunk(9, 900, "Abschnitt neun."), _chunk(9, 901, "Abschnitt neunB.")]
         retriever = _FilteringRetriever(look_back + wanted)
         harness([])
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
+        monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: retriever)
 
         text = await _read(document=REPORT, pages="9", conclusion="x")
 

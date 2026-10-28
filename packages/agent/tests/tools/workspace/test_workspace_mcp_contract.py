@@ -4,7 +4,7 @@ Each side was tested alone: ``test_workspace_client.py`` against a fake socket,
 ``api/mcp/route.spec.ts`` against hand-built requests. Nothing proved the request
 this client really builds is one the real route answers, or that the answer is one
 this client really parses. Two committed fixtures close that, the pattern of
-``grid_request_context.json``:
+``request_context.json``:
 
 * ``apps/workspace/tests/fixtures/workspace_mcp_requests.json`` is written HERE from
   the real request builder (only the socket is replaced). The BFF spec
@@ -30,9 +30,9 @@ from urllib.parse import urlparse
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.tools.workspace import client
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
+from agent.tools.workspace import client
 
 REPO = Path(__file__).resolve().parents[5]
 FIXTURES = REPO / "apps" / "workspace" / "tests" / "fixtures"
@@ -145,7 +145,7 @@ def _document(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return {
         "comment": (
             "Written by packages/agent/tests/tools/workspace/test_workspace_mcp_contract.py from the real request "
-            "builder of aiq_agent/tools/workspace/client.py; replayed by "
+            "builder of agent/tools/workspace/client.py; replayed by "
             "apps/workspace/app/api/mcp/workspace-contract.spec.ts against the real route. "
             "Regenerate with UPDATE_FIXTURES=1. The spec signs envelopePayload (with a current issuedAt) and "
             "substitutes the placeholders."
@@ -167,7 +167,7 @@ def test_request_fixture_is_what_the_client_builds(monkeypatch: pytest.MonkeyPat
 
 
 def test_every_server_tool_the_agent_names_is_in_the_fixture() -> None:
-    from aiq_agent.tools.workspace.register import SERVER_TOOLS
+    from agent.tools.workspace.register import SERVER_TOOLS
 
     covered = {
         body["params"]["name"] for body in (r["body"] for r in json.loads(REQUESTS_PATH.read_text())["requests"])
@@ -236,7 +236,7 @@ def test_a_proposed_write_carries_the_shape_the_card_is_made_from(monkeypatch: p
 
 
 def test_a_read_has_no_decision_to_propose(monkeypatch: pytest.MonkeyPatch) -> None:
-    from aiq_agent.tools.workspace.cards import proposal_from
+    from agent.tools.workspace.cards import proposal_from
 
     entry = _responses()["responses"]["call_read"]
     monkeypatch.setattr(bff_http, "_opener", _Opener(_reply_for(entry)))

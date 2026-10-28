@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.estate_paths import PathRefused
-from aiq_agent.common.estate_paths import action_place
-from aiq_agent.common.estate_paths import asked_document
-from aiq_agent.common.estate_paths import call_mount
-from aiq_agent.common.estate_paths import estate_path
-from aiq_agent.common.estate_paths import file_name_candidates
-from aiq_agent.common.estate_paths import is_draft_path
-from aiq_agent.common.estate_paths import leaf_for
-from aiq_agent.common.estate_paths import mount_of_path
-from aiq_agent.common.estate_paths import parse_estate_path
-from aiq_agent.common.estate_paths import reaches_drafts_only
+from agent.common.estate_paths import PathRefused
+from agent.common.estate_paths import action_place
+from agent.common.estate_paths import asked_document
+from agent.common.estate_paths import call_mount
+from agent.common.estate_paths import estate_path
+from agent.common.estate_paths import file_name_candidates
+from agent.common.estate_paths import is_draft_path
+from agent.common.estate_paths import leaf_for
+from agent.common.estate_paths import mount_of_path
+from agent.common.estate_paths import parse_estate_path
+from agent.common.estate_paths import reaches_drafts_only
 
 
 class TestTheLeaf:
@@ -26,7 +26,7 @@ class TestTheLeaf:
         assert leaf_for("Notiz.txt") == "Notiz.txt"
         assert leaf_for("Liste.CSV") == "Liste.CSV"
 
-    def test_an_agent_filed_document_shows_no_piloti_directory(self) -> None:
+    def test_an_agent_filed_document_shows_no_agent_directory(self) -> None:
         assert leaf_for("piloti/Aktenvermerk.pdf") == "Aktenvermerk.pdf.md"
 
     def test_the_name_is_nfc(self) -> None:

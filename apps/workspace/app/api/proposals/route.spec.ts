@@ -24,7 +24,7 @@ const SESSION = vi.hoisted(() => ({
   userId: 'user_1',
   organizationId: 'org_1',
   organizationMembershipId: 'om_1',
-  email: 'anna@grid.test',
+  email: 'anna@example.test',
   name: 'Anna Berger',
   role: 'member',
   permissions: [] as string[],

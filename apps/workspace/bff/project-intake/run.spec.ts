@@ -22,12 +22,12 @@ vi.mock('@/lib/jobs/backend-client', async (original) => ({
 }))
 vi.mock('@/lib/request-context', async (original) => ({
   ...(await original<typeof import('@/lib/request-context')>()),
-  buildGridRequestContextWireHeaders: vi.fn(() => ({ 'x-grid-request-context': 'signed' })),
+  buildRequestContextWireHeaders: vi.fn(() => ({ 'x-grid-request-context': 'signed' })),
 }))
 
 import { submitJob } from '@/lib/jobs/backend-client'
 import { resolveRunContext, type RunContext } from '@/lib/jobs/run-context'
-import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
+import { buildRequestContextWireHeaders } from '@/lib/request-context'
 import { intakeInstruction, mintIntakeJobId, submitIntakeRun } from './run'
 
 const PROJECT = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
@@ -48,7 +48,7 @@ const input = {
   organizationId: 'org-1',
   projectId: PROJECT,
   userId: 'anna',
-  email: 'anna@grid.test',
+  email: 'anna@example.test',
   collectionName: 'proj_main',
   jobId: 'intake-job-1',
   scope: 'new' as const,
@@ -78,7 +78,7 @@ describe('submitIntakeRun', () => {
       organization_id: 'org-1',
       user_id: 'anna',
       project_id: PROJECT,
-      owner_email: 'anna@grid.test',
+      owner_email: 'anna@example.test',
       model_overrides: { chat: 'model-x' },
       priority: 'bulk',
       input: intakeInstruction('new', 'upload'),
@@ -86,7 +86,7 @@ describe('submitIntakeRun', () => {
     expect(payload).not.toHaveProperty('run_id')
     expect(payload).not.toHaveProperty('conversation_id')
 
-    const [envelope] = vi.mocked(buildGridRequestContextWireHeaders).mock.calls[0]
+    const [envelope] = vi.mocked(buildRequestContextWireHeaders).mock.calls[0]
     expect(envelope).toMatchObject({
       userId: 'anna',
       projectId: PROJECT,

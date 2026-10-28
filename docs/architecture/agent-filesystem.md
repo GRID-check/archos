@@ -8,7 +8,7 @@
 > [ADR-0134](../adr/0134-extracted-page-text-is-stored-per-version.md) (page text is
 > stored per version). Written 2026-10-27, before slice 0; what is built, and where it
 > departs from the design, is [As built](#as-built). The write side, and why the estate is never writable through
-> filesystem verbs, is [`piloti-filesystem-design.md`](piloti-filesystem-design.md) §2.
+> filesystem verbs, is [`filesystem-design.md`](filesystem-design.md) §2.
 > Today's tools and their costs: [`agent-tool-surface.md`](agent-tool-surface.md).
 > Output examples use the `files_eval` fixture project
 > (`tests/fixtures/files_eval/project.yaml`); values the fixture does not hold are
@@ -36,11 +36,11 @@ with the reason. The design text stays as written; this section is the delta.
 
 | Piece | Where |
 |---|---|
-| Paths, mounts, canonical form, `call_mount` | `packages/agent/src/aiq_agent/common/estate_paths.py` |
+| Paths, mounts, canonical form, `call_mount` | `packages/agent/src/agent/common/estate_paths.py` |
 | The read-only async backend (rows, resolution, rendering) | `packages/knowledge-layer/src/estate.py` (`EstateBackend`) |
 | Stored page text and the chunk rebuild | `packages/knowledge-layer/src/stored_pages.py` |
-| The tools, the `CompositeBackend`, the `/drafts/` route | `packages/agent/src/aiq_agent/tools/documents/filesystem.py`, `tools.py` |
-| Citations on `ToolMessage.artifact` | `packages/agent/src/aiq_agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
+| The tools, the `CompositeBackend`, the `/drafts/` route | `packages/agent/src/agent/tools/documents/filesystem.py`, `tools.py` |
+| Citations on `ToolMessage.artifact` | `packages/agent/src/agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
 | `ToolStep.mount` | `common/wire_v2.py`, `action_rows.ToolStepCallback`; the UI's `executed-steps.ts` |
 | Config | `filesystem: knowledge_search` on `shallow_research_agent` (`configs/config_oib_openrouter.yml`) |
 
@@ -68,7 +68,7 @@ Departures, each with its reason:
    `knowledge_search` or `read_passage` hit names the path `read_file` opens. One header
    line per hit; the byte fixture `read_passage_outline.txt` moved with it.
 6. **The source toggle is mapped in code** (`data_sources.source_id_for_call`): the
-   filesystem tools are not NAT functions, so the `data_sources` registry cannot list
+   filesystem tools are not runtime functions, so the `data_sources` registry cannot list
    them. They belong to the source `knowledge_search` belongs to, per mount; a call under
    `/drafts/` belongs to none.
 7. **A restricted path resolves only once its collection may be named** (`may_name`): a
@@ -142,9 +142,9 @@ the evidence tool surface went from 5,560 to 3,111 tokens per call (o200k).
 
 | Piece | Where |
 |---|---|
-| The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `packages/agent/src/aiq_agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
+| The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `packages/agent/src/agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
 | `knowledge_search` (ranked only, `path`) and `list_files` (no tree view) where the estate is read | `packages/knowledge-layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` only when `filesystem` is set (`estate_paths.reads_the_estate`) |
-| A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `packages/agent/src/aiq_agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
+| A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `packages/agent/src/agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
 | Shared hints state facts and name no tool | `read_passage.py`, `register.py`, `browse.py`, `document_groups.py`, `chunk_noise.py`, `qdrant/folders.py`, `already_read.py`, `revision_diff.py` |
 | A citation written as a path resolves to its key | `citations/citation_keys.py::citation_key_of_path` |
 | The coverage line and the `Herkunft:` line say what they mean | `common/grounding_block.COVERAGE_GAP_NOTE`, `AGENT_DOCUMENT_NOTE` |
@@ -155,7 +155,7 @@ Departures, each with its reason:
 1. **The skills moved before this slice** (ADR-0135), so the `/skills/` exception to "tool
    results are data" ships, and there is no `use_skill` to retire.
 2. **The retired names are unbound, not unregistered**: deep research, intake and the door bind
-   the same NAT functions with their full contracts, so the variant is chosen at bind time, and a
+   the same runtime functions with their full contracts, so the variant is chosen at bind time, and a
    config without `filesystem` (an eval arm, a benchmark) keeps the full contracts. A
    `read_passage` call on the chat is answered by the tool node with the tools there are; a
    retired argument (`match`, `stemmed`, `context`, `view`) by the schema, with its replacement.
@@ -498,7 +498,7 @@ with `listing` and `includeOwnProject`, `lib/search/reach.ts`), so a
 restricted folder is absent in every audience, a solo chat's included; held uploads,
 binned folders and archived documents are absent too. The contract is
 [`docs/api/bff-routes.md`](../api/bff-routes.md) (`/api/internal/estate-tree`); the
-agent's client is `aiq_agent/knowledge/estate_tree_client.py`, which the estate backend
+agent's client is `agent/knowledge/estate_tree_client.py`, which the estate backend
 of slices 2–3 calls. A missing, binned and restricted folder all answer the same 404,
 so `ls` renders each as the same "No file".
 

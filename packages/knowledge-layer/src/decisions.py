@@ -4,7 +4,7 @@ The retrieval loop's judge (``requery.py``) is a frontier-model call per
 search that answers a yes/no — "does the head of this pool hold what the
 question needs" — and, on "no", writes two other phrasings. The yes/no is a
 decision over a state, which is the shape TypeSafe's Jev answers in a few
-hundred milliseconds for a fraction of a cent (``aiq_agent.common.decisions``,
+hundred milliseconds for a fraction of a cent (``agent.common.decisions``,
 ADR-0064). So the yes/no is asked HERE, one ``noul`` per passage of the head,
 and the generative call runs only on the insufficient case, which is the
 minority. That is J2 of the turns audit: the hidden frontier call on every
@@ -25,7 +25,7 @@ numbers on legal retrieval (top-1 5 % → 18 %, top-10 38 % → 62 %) are those
 of a useful reranker, not of a cross-encoder trained for the task, and the
 golden set decides (``scripts/decision_eval.py``).
 
-This package must import without ``aiq_agent`` (``packages/AGENTS.md``), so
+This package must import without ``agent`` (``packages/AGENTS.md``), so
 the client is imported lazily and its absence is "no decision", which every
 caller already handles as "run as today".
 """
@@ -77,7 +77,7 @@ _INJECTION_FALSE = "Ordinary regulation, guidance, planning or project text, wha
 
 #: The injection question as the endpoint takes it, for every caller that reads
 #: passages it did not write: this judge, and the cross-project lookup's
-#: (``aiq_agent.tools.cross_project.hit_judge``). One wording, so one eval.
+#: (``agent.tools.cross_project.hit_judge``). One wording, so one eval.
 INJECTION_QUESTION = {
     "type": "noul",
     "instructions": _INJECTION,
@@ -90,7 +90,7 @@ _RELEVANT_FALSE = "The passage is about something else, or only shares words wit
 
 def _client():
     try:
-        from aiq_agent.common import decisions
+        from agent.common import decisions
 
         return decisions
     except ImportError:
@@ -175,7 +175,7 @@ def _record_flags(verdicts: PassageVerdicts, chunks: Sequence[Any]) -> None:
         return
     sources = sorted({str(getattr(chunks[i], "file_name", "") or "?") for i in flagged})
     logger.warning("Passage(s) with instruction-like text retrieved from %s", ", ".join(sources))
-    from aiq_agent.common.turn_status import emit_technical
+    from agent.common.turn_status import emit_technical
 
     emit_technical("decision:passage_injection", count=len(flagged), sources=sources[:5])
 

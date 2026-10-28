@@ -249,7 +249,7 @@ export interface DocumentVersionTransition {
 /**
  * Every transition, in the order a document walks them.
  *
- * Read it as the table in `docs/roadmap/piloti-writes-artifacts-and-approval.md`
+ * Read it as the table in `docs/roadmap/agent-writes-artifacts-and-approval.md`
  * §2, because it IS that table: the design's Op / Actor / Guard / Effects
  * columns are these four fields, and a row that disagrees with the design is a
  * row somebody has to change in one place.

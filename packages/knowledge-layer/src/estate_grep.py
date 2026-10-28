@@ -37,12 +37,12 @@ from dataclasses import field
 from typing import Any
 from typing import Literal
 
-from aiq_agent.common.estate_paths import MOUNT_ROOTS
-from aiq_agent.common.estate_paths import SHELF_MOUNTS
-from aiq_agent.common.estate_paths import EstatePath
-from aiq_agent.common.estate_paths import Mount
-from aiq_agent.common.estate_paths import PathRefused
-from aiq_agent.common.estate_paths import parse_estate_path
+from agent.common.estate_paths import MOUNT_ROOTS
+from agent.common.estate_paths import SHELF_MOUNTS
+from agent.common.estate_paths import EstatePath
+from agent.common.estate_paths import Mount
+from agent.common.estate_paths import PathRefused
+from agent.common.estate_paths import parse_estate_path
 
 from . import stored_pages
 from .browse import MAX_CONTEXT_LINES
@@ -186,10 +186,10 @@ async def search(
     retriever: Any = None,
 ) -> ToolOutput:
     """``grep`` on the estate, with its Herleitung row (verb ``search``, mode ``exact`` or ``regex``)."""
-    from aiq_agent.common.action_outcome import ActionOutcome
-    from aiq_agent.common.action_rows import ActionRow
-    from aiq_agent.common.estate_paths import action_place
-    from aiq_agent.common.turn_status import lane_tool_scope
+    from agent.common.action_outcome import ActionOutcome
+    from agent.common.action_rows import ActionRow
+    from agent.common.estate_paths import action_place
+    from agent.common.turn_status import lane_tool_scope
 
     row = ActionRow("search", query=pattern, mode=(mode or "exact").strip().lower(), **action_place(path))
     outcome = ActionOutcome()
@@ -262,7 +262,7 @@ async def _search(
     if not matches:
         # Most of the scope WAS searched: the row is "no hit, incomplete", not a failure (the text says the same).
         return ToolOutput(_no_match(query, where, len(searched_files), gaps), status="ok")
-    from aiq_agent.knowledge.restricted_use import note_collections_read
+    from agent.knowledge.restricted_use import note_collections_read
 
     # The listing names every matching file and counts its matches, which is content of each file it names:
     # reported for the round's admission (ADR-0088), beside the passages a grounding block reports itself.
@@ -275,7 +275,7 @@ async def _search(
 
 async def _restricted_files(backend: Any) -> list[EstateFile]:
     """The documents of the restricted folders in scope, to put a path on their matches. Never listed."""
-    from aiq_agent.knowledge.restricted_collections import is_restricted_collection
+    from agent.knowledge.restricted_collections import is_restricted_collection
 
     from .estate import _rows_of
 
@@ -351,7 +351,7 @@ async def _candidates(
     from .search_scope import resolve_base_collection
 
     if retriever is None:
-        from aiq_agent.knowledge.factory import get_active_retriever
+        from agent.knowledge.factory import get_active_retriever
 
         retriever = get_active_retriever()
     base = resolve_base_collection(search_config) if search_config is not None else ""
@@ -497,7 +497,7 @@ def _count(query: Query, text: str) -> int:
 def _display_path(doc: DocumentMatches) -> str:
     if doc.file is not None:
         return doc.file.path
-    from aiq_agent.common.estate_paths import estate_path
+    from agent.common.estate_paths import estate_path
 
     return estate_path(doc.shelf, None, doc.file_name) or doc.file_name
 

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from aiq_agent.agents.piloti import answer_pipeline
-from aiq_agent.agents.piloti.answer_pipeline import LiveAnswer
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import answer_envelope
-from aiq_agent.common.answer_envelope import SUMMARY_MAX_CHARS
-from aiq_agent.common.answer_envelope import AnswerMeta
+from agent.agents.piloti import answer_pipeline
+from agent.agents.piloti.answer_pipeline import LiveAnswer
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import answer_envelope
+from agent.common.answer_envelope import SUMMARY_MAX_CHARS
+from agent.common.answer_envelope import AnswerMeta
 
 PROSE = "In GK 4 darf der Fluchtweg höchstens 40 m lang sein [1]."
 SOURCES = "**Quellen:**\n- [1] oib-rl_2.pdf, p.12"

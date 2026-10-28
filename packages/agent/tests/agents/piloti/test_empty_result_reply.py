@@ -9,11 +9,11 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.register import _run_agent
-from aiq_agent.citations.entries import EmptySourceRegistryError
-from aiq_agent.common.canned_replies import NO_SOURCES_MESSAGE
-from aiq_agent.common.canned_replies import SCOPED_NO_SOURCES_MESSAGE
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.register import _run_agent
+from agent.citations.entries import EmptySourceRegistryError
+from agent.common.canned_replies import NO_SOURCES_MESSAGE
+from agent.common.canned_replies import SCOPED_NO_SOURCES_MESSAGE
 
 
 def _deployment_that_finds_nothing() -> SimpleNamespace:

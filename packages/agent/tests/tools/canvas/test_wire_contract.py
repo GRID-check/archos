@@ -34,16 +34,16 @@ from agent_testing.canvas import answering
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.tools.canvas import presence
-from aiq_agent.tools.canvas.register import run_delete
-from aiq_agent.tools.canvas.register import run_highlight
-from aiq_agent.tools.canvas.register import run_mark
-from aiq_agent.tools.canvas.register import run_marks
-from aiq_agent.tools.canvas.register import run_point
-from aiq_agent.tools.canvas.register import run_reply
-from aiq_agent.tools.canvas.register import run_room
-from aiq_agent.tools.canvas.register import run_update
+from agent.common.focus_file import set_turn_intent
+from agent.tools.canvas import presence
+from agent.tools.canvas.register import run_delete
+from agent.tools.canvas.register import run_highlight
+from agent.tools.canvas.register import run_mark
+from agent.tools.canvas.register import run_marks
+from agent.tools.canvas.register import run_point
+from agent.tools.canvas.register import run_reply
+from agent.tools.canvas.register import run_room
+from agent.tools.canvas.register import run_update
 
 ROOT = Path(__file__).resolve().parents[5]
 ANNOTATIONS_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "document-annotations.schema.json"

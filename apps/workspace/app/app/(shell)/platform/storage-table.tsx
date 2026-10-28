@@ -347,7 +347,7 @@ export const PlatformStorageTable: FC = () => {
 
   return (
     <div
-      className="grid-storage-viz flex flex-col gap-4"
+      className="storage-viz flex flex-col gap-4"
       data-testid="platform-storage"
       aria-busy={loading || undefined}
     >

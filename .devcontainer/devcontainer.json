@@ -1,7 +1,7 @@
 {
   "name": "Grid OIB Agent Dev Container",
   "build": {
-    "dockerfile": "apps/backend/Dockerfile",
+    "dockerfile": "apps/agent-host/Dockerfile",
     "context": "..",
     "target": "dev-builder"
   },

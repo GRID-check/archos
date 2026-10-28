@@ -169,7 +169,7 @@ export type IngestPriority = (typeof INGEST_PRIORITIES)[number]
  * What a published Piloti document carries into the retrieval index.
  *
  * The four keys are spelled here and parsed in
- * `packages/agent/src/aiq_agent/common/provenance.py`; the pair is the whole contract, and a
+ * `packages/agent/src/agent/common/provenance.py`; the pair is the whole contract, and a
  * typo on either side is silent — a human document is what an unmarked chunk
  * looks like. So the field names ARE the wire names (snake_case, unlike every
  * other interface in this file) rather than being mapped at the fetch, which is
@@ -322,7 +322,7 @@ export async function dispatchIngest(
     return { jobId: ingestJobId, status: 'pending' }
   }
   // No job id, failed or not. The backend answers 202 with a `job_id` on every
-  // success (`aiq_api/routes/ingest.py`), so an OK response without one is not
+  // success (`agent_host/routes/ingest.py`), so an OK response without one is not
   // a quieter success — it is a response this caller does not understand, and
   // leaving the row at its birth status ('uploaded', which the badge renders
   // green "Ready") would promise citations for a document nothing ever

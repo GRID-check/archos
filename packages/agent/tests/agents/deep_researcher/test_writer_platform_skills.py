@@ -30,13 +30,13 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-from aiq_agent.agents.deep_researcher.factory import WRITER_AGENT
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common import cache as shared_cache
-from aiq_agent.skills.resolver import SkillResolver
+from agent.agents.deep_researcher.agent import DeepResearcherAgent
+from agent.agents.deep_researcher.factory import WRITER_AGENT
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common import cache as shared_cache
+from agent.skills.resolver import SkillResolver
 
 VOICE_BODY = "# Wie eine Antwort gebaut ist\n\nDie Zahl steht im ersten Satz."
 
@@ -63,11 +63,11 @@ def _stub_researcher_construction():
     researcher_runnable.ainvoke = AsyncMock()
     with (
         mock.patch(
-            "aiq_agent.agents.deep_researcher.factory.create_summarization_middleware",
+            "agent.agents.deep_researcher.factory.create_summarization_middleware",
             return_value=FakeSummarizationMiddleware(),
         ),
         mock.patch(
-            "aiq_agent.agents.deep_researcher.factory.create_agent",
+            "agent.agents.deep_researcher.factory.create_agent",
             return_value=researcher_runnable,
         ),
     ):
@@ -151,7 +151,7 @@ async def _prepare(agent: DeepResearcherAgent, graph: MagicMock, state: DeepRese
     """
     skill_runtime = await agent._build_skill_runtime(state)
     with mock.patch(
-        "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+        "agent.agents.deep_researcher.factory.create_deep_agent",
         return_value=graph,
     ) as create:
         agent._prepare_run(state, skill_runtime)
@@ -177,7 +177,7 @@ async def test_a_platform_skill_reaches_the_writer_as_a_catalog_line_and_a_body(
 
     with mock.patch.object(SkillResolver, "_fetch_org_skills", return_value=[_voice_row()]):
         skill_runtime = await agent._build_skill_runtime(state)
-        with mock.patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph) as create:
+        with mock.patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph) as create:
             agent._prepare_run(state, skill_runtime)
     writer = next(spec for spec in create.call_args.kwargs["subagents"] if spec["name"] == WRITER_AGENT)
 
@@ -284,7 +284,7 @@ async def test_the_report_is_still_written_when_skills_cannot_be_resolved(llm_pr
         assert [item.name for item in writer["tools"]] == ["think", "get_verified_sources"]
 
         with mock.patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=graph,
         ):
             result = await agent.run(state)

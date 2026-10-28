@@ -11,16 +11,16 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.provenance import AGENT_AUTHOR
-from aiq_agent.common.provenance import AgentProvenance
-from aiq_agent.common.provenance import german_date
-from aiq_agent.common.provenance import is_agent_author
-from aiq_agent.common.provenance import is_agent_authored
-from aiq_agent.common.provenance import normalize_document_name
-from aiq_agent.common.provenance import parse_agent_provenance
-from aiq_agent.common.provenance import provenance_label
-from aiq_agent.common.provenance import provenance_metadata
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+from agent.common.provenance import AGENT_AUTHOR
+from agent.common.provenance import AgentProvenance
+from agent.common.provenance import german_date
+from agent.common.provenance import is_agent_author
+from agent.common.provenance import is_agent_authored
+from agent.common.provenance import normalize_document_name
+from agent.common.provenance import parse_agent_provenance
+from agent.common.provenance import provenance_label
+from agent.common.provenance import provenance_metadata
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 
 _STAMPED = {
     "authored_by": "agent",

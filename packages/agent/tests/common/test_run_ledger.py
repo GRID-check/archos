@@ -4,7 +4,7 @@ ADR-0055 read from this side: there is **no hand-written twin** of the contract.
 The shape lives in ``apps/workspace/bff/runs/run-ledger-types.ts``, is
 serialised to ``apps/workspace/tests/fixtures/run-ledger.schema.json`` by
 ``run-ledger-schema.spec.ts``, and what this file asserts is that the payloads
-``aiq_agent.common.run_ledger`` builds validate against it — so a field renamed
+``agent.common.run_ledger`` builds validate against it — so a field renamed
 on the TS side fails here rather than at runtime with a 400 the reader sees as
 „Piloti konnte den Verlauf nicht schreiben".
 
@@ -24,22 +24,22 @@ import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
-from aiq_agent.common.run_ledger import MAX_DOCS_PER_STEP
-from aiq_agent.common.run_ledger import MAX_INTENT_CHARS
-from aiq_agent.common.run_ledger import MAX_LOCI_PER_DOC
-from aiq_agent.common.run_ledger import MAX_NAME_CHARS
-from aiq_agent.common.run_ledger import MAX_STEPS
-from aiq_agent.common.run_ledger import RUN_PHASES
-from aiq_agent.common.run_ledger import RUN_STATUSES
-from aiq_agent.common.run_ledger import RunError
-from aiq_agent.common.run_ledger import RunLedger
-from aiq_agent.common.run_ledger import RunLedgerDoc
-from aiq_agent.common.run_ledger import RunPhase
-from aiq_agent.common.run_ledger import RunPhaseEntry
-from aiq_agent.common.run_ledger import RunResult
-from aiq_agent.common.run_ledger import RunStatus
-from aiq_agent.common.run_ledger import RunStep
-from aiq_agent.common.run_ledger import to_wire
+from agent.common.run_ledger import MAX_DOCS_PER_STEP
+from agent.common.run_ledger import MAX_INTENT_CHARS
+from agent.common.run_ledger import MAX_LOCI_PER_DOC
+from agent.common.run_ledger import MAX_NAME_CHARS
+from agent.common.run_ledger import MAX_STEPS
+from agent.common.run_ledger import RUN_PHASES
+from agent.common.run_ledger import RUN_STATUSES
+from agent.common.run_ledger import RunError
+from agent.common.run_ledger import RunLedger
+from agent.common.run_ledger import RunLedgerDoc
+from agent.common.run_ledger import RunPhase
+from agent.common.run_ledger import RunPhaseEntry
+from agent.common.run_ledger import RunResult
+from agent.common.run_ledger import RunStatus
+from agent.common.run_ledger import RunStep
+from agent.common.run_ledger import to_wire
 
 SCHEMA_PATH = (
     Path(__file__).resolve().parents[4] / "apps" / "workspace" / "tests" / "fixtures" / "run-ledger.schema.json"

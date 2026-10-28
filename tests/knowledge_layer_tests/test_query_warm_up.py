@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
-from aiq_agent.knowledge import factory
+from agent.knowledge import factory
 
 
 class _SlowEmbedder:
@@ -133,7 +133,7 @@ def test_the_search_retriever_is_warmed_with_the_query_the_tool_will_send(monkey
             warmed.append(query)
 
     monkeypatch.setattr(factory, "_SEARCH_RETRIEVER", _Recorder())
-    monkeypatch.setattr("aiq_agent.common.query_expansion.augmented_query", lambda q, **_: f"DE {q}")
+    monkeypatch.setattr("agent.common.query_expansion.augmented_query", lambda q, **_: f"DE {q}")
 
     asyncio.run(factory.warm_search_query("stair width"))
 
@@ -149,7 +149,7 @@ def test_the_warm_up_does_not_count_a_glossary_miss_the_search_will_count(monkey
             return None
 
     monkeypatch.setattr(factory, "_SEARCH_RETRIEVER", _Recorder())
-    with caplog.at_level("INFO", logger="aiq_agent.common.query_expansion"):
+    with caplog.at_level("INFO", logger="agent.common.query_expansion"):
         asyncio.run(factory.warm_search_query("What is the quarterly revenue forecast?"))
 
     assert not [r for r in caplog.records if "no glossary concept" in r.getMessage()]

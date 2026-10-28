@@ -278,15 +278,15 @@ describe('seriesColorsFor', () => {
       [weekly('a'), { id: 'b', scheduleCron: null, dueAt: '2026-10-02T07:00:00.000Z', enabled: true }, weekly('c')],
       8,
     )
-    expect(colors.get('a')).toBe('var(--grid-series-1)')
-    expect(colors.get('b')).toBe('var(--grid-series-2)')
-    expect(colors.get('c')).toBe('var(--grid-series-3)')
+    expect(colors.get('a')).toBe('var(--chart-series-1)')
+    expect(colors.get('b')).toBe('var(--chart-series-2)')
+    expect(colors.get('c')).toBe('var(--chart-series-3)')
   })
 
   test('past the palette everything shares one tone, and a manual task has none', () => {
     const many = Array.from({ length: 4 }, (_, i) => weekly(`job-${i}`))
     const colors = seriesColorsFor([...many, { id: 'manual', scheduleCron: null, dueAt: null, enabled: true }], 3)
-    expect(colors.get('job-3')).toBe('var(--grid-series-other)')
+    expect(colors.get('job-3')).toBe('var(--chart-series-other)')
     expect(colors.has('manual')).toBe(false)
   })
 })

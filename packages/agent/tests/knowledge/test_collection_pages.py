@@ -1,6 +1,6 @@
 """A document's stored chunks read back in the order the chunker cut them, against a real Qdrant.
 
-Module under test: ``aiq_agent.knowledge.collection_pages``.
+Module under test: ``agent.knowledge.collection_pages``.
 
 Point ids are the chunker's random node ids, so a scroll returns one page's
 chunks in no meaningful order. The Fassung compare reads both files this way
@@ -16,10 +16,10 @@ from __future__ import annotations
 import pytest
 from knowledge_layer_testing import qdrant as qt
 
-from aiq_agent.knowledge.collection_pages import read_chunks
-from aiq_agent.knowledge.collection_pages import read_pages
-from aiq_agent.knowledge.revision_diff import chunk_from_store
-from aiq_agent.knowledge.revision_diff import diff_revisions
+from agent.knowledge.collection_pages import read_chunks
+from agent.knowledge.collection_pages import read_pages
+from agent.knowledge.revision_diff import chunk_from_store
+from agent.knowledge.revision_diff import diff_revisions
 
 LINES = [f"Zeile {i}: Brandabschnitt {i} hat Feuerwiderstand REI {30 + i}" for i in range(12)]
 
@@ -163,7 +163,7 @@ def _fixture_hits(name: str):
 
 
 def test_read_pages_reads_the_overlap_and_the_breadcrumb_once(monkeypatch):
-    from aiq_agent.knowledge import collection_pages
+    from agent.knowledge import collection_pages
 
     hits = _fixture_hits("Besprechungsprotokoll_Tragwerk_2026-04-28.pdf")
     monkeypatch.setattr(collection_pages, "_document_hits", lambda collection, file_name: hits)
@@ -179,7 +179,7 @@ def test_read_pages_reads_the_overlap_and_the_breadcrumb_once(monkeypatch):
 
 
 def test_read_pages_keeps_the_text_of_a_file_without_headings_as_stored(monkeypatch):
-    from aiq_agent.knowledge import collection_pages
+    from agent.knowledge import collection_pages
 
     hits = _fixture_hits("Schreiben_MA37_Baubeginn.pdf")
     monkeypatch.setattr(collection_pages, "_document_hits", lambda collection, file_name: hits)

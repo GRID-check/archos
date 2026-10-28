@@ -9,9 +9,9 @@ office. It renders only when the turn can act on it: a catalog without
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_turn_context
-from aiq_agent.agents.piloti.prompt import system_prompt_template
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.prompt import render_turn_context
+from agent.agents.piloti.prompt import system_prompt_template
 
 BOUNDARY_ANCHOR = "<turn_context>"
 HEADING = "## Reference projects of the office"
@@ -57,8 +57,8 @@ def test_no_catalog_renders_no_section():
 def test_the_conversation_state_hands_the_catalog_to_the_research_state():
     """The graph edge the field has to survive: a catalog that stops at the
     conversation state is one the answering agent never reads."""
-    from aiq_agent.agents.piloti.conversation import ConversationGraph
-    from aiq_agent.agents.piloti.models.conversation import ConversationState
+    from agent.agents.piloti.conversation import ConversationGraph
+    from agent.agents.piloti.models.conversation import ConversationState
 
     state = ConversationState(messages=[HumanMessage(content="Wie?")], reference_projects=CATALOG)
     research = ConversationGraph._research_input(object.__new__(ConversationGraph), state, list(state.messages))

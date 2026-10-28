@@ -20,15 +20,15 @@ from knowledge_layer.document_groups import render_document_groups
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import get_grounding_block
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import get_grounding_block
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 PROJECT = "proj_1"
 
@@ -137,14 +137,14 @@ class _Retriever:
 
 @pytest.fixture
 def retriever(monkeypatch):
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-    monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", lambda collection: {})
+    monkeypatch.setattr("agent.knowledge.get_superseded_files", lambda collection: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(PROJECT, Shelf.PROJECT)],
     )
     set_turn_documents([])

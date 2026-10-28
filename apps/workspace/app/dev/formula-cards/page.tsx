@@ -3,10 +3,10 @@
 /**
  * Dev preview — the formula card, the what-if on a computing card (ADR-0143).
  *
- * The cards are the fixture's own (`features/grid-cards/lib/formula-cases.json`,
+ * The cards are the fixture's own (`features/cards/lib/formula-cases.json`,
  * the cases marked `preview`), the ones `formulas.spec.ts` computes by hand, so
  * this page cannot drift into showing a card the tests do not cover. Each goes
- * through the chat's own path (`GridCardItem` → A2UI on the Piloti catalog), so
+ * through the chat's own path (`AnswerCardItem` → A2UI on the Piloti catalog), so
  * a changed input lands in the surface's data model exactly as in an answer.
  * The last panel puts two of them in tabs: each keeps its own what-if when you
  * switch.
@@ -19,9 +19,9 @@
  */
 
 import { I18nProvider } from '@/i18n'
-import { GridCardItem } from '@/features/grid-cards/components/GridCards'
-import cases from '@/features/grid-cards/lib/formula-cases.json'
-import type { GridCard } from '@/shared/cards/schemas'
+import { AnswerCardItem } from '@/features/cards/components/AnswerCards'
+import cases from '@/features/cards/lib/formula-cases.json'
+import type { AnswerCard } from '@/shared/cards/schemas'
 
 type Card = Record<string, unknown> & { type: string }
 
@@ -53,7 +53,7 @@ const VARIANTS = {
   ],
 }
 
-const CARDS = [...previews.map((entry) => entry.card), VARIANTS] as unknown as GridCard[]
+const CARDS = [...previews.map((entry) => entry.card), VARIANTS] as unknown as AnswerCard[]
 
 export default function FormulaCardsPreview() {
   return (
@@ -61,7 +61,7 @@ export default function FormulaCardsPreview() {
       <div data-testid="formula-cards-preview" className="flex min-h-screen flex-col items-center gap-8 bg-background px-4 py-8 sm:p-10">
         {CARDS.map((card, index) => (
           <section key={index} className="flex w-[680px] max-w-full flex-col gap-2" data-preview-index={index}>
-            <GridCardItem card={card} index={index} messageId={`preview-${index}`} />
+            <AnswerCardItem card={card} index={index} messageId={`preview-${index}`} />
           </section>
         ))}
       </div>

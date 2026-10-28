@@ -6,15 +6,15 @@ from datetime import datetime
 
 import pytest
 
-from aiq_agent import corpus_store
-from aiq_agent import oib_status
-from aiq_agent import oib_sync
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.schema import CollectionInfo
-from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.oib_status import OibFileState
-from aiq_api.jobs import ingest_dispatch
+from agent import corpus_store
+from agent import oib_status
+from agent import oib_sync
+from agent.knowledge import ingest_status_store
+from agent.knowledge.schema import CollectionInfo
+from agent.knowledge.schema import FileInfo
+from agent.knowledge.schema import FileStatus
+from agent.oib_status import OibFileState
+from agent_host.jobs import ingest_dispatch
 from tests.corpus_job_fakes import FakeIngestor as JobIngestor
 from tests.corpus_job_fakes import lose_the_workers_for
 from tests.corpus_job_fakes import run_worker

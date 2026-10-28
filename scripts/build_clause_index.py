@@ -163,7 +163,7 @@ PageReader = Callable[[str], list[dict[str, Any]]]
 
 
 # =============================================================================
-# Pure core (no pdfplumber, no filesystem, no NAT)
+# Pure core (no pdfplumber, no filesystem, no agent runtime)
 # =============================================================================
 
 

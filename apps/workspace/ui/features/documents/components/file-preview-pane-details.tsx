@@ -14,7 +14,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/co
 import { cn } from '@/lib/utils'
 
 import { failedWithPreviousVersion, isCitable } from './document-status'
-import { PilotiReading } from './piloti-reading'
+import { AgentReading } from './agent-reading'
 import { PageReadings } from './page-readings'
 
 import { IngestFailureNotice } from './ingest-failure-notice'
@@ -192,10 +192,10 @@ export function FilePreviewDetailsPanel({ controller }: { controller: FilePrevie
                           starts collapsed and re-measures against its own text. */}
                         {file.summary && <IndexedSummary key={file.id} summary={file.summary} />}
                         {/* What Piloti took the document to be, and the way to
-                            correct it — see `piloti-reading.tsx` for why this is
+                            correct it — see `agent-reading.tsx` for why this is
                             no longer an always-open tag form. */}
                         <div className={cn('p-3', file.summary && 'border-border/60 border-t')}>
-                          <PilotiReading file={file} canManage={canManage} onTagsUpdated={onTagsUpdated} projectId={projectId} />
+                          <AgentReading file={file} canManage={canManage} onTagsUpdated={onTagsUpdated} projectId={projectId} />
                         </div>
                       </>
                     ) : (

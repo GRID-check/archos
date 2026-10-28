@@ -18,7 +18,7 @@ Document ingestion and retrieval for Piloti, on one backend: `llamaindex`.
 - [The Backend](#the-backend)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-  - [With YAML Config](#with-nemo-agent-toolkit-yaml-config---recommended)
+  - [With YAML Config](#with-the-agent-runtime-yaml-config---recommended)
   - [Programmatic Usage](#programmatic-usage)
 - [Web UI Mode](#web-ui-mode)
 - [Adding a Backend](#adding-a-backend)
@@ -63,7 +63,7 @@ uv pip install -e "packages/knowledge-layer[llamaindex]"
 
 ```bash
 # 3. Verify
-python -c "from aiq_agent.knowledge import get_retriever; print('OK')"
+python -c "from agent.knowledge import get_retriever; print('OK')"
 ```
 
 ### When retrieval fails on dependencies
@@ -89,15 +89,15 @@ help; **reinstall the whole extra**.
 
 ## Usage
 
-### With NeMo Agent Toolkit (YAML Config) - Recommended
+### With the agent runtime (YAML Config) - Recommended
 
-The `knowledge_retrieval` function is registered as a NAT function type. **YAML config is the recommended single source of truth** for workflow configuration:
+The `knowledge_retrieval` function is registered as a plugin function type. **YAML config is the recommended single source of truth** for workflow configuration:
 
 ```yaml
 # Example knowledge_retrieval function configuration
 functions:
   knowledge_search:
-    _type: knowledge_retrieval      # NAT function type
+    _type: knowledge_retrieval      # runtime function type
     collection_name: my_docs        # Required: target collection
     top_k: 5                        # Results to return
 ```
@@ -158,7 +158,7 @@ LlamaIndexIngestor initialized: mode=text + tables + charts + images
 from knowledge_layer.llamaindex import LlamaIndexRetriever, LlamaIndexIngestor
 
 # Use the factory to get instances
-from aiq_agent.knowledge import get_retriever, get_ingestor
+from agent.knowledge import get_retriever, get_ingestor
 
 # Ingest documents
 ingestor = get_ingestor("llamaindex")  # Qdrant at QDRANT_URL
@@ -297,12 +297,12 @@ Other file types are ingested normally but do not receive summaries.
 > |-----------|-------------|
 > | **CLI** (`start_e2e.sh`) | `deploy/.env` |
 > | **Docker Compose** | `deploy/.env` (passed to frontend container automatically) |
-> | **Helm** | `deploy/helm/deployment-k8s/values.yaml` under the frontend app's `env` section |
+> | **Kubernetes** | `frontendEnv` in `deploy/pulumi/src/app/config.ts` (Pulumi; Helm charts are not used) |
 
 ### How It Works
 
 1. **Ingestion**: Backend extracts text from the document and generates a one-sentence summary using an LLM call
-2. **Registry**: Summary is stored in a centralized, backend-agnostic registry (`aiq_agent.knowledge.factory`)
+2. **Registry**: Summary is stored in a centralized, backend-agnostic registry (`agent.knowledge.factory`)
 3. **Agent prompts**: Summaries appear in the agent's system prompt under the shelf-grouped knowledge-base inventory (Büroablage / Projektwissen / Private Sitzung / Basiswissen)
 4. **Tool calling**: Agents can make informed decisions about when to call `knowledge_search`
 
@@ -328,9 +328,9 @@ The summary system works identically across all backends:
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `register_summary()` | `aiq_agent.knowledge.factory` | Store summary after ingestion |
-| `unregister_summary()` | `aiq_agent.knowledge.factory` | Remove summary on file deletion |
-| `get_available_documents()` | `aiq_agent.knowledge.factory` | Retrieve summaries for agents |
+| `register_summary()` | `agent.knowledge.factory` | Store summary after ingestion |
+| `unregister_summary()` | `agent.knowledge.factory` | Remove summary on file deletion |
+| `get_available_documents()` | `agent.knowledge.factory` | Retrieve summaries for agents |
 
 The LlamaIndex adapter calls these functions; the registry does not depend on it.
 
@@ -377,7 +377,7 @@ what `llamaindex` can do, and a second backend that cannot do all of it fails
 quietly rather than loudly. A decision to add one supersedes ADR-0072.
 
 What stays is the seam: `BaseRetriever` and `BaseIngestor` in
-`packages/agent/src/aiq_agent/knowledge/base.py`, and the `@register_retriever` /
+`packages/agent/src/agent/knowledge/base.py`, and the `@register_retriever` /
 `@register_ingestor` registry in `factory.py`. Tests register fakes through it,
 and `tests/knowledge_layer_tests/run_adapter_compliance.py --backend <name>`
 checks an adapter against the interface. `register.py` wires `llamaindex` in
@@ -393,7 +393,7 @@ Backends register themselves using decorators when their module is imported:
 
 ```python
 # In adapter.py
-from aiq_agent.knowledge.factory import register_retriever, register_ingestor
+from agent.knowledge.factory import register_retriever, register_ingestor
 
 
 @register_retriever("my_backend")  # Registration name used in config
@@ -409,12 +409,12 @@ The registration name (e.g., `"my_backend"`) is what factory calls use:
 
 **Important:** The adapter module must be imported for registration to happen. This is why:
 1. `__init__.py` imports the adapter classes
-2. The NAT function imports from `knowledge_layer.<backend>.adapter`
+2. The plugin function imports from `knowledge_layer.<backend>.adapter`
 
-### Core Library (`packages/agent/src/aiq_agent/knowledge/`)
+### Core Library (`packages/agent/src/agent/knowledge/`)
 
 ```
-packages/agent/src/aiq_agent/knowledge/
+packages/agent/src/agent/knowledge/
     __init__.py      # Exports: Chunk, get_retriever, get_ingestor, etc.
     base.py          # Abstract classes: BaseRetriever, BaseIngestor
     schema.py        # Data models: Chunk, RetrievalResult, FileInfo, CollectionInfo
@@ -438,7 +438,7 @@ packages/knowledge-layer/src/
         pyproject.toml   # Optional: isolated dependencies
 ```
 
-### NeMo Agent Toolkit Integration (`packages/knowledge-layer/src/`)
+### Agent runtime integration (`packages/knowledge-layer/src/`)
 
 ```
 packages/knowledge-layer/src/
@@ -452,7 +452,7 @@ The `register.py` defines `KnowledgeRetrievalConfig` which maps YAML config to b
 ## Core Data Models
 
 ```python
-from aiq_agent.knowledge.schema import (
+from agent.knowledge.schema import (
     # Retrieval
     Chunk,  # Retrieved content piece (15+ fields)
     RetrievalResult,  # Query result container
@@ -534,7 +534,7 @@ Configuration values are resolved in the following order (highest to lowest prio
 
 ```python
 # Check what's registered
-from aiq_agent.knowledge.factory import list_retrievers, list_ingestors, get_knowledge_layer_config
+from agent.knowledge.factory import list_retrievers, list_ingestors, get_knowledge_layer_config
 
 print("Retrievers:", list_retrievers())
 print("Ingestors:", list_ingestors())

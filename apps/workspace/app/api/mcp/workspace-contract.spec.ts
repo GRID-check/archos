@@ -56,7 +56,7 @@ import { conversationAudienceOf, recordWorkspaceHandOut } from '@/lib/agent-api/
 import { callOperation } from '@/lib/agent-api/dispatch'
 import { proposeOperation } from '@/lib/agent-api/operation-proposals'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
-import { signGridRequestContextEnvelope } from '@/lib/request-context'
+import { signRequestContextEnvelope } from '@/lib/request-context'
 import { POST } from './route'
 
 const SECRET = 'internal-token-for-tests' // pragma: allowlist secret
@@ -101,7 +101,7 @@ function envelopeSignedWith(secret: string): { header: string; signature: string
   const json = JSON.stringify({ ...fixture.envelopePayload, issuedAt: Date.now() })
   return {
     header: Buffer.from(json, 'utf8').toString('base64url'),
-    signature: signGridRequestContextEnvelope(json, secret),
+    signature: signRequestContextEnvelope(json, secret),
   }
 }
 

@@ -3,10 +3,10 @@
 import json
 from pathlib import Path
 
-from aiq_agent.common.findings import FINDINGS_VERSION
-from aiq_agent.common.findings import MAX_COMMENT_CHARS
-from aiq_agent.common.findings import Findings
-from aiq_agent.common.findings import sanitize_findings
+from agent.common.findings import FINDINGS_VERSION
+from agent.common.findings import MAX_COMMENT_CHARS
+from agent.common.findings import Findings
+from agent.common.findings import sanitize_findings
 
 FIXTURE = Path(__file__).parents[4] / "tests" / "fixtures" / "findings" / "wire_payload.json"
 

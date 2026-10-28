@@ -1,6 +1,6 @@
 """A blank string for a numeric tool argument is an omitted argument, for every tool (#656).
 
-Driven through NAT's real builder and LangChain tool wrapper, because that is
+Driven through the agent runtime's real builder and LangChain tool wrapper, because that is
 where the ``InputArgsSchema`` that rejected ``page=''`` is made.
 """
 
@@ -13,8 +13,8 @@ import pytest
 from pydantic import BaseModel
 
 import nat.plugins.langchain.tool_wrapper  # noqa: F401  registers the LangChain wrapper
-from aiq_agent.common.agent_tools import blank_is_omitted
-from aiq_agent.common.agent_tools import load_agent_tools
+from agent.common.agent_tools import blank_is_omitted
+from agent.common.agent_tools import load_agent_tools
 from nat.builder.workflow_builder import WorkflowBuilder
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
@@ -22,10 +22,10 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import LLMFrameworkEnum
 from nat.plugin_api import register_function
 
-_SRC = Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "aiq_agent"
+_SRC = Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "agent"
 
 
-class _PagedSearchConfig(FunctionBaseConfig, name="grid_test_paged_search"):
+class _PagedSearchConfig(FunctionBaseConfig, name="test_fixture_paged_search"):
     pass
 
 
@@ -46,7 +46,7 @@ async def builder():
 
 
 async def test_nat_alone_rejects_a_blank_page(builder):
-    # The failure #656 filed, reproduced on NAT's own tool.
+    # The failure #656 filed, reproduced on the agent runtime's own tool.
     raw = (await builder.get_tools(tool_names=["paged_search"], wrapper_type=LLMFrameworkEnum.LANGCHAIN))[0]
     with pytest.raises(Exception, match="InputArgsSchema"):
         await raw.ainvoke({"query": "q", "page": ""})
@@ -89,4 +89,4 @@ def test_every_agent_loads_its_tools_through_the_one_seam():
         for path in _SRC.rglob("*.py")
         if path.name != "agent_tools.py" and re.search(r"\bbuilder\.get_tools\(", path.read_text(encoding="utf-8"))
     ]
-    assert offenders == [], f"load tools with aiq_agent.common.agent_tools.load_agent_tools: {offenders}"
+    assert offenders == [], f"load tools with agent.common.agent_tools.load_agent_tools: {offenders}"

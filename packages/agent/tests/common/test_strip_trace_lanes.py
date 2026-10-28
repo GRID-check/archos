@@ -11,8 +11,8 @@ trailer — byte-for-byte where it was.
 
 from __future__ import annotations
 
-from aiq_agent.common.grounding_block import TRACE_LANES_MARKER
-from aiq_agent.common.grounding_block import strip_trace_lanes
+from agent.common.grounding_block import TRACE_LANES_MARKER
+from agent.common.grounding_block import strip_trace_lanes
 
 _BLOCK = (
     "Found 1 relevant document(s):\n"

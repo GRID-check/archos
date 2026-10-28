@@ -29,13 +29,13 @@ from knowledge_layer.read_passage import read_passage
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge import restricted_use as ru
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge import restricted_use as ru
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 PROJ = "proj_11111111-1111-1111-1111-111111111111"
 R = PROJ + "_rabcdefabcdef"
@@ -80,16 +80,16 @@ class _Store:
 def scope(monkeypatch):
     """A turn whose scope carries the base corpus, the project and one restricted folder."""
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping._parse_scope_payload",
+        "agent.knowledge.scoping._parse_scope_payload",
         lambda _s: [
             ScopedCollection("oib_knowledge", Shelf.BASE),
             ScopedCollection(PROJ, Shelf.PROJECT),
             ScopedCollection(R, Shelf.PROJECT),
         ],
     )
-    monkeypatch.setattr("aiq_agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
+    monkeypatch.setattr("agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
 
     async def _docs(collection):
         if collection == R:
@@ -98,10 +98,10 @@ def scope(monkeypatch):
             return [AvailableDocument(file_name="Grundriss_EG.pdf")]
         return []
 
-    monkeypatch.setattr("aiq_agent.knowledge.get_available_documents_async", _docs)
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _docs)
+    monkeypatch.setattr("agent.knowledge.get_available_documents_async", _docs)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _docs)
     store = _Store([])
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: store)
+    monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: store)
     set_turn_documents(None)
     yield store
     set_turn_documents(None)
@@ -155,7 +155,7 @@ async def _read(**kwargs) -> str:
 
 async def test_the_scope_really_carries_the_restricted_folder(scope, use):
     """The precondition every case below stands on: the turn may draw on R."""
-    from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+    from agent.knowledge.scoping import get_scoped_collections_from_context
 
     assert R in [entry.collection for entry in get_scoped_collections_from_context()]
 
@@ -340,7 +340,7 @@ def image_tool(monkeypatch):
 
 def _scope_of(monkeypatch, *names: str) -> None:
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping._parse_scope_payload",
+        "agent.knowledge.scoping._parse_scope_payload",
         lambda _s: [ScopedCollection(name, Shelf.PROJECT) for name in names],
     )
 
@@ -423,13 +423,13 @@ async def test_the_lookup_echoes_the_turns_signed_envelope(monkeypatch):
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
     monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
-    monkeypatch.setattr("aiq_agent.project_context.get_request_envelope_from_context", lambda: ("ZW52ZWxvcGU", "c2ln"))
+    monkeypatch.setattr("agent.project_context.get_request_envelope_from_context", lambda: ("ZW52ZWxvcGU", "c2ln"))
 
     assert await _resolve_storage_location(PROJ, "plan.png") == ("k", None)
     assert seen[-1]["x-grid-request-context"] == "ZW52ZWxvcGU"
     assert seen[-1]["x-grid-request-context-sig"] == "c2ln"
 
-    monkeypatch.setattr("aiq_agent.project_context.get_request_envelope_from_context", lambda: (None, None))
+    monkeypatch.setattr("agent.project_context.get_request_envelope_from_context", lambda: (None, None))
     await _resolve_storage_location(PROJ, "plan.png")
     assert "x-grid-request-context" not in seen[-1]
 
