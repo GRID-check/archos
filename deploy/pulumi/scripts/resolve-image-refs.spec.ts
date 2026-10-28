@@ -119,8 +119,8 @@ function run(script: string, env: Record<string, string>, args: string[] = [], c
     env: {
       ...GIT_ENV,
       PATH: `${BIN}:${process.env.PATH ?? ""}`,
-      GITHUB_REPOSITORY_OWNER: "GRID-check",
-      GITHUB_REPOSITORY: "GRID-check/grid-oib-agent",
+      GITHUB_REPOSITORY_OWNER: "archos-at",
+      GITHUB_REPOSITORY: "archos-at/archos",
       GITHUB_ACTOR: "ci",
       GH_TOKEN: "token",
       FIND_PUBLISHED_TAG: join(BIN, "find-published-tag"),
@@ -133,7 +133,7 @@ function run(script: string, env: Record<string, string>, args: string[] = [], c
 }
 
 const ref = (service: string, commitName: string) =>
-  `ghcr.io/grid-check/grid-oib-${service}:sha-${C[commitName]}`;
+  `ghcr.io/archos-at/grid-oib-${service}:sha-${C[commitName]}`;
 
 /** Every service published at `commitName`, as "service tag" lines. */
 const publishedAt = (...commitNames: string[]) =>
@@ -233,14 +233,14 @@ describe("resolve-image-refs.sh", () => {
     const out = resolve({
       STUB_PUBLISHED: publishedAt("c3"),
       STUB_OUTPUTS: deployed({
-        backend: "ghcr.io/grid-check/grid-oib-backend:latest",
-        frontend: "ghcr.io/grid-check/grid-oib-frontend:latest",
-        web: "ghcr.io/grid-check/grid-oib-web:latest",
+        backend: "ghcr.io/archos-at/grid-oib-backend:latest",
+        frontend: "ghcr.io/archos-at/grid-oib-frontend:latest",
+        web: "ghcr.io/archos-at/grid-oib-web:latest",
       }),
     });
     expect(out.status, out.stderr).toBe(0);
-    expect(out.stderr).toContain("::warning::backend: deployed ref 'ghcr.io/grid-check/grid-oib-backend:latest'");
-    expect(out.stderr).toContain(`backend: ghcr.io/grid-check/grid-oib-backend:latest -> ${ref("backend", "c3")}`);
+    expect(out.stderr).toContain("::warning::backend: deployed ref 'ghcr.io/archos-at/grid-oib-backend:latest'");
+    expect(out.stderr).toContain(`backend: ghcr.io/archos-at/grid-oib-backend:latest -> ${ref("backend", "c3")}`);
   });
 
   it("allows, with a warning, before the stack has ever recorded its images", () => {
@@ -255,7 +255,7 @@ describe("resolve-image-refs.sh", () => {
     const out = resolve({
       STUB_PUBLISHED: publishedAt("c3"),
       STUB_OUTPUTS: deployed({
-        backend: `ghcr.io/grid-check/grid-oib-backend:sha-${stranger}`,
+        backend: `ghcr.io/archos-at/grid-oib-backend:sha-${stranger}`,
         frontend: ref("frontend", "c3"),
         web: ref("web", "c3"),
       }),
@@ -309,11 +309,11 @@ describe("resolve-image-refs.sh, the vector-store floor", () => {
     S[name] = sgit("rev-parse", "HEAD");
   };
   const chromaTs = join(STORE_REPO, "deploy", "pulumi", "src", "data", "chroma.ts");
-  const backend = (name: string) => `ghcr.io/grid-check/grid-oib-backend:sha-${S[name]}`;
+  const backend = (name: string) => `ghcr.io/archos-at/grid-oib-backend:sha-${S[name]}`;
   const all = (name: string) => ({
     backend: backend(name),
-    frontend: `ghcr.io/grid-check/grid-oib-frontend:sha-${S[name]}`,
-    web: `ghcr.io/grid-check/grid-oib-web:sha-${S[name]}`,
+    frontend: `ghcr.io/archos-at/grid-oib-frontend:sha-${S[name]}`,
+    web: `ghcr.io/archos-at/grid-oib-web:sha-${S[name]}`,
   });
   const resolveAt = (deploy: string, env: Record<string, string>) =>
     run("resolve-image-refs.sh", { DEPLOY_SHA: S[deploy], ...env }, [], STORE_REPO);
@@ -374,7 +374,7 @@ describe("resolve-image-refs.sh, the vector-store floor", () => {
       run("vector-store-floor.sh", { DEPLOY_SHA: S[deploy] }, [ref], STORE_REPO);
     expect(floor("after", backend("chroma1")).status).toBe(1);
     expect(floor("after", backend("removal")).status).toBe(0);
-    const unreadable = floor("after", "ghcr.io/grid-check/grid-oib-backend:latest");
+    const unreadable = floor("after", "ghcr.io/archos-at/grid-oib-backend:latest");
     expect(unreadable.status).toBe(0);
     expect(unreadable.stderr).toContain("::warning::backend: cannot tell which vector store");
   });
@@ -391,10 +391,10 @@ describe("resolve-image-refs.sh, the vector-store floor", () => {
 
 describe("find-published-tag.sh", () => {
   const find = (codes: string, ...tags: string[]) =>
-    run("find-published-tag.sh", { STUB_CURL_CODES: codes }, ["GRID-check", "backend", ...tags]);
+    run("find-published-tag.sh", { STUB_CURL_CODES: codes }, ["archos-at", "backend", ...tags]);
 
   it("prints the first tag GHCR answers 200 for, stepping over 404s", () => {
-    const out = find("grid-check/grid-oib-backend:sha-b 200\ngrid-check/grid-oib-backend:sha-c 200", "sha-a", "sha-b", "sha-c");
+    const out = find("archos-at/grid-oib-backend:sha-b 200\narchos-at/grid-oib-backend:sha-c 200", "sha-a", "sha-b", "sha-c");
     expect(out.status, out.stderr).toBe(0);
     expect(out.stdout.trim()).toBe("sha-b");
   });
@@ -404,7 +404,7 @@ describe("find-published-tag.sh", () => {
   });
 
   it("exits 2 on any other status, so a registry error never reads as 'not built'", () => {
-    const out = find("grid-check/grid-oib-backend:sha-a 503", "sha-a", "sha-b");
+    const out = find("archos-at/grid-oib-backend:sha-a 503", "sha-a", "sha-b");
     expect(out.status).toBe(2);
     expect(out.stderr).toContain("HTTP 503");
   });
@@ -412,16 +412,16 @@ describe("find-published-tag.sh", () => {
 
 describe("verify-image-tag.sh", () => {
   const all = (tag: string, code: string) =>
-    ["backend", "frontend", "web"].map((s) => `grid-check/grid-oib-${s}:${tag} ${code}`).join("\n");
+    ["backend", "frontend", "web"].map((s) => `archos-at/grid-oib-${s}:${tag} ${code}`).join("\n");
 
   it("passes when all three images carry the tag", () => {
-    const out = run("verify-image-tag.sh", { STUB_CURL_CODES: all("sha-a", "200") }, ["GRID-check", "sha-a"]);
+    const out = run("verify-image-tag.sh", { STUB_CURL_CODES: all("sha-a", "200") }, ["archos-at", "sha-a"]);
     expect(out.status, out.stdout + out.stderr).toBe(0);
   });
 
   it("fails when one image lacks it", () => {
     const codes = all("sha-a", "200").replace("grid-oib-web:sha-a 200", "grid-oib-web:sha-a 404");
-    const out = run("verify-image-tag.sh", { STUB_CURL_CODES: codes }, ["GRID-check", "sha-a"]);
+    const out = run("verify-image-tag.sh", { STUB_CURL_CODES: codes }, ["archos-at", "sha-a"]);
     expect(out.status).toBe(1);
     expect(out.stdout).toContain("not published for grid-oib-web");
   });

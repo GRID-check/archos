@@ -23,7 +23,7 @@
 #   docker run -p 4321:4321 \
 #     -e HOST=0.0.0.0 -e PORT=4321 \
 #     -e PUBLIC_APP_URL=https://app.piloti.at \
-#     ghcr.io/grid-check/grid-oib-web:latest
+#     ghcr.io/archos-at/grid-oib-web:latest
 #
 # =============================================================================
 

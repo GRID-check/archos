@@ -24,7 +24,7 @@ inputs:
     description: The input hash from the plan
     required: true
   registry:
-    description: Lowercase registry prefix, e.g. ghcr.io/grid-check
+    description: Lowercase registry prefix, e.g. ghcr.io/archos-at
     required: true
   push:
     description: >-
