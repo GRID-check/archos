@@ -4,7 +4,7 @@
  * docs/architecture/platform-failure-learning.md).
  *
  * Every function here runs cross-tenant BY DESIGN: the tables are global
- * (secured with `grid_secure_platform_table`, writable only under the platform
+ * (secured with `secure_platform_table`, writable only under the platform
  * role) and the one read that touches tenant data — the unprocessed-down-vote
  * scan over `answer_feedback` — deliberately crosses organizations, because a
  * platform lesson is distilled from everyone's reports at once. Callers state
@@ -191,7 +191,7 @@ export async function listSemanticLessonCandidates(
   // dimensionality three copies is tens of kilobytes of SQL per call.
   const result = await db.execute(sql`
     with scored as (
-      select l.*, grid_cosine_similarity(l.embedding, ${toVectorLiteral(vector)}::real[]) as similarity
+      select l.*, cosine_similarity(l.embedding, ${toVectorLiteral(vector)}::real[]) as similarity
       from platform_lessons l
       where l.status <> 'retired'
         and l.embedding_model = ${fingerprint}

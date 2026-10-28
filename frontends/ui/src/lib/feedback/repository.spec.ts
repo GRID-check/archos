@@ -187,7 +187,7 @@ describe('listFeedbackTurns', () => {
     const execute = capture()
     await listFeedbackTurns(ALL)
     expect(sqlOf(execute.mock.calls[0][0]).sql).toMatch(
-      /not grid_feedback_restricted_use\(f\.organization_id, f\.message_id, f\.conversation_id\)/
+      /not feedback_restricted_use\(f\.organization_id, f\.message_id, f\.conversation_id\)/
     )
   })
 

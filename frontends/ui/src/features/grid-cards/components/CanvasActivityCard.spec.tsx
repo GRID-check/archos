@@ -20,7 +20,7 @@
  *    reader's words with Piloti's note, and „Rückgängig" PATCHes the inverse
  *    with the status Piloti left as `expectedStatus`, never undoing a
  *    colleague's later move; a deletion only says so.
- * 6. **The server's record wins** (ADR-0109): a row with a `piloti_changes`
+ * 6. **The server's record wins** (ADR-0109): a row with a `agent_changes`
  *    row draws from it (who it was for, undone and by whom, `canUndo`) and
  *    undoes through `undoChange`; a row without one, or a request that
  *    failed, keeps the card's own copy and its browser-side replay.

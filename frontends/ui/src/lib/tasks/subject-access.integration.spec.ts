@@ -19,7 +19,7 @@
  *   - its thread reads as a conversation that drew on that folder, so the
  *     shared-chat lock closes it for the same member;
  *   - moving the document back opens both again: nothing was stored;
- *   - the staff views ask the database's rule (`grid_conversation_restricted_use`):
+ *   - the staff views ask the database's rule (`conversation_restricted_use`):
  *     a vote in the thread is shown, and the profiler names the thread, while
  *     the document sits at the project's root, and both are withheld once it
  *     sits in a folder of a project with an access list of its own;

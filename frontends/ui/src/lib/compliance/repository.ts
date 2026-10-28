@@ -36,7 +36,7 @@ export async function listOpenHoldsInOrg(
 /**
  * Whether an active legal hold covers erasing this entity.
  *
- * The predicate is the database's `grid_legal_hold_blocks` (migration 0093) and
+ * The predicate is the database's `legal_hold_blocks` (migration 0093) and
  * nothing else: the purger's claim and the delete triggers call the same
  * function, so this tier cannot answer "free" for an entity the purger would
  * refuse. Run in the entity's own tenant, which is the set of holds that can
@@ -50,7 +50,7 @@ export async function isCoveredByActiveHold(
   const db = getDb()
   const rows = await withTenant({ organizationId }, () =>
     db.execute<{ held: boolean }>(
-      sql`select grid_legal_hold_blocks(${entityType}, ${entityId}, ${organizationId}) as held`,
+      sql`select legal_hold_blocks(${entityType}, ${entityId}, ${organizationId}) as held`,
     ),
   )
   // Coerced at the boundary: postgres-js returns a real boolean for a boolean

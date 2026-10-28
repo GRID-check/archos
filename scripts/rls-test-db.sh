@@ -2310,3 +2310,89 @@ apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
 check_in shelfjson_0187 "$SHELF_0187" "$AFTER_0187" "0187 re-applies after its down"
 [ "$BEFORE_0187" != "$AFTER_0187" ] || { echo "MIGRATION ASSERTION FAILED: 0187 changed nothing" >&2; exit 1; }
 echo "==> 0187 office shelf in stored JSON and down migration verified"
+
+# ---------------------------------------------------------------------------
+# 0189: piloti_wakes, piloti_changes and piloti_asks become agent_* (ADR-0145
+# rule 5). An ask written before the rename is kept; each table's constraints
+# and indexes carry the new name; the old name is a view the runtime role
+# reads and writes through, inside its own organization only; a second run
+# changes nothing; the down puts the tables back under their old names.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0189 agent tables and their down migration on agents_0189"
+migrate_before agents_0189 0189_agent_tables
+sql_in agents_0189 <<'SQL'
+INSERT INTO conversations (id, organization_id, created_by) VALUES
+  ('conv_0189_a', 'org_0189_a', 'user_1'),
+  ('conv_0189_b', 'org_0189_b', 'user_2');
+INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES
+  ('a1a1a1a1-0000-4000-8000-000000000189', 'org_0189_a', 'conv_0189_a', 'user_1'),
+  ('b1b1b1b1-0000-4000-8000-000000000189', 'org_0189_b', 'conv_0189_b', 'user_2');
+SQL
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "agent_asks:r,agent_changes:r,agent_wakes:r,piloti_asks:v,piloti_changes:v,piloti_wakes:v" "0189 renames the tables and leaves a view under each old name"
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "2" "0189 keeps the asks"
+check_in agents_0189 "SELECT count(*) FROM pg_constraint WHERE conname ~ '^piloti_(wakes|changes|asks)_'" "0" "0189 leaves no constraint under an old name"
+check_in agents_0189 "SELECT count(*) FROM pg_indexes WHERE indexname ~ '^idx_piloti_(wakes|changes|asks)_'" "0" "0189 leaves no index under an old name"
+check_in agents_0189 "SELECT count(*) FROM pg_indexes WHERE indexname IN ('idx_agent_wakes_document_annotation_created', 'idx_agent_changes_origin', 'idx_agent_asks_conversation')" "3" "0189 renames the indexes by prefix"
+refused_in agents_0189 "INSERT INTO agent_asks (id, organization_id, conversation_id, requested_by, state, ended_at) VALUES (gen_random_uuid(), 'org_0189_a', 'conv_0189_a', 'user_1', 'working', now())" "agent_asks_ended_when_terminal" "a running ask with an end, after the rename"
+check_in agents_0189 "SELECT relrowsecurity FROM pg_class WHERE relname = 'agent_asks'" "t" "0189 keeps row-level security on"
+RW189=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d agents_0189 -qtA -v ON_ERROR_STOP=1 \
+  -c "SET grid.organization_id = 'org_0189_a'" \
+  -c "INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES ('c1c1c1c1-0000-4000-8000-000000000189', 'org_0189_a', 'conv_0189_a', 'user_1')" \
+  -c "SELECT string_agg(id::text, ',' ORDER BY id) FROM piloti_asks")
+if [ "$RW189" != "a1a1a1a1-0000-4000-8000-000000000189,c1c1c1c1-0000-4000-8000-000000000189" ]; then
+  echo "MIGRATION ASSERTION FAILED on agents_0189: through the old name the runtime role saw or wrote outside its organization (got: $RW189)" >&2
+  exit 1
+fi
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "3" "0189: a write through the old name lands in the new table"
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "agent_asks:r,agent_changes:r,agent_wakes:r,piloti_asks:v,piloti_changes:v,piloti_wakes:v" "0189 re-applied changes nothing"
+apply_in agents_0189 0189_agent_tables.down.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "piloti_asks:r,piloti_changes:r,piloti_wakes:r" "0189 down puts the tables back under their old names"
+check_in agents_0189 "SELECT count(*) FROM pg_constraint WHERE conname = 'piloti_asks_state_known'" "1" "0189 down puts the constraints back"
+check_in agents_0189 "SELECT count(*) FROM piloti_asks" "3" "0189 down keeps the asks"
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "3" "0189 re-applies after its down"
+echo "==> 0189 agent tables and down migration verified"
+
+# ---------------------------------------------------------------------------
+# 0190: the database's own functions lose the `grid_` prefix (ADR-0145 rule 5).
+# Every `grid_` function is renamed; no body still calls a `grid_` function;
+# each one that is not a trigger function answers under its old name too, with
+# its grant (secure_table stays closed to the runtime role under both names);
+# the new secure_table secures a table; a second run changes nothing; the down
+# puts the old names back and drops the wrappers. The suites above ran against
+# grid_app migrated through this, so every policy and trigger still works.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0190 function names and their down migration on functions_0190"
+migrate_before functions_0190 0190_brand_free_functions
+OLD_0190="SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname ~ '^grid_' AND coalesce(obj_description(oid, 'pg_proc'), '') NOT LIKE 'Old name, kept for one release by migration 0190%'"
+WRAPPERS_0190="SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND obj_description(oid, 'pg_proc') LIKE 'Old name, kept for one release by migration 0190%'"
+CALLS_OLD_0190="SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname !~ '^grid_' AND prosrc ~ 'grid_[a-z_]+\('"
+SHAPE_0190="SELECT md5(string_agg(proname || '(' || pg_get_function_identity_arguments(oid) || ')' || prosrc || coalesce(proacl::text, ''), '|' ORDER BY proname, pg_get_function_identity_arguments(oid))) FROM pg_proc WHERE pronamespace = 'public'::regnamespace"
+check_in functions_0190 "$OLD_0190" "30" "before 0190 the 30 functions carry the prefix"
+apply_in functions_0190 0190_brand_free_functions.sql
+check_in functions_0190 "$OLD_0190" "0" "0190 leaves no function under a grid_ name but its wrappers"
+check_in functions_0190 "$CALLS_OLD_0190" "0" "0190 leaves no body calling a grid_ function"
+check_in functions_0190 "SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname IN ('secure_table', 'current_org', 'legal_hold_blocks', 'refuse_held_delete', 'uuid_or_null')" "5" "0190 names the functions without the brand"
+check_in functions_0190 "SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname IN ('grid_refuse_held_delete', 'grid_refuse_insert_into_closed_project')" "0" "0190 leaves no wrapper for a trigger function"
+check_in functions_0190 "SELECT has_function_privilege('grid_app_rw', 'secure_table(text, text)', 'EXECUTE')::text || ',' || has_function_privilege('grid_app_rw', 'grid_secure_table(text, text)', 'EXECUTE')::text" "false,false" "secure_table stays closed to the runtime role under both names"
+RW190=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d functions_0190 -qtA -v ON_ERROR_STOP=1 \
+  -c "SET grid.organization_id = 'org_0190'" \
+  -c "SELECT current_org() || ',' || grid_current_org() || ',' || coalesce(uuid_or_null('x')::text, 'null') || ',' || coalesce(grid_uuid_or_null('x')::text, 'null')")
+if [ "$RW190" != "org_0190,org_0190,null,null" ]; then
+  echo "MIGRATION ASSERTION FAILED on functions_0190: the runtime role did not get the same answer under both names (got: $RW190)" >&2
+  exit 1
+fi
+sql_in functions_0190 <<<"CREATE TABLE t_0190 (organization_id text); SELECT secure_table('t_0190', 'organization_id = current_org()');"
+check_in functions_0190 "SELECT relrowsecurity FROM pg_class WHERE relname = 't_0190'" "t" "secure_table secures a table after 0190"
+AFTER_0190=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d functions_0190 -tAc "$SHAPE_0190")
+apply_in functions_0190 0190_brand_free_functions.sql
+check_in functions_0190 "$SHAPE_0190" "$AFTER_0190" "0190 re-applied changes nothing"
+apply_in functions_0190 0190_brand_free_functions.down.sql
+check_in functions_0190 "$OLD_0190" "30" "0190 down puts the 30 grid_ names back"
+check_in functions_0190 "$WRAPPERS_0190" "0" "0190 down drops the wrappers"
+check_in functions_0190 "SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname IN ('secure_table', 'current_org', 'legal_hold_blocks')" "0" "0190 down leaves no brand-free name"
+apply_in functions_0190 0190_brand_free_functions.sql
+check_in functions_0190 "$SHAPE_0190" "$AFTER_0190" "0190 re-applies after its down to the same functions"
+echo "==> 0190 function names and down migration verified"

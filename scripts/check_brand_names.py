@@ -86,6 +86,7 @@ EXCLUDED = re.compile(
             r"(^|/)(uv\.lock|bun\.lockb?|package-lock\.json|apm\.lock\.yaml)$",  # rendered from manifests
             r"\.mdx?$",  # prose, which follows the code it names
             r"^ci/[^/]*baseline[^/]*\.json$",  # ratchet baselines: they list paths, not names
+            r"^\.github/filters\.yml$",  # CI path filters: they list paths, not names
             r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
             # The one-release fallback that reads the old, prefixed variable names, and its tests.
             r"^apps/backend/entrypoint\.py$|^tests/test_entrypoint_roles\.py$|^frontends/ui/scripts/legacy-env-names\.",
@@ -97,6 +98,11 @@ EXCLUDED = re.compile(
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",
             r"^deploy/pulumi/index-postgres-rename\.spec\.ts$|^tests/test_postgres_rename_legacy_names\.py$",
+            # The one-release move of the browser's stored keys off their old names, and its spec.
+            r"^frontends/ui/src/app/storage-rename-boot(\.spec)?\.ts$",
+            # The migration harness: it replays the Drizzle history (excluded above) and seeds the tables
+            # each migration knew, under the names they had then.
+            r"^scripts/rls-test-db\.sh$",
             # The one release the BFF also sends the mode header under its old name, beside `x-chat-mode`.
             r"^frontends/ui/src/lib/turns/headless-mode\.ts$",
         )

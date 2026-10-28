@@ -1,6 +1,6 @@
 /**
  * Piloti at work on a mark, as the server knows it: read off the mark's newest
- * wake (`piloti_wakes`, ADR-0106), never off a tab's own guess.
+ * wake (`agent_wakes`, ADR-0106), never off a tab's own guess.
  *
  * The thread used to show „Piloti antwortet …" from the asking tab's memory:
  * it counted Piloti's replies when the question went and waited for one more,

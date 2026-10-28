@@ -289,7 +289,7 @@ async function findSemanticNearMatch(
     : sql`m.restricted_folder_ids is null`
   const result = await db.execute(sql`
     with scored as (
-      select m.*, grid_cosine_similarity(m.embedding, ${toVectorLiteral(embedded.vector)}::real[]) as similarity
+      select m.*, cosine_similarity(m.embedding, ${toVectorLiteral(embedded.vector)}::real[]) as similarity
       from project_memory m
       where ${owner}
         and ${restricted}
@@ -1247,7 +1247,7 @@ export async function implicateMemoryFromFeedback(input: {
     // near-match query above; RLS remains the backstop under the org filter.
     const result = await db.execute(sql`
       with scored as (
-        select m.id, grid_cosine_similarity(m.embedding, ${toVectorLiteral(embedded.vector)}::real[]) as similarity
+        select m.id, cosine_similarity(m.embedding, ${toVectorLiteral(embedded.vector)}::real[]) as similarity
         from project_memory m
         where ${owner}
           and ${visible}

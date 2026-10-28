@@ -53,7 +53,7 @@ def _max_collections(model) -> int:
 
 
 def test_one_search_names_no_more_collections_than_both_routes_accept():
-    cap = _ts_number(UI_LIB / "documents" / "service.ts", "BACKEND_SEARCH_MAX_COLLECTIONS")
+    cap = _ts_number(UI_LIB / "documents" / "semantic-search.ts", "BACKEND_SEARCH_MAX_COLLECTIONS")
     assert cap == _max_collections(GroupedDocumentSearchRequest) == _max_collections(SimilarPassagesRequest)
 
 

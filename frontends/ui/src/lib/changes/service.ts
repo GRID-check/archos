@@ -78,7 +78,7 @@ let warnedWithoutAnswer = false
 
 /**
  * Record what one of Piloti's calls applied, after it committed: a
- * `piloti_changes` row each, then a `piloti.change.applied` audit event each
+ * `agent_changes` row each, then a `piloti.change.applied` audit event each
  * (`./audit`). Never throws: the change already stands.
  */
 export async function recordPilotiChanges(origin: ChangeOrigin, changes: readonly AppliedChange[]): Promise<void> {

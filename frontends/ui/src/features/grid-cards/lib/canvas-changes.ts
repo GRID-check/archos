@@ -2,7 +2,7 @@
  * The server's change record, matched to the rows of a `canvas_activity` card
  * (ADR-0109).
  *
- * A card row is what the turn REMEMBERED; a `piloti_changes` row is what is
+ * A card row is what the turn REMEMBERED; a `agent_changes` row is what is
  * true now: who the turn acted for, whether somebody undid it, whether the
  * reader may undo it. Where a row has a change, the change wins; where it has
  * none (an answer older than the record, a failed request) the card's own

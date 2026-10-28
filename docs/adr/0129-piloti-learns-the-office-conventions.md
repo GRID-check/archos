@@ -120,7 +120,7 @@ one. It waits for a per-document phase or an upload-time stamp.
 A new table, `office_conventions` (migration 0181): one row per organization,
 the extractor's JSON (`conventions`, versioned by `extractor_version`), the
 `source_fingerprint` it was computed from, `computed_at`, and
-`refresh_requested_at`. RLS `organization_id = grid_current_org()`. A person's
+`refresh_requested_at`. RLS `organization_id = current_org()`. A person's
 decisions on its lines are a second table, `office_convention_decisions`
 (migration 0182), keyed by organization and line key.
 

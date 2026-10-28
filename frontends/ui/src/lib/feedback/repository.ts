@@ -597,7 +597,7 @@ export async function getFeedbackHealth(
  *
  * A content-bearing read, so it leaves out votes on an answer whose
  * conversation drew on a restricted folder (`voteScope`'s `contentBearing`,
- * the database's `grid_feedback_restricted_use`, as the export's rows do).
+ * the database's `feedback_restricted_use`, as the export's rows do).
  * The aggregates above still count them: a count quotes nothing. A vote that
  * names a restricted chat is not returned at all, so no row carries the title
  * the staff profiler withholds; otherwise the answer row's conversation is

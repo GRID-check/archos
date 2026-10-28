@@ -62,12 +62,12 @@ writer and reader asks, because it is the only option that is written by the
 server, holds for an answer that was never persisted, outlives the chat and is
 keyed the way every reader looks things up.
 
-**The rule.** `grid_conversation_restricted_use(organization, conversation)`
+**The rule.** `conversation_restricted_use(organization, conversation)`
 (migration 0124): the conversation holds a `conversation_restricted_folders`
 record, or it is the thread of a revision task whose document now sits where
 not every member may read (below), or a mark names it. The record is written
 when the BFF admits restricted content into a turn, before the model reads it,
-and lives as long as the conversation. `grid_feedback_restricted_use(organization,
+and lives as long as the conversation. `feedback_restricted_use(organization,
 message, conversation)` asks it of a vote: the vote's message id is marked, or
 the voted message's conversation, or the conversation the vote names, answers
 yes.
@@ -128,7 +128,7 @@ lift a mark. These readers are cross-tenant and the safe direction is to show
 less. What a person in the office may open stays judged at read time.
 
 **The readers.** `OUTSIDE_RESTRICTED_USE` (`lib/feedback/repository.ts`) is
-`not grid_feedback_restricted_use(...)` of the vote: the mark, and the rule
+`not feedback_restricted_use(...)` of the vote: the mark, and the rule
 asked again at read time. The staff drill-in and its export, the digest's
 sample, the distiller's input and the Langfuse score (`isRestrictedUseVote`,
 which scores such a vote without its comment and expected answer) all ask it,

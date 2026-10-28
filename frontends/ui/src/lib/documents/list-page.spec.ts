@@ -361,12 +361,12 @@ describe('listDocumentLevelPage', () => {
     await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ folderId: undefined, q: 'Grundriss' }) })
     const { sql } = onlyQuery()
     expect(sql).not.toMatch(/"folder_id" (=|is null)/)
-    expect(sql).toMatch(/strpos\(grid_fold_german\((?:"documents"\.)?"filename"\), grid_fold_german\(\$\d+\)\) > 0/)
-    expect(sql).toMatch(/strpos\(grid_fold_german\(coalesce\((?:"documents"\.)?"display_name", ''\)\), grid_fold_german\(\$\d+\)\) > 0/)
+    expect(sql).toMatch(/strpos\(fold_german\((?:"documents"\.)?"filename"\), fold_german\(\$\d+\)\) > 0/)
+    expect(sql).toMatch(/strpos\(fold_german\(coalesce\((?:"documents"\.)?"display_name", ''\)\), fold_german\(\$\d+\)\) > 0/)
   })
 
   it('folds the name and what was typed alike in SQL (Unicode form, umlaut spelling), with no wildcard', async () => {
-    // `grid_fold_german` (migration 0188) normalizes and folds both sides; the
+    // `fold_german` (migration 0188) normalizes and folds both sides; the
     // spellings it joins are proven against Postgres in document-repository.integration.spec.ts.
     const decomposed = 'Übersicht'.normalize('NFD')
     await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ q: `  ${decomposed} 50%_ ` }) })

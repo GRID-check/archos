@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ChunkReloadGuard, isChunkLoadError } from './chunk-reload-guard'
 
-const RELOAD_TS_KEY = 'grid:chunk-reload-ts'
+const RELOAD_TS_KEY = 'chunk-reload-ts'
 
 /** Dispatch a window `error` event carrying `error` (what webpack ChunkLoadError surfaces as). */
 function dispatchError(error: unknown): void {

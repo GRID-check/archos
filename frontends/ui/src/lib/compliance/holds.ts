@@ -9,7 +9,7 @@
  * destructive step — objects, chunks, grants, rows.
  *
  * What "covered" means is not written here. It is the database function
- * `grid_legal_hold_blocks` (migration 0093), the same one the purger's claim
+ * `legal_hold_blocks` (migration 0093), the same one the purger's claim
  * and the delete triggers call, so the three readers cannot disagree: the
  * entity itself, what contains it, what it contains, the user who created it,
  * and the organization.

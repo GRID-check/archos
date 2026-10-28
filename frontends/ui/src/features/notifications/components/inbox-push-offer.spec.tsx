@@ -115,7 +115,7 @@ describe('InboxPushOffer', () => {
     const [message, options] = toastMock.mock.calls[0] as [string, { cancel: { onClick: () => void } }]
     expect(message).toBe('Anna Weber needs you in Piloti. Do you want to be notified on this device?')
     act(() => options.cancel.onClick())
-    expect(window.localStorage.getItem('piloti.push-prompt.dismissed')).toBe('1')
+    expect(window.localStorage.getItem('push-prompt.dismissed')).toBe('1')
   })
 
   test('stands down while the inbox shows its own card, and takes a toast already up away', async () => {
@@ -133,7 +133,7 @@ describe('InboxPushOffer', () => {
   })
 
   test('is not made when the prompt is not due: dismissed, already on, or a browser that cannot', async () => {
-    window.localStorage.setItem('piloti.push-prompt.dismissed', '1')
+    window.localStorage.setItem('push-prompt.dismissed', '1')
     badge.pending = 1
     const view = render(<InboxPushOffer enabled client={client(null)} />)
     await new Promise((resolve) => setTimeout(resolve, 0))

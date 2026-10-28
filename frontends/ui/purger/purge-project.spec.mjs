@@ -57,7 +57,7 @@ function makeTx({
     }
     const text = strings.join('$').replace(/\s+/g, ' ').trim()
     executed.push({ text, values })
-    if (text.startsWith('SELECT') && text.includes('grid_legal_hold_blocks')) {
+    if (text.startsWith('SELECT') && text.includes('legal_hold_blocks')) {
       holdChecks += 1
       return Promise.resolve(holdOnCheck[holdChecks] ?? holdRows)
     }

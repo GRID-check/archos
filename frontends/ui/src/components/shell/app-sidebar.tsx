@@ -19,7 +19,7 @@
  *
  * Mobile open state is owned by the layout store so the chat toolbar's
  * hamburger can open the same Sheet (`useLayoutStore.setMobileNavOpen`).
- * Collapse persistence lives in the primitive (`grid.sidebar.collapsed`).
+ * Collapse persistence lives in the primitive (`sidebar.collapsed`).
  */
 
 import * as React from 'react'

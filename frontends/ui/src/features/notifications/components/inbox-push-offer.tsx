@@ -30,7 +30,7 @@ import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
 import { usePushNotifications } from '../hooks/use-push-notifications'
 import { promptIsDue, usePromptOnScreen, usePushPromptDismissal } from './notification-prompt'
 
-const SHOWN_KEY = 'piloti.push-offer.shown'
+const SHOWN_KEY = 'push-offer.shown'
 const TOAST_ID = 'piloti-push-offer'
 /** Long enough to read two sentences and decide; a toast, not a dialog. */
 const OFFER_MS = 20_000

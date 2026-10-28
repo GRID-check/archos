@@ -173,7 +173,7 @@ describe("backendEnv extraction switches", () => {
 
   it("relies on the adapter reading each as on-unless-false", () => {
     for (const name of switches) {
-      expect(adapterSource).toContain(`_env_switch("${name}")`);
+      expect(adapterSource).toContain(`env_switch("${name}")`);
     }
   });
 });
