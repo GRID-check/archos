@@ -47,8 +47,7 @@ TARGET = frozenset(
 )
 
 #: Still waiting for their move, and the ADR-0145 row that empties each.
-LEGACY = {
-}
+LEGACY = {}
 
 #: Finished moves: the old path, and where its contents went.
 MOVED = {

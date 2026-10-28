@@ -38,7 +38,19 @@ PYTHON_ROOTS = (
 )
 TS_ROOTS = tuple(
     f"apps/workspace/{root}"
-    for root in ("app", "bff", "ui", "i18n", "shared", "types", "utils", "tests/test-utils", "workers", "purger", "scheduler")
+    for root in (
+        "app",
+        "bff",
+        "ui",
+        "i18n",
+        "shared",
+        "types",
+        "utils",
+        "tests/test-utils",
+        "workers",
+        "purger",
+        "scheduler",
+    )
 )
 TS_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".cjs"}
 
