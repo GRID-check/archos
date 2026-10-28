@@ -37,6 +37,7 @@
     "frontends/ui/src/features/bim/components/ifc-compliance-panel.tsx": 791,
     "frontends/ui/src/features/bim/components/ifc-model-explorer.tsx": 662,
     "frontends/ui/src/features/bim/components/ifc-viewer-canvas.tsx": 1689,
+    "frontends/ui/src/features/bim/components/use-model-stage-controller.tsx": 1026,
     "frontends/ui/src/features/bim/hooks/use-bim-model.ts": 1186,
     "frontends/ui/src/features/bim/hooks/use-model-viewport.ts": 686,
     "frontends/ui/src/features/chat/components/ChatThinking.tsx": 989,
