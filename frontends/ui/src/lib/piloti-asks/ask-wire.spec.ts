@@ -1,5 +1,8 @@
 // @disk-inputs: ../aiq_api/src/aiq_api/chat_socket.py
 /**
+ * @vitest-environment node
+ */
+/**
  * An ask's bound, pinned to the chat turn's own deadline.
  *
  * An ask still open past `DEFAULT_ASK_MAX_SECONDS` is ended `failed` when it is

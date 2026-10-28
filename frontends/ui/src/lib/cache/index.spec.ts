@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The floor under ADR-0020: **a cache outage degrades, it never fails.**
  *
  * That contract is what lets every call site in `lib/` call `getCached` without

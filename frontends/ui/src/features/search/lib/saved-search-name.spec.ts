@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 
 import { SAVED_SEARCH_NAME_MAX } from '@/lib/search/saved-search-wire'

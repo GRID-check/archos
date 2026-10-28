@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Choosing between the two element-page plans.
  *
  * The arithmetic is small; what matters is which way it errs. The GIN bitmap

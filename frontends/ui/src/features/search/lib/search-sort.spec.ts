@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 
 import { SEARCH_SORTS, type SearchSort } from '@/lib/search/search-wire'
