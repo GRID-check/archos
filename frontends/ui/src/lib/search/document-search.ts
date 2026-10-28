@@ -25,7 +25,7 @@ import {
   contentKey,
   countUnreadDocuments,
   documentFacetCounts,
-  listCandidateDocumentIds,
+  listCandidateDocuments,
   readReferenceSubject,
   searchDocumentPage,
   type DocumentQuery,
@@ -128,7 +128,8 @@ async function referenceTargets(reach: SearchReach, documentId: string, directio
 /**
  * What narrows the content search before it ranks, so a selective filter does
  * not leave the candidate budget to documents it then drops: the filtered ids
- * when they are few, else the payload's own reading type and references. It
+ * (by id, and by file name for the passages that carry no id) when they are
+ * few, else the payload's own reading type and references. It
  * only ever narrows what SQL decides; a mismatch costs recall, never visibility.
  * `null` filters: the filters admit no document.
  */
@@ -138,9 +139,19 @@ export async function contentPrefilter(
 ): Promise<{ filters: GroupedSearchFilters | undefined } | null> {
   const narrowed = Object.entries(query.filters).some(([key, value]) => key !== 'includeArchived' && value !== undefined)
   if (!narrowed && !query.citedBy && !query.citing && !reach.folderIds) return { filters: undefined }
-  const ids = await listCandidateDocumentIds(reach, query, PREFILTER_MAX_IDS)
-  if (ids.length === 0) return null
-  if (ids.length <= PREFILTER_MAX_IDS) return { filters: { document_ids: ids } }
+  const candidates = await listCandidateDocuments(reach, query, PREFILTER_MAX_IDS)
+  if (candidates.length === 0) return null
+  if (candidates.length <= PREFILTER_MAX_IDS) {
+    // By name too: a passage written before `grid_document_id` existed, or copied from Chroma, carries no id,
+    // and by id alone a filtered search lost exactly those documents' passages.
+    const names = [...new Set(candidates.flatMap((candidate) => (candidate.filename ? [candidate.filename] : [])))]
+    return {
+      filters: {
+        document_ids: candidates.map((candidate) => candidate.id),
+        ...(names.length > 0 ? { file_names: names } : {}),
+      },
+    }
+  }
   const readingTypes = query.filters.documentTypes ?? []
   const refersTo = (query.filters.cites ?? []).slice(0, 8)
   if (readingTypes.length === 0 && refersTo.length === 0) return { filters: undefined }
@@ -215,7 +226,8 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
     matchedOn: [
       ...(row.matchedName ? (['name'] as const) : []),
       ...(row.matchedReading ? (['reading'] as const) : []),
-      ...(passage ? (['content'] as const) : []),
+      // The content search says whether the passage holds the words or only means the same (`lexical`).
+      ...(passage ? ([passage.lexical === false ? 'meaning' : 'content'] as const) : []),
     ],
     passage: passage ? { text: passage.snippet, page: passage.page_number ?? null } : null,
   }

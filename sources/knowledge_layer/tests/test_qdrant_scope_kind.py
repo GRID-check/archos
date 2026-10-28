@@ -22,11 +22,10 @@ from knowledge_layer.qdrant.search import grouped_search
 from knowledge_layer.qdrant.search import hybrid_search
 from knowledge_layer.qdrant.similar import PassageSource
 from knowledge_layer.qdrant.similar import find_similar
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import vector
+from knowledge_layer_testing.qdrant import write
 from qdrant_client import models
-
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import vector
-from sources.knowledge_layer.tests.qdrant_testing import write
 
 PROJECT = "proj_kind"
 RESTRICTED = "proj_kind_r_9"
@@ -215,7 +214,7 @@ class _Embedder:
         return vector(text)
 
     def embedding_identity(self) -> dict[str, str]:
-        from sources.knowledge_layer.tests.qdrant_testing import IDENTITY
+        from knowledge_layer_testing.qdrant import IDENTITY
 
         return dict(IDENTITY)
 

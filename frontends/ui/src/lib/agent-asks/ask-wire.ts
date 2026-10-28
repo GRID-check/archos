@@ -39,11 +39,22 @@ export const MAX_QUESTION_CHARS = 8_000
 export const ASK_WAIT_SECONDS = 40
 
 /**
- * How long an ask may stay open before it is ended `failed` when it is next read:
- * the turn's outcome notice was lost (a replica died mid-turn). Past the longest
- * a turn runs; `GRID_PILOTI_ASK_MAX_SECONDS` overrides it.
+ * The chat turn's own clock (`GRID_CHAT_TURN_DEADLINE_SECONDS` in
+ * `frontends/aiq_api/src/aiq_api/chat_socket.py`): a turn still running then is
+ * ended `failed` by the socket, which reports it. `ask-wire.spec.ts` holds the two equal.
  */
-export const DEFAULT_ASK_MAX_SECONDS = 1_800
+export const CHAT_TURN_DEADLINE_SECONDS = 2_700
+
+/** What the outcome notice of a turn that ran out of time may take to arrive: its retries (`internal_retry.py`). */
+const OUTCOME_NOTICE_GRACE_SECONDS = 120
+
+/**
+ * How long an ask may stay open before it is ended `failed` when it is next read:
+ * the turn's outcome notice was lost (a replica died mid-turn). The turn's own
+ * deadline and the notice's grace, so an ask is never ended while its turn may
+ * still answer, and never outlives it; `GRID_PILOTI_ASK_MAX_SECONDS` overrides it.
+ */
+export const DEFAULT_ASK_MAX_SECONDS = CHAT_TURN_DEADLINE_SECONDS + OUTCOME_NOTICE_GRACE_SECONDS
 
 export const createAskSchema = z
   .object({
@@ -146,7 +157,7 @@ export interface AskView {
   question: string | null
   /** Why it failed or was rejected. */
   reason: string | null
-  /** Piloti's answer, once `completed`. */
+  /** Piloti's answer, once `completed`; `text` is plain Markdown (`answer-text.ts`), not the chat's dialect. */
   answer: ({ messageId: string; text: string } & AskAnswerEvidence) | null
   documents: AskDocument[]
   createdAt: string

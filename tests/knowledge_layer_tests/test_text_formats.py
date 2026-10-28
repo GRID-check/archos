@@ -185,9 +185,8 @@ def summary_db(tmp_path):
 @pytest.fixture
 def ingestor(tmp_path, monkeypatch, qdrant_store):
     from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
-
-    from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-    from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
+    from knowledge_layer_testing.qdrant import FakeEmbedder
+    from knowledge_layer_testing.qdrant import capture_indexed_documents
 
     ing = LlamaIndexIngestor({"generate_summary": False})
     ing._embed_model = FakeEmbedder()

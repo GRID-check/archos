@@ -69,11 +69,11 @@ Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
 | Variable | Default |
 |----------|---------|
 | `APP_ENV` | `production` |
-| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs` (pooled) |
-| `GRID_CHECKPOINT_DB` | `postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints` (pooled) |
-| `GRID_SUMMARY_DB` | `postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs` (pooled) |
-| `GRID_LISTEN_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: SSE LISTEN/NOTIFY) |
-| `GRID_LOCK_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: session advisory locks) |
+| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `GRID_CHECKPOINT_DB` | `postgresql://agent:aiq_dev@pgbouncer:5432/checkpoints` (pooled) |
+| `GRID_SUMMARY_DB` | `postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `GRID_LISTEN_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: SSE LISTEN/NOTIFY) |
+| `GRID_LOCK_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: session advisory locks) |
 | `GRID_ROLE` | `chat` |
 | `GRID_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
 | `GRID_QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
@@ -415,9 +415,9 @@ PostgreSQL 16 database.
 
 | Variable | Value |
 |----------|-------|
-| `POSTGRES_USER` | `aiq` |
+| `POSTGRES_USER` | `app` |
 | `POSTGRES_PASSWORD` | `aiq_dev` |
-| `POSTGRES_DB` | `aiq_jobs` |
+| `POSTGRES_DB` | `jobs` |
 
 **Volumes**:
 
@@ -433,9 +433,24 @@ PostgreSQL 16 database.
 | CPU | 2 | 1 |
 | Memory | 4G | 2G |
 
-**Healthcheck**: `pg_isready -U aiq -d aiq_jobs && pg_isready -U aiq -d aiq_checkpoints && pg_isready -U aiq -d grid_app` — interval 5s, timeout 5s, retries 5.
+**Healthcheck**: `pg_isready -U agent -d postgres` — interval 5s, timeout 5s, retries 5.
 
 **Restart**: `unless-stopped`.
+
+### postgres-rename
+
+A one-shot run of `deploy/postgres/rename-legacy-names.sh` (ADR-0145 row 10d): a volume
+made before the rename has the databases `aiq_jobs` and `aiq_checkpoints` and the
+superuser `aiq`, and this renames them to `jobs`, `checkpoints` and
+`app`. Every service that waits on `postgres` waits for it to complete. A volume
+made with the new names, and every run after the first, change nothing. The
+renamed databases refuse new sessions and end the open ones while it runs.
+
+| Property | Value |
+|----------|-------|
+| Image | `postgres:16-alpine` (Coolify: the image `postgres.Dockerfile` builds, which carries the script) |
+| Command | `sh /rename-legacy-names.sh` |
+| Restart | `no` |
 
 ### pgbouncer
 

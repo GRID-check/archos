@@ -74,7 +74,8 @@ file inside `src/aiq_agent/` is fine and a new `piloti_x/` folder is not.
 Not a hit: the name as a word in prose (`Piloti` or `Grid` alone, in a
 comment or a string a person reads), `grid` the English word (CSS and Tailwind,
 `grid` as a layout noun at the end of a name, `FileGrid`), URLs, host names and
-the repository's own name. Not checked: ADRs, audits, release notes,
+the repository's own name, and the Python package names `aiq_agent` and
+`aiq_api` until their scripted rename (ADR-0145 row 10a). Not checked: ADRs, audits, release notes,
 migrations, the i18n dictionaries and the site's content, published assets,
 lockfiles and Markdown. The list is `EXCLUDED` in the script.
 
