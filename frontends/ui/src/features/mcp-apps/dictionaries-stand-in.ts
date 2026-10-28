@@ -19,7 +19,7 @@ import { nav as enNav } from '@/i18n/dictionaries/en/nav'
 import { chat as deChat } from '@/i18n/dictionaries/de/chat'
 import { common as deCommon } from '@/i18n/dictionaries/de/common'
 import { nav as deNav } from '@/i18n/dictionaries/de/nav'
-import { withProductName } from '@/i18n/product-name'
+import { withProductName } from '@/lib/brand'
 
 /** The namespaces a view reads; `proposal-card/vocabulary.spec.tsx` holds the card to them. */
 export const VIEW_NAMESPACES = ['chat', 'common', 'nav'] as const

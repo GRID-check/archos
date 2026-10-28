@@ -7,11 +7,11 @@
  * single source of truth for the message shape.
  *
  * The copy never spells the product's name: it says `{productName}`, and
- * `withProductName` (`../product-name.ts`) puts `PRODUCT_NAME` in once, here,
+ * `withProductName` (`lib/brand.ts`) puts `PRODUCT_NAME` in once, here,
  * so every reader of a dictionary gets the name.
  */
 
-import { withProductName } from '../product-name'
+import { withProductName } from '@/lib/brand'
 import { en as enSource } from './en'
 import { de as deSource } from './de'
 import type { Locale } from '../config'

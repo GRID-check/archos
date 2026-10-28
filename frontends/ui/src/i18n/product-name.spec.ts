@@ -10,11 +10,10 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { PRODUCT_NAME } from '@/lib/brand'
+import { PRODUCT_NAME, withProductName } from '@/lib/brand'
 import { en as enSource } from './dictionaries/en'
 import { de as deSource } from './dictionaries/de'
 import { dictionaries } from './dictionaries'
-import { withProductName } from './product-name'
 
 function strings(node: unknown, path = ''): [string, string][] {
   if (typeof node === 'string') return [[path, node]]

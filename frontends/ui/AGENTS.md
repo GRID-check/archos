@@ -97,7 +97,7 @@ every route's `authz`. [`agent-surface.md`](../../docs/architecture/agent-surfac
 
 **The product's name is copy, never a name in code.** `PRODUCT_NAME` in
 `lib/brand.ts` is the single source: a dictionary string says `{productName}`
-and the registry fills it in (`i18n/product-name.ts`; `i18n/product-name.spec.ts`
+and the registry fills it in (`withProductName`, beside it; `i18n/product-name.spec.ts`
 fails a string that spells the name), and code reads the constant. No identifier, env var,
 header, CSS variable or route carries a product name (`aiq`, `grid`, `piloti`):
 the old `GRID_*` variables and `x-grid-*` headers are being renamed, and the
