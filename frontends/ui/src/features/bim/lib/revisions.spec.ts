@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Revision series.
  *
  * Two failure modes matter here and both are silent. Merging two buildings into

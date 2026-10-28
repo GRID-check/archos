@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import type { FlowModel, MapModel } from '../model'
 import { isSketchable, labelBox, sketchFromModel, SKETCH_FONT_FAMILY, type SketchArrow, type SketchShape } from './sketch-from-model'
