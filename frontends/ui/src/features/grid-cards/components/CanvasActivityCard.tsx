@@ -58,7 +58,7 @@
  *
  * ## The server's record wins (ADR-0109)
  *
- * Every change Piloti applied is a `piloti_changes` row with the turn that made
+ * Every change Piloti applied is a `agent_changes` row with the turn that made
  * it. The card reads the rows of its own answer once it is seen, and again
  * whenever the document's live store says one of the card's marks moved. A row
  * with a change draws from it: who the turn acted for („für Miriam"), whether

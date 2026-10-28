@@ -1,5 +1,5 @@
 /**
- * The changeable state a `piloti_changes` row records (ADR-0109), decided in
+ * The changeable state a `agent_changes` row records (ADR-0109), decided in
  * one place: what `before` and `after` hold for each object and op, and the
  * comparison undo makes against the object as it stands now.
  *

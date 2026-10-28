@@ -41,7 +41,7 @@ them.
 
 ## Decision Outcome
 
-Chosen option: 3, `piloti_changes` (migration 0142).
+Chosen option: 3, `agent_changes` (migration 0142).
 
 * **One row per applied change**, written by the BFF in the route Piloti
   calls (`lib/annotations/agent.ts`): `create`, `update` or `delete` of a mark,

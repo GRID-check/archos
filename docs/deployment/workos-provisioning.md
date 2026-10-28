@@ -364,7 +364,7 @@ work (`piloti.mark.decided`).
 
   | Action | When | Actor | Targets | Metadata |
   |---|---|---|---|---|
-  | `piloti.change.applied` | Piloti set, changed or deleted a mark, or answered in its thread, in the asker's name: one per `piloti_changes` row (`lib/changes/service.ts`) | the person the turn acted for | mark, document, project, conversation | `op` (create, update, delete, reply), `markNumber`, `markKind`, `status`, `fields` (names of the fields that moved), `messageId`, `changeId` |
+  | `piloti.change.applied` | Piloti set, changed or deleted a mark, or answered in its thread, in the asker's name: one per `agent_changes` row (`lib/changes/service.ts`) | the person the turn acted for | mark, document, project, conversation | `op` (create, update, delete, reply), `markNumber`, `markKind`, `status`, `fields` (names of the fields that moved), `messageId`, `changeId` |
   | `piloti.change.undone` | a person undid one (`POST /api/piloti-changes/[id]/undo`) | who undid it | mark, document, conversation | `op`, `inverse`, `markNumber`, `onBehalfOf`, `messageId`, `changeId` |
   | `piloti.proposal.created` | Piloti filed a proposed change, once per card (`lib/proposals/service.ts`) | the person Piloti acted for | proposal, project, conversation | `kind`, `operation`, `items`, `memoryScope`, `messageId` |
   | `piloti.proposal.decided` | a person applied or dismissed it | the decider | proposal, project, conversation | `kind`, `decision` (applied, partially_applied, failed, dismissed), `operation`, `items`, `appliedItems`, `memoryScope`, `onBehalfOf`, `messageId` |
