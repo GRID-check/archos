@@ -388,11 +388,11 @@ An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own
 
 ### Asks to Piloti (ADR-0124)
 
-An agent asks Piloti through `POST /api/piloti-asks` (the MCP operation `piloti-ask-create`, the A2A door's `SendMessage`); the BFF that takes the ask opens the chat socket as `bff-jobs` does for a wake, so it reads the same `BACKEND_CHAT_URL` and signs with `GRID_INTERNAL_API_TOKEN`. Without either, an ask ends `failed` with the reason, never a 500.
+An agent asks Piloti through `POST /api/agent-asks` (the MCP operation `agent-ask-create`, the A2A door's `SendMessage`); the BFF that takes the ask opens the chat socket as `bff-jobs` does for a wake, so it reads the same `BACKEND_CHAT_URL` and signs with `GRID_INTERNAL_API_TOKEN`. Without either, an ask ends `failed` with the reason, never a 500.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GRID_PILOTI_ASK_MAX_SECONDS` | No | `2820` | How long an ask may stay `submitted` or `working` before the next read of it (`piloti-ask-get`, a cancel) ends it `failed`: its turn's outcome notice never arrived, as when a replica died mid-turn. The chat turn's own deadline (`GRID_CHAT_TURN_DEADLINE_SECONDS`, 2700) plus two minutes for the notice, so an ask is never ended while its turn may still answer; `ask-wire.spec.ts` holds the default to that deadline. |
+| `GRID_PILOTI_ASK_MAX_SECONDS` | No | `2820` | How long an ask may stay `submitted` or `working` before the next read of it (`agent-ask-get`, a cancel) ends it `failed`: its turn's outcome notice never arrived, as when a replica died mid-turn. The chat turn's own deadline (`GRID_CHAT_TURN_DEADLINE_SECONDS`, 2700) plus two minutes for the notice, so an ask is never ended while its turn may still answer; `ask-wire.spec.ts` holds the default to that deadline. |
 
 ---
 
