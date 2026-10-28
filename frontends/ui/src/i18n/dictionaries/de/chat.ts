@@ -10,9 +10,9 @@ export const chat: typeof en.chat = {
     trigger: 'Aufwand: {level}',
     faster: 'Schneller',
     smarter: 'Intelligenter',
-    help: 'Wie lange Piloti nachdenkt, bevor es antwortet. Mehr Aufwand hilft bei verzwickten Fragen, kostet aber Zeit und Tokens. Gilt für diesen Chat.',
+    help: 'Wie lange {productName} nachdenkt, bevor es antwortet. Mehr Aufwand hilft bei verzwickten Fragen, kostet aber Zeit und Tokens. Gilt für diesen Chat.',
     maximumWarning:
-      'Selten klüger als Hoch. Piloti denkt viel länger, kostet weit mehr Tokens und verrennt sich eher.',
+      'Selten klüger als Hoch. {productName} denkt viel länger, kostet weit mehr Tokens und verrennt sich eher.',
     levels: {
       minimal: 'Minimal',
       low: 'Niedrig',
@@ -113,16 +113,16 @@ export const chat: typeof en.chat = {
       session: 'Beilage in diesem Chat',
     },
     notIndexed:
-      'Abgelegt, nicht gelesen. Sie können die Datei öffnen, aber Piloti zitiert sie nicht.',
-    failed: 'Lesen fehlgeschlagen. Piloti kann diese Datei nicht zitieren.',
+      'Abgelegt, nicht gelesen. Sie können die Datei öffnen, aber {productName} zitiert sie nicht.',
+    failed: 'Lesen fehlgeschlagen. {productName} kann diese Datei nicht zitieren.',
     // Von der Inhaltsprüfung zurückgehalten (ADR-0086): nie „freigeben“.
-    held: 'Zurückgehalten: Die Inhaltsprüfung hält diese Datei von Piloti fern. Piloti zitiert sie erst, wenn jemand sie zulässt.',
+    held: 'Zurückgehalten: Die Inhaltsprüfung hält diese Datei von {productName} fern. {productName} zitiert sie erst, wenn jemand sie zulässt.',
   },
   composer: {
     /** Shown when the reader holds project:view but not project:chat. */
     noProjectChatPermission:
-      'Piloti steht Ihnen in diesem Projekt derzeit nicht zur Verfügung. Wenn Sie nur Lesezugriff haben, kann Ihnen eine Projektadministratorin oder ein Projektadministrator die Rolle „Mitwirkender“ erteilen.',
-    placeholder: 'Fragen Sie Piloti zu diesem Projekt …',
+      '{productName} steht Ihnen in diesem Projekt derzeit nicht zur Verfügung. Wenn Sie nur Lesezugriff haben, kann Ihnen eine Projektadministratorin oder ein Projektadministrator die Rolle „Mitwirkender“ erteilen.',
+    placeholder: 'Fragen Sie {productName} zu diesem Projekt …',
     sources: 'Datengrundlage',
     sourcesAria: 'Datengrundlage – {enabled} von {total} Quellen aktiv. Öffnet die Datenquellen.',
     scopeAria: 'Suchbereich: {project}',
@@ -138,14 +138,14 @@ export const chat: typeof en.chat = {
   dictation: {
     start: 'Diktieren',
     startHint:
-      'Sprechen Sie, Piloti schreibt es in Ihre Nachricht. Stoppt nach {seconds} Sekunden.',
+      'Sprechen Sie, {productName} schreibt es in Ihre Nachricht. Stoppt nach {seconds} Sekunden.',
     stop: 'Beenden und einfügen',
     recording: 'Aufnahme, {elapsed}',
     transcribing: 'Wird verschriftlicht …',
     unavailable: {
       unsupported: 'Dieser Browser kann nicht vom Mikrofon aufnehmen.',
       insecure: 'Spracheingabe braucht eine sichere (https-)Verbindung.',
-      noFormat: 'Dieser Browser nimmt in keinem Format auf, das Piloti verschriftlichen kann.',
+      noFormat: 'Dieser Browser nimmt in keinem Format auf, das {productName} verschriftlichen kann.',
       denied:
         'Der Mikrofonzugriff ist blockiert. Erlauben Sie ihn in den Website-Einstellungen des Browsers und laden Sie die Seite neu.',
     },
@@ -190,7 +190,7 @@ export const chat: typeof en.chat = {
       building_law_ordinance: 'Verordnung',
       authority: 'Behördliche Information',
       external_standard: 'Externe Norm',
-      office_piloti: 'Piloti-Dokument',
+      office_piloti: '{productName}-Dokument',
       measurement: 'Modellmessung',
     },
   },
@@ -213,7 +213,7 @@ export const chat: typeof en.chat = {
     // Bitte zufällig als Auftrag formuliert (Ledger 23). Nur im Projekt, weil
     // ohne Projekt kein Ablageort existiert, in den ein Entwurf ginge.
     projectWrites:
-      'Piloti beantwortet nicht nur Fragen – auf Zuruf schreibt Piloti Aktenvermerke, Notizen und Entwürfe direkt in die Projektdateien.',
+      '{productName} beantwortet nicht nur Fragen – auf Zuruf schreibt {productName} Aktenvermerke, Notizen und Entwürfe direkt in die Projektdateien.',
   },
   // Thread role tabs (click-dummy overhaul, WS-3).
   roles: {
@@ -378,7 +378,7 @@ export const chat: typeof en.chat = {
     downloadFailed: 'Das Word-Dokument konnte nicht erstellt werden.',
     // Systemdialog „Teilen“ am Telefon: Beschriftung und Titel der geteilten Nachricht.
     share: 'Antwort teilen',
-    shareTitle: 'Antwort von Piloti',
+    shareTitle: 'Antwort von {productName}',
   },
   // Die Abschnittsliste einer langen Antwort (Bericht): auf dem Telefon der Weg zu
   // einem Abschnitt, ohne bis nach oben zu scrollen.
@@ -395,14 +395,14 @@ export const chat: typeof en.chat = {
     thumbnailLoading: 'Die Seite wird gezeichnet',
     wholeDocument: 'Gesamtes Dokument',
     openAtPage: 'An dieser Stelle öffnen',
-    notOpenable: 'Zu dieser Quelle liegt in Piloti keine Datei vor.',
+    notOpenable: 'Zu dieser Quelle liegt in {productName} keine Datei vor.',
     sheetTitle: 'Quelle {number}',
     sheetDescription: 'Die Fundstelle im Wortlaut und der Weg ins Dokument.',
     // Das Dokument IST da — nur sein Format kann Piloti nicht zeichnen. Ohne
     // diesen Satz las sich das Fehlen der Öffnen-Schaltfläche als „die Datei
     // ist weg", und genau das wurde gemeldet.
     noInlineViewer:
-      'Dieses Dateiformat lässt sich in Piloti nicht anzeigen. Sie können das Dokument herunterladen und in Ihrem Programm öffnen.',
+      'Dieses Dateiformat lässt sich in {productName} nicht anzeigen. Sie können das Dokument herunterladen und in Ihrem Programm öffnen.',
     download: 'Dokument herunterladen',
     downloading: 'Wird vorbereitet…',
     copyLink: 'Link kopieren',
@@ -718,7 +718,7 @@ export const chat: typeof en.chat = {
       wholePage: 'ganze Seite',
       // Was Piloti von der Seite abgelesen hat, nie eine Messung (ADR-0125).
       reading: 'Gelesen: {reading}',
-      readingNote: 'Von Piloti abgelesen, nicht gemessen.',
+      readingNote: 'Von {productName} abgelesen, nicht gemessen.',
       embeddedImage: 'Bild {index}',
       open: '{document}, S. {page} öffnen',
     },
@@ -781,7 +781,7 @@ export const chat: typeof en.chat = {
       // nichts mehr ausgeführt: Der Vorschlag bleibt lesbar, übernehmen lässt er
       // sich nicht, und hier steht warum.
       notStored:
-        'Konnte nicht als Vorschlag angelegt werden. Bitten Sie Piloti, die Änderung noch einmal vorzuschlagen.',
+        'Konnte nicht als Vorschlag angelegt werden. Bitten Sie {productName}, die Änderung noch einmal vorzuschlagen.',
     },
     // Ein Vorschlag, den der Server hält (ADR-0105), gleich welcher Art: Datei-
     // änderung, Notiz oder Änderung am Projektkontext. Stand, Ergebnis und wer
@@ -914,12 +914,12 @@ export const chat: typeof en.chat = {
     // VS Code), als MCP App von Pilotis MCP-Server gezeichnet (ADR-0142). Dieselbe
     // Quittung wie in Piloti; hier nur die Zeilen, die dieser Rahmen braucht.
     mcpApp: {
-      source: 'Von Piloti',
+      source: 'Von {productName}',
       fileTitle: '{count, plural, one {Eine Änderung an einer Datei} other {# Änderungen an Dateien}}',
-      memoryTitle: 'Eine Notiz, die Piloti sich merken soll',
+      memoryTitle: 'Eine Notiz, die {productName} sich merken soll',
       // Eine Profiländerung zeigt Vorher und Nachher am aktuellen Profil, das der
       // Rahmen nicht lesen kann: Darüber wird in Piloti entschieden.
-      decideInPiloti: 'Dieser Vorschlag ändert den Projektkontext. Öffnen Sie das Projekt in Piloti, um ihn mit den aktuellen Werten zu vergleichen und zu entscheiden.',
+      decideInPiloti: 'Dieser Vorschlag ändert den Projektkontext. Öffnen Sie das Projekt in {productName}, um ihn mit den aktuellen Werten zu vergleichen und zu entscheiden.',
       unreadable: 'Dieser Vorschlag konnte nicht angezeigt werden.',
       waiting: 'Der Vorschlag wird geladen …',
     },
@@ -1123,10 +1123,10 @@ export const chat: typeof en.chat = {
       frame: 'Datengrundlage',
       frameNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie den Plan genehmigen.',
     },
-    awaitingOther: 'Piloti wartet auf {name}',
-    awaitingSomeone: 'Piloti wartet auf eine andere Person',
-    needsInput: 'Piloti benötigt Ihre Eingabe',
-    receivedInput: 'Piloti hat Ihre Eingabe erhalten',
+    awaitingOther: '{productName} wartet auf {name}',
+    awaitingSomeone: '{productName} wartet auf eine andere Person',
+    needsInput: '{productName} benötigt Ihre Eingabe',
+    receivedInput: '{productName} hat Ihre Eingabe erhalten',
     approvePlan: 'Plan genehmigen',
     // The current three-way plan decision (start / answer briefly / cancel).
     startResearch: 'Recherche starten',
@@ -1630,7 +1630,7 @@ export const chat: typeof en.chat = {
     // zeigt, bevor bestätigt ist, dass die Antwort wirklich fehlt.
     recovering: 'Antwort wird geholt',
     recoveringNotice:
-      'Piloti arbeitet weiter — die Antwort erscheint hier, sobald sie fertig ist …',
+      '{productName} arbeitet weiter — die Antwort erscheint hier, sobald sie fertig ist …',
     done: 'Fertig',
     // Die Lesenden haben die Antwort angehalten: kein grünes Häkchen, kein
     // „Fertig“ — so steht es auch an einem abgebrochenen Lauf.
@@ -1895,11 +1895,11 @@ export const chat: typeof en.chat = {
       message: 'Verbindung zum Server nicht möglich. Bitte überprüfen Sie Ihre Netzwerkverbindung.',
     },
     clientOutdated: {
-      title: 'Piloti wurde aktualisiert',
+      title: '{productName} wurde aktualisiert',
       message: 'Laden Sie die Seite neu, um weiterzuarbeiten.',
     },
     serverIncompatible: {
-      title: 'Piloti ist gerade nicht erreichbar',
+      title: '{productName} ist gerade nicht erreichbar',
       message:
         'Der Server läuft mit einer anderen Version als diese Seite – das kommt während eines Updates kurz vor. Versuchen Sie es in einigen Minuten erneut; hält es an, melden Sie es dem Support.',
     },
@@ -1923,11 +1923,11 @@ export const chat: typeof en.chat = {
     responseInterrupted: {
       title: 'Antwort unterbrochen',
       message:
-        'Piloti hat diese Antwort nicht abgeschlossen, und auf dem Server liegt keine. Bitte senden Sie die Frage erneut.',
+        '{productName} hat diese Antwort nicht abgeschlossen, und auf dem Server liegt keine. Bitte senden Sie die Frage erneut.',
     },
     noResponse: {
       title: 'Keine Rückmeldung',
-      message: 'Piloti hat auf Ihre Frage nicht reagiert, auch nicht auf einen zweiten Versuch. Senden Sie sie erneut.',
+      message: '{productName} hat auf Ihre Frage nicht reagiert, auch nicht auf einen zweiten Versuch. Senden Sie sie erneut.',
     },
     zdrRefused: {
       title: 'Modell unter Zero Data Retention nicht verfügbar',
@@ -1996,7 +1996,7 @@ export const chat: typeof en.chat = {
       'Keine Datenquellen ausgewählt und keine Dateien verfügbar. Antworten sind eher ungenau oder veraltet, sofern keine externen Datenquellen hinzugefügt werden.',
   },
   viewerActions: {
-    region: 'Was Piloti Ihnen im Viewer gezeigt hat',
+    region: 'Was {productName} Ihnen im Viewer gezeigt hat',
     place: '{name}, S. {page}',
     what: {
       open_document: '{place}',
@@ -2013,8 +2013,8 @@ export const chat: typeof en.chat = {
       failed: 'Konnte nicht geöffnet werden',
     },
     shown: {
-      beside: 'Piloti hat es neben dem Chat geöffnet',
-      over: 'Piloti hat es über dem Chat geöffnet',
+      beside: '{productName} hat es neben dem Chat geöffnet',
+      over: '{productName} hat es über dem Chat geöffnet',
       compare: 'Vergleich geöffnet',
       model: 'Modellansicht geöffnet',
     },
@@ -2024,30 +2024,30 @@ export const chat: typeof en.chat = {
       notRevisions: 'Nicht geöffnet: keine zwei Fassungen desselben Dokuments',
     },
     offered: {
-      off: 'Piloti schlägt diese Stelle vor',
+      off: '{productName} schlägt diese Stelle vor',
       typing: 'Nicht geöffnet, während Sie geschrieben haben',
       leaves: 'Öffnet sich über dem Chat',
       model: 'Öffnet die Modellansicht',
       noRoom: 'Neben dem Chat ist kein Platz: öffnet sich darüber',
-      unavailable: 'Piloti schlägt diese Stelle vor',
-      another: 'Eine weitere Stelle, die Piloti vorschlägt',
+      unavailable: '{productName} schlägt diese Stelle vor',
+      another: 'Eine weitere Stelle, die {productName} vorschlägt',
     },
     undo: 'Zurücknehmen',
     undoAria: '„{what}“ zurücknehmen',
     show: 'Anzeigen',
     showAria: '{what} anzeigen',
     auto: 'Automatisch öffnen',
-    autoHint: 'Piloti darf die Stellen, die es zitiert, neben dem Chat öffnen. Aus: Piloti schlägt sie hier nur vor.',
+    autoHint: '{productName} darf die Stellen, die es zitiert, neben dem Chat öffnen. Aus: {productName} schlägt sie hier nur vor.',
   },
   memory: {
-    noted: 'Piloti hat sich gemerkt',
-    notedAria: 'Piloti hat sich {count, plural, one {# Notiz} other {# Notizen}} gemerkt',
+    noted: '{productName} hat sich gemerkt',
+    notedAria: '{productName} hat sich {count, plural, one {# Notiz} other {# Notizen}} gemerkt',
     addedToMemory: 'In das Projektgedächtnis aufgenommen',
     // Mindestens eine Notiz hat eine frühere ersetzt (`supersedes`): das
     // wichtigere Ereignis, daher eigenes Wort und eigenes Symbol am Chip.
     updated: 'Gedächtnis aktualisiert',
     updatedAria:
-      'Piloti hat das Gedächtnis aktualisiert: {count, plural, one {# Notiz} other {# Notizen}}, davon {corrected} korrigiert',
+      '{productName} hat das Gedächtnis aktualisiert: {count, plural, one {# Notiz} other {# Notizen}}, davon {corrected} korrigiert',
     updatedInMemory: 'Projektgedächtnis aktualisiert',
     correctedLabel: 'Korrigiert',
     replaced: 'Ersetzt:',
@@ -2125,7 +2125,7 @@ export const chat: typeof en.chat = {
         'Ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden; die Einschätzung ist deshalb begrenzt.',
       unavailable: 'Belegprüfung nicht verfügbar',
       unavailableTooltip:
-        'Die Belegprüfung konnte für diese Antwort nicht laufen. Piloti zeigt deshalb keine Einschätzung; die Antwort selbst ist unverändert.',
+        'Die Belegprüfung konnte für diese Antwort nicht laufen. {productName} zeigt deshalb keine Einschätzung; die Antwort selbst ist unverändert.',
     },
     // Die Einschätzung seit ADR-0125: pro Aussage gerechnet, nicht pro Antwort.
     // Ältere Antworten behalten die Texte oben, unter denen sie berechnet wurden.
@@ -2201,7 +2201,7 @@ export const chat: typeof en.chat = {
   },
   screening: {
     title: 'Enthält {items} (Sensible Daten).',
-    body: 'Piloti sendet sie nicht an das Antwortmodell.',
+    body: '{productName} sendet sie nicht an das Antwortmodell.',
     preview: 'Das Modell sieht: „{text}“',
     iban: '{count, plural, one {eine IBAN} other {# IBANs}}',
     at_svnr:

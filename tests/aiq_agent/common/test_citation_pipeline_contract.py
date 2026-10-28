@@ -2,7 +2,7 @@
 
 Every bug the citation audit found lived between two well-tested units, not
 inside one. The worst pair is the knowledge-layer text protocol: it is PRODUCED
-by ``packages/knowledge-layer/src/register.py::_format_results`` and PARSED by
+by ``packages/knowledge-layer/src/register.py::format_results`` and PARSED by
 ``citations.grounding_text.parse_knowledge_layer`` — two
 packages that never meet in a test.
 
@@ -28,8 +28,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from knowledge_layer.register import _CHUNK_TRUNCATE_CHARS
-from knowledge_layer.register import _format_results
+from knowledge_layer.grounding_hits import _CHUNK_TRUNCATE_CHARS
+from knowledge_layer.search_results import format_results
 from ris_adapter.lookup.address import Address
 from ris_adapter.lookup.passages import SCORE_ADDRESSED
 from ris_adapter.lookup.passages import SCORE_RANKED_TOP
@@ -55,7 +55,7 @@ FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "citation_pipeline"
 def fixture_empty_summary_store(tmp_path):
     """Keep chunk metadata authoritative so producer output is deterministic.
 
-    ``_format_results`` resolves ``doc_class`` and ``display_title`` through the
+    ``format_results`` resolves ``doc_class`` and ``display_title`` through the
     process-global document-metadata store. Without an empty per-test store the
     producer's bytes would depend on whichever database another test happened to
     configure first, and these tests would pass or fail by test order.
@@ -80,7 +80,7 @@ def fixture_empty_summary_store(tmp_path):
 class Hit:
     """One synthetic retrieval hit.
 
-    Carries exactly the attributes ``_format_results`` reads off a chunk
+    Carries exactly the attributes ``format_results`` reads off a chunk
     (``file_name``, ``page_number``, ``content``, ``content_type.value``,
     ``score``, ``metadata``) plus the parsed identity it must come back as.
 
@@ -155,7 +155,7 @@ class Hit:
 def format_hits(hits: list[Hit], query: str = "Brandschutz") -> str:
     """The REAL producer's output for ``hits`` — never a hand-written string."""
     result = SimpleNamespace(success=True, error_message=None, chunks=[hit.chunk() for hit in hits])
-    return _format_results(result, query)
+    return format_results(result, query)
 
 
 def roundtrip(*hits: Hit):
@@ -171,7 +171,7 @@ class TestProducerParserContract:
     """Fields must bind to THEIR hit through the real producer's real output.
 
     The parser used to zip separate whole-document ``findall`` lists by
-    position. ``_format_results`` emits ``Collection:`` and ``Dokumentart:``
+    position. ``format_results`` emits ``Collection:`` and ``Dokumentart:``
     only when a hit HAS one, so a single unclassified hit shifted every later
     optional value onto the wrong document — and since ``doc_class`` is the
     first-priority signal in ``lane_for_hit``, a user's own project upload was
@@ -465,7 +465,7 @@ class TestTheNoticeIsInsideTheBytes:
         result = SimpleNamespace(success=True, error_message=None, chunks=[hit.chunk()])
         token = begin_grounding_capture()
         try:
-            text = _format_results(result, "Brandschutz", "Hinweis: die Suche wurde erweitert.\n\n")
+            text = format_results(result, "Brandschutz", "Hinweis: die Suche wurde erweitert.\n\n")
             block = get_grounding_block(text)
         finally:
             end_grounding_capture(token)

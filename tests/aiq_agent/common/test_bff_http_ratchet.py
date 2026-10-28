@@ -21,7 +21,7 @@ SEAM = Path("src/aiq_agent/common/bff_http.py")
 #: Where the agent tier calls the BFF from. ``knowledge_layer`` is its own
 #: package, imported by the ingest worker, and must not depend on ``aiq_agent``;
 #: ``aiq_api`` is the API host, whose ``internal_api.py`` persists messages.
-TREES = ("src/aiq_agent", "packages/knowledge-layer/src", "frontends/aiq_api/src")
+TREES = ("src/aiq_agent", "packages/knowledge-layer/src", "apps/backend/src")
 
 PATTERNS = {
     # A private redirect guard: the seam's opener is the one that refuses redirects.
@@ -58,7 +58,7 @@ ALLOWED: dict[str, dict[str, int]] = {
         "packages/knowledge-layer/src/llamaindex/document_presence.py": 3,
         "packages/knowledge-layer/src/llamaindex/page_text_store.py": 3,
         "packages/knowledge-layer/src/view_image.py": 4,
-        "frontends/aiq_api/src/aiq_api/internal_api.py": 2,
+        "apps/backend/src/aiq_api/internal_api.py": 2,
     },
     "token_header": {
         "src/aiq_agent/skills/resolver.py": 1,

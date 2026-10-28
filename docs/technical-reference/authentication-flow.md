@@ -173,8 +173,8 @@ The `buildCollectionScopeFromRequest()` helper constructs the collection scope f
 
 ## Python JWT validation
 
-`frontends/aiq_api/src/aiq_api/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS,
-and the `aiq_api.validators` entry point in `frontends/aiq_api/pyproject.toml` hands it to the
+`apps/backend/src/aiq_api/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS,
+and the `aiq_api.validators` entry point in `apps/backend/pyproject.toml` hands it to the
 middleware (ADR-0002: another package can register its own):
 
 ```python
@@ -187,7 +187,7 @@ JWTValidator(
 )
 ```
 
-`JWTValidator` (`frontends/aiq_api/src/aiq_api/auth/jwt_validator.py:39`) uses `PyJWT[cryptography]` to verify RS256 signatures:
+`JWTValidator` (`apps/backend/src/aiq_api/auth/jwt_validator.py:39`) uses `PyJWT[cryptography]` to verify RS256 signatures:
 
 1. Fetches JWKS from WorkOS (cached for 6 hours, cache-busted on kid miss)
 2. Extracts the signing key matching the JWT `kid`

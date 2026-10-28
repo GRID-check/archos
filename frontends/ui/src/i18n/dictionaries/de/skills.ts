@@ -88,7 +88,7 @@ export const skills: typeof en.skills = {
     instructionHeading: 'Anweisung',
     detailHeading: 'Über diesen Skill',
     originOrg: 'In dieser Organisation geschrieben',
-    originPlatform: 'Von Piloti kuratiert',
+    originPlatform: 'Von {productName} kuratiert',
     originClone: 'Geklont von „{name}“',
       goneTitle: 'Nicht gefunden',
       gone: 'Dieser Skill steht nicht auf dieser Seite. Der Link ist möglicherweise veraltet, oder der Skill wurde gelöscht.',
@@ -98,11 +98,11 @@ export const skills: typeof en.skills = {
 
   curated: {
     heading: 'Empfohlene Skills',
-    origin: 'Von Piloti kuratiert',
+    origin: 'Von {productName} kuratiert',
     count: '{active} von {total} aktiv',
-    hint: 'Skills, die Piloti für Ihre Organisation pflegt. Eingeschaltet darf der Agent sie verwenden; ausgeschaltet verschwinden sie aus dem „/“-Menü und aus der Auswahl des Agenten.',
+    hint: 'Skills, die {productName} für Ihre Organisation pflegt. Eingeschaltet darf der Agent sie verwenden; ausgeschaltet verschwinden sie aus dem „/“-Menü und aus der Auswahl des Agenten.',
     actions: {
-      enabledAria: 'Piloti-Skill „{name}“ in dieser Organisation verwenden',
+      enabledAria: '{productName}-Skill „{name}“ in dieser Organisation verwenden',
     },
   },
 
@@ -234,7 +234,7 @@ export const skills: typeof en.skills = {
       ready: 'Das Dokument ist gültig. „Übernehmen“ schreibt es in die Felder oben.',
       unchanged: 'Unverändert – identisch mit den Feldern oben.',
       ignored:
-        'Diese Felder kann Piloti nicht speichern und lässt sie beim Übernehmen weg: {keys}.',
+        'Diese Felder kann {productName} nicht speichern und lässt sie beim Übernehmen weg: {keys}.',
       errors: {
         'missing-frontmatter':
           'Das Dokument beginnt nicht mit einem „---“-Block. Ein SKILL.md startet immer mit YAML-Frontmatter.',
@@ -291,7 +291,7 @@ export const skills: typeof en.skills = {
     },
     invoked: {
       label: 'Skill',
-      hint: 'Piloti sieht diesen Namen und entscheidet, ob es den Skill lädt.',
+      hint: '{productName} sieht diesen Namen und entscheidet, ob es den Skill lädt.',
       remove: 'Skill {name} aus dieser Nachricht entfernen',
     },
     activated: {

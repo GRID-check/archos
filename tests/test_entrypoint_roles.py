@@ -1,4 +1,4 @@
-"""``deploy/entrypoint.py`` starts the four roles of the image and refuses every other name (ADR-0082).
+"""``apps/backend/entrypoint.py`` starts the four roles of the image and refuses every other name (ADR-0082).
 
 ``PROCESS_ROLE`` has no default and ``web`` is not a value: a container that does
 not say which job it does stops at once, with the names it may take, instead of
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-ENTRYPOINT = Path(__file__).resolve().parents[1] / "deploy" / "entrypoint.py"
+ENTRYPOINT = Path(__file__).resolve().parents[1] / "apps" / "backend" / "entrypoint.py"
 
 
 def _run(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -106,7 +106,7 @@ def test_the_ui_image_adopts_the_same_names():
         "const m = require(process.argv[1]);"
         "process.stdout.write(JSON.stringify({prefixes: m.LEGACY_PREFIXES, renamed: m.RENAMED}))"
     )
-    shim = ENTRYPOINT.parents[1] / "frontends" / "ui" / "scripts" / "legacy-env-names.cjs"
+    shim = ENTRYPOINT.parents[2] / "frontends" / "ui" / "scripts" / "legacy-env-names.cjs"
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is not installed")

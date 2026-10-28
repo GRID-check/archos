@@ -18,7 +18,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { de } from './dictionaries/de'
+import { de } from './dictionaries'
 
 /** The retired words, each with the one that replaced it. */
 const RETIRED: readonly { word: RegExp; use: string }[] = [

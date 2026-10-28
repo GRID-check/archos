@@ -23,7 +23,7 @@ export const bim = {
   empty: {
     title: 'No IFC model yet',
     description:
-      'Upload an .ifc file under Files. Piloti reads its structure, makes the building queryable in chat, and shows it here in 3D.',
+      'Upload an .ifc file under Files. {productName} reads its structure, makes the building queryable in chat, and shows it here in 3D.',
     action: 'Go to files',
   },
   status: {
@@ -462,7 +462,7 @@ export const bim = {
       hide: 'Hide',
       isolate: 'Isolate',
       technical: 'Technical details',
-      ask: 'Ask Piloti about this',
+      ask: 'Ask {productName} about this',
     },
   },
   viewer: {
@@ -541,7 +541,7 @@ export const bim = {
    */
   preview: {
     loading: 'Loading model…',
-    extracting: 'Piloti is still reading this model. The building appears here as soon as that finishes.',
+    extracting: '{productName} is still reading this model. The building appears here as soon as that finishes.',
     extractionFailed:
       'This model could not be read. The file itself is unchanged and can still be downloaded.',
     noModel: 'No model has been read from this file.',

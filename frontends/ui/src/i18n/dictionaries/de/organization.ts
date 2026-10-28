@@ -25,7 +25,7 @@ export const organization: typeof en.organization = {
     overview: {
       title: 'Übersicht',
       subtitle:
-        'Ihre Organisation auf einen Blick — Name, Domains, Mitglieder und die Piloti-Einstellungen, die für alle darin gelten.',
+        'Ihre Organisation auf einen Blick — Name, Domains, Mitglieder und die {productName}-Einstellungen, die für alle darin gelten.',
     },
     access: {
       title: 'Personen & Zugriff',
@@ -49,12 +49,12 @@ export const organization: typeof en.organization = {
     },
     screening: {
       title: 'Sensible Daten',
-      subtitle: 'Was Ihr Büro keinem Sprachmodell zeigen will, und woran Piloti es erkennt.',
+      subtitle: 'Was Ihr Büro keinem Sprachmodell zeigen will, und woran {productName} es erkennt.',
     },
     quarantine: {
       title: 'Quarantäne',
       subtitle:
-        'Dateien, die die Inhaltsprüfung zurückgehalten hat. Solange sie hier liegen, zeigt Piloti sie keinem Modell. Wer sie prüfen darf, lässt sie hier zu oder löscht sie.',
+        'Dateien, die die Inhaltsprüfung zurückgehalten hat. Solange sie hier liegen, zeigt {productName} sie keinem Modell. Wer sie prüfen darf, lässt sie hier zu oder löscht sie.',
     },
     downloads: {
       title: 'Download-Protokoll',
@@ -193,7 +193,7 @@ export const organization: typeof en.organization = {
   customRoles: {
     title: 'Eigene Rollen',
     description:
-      'Rollen, die Ihr Büro selbst anlegt, neben denen von Piloti. Eine Rolle fasst Berechtigungen unter einem Namen wie „Geschäftsführung“ zusammen.',
+      'Rollen, die Ihr Büro selbst anlegt, neben denen von {productName}. Eine Rolle fasst Berechtigungen unter einem Namen wie „Geschäftsführung“ zusammen.',
     howTo:
       'Rollen weisen Sie Personen im Reiter „Personen“ zu, und sie gelten in der ganzen Organisation. Wer einen einzelnen Projektordner sehen darf, legen Sie am Ordner unter „Zugriff …“ Person für Person fest.',
     oneRoleTitle: 'Eine Rolle pro Person',
@@ -201,8 +201,8 @@ export const organization: typeof en.organization = {
       'Solange in Ihrer Organisation nicht mehrere Rollen pro Person eingeschaltet sind, hat jede Person genau eine Rolle. Eine eigene Rolle muss dann alle Berechtigungen tragen, mit denen ihre Inhaber arbeiten.',
     create: 'Neue Rolle',
     customGroup: 'Rollen Ihres Büros',
-    environmentGroup: 'Rollen von Piloti',
-    environmentHint: 'Stellt Piloti jeder Organisation bereit. Sie lassen sich hier nicht ändern.',
+    environmentGroup: 'Rollen von {productName}',
+    environmentHint: 'Stellt {productName} jeder Organisation bereit. Sie lassen sich hier nicht ändern.',
     emptyTitle: 'Noch keine eigenen Rollen',
     emptyDescription:
       'Legen Sie eine Rolle wie „Geschäftsführung“ an, um Berechtigungen unter einem Namen zusammenzufassen.',
@@ -220,7 +220,7 @@ export const organization: typeof en.organization = {
       name: 'Name',
       namePlaceholder: 'z. B. Geschäftsführung',
       nameHint:
-        'Aus dem Namen bildet Piloti beim Anlegen die Kennung der Rolle. Die Kennung bleibt danach gleich, auch wenn Sie die Rolle umbenennen.',
+        'Aus dem Namen bildet {productName} beim Anlegen die Kennung der Rolle. Die Kennung bleibt danach gleich, auch wenn Sie die Rolle umbenennen.',
       nameRequired: 'Geben Sie der Rolle einen Namen.',
       description: 'Beschreibung (optional)',
       descriptionPlaceholder: 'Wer diese Rolle hat und wozu',
@@ -256,7 +256,7 @@ export const organization: typeof en.organization = {
         name: 'Organisationseinstellungen verwalten',
         hint: 'Name, Sprache und Voreinstellungen der Organisation.',
       },
-      models_manage: { name: 'KI-Modelle verwalten', hint: 'Mit welchem Modell jeder Teil von Piloti arbeitet.' },
+      models_manage: { name: 'KI-Modelle verwalten', hint: 'Mit welchem Modell jeder Teil von {productName} arbeitet.' },
       budgets_manage: { name: 'Budgets verwalten', hint: 'Ausgabenlimits und Verbrauch der ganzen Organisation.' },
       compliance_manage: { name: 'Compliance verwalten', hint: 'Legal Holds und Löschungen.' },
       audit_view: { name: 'Audit-Log ansehen', hint: 'Das Protokoll jeder privilegierten Änderung.' },
@@ -297,16 +297,16 @@ export const organization: typeof en.organization = {
   },
   settings: {
     title: 'Organisationseinstellungen',
-    description: 'Piloti-spezifische Einstellungen für Ihre Organisation.',
+    description: '{productName}-spezifische Einstellungen für Ihre Organisation.',
     displayName: 'Anzeigename',
-    displayNameHint: 'Wird innerhalb von Piloti angezeigt. Leer lassen, um den WorkOS-Organisationsnamen zu verwenden.',
+    displayNameHint: 'Wird innerhalb von {productName} angezeigt. Leer lassen, um den WorkOS-Organisationsnamen zu verwenden.',
     displayNamePlaceholder: 'z. B. Acme Architektur GmbH',
     defaultLocale: 'Standardsprache für neue Mitglieder',
     defaultLocaleHint: 'Neue Mitglieder starten in dieser Sprache, bis sie ihre eigene wählen.',
     defaultLocaleUnset: 'Nicht festgelegt (Sprache des Browsers)',
     chatEffort: 'Standard-Aufwand für neue Chats',
     chatEffortHint:
-      'Wie lange Piloti in einem neuen Chat nachdenkt. Jedes Mitglied kann den Aufwand im Chat selbst verstellen; das hier ist nur der Startwert.',
+      'Wie lange {productName} in einem neuen Chat nachdenkt. Jedes Mitglied kann den Aufwand im Chat selbst verstellen; das hier ist nur der Startwert.',
     webSearch: 'Websuche',
     webSearchHint:
       'Erlaubt den Agenten, das öffentliche Web zu durchsuchen. Wenn deaktiviert, verschwinden Websuche-Tools aus der Auswahl und werden serverseitig für alle Mitglieder blockiert.',
@@ -324,11 +324,11 @@ export const organization: typeof en.organization = {
   instructions: {
     title: 'Anweisungen',
     description:
-      'Was Piloti für Ihre Organisation dauerhaft beachten soll. Wird bei jeder Anfrage mitgegeben.',
+      'Was {productName} für Ihre Organisation dauerhaft beachten soll. Wird bei jeder Anfrage mitgegeben.',
     label: 'Stehende Anweisungen',
     placeholder:
       'z. B. Antworten zuerst mit dem Ergebnis, dann mit der Begründung. Standardmäßig Wien annehmen, wenn kein Bundesland genannt ist. Bei Prüfaufträgen immer eine Mängelliste anhängen.',
-    hint: 'Stehende Vorlieben zu Form, Fokus und Ablauf. Sie setzen Pilotis eigene Regeln nie außer Kraft und liefern nie einen normativen Wert — eine OIB-Anforderung stammt aus der Richtlinie, nie aus diesem Feld.',
+    hint: 'Stehende Vorlieben zu Form, Fokus und Ablauf. Sie setzen {productName}s eigene Regeln nie außer Kraft und liefern nie einen normativen Wert — eine OIB-Anforderung stammt aus der Richtlinie, nie aus diesem Feld.',
     remaining: '{used} von {max} Zeichen',
     overCap: '{over} Zeichen zu viel. Bitte kürzen Sie den Text, bevor Sie speichern.',
     save: 'Anweisungen speichern',
@@ -336,7 +336,7 @@ export const organization: typeof en.organization = {
     clear: 'Löschen',
     clearConfirmTitle: 'Anweisungen löschen?',
     clearConfirmBody:
-      'Piloti beachtet dann keine stehenden Anweisungen Ihrer Organisation mehr. Den Text können Sie nicht wiederherstellen.',
+      '{productName} beachtet dann keine stehenden Anweisungen Ihrer Organisation mehr. Den Text können Sie nicht wiederherstellen.',
     saveError: 'Die Anweisungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.',
     loadError: 'Die Anweisungen konnten gerade nicht geladen werden. Bitte laden Sie die Seite neu.',
   },
@@ -414,9 +414,9 @@ export const organization: typeof en.organization = {
     zdrHintMore: 'Mehr anzeigen',
     zdrHintLess: 'Weniger anzeigen',
     zdrHint:
-      'Standardmäßig aktiv. Jede Anfrage, die Piloti für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Chats, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
+      'Standardmäßig aktiv. Jede Anfrage, die {productName} für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Chats, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
     zdrNotApplicable:
-      'Der eigene {provider}-Schlüssel Ihrer Organisation ist aktiv; Anfragen gehen daher direkt an diesen Anbieter und nicht über OpenRouter. Ob dort Daten gespeichert werden, regelt Ihr Vertrag mit {provider}; Piloti kann das nicht durchsetzen. Ihre gespeicherte Einstellung bleibt erhalten und gilt wieder, sobald Sie zum Plattformschlüssel oder zu einem OpenRouter-Schlüssel wechseln.',
+      'Der eigene {provider}-Schlüssel Ihrer Organisation ist aktiv; Anfragen gehen daher direkt an diesen Anbieter und nicht über OpenRouter. Ob dort Daten gespeichert werden, regelt Ihr Vertrag mit {provider}; {productName} kann das nicht durchsetzen. Ihre gespeicherte Einstellung bleibt erhalten und gilt wieder, sobald Sie zum Plattformschlüssel oder zu einem OpenRouter-Schlüssel wechseln.',
     zdrError: 'Zero Data Retention konnte nicht geändert werden. Bitte versuchen Sie es erneut.',
     zdrErrorForbidden:
       'Sie können Zero Data Retention nicht ändern: Dafür brauchen Sie die Berechtigung „KI-Modelle verwalten“, und die Modellkonfiguration muss für Ihre Organisation freigeschaltet sein.',
@@ -467,7 +467,7 @@ export const organization: typeof en.organization = {
       'Bringen Sie Ihren eigenen LLM-Provider-Schlüssel mit: Research-Traffic wird über Ihr Provider-Konto abgerechnet und der Schlüssel pro Organisation verschlüsselt in WorkOS Vault abgelegt. Schlüssel werden vor der Aktivierung live geprüft; Rotation und Widerruf werden auditiert.',
     loading: 'Zugangsdaten werden geladen…',
     loadError: 'Die LLM-Zugangsdaten konnten nicht geladen werden.',
-    noCredential: 'Kein Organisationsschlüssel verbunden — Piloti nutzt den Plattformschlüssel.',
+    noCredential: 'Kein Organisationsschlüssel verbunden — {productName} nutzt den Plattformschlüssel.',
     storageVaultNote:
       'Neue Schlüssel werden verschlüsselt in WorkOS Vault unter dem Schlüsselkontext Ihrer Organisation gespeichert.',
     storageLocalNote: 'Neue Schlüssel werden mit dem lokalen Schlüssel dieser Installation verschlüsselt gespeichert.',
@@ -477,9 +477,9 @@ export const organization: typeof en.organization = {
     modeByokHint:
       'Research-Traffic läuft über Ihren Schlüssel und wird über Ihr Provider-Konto abgerechnet. Die Modellauswahl zeigt die Modelle Ihres Providers.',
     modePlatformHint:
-      'Research-Traffic läuft über den Piloti-Plattform-Service. Ihr Schlüssel bleibt sicher gespeichert und kann jederzeit wieder aktiviert werden.',
+      'Research-Traffic läuft über den {productName}-Plattform-Service. Ihr Schlüssel bleibt sicher gespeichert und kann jederzeit wieder aktiviert werden.',
     modeByokSet: 'Auf eigenen Schlüssel umgestellt — neue Chats nutzen ihn innerhalb einer Minute.',
-    modePlatformSet: 'Auf den Piloti-Plattform-Service umgestellt — Ihr Schlüssel bleibt gespeichert, wird aber nicht verwendet.',
+    modePlatformSet: 'Auf den {productName}-Plattform-Service umgestellt — Ihr Schlüssel bleibt gespeichert, wird aber nicht verwendet.',
     modeError: 'Der Provider-Modus konnte nicht geändert werden.',
     keyLabel: 'Schlüssel',
     storageLabel: 'Speicherung',
@@ -540,7 +540,7 @@ export const organization: typeof en.organization = {
     /** Die Obergrenze je Datei, nur lesend; `size` kommt mit Einheit. */
     maxFileSize: 'Max. Dateigröße je Upload',
     setByPlatform:
-      'Ihr Speicherkontingent und die maximale Dateigröße werden von Piloti festgelegt. Wenden Sie sich an den Support, wenn Sie mehr benötigen.',
+      'Ihr Speicherkontingent und die maximale Dateigröße werden von {productName} festgelegt. Wenden Sie sich an den Support, wenn Sie mehr benötigen.',
     loadError: 'Speichernutzung konnte nicht geladen werden.',
   },
   budgets: {
@@ -559,7 +559,7 @@ export const organization: typeof en.organization = {
     unitCredits: 'Punkte',
     unitTokens: 'Tokens',
     ownKeyNote:
-      'Ihre Organisation arbeitet mit einem eigenen Anbieterschlüssel. Der Verbrauch wird in Tokens auf Ihrer eigenen Rechnung gezählt; Piloti berechnet dafür keine Punkte.',
+      'Ihre Organisation arbeitet mit einem eigenen Anbieterschlüssel. Der Verbrauch wird in Tokens auf Ihrer eigenen Rechnung gezählt; {productName} berechnet dafür keine Punkte.',
     overLimit: 'Budget ausgeschöpft — neue Anfragen werden blockiert',
     legendTitle: 'Verbrauch nach Modell',
     legendEmpty: 'In diesem Zeitraum wurde noch keine LLM-Nutzung erfasst.',
@@ -644,12 +644,12 @@ export const organization: typeof en.organization = {
   screening: {
     title: 'Prüfliste',
     description:
-      'Piloti prüft jeden Upload gegen diese Listen, Chat-Nachrichten gegen die Inhaltsbegriffe und Nummern. Was anschlägt, zeigt Piloti keinem Modell mehr, bis es jemand zulässt.',
+      '{productName} prüft jeden Upload gegen diese Listen, Chat-Nachrichten gegen die Inhaltsbegriffe und Nummern. Was anschlägt, zeigt {productName} keinem Modell mehr, bis es jemand zulässt.',
     enabled: 'Uploads und Chat prüfen',
-    enabledHint: 'Ausgeschaltet prüft Piloti nichts. Ihre Listen bleiben gespeichert.',
-    suggestedTitle: 'Es gilt der Vorschlag von Piloti',
+    enabledHint: 'Ausgeschaltet prüft {productName} nichts. Ihre Listen bleiben gespeichert.',
+    suggestedTitle: 'Es gilt der Vorschlag von {productName}',
     suggestedBody:
-      'Ihr Büro hat noch keine eigene Liste gespeichert. Bis dahin prüft Piloti mit dieser. Sobald Sie speichern, gilt Ihre.',
+      'Ihr Büro hat noch keine eigene Liste gespeichert. Bis dahin prüft {productName} mit dieser. Sobald Sie speichern, gilt Ihre.',
     namesTitle: 'Vor dem Hochladen: Datei- und Ordnernamen',
     namesHint:
       'Der Browser prüft die Namen, bevor er etwas sendet. Eine passende Datei wird nicht gesendet, außer die Person, die hochlädt, wählt für sie „Trotzdem hochladen“.',
@@ -659,18 +659,18 @@ export const organization: typeof en.organization = {
     nameExceptionsHint: 'Wörter, die einen Begriff enthalten, aber etwas anderes meinen: „Berechnung“ enthält „Rechnung“.',
     contentTitle: 'Nach dem Hochladen: Inhalt',
     contentHint:
-      'Piloti liest den Text auf dem eigenen Server und prüft ihn, bevor ein Modell ihn sieht. Treffer warten in der Quarantäne, bis jemand sie prüft und zulässt oder löscht. Dieselben Begriffe und Nummern gelten für Chat-Nachrichten: Piloti zeigt vor dem Senden, was es gefunden hat, und schickt die Nachricht nur maskiert an das Antwortmodell. Eine diktierte Nachricht hört vorher ein externes Sprachmodell, um sie zu transkribieren.',
+      '{productName} liest den Text auf dem eigenen Server und prüft ihn, bevor ein Modell ihn sieht. Treffer warten in der Quarantäne, bis jemand sie prüft und zulässt oder löscht. Dieselben Begriffe und Nummern gelten für Chat-Nachrichten: {productName} zeigt vor dem Senden, was es gefunden hat, und schickt die Nachricht nur maskiert an das Antwortmodell. Eine diktierte Nachricht hört vorher ein externes Sprachmodell, um sie zu transkribieren.',
     contentTerms: 'Inhaltsbegriffe',
     contentTermsHint: 'Trifft Wörter, die so beginnen: „Honorar“ findet „Honorarnote“.',
     detectors: 'Nummern erkennen',
-    detectorsHint: 'Piloti rechnet die Prüfziffer nach. Eine Zahl, die nur so aussieht, schlägt nicht an.',
+    detectorsHint: '{productName} rechnet die Prüfziffer nach. Eine Zahl, die nur so aussieht, schlägt nicht an.',
     detector: {
       iban: 'IBAN',
       at_svnr: 'Sozialversicherungsnummer (AT)',
       credit_card: 'Kreditkartennummer',
     },
     limits:
-      'Die Prüfung sieht Wörter und Nummern, keine Bedeutung. Eine Honorarvereinbarung, die keinen Ihrer Begriffe enthält, kommt durch. Gescannte Seiten und Bilder ohne Textebene prüft Piloti nur am Namen.',
+      'Die Prüfung sieht Wörter und Nummern, keine Bedeutung. Eine Honorarvereinbarung, die keinen Ihrer Begriffe enthält, kommt durch. Gescannte Seiten und Bilder ohne Textebene prüft {productName} nur am Namen.',
     termPlaceholder: 'Begriff eingeben',
     removeTerm: '„{term}“ entfernen',
     emptyList: 'Keine Begriffe',
@@ -701,13 +701,13 @@ export const organization: typeof en.organization = {
     release: 'Zulassen',
     releaseTitle: '„{name}“ zulassen?',
     releaseDescription:
-      'Piloti liest die Datei dann wie jeden anderen Upload: Sprachmodelle sehen ihren Inhalt, und die Suche findet sie. Ihre Entscheidung wird mit Ihrem Namen protokolliert.',
+      '{productName} liest die Datei dann wie jeden anderen Upload: Sprachmodelle sehen ihren Inhalt, und die Suche findet sie. Ihre Entscheidung wird mit Ihrem Namen protokolliert.',
     released: '„{name}“ ist zugelassen und wird gelesen.',
     releaseError: 'Die Datei konnte nicht zugelassen werden. Bitte versuchen Sie es erneut.',
     changed: 'Jemand hat diese Datei schon bearbeitet. Die Liste ist jetzt aktuell.',
     delete: 'Löschen',
     deleteTitle: '„{name}“ löschen?',
-    deleteDescription: 'Die Datei wird aus Piloti entfernt. Das lässt sich nicht rückgängig machen.',
+    deleteDescription: 'Die Datei wird aus {productName} entfernt. Das lässt sich nicht rückgängig machen.',
     deleted: '„{name}“ ist gelöscht.',
     deleteError: 'Die Datei konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.',
     deleteErrorSession: 'Einen Chat-Anhang können nur Personen löschen, die an diesem Chat beteiligt sind.',
@@ -715,8 +715,8 @@ export const organization: typeof en.organization = {
   },
   /** What Piloti learned about the office's conventions, to confirm or decline (ADR-0129). */
   officeConventions: {
-    title: 'Was Piloti über das Büro gelernt hat',
-    description: 'Konventionen, die Piloti in Ihren Projekten gezählt hat. Bestätigen Sie, was stimmt, und lehnen Sie ab, was nicht stimmt: Piloti verwendet eine abgelehnte Zeile nie und behält eine bestätigte immer.',
+    title: 'Was {productName} über das Büro gelernt hat',
+    description: 'Konventionen, die {productName} in Ihren Projekten gezählt hat. Bestätigen Sie, was stimmt, und lehnen Sie ab, was nicht stimmt: {productName} verwendet eine abgelehnte Zeile nie und behält eine bestätigte immer.',
     confirm: 'Bestätigen',
     decline: 'Ablehnen',
     undo: 'Zurücknehmen',
@@ -724,8 +724,8 @@ export const organization: typeof en.organization = {
     declined: 'Abgelehnt',
     support: 'In {projects} von {of} Projekten zu sehen',
     supportWhenConfirmed: 'Von Ihnen bestätigt; bei der Bestätigung in {projects} von {of} Projekten zu sehen',
-    empty: 'Noch nichts gelernt. Piloti braucht dieselbe Gewohnheit in mindestens drei Ihrer Projekte.',
-    off: 'Piloti lernt die Konventionen des Büros in dieser Installation noch nicht.',
+    empty: 'Noch nichts gelernt. {productName} braucht dieselbe Gewohnheit in mindestens drei Ihrer Projekte.',
+    off: '{productName} lernt die Konventionen des Büros in dieser Installation noch nicht.',
     loadError: 'Die Konventionen konnten nicht geladen werden.',
     saveError: 'Ihre Entscheidung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
     line: {

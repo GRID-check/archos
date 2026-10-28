@@ -53,20 +53,20 @@ export const onboarding = {
     close: 'Close tour',
     stops: {
       welcome: {
-        title: 'Welcome to Piloti',
+        title: 'Welcome to {productName}',
         body: 'Your organization is ready. Here is a quick look at where things live — it takes about a minute.',
       },
       welcomeJoined: {
-        title: 'Welcome to Piloti',
+        title: 'Welcome to {productName}',
         body: 'This is where your team works on its building projects. Here is a quick look at where things live — it takes about a minute.',
       },
       createProjectJoined: {
         title: 'Your projects',
-        body: 'Projects appear here as colleagues add you to them. You can also start one yourself: a project holds one building, its documents, the people on it, its tasks and research, and a chat in which Piloti works and cites every source.',
+        body: 'Projects appear here as colleagues add you to them. You can also start one yourself: a project holds one building, its documents, the people on it, its tasks and research, and a chat in which {productName} works and cites every source.',
       },
       createProject: {
         title: 'Start with a project',
-        body: 'A project holds one building: its documents, the people working on it, its tasks and research, and a chat where Piloti works with you. Every source is cited, whether building law or your own files. A short setup asks about the building, then we show you around inside.',
+        body: 'A project holds one building: its documents, the people working on it, its tasks and research, and a chat where {productName} works with you. Every source is cited, whether building law or your own files. A short setup asks about the building, then we show you around inside.',
       },
       officeShelf: {
         title: 'Office filing',
@@ -96,19 +96,19 @@ export const onboarding = {
       },
       projectWelcome: {
         title: 'Your project is set up',
-        body: 'Piloti now knows the basics of this building. Here is where the work happens.',
+        body: '{productName} now knows the basics of this building. Here is where the work happens.',
       },
       projectWelcomeJoined: {
         title: 'Inside a project',
         body: 'Every building gets a space like this one. Here is where the work happens.',
       },
       projectChat: {
-        title: 'Work with Piloti',
-        body: 'Talk to Piloti about this building in plain language, or hand it a task. It works from your files, Office filing and building law, and cites each source.',
+        title: 'Work with {productName}',
+        body: 'Talk to {productName} about this building in plain language, or hand it a task. It works from your files, Office filing and building law, and cites each source.',
       },
       projectFiles: {
         title: 'Files: this project’s documents',
-        body: 'Upload drawings, reports and correspondence for this building. Once a file has been read, Piloti can quote it, but only inside this project.',
+        body: 'Upload drawings, reports and correspondence for this building. Once a file has been read, {productName} can quote it, but only inside this project.',
       },
       projectOfficeShelf: {
         title: 'Office filing: your office’s documents',
@@ -128,7 +128,7 @@ export const onboarding = {
       },
       projectSources: {
         title: 'Every answer shows its sources',
-        body: 'Each claim is marked with where it came from — Building law, Project knowledge or Office filing — and opens the passage it rests on. If Piloti has no source for something, it says so.',
+        body: 'Each claim is marked with where it came from — Building law, Project knowledge or Office filing — and opens the passage it rests on. If {productName} has no source for something, it says so.',
       },
       projectSettings: {
         title: 'Settings and members',

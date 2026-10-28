@@ -11,7 +11,7 @@ import logging
 from types import SimpleNamespace
 
 import pytest
-from knowledge_layer import register as reg
+from knowledge_layer import hit_metadata
 
 
 def _chunk(collection: str = "proj_1", file_name: str = "plan.pdf") -> SimpleNamespace:
@@ -21,9 +21,9 @@ def _chunk(collection: str = "proj_1", file_name: str = "plan.pdf") -> SimpleNam
 @pytest.mark.parametrize(
     ("resolver", "factory_fn", "what"),
     [
-        (reg._resolve_doc_classes, "get_document_doc_classes", "doc_class"),
-        (reg._resolve_display_titles, "get_document_display_titles", "display_title"),
-        (reg._resolve_folder_paths, "get_document_folder_paths", "folder_path"),
+        (hit_metadata.resolve_doc_classes, "get_document_doc_classes", "doc_class"),
+        (hit_metadata.resolve_display_titles, "get_document_display_titles", "display_title"),
+        (hit_metadata.resolve_folder_paths, "get_document_folder_paths", "folder_path"),
     ],
 )
 def test_a_store_read_failure_is_fail_open_and_logged(monkeypatch, caplog, resolver, factory_fn, what):
@@ -34,7 +34,7 @@ def test_a_store_read_failure_is_fail_open_and_logged(monkeypatch, caplog, resol
 
     monkeypatch.setattr(factory, factory_fn, boom)
 
-    with caplog.at_level(logging.WARNING, logger=reg.logger.name):
+    with caplog.at_level(logging.WARNING, logger=hit_metadata.logger.name):
         resolved = resolver([_chunk(), _chunk(file_name="other.pdf")])
 
     assert resolved == {}
@@ -51,8 +51,8 @@ def test_a_healthy_store_stays_silent(monkeypatch, caplog):
 
     monkeypatch.setattr(factory, "get_document_doc_classes", lambda collection, filenames: {"plan.pdf": "plan"})
 
-    with caplog.at_level(logging.WARNING, logger=reg.logger.name):
-        resolved = reg._resolve_doc_classes([_chunk()])
+    with caplog.at_level(logging.WARNING, logger=hit_metadata.logger.name):
+        resolved = hit_metadata.resolve_doc_classes([_chunk()])
 
     assert resolved == {("proj_1", "plan.pdf"): "plan"}
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]

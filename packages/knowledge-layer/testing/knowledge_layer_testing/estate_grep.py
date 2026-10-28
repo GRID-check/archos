@@ -113,7 +113,7 @@ def _setup(monkeypatch):
     from knowledge_layer import browse
 
     monkeypatch.setattr(browse, "_collection_filter", lambda collection, **_kwargs: None)
-    monkeypatch.setattr("knowledge_layer.register._resolve_base_collection", lambda _config: "oib_knowledge")
+    monkeypatch.setattr("knowledge_layer.search_scope.resolve_base_collection", lambda _config: "oib_knowledge")
     token = begin_grounding_capture()
     try:
         yield

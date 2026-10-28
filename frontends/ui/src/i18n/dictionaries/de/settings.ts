@@ -33,11 +33,11 @@ export const settings: typeof en.settings = {
     overview: {
       createdOn: 'Erstellt am {date}',
       documentsCount: '{count, plural, one {# Dokument} other {# Dokumente}}',
-      summaryEmpty: 'Noch kein Briefing. Richten Sie eines ein, damit Piloti weiß, worum es in diesem Projekt geht, bevor es antwortet.',
+      summaryEmpty: 'Noch kein Briefing. Richten Sie eines ein, damit {productName} weiß, worum es in diesem Projekt geht, bevor es antwortet.',
       setUpBrief: 'Briefing einrichten',
       editBrief: 'Briefing bearbeiten',
       openSetup: 'Einrichtung fortsetzen',
-      askPiloti: 'Piloti fragen',
+      askPiloti: '{productName} fragen',
       openFiles: 'Dateien öffnen',
       actions: 'Projektaktionen',
       rename: 'Umbenennen',
@@ -48,7 +48,7 @@ export const settings: typeof en.settings = {
         questionsWord: '{count, plural, one {Frage} other {Fragen}}',
         questions: '{count, plural, one {# Frage} other {# Fragen}}',
         peopleLabel: 'Fragende Personen',
-        empty: 'In den letzten 30 Tagen keine Fragen. Fragen Sie Piloti etwas zu diesem Projekt, um loszulegen.',
+        empty: 'In den letzten 30 Tagen keine Fragen. Fragen Sie {productName} etwas zu diesem Projekt, um loszulegen.',
       },
       similar: {
         label: 'Ähnliche Projekte',
@@ -74,7 +74,7 @@ export const settings: typeof en.settings = {
         notes: '{count, plural, one {Notiz} other {Notizen}}',
         toReview: '{count, plural, one {# zu prüfen} other {# zu prüfen}}',
         allReviewed: 'Alles bestätigt',
-        empty: 'Piloti hat sich zu diesem Projekt noch nichts gemerkt.',
+        empty: '{productName} hat sich zu diesem Projekt noch nichts gemerkt.',
         error: 'Das Gedächtnis konnte nicht geladen werden.',
         open: 'Gedächtnis',
       },
@@ -93,12 +93,12 @@ export const settings: typeof en.settings = {
     },
     memory: {
       readOnlyHint:
-        'Sie können lesen, was Piloti sich merkt. Ändern erfordert Schreibrechte im Projekt.',
+        'Sie können lesen, was {productName} sich merkt. Ändern erfordert Schreibrechte im Projekt.',
     },
     usage: {
       title: 'Nutzung',
       description:
-        'Was Piloti in diesem Projekt verbraucht hat, gemessen an den Limits, die es stoppen würden. Zeitfenster in UTC: heute ab Mitternacht, dieser Monat ab dem 1.',
+        'Was {productName} in diesem Projekt verbraucht hat, gemessen an den Limits, die es stoppen würden. Zeitfenster in UTC: heute ab Mitternacht, dieser Monat ab dem 1.',
       today: 'Heute',
       thisMonth: 'Dieser Monat',
       requests: '{count, plural, one {# Anfrage} other {# Anfragen}}',
@@ -106,7 +106,7 @@ export const settings: typeof en.settings = {
       empty: 'In diesem Monat wurde in diesem Projekt noch nichts verbraucht.',
       limitTitle: 'Projektlimit',
       limitDescription:
-        'Ein Limit hier stoppt Piloti nur in diesem Projekt, bevor das Limit der Organisation erreicht ist. Es kann das Limit der Organisation nie überschreiten.',
+        'Ein Limit hier stoppt {productName} nur in diesem Projekt, bevor das Limit der Organisation erreicht ist. Es kann das Limit der Organisation nie überschreiten.',
       noProjectLimit: 'Kein Projektlimit. Es gilt nur das Limit der Organisation.',
       orgCeiling: 'Limit der Organisation: {limits}',
       orgCeilingNone: 'Die Organisation hat kein Limit gesetzt.',

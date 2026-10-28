@@ -21,7 +21,7 @@ export const research = {
     // Offline, a locked phone, or a server out of reach: a running answer is
     // not lost, it carries on once the connection is back.
     connection: {
-      lost: 'Connection lost · Piloti carries on as soon as it is back',
+      lost: 'Connection lost · {productName} carries on as soon as it is back',
       restored: 'Reconnected',
     },
     status: {
@@ -39,11 +39,11 @@ export const research = {
       // Piloti did not take the question on; the banner says why.
       refused: 'Not handled',
     },
-    loggedOutTitle: 'Piloti opens after your organization is verified.',
+    loggedOutTitle: '{productName} opens after your organization is verified.',
     loggedOutBody:
       'Sign in to open the project workspace: its files, Office filing, tasks and research.',
     signInSso: 'Sign in with SSO',
-    welcomeTitle: 'How can Piloti help with your project?',
+    welcomeTitle: 'How can {productName} help with your project?',
   },
 
   chatToolbar: {
@@ -83,7 +83,7 @@ export const research = {
   sourceBasis: {
     label: 'Data basis',
     triggerAria: 'Data basis: {summary}. Opens the picker.',
-    description: 'Where Piloti may search. What it actually used is in the derivation.',
+    description: 'Where {productName} may search. What it actually used is in the derivation.',
     allSources: 'All sources',
     internalOnly: 'Project knowledge only',
     overflowAria: '{count, plural, one {# more source type} other {# more source types}}',
@@ -93,11 +93,11 @@ export const research = {
     signInRequired: 'Sign-in required',
     signInReason: 'Sign in to use this source.',
     lockedBusy: 'The data basis cannot be changed while research is running.',
-    noExternalWarning: 'Piloti will then search only your project documents.',
+    noExternalWarning: '{productName} will then search only your project documents.',
     presetsLabel: 'Presets',
     emptyTitle: 'No external sources',
     emptyBody:
-      'No external sources are enabled for this project right now. Piloti searches your project documents.',
+      'No external sources are enabled for this project right now. {productName} searches your project documents.',
     toggleAria: 'Allow {name}',
     /** Stratum wordmarks — always shown together with their icon and colour. */
     strata: {
@@ -192,7 +192,7 @@ export const research = {
     onlyThisSession: 'Only available in this chat session.',
     loadingFiles: 'Loading files',
     checkingFiles: 'Checking for files...',
-    setupBackend: 'Files become available once the connection to Piloti is up.',
+    setupBackend: 'Files become available once the connection to {productName} is up.',
     noAttachedFiles: 'No Attached Files',
     filesGoTo: 'Files uploaded here go to {target} unless removed.',
     filesCount: '{target} Files ({count})',
@@ -212,17 +212,17 @@ export const research = {
     subjectCleared: 'No longer asking about that file.',
     subjectClearedUndo: 'Undo',
     aiDisclosure:
-      'Piloti is an AI — answers can be wrong; verify them against the cited files.',
+      '{productName} is an AI — answers can be wrong; verify them against the cited files.',
     placeholderDefault: 'Check data sources and ask a research question...',
     signInToStart: 'Sign in to start working',
-    typeResponse: 'Type your response to Piloti...',
+    typeResponse: 'Type your response to {productName}...',
     pleaseWait: 'Please wait...',
     typeAhead: 'Type your next question …',
     typeAheadHint: 'You can send once the answer is finished.',
     // While Piloti works on the reader's own question: Enter sends the text
     // into the running answer as steering, not as a new question.
-    steer: 'Steer Piloti …',
-    steerHint: 'Enter adds to the running answer; Piloti reads it before its next step.',
+    steer: 'Steer {productName} …',
+    steerHint: 'Enter adds to the running answer; {productName} reads it before its next step.',
     steerChip: 'steering',
     steerSent: 'Note sent',
     messageNotSent: 'Message not sent',
@@ -237,8 +237,8 @@ export const research = {
     uploadDisabledBusy: 'File upload disabled during active operations',
     // Said over the chat while a dragged file cannot be attached right now.
     dropRefusedReadOnly: 'You can read this chat but not add files to it.',
-    dropRefusedAnswering: 'Piloti is answering. Attach files once the answer is complete.',
-    dropRefusedQuestion: 'Answer Piloti’s question first, then attach files.',
+    dropRefusedAnswering: '{productName} is answering. Attach files once the answer is complete.',
+    dropRefusedQuestion: 'Answer {productName}’s question first, then attach files.',
     dropRefusedUploading: 'Wait until the current upload is finished.',
     selectFiles: 'Select files to upload',
     sendResponse: 'Send response',
@@ -303,10 +303,10 @@ export const research = {
     noMatching: 'No matching chats',
     noMatchingDescription: 'Nothing in this project matches “{query}”.',
     noSessions: 'No chats yet',
-    noSessionsDescription: 'Your chats with Piloti in this project will be listed here.',
+    noSessionsDescription: 'Your chats with {productName} in this project will be listed here.',
     /** Explains why every row is dimmed and unclickable mid-answer. */
     navigationBlocked:
-      'Piloti is still answering. Starting or switching chats is paused until it finishes.',
+      '{productName} is still answering. Starting or switching chats is paused until it finishes.',
     today: 'Today',
     yesterday: 'Yesterday',
     editTitle: 'Edit chat title',

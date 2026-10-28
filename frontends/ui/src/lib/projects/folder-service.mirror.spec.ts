@@ -12,7 +12,7 @@
  * `knowledge_search folder=` filters on a name that no longer exists.
  *
  * The backend twin — same URL, same `from_path`/`to_path` body — is
- * `frontends/aiq_api/tests/test_documents_folder_paths_patch.py`.
+ * `apps/backend/tests/test_documents_folder_paths_patch.py`.
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 

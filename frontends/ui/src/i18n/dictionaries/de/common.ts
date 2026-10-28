@@ -2,7 +2,8 @@ import type { en } from '../en'
 
 /** Shared strings used across many surfaces. */
 export const common: typeof en.common = {
-  appName: 'Piloti',
+  /** The product's name, from `PRODUCT_NAME` (`lib/brand.ts`): every other string says `{productName}`. */
+  productName: '{productName}',
   tagline: 'Arbeitsbereich für Planungsbüros',
   actions: {
     save: 'Speichern',
