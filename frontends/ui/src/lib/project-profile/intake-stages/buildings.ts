@@ -1,0 +1,306 @@
+/** Stage C, Bauwerke: each building, its geometry and construction. */
+
+import { FOUND_IN } from '../intake-options'
+import type { ProjectIntakeStage } from '../intake-types'
+
+export const BUILDINGS_STAGE: ProjectIntakeStage = {
+  id: 'C',
+  title: 'Bauwerke',
+  scope: 'building',
+  repeatable: true,
+  description:
+    'Je Bauwerk: Neubau oder Bestand, ggf. Bestandsblock, dann Zielgeometrie. Die Zielgeometrie beschreibt immer den Zustand nach Umsetzung aller Maßnahmen; daraus wird die Gebäudeklasse abgeleitet.',
+  questions: [
+    {
+      id: 'C1',
+      core: true,
+      label: 'Bauwerkstyp',
+      type: 'single_select',
+      why: 'Für sehr kleine und sonstige Bauwerke gelten deutlich reduzierte Anforderungen.',
+      options: [
+        { value: 'building', label: 'Gebäude' },
+        { value: 'small', label: 'Kleinstgebäude (bis 15 m²)' },
+        { value: 'other', label: 'sonstiges Bauwerk (Flugdach, Stützmauer, Werbeanlage …)' },
+      ],
+      writesTo: '/facts/building_type/value',
+      foundIn: [FOUND_IN.buildingDescription, FOUND_IN.elevation, FOUND_IN.permit],
+      feeds: 'building_class',
+    },
+    {
+      id: 'C2',
+      core: true,
+      label: 'Neubau oder Bestand?',
+      type: 'single_select',
+      why: 'Für Bestandsgebäude gibt es einen eigenen Fragenblock, weil dort teils andere Regeln gelten.',
+      options: [
+        { value: 'new_build', label: 'Neubau' },
+        { value: 'existing', label: 'Bestandsgebäude' },
+      ],
+      writesTo: '/facts/construction_status/value',
+      foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permit, FOUND_IN.floorLayout],
+    },
+    // -------------------------------------------------- Bestandsblock
+    // v1.0 asked these once per PROJECT (A6/A7/A9/A10); since v1.1 they
+    // belong to the building whose Bestand they describe. The storage keys
+    // are unchanged — only the scope suffix is new — and
+    // `answersFromProfile` bridges legacy project-scope values into the
+    // single-building case.
+    {
+      id: 'CB1',
+      group: 'Bestand heute',
+      label: 'Baujahr des Bestands (ca.)',
+      type: 'number_tri',
+      placeholder: 'z. B. 1962',
+      why: 'Das Alter hilft einzuordnen, welche Regeln damals galten und was heute Bestandsschutz genießt.',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/existing_year_built/value',
+      foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription, FOUND_IN.permit],
+    },
+    {
+      id: 'CB2',
+      label: 'Bisherige Nutzung',
+      type: 'text',
+      placeholder: 'z. B. Wohnhaus, Lagerhalle, Bürogebäude',
+      why: 'Ändert sich die Nutzung, kann das zusätzliche Anforderungen auslösen.',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/existing_use/value',
+    },
+    {
+      id: 'CB3',
+      core: true,
+      label: 'Steht das Gebäude unter Denkmalschutz?',
+      type: 'yes_no_open',
+      why: 'Denkmalschutz bringt ein eigenes Verfahren und teils Erleichterungen bei anderen Anforderungen mit sich.',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/heritage_protection/value',
+      foundIn: [FOUND_IN.permit, FOUND_IN.heritageList, FOUND_IN.buildingDescription],
+    },
+    {
+      id: 'CB4',
+      core: true,
+      label: 'Geplante Maßnahmen am Bestand',
+      type: 'multi_select',
+      why: 'Die Art der Maßnahmen bestimmt, welche Anforderungen am Bestand überhaupt greifen.',
+      options: [
+        { value: 'envelope_refurbishment', label: 'Sanierung der Gebäudehülle' },
+        { value: 'interior_conversion', label: 'Umbau im Inneren' },
+        { value: 'storey_addition', label: 'Aufstockung' },
+        { value: 'extension', label: 'Zubau' },
+        { value: 'change_of_use', label: 'Nutzungsänderung' },
+        { value: 'core_refurbishment', label: 'Kernsanierung' },
+        { value: 'partial_demolition', label: 'Teilabbruch' },
+      ],
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/existing_measures/value',
+      foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorLayout, FOUND_IN.permit],
+    },
+    {
+      id: 'CB5',
+      label: 'Eingriff in die Tragstruktur geplant?',
+      type: 'yes_no_open',
+      why: 'Eingriffe ins Tragwerk sind statisch und im Verfahren gesondert zu betrachten.',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/structural_intervention/value',
+    },
+    {
+      id: 'CB6',
+      label: 'Größere Renovierung (mehr als 25 % der Gebäudehülle betroffen)?',
+      type: 'yes_no_open',
+      why: 'Ab einem gewissen Sanierungsumfang gelten erhöhte energetische Anforderungen.',
+      conditions: [
+        { param: 'C2', op: 'equals', value: 'existing' },
+        { param: 'CB4', op: 'includes_any', value: ['envelope_refurbishment', 'core_refurbishment'] },
+      ],
+      writesTo: '/facts/major_renovation/value',
+    },
+    {
+      id: 'CB7_og',
+      label: 'Bestand heute: oberirdische Geschoße',
+      type: 'number_tri',
+      why: 'Der Vergleich von Bestand und Ziel zeigt, welche Teile eher wie ein Neubau und welche im Bestandsschutz zu behandeln sind.',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/existing_storeys_above_ground/value',
+    },
+    {
+      id: 'CB7_ug',
+      label: 'Bestand heute: unterirdische Geschoße',
+      type: 'number_tri',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/existing_storeys_below_ground/value',
+    },
+    {
+      id: 'CB7_bgf',
+      label: 'Bestand heute: BGF der oberirdischen Geschoße',
+      type: 'number_tri',
+      unit: 'm²',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/existing_gfa_above_ground/value',
+    },
+    {
+      id: 'CB7_fn',
+      label: 'Bestand heute: Fluchtniveau',
+      type: 'number_tri',
+      unit: 'm',
+      conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+      writesTo: '/facts/existing_escape_level_m/value',
+    },
+    // -------------------------------------------------- Zielgeometrie
+    {
+      id: 'C3',
+      group: 'Zielzustand — nach Umsetzung aller Maßnahmen',
+      core: true,
+      label: 'Anzahl oberirdischer Geschoße (Zielzustand)',
+      type: 'number_tri',
+      why: 'Einer der wichtigsten Werte für die Einstufung des Gebäudes — außerdem relevant für die Aufzugsfrage.',
+      hint: 'Immer den Zustand NACH Umsetzung aller Maßnahmen angeben – bei Aufstockung von drei auf fünf Geschoße also fünf.',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      writesTo: '/facts/storeys_above_ground/value',
+      foundIn: [
+        FOUND_IN.section,
+        FOUND_IN.elevation,
+        FOUND_IN.floorLayout,
+        FOUND_IN.buildingDescription,
+      ],
+      feeds: 'building_class',
+    },
+    {
+      id: 'C4',
+      label: 'Anzahl unterirdischer Geschoße (Zielzustand)',
+      type: 'number_tri',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      writesTo: '/facts/storeys_below_ground/value',
+      foundIn: [FOUND_IN.section, FOUND_IN.floorLayout, FOUND_IN.buildingDescription],
+    },
+    {
+      id: 'C5',
+      core: true,
+      label: 'Fluchtniveau (Zielzustand)',
+      type: 'number_tri',
+      unit: 'm',
+      why: 'Zentraler Wert für die Einstufung des Gebäudes — bei sehr hohen Gebäuden gelten eigene Hochhaus-Regeln.',
+      hint: 'Höhendifferenz zwischen der Fußbodenoberkante des höchstgelegenen oberirdischen Geschoßes und der an das Gebäude angrenzenden Geländeoberfläche nach Fertigstellung im Mittel.',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      writesTo: '/facts/escape_level_m/value',
+      foundIn: [FOUND_IN.section, FOUND_IN.fireSafety, FOUND_IN.buildingDescription],
+      feeds: 'building_class',
+    },
+    {
+      id: 'C6',
+      label: 'Brutto-Grundfläche der oberirdischen Geschoße gesamt (Zielzustand)',
+      type: 'number_tri',
+      unit: 'm²',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      writesTo: '/facts/gfa_above_ground/value',
+      foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorLayout, FOUND_IN.energyCertificate],
+      feeds: 'building_class',
+    },
+    {
+      id: 'C7',
+      core: true,
+      label: 'Anzahl Nutzungseinheiten (Wohnungen + Betriebseinheiten, Zielzustand)',
+      type: 'number_tri',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      writesTo: '/facts/use_units/value',
+      foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorLayout, FOUND_IN.permit],
+      feeds: 'building_class',
+    },
+    {
+      // v1.0's C7 with INVERTED polarity, so it writes a NEW key:
+      // `units_under_400` (ja = alle Einheiten bis 400 m²) stays untouched in
+      // stored profiles and `answersFromProfile` bridges it, inverted, into
+      // this question. Reusing the old key would silently flip the meaning
+      // of every stored answer — and the GK derivation with it.
+      id: 'C8',
+      label:
+        'Gibt es einzelne Wohnungen oder Betriebseinheiten mit mehr als 400 m² Brutto-Grundfläche?',
+      type: 'yes_no_open',
+      why: 'Hilft bei der Abgrenzung zwischen den Gebäudeklassen — erscheint nur, wenn es für die Einstufung wirklich gebraucht wird.',
+      conditions: [
+        { param: 'C1', op: 'equals', value: 'building' },
+        { param: 'C3', op: 'lte', value: 4 },
+      ],
+      writesTo: '/facts/units_over_400/value',
+      foundIn: [FOUND_IN.floorLayout, FOUND_IN.buildingDescription, FOUND_IN.fireSafety],
+      feeds: 'building_class',
+    },
+    {
+      id: 'C9',
+      label: 'Gebäudestellung',
+      type: 'single_select',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      options: [
+        { value: 'freestanding', label: 'freistehend' },
+        { value: 'attached', label: 'angebaut' },
+        { value: 'terraced', label: 'Reihenhaus' },
+      ],
+      writesTo: '/facts/building_position/value',
+      foundIn: [FOUND_IN.siteLayout, FOUND_IN.submissionSiteLayout, FOUND_IN.buildingDescription],
+      feeds: 'building_class',
+    },
+    {
+      id: 'C9_zugang',
+      label:
+        'An mindestens drei Seiten auf eigenem Grund oder von Verkehrsflächen für die Feuerwehr zugänglich?',
+      type: 'yes_no_open',
+      why: 'Unterscheidet bei freistehenden Gebäuden zwischen Gebäudeklasse 1 und 2 (OIB-Begriffsbestimmungen).',
+      conditions: [
+        { param: 'C1', op: 'equals', value: 'building' },
+        { param: 'C9', op: 'equals', value: 'freestanding' },
+      ],
+      writesTo: '/facts/access_three_sides/value',
+      feeds: 'building_class',
+      foundIn: [FOUND_IN.siteLayout, FOUND_IN.submissionSiteLayout],
+    },
+    {
+      // Multi-select since v1.1 (a building can combine structures); the
+      // storage key stays `construction_method` — legacy single values are mapped by
+      // the `answersFromProfile` bridge.
+      id: 'C10',
+      label: 'Tragstruktur / Bauweise (Mehrfachauswahl bei Kombination)',
+      type: 'multi_select',
+      why: 'Die Bauweise — besonders Holzbau — beeinflusst die Brandschutzanforderungen deutlich; Kombinationen bitte zusätzlich kurz beschreiben.',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      options: [
+        { value: 'masonry_solid', label: 'Mauerwerk / Massivbau' },
+        { value: 'reinforced_concrete', label: 'Stahlbeton' },
+        { value: 'timber', label: 'Holzbau' },
+        { value: 'steel', label: 'Stahlbau' },
+        { value: 'open', label: 'noch offen' },
+      ],
+      writesTo: '/facts/construction_method/value',
+      foundIn: [FOUND_IN.buildingDescription, FOUND_IN.structural, FOUND_IN.fireSafety],
+    },
+    {
+      id: 'C10_text',
+      label: 'Kombination beschreiben (optional)',
+      type: 'text',
+      optional: true,
+      placeholder: 'z. B. EG Stahlbeton, ab 1. OG Holzbau',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      writesTo: '/facts/construction_method_description/value',
+    },
+    {
+      id: 'C11',
+      label: 'Konditionierung',
+      type: 'single_select',
+      why: 'Energieanforderungen und Energieausweis betreffen vor allem beheizte oder gekühlte Gebäude.',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+      options: [
+        { value: 'heated', label: 'beheizt' },
+        { value: 'heated_cooled', label: 'beheizt + gekühlt' },
+        { value: 'partly_conditioned', label: 'teilkonditioniert' },
+        { value: 'unconditioned', label: 'unkonditioniert' },
+      ],
+      writesTo: '/facts/conditioning/value',
+      foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription],
+    },
+    {
+      id: 'C_GK_CONFIRM',
+      label: 'Gebäudeklasse',
+      type: 'info_placeholder',
+      derives: 'building_class',
+      hint: 'Die Gebäudeklasse folgt aus Fluchtniveau, Geschoßanzahl, Fläche und Nutzung — immer auf Basis der Zielgeometrie. Sie wird hier noch nicht automatisch gesetzt. Solange sie im Brief offen ist, fragt Piloti nach, bevor eine Anforderung zitiert wird, die an der Klasse hängt.',
+      conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+    },
+  ],
+}

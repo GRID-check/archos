@@ -46,10 +46,10 @@ ENVIRONMENT VARIABLES
     Controls whether verified user identity is attached to active trace spans.
     Supported values:
     - ``none``: do not attach any user identity tags
-    - ``id``: attach pseudonymous stable identifiers only (``enduser.id``, ``aiq.user.id``,
-      ``aiq.auth.type``)
-    - ``full``: attach identifiers plus ``aiq.user.email`` and
-      ``aiq.user.name`` when present
+    - ``id``: attach pseudonymous stable identifiers only (``enduser.id``, ``user.id``,
+      ``auth.type``)
+    - ``full``: attach identifiers plus ``user.email`` and
+      ``user.name`` when present
     Defaults to ``none``.
 
 ``TRACE_USER_IDENTITY_HMAC_SECRET``
@@ -224,7 +224,7 @@ def detect_internal_caller(headers: dict[bytes, bytes]) -> dict[str, Any]:
     token = extract_auth_token(headers)
     headless = is_headless_request(headers)
     # ``headless`` beside ``skip_clarifier``: an anonymous caller skips the
-    # clarifier too, but only an ``X-AIQ-Mode: headless`` caller has nobody
+    # clarifier too, but only an ``X-Chat-Mode: headless`` caller has nobody
     # holding the socket to answer a question (``ask_user`` refuses for it).
     marks = {"skip_clarifier": headless, **({"headless": True} if headless else {})}
     if token:

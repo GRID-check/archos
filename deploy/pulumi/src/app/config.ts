@@ -271,7 +271,7 @@ export function posthogEnv(cfg: GridConfig): EnvVar[] {
  * The landing site's PostHog pair (`PUBLIC_POSTHOG_HOST`,
  * `PUBLIC_POSTHOG_PROJECT_TOKEN`), or nothing unless both are configured: the
  * same stack keys the other runtimes read, under the names the Astro tier uses.
- * `frontends/web/src/pages/web-analytics.js.ts` reads them per request (the
+ * `apps/site/src/pages/web-analytics.js.ts` reads them per request (the
  * pages are prerendered and the image builds with no env files) and answers an
  * empty script without them. Exported for `web.spec.ts`.
  */
@@ -292,7 +292,7 @@ export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
  * §4, §6). `chatEnv`, `apiEnv` and the worker envs add `PROCESS_ROLE`.
  */
 
-export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): EnvVar[] {
+export function backendEnv(w: AppWiring, otelServiceName = "backend-chat"): EnvVar[] {
   const { cfg } = w;
   const env: EnvVar[] = [
     { name: "APP_ENV", value: "production" },
@@ -459,7 +459,7 @@ export function chatEnv(w: AppWiring): EnvVar[] {
  */
 export function apiEnv(w: AppWiring): EnvVar[] {
   return [
-    ...backendEnv(w, "grid-aiq-api").filter((e) => !(typeof e.name === "string" && CHAT_ONLY_ENV.has(e.name))),
+    ...backendEnv(w, "backend-api").filter((e) => !(typeof e.name === "string" && CHAT_ONLY_ENV.has(e.name))),
     { name: "PROCESS_ROLE", value: "api" },
   ];
 }

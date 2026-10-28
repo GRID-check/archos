@@ -449,7 +449,7 @@ The submit path persists a deep-research job as a `research_job_queue` row; dedi
 | `MODAL_TOKEN_ID` | No | — | Modal sandbox token ID for skills execution. |
 | `MODAL_TOKEN_SECRET` | No | — | Modal sandbox token secret for skills execution. |
 | `LANGCHAIN_API_KEY` | No | — | LangSmith tracing API key. |
-| `LANGCHAIN_PROJECT` | No | `aiq-research` | LangSmith project name. |
+| `LANGCHAIN_PROJECT` | No | — | LangSmith project name, read by LangChain itself when LangSmith tracing is on; nothing in this repo sets it. |
 | `LANGCHAIN_TRACING_V2` | No | — | Set to `true` to enable LangSmith tracing. |
 | `WANDB_API_KEY` | No | — | Weights & Biases API key for experiment tracking. |
 | `GRID_GEOCODER_URL` | No | _(unset)_ | Base URL of a [Photon](https://github.com/komoot/photon) (OSM) geocoder, e.g. `https://photon.komoot.io` or a self-hosted instance (`frontends/ui/src/lib/geocoding`). Behind `GET /api/geocode`, the address search of the project creation dialog: Austrian addresses and places in, coordinates, Bundesland (the intake `A2_land` token) and Gemeinde out. Unset (or not an http(s) URL), the route answers `{ enabled: false, results: [] }` and the dialog's address stays a plain text field: the typed line is kept as the project's address, and the Bundesland is found in the documents or asked in the setup review. An address is client data and every keystroke-driven search is sent to this host, so the provider is a deployment choice: the public komoot instance is for trials, production self-hosts (ADR-0120). On Kubernetes the Pulumi program sets it to `http://geocoder:2322`, its in-cluster Photon over the Austrian extract, exactly when `grid-oib:geocoderEnabled` is true (off by default; `deploy/pulumi/README.md`, "Geocoder"); the `bff-jobs` pool does not get it. Compose does not pass it to the frontend container yet, so a Compose stack has no address search. Only same-origin redirects are followed; a search that fails or takes over 4 s answers no results. Read per request. Frontend service. |
@@ -466,7 +466,7 @@ exports.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | unset | OTLP/HTTP collector endpoint. Python tiers get the FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts as-is); the frontend gets the BASE URL (the BFF exports no traces). Every exporter derives its own signal path from either (`/v1/logs`, `/v1/metrics`): `otlp_resource.py`, `observability/otlp.js`. Unset → no log or metric export, and no meter provider. |
-| `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `grid-aiq-agent` / `grid-agent-worker`. Every signal also carries `service.instance.id` from `HOSTNAME` (the pod name Kubernetes sets) and `process.pid`. |
+| `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `backend-chat` / `grid-agent-worker`. Every signal also carries `service.instance.id` from `HOSTNAME` (the pod name Kubernetes sets) and `process.pid`. |
 | `GRID_TRACE_IDENTITY_ATTRIBUTES` | No | unset (off) | When `true`, keeps the `user.id` NAT 1.9 sets from the verified subject and stamps `langfuse.session.id` and the organization onto every span; when off, Grid strips NAT's `user.id` and `<prefix>.user.id` before export (`UserIdentityStripProcessor`) (`src/aiq_agent/observability/langfuse_trace_attributes.py`), which is what turns anonymous spans into traces attributable to a user and a tenant. Keyed off the Langfuse tier (ADR-0044) rather than observability generally, and Kubernetes-only. Off by default because it is a privacy posture rather than a performance knob: ADR-0029 accepted that traces carry user content on the grounds that access is gated to platform operators, and making every span attributable to a named individual is a further step that should arrive with the product decision needing it. The processor runs ahead of NAT's redaction processor, so these attributes stay redactable. Session grouping and input/output need no flag: NAT already emits `session.id` and OpenInference `input.value`/`output.value`. Backend (aiq-agent) and agent-worker services. |
 
 ## PostHog (ADR-0100)
@@ -677,7 +677,7 @@ vars. See `docs/architecture/usage-budgets.md`.
 |----------|----------|---------|-------------|
 | `GRID_PLATFORM_OWNER_EMAILS` | No | — | Break-glass bootstrap: comma-separated emails treated as platform owner even without the WorkOS platform-org membership. For first-run in a fresh environment; keep empty in steady state. |
 | `GRID_PLATFORM_ORG_EXTERNAL_ID` | No | `grid-platform` | External id of the GRID Platform organization in WorkOS. |
-| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `frontends/web`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
+| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `apps/site`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
 | `GRID_DISABLE_SELF_SERVE_ORGS` | No | `false` | `true` makes the platform invite-only: fresh users can no longer self-create organizations (403 `self-serve-disabled`). |
 
 ## Project Authorization (frontend)
@@ -694,7 +694,7 @@ Tune the per-project FGA authorization path (`lib/authz/projects.ts`), the WorkO
 
 ## Landing Site (web tier, Kubernetes/Pulumi-injected)
 
-The Astro landing service (`frontends/web`) carries no secrets; its
+The Astro landing service (`apps/site`) carries no secrets; its
 deployment knobs are where sign-in hands off and whether PostHog web analytics
 loads (ADR-0100). One image serves every stack —
 the app host is resolved at request time, never baked into the prerendered

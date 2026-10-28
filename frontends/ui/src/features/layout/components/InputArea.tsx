@@ -35,11 +35,8 @@ import {
   Eye,
   FileText,
   Loader2,
-  RotateCw,
-  ShieldAlert,
   Square,
   X,
-  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -68,7 +65,6 @@ import { OtherProjectsNotice } from '@/features/chat/components/OtherProjectsNot
 import { useRestrictingOtherProjects } from '@/features/chat/hooks/use-restricting-other-projects'
 import { useChatScreening } from '@/features/chat/hooks/use-chat-screening'
 import type { MaskedText } from '@/lib/upload-screening/content-screen'
-import { heldSentenceKey, quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { composerCapabilities } from '@/features/collaboration/lib/composer-capabilities'
 import { resolveAddressee, sendMessageOptions } from '@/features/collaboration/lib/composer-routing'
 import { EffortDial } from '@/features/chat/components/effort-dial'
@@ -77,6 +73,15 @@ import { computePresetSourceIds } from '../lib/source-presets'
 // Withheld with the Datenbasis picker below — restore together.
 // import { SourceBasisPicker, SourceBasisTrigger } from './source-basis'
 import { FileSourcesTab } from './FileSourcesTab'
+import { FileChip } from './input-area/file-chip'
+import {
+  FIELD_SIZING_CONTENT,
+  SEND_CONTROL_SWAP_GUARD_MS,
+  TEXTAREA_MAX_HEIGHT_PX,
+  mentionRefusalMessage,
+  normalizeSendResult,
+  releaseSoftKeyboard,
+} from './input-area/composer-helpers'
 import { UploadDestinationNote } from './UploadDestination'
 import { useChatDropTarget } from './chat-drop-zone'
 import { composerDropRefusal } from '../lib/composer-drop-refusal'
@@ -100,8 +105,6 @@ import type { ResolvedSubjectIdentity } from '@/features/documents/components/co
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
 import { useFilePeekBesideChat } from '@/features/documents/components/file-preview-host'
 import { dropFileSubject } from '@/features/documents/lib/open-file-peek'
-import { failedWhileReading } from '@/features/documents/lib/ingest-failure'
-import { useIngestFailureText } from '@/features/documents/components/ingest-failure-notice'
 import { AddresseeIndicator } from '@/features/collaboration/components/AddresseeIndicator'
 import {
   MentionPicker,
@@ -122,14 +125,12 @@ import {
   type DraftMention,
   type MentionQuery,
 } from '@/lib/mentions/mention-text'
-import { MENTION_ERROR_REASONS, type MentionCandidate } from '@/lib/mentions/types'
-import { SHARING_ERROR_REASONS } from '@/lib/sharing/types'
+import { type MentionCandidate } from '@/lib/mentions/types'
 import { InvokedSkillChip } from '@/features/skills/components/InvokedSkillChip'
 import { SlashCommandPicker } from '@/features/skills/components/SlashCommandPicker'
 import { useSlashCommand } from '@/features/skills/hooks/use-slash-command'
 import { ComposerSearchPicker, useDocumentReference } from '@/features/search'
 import type { DocumentHit } from '@/lib/search/search-wire'
-import type { SendMessageOutcome } from '@/features/chat/hooks/use-websocket-chat'
 
 /** Connection mode for the chat */
 export type ConnectionMode = 'sse' | 'websocket'
@@ -144,332 +145,6 @@ interface ScreeningHold {
   original: string
   masked: MaskedText
   heldText?: string
-}
-
-/**
- * Normalise whatever `sendMessage` returned.
- *
- * The fast path answers synchronously with a boolean (and legacy/mocked callers
- * answer with nothing at all), the mention path with the server's ruling. Only an
- * explicit `false` or `ok: false` counts as "not sent" — exactly the contract the
- * composer had before mentions existed.
- */
-function normalizeSendResult(result: unknown): { ok: boolean; outcome?: SendMessageOutcome } {
-  if (result === false) return { ok: false }
-  if (result && typeof result === 'object' && 'ok' in result) {
-    const outcome = result as SendMessageOutcome
-    return { ok: outcome.ok, outcome }
-  }
-  return { ok: true }
-}
-
-/**
- * The copy for a refused mention. The server names the reason machine-readably in
- * `details.reason` precisely so the composer can say something useful instead of
- * "something went wrong" — and the user's text is kept either way.
- */
-function mentionRefusalMessage(
-  outcome: SendMessageOutcome | undefined,
-  taggedHumans: readonly DraftMention[],
-  tCollab: (key: string, vars?: Record<string, string | number>) => string
-): string | null {
-  const reason = outcome?.failure?.reason
-  if (!reason) return null
-  // Name the person the SERVER refused (the refusal carries their targetId) —
-  // tagging two people and hearing the first one's name when the second was
-  // refused blames the wrong colleague.
-  const refused = outcome?.failure?.targetId
-  const name =
-    (refused ? taggedHumans.find((mention) => mention.targetId === refused)?.display : undefined) ??
-    taggedHumans[0]?.display ??
-    ''
-  switch (reason) {
-    case MENTION_ERROR_REASONS.inviteRequiresOwner:
-      return tCollab('mentions.errors.inviteRequiresOwner', { name })
-    case MENTION_ERROR_REASONS.containerAccessRequired:
-      return tCollab('mentions.errors.containerAccessRequired', { name })
-    case MENTION_ERROR_REASONS.rateLimited:
-      return tCollab('mentions.errors.rateLimited')
-    // Mentioning someone new invites them, and a thread that drew on a
-    // restricted folder reaches only people cleared for it (ADR-0087).
-    case SHARING_ERROR_REASONS.restrictedContent:
-      return name
-        ? tCollab('sharing.errors.restrictedContent', { name })
-        : tCollab('sharing.errors.restrictedContentSomeone')
-    // Likewise a chat that drew on a running other project (ADR-0094).
-    case SHARING_ERROR_REASONS.crossProjectContent:
-      return name
-        ? tCollab('sharing.errors.crossProjectContent', { name })
-        : tCollab('sharing.errors.crossProjectContentSomeone')
-    default:
-      return null
-  }
-}
-
-/**
- * Maximum height of the auto-sizing textarea in pixels. Must equal the
- * `max-h-52` (13rem) cap on the textarea itself: the JS autosize and the CSS
- * clamp are the same limit stated twice, and when they drift the smaller one
- * silently wins.
- */
-const TEXTAREA_MAX_HEIGHT_PX = 208
-
-/**
- * How much of the layout viewport the visual viewport must lose before it counts
- * as an on-screen keyboard. A soft keyboard takes a third of the screen or more;
- * the shortcut bar iPadOS keeps on screen for a hardware keyboard is a strip,
- * and that reader keeps typing, so it must not read as one.
- */
-const SOFT_KEYBOARD_MIN_OCCLUSION_PX = 100
-
-/**
- * Whether an on-screen keyboard is covering the screen right now. A coarse
- * pointer alone is not the answer: an iPad with a hardware keyboard is coarse,
- * has no soft keyboard, and its reader types the follow-up next.
- *
- * iOS shrinks only the visual viewport when the keyboard opens, so the
- * occlusion is measurable. Chromium under `interactiveWidget: 'resizes-content'`
- * (app/layout.tsx) shrinks both viewports together and leaves nothing to
- * measure; there a touch-only device (`navigator.virtualKeyboard` marks the
- * engine) is taken to be typing on glass, which is the overwhelming case.
- */
-function softKeyboardIsUp(): boolean {
-  if (typeof window.matchMedia !== 'function') return false
-  if (!window.matchMedia('(pointer: coarse)').matches) return false
-  const viewport = window.visualViewport
-  if (
-    viewport &&
-    document.documentElement.clientHeight - viewport.height * viewport.scale >
-      SOFT_KEYBOARD_MIN_OCCLUSION_PX
-  ) {
-    return true
-  }
-  return 'virtualKeyboard' in navigator
-}
-
-/**
- * Close the on-screen keyboard once a message is sent. It covers half the
- * screen, and the answer the reader is about to watch arrive is exactly what it
- * hides. Without one up (a desk, or an iPad on a hardware keyboard) the field
- * keeps focus: that reader types the follow-up next, and a lost caret is a lost
- * keystroke.
- */
-function releaseSoftKeyboard(el: HTMLTextAreaElement | null): void {
-  if (el && softKeyboardIsUp()) el.blur()
-}
-
-/**
- * How long after Send turns into Stop (or back) the control ignores presses.
- * One element does both jobs, so the second click of a double click, or a
- * bounce on a touch screen, lands on the OTHER job: a Stop pressed twice would
- * send the follow-up typed ahead, and a Send pressed twice would cancel the
- * turn it just started. Comfortably above a double-click interval, well under
- * the time anyone takes to decide to stop an answer they have just seen begin.
- */
-const SEND_CONTROL_SWAP_GUARD_MS = 400
-
-/**
- * Whether the engine sizes a textarea to its content in CSS. Read once: it is a
- * property of the browser, not of the render. jsdom has no `CSS.supports`, so
- * the specs exercise the measuring fallback.
- */
-const FIELD_SIZING_CONTENT =
-  typeof CSS !== 'undefined' &&
-  typeof CSS.supports === 'function' &&
-  CSS.supports('field-sizing', 'content')
-
-/**
- * The photo itself, small, on its chip: a site photo is recognised by what it
- * shows, never by `Foto 2026-10-15 14-32-05.jpg`. Only for a file this tab
- * picked (a listed file has no bytes here), and only for an image type.
- */
-function usePhotoThumbnail(file: File | undefined): ReactNode {
-  const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => {
-    if (!file || !file.type.startsWith('image/') || typeof URL.createObjectURL !== 'function') {
-      setUrl(null)
-      return
-    }
-    const next = URL.createObjectURL(file)
-    setUrl(next)
-    return () => URL.revokeObjectURL(next)
-  }, [file])
-  if (!url) return null
-  return (
-    // oxlint-disable-next-line nextjs/no-img-element -- a blob: URL of a file in this tab; the optimizer cannot fetch it
-    <img
-      src={url}
-      alt=""
-      aria-hidden="true"
-      data-testid="file-chip-thumbnail"
-      className="pointer-coarse:size-8 size-5 shrink-0 rounded-[4px] object-cover"
-    />
-  )
-}
-
-/**
- * Inline removable file chip shown above the composer textarea. Live status:
- * spinner while uploading/ingesting, green check on success, red on failure
- * (failed chips also offer a retry), a warning shield on a file the content
- * check held back (its title says why; never a retry), a muted file glyph on
- * one stored and not read. The ✕ deletes the file.
- *
- * A successful chip's icon+name form a button that opens the shared read-only
- * FilePreviewDialog — the primary way back to an attached file, and on mobile
- * (where the manage-files button is hidden) the main file-access path. Chips
- * that are still uploading/ingesting or have failed are not openable (there is
- * nothing to preview yet); their body stays inert and only retry/remove act.
- */
-const FileChip: FC<{
-  file: TrackedFile
-  onOpen: (file: TrackedFile) => void
-  onRemove: (id: string) => void
-  onRetry: (id: string) => void
-  /**
-   * A reader who may not change this conversation (a viewer in a shared thread).
-   * Opening a file stays available — that is reading — but retry and remove are
-   * writes onto somebody else's thread and are not rendered at all. Disabled
-   * buttons would be the wrong shape here: there is no state in which this
-   * person could press them, so offering them greyed out is a promise.
-   */
-  readOnly?: boolean
-}> = ({ file, onOpen, onRemove, onRetry, readOnly = false }) => {
-  const t = useTranslations('research')
-  const isPending = file.status === 'uploading' || file.status === 'ingesting'
-  const isFailed = file.status === 'failed'
-  // Held back by the content check (ADR-0086): a reason, not a failure, and
-  // never retried — the server refuses a re-upload onto a held file.
-  const isHeld = file.status === 'held'
-  // Kept and never read: the chat cannot answer from it, so no green check.
-  const isStored = file.status === 'stored'
-  const isSuccess = file.status === 'success'
-  // Whether the reader watched this chip work: only then does its check land
-  // (on the icon-swap spring) when the file turns readable. A chip that was
-  // already ready when the thread opened shows its check standing.
-  const [sawPending, setSawPending] = useState(isPending)
-  if (isPending && !sawPending) setSawPending(true)
-  const glyph = useIconSwapTransition()
-  const thumbnail = usePhotoThumbnail(file.file)
-  // A file refused because the document it replaces is held carries a
-  // sentence, not a verdict (ADR-0086): it is said as it is.
-  // A file the content check held says why from its verdict, with the same
-  // sentence the findings use (`heldSentenceKey`), never from its message.
-  const tFiles = useTranslations('files')
-  const heldSentence = isHeld
-    ? file.replacesHeld
-      ? file.errorMessage
-      : tFiles(heldSentenceKey(quarantineVerdictOf(file)))
-    : null
-  const ingestFailure = useIngestFailureText(isFailed && failedWhileReading(file) ? file.errorMessage : null)
-  // Uploading and reading are both pending, but only one of them is an upload.
-  const statusTitle = isPending
-    ? t(file.status === 'ingesting' ? 'fileSourceCard.statusIngesting' : 'inputArea.fileUploadingStatus')
-    : isHeld
-      ? (heldSentence || t('fileSourceCard.statusHeld'))
-      : isStored
-        ? t('fileSourceCard.statusStored')
-        : isFailed
-          ? (ingestFailure?.sentence ?? (file.errorMessage || t('inputArea.fileFailedStatus')))
-          : t('inputArea.fileReadyStatus')
-
-  const statusIcon = isPending ? (
-    <Spinner size="xs" className="text-muted-foreground" />
-  ) : isHeld ? (
-    // A shape of its own, in the warning colour: nothing failed.
-    <>
-      <ShieldAlert className="text-warning size-3 shrink-0" aria-hidden="true" />
-      <span className="sr-only">{t('fileSourceCard.statusHeld')}</span>
-    </>
-  ) : isStored ? (
-    <>
-      <FileText className="text-muted-foreground size-3 shrink-0" aria-hidden="true" />
-      <span className="sr-only">{t('fileSourceCard.statusStored')}</span>
-    </>
-  ) : isFailed ? (
-    // A distinct glyph (not a bare red dot) so the failure carries a shape, not
-    // color alone — plus an sr-only label so it isn't inferred only from color.
-    <>
-      <XCircle className="text-destructive size-3 shrink-0" aria-hidden="true" />
-      <span className="sr-only">{t('inputArea.fileFailedStatus')}</span>
-    </>
-  ) : (
-    <motion.span
-      className="inline-flex shrink-0"
-      initial={sawPending ? { opacity: 0, scale: 0.6 } : false}
-      animate={{ opacity: 1, scale: 1, transition: glyph.enter }}
-    >
-      <Check className="text-status-active size-3 shrink-0" aria-hidden="true" />
-    </motion.span>
-  )
-
-  return (
-    <span
-      className={cn(
-        'bg-card inline-flex h-7 max-w-[200px] shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs',
-        // A finger has to be able to hit the remove-x, and that button can only
-        // grow inside a taller chip — the strip scrolls horizontally, so the
-        // extra height costs nothing but a slightly shorter filename.
-        // `max-w` grows with it: the buttons inside are 44px square now, so at
-        // 200px a failed chip (retry AND remove) had ~90px left for a filename.
-        // The strip already scrolls sideways, so width here is free.
-        'pointer-coarse:h-11 pointer-coarse:max-w-[260px]',
-        // `border-error` is a static `@utility` in globals.css with no
-        // `--modifier()`, so the slash form (`border-error/50`) matched nothing
-        // and this chip kept the neutral default border — a failed upload was
-        // signalled by the glyph alone. The token itself already carries ~55%
-        // alpha, so the solid class is the soft edge the author was after.
-        isFailed && 'border-error'
-      )}
-      title={`${file.fileName} — ${statusTitle}`}
-    >
-      {isSuccess ? (
-        <button
-          type="button"
-          onClick={() => onOpen(file)}
-          aria-label={t('inputArea.openFile', { name: file.fileName })}
-          className="text-foreground/85 focus-visible:ring-ring/50 pointer-coarse:min-h-11 flex min-w-0 flex-1 items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2"
-        >
-          {statusIcon}
-          {thumbnail}
-          <span className="min-w-0 truncate">{file.fileName}</span>
-        </button>
-      ) : (
-        <span className="flex min-w-0 flex-1 items-center gap-1.5">
-          {statusIcon}
-          {thumbnail}
-          <span className="text-foreground/85 min-w-0 truncate">{file.fileName}</span>
-        </span>
-      )}
-      {isFailed && !readOnly && (
-        <button
-          type="button"
-          onClick={() => onRetry(file.id)}
-          aria-label={t('inputArea.retryUpload')}
-          title={t('inputArea.retryUpload')}
-          // The chip above is already `pointer-coarse:h-11` precisely so this
-          // button could grow inside it — and then the button stopped at 36.
-          // `size-11` fills the height the chip is already paying for.
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 pointer-coarse:size-11 inline-flex shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2"
-        >
-          <RotateCw className="size-3" aria-hidden="true" />
-        </button>
-      )}
-      {!readOnly && (
-        <button
-          type="button"
-          onClick={() => onRemove(file.id)}
-          aria-label={t('inputArea.removeFile', { name: file.fileName })}
-          title={t('inputArea.removeFile', { name: file.fileName })}
-          // The chip above is already `pointer-coarse:h-11` precisely so this
-          // button could grow inside it — and then the button stopped at 36.
-          // `size-11` fills the height the chip is already paying for.
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 pointer-coarse:size-11 inline-flex shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2"
-        >
-          <X className="size-3" aria-hidden="true" />
-        </button>
-      )}
-    </span>
-  )
 }
 
 interface InputAreaProps {

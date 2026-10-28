@@ -41,7 +41,7 @@ describe('RisoPrint', () => {
   })
 })
 
-// The riso harness (frontends/web/art/riso/check.mjs) is the full gate; this is
+// The riso harness (apps/site/art/riso/check.mjs) is the full gate; this is
 // the app's own half of it, so an app-only change that drops or orphans a file
 // fails here even when the web job does not run.
 describe('the app art manifest', () => {

@@ -185,7 +185,9 @@ class TestPipelineWiring:
 
         monkeypatch.setenv(IDENTITY_ATTRIBUTES_ENV, identity)
         config = OtelCollectorRedactionTelemetryExporter(
-            _type="otelcollector_redaction", project="grid-aiq-agent", endpoint="http://otel-collector:4318/v1/traces"
+            _type="otelcollector_redaction",
+            project="backend-chat",
+            endpoint="http://otel-collector:4318/v1/traces",
         )
 
         async with otelcollector_redaction_telemetry_exporter(config, None) as exporter:
@@ -201,7 +203,9 @@ class TestPipelineWiring:
 
         monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
         config = OtelCollectorRedactionTelemetryExporter(
-            _type="otelcollector_redaction", project="grid-aiq-agent", endpoint="http://otel-collector:4318/v1/traces"
+            _type="otelcollector_redaction",
+            project="backend-chat",
+            endpoint="http://otel-collector:4318/v1/traces",
         )
 
         async with otelcollector_redaction_telemetry_exporter(config, None) as exporter:

@@ -195,7 +195,7 @@ shows 10“. That is option 1, and it is built as a second job kind,
   the claim outlives the job, whose row is deleted when it finishes, so a re-read
   that settles the document again checks nothing again.
 - **A headless turn, not a pipeline.** The turn is the one `piloti-asks` run
-  (`runHeadlessTurn`, the signed envelope, `X-AIQ-Mode: headless`, `if_idle`), with
+  (`runHeadlessTurn`, the signed envelope, `X-Chat-Mode: headless`, `if_idle`), with
   the new trigger kind `new_document` on the wire (`event_id` the check's id, no
   Anmerkung). `ask_user` refuses on it, so it cannot ask anyone. The instruction
   is fixed and English: read the document, find its 2 to 4 load-bearing facts,

@@ -9,7 +9,8 @@ import {
   collectFreeTextFields,
   collectStructuredContextFields,
 } from './intake-consistency'
-import { buildIntakeProfile, projectIntakeDefinitionV1 } from './intake-definition'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { buildIntakeProfile } from './intake-profile'
 import type { ProjectPrimitiveValue } from './types'
 
 const definition = projectIntakeDefinitionV1
