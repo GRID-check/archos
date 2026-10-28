@@ -24,11 +24,9 @@ export type ChatStoreWithHydration = ChatStore & {
   /** True once persist rehydration has settled (or found nothing to restore). */
   hasHydrated: boolean
 }
-import {
-  createMessagesSlice,
-  createSessionsSlice,
-  createInteractionSlice,
-} from './stores'
+import { createMessagesSlice } from './stores/messages-store'
+import { createSessionsSlice } from './stores/sessions-store'
+import { createInteractionSlice } from './stores/interaction-store'
 import { chatIndexKey, createResilientStorage } from './stores/chat-storage'
 import { moveStoredChat } from './stores/chat-storage-rename'
 import {

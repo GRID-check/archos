@@ -18,7 +18,7 @@ import { getTableConfig, IndexedColumn } from 'drizzle-orm/pg-core'
 import { describe, expect, it } from 'vitest'
 import { pilotiWakes } from './document-annotations'
 
-// Built under the table's old name (0149); 0188 renamed both.
+// Built under the table's old name (0149); 0189 renamed both.
 const BUILT_AS = 'idx_piloti_wakes_document_annotation_created'
 const NAME = 'idx_agent_wakes_document_annotation_created'
 const read = (file: string) => readFileSync(join(process.cwd(), 'drizzle', file), 'utf8')

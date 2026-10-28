@@ -361,18 +361,18 @@ describe('listDocumentLevelPage', () => {
     await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ folderId: undefined, q: 'Grundriss' }) })
     const { sql } = onlyQuery()
     expect(sql).not.toMatch(/"folder_id" (=|is null)/)
-    expect(sql).toMatch(/strpos\(lower\((?:"documents"\.)?"filename"\), lower\(\$\d+\)\) > 0/)
-    expect(sql).toMatch(/strpos\(lower\(coalesce\((?:"documents"\.)?"display_name", ''\)\), lower\(\$\d+\)\) > 0/)
+    expect(sql).toMatch(/strpos\(fold_german\((?:"documents"\.)?"filename"\), fold_german\(\$\d+\)\) > 0/)
+    expect(sql).toMatch(/strpos\(fold_german\(coalesce\((?:"documents"\.)?"display_name", ''\)\), fold_german\(\$\d+\)\) > 0/)
   })
 
-  it('searches the name in both Unicode forms, with no wildcard in what was typed', async () => {
+  it('folds the name and what was typed alike in SQL (Unicode form, umlaut spelling), with no wildcard', async () => {
+    // `fold_german` (migration 0188) normalizes and folds both sides; the
+    // spellings it joins are proven against Postgres in document-repository.integration.spec.ts.
     const decomposed = 'Übersicht'.normalize('NFD')
     await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ q: `  ${decomposed} 50%_ ` }) })
     const { sql, params } = onlyQuery()
     expect(sql).not.toMatch(/ like /i)
-    expect(params).toEqual(
-      expect.arrayContaining([`${decomposed} 50%_`.normalize('NFC'), `${decomposed} 50%_`.normalize('NFD')]),
-    )
+    expect(params).toEqual(expect.arrayContaining([`${decomposed} 50%_`]))
   })
 
   it('orders by the shown name, case-folded, and reads the cursor by the same expression', async () => {

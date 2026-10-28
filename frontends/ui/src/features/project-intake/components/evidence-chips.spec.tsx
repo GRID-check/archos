@@ -6,7 +6,7 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resetSourcePreviewIndexCache } from '@/features/chat/components/SourcePreview'
+import { resetSourcePreviewIndexCache } from '@/features/chat/components/source-preview/source-preview-index'
 import { setDocumentsByNameFetch } from '@/features/documents/lib/documents-by-name'
 import type { ProfileEvidence } from '@/lib/project-intake/types'
 import { citationOfEvidence, EvidenceChips, EvidenceProjectContext } from './evidence-chips'

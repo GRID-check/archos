@@ -226,15 +226,15 @@ Timestamps from journal:
 This is **not** a Drizzle migration — it is a PostgreSQL `psql` entrypoint script that runs on **first container startup** of the database container. It is:
 
 - **Idempotent** — all statements use `IF NOT EXISTS` / `CREATE ... IF NOT EXISTS`.
-- **Responsible for:** creating the `aiq_checkpoints` and `grid_app` databases (if absent), granting privileges, and creating tables in `aiq_jobs` and `aiq_checkpoints`.
+- **Responsible for:** creating the `checkpoints` and `grid_app` databases (if absent), granting privileges, and creating tables in `jobs` and `checkpoints`.
 
-These tables are separate from Drizzle ORM (the Next.js app only manages `grid_app`). The `aiq_jobs` and `aiq_checkpoints` databases are managed by the Python backend but must exist before the backend connects.
+These tables are separate from Drizzle ORM (the Next.js app only manages `grid_app`). The `jobs` and `checkpoints` databases are managed by the Python backend but must exist before the backend connects.
 
 ---
 
 ## Runtime schema migration: `document_metadata` (rename + column adds)
 
-The Python backend has **no migration framework** for its own tables (`aiq_jobs`) — `DocumentMetadataStore` (`src/aiq_agent/knowledge/document_metadata_store.py`) creates and evolves the `document_metadata` table itself at store init (both the sync `_ensure_table_sync` and async `_ensure_table_async` paths call the shared `_run_schema`).
+The Python backend has **no migration framework** for its own tables (`jobs`) — `DocumentMetadataStore` (`src/aiq_agent/knowledge/document_metadata_store.py`) creates and evolves the `document_metadata` table itself at store init (both the sync `_ensure_table_sync` and async `_ensure_table_async` paths call the shared `_run_schema`).
 
 This table was originally named `summaries` (class `SummaryStore`) and has since grown a `tags TEXT` column (controlled ingestion tags), a `doc_class TEXT` column (explicit "Dokumentart"), a `display_title TEXT` column (the user-facing citation-chip name — the OIB corpus never shows a raw filename), and a `folder_path TEXT` column (the materialised project-folder path the BFF filed the document under — ADR-0049; `NULL` means the project root). Because it now holds far more than summaries, both the table and the store class were renamed to `document_metadata`. `_run_schema` reconciles any prior shape on first access, idempotently:
 

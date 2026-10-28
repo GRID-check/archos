@@ -54,7 +54,7 @@ import { I18nProvider } from '@/i18n'
 import { AppConfigProvider, type AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { ChatArea } from '@/features/layout/components'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 
 const config: AppConfig = {
   authRequired: false,

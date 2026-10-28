@@ -22,7 +22,7 @@ route by which a measurement's evidence attaches itself to a judgment.
 
 from __future__ import annotations
 
-from aiq_agent.common.turn_status import tool_basename
+from aiq_agent.common.tool_calls import tool_basename
 from aiq_agent.tools.bim.measurement_evidence import result_carries_measurement
 
 #: Tools whose results constitute a MEASUREMENT of the building.
@@ -61,7 +61,7 @@ from aiq_agent.tools.bim.measurement_evidence import result_carries_measurement
 #: grounding surface that deserves its own review, not a name added to a
 #: frozenset.
 #:
-#: Matched on the tool's BASE name (``turn_status.tool_basename``): NAT delivers
+#: Matched on the tool's BASE name (``tool_calls.tool_basename``): NAT delivers
 #: a function-group or MCP tool as ``group__ifc_measure``, and an exact compare
 #: against the bare name silently switched measurement grounding off for every
 #: deployment that uses grouping — reinstating the "low" floor this whole gate

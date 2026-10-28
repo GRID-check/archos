@@ -272,12 +272,12 @@ open PRs touching that tree have drained or been rebased by their authors.
 
 | # | Move | Lines | Waits on |
 |---|---|---|---|
-| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter; in flight, and written here if that PR has not merged), and `tests/test_repo_layout.py` (below) | — | — |
+| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter, `tests/test_ci_filter_coverage.py`), and `tests/test_repo_layout.py` (below), which every later row edits: it drops its legacy name and adds its old path to `MOVED` | — | — |
 | 1 | `plans/` and `docs/superpowers/` deleted (#1250, #1252) | — | — |
 | 2 | `frontends/benchmarks/oib_retrieval` + `tests/benchmarks` → `evals/`; distribution name per rule 3; `oib_compliance` deleted | 140 | — |
 | 3 | `frontends/web` → `apps/site`; `shared/brand` and the brand script → `packages/brand`; task namespace `web:` → `site:` | ~140 | open site PRs |
 | 4 | `shared/cards`, `shared/wire` → `contracts/` | 211 | open card and wire PRs |
-| 5 | Import hygiene: `sources.<pkg>.src.X` → the installed name (338 lines), and the 69 dotted `tests.aiq_agent.…` imports → an importable helpers module. This ends the double identity and makes rows 6 and 7 pure renames | ~410 | open retrieval and agent-test PRs |
+| 5 | Import hygiene: `sources.<pkg>.src.X` → the installed name (338 lines), and the 69 dotted `tests.aiq_agent.…` imports → an importable helpers module: one `<distribution>_testing` support package per suite family, on pytest's `pythonpath`, held by `tests/test_test_imports.py`. This ends the double identity and makes rows 6 and 7 pure renames | ~410 | open retrieval and agent-test PRs |
 | 6 | `sources/*` + `tests/knowledge_layer_tests` → `packages/<distribution>` | ~470 | row 5 |
 | 7 | `frontends/aiq_api`, `deploy/Dockerfile` with `entrypoint.py` and `start_web.py` → `apps/backend`. Paths only | ~220 | open backend-route PRs |
 | 8 | `src/aiq_agent` + `tests/aiq_agent` → `packages/agent`: the `git mv`, then the pyproject split as its own commit. The distribution stays `aiq-agent` until 10a; the layout test allowlists that. Re-keys the brand baseline | ~1,020 | row 5; open agent PRs |
@@ -323,12 +323,12 @@ release that put it there has run there:
   PR sets it back to `false` and deletes the Job and
   `deploy/postgres/rename-legacy-names.sh` (and the Compose `postgres-rename`
   service). Never in the same promotion as #1335.
-- [ ] **Table views.** 0188 leaves `piloti_wakes`, `piloti_changes` and
+- [ ] **Table views.** 0189 leaves `piloti_wakes`, `piloti_changes` and
   `piloti_asks` as views over the `agent_*` tables (#1338). The next release
   drops them in a migration.
-- [ ] **Function wrappers.** 0189 keeps each `grid_` function's old name as a
+- [ ] **Function wrappers.** 0190 keeps each `grid_` function's old name as a
   wrapper (#1342). The next release drops every function whose comment starts
-  `Old name, kept for one release by migration 0189`.
+  `Old name, kept for one release by migration 0190`.
 - [ ] **Browser keys.** `storage-rename-boot.ts` and the `grid-locale` cookie
   read (#1358) are deleted the release after.
 

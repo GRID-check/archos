@@ -13,7 +13,7 @@ import { describe, expect, test, vi } from 'vitest'
 import type { PdfViewerDialogProps } from '@/features/knowledge/components/pdf-viewer-dialog'
 import { buildCitationModel, resolveCitationTarget } from '../lib/citations'
 import type { CitationSource } from '../types'
-import { CitationDocumentDialog } from './SourcePreview'
+import { CitationDocumentDialog } from './source-preview/citation-document-dialog'
 
 const seen = vi.hoisted(() => ({ props: null as PdfViewerDialogProps | null }))
 
