@@ -250,9 +250,9 @@ describe("the program constructs in the split topology", () => {
     // a warning, which is how the 09-28 backend downgrade went unnoticed.
     const tag = pulumi.runtime.allConfig()["grid-oib:imageTag"] ?? "latest";
     expect(STACK.deployedImages).toEqual({
-      backend: `ghcr.io/grid-check/grid-oib-backend:${tag}`,
-      frontend: `ghcr.io/grid-check/grid-oib-frontend:${tag}`,
-      web: `ghcr.io/grid-check/grid-oib-web:${tag}`,
+      backend: `ghcr.io/archos-at/grid-oib-backend:${tag}`,
+      frontend: `ghcr.io/archos-at/grid-oib-frontend:${tag}`,
+      web: `ghcr.io/archos-at/grid-oib-web:${tag}`,
     });
   });
 

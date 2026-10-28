@@ -53,7 +53,7 @@ concurrency:
 
 env:
   # Image references must be lowercase, and nothing lowercases this one for us.
-  REGISTRY: ghcr.io/grid-check
+  REGISTRY: ghcr.io/archos-at
 
 jobs:
   changes:
