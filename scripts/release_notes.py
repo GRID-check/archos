@@ -11,7 +11,7 @@ The pipeline this file implements
    note is attributed to the release it actually shipped in, from git history
    rather than from whatever the file claims — translates the new English
    strings into German once, and writes
-   ``frontends/web/src/data/changelog.json``.
+   ``apps/site/src/data/changelog.json``.
 3. The Astro site renders that file at ``/changelog`` (de) and ``/en/changelog``
    (en). The web image is built from the repo, so the commit made in step 2 is
    what puts the note in front of a reader.
@@ -69,7 +69,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RELNOTES_DIR = REPO_ROOT / "releasenotes"
 NOTES_DIR = RELNOTES_DIR / "notes"
 TRANSLATIONS_FILE = RELNOTES_DIR / "translations" / "de.json"
-CHANGELOG_FILE = REPO_ROOT / "frontends" / "web" / "src" / "data" / "changelog.json"
+CHANGELOG_FILE = REPO_ROOT / "apps" / "site" / "src" / "data" / "changelog.json"
 
 SUMMARIES_FILE = RELNOTES_DIR / "summaries.yaml"
 

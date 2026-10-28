@@ -19,11 +19,9 @@ import type { DocumentRole, RoleConfidence, RoleSource } from '@/lib/project-pro
 import { invalidateProjectPromptViewCache } from '@/lib/project-profile/prompt-view'
 import { lockProjectProfile } from '@/lib/projects/repository'
 import type { DbTransaction } from '@/lib/storage/repository'
-import {
-  answersFromProfile,
-  defaultBuildings,
-  projectIntakeDefinitionV1,
-} from '@/lib/project-profile/intake-definition'
+import { defaultBuildings } from '@/lib/project-profile/intake-building-keys'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { answersFromProfile } from '@/lib/project-profile/intake-profile'
 import {
   confirmBinding,
   deleteBindings,

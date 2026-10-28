@@ -74,7 +74,7 @@ jobs:
       reused: ${{ steps.reuse.outputs.hit || 'false' }}
       backend: ${{ steps.filter.outputs.backend || 'false' }}
       frontend: ${{ steps.filter.outputs.frontend || 'false' }}
-      web: ${{ steps.filter.outputs.web || 'false' }}
+      site: ${{ steps.filter.outputs.site || 'false' }}
       infra: ${{ steps.filter.outputs.infra || 'false' }}
       packages: ${{ steps.filter.outputs.packages || 'false' }}
       migrations: ${{ steps.filter.outputs.migrations || 'false' }}
@@ -766,10 +766,10 @@ jobs:
         with:
           working-directory: frontends/ui
 
-  web:
-    name: Web (Astro check + build)
+  site:
+    name: Site (Astro check + build)
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -787,11 +787,11 @@ jobs:
       # restores the same entry into its build context.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: frontends/web/.astro-cache
-          key: astro-cache-${{ runner.os }}-${{ hashFiles('frontends/web/src/content/blog/_images/**', 'frontends/web/src/assets/**') }}
+          path: apps/site/.astro-cache
+          key: astro-cache-${{ runner.os }}-${{ hashFiles('apps/site/src/content/blog/_images/**', 'apps/site/src/assets/**') }}
           restore-keys: |
             astro-cache-${{ runner.os }}-
-      - run: task web:verify
+      - run: task site:verify
 
   infra:
     name: Infra (Pulumi typecheck + manifest tests)
@@ -973,7 +973,7 @@ jobs:
   # has all three images, and no commit CI failed has any.
   publish:
     name: Tag images for this commit
-    needs: [changes, repo, backend, backend-coverage, backend-suites, frontend, frontend-test, web, infra, packages, trivy, image-push]
+    needs: [changes, repo, backend, backend-coverage, backend-suites, frontend, frontend-test, site, infra, packages, trivy, image-push]
     if: >-
       always() && github.event_name == 'push' && needs.changes.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -1023,7 +1023,7 @@ jobs:
     # checkout can hold a corpus to measure, and a job that can only pass
     # vacuously is worse than none. It survives as `task be:eval:retrieval`;
     # ADR-0058 "Update (2026-09-09)" says what restoring the gate would take.
-    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, frontend, frontend-test, web, infra, packages, trivy, image, image-push, publish]
+    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, frontend, frontend-test, site, infra, packages, trivy, image, image-push, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

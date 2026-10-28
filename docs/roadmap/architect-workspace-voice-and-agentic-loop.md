@@ -120,7 +120,7 @@ The live app chrome is a mix, and the oldest label is still in the window title:
 - `{PRODUCT_NAME} — OIB Compliance Assistant` (`frontends/ui/src/app/layout.tsx:77`)
 - Tagline: “KI-gestützter Recherche-Assistent”
 - Project copy: “Piloti is an OIB/RIS **building-compliance copilot**” / “Copilot für die OIB/RIS-**Baukonformität**” (`dictionaries/{en,de}/projects.ts`)
-- Marketing site (`frontends/web`): “Die KI-Plattform für Architektur- und Planungsbüros”, hero “Planen. Statt suchen.”, “Sie entwerfen, Piloti liefert den Kontext”, and **“Zu jeder Empfehlung sehen Sie Begründung, Annahmen und Regeln.”**
+- Marketing site (`apps/site`): “Die KI-Plattform für Architektur- und Planungsbüros”, hero “Planen. Statt suchen.”, “Sie entwerfen, Piloti liefert den Kontext”, and **“Zu jeder Empfehlung sehen Sie Begründung, Annahmen und Regeln.”**
 - Composer: “Fragen Sie Piloti zu diesem Projekt …” (EN still: “Check data sources and ask a research question…”)
 - Permission denial: “Der **Recherche-Agent** …”
 - Direct-reply example in the prompt teaches the model to introduce itself as answering OIB/RIS/Bürowissen questions, not as an office colleague.
@@ -500,7 +500,7 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 - `docs/roadmap/collaborative-workspace-vision.md`
 - `docs/audit/pilot-feedback-triage-2026-09.md`
 - `docs/adr/0051-tasks-are-the-durable-unit-of-delegated-work.md`, `docs/adr/0052-one-answering-agent-no-intent-router.md`
-- `frontends/web/src/i18n/ui.ts` (marketing: Empfehlung)
+- `apps/site/src/i18n/ui.ts` (marketing: Empfehlung)
 - `frontends/ui/src/app/layout.tsx` (window title: OIB Compliance Assistant)
 - Builtin OIB `SKILL.md` L1 lines (Prüfkette)
 - `src/aiq_agent/agents/compliance_checker/README.md`

@@ -59,6 +59,8 @@ MOVED = {
     "docs/superpowers/": "docs/specs, then deleted (#1250, #1252)",
     "frontends/benchmarks/": "evals/ (row 2)",
     "tests/benchmarks/": "evals/ (row 2)",
+    "frontends/web/": "apps/site (row 3)",
+    "shared/brand/": "packages/brand (row 3)",
     "sources/": "packages/<distribution> (row 6)",
     "sources/knowledge_layer/": "packages/knowledge-layer (row 6)",
     "sources/ris_adapter/": "packages/ris-adapter (row 6)",

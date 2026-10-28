@@ -2,6 +2,11 @@
 
 Two families live here: the standalone IFC packages, outside every workspace,
 and the Python packages of the root uv workspace ([below](#the-python-packages-knowledge-layer-ris-adapter-tavily-web-search)).
+`brand/` is neither: the Piloti mark (`mark.svg`) and the script that renders
+it into both apps (`build-brand-assets.mjs`, which borrows `apps/site`'s sharp).
+It has no suite here: the site's `npm run check` runs its `--check` form, so
+the site tier checks it, not the `packages` job. The frontend tier fires on it
+too, because the script writes the app's icons.
 
 ## The IFC packages
 
@@ -12,7 +17,7 @@ IfcOpenShell). The agent reaches them through
 
 ### The gate, and why it is not in `task verify`
 
-Both suites run in CI, behind a `packages/**` paths filter: the `packages` job
+Both suites run in CI, behind a `packages/ifc-spatial*/**` paths filter: the `packages` job
 in [`ci.yml`](../.github/workflows/ci.yml), which `CI OK` requires. It is its
 own job because both packages sit outside their neighbouring workspace —
 `ifc-spatial` has its own `bun.lock` (not the UI's bun workspace),
@@ -37,8 +42,8 @@ pasted that output.
 also collects `test_ids_export.py`, which needs `ifctester` from the `ids`
 extra. Plain `uv run pytest` installs neither.
 
-Adding a third package means adding it to `pkg:test` in `Taskfile.yml`; the
-paths filter is already `packages/**`, so it needs nothing.
+Adding another IFC-style package means adding it to `pkg:test` in `Taskfile.yml`
+and its path to the `packages` filter in `.github/filters.yml`.
 
 ### Obligations
 
