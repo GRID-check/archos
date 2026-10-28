@@ -79,13 +79,14 @@ def test_every_name_we_import_still_exists(module_name: str, names: list[str]) -
     missing = [name for name in names if not hasattr(module, name)]
     assert not missing, (
         f"deepagents no longer exports {missing} from {module_name}. Grep the repo for each name "
-        "(packages/agent/src/aiq_agent/agents/deep_researcher, packages/agent/src/aiq_agent/tools/documents, tests) and port it to "
+        "(packages/agent/src/aiq_agent/agents/deep_researcher, "
+        "packages/agent/src/aiq_agent/tools/documents, tests) and port it to "
         "the release's replacement before bumping."
     )
 
 
 def test_the_installed_release_is_the_pinned_one() -> None:
-    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pyproject = tomllib.loads((REPO_ROOT / "packages" / "agent" / "pyproject.toml").read_text(encoding="utf-8"))
     pins = [dep for dep in pyproject["project"]["dependencies"] if re.match(r"deepagents\s*[=<>~!]", dep)]
     assert len(pins) == 1 and pins[0].startswith("deepagents=="), (
         f"deepagents must be pinned exactly in pyproject.toml, found {pins}: every 0.7 patch release has "

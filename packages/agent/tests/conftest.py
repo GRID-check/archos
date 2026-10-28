@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+
 from aiq_agent.common.llm_provider import LLMProvider
 
 # This suite sits outside `tests/`, so `tests/conftest.py` does not apply to it:

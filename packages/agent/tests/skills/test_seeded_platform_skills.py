@@ -267,7 +267,7 @@ def _agents_with_a_delivery_surface() -> set[str]:
 
     agents = {
         agent
-        for path in (REPO_ROOT / "src").rglob("*.py")
+        for path in (REPO_ROOT / "packages" / "agent" / "src").rglob("*.py")
         for agent in re.findall(r'SkillResolver\(agent="([a-z_]+)"\)', path.read_text(encoding="utf-8"))
     }
     if "resolve_served_skills(" in DEEP_AGENT.read_text(encoding="utf-8"):

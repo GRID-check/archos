@@ -51,7 +51,9 @@ def mod():
 
 
 def test_a_change_to_tested_python_selects(mod):
-    mode, extra, _ = mod.decide_python(["packages/agent/src/aiq_agent/common/llm_factory.py", "tests/test_x.py"], TESTS, recorded=True)
+    mode, extra, _ = mod.decide_python(
+        ["packages/agent/src/aiq_agent/common/llm_factory.py", "tests/test_x.py"], TESTS, recorded=True
+    )
 
     assert (mode, extra) == ("select", [])
 
@@ -111,7 +113,10 @@ def test_a_file_named_only_by_its_basename_still_counts(mod):
 
 
 def test_package_data_no_test_names_forces_the_full_suite(mod):
-    assert mod.decide_python(["packages/agent/src/aiq_agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0] == "full"
+    assert (
+        mod.decide_python(["packages/agent/src/aiq_agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0]
+        == "full"
+    )
 
 
 def test_a_fixture_selects_the_tests_that_read_it(mod):
@@ -306,8 +311,16 @@ def test_no_green_run_means_the_whole_pull_request(mod):
 
 
 def test_the_reference_that_forces_fewer_full_suites_wins(mod):
-    whole = (["packages/agent/src/aiq_agent/a.py", "packages/agent/src/aiq_agent/b.py", "packages/agent/src/aiq_agent/c.py"], "the base", "base")
-    since_green = (["packages/agent/src/aiq_agent/a.py", "pyproject.toml"], "the last green run", "green")  # develop moved
+    whole = (
+        ["packages/agent/src/aiq_agent/a.py", "packages/agent/src/aiq_agent/b.py", "packages/agent/src/aiq_agent/c.py"],
+        "the base",
+        "base",
+    )
+    since_green = (
+        ["packages/agent/src/aiq_agent/a.py", "pyproject.toml"],
+        "the last green run",
+        "green",
+    )  # develop moved
 
     def full_suites(paths):
         return mod.decide_python(paths, TESTS, recorded=True)[0] == "full"
@@ -317,6 +330,10 @@ def test_the_reference_that_forces_fewer_full_suites_wins(mod):
 
 def test_with_equal_cost_the_smaller_reference_wins(mod):
     whole = (["packages/agent/src/aiq_agent/a.py", "packages/agent/src/aiq_agent/b.py"], "the base", "base")
-    since_green = (["packages/agent/src/aiq_agent/b.py"], "the last green run", "green")  # a push that answered a review
+    since_green = (
+        ["packages/agent/src/aiq_agent/b.py"],
+        "the last green run",
+        "green",
+    )  # a push that answered a review
 
     assert mod.cheaper([whole, since_green], lambda _paths: 0) == since_green

@@ -78,10 +78,10 @@ Keep what the migration put into the database that is still refused today (a
 CHECK, a unique index, a guard trigger) unless a suite on the full chain
 already covers it.
 
-**Backend tests run against this checkout's `src/`.** Without a guard, pytest
+**Backend tests run against this checkout's `packages/agent/src/`.** Without a guard, pytest
 resolves `aiq_agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
-`pythonpath` puts `src/` first, so a bare `pytest` is safe as well as the Taskfile.
+`pythonpath` puts `packages/agent/src/` first, so a bare `pytest` is safe as well as the Taskfile.
 
 **The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
 Backend job.** `packages/agent/tests/common/test_claim_queue.py`,
@@ -760,7 +760,7 @@ counted. Seeding is idempotent and embeds only what changed; a file cut another 
 before loses its stale points. It needs the deployment's embedding key. Reseed after
 editing `project.yaml` by running the suite again.
 
-The suite starts each run from the working tree: edit nothing under `src/`
+The suite starts each run from the working tree: edit nothing under `packages/agent/src/`
 while it runs, or run it from an exported copy of the commit
 (`git archive <sha> | tar -x -C /tmp/copy`).
 

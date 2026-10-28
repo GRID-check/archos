@@ -27,7 +27,7 @@ AGENT_JOB = REPO / "apps" / "backend" / "src" / "aiq_api" / "jobs" / "agent_job.
 
 def _clean_env() -> dict[str, str]:
     env = os.environ.copy()
-    src = str(REPO / "src")
+    src = str(REPO / "packages" / "agent" / "src")
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = src if not existing else src + os.pathsep + existing
     env["START_WEB"] = str(START_WEB)
@@ -36,7 +36,7 @@ def _clean_env() -> dict[str, str]:
 
 
 def test_nat_plugins_entry_points_name_the_telemetry_modules():
-    data = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+    data = tomllib.loads((REPO / "packages" / "agent" / "pyproject.toml").read_text(encoding="utf-8"))
     plugins = data["project"]["entry-points"]["nat.plugins"]
     assert plugins["aiq_otel_logs"] == "aiq_agent.observability.otlp_logging_method"
     assert plugins["aiq_otel_redaction"] == "aiq_agent.observability.otel_header_redaction_exporter"

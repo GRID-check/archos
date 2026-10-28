@@ -29,8 +29,8 @@ A lift on the deterministic side is therefore a claim, not a pass. It has to
 beat 0.933, and it has to answer six sibling questions differently.
 
 ``oib_retrieval`` is installed into the dev environment by ``uv sync`` (the
-root pyproject's dev group). ``aiq_agent`` resolves via ``PYTHONPATH=packages/agent/src`` (set by ``Taskfile.yml`` — never
-invoke pytest here without it, or the assertions below validate whatever the
+root pyproject's dev group). ``aiq_agent`` resolves via ``PYTHONPATH=packages/agent/src`` (set by ``Taskfile.yml`` —
+never invoke pytest here without it, or the assertions below validate whatever the
 venv installed instead of this worktree).
 """
 

@@ -544,7 +544,9 @@ def _hmac_sites(root: Path) -> set[tuple[str, str]]:
 
 class TestNothingIsSignedInPython:
     def test_no_hmac_is_computed_anywhere_it_has_not_been_justified(self):
-        sites = _hmac_sites(REPO / "packages" / "agent" / "src" / "aiq_agent") | _hmac_sites(REPO / "apps" / "backend" / "src")
+        sites = _hmac_sites(REPO / "packages" / "agent" / "src" / "aiq_agent") | _hmac_sites(
+            REPO / "apps" / "backend" / "src"
+        )
         assert sites == _HMAC_SITES
 
     def test_the_run_envelope_path_has_no_signing_primitive(self):

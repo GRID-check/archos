@@ -5,8 +5,8 @@
 one, and `ifc-spatial` and `brand` are not Python. So nothing globs
 `packages/*`, and each workspace package is named in the root `pyproject.toml`
 (the uv workspace and pytest's `testpaths`) and in `taskfiles/backend.yml`
-(`PY_PACKAGES`, the suite `be:test:sources` runs; the agent's own suite is in the core suite instead). A package added to one and
-not the others is installed but never tested, or tested but never installed.
+(`PY_PACKAGES`, the suite `be:test:sources` runs; the agent's own suite is in the core
+suite instead). A package added to one and not the others is installed but never tested, or tested but never installed.
 """
 
 from __future__ import annotations

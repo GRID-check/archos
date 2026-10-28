@@ -695,20 +695,29 @@ def test_a_comment_only_edit_to_a_product_file_still_needs_a_note(pr_repo):
 
 
 def test_a_note_the_pr_adds_satisfies_the_gate(pr_repo):
-    files = {"packages/agent/src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/new-1111.yaml": "fixes:\n  - New.\n"}
+    files = {
+        "packages/agent/src/aiq_agent/tool.py": "X = 2\n",
+        "releasenotes/notes/new-1111.yaml": "fixes:\n  - New.\n",
+    }
 
     assert _pr(pr_repo, files) == 0
 
 
 def test_a_note_in_an_internal_section_satisfies_the_gate(pr_repo):
     """The failure message promises it: a security fix needs a note, not a public one."""
-    files = {"packages/agent/src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/hole-2222.yaml": "security:\n  - Closed.\n"}
+    files = {
+        "packages/agent/src/aiq_agent/tool.py": "X = 2\n",
+        "releasenotes/notes/hole-2222.yaml": "security:\n  - Closed.\n",
+    }
 
     assert _pr(pr_repo, files) == 0
 
 
 def test_editing_an_old_note_does_not_satisfy_the_gate(pr_repo):
-    files = {"packages/agent/src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/old-0000.yaml": "features:\n  - Edited.\n"}
+    files = {
+        "packages/agent/src/aiq_agent/tool.py": "X = 2\n",
+        "releasenotes/notes/old-0000.yaml": "features:\n  - Edited.\n",
+    }
 
     assert _pr(pr_repo, files) == 1
 

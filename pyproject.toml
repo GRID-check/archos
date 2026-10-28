@@ -49,10 +49,15 @@ markers = [
 
 
 [tool.ruff]
+# Ruff's default `src` is [".", "src"]; the agent's source root moved with it, and isort
+# keeps `aiq_agent` first-party only if it can find it.
+src = [".", "packages/agent/src"]
 # Set the maximum line length to 120.
 line-length = 120
-# No target-version: ruff reads it from `requires-python` above, so the two
-# cannot drift apart again (it said py311 while the project required 3.14).
+# The packages require 3.14 (`requires-python` in each pyproject). The root has no
+# [project] to read it from since the agent moved to packages/agent, and ruff would
+# fall back to py310 and flag every lazy annotation, so it is stated here.
+target-version = "py314"
 #
 # Except what runs outside the project venv, on the runner's own `python3`
 # (3.12 on ubuntu-24.04) or `uv run --no-project`: CI's scripts, the hook

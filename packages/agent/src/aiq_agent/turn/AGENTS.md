@@ -41,8 +41,8 @@ only.
 `answer_stream.py` streams the answering call's prose while the model writes
 it, as wire bodies through the graph's own writer (`turn_status.emit`, chat wire
 v2 §b). The docs of record are
-[`docs/design/chat-wire-v2.md`](../../../docs/design/chat-wire-v2.md) and
-[`docs/design/streaming-chat-answer.md`](../../../docs/design/streaming-chat-answer.md).
+[`docs/design/chat-wire-v2.md`](../../../../../docs/design/chat-wire-v2.md) and
+[`docs/design/streaming-chat-answer.md`](../../../../../docs/design/streaming-chat-answer.md).
 
 - **Add the token callback to the call's inherited manager** (`streaming_call`),
   never as the call's own `callbacks`. Those replace the inherited ones, and

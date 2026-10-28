@@ -73,6 +73,8 @@ EVERY_KIND = set(KINDS) | set(FIRE_ASPECTS) | set(ENVELOPE_ASPECTS) | set(PROFIL
 
 SKILL = (
     Path(__file__).resolve().parents[4]
+    / "packages"
+    / "agent"
     / "src"
     / "aiq_agent"
     / "skills"

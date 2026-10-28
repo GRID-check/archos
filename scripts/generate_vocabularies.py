@@ -44,7 +44,8 @@ VOCABULARIES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (
         "SHELVES",
         tuple(shelf.value for shelf in Shelf),
-        "The shelves a retrieved chunk can come from: `Shelf` in `packages/agent/src/aiq_agent/common/source_kinds.py`.",
+        "The shelves a retrieved chunk can come from: `Shelf` in "
+        "`packages/agent/src/aiq_agent/common/source_kinds.py`.",
     ),
 )
 

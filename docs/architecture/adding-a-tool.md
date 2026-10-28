@@ -15,7 +15,7 @@ second one beside it.
 
 | It | Put it in | Entry point in |
 |---|---|---|
-| Retrieves evidence from a corpus or an external service | a Python package under `packages/` ([`packages/AGENTS.md`](../../packages/AGENTS.md#the-python-packages-knowledge-layer-ris-adapter-tavily-web-search)) | the package's own `pyproject.toml` |
+| Retrieves evidence from a corpus or an external service | a Python package under `packages/` ([`packages/AGENTS.md`](../../packages/AGENTS.md#the-python-packages-agent-knowledge-layer-ris-adapter-tavily-web-search)) | the package's own `pyproject.toml` |
 | Acts on the user's workspace (files, drafts, the model) | `packages/agent/src/aiq_agent/tools/` ([its `AGENTS.md`](../../packages/agent/src/aiq_agent/tools/AGENTS.md)) | the root `pyproject.toml` |
 
 Copy the closest existing package rather than inventing a shape:

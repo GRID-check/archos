@@ -47,7 +47,9 @@ def test_no_prompt_calls_a_file_a_plan(relative: str) -> None:
 @pytest.mark.parametrize("name", ["orchestrator.j2", "planner.j2", "researcher.j2", "writer.j2"])
 def test_every_deep_research_prompt_introduces_the_agent_by_the_product_name(name: str) -> None:
     """The first line names the agent through ``{{ product_name }}`` (``common/brand.py``), never spelled."""
-    first_line = (ROOT / "packages/agent/src/aiq_agent/agents/deep_researcher/prompts" / name).read_text(encoding="utf-8")
+    first_line = (ROOT / "packages/agent/src/aiq_agent/agents/deep_researcher/prompts" / name).read_text(
+        encoding="utf-8"
+    )
     assert "{{ product_name }}" in first_line.splitlines()[0]
 
 
@@ -120,7 +122,6 @@ def test_the_description_scan_sees_the_tools() -> None:
 #: Every distribution this repository builds. Its description is what `pip show`,
 #: the lockfile and a newcomer's first `cat pyproject.toml` read.
 PACKAGE_GLOBS = (
-    "pyproject.toml",
     "apps/*/pyproject.toml",
     "packages/*/pyproject.toml",
 )
@@ -138,6 +139,8 @@ def test_no_package_describes_itself_by_its_framework(relative: str) -> None:
 
 
 def test_the_scan_sees_the_packages() -> None:
-    assert {"pyproject.toml", "packages/knowledge-layer/pyproject.toml", "apps/backend/pyproject.toml"} <= set(
-        PYPROJECTS
-    )
+    assert {
+        "packages/agent/pyproject.toml",
+        "packages/knowledge-layer/pyproject.toml",
+        "apps/backend/pyproject.toml",
+    } <= set(PYPROJECTS)

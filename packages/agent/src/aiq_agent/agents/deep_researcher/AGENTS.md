@@ -12,7 +12,7 @@ this file has the diagram; `custom_middleware.py` is what that framework costs.
 the same loop, and the ghost reaper fails a job with no heartbeat for 300 s —
 so a synchronous HTTP call inline (the skill resolver was one) fails healthy
 jobs with a timeout that names nothing. `asyncio.to_thread` it. The symptom and
-its history: [`gotchas.md`](../../../../docs/contributing/gotchas.md).
+its history: [`gotchas.md`](../../../../../../docs/contributing/gotchas.md).
 
 **Nothing request-scoped is read from context.** There is no request in a
 worker: the organization, the skills and the force list come off the state

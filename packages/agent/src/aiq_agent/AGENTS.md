@@ -7,7 +7,7 @@ turn. Conversation state lives in Postgres and reaches this process in headers
 
 ## The trap
 
-`pytest` run directly tests this checkout's `src/`, because `pyproject.toml` puts
+`pytest` run directly tests this checkout's `packages/agent/src/`, because `pyproject.toml` puts
 it first on the path. Before that setting, a bare `pytest` in a worktree without
 its own venv validated whatever the venv installed, possibly the main checkout,
 while everything passed. `PYTHONPATH=packages/agent/src` is still what `nat run` and ad-hoc
@@ -52,12 +52,12 @@ group.
 ## Reference
 
 - Adding a tool or a retrieval source:
-  [`adding-a-tool.md`](../../docs/architecture/adding-a-tool.md).
+  [`adding-a-tool.md`](../../../../docs/architecture/adding-a-tool.md).
 - Editing a prompt template, and which model each agent role runs on:
-  [`backend-deep-dive.md`](../../docs/architecture/backend-deep-dive.md#prompts-three-layers-and-where-each-is-authored)
-  and [`llm-providers.md`](../../docs/architecture/llm-providers.md#which-model-each-role-uses).
+  [`backend-deep-dive.md`](../../../../docs/architecture/backend-deep-dive.md#prompts-three-layers-and-where-each-is-authored)
+  and [`llm-providers.md`](../../../../docs/architecture/llm-providers.md#which-model-each-role-uses).
 - How the backend fits together:
-  [`docs/architecture/backend-deep-dive.md`](../../docs/architecture/backend-deep-dive.md).
+  [`docs/architecture/backend-deep-dive.md`](../../../../docs/architecture/backend-deep-dive.md).
 - `common/source_kinds.py`, `cards/registry.py` and `stages/runner.py` carry
   long "why" headers. They are the design docs that stayed next to the code, so
   read them before changing anything near them.

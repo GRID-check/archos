@@ -51,7 +51,7 @@ captured sources, compact citation keys, or throttle state; cross-turn
 source continuity in conversation mode lives in the session-scoped
 registry bound by the chat entrypoint. Anything new that a run can mutate
 belongs in `DeepResearchRunArtifacts`, never on the agent instance. See
-[ADR-0018](../../../../docs/adr/0018-per-run-state-for-deep-research.md).
+[ADR-0018](../../../../../../docs/adr/0018-per-run-state-for-deep-research.md).
 
 ## Middleware Stack
 

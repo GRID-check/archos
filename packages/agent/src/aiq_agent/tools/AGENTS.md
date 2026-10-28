@@ -35,7 +35,7 @@ pane already uses, in the reader's own session. A tool here that wrote a row
 directly would bypass `requireProjectAccess`, the provenance marking and the
 review state in one move.
 
-Read [`docs/roadmap/piloti-writes-artifacts-and-approval.md`](../../../docs/roadmap/piloti-writes-artifacts-and-approval.md)
+Read [`docs/roadmap/piloti-writes-artifacts-and-approval.md`](../../../../../docs/roadmap/piloti-writes-artifacts-and-approval.md)
 before changing what a file verb may do.
 
 ## Filing ECHOES the BFF's envelope; it never signs one
@@ -180,7 +180,7 @@ this tier becomes a proposal the person accepts. So a capability that has a UI
 route gets an operation, not a new Python tool. Python tools are for task-shaped
 reasoning that has no route: retrieval, IFC, canvas. The Python-only reads are
 served to other agents through the same server
-([`agent-surface.md`](../../../docs/architecture/agent-surface.md)).
+([`agent-surface.md`](../../../../../docs/architecture/agent-surface.md)).
 
 ## The workspace tools are Piloti as a client of its own MCP server
 
@@ -222,7 +222,7 @@ The workspace tools are the second: `workspace__call` reads other projects
 through the BFF's MCP door, and the BFF holds those reads to the same reach
 (`audienceReachAmong`) and records them through the same
 `recordCrossProjectHandOut` before the read runs (ADR-0094's amendment,
-[`agent-surface.md`](../../../docs/architecture/agent-surface.md#reads-in-a-conversation)).
+[`agent-surface.md`](../../../../../docs/architecture/agent-surface.md#reads-in-a-conversation)).
 A shared chat reads only a document's content or a project's facts there.
 The workspace result carries no `restricting` flag yet, so a door read of a
 running project shuts the turn's doors only where the server judges them (a
@@ -235,7 +235,7 @@ as `project_lookup` does.
 |---|---|---|
 | Add a verb to the working directory | Add its action key to `common/status_keys.py` (with both dictionary strings) and map the tool to it in `common/tool_calls.py`. Nothing to add to a budget any more: the research budget counts ROUNDS, so a round of file verbs costs one like a round of searches and there is no interaction allowance to keep in step | The reader's live line goes silent mid-turn |
 | Change what is stored per draft | Remember DeepAgents rebuilds the stored value from `content`/`encoding` on every edit: a key not re-stamped after the operation is gone | Nothing local. The version counter silently resets to 1 |
-| Take text from the model and compare it to stored text | NFC-normalise both, at the backend seam | An `edit_file` that fails with a string identical to the one in the file. [`gotchas.md`](../../../docs/contributing/gotchas.md) |
+| Take text from the model and compare it to stored text | NFC-normalise both, at the backend seam | An `edit_file` that fails with a string identical to the one in the file. [`gotchas.md`](../../../../../docs/contributing/gotchas.md) |
 | Add a tool under here | `@register_function` plus its own `nat.plugins` entry point, like every other tool ([`packages/agent/src/aiq_agent/AGENTS.md`](../AGENTS.md)) | NAT never discovers it |
 | Add a file operation that WRITES | Make it propose: its branch in `propose_file_change` (`files/register.py`) and its line in `_DESCRIPTION`, emitting a `file_operation_proposal` card and a result saying nothing changed. Then its kind in `FileOperationKind` (`cards/models.py`) and in `FILE_OPERATIONS` (`frontends/ui/src/lib/proposals/types.ts`), and the server's applier for it (`lib/proposals/executors.ts`). The action key and the `TOOL_CONTEXT_REQUIREMENTS` row belong to the tool and are already there; a new write-side TOOL needs both | Nothing local — which is the point. A tool that wrote directly would pass every test and bypass `requireProjectAccess`, the audit trail and the reader's consent in one call |
 | Add a write that is not a file operation (a fourth proposal kind) | Add the kind to `PROPOSED_CHANGE_KINDS`, its payload to `internalProposalRequestSchema` and its applier on the BFF side first; then create it from ONE place with `proposals_client.add_card` (a tool that pushes its own card, or `register_envelope_card` for a card the model composes), carrying `proposal_id` on the card and falling back to the old card on every failure. Give the card `proposal_id` in `cards/models.py` (and add the field to `SERVER_FILLED_CARD_FIELDS` if the model can compose the card) | `packages/agent/tests/tools/files/test_proposals.py`, which fails when the contract has a kind this client cannot ask for. Nothing else: a write that skipped the proposal would apply in the agent's name, not the person's |

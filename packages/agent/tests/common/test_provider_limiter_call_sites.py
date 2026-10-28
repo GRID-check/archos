@@ -45,7 +45,7 @@ from aiq_agent.common.openrouter import pinned_http_client
 
 ROOT = Path(__file__).resolve().parents[4]
 SCANNED = [
-    ROOT / "src",
+    ROOT / "packages" / "agent" / "src",
     ROOT / "packages" / "knowledge-layer",
     ROOT / "packages" / "ris-adapter",
     ROOT / "packages" / "tavily-web-search",
@@ -60,7 +60,9 @@ CHAT_MODEL = re.compile(
     r"|ChatLiteLLM|ChatBedrock|ChatBedrockConverse|ChatDeepSeek|ChatOpenRouter)\(|\binit_chat_model\(|\.get_llm\("
 )
 CHAT_MODEL_HOMES = {
-    "packages/agent/src/aiq_agent/common/llm_factory.py": "get_langchain_llm, the one place a chat model is taken from NAT",
+    "packages/agent/src/aiq_agent/common/llm_factory.py": (
+        "get_langchain_llm, the one place a chat model is taken from NAT"
+    ),
     "scripts/turn_census/render_fixture_permits.py": (
         "runs outside NAT; its model goes through enforce_chat_request_contract, the slot seam"
     ),

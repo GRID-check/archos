@@ -101,7 +101,7 @@ def _described(schema: object, path: str):
             yield from _described(value, path)
 
 
-def _all_model_facing_texts(src: Path = ROOT / "src") -> list[tuple[str, str]]:
+def _all_model_facing_texts(src: Path = ROOT / "packages" / "agent" / "src") -> list[tuple[str, str]]:
     env = {**os.environ, "PYTHONPATH": f"{src}{os.pathsep}{ROOT}"}
     done = subprocess.run(
         [sys.executable, "-c", _BUILD_ALL], cwd=ROOT, env=env, capture_output=True, text=True, check=False
