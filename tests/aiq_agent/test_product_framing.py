@@ -45,9 +45,10 @@ def test_no_prompt_calls_a_file_a_plan(relative: str) -> None:
 
 
 @pytest.mark.parametrize("name", ["orchestrator.j2", "planner.j2", "researcher.j2", "writer.j2"])
-def test_every_deep_research_prompt_introduces_the_agent_as_piloti(name: str) -> None:
+def test_every_deep_research_prompt_introduces_the_agent_by_the_product_name(name: str) -> None:
+    """The first line names the agent through ``{{ product_name }}`` (``common/brand.py``), never spelled."""
     first_line = (ROOT / "src/aiq_agent/agents/deep_researcher/prompts" / name).read_text(encoding="utf-8")
-    assert "Piloti" in first_line.splitlines()[0]
+    assert "{{ product_name }}" in first_line.splitlines()[0]
 
 
 def test_pilotis_role_is_the_office_colleague_who_works_in_the_workspace_before_it_knows_the_law() -> None:

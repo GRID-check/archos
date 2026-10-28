@@ -61,7 +61,11 @@ route, header, table, metric, event, resource or tool name. The product was
 AI-Q, then Grid, now Piloti, and the next name is coming; every earlier rename
 was a code change across thousands of lines. Name the thing for what it does:
 `MAX_ACTIVE_JOBS_PER_ORG`, not `GRID_MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
-`piloti_wakes`. The product's name is copy, read from one place.
+`piloti_wakes`. The product's name is copy, read from one place:
+`PRODUCT_NAME` in `frontends/ui/src/lib/brand.ts`, which the dictionaries
+reach as `{productName}`, and `aiq_agent.common.brand.PRODUCT_NAME`, which a
+prompt reaches as `{{ product_name }}`. `tests/test_product_name_parity.py`
+holds the two equal.
 
 `scripts/check_brand_names.py`, the `brand-names` hook in `task lint:repo`
 (CI's **Repo checks** job), holds it. It is a ratchet like the size check:

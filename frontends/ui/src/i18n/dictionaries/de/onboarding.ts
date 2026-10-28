@@ -55,20 +55,20 @@ export const onboarding: typeof en.onboarding = {
     close: 'Tour schließen',
     stops: {
       welcome: {
-        title: 'Willkommen bei Piloti',
+        title: 'Willkommen bei {productName}',
         body: 'Ihre Organisation ist bereit. Ein kurzer Rundgang zeigt, wo was liegt — er dauert etwa eine Minute.',
       },
       welcomeJoined: {
-        title: 'Willkommen bei Piloti',
+        title: 'Willkommen bei {productName}',
         body: 'Hier arbeitet Ihr Team an seinen Bauprojekten. Ein kurzer Rundgang zeigt, wo was liegt — er dauert etwa eine Minute.',
       },
       createProjectJoined: {
         title: 'Ihre Projekte',
-        body: 'Projekte erscheinen hier, sobald Kolleginnen und Kollegen Sie hinzufügen. Sie können auch selbst eines anlegen: Ein Projekt umfasst ein Gebäude, seine Unterlagen, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem Piloti arbeitet und jede Quelle belegt.',
+        body: 'Projekte erscheinen hier, sobald Kolleginnen und Kollegen Sie hinzufügen. Sie können auch selbst eines anlegen: Ein Projekt umfasst ein Gebäude, seine Unterlagen, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem {productName} arbeitet und jede Quelle belegt.',
       },
       createProject: {
         title: 'Alles beginnt mit einem Projekt',
-        body: 'Ein Projekt umfasst ein Gebäude: seine Dokumente, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem Piloti mit Ihnen arbeitet. Jede Quelle ist belegt, ob Baurecht oder Ihre eigenen Unterlagen. Eine kurze Einrichtung fragt nach dem Gebäude, danach zeigen wir Ihnen das Projekt.',
+        body: 'Ein Projekt umfasst ein Gebäude: seine Dokumente, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem {productName} mit Ihnen arbeitet. Jede Quelle ist belegt, ob Baurecht oder Ihre eigenen Unterlagen. Eine kurze Einrichtung fragt nach dem Gebäude, danach zeigen wir Ihnen das Projekt.',
       },
       officeShelf: {
         title: 'Büroablage',
@@ -98,19 +98,19 @@ export const onboarding: typeof en.onboarding = {
       },
       projectWelcome: {
         title: 'Ihr Projekt ist eingerichtet',
-        body: 'Piloti kennt jetzt die Eckdaten dieses Gebäudes. Hier findet die Arbeit statt.',
+        body: '{productName} kennt jetzt die Eckdaten dieses Gebäudes. Hier findet die Arbeit statt.',
       },
       projectWelcomeJoined: {
         title: 'In einem Projekt',
         body: 'Jedes Gebäude bekommt einen Raum wie diesen. Hier findet die Arbeit statt.',
       },
       projectChat: {
-        title: 'Mit Piloti arbeiten',
-        body: 'Sprechen Sie in Ihren Worten mit Piloti über dieses Gebäude oder übergeben Sie ihm eine Aufgabe. Es arbeitet mit Ihren Dateien, der Büroablage und dem Baurecht und zitiert jede Quelle.',
+        title: 'Mit {productName} arbeiten',
+        body: 'Sprechen Sie in Ihren Worten mit {productName} über dieses Gebäude oder übergeben Sie ihm eine Aufgabe. Es arbeitet mit Ihren Dateien, der Büroablage und dem Baurecht und zitiert jede Quelle.',
       },
       projectFiles: {
         title: 'Dateien: die Unterlagen dieses Projekts',
-        body: 'Laden Sie Zeichnungen, Gutachten und Schriftverkehr zu diesem Gebäude hoch. Sobald eine Datei gelesen ist, kann Piloti daraus zitieren, und zwar nur in diesem Projekt.',
+        body: 'Laden Sie Zeichnungen, Gutachten und Schriftverkehr zu diesem Gebäude hoch. Sobald eine Datei gelesen ist, kann {productName} daraus zitieren, und zwar nur in diesem Projekt.',
       },
       projectOfficeShelf: {
         title: 'Büroablage: die Unterlagen Ihres Büros',
@@ -130,7 +130,7 @@ export const onboarding: typeof en.onboarding = {
       },
       projectSources: {
         title: 'Jede Antwort zeigt ihre Quellen',
-        body: 'Jede Aussage ist markiert, woher sie stammt — Baurecht, Projektwissen oder Büroablage — und öffnet die Stelle, auf der sie beruht. Hat Piloti keine Quelle, sagt es das.',
+        body: 'Jede Aussage ist markiert, woher sie stammt — Baurecht, Projektwissen oder Büroablage — und öffnet die Stelle, auf der sie beruht. Hat {productName} keine Quelle, sagt es das.',
       },
       projectSettings: {
         title: 'Einstellungen und Mitglieder',

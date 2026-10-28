@@ -33,7 +33,7 @@ export const intakeProfileStep: typeof en.intakeProfileStep = {
     open: 'Gebäudeklasse noch offen',
     highRiseReason: 'Fluchtniveau über 22 m: keine Gebäudeklasse, es gilt OIB-RL 2.3.',
     missing: 'Es fehlt noch: {inputs}.',
-    none: 'Piloti rechnet sie aus, sobald Geschoße, Fluchtniveau und Nutzungseinheiten feststehen.',
+    none: '{productName} rechnet sie aus, sobald Geschoße, Fluchtniveau und Nutzungseinheiten feststehen.',
     answer: 'Rückfragen beantworten',
     confirmed: 'Bestätigt',
     how: 'Wie gerechnet?',
@@ -67,7 +67,7 @@ export const intakeProfileStep: typeof en.intakeProfileStep = {
     basis: '{count, plural, one {Aus # bestätigten Wert berechnet.} other {Aus # bestätigten Werten berechnet.}}',
     disclaimer: 'Keine Rechtsberatung.',
     source: 'Richtlinie öffnen',
-    ask: 'Piloti fragen',
+    ask: '{productName} fragen',
     short: {
       oib1: 'Tragwerk',
       oib2: 'Brandschutz',
@@ -104,7 +104,7 @@ export const intakeProfileStep: typeof en.intakeProfileStep = {
     },
   },
   findings: {
-    heading: 'Was Piloti gefunden hat',
+    heading: 'Was {productName} gefunden hat',
     description: 'Jeder Wert mit der Stelle, an der er steht. Ändern Sie nur, was nicht stimmt; den Rest übernehmen Sie am Ende in einem Schritt.',
     counts: '{total, plural, one {# Wert} other {# Werte}} · {confirmed} von Ihnen',
     columns: {
@@ -124,8 +124,8 @@ export const intakeProfileStep: typeof en.intakeProfileStep = {
     showLess: 'Weniger anzeigen',
     editor: 'Im Briefing-Editor bearbeiten',
     editorAria: 'Den Briefing-Editor für dieses Projekt öffnen',
-    empty: 'Piloti hat noch keine Werte gefunden. Sie erscheinen hier, sobald die Erfassung Dokumente gelesen hat.',
-    reading: 'Piloti liest noch. Weitere Werte kommen hinzu.',
+    empty: '{productName} hat noch keine Werte gefunden. Sie erscheinen hier, sobald die Erfassung Dokumente gelesen hat.',
+    reading: '{productName} liest noch. Weitere Werte kommen hinzu.',
     building: 'Bauwerk {number}',
   },
   source: {
@@ -148,7 +148,7 @@ export const intakeProfileStep: typeof en.intakeProfileStep = {
     button: 'Einrichtung abschließen',
     note: 'Sie können jeden Wert später in den Projekteinstellungen ändern.',
     takeAll: 'Alles übernehmen und abschließen',
-    noteTakeAll: 'Was Sie nicht geändert haben, übernimmt Piloti so, mit seiner Quelle. Später bleibt alles änderbar.',
+    noteTakeAll: 'Was Sie nicht geändert haben, übernimmt {productName} so, mit seiner Quelle. Später bleibt alles änderbar.',
     closingTitle: 'Einrichtung abschließen und Projekt schließen?',
     closingDescription: 'Das Projekt wird damit geschlossen: Ergebnis „{outcome}“, Zeitraum {period}.',
     confirm: 'Abschließen und schließen',

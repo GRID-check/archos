@@ -1,7 +1,7 @@
 /** Similar closed projects: the page a person reads for the office's past work (ADR-0094). */
 export const references = {
   intro:
-    'The office’s closed projects most like this one that you may open: what they share, the decisions made there and the conditions the authority set. Piloti draws on the same projects as precedent in chat.',
+    'The office’s closed projects most like this one that you may open: what they share, the decisions made there and the conditions the authority set. {productName} draws on the same projects as precedent in chat.',
   basis: {
     title: 'Compared by',
     fact: '{label}: {value}',
@@ -18,9 +18,9 @@ export const references = {
     title: 'Other closed projects',
     description: 'Nothing in common with this project recorded, newest first.',
   },
-  more: '… and {count, plural, one {# more closed project} other {# more closed projects}}, which Piloti also searches in chat.',
+  more: '… and {count, plural, one {# more closed project} other {# more closed projects}}, which {productName} also searches in chat.',
   ask: {
-    action: 'Ask Piloti',
+    action: 'Ask {productName}',
     question: 'What can we take from the project “{name}” for this project?',
   },
   fields: {
@@ -43,7 +43,7 @@ export const references = {
     origin: {
       person: 'Confirmed by a person',
       documents: 'From the documents',
-      agent: 'Noted by Piloti',
+      agent: 'Noted by {productName}',
     },
     source: '{file}, p. {page}',
     sourceWithoutPage: '{file}',

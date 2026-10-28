@@ -17,9 +17,9 @@ export const members = {
   },
   roleDescriptions: {
     'project-viewer':
-      'Can read project content, files, and conversations. Cannot change anything or ask Piloti.',
+      'Can read project content, files, and conversations. Cannot change anything or ask {productName}.',
     'project-contributor':
-      'Can also ask Piloti in this project, but not change its documents or memory.',
+      'Can also ask {productName} in this project, but not change its documents or memory.',
     'project-editor': 'Can also edit documents and update the project profile and memory.',
     'project-admin': 'Can also manage project settings, members, and roles.',
   },

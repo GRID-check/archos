@@ -21,13 +21,13 @@ export const answerExport: typeof en.answerExport = {
   fileName: 'antwort',
   aiNotice: {
     title: 'KI-generiert — nicht geprüft',
-    body: 'Dieses Dokument hat Piloti erstellt; ein Mensch hat es nicht geprüft. Es ist ein Entwurf und kein Nachweis — prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben oder einreichen.',
+    body: 'Dieses Dokument hat {productName} erstellt; ein Mensch hat es nicht geprüft. Es ist ein Entwurf und kein Nachweis — prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben oder einreichen.',
   },
   // Siehe die englische Quelle für die drei Bedingungen an diesen Satz: wahr
   // zum Satzzeitpunkt, kein Fehler und keine Entschuldigung. „nicht
   // dargestellt" beschreibt die Datei; „konnte nicht" beschriebe die Arbeit.
   diagramPlaceholder:
-    'Diagramm — in dieser Datei nicht dargestellt. Die Antwort in Piloti zeigt es als Grafik.',
+    'Diagramm — in dieser Datei nicht dargestellt. Die Antwort in {productName} zeigt es als Grafik.',
   question: 'Frage',
   answer: 'Antwort',
   project: 'Projekt',
@@ -75,7 +75,7 @@ export const answerExport: typeof en.answerExport = {
   page: 'S. {page}',
   untitledSource: 'Quelle ohne Titel',
   liveCard:
-    'Diese Karte liest das Modell des Projekts live — ein Dokument kann die gezeigten Werte nicht mitführen. Öffnen Sie die Antwort in Piloti, um sie zu sehen.',
+    'Diese Karte liest das Modell des Projekts live — ein Dokument kann die gezeigten Werte nicht mitführen. Öffnen Sie die Antwort in {productName}, um sie zu sehen.',
   cardTypes: {
     project_profile_patch: 'Vorgeschlagene Änderung am Projektkontext',
     memory_proposal: 'Vorgeschlagener Merkposten',

@@ -27,7 +27,7 @@ export const jobs: typeof en.jobs = {
     empty: {
       title: 'Noch keine Aufgaben',
       description:
-        'Eine Aufgabe ist Arbeit für Piloti, mit oder ohne Rhythmus. Einmal schreiben, festlegen, wann sie läuft — und Piloti recherchiert und legt den Bericht ab, während Sie woanders sind.',
+        'Eine Aufgabe ist Arbeit für {productName}, mit oder ohne Rhythmus. Einmal schreiben, festlegen, wann sie läuft — und {productName} recherchiert und legt den Bericht ab, während Sie woanders sind.',
       action: 'Neue Aufgabe',
     },
     manualOnly: 'Nur manuell',
@@ -116,9 +116,9 @@ export const jobs: typeof en.jobs = {
       task: 'Aufgabe',
       schedule: 'Wann',
       review: 'Prüfen',
-      taskTitle: 'Was soll Piloti tun?',
+      taskTitle: 'Was soll {productName} tun?',
       taskHint:
-        'Schreiben Sie es genau so, wie Sie es in einen neuen Chat tippen würden. Piloti startet ohne weiteren Kontext.',
+        'Schreiben Sie es genau so, wie Sie es in einen neuen Chat tippen würden. {productName} startet ohne weiteren Kontext.',
       scheduleTitle: 'Wann soll es laufen?',
       scheduleHint:
         'Einmal, wiederkehrend oder nur auf Zuruf — die nächsten Termine stehen darunter, zum Prüfen vor der Festlegung.',
@@ -193,11 +193,11 @@ export const jobs: typeof en.jobs = {
     enabledLabel: 'Aktiv',
     enabledHint: 'Eine pausierte Aufgabe feuert nie und lässt sich nicht von Hand starten.',
 
-    reviewSentence: 'Piloti recherchiert {cadence} einen Bericht und legt ihn im Projekt ab.',
+    reviewSentence: '{productName} recherchiert {cadence} einen Bericht und legt ihn im Projekt ab.',
     reviewSentenceOnce:
-      'Piloti recherchiert einen Bericht und legt ihn im Projekt ab — einmal, am {dueAt}.',
+      '{productName} recherchiert einen Bericht und legt ihn im Projekt ab — einmal, am {dueAt}.',
     reviewSentenceManual:
-      'Piloti recherchiert einen Bericht und legt ihn im Projekt ab, jedes Mal wenn Sie es von Hand starten.',
+      '{productName} recherchiert einen Bericht und legt ihn im Projekt ab, jedes Mal wenn Sie es von Hand starten.',
 
     createAndRun: 'Anlegen und jetzt ausführen',
     saveAndRun: 'Speichern und jetzt ausführen',

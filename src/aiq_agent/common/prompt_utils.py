@@ -11,6 +11,8 @@ from typing import Any
 
 import jinja2
 
+from aiq_agent.common.brand import PRODUCT_NAME
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,6 +63,8 @@ def render_prompt_template(template: str, **kwargs: Any) -> str:
     When the caller passes ``available_documents`` and does not already supply
     ``document_inventory``, the shelf-grouped inventory block is injected so
     every agent prompt that lists files uses the same grouping (ADR-0047).
+    ``product_name`` defaults to the product's name (``common/brand.py``), so a
+    prompt names the agent with ``{{ product_name }}`` and never spells it.
 
     Args:
         template: The template string.
@@ -95,6 +99,7 @@ def render_prompt_template(template: str, **kwargs: Any) -> str:
         from aiq_agent.common.answer_envelope import render_envelope_schema
 
         kwargs["answer_envelope_schema"] = render_envelope_schema()
+    kwargs.setdefault("product_name", PRODUCT_NAME)
     try:
         return _compile_template(template).render(**kwargs)
     except jinja2.TemplateError as e:

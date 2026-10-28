@@ -94,9 +94,9 @@ export const feedbackExport: typeof en.feedbackExport = {
     answer_chars: { label: 'Antwortlänge', description: 'Zeichen der gespeicherten Antwort.' },
     answer_mode: {
       label: 'Antwortmodus',
-      description: '„shallow“ (schnelle Antwort), „deep“ (recherchiert), „meta“ (über Piloti selbst), „error“ oder „report“ für eine Tiefenrecherche.',
+      description: '„shallow“ (schnelle Antwort), „deep“ (recherchiert), „meta“ (über {productName} selbst), „error“ oder „report“ für eine Tiefenrecherche.',
     },
-    answer_confidence: { label: 'Sicherheit', description: 'Die Sicherheit, die Piloti zur Antwort angezeigt hat: low, medium oder high.' },
+    answer_confidence: { label: 'Sicherheit', description: 'Die Sicherheit, die {productName} zur Antwort angezeigt hat: low, medium oder high.' },
     confidence_capped_reason: {
       label: 'Sicherheit begrenzt, weil',
       description: 'Warum die angezeigte Sicherheit herabgesetzt wurde, falls ja (z. B. keine verbindliche Quelle).',
@@ -133,7 +133,7 @@ export const feedbackExport: typeof en.feedbackExport = {
       description: 'Gruppe im Lektionen-Experiment: 1 = ohne Plattform-Lektionen beantwortet, 0 = mit, leer = kein Experiment aktiv.',
     },
     app_url: {
-      label: 'In Piloti öffnen',
+      label: 'In {productName} öffnen',
       description: 'Link zur Antwort in ihrem Chat. Öffnet sich nur für Mitglieder dieser Organisation.',
     },
     langfuse_trace_url: { label: 'In Langfuse öffnen', description: 'Der Trace der Antwort in Langfuse, falls es einen gibt.' },
