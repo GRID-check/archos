@@ -21,7 +21,7 @@
  * under "Advanced", so an entry always round-trips verbatim.
  *
  * @see src/lib/norms/schemas.ts — the field contract this mirrors
- * @see src/aiq_agent/common/norm_registry.py — how entries are consumed
+ * @see packages/agent/src/aiq_agent/common/norm_registry.py — how entries are consumed
  */
 
 import type { JSX } from 'react'
@@ -78,7 +78,7 @@ export function isStale(verifiedAt: string): boolean {
  * The canonical Bundesland names the backend accepts — a mismatch makes it drop
  * the entry (`norm_registry._validated_entries`). Offered as a datalist rather
  * than a Select so a value we do not know about still round-trips verbatim.
- * Mirrors `BUNDESLAENDER` in src/aiq_agent/common/norm_registry.py.
+ * Mirrors `BUNDESLAENDER` in packages/agent/src/aiq_agent/common/norm_registry.py.
  */
 const BUNDESLAENDER = [
   'Wien',

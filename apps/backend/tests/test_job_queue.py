@@ -7,7 +7,7 @@ fairness across organizations, priority inside one, the per-organization cap,
 release on drain, and the in-place upgrade of a table written before lanes.
 Cross-worker claim exclusivity in production rests on Postgres
 ``FOR UPDATE SKIP LOCKED``; the substrate's own scenarios, on both databases,
-are ``tests/aiq_agent/common/test_claim_queue.py``.
+are ``packages/agent/tests/common/test_claim_queue.py``.
 """
 
 from __future__ import annotations

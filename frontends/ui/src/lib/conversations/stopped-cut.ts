@@ -31,7 +31,7 @@ export const STOP_CUT_WINDOW_MS = 10 * 60_000
 
 /**
  * The answer's id for a turn, as the agent tier derives it
- * (`answer_message_id`, `src/aiq_agent/turn/response.py`): uuid5 in the URL
+ * (`answer_message_id`, `packages/agent/src/aiq_agent/turn/response.py`): uuid5 in the URL
  * namespace of `grid:assistant:<conversation>:<turn>`. This is what ties an
  * answer to the question that opened its turn, and so to its asker.
  */

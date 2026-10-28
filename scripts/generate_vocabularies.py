@@ -34,17 +34,18 @@ VOCABULARIES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (
         "DELEGATABLE_TASK_KINDS",
         get_args(TaskKind),
-        "The kinds a person may delegate: `TaskKind` in `src/aiq_agent/cards/workspace_cards.py`.",
+        "The kinds a person may delegate: `TaskKind` in `packages/agent/src/aiq_agent/cards/workspace_cards.py`.",
     ),
     (
         "SOURCE_KINDS",
         tuple(SOURCE_KINDS),
-        "The coarse source kinds: the keys of `SOURCE_KINDS` in `src/aiq_agent/common/source_kinds.py`.",
+        "The coarse source kinds: the keys of `SOURCE_KINDS` in `packages/agent/src/aiq_agent/common/source_kinds.py`.",
     ),
     (
         "SHELVES",
         tuple(shelf.value for shelf in Shelf),
-        "The shelves a retrieved chunk can come from: `Shelf` in `src/aiq_agent/common/source_kinds.py`.",
+        "The shelves a retrieved chunk can come from: `Shelf` in "
+        "`packages/agent/src/aiq_agent/common/source_kinds.py`.",
     ),
 )
 

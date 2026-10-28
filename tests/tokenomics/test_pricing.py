@@ -1,6 +1,6 @@
 """Tests for tokenomics pricing (ModelPrice, PricingRegistry).
 
-Module under test: src/aiq_agent/tokenomics/pricing.py
+Module under test: packages/agent/src/aiq_agent/tokenomics/pricing.py
 """
 
 import pytest

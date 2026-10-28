@@ -488,7 +488,7 @@ autonomously — no confirm-gate interrupts the conversation and there is no inl
 
 **(a) Live, in traces.** Every `remember(...)` call is emitted as an intermediate
 trace event on the WS stream (same channel as tool calls / thinking steps) and as
-an observability span (`src/aiq_agent/observability`). So you *watch* memory form
+an observability span (`packages/agent/src/aiq_agent/observability`). So you *watch* memory form
 in the trace/Thinking view in real time — you just aren't asked to approve it.
 
 **(b) Managed in the Project Overview.** The overview page gains a "What Grid knows

@@ -16,7 +16,7 @@
  * service: the internal route handler, the browser, the typed client
  * (`./run-ledger-client`), and — through the JSON Schema written from these zod
  * schemas into `tests/fixtures/run-ledger.schema.json` — the Python agent tier
- * (`src/aiq_agent/common/run_ledger.py`). Importing the database schema here
+ * (`packages/agent/src/aiq_agent/common/run_ledger.py`). Importing the database schema here
  * would drag drizzle into the transport layer, which
  * `server-component-db-access.spec.ts` fails on, and it would make the Python
  * export impossible to build without a database. Same arrangement as

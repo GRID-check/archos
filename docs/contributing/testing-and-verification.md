@@ -78,17 +78,17 @@ Keep what the migration put into the database that is still refused today (a
 CHECK, a unique index, a guard trigger) unless a suite on the full chain
 already covers it.
 
-**Backend tests run against this checkout's `src/`.** Without a guard, pytest
+**Backend tests run against this checkout's `packages/agent/src/`.** Without a guard, pytest
 resolves `aiq_agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
-`pythonpath` puts `src/` first, so a bare `pytest` is safe as well as the Taskfile.
+`pythonpath` puts `packages/agent/src/` first, so a bare `pytest` is safe as well as the Taskfile.
 
 **The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
-Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
+Backend job.** `packages/agent/tests/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
 `apps/backend/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
-SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
+SQL. The folder card builder's suites (`packages/agent/tests/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
 `database_url` and `agent_db` fixtures in their `conftest.py`. Without `TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
@@ -760,7 +760,7 @@ counted. Seeding is idempotent and embeds only what changed; a file cut another 
 before loses its stale points. It needs the deployment's embedding key. Reseed after
 editing `project.yaml` by running the suite again.
 
-The suite starts each run from the working tree: edit nothing under `src/`
+The suite starts each run from the working tree: edit nothing under `packages/agent/src/`
 while it runs, or run it from an exported copy of the commit
 (`git archive <sha> | tar -x -C /tmp/copy`).
 

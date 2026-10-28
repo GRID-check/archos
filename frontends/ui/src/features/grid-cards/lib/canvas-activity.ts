@@ -1,7 +1,7 @@
 /**
  * What Piloti did on a document's canvas, as the chat card reads it.
  *
- * The `canvas_activity` card is system-emitted: Piloti's canvas tools (`src/aiq_agent/tools/canvas/`)
+ * The `canvas_activity` card is system-emitted: Piloti's canvas tools (`packages/agent/src/aiq_agent/tools/canvas/`)
  * push it after Piloti proposed marks, set, changed or deleted one at the
  * person's request, or replied in a thread, and the model cannot author one.
  * Every id on it is one the annotations service returned.
@@ -9,7 +9,7 @@
  * ## The local type
  *
  * These interfaces mirror `CanvasActivityCard` in
- * `src/aiq_agent/cards/canvas_activity_card.py` field for field. They exist so the component
+ * `packages/agent/src/aiq_agent/cards/canvas_activity_card.py` field for field. They exist so the component
  * reads a shape it owns, and the generated Zod output (`src/shared/cards/generated.ts`,
  * from `npm run generate:cards`) is assignable to it: `w`/`h` arrive there as
  * `number | null`, which these accept.

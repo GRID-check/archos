@@ -801,7 +801,7 @@ const SEARCH_SCOPE: Readonly<Record<AgentDoor, { area: string; example: string; 
 /**
  * The four meta-tools of `search` mode, as `principal` sees them: the domain
  * list names only the areas the door offers. The single source of their words: Piloti's own client reads the
- * in-product variant from `src/aiq_agent/tools/workspace/meta_tools.json`,
+ * in-product variant from `packages/agent/src/aiq_agent/tools/workspace/meta_tools.json`,
  * which `meta-tools.spec.ts` writes from here and holds current.
  */
 export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor' | 'door'>): Record<MetaToolName, MetaTool> {

@@ -4598,6 +4598,6 @@
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Generated from src/aiq_agent/common/wire_v2.py by scripts/generate_wire_schema.py. Do not edit by hand; tests/aiq_agent/common/test_wire_v2.py fails when it is stale.",
+  "description": "Generated from packages/agent/src/aiq_agent/common/wire_v2.py by scripts/generate_wire_schema.py. Do not edit by hand; packages/agent/tests/common/test_wire_v2.py fails when it is stale.",
   "title": "Piloti chat wire v2"
 }

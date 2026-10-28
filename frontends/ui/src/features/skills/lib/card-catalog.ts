@@ -25,7 +25,7 @@ import { gridCardSchema } from '@/shared/cards/schemas'
 /**
  * Card types emitted only by a tool, never by the model.
  *
- * Kept in sync with `SYSTEM_CARD_TYPES` in `src/aiq_agent/cards/catalog.py`,
+ * Kept in sync with `SYSTEM_CARD_TYPES` in `packages/agent/src/aiq_agent/cards/catalog.py`,
  * whose `model_facing_card_types()` — the set the backend validates a saved
  * `grid-cards` value against — excludes them. A denylist rather than a derived
  * value because nothing in the generated Zod schemas records the distinction —

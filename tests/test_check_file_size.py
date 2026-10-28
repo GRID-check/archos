@@ -177,7 +177,7 @@ def test_generated_test_and_copy_files_are_not_checked(checker):
         "frontends/ui/src/adapters/api/wire-v2.generated.ts",
         "frontends/ui/src/features/chat/ChatArea.spec.tsx",
         "frontends/ui/scheduler/index.spec.mjs",
-        "tests/aiq_agent/test_runner.py",
+        "packages/agent/tests/test_runner.py",
         "frontends/ui/src/app/dev/_fixtures/stream-frames.ts",
         "frontends/ui/src/i18n/dictionaries/de/chat.ts",
         "frontends/ui/src/lib/db/migrations/0001.ts",
@@ -188,7 +188,7 @@ def test_generated_test_and_copy_files_are_not_checked(checker):
         "frontends/ui/src/features/layout/components/InputArea.tsx",
         "frontends/ui/src/lib/documents/generated.ts",  # hand-written: documents nobody wrote, not generated code
         "frontends/ui/server.js",
-        "src/aiq_agent/common/x.py",
+        "packages/agent/src/aiq_agent/common/x.py",
     ):
         assert checker.is_checked(path), path
 

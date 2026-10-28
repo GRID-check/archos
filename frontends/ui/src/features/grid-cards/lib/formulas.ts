@@ -16,7 +16,7 @@
  * OIB Begriffsbestimmungen, not in a Punkt this card could name.
  *
  * Hand-computed cases live in `formula-cases.json` beside this file, validated
- * as cards by `tests/aiq_agent/cards/test_formula_card.py` and evaluated here by
+ * as cards by `packages/agent/tests/cards/test_formula_card.py` and evaluated here by
  * `formulas.spec.ts`.
  */
 

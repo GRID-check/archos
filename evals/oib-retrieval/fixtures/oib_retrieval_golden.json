@@ -139,7 +139,7 @@
           "grade": 2
         }
       ],
-      "provenance": "contracts/cards/schemas.json: FireCompartmentCard names Brandabschnitt questions and OIB 2; src/aiq_agent/cards/catalog.py CARD_EXAMPLES ['fire_compartment'] cites 'OIB-Richtlinie 2, Pkt. 3.1' at Punkt level.",
+      "provenance": "contracts/cards/schemas.json: FireCompartmentCard names Brandabschnitt questions and OIB 2; packages/agent/src/aiq_agent/cards/catalog.py CARD_EXAMPLES ['fire_compartment'] cites 'OIB-Richtlinie 2, Pkt. 3.1' at Punkt level.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p5 of data/oib/oib-rl_2_ausgabe_mai_2023.pdf: Punkt 3.1.1's table gives 1.600 m² and 60 m Längsausdehnung for Büronutzung and 1.200 m² for andere Nutzung; Punkt 3.1.2 (same page) caps underground compartments at 800 m², which any real project with a basement needs.",
       "calibration_pending": true,
@@ -163,7 +163,7 @@
           "grade": 2
         }
       ],
-      "provenance": "contracts/cards/schemas.json: FireCompartmentCard names Brandabschnitt questions and OIB 2; src/aiq_agent/cards/catalog.py CARD_EXAMPLES ['fire_compartment'] cites 'OIB-Richtlinie 2, Pkt. 3.1' at Punkt level.",
+      "provenance": "contracts/cards/schemas.json: FireCompartmentCard names Brandabschnitt questions and OIB 2; packages/agent/src/aiq_agent/cards/catalog.py CARD_EXAMPLES ['fire_compartment'] cites 'OIB-Richtlinie 2, Pkt. 3.1' at Punkt level.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p5 of data/oib/oib-rl_2_ausgabe_mai_2023.pdf: Punkt 3.1.1's table gives 1.600 m² and 60 m Längsausdehnung for Büronutzung and 1.200 m² for andere Nutzung; Punkt 3.1.2 (same page) caps underground compartments at 800 m², which any real project with a basement needs.",
       "calibration_pending": true,
@@ -556,7 +556,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/cards/catalog.py: CARD_EXAMPLES['daylight_incidence'] carries the Punkt-level reference {'document': 'OIB-Richtlinie 3', 'section': 'Pkt. 9.1.1'}; {CARDS} DaylightIncidenceCard adds the 45-degree free-light line.",
+      "provenance": "packages/agent/src/aiq_agent/cards/catalog.py: CARD_EXAMPLES['daylight_incidence'] carries the Punkt-level reference {'document': 'OIB-Richtlinie 3', 'section': 'Pkt. 9.1.1'}; {CARDS} DaylightIncidenceCard adds the 45-degree free-light line.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p9 of data/oib/oib-rl_3_ausgabe_mai_2023.pdf: Punkt 9.1.1 requires at least 12 % of the room's floor area (the card example's 3,0 m² for 25 m² is 12 %), and Punkt 9.1.2 defines the freier Lichteinfall as a 45-degree angle, swivelled by at most 30 degrees — both grade 3, because the area alone does not answer a daylight question. Punkt 9.1.3 (15 % / +2 % per metre for projections over 1,50 m) is grade 2.",
       "calibration_pending": true,
@@ -585,7 +585,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/cards/catalog.py: CARD_EXAMPLES['daylight_incidence'] carries the Punkt-level reference {'document': 'OIB-Richtlinie 3', 'section': 'Pkt. 9.1.1'}; {CARDS} DaylightIncidenceCard adds the 45-degree free-light line.",
+      "provenance": "packages/agent/src/aiq_agent/cards/catalog.py: CARD_EXAMPLES['daylight_incidence'] carries the Punkt-level reference {'document': 'OIB-Richtlinie 3', 'section': 'Pkt. 9.1.1'}; {CARDS} DaylightIncidenceCard adds the 45-degree free-light line.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p9 of data/oib/oib-rl_3_ausgabe_mai_2023.pdf: Punkt 9.1.1 requires at least 12 % of the room's floor area (the card example's 3,0 m² for 25 m² is 12 %), and Punkt 9.1.2 defines the freier Lichteinfall as a 45-degree angle, swivelled by at most 30 degrees — both grade 3, because the area alone does not answer a daylight question. Punkt 9.1.3 (15 % / +2 % per metre for projections over 1,50 m) is grade 2.",
       "calibration_pending": true,
@@ -672,7 +672,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: the intake vocabulary's 'stellplatz_relevant' trigger and the garage uses it scopes make garage questions a first-class intake path; the ventilation Richtlinie is OIB 3 (Hygiene).",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the intake vocabulary's 'stellplatz_relevant' trigger and the garage uses it scopes make garage questions a first-class intake path; the ventilation Richtlinie is OIB 3 (Hygiene).",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p9 of data/oib/oib-rl_3_ausgabe_mai_2023.pdf: Punkt 8.3.1 sets the 60 ppm quarter-hour mean; Punkt 8.3.3 gives the deemed-to-satisfy route for garages up to 250 m² (1000 cm² per Stellplatz, or 0,5-fold air change); Punkt 8.3.4 requires CO measurement above 250 m² with the 60 ppm / 150 ppm thresholds. Both supporting Punkte are grade 2 — the limit without the compliance route is unusable.",
       "calibration_pending": true,
@@ -701,7 +701,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: the intake vocabulary's 'stellplatz_relevant' trigger and the garage uses it scopes make garage questions a first-class intake path; the ventilation Richtlinie is OIB 3 (Hygiene).",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the intake vocabulary's 'stellplatz_relevant' trigger and the garage uses it scopes make garage questions a first-class intake path; the ventilation Richtlinie is OIB 3 (Hygiene).",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p9 of data/oib/oib-rl_3_ausgabe_mai_2023.pdf: Punkt 8.3.1 sets the 60 ppm quarter-hour mean; Punkt 8.3.3 gives the deemed-to-satisfy route for garages up to 250 m² (1000 cm² per Stellplatz, or 0,5-fold air change); Punkt 8.3.4 requires CO measurement above 250 m² with the 60 ppm / 150 ppm thresholds. Both supporting Punkte are grade 2 — the limit without the compliance route is unusable.",
       "calibration_pending": true,
@@ -887,7 +887,7 @@
           "grade": 1
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: the hand-written verdicts treat OIB 1 as near-universally applicable, so a structural question is in scope for every project the intake accepts.",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the hand-written verdicts treat OIB 1 as near-universally applicable, so a structural question is in scope for every project the intake accepts.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p4 of data/oib/oib-rl_1_ausgabe_mai_2023.pdf: Punkt 2.1.2 names ÖNORM EN 1990 with ÖNORM B 1990-1 and lists the building types needing third-party checking (>1.000 persons, >16 oberirdische Geschoße, Seveso-III). Punkt 2.1.1 is the general Tragfähigkeit/Gebrauchstauglichkeit sentence — grade 1, it names no standard.",
       "calibration_pending": true,
@@ -911,7 +911,7 @@
           "grade": 1
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: the hand-written verdicts treat OIB 1 as near-universally applicable, so a structural question is in scope for every project the intake accepts.",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the hand-written verdicts treat OIB 1 as near-universally applicable, so a structural question is in scope for every project the intake accepts.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p4 of data/oib/oib-rl_1_ausgabe_mai_2023.pdf: Punkt 2.1.2 names ÖNORM EN 1990 with ÖNORM B 1990-1 and lists the building types needing third-party checking (>1.000 persons, >16 oberirdische Geschoße, Seveso-III). Punkt 2.1.1 is the general Tragfähigkeit/Gebrauchstauglichkeit sentence — grade 1, it names no standard.",
       "calibration_pending": true,
@@ -940,7 +940,7 @@
           "grade": 1
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: the module scopes the fire sub-Richtlinien 2.1/2.2/2.3 conditionally, and 2.2 is the garage one; contracts/cards/schemas.json EgressDiagramCard supplies the question class.",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the module scopes the fire sub-Richtlinien 2.1/2.2/2.3 conditionally, and 2.2 is the garage one; contracts/cards/schemas.json EgressDiagramCard supplies the question class.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p7 of data/oib/oib-rl_2.2_ausgabe_mai_2023.pdf: Punkt 5.5.1 gives 40 m Gehweglänge from any point of the garage, with the Schleuse condition for garages up to two underground storeys and 600 m². Punkt 5.5.2 (same page) adds the independent second route and the 25 m common-path limit (grade 2); Punkt 5.4.3's Schleuse requirements are grade 1 context.",
       "calibration_pending": true,
@@ -969,7 +969,7 @@
           "grade": 1
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: the module scopes the fire sub-Richtlinien 2.1/2.2/2.3 conditionally, and 2.2 is the garage one; contracts/cards/schemas.json EgressDiagramCard supplies the question class.",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the module scopes the fire sub-Richtlinien 2.1/2.2/2.3 conditionally, and 2.2 is the garage one; contracts/cards/schemas.json EgressDiagramCard supplies the question class.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p7 of data/oib/oib-rl_2.2_ausgabe_mai_2023.pdf: Punkt 5.5.1 gives 40 m Gehweglänge from any point of the garage, with the Schleuse condition for garages up to two underground storeys and 600 m². Punkt 5.5.2 (same page) adds the independent second route and the 25 m common-path limit (grade 2); Punkt 5.4.3's Schleuse requirements are grade 1 context.",
       "calibration_pending": true,
@@ -993,7 +993,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/cards/catalog.py: the building_section prose states 'Gebäude ein Hochhaus (> 22 m) und OIB-Richtlinie 2.3 wird anwendbar', naming both the threshold and the Richtlinie.",
+      "provenance": "packages/agent/src/aiq_agent/cards/catalog.py: the building_section prose states 'Gebäude ein Hochhaus (> 22 m) und OIB-Richtlinie 2.3 wird anwendbar', naming both the threshold and the Richtlinie.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p6 of data/oib/oib-rl_2.3_ausgabe_mai_2023.pdf: Punkt 2.5 a)-c) require the direct exit to a safe place, a Feuerwehrzufahrt where the exit is not on a public way, and stair geometry that stops people running past the exit storey. Punkt 3.2 (p10, Sicherheitstreppenhäuser der Stufe 1 for Fluchtniveau up to 32 m) is grade 2 — it is the band most 22 m+ buildings actually fall in.",
       "calibration_pending": true,
@@ -1017,7 +1017,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/cards/catalog.py: the building_section prose states 'Gebäude ein Hochhaus (> 22 m) und OIB-Richtlinie 2.3 wird anwendbar', naming both the threshold and the Richtlinie.",
+      "provenance": "packages/agent/src/aiq_agent/cards/catalog.py: the building_section prose states 'Gebäude ein Hochhaus (> 22 m) und OIB-Richtlinie 2.3 wird anwendbar', naming both the threshold and the Richtlinie.",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p6 of data/oib/oib-rl_2.3_ausgabe_mai_2023.pdf: Punkt 2.5 a)-c) require the direct exit to a safe place, a Feuerwehrzufahrt where the exit is not on a public way, and stair geometry that stops people running past the exit storey. Punkt 3.2 (p10, Sicherheitstreppenhäuser der Stufe 1 for Fluchtniveau up to 32 m) is grade 2 — it is the band most 22 m+ buildings actually fall in.",
       "calibration_pending": true,
@@ -1041,7 +1041,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: _BETRIEBSBAU_USES = {'produzierend', 'lager'} is the intake vocabulary that routes a project to OIB 2.1 (Brandschutz bei Betriebsbauten).",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: _BETRIEBSBAU_USES = {'produzierend', 'lager'} is the intake vocabulary that routes a project to OIB 2.1 (Brandschutz bei Betriebsbauten).",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p6 of data/oib/oib-rl_2.1_ausgabe_mai_2023.pdf: Punkt 3.6.1 gives 40 m from any point of any room to a direct exit or a gesicherter Fluchtbereich; Punkt 3.6.2 (same page) is grade 2 because it is the extension that industrial halls actually rely on, conditioned on clear room height.",
       "calibration_pending": true,
@@ -1065,7 +1065,7 @@
           "grade": 2
         }
       ],
-      "provenance": "src/aiq_agent/common/applicability.py: _BETRIEBSBAU_USES = {'produzierend', 'lager'} is the intake vocabulary that routes a project to OIB 2.1 (Brandschutz bei Betriebsbauten).",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: _BETRIEBSBAU_USES = {'produzierend', 'lager'} is the intake vocabulary that routes a project to OIB 2.1 (Brandschutz bei Betriebsbauten).",
       "label_method": "Question class and Richtlinie taken from the repo's own taxonomy (see provenance); the Punkt-level labels were then read directly out of the extracted text of the cited PDF page and graded 3 (states the answer) / 2 (answer is wrong or incomplete without it) / 1 (context an expert would want beside it). No LLM, no retrieval run, and no production ranking was consulted — the labels do not know what any arm returns.",
       "notes": "Read p6 of data/oib/oib-rl_2.1_ausgabe_mai_2023.pdf: Punkt 3.6.1 gives 40 m from any point of any room to a direct exit or a gesicherter Fluchtbereich; Punkt 3.6.2 (same page) is grade 2 because it is the extension that industrial halls actually rely on, conditioned on clear room height.",
       "calibration_pending": true,
@@ -1130,7 +1130,7 @@
       "question": "Wie viele Kfz-Stellplätze muss ich nach dem Wiener Garagengesetz für ein Wohnhaus nachweisen?",
       "question_class": "refusal",
       "relevant": [],
-      "provenance": "src/aiq_agent/common/applicability.py: the 'stellplatz_relevant' trigger hint says 'Stellplatzverpflichtung: Wiener Garagengesetz (bzw. Landesrecht) prüfen'; configs/norms/at/registry.yml entry 'garagengesetz-wien' is a RIS pointer, not corpus; contracts/cards/schemas.json ParkingRequirementCard names the question class and attributes it to 'Bauordnung / Stellplatzverordnung'.",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the 'stellplatz_relevant' trigger hint says 'Stellplatzverpflichtung: Wiener Garagengesetz (bzw. Landesrecht) prüfen'; configs/norms/at/registry.yml entry 'garagengesetz-wien' is a RIS pointer, not corpus; contracts/cards/schemas.json ParkingRequirementCard names the question class and attributes it to 'Bauordnung / Stellplatzverordnung'.",
       "label_method": "Negative label. Established by reading the Punkt index for every Richtlinie plus the extracted text of the nearest-looking Punkte (named in notes) and confirming none of them answers the question; the subject matter is Landesrecht or tax law, which configs/norms/at/registry.yml carries as RIS pointers rather than as corpus. relevant is empty on purpose.",
       "notes": "Read p9 of data/oib/oib-rl_4_ausgabe_mai_2023.pdf: OIB 4 Punkt 2.10 regulates the GEOMETRY of Stellplätze (3,00 m Fahrbahnbreite, ramp gradients), never the required COUNT. The count is Landesrecht outside this corpus, so the qrels are empty.",
       "calibration_pending": true,
@@ -1143,7 +1143,7 @@
       "question": "How many car parking spaces must be provided for a residential building under the Vienna garage act?",
       "question_class": "refusal",
       "relevant": [],
-      "provenance": "src/aiq_agent/common/applicability.py: the 'stellplatz_relevant' trigger hint says 'Stellplatzverpflichtung: Wiener Garagengesetz (bzw. Landesrecht) prüfen'; configs/norms/at/registry.yml entry 'garagengesetz-wien' is a RIS pointer, not corpus; contracts/cards/schemas.json ParkingRequirementCard names the question class and attributes it to 'Bauordnung / Stellplatzverordnung'.",
+      "provenance": "packages/agent/src/aiq_agent/common/applicability.py: the 'stellplatz_relevant' trigger hint says 'Stellplatzverpflichtung: Wiener Garagengesetz (bzw. Landesrecht) prüfen'; configs/norms/at/registry.yml entry 'garagengesetz-wien' is a RIS pointer, not corpus; contracts/cards/schemas.json ParkingRequirementCard names the question class and attributes it to 'Bauordnung / Stellplatzverordnung'.",
       "label_method": "Negative label. Established by reading the Punkt index for every Richtlinie plus the extracted text of the nearest-looking Punkte (named in notes) and confirming none of them answers the question; the subject matter is Landesrecht or tax law, which configs/norms/at/registry.yml carries as RIS pointers rather than as corpus. relevant is empty on purpose.",
       "notes": "Read p9 of data/oib/oib-rl_4_ausgabe_mai_2023.pdf: OIB 4 Punkt 2.10 regulates the GEOMETRY of Stellplätze (3,00 m Fahrbahnbreite, ramp gradients), never the required COUNT. The count is Landesrecht outside this corpus, so the qrels are empty.",
       "calibration_pending": true,

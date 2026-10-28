@@ -377,7 +377,7 @@ what `llamaindex` can do, and a second backend that cannot do all of it fails
 quietly rather than loudly. A decision to add one supersedes ADR-0072.
 
 What stays is the seam: `BaseRetriever` and `BaseIngestor` in
-`src/aiq_agent/knowledge/base.py`, and the `@register_retriever` /
+`packages/agent/src/aiq_agent/knowledge/base.py`, and the `@register_retriever` /
 `@register_ingestor` registry in `factory.py`. Tests register fakes through it,
 and `tests/knowledge_layer_tests/run_adapter_compliance.py --backend <name>`
 checks an adapter against the interface. `register.py` wires `llamaindex` in
@@ -411,10 +411,10 @@ The registration name (e.g., `"my_backend"`) is what factory calls use:
 1. `__init__.py` imports the adapter classes
 2. The NAT function imports from `knowledge_layer.<backend>.adapter`
 
-### Core Library (`src/aiq_agent/knowledge/`)
+### Core Library (`packages/agent/src/aiq_agent/knowledge/`)
 
 ```
-src/aiq_agent/knowledge/
+packages/agent/src/aiq_agent/knowledge/
     __init__.py      # Exports: Chunk, get_retriever, get_ingestor, etc.
     base.py          # Abstract classes: BaseRetriever, BaseIngestor
     schema.py        # Data models: Chunk, RetrievalResult, FileInfo, CollectionInfo

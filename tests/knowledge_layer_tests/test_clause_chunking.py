@@ -343,7 +343,7 @@ def test_ingestion_falls_back_to_one_document_per_page_for_everything_else() -> 
 
 
 def test_the_chunker_works_under_the_deployed_import_path() -> None:
-    """The backend runs with PYTHONPATH=src; pytest also puts the repo root on sys.path.
+    """The backend runs with PYTHONPATH=packages/agent/src; pytest also puts the repo root on sys.path.
 
     That difference hid a ModuleNotFoundError: the chunker reached the adapter by its
     source-tree spelling, which resolves under pytest and not in production, so

@@ -1,4 +1,4 @@
-// @disk-inputs: ../../src/aiq_agent/skills/builtin.py, ../../src/aiq_agent/skills/builtin/oib/**
+// @disk-inputs: ../../packages/agent/src/aiq_agent/skills/builtin.py, ../../packages/agent/src/aiq_agent/skills/builtin/oib/**
 /**
  * @vitest-environment node
  */
@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { canonicalSkillName, LEGACY_SKILL_NAMES, legacyNamesOf } from './legacy-names'
 import { PLATFORM_SKILLS } from './platform-skills'
 
-const BUILTIN = join(process.cwd(), '..', '..', 'src', 'aiq_agent', 'skills')
+const BUILTIN = join(process.cwd(), '..', '..', 'packages', 'agent', 'src', 'aiq_agent', 'skills')
 
 describe('builtin skill names written before the English names', () => {
   it('maps every old name to a builtin skill that ships and never to itself', () => {

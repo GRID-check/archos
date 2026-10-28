@@ -10,7 +10,7 @@
  * generated schema holds, and no gap that has since been closed.
  *
  * Python reads `tests/fixtures/surface-parity.json`
- * (`tests/aiq_agent/tools/test_surface_parity.py`: every tool of the canvas
+ * (`packages/agent/tests/tools/test_surface_parity.py`: every tool of the canvas
  * group and `look` has an entry). A changed entry fails here until it is
  * regenerated:
  *

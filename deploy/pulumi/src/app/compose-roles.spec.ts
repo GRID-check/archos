@@ -183,7 +183,7 @@ describe("the research queue is the only execution path", () => {
   });
 
   it("the Python sources read none of them either", () => {
-    const python = [join("apps", "backend", "src", "aiq_api"), join("src", "aiq_agent")]
+    const python = [join("apps", "backend", "src", "aiq_api"), join("packages", "agent", "src", "aiq_agent")]
       .flatMap((dir) =>
         readdirSync(join(repoRoot, dir), { recursive: true })
           .filter((f): f is string => typeof f === "string" && f.endsWith(".py"))

@@ -63,7 +63,7 @@ export const METADATA_CARDS = 'grid-cards'
  * `grid-catalog` — whether a PLATFORM skill is offered to organizations.
  *
  * Only meaningful on a platform skill (a file under
- * `src/aiq_agent/skills/builtin/`), because only those have two possible
+ * `packages/agent/src/aiq_agent/skills/builtin/`), because only those have two possible
  * audiences:
  *
  *   absent            Machinery. The pipeline's own instructions. Never listed
@@ -174,7 +174,7 @@ export const CHAT_SKILL_AGENT: KnownSkillAgent = 'researcher'
  * from chat instead.
  *
  * Mirrored in `features/skills/lib/agent-scope.ts` (client-side, dependency-free
- * by design) and in `src/aiq_agent/skills/resolver.py::AGENT_ALIASES`.
+ * by design) and in `packages/agent/src/aiq_agent/skills/resolver.py::AGENT_ALIASES`.
  */
 const SKILL_AGENT_ALIASES: Record<string, KnownSkillAgent> = {
   shallow_researcher: 'researcher',

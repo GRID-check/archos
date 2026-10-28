@@ -17,7 +17,7 @@
  *   - `escape_level`: the band stated flat; else the band of the highest
  *     `escape_level_m` (metres) across the buildings.
  *   - `storeys_below_ground`: the highest count across the buildings.
- * The Python twin, `src/aiq_agent/common/applicability.py`, reads the same keys
+ * The Python twin, `packages/agent/src/aiq_agent/common/applicability.py`, reads the same keys
  * from the prompt view and must give the same verdicts.
  */
 

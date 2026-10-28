@@ -3,7 +3,7 @@
 /**
  * Agent profiler (platform staff): cross-organization conversation directory
  * plus a per-turn execution timeline, backed by the `agent_profiler_spans`
- * ledger (src/aiq_agent/common/profiler.py, the timing sibling of the LLM cost
+ * ledger (packages/agent/src/aiq_agent/common/profiler.py, the timing sibling of the LLM cost
  * ledger).
  *
  * One tab of Platform → Answer quality ("timing"). Two cards side by side on a

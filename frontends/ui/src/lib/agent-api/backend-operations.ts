@@ -12,7 +12,7 @@ import 'server-only'
  * The input schema is the one the chat model reads, generated from the Python
  * functions into `tests/fixtures/backend-tools.schema.json`
  * (`scripts/generate_backend_tools_schema.py`, held current by
- * `tests/aiq_agent/common/test_backend_tools_schema.py`). The DESCRIPTION is
+ * `packages/agent/tests/common/test_backend_tools_schema.py`). The DESCRIPTION is
  * this file's own, in English: the fixture's are Piloti's native tool
  * descriptions, written for Piloti's prompt in a German office, with German
  * terms, German example queries and Piloti's other tools (`surface_documents`,

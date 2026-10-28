@@ -740,7 +740,7 @@ function quoteSource(instruction: string, text: string | null | undefined): Quot
  *
  * It names the way that does work: „Mit Piloti besprechen" loads the open version into
  * that conversation's working directory, where Piloti edits it in place and no
- * prompt ceiling applies (`src/aiq_agent/turn/subject_document.py`).
+ * prompt ceiling applies (`packages/agent/src/aiq_agent/turn/subject_document.py`).
  */
 function tooLongToRevise(length: number, budget: number): string {
   return [

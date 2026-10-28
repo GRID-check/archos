@@ -165,7 +165,7 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
 
   // The next two scenarios are the lane order every claim shares: the same two run
   // in tests/knowledge_layer_tests/test_ingest_queue.py and
-  // tests/aiq_agent/common/test_claim_queue.py. Priority never picks the lane.
+  // packages/agent/tests/common/test_claim_queue.py. Priority never picks the lane.
   it('ranks a lane by its oldest job, not its best priority: an older bulk job beats a newer interactive one', async () => {
     await seed('a-bulk', A, '2026-09-30T10:00:00Z', 1)
     await seed('b-interactive', B, '2026-09-30T10:00:01Z', 0)

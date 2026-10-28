@@ -6,7 +6,7 @@
  * DOCUMENT (`Plan.pdf` on the Projektwissen shelf) and a LOCUS within it
  * (page 3). Parsing it is therefore a model concern, not a rendering one.
  *
- * Every regex here mirrors a backend counterpart in `src/aiq_agent/citations/`;
+ * Every regex here mirrors a backend counterpart in `packages/agent/src/aiq_agent/citations/`;
  * the pairs are pinned by `tests/fixtures/citation_pipeline/` through
  * `citation-wire-contract.spec.ts`.
  */

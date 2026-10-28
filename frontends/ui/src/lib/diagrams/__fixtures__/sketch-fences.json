@@ -1,5 +1,5 @@
 {
- "$comment": "Both sketch fence checks run these: common/sketch_fence.py (tests/aiq_agent/common/test_sketch_fence.py) and lib/diagrams/sketch-fence.ts (sketch-fence.spec.ts). Same body, same verdict.",
+ "$comment": "Both sketch fence checks run these: common/sketch_fence.py (packages/agent/tests/common/test_sketch_fence.py) and lib/diagrams/sketch-fence.ts (sketch-fence.spec.ts). Same body, same verdict.",
  "cases": [
   {
    "name": "labelled shapes bound by an arrow",

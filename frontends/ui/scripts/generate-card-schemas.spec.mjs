@@ -193,7 +193,7 @@ describe('values the model types as Any', () => {
 
 /**
  * The committed artifact is what this generator produces from the committed
- * input — the frontend half of `tests/aiq_agent/cards/test_schema_sync.py`.
+ * input — the frontend half of `packages/agent/tests/cards/test_schema_sync.py`.
  *
  * That test holds `models.py -> schemas.json`. Nothing held
  * `schemas.json -> generated.ts`, and the two guards that looked as though they

@@ -1008,12 +1008,12 @@ as it does on a desk.
 ## Tests
 
 - Contract: every recorded turn in `contracts/wire/v2/` is valid and is byte for
-  byte the frame the server writes (`tests/aiq_agent/common/test_wire_v2.py`,
+  byte the frame the server writes (`packages/agent/tests/common/test_wire_v2.py`,
   `frontends/ui/src/adapters/api/wire-v2.spec.ts`).
 - Producers and handler: prose deltas are coalesced, the snapshot and the
   retraction are emitted from the streamed call, `RUN_FINISHED` is persisted
   from `TurnResult`, and a cancelled turn persists its partial marked stopped
-  (`tests/aiq_agent/turn/`, `apps/backend/tests/test_chat_socket.py`).
+  (`packages/agent/tests/turn/`, `apps/backend/tests/test_chat_socket.py`).
 - Fold: every fixture turn folds to the expected view; a duplicate `seq` keeps
   identity and a gap is flagged; snapshot, retraction and terminal
   replacement; a card before its marker; a spectator starting mid-turn

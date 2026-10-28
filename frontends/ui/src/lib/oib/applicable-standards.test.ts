@@ -240,7 +240,7 @@ describe('getApplicableStandards reads the keys the wizard writes', () => {
 
 /**
  * Parity fixtures. The Python twin asserts the same table in
- * tests/aiq_agent/common/test_applicability.py (TestTwinParityFixtures).
+ * packages/agent/tests/common/test_applicability.py (TestTwinParityFixtures).
  * Keep the two tables identical.
  */
 describe('parity fixtures shared with the Python twin', () => {

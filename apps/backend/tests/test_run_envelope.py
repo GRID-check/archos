@@ -517,7 +517,7 @@ class TestTheWireContract:
 #: Every place in this tier that computes an HMAC, and why it may. A new one is a
 #: new answer to "who signs here?", and the answer for an envelope is: nobody.
 _HMAC_SITES = {
-    ("src/aiq_agent/project_context.py", "from_envelope"),  # verifies, compare_digest
+    ("packages/agent/src/aiq_agent/project_context.py", "from_envelope"),  # verifies, compare_digest
     ("apps/backend/src/aiq_api/auth/utils.py", "_build_pseudonymous_trace_user_id"),  # trace ids
     ("apps/backend/src/aiq_api/auth/utils.py", "_build_pseudonymous_trace_client_id"),  # trace ids
 }
@@ -544,7 +544,9 @@ def _hmac_sites(root: Path) -> set[tuple[str, str]]:
 
 class TestNothingIsSignedInPython:
     def test_no_hmac_is_computed_anywhere_it_has_not_been_justified(self):
-        sites = _hmac_sites(REPO / "src" / "aiq_agent") | _hmac_sites(REPO / "apps" / "backend" / "src")
+        sites = _hmac_sites(REPO / "packages" / "agent" / "src" / "aiq_agent") | _hmac_sites(
+            REPO / "apps" / "backend" / "src"
+        )
         assert sites == _HMAC_SITES
 
     def test_the_run_envelope_path_has_no_signing_primitive(self):

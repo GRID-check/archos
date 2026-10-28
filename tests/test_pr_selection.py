@@ -15,13 +15,13 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = {
-    "tests/aiq_agent/test_prompt.py": "PROMPT = 'agents/piloti/prompts/piloti_static.md'",
+    "packages/agent/tests/test_prompt.py": "PROMPT = 'agents/piloti/prompts/piloti_static.md'",
     "tests/test_grounding.py": "FIXTURE = ROOT / 'tests/fixtures/citation_pipeline/grounding_block.txt'",
     "tests/test_decisions_eval.py": "CASES = sorted((ROOT / 'tests' / 'fixtures' / 'decisions').rglob('*.json'))",
     "tests/test_visual_eval.py": "SHAPES = list((ROOT / 'tests' / 'fixtures' / 'visual').iterdir())",
     "tests/test_project_yaml.py": "load('project.yaml')",
     # A helper, not a test file: its docstring cites a document, and it reads a fixture.
-    "tests/aiq_agent/judge_stub.py": (
+    "packages/agent/tests/judge_stub.py": (
         '"""Imported by path, as ``packages/AGENTS.md`` asks."""\n'
         "STORED = ROOT / 'fixtures' / 'answers' / 'stored.json'"
     ),
@@ -32,7 +32,7 @@ READERS = {"src/lib/authz/authz-coverage.spec.ts": None}
 #: One reader that declares its inputs, one that does not.
 DECLARED = {
     "src/app/api/authz-coverage.spec.ts": ("frontends/ui/src/app/api/**",),
-    "src/lib/skills/legacy-names.spec.ts": ("src/aiq_agent/skills/builtin.py",),
+    "src/lib/skills/legacy-names.spec.ts": ("packages/agent/src/aiq_agent/skills/builtin.py",),
     "src/english-names.spec.ts": None,
 }
 
@@ -51,13 +51,15 @@ def mod():
 
 
 def test_a_change_to_tested_python_selects(mod):
-    mode, extra, _ = mod.decide_python(["src/aiq_agent/common/llm_factory.py", "tests/test_x.py"], TESTS, recorded=True)
+    mode, extra, _ = mod.decide_python(
+        ["packages/agent/src/aiq_agent/common/llm_factory.py", "tests/test_x.py"], TESTS, recorded=True
+    )
 
     assert (mode, extra) == ("select", [])
 
 
 def test_without_a_recorded_database_everything_runs(mod):
-    assert mod.decide_python(["src/aiq_agent/a.py"], TESTS, recorded=False)[0] == "full"
+    assert mod.decide_python(["packages/agent/src/aiq_agent/a.py"], TESTS, recorded=False)[0] == "full"
 
 
 @pytest.mark.parametrize(
@@ -111,7 +113,10 @@ def test_a_file_named_only_by_its_basename_still_counts(mod):
 
 
 def test_package_data_no_test_names_forces_the_full_suite(mod):
-    assert mod.decide_python(["src/aiq_agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0] == "full"
+    assert (
+        mod.decide_python(["packages/agent/src/aiq_agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0]
+        == "full"
+    )
 
 
 def test_a_fixture_selects_the_tests_that_read_it(mod):
@@ -145,17 +150,17 @@ def test_a_file_a_support_package_reads_selects_the_tests_that_import_it(mod):
     # ADR-0145 row 5: a `<package>_testing` module has one importable name, so
     # its importers are known, and a full run is not needed.
     tests = {
-        "tests/aiq_agent/testing/agent_testing/exposure.py": "EXPOSURE = ROOT / 'tests/fixtures/exposure.json'",
-        "tests/aiq_agent/tools/test_exposure_config.py": "from agent_testing.exposure import EXPOSURE",
-        "tests/aiq_agent/test_framing.py": "from agent_testing import exposure, langfuse",
-        "tests/aiq_agent/test_other.py": "from agent_testing.langfuse import trace",
+        "packages/agent/tests/testing/agent_testing/exposure.py": "EXPOSURE = ROOT / 'tests/fixtures/exposure.json'",
+        "packages/agent/tests/tools/test_exposure_config.py": "from agent_testing.exposure import EXPOSURE",
+        "packages/agent/tests/test_framing.py": "from agent_testing import exposure, langfuse",
+        "packages/agent/tests/test_other.py": "from agent_testing.langfuse import trace",
     }
 
     mode, selected, _ = mod.decide_python(["tests/fixtures/exposure.json"], tests, recorded=True)
 
     assert (mode, selected) == (
         "select",
-        ["tests/aiq_agent/test_framing.py", "tests/aiq_agent/tools/test_exposure_config.py"],
+        ["packages/agent/tests/test_framing.py", "packages/agent/tests/tools/test_exposure_config.py"],
     )
 
 
@@ -238,7 +243,7 @@ def test_a_backend_fixture_runs_the_ui_specs_that_read_it(mod):
 
 
 def test_a_change_no_ui_spec_reads_runs_no_ui_spec(mod):
-    assert mod.decide_ui(["src/aiq_agent/common/llm_factory.py"], READERS)[0] == "none"
+    assert mod.decide_ui(["packages/agent/src/aiq_agent/common/llm_factory.py"], READERS)[0] == "none"
 
 
 def test_the_disk_readers_are_found_by_what_they_do(mod):
@@ -264,7 +269,7 @@ def test_a_declaring_reader_runs_only_when_its_inputs_change(mod):
 
 def test_a_declared_input_outside_the_ui_selects_its_reader(mod):
     """Before declarations, a change to a Python file a UI spec reads ran no UI spec at all."""
-    mode, files, _ = mod.decide_ui(["src/aiq_agent/skills/builtin.py"], DECLARED)
+    mode, files, _ = mod.decide_ui(["packages/agent/src/aiq_agent/skills/builtin.py"], DECLARED)
 
     assert mode == "select"
     assert files == ["src/english-names.spec.ts", "src/lib/skills/legacy-names.spec.ts"]
@@ -306,8 +311,16 @@ def test_no_green_run_means_the_whole_pull_request(mod):
 
 
 def test_the_reference_that_forces_fewer_full_suites_wins(mod):
-    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py", "src/aiq_agent/c.py"], "the base", "base")
-    since_green = (["src/aiq_agent/a.py", "pyproject.toml"], "the last green run", "green")  # develop moved
+    whole = (
+        ["packages/agent/src/aiq_agent/a.py", "packages/agent/src/aiq_agent/b.py", "packages/agent/src/aiq_agent/c.py"],
+        "the base",
+        "base",
+    )
+    since_green = (
+        ["packages/agent/src/aiq_agent/a.py", "pyproject.toml"],
+        "the last green run",
+        "green",
+    )  # develop moved
 
     def full_suites(paths):
         return mod.decide_python(paths, TESTS, recorded=True)[0] == "full"
@@ -316,7 +329,11 @@ def test_the_reference_that_forces_fewer_full_suites_wins(mod):
 
 
 def test_with_equal_cost_the_smaller_reference_wins(mod):
-    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py"], "the base", "base")
-    since_green = (["src/aiq_agent/b.py"], "the last green run", "green")  # a push that answered a review
+    whole = (["packages/agent/src/aiq_agent/a.py", "packages/agent/src/aiq_agent/b.py"], "the base", "base")
+    since_green = (
+        ["packages/agent/src/aiq_agent/b.py"],
+        "the last green run",
+        "green",
+    )  # a push that answered a review
 
     assert mod.cheaper([whole, since_green], lambda _paths: 0) == since_green

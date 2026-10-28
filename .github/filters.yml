@@ -35,7 +35,7 @@
 # `infra:types` or a setup action merges without its job running. Only
 # what a tier's jobs use: a new backend task does not run the UI suite.
 backend:
-  - 'src/**'
+  - 'packages/agent/**'
   - 'apps/backend/**'
   # The eval harnesses and their tests: `be:test:ci` runs `evals/` beside
   # `tests/`, so a harness-only change must still run the backend suite.
@@ -43,9 +43,9 @@ backend:
   # (see below) and this line is what replaces it.
   - 'evals/**'
   # The recorded wire v2 turns and their schema: the contract fixtures
-  # tests/aiq_agent/common/test_wire_v2.py holds the producer to.
+  # packages/agent/tests/common/test_wire_v2.py holds the producer to.
   - 'contracts/wire/**'
-  # Read by tests/aiq_agent/tools/workspace/test_english_only.py.
+  # Read by packages/agent/tests/tools/workspace/test_english_only.py.
   - 'ci/german_stems.json'
   # The Python packages (ADR-0145 row 6); ifc-spatial-py is the packages tier's.
   - 'packages/knowledge-layer/**'
@@ -190,19 +190,19 @@ frontend:
   # that sees the Zod half (repo-lint has no node_modules). Without
   # these lines a models-only PR skips this job and ships a stale
   # `generated.ts`, which type-checks.
-  - 'src/aiq_agent/cards/models.py'
-  - 'src/aiq_agent/cards/card_model.py'
-  - 'src/aiq_agent/cards/proposal_cards.py'
-  - 'src/aiq_agent/cards/schematic_cards.py'
-  - 'src/aiq_agent/cards/calculation_card.py'
-  - 'src/aiq_agent/cards/formula_card.py'
-  - 'src/aiq_agent/cards/workspace_cards.py'
-  - 'src/aiq_agent/cards/file_operation_card.py'
-  - 'src/aiq_agent/cards/canvas_activity_card.py'
-  - 'src/aiq_agent/cards/look_card.py'
-  - 'src/aiq_agent/cards/revision_compare_card.py'
-  - 'src/aiq_agent/cards/ifc_cards.py'
-  - 'src/aiq_agent/cards/surface_card.py'
+  - 'packages/agent/src/aiq_agent/cards/models.py'
+  - 'packages/agent/src/aiq_agent/cards/card_model.py'
+  - 'packages/agent/src/aiq_agent/cards/proposal_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/schematic_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/calculation_card.py'
+  - 'packages/agent/src/aiq_agent/cards/formula_card.py'
+  - 'packages/agent/src/aiq_agent/cards/workspace_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/file_operation_card.py'
+  - 'packages/agent/src/aiq_agent/cards/canvas_activity_card.py'
+  - 'packages/agent/src/aiq_agent/cards/look_card.py'
+  - 'packages/agent/src/aiq_agent/cards/revision_compare_card.py'
+  - 'packages/agent/src/aiq_agent/cards/ifc_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/surface_card.py'
   - 'contracts/cards/schemas.json'
   # The same wire v2 recordings, read by the UI's store and socket specs
   # (frontends/ui/src/test-utils/wire-v2-fixtures.ts).
@@ -221,8 +221,8 @@ frontend:
   - 'deploy/compose/init-db.sql'
   - 'docs/technical-reference/answer-feedback-export.md'
   - 'packages/ris-adapter/src/client.py'
-  - 'src/aiq_agent/common/status_keys.py'
-  - 'src/aiq_agent/skills/events.py'
+  - 'packages/agent/src/aiq_agent/common/status_keys.py'
+  - 'packages/agent/src/aiq_agent/skills/events.py'
   # End of the files this tier's tests read.
 site:
   - 'apps/site/**'
@@ -277,10 +277,10 @@ infra:
   - 'frontends/ui/workers/langfuse-traces.js'
   - 'packages/knowledge-layer/src/llamaindex/adapter.py'
   - 'packages/knowledge-layer/src/llamaindex/processing.py'
-  - 'src/aiq_agent/common/claim_queue.py'
-  - 'src/aiq_agent/common/provider_limiter.py'
-  - 'src/aiq_agent/knowledge/ingest_queue.py'
-  - 'src/aiq_agent/knowledge/ingest_scheduler.py'
+  - 'packages/agent/src/aiq_agent/common/claim_queue.py'
+  - 'packages/agent/src/aiq_agent/common/provider_limiter.py'
+  - 'packages/agent/src/aiq_agent/knowledge/ingest_queue.py'
+  - 'packages/agent/src/aiq_agent/knowledge/ingest_scheduler.py'
   # End of the files this tier's tests read.
 # The two standalone IFC packages (ADR-0045). Their own family rather than a
 # line in `backend:` or `frontend:`, because they are outside BOTH workspaces —
@@ -310,7 +310,6 @@ migrations:
 # The pull request SAST scan. Semgrep is diff-aware, so it only ever reports
 # findings the change introduces; this decides whether there is code to scan.
 sast:
-  - 'src/**'
   - 'frontends/**'
   - 'apps/**'
   - 'packages/**'

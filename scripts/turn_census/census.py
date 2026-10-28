@@ -136,7 +136,9 @@ def source_packages() -> dict[str, Path]:
     for pyproject in sorted(ROOT / member / "pyproject.toml" for member in members):
         setuptools = tomllib.loads(pyproject.read_text()).get("tool", {}).get("setuptools", {})
         for name, relative in setuptools.get("package-dir", {}).items():
-            packages[name] = (pyproject.parent / relative).resolve()
+            # The agent's `{"": "src"}` maps the whole source root; `tree_pythonpath` puts it on the path itself.
+            if name:
+                packages[name] = (pyproject.parent / relative).resolve()
     for name, relative in FRONTEND_PACKAGES.items():
         packages[name] = (ROOT / relative).resolve()
     return packages
@@ -148,7 +150,7 @@ def tree_pythonpath(out: Path) -> str:
     The venv installs ``aiq_agent``, the workspace packages under ``packages/`` and the
     ``frontends/`` NAT plugins editable from ONE checkout. From a ``git worktree`` without its own venv, a run used to
     import the main checkout's code while the report named the worktree's
-    commit. So ``src/`` goes first, and each workspace package is linked under
+    commit. So ``packages/agent/src/`` goes first, and each workspace package is linked under
     its import name (their package dirs are called ``src``), ahead of the
     inherited path. The recorder's directory stays first.
     """
@@ -171,7 +173,7 @@ def tree_pythonpath(out: Path) -> str:
             staged.unlink(missing_ok=True)
             staged.symlink_to(target, target_is_directory=True)
             os.replace(staged, link)
-    parts = [str(HERE), str(shim), str(ROOT / "src"), os.environ.get("PYTHONPATH", "")]
+    parts = [str(HERE), str(shim), str(ROOT / "packages" / "agent" / "src"), os.environ.get("PYTHONPATH", "")]
     return os.pathsep.join(part for part in parts if part)
 
 

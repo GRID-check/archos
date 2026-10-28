@@ -1,6 +1,6 @@
 # Post-answer stages — a platform primitive
 
-> **Status:** **all slices are built** (`src/aiq_agent/stages/`, memory
+> **Status:** **all slices are built** (`packages/agent/src/aiq_agent/stages/`, memory
 > reflection migrated onto the primitive, the kill switch moved per-turn, the
 > whole client half — frame schema, `onStage`, the `stages` key on the message
 > row, and the rail below the answer — and, as of slice 3, the two halves
@@ -45,8 +45,8 @@ The three things that are already the same shape, built three times:
 
 | what | where | runs after | delivery | timeout | gate | observability |
 |---|---|---|---|---|---|---|
-| memory reflection | `src/aiq_agent/memory/reflection.py:398` | the answer is generated | DB row → REST poll | **none** | `_reflection_answer_is_substantive` | profiler span |
-| post-hoc card generation | `src/aiq_agent/cards/generate.py:105` | the deep report is delivered | job SSE artifact re-emit | `30.0s` (`generate.py:22`) | `if not report` | none |
+| memory reflection | `packages/agent/src/aiq_agent/memory/reflection.py:398` | the answer is generated | DB row → REST poll | **none** | `_reflection_answer_is_substantive` | profiler span |
+| post-hoc card generation | `packages/agent/src/aiq_agent/cards/generate.py:105` | the deep report is delivered | job SSE artifact re-emit | `30.0s` (`generate.py:22`) | `if not report` | none |
 | follow-ups (today) | inside the answering LLM call | — | terminal WS frame (`cards`) | — | the model's judgement | none |
 
 Three delivery channels, two timeout policies, one of which is "none", and one
@@ -76,7 +76,7 @@ earlier pass missed. Three separate things surface memory in the UI and only one
 of them is the reflection stage:
 
 1. **The in-turn `remember` tool** emits a `memory_proposal` card
-   (`src/aiq_agent/memory/register.py:38-65`). That card goes into
+   (`packages/agent/src/aiq_agent/memory/register.py:38-65`). That card goes into
    the conversation-scoped `CardRegistry`, is lifted onto the answer as
    `response.cards` (`piloti/conversation_register.py:1204-1206`), rides
    `_STREAM_EXTRA_FIELDS` (`register.py:200-221`) onto the terminal
@@ -346,7 +346,7 @@ Two properties are load-bearing and non-negotiable:
 
 ### 2.2 What a stage declares
 
-New package `src/aiq_agent/stages/`. One frozen declaration per stage:
+New package `packages/agent/src/aiq_agent/stages/`. One frozen declaration per stage:
 
 ```python
 @dataclass(frozen=True)
@@ -433,7 +433,7 @@ handler to invent output.
 
 ### 2.5 Registration point
 
-`src/aiq_agent/stages/registry.py`, a module-level `register_stage()` and
+`packages/agent/src/aiq_agent/stages/registry.py`, a module-level `register_stage()` and
 `iter_stages()`.
 
 > **[as built]** `register_stage` is a function that returns its argument
@@ -503,11 +503,11 @@ often does the model decline").
 A stage that declares `delivery="frame"` needs to push a frame down a socket the
 agent tier does not own. That inversion already exists in this repo, in the
 opposite direction: `conversation_context.register_context_appender`
-(`src/aiq_agent/conversation_context.py:52-56`, registered at
+(`packages/agent/src/aiq_agent/conversation_context.py:52-56`, registered at
 `piloti/conversation_register.py:822`) — "`aiq_api` owns the socket, `aiq_agent`
 owns the graph".
 
-So: `src/aiq_agent/stages/delivery.py` declares
+So: `packages/agent/src/aiq_agent/stages/delivery.py` declares
 
 ```python
 StageFrameSink = Callable[[str, dict], Awaitable[bool]]  # (conversation_id, frame) -> delivered
@@ -599,7 +599,7 @@ section, not against each other. Nothing below depends on either half existing.
 
 ### 4.1 The event
 
-A stage's outcome is a chat wire v2 event (`src/aiq_agent/common/wire_v2.py`,
+A stage's outcome is a chat wire v2 event (`packages/agent/src/aiq_agent/common/wire_v2.py`,
 `StageBody`; [`websocket-protocol.md`](../api/websocket-protocol.md)), sent on
 the socket of the turn it follows:
 
@@ -780,7 +780,7 @@ FOLLOW_UPS = StageSpec(
 )
 ```
 
-> **[as built]** Three corrections, all in `src/aiq_agent/stages/follow_ups.py`.
+> **[as built]** Three corrections, all in `packages/agent/src/aiq_agent/stages/follow_ups.py`.
 >
 > **`delivery="silent"` in slice 1, `"frame"` from slice 3.** Slice 1 was the
 > measurement and shipped `silent` deliberately; slice 3 flipped it, and nothing
@@ -1242,7 +1242,7 @@ is a map lookup, not a WorkOS round-trip.
 > to be shipped without: a stage the backend declares and `POST_ANSWER_STAGE_FLAGS`
 > omits is never in the served set, so it is `disabled / flag_off` on every turn
 > forever, with nothing logged and no way for an operator to switch it on. The
-> file said so in a comment. `tests/aiq_agent/stages/test_stage_flag_parity.py`
+> file said so in a comment. `packages/agent/tests/stages/test_stage_flag_parity.py`
 > is that comment enforced — id, flag slug and env var must match on both ends —
 > the same move `test_agent_group_parity` makes for the `AgentGroup` mirror.
 
@@ -1504,7 +1504,7 @@ Written here because "contract-first" is unenforceable without it.
   > `wire-v2.spec.ts`, `contracts/wire/v2/invalid-events.jsonl`).
   >
   > **[as built, slice 3] The Python reader is
-  > `tests/aiq_agent/stages/test_frame_contract.py`**, and the stand-in is gone.
+  > `packages/agent/tests/stages/test_frame_contract.py`**, and the stand-in is gone.
   > While slice 1 shipped `delivery="silent"` there was no frame to build, so the
   > TypeScript side stood in for the missing half by reading `stages/runner.py`
   > as text and pinning the frame type, the envelope version and the builder's
@@ -1599,7 +1599,7 @@ Then the specific risks:
 
    > **[as built, slice 3]** This risk is now an assertion rather than a
    > mitigation.
-   > `tests/aiq_agent/stages/test_the_answer_survives_a_failing_stage.py` runs the
+   > `packages/agent/tests/stages/test_the_answer_survives_a_failing_stage.py` runs the
    > real `schedule_post_answer_stages`, the real sink, the real
    > `WebSocketSessionRegistry` and the real message handler over a recording
    > socket, with the stage tasks deliberately left in flight while the answer is

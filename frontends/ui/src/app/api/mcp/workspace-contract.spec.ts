@@ -4,7 +4,7 @@
  * The contract between Piloti's Python agent and its own MCP server (ADR-0122).
  *
  * `tests/fixtures/workspace_mcp_requests.json` is written by the Python test
- * `tests/aiq_agent/tools/workspace/test_workspace_mcp_contract.py` from the real
+ * `packages/agent/tests/tools/workspace/test_workspace_mcp_contract.py` from the real
  * request builder of `client.py`. Every request in it is replayed here against the
  * REAL `POST` handler of `/api/mcp` (real SDK, real principal, real envelope
  * verification). Only these seams are replaced: the token, a freshly SIGNED

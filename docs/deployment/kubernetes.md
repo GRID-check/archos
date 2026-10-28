@@ -1424,7 +1424,7 @@ In `db` mode the `aiq-agent` chat tier now runs `backendReplicas` replicas
 - **Vectors** are shared (Qdrant, §6.3); **job/checkpoint state** is in
   Postgres; **caches + citation registry** are in Dragonfly.
 - **Ingestion status is persisted** to a shared `ingest_jobs` table
-  (`src/aiq_agent/knowledge/ingest_status_store.py`), so a
+  (`packages/agent/src/aiq_agent/knowledge/ingest_status_store.py`), so a
   `GET /v1/documents/{job_id}/status` poll resolves from any replica instead of
   404-ing on the replica that didn't accept the upload. The job itself runs
   on the accepting replica, which stamps itself as the row's `owner` and
@@ -2073,14 +2073,14 @@ the binary).
 backend-chat and grid-agent-worker (NAT tracing exporter); the BFF registers
 no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
-(`src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
+(`packages/agent/src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
 logger) and the Node tiers (grid-ui, skill-scheduler, purger) via the
 `frontends/ui/observability/otel-logs.js` console bridge. **Metrics, every
 one of them, to PostHog Metrics** ([ADR-0119](../adr/0119-every-metric-goes-to-posthog-through-the-collector.md),
 [`observability/metrics.md`](../observability/metrics.md) for the catalogue):
 
 - *The application meters.* Every Python process installs one meter provider,
-  once (`src/aiq_agent/observability/otlp_metrics.py`), so the `grid.queue.*`,
+  once (`packages/agent/src/aiq_agent/observability/otlp_metrics.py`), so the `grid.queue.*`,
   `grid.provider.*` and `grid.boot.*` instruments report; the Node tiers
   install theirs at start (`frontends/ui/observability/otel-metrics.js`) with
   event loop delay and memory, and the gateway in `server.js` records

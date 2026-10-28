@@ -62,8 +62,8 @@ fail on a difference.
 
 | Artifact | Generated from | Guarded |
 |---|---|---|
-| `frontends/ui/src/lib/skills/platform-skills.ts` | `src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
-| `contracts/cards/schemas.json` | the card models (`src/aiq_agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
+| `frontends/ui/src/lib/skills/platform-skills.ts` | `packages/agent/src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
+| `contracts/cards/schemas.json` | the card models (`packages/agent/src/aiq_agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
 | `frontends/ui/src/shared/cards/generated.ts` | `contracts/cards/schemas.json`, via `frontends/ui/scripts/generate-card-schemas.mjs` | yes, the same hook |
 
 The card schema is a two-stage pipeline from Pydantic models to Zod. Neither

@@ -1,7 +1,7 @@
 /**
  * The chat wire, version 2: what the socket carries, typed (ADR-0068).
  *
- * The schemas are GENERATED: `src/aiq_agent/common/wire_v2.py` (Pydantic) is the
+ * The schemas are GENERATED: `packages/agent/src/aiq_agent/common/wire_v2.py` (Pydantic) is the
  * source, `contracts/wire/v2.schema.json` its JSON Schema, and
  * `./wire-v2.generated.ts` the Zod module `npm run generate:wire` renders from
  * it. This file adds only what a generator cannot: the inferred types under

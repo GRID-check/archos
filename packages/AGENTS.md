@@ -1,7 +1,7 @@
 # Libraries: `packages/`
 
 Two families live here: the standalone IFC packages, outside every workspace,
-and the Python packages of the root uv workspace ([below](#the-python-packages-knowledge-layer-ris-adapter-tavily-web-search)).
+and the Python packages of the root uv workspace ([below](#the-python-packages-agent-knowledge-layer-ris-adapter-tavily-web-search)).
 `brand/` is neither: the Piloti mark (`mark.svg`) and the script that renders
 it into both apps (`build-brand-assets.mjs`, which borrows `apps/site`'s sharp).
 It has no suite here: the site's `npm run check` runs its `--check` form, so
@@ -60,7 +60,13 @@ and its path to the `packages` filter in `.github/filters.yml`.
 - `ifc-spatial-py/COVERAGE.md` and `CORPUS.md` record what the spike actually
   covers, which is less than the operator list suggests.
 
-## The Python packages: `knowledge-layer`, `ris-adapter`, `tavily-web-search`
+## The Python packages: `agent`, `knowledge-layer`, `ris-adapter`, `tavily-web-search`
+
+`agent` (the agent itself, `packages/agent/src/aiq_agent`, distribution `aiq-agent`) moved
+here from `src/` in ADR-0145 row 8. Its suite is `packages/agent/tests`, and it runs in the
+core suite (`be:test`, with the coverage gate) beside `tests/`, not in `be:test:sources`;
+`tests/test_python_packages.py` knows that. Its own `AGENTS.md` is
+[`agent/src/aiq_agent/AGENTS.md`](agent/src/aiq_agent/AGENTS.md).
 
 `knowledge-layer` (ingestion and retrieval, the library the agent is built on),
 `ris-adapter` (the RIS legal adapter) and `tavily-web-search` (web search), all

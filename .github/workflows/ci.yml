@@ -402,7 +402,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
-  # The core suite's coverage gate (65% of src/aiq_agent) over all four shards,
+  # The core suite's coverage gate (65% of packages/agent/src/aiq_agent) over all four shards,
   # and the PR comment. In `CI OK`, unlike the frontend's comment-only merge,
   # because the gate is a check.
   backend-coverage:
@@ -442,7 +442,7 @@ jobs:
           # The whole-tree table passed GitHub's 65,536-character comment
           # limit, and the action then posted only the badge.
           report-only-changed-files: true
-          title: Backend coverage (src/aiq_agent)
+          title: Backend coverage (packages/agent/src/aiq_agent)
           unique-id-for-comment: backend-coverage
 
   # Every Python suite but the core one, one job each. Run back to back in one

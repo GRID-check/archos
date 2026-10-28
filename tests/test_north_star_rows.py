@@ -38,13 +38,13 @@ SCHEMA = {tool["name"]: tool for tool in json.loads(files_eval.TOOL_SCHEMA.read_
 
 def _canvas_members() -> set[str]:
     """The canvas group's members, as the model sees them (``canvas__point``), read off its DESCRIPTIONS."""
-    source = (REPO_ROOT / "src/aiq_agent/tools/canvas/register.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "packages/agent/src/aiq_agent/tools/canvas/register.py").read_text(encoding="utf-8")
     block = source.split("DESCRIPTIONS = {", 1)[1].split("\n}\n", 1)[0]
     return {f"canvas__{name}" for name in re.findall(r'^    "([a-z_]+)": \(', block, re.MULTILINE)}
 
 
 def _file_change_operations() -> set[str]:
-    source = (REPO_ROOT / "src/aiq_agent/tools/files/register.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "packages/agent/src/aiq_agent/tools/files/register.py").read_text(encoding="utf-8")
     return set(ast.literal_eval(re.search(r"^_OPERATIONS = (\(.*?\))", source, re.MULTILINE).group(1)))
 
 

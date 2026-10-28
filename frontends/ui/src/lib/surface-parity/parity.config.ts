@@ -17,7 +17,7 @@
  * `parity.config.spec.ts` holds the file against the code: every op of
  * `internalAnnotationRequestSchema`, every canvas-related catalog operation and
  * (through the fixture `tests/fixtures/surface-parity.json`, read by
- * `tests/aiq_agent/tools/test_surface_parity.py`) every tool of the canvas
+ * `packages/agent/tests/tools/test_surface_parity.py`) every tool of the canvas
  * group and `look` has an entry. Add a capability to the canvas or the chat:
  * add its entry here.
  */
