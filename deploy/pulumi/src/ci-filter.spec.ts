@@ -23,11 +23,13 @@ function specFiles(dir: string): string[] {
  * infra job would then run on every change to them.
  */
 function filesReadOutsideDeploy(): Map<string, string> {
-  const call = /(?:\bread|\bpython)\(\s*\[?((?:"[^"]+"\s*,\s*)*"[^"]+")|join\(\s*repoRoot\s*,\s*((?:"[^"]+"\s*,?\s*)+)\)/g;
+  // Each alternative captures one argument list with a single negated class, so
+  // no input can make the match backtrack (CodeQL js/redos).
+  const call = /\bread\(([^)]*)\)|\bpython\(\[([^\]]*)\]|\bjoin\(repoRoot,([^)]*)\)/g;
   const found = new Map<string, string>();
   for (const spec of specFiles(pulumiDir)) {
     for (const match of readFileSync(spec, "utf8").matchAll(call)) {
-      const path = [...(match[1] ?? match[2]).matchAll(/"([^"]+)"/g)].map((m) => m[1]).join("/");
+      const path = [...(match[1] ?? match[2] ?? match[3]).matchAll(/"([^"]+)"/g)].map((m) => m[1]).join("/");
       if (path.startsWith("deploy/") || !path.includes("/")) continue;
       const absolute = join(repoRoot, path);
       if (statSync(absolute, { throwIfNoEntry: false })?.isFile()) found.set(path, relative(pulumiDir, spec));
