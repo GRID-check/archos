@@ -44,7 +44,7 @@ backend:
   - 'evals/**'
   # The recorded wire v2 turns and their schema: the contract fixtures
   # tests/aiq_agent/common/test_wire_v2.py holds the producer to.
-  - 'shared/wire/**'
+  - 'contracts/wire/**'
   # Read by tests/aiq_agent/tools/workspace/test_english_only.py.
   - 'ci/german_stems.json'
   # The Python packages (ADR-0145 row 6); ifc-spatial-py is the packages tier's.
@@ -148,7 +148,7 @@ backend:
   - 'packages/ifc-spatial/test/fixtures/house-with-rooms.ifc'
   - 'packages/ifc-spatial/test/fixtures/road-ifc4x3.ifc'
   - 'packages/ifc-spatial/test/fixtures/units-feet.ifc'
-  - 'shared/cards/schemas.json'
+  - 'contracts/cards/schemas.json'
   # End of the files this tier's tests read.
 # NOT here, though tests read them: `ci/**`, `releasenotes/**`, the other
 # workflows and this file. Their tests (`task be:test:harness`: the workflow,
@@ -203,10 +203,10 @@ frontend:
   - 'src/aiq_agent/cards/revision_compare_card.py'
   - 'src/aiq_agent/cards/ifc_cards.py'
   - 'src/aiq_agent/cards/surface_card.py'
-  - 'shared/cards/schemas.json'
+  - 'contracts/cards/schemas.json'
   # The same wire v2 recordings, read by the UI's store and socket specs
   # (frontends/ui/src/test-utils/wire-v2-fixtures.ts).
-  - 'shared/wire/**'
+  - 'contracts/wire/**'
   # Data the UI specs read from ci/ and .github/: the German stems
   # (english-names.spec.ts, english-only.spec.ts), the browser work loops
   # (browser-work-loops.spec.ts) and the image build action

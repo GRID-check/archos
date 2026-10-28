@@ -14,7 +14,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { conversationFramesAvailable, decodeConversationFrame } from './conversation-frames'
 
-/** A v2 event, as the agent tier stamps it (shared/wire/v2/turn-answered.jsonl). */
+/** A v2 event, as the agent tier stamps it (contracts/wire/v2/turn-answered.jsonl). */
 const EVENT = {
   v: 2,
   type: 'TEXT_MESSAGE_CONTENT',

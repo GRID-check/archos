@@ -1,6 +1,6 @@
 /**
  * Generate the frontend Zod schema (`src/shared/cards/generated.ts`) from the
- * canonical Grid card JSON Schema (`shared/cards/schemas.json`).
+ * canonical Grid card JSON Schema (`contracts/cards/schemas.json`).
  *
  * The JSON Schema is itself generated from the Pydantic models, making the
  * Pydantic models the single source of truth across backend and frontend.
@@ -210,7 +210,7 @@ export function buildCardSchemaModule(root) {
 
   const discriminator = root.discriminator?.propertyName ?? 'type'
   const banner =
-    '// AUTO-GENERATED from shared/cards/schemas.json — do not edit; run `npm run generate:cards`'
+    '// AUTO-GENERATED from contracts/cards/schemas.json — do not edit; run `npm run generate:cards`'
 
   return `${banner}
 
@@ -228,7 +228,7 @@ ${types.join('\n')}
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 // scripts -> ui -> frontends -> repo root
-export const schemaPath = resolve(scriptDir, '../../../shared/cards/schemas.json')
+export const schemaPath = resolve(scriptDir, '../../../contracts/cards/schemas.json')
 export const outPath = resolve(scriptDir, '../src/shared/cards/generated.ts')
 
 // Importing this module (the spec does) must not write the generated file.

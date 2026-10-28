@@ -32,7 +32,7 @@
 --
 -- The word lists are the ones in `src/aiq_agent/common/findings.py`, `plan_vocabulary.py`,
 -- `frontends/ui/src/features/chat/lib/source-kinds.ts` (LEGACY_LANE, LEGACY_SOURCE_KIND),
--- `lib/runs/run-ledger-types.ts` and `shared/cards/legacy.ts`: one table per vocabulary, and
+-- `lib/runs/run-ledger-types.ts` and `src/shared/cards/legacy.ts`: one table per vocabulary, and
 -- the readers keep reading the German spellings for one release (rows in flight, a pod that has
 -- not rolled yet, browser storage), so this migration is not on the critical path of a deploy.
 --

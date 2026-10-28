@@ -7,7 +7,7 @@
  * row the server stored whole because the Stop reached it after the answer
  * had finished (`cutStoppedAnswer` in `lib/conversations/service.ts`).
  * Whichever write lands, a reload must show the same bytes, so this is the one
- * TypeScript copy of the rule, and `shared/wire/v2/stopped-cases.jsonl` holds
+ * TypeScript copy of the rule, and `contracts/wire/v2/stopped-cases.jsonl` holds
  * it and the Python one to the same cases (`stopped-answer.spec.ts`,
  * `tests/aiq_agent/turn/test_streaming.py`).
  *

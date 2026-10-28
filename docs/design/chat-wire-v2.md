@@ -29,7 +29,7 @@ A production trace of one turn on the old wire showed:
 
 When the cut is done, a turn is a few dozen frames. Each one carries a single
 typed fact, and no frame's size depends on how long the prompt is. The recorded
-answered turn in `shared/wire/v2/turn-answered.jsonl` is 22 frames and 8.5 KB in
+answered turn in `contracts/wire/v2/turn-answered.jsonl` is 22 frames and 8.5 KB in
 total. Its largest frame is the terminal, at about 2 KB. The UI folds each frame in
 constant time. Stop cancels the turn on the server. Nothing in the UI reads a NAT
 function name.
@@ -343,7 +343,7 @@ the same holds: a relayed Stop carries `shown` beside the message on the bus,
 not inside it, so an older owner still parses the Stop. A frame that names only
 known things and still does not parse remains a break that asks an open tab to reload: a renamed or retyped
 field, a new required field, a known `CUSTOM` whose value no longer parses.
-`shared/wire/v2/newer-events.jsonl` holds the tolerated drift; the UI spec
+`contracts/wire/v2/newer-events.jsonl` holds the tolerated drift; the UI spec
 reads it, the Python test refuses it.
 
 **The release that shipped the lenient read was staged.** The bundle before
@@ -550,7 +550,7 @@ same text on both sides. The client stores the same cut (`stopStreaming`,
 whichever of the two writes of the row reaches the BFF first (both insert under
 one id and the second no-ops). The rule has one copy per language,
 `TurnTextFold.stopped` and `features/chat/lib/stopped-answer.ts`, and
-`shared/wire/v2/stopped-cases.jsonl` holds both to the same cases. A Stop that
+`contracts/wire/v2/stopped-cases.jsonl` holds both to the same cases. A Stop that
 crosses the finished answer (the reveal runs up to about a second behind the
 wire) finds no turn to cancel: the server has stored the whole answer and
 answers `turn_not_found`. The client then cuts its own copy where the text on
@@ -799,7 +799,7 @@ and a reader-order change, nothing more.
 |---|---|---|
 | Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `tests/aiq_agent/common/test_wire_v2.py` (committed) |
 | Contract, UI side | The same files through the generated zod: every event parses to its type, defaults restored, and every invalid frame refused. `newer-events.jsonl` parses, its unknown keys stripped and its unknown types, step kinds and `CUSTOM` names folded as no-ops (§a, Compatibility). The generated module is the generator's output | `src/adapters/api/wire-v2.spec.ts`, `scripts/generate-wire-schemas.spec.mjs` (committed) |
-| Generation | Pydantic → `shared/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
+| Generation | Pydantic → `contracts/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
 | Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `tests/aiq_agent/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
 | Handler | Auth, binding, rejection codes, cancel authorisation (asker yes, colleague `not_asker`, bus path), HITL round trip and expiry, attach replay and splice with no duplicate or missing seq, stage stamping after the terminal, persistence built from `TurnResult`. A test that builds the app and asserts NAT's `websocket_endpoint` and `WebSocketMessageHandler` are NAT's own objects. A ruff `banned-api` for `nat.data_models.api_server` everywhere, and for the internal modules `nat.plugin_api` covers | `apps/backend/tests/test_chat_socket.py` |
 | Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `tests/aiq_agent/turn/test_golden_turn.py` |
@@ -968,7 +968,7 @@ outside the slices.
 
 1. **The diff deletes more than it adds.** `git diff --stat develop...feat/chat-wire-v2`
    across `src/`, `sources/`, `frontends/` and `configs/`, excluding
-   `shared/wire/`, `wire-v2.generated.ts` and the contract tests, is net
+   `contracts/wire/`, `wire-v2.generated.ts` and the contract tests, is net
    negative. The PR carries a **deletion ledger** per slice: file → lines
    removed → what replaced it.
 2. `task verify:fast` is green **on `nvidia-nat*==1.9.0`**. That covers Python

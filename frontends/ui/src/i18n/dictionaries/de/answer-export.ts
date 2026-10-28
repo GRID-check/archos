@@ -9,7 +9,7 @@ import type { en } from '../en'
  * dieselbe Sache anders benennt als der Bildschirm, auf dem sie entstanden ist,
  * zwingt die Leserin, beides zu übersetzen.
  *
- * `label-coverage.spec.ts` leitet aus `shared/cards/schemas.json` ab, welche
+ * `label-coverage.spec.ts` leitet aus `contracts/cards/schemas.json` ab, welche
  * Feldnamen der Export überhaupt beschriften kann, und schlägt fehl, sobald
  * einer davon hier fehlt — ein fehlender Schlüssel wird sonst zu einem
  * englischen Wort im deutschen Befund. Dasselbe gilt für `values`: jedes

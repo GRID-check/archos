@@ -176,7 +176,7 @@ tasks:
       - bun run provision:workos-env {{.CLI_ARGS}}
 
   fe:cards:check:
-    desc: The committed Zod card schema still matches shared/cards/schemas.json
+    desc: The committed Zod card schema still matches contracts/cards/schemas.json
     # The other half of the `card-schemas` pre-commit hook. That hook skips this
     # stage where frontends/ui/node_modules is absent, which is every repo-lint
     # CI run, so the check lives here too and the frontend job runs it after

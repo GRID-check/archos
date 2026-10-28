@@ -7,10 +7,10 @@ messages. The design, and why it replaced NAT's step stream, is
 [`design/chat-wire-v2.md`](../design/chat-wire-v2.md) (ADR-0068).
 
 **The contract is code, not this page.** `src/aiq_agent/common/wire_v2.py`
-(Pydantic) is the source. `shared/wire/v2.schema.json` is its JSON Schema,
+(Pydantic) is the source. `contracts/wire/v2.schema.json` is its JSON Schema,
 `frontends/ui/src/adapters/api/wire-v2.generated.ts` the Zod module generated
 from that (`npm run generate:wire`; the `wire-schemas` pre-commit hook fails a
-commit that leaves either stale), and `shared/wire/v2/*.jsonl` the recorded
+commit that leaves either stale), and `contracts/wire/v2/*.jsonl` the recorded
 turns both sides test against, byte for byte. When this page and the models
 disagree, the models are right and this page is a bug.
 

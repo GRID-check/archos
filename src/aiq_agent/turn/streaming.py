@@ -156,7 +156,7 @@ class TurnTextFold:
 
         ``frontends/ui/src/features/chat/lib/stopped-answer.ts`` is the
         TypeScript copy of the rule, for the client's and the BFF's writes of
-        the same row; ``shared/wire/v2/stopped-cases.jsonl`` holds both to it.
+        the same row; ``contracts/wire/v2/stopped-cases.jsonl`` holds both to it.
         """
         if shown is None:
             stretch, text = self._stretches[-1], self.text

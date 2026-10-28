@@ -1,4 +1,4 @@
-// AUTO-GENERATED from shared/cards/schemas.json — do not edit; run `npm run generate:cards`
+// AUTO-GENERATED from contracts/cards/schemas.json — do not edit; run `npm run generate:cards`
 
 import { z } from 'zod'
 

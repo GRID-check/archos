@@ -1,5 +1,5 @@
 /**
- * The recorded v2 turns (`shared/wire/v2/`) and a builder for synthetic frames,
+ * The recorded v2 turns (`contracts/wire/v2/`) and a builder for synthetic frames,
  * for specs that fold events. Read at runtime, walking up from `process.cwd()`,
  * for the reason `card-json-schema.ts` gives: `shared/` is outside the image's
  * build context. Node-only (`node:fs`); import it from specs only.
@@ -10,9 +10,9 @@ import { parseWireEvent, type WireEvent } from '@/adapters/api/wire-v2'
 
 const fixtureDir = (): string => {
   for (let dir = process.cwd(); ; dir = dirname(dir)) {
-    const candidate = join(dir, 'shared', 'wire', 'v2')
+    const candidate = join(dir, 'contracts', 'wire', 'v2')
     if (existsSync(candidate)) return candidate
-    if (dirname(dir) === dir) throw new Error(`shared/wire/v2 not found above ${process.cwd()}`)
+    if (dirname(dir) === dir) throw new Error(`contracts/wire/v2 not found above ${process.cwd()}`)
   }
 }
 

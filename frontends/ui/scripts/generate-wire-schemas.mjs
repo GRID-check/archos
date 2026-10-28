@@ -1,6 +1,6 @@
 /**
  * Generate the chat wire v2 Zod module (`src/adapters/api/wire-v2.generated.ts`)
- * from `shared/wire/v2.schema.json`, which is itself generated from the Pydantic
+ * from `contracts/wire/v2.schema.json`, which is itself generated from the Pydantic
  * models in `src/aiq_agent/common/wire_v2.py`. One contract, one source.
  *
  * Run with: `npm run generate:wire`
@@ -130,7 +130,7 @@ export function buildWireSchemaModule(root) {
     return `export const ${exportName(defName)} = ${zodExpr}`
   })
   const banner =
-    '// AUTO-GENERATED from shared/wire/v2.schema.json — do not edit; run `npm run generate:wire`'
+    '// AUTO-GENERATED from contracts/wire/v2.schema.json — do not edit; run `npm run generate:wire`'
   return `${banner}
 
 import { z } from 'zod'
@@ -141,7 +141,7 @@ ${declarations.join('\n\n')}
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 // scripts -> ui -> frontends -> repo root
-export const schemaPath = resolve(scriptDir, '../../../shared/wire/v2.schema.json')
+export const schemaPath = resolve(scriptDir, '../../../contracts/wire/v2.schema.json')
 export const outPath = resolve(scriptDir, '../src/adapters/api/wire-v2.generated.ts')
 
 // Importing this module (the spec does) must not write the generated file.

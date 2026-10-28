@@ -170,7 +170,7 @@ FORMER_GERMAN_PROSE = ("Fluchtweglängen", "Geländerhöhen", "Brandabschnittsgr
 
 def test_card_schema_descriptions_are_english() -> None:
     """The generated card schema is what the model is taught; docstrings and Field descriptions land in it."""
-    schema = json.loads((ROOT / "shared" / "cards" / "schemas.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "contracts" / "cards" / "schemas.json").read_text(encoding="utf-8"))
     texts = list(_described(schema, "cards"))
     assert len(texts) > 100
     german = [(path, sorted(german_words(text))) for path, text in texts if is_german(text)]

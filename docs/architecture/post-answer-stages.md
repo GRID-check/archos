@@ -625,7 +625,7 @@ the socket of the turn it follows:
 > fixtures in `shared/stages/frames.json`, which are retired. The envelope is
 > the wire's own, so a stage needs no frame type, builder or version of its
 > own. The recorded examples are the last events of
-> `shared/wire/v2/turn-answered.jsonl`.
+> `contracts/wire/v2/turn-answered.jsonl`.
 
 Rules, each with a reason:
 
@@ -665,7 +665,7 @@ Rules, each with a reason:
 ```
 
 Deliberately **the same shape as the existing `follow_ups` card's `items`**
-(`cards/models.py:1032-1063`, Zod twin in `shared/cards/generated.ts`): 2–4
+(`cards/models.py:1032-1063`, Zod twin in `src/shared/cards/generated.ts`): 2–4
 items, `question` required and non-empty, `hint` optional. Reusing the shape
 means `FollowUpsCard.tsx` renders either source unchanged, and the migration in
 §9 becomes a change of *route*, not of *content*.
@@ -1335,7 +1335,7 @@ export (`lib/answer-export/cards.ts`, walked generically). They must keep workin
    > figures are tiktoken `cl100k_base`, measured over the rendered strings.
 3. **Leave the pydantic model, the Zod schema and `FollowUpsCard.tsx` in place.**
    `validateGridCards` leaves an `undefined` hole for anything that fails the
-   union (`shared/cards/schemas.ts`), so removing the member would make every
+   union (`src/shared/cards/schemas.ts`), so removing the member would make every
    old thread lose its chips at those positions *and* log a warning per card.
    `GridCards.tsx:278-284` keeps rendering stored ones.
 4. ~~**The export.**~~ **[as built] — done, and not by this slice.** The
@@ -1487,7 +1487,7 @@ Written here because "contract-first" is unenforceable without it.
   drift, one of them fails.
 
   > **[as built]** The file is `shared/stages/frames.json`, alongside
-  > `shared/cards/schemas.json`, which is the cross-language contract directory
+  > `contracts/cards/schemas.json`, which is the cross-language contract directory
   > this repo already has. It carries a second section the design did not
   > anticipate: `rejected` — frames a producer must never emit and a client must
   > therefore drop (an unknown stage, an unknown status, a future `v`, a payload
@@ -1498,10 +1498,10 @@ Written here because "contract-first" is unenforceable without it.
   > **[as built, chat wire v2] Retired.** `shared/stages/frames.json` and its two
   > readers (`test_frame_contract.py`, `stage-frame-wire.spec.ts`) went with the
   > `grid_stage_message` frame. A stage is now a wire v2 event: the `delivered`
-  > half is the stage events in `shared/wire/v2/*.jsonl`, which both sides'
+  > half is the stage events in `contracts/wire/v2/*.jsonl`, which both sides'
   > contract tests read byte for byte, and the `rejected` half is the schema
   > itself refusing an unknown stage or status (`test_wire_v2.py`,
-  > `wire-v2.spec.ts`, `shared/wire/v2/invalid-events.jsonl`).
+  > `wire-v2.spec.ts`, `contracts/wire/v2/invalid-events.jsonl`).
   >
   > **[as built, slice 3] The Python reader is
   > `tests/aiq_agent/stages/test_frame_contract.py`**, and the stand-in is gone.

@@ -13,7 +13,7 @@
  *  2. the wire source payload (`citations.wire.source_entry_to_wire`)
  *
  * The Herleitung's lanes are no longer parsed from tool output: they arrive as
- * typed `sources` steps (chat wire v2), held by `shared/wire/v2`.
+ * typed `sources` steps (chat wire v2), held by `contracts/wire/v2`.
  *
  * Both sides assert against the SAME checked-in fixtures, produced by one real
  * pipeline run. The Python counterpart —

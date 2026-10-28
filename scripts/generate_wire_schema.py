@@ -1,7 +1,7 @@
 """Generate the chat wire v2 JSON Schema from the Pydantic models.
 
 :mod:`aiq_agent.common.wire_v2` is the single source of truth for the chat
-wire. This script renders its JSON Schema to ``shared/wire/v2.schema.json``;
+wire. This script renders its JSON Schema to ``contracts/wire/v2.schema.json``;
 ``npm run generate:wire`` in ``frontends/ui`` renders that to the Zod module the
 browser parses frames with. The same two-stage pipeline as the cards
 (``scripts/generate_card_schema.py``), guarded by the same pre-commit hook.
@@ -18,7 +18,7 @@ from pathlib import Path
 
 from aiq_agent.common.wire_v2 import wire_json_schema
 
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "shared" / "wire" / "v2.schema.json"
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "contracts" / "wire" / "v2.schema.json"
 
 
 def render() -> str:

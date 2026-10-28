@@ -3,7 +3,7 @@
  * plays them through a stubbed `WebSocket`.
  *
  * The turn is `_fixtures/v2-turn.ts`: `RUN_STARTED`, the setup and retrieval
- * steps modelled on `shared/wire/v2/turn-answered.jsonl`, the recorded `oib2`
+ * steps modelled on `contracts/wire/v2/turn-answered.jsonl`, the recorded `oib2`
  * answer mapped onto v2 events, the heartbeats and a stage. Its terminal
  * continues the settle, as the product's does today (`asSettled`); the
  * recording's own terminal, the retired whole-answer rewrite, is

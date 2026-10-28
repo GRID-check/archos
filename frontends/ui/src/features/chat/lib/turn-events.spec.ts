@@ -1,4 +1,4 @@
-// @disk-inputs: ../../shared/wire/v2/**, ../../src/aiq_agent/common/status_keys.py, ../../src/aiq_agent/skills/events.py, ../shared/wire/v2, shared/wire/v2
+// @disk-inputs: ../../contracts/wire/v2/**, ../../src/aiq_agent/common/status_keys.py, ../../src/aiq_agent/skills/events.py, ../contracts/wire/v2, contracts/wire/v2
 /**
  * @vitest-environment node
  */

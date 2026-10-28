@@ -21,7 +21,7 @@ from aiq_agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
 
 DOCUMENT = {"id": "11111111-0000-4000-8000-000000000001", "name": "Grundriss_EG.pdf"}
 REGION = {"page": 2, "scope": "region", "region": [0.6, 0.0, 0.4, 0.3], "where": "oben rechts"}
-SCHEMAS = Path(__file__).resolve().parents[3] / "shared" / "cards" / "schemas.json"
+SCHEMAS = Path(__file__).resolve().parents[3] / "contracts" / "cards" / "schemas.json"
 
 
 def _card(*items: dict, document: dict | None = None) -> dict:

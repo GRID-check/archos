@@ -51,9 +51,9 @@ Rules the models carry
   tool's text).
 
 The TypeScript mirror is ``frontends/ui/src/adapters/api/wire-v2.ts``. Both are
-held to ``shared/wire/v2.schema.json`` (generated from this module by
+held to ``contracts/wire/v2.schema.json`` (generated from this module by
 ``scripts/generate_wire_schema.py``) and to the recorded turns under
-``shared/wire/v2/``: ``tests/aiq_agent/common/test_wire_v2.py`` and
+``contracts/wire/v2/``: ``tests/aiq_agent/common/test_wire_v2.py`` and
 ``wire-v2.spec.ts`` validate every fixture, each on its own side.
 """
 
@@ -1405,7 +1405,7 @@ def _consts_required(node: Any) -> None:
 
 
 def wire_json_schema() -> dict[str, Any]:
-    """The JSON Schema ``shared/wire/v2.schema.json`` holds: both unions and the hello, by name."""
+    """The JSON Schema ``contracts/wire/v2.schema.json`` holds: both unions and the hello, by name."""
     events = WIRE_EVENT.json_schema(ref_template="#/$defs/{model}")
     clients = CLIENT_MESSAGE.json_schema(ref_template="#/$defs/{model}")
     hello = HELLO.json_schema(ref_template="#/$defs/{model}")

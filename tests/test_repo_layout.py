@@ -49,7 +49,6 @@ TARGET = frozenset(
 #: Still waiting for their move, and the ADR-0145 row that empties each.
 LEGACY = {
     "frontends": "row 9 (ui)",
-    "shared": "row 4 (cards, wire)",
     "src": "row 8",
 }
 
@@ -61,6 +60,8 @@ MOVED = {
     "tests/benchmarks/": "evals/ (row 2)",
     "frontends/web/": "apps/site (row 3)",
     "shared/brand/": "packages/brand (row 3)",
+    "shared/cards/": "contracts/cards (row 4)",
+    "shared/wire/": "contracts/wire (row 4)",
     "sources/": "packages/<distribution> (row 6)",
     "sources/knowledge_layer/": "packages/knowledge-layer (row 6)",
     "sources/ris_adapter/": "packages/ris-adapter (row 6)",

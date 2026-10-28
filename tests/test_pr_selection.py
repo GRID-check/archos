@@ -271,9 +271,9 @@ def test_a_declared_input_outside_the_ui_selects_its_reader(mod):
 
 
 def test_the_declaration_is_read_relative_to_the_ui(mod):
-    source = "// @disk-inputs: src/app/api/**, ../../shared/wire/v2/**\nimport x from 'y'\n"
+    source = "// @disk-inputs: src/app/api/**, ../../contracts/wire/v2/**\nimport x from 'y'\n"
 
-    assert mod.declared_inputs(source) == ("frontends/ui/src/app/api/**", "shared/wire/v2/**")
+    assert mod.declared_inputs(source) == ("frontends/ui/src/app/api/**", "contracts/wire/v2/**")
     assert mod.declared_inputs("import x from 'y'\n") is None
     # A Next route's brackets are literal, not an fnmatch character class.
     (route,) = mod.declared_inputs("// @disk-inputs: src/app/api/v1/[...path]/route.ts\n")

@@ -53,7 +53,7 @@
 > them, each checkpoint FOLDS to the count of what that fetch returned, and a
 > spine of three or more rounds arrives with everything but the newest layer
 > folded. Since chat wire v2 the round walker reads typed `retrieval` and
-> `sources` steps, pinned by the contract fixtures under `shared/wire/v2/` on
+> `sources` steps, pinned by the contract fixtures under `contracts/wire/v2/` on
 > both sides.
 > **Method.** Read the live system prompt, the answer envelope, the shallow ReAct loop, the Herleitung graph, and the production config. Cross-checked against the 2026-09-01 workspace architecture review, ADRs 0051–0052, and current industry writing on agentic RAG, coding agents, legal AI, and AEC clouds.
 
