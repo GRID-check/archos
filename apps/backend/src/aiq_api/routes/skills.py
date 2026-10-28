@@ -252,6 +252,166 @@ class SkillSubmitResponse(BaseModel):
     )
 
 
+async def _check_skill_data_sources(body: SkillSubmitPayload, agent_type: str, config_name: str) -> None:
+    """Validate the data sources as the public submit route does, per agent when the builder is up."""
+    # Validate data sources the same way the public submit route does. The
+    # per-agent availability check needs the builder captured at job-route
+    # registration; import the (NAT-pulling) validator only when we have one.
+    from .builder_state import get_active_builder
+
+    builder = get_active_builder()
+    if builder is not None:
+        from .job_data_sources import validate_data_sources_for_agent
+
+        await validate_data_sources_for_agent(
+            builder=builder,
+            agent_type=agent_type,
+            agent_config_name=config_name,
+            data_sources=body.data_sources,
+        )
+    elif body.data_sources:
+        # Startup window before register_job_routes publishes the builder:
+        # don't silently skip validation — fall back to the registry-level
+        # check (unknown IDs still 422; only per-agent availability is
+        # unverifiable without the builder).
+        from aiq_agent.common.data_source_registry import get_all_sources
+
+        known_ids = {source.id for source in get_all_sources()}
+        unknown = sorted(set(body.data_sources) - known_ids)
+        if unknown:
+            raise HTTPException(422, f"Unknown data source IDs: {', '.join(unknown)}")
+        logger.warning(
+            "Skill submit before job routes registered a builder: "
+            "validated %d data source(s) against the registry only",
+            len(body.data_sources),
+        )
+
+
+def _skill_usage_context(body: SkillSubmitPayload) -> dict:
+    """The identity and budget the worker's usage ledger attributes the run's spend to."""
+    # Identity keys must match cost_tracking._read_identity_from_context so
+    # the worker's usage ledger attributes scheduled-run spend correctly.
+    return {
+        "identity": {
+            "organization_id": body.organization_id,
+            "user_id": body.user_id,
+            "project_id": body.project_id,
+            "conversation_id": body.conversation_id,
+        },
+        "budget_header": body.budget_header,
+    }
+
+
+async def _submit_skill_run(
+    body: SkillSubmitPayload,
+    agent_type: str,
+    principal: Principal,
+    owner: str,
+    usage_context: dict,
+    request_envelope: dict[str, str] | None,
+) -> str:
+    """Queue the skill's job and return its id; the submit errors become the route's HTTP statuses."""
+    # Import the async-job layer lazily (it pulls NAT) so this module
+    # stays cheap to import next to the maintenance routes.
+    from ..jobs.submit import DuplicateJobIdError
+    from ..jobs.submit import MissingPrincipalError
+    from ..jobs.submit import submit_agent_job as submit_authorized_job
+
+    try:
+        return await submit_authorized_job(
+            agent_type=agent_type,
+            input_text=body.input,
+            owner=owner,
+            principal=principal,
+            job_id=body.job_id,
+            data_sources=body.data_sources,
+            collection_scope=body.collection_scope,
+            project_context=body.project_context,
+            project_memory=body.project_memory,
+            model_overrides=body.model_overrides,
+            usage_context=usage_context,
+            # The flag is the BFF's to evaluate (per organization); the
+            # reflection LLM ref is the worker's to resolve from its config.
+            memory_reflection_enabled=body.memory_reflection_enabled,
+            # Explicit, because a scheduled run has no request context to
+            # inherit one from. This is what lets the worker write the
+            # answer into a thread a human can open and continue.
+            conversation_id=body.conversation_id,
+            # And this is what lets it narrate itself there: without the run
+            # id the worker builds no `RunLedgerFold`, the block is minted
+            # and then never moves (`jobs/runner.py`).
+            run_id=body.run_id,
+            clarifier_result=body.clarifier_result,
+            documents=body.documents,
+            priority=body.priority,
+            request_envelope=request_envelope,
+        )
+    except JobAdmissionError as exc:
+        raise HTTPException(429, str(exc), headers={"Retry-After": str(exc.retry_after_seconds)})
+    except DuplicateJobIdError as exc:
+        raise HTTPException(409, str(exc))
+    except MissingPrincipalError as exc:
+        raise HTTPException(403, str(exc))
+    except RuntimeError:
+        logger.exception("Runtime error submitting skill %s job", agent_type)
+        raise HTTPException(500, "Failed to submit skill job")
+    except Exception as exc:
+        logger.warning("Failed to submit skill job: %s", exc)
+        raise HTTPException(500, "Failed to persist skill job authorization metadata")
+
+
+async def submit_skill(body: SkillSubmitPayload, request: Request) -> SkillSubmitResponse:
+    _require_internal_token(request)
+
+    # Import the envelope helper lazily, like the job layer.
+    from ..jobs.run_envelope import capture_request_envelope
+
+    # Deterministic agent selection (see module docstring): the job's chosen
+    # output kind decides the agent, unless an explicit override arrived.
+    # Never substitutes one output kind for another.
+    output = body.resolved_output
+    agent_type = body.agent_type or _OUTPUT_AGENT_TYPES[output]
+
+    # Validate agent_type against the registry, like the public submit route.
+    try:
+        agent_config = get_agent_config(agent_type)
+    except KeyError as exc:
+        raise HTTPException(400, str(exc))
+
+    await _check_skill_data_sources(body, agent_type, agent_config.config_name)
+
+    # Reconstitute the skill owner's identity. The job is owned by the
+    # owner (type "jwt" matches the WorkOS-authenticated principal they
+    # present when later viewing the run), so existing job-access authz
+    # keeps working. Fall back through email/org when the owner id is
+    # absent so a Principal can always be built.
+    subject = body.user_id or body.owner_email or body.organization_id
+    principal = Principal(type="jwt", sub=subject, email=body.owner_email)
+    owner = principal.email or principal.sub
+
+    # The requester's envelope the BFF signed for this fire, carried so the
+    # run's person-acting tools act as them (ADR-0108). Kept only when it
+    # speaks for the body's requester in the body's organization: the
+    # internal token authenticates the BFF, not a person.
+    request_envelope = capture_request_envelope(
+        request.headers, user_id=body.user_id, organization_id=body.organization_id
+    )
+
+    job_id = await _submit_skill_run(body, agent_type, principal, owner, _skill_usage_context(body), request_envelope)
+
+    logger.info(
+        "Submitted skill %s job %s for org %s (owner %s, output %s, %d attached skill(s), acts as requester: %s)",
+        agent_type,
+        job_id,
+        body.organization_id,
+        owner,
+        output,
+        len(body.skills),
+        request_envelope is not None,
+    )
+    return SkillSubmitResponse(job_id=job_id, queued=True)
+
+
 def add_skill_routes(router: APIRouter) -> None:
     """Register the internal skills submit route.
 
@@ -259,8 +419,7 @@ def add_skill_routes(router: APIRouter) -> None:
     treatment) so it stays internal-only. Heavy job-submission imports are
     deferred to request time, matching the maintenance/jobs modules.
     """
-
-    @router.post(
+    router.post(
         "/v1/internal/skills/submit",
         response_model=SkillSubmitResponse,
         tags=["skills", "internal"],
@@ -276,139 +435,4 @@ def add_skill_routes(router: APIRouter) -> None:
                 )
             },
         },
-    )
-    async def submit_skill(body: SkillSubmitPayload, request: Request) -> SkillSubmitResponse:
-        _require_internal_token(request)
-
-        # Import the async-job layer lazily (it pulls NAT) so this module
-        # stays cheap to import next to the maintenance routes.
-        from ..jobs.run_envelope import capture_request_envelope
-        from ..jobs.submit import DuplicateJobIdError
-        from ..jobs.submit import MissingPrincipalError
-        from ..jobs.submit import submit_agent_job as submit_authorized_job
-        from .builder_state import get_active_builder
-
-        # Deterministic agent selection (see module docstring): the job's chosen
-        # output kind decides the agent, unless an explicit override arrived.
-        # Never substitutes one output kind for another.
-        output = body.resolved_output
-        agent_type = body.agent_type or _OUTPUT_AGENT_TYPES[output]
-
-        # Validate agent_type against the registry, like the public submit route.
-        try:
-            agent_config = get_agent_config(agent_type)
-        except KeyError as exc:
-            raise HTTPException(400, str(exc))
-
-        # Validate data sources the same way the public submit route does. The
-        # per-agent availability check needs the builder captured at job-route
-        # registration; import the (NAT-pulling) validator only when we have one.
-        builder = get_active_builder()
-        if builder is not None:
-            from .jobs import _validate_data_sources_for_agent
-
-            await _validate_data_sources_for_agent(
-                builder=builder,
-                agent_type=agent_type,
-                agent_config_name=agent_config.config_name,
-                data_sources=body.data_sources,
-            )
-        elif body.data_sources:
-            # Startup window before register_job_routes publishes the builder:
-            # don't silently skip validation — fall back to the registry-level
-            # check (unknown IDs still 422; only per-agent availability is
-            # unverifiable without the builder).
-            from aiq_agent.common.data_source_registry import get_all_sources
-
-            known_ids = {source.id for source in get_all_sources()}
-            unknown = sorted(set(body.data_sources) - known_ids)
-            if unknown:
-                raise HTTPException(422, f"Unknown data source IDs: {', '.join(unknown)}")
-            logger.warning(
-                "Skill submit before job routes registered a builder: "
-                "validated %d data source(s) against the registry only",
-                len(body.data_sources),
-            )
-
-        # Reconstitute the skill owner's identity. The job is owned by the
-        # owner (type "jwt" matches the WorkOS-authenticated principal they
-        # present when later viewing the run), so existing job-access authz
-        # keeps working. Fall back through email/org when the owner id is
-        # absent so a Principal can always be built.
-        subject = body.user_id or body.owner_email or body.organization_id
-        principal = Principal(type="jwt", sub=subject, email=body.owner_email)
-        owner = principal.email or principal.sub
-
-        # Identity keys must match cost_tracking._read_identity_from_context so
-        # the worker's usage ledger attributes scheduled-run spend correctly.
-        usage_context = {
-            "identity": {
-                "organization_id": body.organization_id,
-                "user_id": body.user_id,
-                "project_id": body.project_id,
-                "conversation_id": body.conversation_id,
-            },
-            "budget_header": body.budget_header,
-        }
-
-        # The requester's envelope the BFF signed for this fire, carried so the
-        # run's person-acting tools act as them (ADR-0108). Kept only when it
-        # speaks for the body's requester in the body's organization: the
-        # internal token authenticates the BFF, not a person.
-        request_envelope = capture_request_envelope(
-            request.headers, user_id=body.user_id, organization_id=body.organization_id
-        )
-
-        try:
-            job_id = await submit_authorized_job(
-                agent_type=agent_type,
-                input_text=body.input,
-                owner=owner,
-                principal=principal,
-                job_id=body.job_id,
-                data_sources=body.data_sources,
-                collection_scope=body.collection_scope,
-                project_context=body.project_context,
-                project_memory=body.project_memory,
-                model_overrides=body.model_overrides,
-                usage_context=usage_context,
-                # The flag is the BFF's to evaluate (per organization); the
-                # reflection LLM ref is the worker's to resolve from its config.
-                memory_reflection_enabled=body.memory_reflection_enabled,
-                # Explicit, because a scheduled run has no request context to
-                # inherit one from. This is what lets the worker write the
-                # answer into a thread a human can open and continue.
-                conversation_id=body.conversation_id,
-                # And this is what lets it narrate itself there: without the run
-                # id the worker builds no `RunLedgerFold`, the block is minted
-                # and then never moves (`jobs/runner.py`).
-                run_id=body.run_id,
-                clarifier_result=body.clarifier_result,
-                documents=body.documents,
-                priority=body.priority,
-                request_envelope=request_envelope,
-            )
-        except JobAdmissionError as exc:
-            raise HTTPException(429, str(exc), headers={"Retry-After": str(exc.retry_after_seconds)})
-        except DuplicateJobIdError as exc:
-            raise HTTPException(409, str(exc))
-        except MissingPrincipalError as exc:
-            raise HTTPException(403, str(exc))
-        except RuntimeError:
-            logger.exception("Runtime error submitting skill %s job", agent_type)
-            raise HTTPException(500, "Failed to submit skill job")
-        except Exception as exc:
-            logger.warning("Failed to submit skill job: %s", exc)
-            raise HTTPException(500, "Failed to persist skill job authorization metadata")
-
-        logger.info(
-            "Submitted skill %s job %s for org %s (owner %s, output %s, %d attached skill(s), acts as requester: %s)",
-            agent_type,
-            job_id,
-            body.organization_id,
-            owner,
-            output,
-            len(body.skills),
-            request_envelope is not None,
-        )
-        return SkillSubmitResponse(job_id=job_id, queued=True)
+    )(submit_skill)

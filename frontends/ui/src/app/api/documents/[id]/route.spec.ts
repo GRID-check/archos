@@ -13,7 +13,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-edits', () => ({
   deleteDocument: vi.fn(),
   renameDocument: vi.fn(),
 }))
@@ -22,7 +22,7 @@ vi.mock('@/lib/documents/lifecycle', () => ({
   summarizeDocumentVersions: vi.fn().mockResolvedValue(new Map([['doc-1', { versionCount: 3, state: 'published' }]])),
 }))
 
-import { deleteDocument, renameDocument } from '@/lib/documents/service'
+import { deleteDocument, renameDocument } from '@/lib/documents/document-edits'
 import { getListedDocument } from '@/lib/documents/listed-document'
 import { toDocumentWireRow } from '@/lib/documents/list-projection'
 import type { ListedDocument } from '@/lib/documents/shelf-listing'

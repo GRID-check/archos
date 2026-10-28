@@ -11,7 +11,7 @@
  * | `access` | Piloti could not sign in on their behalf | ask again |
  * | `error` | the work broke off | ask again, or do it themselves |
  *
- * The reasons that can be stored on a wake (`piloti_wakes.reason`, at most 500
+ * The reasons that can be stored on a wake (`agent_wakes.reason`, at most 500
  * characters):
  *
  * - The wake job (`./wake-job.ts`): `budget: <the budget's message>` (refused

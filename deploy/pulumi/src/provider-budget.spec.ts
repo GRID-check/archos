@@ -198,7 +198,7 @@ describe("the budget reaches the pods that spend it", () => {
     const python = (path: string[], pattern: RegExp) => Number(read(...path).match(pattern)?.[1]);
 
     expect(cfg.providerLimits.vlmFleetConcurrency).toBe(
-      python(["packages", "knowledge-layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = _env_int\("GRID_VLM_FLEET_CONCURRENCY", (\d+)\)/),
+      python(["packages", "knowledge-layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = env_int\("GRID_VLM_FLEET_CONCURRENCY", (\d+)\)/),
     );
     expect(cfg.providerLimits.vlmBatchWorkers).toBe(
       python(["packages", "knowledge-layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("GRID_VLM_BATCH_WORKERS", "(\d+)"\)/),

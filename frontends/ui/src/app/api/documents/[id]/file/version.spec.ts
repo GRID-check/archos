@@ -20,7 +20,9 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 vi.mock('@/lib/documents/version-content', () => ({ streamVersionFile: vi.fn() }))
-vi.mock('@/lib/documents/service', () => ({ streamDocumentFile: vi.fn() }))
+vi.mock('@/lib/documents/document-delivery', () => ({
+  streamDocumentFile: vi.fn(),
+}))
 
 import { NotFoundError } from '@/lib/api/errors'
 import { streamVersionFile } from '@/lib/documents/version-content'

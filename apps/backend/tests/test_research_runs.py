@@ -22,7 +22,8 @@ from aiq_api.jobs import access as job_access
 from aiq_api.jobs.access import JobCaller
 from aiq_api.jobs.access import SignedJobScope
 from aiq_api.jobs.event_store import EventStore
-from aiq_api.routes.jobs import _find_research_runs
+from aiq_api.routes import job_handlers
+from aiq_api.routes.research_runs import find_research_runs
 
 
 @pytest.fixture
@@ -109,7 +110,7 @@ class TestFindResearchRuns:
         _seed_job(db_url, "job-a", principal, project_collection="proj-alpha")
         _seed_job(db_url, "job-b", principal, project_collection="proj-beta")
 
-        rows, total = _find_research_runs(db_url, None, "proj-alpha", None, None, 50, 0)
+        rows, total = find_research_runs(db_url, None, "proj-alpha", None, None, 50, 0)
 
         assert total == 1
         assert [row["job_id"] for row in rows] == ["job-a"]
@@ -120,7 +121,7 @@ class TestFindResearchRuns:
         _seed_job(db_url, "job-a", principal, conversation_id="conv-1")
         _seed_job(db_url, "job-b", principal, conversation_id="conv-2")
 
-        rows, total = _find_research_runs(db_url, None, None, "conv-2", None, 50, 0)
+        rows, total = find_research_runs(db_url, None, None, "conv-2", None, 50, 0)
 
         assert total == 1
         assert [row["job_id"] for row in rows] == ["job-b"]
@@ -130,7 +131,7 @@ class TestFindResearchRuns:
         _seed_job(db_url, "job-a", principal, status="success")
         _seed_job(db_url, "job-b", principal, status="failure")
 
-        rows, total = _find_research_runs(db_url, None, None, None, "failure", 50, 0)
+        rows, total = find_research_runs(db_url, None, None, None, "failure", 50, 0)
 
         assert total == 1
         assert [row["job_id"] for row in rows] == ["job-b"]
@@ -141,7 +142,7 @@ class TestFindResearchRuns:
         _seed_job(db_url, "job-a", owner_a)
         _seed_job(db_url, "job-b", owner_b)
 
-        rows, total = _find_research_runs(db_url, JobCaller(principal=owner_a), None, None, None, 50, 0)
+        rows, total = find_research_runs(db_url, JobCaller(principal=owner_a), None, None, None, 50, 0)
 
         assert total == 1
         assert [row["job_id"] for row in rows] == ["job-a"]
@@ -152,7 +153,7 @@ class TestFindResearchRuns:
         _seed_job(db_url, "job-a", owner_a)
         _seed_job(db_url, "job-b", owner_b)
 
-        rows, total = _find_research_runs(db_url, None, None, None, None, 50, 0)
+        rows, total = find_research_runs(db_url, None, None, None, None, 50, 0)
 
         assert total == 2
         assert {row["job_id"] for row in rows} == {"job-a", "job-b"}
@@ -163,7 +164,7 @@ class TestFindResearchRuns:
         _seed_job(db_url, "job-old", principal, created_at=now - timedelta(minutes=10))
         _seed_job(db_url, "job-new", principal, created_at=now)
 
-        rows, total = _find_research_runs(db_url, None, None, None, None, 1, 0)
+        rows, total = find_research_runs(db_url, None, None, None, None, 1, 0)
 
         assert total == 2
         assert [row["job_id"] for row in rows] == ["job-new"]
@@ -175,7 +176,7 @@ class TestFindResearchRuns:
         for job_id in ("job-a", "job-b", "job-c"):
             _seed_job(db_url, job_id, principal, created_at=ts)
 
-        pages = [_find_research_runs(db_url, None, None, None, None, 1, offset)[0][0]["job_id"] for offset in (0, 1, 2)]
+        pages = [find_research_runs(db_url, None, None, None, None, 1, offset)[0][0]["job_id"] for offset in (0, 1, 2)]
 
         # Deterministic order (created_at DESC, job_id DESC) and full coverage.
         assert pages == ["job-c", "job-b", "job-a"]
@@ -197,7 +198,7 @@ class TestListingFollowsTheSignedScope:
 
     def _ids(self, db_url: str, scope: SignedJobScope | None, project_collection: str | None = None) -> set[str]:
         caller = JobCaller(principal=self.TEAMMATE, scope=scope)
-        rows, total = _find_research_runs(db_url, caller, project_collection, None, None, 50, 0)
+        rows, total = find_research_runs(db_url, caller, project_collection, None, None, 50, 0)
         assert total == len(rows)
         return {row["job_id"] for row in rows}
 
@@ -247,7 +248,6 @@ async def research_runs_app(db_url, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_list_research_runs_scopes_to_caller_when_auth_required(research_runs_app, db_url, monkeypatch):
-    import aiq_api.routes.jobs as jobs_routes
 
     monkeypatch.setenv("REQUIRE_AUTH", "true")
     owner_a = Principal(type="jwt", sub="user-1")
@@ -255,7 +255,7 @@ async def test_list_research_runs_scopes_to_caller_when_auth_required(research_r
     _seed_job(db_url, "job-a", owner_a)
     _seed_job(db_url, "job-b", owner_b)
 
-    monkeypatch.setattr(jobs_routes, "require_verified_principal", lambda: owner_a)
+    monkeypatch.setattr(job_handlers, "require_verified_principal", lambda: owner_a)
 
     with TestClient(research_runs_app) as client:
         response = client.get("/v1/jobs/async/jobs")
@@ -269,7 +269,6 @@ async def test_list_research_runs_scopes_to_caller_when_auth_required(research_r
 @pytest.mark.asyncio
 async def test_list_research_runs_anonymous_mode_sees_all_jobs(research_runs_app, db_url, monkeypatch):
     """Mirrors authorize_job_access: when REQUIRE_AUTH is not 'true', ownership isn't enforced."""
-    import aiq_api.routes.jobs as jobs_routes
 
     monkeypatch.setenv("REQUIRE_AUTH", "false")
     owner_a = Principal(type="jwt", sub="user-1")
@@ -277,7 +276,7 @@ async def test_list_research_runs_anonymous_mode_sees_all_jobs(research_runs_app
     _seed_job(db_url, "job-a", owner_a)
     _seed_job(db_url, "job-b", owner_b)
 
-    monkeypatch.setattr(jobs_routes, "require_verified_principal", lambda: owner_a)
+    monkeypatch.setattr(job_handlers, "require_verified_principal", lambda: owner_a)
 
     with TestClient(research_runs_app) as client:
         response = client.get("/v1/jobs/async/jobs")
@@ -290,10 +289,9 @@ async def test_list_research_runs_anonymous_mode_sees_all_jobs(research_runs_app
 
 @pytest.mark.asyncio
 async def test_list_research_runs_clamps_limit(research_runs_app, db_url, monkeypatch):
-    import aiq_api.routes.jobs as jobs_routes
 
     monkeypatch.setenv("REQUIRE_AUTH", "false")
-    monkeypatch.setattr(jobs_routes, "require_verified_principal", lambda: Principal(type="jwt", sub="user-1"))
+    monkeypatch.setattr(job_handlers, "require_verified_principal", lambda: Principal(type="jwt", sub="user-1"))
 
     with TestClient(research_runs_app) as client:
         response = client.get("/v1/jobs/async/jobs", params={"limit": 10000})
@@ -304,7 +302,6 @@ async def test_list_research_runs_clamps_limit(research_runs_app, db_url, monkey
 @pytest.mark.asyncio
 async def test_list_research_runs_honours_the_signed_project(research_runs_app, db_url, monkeypatch):
     """The route reads the envelope off the request: a teammate sees the project's runs, not another org's."""
-    import aiq_api.routes.jobs as jobs_routes
 
     secret = "listing-test-secret"  # noqa: S105  # pragma: allowlist secret
     monkeypatch.setenv("REQUIRE_AUTH", "true")
@@ -314,7 +311,7 @@ async def test_list_research_runs_honours_the_signed_project(research_runs_app, 
     teammate = Principal(type="jwt", sub="user-teammate")
     _seed_job(db_url, "project-run", owner, organization_id="org-1", project_collection="proj_alpha")
     _seed_job(db_url, "other-org", owner, organization_id="org-2", project_collection="proj_alpha")
-    monkeypatch.setattr(jobs_routes, "require_verified_principal", lambda: teammate)
+    monkeypatch.setattr(job_handlers, "require_verified_principal", lambda: teammate)
 
     raw = json.dumps(
         {

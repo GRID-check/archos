@@ -90,7 +90,7 @@ export interface ResourceTypeSpec {
  *
  * `document` was deliberately REMOVED (it existed with zero roles and zero
  * permissions, so nothing ever checked it). Document access is pure inheritance
- * from the parent project and is enforced in `lib/documents/service.ts`; giving
+ * from the parent project and is enforced in the documents services (`lib/documents/`); giving
  * every uploaded file its own FGA resource would mean a WorkOS write per upload,
  * a delete per delete, a backfill and a reconciliation job — an unbounded
  * distributed-consistency problem bought for no access-control gain. If
@@ -302,7 +302,7 @@ export const PROJECT_PERMISSION_SPECS: readonly PermissionSpec[] = [
      *
      * `project:documents:write` gates the ORDINARY upload — a person choosing a
      * file off their disk — and it is the same permission behind delete and a
-     * whole-project re-index (`lib/documents/service.ts`). An organization that
+     * whole-project re-index (`lib/documents/reindex.ts`). An organization that
      * wanted Piloti to answer but not to write into its file system therefore
      * had exactly one lever, and pulling it also stopped its own architects
      * uploading plans. That is not a choice, and a deploy runbook that offered

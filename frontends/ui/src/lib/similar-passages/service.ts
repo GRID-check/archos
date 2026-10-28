@@ -43,16 +43,7 @@
 import 'server-only'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { hasPassedScreening, SCREENED_ONLY } from '@/lib/documents/document-reader'
-import {
-  BACKEND_SEARCH_MAX_COLLECTIONS,
-  hydrateProjectHits,
-  joinHitsToFiles,
-  planProjectSearch,
-  projectsWithinCollectionCap,
-  type BackendSearchHit,
-  type ProjectSearchPlan,
-  type SearchedDocument,
-} from '@/lib/documents/service'
+import { BACKEND_SEARCH_MAX_COLLECTIONS, hydrateProjectHits, joinHitsToFiles, planProjectSearch, projectsWithinCollectionCap, type BackendSearchHit, type ProjectSearchPlan, type SearchedDocument } from '@/lib/documents/semantic-search'
 import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { toListedDocuments } from '@/lib/documents/shelf-listing'
 import { officeShelfCollectionName } from '@/lib/office-shelf/collection'

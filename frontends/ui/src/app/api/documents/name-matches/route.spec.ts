@@ -26,11 +26,13 @@ vi.mock('@/lib/auth/require-auth', () => ({
     featureFlags: null,
   }),
 }))
-vi.mock('@/lib/documents/service', () => ({ probeProjectDocumentNames: vi.fn() }))
+vi.mock('@/lib/documents/document-listing', () => ({
+  probeProjectDocumentNames: vi.fn(),
+}))
 vi.mock('@/lib/office-shelf/service', () => ({ probeOfficeShelfDocumentNames: vi.fn() }))
 
 import { ForbiddenError } from '@/lib/api/errors'
-import { probeProjectDocumentNames } from '@/lib/documents/service'
+import { probeProjectDocumentNames } from '@/lib/documents/document-listing'
 import { probeOfficeShelfDocumentNames } from '@/lib/office-shelf/service'
 import {
   NAME_PROBE_PATH,

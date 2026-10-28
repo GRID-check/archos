@@ -18,8 +18,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import aiq_api.routes.jobs as jobs_routes
 from aiq_agent.knowledge import leader_lock
+from aiq_api.routes import job_reaper
 
 POOLED = "postgresql+asyncpg://agent:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
 DIRECT = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
@@ -50,15 +50,15 @@ def _lock_dsn(monkeypatch):
 async def test_the_reaper_locks_on_the_direct_dsn_not_the_job_store_url(monkeypatch):
     seen_urls, conn = _engine(monkeypatch, wins=True)
     cycle = AsyncMock(return_value=["job-1"])
-    monkeypatch.setattr(jobs_routes, "_do_reap_cycle", cycle)
+    monkeypatch.setattr(job_reaper, "_do_reap_cycle", cycle)
 
-    reaped = await jobs_routes._reap_stale_jobs_once(MagicMock(), POOLED)
+    reaped = await job_reaper.reap_stale_jobs_once(MagicMock(), POOLED)
 
     assert reaped == ["job-1"]
     assert seen_urls == [DIRECT]
     (lock_sql, lock_params), _ = conn.execute.call_args_list[0]
     assert "pg_try_advisory_lock(:id)" in str(lock_sql)
-    assert lock_params == {"id": jobs_routes._PG_REAPER_LOCK_ID}
+    assert lock_params == {"id": job_reaper._PG_REAPER_LOCK_ID}
     (unlock_sql, _), _ = conn.execute.call_args_list[-1]
     assert "pg_advisory_unlock" in str(unlock_sql)
     conn.close.assert_called_once()
@@ -68,9 +68,9 @@ async def test_the_reaper_locks_on_the_direct_dsn_not_the_job_store_url(monkeypa
 async def test_a_replica_that_loses_the_election_skips_the_cycle(monkeypatch):
     _, conn = _engine(monkeypatch, wins=False)
     cycle = AsyncMock(return_value=["job-1"])
-    monkeypatch.setattr(jobs_routes, "_do_reap_cycle", cycle)
+    monkeypatch.setattr(job_reaper, "_do_reap_cycle", cycle)
 
-    assert await jobs_routes._reap_stale_jobs_once(MagicMock(), POOLED) == []
+    assert await job_reaper.reap_stale_jobs_once(MagicMock(), POOLED) == []
 
     cycle.assert_not_awaited()
     conn.close.assert_called_once()
@@ -79,10 +79,10 @@ async def test_a_replica_that_loses_the_election_skips_the_cycle(monkeypatch):
 @pytest.mark.asyncio
 async def test_the_lock_is_released_when_the_cycle_raises(monkeypatch):
     _, conn = _engine(monkeypatch, wins=True)
-    monkeypatch.setattr(jobs_routes, "_do_reap_cycle", AsyncMock(side_effect=RuntimeError("cycle failed")))
+    monkeypatch.setattr(job_reaper, "_do_reap_cycle", AsyncMock(side_effect=RuntimeError("cycle failed")))
 
     with pytest.raises(RuntimeError, match="cycle failed"):
-        await jobs_routes._reap_stale_jobs_once(MagicMock(), POOLED)
+        await job_reaper.reap_stale_jobs_once(MagicMock(), POOLED)
 
     (unlock_sql, _), _ = conn.execute.call_args_list[-1]
     assert "pg_advisory_unlock" in str(unlock_sql)
@@ -102,10 +102,10 @@ async def test_a_lock_that_cannot_be_taken_skips_the_cycle_and_the_next_tick_ret
     engine.connect.return_value = conn
     monkeypatch.setattr(leader_lock, "_lock_engine", lambda url: engine)
     cycle = AsyncMock(return_value=["job-1"])
-    monkeypatch.setattr(jobs_routes, "_do_reap_cycle", cycle)
+    monkeypatch.setattr(job_reaper, "_do_reap_cycle", cycle)
 
     with caplog.at_level("WARNING"):
-        assert await jobs_routes._reap_stale_jobs_once(MagicMock(), POOLED) == []
+        assert await job_reaper.reap_stale_jobs_once(MagicMock(), POOLED) == []
 
     cycle.assert_not_awaited()
     assert "skipping this cycle" in caplog.text

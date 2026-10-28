@@ -82,8 +82,10 @@ vi.mock('@/lib/documents/repository', () => ({
 
 const dispatchDocument = vi.fn()
 const dispatchIngest = vi.fn()
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: (...args: unknown[]) => dispatchDocument(...args),
+}))
+vi.mock('@/lib/documents/ingest-dispatch', () => ({
   dispatchIngest: (...args: unknown[]) => dispatchIngest(...args),
 }))
 

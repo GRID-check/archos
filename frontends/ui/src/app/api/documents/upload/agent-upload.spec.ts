@@ -8,9 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { callOperation } from '@/lib/agent-api/dispatch'
 import { findOperation } from '@/lib/agent-api/catalog'
 
-vi.mock('@/lib/documents/service', () => ({ uploadDocument: vi.fn() }))
+vi.mock('@/lib/documents/document-dispatch', () => ({
+  uploadDocument: vi.fn(),
+}))
 
-import { uploadDocument } from '@/lib/documents/service'
+import { uploadDocument } from '@/lib/documents/document-dispatch'
 
 const session = {
   userId: 'user-1',

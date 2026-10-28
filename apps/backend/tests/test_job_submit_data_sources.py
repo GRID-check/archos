@@ -16,6 +16,8 @@ from aiq_agent.auth import Principal
 from aiq_agent.common.data_source_registry import populate_from_config
 from aiq_agent.common.data_source_registry import reset_registry
 from aiq_api.registry import AgentConfig
+from aiq_api.routes import job_data_sources
+from aiq_api.routes import job_handlers
 
 
 @pytest.fixture(autouse=True)
@@ -54,7 +56,7 @@ async def submit_app(monkeypatch, tmp_path):
         config_name="deep_research_agent",
         description="Test deep researcher",
     )
-    monkeypatch.setattr(jobs_routes, "get_agent_config", lambda _agent_type: agent_config)
+    monkeypatch.setattr(job_handlers, "get_agent_config", lambda _agent_type: agent_config)
 
     monkeypatch.setattr(aiq_agent.auth, "get_auth_token", lambda: "token-1")
 
@@ -64,7 +66,7 @@ async def submit_app(monkeypatch, tmp_path):
 
     monkeypatch.setattr(access, "ensure_job_access_table", MagicMock())
     monkeypatch.setattr(
-        jobs_routes,
+        job_handlers,
         "require_verified_principal",
         lambda: Principal(type="jwt", sub="user-1", email="user@example.com"),
     )
@@ -420,14 +422,13 @@ async def test_submit_job_forwards_valid_data_sources_exactly_as_provided(submit
 @pytest.mark.asyncio
 async def test_submit_job_validates_sources_for_researcher(submit_app, monkeypatch):
     app, submitted_job, builder = submit_app
-    import aiq_api.routes.jobs as jobs_routes
 
     research_config = AgentConfig(
         class_path="aiq_agent.agents.piloti.agent.PilotiAgent",
         config_name="shallow_research_agent",
         description="Test researcher",
     )
-    monkeypatch.setattr(jobs_routes, "get_agent_config", lambda _agent_type: research_config)
+    monkeypatch.setattr(job_handlers, "get_agent_config", lambda _agent_type: research_config)
     builder.get_function_config.return_value = SimpleNamespace(
         tools=None,
         exclude_tools=["web_search_tool"],
@@ -495,12 +496,11 @@ async def test_submit_job_mixed_valid_and_unknown_rejects_naming_only_unknown(su
 @pytest.mark.asyncio
 async def test_submit_job_auth_runs_before_data_source_validation(submit_app, monkeypatch):
     app, submitted_job, builder = submit_app
-    import aiq_api.routes.jobs as jobs_routes
 
     def _deny():
         raise HTTPException(status_code=403, detail="auth required")
 
-    monkeypatch.setattr(jobs_routes, "require_verified_principal", _deny)
+    monkeypatch.setattr(job_handlers, "require_verified_principal", _deny)
 
     with TestClient(app) as client:
         response = client.post(
@@ -517,14 +517,13 @@ async def test_submit_job_auth_runs_before_data_source_validation(submit_app, mo
 @pytest.mark.asyncio
 async def test_submit_job_agent_type_validation_runs_before_auth(submit_app, monkeypatch):
     app, submitted_job, builder = submit_app
-    import aiq_api.routes.jobs as jobs_routes
 
     def _deny():
         raise HTTPException(status_code=403, detail="auth required")
 
-    monkeypatch.setattr(jobs_routes, "require_verified_principal", _deny)
+    monkeypatch.setattr(job_handlers, "require_verified_principal", _deny)
     monkeypatch.setattr(
-        jobs_routes,
+        job_handlers,
         "get_agent_config",
         lambda _agent_type: (_ for _ in ()).throw(KeyError("unknown agent")),
     )
@@ -587,10 +586,9 @@ async def test_validation_calls_get_all_tool_refs_when_fn_config_tools_is_none(s
     # Default fixture is tools=None, exclude_tools=[]. Spy on the name as bound
     # in the routes module (Python testing idiom: patch where used, not where
     # defined).
-    import aiq_api.routes.jobs as jobs_routes
 
-    spy = MagicMock(wraps=jobs_routes.get_all_tool_refs)
-    monkeypatch.setattr(jobs_routes, "get_all_tool_refs", spy)
+    spy = MagicMock(wraps=job_data_sources.get_all_tool_refs)
+    monkeypatch.setattr(job_data_sources, "get_all_tool_refs", spy)
 
     with TestClient(app) as client:
         response = client.post(
@@ -622,10 +620,8 @@ async def test_validation_does_not_call_get_all_tool_refs_when_fn_config_tools_i
         exclude_tools=[],
     )
 
-    import aiq_api.routes.jobs as jobs_routes
-
-    spy = MagicMock(wraps=jobs_routes.get_all_tool_refs)
-    monkeypatch.setattr(jobs_routes, "get_all_tool_refs", spy)
+    spy = MagicMock(wraps=job_data_sources.get_all_tool_refs)
+    monkeypatch.setattr(job_data_sources, "get_all_tool_refs", spy)
 
     with TestClient(app) as client:
         response = client.post(

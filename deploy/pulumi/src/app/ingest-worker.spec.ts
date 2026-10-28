@@ -111,7 +111,7 @@ describe("the ingest-worker tier", () => {
     // tests' `cfg.providerLimits`.
     const cfg = await load();
     const python = read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py").match(
-      /MAX_IMAGE_PIXELS = _env_int\("GRID_MAX_IMAGE_PIXELS", ([\d_]+)/,
+      /MAX_IMAGE_PIXELS = env_int\("GRID_MAX_IMAGE_PIXELS", ([\d_]+)/,
     )?.[1];
     expect(python).toBeDefined();
     expect(cfg.ingestWorker.maxImagePixels).toBe(Number(python!.replace(/_/g, "")));

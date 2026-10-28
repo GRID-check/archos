@@ -13,7 +13,7 @@ import { documents } from './documents'
 const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${value}'`).join(', '))
 
 /**
- * `piloti_changes` — every change Piloti applied to an Anmerkung or a thread,
+ * `agent_changes` — every change Piloti applied to an Anmerkung or a thread,
  * with the turn that made it (migration 0142, ADR-0109;
  * `docs/architecture/document-annotations.md`).
  *
@@ -22,7 +22,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
  * and with the conversation of the turn that made it.
  */
 export const pilotiChanges = pgTable(
-  'piloti_changes',
+  'agent_changes',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     organizationId: text('organization_id').notNull(),
@@ -44,37 +44,37 @@ export const pilotiChanges = pgTable(
   },
   (table) => ({
     documentFk: foreignKey({
-      name: 'piloti_changes_document_fkey',
+      name: 'agent_changes_document_fkey',
       columns: [table.documentId],
       foreignColumns: [documents.id],
     }).onDelete('cascade'),
     conversationFk: foreignKey({
-      name: 'piloti_changes_conversation_fkey',
+      name: 'agent_changes_conversation_fkey',
       columns: [table.originConversationId, table.organizationId],
       foreignColumns: [conversations.id, conversations.organizationId],
     }).onDelete('cascade'),
-    originIdx: index('idx_piloti_changes_origin').on(table.organizationId, table.originMessageId, table.createdAt),
-    annotationIdx: index('idx_piloti_changes_annotation').on(table.annotationId, table.createdAt),
-    objectKnown: check('piloti_changes_object_known', sql`${table.objectKind} IN (${list(PILOTI_CHANGE_OBJECTS)})`),
-    opKnown: check('piloti_changes_op_known', sql`${table.op} IN (${list(PILOTI_CHANGE_OPS)})`),
+    originIdx: index('idx_agent_changes_origin').on(table.organizationId, table.originMessageId, table.createdAt),
+    annotationIdx: index('idx_agent_changes_annotation').on(table.annotationId, table.createdAt),
+    objectKnown: check('agent_changes_object_known', sql`${table.objectKind} IN (${list(PILOTI_CHANGE_OBJECTS)})`),
+    opKnown: check('agent_changes_op_known', sql`${table.op} IN (${list(PILOTI_CHANGE_OPS)})`),
     replyIsCreated: check(
-      'piloti_changes_reply_is_created',
+      'agent_changes_reply_is_created',
       sql`${table.objectKind} <> 'annotation_reply' OR ${table.op} = 'create'`
     ),
     annotationIsObject: check(
-      'piloti_changes_annotation_is_object',
+      'agent_changes_annotation_is_object',
       sql`${table.objectKind} <> 'annotation' OR ${table.objectId} = ${table.annotationId}`
     ),
     statesByOp: check(
-      'piloti_changes_states_by_op',
+      'agent_changes_states_by_op',
       sql`(${table.op} = 'create' AND ${table.before} IS NULL AND ${table.after} IS NOT NULL) OR (${table.op} = 'update' AND ${table.before} IS NOT NULL AND ${table.after} IS NOT NULL) OR (${table.op} = 'delete' AND ${table.before} IS NOT NULL AND ${table.after} IS NULL)`
     ),
     statesAreObjects: check(
-      'piloti_changes_states_are_objects',
+      'agent_changes_states_are_objects',
       sql`(${table.before} IS NULL OR jsonb_typeof(${table.before}) = 'object') AND (${table.after} IS NULL OR jsonb_typeof(${table.after}) = 'object')`
     ),
     undoComplete: check(
-      'piloti_changes_undo_complete',
+      'agent_changes_undo_complete',
       sql`(${table.undoneAt} IS NULL) = (${table.undoneBy} IS NULL)`
     ),
   })

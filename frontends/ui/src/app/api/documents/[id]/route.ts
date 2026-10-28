@@ -1,7 +1,7 @@
 /**
  * Document item API — read one document as a listing row (GET), rename a
  * document (PATCH) and delete a document permanently (DELETE). Thin handlers;
- * authorization and all logic live in `@/lib/documents/service` and
+ * authorization and all logic live in `@/lib/documents/document-edits` and
  * `@/lib/documents/listed-document`.
  *
  * GET is scope-aware like PATCH: a project document or an Archiv document, as
@@ -19,7 +19,7 @@
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { deleteDocument, renameDocument } from '@/lib/documents/service'
+import { deleteDocument, renameDocument } from '@/lib/documents/document-edits'
 import { getListedDocument } from '@/lib/documents/listed-document'
 import { toDocumentWireRows } from '@/lib/documents/list-projection'
 import { renameDocumentSchema } from '@/lib/documents/document-wire'

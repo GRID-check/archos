@@ -21,9 +21,12 @@ from fastapi.testclient import TestClient
 from aiq_agent.auth import Principal
 from aiq_api.jobs import access as job_access
 from aiq_api.jobs.event_store import EventStore
-from aiq_api.routes.jobs import GHOST_JOB_TIMEOUT_SECONDS
-from aiq_api.routes.jobs import _find_stale_jobs
-from aiq_api.routes.jobs import _reap_stale_jobs_once
+from aiq_api.routes import job_handlers
+from aiq_api.routes import job_kill
+from aiq_api.routes import job_reaper
+from aiq_api.routes.job_reaper import GHOST_JOB_TIMEOUT_SECONDS
+from aiq_api.routes.job_reaper import _find_stale_jobs
+from aiq_api.routes.job_reaper import reap_stale_jobs_once
 
 
 @pytest.fixture
@@ -149,7 +152,7 @@ class TestReapStaleJobsOnce:
         EventStore._ensure_table_exists(db_url)
         job_store = JobStore(scheduler_address="", db_url=db_url)
 
-        reaped = await _reap_stale_jobs_once(job_store, db_url)
+        reaped = await reap_stale_jobs_once(job_store, db_url)
 
         assert reaped == ["job-stuck"]
         job = await job_store.get_job("job-stuck")
@@ -169,16 +172,15 @@ class TestReapStaleJobsOnce:
         job is not reported as reaped."""
         import json
 
-        import aiq_api.routes.jobs as jobs_routes
         from nat.front_ends.fastapi.async_jobs.job_store import JobStore
 
         _insert_job_info(db_url, "job-1", status="success", age_seconds=STALE_AGE)
         EventStore._ensure_table_exists(db_url)
         job_store = JobStore(scheduler_address="", db_url=db_url)
         await job_store.update_status("job-1", "success", output={"report": "r"})
-        monkeypatch.setattr(jobs_routes, "_find_stale_jobs", lambda *args, **kwargs: ["job-1"])
+        monkeypatch.setattr(job_reaper, "_find_stale_jobs", lambda *args, **kwargs: ["job-1"])
 
-        assert await _reap_stale_jobs_once(job_store, db_url) == []
+        assert await reap_stale_jobs_once(job_store, db_url) == []
 
         job = await job_store.get_job("job-1")
         assert job.status == "success"
@@ -192,7 +194,7 @@ class TestReapStaleJobsOnce:
         EventStore(db_url, "job-live").store({"type": "job.heartbeat", "data": {}})
         job_store = SimpleNamespace(update_status=AsyncMock())
 
-        reaped = await _reap_stale_jobs_once(job_store, db_url)
+        reaped = await reap_stale_jobs_once(job_store, db_url)
 
         assert reaped == []
         job_store.update_status.assert_not_awaited()
@@ -205,7 +207,7 @@ async def cancel_app(db_url, monkeypatch):
     from nat.front_ends.fastapi.async_jobs import job_store as job_store_module
 
     monkeypatch.setattr(
-        jobs_routes,
+        job_handlers,
         "require_verified_principal",
         lambda: Principal(type="jwt", sub="user-1", email="user@example.com"),
     )
@@ -220,9 +222,14 @@ async def cancel_app(db_url, monkeypatch):
         await store.update_status(job_id, status, **kwargs)
         return True
 
-    monkeypatch.setattr(jobs_routes, "_update_status_if_not_terminal", _conditional_write)
+    monkeypatch.setattr(job_handlers, "_update_status_if_not_terminal", _conditional_write)
+
+    monkeypatch.setattr(job_kill, "_update_status_if_not_terminal", _conditional_write)
+
+    monkeypatch.setattr(job_reaper, "_update_status_if_not_terminal", _conditional_write)
     job_store.notify = AsyncMock(return_value=True)
-    monkeypatch.setattr(jobs_routes, "notify_job_outcome_from_access", job_store.notify)
+    monkeypatch.setattr(job_kill, "notify_job_outcome_from_access", job_store.notify)
+    monkeypatch.setattr(job_reaper, "notify_job_outcome_from_access", job_store.notify)
     monkeypatch.setattr(job_store_module, "JobStore", lambda **kwargs: job_store)
     worker = SimpleNamespace(
         _db_url=db_url,
@@ -343,7 +350,8 @@ class TestKillActiveRoute:
         from nat.front_ends.fastapi.async_jobs.job_store import JobStore
 
         notify = AsyncMock(return_value=True)
-        monkeypatch.setattr(jobs_routes, "notify_job_outcome_from_access", notify)
+        monkeypatch.setattr(job_kill, "notify_job_outcome_from_access", notify)
+        monkeypatch.setattr(job_reaper, "notify_job_outcome_from_access", notify)
         monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "secret")
 
         _insert_job_info(db_url, "job-running", status="running")
@@ -370,7 +378,6 @@ class TestKillActiveRoute:
 
     @pytest.mark.asyncio
     async def test_every_live_job_is_interrupted_stopped_and_reported(self, kill_app, db_url):
-        import aiq_api.routes.jobs as jobs_routes
 
         with TestClient(kill_app.app) as client:
             response = client.post("/v1/internal/jobs/kill-active", headers={"x-grid-internal-token": "secret"})
@@ -382,7 +389,7 @@ class TestKillActiveRoute:
         for job_id in ("job-running", "job-queued"):
             job = await kill_app.job_store.get_job(job_id)
             assert job.status == "interrupted"
-            assert job.error == jobs_routes.KILL_REASON
+            assert job.error == job_kill.KILL_REASON
             kill_app.notify.assert_any_await(job_id=job_id, db_url=db_url, status="interrupted")
             assert [e["type"] for e in EventStore.get_events(db_url, job_id)] == ["job.cancellation_requested"]
         # A finished run keeps its verdict and is not stopped or reported.
@@ -391,9 +398,8 @@ class TestKillActiveRoute:
 
     @pytest.mark.asyncio
     async def test_a_job_finishing_mid_sweep_keeps_its_verdict(self, kill_app, monkeypatch):
-        import aiq_api.routes.jobs as jobs_routes
 
-        monkeypatch.setattr(jobs_routes, "_find_active_job_ids", lambda *args, **kwargs: ["job-done"])
+        monkeypatch.setattr(job_kill, "_find_active_job_ids", lambda *args, **kwargs: ["job-done"])
 
         with TestClient(kill_app.app) as client:
             response = client.post("/v1/internal/jobs/kill-active", headers={"x-grid-internal-token": "secret"})
@@ -407,33 +413,33 @@ class TestKillActiveRoute:
 class TestReaperReportsItsVerdict:
     @pytest.mark.asyncio
     async def test_a_reaped_job_is_reported_as_failed(self, db_url, monkeypatch):
-        import aiq_api.routes.jobs as jobs_routes
         from nat.front_ends.fastapi.async_jobs.job_store import JobStore
 
         _insert_job_info(db_url, "job-stuck", status="running", age_seconds=STALE_AGE)
         EventStore._ensure_table_exists(db_url)
         notify = AsyncMock(return_value=True)
-        monkeypatch.setattr(jobs_routes, "notify_job_outcome_from_access", notify)
+        monkeypatch.setattr(job_kill, "notify_job_outcome_from_access", notify)
+        monkeypatch.setattr(job_reaper, "notify_job_outcome_from_access", notify)
 
-        reaped = await _reap_stale_jobs_once(JobStore(scheduler_address="", db_url=db_url), db_url)
+        reaped = await reap_stale_jobs_once(JobStore(scheduler_address="", db_url=db_url), db_url)
 
         assert reaped == ["job-stuck"]
         notify.assert_awaited_once_with(
-            job_id="job-stuck", db_url=db_url, status="failure", error=jobs_routes.GHOST_JOB_ERROR
+            job_id="job-stuck", db_url=db_url, status="failure", error=job_reaper.GHOST_JOB_ERROR
         )
 
     @pytest.mark.asyncio
     async def test_a_job_that_finished_first_is_not_reported_by_the_reaper(self, db_url, monkeypatch):
-        import aiq_api.routes.jobs as jobs_routes
         from nat.front_ends.fastapi.async_jobs.job_store import JobStore
 
         _insert_job_info(db_url, "job-1", status="success", age_seconds=STALE_AGE)
         EventStore._ensure_table_exists(db_url)
-        monkeypatch.setattr(jobs_routes, "_find_stale_jobs", lambda *args, **kwargs: ["job-1"])
+        monkeypatch.setattr(job_reaper, "_find_stale_jobs", lambda *args, **kwargs: ["job-1"])
         notify = AsyncMock(return_value=True)
-        monkeypatch.setattr(jobs_routes, "notify_job_outcome_from_access", notify)
+        monkeypatch.setattr(job_kill, "notify_job_outcome_from_access", notify)
+        monkeypatch.setattr(job_reaper, "notify_job_outcome_from_access", notify)
 
-        assert await _reap_stale_jobs_once(JobStore(scheduler_address="", db_url=db_url), db_url) == []
+        assert await reap_stale_jobs_once(JobStore(scheduler_address="", db_url=db_url), db_url) == []
         notify.assert_not_awaited()
 
 

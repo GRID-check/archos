@@ -774,7 +774,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   // the organization's switch was off by the time it ran, the person lost the
   // right to write the document or left, the mark or the reply is gone, or the
   // delegation was taken back (`stage` enqueue or claim, `status` suppressed;
-  // no model call, no Langfuse trace). This and its `piloti_wakes` row are its
+  // no model call, no Langfuse trace). This and its `agent_wakes` row are its
   // record. The actor is the person whose act would have woken Piloti. Until
   // 2026-10-14 a turn that ran and failed (`stage: 'turn'`), and a wake the job
   // ended `refused` (a spent budget) or `failed` (gave up waiting, a rejected
@@ -802,7 +802,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   // One change Piloti applied in the asker's name (ADR-0109): set (`create`,
   // `status` proposed or open), changed (`update`, `fields` the names that
   // moved), deleted a mark, or answered in its thread (`reply`). One event per
-  // `piloti_changes` row; `changeId` is the row, absent when it could not be
+  // `agent_changes` row; `changeId` is the row, absent when it could not be
   // written. Actor: the person the turn acted for.
   'piloti.change.applied': {
     targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }, { type: 'conversation' }],

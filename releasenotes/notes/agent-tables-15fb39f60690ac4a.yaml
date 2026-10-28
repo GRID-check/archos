@@ -1,0 +1,9 @@
+---
+operators:
+  - >
+    The tables piloti_wakes, piloti_changes and piloti_asks are renamed to
+    agent_wakes, agent_changes and agent_asks by a migration that runs on
+    deploy. The old names stay readable and writable as views for one release,
+    so the frontend that is still rolling out keeps working; the next release
+    removes them. A query or dashboard that reads these tables directly should
+    move to the new names.
