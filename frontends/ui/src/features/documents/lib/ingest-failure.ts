@@ -5,7 +5,7 @@
  * The stored `errorMessage` is written by whichever tier gave up: the knowledge
  * layer (`reason: text`, e.g. `office_rendition_required: …`), the ingest status
  * store (`interrupted: …`), the BFF (`INGEST_DISPATCH_FAILED_MESSAGE`,
- * `RENDITION_REQUIRED_MESSAGE` in `lib/documents/service.ts`) or a provider
+ * `RENDITION_REQUIRED_MESSAGE` in `lib/documents/ingest-dispatch.ts`) or a provider
  * error passed through verbatim. It is persisted server-side, so it cannot be
  * localized where it is written; it is classified here and the raw text stays
  * available behind a „Details" disclosure.
@@ -64,7 +64,7 @@ export const INGEST_FAILURE_PREFIXES = {
 /**
  * Whole sentences the BFF stores, matched by their start so a later
  * `: detail` suffix still classifies. Mirrors `INGEST_DISPATCH_FAILED_MESSAGE`
- * and `RENDITION_REQUIRED_MESSAGE` in `lib/documents/service.ts`, which is
+ * and `RENDITION_REQUIRED_MESSAGE` in `lib/documents/ingest-dispatch.ts`, which is
  * `server-only` and cannot be imported here; `ingest-failure.spec.ts` holds
  * the two in step.
  */

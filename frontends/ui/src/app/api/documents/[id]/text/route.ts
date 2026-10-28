@@ -1,11 +1,11 @@
 /**
  * Text document content — returns a bounded UTF-8 string for the formats the
  * pane renders itself (plain text, Markdown, CSV). 415 for anything else.
- * Thin handler; all logic lives in `@/lib/documents/service`.
+ * Thin handler; all logic lives in `@/lib/documents/document-delivery`.
  */
 
 import { apiRoute } from '@/lib/api/handler'
-import { getDocumentTextPreview } from '@/lib/documents/service'
+import { getDocumentTextPreview } from '@/lib/documents/document-delivery'
 
 type Params = { id: string }
 

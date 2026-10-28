@@ -79,7 +79,7 @@ vi.mock('@/lib/conversations/service', () => ({
 // (`@/lib/documents/upload-admission`) imports them from there.
 vi.mock('@/lib/documents/upload-type', () => ({ assertUploadTypeAllowed: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job-1', status: 'pending' }),
 }))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn() }))
@@ -118,7 +118,7 @@ vi.mock('./repository', () => ({
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordAuditEvent } from '@/lib/audit/service'
-import { dispatchDocument } from '@/lib/documents/service'
+import { dispatchDocument } from '@/lib/documents/document-dispatch'
 import { findDocumentInOrg, findLiveDocumentByFilename } from '@/lib/documents/repository'
 import { admitOrDiscard, admitReplacementOrDiscard } from '@/lib/storage/admission'
 import { ConflictError } from '@/lib/api/errors'

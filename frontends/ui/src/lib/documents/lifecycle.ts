@@ -85,7 +85,8 @@ import {
   versionBytesReadableBy,
   writeVersionContent,
 } from './version-content'
-import type { AgentDocumentProvenance, DispatchDocumentResult, IngestPriority } from './service'
+import type { DispatchDocumentResult } from './document-dispatch'
+import type { AgentDocumentProvenance, IngestPriority } from './ingest-dispatch'
 import {
   DOCUMENT_VERSION_TRANSITIONS,
   findDocumentVersionTransition,
@@ -196,7 +197,7 @@ async function ingestPublishedUpload(
   version: DocumentVersion,
 ): Promise<void> {
   if (version.contentHash !== null && version.contentHash === document.screenedHash) return
-  const { dispatchDocument } = await import('./service')
+  const { dispatchDocument } = await import('./document-dispatch')
   await dispatchDocument({
     organizationId: session.organizationId,
     projectId: document.projectId,
@@ -499,11 +500,10 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
       return
     }
 
-    // Cycle-broken on purpose: `documents/service.ts` imports this module for
-    // `recordUploadedVersion`, so a static import
-    // back would be a load-order cycle. Same device, same reason, as
-    // `sharing/service.ts` reaching the mentions service.
-    const { dispatchDocument, AgentAuthoredDocumentNotIndexableError } = await import('./service')
+    // Cycle-broken on purpose: `document-dispatch.ts` reaches this module (via `shelf-upload.ts`) for
+    // `recordUploadedVersion`, so a static import back would be a load-order cycle. Same device, same
+    // reason, as `sharing/service.ts` reaching the mentions service.
+    const { dispatchDocument, AgentAuthoredDocumentNotIndexableError } = await import('./document-dispatch')
 
     if (previous) {
       await purgeSupersededChunks(document)
@@ -711,7 +711,7 @@ export async function redispatchPublishedVersion(
   document: Document,
   priority: IngestPriority,
 ): Promise<DispatchDocumentResult> {
-  const { dispatchDocument, AgentAuthoredDocumentNotIndexableError } = await import('./service')
+  const { dispatchDocument, AgentAuthoredDocumentNotIndexableError } = await import('./document-dispatch')
   const version = await findPublishedVersion(document.id, organizationId)
   if (!version || !isAgentDocumentFilename(document.filename)) {
     throw new AgentAuthoredDocumentNotIndexableError(document.id)

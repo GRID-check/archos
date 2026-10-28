@@ -28,7 +28,7 @@ import {
 } from '@/lib/documents/repository'
 import { internalRead, isHeldAtRest } from '@/lib/documents/document-reader'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { dispatchDocument, type DispatchDocumentResult } from '@/lib/documents/service'
+import { dispatchDocument, type DispatchDocumentResult } from '@/lib/documents/document-dispatch'
 import { resolveDocumentFolderPath } from '@/lib/documents/folder-path'
 import { documentShelf } from '@/lib/documents/shelf'
 import { publishShelfChanged } from '@/lib/documents/shelf-live'

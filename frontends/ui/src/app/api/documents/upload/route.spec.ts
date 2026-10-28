@@ -17,9 +17,11 @@ vi.mock('@/lib/auth/require-auth', () => ({
     featureFlags: null,
   }),
 }))
-vi.mock('@/lib/documents/service', () => ({ uploadDocument: vi.fn() }))
+vi.mock('@/lib/documents/document-dispatch', () => ({
+  uploadDocument: vi.fn(),
+}))
 
-import { uploadDocument } from '@/lib/documents/service'
+import { uploadDocument } from '@/lib/documents/document-dispatch'
 import { POST } from './route'
 
 const OLDER = '0b8f3c1e-0d3a-4d2e-9a53-6d1f9d6c2b11'

@@ -2,11 +2,11 @@
  * Document visual-details API — per-page VLM descriptions of a document's
  * visual chunks (drawings / images / charts), the "detailed information" the
  * one-line summary is distilled from. Thin handler; access check and the
- * backend proxy live in `@/lib/documents/service`. Read-only, fail-soft.
+ * backend proxy live in `@/lib/documents/document-details`. Read-only, fail-soft.
  */
 
 import { apiRoute } from '@/lib/api/handler'
-import { getDocumentVisualDetails } from '@/lib/documents/service'
+import { getDocumentVisualDetails } from '@/lib/documents/document-details'
 
 type Params = { id: string }
 

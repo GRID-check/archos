@@ -50,21 +50,16 @@ from aiq_agent.knowledge.document_revisions import parse_change_summary
 from aiq_agent.knowledge.document_revisions import settled_change
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.observability.direct_trace import observed_generation
 
-from ..jobs import ingest_dispatch
 from ..models.requests import DeleteFilesRequest
 from ..models.requests import UploadResponse
 from .collections import _require_ingestor
 from .collections import require_collection
+from .documents_jobs import add_document_job_routes
 from .generate_summary import _llm_settings
 
 logger = logging.getLogger(__name__)
-
-# Upper bound on job ids per batch-status request (request validation).
-BATCH_STATUS_MAX_IDS = 200
-
 
 #: Set on a listing whose metadata (summaries, dossiers, references, coverage) could not be read.
 READING_UNAVAILABLE_HEADER = "X-Reading-Unavailable"
@@ -319,575 +314,527 @@ def _no_summary_404(collection_name: str, file_name: str) -> HTTPException:
     )
 
 
-def _job_statuses(ingestor: BaseIngestor, job_ids: list[str]) -> dict[str, Any]:
-    """Each job's status, or None when unknown or failing. One thread hop for the batch, not one per id."""
-    statuses: dict[str, Any] = {}
-    for job_id in job_ids:
+def _unlink_all(paths: list[str]) -> None:
+    """Remove the temp files of a submission that never reached the ingestion job."""
+    for path in paths:
         try:
-            status = ingestor.get_job_status(job_id)
-            statuses[job_id] = status.model_dump(mode="json") if status is not None else None
-        except Exception:
-            statuses[job_id] = None
-    ingest_dispatch.stamp_queue_ahead(statuses)
-    return statuses
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+async def _spool_upload(file: UploadFile, temp_paths: list[str], original_filenames: list[str]) -> None:
+    """Write one uploaded file to a temp path. Both lists grow in place, so a failure part-way still cleans up."""
+    original_filename = file.filename or "unknown"
+    original_filenames.append(original_filename)
+    suffix = f"_{original_filename}" if original_filename else ""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        temp_paths.append(tmp.name)
+        logger.debug(f"Saved uploaded file to {tmp.name}")
+
+
+async def upload_documents(
+    collection_name: str,
+    files: list[UploadFile] = File(..., description="Files to upload"),
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> UploadResponse:
+    """
+    Upload documents to a collection.
+
+    Returns a job ID for polling the ingestion status.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
+
+    # Verify collection exists
+    await require_collection(ingestor, collection_name)
+
+    temp_paths = []
+    original_filenames = []
+    try:
+        # Files are NOT deleted here - the ingestion job cleans them up
+        # after processing to allow background thread to access them
+        for file in files:
+            await _spool_upload(file, temp_paths, original_filenames)
+
+        # Submit ingestion job (job will clean up temp files after processing)
+        # Pass original filenames so file_details uses correct names
+        job_id = await asyncio.to_thread(
+            ingestor.submit_job,
+            temp_paths,
+            collection_name,
+            config={
+                "cleanup_files": True,
+                "original_filenames": original_filenames,
+            },
+        )
+
+        # Get the job to extract file_ids for the response
+        job_status = await asyncio.to_thread(ingestor.get_job_status, job_id)
+        file_ids = [fd.file_id for fd in job_status.file_details]
+
+        logger.info(f"Submitted ingestion job {job_id} for {len(files)} file(s)")
+
+        return UploadResponse(
+            job_id=job_id,
+            file_ids=file_ids,
+            message=f"Ingestion job submitted for {len(files)} file(s)",
+        )
+
+    except HTTPException:
+        # Clean up on HTTP errors (job not submitted)
+        _unlink_all(temp_paths)
+        raise
+    except Exception as e:
+        # Clean up on other errors (job not submitted)
+        _unlink_all(temp_paths)
+        logger.error(f"Failed to upload documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def list_documents(
+    collection_name: str,
+    response: Response,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> list[FileInfo]:
+    """List all documents in a collection.
+
+    When the metadata store cannot be read the files are still listed, without their
+    summaries and readings, and the ``X-Grid-Reading-Unavailable: 1`` header says so: a
+    reader that projects the readings (the BFF's search facets) must keep what it has
+    instead of taking the empty fields as "nothing was read".
+    """
+    # Verify collection exists
+    await require_collection(ingestor, collection_name)
+
+    try:
+        files = await asyncio.to_thread(ingestor.list_files, collection_name)
+    except Exception as e:
+        logger.error(f"Failed to list documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Enrich with persisted per-document summaries (one SQL read). Fail-open:
+    # a summary-store hiccup must never break the document listing, so the
+    # files are returned without summaries rather than erroring the route.
+    try:
+        summaries = await get_available_documents_async(collection_name)
+        # Off the loop: deriving a suggestion for a document ingested before the Fassung step reads
+        # the job store for held names.
+        await asyncio.to_thread(_merge_summaries, files, summaries, _held_names_of(collection_name))
+    except Exception as e:
+        logger.warning(f"Failed to merge summaries for {collection_name}: {e}")
+        response.headers[READING_UNAVAILABLE_HEADER] = "1"
+
+    return files
+
+
+async def get_document_visual_details_route(
+    collection_name: str,
+    file_name: str,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> dict:
+    """Return the rendered-drawing / image / chart descriptions ingestion
+    produced for a document (the "detailed information" the summary is
+    distilled from). Fail-open: returns an empty list when the lookup fails
+    or the document has no visual chunks."""
+    try:
+        details = await asyncio.to_thread(ingestor.get_document_visual_details, collection_name, file_name)
+        return {"details": details}
+    except Exception as e:
+        logger.warning("Failed to fetch visual details for %s/%s: %s", collection_name, file_name, e)
+        return {"details": []}
+
+
+class UpdateTagsRequest(BaseModel):
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Controlled document tags; must be a subset of the ingestion vocabulary.",
+    )
+    topics: list[str] | None = Field(
+        default=None,
+        description=(
+            "Open topics (Themen), free terms of up to three words. Omit to leave the topics as they are; "
+            "send tags alone to leave them, too."
+        ),
+    )
+
+
+async def update_document_tags_route(
+    collection_name: str,
+    file_name: str,
+    request: UpdateTagsRequest,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> dict[str, Any]:
+    """Replace the controlled tags on a single document's summary row.
+
+    Follows the documents-router auth model (end-user access is enforced at
+    the BFF; this route only requires the knowledge API to be configured).
+    The ingestion vocabulary (``ALLOWED_TAGS``) is the contract: a user edit
+    can never introduce an off-vocabulary tag.
+
+    - Tags outside ``ALLOWED_TAGS`` → 400 listing the offending values.
+    - More than ``MAX_TAGS`` tags (after dedup) → 400 (the BFF zod already
+      caps this, so a normal user never reaches it).
+    - An empty list is allowed and clears the tags.
+    - ``topics``, when sent, is normalised by :func:`_checked_topics` (400
+      for a non-term or too many) and stored as a person's topics. Sent
+      alone, it leaves the tags as they are; sent with ``tags``, both change.
+    - No summary row for ``(collection, file_name)`` → 404 (the summary is
+      the anchor; there is nothing to tag without one).
+    The summary itself is never modified.
+
+    The tags and topics are stored as a PERSON's choice, so a later re-ingest
+    keeps them instead of writing the classifier's guess back over the correction.
+    """
+    # Validate everything before any write, so a 400 on one field leaves both untouched.
+    topics = _checked_topics(request.topics) if request.topics is not None else None
+    write_tags = "tags" in request.model_fields_set or request.topics is None
+    tags = _checked_tags(request.tags) if write_tags else None
+
+    response: dict[str, Any] = {"collection_name": collection_name, "file_name": file_name}
+    if topics is not None:
+        if not await asyncio.to_thread(set_document_topics_by_person, collection_name, file_name, topics):
+            raise _no_summary_404(collection_name, file_name)
+        response["topics"] = topics
+    if tags is not None:
+        if not await asyncio.to_thread(set_document_tags_by_person, collection_name, file_name, tags):
+            raise _no_summary_404(collection_name, file_name)
+        response["tags"] = tags
+    return response
+
+
+class RevisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    newer: str = Field(..., min_length=1, max_length=512, description="File name of the newer Fassung.")
+    older: str = Field(..., min_length=1, max_length=512, description="File name of the Fassung it replaces.")
+    linked: bool = Field(
+        ...,
+        description="True: a person confirms newer replaces older. False: a person lifts or refuses that.",
+    )
+
+
+async def _linked_revision_response(
+    collection_name: str,
+    request: RevisionRequest,
+    newer: AvailableDocument,
+    older: AvailableDocument,
+    organization_id: str | None,
+) -> dict[str, Any]:
+    """The answer to a confirmed link: the change line told onto ``newer``, or what ``newer`` already says."""
+    change = await _request_change_summary(older, newer, organization_id)
+    if change:
+        await asyncio.to_thread(set_document_change_summary, collection_name, request.newer, change, request.older)
+        return {"superseded_by": request.newer, "change_summary": change, "change_basis": request.older}
+    # No line could be told: whatever the newer file already says about itself stays, with its own basis.
+    return {
+        "superseded_by": request.newer,
+        "change_summary": newer.change_summary,
+        "change_basis": newer.change_basis,
+    }
+
+
+async def put_revision_route(
+    collection_name: str,
+    request: RevisionRequest,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+    x_grid_organization_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """A person's decision about a Piloti suggestion (or a name series): ``newer`` replaces ``older``.
+
+    Follows the documents-router auth model: end-user access is enforced at the
+    BFF. Both files must have a metadata row in THIS collection, and differ.
+    Nothing here merges stored bytes: the older file stays whole and readable
+    by name, and only drops out of the ranked search.
+
+    - ``linked=true``: ``older.superseded_by = newer``; a suggestion on ``newer``
+      that pointed at ``older`` is cleared; when ``older`` was replaced by another
+      file until now, that file's change line told against ``older`` goes. The
+      loop check and these writes are one locked transaction
+      (``link_document_revision``), so two concurrent confirmations cannot store
+      A over B and B over A. A link that would close a loop (the newer file
+      already replaced by the older, directly or through others) is a 409. Then
+      what changed is written by the summary model (traced as ``change-summary``)
+      onto ``newer`` with ``change_basis = older``. A model failure leaves the
+      link in place and ``change_summary`` null.
+    - ``linked=false``: the link ``older -> newer`` is lifted when it exists, the
+      change summary written against ``older`` goes with it, and ``older`` is added
+      to the files ``newer`` refused (``dismissed_of``), so a later reading does not
+      offer the pair again, whatever else was refused before. An open suggestion
+      about another file stays open.
+
+    Returns ``{"superseded_by", "change_summary", "change_basis"}``: the link ``older``
+    has and the change line ``newer`` has after the call (``null`` when none).
+    """
+    if request.newer == request.older:
+        raise HTTPException(status_code=400, detail="A file cannot replace itself")
+    documents = {doc.file_name: doc for doc in await get_available_documents_async(collection_name)}
+    missing = [name for name in (request.newer, request.older) if name not in documents]
+    if missing:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No document {missing!r} in collection '{collection_name}'",
+        )
+    newer, older = documents[request.newer], documents[request.older]
+
+    if not request.linked:
+        return await _refuse_revision(collection_name, newer, older)
+
+    outcome = await asyncio.to_thread(link_document_revision, collection_name, request.older, request.newer)
+    if outcome is LinkOutcome.LOOP:
+        raise HTTPException(
+            status_code=409,
+            detail=f"'{request.newer}' is already replaced by '{request.older}'; it cannot replace it in turn",
+        )
+    if outcome is LinkOutcome.MISSING:
+        raise _no_summary_404(collection_name, request.older)
+    return await _linked_revision_response(collection_name, request, newer, older, x_grid_organization_id)
+
+
+class UpdateDisplayTitleRequest(BaseModel):
+    display_title: str | None = Field(
+        default=None,
+        description="User-facing document name. Null or blank clears it, restoring the derived default.",
+    )
+
+
+async def update_document_display_title_route(
+    collection_name: str,
+    file_name: str,
+    request: UpdateDisplayTitleRequest,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> dict[str, str | None]:
+    """Set the user-facing ``display_title`` on one document's metadata row.
+
+    The tenant-scoped twin of the base-corpus rename
+    (``/v1/admin/oib/documents/{file_name}/display-title``): same factory
+    seam, same store, same effect — retrieval prefers a stored
+    ``display_title`` over the filename when it builds a citation chip, so a
+    rename shows up there immediately and NOTHING is re-ingested. The
+    document's ``file_name`` stays its identity; only the label moves.
+
+    Follows the documents-router auth model: end-user access is enforced at
+    the BFF, which resolves the caller's permission on the document before
+    it addresses this route by collection.
+
+    - A null or blank title clears the override, restoring the derived
+      default (``guess_display_title``).
+    - No metadata row for ``(collection, file_name)`` → 404. The summary is
+      the anchor, as it is for tags: a document that was never summarized
+      has nothing to carry a title. The BFF treats that as non-fatal — the
+      rename it stores on its own row is the durable one.
+    """
+    new_title = (request.display_title or "").strip() or None
+
+    updated = await asyncio.to_thread(set_document_display_title, collection_name, file_name, new_title)
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No summary found for '{file_name}' in collection '{collection_name}'",
+        )
+
+    return {
+        "collection_name": collection_name,
+        "file_name": file_name,
+        "display_title": new_title,
+    }
+
+
+class UpdateFolderPathRequest(BaseModel):
+    folder_path: str | None = Field(
+        default=None,
+        description=(
+            "The document's new folder path, e.g. 'Brandschutz/Fluchtwege'. Null or blank files it at the project root."
+        ),
+    )
+
+
+async def update_document_folder_path_route(
+    collection_name: str,
+    file_name: str,
+    request: UpdateFolderPathRequest,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> dict[str, str | None]:
+    """Set one document's ``folder_path`` — the per-document half of ADR-0049.
+
+    The subtree mirror below moves a FOLDER and everything under it; this
+    moves a DOCUMENT between folders that both already exist. Both are
+    needed and neither substitutes for the other: a document leaving
+    ``Brandschutz`` for ``Statik`` shares no path prefix with its former
+    neighbours, so a prefix rewrite cannot express it.
+
+    Same shape as the display-title mirror: UPDATE-only, nothing
+    re-ingested, and the metadata row's summary is the anchor — a document
+    that was never summarized has nothing to carry a folder, which is a 404
+    the BFF treats as non-fatal because its own ``documents.folder_id`` is
+    the durable record of where the file lives.
+
+    Follows the documents-router auth model: end-user access is enforced at
+    the BFF, which has already checked ``project:documents:write`` on the
+    project that owns this collection.
+    """
+    new_path = (request.folder_path or "").strip() or None
+
+    updated = await asyncio.to_thread(set_document_folder_path, collection_name, file_name, new_path)
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No summary found for '{file_name}' in collection '{collection_name}'",
+        )
+
+    return {
+        "collection_name": collection_name,
+        "file_name": file_name,
+        "folder_path": new_path,
+    }
+
+
+class RewriteFolderPathRequest(BaseModel):
+    from_path: str = Field(
+        ...,
+        min_length=1,
+        description="The folder path as it was before the rename/move/delete, e.g. 'Brandschutz/Fluchtwege'.",
+    )
+    to_path: str | None = Field(
+        default=None,
+        description="The folder path it became. Null or blank re-files the subtree at the project root.",
+    )
+
+
+async def rewrite_folder_paths_route(
+    collection_name: str,
+    request: RewriteFolderPathRequest,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> dict[str, Any]:
+    """Mirror a project-folder rename, move or delete onto document metadata.
+
+    The sibling of the display-title mirror
+    (``PATCH .../documents/{f}/display-title``): same store, same
+    no-re-ingest property, one call instead of one per document. The BFF's
+    ``project_folders.path`` is MATERIALISED, so renaming or re-parenting a
+    folder rewrites the whole subtree there in a single prefix replace; this
+    endpoint is that same operation applied to the backend's
+    ``document_metadata.folder_path``.
+
+    - ``from_path`` matches the folder itself AND everything under
+      ``from_path/`` — a folder called ``Plan`` never drags ``Plangrundlagen``
+      along.
+    - ``to_path`` null/blank re-files the subtree at the project root, which
+      is what a folder DELETE does to its direct children.
+    - Nothing filed under the path is not an error: ``{"updated": 0}``.
+
+    Follows the documents-router auth model: end-user access is enforced at
+    the BFF, which has already checked ``project:documents:write`` on the
+    project that owns this collection before it addresses this route.
+    """
+    updated = await asyncio.to_thread(
+        rewrite_document_folder_paths, collection_name, request.from_path, request.to_path
+    )
+    return {
+        "collection_name": collection_name,
+        "from_path": request.from_path,
+        "to_path": (request.to_path or "").strip() or None,
+        "updated": updated,
+    }
+
+
+async def delete_files(
+    collection_name: str,
+    request: DeleteFilesRequest,
+    ingestor: BaseIngestor = Depends(_require_ingestor),
+) -> dict[str, Any]:
+    """Delete files from a collection by ID.
+
+    ``permanent`` (default ``false``) says nobody will undo this delete. Without it
+    the files' chunks and metadata rows go, but the Fassung facts a person made (a
+    confirmed link, refused suggestions, the change line against a linked Fassung)
+    are kept for the file's return, and links other files hold to it stay: an
+    archive, the folder bin and a publish purge and then read the document again.
+    With it, those facts go and the files it replaced are current again for good.
+    """
+    # Verify collection exists
+    await require_collection(ingestor, collection_name)
+
+    if not request.file_ids:
+        return {
+            "message": "No file IDs provided",
+            "successful": [],
+            "failed": [],
+            "total_deleted": 0,
+        }
+
+    try:
+        result = await asyncio.to_thread(
+            ingestor.delete_files, request.file_ids, collection_name, permanent=request.permanent
+        )
+        total_deleted = result.get("total_deleted", 0)
+        failed = result.get("failed", [])
+
+        if failed:
+            result["message"] = "Some files could not be deleted"
+        elif total_deleted == 0:
+            result["message"] = "No matching files found"
+        else:
+            result["message"] = f"Successfully deleted {total_deleted} file(s)"
+
+        return result
+    except Exception as e:
+        logger.error("Failed to delete files from collection %s: %s", collection_name, type(e).__name__)
+        raise HTTPException(status_code=500, detail="Failed to delete files")
 
 
 def add_document_routes(router: APIRouter):
     """Add document management routes to the FastAPI app."""
-
-    @router.post(
+    router.post(
         "/v1/collections/{collection_name}/documents",
         response_model=UploadResponse,
         status_code=202,
         tags=["documents"],
         summary="Upload documents to a collection",
-    )
-    async def upload_documents(
-        collection_name: str,
-        files: list[UploadFile] = File(..., description="Files to upload"),
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> UploadResponse:
-        """
-        Upload documents to a collection.
-
-        Returns a job ID for polling the ingestion status.
-        """
-        if not files:
-            raise HTTPException(status_code=400, detail="No files provided")
-
-        # Verify collection exists
-        await require_collection(ingestor, collection_name)
-
-        temp_paths = []
-        original_filenames = []
-        try:
-            # Save uploaded files to temp location
-            # NOTE: Files are NOT deleted here - the ingestion job cleans them up
-            # after processing to allow background thread to access them
-            for file in files:
-                original_filename = file.filename or "unknown"
-                original_filenames.append(original_filename)
-                suffix = f"_{original_filename}" if original_filename else ""
-                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                    content = await file.read()
-                    tmp.write(content)
-                    temp_paths.append(tmp.name)
-                    logger.debug(f"Saved uploaded file to {tmp.name}")
-
-            # Submit ingestion job (job will clean up temp files after processing)
-            # Pass original filenames so file_details uses correct names
-            job_id = await asyncio.to_thread(
-                ingestor.submit_job,
-                temp_paths,
-                collection_name,
-                config={
-                    "cleanup_files": True,
-                    "original_filenames": original_filenames,
-                },
-            )
-
-            # Get the job to extract file_ids for the response
-            job_status = await asyncio.to_thread(ingestor.get_job_status, job_id)
-            file_ids = [fd.file_id for fd in job_status.file_details]
-
-            logger.info(f"Submitted ingestion job {job_id} for {len(files)} file(s)")
-
-            return UploadResponse(
-                job_id=job_id,
-                file_ids=file_ids,
-                message=f"Ingestion job submitted for {len(files)} file(s)",
-            )
-
-        except HTTPException:
-            # Clean up on HTTP errors (job not submitted)
-            for path in temp_paths:
-                try:
-                    os.unlink(path)
-                except OSError:
-                    pass
-            raise
-        except Exception as e:
-            # Clean up on other errors (job not submitted)
-            for path in temp_paths:
-                try:
-                    os.unlink(path)
-                except OSError:
-                    pass
-            logger.error(f"Failed to upload documents: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-
-    @router.get(
+    )(upload_documents)
+    router.get(
         "/v1/collections/{collection_name}/documents",
         response_model=list[FileInfo],
         tags=["documents"],
         summary="List documents in a collection",
-    )
-    async def list_documents(
-        collection_name: str,
-        response: Response,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> list[FileInfo]:
-        """List all documents in a collection.
-
-        When the metadata store cannot be read the files are still listed, without their
-        summaries and readings, and the ``X-Grid-Reading-Unavailable: 1`` header says so: a
-        reader that projects the readings (the BFF's search facets) must keep what it has
-        instead of taking the empty fields as "nothing was read".
-        """
-        # Verify collection exists
-        await require_collection(ingestor, collection_name)
-
-        try:
-            files = await asyncio.to_thread(ingestor.list_files, collection_name)
-        except Exception as e:
-            logger.error(f"Failed to list documents: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-
-        # Enrich with persisted per-document summaries (one SQL read). Fail-open:
-        # a summary-store hiccup must never break the document listing, so the
-        # files are returned without summaries rather than erroring the route.
-        try:
-            summaries = await get_available_documents_async(collection_name)
-            # Off the loop: deriving a suggestion for a document ingested before the Fassung step reads
-            # the job store for held names.
-            await asyncio.to_thread(_merge_summaries, files, summaries, _held_names_of(collection_name))
-        except Exception as e:
-            logger.warning(f"Failed to merge summaries for {collection_name}: {e}")
-            response.headers[READING_UNAVAILABLE_HEADER] = "1"
-
-        return files
-
-    @router.get(
+    )(list_documents)
+    router.get(
         "/v1/collections/{collection_name}/documents/{file_name}/visual-details",
         tags=["documents"],
         summary="Per-page VLM descriptions of a document's visual chunks",
-    )
-    async def get_document_visual_details_route(
-        collection_name: str,
-        file_name: str,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> dict:
-        """Return the rendered-drawing / image / chart descriptions ingestion
-        produced for a document (the "detailed information" the summary is
-        distilled from). Fail-open: returns an empty list when the lookup fails
-        or the document has no visual chunks."""
-        try:
-            details = await asyncio.to_thread(ingestor.get_document_visual_details, collection_name, file_name)
-            return {"details": details}
-        except Exception as e:
-            logger.warning("Failed to fetch visual details for %s/%s: %s", collection_name, file_name, e)
-            return {"details": []}
-
-    class UpdateTagsRequest(BaseModel):
-        tags: list[str] = Field(
-            default_factory=list,
-            description="Controlled document tags; must be a subset of the ingestion vocabulary.",
-        )
-        topics: list[str] | None = Field(
-            default=None,
-            description=(
-                "Open topics (Themen), free terms of up to three words. Omit to leave the topics as they are; "
-                "send tags alone to leave them, too."
-            ),
-        )
-
-    @router.patch(
+    )(get_document_visual_details_route)
+    router.patch(
         "/v1/collections/{collection_name}/documents/{file_name}/tags",
         tags=["documents"],
         summary="Replace a document's controlled tags",
-    )
-    async def update_document_tags_route(
-        collection_name: str,
-        file_name: str,
-        request: UpdateTagsRequest,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> dict[str, Any]:
-        """Replace the controlled tags on a single document's summary row.
-
-        Follows the documents-router auth model (end-user access is enforced at
-        the BFF; this route only requires the knowledge API to be configured).
-        The ingestion vocabulary (``ALLOWED_TAGS``) is the contract: a user edit
-        can never introduce an off-vocabulary tag.
-
-        - Tags outside ``ALLOWED_TAGS`` → 400 listing the offending values.
-        - More than ``MAX_TAGS`` tags (after dedup) → 400 (the BFF zod already
-          caps this, so a normal user never reaches it).
-        - An empty list is allowed and clears the tags.
-        - ``topics``, when sent, is normalised by :func:`_checked_topics` (400
-          for a non-term or too many) and stored as a person's topics. Sent
-          alone, it leaves the tags as they are; sent with ``tags``, both change.
-        - No summary row for ``(collection, file_name)`` → 404 (the summary is
-          the anchor; there is nothing to tag without one).
-        The summary itself is never modified.
-
-        The tags and topics are stored as a PERSON's choice, so a later re-ingest
-        keeps them instead of writing the classifier's guess back over the correction.
-        """
-        # Validate everything before any write, so a 400 on one field leaves both untouched.
-        topics = _checked_topics(request.topics) if request.topics is not None else None
-        write_tags = "tags" in request.model_fields_set or request.topics is None
-        tags = _checked_tags(request.tags) if write_tags else None
-
-        response: dict[str, Any] = {"collection_name": collection_name, "file_name": file_name}
-        if topics is not None:
-            if not await asyncio.to_thread(set_document_topics_by_person, collection_name, file_name, topics):
-                raise _no_summary_404(collection_name, file_name)
-            response["topics"] = topics
-        if tags is not None:
-            if not await asyncio.to_thread(set_document_tags_by_person, collection_name, file_name, tags):
-                raise _no_summary_404(collection_name, file_name)
-            response["tags"] = tags
-        return response
-
-    class RevisionRequest(BaseModel):
-        model_config = ConfigDict(extra="forbid")
-
-        newer: str = Field(..., min_length=1, max_length=512, description="File name of the newer Fassung.")
-        older: str = Field(..., min_length=1, max_length=512, description="File name of the Fassung it replaces.")
-        linked: bool = Field(
-            ...,
-            description="True: a person confirms newer replaces older. False: a person lifts or refuses that.",
-        )
-
+    )(update_document_tags_route)
     # The pre-rename path, kept for one release: the BFF and this API deploy separately. Remove after one release.
-    @router.put("/v1/collections/{collection_name}/fassung", include_in_schema=False)
-    @router.put(
+    router.put(
         "/v1/collections/{collection_name}/revision",
         tags=["documents"],
         summary="Confirm or refuse that one file replaces another (a Fassung across different names)",
-    )
-    async def put_revision_route(
-        collection_name: str,
-        request: RevisionRequest,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-        x_grid_organization_id: str | None = Header(default=None),
-    ) -> dict[str, Any]:
-        """A person's decision about a Piloti suggestion (or a name series): ``newer`` replaces ``older``.
-
-        Follows the documents-router auth model: end-user access is enforced at the
-        BFF. Both files must have a metadata row in THIS collection, and differ.
-        Nothing here merges stored bytes: the older file stays whole and readable
-        by name, and only drops out of the ranked search.
-
-        - ``linked=true``: ``older.superseded_by = newer``; a suggestion on ``newer``
-          that pointed at ``older`` is cleared; when ``older`` was replaced by another
-          file until now, that file's change line told against ``older`` goes. The
-          loop check and these writes are one locked transaction
-          (``link_document_revision``), so two concurrent confirmations cannot store
-          A over B and B over A. A link that would close a loop (the newer file
-          already replaced by the older, directly or through others) is a 409. Then
-          what changed is written by the summary model (traced as ``change-summary``)
-          onto ``newer`` with ``change_basis = older``. A model failure leaves the
-          link in place and ``change_summary`` null.
-        - ``linked=false``: the link ``older -> newer`` is lifted when it exists, the
-          change summary written against ``older`` goes with it, and ``older`` is added
-          to the files ``newer`` refused (``dismissed_of``), so a later reading does not
-          offer the pair again, whatever else was refused before. An open suggestion
-          about another file stays open.
-
-        Returns ``{"superseded_by", "change_summary", "change_basis"}``: the link ``older``
-        has and the change line ``newer`` has after the call (``null`` when none).
-        """
-        if request.newer == request.older:
-            raise HTTPException(status_code=400, detail="A file cannot replace itself")
-        documents = {doc.file_name: doc for doc in await get_available_documents_async(collection_name)}
-        missing = [name for name in (request.newer, request.older) if name not in documents]
-        if missing:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No document {missing!r} in collection '{collection_name}'",
-            )
-        newer, older = documents[request.newer], documents[request.older]
-
-        if not request.linked:
-            return await _refuse_revision(collection_name, newer, older)
-
-        outcome = await asyncio.to_thread(link_document_revision, collection_name, request.older, request.newer)
-        if outcome is LinkOutcome.LOOP:
-            raise HTTPException(
-                status_code=409,
-                detail=f"'{request.newer}' is already replaced by '{request.older}'; it cannot replace it in turn",
-            )
-        if outcome is LinkOutcome.MISSING:
-            raise _no_summary_404(collection_name, request.older)
-        change = await _request_change_summary(older, newer, x_grid_organization_id)
-        if change:
-            await asyncio.to_thread(set_document_change_summary, collection_name, request.newer, change, request.older)
-            return {"superseded_by": request.newer, "change_summary": change, "change_basis": request.older}
-        # No line could be told: whatever the newer file already says about itself stays, with its own basis.
-        return {
-            "superseded_by": request.newer,
-            "change_summary": newer.change_summary,
-            "change_basis": newer.change_basis,
-        }
-
-    class UpdateDisplayTitleRequest(BaseModel):
-        display_title: str | None = Field(
-            default=None,
-            description="User-facing document name. Null or blank clears it, restoring the derived default.",
-        )
-
-    @router.patch(
+    )(put_revision_route)
+    router.put("/v1/collections/{collection_name}/fassung", include_in_schema=False)(put_revision_route)
+    router.patch(
         "/v1/collections/{collection_name}/documents/{file_name}/display-title",
         tags=["documents"],
         summary="Rename a document (user-facing display title)",
-    )
-    async def update_document_display_title_route(
-        collection_name: str,
-        file_name: str,
-        request: UpdateDisplayTitleRequest,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> dict[str, str | None]:
-        """Set the user-facing ``display_title`` on one document's metadata row.
-
-        The tenant-scoped twin of the base-corpus rename
-        (``/v1/admin/oib/documents/{file_name}/display-title``): same factory
-        seam, same store, same effect — retrieval prefers a stored
-        ``display_title`` over the filename when it builds a citation chip, so a
-        rename shows up there immediately and NOTHING is re-ingested. The
-        document's ``file_name`` stays its identity; only the label moves.
-
-        Follows the documents-router auth model: end-user access is enforced at
-        the BFF, which resolves the caller's permission on the document before
-        it addresses this route by collection.
-
-        - A null or blank title clears the override, restoring the derived
-          default (``guess_display_title``).
-        - No metadata row for ``(collection, file_name)`` → 404. The summary is
-          the anchor, as it is for tags: a document that was never summarized
-          has nothing to carry a title. The BFF treats that as non-fatal — the
-          rename it stores on its own row is the durable one.
-        """
-        new_title = (request.display_title or "").strip() or None
-
-        updated = await asyncio.to_thread(set_document_display_title, collection_name, file_name, new_title)
-        if not updated:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No summary found for '{file_name}' in collection '{collection_name}'",
-            )
-
-        return {
-            "collection_name": collection_name,
-            "file_name": file_name,
-            "display_title": new_title,
-        }
-
-    class UpdateFolderPathRequest(BaseModel):
-        folder_path: str | None = Field(
-            default=None,
-            description=(
-                "The document's new folder path, e.g. 'Brandschutz/Fluchtwege'. "
-                "Null or blank files it at the project root."
-            ),
-        )
-
-    @router.patch(
+    )(update_document_display_title_route)
+    router.patch(
         "/v1/collections/{collection_name}/documents/{file_name}/folder-path",
         tags=["documents"],
         summary="Re-file ONE document into another folder",
-    )
-    async def update_document_folder_path_route(
-        collection_name: str,
-        file_name: str,
-        request: UpdateFolderPathRequest,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> dict[str, str | None]:
-        """Set one document's ``folder_path`` — the per-document half of ADR-0049.
-
-        The subtree mirror below moves a FOLDER and everything under it; this
-        moves a DOCUMENT between folders that both already exist. Both are
-        needed and neither substitutes for the other: a document leaving
-        ``Brandschutz`` for ``Statik`` shares no path prefix with its former
-        neighbours, so a prefix rewrite cannot express it.
-
-        Same shape as the display-title mirror: UPDATE-only, nothing
-        re-ingested, and the metadata row's summary is the anchor — a document
-        that was never summarized has nothing to carry a folder, which is a 404
-        the BFF treats as non-fatal because its own ``documents.folder_id`` is
-        the durable record of where the file lives.
-
-        Follows the documents-router auth model: end-user access is enforced at
-        the BFF, which has already checked ``project:documents:write`` on the
-        project that owns this collection.
-        """
-        new_path = (request.folder_path or "").strip() or None
-
-        updated = await asyncio.to_thread(set_document_folder_path, collection_name, file_name, new_path)
-        if not updated:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No summary found for '{file_name}' in collection '{collection_name}'",
-            )
-
-        return {
-            "collection_name": collection_name,
-            "file_name": file_name,
-            "folder_path": new_path,
-        }
-
-    class RewriteFolderPathRequest(BaseModel):
-        from_path: str = Field(
-            ...,
-            min_length=1,
-            description="The folder path as it was before the rename/move/delete, e.g. 'Brandschutz/Fluchtwege'.",
-        )
-        to_path: str | None = Field(
-            default=None,
-            description="The folder path it became. Null or blank re-files the subtree at the project root.",
-        )
-
-    @router.patch(
+    )(update_document_folder_path_route)
+    router.patch(
         "/v1/collections/{collection_name}/folder-paths",
         tags=["documents"],
         summary="Re-file every document under a folder path (rename / move / delete mirror)",
-    )
-    async def rewrite_folder_paths_route(
-        collection_name: str,
-        request: RewriteFolderPathRequest,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> dict[str, Any]:
-        """Mirror a project-folder rename, move or delete onto document metadata.
-
-        The sibling of the display-title mirror
-        (``PATCH .../documents/{f}/display-title``): same store, same
-        no-re-ingest property, one call instead of one per document. The BFF's
-        ``project_folders.path`` is MATERIALISED, so renaming or re-parenting a
-        folder rewrites the whole subtree there in a single prefix replace; this
-        endpoint is that same operation applied to the backend's
-        ``document_metadata.folder_path``.
-
-        - ``from_path`` matches the folder itself AND everything under
-          ``from_path/`` — a folder called ``Plan`` never drags ``Plangrundlagen``
-          along.
-        - ``to_path`` null/blank re-files the subtree at the project root, which
-          is what a folder DELETE does to its direct children.
-        - Nothing filed under the path is not an error: ``{"updated": 0}``.
-
-        Follows the documents-router auth model: end-user access is enforced at
-        the BFF, which has already checked ``project:documents:write`` on the
-        project that owns this collection before it addresses this route.
-        """
-        updated = await asyncio.to_thread(
-            rewrite_document_folder_paths, collection_name, request.from_path, request.to_path
-        )
-        return {
-            "collection_name": collection_name,
-            "from_path": request.from_path,
-            "to_path": (request.to_path or "").strip() or None,
-            "updated": updated,
-        }
-
-    @router.delete(
+    )(rewrite_folder_paths_route)
+    router.delete(
         "/v1/collections/{collection_name}/documents",
         tags=["documents"],
         summary="Delete files from a collection",
-    )
-    async def delete_files(
-        collection_name: str,
-        request: DeleteFilesRequest,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> dict[str, Any]:
-        """Delete files from a collection by ID.
-
-        ``permanent`` (default ``false``) says nobody will undo this delete. Without it
-        the files' chunks and metadata rows go, but the Fassung facts a person made (a
-        confirmed link, refused suggestions, the change line against a linked Fassung)
-        are kept for the file's return, and links other files hold to it stay: an
-        archive, the folder bin and a publish purge and then read the document again.
-        With it, those facts go and the files it replaced are current again for good.
-        """
-        # Verify collection exists
-        await require_collection(ingestor, collection_name)
-
-        if not request.file_ids:
-            return {
-                "message": "No file IDs provided",
-                "successful": [],
-                "failed": [],
-                "total_deleted": 0,
-            }
-
-        try:
-            result = await asyncio.to_thread(
-                ingestor.delete_files, request.file_ids, collection_name, permanent=request.permanent
-            )
-            total_deleted = result.get("total_deleted", 0)
-            failed = result.get("failed", [])
-
-            if failed:
-                result["message"] = "Some files could not be deleted"
-            elif total_deleted == 0:
-                result["message"] = "No matching files found"
-            else:
-                result["message"] = f"Successfully deleted {total_deleted} file(s)"
-
-            return result
-        except Exception as e:
-            logger.error("Failed to delete files from collection %s: %s", collection_name, type(e).__name__)
-            raise HTTPException(status_code=500, detail="Failed to delete files")
-
-    @router.get(
-        "/v1/documents/{job_id}/status",
-        response_model=IngestionJobStatus,
-        tags=["documents"],
-        summary="Get ingestion job status",
-    )
-    async def get_job_status(
-        job_id: str,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> IngestionJobStatus:
-        """Get the status of an ingestion job."""
-        try:
-            status = await asyncio.to_thread(ingestor.get_job_status, job_id)
-            if status is None:
-                raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
-
-            return status
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error("Failed to get job status: %s", type(e).__name__)
-            raise HTTPException(status_code=500, detail="Failed to get job status")
-
-    class BatchStatusRequest(BaseModel):
-        job_ids: list[str] = Field(default_factory=list, max_length=BATCH_STATUS_MAX_IDS)
-
-    @router.post(
-        "/v1/documents/status/batch",
-        tags=["documents"],
-        summary="Get ingestion job statuses in batch",
-    )
-    async def get_job_statuses_batch(
-        request: BatchStatusRequest,
-        ingestor: BaseIngestor = Depends(_require_ingestor),
-    ) -> dict[str, Any]:
-        """Batch variant of the per-job status endpoint.
-
-        The BFF reconciles every in-flight document row on document-list
-        reads; per-job round-trips made that read O(n) HTTP calls. Unknown
-        or failing job ids map to null (the caller falls back to the
-        collection file list), mirroring the single endpoint's 404.
-        """
-        return {"statuses": await asyncio.to_thread(_job_statuses, ingestor, request.job_ids)}
-
-    @router.post(
-        "/v1/documents/{job_id}/cancel",
-        tags=["documents"],
-        summary="Cancel an ingestion job",
-    )
-    async def cancel_job(job_id: str) -> dict[str, Any]:
-        """Stop a queued or running ingestion job.
-
-        The BFF has already decided the caller may act on the document this job
-        belongs to; this tier only stops the job. ``result`` is one of the
-        cancel outcomes (``ingest_dispatch.cancel``): ``cancelled`` when a live
-        job was stopped, ``finished`` when the queue holds no live row for it,
-        and ``unavailable`` when the queue is off or has no database (an
-        in-memory job runs in a process this one cannot reach).
-        """
-        try:
-            return {"result": await asyncio.to_thread(ingest_dispatch.cancel, job_id)}
-        except Exception as e:
-            logger.error("Failed to cancel ingestion job %s: %s", job_id, type(e).__name__)
-            raise HTTPException(status_code=500, detail="Failed to cancel ingestion job")
+    )(delete_files)
+    add_document_job_routes(router)
