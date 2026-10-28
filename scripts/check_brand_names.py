@@ -155,7 +155,6 @@ def count_text(text: str) -> int:
     """The brand hits in ``text``, URLs and the repository's own name left out."""
     if not BRAND.search(text):
         return 0
-    text = REPOSITORY.sub(" ", URL.sub(" ", text))
     text = PENDING_RENAMES.sub(" ", REPOSITORY.sub(" ", URL.sub(" ", text)))
     return sum(len(brand_words(token)) for token in branded_tokens(text))
 
