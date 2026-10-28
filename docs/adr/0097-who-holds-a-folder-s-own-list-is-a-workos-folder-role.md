@@ -94,7 +94,7 @@ derived from it is still judged by who could read it (`unchanged` policy).
 entry that wrote back into `inherit` (everyone writing is what inheriting gives). The role
 entries become folder roles of the people who hold those roles today
 (`migrate:folder-grants --apply`), which the deploy runs once the frontend that reads folder
-roles has rolled out: the Job `grid-app-folder-grants`, or the compose service `grid-workos-authz`. Until it has run, a folder with its own list is readable only by organization admins
+roles has rolled out: the Job `grid-app-folder-grants`, or the compose service `workos-authz`. Until it has run, a folder with its own list is readable only by organization admins
 and, when everyone reads it, by every project member: the narrow direction. Saving a list
 deletes the folder's old grant rows, so a rollback or an older pod in a rolling deploy reads a
 changed folder as one only admins may read, never as it was before the change. `project_folder_grants` is dropped by a later

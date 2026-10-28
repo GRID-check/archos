@@ -27,17 +27,19 @@ lib64/
 # JS/TS frontends. That failure is silent: the file builds locally, is simply
 # absent from the branch, and CI fails on an unresolvable import.
 !frontends/*/src/**/lib/
+!apps/*/src/**/lib/
 !frontends/ui/src/**/lib/
 !frontends/ui/tests/lib/
-!frontends/web/art/riso/lib/
+!apps/site/art/riso/lib/
 # `downloads/` above does the same to the site's committed riso downloads
 # (art/riso/downloads.mjs writes them; the unlisted image page serves them).
-!frontends/web/public/downloads/
+!apps/site/public/downloads/
 parts/
 # `parts/` is buildout's, and like `lib/` above it matches at any depth: it hid
 # the mail import's `mail-imports/[importId]/parts/[partNumber]` route from the
 # first commit that wrote it. Source directories of that name are not artifacts.
 !frontends/*/src/**/parts/
+!apps/*/src/**/parts/
 sdist/
 var/
 wheels/

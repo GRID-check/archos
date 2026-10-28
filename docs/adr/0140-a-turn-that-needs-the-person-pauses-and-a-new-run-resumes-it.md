@@ -33,7 +33,7 @@ What an open wait costs, read from the code on 2026-10-27:
 - **It cannot outlive the socket's patience.** Thirty minutes is a compromise
   between "somebody checks a drawing" and "a pinned task"; a question asked on
   Friday cannot be answered on Monday.
-- **A headless turn cannot ask at all** (`ask_user` refuses on `X-AIQ-Mode:
+- **A headless turn cannot ask at all** (`ask_user` refuses on `X-Chat-Mode:
   headless`), because nobody holds a socket to answer it.
 
 The standard has since named this. **AG-UI 1.0** (released 2026-09-17) makes

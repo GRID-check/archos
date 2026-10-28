@@ -21,7 +21,7 @@ WORKOS_API_KEY=sk_… npm run provision:authz -- --apply # reconcile
 
 **Every deploy runs `--apply`.** The Kubernetes Job `grid-app-authz-catalog`
 (`deploy/pulumi/src/app/workos-authz-jobs.ts`) and the compose service
-`grid-workos-authz` run it against the environment the stack's
+`workos-authz` run it against the environment the stack's
 `WORKOS_API_KEY` belongs to, so a permission or role added to the catalog
 exists in WorkOS once the release that checks it is deployed. It creates what
 is missing, sets a catalog role's permissions to the catalog's (a permission
@@ -419,7 +419,7 @@ work (`piloti.mark.decided`).
   | Path | How | Does the app wait? |
   |---|---|---|
   | Kubernetes (Pulumi) | Job `grid-app-audit-schemas` (`deploy/pulumi/src/app/audit-schemas-job.ts`), created when `requireAuth` is on | **No** — the frontend Deployment does not depend on it |
-  | Docker Compose | one-shot service `grid-audit-schemas` | **Yes** — `frontend` waits on `service_completed_successfully` |
+  | Docker Compose | one-shot service `audit-schemas` | **Yes** — `frontend` waits on `service_completed_successfully` |
   | Coolify | the same one-shot service in `docker-compose.coolify.yaml` | **Yes** |
 
   On the compose paths the container exits 0 without doing anything when
@@ -802,7 +802,7 @@ environment:
    - `grid-app-folder-grants` carries the role grants over
      (`migrate:folder-grants --apply`). It waits on the frontend rollout, the
      migrations and the catalog Job. Compose runs both scripts in
-     `grid-workos-authz`, once the frontend is healthy.
+     `workos-authz`, once the frontend is healthy.
 
 For every folder with its own list, every active member of the organization who
 holds a role the list names gets the folder role for the best level those roles
@@ -841,7 +841,7 @@ someone takes them off the list.
 
 `project_folder_grants` stays until the carry-over has run in every
 environment; the migration that drops it also deletes the
-`grid-app-folder-grants` Job and the second half of `grid-workos-authz`.
+`grid-app-folder-grants` Job and the second half of `workos-authz`.
 
 ## How the app consumes this
 
