@@ -278,8 +278,8 @@ The renderer runs the production permit pen over the precedent fixture office, *
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `BACKEND_URL` | Yes | `http://aiq-api:8000` (Docker), `http://localhost:8000` (local) | The backend's **`api` role** (ADR-0082): every HTTP call of the BFF, the purger, the housekeeping clock and the workers goes here. It serves no chat socket. |
-| `BACKEND_CHAT_URL` | Yes (the gateway, `server.js`) | `http://aiq-agent:8000` (Docker), `http://localhost:8001` (local) | The backend's **`chat` role**, dialled by the WebSocket proxy and by the wake job of the `bff-jobs` pod (`lib/turns/headless-turn.ts`, ADR-0106), and by nothing else. Required with no fallback to `BACKEND_URL`: the gateway refuses to start without it. |
+| `BACKEND_URL` | Yes | `http://api:8000` (Docker), `http://localhost:8000` (local) | The backend's **`api` role** (ADR-0082): every HTTP call of the BFF, the purger, the housekeeping clock and the workers goes here. It serves no chat socket. |
+| `BACKEND_CHAT_URL` | Yes (the gateway, `server.js`) | `http://chat:8000` (Docker), `http://localhost:8001` (local) | The backend's **`chat` role**, dialled by the WebSocket proxy and by the wake job of the `bff-jobs` pod (`lib/turns/headless-turn.ts`, ADR-0106), and by nothing else. Required with no fallback to `BACKEND_URL`: the gateway refuses to start without it. |
 | `BACKEND_REPLICAS` | No | `1` | Kubernetes only (Pulumi-injected). The modulus of the conversation-id hash while `GRID_CHAT_AFFINITY` is on, so it must equal the StatefulSet's replica count. With one replica, or with affinity off, every socket goes to `BACKEND_CHAT_URL`. |
 | `BACKEND_POD_WS_TEMPLATE` | No | unset | Kubernetes only (Pulumi-injected). The per-pod WebSocket address with a literal `{i}`, e.g. `ws://aiq-agent-{i}.aiq-agent-headless:8000`. Unset means every socket goes to `BACKEND_CHAT_URL`. |
 | `GRID_CHAT_AFFINITY` | No | `1` (on) | See [Backend Configuration](#backend-configuration). Read by the gateway at start-up: off sends every chat socket to `BACKEND_CHAT_URL`. |
@@ -449,7 +449,7 @@ The submit path persists a deep-research job as a `research_job_queue` row; dedi
 | `MODAL_TOKEN_ID` | No | — | Modal sandbox token ID for skills execution. |
 | `MODAL_TOKEN_SECRET` | No | — | Modal sandbox token secret for skills execution. |
 | `LANGCHAIN_API_KEY` | No | — | LangSmith tracing API key. |
-| `LANGCHAIN_PROJECT` | No | `aiq-research` | LangSmith project name. |
+| `LANGCHAIN_PROJECT` | No | — | LangSmith project name, read by LangChain itself when LangSmith tracing is on; nothing in this repo sets it. |
 | `LANGCHAIN_TRACING_V2` | No | — | Set to `true` to enable LangSmith tracing. |
 | `WANDB_API_KEY` | No | — | Weights & Biases API key for experiment tracking. |
 | `GRID_GEOCODER_URL` | No | _(unset)_ | Base URL of a [Photon](https://github.com/komoot/photon) (OSM) geocoder, e.g. `https://photon.komoot.io` or a self-hosted instance (`frontends/ui/src/lib/geocoding`). Behind `GET /api/geocode`, the address search of the project creation dialog: Austrian addresses and places in, coordinates, Bundesland (the intake `A2_land` token) and Gemeinde out. Unset (or not an http(s) URL), the route answers `{ enabled: false, results: [] }` and the dialog's address stays a plain text field: the typed line is kept as the project's address, and the Bundesland is found in the documents or asked in the setup review. An address is client data and every keystroke-driven search is sent to this host, so the provider is a deployment choice: the public komoot instance is for trials, production self-hosts (ADR-0120). On Kubernetes the Pulumi program sets it to `http://geocoder:2322`, its in-cluster Photon over the Austrian extract, exactly when `grid-oib:geocoderEnabled` is true (off by default; `deploy/pulumi/README.md`, "Geocoder"); the `bff-jobs` pool does not get it. Compose does not pass it to the frontend container yet, so a Compose stack has no address search. Only same-origin redirects are followed; a search that fails or takes over 4 s answers no results. Read per request. Frontend service. |
@@ -466,7 +466,7 @@ exports.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | unset | OTLP/HTTP collector endpoint. Python tiers get the FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts as-is); the frontend gets the BASE URL (the BFF exports no traces). Every exporter derives its own signal path from either (`/v1/logs`, `/v1/metrics`): `otlp_resource.py`, `observability/otlp.js`. Unset → no log or metric export, and no meter provider. |
-| `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `grid-aiq-agent` / `grid-agent-worker`. Every signal also carries `service.instance.id` from `HOSTNAME` (the pod name Kubernetes sets) and `process.pid`. |
+| `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `backend-chat` / `grid-agent-worker`. Every signal also carries `service.instance.id` from `HOSTNAME` (the pod name Kubernetes sets) and `process.pid`. |
 | `GRID_TRACE_IDENTITY_ATTRIBUTES` | No | unset (off) | When `true`, keeps the `user.id` NAT 1.9 sets from the verified subject and stamps `langfuse.session.id` and the organization onto every span; when off, Grid strips NAT's `user.id` and `<prefix>.user.id` before export (`UserIdentityStripProcessor`) (`src/aiq_agent/observability/langfuse_trace_attributes.py`), which is what turns anonymous spans into traces attributable to a user and a tenant. Keyed off the Langfuse tier (ADR-0044) rather than observability generally, and Kubernetes-only. Off by default because it is a privacy posture rather than a performance knob: ADR-0029 accepted that traces carry user content on the grounds that access is gated to platform operators, and making every span attributable to a named individual is a further step that should arrive with the product decision needing it. The processor runs ahead of NAT's redaction processor, so these attributes stay redactable. Session grouping and input/output need no flag: NAT already emits `session.id` and OpenInference `input.value`/`output.value`. Backend (aiq-agent) and agent-worker services. |
 
 ## PostHog (ADR-0100)
@@ -677,7 +677,7 @@ vars. See `docs/architecture/usage-budgets.md`.
 |----------|----------|---------|-------------|
 | `GRID_PLATFORM_OWNER_EMAILS` | No | — | Break-glass bootstrap: comma-separated emails treated as platform owner even without the WorkOS platform-org membership. For first-run in a fresh environment; keep empty in steady state. |
 | `GRID_PLATFORM_ORG_EXTERNAL_ID` | No | `grid-platform` | External id of the GRID Platform organization in WorkOS. |
-| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `frontends/web`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
+| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `apps/site`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
 | `GRID_DISABLE_SELF_SERVE_ORGS` | No | `false` | `true` makes the platform invite-only: fresh users can no longer self-create organizations (403 `self-serve-disabled`). |
 
 ## Project Authorization (frontend)
@@ -694,7 +694,7 @@ Tune the per-project FGA authorization path (`lib/authz/projects.ts`), the WorkO
 
 ## Landing Site (web tier, Kubernetes/Pulumi-injected)
 
-The Astro landing service (`frontends/web`) carries no secrets; its
+The Astro landing service (`apps/site`) carries no secrets; its
 deployment knobs are where sign-in hands off and whether PostHog web analytics
 loads (ADR-0100). One image serves every stack —
 the app host is resolved at request time, never baked into the prerendered
@@ -709,7 +709,18 @@ HTML (a baked host is how prod once linked at the dev app).
 
 ## Renamed variables
 
-Every variable that started `AIQ_` now starts `GRID_` with the same rest (ADR-0145 row 10b). For one release the image entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) still reads an old name: it copies `AIQ_X` onto `GRID_X` when that is unset and logs a deprecation warning, and the Compose files interpolate `${GRID_X:-${AIQ_X:-default}}`. The release after drops both. Nothing else reads an old name; `tests/test_no_legacy_env_names.py` keeps it that way.
+No variable carries the product's name. Every variable that started `GRID_`, or `AIQ_` before that, is now read under the rest of its name: `GRID_MAX_ACTIVE_JOBS_PER_ORG` is `MAX_ACTIVE_JOBS_PER_ORG` (`docs/contributing/code-conventions.md#no-brand-names`). For one release both images still read an old name: the backend's entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) and every Node process of the UI image (`frontends/ui/scripts/legacy-env-names.cjs`, loaded through `NODE_OPTIONS`) copy `GRID_X`, else `AIQ_X`, onto `X` when that is unset (with a deprecation warning, once the deployments themselves have moved to the new names), and the Compose files interpolate `${X:-${GRID_X:-${AIQ_X:-default}}}`. A name already set wins. The release after drops all of it.
+
+Where the bare name would collide with a variable a library or the platform already reads, or would still carry the product's name, the variable took a name of its own:
+
+| Old name | New name | Why not the bare name |
+|---|---|---|
+| `GRID_ROLE` | `PROCESS_ROLE` | `ROLE` is generic, and Coolify reserves names under `SERVICE_` |
+| `GRID_VERBOSE` | `AGENT_VERBOSE` | `VERBOSE` is read by build tools and shells |
+| `GRID_LANGFUSE_TRACE_RETENTION_DAYS` | `TRACE_RETENTION_DAYS` | `LANGFUSE_` is the Langfuse SDK's and server's namespace |
+| `GRID_PILOTI_ASK_MAX_SECONDS` | `AGENT_ASK_MAX_SECONDS` | the bare name still carries the product's name |
+
+The earlier `AIQ_` to `GRID_` rename, for reference (each `AIQ_X` is now read as `X`, like its `GRID_X`):
 
 | Old name | New name |
 |---|---|

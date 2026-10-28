@@ -2,7 +2,7 @@
 
 Every bug the citation audit found lived between two well-tested units, not
 inside one. The worst pair is the knowledge-layer text protocol: it is PRODUCED
-by ``sources/knowledge_layer/src/register.py::format_results`` and PARSED by
+by ``packages/knowledge-layer/src/register.py::format_results`` and PARSED by
 ``citations.grounding_text.parse_knowledge_layer`` — two
 packages that never meet in a test.
 

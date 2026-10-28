@@ -1,6 +1,6 @@
-# NVIDIA AI-Q Blueprint - Docker Compose
+# Piloti - Docker Compose
 
-Use this guide to deploy the AI-Q blueprint with Docker Compose. The deployment
+Use this guide to deploy Piloti with Docker Compose. The deployment
 starts a FastAPI backend, PostgreSQL for async jobs and checkpoints, and a database-claimed research worker for background work.
 
 ## Prerequisites
@@ -70,7 +70,7 @@ Choose one database configuration in `deploy/.env`:
   `/app/data/checkpoints.db`.
 - Set `GRID_SUMMARY_DB` to `sqlite+aiosqlite:///./summaries.db` (the base corpus table lives there too).
 - You can keep the `postgres` service running or remove the `depends_on` block
-  for `aiq-agent` if you want a SQLite-only setup.
+  for `chat` if you want a SQLite-only setup.
 
 ## Start Services
 
@@ -90,20 +90,20 @@ To use pre-built images instead of building locally, set the `BACKEND_IMAGE` and
 ```bash
 cd deploy/compose
 
-# Login to the container registry first
-docker login nvcr.io
+# Log in to the registry CI publishes to
+docker login <registry>
 
 # Run with pre-built images
-BACKEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-agent:2.0.0 \
-FRONTEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0 \
+BACKEND_IMAGE=<registry>/<backend image>:<tag> \
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag> \
 docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
 You can also add these to your `deploy/.env` file:
 
 ```bash
-BACKEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-agent:2.0.0
-FRONTEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0
+BACKEND_IMAGE=<registry>/<backend image>:<tag>
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag>
 ```
 
 Then run without specifying them on the command line:
@@ -113,8 +113,8 @@ docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
 Services started:
-- `aiq-agent` (port 8000)
-- `aiq-blueprint-ui` (port 3000)
+- `api` (port 8000)
+- `frontend` (port 3000)
 - `postgres` (port 5432)
 
 ### Frontend runtime variables
@@ -122,8 +122,8 @@ Services started:
 The compose files pass these variables into the UI container:
 
 - `REQUIRE_AUTH`: Set to `true` to require WorkOS AuthKit login, or `false` (default) for anonymous access.
-- `BACKEND_URL`: The backend's `api` role for the UI container: every HTTP call (default `http://aiq-api:8000`).
-- `BACKEND_CHAT_URL`: The backend's `chat` role, which the UI container's gateway dials for the WebSocket alone (default `http://aiq-agent:8000`). Required, with no fallback to `BACKEND_URL`.
+- `BACKEND_URL`: The backend's `api` role for the UI container: every HTTP call (default `http://api:8000`).
+- `BACKEND_CHAT_URL`: The backend's `chat` role, which the UI container's gateway dials for the WebSocket alone (default `http://chat:8000`). Required, with no fallback to `BACKEND_URL`.
 - `WORKOS_CLIENT_ID`: WorkOS client ID (required when `REQUIRE_AUTH=true`).
 - `WORKOS_API_KEY`: WorkOS API key (required when `REQUIRE_AUTH=true`).
 - `WORKOS_REDIRECT_URI`: AuthKit callback URL, e.g. `http://localhost:3000/api/auth/callback` (required when `REQUIRE_AUTH=true`).
@@ -171,9 +171,9 @@ Common conflicts:
 
 **Check logs:**
 ```bash
-docker logs aiq-agent -f
-docker logs aiq-blueprint-ui -f
-docker logs aiq-postgres -f
+docker compose logs -f chat
+docker compose logs -f frontend
+docker compose logs -f postgres
 ```
 
 **Health check:**
@@ -183,7 +183,7 @@ curl http://localhost:8000/health
 
 **Database connection:**
 ```bash
-docker exec -it aiq-postgres psql -U agent -d jobs
+docker compose exec postgres psql -U agent -d jobs
 ```
 
 **Rebuild:**

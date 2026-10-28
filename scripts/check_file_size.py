@@ -74,7 +74,7 @@ EXCLUDED = re.compile(
             r"\.generated\.",  # wire-v2.generated.ts and its kind
             r"\.d\.ts$",  # type declarations
             r"(^|/)(tests?|testing|__tests__|e2e|_?fixtures|__fixtures__|test-utils)/",  # suites, their support, data
-            r"(^|/)i18n/dictionaries/|^frontends/web/src/(i18n|data)/",  # copy: its length is the copy's
+            r"(^|/)i18n/dictionaries/|^apps/site/src/(i18n|data)/",  # copy: its length is the copy's
             r"(^|/)(test_[^/]*|[^/]*_test|conftest)\.py$",
             r"\.(spec|test)\.[cm]?[jt]sx?$",
             r"(^|/)migrations/",  # Alembic and Drizzle history, written once

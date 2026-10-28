@@ -6,7 +6,7 @@
 
 import { z } from 'zod'
 import { geocodeResultSchema } from '@/lib/geocoding/types'
-import { isValidFederalStateToken } from '@/lib/project-profile/intake-definition'
+import { isValidFederalStateToken } from '@/lib/project-profile/intake-conditions'
 import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import { monthSchema } from './month'

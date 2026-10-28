@@ -51,7 +51,7 @@ Full persona report highlights (severity · finding · key evidence):
 | Crit | Conversation delete removes only DB rows; LangGraph checkpoints (full content) persist indefinitely | `lib/conversations/repository.ts:87-92`; `docs/architecture/deletion-pipeline.md` (self-acknowledged) |
 | High | Chat prompts logged cleartext at INFO | `src/aiq_agent/agents/chat_researcher/register.py:518` |
 | High | WorkOS EU data residency unverified (own ADR); audit events ship email + client IP + doc filenames to WorkOS; no DPA evidence | ADR-0002 Open Questions; `lib/audit/service.ts:56-93` |
-| High | Document content flows to NVIDIA US API by config default (embeddings/VLM) | `sources/knowledge_layer/src/llamaindex/adapter.py:583-591` |
+| High | Document content flows to NVIDIA US API by config default (embeddings/VLM) | `packages/knowledge-layer/src/llamaindex/adapter.py:583-591` |
 | High | `REQUIRE_AUTH=false` default (Art. 25(2) violation); anon mode has known cross-tenant memory-write gap (S3) | `deploy/.env.example`; `docs/architecture/memory-reflection-audit.md` |
 | High | No retention limits for `messages`, `llm_usage_events` (deliberately survive purge, user-attributed), `project_memory`, checkpoints, WorkOS audit logs | schema comments in `lib/db/schema/budgets.ts` |
 | Med | Memory reflection persists LLM distillates without PII filter (open finding S4); Tavily & co. receive prompt-derived queries undocumented; weak dev credentials/open ports in dev compose; optional tracing exfiltrates prompts; legal holds lack expiry/review | respective audit files |

@@ -5,7 +5,7 @@ oracles, the scores, the gate thresholds and their boundaries, the reference
 numbers of the Chroma path (``baseline.py``), the regex scan exact mode is held
 to, the dimension truncation and the report renderer. The store half runs
 against a real Qdrant in
-``sources/knowledge_layer/tests/test_qdrant_parity_harness.py``, where CI starts
+``packages/knowledge-layer/tests/test_qdrant_parity_harness.py``, where CI starts
 one.
 """
 
