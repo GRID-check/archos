@@ -21,12 +21,12 @@ export function FilePreviewBody({ controller }: { controller: FilePreviewControl
           source={{ src: documentFileUrl(file.id), fileName: actions.name, title: actions.name }}
           onClose={() => setSimilarAsk(null)}
         />
-  
+
         {/* Body split — document preview on the left, indexed metadata on the
             right. Two independently-scrolling columns side-by-side in the wide
             Dateien modal (`@2xl`+); a SINGLE vertical scroll (preview capped, all
             metadata flowing below) in a narrow container / mobile sheet.
-  
+
             The scroll chain matters: `min-h-0` lets this flex child actually
             shrink below its content, and the overflow lives on the RIGHT layer for
             each mode — the body itself scrolls when stacked, each column scrolls
