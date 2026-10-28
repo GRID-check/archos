@@ -61,7 +61,7 @@ tasks:
         tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
         tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
         tests/test_pr_selection.py tests/test_ci_filter_coverage.py tests/aiq_agent/test_product_framing.py
-        tests/test_repo_layout.py
+        tests/test_repo_layout.py tests/test_ci_filter_reads.py
 
   be:test:sources:
     desc: The Python packages' suites (packages/knowledge-layer, ris-adapter, tavily-web-search)
