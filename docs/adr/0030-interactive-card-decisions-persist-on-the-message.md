@@ -62,7 +62,7 @@ Concretely:
    (`accepted | rejected | savedOrg | savedProject | dismissed`).
 
 2. **The card key is `` `${card.type}-${index}` ``**
-   (`cardKey()` in `features/grid-cards/card-decision.ts`). Cards get no
+   (`cardKey()` in `features/cards/card-decision.ts`). Cards get no
    wire-level id, and once a turn has finalized its `cards` array is immutable,
    so type + position is stable for the life of the message and survives both
    storage round trips unchanged. `GridCards` uses the same value as its React
@@ -106,7 +106,7 @@ Concretely:
    `tsc` until someone classifies it; `INTERACTIVE_CARD_TYPES` in
    `aiq_agent/cards/catalog.py` declares the same on the emission side, and
    `tests/aiq_agent/cards/test_interactive_card_parity.py` fails if the two
-   disagree. `features/grid-cards/card-interactivity.spec.tsx` fails if a type
+   disagree. `features/cards/card-interactivity.spec.tsx` fails if a type
    is classified interactive but is not wired for persistence.
 
 ### The flow
@@ -234,7 +234,7 @@ retires the only button that could have retried it.
 ## Open Questions / Follow-ups
 
 - ~~**The deep-research report surface is deliberately NOT wired**~~ —
-  **RESOLVED** (`features/grid-cards/card-owner.ts`). The three blockers below
+  **RESOLVED** (`features/cards/card-owner.ts`). The three blockers below
   are stated as they were; the fix **avoids** all three rather than repairing
   them, which is why they still read as true.
 
@@ -298,4 +298,4 @@ retires the only button that could have retried it.
 - [`../architecture/cards.md`](../architecture/cards.md) — the card layer, and the checklist for adding a card type
 - [ADR-0012](0012-cards-as-rich-ui-layer.md) — cards as a rich-UI presentation layer
 - [`../architecture/project-memory-design.md`](../architecture/project-memory-design.md) §11.7 — propose, never auto-apply
-- `frontends/ui/src/features/grid-cards/card-decision.ts` — the classification and the key
+- `frontends/ui/src/features/cards/card-decision.ts` — the classification and the key

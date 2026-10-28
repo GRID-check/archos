@@ -17,8 +17,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { AnswerCard } from '@/shared/cards/schemas'
-import type { CardInteractions } from '@/features/grid-cards/card-decision'
-import type { DecidedProposals } from '@/features/grid-cards/decided-proposals'
+import type { CardInteractions } from '@/features/cards/card-decision'
+import type { DecidedProposals } from '@/features/cards/decided-proposals'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import { turnMemoryItems } from './turn-memory'
 

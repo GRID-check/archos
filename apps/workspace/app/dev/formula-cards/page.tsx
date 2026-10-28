@@ -3,7 +3,7 @@
 /**
  * Dev preview — the formula card, the what-if on a computing card (ADR-0143).
  *
- * The cards are the fixture's own (`features/grid-cards/lib/formula-cases.json`,
+ * The cards are the fixture's own (`features/cards/lib/formula-cases.json`,
  * the cases marked `preview`), the ones `formulas.spec.ts` computes by hand, so
  * this page cannot drift into showing a card the tests do not cover. Each goes
  * through the chat's own path (`AnswerCardItem` → A2UI on the Piloti catalog), so
@@ -19,8 +19,8 @@
  */
 
 import { I18nProvider } from '@/i18n'
-import { AnswerCardItem } from '@/features/grid-cards/components/AnswerCards'
-import cases from '@/features/grid-cards/lib/formula-cases.json'
+import { AnswerCardItem } from '@/features/cards/components/AnswerCards'
+import cases from '@/features/cards/lib/formula-cases.json'
 import type { AnswerCard } from '@/shared/cards/schemas'
 
 type Card = Record<string, unknown> & { type: string }

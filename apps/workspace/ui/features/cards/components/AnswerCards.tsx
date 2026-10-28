@@ -46,7 +46,7 @@ interface AnswerCardsProps {
   projectId?: string | null
   /**
    * The message these cards belong to. Interactive cards key their persisted
-   * decision on it (`features/grid-cards/card-decision.ts`); without it they
+   * decision on it (`features/cards/card-decision.ts`); without it they
    * still render and act, but the outcome doesn't survive a reload.
    */
   messageId?: string

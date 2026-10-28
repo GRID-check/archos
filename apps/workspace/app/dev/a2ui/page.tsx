@@ -16,8 +16,8 @@
 import { notFound } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
-import { AnswerCardItem } from '@/features/grid-cards/components/AnswerCards'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { AnswerCardItem } from '@/features/cards/components/AnswerCards'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 import { validateAnswerCards, type AnswerCard } from '@/shared/cards/schemas'
 
 const OIB2 = { document: 'OIB-Richtlinie 2', section: 'Tabelle 1b', edition: 'Ausgabe Mai 2023' }

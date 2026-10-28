@@ -19,7 +19,7 @@
 import type { WireEvent } from '@/adapters/api/wire-v2'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { foldTurnEvent, type TurnView } from '@/features/chat/lib/turn-fold'
-import { ACTING_CARD_TYPES } from '@/features/grid-cards/card-decision'
+import { ACTING_CARD_TYPES } from '@/features/cards/card-decision'
 import { SYSTEM_CARD_TYPES } from '@/features/skills/lib/card-catalog'
 import { validateAnswerCards, type AnswerCard } from '@/shared/cards/schemas'
 

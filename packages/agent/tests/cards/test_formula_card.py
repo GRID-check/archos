@@ -1,7 +1,7 @@
 """The formula card's contract (ADR-0143), and the fixture both sides compute from.
 
 The arithmetic and the bounds live in the browser (`apps/workspace/ui/features/
-grid-cards/lib/formulas.ts`) and are tested there against `formula-cases.json`.
+cards/lib/formulas.ts`) and are tested there against `formula-cases.json`.
 This side holds what the model may put on the wire: every case's card is a
 valid card, the model names a case but never a number (no limit, no result, no
 figure in the title, a label or the note), and a stated result is counted.
@@ -22,7 +22,7 @@ from agent.cards.models import answer_card_adapter
 from agent.observability.langfuse_scores import card_validity_score
 from agent.observability.langfuse_scores import formula_provenance_score
 
-FIXTURE_PATH = Path(__file__).resolve().parents[4] / "apps/workspace/ui/features/grid-cards/lib/formula-cases.json"
+FIXTURE_PATH = Path(__file__).resolve().parents[4] / "apps/workspace/ui/features/cards/lib/formula-cases.json"
 FIXTURE = json.loads(FIXTURE_PATH.read_text("utf-8"))
 
 

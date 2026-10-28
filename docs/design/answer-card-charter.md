@@ -16,7 +16,7 @@
 
 > **State of the code (2026-10).** ADR-0069 retired most of the catalogue this
 > charter was written against, and deleted the files with the types. Gone from
-> `features/grid-cards/components/`: `ComparisonTableCard`, `TypedTableCard`,
+> `features/cards/components/`: `ComparisonTableCard`, `TypedTableCard`,
 > `NormChainCard`, `ConditionTreeCard`, `ProcessMapCard`, `DocumentChecklistCard`,
 > `DeadlineTimelineCard`, `ChangeImpactCard`, `RequirementChecklistCard`,
 > `LegalBasisCard`, `SummaryCard`, `FollowUpsCard`, the shared `CARD_LIST_ROW`
@@ -65,7 +65,7 @@ This is the charter's central evidence. The sameness is not legacy debt in old c
 
 ### 0.3 The type scale has drifted to thirteen sizes and there are no spacing tokens
 
-Measured across `features/grid-cards/`:
+Measured across `features/cards/`:
 
 | Size | Occurrences |
 |---|---|

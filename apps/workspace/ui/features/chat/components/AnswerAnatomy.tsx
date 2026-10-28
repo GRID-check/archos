@@ -14,10 +14,10 @@
 
 import { type FC, type ReactNode } from 'react'
 import type { AnatomyShape, AnatomyVerdict } from '../lib/answer-meta-cards'
-import { CalloutCard } from '@/features/grid-cards/components/CalloutCard'
-import { KeyTakeawaysCard } from '@/features/grid-cards/components/KeyTakeawaysCard'
-import { VerdictHeaderCard } from '@/features/grid-cards/components/VerdictHeaderCard'
-import { WorkReportCard } from '@/features/grid-cards/components/WorkReportCard'
+import { CalloutCard } from '@/features/cards/components/CalloutCard'
+import { KeyTakeawaysCard } from '@/features/cards/components/KeyTakeawaysCard'
+import { VerdictHeaderCard } from '@/features/cards/components/VerdictHeaderCard'
+import { WorkReportCard } from '@/features/cards/components/WorkReportCard'
 import type { AnswerKind } from '@/lib/conversations/message-answer-meta'
 
 /**

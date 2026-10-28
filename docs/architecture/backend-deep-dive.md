@@ -397,7 +397,7 @@ NOT to bolt on a silently-failing second LLM call.
 
 Cards (`SummaryCard`, `LegalBasisCard`, `ProjectProfilePatchCard`) are defined in
 `packages/agent/src/agent/cards/models.py` (discriminated union, `validate_cards`); the
-frontend renders them in `apps/workspace/ui/features/grid-cards/`.
+frontend renders them in `apps/workspace/ui/features/cards/`.
 
 ### How generation works
 

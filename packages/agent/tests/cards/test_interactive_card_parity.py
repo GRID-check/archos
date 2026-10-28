@@ -25,7 +25,7 @@ from agent.cards.catalog import INTERACTIVE_CARD_TYPES
 from agent.cards.models import AnswerCard
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-TS_CARD_DECISION = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "grid-cards" / "card-decision.ts"
+TS_CARD_DECISION = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "cards" / "card-decision.ts"
 
 
 def _card_types() -> set[str]:
@@ -94,7 +94,7 @@ def test_every_card_type_is_classified_in_the_frontend():
 # as ``test_every_card_type_is_classified_in_the_frontend`` above: a backend
 # author who adds a card type without running the frontend suite still sees the
 # obligation fail in the suite they DO run.
-TS_ANSWER_CARDS = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "grid-cards" / "components" / "AnswerCards.tsx"
+TS_ANSWER_CARDS = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "cards" / "components" / "AnswerCards.tsx"
 
 
 def _ts_rendered_types() -> set[str]:

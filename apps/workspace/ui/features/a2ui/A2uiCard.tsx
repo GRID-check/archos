@@ -37,7 +37,7 @@ import {
 } from 'react'
 
 import type { AnswerCard } from '@/shared/cards/schemas'
-import { CardPlaceholder } from '@/features/grid-cards/components/CardPlaceholder'
+import { CardPlaceholder } from '@/features/cards/components/CardPlaceholder'
 import { CardRendererProvider, DrawnProvider, preflight, TextBlock, useDrawnReporter, type CardRenderer } from './catalog'
 import { surfaceComponents, surfaceLeaves } from './surface-messages'
 

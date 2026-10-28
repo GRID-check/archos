@@ -61,7 +61,7 @@ Chosen: **option 3**.
   the formula's, not the wire's.
 - **The model names the case, never a number.** The bounds are not on the
   wire. The renderer reads them from typed tables in
-  `features/grid-cards/lib/formulas.ts`, transcribed from the Mai 2023
+  `features/cards/lib/formulas.ts`, transcribed from the Mai 2023
   Richtlinien, for the case the model names. A model that writes a result or a
   `limits` list has it dropped by validation and counted (`card-validity`,
   outcome `stripped`), in a `surface` leaf as on a lone card. The guard on
@@ -178,7 +178,7 @@ longer takes.
 
 ### Confirmation
 
-- `frontends/ui/src/features/grid-cards/lib/formulas.spec.ts`: every case in
+- `frontends/ui/src/features/cards/lib/formulas.spec.ts`: every case in
   `formula-cases.json` (beside it) compiles, evaluates and is judged to its
   hand-computed values and verdicts, what-if and boundary cases included; the
   transcribed tables are pinned.

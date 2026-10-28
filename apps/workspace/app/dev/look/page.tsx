@@ -23,7 +23,7 @@ import { I18nProvider } from '@/i18n'
 import { parseWireEvent } from '@/adapters/api/wire-v2'
 import { ReasoningFlow } from '@/features/chat/components/reasoning/ReasoningFlow'
 import { foldTurnEvents } from '@/features/chat/lib/turn-fold'
-import { LookCard } from '@/features/grid-cards/components/LookCard'
+import { LookCard } from '@/features/cards/components/LookCard'
 import { a1SheetPdf } from '../_fixtures/a1-sheet'
 import { LOOK_CARD, LOOK_CARD_NO_ACCESS, LOOK_HIDDEN_ID, LOOK_SHEET_ID, LOOK_STEP_BODIES } from '../_fixtures/look'
 

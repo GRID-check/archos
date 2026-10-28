@@ -27,7 +27,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { UserMessage } from '@/features/chat/components/UserMessage'
-import { TaskCreatedCard } from '@/features/grid-cards/components/TaskCreatedCard'
+import { TaskCreatedCard } from '@/features/cards/components/TaskCreatedCard'
 import { RunBlock } from '@/features/runs/components/RunBlock'
 import { RunBlockLine } from '@/features/runs/components/RunBlockLine'
 import {

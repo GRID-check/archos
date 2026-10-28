@@ -97,7 +97,7 @@ Chosen option 1.
   (`operation_proposal`, `file_operation_proposal`, `memory_proposal`,
   validated by the generated `gridCardSchema`), drawn by `A2uiCard` with the
   receipts the chat uses (`ProposalReceipts.tsx`). The receipts read and decide
-  through a `ProposalTransport` (`features/grid-cards/hooks/proposal-transport.ts`):
+  through a `ProposalTransport` (`features/cards/hooks/proposal-transport.ts`):
   in Piloti the HTTP client and the realtime channel, in the view `tools/call`
   through the host (`App.callServerTool`) and no channel. A
   `project_profile` proposal is not drawn: its card compares the patch with the

@@ -96,7 +96,7 @@ import type { CitationSource } from '@/features/chat/types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import type { AnswerCard } from '@/shared/cards/schemas'
 import type { MessageStages } from '@/lib/conversations/message-stages'
-import type { CardInteractions } from '@/features/grid-cards/card-decision'
+import type { CardInteractions } from '@/features/cards/card-decision'
 import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
 import { useChatStore } from '@/features/chat/store'
 
