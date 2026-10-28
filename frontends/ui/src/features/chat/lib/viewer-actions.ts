@@ -125,7 +125,7 @@ export const TYPING_PAUSE_MS = 1500
 export const TYPING_WAIT_MS = 8000
 const TYPING_POLL_MS = 250
 /** Where the person's choice is kept, per browser. */
-export const VIEWER_ACTIONS_AUTO_KEY = 'grid.viewerActions.auto'
+export const VIEWER_ACTIONS_AUTO_KEY = 'viewerActions.auto'
 
 let runner: ViewerActionRunner | null = null
 const undos = new Map<string, ViewerActionUndo>()

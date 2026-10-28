@@ -98,6 +98,8 @@ EXCLUDED = re.compile(
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",
             r"^deploy/pulumi/index-postgres-rename\.spec\.ts$|^tests/test_postgres_rename_legacy_names\.py$",
+            # The one-release move of the browser's stored keys off their old names, and its spec.
+            r"^frontends/ui/src/app/storage-rename-boot(\.spec)?\.ts$",
             # The migration harness: it replays the Drizzle history (excluded above) and seeds the tables
             # each migration knew, under the names they had then.
             r"^scripts/rls-test-db\.sh$",
