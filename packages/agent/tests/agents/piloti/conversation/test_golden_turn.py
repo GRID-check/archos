@@ -2,7 +2,7 @@
 
 The turn is the real ``_run``: the request parse, the setup phase, admission,
 the registries, the conversation graph under ``astream``, the result lift. The
-answering agent is the one seam: it crosses NAT's function boundary the way
+answering agent is the one seam: it crosses the agent runtime's function boundary the way
 ``Function.ainvoke`` does (``Context.push_active_function``) into an inner
 LangGraph run with a config of its own, the shape of Piloti's
 ``agent._graph_config``, and there a fake LLM streams a recorded envelope
@@ -120,7 +120,7 @@ class _OwnCallbacks(AsyncCallbackHandler):
 
 
 async def _chat_behind_its_function(state):
-    """What NAT's ``Function.ainvoke`` does around Piloti: push the function, await it in the same task."""
+    """What the runtime's ``Function.ainvoke`` does around Piloti: push the function, await it in the same task."""
     with Context.get().push_active_function("shallow_research_agent", input_data=None):
         config = {"recursion_limit": 50, "configurable": {"binding": object()}, "callbacks": [_OwnCallbacks()]}
         await _INNER.ainvoke({}, config=config)

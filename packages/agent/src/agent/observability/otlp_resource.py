@@ -1,7 +1,7 @@
 """Where a signal goes and who sent it: the two rules every OTLP exporter in this process shares.
 
 Pulumi injects ``OTEL_EXPORTER_OTLP_ENDPOINT`` as the collector's full traces
-path (``http://otel-collector:4318/v1/traces``), because the NAT span exporter
+path (``http://otel-collector:4318/v1/traces``), because the agent-runtime span exporter
 posts to an explicit endpoint as-is (ADR-0029). Logs and metrics are its
 siblings on the same collector.
 
@@ -20,7 +20,7 @@ from typing import Literal
 
 ENDPOINT_ENV = "OTEL_EXPORTER_OTLP_ENDPOINT"
 SERVICE_NAME_ENV = "OTEL_SERVICE_NAME"
-#: The NAT exporter's ``project`` default in ``configs/config_oib_openrouter.yml``,
+#: The agent-runtime exporter's ``project`` default in ``configs/config_oib_openrouter.yml``,
 #: so every signal from an unnamed process sits under the chat turns' service.
 DEFAULT_SERVICE_NAME = "backend-chat"
 

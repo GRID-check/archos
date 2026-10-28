@@ -707,7 +707,7 @@ class ConversationGraph:
         """Run one turn on ``thread_id``'s conversation: the wire bodies as it runs, then the final state.
 
         The graph runs under ``astream`` (chat wire v2 §b): every producer
-        inside it, Piloti's inner graph behind its NAT function included,
+        inside it, Piloti's inner graph behind its agent-runtime function included,
         writes its bodies through ``get_stream_writer()``, and they come out
         here in order. Only the ROOT graph's values are the turn's state; a
         subgraph's are its own.

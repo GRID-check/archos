@@ -29,7 +29,7 @@ class FakeChatModel(BaseModel):
 
 
 class RetryPatchedChatModel(FakeChatModel):
-    """Stand-in for a NAT-built ChatOpenAI (patch_with_retry applied)."""
+    """Stand-in for an agent-runtime-built ChatOpenAI (patch_with_retry applied)."""
 
     def invoke_model(self) -> str:
         """Returns the model the request would actually go out with (self-bound)."""
@@ -37,7 +37,7 @@ class RetryPatchedChatModel(FakeChatModel):
 
 
 def _patch_with_retry_like_nat(llm: RetryPatchedChatModel) -> RetryPatchedChatModel:
-    """Replicate NAT's patch_with_retry: wrap every public method and store it
+    """Replicate the agent runtime's patch_with_retry: wrap every public method and store it
     in the instance __dict__ as a types.MethodType bound to THIS instance."""
     original_fn = type(llm).invoke_model
 
@@ -114,7 +114,7 @@ class TestOverrideModel:
         assert apply_model_override(llm, AgentGroup.RESEARCH, {"clarifier": "vendor/other"}) is llm
 
     def test_override_rebinds_instance_patched_methods(self):
-        """Regression: NAT's patch_with_retry stores public methods in the
+        """Regression: the agent runtime's patch_with_retry stores public methods in the
         instance __dict__ as MethodTypes bound to the ORIGINAL instance.
         model_copy shallow-copies __dict__, so the override copy kept invoking
         the original model (wire payload carried the old model name while logs

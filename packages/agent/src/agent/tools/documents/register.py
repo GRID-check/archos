@@ -203,7 +203,7 @@ def _envelope() -> SignedEnvelope:
 def _conversation_id() -> str:
     """The conversation this turn belongs to, agreed by both of its sources.
 
-    The working directory is namespaced by NAT's conversation id, so that is the
+    The working directory is namespaced by the agent runtime's conversation id, so that is the
     id that finds the file. The verified envelope carries one too, and the BFF
     authorizes on ITS copy — so a disagreement means one of the two is about a
     different conversation, and filing the wrong conversation's draft under this
@@ -510,8 +510,8 @@ async def run_file_draft(
     project's editors.
 
     Module-level, and the tool below is a one-line wrapper around it, so the
-    refusal paths are reachable by a test without going through NAT's
-    generator — the refusals are most of what this tool is.
+    refusal paths are reachable by a test without going through the agent
+    runtime's generator — the refusals are most of what this tool is.
     """
     try:
         return await _file(path, title or "", submit=submit, reviewer=reviewer or "")

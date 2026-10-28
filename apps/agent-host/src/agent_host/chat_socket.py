@@ -4,9 +4,9 @@ The design is ``docs/design/chat-wire-v2.md`` §c/§d, the contract
 ``agent.common.wire_v2``, and the protocol page
 ``docs/api/websocket-protocol.md``.
 
-NAT's WebSocket route is off (``websocket_path: null``, ``plugin.AgentHostConfig``)
+The agent runtime's WebSocket route is off (``websocket_path: null``, ``plugin.AgentHostConfig``)
 and this module is mounted at ``/websocket`` instead. It runs the workflow
-through NAT's public session API (``SessionManager.session`` →
+through the agent runtime's public session API (``SessionManager.session`` →
 ``Session.run`` → ``Runner.result_stream``, via ``workflow_stream``) and
 consumes what the turn's ``_run`` yields: wire bodies. Every body is stamped
 here, by the turn's sequencer (:class:`TurnWire`), because only the socket owns
@@ -228,7 +228,7 @@ STAGE_WIRE_TTL_S = 600.0
 #: cut-off, and bounds everything else: a model call, tool or graph that never
 #: returns. How many turns run at once is not decided here: ADR-0040's
 #: admission (``MAX_ACTIVE_TURNS``) refuses a turn it has no slot for at
-#: once, and NAT's own semaphore, which queued it silently, is off
+#: once, and the agent runtime's own semaphore, which queued it silently, is off
 #: (``plugin.AgentHostWorker._create_chat_session_manager``).
 TURN_DEADLINE_SECONDS = float(os.getenv("CHAT_TURN_DEADLINE_SECONDS", "2700"))
 
@@ -857,7 +857,7 @@ class RunningTurn:
         in_background(_after_terminal(self))
 
     async def ask(self, prompt: InteractionPrompt) -> HumanResponse:
-        """NAT's ``user_input_callback``: put the prompt to the asker and wait for their answer."""
+        """The agent runtime's ``user_input_callback``: put the prompt to the asker and wait for their answer."""
         expires_at = _now_ms() + int(HITL_RESPONSE_TIMEOUT_SECONDS * 1000)
         self.pending = PendingInteraction(prompt=prompt, answer=asyncio.get_running_loop().create_future())
         await self.wire.send(InteractionRequestBody(value=interaction_request(prompt, expires_at=expires_at)))
@@ -1550,12 +1550,12 @@ async def _drive(
     socket: WebSocket,
     caller: dict[str, Any],
 ) -> None:
-    """Run the workflow in a NAT session bound to this turn: the verified subject, the question, the HITL callback."""
+    """Run the workflow in a runtime session bound to this turn: verified subject, question, HITL callback."""
     headers = dict(socket.scope.get("headers", []))
     tags = build_request_trace_tags(headers, socket.scope, caller, external_hostnames=_external_hostnames)
     # The turn's trace is named by its answer id, so the persisted answer row
     # (`turn_row_metadata`) can say which trace it is, and a vote on it can be
-    # scored there. NAT adopts a pinned id instead of drawing a random one.
+    # scored there. The agent runtime adopts a pinned id instead of drawing a random one.
     # The turn's outcome rides its root span (`turn_outcome`): bound here, the
     # context every export task of this turn snapshots, and filled in place
     # by `_relay_workflow` when the terminal passes.
@@ -1580,7 +1580,7 @@ async def _drive(
     try:
         with pinned_trace(trace_id_for_message(turn.message_id)), user_context(caller), request_trace_tag_context(tags):
             async with session_manager.session(
-                # Never None: NAT would then derive an id from the unverified headers.
+                # Never None: the agent runtime would then derive an id from the unverified headers.
                 user_id=turn.asker_subject or caller.get("type"),
                 user_message_id=request.message_id,
                 conversation_id=request.conversation_id,

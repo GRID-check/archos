@@ -95,7 +95,7 @@ NON_MEASURING_OPERATIONS: frozenset[str] = frozenset(
 #
 # Copied rather than imported for one reason: `import ifc_spatial` pulls in
 # IfcOpenShell, numpy and shapely — a second of import time and a few hundred
-# megabytes of address space — and this module is imported by NAT's plugin
+# megabytes of address space — and this module is imported by the agent runtime's plugin
 # discovery at startup on every deployment, including the ones that never touch
 # a building. The engine is imported when a call is actually made.
 

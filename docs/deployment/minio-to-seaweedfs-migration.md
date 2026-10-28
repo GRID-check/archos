@@ -26,7 +26,7 @@ MinIO anymore. So for one deploy window the transitional stack **occupies the
 active compose path** (`deploy/compose/docker-compose.coolify.yaml`) — the
 normal push-triggered deploy runs the migration, no Coolify settings change
 needed — while the permanent stack is parked at
-`deploy/compose/docker-compose.coolify.final.yaml`. The transitional stack:
+`deploy/compose/docker-compose.coolify.final.yaml` (a file that exists only for the cutover window; the cutover is done and `docker-compose.coolify.yaml` is the permanent stack). The transitional stack:
 
 - `minio` stays up on its existing volume and existing `SERVICE_PASSWORD_MINIO`
   secret (Coolify secrets are stable per stack, so the old password still fits).

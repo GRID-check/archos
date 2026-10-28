@@ -257,7 +257,7 @@ async def _run_look(
 
 @register_function(config_type=LookToolConfig)
 async def look(config: LookToolConfig, _builder: Builder):
-    """NAT function: ``look``, bound to the chat agent and deep research."""
+    """Agent-runtime function: ``look``, bound to the chat agent and deep research."""
     from knowledge_layer.view_image import ViewLimits
 
     limits = ViewLimits(max_dim=config.max_dim, timeout=config.timeout)

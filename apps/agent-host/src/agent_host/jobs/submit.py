@@ -273,7 +273,7 @@ def _job_store_settings() -> tuple[str, str, int]:
     # @category Server
     # @type str
     # @required false
-    # Path to the NAT workflow config file the research worker loads.
+    # Path to the agent-runtime workflow config file the research worker loads.
     config_path = os.environ.get("NAT_CONFIG_FILE", "")
 
     # @environment_variable NAT_FASTAPI_LOG_LEVEL
@@ -299,15 +299,15 @@ def _captured_request_context(
 
         auth_token = get_auth_token()
 
-    # Auto-detect collection scope from NAT context if not explicitly provided.
-    # When the request arrives via HTTP/WS the NAT middleware populates
+    # Auto-detect collection scope from the agent runtime's context if not explicitly provided.
+    # When the request arrives via HTTP/WS the agent-runtime middleware populates
     # Context.metadata.headers with the BFF-supplied X-Grid-Collection-Scope.
     if collection_scope is None:
         from agent.knowledge.scoping import get_collection_scope_from_context
 
         collection_scope = get_collection_scope_from_context()
 
-    # Auto-detect project context from NAT context if not explicitly provided.
+    # Auto-detect project context from the agent runtime's context if not explicitly provided.
     if project_context is None:
         from agent.project_context import get_project_context_from_context
 
@@ -354,7 +354,7 @@ async def _verify_job_id_is_new(
     loop: asyncio.AbstractEventLoop,
 ) -> bool:
     """Refuse a caller-supplied job ID that exists. Returns whether the ID's pre-existence was verified."""
-    # Duplicate-ID guard: job_id is caller-supplied, and both NAT's job_info
+    # Duplicate-ID guard: job_id is caller-supplied, and both the agent runtime's job_info
     # write and the job_access upsert below are unconditional — without this
     # check, re-submitting an existing ID would rewrite the original job's
     # ownership (hijack), and a failed re-submission would delete the original
@@ -539,7 +539,7 @@ async def submit_agent_job(
     # no lock) and fail OPEN — a broken count must not take research down.
     await _enforce_job_admission(db_url, organization_id)
 
-    # NAT's JobStore requires a scheduler address that this path never uses
+    # The agent runtime's JobStore requires a scheduler address that this path never uses
     # (ADR-0021): every call here goes to the database.
     job_store = JobStore(scheduler_address="", db_url=db_url)
     resolved_job_id = job_store.ensure_job_id(job_id)
@@ -549,7 +549,7 @@ async def submit_agent_job(
     parent_trace_context = _get_parent_trace_context()
     # An EXPLICIT conversation wins over the ambient one.
     #
-    # Interactive submits inherit the caller's conversation from NAT request
+    # Interactive submits inherit the caller's conversation from the agent runtime's request
     # context, which is right: the job belongs to the turn that started it. A
     # scheduled job has no request context at all — it is fired by the
     # scheduler over the internal route — so its conversation can only arrive

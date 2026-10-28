@@ -4,7 +4,7 @@ Two ways in. ``read_document`` reads a project document's pages in full, which
 is what the intake mostly needs: a value sits in a title block, a table or a
 Baubeschreibung paragraph, and a ranked search returns fragments of exactly the
 pages one wants whole. ``knowledge_search`` and ``read_passage`` stay the way to
-FIND where a value is; they are the shared NAT tools, bound unchanged, and
+FIND where a value is; they are the shared agent-runtime tools, bound unchanged, and
 :class:`IntakeToolMiddleware` logs what they returned.
 
 ``read_document`` reads the indexed text page by page from the collection's

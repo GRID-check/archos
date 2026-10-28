@@ -46,19 +46,19 @@ Enforcement (403 / WS policy-violation close) applies only when ALL of:
    calls, shared with the runtime ``from_context()`` parse path).
 
 **Deny by default.** Condition 3 used to be the opposite: an allowlist of
-ENFORCED paths (the async job submit, the internal skills submit, NAT's
-``/generate``). Every workflow endpoint NAT mounts that nobody had listed —
+ENFORCED paths (the async job submit, the internal skills submit, the agent runtime's
+``/generate``). Every workflow endpoint the agent runtime mounts that nobody had listed —
 ``/chat``, ``/chat/stream``, ``/v1/chat``, ``/v1/chat/stream``,
 ``/v1/chat/completions``, ``/v1/workflow``, ``/v1/workflow/stream`` — ran a
 full agent turn for a signed-in member with no organization, no budget, no
 disabled sources and no model overrides, reached through the BFF's v1 proxy
-with nothing but the member's cookie. A path a future NAT release adds would
+with nothing but the member's cookie. A path a future agent-runtime release adds would
 have been open the same way. Now a JWT caller needs the envelope everywhere
 except the short list of paths that run no workflow and that a BFF proxy
-legitimately forwards with the member's bearer and no envelope. Those NAT
+legitimately forwards with the member's bearer and no envelope. Those agent-runtime
 routes are no longer mounted at all (``agent_host.plugin.AgentHostConfig``: a turn
 runs on the chat socket alone); deny by default is what still closes a route
-a later NAT release adds.
+a later agent-runtime release adds.
 
 EXEMPT (enforcement never applies):
 

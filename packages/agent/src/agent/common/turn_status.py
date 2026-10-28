@@ -1,10 +1,10 @@
 """Telling the user what the turn is actually doing, while it does it.
 
 Everything a Grid turn currently reports about itself is an accident of
-observability. NAT's ``StepAdaptor`` watches the LangChain instrumentation and
+observability. The agent runtime's ``StepAdaptor`` watches the LangChain instrumentation and
 turns LLM/tool/function spans into ``system_intermediate_message`` frames; the
-frontend then guesses an activity label by regex-matching the raw NAT function
-name. Nothing in this repo ever *said* anything. The holes that leaves are not
+frontend then guesses an activity label by regex-matching the raw agent-runtime
+function name. Nothing in this repo ever *said* anything. The holes that leaves are not
 edge cases — they are the longest stretches of the turn: context loading before
 the graph starts, and the whole answer phase behind a generic label.
 

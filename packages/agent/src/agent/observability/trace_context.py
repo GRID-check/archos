@@ -3,14 +3,14 @@
 Langfuse files a trace under an *environment* and a *release* and draws each
 observation by its *type*. None of the three reached it before this module:
 ``deployment.environment`` was a resource attribute Langfuse does not read as
-the environment, the commit was on the log resource only, and NAT writes its
+the environment, the commit was on the log resource only, and the agent runtime writes its
 own ``nat.span.kind`` where Langfuse reads ``langfuse.observation.type``. So
 every trace was "default", no release could be compared with the one before,
 and an agent graph was a column of untyped spans.
 
 Pure functions here; the processor that applies them lives beside the others in
 ``langfuse_trace_attributes``, and the direct-span helper
-(``observability.direct_trace``) calls the same functions, so a span NAT built
+(``observability.direct_trace``) calls the same functions, so a span the agent runtime built
 and a span Grid built cannot disagree about what they carry.
 
 Nothing here is personal data or tenant data: the deployment's name, the
@@ -44,17 +44,17 @@ RELEASE_ENV = "GIT_SHA"
 _ENVIRONMENT_INVALID = re.compile(r"[^a-z0-9_-]+")
 _ENVIRONMENT_MAX = 40
 
-#: The trace names an analyst filters on. A NAT root span is named after the
+#: The trace names an analyst filters on. An agent-runtime root span is named after the
 #: workflow's config type (``chat_deepresearcher_agent``), which says nothing to
 #: anyone outside this repo.
 CHAT_TURN_TRACE = "chat-turn"
 RESEARCH_JOB_TRACE = "research-job"
 ASYNC_JOB_PREFIX = "async_job:"
 
-#: NAT span kind -> Langfuse observation type. Langfuse knows ten types
+#: Agent-runtime span kind -> Langfuse observation type. Langfuse knows ten types
 #: (span, event, generation, agent, tool, chain, retriever, evaluator,
 #: embedding, guardrail); a kind with no counterpart stays a plain span.
-#: FUNCTION is NAT's wrapper around a registered function: a tool, a
+#: FUNCTION is the agent runtime's wrapper around a registered function: a tool, a
 #: sub-agent, or a step of one, so "chain" is the one type that is never wrong.
 _TYPE_BY_KIND = {
     "LLM": "generation",
@@ -70,7 +70,7 @@ _TYPE_BY_KIND = {
 }
 
 #: Grid's own retrieval steps (``observability.retrieval_trace``) are FUNCTION
-#: spans NAT cannot tell from any other; their name says what they are.
+#: spans the agent runtime cannot tell from any other; their name says what they are.
 _RETRIEVAL_SPAN_PREFIX = "retrieve."
 #: The decision model's calls (``observability.decision_trace``): FUNCTION
 #: spans too, and model calls, so generations (ADR-0089).
@@ -111,7 +111,7 @@ def process_trace_attributes() -> dict[str, Any]:
 
 
 def span_kind(attributes: dict[str, Any]) -> str | None:
-    """NAT's span kind, read by suffix because the prefix follows the exporter."""
+    """The agent runtime's span kind, read by suffix because the prefix follows the exporter."""
     value = next((value for key, value in attributes.items() if key.endswith(".span.kind")), None)
     return value if isinstance(value, str) else None
 

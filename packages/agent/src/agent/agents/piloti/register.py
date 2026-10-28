@@ -1,4 +1,4 @@
-"""NAT register function for research agent.
+"""Agent-runtime register function for research agent.
 
 One :class:`ChatAgent` is built at boot. Per request ``_run_turn``
 computes only what the turn varies (the switched-off data sources, the org's
@@ -66,7 +66,7 @@ from nat.plugin_api import LLMFrameworkEnum
 from nat.plugin_api import LLMRef
 from nat.plugin_api import register_function
 
-# Importing this module runs its ``@register_function`` so NAT discovers the
+# Importing this module runs its ``@register_function`` so the agent runtime discovers the
 # ``ask_user`` tool through the same ``conversation_researcher`` entry point
 # that imports this file, the pattern ``cards/register.py`` uses for
 # ``surface_documents``, and no extra plugin entry point to keep in sync.
@@ -652,7 +652,7 @@ async def _run_agent(deployment: _Deployment, state: ResearchAgentState, turn: T
     try:
         return await deployment.agent.run(state, turn=turn)
     except EmptySourceRegistryError as exc:
-        # A miss is a valid empty answer, not an unhandled NAT error. Raising
+        # A miss is a valid empty answer, not an unhandled agent-runtime error. Raising
         # here became err2issue #447 and left the user with no reply.
         logger.warning("Research captured no sources; returning an empty-result answer.")
         scoped = bool(state.focus_file_name or state.focus_shelf)

@@ -386,7 +386,7 @@ def resolve_vlm_credential(organization_id: str | None = None):
     source of truth for the vision endpoint ingestion will call.
 
     Delegates to the shared resolver (:func:`resolve_llm_credential`) so the VLM
-    inherits the SAME resolution the NAT chat models use, including **BYOK**:
+    inherits the SAME resolution the agent runtime's chat models use, including **BYOK**:
 
       0. **BYOK** — when ``organization_id`` is given and the org has a
          bring-your-own credential, the org's key + base URL win (never the
@@ -414,7 +414,7 @@ def resolve_vlm_credential(organization_id: str | None = None):
 def _resolve_vlm_model_override(organization_id: str | None) -> str | None:
     """The org's runtime model override for the ingestion VLM, or ``None``.
 
-    Mirrors the NAT chat models' ``x-grid-model-overrides`` behaviour for the
+    Mirrors the agent runtime's chat models' ``x-grid-model-overrides`` behaviour for the
     ``ingest_vlm`` agent group (ADR-0014), resolved by org id via the BFF's
     internal endpoint (the ingest thread has no request header). Model selection
     only — the key + base URL still come from BYOK/env. Fail-open to ``None`` so
@@ -4434,7 +4434,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             extract_images = config.get("extract_images", self.extract_images)
             extract_charts = config.get("extract_charts", self.extract_charts)
 
-            # Resolve the VLM the SAME way the NAT chat models resolve theirs —
+            # Resolve the VLM the SAME way the agent runtime's chat models resolve theirs —
             # honouring org BYOK (key + base URL) and the org's runtime model
             # override — so per-project/Archiv uploads use the tenant's own
             # vision credential and chosen model. The org id is captured at the

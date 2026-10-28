@@ -4,7 +4,7 @@ The Next.js BFF sends a family of internal ``X-Grid-*`` headers on every
 submission path (WS upgrade in ``server.js``, the async-jobs REST proxy, the
 workflow-scheduler's internal submit) carrying the caller's org/project
 identity, collection scope, project context/memory, per-org model overrides,
-budget snapshot, and org-disabled data sources. In Python/NAT these headers
+budget snapshot, and org-disabled data sources. In Python and the agent runtime these headers
 are accessed lowercased via ``Context`` metadata.
 
 ``RequestContext`` (below) is the single dataclass + parse function that
@@ -100,7 +100,7 @@ REQUEST_CONTEXT_ENVELOPE_HEADER = "x-grid-request-context"
 REQUEST_CONTEXT_ENVELOPE_SIG_HEADER = "x-grid-request-context-sig"
 
 #: What each project-scoped tool needs from the request context to run at all,
-#: keyed by the NAT function TYPE (`_type:` in the config — the stable identity;
+#: keyed by the agent-runtime function TYPE (`_type:` in the config — the stable identity;
 #: the name a config binds it under is the config's choice), as the headers
 #: that carry it. DECLARATIVE, so a test can check every entry path that binds
 #: a tool supplies what it needs: the chat path sets these on the WebSocket
@@ -159,7 +159,7 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "workspace_tools": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
     # The Erfassungs-Agent (`agents/intake/`, ADR-0111): an agent, not a tool,
     # keyed here because its tools (`intake_needs`, `record_values`,
-    # `finish_intake`, `read_document`) are built by the agent and have no NAT
+    # `finish_intake`, `read_document`) are built by the agent and have no agent-runtime
     # type of their own. Every one of them acts as the person whose upload or
     # click started the run: the intake API takes the project and that person
     # from the envelope, and `read_document` reads the collection scope signed
@@ -271,7 +271,7 @@ def normalize_org_instructions(value: str | None) -> str | None:
 
 
 def _read_header(name: str) -> str | None:
-    """Read a raw header value from NAT Context metadata."""
+    """Read a raw header value from agent-runtime Context metadata."""
     try:
         from nat.plugin_api import Context
 
@@ -497,7 +497,7 @@ class RequestContext:
 
     @classmethod
     def from_context(cls) -> RequestContext:
-        """Read every ``X-Grid-*`` header from the current NAT Context in one
+        """Read every ``X-Grid-*`` header from the current agent-runtime Context in one
         pass. This is the low-level parse the module-level accessor
         functions below (``get_project_id_from_context`` etc.) delegate to —
         call this directly when you need more than one field, so the request
@@ -622,7 +622,7 @@ class RequestContext:
     @classmethod
     def from_headers(cls, headers: dict[str, str], *, secret: str | None = None) -> RequestContext:
         """Parse a ``RequestContext`` from an explicit header map instead
-        of a live NAT Context.
+        of a live agent-runtime Context.
 
         This is the cross-language contract-test entry point: the fixture at
         ``apps/workspace/tests/fixtures/request_context.json`` carries
@@ -777,10 +777,10 @@ def get_user_message_id_from_context() -> str | None:
     This is the ``parent_id`` the browser minted for the turn and the only id the
     browser and the agent tier genuinely share, so it is what identifies a turn
     to anything that runs after the answer (see
-    ``docs/architecture/post-answer-stages.md``). NAT sets it on the session
+    ``docs/architecture/post-answer-stages.md``). The agent runtime sets it on the session
     (``Context.user_message_id``) from the front end's ``_message_parent_id``.
 
-    Returns ``None`` off the WebSocket path (CLI, REST, job worker) and for NAT's
+    Returns ``None`` off the WebSocket path (CLI, REST, job worker) and for the agent runtime's
     ``"default_id"`` placeholder — a constant shared by every turn of every
     conversation is not an identity, and treating it as one would collapse all of
     them onto a single key.

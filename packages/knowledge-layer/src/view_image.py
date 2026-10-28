@@ -6,7 +6,7 @@ source visual as a multimodal content block (``image_url`` with a data URL), so
 vision-capable models can inspect drawings, sections, elevations and charts
 directly at answer time. The tool the model calls is ``look``
 (``agent.tools.look``, ADR-0128), which resolves WHICH file and collection
-and hands them here; this module is no NAT function of its own any more.
+and hands them here; this module is no agent-runtime function of its own any more.
 
 Three source shapes are covered, without re-ingest:
 

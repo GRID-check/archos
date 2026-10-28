@@ -295,7 +295,7 @@ class TestTheEnumsMatchTheEngine:
     """The tool's vocabulary is a COPY of the package's, and copies drift.
 
     `measure_register` spells the enums out rather than importing them, so that
-    NAT's plugin discovery does not pull IfcOpenShell, numpy and shapely into
+    the agent runtime's plugin discovery does not pull IfcOpenShell, numpy and shapely into
     every process at startup. The price of that is this test: an operator
     renamed in the package has to fail HERE, in a sentence naming both sides,
     rather than at a user whose perfectly good call is refused by name.
@@ -1566,7 +1566,7 @@ class TestTheDescriptionDescribesTheRealTool:
 
         The parameters used to be read off `_ifc_measure`'s signature through
         the AST, because the function is nested inside a registration generator
-        and its signature is not reachable without standing up the whole NAT
+        and its signature is not reachable without standing up the whole agent-runtime
         builder. It now takes ONE argument — a validated
         :class:`IfcMeasureInput` — so the signature no longer names anything,
         and the spec moved to the model's fields. Which is the point: the model
@@ -2124,7 +2124,7 @@ class TestTheSchemaIsWhatTheModelActuallySees:
 
     The whole benefit of typing this tool's input is invisible unless the enums
     and the per-parameter text survive the trip from `IfcMeasureInput` through
-    NAT's `FunctionInfo`, through the framework wrapper, and into the JSON
+    the agent runtime's `FunctionInfo`, through the framework wrapper, and into the JSON
     schema handed to the model. Each of those three hops is somebody else's
     code, and the failure mode — a beautifully typed model, a bare schema on
     the wire, and no way to tell from inside the process — is exactly what this
@@ -2714,7 +2714,7 @@ class TestAPayloadNobodyRendersIsABug:
 
 
 class TestTheToolBody:
-    """`_measure` is the tool minus NAT: the guards, the engine call, the failure table."""
+    """`_measure` is the tool minus the agent runtime: the guards, the engine call, the failure table."""
 
     @pytest.fixture(autouse=True)
     def _context(self, monkeypatch):

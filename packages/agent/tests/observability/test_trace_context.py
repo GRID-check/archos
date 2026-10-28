@@ -142,7 +142,7 @@ class TestProcessor:
     async def test_a_chat_root_needs_no_incoming_trace_context(self):
         """The BFF registers no trace provider, so no request carries a ``traceparent``.
 
-        A root is a NAT span with no NAT parent, not a span that continues a W3C
+        A root is an agent-runtime span with no agent-runtime parent, not a span that continues a W3C
         context, so the chat turn must still name its trace and carry its outcome
         with nothing ambient and nothing upstream.
         """

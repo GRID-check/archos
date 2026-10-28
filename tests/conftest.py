@@ -2,7 +2,7 @@
 
 Every test loads this file, so it imports only what every test needs. A fixture
 that needs a heavy package imports it in its body, and the model doubles live in
-``tests/provider_doubles.py``: loading LangChain, NAT and the Qdrant client here
+``tests/provider_doubles.py``: loading LangChain, the agent runtime and the Qdrant client here
 cost every test, a one-line harness test included, about 4.6 s of a 5.7 s run
 (docs/audit/blast-radius-2026-10.md). ``tests/test_import_weight.py`` holds it.
 """

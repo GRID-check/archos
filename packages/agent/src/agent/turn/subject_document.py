@@ -237,7 +237,7 @@ async def load_subject_document(
     Args:
         subject: What the composer said this turn is about.
         conversation_id: Namespaces the working directory. The SAME id
-            ``file_draft`` resolves (NAT's context conversation id), because the
+            ``file_draft`` resolves (the agent runtime's context conversation id), because the
             file this writes is the file that tool has to find.
         organization_id: The tenant the read is scoped to, from the signed
             envelope. Never from the client: the version id is the only thing

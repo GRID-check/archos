@@ -4,7 +4,7 @@ post-answer stages' facts.
 State field in, :class:`~agent.common.wire_v2.TurnResult` field (or
 ``TurnFacts`` field) out. Kept as module-level functions rather than inline
 code in the workflow because inline they could only be exercised by standing
-up the whole NAT workflow — which is how ``skills_hidden`` could be set by
+up the whole agent-runtime workflow — which is how ``skills_hidden`` could be set by
 Piloti, declared by the frontend, and still never reach a reader, and how
 ``research_truncated`` rode the wire for months without the one stage gate
 that needed it ever reading it. The result is a closed model: a field the
@@ -49,7 +49,7 @@ def answer_message_id(conversation_id: str | None, turn_id: str | None) -> str:
 
 
 def turn_answer_message_id(conversation_id: str | None) -> str:
-    """The id of the answer the running turn writes: :func:`answer_message_id` of its NAT context.
+    """The id of the answer the running turn writes: :func:`answer_message_id` of its agent-runtime context.
 
     For a caller that must name the answer before it exists: the BFF marks it
     when restricted content is admitted into the turn (ADR-0093), so a vote on

@@ -247,7 +247,7 @@ def room_inventory(resolve: Callable[[Any], SpatialModel], args: dict[str, Any])
     misspelt kind came back as ``KeyError: ''`` from ``briefing.py:799``. A
     Python traceback is not a refusal: the caller cannot read it, cannot act
     on it, and an MCP client sees a crash where every other enum in this file
-    produces a German sentence naming the allowed values. The NAT tool layer
+    produces a German sentence naming the allowed values. The agent-runtime tool layer
     happened to validate ``kind`` before this was reached, but this module is
     documented as transport-free and ``mcp_server`` hands arguments here
     unfiltered.

@@ -517,28 +517,24 @@ def register_stage_frame_sink(sink: StageFrameSink) -> None: ...
 ```
 
 and `agent_host/plugin.py` registers an implementation that calls
-`_registry.send(conversation_id, GridStageMessage(**frame))`
-(`websocket_reconnect.py:214-247`, `async def send`). Doing it through `_registry.send` and not
-through the socket directly buys the **multi-replica relay for free**: `send`
-already publishes to the conversation bus so the replica holding the socket
-writes it (`websocket_reconnect.py:224-231`, `conversation_bus.py:284-292`). A
-stage on the owner replica reaches a client on a relay replica with no new code.
+`send_stage` (`agent_host/chat_socket.py`), which hands the value to the turn's
+`TurnWire` as a `StageBody`, so the stage event takes the turn's own `seq` (chat wire v2,
+`CUSTOM stage`). Going through the turn's wire and not through the socket directly
+buys the **multi-replica relay for free**: the wire publishes to the conversation bus so
+the replica holding the socket writes it. A stage on the owner replica reaches a client
+on a relay replica with no new code.
 
-**Deliberately NOT reused:** the runtime's `create_websocket_message`. It resolves the
-frame schema through `WebSocketMessageType`, a vendored `StrEnum`
-(`nat/data_models/api_server.py:612-624`) that cannot gain a member without
-patching the dependency. `_registry.send` takes any `BaseModel` and calls
-`model_dump()`, so the app can own its own frame model. This is the whole reason the
-frame type was `grid_`-prefixed.
+**Deliberately NOT reused:** the agent runtime's own message factory. Its frame schema is a
+closed enum that cannot gain a member without patching the dependency, so the app owns the
+stage event instead (chat wire v2 defines it as `CUSTOM stage`).
 
-> **[as built, slice 3]** The implementation is `GridStageMessage` and
-> `send_stage_frame` in `agent_host/websocket_reconnect.py`, registered by
-> `register_stage_frame_sink(send_stage_frame)` at **import** of
-> `agent_host/plugin.py`, next to `install_reconnectable_handler()`. Import-time and
-> not inside `add_routes`, because that is what "the front end starts up" means:
-> a process that never loads this front end — a CLI run, a research worker —
-> leaves the sink unset, and a `frame` stage there still runs, is still bounded
-> and still records its outcome. It simply has nobody to tell, which
+> **[as built]** The implementation is `send_stage` in `agent_host/chat_socket.py`
+> (originally a `GridStageMessage` frame in `websocket_reconnect.py`, replaced by wire
+> v2), registered by `register_stage_frame_sink(send_stage)` at **import** of
+> `agent_host/plugin.py`. Import-time and not inside `add_routes`, because that is what
+> "the front end starts up" means: a process that never loads this front end — a CLI
+> run, a research worker — leaves the sink unset, and a `frame` stage there still runs,
+> is still bounded and still records its outcome. It simply has nobody to tell, which
 > `delivery.py` already documents as a normal state.
 >
 > Two things the envelope enforces at that boundary rather than trusting the
@@ -1545,7 +1541,7 @@ alone. Nothing else may start before 0.**
 | **0** ✅ | **BUILT.** The primitive: `stages/` package, `StageSpec`, `TurnFacts`, runner (semaphore + timeout + span), registry, sink interface. Reflection ported onto it, behaviour-identical, flag unchanged. No new stage, no frame. Carries the §1.4 and §1.5 fixes and the §7.8 kill-switch fix. | — | yes — a pure refactor with the §1.4/§1.5 fixes | revert |
 | **1** ✅ | **BUILT.** Backend `follow_ups`: gate, handler, prompt, payload model. `delivery="silent"` — **it runs and is measured, and delivers nothing.** Carries `StageEmpty` (§2.4), per-stage cost on the span (§7.4) and the backend↔BFF stage-flag parity guard. | 0 | yes | flag off |
 | **2** ✅ | **BUILT.** Frontend: the stage-frame schema, `onStage`, `wsParentId` on the message, `stages` on the PATCH + its sanitiser, `FollowUpsRail`, `/dev` variant, registry.mjs rewrite (§6.3). Built against the §4 fixtures, which now exist as `shared/stages/frames.json`. Carries the §8 correction (three arrival conditions, not two) and the §6.2 one. | — (contract only) | yes — renders from fixtures with no backend | revert |
-| **3** ✅ | **BUILT.** Wire them: `agent_host` publishes the frame sink (`GridStageMessage` + `send_stage_frame`, registered at plugin import), `follow_ups` declares `delivery="frame"`, and the `post-answer-follow-ups` flag is on for one organization and off everywhere else. Carries the §9 contract test's Python half, which replaces the slice-2 stand-in. | 0,1,2 | yes | flag off |
+| **3** ✅ | **BUILT.** Wire them: `agent_host` publishes the frame sink (`send_stage`, registered at plugin import; first built as `GridStageMessage` + `send_stage_frame`, replaced by wire v2), `follow_ups` declares `delivery="frame"`, and the `post-answer-follow-ups` flag is on for one organization and off everywhere else. Carries the §9 contract test's Python half, which replaces the slice-2 stand-in. | 0,1,2 | yes | flag off |
 | **4** ✅ | **BUILT.** Retire the card: `SYSTEM_CARD_TYPES`, prompt-weight removal (catalog, post-hoc craft, and the seeded skill's `grid-cards` list + craft section via `0062`), export skip already done by PR #474 (§7.10). The `post-answer-follow-ups` flag is on for ALL orgs in both environments and `defaultOn` follows it. | 3 | yes | §7.10's revert path — step 1 **plus** reverting the step-2 commit **plus** `0062_…down.sql`; **performed and verified end to end**, not assumed |
 | **4b** ✅ | **BUILT.** Reflection's own frame + the per-turn chip; the poll deleted (§5.1, §1.7). `memory_reflection` declares `delivery="frame"` and its payload carries the rows it wrote; the client stores them under `stages.memoryReflection`, and `useConversationMemory` is gone. Carries the §1.1 correction (which half of path 1 the chip's in-turn label actually was) and the §5.1 one (§8's conditions are the rail's, not every stage's). | 3 | yes | flag off |
 

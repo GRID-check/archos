@@ -1,4 +1,4 @@
-"""Stamp Langfuse trace attributes onto NAT spans (ADR-0044).
+"""Stamp Langfuse trace attributes onto agent-runtime spans (ADR-0044).
 
 Langfuse groups observations into traces and then attributes those traces to a
 *session* and a *user*. Without those two identifiers a deployment's traces are
@@ -9,28 +9,28 @@ span list, so wiring it is the difference between "traces reach Langfuse" and
 "the app is integrated with Langfuse".
 
 WHAT WE GET FOR FREE, and therefore do not do here. Verified against the
-installed NAT, not assumed:
+installed agent runtime, not assumed:
 
 * ``session.id`` — ``nat.observability.exporter.span_exporter`` already sets it
   from ``Context.conversation_id`` at span creation, and Langfuse maps
   ``session.id`` natively. This module still sets ``langfuse.session.id``,
   because that is the attribute Langfuse checks *first* and pinning it makes
   the mapping explicit rather than dependent on an upstream detail — but it
-  only ever sets it when there is a value, so it can never blank out NAT's.
-* ``user.id`` — NAT 1.9 sets it from ``Context.user_id`` at span creation
+  only ever sets it when there is a value, so it can never blank out the agent runtime's.
+* ``user.id`` — the agent runtime 1.9 sets it from ``Context.user_id`` at span creation
   (#2152), and Langfuse maps ``user.id`` to the trace's user. The chat socket
   opens every turn's session with ``user_id`` = the VERIFIED subject
   (``agent_host.chat_socket``), the same WorkOS user id the envelope carries, so
   this module no longer writes ``langfuse.user.id``
-  (``test_nat_puts_the_session_user_on_every_span`` pins NAT's half). NAT sets
+  (``test_nat_puts_the_session_user_on_every_span`` pins the agent runtime's half). The agent runtime sets
   it, and ``<prefix>.user.id``, on every span whatever
   ``TRACE_IDENTITY_ATTRIBUTES`` says, so with the flag off
   :class:`UserIdentityStripProcessor` removes both before export: the default
   stays "no span names a person".
-* ``input.value`` / ``output.value`` — NAT emits the OpenInference attribute
+* ``input.value`` / ``output.value`` — the agent runtime emits the OpenInference attribute
   names, which Langfuse reads as the observation input/output.
 
-WHAT IS MISSING WITHOUT THIS MODULE: the tenant. NAT has no concept of it; it
+WHAT IS MISSING WITHOUT THIS MODULE: the tenant. The agent runtime has no concept of it; it
 arrives on the Grid ``X-Grid-*`` request headers (``project_context.py``),
 which nothing was projecting onto spans.
 
@@ -38,7 +38,7 @@ which nothing was projecting onto spans.
 
 Resource attributes are per-PROCESS. Organization and project are per-REQUEST, and
 one agent process serves every tenant, so the only correct place is a
-per-span hook. NAT's processing pipeline is exactly that hook, and NAT's own
+per-span hook. The agent runtime's processing pipeline is exactly that hook, and its own
 ``SpanHeaderRedactionProcessor`` reads request headers the same way.
 
 Context propagation into that pipeline is real rather than hoped-for:
@@ -138,7 +138,7 @@ def record_trace_metadata(**pairs: Any) -> None:
     """Attach facts about what a tool actually did to this turn's traces.
 
     The gap this closes is specific and, for one feature, total. Everything
-    expensive in a research turn happens in THIS process, where NAT traces it
+    expensive in a research turn happens in THIS process, where the agent runtime traces it
     span by span. The IFC tools are the exception: their work happens in the
     BFF, which exports OTel *logs* and no traces at all, so `ifc_query` reaches
     Langfuse as one opaque span of N milliseconds. An operator looking at a
@@ -313,7 +313,7 @@ def reset_contributions() -> None:
 # ``CostTracker`` records it to ``llm_usage_events``. It never reaches
 # the spans Langfuse renders, through two drops:
 #
-# 1. NAT's ``LangchainProfilerHandler.on_llm_end`` reads ONLY LangChain's
+# 1. The agent runtime's ``LangchainProfilerHandler.on_llm_end`` reads ONLY LangChain's
 #    normalized ``message.usage_metadata`` (no cost field exists on its
 #    ``TokenUsageBaseModel`` at all), and the span exporter forwards only
 #    ``llm.token_count.prompt/completion/total``. The OpenRouter object —
@@ -331,7 +331,7 @@ def reset_contributions() -> None:
 #    LLM span holds the totals.
 #
 # This processor closes drop 1 at export time, where every LLM span passes
-# regardless of which handler built it (NAT's stock handler on chat turns,
+# regardless of which handler built it (the agent runtime's stock handler on chat turns,
 # ``SpanClosingProfilerHandler`` on async jobs): it mirrors the counts into
 # the ``gen_ai.usage.*`` namespace Langfuse's OTel ingestion maps to
 # ``usageDetails``, pins the model so Langfuse can infer ``costDetails``
@@ -539,7 +539,7 @@ def _find_usage(node: Any, matches: Any, depth: int = 0) -> dict[str, Any] | Non
     """First dict under ``node`` that ``matches``, or None.
 
     A bounded recursive scan (not a fixed path) because the span metadata
-    serializer normalizes shapes across NAT versions while the usage key names
+    serializer normalizes shapes across agent-runtime versions while the usage key names
     are stable. Depth-capped so a pathological payload cannot recurse.
     """
     if depth > 6 or node is None:
@@ -579,7 +579,7 @@ def _normalize_langchain_usage(usage: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-#: The one key in NAT's ``TraceMetadata`` holding THIS call's output. Both the
+#: The one key in the agent runtime's ``TraceMetadata`` holding THIS call's output. Both the
 #: chat-completions and the Responses-API path reach it through the same
 #: ``on_llm_end`` (``nat/plugins/langchain/callback_handler.py:318``, and :249
 #: for a streamed chunk); every other usage-bearing key on the span
@@ -659,7 +659,7 @@ def extract_provider_usage(metadata_json: Any) -> dict[str, int | float] | None:
 
 
 def extract_span_token_counts(attributes: dict[str, Any]) -> dict[str, int] | None:
-    """The ``llm.token_count.*`` counts NAT's exporter already set, or None.
+    """The ``llm.token_count.*`` counts the agent runtime's exporter already set, or None.
 
     The fallback when the provider object is absent from the metadata (older
     traces, stripped payloads): token-only, no cached/reasoning/cost split.
@@ -726,7 +726,7 @@ def usage_observation_attributes(
 def is_generation_span(attributes: dict[str, Any]) -> bool:
     """Whether a span is an LLM call, i.e. a Langfuse *generation*.
 
-    NAT writes its event type under a namespaced key whose prefix varies with
+    The agent runtime writes its event type under a namespaced key whose prefix varies with
     the exporter, so the suffix is what is matched — the same test the usage
     processor has always used, lifted here so both processors agree on what a
     generation is rather than each carrying its own copy.
@@ -744,7 +744,7 @@ def langfuse_attributes_for(
 ) -> dict[str, Any]:
     """Build the Langfuse attribute map for one request's identity.
 
-    Pure, so the mapping can be tested without a NAT context, a span, or an
+    Pure, so the mapping can be tested without an agent-runtime context, a span, or an
     event loop. Absent values are OMITTED rather than written as ``None`` or
     ``"unknown"``: Langfuse renders whatever it is given, and an empty session
     would group every anonymous request into one bogus conversation.
@@ -767,7 +767,7 @@ def langfuse_attributes_for(
     # What a tool recorded about what it did. Namespaced under the same
     # `langfuse.trace.metadata.` prefix as the identity fields, so it is subject
     # to exactly the same redaction policy — this whole map is written ahead of
-    # NAT's redaction processor and an operator listing a key in
+    # the agent runtime's redaction processor and an operator listing a key in
     # `redaction_attributes` must be able to reach these too.
     for key, value in (contributed or {}).get("metadata", {}).items():
         attributes[f"{METADATA_PREFIX}{key}"] = value
@@ -879,7 +879,7 @@ try:
     class LangfuseTraceAttributeProcessor(Processor[Span, Span]):
         """Attach session and tenant attributes to every span.
 
-        Inserted at the FRONT of the pipeline, ahead of NAT's redaction
+        Inserted at the FRONT of the pipeline, ahead of the agent runtime's redaction
         processor. That ordering is deliberate and is the only one that keeps
         redaction meaningful: attributes added after the redaction pass can
         never be redacted, so an operator who adds a ``langfuse.trace.metadata.*``
@@ -897,7 +897,7 @@ try:
             """Stamp the current request's identity onto one span.
 
             Mutates and returns the same object rather than building a copy —
-            that is NAT's pipeline contract, and the redaction processor
+            that is the agent runtime's pipeline contract, and the redaction processor
             downstream relies on it.
 
             Reading the context here (rather than at span creation) is safe
@@ -919,7 +919,7 @@ try:
 
         Installed unconditionally: a deployment name, a commit and a span's
         type are not personal data. A root span whose turn failed also gets
-        an OTel ERROR status, which NAT never sets itself.
+        an OTel ERROR status, which the agent runtime never sets itself.
         """
 
         async def process(self, item: Span) -> Span:
@@ -943,9 +943,9 @@ try:
             return item
 
     class UserIdentityStripProcessor(Processor[Span, Span]):
-        """Remove the user identity NAT 1.9 stamps on every span, while identity attributes are off.
+        """Remove the user identity the agent runtime 1.9 stamps on every span, while identity attributes are off.
 
-        NAT sets ``user.id`` and ``<prefix>.user.id`` from the session's user
+        The agent runtime sets ``user.id`` and ``<prefix>.user.id`` from the session's user
         (#2152), and the chat socket opens each session with the verified
         subject. Attributing spans to a person is the step
         ``TRACE_IDENTITY_ATTRIBUTES`` gates, so without the flag this
@@ -960,7 +960,7 @@ try:
     class UsageAttributeProcessor(Processor[Span, Span]):
         """Mirror provider usage onto generation spans in the namespaces Langfuse reads.
 
-        NAT's exporter sets only ``llm.token_count.*`` (token-only, and zero
+        The agent runtime's exporter sets only ``llm.token_count.*`` (token-only, and zero
         whenever ``usage_metadata`` was absent), while Langfuse's OTel
         ingestion maps ``gen_ai.usage.*`` / ``langfuse.observation.*`` to
         ``usageDetails``/``costDetails`` — hence empty usage on every
@@ -1087,9 +1087,9 @@ try:
                 logger.debug("Failed to redact inline images from a span", exc_info=True)
             return item
 
-except Exception:  # pragma: no cover - exercised only without the NAT extras
+except Exception:  # pragma: no cover - exercised only without the agent-runtime extras
     # Mirrors the import guards in `otel_header_redaction_exporter.py`: the
-    # pure mapping above stays importable (and testable) even where the NAT
+    # pure mapping above stays importable (and testable) even where the agent-runtime
     # observability extras are not installed.
     LangfuseTraceAttributeProcessor = None  # type: ignore[assignment,misc]
     TraceContextProcessor = None  # type: ignore[assignment,misc]

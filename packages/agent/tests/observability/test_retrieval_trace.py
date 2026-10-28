@@ -10,7 +10,7 @@ Three things are pinned here:
    information beyond ADR-0029's accepted posture and would widen the blast
    radius of every trace consumer for nothing.
 3. **Fail-open emission** - the step pair is balanced (one END per START, same
-   UUID) so NAT's span-stack bookkeeping survives, and any failure inside the
+   UUID) so the agent runtime's span-stack bookkeeping survives, and any failure inside the
    helper is absorbed rather than allowed to break a search.
 """
 
@@ -178,5 +178,5 @@ class TestEmission:
         emit_retrieval_span(tool_name="knowledge_search", search_input={}, picks={})
 
     def test_no_context_at_all_is_absorbed(self):
-        """Outside a NAT run (tests, ingest threads) there is nothing to push to."""
+        """Outside an agent-runtime run (tests, ingest threads) there is nothing to push to."""
         emit_retrieval_span(tool_name="x", search_input={}, picks={})

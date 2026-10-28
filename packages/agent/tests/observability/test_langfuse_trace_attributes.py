@@ -7,7 +7,7 @@ Two things are worth pinning here, and they are not the same thing:
    attribute. Get a name wrong and Langfuse silently ignores the attribute:
    traces still arrive, they are just anonymous. Nothing errors, so only a test
    catches it.
-2. **The pipeline position** — the processor must run BEFORE NAT's redaction
+2. **The pipeline position** — the processor must run BEFORE the agent runtime's redaction
    processor, or attributes naming a person can never be redacted while
    `redaction_attributes` still claims to cover them.
 """
@@ -45,7 +45,7 @@ class TestAttributeMapping:
 
     def test_omits_absent_fields_rather_than_inventing_placeholders(self):
         """
-        NAT writes the string "unknown" for its own absent context fields. Doing
+        The agent runtime writes the string "unknown" for its own absent context fields. Doing
         that here would be actively wrong: Langfuse would group every anonymous
         request into one shared session — inventing a conversation that never
         happened.
@@ -54,7 +54,7 @@ class TestAttributeMapping:
 
     def test_never_blanks_out_the_session_id_nat_already_set(self):
         """
-        NAT's span exporter sets `session.id` from the conversation id at span
+        The agent runtime's span exporter sets `session.id` from the conversation id at span
         creation. When our own read comes back empty we must add nothing, not
         write an empty `langfuse.session.id` — Langfuse prefers the prefixed
         attribute, so an empty one would OVERRIDE a good value.
@@ -72,7 +72,7 @@ class TestAttributeMapping:
 
 
 class TestUserAttributionIsNats:
-    """The user half is NAT's since 1.9 (#2152): the span exporter stamps `user.id`,
+    """The user half is the agent runtime's since 1.9 (#2152): the span exporter stamps `user.id`,
     which Langfuse maps to the trace's user, from the session's `user_id`, and the
     chat socket opens every session with the verified subject
     (`test_chat_socket.py` pins that half)."""
@@ -446,7 +446,7 @@ class TestUsageObservationMapping:
     """Input/output/total (+cost) onto generation observations.
 
     Production showed empty `usageDetails`/`costDetails` on every generation:
-    NAT's exporter sets only `llm.token_count.*` (token-only, and zero
+    The agent runtime's exporter sets only `llm.token_count.*` (token-only, and zero
     whenever `usage_metadata` was absent), while Langfuse's OTel ingestion
     maps `gen_ai.usage.*` / `langfuse.observation.*`. These pin the mirror.
     """

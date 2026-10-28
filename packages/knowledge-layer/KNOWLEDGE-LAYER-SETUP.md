@@ -297,7 +297,7 @@ Other file types are ingested normally but do not receive summaries.
 > |-----------|-------------|
 > | **CLI** (`start_e2e.sh`) | `deploy/.env` |
 > | **Docker Compose** | `deploy/.env` (passed to frontend container automatically) |
-> | **Helm** | `deploy/helm/deployment-k8s/values.yaml` under the frontend app's `env` section |
+> | **Kubernetes** | `frontendEnv` in `deploy/pulumi/src/app/config.ts` (Pulumi; Helm charts are not used) |
 
 ### How It Works
 

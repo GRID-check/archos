@@ -268,7 +268,7 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
     """
     Register agent-agnostic async job routes.
 
-    Uses NAT's JobStore for job metadata. Research runs on the database-claimed
+    Uses the agent runtime's JobStore for job metadata. Research runs on the database-claimed
     queue (ADR-0021). The /v1/data_sources endpoint is always registered.
     """
     from .builder_state import set_active_builder
@@ -299,7 +299,7 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
     # it is given, and every call here goes to the database.
     job_store = JobStore(scheduler_address="", db_url=db_url)
     # submit_agent_job resolves the database from the environment only; publish the
-    # worker-provided value so a NAT-config-only deployment (no env vars) doesn't
+    # worker-provided value so an agent-runtime-config-only deployment (no env vars) doesn't
     # register routes whose every submission then fails.
     os.environ.setdefault("NAT_JOB_STORE_DB_URL", db_url)
     config_path = getattr(worker, "_config_file_path", None) or os.environ.get("NAT_CONFIG_FILE", "")

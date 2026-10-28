@@ -148,7 +148,7 @@ def is_literal_search(step: Any) -> bool:
 class ToolStepCallback(AsyncCallbackHandler):
     """Every tool call of a graph run as a ``tool`` step: its basename and outcome, never its I/O.
 
-    Added once to the conversation graph's run config. NAT's profiler still
+    Added once to the conversation graph's run config. The agent runtime's profiler still
     bills and traces tools through its own handler; this one only tells the
     reader a tool ran. One instance per run: it remembers each running call's
     name until the call ends.

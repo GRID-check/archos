@@ -6,7 +6,7 @@ domain data, so German appears here only inside a quoted span (a user phrasing
 given as an example, a citation, a card label) or as a glossary word.
 
 The tools are built from the shipped config exactly as the workflow builds them,
-in a clean interpreter (NAT's registry is process-global; see
+in a clean interpreter (the agent runtime's registry is process-global; see
 ``test_backend_tools_schema``). A tool that fails to build is a failure here, so
 a new tool cannot slip past the scan by being unbuildable.
 """

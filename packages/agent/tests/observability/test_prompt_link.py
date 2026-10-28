@@ -246,7 +246,7 @@ class TestPipelineWiring:
         """
         Installed unconditionally (a prompt name is not personal data), and at
         `position=0` so the attributes it adds stay redactable like every other
-        attribute we add — the ordering NAT's redaction pass depends on.
+        attribute we add — the ordering the agent runtime's redaction pass depends on.
         """
         from agent_testing.langfuse import _make_config
 

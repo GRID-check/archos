@@ -118,7 +118,7 @@ class LookupHarness:
         self.client = client
 
     async def run(self, config=None, **kwargs) -> str:
-        """Invoke the tool through the real NAT runtime path (see test_register._call)."""
+        """Invoke the tool through the real agent-runtime path (see test_register._call)."""
         from ris_adapter.lookup import RisLookupToolConfig
         from ris_adapter.lookup import ris_lookup
 
@@ -131,7 +131,7 @@ class LookupHarness:
 
         Patching the resolver rather than the model: what a test needs to say is
         "the picker was never called", and going through `get_langchain_llm` to
-        say it would test NAT's builder instead of this tool's two paths.
+        say it would test the agent runtime's builder instead of this tool's two paths.
         """
 
         async def _resolve(tool_config, builder):

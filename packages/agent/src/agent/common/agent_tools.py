@@ -1,4 +1,4 @@
-"""The one way an agent receives its tools from the NAT builder.
+"""The one way an agent receives its tools from the agent-runtime builder.
 
 Every agent used to resolve its tools with its own copy of
 ``builder.get_tools(...)`` plus an ``exclude_tools`` filter. This is that copy,

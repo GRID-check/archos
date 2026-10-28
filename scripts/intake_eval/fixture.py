@@ -8,7 +8,7 @@ the same four tools it binds in production:
   pages come from is replaced (``reading.project_documents`` and
   ``reading.fetch_document_pages``, the seams the agent's own suite fakes in
   ``agent_testing.intake``).
-* ``list_files``, ``knowledge_search`` and ``read_passage`` are the shared NAT
+* ``list_files``, ``knowledge_search`` and ``read_passage`` are the shared agent-runtime
   tools, which need a vector store and a database. They are rebuilt here with
   the production descriptions (imported, so they cannot drift) and the
   production renderers: ``list_files`` through the knowledge layer's own

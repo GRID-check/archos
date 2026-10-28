@@ -38,7 +38,7 @@ class _SearchInput(BaseModel):
 
 
 class _FakeFunction:
-    """A NAT function: an input model and an ``ainvoke`` that records the context it ran in."""
+    """An agent-runtime function: an input model and an ``ainvoke`` that records the context it ran in."""
 
     input_schema = _SearchInput
 

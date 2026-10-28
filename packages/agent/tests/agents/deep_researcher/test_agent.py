@@ -329,7 +329,7 @@ class TestDeepResearcherAgent:
             DeepResearchSandboxConfig(provider="not-modal")
 
     def test_register_uses_runtime_config_models(self):
-        """NAT config uses the same skills and sandbox models as runtime."""
+        """Agent-runtime config uses the same skills and sandbox models as runtime."""
         from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
         from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
         from agent.agents.deep_researcher.register import DeepResearchAgentConfig

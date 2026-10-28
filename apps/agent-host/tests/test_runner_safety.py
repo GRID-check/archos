@@ -37,7 +37,7 @@ from agent_host.jobs.runner import sanitize_job_error
 
 
 def _ensure_job_info_table(db_url: str) -> None:
-    """Create NAT's job_info table (mock stores cannot represent the race)."""
+    """Create the agent runtime's job_info table (mock stores cannot represent the race)."""
     from sqlalchemy import text
 
     from agent_host.jobs.event_store import EventStore
@@ -170,7 +170,7 @@ class TestTerminalStatusStickiness:
 
     @pytest.mark.asyncio
     async def test_missing_job_raises_value_error(self, job_db):
-        """Same contract as NAT's update_status: writing a missing job raises."""
+        """Same contract as the agent runtime's update_status: writing a missing job raises."""
         from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
 
         _ensure_job_info_table(job_db)

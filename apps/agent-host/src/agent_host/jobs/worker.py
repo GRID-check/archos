@@ -275,7 +275,7 @@ class ResearchWorker:
                 # Conditional: the run may have finalized itself after its
                 # claim went stale (same sticky-terminal contract as the
                 # runner and the ghost-job reaper). Also spelled as the enum,
-                # not "FAILURE": NAT's JobStatus lookup is by value
+                # not "FAILURE": the agent runtime's JobStatus lookup is by value
                 # ("failure"), so the old uppercase string raised ValueError
                 # and these jobs were never actually marked.
                 written = await _update_status_if_not_terminal(

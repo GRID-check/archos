@@ -7,9 +7,9 @@ Echo, never sign: the BFF verifies the two strings, builds the acting person's
 pinned session and runs the operation under that person's rights. A run with no
 envelope has no acting person and the tool refuses (``register.py``).
 
-## Why this is not NAT's ``mcp_client`` group
+## Why this is not the agent runtime's ``mcp_client`` group
 
-NAT's MCP client connects once, in a lifecycle task created at build time, and
+The agent runtime's MCP client connects once, in a lifecycle task created at build time, and
 its streamable-HTTP transport sends every request from tasks spawned inside that
 task (``anyio`` ``tg.start_soon`` copies the CONNECT-time contextvars). An auth
 provider that read the envelope from a contextvar would therefore see no turn at

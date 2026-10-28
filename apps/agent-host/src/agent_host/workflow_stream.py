@@ -1,6 +1,6 @@
 """A workflow's output stream, torn down in the task that built it.
 
-NAT's ``generate_streaming_response`` runs the workflow in a producer task and
+The agent runtime's ``generate_streaming_response`` runs the workflow in a producer task and
 hands items over through a queue. When its consumer stops early (the reader
 cancels, a send fails) it closes the queue and returns, without cancelling or
 awaiting that task. Two things go wrong from there, and err2issue filed both as
@@ -19,7 +19,7 @@ production errors:
 - Its intermediate-step tasks die on the closed queue with a ``QueueClosed``
   nobody retrieves (#334).
 
-Closing NAT's generator with ``aclosing`` does not reach any of this: it ends the consumer side and leaves
+Closing the agent runtime's generator with ``aclosing`` does not reach any of this: it ends the consumer side and leaves
 the producer task exactly as above.
 
 So here the producer is owned. Stopping early cancels it and waits until it has
@@ -41,8 +41,8 @@ still read; the turn ends without it.
 No intermediate step is read here: the chat wire carries what the turn's
 ``_run`` yields (wire bodies, ADR-0068), and steps go only to the exporters.
 
-It is written here instead of patched into NAT (1.9.0 still does not cancel its
-producer, #334/#337/#338/#759): the behaviour to keep is a few lines of NAT's
+It is written here instead of patched into the agent runtime (1.9.0 still does not cancel its
+producer, #334/#337/#338/#759): the behaviour to keep is a few lines of the agent runtime's
 helper, and the defect is in how that helper owns its task, not in anything we
 could configure.
 """

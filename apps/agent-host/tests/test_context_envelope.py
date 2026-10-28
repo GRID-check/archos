@@ -149,13 +149,13 @@ class TestExemptPaths:
 
 
 class TestDenyByDefault:
-    """Every workflow endpoint NAT mounts, and any path nobody listed."""
+    """Every workflow endpoint the agent runtime mounts, and any path nobody listed."""
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "path",
         [
-            # NAT's default workflow routes — these ran full agent turns for a
+            # The agent runtime's default workflow routes — these ran full agent turns for a
             # signed-in member with no envelope, reached through the BFF's v1
             # proxy with nothing but a cookie.
             "/chat",
@@ -484,8 +484,8 @@ class TestWebSocketEnforcement:
 
 
 class TestNatRouteCoverage:
-    """Every path NAT's front end mounts a workflow on stays enforced, read from
-    NAT's own endpoint config so a path a NAT release adds (1.9 added
+    """Every path the agent runtime's front end mounts a workflow on stays enforced, read from
+    the agent runtime's own endpoint config so a path a runtime release adds (1.9 added
     `routes/v1_chat_completions.py`) is checked without anyone listing it."""
 
     def test_no_nat_workflow_path_is_exempt(self):

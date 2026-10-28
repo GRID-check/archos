@@ -30,7 +30,7 @@ PROMPT = Path(__file__).resolve().parents[5] / "packages/agent/src/agent/agents/
 #: without the description, the shared tools' built from the functions' own (the door's schema fixture).
 MAX_DESCRIPTION_TOKENS = 1_890
 MAX_SCHEMA_TOKENS = 1_260
-#: The shared tools' NAT schemas, as ``scripts/generate_backend_tools_schema.py`` exports them.
+#: The shared tools' agent-runtime schemas, as ``scripts/generate_backend_tools_schema.py`` exports them.
 NAT_SCHEMAS = Path(__file__).resolve().parents[5] / "apps/workspace/tests/fixtures/backend-tools.schema.json"
 _TYPES = {"string": str, "integer": int, "boolean": bool, "object": dict}
 #: The evidence bullets of `<rules>`: 175 (chars / 4) after slice 6, 191 before.
@@ -43,7 +43,7 @@ def _estimate(text: str) -> int:
 
 
 def _nat_schema(name: str) -> type[BaseModel]:
-    """A model with the NAT function's fields, rebuilt from the exported JSON Schema."""
+    """A model with the agent-runtime function's fields, rebuilt from the exported JSON Schema."""
     tool = next(tool for tool in json.loads(NAT_SCHEMAS.read_text(encoding="utf-8"))["tools"] if tool["name"] == name)
     schema, fields = tool["inputSchema"], {}
     for field, spec in schema["properties"].items():

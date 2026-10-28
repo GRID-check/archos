@@ -59,7 +59,7 @@ class TestUserMessageId:
         assert pc.get_user_message_id_from_context() == "msg_1755600000000_3"
 
     def test_nats_placeholder_is_not_an_identity(self, monkeypatch):
-        """ "default_id" is NAT's unset sentinel, shared by every turn of every
+        """ "default_id" is the agent runtime's unset sentinel, shared by every turn of every
         conversation. Treating it as a turn id would collapse them onto one
         idempotency key and silence every turn after the first."""
         self._patch(monkeypatch, "default_id")
@@ -120,7 +120,7 @@ class TestComposeProjectContext:
 
 class TestRequestContextFromContext:
     """`RequestContext.from_context()` reads every X-Grid-* header from
-    NAT Context metadata in one pass; drive it via the same `_read_header`
+    agent-runtime Context metadata in one pass; drive it via the same `_read_header`
     monkeypatch seam the rest of this file uses.
     """
 

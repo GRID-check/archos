@@ -232,7 +232,7 @@ async def run_create_task(kind: str, goal: str, due: str = "", cadence: str = ""
     """Delegate one piece of work to a task row.
 
     Module-level, and the tool below is a one-line wrapper around it, so the
-    refusal paths are reachable by a test without going through NAT's generator —
+    refusal paths are reachable by a test without going through the agent runtime's generator —
     the refusals are most of what this tool is.
     """
     try:

@@ -1,4 +1,4 @@
-"""Tests for the ris_search and ris_fetch_document NAT tools."""
+"""Tests for the ris_search and ris_fetch_document agent-runtime tools."""
 
 from unittest.mock import MagicMock
 
@@ -157,7 +157,7 @@ class _CallProbeToolConfig(FunctionBaseConfig, name="test_register_call_probe"):
 
 
 async def _call(info, **kwargs):
-    """Invoke a registered NAT tool through the real runtime path.
+    """Invoke a registered agent-runtime tool through the real runtime path.
 
     LambdaFunction.ainvoke converts the kwargs into the tool's input schema and
     unpacks it per the function's arity — calling info.single_fn(...) directly
@@ -323,7 +323,7 @@ def _builder_with_planner(llm):
 
     from nat.llm.openai_llm import OpenAIModelConfig
 
-    # NAT 1.9 returns the chat model inside its configurable wrapper.
+    # The agent runtime 1.9 returns the chat model inside its configurable wrapper.
     builder = MagicMock(get_llm_config=MagicMock(return_value=OpenAIModelConfig(model_name="test-model")))
     builder.get_llm = AsyncMock(return_value=SimpleNamespace(default=llm))
     return builder

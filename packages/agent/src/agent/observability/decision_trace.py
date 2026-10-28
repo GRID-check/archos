@@ -1,6 +1,6 @@
 """One Langfuse generation per decision-model call (ADR-0064, ADR-0089).
 
-Jev's calls bypass LangChain and NAT's LLM callbacks, so until this module they
+Jev's calls bypass LangChain and the agent runtime's LLM callbacks, so until this module they
 reached Langfuse not at all: the turn decision, the passage judge, the
 injection flag, the upload tags, the reference fit — every typed answer the
 agent acts on lived only in the opt-in technical panel and the cost ledger.
@@ -42,7 +42,7 @@ def decision_observation(
     decided: int | None = None,
     skipped: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """The observation's input and output. Pure, so the shape is pinned without NAT.
+    """The observation's input and output. Pure, so the shape is pinned without the agent runtime.
 
     ``answers`` holds one summary per decided state (``Decision.summary``), in
     state order, capped by the caller. ``usage`` is written in OpenRouter's
@@ -99,8 +99,8 @@ def is_decision_span(name: str | None) -> bool:
 def decision_usage(attributes: Mapping[str, Any]) -> dict[str, Any] | None:
     """A decision span's tokens, cost and model, read off its output, or None.
 
-    The output is the JSON :func:`decision_observation` wrote, under NAT's
-    ``output.value`` (whatever prefix the exporter puts before it). Pure.
+    The output is the JSON :func:`decision_observation` wrote, under the agent
+    runtime's ``output.value`` (whatever prefix the exporter puts before it). Pure.
     """
     raw = next((value for key, value in attributes.items() if key.endswith("output.value")), None)
     if not isinstance(raw, str):

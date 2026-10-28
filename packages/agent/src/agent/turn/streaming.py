@@ -9,9 +9,10 @@ The workflow folds its own bodies too, to log when ``RUN_FINISHED`` replaced
 the settled text (:func:`note_settled_replaced`, counted by the answer suite).
 """
 
-# No `from __future__ import annotations` here: NAT resolves the converter's
-# return annotation (``fold_turn`` -> str) to build the workflow's single
-# output type, so it must already be an object, not a string.
+# No `from __future__ import annotations` here: the agent runtime resolves
+# the converter's return annotation (``fold_turn`` -> str) to build the
+# workflow's single output type, so it must already be an object, not a
+# string.
 import logging
 import re
 from dataclasses import dataclass

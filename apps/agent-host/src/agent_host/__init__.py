@@ -7,7 +7,7 @@ This package combines:
 
 ``AgentHostConfig`` and ``AgentHostWorker`` load on first use. Importing ``.plugin``
 here pulled the routes, the job runner and the agents in with ANY submodule
-(``agent_host.auth.errors`` included). NAT registers through ``agent_host.register``.
+(``agent_host.auth.errors`` included). The agent runtime registers through ``agent_host.register``.
 """
 
 from typing import TYPE_CHECKING

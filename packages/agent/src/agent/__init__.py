@@ -1,7 +1,7 @@
 """AI-Q Blueprint core package.
 
 The agents load on first use, so ``from agent.knowledge import ...`` works
-without pulling in the agent stack and its heavy dependencies (LangGraph, NAT).
+without pulling in the agent stack and its heavy dependencies (LangGraph, the agent runtime).
 """
 
 from agent.lazy_exports import lazy_exports

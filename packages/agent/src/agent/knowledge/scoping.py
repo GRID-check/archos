@@ -17,7 +17,7 @@ Two payload shapes are accepted (ADR-0047):
   guessed back from the collection-id prefix, and an unknown shelf renders
   unattributed rather than defaulting to ``base``/``baurecht``.
 
-In Python/NAT this header is accessed lowercased via ``Context`` metadata.
+In Python/the agent runtime this header is accessed lowercased via ``Context`` metadata.
 When the header is missing the system falls back to legacy config-based
 collection resolution.
 """

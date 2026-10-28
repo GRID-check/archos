@@ -53,7 +53,7 @@ class JobModels:
 
 @dataclass(frozen=True)
 class RunContext:
-    """The NAT context the job runs in, and what it resolved about the requester."""
+    """The agent-runtime context the job runs in, and what it resolved about the requester."""
 
     state: Any
     context: Any
@@ -184,7 +184,7 @@ async def prepare_tools(builder: Any, fn_config: Any, data_sources: list[str] | 
 
 
 async def bind_request(request: JobRequest, fn_config: Any) -> RunContext:
-    """Start the job's NAT context, parented under the submitter's trace, and supply its request headers."""
+    """Start the job's agent-runtime context, parented under the submitter's trace, and supply its request headers."""
     from nat.data_models.invocation_node import InvocationNode
     from nat.plugin_api import Context
     from nat.plugin_api import ContextState

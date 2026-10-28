@@ -1,6 +1,6 @@
 """Who is calling, for the length of one request: the identity the API tier's middleware resolved.
 
-A NAT workflow function never sees the ASGI request, so the middleware
+An agent-runtime workflow function never sees the ASGI request, so the middleware
 (``agent_host.auth.middleware``) binds the resolved caller here, with
 :func:`user_context`, and the agent reads it back with
 :func:`get_current_user`. The ContextVar lives in the agent tier so that the

@@ -21,7 +21,7 @@ class AgentConfig:
     """Full module path to the agent class, e.g., 'agent.agents.deep_researcher.agent.DeepResearcherAgent'"""
 
     config_name: str
-    """NAT config function name, e.g., 'deep_research_agent'"""
+    """Agent-runtime config function name, e.g., 'deep_research_agent'"""
 
     description: str = ""
     """Human-readable description of the agent."""
@@ -43,7 +43,7 @@ def register_agent(
     Args:
         agent_type: Short identifier for the agent (e.g., 'deep_researcher').
         class_path: Full module path to the agent class.
-        config_name: NAT config function name for this agent.
+        config_name: Agent-runtime config function name for this agent.
         description: Human-readable description.
 
     Example:
@@ -89,8 +89,8 @@ register_agent(
     description="Performs comprehensive multi-loop deep research",
 )
 
-# ``config_name`` is the NAT function NAME in the YAML, not its ``_type``
-# (``research_agent``). The name is what NAT puts on the wire and what every
+# ``config_name`` is the agent-runtime function NAME in the YAML, not its ``_type``
+# (``research_agent``). The name is what the agent runtime puts on the wire and what every
 # stored turn keeps as ``functionName``, so it is a persisted identifier and is
 # deliberately still ``shallow_research_agent`` — see the note on that block in
 # ``configs/config_oib_openrouter.yml``.
@@ -103,7 +103,7 @@ register_agent(
 
 # Reads a new project's documents and writes suggested profile values onto the
 # project, not a report. The class is loaded by path at job time (never imported
-# here) and declares ``produces_report = False``; ``config_name`` is the NAT
+# here) and declares ``produces_report = False``; ``config_name`` is the agent-runtime
 # function name in the YAML, whose ``_type`` is also ``project_intake_agent``.
 register_agent(
     agent_type="project_intake",

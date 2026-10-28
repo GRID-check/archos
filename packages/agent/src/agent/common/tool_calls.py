@@ -203,7 +203,7 @@ LOCATOR_TOOL_BASENAMES = frozenset({READ_PASSAGE_TOOL, READ_FILE_TOOL})
 MAX_DOCUMENT_CHARS = 32
 
 
-#: Function-group separators used by NAT-qualified tool names: ``group__tool``
+#: Function-group separators used by agent-runtime-qualified tool names: ``group__tool``
 #: for a function group or an MCP server, ``group.tool`` for a dotted one.
 _TOOL_NAME_SEPARATORS = ("__", ".")
 

@@ -26,13 +26,13 @@ def _make_config(endpoint: str | None) -> OtelCollectorRedactionTelemetryExporte
 @pytest.mark.parametrize("endpoint", ["", "   ", None])
 async def test_blank_endpoint_yields_a_noop_exporter(endpoint):
     # None is what `${OTEL_EXPORTER_OTLP_ENDPOINT:-}` interpolates to when the
-    # var is unset — this exact value crashed NAT startup before `endpoint`
+    # var is unset — this exact value crashed agent-runtime startup before `endpoint`
     # was made Optional (pydantic str validation).
     # `register_telemetry_exporter` turns the factory into an async context manager.
     async with otelcollector_redaction_telemetry_exporter(_make_config(endpoint), None) as exporter:
         assert isinstance(exporter, _DisabledSpanExporter)
         # And it must actually swallow spans rather than raise, synchronously:
-        # NAT calls export() without awaiting it, and an async override leaked
+        # The agent runtime calls export() without awaiting it, and an async override leaked
         # an unawaited coroutine per trace event.
         assert exporter.export(object()) is None
 

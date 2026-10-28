@@ -1,20 +1,20 @@
 """
-NAT trace → list[RequestProfile]
-=================================
+Agent-runtime trace → list[RequestProfile]
+==========================================
 
-Converts a NAT profiler trace JSON file (produced by ``nat eval``) into
+Converts an agent-runtime profiler trace JSON file (produced by ``nat eval``) into
 structured :class:`~agent.tokenomics.profile.RequestProfile` objects
 ready for the tokenomics HTML report.
 
 Architecture note
 -----------------
-The workflow is registered as ``deep_research_agent``.  NAT 1.5.0 traces still
+The workflow is registered as ``deep_research_agent``.  Version 1.5.0 traces of the agent runtime still
 emit ``FUNCTION_START`` / ``FUNCTION_END`` for **tools** (e.g. search helpers),
 but **planner-agent** and **researcher-agent** runs live inside the ``task``
 tool: they do not get distinct ``FUNCTION_*`` names.  Traces from this stack
 typically have no per-step ``function_ancestry`` (or equivalent) carrying
 subagent identity — calling ``subagent.ainvoke()`` does not surface as separate
-NAT function scopes for Planner vs Researcher.
+agent-runtime function scopes for Planner vs Researcher.
 
 Subagent attribution is therefore inferred post-hoc via timing windows: every
 ``task`` TOOL_START/END pair brackets one subagent invocation and carries
@@ -28,7 +28,7 @@ lies inside a task window, the call is attributed to that phase; otherwise
 ``ts``.  Overlapping researcher windows share the same phase label, so order is
 unimportant in the common parallel-researcher case.
 
-If NAT later attaches subagent phase directly on each step (e.g.
+If the agent runtime later attaches subagent phase directly on each step (e.g.
 ``function_ancestry`` or explicit ``FUNCTION_*`` scopes for subagents),
 ``_infer_phase`` can be replaced with a field read and the rest of this module
 can stay the same.
@@ -79,7 +79,7 @@ def _extract_subagent_type(raw_input: Any) -> str | None:
     if isinstance(raw_input, dict):
         return raw_input.get("subagent_type")
     if isinstance(raw_input, str):
-        # NAT stores tool inputs as Python-repr strings, not JSON
+        # The agent runtime stores tool inputs as Python-repr strings, not JSON
         try:
             parsed = ast.literal_eval(raw_input)
             if isinstance(parsed, dict):
@@ -277,7 +277,7 @@ def _parse_request(request_index: int, steps: list[dict], pricing: PricingRegist
 
 def parse_trace(path: str, pricing: PricingRegistry) -> list[RequestProfile]:
     """
-    Parse a NAT profiler trace JSON file and return one
+    Parse an agent-runtime profiler trace JSON file and return one
     :class:`~agent.tokenomics.profile.RequestProfile` per request.
 
     Parameters

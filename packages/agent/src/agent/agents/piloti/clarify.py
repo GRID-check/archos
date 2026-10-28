@@ -3,7 +3,7 @@
 One step of the conversation graph, not an agent. It has exactly one caller
 (``conversation.ConversationGraph._clarifier_node``), it is handed a state that
 caller builds, and it returns a result only that caller can act on — so its
-former NAT registration (``_type: clarifier_agent``) bought a YAML block and
+former agent-runtime registration (``_type: clarifier_agent``) bought a YAML block and
 nothing else. The block moved onto ``chat_deepresearcher_agent`` as
 :class:`ClarifierSettings`; ``AgentGroup.CLARIFIER`` did NOT move, because an
 org can re-point this step's model (Platform → Models) and that value is
@@ -163,7 +163,7 @@ ClarifyFn = Callable[[ClarifyRequest], Awaitable[ClarifyResult]]
 class ClarifierSettings(BaseModel):
     """The clarification step's configuration, nested under the workflow config.
 
-    These fields were the ``clarifier_agent`` NAT function's own config block;
+    These fields were the ``clarifier_agent`` agent-runtime function's own config block;
     they read identically in YAML, one level deeper. ``enable_clarifier`` on the
     workflow decides whether the step exists at all and stays where it is.
     """
@@ -677,7 +677,7 @@ async def clarify(request: ClarifyRequest, deps: ClarifyDeps) -> ClarifyResult:
 
 async def ask_through_nat(question: str, options: Sequence[str] = ()) -> str:
     """
-    Ask the user a question through NAT's user interaction manager.
+    Ask the user a question through the agent runtime's user interaction manager.
 
     Args:
         question: The clarification question to display to the user.
@@ -687,7 +687,7 @@ async def ask_through_nat(question: str, options: Sequence[str] = ()) -> str:
             still type a free-text answer or "skip".
 
     Returns:
-        The user's response text, extracted from the NAT response object — a
+        The user's response text, extracted from the agent-runtime response object — a
         typed answer and a picked option arrive as different response models,
         and `extract_user_response` normalizes both.
     """
@@ -829,7 +829,7 @@ async def build_clarifier(settings: ClarifierSettings, builder: Builder) -> Clar
 
     Args:
         settings: The workflow config's ``clarifier`` block.
-        builder: NAT Builder for obtaining LLM and tool instances.
+        builder: Agent-runtime Builder for obtaining LLM and tool instances.
 
     Returns:
         The callable the conversation graph holds as its ``clarifier_fn``.

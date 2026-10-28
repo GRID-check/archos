@@ -318,7 +318,7 @@ class TestSdkDoesNotHijackTracing:
         The decision this whole module rests on. The Langfuse SDK installs a
         TracerProvider AND hangs its own BatchSpanProcessor on whatever provider
         it finds, unless `tracing_enabled=False`; this process already exports
-        spans to Langfuse through NAT and the OTel collector, so either would
+        spans to Langfuse through the agent runtime and the OTel collector, so either would
         mean a second export path for every span in the fleet.
 
         Asserted rather than trusted because it is an internal of the SDK

@@ -101,7 +101,7 @@ export function installApi(
                 env: apiEnv(w),
                 resources: toResourceRequirements(cfg.api.resources),
                 lifecycle: shutdown.lifecycle,
-                // Boot builds the NAT workflow and opens Qdrant, as the chat
+                // Boot builds the agent-runtime workflow and opens Qdrant, as the chat
                 // tier's does: the same window before liveness kicks in.
                 startupProbe: {
                   httpGet: { path: "/health", port: PORT.backend },

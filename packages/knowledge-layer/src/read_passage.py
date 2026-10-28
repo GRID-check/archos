@@ -1,4 +1,4 @@
-"""NAT function for opening a NAMED passage: the locator beside the search.
+"""Agent-runtime function for opening a NAMED passage: the locator beside the search.
 
 `knowledge_search` is the only way this agent could reach a passage, and it is
 a semantic search. So a second round that already knows what it wants — "the
@@ -551,7 +551,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
 
 
 def _session_collection() -> str | None:
-    """This conversation's own collection, when a NAT context states one."""
+    """This conversation's own collection, when an agent-runtime context states one."""
     try:
         ctx = Context.get()
         return ctx.conversation_id if ctx else None

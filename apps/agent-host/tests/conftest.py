@@ -1,6 +1,6 @@
 """Register a lightweight ``agent_host`` package before submodule imports.
 
-Skips ``agent_host/__init__.py`` (plugin pulls NAT) so tests can load
+Skips ``agent_host/__init__.py`` (plugin pulls in the agent runtime) so tests can load
 ``agent_host.auth`` and peers from ``src/`` without the full runtime stack.
 """
 

@@ -308,8 +308,8 @@ async def begin_restricted_use(
 # What a tool call read: the side channel admission works on
 # ---------------------------------------------------------------------------
 #
-# A tool cannot hand structured data to the tools node on its return value: NAT
-# rebuilds the ToolMessage from the text and drops the artifact
+# A tool cannot hand structured data to the tools node on its return value: the
+# agent runtime rebuilds the ToolMessage from the text and drops the artifact
 # (docs/contributing/gotchas.md). So a tool REPORTS the collections it returns
 # content from into a per-call set bound around the call by
 # :func:`report_collections_read` (the ToolNode's ``awrap_tool_call``), and the

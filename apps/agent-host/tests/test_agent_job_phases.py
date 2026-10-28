@@ -221,7 +221,7 @@ class _Store:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("agent_type", ["research_agent", "deep_research_agent"])
 async def test_a_job_runs_its_phases_to_a_success_and_one_thread_turn(monkeypatch, statuses, released, agent_type):
-    """The happy path end to end, with only NAT's config and builder and the agent itself faked."""
+    """The happy path end to end, with only the agent runtime's config and builder and the agent itself faked."""
     from contextlib import asynccontextmanager
 
     from agent.agents.deep_researcher.anatomy import ReportAnatomy

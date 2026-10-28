@@ -1,7 +1,7 @@
 """Lazy resolution of the summary store DB URL (factory._get_document_metadata_store).
 
 When ``configure_summary_db()`` was never called in a process — e.g. an
-ingestion thread/worker that didn't run the NAT registration — the store must
+ingestion thread/worker that didn't run the agent-runtime registration — the store must
 resolve its DB from the environment (``SUMMARY_DB`` → ``NAT_JOB_STORE_DB_URL``)
 rather than silently opening a local SQLite file that in a container often isn't
 writable. Regression for OIB ingestion failing with
@@ -28,7 +28,7 @@ def _reset_summary_store(monkeypatch):
 def test_lazy_init_prefers_summary_db(monkeypatch, tmp_path):
     url = f"sqlite+aiosqlite:///{tmp_path / 'summary.db'}"
     monkeypatch.setenv("SUMMARY_DB", url)
-    # A different NAT url must NOT win over the explicit SUMMARY_DB.
+    # A different agent-runtime url must NOT win over the explicit SUMMARY_DB.
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", f"sqlite+aiosqlite:///{tmp_path / 'nat.db'}")
 
     store = factory._get_document_metadata_store()
