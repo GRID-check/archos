@@ -240,7 +240,7 @@ export function ZoneBlocks({
           // (`bg-muted`), not a 5% tint of the ACTION ink: `bg-primary/5`
           // invented a fifth surface that no token controls. One full
           // hairline closes it; the „Zone" eyebrow names it. No left accent:
-          // side stripes are discouraged (grid-design-language.md).
+          // side stripes are discouraged (the design-language doc).
           <div key={use} className="bg-muted rounded-xl border px-4 py-4">
             <p className="text-primary mb-3 font-mono text-[11px] uppercase tracking-wider">
               Zone · {label}
