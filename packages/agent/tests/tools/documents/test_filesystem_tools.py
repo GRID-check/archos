@@ -30,7 +30,7 @@ from agent.common.tool_calls import fetch_signature
 from agent.tools.documents.draft_store import DraftBackend
 from agent.tools.documents.draft_store import draft_namespace
 from agent.tools.documents.filesystem import NO_DRAFTS
-from agent.tools.documents.filesystem import PilotiFilesystem
+from agent.tools.documents.filesystem import DocumentFilesystem
 from agent.tools.documents.filesystem import composite_backend
 from agent.tools.documents.tools import filesystem_tools
 
@@ -97,7 +97,7 @@ class TestWhatIsBound:
 
     def test_the_subclass_keeps_the_stock_name(self, drafts: DraftBackend) -> None:
         """A subclass with another name is appended beside the stock instance (prototype p5)."""
-        middleware = PilotiFilesystem(
+        middleware = DocumentFilesystem(
             estate=_estate(), backend=composite_backend(drafts, _estate()), tools=["read_file"]
         )
         assert middleware.name == "FilesystemMiddleware"

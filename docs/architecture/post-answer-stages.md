@@ -25,7 +25,7 @@
 > [memory-reflection-audit.md](./memory-reflection-audit.md),
 > [backend-deep-dive.md](./backend-deep-dive.md),
 > [../design/streaming-chat-answer.md](../design/streaming-chat-answer.md),
-> [../design/grid-card-charter.md](../design/grid-card-charter.md).
+> [../design/answer-card-charter.md](../design/answer-card-charter.md).
 
 ---
 
@@ -1337,7 +1337,7 @@ export (`lib/answer-export/cards.ts`, walked generically). They must keep workin
    `validateGridCards` leaves an `undefined` hole for anything that fails the
    union (`src/shared/cards/schemas.ts`), so removing the member would make every
    old thread lose its chips at those positions *and* log a warning per card.
-   `GridCards.tsx:278-284` keeps rendering stored ones.
+   `AnswerCards.tsx:278-284` keeps rendering stored ones.
 4. ~~**The export.**~~ **[as built] — done, and not by this slice.** The
    change this step described as "already in flight" landed in **PR #474**
    (`acb3c81f`), well before slice 4 started. `CARD_EXPORT` in
@@ -1433,7 +1433,7 @@ to the pixel. The only movement is the composer-ward end of the column, which is
 where the reader's next action already is.
 
 The mechanics exist. `FadeIn distance={6}` is what wraps every card today
-(`GridCards.tsx:278-284`); the delayed reveal used for the footer meta row is
+(`AnswerCards.tsx:278-284`); the delayed reveal used for the footer meta row is
 `animate-in fade-in-0 … [animation-delay:120ms] [animation-fill-mode:backwards]`
 (`AgentResponse.tsx:756`), and every animation in this codebase carries
 `motion-reduce:animate-none`. The rail uses the same three.

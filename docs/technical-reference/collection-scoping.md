@@ -172,7 +172,7 @@ share and an admission cannot both go through:
   thread shared since the socket was signed loses those collections from the
   next turn on; the socket is not closed;
 - a tool round's results are admitted before the model reads them
-  (`PilotiAgent._tools_node` → `admit_tool_results`); a result carrying a
+  (`ChatAgent._tools_node` → `admit_tool_results`); a result carrying a
   refused collection is replaced by a notice;
 - restricted memory served into the digest, and a subject document from a
   restricted folder, are admitted by the BFF before they are sent;

@@ -26,9 +26,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/mocks/server'
 import type { ProjectProfile, ProjectProfilePatchOperation } from '@/lib/project-profile/types'
 import type { ProposedChangeView } from '@/lib/proposals/types'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { resetDecidedProposals, useDecidedProposals } from '../decided-proposals'
-import { GridCards } from './GridCards'
+import { AnswerCards } from './AnswerCards'
 import { MemoryProposalCard } from './MemoryProposalCard'
 import { OperationReceipt } from './ProposalReceipts'
 import { ProjectProfilePatchCard } from './ProjectProfilePatchCard'
@@ -475,8 +475,8 @@ describe('project profile proposal with a proposal_id', () => {
   })
 })
 
-describe('GridCards hands a card its proposal_id', () => {
-  const PROPOSAL_CARDS: Array<[string, GridCard]> = [
+describe('AnswerCards hands a card its proposal_id', () => {
+  const PROPOSAL_CARDS: Array<[string, AnswerCard]> = [
     [
       'memory_proposal',
       {
@@ -502,13 +502,13 @@ describe('GridCards hands a card its proposal_id', () => {
         operations: [{ document: 'a.pdf', new_display_name: 'b.pdf' }],
         note: null,
         proposal_id: PROPOSAL_ID,
-      } as GridCard,
+      } as AnswerCard,
     ],
   ]
 
   it.each(PROPOSAL_CARDS)('%s reads the stored proposal and does not ask the message for a decision', async (_type, card) => {
     serve(memoryProposal())
-    render(<GridCards cards={[card]} projectId="proj-1" messageId="msg-1" />)
+    render(<AnswerCards cards={[card]} projectId="proj-1" messageId="msg-1" />)
 
     await waitFor(() => expect(requests).toContain(`GET /api/proposals/${PROPOSAL_ID}`))
     expect(setCardDecision).not.toHaveBeenCalled()

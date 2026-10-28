@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { getTenantContext, withTenant } from '@/lib/db/tenant-context'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { NotFoundError, UnprocessableError } from '@/lib/api/errors'
@@ -44,7 +44,7 @@ vi.mock('@/lib/organizations/service', () => ({
 
 import { getPlatformOrgBudget, getPlatformOrgUsage, savePlatformOrgBudget } from './platform-service'
 
-const session: GridSession = {
+const session: UserSession = {
   userId: 'user_operator',
   email: 'operator@example.com',
   name: null,

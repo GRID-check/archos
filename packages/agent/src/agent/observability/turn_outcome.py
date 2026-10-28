@@ -47,7 +47,7 @@ OBSERVATION_OUTPUT_ATTRIBUTE = "langfuse.observation.output"
 #: ClickHouse per observation; a report-length answer is still well inside.
 _MAX_OUTPUT_CHARS = 32_000
 
-_TURN_OUTCOME: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("grid_turn_outcome", default=None)
+_TURN_OUTCOME: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("turn_outcome", default=None)
 
 
 def begin_turn_outcome() -> contextvars.Token[dict[str, Any] | None]:

@@ -168,7 +168,7 @@ or security, and every tenant-data mutation goes through one audited layer.
 The workspace surfaces, each with its own doc:
 
 - **Projects and intake:** [projects guide](../user-guides/projects.md)
-- **Files, Büroablage and document roles:** [documents guide](../user-guides/documents.md), [Piloti in the file system](piloti-filesystem-design.md), [document roles](document-roles.md)
+- **Files, Büroablage and document roles:** [documents guide](../user-guides/documents.md), [Piloti in the file system](filesystem-design.md), [document roles](document-roles.md)
 - **Building model (IFC):** [IFC models guide](../user-guides/bim-models.md)
 - **Tasks and jobs:** §5.12 below, and [projects guide, Jobs](../user-guides/projects.md#jobs-feature-flagged)
 - **Research and reports:** [reports Piloti writes](../user-guides/agent-authored-reports.md), [deep research report](deep-research-report.md)

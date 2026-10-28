@@ -27,7 +27,7 @@ from agent.knowledge.restricted_use import current_restricted_use
 from agent.knowledge.restricted_use import drew_on_other_projects
 from agent.observability.langfuse_trace_attributes import record_lessons
 from agent.observability.langfuse_trace_attributes import record_trace_metadata
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.project_context import compose_project_context
 from agent.project_context import get_user_message_id_from_context
 from agent.stages import TurnFacts
@@ -110,7 +110,7 @@ def thread_id_for_turn(conversation_id: str | None) -> str:
     return generated
 
 
-def turn_identity(request: GridRequestContext, conversation_id: str | None) -> dict[str, str | None]:
+def turn_identity(request: RequestContext, conversation_id: str | None) -> dict[str, str | None]:
     """Who the turn is for, in the shape the cost and profiler ledgers take.
 
     Handed to both explicitly: left to their defaults, each re-reads the
@@ -131,7 +131,7 @@ def _claim(value: str | None) -> str | None:
     return line or None
 
 
-def user_info_for(request: GridRequestContext | None) -> dict[str, Any] | None:
+def user_info_for(request: RequestContext | None) -> dict[str, Any] | None:
     """Who is asking, as the prompts' ``user_info``: name, email and office, or None for nobody.
 
     Two carriers, one per kind of caller, and each field from the first that
@@ -165,7 +165,7 @@ def user_info_for(request: GridRequestContext | None) -> dict[str, Any] | None:
     return {"name": name, "email": email, "office": office}
 
 
-def signed_restricted_collections(request: GridRequestContext) -> list[str]:
+def signed_restricted_collections(request: RequestContext) -> list[str]:
     """The restricted-folder collections this turn may draw on (ADR-0087, ADR-0088).
 
     What the live digest may serve restricted memory for. The BFF puts them in a
@@ -182,7 +182,7 @@ def signed_restricted_collections(request: GridRequestContext) -> list[str]:
     return signed if use is None else [name for name in signed if use.allows(name)]
 
 
-def settle_restriction(context: TurnContext, request: GridRequestContext) -> TurnContext:
+def settle_restriction(context: TurnContext, request: RequestContext) -> TurnContext:
     """``context`` with the turn's restriction as it stands after setup.
 
     Called once the setup gather is done, because two of its members can
@@ -209,7 +209,7 @@ def settle_restriction(context: TurnContext, request: GridRequestContext) -> Tur
 
 
 async def _live_memory_digest(
-    request: GridRequestContext,
+    request: RequestContext,
     query_text: str,
     *,
     fallback: str | None = None,
@@ -240,7 +240,7 @@ async def _live_memory_digest(
         return fallback
 
 
-async def _bff_context_blocks(request: GridRequestContext, query_text: str) -> ContextBlocks:
+async def _bff_context_blocks(request: RequestContext, query_text: str) -> ContextBlocks:
     """The compact-handshake blocks, with restricted memory when this turn may draw on it.
 
     ``fetch_turn_context`` serves open memory only. A turn whose verified scope
@@ -259,14 +259,14 @@ async def _bff_context_blocks(request: GridRequestContext, query_text: str) -> C
     return replace(blocks, project_memory=live_digest if live_digest is not None else blocks.project_memory)
 
 
-async def _context_blocks(request: GridRequestContext, query_text: str) -> ContextBlocks:
+async def _context_blocks(request: RequestContext, query_text: str) -> ContextBlocks:
     if request.context_transport == "bff":
         return await _bff_context_blocks(request, query_text)
     memory_digest = await _live_memory_digest(request, query_text, fallback=request.project_memory)
     return ContextBlocks(request.project_context, memory_digest, request.org_instructions)
 
 
-async def _turn_flags(request: GridRequestContext, resolve_stages: bool) -> TurnFlags:
+async def _turn_flags(request: RequestContext, resolve_stages: bool) -> TurnFlags:
     """What this turn may do, decided per TURN, not per socket.
 
     The feature header is written once at the WS upgrade and frozen, so an
@@ -315,7 +315,7 @@ async def _platform_lessons(conversation_id: str | None) -> LessonsResolution:
 
 
 async def _load_turn_context(
-    request: GridRequestContext,
+    request: RequestContext,
     *,
     conversation_id: str | None,
     query_text: str,
@@ -363,7 +363,7 @@ async def _load_turn_context(
 
 
 async def load_turn_context(
-    request: GridRequestContext,
+    request: RequestContext,
     *,
     conversation_id: str | None,
     query_text: str,

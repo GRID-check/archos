@@ -65,7 +65,7 @@ export const chat: typeof en.chat = {
   },
   // Dokumentraster: echte Projekt-/Büroablage-Dateien, die der Assistent als
   // anklickbare Vorschaukarten anzeigt (`document_grid`-Karte / `surface_documents`).
-  documentGrid: {
+  documentAnswer: {
     countOne: '1 Dokument',
     countOther: '{count} Dokumente',
     forQuery: '„{query}“',
@@ -919,7 +919,7 @@ export const chat: typeof en.chat = {
       memoryTitle: 'Eine Notiz, die {productName} sich merken soll',
       // Eine Profiländerung zeigt Vorher und Nachher am aktuellen Profil, das der
       // Rahmen nicht lesen kann: Darüber wird in Piloti entschieden.
-      decideInPiloti: 'Dieser Vorschlag ändert den Projektkontext. Öffnen Sie das Projekt in {productName}, um ihn mit den aktuellen Werten zu vergleichen und zu entscheiden.',
+      decideInAgent: 'Dieser Vorschlag ändert den Projektkontext. Öffnen Sie das Projekt in {productName}, um ihn mit den aktuellen Werten zu vergleichen und zu entscheiden.',
       unreadable: 'Dieser Vorschlag konnte nicht angezeigt werden.',
       waiting: 'Der Vorschlag wird geladen …',
     },

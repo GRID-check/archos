@@ -6,7 +6,7 @@
  * ## Why it is neutral, and why it is not in the assignment row
  *
  * **Neutral chroma.** The only chroma in this product is the provenance signal
- * system (`docs/design/grid-design-language.md`: colour belongs to provenance,
+ * system (`docs/design/design-language.md`: colour belongs to provenance,
  * and never travels without its icon and label). An editorial state is not
  * provenance — it says whether the office has asserted the content — so it gets
  * ink and paper, and the word does the work. Amber for „In Prüfung" would put

@@ -23,7 +23,7 @@ from agent.knowledge.scoping import _normalize_collection_name
 from agent.observability.direct_trace import observed_retrieval
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 
 from ..models.document_search import DocumentSearchHit
 from ..models.document_search import DocumentSearchRequest
@@ -61,7 +61,7 @@ def _verified_collection_scope(http_request: Request) -> list[str] | None:
     used by the chat retrieval path would always read ``None`` here. We therefore
     parse the caller's actual HTTP headers with the SAME verified-envelope parser
     that ``get_collection_scope_from_context()`` prefers under the hood
-    (``GridRequestContext.from_envelope``), fed the request headers directly.
+    (``RequestContext.from_envelope``), fed the request headers directly.
 
     Only the HMAC-signed ``X-Grid-Request-Context`` envelope is honored — never
     the raw, forgeable ``X-Grid-Collection-Scope`` header on its own — because
@@ -71,7 +71,7 @@ def _verified_collection_scope(http_request: Request) -> list[str] | None:
     envelope on shape alone, mirroring the rest of the codebase's fail-open dev
     posture. Returns ``None`` when no valid signed envelope is present.
     """
-    ctx = GridRequestContext.from_envelope(
+    ctx = RequestContext.from_envelope(
         http_request.headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         http_request.headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
         os.environ.get("INTERNAL_API_TOKEN"),
@@ -100,7 +100,7 @@ def _authorize_collection(http_request: Request, collection_name: str) -> None:
       is no tenant boundary to enforce (parity with the pre-envelope behavior and
       the envelope-enforcement middleware, which also no-ops when auth is off).
 
-    RESIDUAL TRUST BOUNDARY: ``GridContextEnvelopeMiddleware`` exempts
+    RESIDUAL TRUST BOUNDARY: ``RequestContextEnvelopeMiddleware`` exempts
     ``/v1/collections`` from its deny-by-default envelope rule, and this route's
     BFF caller is a server-side service fetch carrying no WorkOS bearer token
     anyway, so the middleware would classify it as non-jwt and never enforce.

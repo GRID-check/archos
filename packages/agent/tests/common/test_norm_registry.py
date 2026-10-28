@@ -663,7 +663,7 @@ class TestParcelNote:
 
     def test_the_note_is_the_file_list_and_not_the_doctrine(self):
         """What to DO with a parcel document is standing doctrine and lives
-        above the KV-cache boundary (`prompts/piloti_static.md`). Repeating it
+        above the KV-cache boundary (`prompts/chat_static.md`). Repeating it
         under the file list charged the same three sentences on every call of
         every turn that had one (ADR-0060 amendment)."""
         note = nr.parcel_note([{"file_name": "bplan_7602.pdf", "tags": ["Bebauungsplan"]}])

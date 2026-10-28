@@ -70,7 +70,7 @@ import { liveFolderAccess } from '@/lib/permits/live-access'
 import { searchPermitRequirements, type FoundPermitRecord } from '@/lib/permits/repository'
 import { federalStateOf, rankBySimilarity, similarityFacts } from './similarity'
 import { closingOf, toProjectStatus } from '@/lib/projects/project-status'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import {
   CROSS_PROJECT_PAGE_PROJECTS,
   type CrossProjectBriefRequest,
@@ -113,7 +113,7 @@ export interface CrossProjectCaller {
  * nothing to keep the findings to, and is refused.
  */
 export function crossProjectCaller(
-  context: Pick<VerifiedGridRequestContext, 'conversationId' | 'projectId'>,
+  context: Pick<VerifiedRequestContext, 'conversationId' | 'projectId'>,
   session: AuthorizedSession,
   answerMessageId?: string | null
 ): CrossProjectCaller {

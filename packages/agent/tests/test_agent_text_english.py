@@ -213,7 +213,7 @@ def _german_prompt_lines(text: str, name: str) -> list[tuple[str, str]]:
 
 def test_prompt_files_are_scanned() -> None:
     names = {path.name for path in _prompt_files()}
-    assert {"piloti_static.md", "piloti.j2"} <= names
+    assert {"chat_static.md", "piloti.j2"} <= names
 
 
 def test_prompt_instructions_are_english() -> None:

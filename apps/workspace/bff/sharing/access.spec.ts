@@ -59,7 +59,7 @@ import { findGrantForSubject } from './repository'
 const session = {
   userId: 'user_me',
   organizationId: 'org_1',
-  email: 'me@grid.test',
+  email: 'me@example.test',
 } as unknown as AuthorizedSession
 
 /** Stub the registry's one probe: existence, tenancy, container, visibility, creator. */

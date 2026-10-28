@@ -150,7 +150,7 @@ export async function invalidateProjectProfileCaches(
  * Backlog T3-9 follow-up (2026-07-16, user-mandated): jurisdiction is a
  * cross-cutting request fact and must travel STRUCTURED on the
  * `X-Grid-Request-Context` envelope, not be re-parsed out of that prompt
- * text — this is the read producers resolve `GridRequestContextInput.federal_state`
+ * text — this is the read producers resolve `RequestContextInput.federal_state`
  * from. Returns `null` for no project, no fact, or a value outside the
  * validated intake vocabulary (a stale/corrupt row must never leak an
  * unvalidated token onto the wire).

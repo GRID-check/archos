@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { commonLabels } from "./namespaces";
 import { ROLLOUT, gracefulShutdown, secretChecksum, secretChecksumAnnotations } from "./rollout";
 import { NODE_AGENT_RULES, installCollectorIdentity } from "./collector-identity";
@@ -48,7 +48,7 @@ export interface OtelAgent {
  * Deployed only with PostHog metrics on: it exists to feed them.
  */
 export function installOtelAgent(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],

@@ -5,7 +5,7 @@
 > 15 blocking) and then rebuilt from three verified inputs: a survey of native
 > file-operation tool surfaces, an API-first lifecycle design mapped onto the
 > repo's primitives, and the two prior documents the first revision had not
-> read: [`piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md)
+> read: [`filesystem-design.md`](../architecture/filesystem-design.md)
 > (the exploration, with its threat model and the work/estate line) and
 > [`agent-authored-documents.md`](../architecture/agent-authored-documents.md)
 > (the build spec, one producer, with the seams it left open). §9 lists what
@@ -72,7 +72,7 @@ override; a hand-written `str_replace` re-derives the uniqueness check, the
 end-of-file newline hints, path validation and six error strings, which is
 the "second hundred lines of something general" the doctrine says to look up
 a library for first. The prior exploration reached the same verdict
-(`piloti-filesystem-design.md` §12b).
+(`filesystem-design.md` §12b).
 
 **Storage.** `langgraph.store.postgres.PostgresStore` on `CHECKPOINT_DB`
 (the Python service's own Postgres database, `checkpoints`, already

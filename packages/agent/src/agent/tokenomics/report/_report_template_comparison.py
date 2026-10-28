@@ -10,7 +10,7 @@ _TAB_HTML = r"""
 <!-- ── OVERVIEW ─────────────────────────────────────────────────────────── -->
 <div id="tab-overview" class="tab-content active">
   <div class="stat-grid" id="overviewStats"></div>
-  <div class="grid-2">
+  <div class="report-cols-2">
     <div class="card">
       <div class="card-header">&#x1F916; Cost by Model &mdash; Run A vs Run B
         <div class="card-sub">Same model in both bars = same routing; model only in one run = model swap.</div>
@@ -41,7 +41,7 @@ _TAB_HTML = r"""
 
 <!-- ── COST ──────────────────────────────────────────────────────────────── -->
 <div id="tab-cost" class="tab-content">
-  <div class="grid-2">
+  <div class="report-cols-2">
     <div class="card">
       <div class="card-header">&#x1F916; Cost by Model &mdash; Run A vs Run B
         <div class="card-sub">Same model in both bars = same routing, different volumes or prompts.
@@ -74,7 +74,7 @@ _TAB_HTML = r"""
 
 <!-- ── LATENCY ───────────────────────────────────────────────────────────── -->
 <div id="tab-latency" class="tab-content">
-  <div class="grid-2">
+  <div class="report-cols-2">
     <div class="card">
       <div class="card-header">&#x1F4CA; LLM p50 Latency &mdash; Run A vs Run B
         <div class="card-sub">Median LLM response time per model across both runs.</div>
@@ -99,7 +99,7 @@ _TAB_HTML = r"""
 <!-- ── TOKENS ────────────────────────────────────────────────────────────── -->
 <div id="tab-tokens" class="tab-content">
   <div class="stat-grid" id="tokenStats"></div>
-  <div class="grid-2">
+  <div class="report-cols-2">
     <div class="card">
       <div class="card-header">&#x1F4E5; ISL p50 &mdash; Run A vs Run B
         <div class="card-sub">Median prompt token count per model across both runs.</div>
@@ -113,7 +113,7 @@ _TAB_HTML = r"""
       <div class="card-body"><div id="tokenCmpIslP90Bar"></div></div>
     </div>
   </div>
-  <div class="grid-2">
+  <div class="report-cols-2">
     <div class="card">
       <div class="card-header">&#x1F4E4; OSL p50 &mdash; Run A vs Run B
         <div class="card-sub">Median completion token count per model across both runs.</div>
@@ -127,7 +127,7 @@ _TAB_HTML = r"""
       <div class="card-body"><div id="tokenCmpOslP90Bar"></div></div>
     </div>
   </div>
-  <div class="grid-2">
+  <div class="report-cols-2">
     <div class="card">
       <div class="card-header">&#x26A1; TPS &mdash; Run A vs Run B
         <div class="card-sub">Completion tokens per second per model across both runs.</div>

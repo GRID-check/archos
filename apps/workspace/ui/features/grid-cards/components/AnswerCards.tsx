@@ -1,5 +1,5 @@
 import { type FC, useCallback, useId } from 'react'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { cardKey } from '../card-decision'
 import { ProjectProfilePatchCard } from './ProjectProfilePatchCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
@@ -18,7 +18,7 @@ import { EgressDiagramCard } from '../schematics/EgressDiagramCard'
 import { DaylightIncidenceCard } from '../schematics/DaylightIncidenceCard'
 import { GuardrailCheckCard } from '../schematics/GuardrailCheckCard'
 import { FireAccessPlanCard } from '../schematics/FireAccessPlanCard'
-import { DocumentGridCard } from './DocumentGridCard'
+import { DocumentAnswerCard } from './DocumentAnswerCard'
 import { DocumentDraftCard } from './DocumentDraftCard'
 import { TaskCreatedCard } from './TaskCreatedCard'
 import { IfcViewerCard } from './IfcViewerCard'
@@ -34,14 +34,14 @@ import type { SurfacedDocument } from '@/features/documents/hooks/use-surfaced-d
 import { FadeIn } from '@/components/motion'
 import { A2uiCard } from '@/features/a2ui/A2uiCard'
 
-interface GridCardsProps {
+interface AnswerCardsProps {
   /**
    * Parsed grid cards to render, in wire order. `undefined` holes are cards
-   * `validateGridCards` rejected: they hold their index so `[[card:N]]`
+   * `validateAnswerCards` rejected: they hold their index so `[[card:N]]`
    * markers and persisted `cardKey` decisions after them stay bound, and they
    * render nothing.
    */
-  cards: (GridCard | undefined)[]
+  cards: (AnswerCard | undefined)[]
   /** Optional project ID for patch card API calls. */
   projectId?: string | null
   /**
@@ -77,20 +77,20 @@ interface GridCardsProps {
   decisionsMustPersist?: boolean
 }
 
-interface GridCardItemProps {
+interface AnswerCardItemProps {
   /** The card to draw. */
-  card: GridCard
+  card: AnswerCard
   /** Its index in the message's `cards` array — its identity (see `cardKey`). */
   index: number
   /** Optional project ID for patch card API calls. */
   projectId?: string | null
-  /** The message these cards belong to (see {@link GridCardsProps.messageId}). */
+  /** The message these cards belong to (see {@link AnswerCardsProps.messageId}). */
   messageId?: string
-  /** See {@link GridCardsProps.decisionsMustPersist}. */
+  /** See {@link AnswerCardsProps.decisionsMustPersist}. */
   decisionsMustPersist?: boolean
 }
 
-interface GridCardViewProps extends GridCardItemProps {
+interface AnswerCardViewProps extends AnswerCardItemProps {
   /**
    * The card's id inside a composed `surface`, absent for a lone card. A second
    * guard only: every card that stores a decision under its `cardKey` is in
@@ -105,12 +105,12 @@ interface GridCardViewProps extends GridCardItemProps {
  * One card, drawn directly: the per-type dispatch.
  *
  * Since ADR-0065 this is what A2UI's catalog calls for each card component
- * (`GridCardItem` below hands it to `A2uiCard`), and what a card falls back to
- * when A2UI will not draw it. Callers draw cards with `GridCardItem`. A
+ * (`AnswerCardItem` below hands it to `A2uiCard`), and what a card falls back to
+ * when A2UI will not draw it. Callers draw cards with `AnswerCardItem`. A
  * `surface` never reaches it: the catalog has no `surface` component and the
  * fallback never hands one down (`SURFACE_EXCLUDED_LEAVES`).
  */
-export const GridCardView: FC<GridCardViewProps> = ({
+export const AnswerCardView: FC<AnswerCardViewProps> = ({
   card,
   index,
   projectId,
@@ -299,7 +299,7 @@ export const GridCardView: FC<GridCardViewProps> = ({
   if (card.type === 'document_grid') {
     return (
       <FadeIn distance={6}>
-        <DocumentGridCard
+        <DocumentAnswerCard
           title={card.title}
           query={card.query}
           documents={(card.documents ?? []) as SurfacedDocument[]}
@@ -524,17 +524,17 @@ export const GridCardView: FC<GridCardViewProps> = ({
  *
  * A lone card or a composed `surface`: `A2uiCard` turns it into an A2UI
  * surface on the Piloti catalog and draws it, and every card component in that
- * catalog comes back here, to `GridCardView`, for the pixels. Props and
+ * catalog comes back here, to `AnswerCardView`, for the pixels. Props and
  * identity are unchanged, so every caller keeps working and every stored
  * message renders through the same path.
  *
  * Split out of the stack so a card can also be drawn ALONE, wherever the answer
- * placed it — `GridCards` is then just the vertical stack of the leftovers.
+ * placed it — `AnswerCards` is then just the vertical stack of the leftovers.
  * `index` is passed rather than inferred for exactly that reason: an inline
  * card has no position in a list to be inferred from, and its identity must
  * still be the one the persisted decisions were keyed under.
  */
-export const GridCardItem: FC<GridCardItemProps> = ({ card, index, projectId, messageId, decisionsMustPersist }) => {
+export const AnswerCardItem: FC<AnswerCardItemProps> = ({ card, index, projectId, messageId, decisionsMustPersist }) => {
   // The surface id must be unique within the page; an answer without a
   // message id (a preview, a streaming draft) takes one from React instead.
   const fallbackId = useId()
@@ -542,8 +542,8 @@ export const GridCardItem: FC<GridCardItemProps> = ({ card, index, projectId, me
   // context, and a new one re-renders every card component in the surface.
   const isSurface = card.type === 'surface'
   const render = useCallback(
-    (leaf: GridCard, leafId: string) => (
-      <GridCardView
+    (leaf: AnswerCard, leafId: string) => (
+      <AnswerCardView
         card={leaf}
         index={index}
         projectId={projectId}
@@ -562,7 +562,7 @@ export const GridCardItem: FC<GridCardItemProps> = ({ card, index, projectId, me
  * an action or commitment, a to-scale schematic, a calculation, a live model
  * binding or a `surface`; everything else is the answer's Markdown.
  */
-export const GridCards: FC<GridCardsProps> = ({
+export const AnswerCards: FC<AnswerCardsProps> = ({
   cards,
   projectId,
   messageId,
@@ -570,7 +570,7 @@ export const GridCards: FC<GridCardsProps> = ({
   decisionsMustPersist,
 }) => {
   // A subset renders under its ORIGINAL indices, never renumbered — see
-  // `GridCardsProps.indices`.
+  // `AnswerCardsProps.indices`.
   const positions = indices ?? cards.map((_, index) => index)
   if (positions.length === 0) {
     return null
@@ -582,7 +582,7 @@ export const GridCards: FC<GridCardsProps> = ({
         const card = cards[index]
         if (!card) return null
         return (
-          <GridCardItem
+          <AnswerCardItem
             key={cardKey(card, index)}
             card={card}
             index={index}

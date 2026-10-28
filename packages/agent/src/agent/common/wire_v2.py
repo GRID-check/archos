@@ -121,7 +121,7 @@ class _OpenModel(BaseModel):
     """A payload whose full contract lives elsewhere (cards, sources, ledger).
 
     The wire names the fields it routes on and passes the rest through; the
-    owning contract validates the whole (``gridCardSchema``, the citation wire,
+    owning contract validates the whole (``answerCardSchema``, the citation wire,
     ``sanitizeAnswerMeta``).
     """
 
@@ -171,7 +171,7 @@ class KeyedCard(_Model):
     """A card and its identity key, so a card equal to one already drawn keeps its node."""
 
     key: str = Field(min_length=1, description="card_key(card): stable across the live event and the terminal.")
-    card: dict[str, Any] = Field(description="A GridCard (cards/models.py); validated by gridCardSchema on render.")
+    card: dict[str, Any] = Field(description="A AnswerCard (cards/models.py); validated by answerCardSchema on render.")
 
 
 def card_key(card: dict[str, Any]) -> str:

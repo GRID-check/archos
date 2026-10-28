@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from pydantic import TypeAdapter
 from pydantic import model_validator
 
-_MARKER = "__grid_blank_is_omitted__"
+_MARKER = "__blank_is_omitted__"
 
 
 @cache

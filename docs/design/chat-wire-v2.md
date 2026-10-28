@@ -785,7 +785,7 @@ terminal, so the node is kept.
 
 **Follow-up F1, which is model-facing.** The envelope writes `answer` before
 `cards`, so a card's JSON closes *after* the prose that places it. Moving
-`cards` before `answer` in `piloti_static.md`'s field-order sentence, and in
+`cards` before `answer` in `chat_static.md`'s field-order sentence, and in
 `answer_prose_stream.py`'s reading order, would put every card ahead of its
 marker, so the UI could pre-size exactly. That changes what the model writes, so
 it needs `task be:eval:answer-suite` before and after, with `OPENROUTER_API_KEY`

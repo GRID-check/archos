@@ -104,7 +104,7 @@ Grundrisse's is planted: a row that reads the Schnitt must not answer 1:100.
 | [ns-escape-route-law](#ns-escape-route-law) | 2 | project fact against OIB-RL 2 | files | pf-mixed-law |
 | [ns-gk-unstated](#ns-gk-unstated) | 2, 1 | the decisive fact no document states | files | ns-gk-unstated |
 | [ns-propose-move](#ns-propose-move) | 1 | a write as a proposal | files | ns-propose-move (`proposals`) |
-| [ns-piloti-ask](#ns-piloti-ask) | 4 | an outside agent asks Piloti | files | ns-piloti-ask (the chat turn the ask starts; the door is `service.spec.ts`) |
+| [ns-chat-ask](#ns-chat-ask) | 4 | an outside agent asks Piloti | files | ns-chat-ask (the chat turn the ask starts; the door is `service.spec.ts`) |
 | [ns-trivial](#ns-trivial) | restraint | a trivial question stays fast | files | pf-locate-name |
 | [ns-notice-new-document](#ns-notice-new-document) | 5 | notice unasked | files | ns-notice-new-document, ns-notice-agrees (`trigger`, `marks`) |
 | [ns-notice-agrees](#ns-notice-agrees) | 5 | stay silent when all agrees | files | ns-notice-agrees (`trigger`, `marks`) |
@@ -983,9 +983,9 @@ no direct write route called, judge `pending`, „Behörde“. Langfuse: `work-r
 
 ---
 
-### ns-piloti-ask
+### ns-chat-ask
 
-**Scene** 4 · **Capability** an outside agent consults Piloti · **Fixture** files · **Row** `ns-piloti-ask` (the turn the ask starts)
+**Scene** 4 · **Capability** an outside agent consults Piloti · **Fixture** files · **Row** `ns-chat-ask` (the turn the ask starts)
 
 **Setting.** The project lead drafts a letter to the Bauherr in Claude, which
 is connected to the office's MCP door (`/api/mcp`) as that person. Claude has
@@ -1030,7 +1030,7 @@ Herleitung, so what Claude wrote into the letter can be traced back.
   so the ask answers or says what it could not establish.
 - A look: the text answers it.
 
-**Checks.** Row `ns-piloti-ask` runs the turn the ask starts, as a chat turn
+**Checks.** Row `ns-chat-ask` runs the turn the ask starts, as a chat turn
 in the fixture project (the same turn, prompt and tools): „567812“ and „Index
 B“, no look, at most two rounds. The door around it (states, polling, the
 recursion lock) is held by `lib/agent-asks/service.spec.ts`. Langfuse: the

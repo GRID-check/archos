@@ -100,7 +100,7 @@ def _descriptions() -> dict[str, str]:
 DESCRIPTIONS = _descriptions()
 
 
-class WorkspaceConfig(FunctionGroupBaseConfig, name="piloti_workspace"):
+class WorkspaceConfig(FunctionGroupBaseConfig, name="workspace_tools"):
     """The workspace tools as one group (``function_groups.workspace``)."""
 
 
@@ -259,7 +259,7 @@ async def run_report_missing(description: str) -> str:
 
 
 @register_function_group(config_type=WorkspaceConfig)
-async def piloti_workspace(config: WorkspaceConfig, _builder: Builder):
+async def workspace_tools(config: WorkspaceConfig, _builder: Builder):
     """The workspace tools, as one group."""
     group = FunctionGroup(config=config)
     for name, fn in (

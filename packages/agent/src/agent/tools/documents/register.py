@@ -212,7 +212,7 @@ def _conversation_id() -> str:
     live = project_context.get_conversation_id_from_context()
     if not live:
         raise _Refused(_NO_CONVERSATION)
-    signed = project_context.GridRequestContext.from_context().conversation_id
+    signed = project_context.RequestContext.from_context().conversation_id
     if signed and signed != live:
         logger.warning("Envelope conversation %r disagrees with the turn's %r; refusing to file", signed, live)
         raise _Refused(_NO_ENVELOPE)

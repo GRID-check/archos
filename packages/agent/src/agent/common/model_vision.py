@@ -57,7 +57,7 @@ _catalog: dict[str, bool] = {}
 _catalog_read_at = 0.0
 _catalog_failed_at: float | None = None
 
-_turn_model: contextvars.ContextVar[str | None] = contextvars.ContextVar("grid_turn_chat_model", default=None)
+_turn_model: contextvars.ContextVar[str | None] = contextvars.ContextVar("turn_chat_model", default=None)
 
 
 def model_name_of(llm: Any) -> str | None:

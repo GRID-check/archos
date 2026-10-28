@@ -35,7 +35,7 @@ import { onWakeEnded } from '@/lib/annotations/attention'
 import { delegationEventId, documentThreadConversationId, wakeTurnId } from '@/lib/annotations/wake-ids'
 import { findDocumentAnnotation, type AnnotationRecord } from '@/lib/annotations/repository'
 import { endWake, findWakeById, handBackDelegation } from '@/lib/annotations/wake-repository'
-import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import type { Document } from '@/lib/db/schema/documents'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
@@ -55,7 +55,7 @@ const USER = 'user_anna'
 const THREAD = documentThreadConversationId(DOC_ID, USER)
 const DELEGATED_AT = new Date('2026-10-13T09:00:00.000Z')
 
-const MENTION: PilotiWakeRow = {
+const MENTION: AgentWakeRow = {
   id: wakeTurnId(REPLY_ID),
   organizationId: ORG,
   documentId: DOC_ID,
@@ -70,14 +70,14 @@ const MENTION: PilotiWakeRow = {
   endedAt: null,
 }
 
-const DELEGATION: PilotiWakeRow = {
+const DELEGATION: AgentWakeRow = {
   ...MENTION,
   id: wakeTurnId(delegationEventId(MARK_ID, DELEGATED_AT)),
   triggerKind: 'assigned',
   eventId: delegationEventId(MARK_ID, DELEGATED_AT),
 }
 
-const request = (wake: PilotiWakeRow, over: Partial<TurnOutcomeRequest> = {}): TurnOutcomeRequest => ({
+const request = (wake: AgentWakeRow, over: Partial<TurnOutcomeRequest> = {}): TurnOutcomeRequest => ({
   conversationId: THREAD,
   turnId: wake.id,
   outcome: 'answered',
@@ -95,7 +95,7 @@ function markIs(delegatedAt: Date | null) {
 }
 
 /** `endWake` as the database would answer it: the row as ended, or null when it was not `started`. */
-function wakeEndsAs(wake: PilotiWakeRow) {
+function wakeEndsAs(wake: AgentWakeRow) {
   vi.mocked(findWakeById).mockResolvedValue(wake)
   vi.mocked(endWake).mockImplementation(async (_tx, _org, _id, end) => ({
     ...wake,
@@ -229,7 +229,7 @@ describe('recordTurnOutcome', () => {
       markIs(DELEGATED_AT)
       vi.mocked(handBackDelegation).mockResolvedValue(false)
       await recordTurnOutcome(request(DELEGATION))
-      // The mark's „Piloti arbeitet" line moved (`piloti-work.ts`), whatever became of the delegation.
+      // The mark's „Piloti arbeitet" line moved (`agent-work.ts`), whatever became of the delegation.
       expect(publishToDocumentRoom).toHaveBeenCalledTimes(1)
     })
 

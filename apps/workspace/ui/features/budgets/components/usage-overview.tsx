@@ -8,7 +8,7 @@
  * the charts the office sees, from the same component, rather than a lookalike
  * that drifts on the first retune. Why each chart has the form it has is the
  * card's module note; the palette is the token block at the end of
- * `globals.css`, scoped by `grid-spend-viz`.
+ * `globals.css`, scoped by `spend-viz`.
  */
 
 import { type FC, type ReactNode, useMemo } from 'react'
@@ -321,7 +321,7 @@ export function useSpendFormat(unit: BudgetUnit): SpendFormat {
 /**
  * Jobs 1–3 of the card: is the office about to be cut off, is it getting
  * worse, and where does the spend go. Renders inside a `TooltipProvider` and a
- * `grid-spend-viz` scope, which the caller owns.
+ * `spend-viz` scope, which the caller owns.
  */
 export const UsageOverviewView: FC<{ usage: UsageResponse }> = ({ usage }) => {
   const t = useTranslations(organizationCopy)

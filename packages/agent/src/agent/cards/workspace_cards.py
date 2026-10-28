@@ -21,7 +21,7 @@ class SurfacedDocument(CardModel):
     )
 
 
-class DocumentGridSearch(CardModel):
+class DocumentAnswerSearch(CardModel):
     """The ``workspace-search`` question a browse ran, so the reader can open the full result.
 
     Set by ``surface_documents`` only when the files came from that operation; the
@@ -34,7 +34,7 @@ class DocumentGridSearch(CardModel):
     )
 
 
-class DocumentGridCard(CardModel):
+class DocumentAnswerCard(CardModel):
     """Project/Büroablage files the user asked to see.
 
     System-emitted by ``surface_documents``. One file or a short browse
@@ -47,7 +47,7 @@ class DocumentGridCard(CardModel):
     title: str = Field(min_length=1, description="Short heading, e.g. 'Relevante Dokumente – Fluchtwege'")
     query: str | None = Field(default=None, description="The search phrase these documents matched")
     documents: list[SurfacedDocument] = Field(min_length=1, description="The surfaced files, best match first")
-    search: DocumentGridSearch | None = Field(
+    search: DocumentAnswerSearch | None = Field(
         default=None,
         description="The workspace search these documents came from; the card offers to open the search page asking it",
     )

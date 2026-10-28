@@ -621,7 +621,7 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
  * same sanitiser that bounded it on the way IN
  * (`docs/architecture/post-answer-stages.md` §4.4).
  *
- * Re-checked on read and not merely trusted, for the reason `validateGridCards`
+ * Re-checked on read and not merely trusted, for the reason `validateAnswerCards`
  * exists on this path — a row written by an older build is still whatever it
  * was, and a renderer that trusts it blanks the whole conversation rather than
  * that one message.

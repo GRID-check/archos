@@ -35,7 +35,7 @@ from starlette.datastructures import Headers
 
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent_host.jobs import access as job_access
 from agent_host.jobs import queue
 from agent_host.jobs import run_envelope
@@ -327,7 +327,7 @@ class TestCarriedThroughTheQueue:
 
         assert len(replayed) == 1
         headers = await _inject(replayed[0])
-        context = GridRequestContext.from_headers(dict(headers), secret=SECRET)
+        context = RequestContext.from_headers(dict(headers), secret=SECRET)
         assert context.envelope_header == sent[REQUEST_CONTEXT_ENVELOPE_HEADER]
         assert context.envelope_signature == sent[REQUEST_CONTEXT_ENVELOPE_SIG_HEADER]
         assert context.user_id == "user-1"

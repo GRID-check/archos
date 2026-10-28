@@ -55,7 +55,7 @@ from agent.knowledge.restricted_use import without_restricted
 from agent.knowledge.scoping import get_scoped_collections_from_context
 from agent.memory.shown_notes import ShownNotes
 from agent.observability.turn_outcome import record_turn_facts
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.stages import schedule_post_answer_stages
 from agent.tools.canvas.policy import withhold_restricted_for_thread
 from agent.tools.canvas.presence import begin_canvas_presence
@@ -257,7 +257,7 @@ def _turn_state(
     inventory: Inventory,
     header_scope,
     *,
-    request: GridRequestContext,
+    request: RequestContext,
     skip_clarifier: bool,
 ) -> ConversationState:
     return ConversationState(
@@ -327,7 +327,7 @@ def _finished(
 
 
 async def _load_setup(
-    request: GridRequestContext,
+    request: RequestContext,
     inputs: TurnInputs,
     scope: list,
     *,
@@ -401,7 +401,7 @@ class _Turn:
     session_registry: Any
     context: TurnContext
     inputs: TurnInputs
-    request: GridRequestContext
+    request: RequestContext
     runtime: _TurnRuntime
     #: The restricted memory earlier turns were shown (ADR-0087).
     shown_notes: ShownNotes = ShownNotes()
@@ -409,7 +409,7 @@ class _Turn:
 
 async def _prepare_turn(
     agent: ConversationGraph,
-    request: GridRequestContext,
+    request: RequestContext,
     inputs: TurnInputs,
     header_scope,
     *,
@@ -506,7 +506,7 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
         thread_id = thread_id_for_turn(conversation_id)
         # The signed request-context envelope, parsed ONCE per turn (base64 +
         # HMAC-SHA256 + JSON); every consumer below reads this object.
-        request = GridRequestContext.from_context()
+        request = RequestContext.from_context()
         # Retrieval reads the turn's focus from the ContextVars this parse sets.
         inputs = extract_turn_inputs(query)
         logger.info("ChatDeepResearcherAgent: %s (data sources: %s)", inputs.query_text, inputs.data_sources)

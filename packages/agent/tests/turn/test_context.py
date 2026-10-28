@@ -14,7 +14,7 @@ from agent.common.platform_lessons import LessonsResolution
 from agent.knowledge.restricted_use import RestrictedUse
 from agent.knowledge.restricted_use import bind_restricted_use
 from agent.knowledge.restricted_use import reset_restricted_use
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.stages import TurnFacts
 from agent.stages.flags import TurnFlags
 from agent.turn import context as context_mod
@@ -27,8 +27,8 @@ from agent.turn.context_client import ContextBlocks
 from agent.turn.context_client import TurnContextError
 
 
-def _request(**fields) -> GridRequestContext:
-    return GridRequestContext(**fields)
+def _request(**fields) -> RequestContext:
+    return RequestContext(**fields)
 
 
 @contextlib.contextmanager
@@ -265,7 +265,7 @@ class TestTurnIdentity:
     def test_user_info_is_none_when_nobody_is_named(self, monkeypatch):
         monkeypatch.setattr(context_mod, "get_current_principal", lambda: None)
         assert user_info_for(None) is None
-        assert user_info_for(GridRequestContext()) is None
+        assert user_info_for(RequestContext()) is None
 
     def test_user_info_carries_name_email_and_office(self, monkeypatch):
         class Principal:
@@ -611,12 +611,12 @@ class TestAConfinedTurnOffersNothingTheWholeProjectReads:
 
     _SCOPE = ["oib_knowledge", "proj_p1", "proj_p1_r0123456789ab", "s_c1"]
 
-    def _signed(self, scope=None) -> GridRequestContext:
+    def _signed(self, scope=None) -> RequestContext:
         return _request(
             project_id="p1", organization_id="org", collection_scope=scope or self._SCOPE, envelope_header="signed"
         )
 
-    async def _settled(self, request: GridRequestContext):
+    async def _settled(self, request: RequestContext):
         context = await load_turn_context(request, conversation_id="c1", query_text="q", resolve_stages=True)
         return settle_restriction(context, request)
 

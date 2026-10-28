@@ -36,7 +36,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
 from agent.agents.piloti import prompt as prompt_module
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.agents.piloti.prompt import TurnPrompt
 from agent.agents.piloti.prompt import render_turn_prompt
@@ -259,7 +259,7 @@ class TestThroughTheAgent:
     def agent(self, llm):
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        return PilotiAgent(llm_provider=provider, tools=[knowledge_search])
+        return ChatAgent(llm_provider=provider, tools=[knowledge_search])
 
     async def test_two_turns_send_the_same_system_prompt_and_store_no_context(self, agent, llm):
         first = await agent.run(

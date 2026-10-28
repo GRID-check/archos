@@ -23,7 +23,7 @@ const state = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend:8000' }))
-vi.mock('@/lib/request-context', () => ({ buildGridRequestContextWireHeaders: () => ({}) }))
+vi.mock('@/lib/request-context', () => ({ buildRequestContextWireHeaders: () => ({}) }))
 vi.mock('@/lib/documents/access', () => ({
   getAccessibleDocument: vi.fn(async (_session: unknown, id: string) => ({
     id,

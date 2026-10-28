@@ -173,7 +173,7 @@ replaced `agent_capability_missing`.
 
 | Term | Meaning | Defined in |
 |---|---|---|
-| Motion vocabulary | The named durations, easings and springs every animation uses; literal durations and curves are linted out by `grid/motion-vocabulary` | [`docs/design/grid-design-language.md`](design/grid-design-language.md) |
+| Motion vocabulary | The named durations, easings and springs every animation uses; literal durations and curves are linted out by `grid/motion-vocabulary` | [`docs/design/design-language.md`](design/design-language.md) |
 | Design tokens | The semantic CSS variables (`bg-background`, `text-muted-foreground`, …); components never hardcode a colour | [`apps/workspace/ui/styles/tokens.css`](../apps/workspace/ui/styles/tokens.css) |
 | Card type scale | The six text steps a card may use (`card-eyebrow` to `card-headline`), held by `grid/card-type-scale` | [`docs/architecture/cards.md`](architecture/cards.md) |
 | Atoms, domain atoms | The atomic-design layering: organisms compose atoms rather than raw Tailwind | [`apps/workspace/AGENTS.md`](../apps/workspace/AGENTS.md) |

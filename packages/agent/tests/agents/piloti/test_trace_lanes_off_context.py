@@ -19,7 +19,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
@@ -65,14 +65,14 @@ def _bypass_citation_pipeline():
         yield
 
 
-def _agent(*rounds: AIMessage) -> PilotiAgent:
+def _agent(*rounds: AIMessage) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=list(rounds))
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=[knowledge_search], max_tool_iterations=4)
+    return ChatAgent(llm_provider=provider, tools=[knowledge_search], max_tool_iterations=4)
 
 
 def _search(call_id: str) -> AIMessage:

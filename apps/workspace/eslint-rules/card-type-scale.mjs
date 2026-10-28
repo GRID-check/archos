@@ -2,7 +2,7 @@
  * The card type ramp is six steps and one figure. This rule is what keeps it
  * six.
  *
- * `docs/design/grid-card-charter.md` §A2 fixes the scale for
+ * `docs/design/answer-card-charter.md` §A2 fixes the scale for
  * `ui/features/grid-cards/**`: Eyebrow 10.5, Meta 11, Caption 12, Body 13.5,
  * Title 14, Figure 15/20/24/30 — expressed as the `card-*` classes in
  * `app/globals.css`. The audit that produced the charter found THIRTEEN
@@ -130,12 +130,12 @@ export default {
     type: 'problem',
     docs: {
       description:
-        'Grid cards use the six-step type ramp from grid-card-charter.md §A2 (the card-* classes in globals.css), never a raw Tailwind or arbitrary font size',
+        'Grid cards use the six-step type ramp from answer-card-charter.md §A2 (the card-* classes in globals.css), never a raw Tailwind or arbitrary font size',
     },
     schema: [],
     messages: {
       offRamp:
-        '`{{utility}}` is a font size outside the card type ramp (grid-card-charter.md §A2). Thirteen sizes is how the card set lost its hierarchy — use {{step}}.',
+        '`{{utility}}` is a font size outside the card type ramp (answer-card-charter.md §A2). Thirteen sizes is how the card set lost its hierarchy — use {{step}}.',
     },
   },
 

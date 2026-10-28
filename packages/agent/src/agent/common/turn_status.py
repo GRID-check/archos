@@ -131,7 +131,7 @@ def emit(body: EventBody) -> None:
 #: binds ``deep`` around its run (:func:`step_scope`), so every step its nodes,
 #: tools and callbacks emit is drawn as deep research's, with no producer
 #: having to know which agent called it.
-_step_scope: ContextVar[Scope] = ContextVar("grid_step_scope", default="chat")
+_step_scope: ContextVar[Scope] = ContextVar("step_scope", default="chat")
 
 
 @contextmanager
@@ -160,7 +160,7 @@ class SubagentFrame:
 #: turn's own agent. Bound by :func:`subagent_run` and inherited the way every
 #: ContextVar is: by the tasks LangGraph and ``asyncio.gather`` start inside it,
 #: so a subagent's nodes, tools and callbacks see it without being told.
-_subagent: ContextVar[SubagentFrame | None] = ContextVar("grid_subagent", default=None)
+_subagent: ContextVar[SubagentFrame | None] = ContextVar("turn_subagent", default=None)
 
 
 #: What a person reads when a subagent fails. The exception stays in the logs
@@ -272,11 +272,11 @@ def emit_step(step: Step, *, started: bool = False, subagent_run_id: str | None 
 #: the context the RUN started with, never the one the previous node mutated.
 #: For a release every hit was therefore unstamped and the Herleitung fell back
 #: to stream order, which puts both fetches on the first checkpoint. The
-#: authoritative set is ``PilotiAgent._tools_node`` via
+#: authoritative set is ``ChatAgent._tools_node`` via
 #: :func:`retrieval_round_scope`, immediately around the ToolNode invocation —
 #: parallel tool calls copy the context when their sibling tasks are created,
 #: so setting it once in the parent covers the whole batch.
-_retrieval_round: ContextVar[int | None] = ContextVar("grid_retrieval_round", default=None)
+_retrieval_round: ContextVar[int | None] = ContextVar("retrieval_round", default=None)
 
 
 def current_retrieval_round() -> int | None:
@@ -325,7 +325,7 @@ def retrieval_round_scope(round_index: int | None) -> Iterator[None]:
 #: Unset is a real state, not a defect: a tool that never enters the scope
 #: (RIS, web, the surfacing tools) records unstamped hits, and the ledger has
 #: a coarser fallback for a round whose hits carry no stamp.
-_lane_tool: ContextVar[str | None] = ContextVar("grid_lane_tool", default=None)
+_lane_tool: ContextVar[str | None] = ContextVar("lane_tool", default=None)
 
 
 def current_lane_tool() -> str | None:
@@ -363,7 +363,7 @@ def lane_tool_scope(tool: str | None) -> Iterator[None]:
 #: Why a SECOND capture beside the turn_sources log: that log dedups
 #: documents across rounds (right for citation-health denominators, wrong for
 #: a per-round ledger). This one keeps every round's hits apart, in order.
-_lane_captured_hits: ContextVar[list[dict[str, Any]] | None] = ContextVar("grid_lane_captured_hits", default=None)
+_lane_captured_hits: ContextVar[list[dict[str, Any]] | None] = ContextVar("lane_captured_hits", default=None)
 
 
 def begin_lane_capture() -> Token:

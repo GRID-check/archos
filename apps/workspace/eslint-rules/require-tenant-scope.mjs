@@ -34,8 +34,8 @@
 const SESSION_ACCESSORS = new Set([
   'requireAuthorizedPageSession',
   'requireAuthorizedSession',
-  'getGridSession',
-  'requireGridSession',
+  'getUserSession',
+  'requireUserSession',
 ])
 
 /** Calls that open (or are given) a scope. */

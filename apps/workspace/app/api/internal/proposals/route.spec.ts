@@ -75,7 +75,7 @@ import type { Conversation } from '@/lib/db/schema/conversations'
 import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
 import { insertProposedChange, type NewProposedChange } from '@/lib/proposals/repository'
 import { internalProposalResponseSchema, type InternalProposalRequest } from '@/lib/proposals/types'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import { POST } from './route'
 
 const SECRET = 'test-internal-token-proposals'
@@ -90,7 +90,7 @@ const CONTEXT = {
   conversationId: 'conv_1',
   issuedAt: Date.now(),
   collectionScope: ['proj_1_docs'],
-} as Partial<VerifiedGridRequestContext> as VerifiedGridRequestContext
+} as Partial<VerifiedRequestContext> as VerifiedRequestContext
 
 const MOVE: InternalProposalRequest = {
   op: 'create',

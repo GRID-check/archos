@@ -7,7 +7,7 @@
  * `A2A-Version: 1.0`, and 0.3 (`message/send`, `message/stream`, `tasks/get`,
  * `tasks/cancel`, `tasks/resubscribe`) when it says 0.3 or nothing, as the
  * specification has it. The official SDK (`@a2a-js/sdk`) parses and
- * serializes; `PilotiA2ARequestHandler` answers each method by calling the ask
+ * serializes; `AgentA2ARequestHandler` answers each method by calling the ask
  * routes as the person, through the dispatcher.
  *
  * Authenticated exactly as `/api/mcp`: `resolvePrincipal` verifies the WorkOS
@@ -30,11 +30,11 @@ import {
   jsonRpcErrorResponse,
   jsonRpcResponse,
   PARSE_ERROR,
-  PILOTI_DOOR_REFUSAL,
+  AGENT_DOOR_REFUSAL,
   protocolVersionOf,
   VERSION_NOT_SUPPORTED,
 } from '@/lib/a2a/http'
-import { PilotiA2ARequestHandler } from '@/lib/a2a/request-handler'
+import { AgentA2ARequestHandler } from '@/lib/a2a/request-handler'
 import { principalOrRefusal } from '@/lib/agent-api/door-principal'
 import { allowedOriginHostnames } from '@/lib/agent-api/mcp-config'
 import { errorResponse } from '@/lib/api/handler'
@@ -59,7 +59,7 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
   const principal = await principalOrRefusal(request, 'a2a')
   if (principal instanceof Response) return principal
   if (principal.actor !== 'external_agent') {
-    return Response.json({ error: PILOTI_DOOR_REFUSAL, code: 'FORBIDDEN' }, { status: 403 })
+    return Response.json({ error: AGENT_DOOR_REFUSAL, code: 'FORBIDDEN' }, { status: 403 })
   }
 
   try {
@@ -80,7 +80,7 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
   // JSON-RPC 2.0 answers text that is not JSON with -32700; the SDK's transport says -32602 (invalid params).
   if (!isJson(body)) return jsonRpcErrorResponse(PARSE_ERROR, 'The request body is not JSON.')
 
-  const handler = new PilotiA2ARequestHandler(principal, card)
+  const handler = new AgentA2ARequestHandler(principal, card)
   const context = new ServerCallContext({ requestedVersion: version })
   const transport =
     version === '1.0' ? new JsonRpcTransportHandler(handler) : new LegacyJsonRpcTransportHandler(handler)

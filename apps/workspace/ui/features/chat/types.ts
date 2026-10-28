@@ -5,7 +5,7 @@
  */
 
 import type { PageRegion } from '@/features/knowledge/lib/page-region'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import type { CardInteractions } from '@/features/grid-cards/card-decision'
 import type { ProjectStatus } from '@/lib/projects/project-status'
 import type { DraftMention } from '@/lib/mentions/mention-text'
@@ -233,9 +233,9 @@ export interface ChatMessage {
    *
    * Positions are identity (`[[card:N]]` addresses N-1 here): a card the
    * validator rejected leaves an `undefined` hole rather than renumbering the
-   * rest — see `validateGridCards`.
+   * rest — see `validateAnswerCards`.
    */
-  cards?: (GridCard | undefined)[]
+  cards?: (AnswerCard | undefined)[]
   /**
    * The user's answer to each interactive card of this answer (`accepted`,
    * `dismissed`, …), keyed by `cardKey(card, index)`. Persisted alongside

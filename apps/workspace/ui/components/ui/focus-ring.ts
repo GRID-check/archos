@@ -8,7 +8,7 @@
  * nothing. So there are exactly two, and every interactive primitive in
  * `components/ui` composes one of them rather than hand-rolling a third.
  *
- * The ring is ink (`--ring`), never blue — see `docs/design/grid-design-language.md`
+ * The ring is ink (`--ring`), never blue — see `docs/design/design-language.md`
  * ("Focus ring is ink-based, never blue").
  */
 

@@ -8,7 +8,7 @@
  * a wake that failed read „antwortet später" until the inbox said otherwise.
  * The wake row already holds the truth (queued, started, how it ended, why),
  * so each mark's view carries it, and every transition of a wake tells the
- * room to re-read (`announcePilotiWork`).
+ * room to re-read (`announceAgentWork`).
  *
  * | Newest wake | Shown as | For how long |
  * |---|---|---|
@@ -20,9 +20,9 @@
  */
 
 import 'server-only'
-import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
-import type { PilotiWorkView } from './types'
+import type { AgentWorkView } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'
 import { listLatestWakes } from './wake-repository'
 
@@ -38,16 +38,16 @@ export const HELD_SHOWN_MS = 10 * 60 * 1000
 export const WORKING_SHOWN_MS = 30 * 60 * 1000
 
 type WakeFields = Pick<
-  PilotiWakeRow,
+  AgentWakeRow,
   'status' | 'reason' | 'triggerKind' | 'actorUserId' | 'createdAt' | 'settledAt' | 'endedAt'
 >
 
 /** What a mark's newest wake says of Piloti's work on it now; null when nothing is to be shown. Pure. */
-export function pilotiWorkOf(
+export function agentWorkOf(
   wake: WakeFields,
   forName: string | null,
   now: number = Date.now()
-): PilotiWorkView | null {
+): AgentWorkView | null {
   const base = { trigger: wake.triggerKind, forUserId: wake.actorUserId, forName, reasonKind: null }
   switch (wake.status) {
     case 'queued':
@@ -86,7 +86,7 @@ export async function latestWakesFor(
   organizationId: string,
   documentId: string,
   annotationId?: string
-): Promise<ReadonlyMap<string, PilotiWakeRow>> {
+): Promise<ReadonlyMap<string, AgentWakeRow>> {
   const rows = await listLatestWakes(organizationId, documentId, annotationId).catch((error: unknown) => {
     console.error('[annotations] the wakes of a document could not be read:', error)
     return []
@@ -98,8 +98,8 @@ export async function latestWakesFor(
  * A wake moved (it started, ended, or was held): the room re-reads the mark,
  * so everyone's thread shows the same line. Never throws.
  */
-export async function announcePilotiWork(
-  wake: Pick<PilotiWakeRow, 'documentId' | 'annotationId' | 'actorUserId'>
+export async function announceAgentWork(
+  wake: Pick<AgentWakeRow, 'documentId' | 'annotationId' | 'actorUserId'>
 ): Promise<void> {
   await publishToDocumentRoom(wake.documentId, {
     kind: 'annotations.changed',

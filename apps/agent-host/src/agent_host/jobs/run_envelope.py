@@ -2,7 +2,7 @@
 
 A run is commissioned by somebody, and the tools that act as a person
 (``file_draft``, ``create_task``, ``project_lookup``, anything that echoes
-``GridRequestContext.envelope_header``) need that somebody's signed
+``RequestContext.envelope_header``) need that somebody's signed
 request-context envelope. A chat turn has one because the BFF minted it from a
 live session. A background run had none, so every one of those tools refused in
 it. This module is how a run gets one, in three steps, none of which signs.
@@ -15,7 +15,7 @@ It travels inside the job's encrypted payload as ``request_envelope``
 
 **Inject.** At claim the worker hands the two strings to the run's request
 metadata under the names a chat turn uses
-(:func:`envelope_headers_for_run`), so ``GridRequestContext`` reads them exactly
+(:func:`envelope_headers_for_run`), so ``RequestContext`` reads them exactly
 as it does there.
 
 **Renew.** An envelope lives six hours. One older than
@@ -52,7 +52,7 @@ import httpx
 
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 
 from ..internal_api import internal_base_url
 from ..internal_api import internal_headers
@@ -117,18 +117,18 @@ def capture_request_envelope(
     return RunEnvelope(header=context.envelope_header, signature=context.envelope_signature).to_payload()
 
 
-def _verify(envelope: RunEnvelope) -> GridRequestContext | None:
+def _verify(envelope: RunEnvelope) -> RequestContext | None:
     """The envelope's verified payload, or None. Verifies; never signs."""
     secret = os.environ.get("INTERNAL_API_TOKEN")
     if not secret:
         return None
-    context = GridRequestContext.from_envelope(envelope.header, envelope.signature, secret)
+    context = RequestContext.from_envelope(envelope.header, envelope.signature, secret)
     if context is None or context.issued_at is None or not context.user_id or not context.organization_id:
         return None
     return context
 
 
-def _same_person(context: GridRequestContext, identity: Mapping[str, Any]) -> bool:
+def _same_person(context: RequestContext, identity: Mapping[str, Any]) -> bool:
     """Whether the envelope speaks for the run's own requester, where the run names one."""
     for field in ("user_id", "organization_id"):
         expected = identity.get(field)
@@ -180,14 +180,14 @@ async def envelope_headers_for_run(
     return _accept_renewal(fresh, carried=context, job_id=job_id)
 
 
-def _accept_renewal(fresh: RunEnvelope, *, carried: GridRequestContext, job_id: str) -> dict[str, str]:
+def _accept_renewal(fresh: RunEnvelope, *, carried: RequestContext, job_id: str) -> dict[str, str]:
     """The renewed envelope's headers, when it is a renewal of the carried one.
 
     The BFF is the authority on whether the requester may still act; these
     checks only refuse an answer that is not that authority's answer to THIS
     run. A fresh envelope must verify, speak for the same person in the same
     organization, and keep a collection scope when the carried one had one:
-    ``GridRequestContext`` prefers the envelope to the worker's own headers
+    ``RequestContext`` prefers the envelope to the worker's own headers
     wholesale, so an envelope without a scope would silently narrow the run's
     retrieval to the shared corpus.
     """

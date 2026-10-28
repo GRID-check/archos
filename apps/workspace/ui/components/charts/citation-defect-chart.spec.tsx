@@ -44,7 +44,7 @@ describe('CitationDefectChart', () => {
   })
 
   test('draws the legend inside the palette scope, so its swatches have a colour', () => {
-    // The series variables only resolve under `.grid-usage-viz`. The legend
+    // The series variables only resolve under `.usage-viz`. The legend
     // used to sit outside that element, so every swatch painted nothing and
     // the legend was labels alone.
     render(
@@ -56,7 +56,7 @@ describe('CitationDefectChart', () => {
     )
 
     const legendItem = screen.getAllByText('citations_removed').find((node) => node.closest('li'))
-    expect(legendItem?.closest('.grid-usage-viz')).not.toBeNull()
+    expect(legendItem?.closest('.usage-viz')).not.toBeNull()
   })
 
   test('renders the empty label when no kind carries a finding', () => {

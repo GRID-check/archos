@@ -2,7 +2,7 @@
  * VerdictHeaderCard — the answer's TL;DR made structural, meant to sit at the
  * TOP of an answer.
  *
- * THE CARD IS THE FIGURE (`docs/design/grid-card-charter.md` §B1). The subject
+ * THE CARD IS THE FIGURE (`docs/design/answer-card-charter.md` §B1). The subject
  * reads as a quiet eyebrow, the verdict is the one large thing — 30px, the
  * biggest type anywhere in the card set — and there is no body list at all.
  * The card lands at roughly 100px tall and that height is its signature: it is

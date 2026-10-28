@@ -1,7 +1,7 @@
 """Live smoke test for Grid card generation.
 
 Reconstructs the minimal real path the job runner takes to derive cards from
-a finished report (``agent_host.jobs.runner._generate_grid_cards`` →
+a finished report (``agent_host.jobs.runner._generate_answer_cards`` →
 ``agent.cards.generate``) without needing the full NAT builder/graph:
 build the shared card-generation system prompt from ``agent.cards.prompt``,
 call the real OpenRouter chat/completions endpoint with the ``card_llm`` model

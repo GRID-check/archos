@@ -343,7 +343,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
             exit={{ height: 0, opacity: 0 }}
             // A tween, not a spring: this is an accordion height, and a spring
             // on a layout property overshoots PAST `auto` and clips the last
-            // row on the way in. `grid-design-language.md` §"Fixed
+            // row on the way in. `design-language.md` §"Fixed
             // choreography" puts height changes on `--motion-base`.
             transition={foldTransition}
             className="max-h-[42dvh] overflow-y-auto overscroll-contain"
@@ -498,7 +498,7 @@ function TrackBar({
           // every progress event — a `transition-[width]` here asked the
           // browser to re-lay-out the tray on each tick for the whole life of
           // an upload, which is the one thing
-          // `grid-design-language.md` §"Binding constraints" rules out
+          // `design-language.md` §"Binding constraints" rules out
           // ("transform and opacity only"). At 3px tall the `rounded-r`
           // cap's horizontal squash under the scale is sub-pixel.
           className="block h-full w-full origin-left rounded-r-full bg-primary transition-transform duration-quick ease-out motion-reduce:transition-none"

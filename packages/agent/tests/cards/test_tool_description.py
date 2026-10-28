@@ -23,13 +23,13 @@ from agent.cards.catalog import render_card_catalog
 from agent.cards.catalog import render_card_details
 from agent.cards.catalog import render_card_doctrine
 from agent.cards.catalog import render_card_index
-from agent.cards.models import GridCard
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import AnswerCard
+from agent.cards.models import answer_card_adapter
 from agent.cards.register import _CARD_EXAMPLES
 from agent.cards.register import _build_tool_description
 from agent.cards.register import _shape_hint_for
 
-_CARD_TYPES = [getattr(c.model_fields["type"].annotation, "__args__", ("?",))[0] for c in GridCard.__args__]
+_CARD_TYPES = [getattr(c.model_fields["type"].annotation, "__args__", ("?",))[0] for c in AnswerCard.__args__]
 
 
 # Card types deliberately shipped WITHOUT a worked example — flat/simple shapes
@@ -93,7 +93,7 @@ class TestWorkedExamples:
     @pytest.mark.parametrize("card_type", list(_CARD_EXAMPLES))
     def test_example_validates(self, card_type):
         # A drifted example would teach the model the wrong shape — fail loudly.
-        grid_card_adapter.validate_python(_CARD_EXAMPLES[card_type])
+        answer_card_adapter.validate_python(_CARD_EXAMPLES[card_type])
 
     def test_every_card_type_has_example_or_is_exempt(self):
         # A new card type must not silently ship with neither an example nor a

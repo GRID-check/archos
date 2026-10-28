@@ -530,15 +530,15 @@ def resolve_federal_state(text: str | None) -> str | None:
     Precedence (jurisdiction is a cross-cutting request fact and must travel
     STRUCTURED, not be re-parsed from prompt text):
 
-    1. ``GridRequestContext.from_context().federal_state`` — the validated token
+    1. ``RequestContext.from_context().federal_state`` — the validated token
        carried on the signed ``X-Grid-Request-Context`` envelope. ``None``
        (``outside_austria``) is FINAL — no fall-through to probing.
     2. ``extract_federal_state(text)`` — the structured prompt-text line, then
        free-text state-name probing (no live request context).
     """
-    from agent.project_context import GridRequestContext
+    from agent.project_context import RequestContext
 
-    structured_token = GridRequestContext.from_context().federal_state
+    structured_token = RequestContext.from_context().federal_state
     if structured_token is not None:
         return FEDERAL_STATE_TOKENS.get(structured_token)
     return extract_federal_state(text)
@@ -753,7 +753,7 @@ def parcel_note(available_documents: list[dict] | None, country: str | None = No
 
     The note is the FILE LIST and nothing else. What to do with a parcel
     question is standing doctrine and lives in the system prompt
-    (``prompts/piloti_static.md``, ``<building_law>``), so the per-turn
+    (``prompts/chat_static.md``, ``<building_law>``), so the per-turn
     block carries only what varies: which documents this project has.
     """
     if not available_documents:

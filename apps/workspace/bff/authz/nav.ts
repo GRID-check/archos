@@ -6,7 +6,7 @@
  */
 
 import 'server-only'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { isOrgAdmin } from './organizations'
 import { isPlatformStaff } from './platform'
 import { inboxIsReachable } from '@/lib/inbox/registry'
@@ -49,7 +49,7 @@ export interface NavFlags {
   canAccessInbox: boolean
 }
 
-export async function getNavFlags(session: GridSession | null): Promise<NavFlags> {
+export async function getNavFlags(session: UserSession | null): Promise<NavFlags> {
   if (!session) {
     return {
       canManageOrganization: false,

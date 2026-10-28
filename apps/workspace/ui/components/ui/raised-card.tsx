@@ -6,7 +6,7 @@
  *
  * This shape is the product's card. It was written four separate times before
  * this file existed — `documents/file-card.tsx`, `documents/file-grid.tsx`,
- * `grid-cards/DocumentGridCard.tsx` and `projects/project-card.tsx` — each
+ * `grid-cards/DocumentAnswerCard.tsx` and `projects/project-card.tsx` — each
  * carrying its own copy of `rounded-b-[10px] bg-card shadow-xs` over
  * `rounded-xl border bg-muted/50`, and each free to drift from the others by a
  * pixel or a shadow. `file-card.tsx`'s own docstring says it "mirrors

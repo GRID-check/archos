@@ -1,6 +1,6 @@
 /**
  * Organization → overview. Who this organization is (WorkOS truth) and the
- * Grid-side settings that shape how it behaves for everyone in it.
+ * app-side settings that shape how it behaves for everyone in it.
  *
  * The chrome, the back link and the section nav live in the shared `layout.tsx`;
  * this page only names its section and renders it. The organization tier used to
@@ -8,7 +8,7 @@
  * column — each is now its own route, and this one keeps the identity of the org
  * itself.
  *
- * Both reads are best-effort on purpose: a WorkOS outage or a Grid-DB hiccup
+ * Both reads are best-effort on purpose: a WorkOS outage or a database hiccup
  * must degrade one card into a dash or a "could not load" note, never take down
  * the section. Everything here is admin-only; a plain member sees no identifier
  * at all, only a pointer at who can change the rest, rather than a blank page.
@@ -75,7 +75,7 @@ export default async function OrganizationOverviewPage(): Promise<JSX.Element> {
     } catch {
       overview = null
     }
-    // Grid-side settings are best-effort too — a Grid-DB hiccup must degrade this
+    // app-side settings are best-effort too — a database hiccup must degrade this
     // one card (a "could not load" note) rather than crash the whole section.
     let settings: Awaited<ReturnType<typeof getOrgSettings>> | null = null
     let settingsError = false

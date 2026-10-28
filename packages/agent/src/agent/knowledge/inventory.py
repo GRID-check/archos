@@ -25,7 +25,7 @@ from agent.common.source_kinds import SHELF_QUALIFIERS
 from agent.common.source_kinds import Shelf
 from agent.common.source_kinds import parse_shelf
 
-_listing_shelf: ContextVar[Shelf | None] = ContextVar("grid_listing_shelf", default=None)
+_listing_shelf: ContextVar[Shelf | None] = ContextVar("listing_shelf", default=None)
 
 # How many files the cap dropped, per shelf, for the turn being rendered.
 #
@@ -33,7 +33,7 @@ _listing_shelf: ContextVar[Shelf | None] = ContextVar("grid_listing_shelf", defa
 # at AGGREGATION time (``agents.piloti.conversation_register``) and the block is rendered
 # much later, by ``render_prompt_template``, with no call path between them that
 # could carry an extra argument.
-_inventory_drops: ContextVar[dict[Shelf | None, int]] = ContextVar("grid_inventory_drops", default={})
+_inventory_drops: ContextVar[dict[Shelf | None, int]] = ContextVar("inventory_drops", default={})
 
 # The turn's inventory ROWS, for the tools that have to resolve a file name the
 # reader typed against the files the reader actually has.
@@ -49,7 +49,7 @@ _inventory_drops: ContextVar[dict[Shelf | None, int]] = ContextVar("grid_invento
 # a LangGraph run and a tool node between the two and no argument that could
 # travel. Set once per turn (`piloti/conversation_register.py`), so a turn
 # with no inventory reads the empty tuple rather than the previous turn's.
-_turn_documents: ContextVar[tuple[Any, ...]] = ContextVar("grid_turn_documents", default=())
+_turn_documents: ContextVar[tuple[Any, ...]] = ContextVar("turn_documents", default=())
 
 # The Richtlinien-Familien the base shelf holds, for the turn being rendered.
 #
@@ -59,7 +59,7 @@ _turn_documents: ContextVar[tuple[Any, ...]] = ContextVar("grid_turn_documents",
 # survives would lose members on exactly the projects with the most files —
 # which is the same silent-incompleteness failure the cap notice exists to
 # prevent, one level down.
-_norm_families: ContextVar[tuple[Any, ...]] = ContextVar("grid_norm_families", default=())
+_norm_families: ContextVar[tuple[Any, ...]] = ContextVar("norm_families", default=())
 
 # User-facing shelves first; base last so the OIB corpus cannot evict them.
 _USER_SHELF_ORDER: tuple[Shelf, ...] = (Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION)

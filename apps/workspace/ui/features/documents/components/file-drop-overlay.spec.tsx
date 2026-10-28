@@ -29,7 +29,7 @@ describe('useWindowDragGuard', () => {
 
   it('leaves a drag that started in the page alone: text into a field, a document between two tiles', () => {
     renderHook(() => useWindowDragGuard())
-    const over = dragEventOn('dragover', ['application/x-grid-document-id'])
+    const over = dragEventOn('dragover', ['application/x-document-id'])
     const drop = dragEventOn('drop', ['text/plain'])
 
     window.dispatchEvent(over)

@@ -5,7 +5,7 @@ import logging
 
 import pytest
 
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import CardRegistry
 from agent.cards.registry import get_card_registry
 from agent.cards.registry import get_or_create_card_registry
@@ -22,7 +22,7 @@ def _emit(card_json: str) -> str:
     if not isinstance(payload, dict):
         return "Error: card_json must be a single JSON object with a 'type' field."
     try:
-        validated = grid_card_adapter.validate_python(payload).model_dump(exclude_none=True)
+        validated = answer_card_adapter.validate_python(payload).model_dump(exclude_none=True)
     except Exception as exc:
         return f"Error: card failed validation: {exc}."
     registry = get_card_registry()

@@ -374,7 +374,7 @@ export const collaboration = {
       send: 'Send',
       cancel: 'Cancel',
       sent: 'Reply sent.',
-      sentPilotiNotAsked: 'Reply sent. {productName} reads it only once you ask it with @{productName} in the review.',
+      sentAgentNotAsked: 'Reply sent. {productName} reads it only once you ask it with @{productName} in the review.',
       resolve: 'Resolve',
       resolved: 'Marked as resolved.',
       conflict: 'Someone changed the annotation first. Open it to see where it stands.',
@@ -622,7 +622,7 @@ export const collaboration = {
       // Piloti compared a new revision with the previous one on its own
       // (ADR-0130) and proposed marks. {subject} the new revision, {related}
       // the one compared, {marks} how many proposals. No {actor}: Piloti did it.
-      pilotiRevisionChecked: {
+      agentRevisionChecked: {
         title: '{productName} compared the new revision “{subject}”',
         titleRelated: '{productName} compared “{subject}” with “{related}”',
         body: 'Proposals on the document, not yet accepted.',
@@ -640,7 +640,7 @@ export const collaboration = {
           },
         },
       },
-      pilotiWorkDone: {
+      agentWorkDone: {
         title: '{productName} worked on an annotation for you',
         titleRelated: '{productName} worked on annotation {related} in “{subject}” for you',
         titleRelatedNoSubject: '{productName} worked on annotation {related} for you',
@@ -654,7 +654,7 @@ export const collaboration = {
       // stored reason (`lib/annotations/wake-end-reason.ts`), and what the
       // person can do about it; `body` is for a row stored before the reason
       // was kept.
-      pilotiWorkFailed: {
+      agentWorkFailed: {
         title: '{productName} could not work on an annotation',
         titleRelated: '{productName} could not work on annotation {related} in “{subject}”',
         titleRelatedNoSubject: '{productName} could not work on annotation {related}',
@@ -676,7 +676,7 @@ export const collaboration = {
       },
       // Piloti asked a question and waits for a person: the mark's assignee,
       // or the person it worked for. The question is the excerpt below.
-      pilotiAsksYou: {
+      agentAsksYou: {
         title: '{productName} has a question for you on an annotation',
         titleRelated: '{productName} has a question for you on annotation {related} in “{subject}”',
         titleRelatedNoSubject: '{productName} has a question for you on annotation {related}',
@@ -689,7 +689,7 @@ export const collaboration = {
       // for. `variants` name what it changes (a file operation by its verb,
       // the rest by kind: `PROPOSAL_NOTICE_VARIANTS`); the excerpt below names
       // the files, the note or the change. Words as on the card.
-      pilotiProposalWaiting: {
+      agentProposalWaiting: {
         title: '{productName} has a proposal for you',
         // Where the proposal waits, by what the row points at: the chat it came
         // from, else the file under Files (`bodyProject`) or in the office
@@ -711,7 +711,7 @@ export const collaboration = {
       // (ADR-0111). {subject} is the project's name, {related} the number of
       // questions that decide the building class; absent when there are none,
       // and `title` is read. Piloti's summary is the excerpt below.
-      pilotiIntakeReady: {
+      agentIntakeReady: {
         title: '{productName} has read the documents of “{subject}”',
         titleRelated: '{productName} has read the documents of “{subject}” – questions: {related}',
         body: 'Review the suggestions and confirm what is right.',

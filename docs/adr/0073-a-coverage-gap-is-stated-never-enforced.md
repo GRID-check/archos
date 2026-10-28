@@ -70,7 +70,7 @@ Chosen option: 3, **state the verdict, never enforce it**.
 * **Nothing is removed.** Every passage still reaches the model, and the
   citation registry reads the same records. ADR-0064 is untouched.
 * **The prompt names the label.** `COVERAGE_GAP_LABEL` in
-  `grounding_block.py` is the one spelling, and `piloti_static.md`
+  `grounding_block.py` is the one spelling, and `chat_static.md`
   `<research_rules>` tells the model what to do with it: say no supporting
   passage was found, name what was searched, answer from none of the
   passages, and do not call it „Nicht geregelt“, because the rule may sit in

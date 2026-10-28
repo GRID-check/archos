@@ -42,11 +42,11 @@ import {
   type WakeEnd,
 } from '@/lib/annotations/wake-repository'
 import { getDb } from '@/lib/db'
-import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { memberReader } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
-import { announcePilotiWork } from '@/lib/annotations/piloti-work'
+import { announceAgentWork } from '@/lib/annotations/agent-work'
 import { recordAskOutcome } from '@/lib/agent-asks/service'
 import type { TurnOutcomeRequest, TurnOutcomeResponse } from './outcome-types'
 
@@ -76,9 +76,9 @@ const NOT_SETTLED: TurnOutcomeResponse = { settled: false }
  * (which reads as a different moment) is never cleared.
  */
 async function endInTransaction(
-  wake: PilotiWakeRow,
+  wake: AgentWakeRow,
   end: WakeEnd
-): Promise<{ ended: PilotiWakeRow; markNumber: number | null; markText: string | null; handedBack: boolean } | null> {
+): Promise<{ ended: AgentWakeRow; markNumber: number | null; markText: string | null; handedBack: boolean } | null> {
   const mark = await findDocumentAnnotation(wake.organizationId, wake.documentId, wake.annotationId)
   const delegatedAt = mark?.delegatedAt ? new Date(mark.delegatedAt) : null
   const ownsDelegation =
@@ -100,7 +100,7 @@ async function endInTransaction(
 }
 
 /** The wake's document as the person whose act woke Piloti reads it: theirs to write, so theirs to read. */
-async function wakeDocument(wake: PilotiWakeRow) {
+async function wakeDocument(wake: AgentWakeRow) {
   try {
     return await findDocumentInOrg(wake.documentId, wake.organizationId, memberReader(wake.actorUserId))
   } catch (error) {
@@ -115,13 +115,13 @@ async function wakeDocument(wake: PilotiWakeRow) {
  * hears the end.
  */
 async function afterEnd(
-  wake: PilotiWakeRow,
+  wake: AgentWakeRow,
   end: WakeEnd,
   done: { markNumber: number | null; markText: string | null; handedBack: boolean },
   turnOutcome: TurnOutcomeRequest['outcome']
 ): Promise<void> {
-  // Every end moves the mark's „Piloti arbeitet" line (`piloti-work.ts`), handed back or not.
-  await announcePilotiWork(wake)
+  // Every end moves the mark's „Piloti arbeitet" line (`agent-work.ts`), handed back or not.
+  await announceAgentWork(wake)
   const doc = await wakeDocument(wake)
   auditWakeEnded(
     {

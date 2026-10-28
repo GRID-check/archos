@@ -7,11 +7,11 @@ identity, collection scope, project context/memory, per-org model overrides,
 budget snapshot, and org-disabled data sources. In Python/NAT these headers
 are accessed lowercased via ``Context`` metadata.
 
-``GridRequestContext`` (below) is the single dataclass + parse function that
+``RequestContext`` (below) is the single dataclass + parse function that
 reads ALL of them in one place, mirroring the TS builder at
 ``apps/workspace/bff/request-context.ts`` (see that module's docstring for
 the full header-inventory table and encodings). The two are pinned together
-by the contract fixture ``apps/workspace/tests/fixtures/grid_request_context.json``::
+by the contract fixture ``apps/workspace/tests/fixtures/request_context.json``::
 
     X-Grid-Project-Context: base64url(<project context string>)
     X-Grid-Org-Instructions: base64url(<the office's standing instructions>)
@@ -23,12 +23,12 @@ Canonical *runtime* parsers for ``collection_scope``, ``model_overrides``,
 ``budget``, and ``disabled_sources`` continue to live in their own modules —
 ``knowledge/scoping.py``, ``common/model_overrides.py``,
 ``common/cost_tracking.py``, ``common/data_sources.py`` respectively. Those
-modules are owned elsewhere; ``GridRequestContext`` parses the same headers
+modules are owned elsewhere; ``RequestContext`` parses the same headers
 independently (not by importing them) purely so the contract fixture can pin
 the wire format from the Python side without creating a dependency on
 modules this file doesn't own. Agent code that needs model overrides,
 budget, or disabled sources should keep calling those modules' own
-accessors, not ``GridRequestContext``.
+accessors, not ``RequestContext``.
 """
 
 import base64
@@ -90,7 +90,7 @@ USER_ID_HEADER = "x-grid-user-id"
 # deliberately out of scope — see the module docstring), and
 # `X-Grid-Request-Context-Sig` carries the hex HMAC-SHA256 of the raw JSON
 # keyed on INTERNAL_API_TOKEN. Minted in one place on the TS side
-# (`buildGridRequestContextEnvelope` in `apps/workspace/bff/request-context.ts`,
+# (`buildRequestContextEnvelope` in `apps/workspace/bff/request-context.ts`,
 # duplicated with a pinning comment in `server.js` because it is plain
 # CommonJS). Producers DUAL-WRITE: the envelope is sent ALONGSIDE the
 # individual headers during the transition; `from_context`/`from_headers`
@@ -156,7 +156,7 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # ADR-0122). Every call echoes the envelope and the BFF runs the operation as
     # the person it names; no project header, because an operation names its own
     # project in its parameters. Without an envelope every tool refuses.
-    "piloti_workspace": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    "workspace_tools": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
     # The Erfassungs-Agent (`agents/intake/`, ADR-0111): an agent, not a tool,
     # keyed here because its tools (`intake_needs`, `record_values`,
     # `finish_intake`, `read_document`) are built by the agent and have no NAT
@@ -234,7 +234,7 @@ def _normalize_federal_state(value: Any) -> str | None:
     if token in _FEDERAL_STATE_TOKENS:
         return token
     if token:
-        logger.debug("GridRequestContext: unknown federal_state token %r — treating as absent", token)
+        logger.debug("RequestContext: unknown federal_state token %r — treating as absent", token)
     return None
 
 
@@ -434,7 +434,7 @@ def _read_memory_reflection_flag() -> bool:
 
 
 @dataclass(frozen=True)
-class GridRequestContext:
+class RequestContext:
     """Every ``X-Grid-*`` cross-cutting context header for one request,
     parsed in one place. See the module docstring for scope/ownership notes
     and the TS twin (``apps/workspace/bff/request-context.ts``).
@@ -469,7 +469,7 @@ class GridRequestContext:
     #: enforced here: this tier has accepted envelopes without one since before
     #: the field existed. A reader that GRANTS access on the envelope enforces
     #: the window itself and fails closed on a missing value, as the BFF
-    #: verifier (`verifyGridRequestContextEnvelope`) does: the job routes do so
+    #: verifier (`verifyRequestContextEnvelope`) does: the job routes do so
     #: in `agent_host.jobs.access.signed_job_scope` (ADR-0084).
     issued_at: int | None = None
     #: The envelope EXACTLY as it arrived — the base64url header and its hex
@@ -496,7 +496,7 @@ class GridRequestContext:
     requester: dict[str, str | None] | None = None
 
     @classmethod
-    def from_context(cls) -> GridRequestContext:
+    def from_context(cls) -> RequestContext:
         """Read every ``X-Grid-*`` header from the current NAT Context in one
         pass. This is the low-level parse the module-level accessor
         functions below (``get_project_id_from_context`` etc.) delegate to —
@@ -541,7 +541,7 @@ class GridRequestContext:
         header_value: str | None,
         sig: str | None,
         secret: str | None,
-    ) -> GridRequestContext | None:
+    ) -> RequestContext | None:
         """Parse + verify the signed ``X-Grid-Request-Context`` envelope.
 
         Returns ``None`` (treated as ABSENT by every caller — ``from_context``
@@ -620,16 +620,16 @@ class GridRequestContext:
         )
 
     @classmethod
-    def from_headers(cls, headers: dict[str, str], *, secret: str | None = None) -> GridRequestContext:
-        """Parse a ``GridRequestContext`` from an explicit header map instead
+    def from_headers(cls, headers: dict[str, str], *, secret: str | None = None) -> RequestContext:
+        """Parse a ``RequestContext`` from an explicit header map instead
         of a live NAT Context.
 
         This is the cross-language contract-test entry point: the fixture at
-        ``apps/workspace/tests/fixtures/grid_request_context.json`` carries
+        ``apps/workspace/tests/fixtures/request_context.json`` carries
         ``{name, input, headers}`` cases; the TS side asserts
-        ``buildGridRequestContextHeaders(input) == headers`` and the Python
+        ``buildRequestContextHeaders(input) == headers`` and the Python
         side (``packages/agent/tests/test_project_context.py``) asserts
-        ``GridRequestContext.from_headers(headers)`` matches ``input``. A
+        ``RequestContext.from_headers(headers)`` matches ``input``. A
         producer that forgets a header, or that encodes one differently,
         fails this fixture instead of silently degrading in production.
 
@@ -696,7 +696,7 @@ def get_profile_context_from_context() -> str | None:
     header value is fine. Memory, by contrast, is re-served per turn (see
     ``compose_project_context``).
     """
-    return GridRequestContext.from_context().project_context
+    return RequestContext.from_context().project_context
 
 
 def get_memory_digest_from_context() -> str | None:
@@ -706,7 +706,7 @@ def get_memory_digest_from_context() -> str | None:
     The chat entrypoint re-fetches a live digest each turn and only falls back to
     this header value when the live fetch is unavailable.
     """
-    return GridRequestContext.from_context().project_memory
+    return RequestContext.from_context().project_memory
 
 
 def compose_project_context(context: str | None, memory: str | None) -> str | None:
@@ -728,7 +728,7 @@ def get_project_context_from_context() -> str | None:
     docs/architecture/project-memory-design.md). Used as the fallback when a
     per-turn live memory fetch is not available.
     """
-    ctx = GridRequestContext.from_context()
+    ctx = RequestContext.from_context()
     return compose_project_context(ctx.project_context, ctx.project_memory)
 
 
@@ -738,7 +738,7 @@ def get_org_instructions_from_context() -> str | None:
     Already bounded and marked when it was cut, so every caller renders the
     same text and nothing downstream has to remember the cap.
     """
-    return GridRequestContext.from_context().org_instructions
+    return RequestContext.from_context().org_instructions
 
 
 def get_project_id_from_context() -> str | None:
@@ -747,7 +747,7 @@ def get_project_id_from_context() -> str | None:
     Used by project-scoped tools (e.g. ``remember``) to write rows for the
     right project. None outside a project-scoped conversation.
     """
-    return GridRequestContext.from_context().project_id
+    return RequestContext.from_context().project_id
 
 
 def get_organization_id_from_context() -> str | None:
@@ -756,7 +756,7 @@ def get_organization_id_from_context() -> str | None:
     Set by server.js on the WS upgrade for authenticated sessions. Used by
     organization-scoped memory writes. None in anonymous mode.
     """
-    return GridRequestContext.from_context().organization_id
+    return RequestContext.from_context().organization_id
 
 
 def get_memory_reflection_enabled_from_context() -> bool:
@@ -768,7 +768,7 @@ def get_memory_reflection_enabled_from_context() -> bool:
     header → False, so a missing header (older proxy, non-WS entrypoint) keeps the
     stage off rather than silently on.
     """
-    return GridRequestContext.from_context().memory_reflection_enabled
+    return RequestContext.from_context().memory_reflection_enabled
 
 
 def get_user_message_id_from_context() -> str | None:
@@ -800,7 +800,7 @@ def get_user_message_id_from_context() -> str | None:
         return None
 
 
-def get_signed_request_context() -> GridRequestContext | None:
+def get_signed_request_context() -> RequestContext | None:
     """The verified ``X-Grid-Request-Context`` envelope for this request, or None.
 
     For a reader of a field that DECIDES something for the tenant: the model an
@@ -816,7 +816,7 @@ def get_signed_request_context() -> GridRequestContext | None:
     the bytes the BFF signed for its requester (ADR-0108), and reads it here
     exactly as a chat turn does.
     """
-    return GridRequestContext.from_envelope(
+    return RequestContext.from_envelope(
         _read_header(REQUEST_CONTEXT_ENVELOPE_HEADER),
         _read_header(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
         os.environ.get("INTERNAL_API_TOKEN"),
@@ -835,7 +835,7 @@ def get_request_envelope_from_context() -> tuple[str | None, str | None]:
     unsigned, so a caller could choose them. A worker run that carries one
     (ADR-0108) returns the bytes the BFF signed, echoed by the worker.
     """
-    ctx = GridRequestContext.from_context()
+    ctx = RequestContext.from_context()
     return ctx.envelope_header, ctx.envelope_signature
 
 

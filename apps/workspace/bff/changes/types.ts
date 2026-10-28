@@ -14,11 +14,11 @@
 import { z } from 'zod'
 
 /** What a change was made to. A reply is created, never changed. */
-export const PILOTI_CHANGE_OBJECTS = ['annotation', 'annotation_reply'] as const
-export type PilotiChangeObject = (typeof PILOTI_CHANGE_OBJECTS)[number]
+export const AGENT_CHANGE_OBJECTS = ['annotation', 'annotation_reply'] as const
+export type AgentChangeObject = (typeof AGENT_CHANGE_OBJECTS)[number]
 
-export const PILOTI_CHANGE_OPS = ['create', 'update', 'delete'] as const
-export type PilotiChangeOp = (typeof PILOTI_CHANGE_OPS)[number]
+export const AGENT_CHANGE_OPS = ['create', 'update', 'delete'] as const
+export type AgentChangeOp = (typeof AGENT_CHANGE_OPS)[number]
 
 /**
  * The changeable state a change records: for a mark, the fields the parity ops
@@ -38,16 +38,16 @@ export const UNDO_REFUSALS = [
 export type UndoRefusal = (typeof UNDO_REFUSALS)[number]
 
 /** One applied change, as a reader sees it. */
-export const pilotiChangeViewSchema = z
+export const agentChangeViewSchema = z
   .object({
     id: z.guid(),
     documentId: z.guid(),
     annotationId: z.guid(),
     /** The mark's running number now; null once the mark is gone. */
     annotationNumber: z.number().int().positive().nullable(),
-    objectKind: z.enum(PILOTI_CHANGE_OBJECTS),
+    objectKind: z.enum(AGENT_CHANGE_OBJECTS),
     objectId: z.guid(),
-    op: z.enum(PILOTI_CHANGE_OPS),
+    op: z.enum(AGENT_CHANGE_OPS),
     before: changeStateSchema.nullable(),
     after: changeStateSchema.nullable(),
     /** The person the turn acted for, and their display name when known. */
@@ -61,12 +61,12 @@ export const pilotiChangeViewSchema = z
     canUndo: z.boolean(),
   })
   .strict()
-export type PilotiChangeView = z.infer<typeof pilotiChangeViewSchema>
+export type AgentChangeView = z.infer<typeof agentChangeViewSchema>
 
 /** `GET /api/conversations/[id]/messages/[messageId]/changes`: what that answer's turn changed, oldest first. Changes on documents the reader may not see are left out. */
-export const turnChangesResponseSchema = z.object({ changes: z.array(pilotiChangeViewSchema) }).strict()
+export const turnChangesResponseSchema = z.object({ changes: z.array(agentChangeViewSchema) }).strict()
 export type TurnChangesResponse = z.infer<typeof turnChangesResponseSchema>
 
 /** `POST /api/piloti-changes/[id]/undo`: the change, now undone. 409 `{ error: UndoRefusal, message }` otherwise. */
-export const undoChangeResponseSchema = z.object({ change: pilotiChangeViewSchema }).strict()
+export const undoChangeResponseSchema = z.object({ change: agentChangeViewSchema }).strict()
 export type UndoChangeResponse = z.infer<typeof undoChangeResponseSchema>

@@ -25,10 +25,10 @@ import type { PageRegion } from '@/features/knowledge/lib/page-region'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { CARD_SHELL } from './card-chrome'
 
-type RevisionCompareData = Extract<GridCard, { type: 'revision_compare' }>
+type RevisionCompareData = Extract<AnswerCard, { type: 'revision_compare' }>
 
 interface RevisionCompareCardProps {
   olderId: RevisionCompareData['older_id']

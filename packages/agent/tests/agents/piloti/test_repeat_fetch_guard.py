@@ -44,7 +44,7 @@ from langchain_core.tools import tool
 from agent.agents.piloti.agent import _REPEAT_FETCH_MESSAGE
 from agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
 from agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
@@ -155,17 +155,17 @@ def _bypass_citation_pipeline():
         yield
 
 
-def _agent(llm: MagicMock) -> PilotiAgent:
+def _agent(llm: MagicMock) -> ChatAgent:
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=_TOOLS, max_tool_iterations=_CEILING)
+    return ChatAgent(llm_provider=provider, tools=_TOOLS, max_tool_iterations=_CEILING)
 
 
 @pytest.fixture
 def scripted_agent():
-    """A PilotiAgent whose LLM plays a fixed script of tool rounds."""
+    """A ChatAgent whose LLM plays a fixed script of tool rounds."""
 
-    def build(*rounds: AIMessage) -> PilotiAgent:
+    def build(*rounds: AIMessage) -> ChatAgent:
         llm = MagicMock()
         llm.bind_tools = MagicMock(return_value=llm)
         llm.bind = MagicMock(return_value=llm)
@@ -189,7 +189,7 @@ def _batch(*calls: dict, thought: str = "") -> AIMessage:
     return AIMessage(content=thought, tool_calls=list(calls))
 
 
-async def _run(agent: PilotiAgent, question: str = "Wie lang darf der Fluchtweg sein?"):
+async def _run(agent: ChatAgent, question: str = "Wie lang darf der Fluchtweg sein?"):
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content=question)]))
 
 

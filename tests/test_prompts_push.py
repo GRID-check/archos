@@ -29,7 +29,7 @@ push = _load("scripts.prompts_push", "scripts/prompts_push.py")
 
 SHA = "b" * 40
 #: What an earlier push wrote as the version's commit message.
-PUBLISHED = f"git {SHA[:12]} piloti_static.md"
+PUBLISHED = f"git {SHA[:12]} chat_static.md"
 
 
 class FakePrompt:
@@ -64,13 +64,13 @@ class FakeClient:
 @pytest.fixture
 def committed(monkeypatch, tmp_path):
     """The prompt file, in a scratch location, committed at a known sha."""
-    path = tmp_path / "piloti_static.md"
+    path = tmp_path / "chat_static.md"
     path.write_text("Regel eins.\nRegel zwei.\n", encoding="utf-8")
     monkeypatch.setattr(push, "FALLBACK_FILE", path)
     monkeypatch.setattr(push, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(push, "git_origin", lambda: ("a" * 40, False))
     # What git holds for each commit an earlier push named.
-    history = {(SHA[:12], "piloti_static.md"): "Regel eins.\n"}
+    history = {(SHA[:12], "chat_static.md"): "Regel eins.\n"}
     monkeypatch.setattr(push, "text_at", lambda sha, relative: history.get((sha, relative)))
     monkeypatch.setattr(push, "file_history", lambda: [])
     return path
@@ -102,7 +102,7 @@ def test_apply_publishes_a_git_tagged_version_naming_its_commit(monkeypatch, com
 
     assert _run(monkeypatch, client, "--label", "staging", "--apply") == push.EXIT_OK
     [created] = client.created
-    assert created["commit_message"] == "git aaaaaaaaaaaa piloti_static.md"
+    assert created["commit_message"] == "git aaaaaaaaaaaa chat_static.md"
     assert created["prompt"] == "Regel eins.\nRegel zwei."
     assert created["labels"] == ["staging"]
     assert created["tags"] == [push.GIT_TAG]
@@ -186,7 +186,7 @@ def test_the_git_plumbing_reads_what_the_repository_holds(monkeypatch, tmp_path)
     git("config", "user.name", "Test")
     git("config", "user.email", "test@example.invalid")
     git("config", "commit.gpgsign", "false")
-    prompt = tmp_path / "prompts" / "piloti_static.md"
+    prompt = tmp_path / "prompts" / "chat_static.md"
     prompt.parent.mkdir()
     monkeypatch.setattr(push, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(push, "FALLBACK_FILE", prompt)
@@ -199,7 +199,7 @@ def test_the_git_plumbing_reads_what_the_repository_holds(monkeypatch, tmp_path)
     git("commit", "-q", "-am", "second")
 
     assert push.file_history() == ["Regel eins.\nRegel zwei.\n", "Regel eins.\n"]
-    assert push.text_at(first[:12], "prompts/piloti_static.md") == "Regel eins.\n"
+    assert push.text_at(first[:12], "prompts/chat_static.md") == "Regel eins.\n"
     assert push.text_at(first, "prompts/nothing.md") is None
     assert push.git_origin() == (git("rev-parse", "HEAD").strip(), False)
 

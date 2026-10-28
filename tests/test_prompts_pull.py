@@ -33,7 +33,7 @@ def _load(name: str, relative: str):
 
 pull = _load("scripts.prompts_pull", "scripts/prompts_pull.py")
 
-BUNDLED = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/piloti_static.md"
+BUNDLED = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/chat_static.md"
 
 
 @pytest.fixture(autouse=True)
@@ -110,7 +110,7 @@ class TestFetch:
 
 class TestWriteFallback:
     def test_it_writes_the_text_with_exactly_one_trailing_newline(self, tmp_path: Path):
-        target = tmp_path / "piloti_static.md"
+        target = tmp_path / "chat_static.md"
 
         assert pull.write_fallback("SOME PROMPT\n\n\n", target) is True
         assert target.read_text() == "SOME PROMPT\n"
@@ -120,7 +120,7 @@ class TestWriteFallback:
         So `git status` after a pull says something true. A no-op write would
         leave a maintainer wondering what changed.
         """
-        target = tmp_path / "piloti_static.md"
+        target = tmp_path / "chat_static.md"
         target.write_text("SOME PROMPT\n")
 
         assert pull.write_fallback("SOME PROMPT", target) is False
@@ -130,7 +130,7 @@ class TestWriteFallback:
         The committed fallback is already normalized, so pulling the version it
         came from must be a no-op rather than a whitespace diff on every run.
         """
-        bundled = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/piloti_static.md"
+        bundled = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/chat_static.md"
         target = tmp_path / "copy.md"
         target.write_text(bundled.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -148,7 +148,7 @@ class TestMain:
     def test_a_label_that_does_not_exist_exits_one_without_writing(self, monkeypatch, tmp_path, capsys):
         from langfuse.api import NotFoundError
 
-        target = tmp_path / "piloti_static.md"
+        target = tmp_path / "chat_static.md"
         target.write_text("BUNDLED\n")
         monkeypatch.setattr(pull, "FALLBACK_FILE", target)
         monkeypatch.setattr(pull, "build_client", lambda: FakeClient(raises=NotFoundError(body="nope")))
@@ -158,7 +158,7 @@ class TestMain:
         assert "no 'experiment-a' version" in capsys.readouterr().err
 
     def test_a_successful_pull_rewrites_the_fallback(self, monkeypatch, tmp_path, capsys):
-        target = tmp_path / "piloti_static.md"
+        target = tmp_path / "chat_static.md"
         target.write_text("OLD\n")
         monkeypatch.setattr(pull, "FALLBACK_FILE", target)
         monkeypatch.setattr(pull, "REPO_ROOT", tmp_path)

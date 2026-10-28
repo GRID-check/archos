@@ -1071,7 +1071,7 @@ def precedent_envelope(
 
     Base64url JSON, HMAC-SHA256 over the exact bytes with the run's
     ``INTERNAL_API_TOKEN``: the agent verifies it like a real one
-    (``GridRequestContext.from_envelope``). A solo chat, as the conversation
+    (``RequestContext.from_envelope``). A solo chat, as the conversation
     has no row: the fixture BFF searches every project in the office. ``extra`` adds payload
     fields (``--set files`` states the project's ``collectionScope`` this way).
     """

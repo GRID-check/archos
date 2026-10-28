@@ -177,7 +177,7 @@ function decisionsOf(metadata: unknown, fallbackDate: Date): DecidedProposal[] {
     const verdict = decision ? verdictOf(decision) : null
     if (!verdict) continue
     // The key is `${type}-${index}`; the index is positional into `cards`.
-    // Positions stay aligned with what the reader saw: `validateGridCards`
+    // Positions stay aligned with what the reader saw: `validateAnswerCards`
     // never compacts the array, so the validated card at `index` is the same
     // proposal this raw row holds at `index` — or a hole, which is skipped
     // below like any other non-record.

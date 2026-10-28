@@ -6,7 +6,7 @@ message, *this turn's tool calls]`` (:func:`request_messages`).
 THE SYSTEM PROMPT IS THE STATIC HALF ALONE: the same bytes for every tenant,
 every turn and every round, authored and versioned in **Langfuse** and pulled
 by :func:`resolve_static_block` through ``common/prompt_store.py``.
-``prompts/piloti_static.md`` is the BUNDLED FALLBACK for it — what is rendered
+``prompts/chat_static.md`` is the BUNDLED FALLBACK for it — what is rendered
 when prompt management is off (the default), when the credentials are absent,
 when Langfuse is unreachable or when it holds no such prompt. It is allowed to
 lag the live version; ``task prompts:pull`` refreshes it.
@@ -76,7 +76,7 @@ PROMPT_NAME = "piloti"
 #: WORKSPACE block renders only when one of them is (ADR-0123).
 WORKSPACE_TOOL_PREFIX = "workspace__"
 #: The bundled fallback for the static half. Langfuse holds the live one.
-STATIC_PROMPT_FILE = "piloti_static.md"
+STATIC_PROMPT_FILE = "chat_static.md"
 #: What the live text is called in Langfuse. A wire name: every version in the
 #: store and ``scripts/prompts_pull.py`` are keyed on it, so it moves only with
 #: a rename in Langfuse itself.

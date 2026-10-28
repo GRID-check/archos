@@ -7,7 +7,7 @@ Why this exists
 
 The platform prompt — the static half of Piloti's system prompt — has git as
 its source of truth (ADR-0060 (a)):
-``packages/agent/src/agent/agents/piloti/prompts/piloti_static.md`` is what review reads,
+``packages/agent/src/agent/agents/piloti/prompts/chat_static.md`` is what review reads,
 what a process renders when prompt management is off or Langfuse unreachable,
 and what ``scripts/prompts_push.py`` publishes to Langfuse. Labels there carry
 experiments, and the fleet reads the label it is configured for through
@@ -41,7 +41,7 @@ from typing import Any
 from typing import Protocol
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-FALLBACK_FILE = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/piloti_static.md"
+FALLBACK_FILE = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/chat_static.md"
 #: The wire name. Shared with ``agents/piloti/prompt.py::STATIC_PROMPT_NAME``.
 PROMPT_NAME = "piloti-system-static"
 

@@ -25,7 +25,7 @@ from agent.knowledge.restricted_use import bind_restricted_use
 from agent.knowledge.restricted_use import reset_restricted_use
 from agent.knowledge.restricted_use import without_restricted
 from agent.knowledge.scoping import ScopedCollection
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 
 VERTRAEGE = "proj_p1_r0123456789ab"
 PERSONAL = "proj_p1_rbbbbbbbbbbbb"
@@ -71,9 +71,9 @@ def _use(drawable=(), confined=False) -> RestrictedUse:
     )
 
 
-def _request(**fields) -> GridRequestContext:
+def _request(**fields) -> RequestContext:
     base = {"organization_id": "org", "user_id": "u1", "project_id": "p1", "collection_scope": SCOPE}
-    return GridRequestContext(**{**base, **fields})
+    return RequestContext(**{**base, **fields})
 
 
 class TestTurnStart:

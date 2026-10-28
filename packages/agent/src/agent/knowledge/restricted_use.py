@@ -109,7 +109,7 @@ class RestrictedUse:
         self.confined = True
 
 
-_turn_use: contextvars.ContextVar[RestrictedUse | None] = contextvars.ContextVar("grid_restricted_use", default=None)
+_turn_use: contextvars.ContextVar[RestrictedUse | None] = contextvars.ContextVar("restricted_use", default=None)
 
 
 def current_restricted_use() -> RestrictedUse | None:
@@ -154,7 +154,7 @@ class CrossProjectTurn:
 
 
 _cross_turn: contextvars.ContextVar[CrossProjectTurn | None] = contextvars.ContextVar(
-    "grid_cross_project_turn", default=None
+    "cross_project_turn", default=None
 )
 
 
@@ -274,7 +274,7 @@ async def begin_restricted_use(
 ) -> RestrictedUse | None:
     """The turn's restricted use, asked of the BFF; ``None`` when its scope holds no restricted collection.
 
-    ``request`` is the turn's :class:`agent.project_context.GridRequestContext`.
+    ``request`` is the turn's :class:`agent.project_context.RequestContext`.
     ``answer_message_id`` is the answer the turn writes: the BFF marks it now
     when an earlier turn already drew on a restricted folder, and at every
     admission later in the turn.

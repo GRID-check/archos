@@ -43,9 +43,9 @@ def organization_hint(collection: str) -> str | None:
     ``None`` leaves it to ``queue.organization_of`` at build time.
     """
     try:
-        from agent.common.cost_tracking import grid_cost_tracker_var
+        from agent.common.cost_tracking import cost_tracker_var
 
-        tracker = grid_cost_tracker_var.get()
+        tracker = cost_tracker_var.get()
         if tracker is not None and tracker.organization_id:
             return tracker.organization_id
     except Exception:  # noqa: BLE001 — a hint, never a reason to fail

@@ -49,7 +49,7 @@ import {
 
 const session = {
   userId: 'user_asker',
-  email: 'asker@grid.test',
+  email: 'asker@example.test',
   organizationId: 'org_1',
   organizationMembershipId: 'om_1',
   role: 'member',
@@ -110,7 +110,7 @@ describe('delegateTask', () => {
       'project:documents:write',
     ])
     expect(insertedDefinition.requesterUserId).toBe('user_asker')
-    expect(insertedDefinition.requesterEmail).toBe('asker@grid.test')
+    expect(insertedDefinition.requesterEmail).toBe('asker@example.test')
     expect(insertedDefinition.trigger).toBe('once')
     expect(insertedDefinition.plan.goal).toBe('Prüf das Haus A')
     // Verbatim inside the prompt: the engine's instruction is meta, the goal is

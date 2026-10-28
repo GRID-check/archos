@@ -222,7 +222,7 @@ async def estate_message(name: str, runtime: ToolRuntime, call: EstateCall) -> T
     )
 
 
-class PilotiFilesystem(FilesystemMiddleware):
+class DocumentFilesystem(FilesystemMiddleware):
     """``FilesystemMiddleware`` over the estate and the drafts, with our result text on the estate.
 
     ``estate`` is the read-only estate backend (``None``: the drafts alone, as

@@ -106,7 +106,7 @@ def emit_skill_activated(skill: Skill) -> None:
     apply on every answer (a house voice is the type case), so their live line
     is noise on every turn. The step still fires and carries its title, so the
     disclosure names it and the reasoning view can surface it. Hidden is never
-    concealed (see ``GRID_HIDDEN_KEY`` and agent-skills.md, activation
+    concealed (see ``HIDDEN_KEY`` and agent-skills.md, activation
     transparency).
     """
     title = skill_title(skill)

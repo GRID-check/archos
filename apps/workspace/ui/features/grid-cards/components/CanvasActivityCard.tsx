@@ -79,7 +79,7 @@ import { Check, MapPin, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
-import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { useInView } from '@/hooks/use-in-view'
 import { useSeenOnce } from '@/hooks/use-seen-once'
 import { useLocale, useTranslations } from '@/i18n'
@@ -88,7 +88,7 @@ import { formatDayRange } from '@/lib/format'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { AnnotationRequestError, updateAnnotation } from '@/lib/annotations/client'
 import { ChangeRequestError, undoChange } from '@/lib/changes/client'
-import type { PilotiChangeView } from '@/lib/changes/types'
+import type { AgentChangeView } from '@/lib/changes/types'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/features/chat/store'
@@ -307,7 +307,7 @@ export function CanvasActivityCard({
     <ProposalShell tone={tone}>
       <div ref={cardRef} className="flex flex-col gap-3" data-testid="canvas-activity-card">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <PilotiGlyph size="xs" />
+          <AgentGlyph size="xs" />
           {live.connected && (
             // Live: changes on the canvas reach this card while it is on screen.
             <span
@@ -508,7 +508,7 @@ function useShowInDocument(documentId: string): (annotationId: string) => Promis
  * what a colleague moved since: `moved-on` is a plain fact, said calmly and
  * never in error red; `already-undone` re-reads and the row shows who did it.
  */
-function useServerUndo(change: PilotiChangeView | undefined, live: LiveMarks, changes: TurnChanges) {
+function useServerUndo(change: AgentChangeView | undefined, live: LiveMarks, changes: TurnChanges) {
   const t = useTranslations(chatCopy)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -547,7 +547,7 @@ function useServerUndo(change: PilotiChangeView | undefined, live: LiveMarks, ch
 }
 
 /** „für Miriam": whom the turn acted for, in the meta line. */
-function ForPerson({ change }: { change: PilotiChangeView | undefined }): JSX.Element | null {
+function ForPerson({ change }: { change: AgentChangeView | undefined }): JSX.Element | null {
   const t = useTranslations(chatCopy)
   if (!change?.onBehalfOfName) return null
   return (
@@ -693,7 +693,7 @@ function SetRow({
   item: CanvasSetItem
   live: LiveMarks
   /** The server's record of this mark being set, when it has one. */
-  change: PilotiChangeView | undefined
+  change: AgentChangeView | undefined
   changes: TurnChanges
   messageId?: string
   cardKey: string
@@ -930,7 +930,7 @@ function ChangedRow({
   item: CanvasChangedItem
   index: number
   live: LiveMarks
-  change: PilotiChangeView | undefined
+  change: AgentChangeView | undefined
   changes: TurnChanges
   messageId?: string
   cardKey: string
@@ -1059,7 +1059,7 @@ function DeletedRow({
 }: {
   item: CanvasDeletedItem
   live: LiveMarks
-  change: PilotiChangeView | undefined
+  change: AgentChangeView | undefined
   changes: TurnChanges
 }): JSX.Element {
   const t = useTranslations(chatCopy)
@@ -1100,7 +1100,7 @@ function RepliedRow({
 }: {
   item: CanvasRepliedItem
   live: LiveMarks
-  change: PilotiChangeView | undefined
+  change: AgentChangeView | undefined
   changes: TurnChanges
   onShow: ShowInDocument
 }): JSX.Element {

@@ -55,7 +55,7 @@ export const PIN = JSON.parse(fs.readFileSync(path.join(HERE, 'kit.json'), 'utf8
 export function kitDir() {
   if (process.env.RISO_KIT_DIR) return path.resolve(process.env.RISO_KIT_DIR);
   const cache = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-  return path.join(cache, 'piloti-riso', `riso-windowseat-${PIN.commit.slice(0, 12)}`);
+  return path.join(cache, 'riso-kit', `riso-windowseat-${PIN.commit.slice(0, 12)}`);
 }
 export const STATE_FILE = '.piloti-setup.json';
 

@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { EDGE_TIMEOUT, PORT, QDRANT } from "../constants";
 import { GATEWAY_NAME } from "./gateway";
 import { commonLabels } from "./namespaces";
@@ -74,7 +74,7 @@ const STRIPPED_REQUEST_HEADERS = ["Authorization", "Cookie"] as const;
  * for looking and the read-write key only for a deliberate write.
  */
 export function installQdrantDashboard(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],

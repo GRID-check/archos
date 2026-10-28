@@ -3,7 +3,7 @@
 /**
  * What ingestion read a document to be (its dossier), what it points at and
  * who points at it, and how much of it was read — the lower half of the
- * „Piloti reading“ rail (`piloti-reading.tsx`). Contract:
+ * „Piloti reading“ rail (`agent-reading.tsx`). Contract:
  * `docs/architecture/document-dossier.md`.
  *
  * The dossier and the raw references arrive on the file itself; resolving a

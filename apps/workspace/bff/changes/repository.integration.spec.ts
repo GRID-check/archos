@@ -28,7 +28,7 @@
 
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import type { NewPilotiChange } from './repository'
+import type { NewAgentChange } from './repository'
 
 vi.mock('server-only', () => ({}))
 
@@ -99,7 +99,7 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
     return id
   }
 
-  const change = (extra: Partial<NewPilotiChange> = {}): NewPilotiChange => ({
+  const change = (extra: Partial<NewAgentChange> = {}): NewAgentChange => ({
     organizationId: ORG,
     documentId: ids.document,
     annotationId: MARK,
@@ -114,9 +114,9 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
     ...extra,
   })
 
-  const record = async (extra: Partial<NewPilotiChange> = {}) => {
+  const record = async (extra: Partial<NewAgentChange> = {}) => {
     const organizationId = extra.organizationId ?? ORG
-    const [row] = await inOrg(organizationId, () => repo.insertPilotiChanges(organizationId, [change(extra)]))
+    const [row] = await inOrg(organizationId, () => repo.insertAgentChanges(organizationId, [change(extra)]))
     return row
   }
 
@@ -151,7 +151,7 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
   it('records each op with its states and its turn, undone by nobody, and reads it back by id', async () => {
     const state = { status: 'open', kind: 'defect', body: 'Tür', page: 1, shape: 'point', x: 0.25, y: 0.75, w: null, h: null }
     const rows = await inOrg(ORG, () =>
-      repo.insertPilotiChanges(ORG, [
+      repo.insertAgentChanges(ORG, [
         change({ op: 'create', before: null, after: state }),
         change(),
         change({ op: 'delete', before: state, after: null }),
@@ -174,11 +174,11 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
       undoneBy: null,
     })
     expect(rows[0].createdAt).toBeInstanceOf(Date)
-    expect(await inOrg(ORG, () => repo.findPilotiChange(ORG, rows[2].id))).toMatchObject({ op: 'delete', after: null, before: state })
+    expect(await inOrg(ORG, () => repo.findAgentChange(ORG, rows[2].id))).toMatchObject({ op: 'delete', after: null, before: state })
   })
 
   it('refuses a state that does not fit its op, a reply that is not created, and an undo by nobody or at no time', async () => {
-    const refused = (extra: Partial<NewPilotiChange>) => expect(record(extra)).rejects.toThrow()
+    const refused = (extra: Partial<NewAgentChange>) => expect(record(extra)).rejects.toThrow()
     await refused({ op: 'create', before: { status: 'open' }, after: { status: 'open' } })
     await refused({ op: 'update', before: null })
     await refused({ op: 'delete', before: { status: 'open' }, after: { status: 'open' } })
@@ -219,16 +219,16 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
 
     // A release naming another stamp clears nothing.
     await inOrg(ORG, () => repo.releaseUndo(ORG, { ...claim, undoneAt: new Date(claim.undoneAt!.getTime() - 1000) }))
-    expect(await inOrg(ORG, () => repo.findPilotiChange(ORG, row.id))).toMatchObject({ undoneBy: claim.undoneBy })
+    expect(await inOrg(ORG, () => repo.findAgentChange(ORG, row.id))).toMatchObject({ undoneBy: claim.undoneBy })
 
     await inOrg(ORG, () => repo.releaseUndo(ORG, claim))
-    expect(await inOrg(ORG, () => repo.findPilotiChange(ORG, row.id))).toMatchObject({ undoneAt: null, undoneBy: null })
+    expect(await inOrg(ORG, () => repo.findAgentChange(ORG, row.id))).toMatchObject({ undoneAt: null, undoneBy: null })
     expect(await inOrg(ORG, () => repo.claimUndo(ORG, row.id, OTHER_USER))).toMatchObject({ undoneBy: OTHER_USER })
   })
 
   it('is invisible to another organization, which cannot plant one on this document or conversation', async () => {
     const row = await record()
-    expect(await inOrg(OTHER_ORG, () => repo.findPilotiChange(OTHER_ORG, row.id))).toBeNull()
+    expect(await inOrg(OTHER_ORG, () => repo.findAgentChange(OTHER_ORG, row.id))).toBeNull()
     expect(await inOrg(OTHER_ORG, () => repo.claimUndo(OTHER_ORG, row.id, USER))).toBeNull()
     expect(await inOrg(OTHER_ORG, () => repo.listTurnChangeRows(OTHER_ORG, ids.conversation, ANSWER))).toEqual([])
     // Row-level security, not only the WHERE: the other tenant's scope sees no row at all.
@@ -249,15 +249,15 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
     const conversationId = await conversation(ORG, `${ids.conversation}_gone`, ids.project)
     const withThread = await record({ originConversationId: conversationId })
     await inOrg(ORG, () => db.execute(sql`delete from conversations where id = ${conversationId}`))
-    expect(await inOrg(ORG, () => repo.findPilotiChange(ORG, withThread.id))).toBeNull()
+    expect(await inOrg(ORG, () => repo.findAgentChange(ORG, withThread.id))).toBeNull()
 
     const doomed = await document(ORG, ids.project, 'Abbruch.pdf')
     const onDoomed = await record({ documentId: doomed })
     await inOrg(ORG, () => db.execute(sql`delete from documents where id = ${doomed}::uuid`))
-    expect(await inOrg(ORG, () => repo.findPilotiChange(ORG, onDoomed.id))).toBeNull()
+    expect(await inOrg(ORG, () => repo.findAgentChange(ORG, onDoomed.id))).toBeNull()
 
     // No mark with MARK's id was ever stored: the record never needed one.
     const markless = await record()
-    expect(await inOrg(ORG, () => repo.findPilotiChange(ORG, markless.id))).not.toBeNull()
+    expect(await inOrg(ORG, () => repo.findAgentChange(ORG, markless.id))).not.toBeNull()
   })
 })

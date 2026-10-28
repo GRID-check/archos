@@ -284,11 +284,11 @@ def tracker(monkeypatch):
     from agent.common import cost_tracking
 
     sink = _Tracker()
-    token = cost_tracking.grid_cost_tracker_var.set(sink)
+    token = cost_tracking.cost_tracker_var.set(sink)
     try:
         yield sink
     finally:
-        cost_tracking.grid_cost_tracker_var.reset(token)
+        cost_tracking.cost_tracker_var.reset(token)
 
 
 def _ranked(_request: httpx.Request) -> httpx.Response:

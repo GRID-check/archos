@@ -116,7 +116,7 @@ tasks:
     cmds:
       # Git is the platform prompt's source of truth (ADR-0060 (a)). This only
       # ever READS Langfuse: it writes the version under a label into
-      # `agents/piloti/prompts/piloti_static.md`, so an edit made in Langfuse
+      # `agents/piloti/prompts/chat_static.md`, so an edit made in Langfuse
       # can be committed and reviewed like any other.
       - '{{.PY}} scripts/prompts_pull.py {{.CLI_ARGS}}'
 

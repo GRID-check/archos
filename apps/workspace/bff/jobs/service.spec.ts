@@ -52,8 +52,8 @@ vi.mock('@/lib/retrieval-scope/collection-scope', () => ({
 
 vi.mock('@/lib/request-context', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/request-context')>()),
-  buildGridRequestContextWireHeaders: vi.fn(() => ({})),
-  encodeGridBudgetHeader: vi.fn(() => 'budget-header'),
+  buildRequestContextWireHeaders: vi.fn(() => ({})),
+  encodeBudgetHeader: vi.fn(() => 'budget-header'),
 }))
 vi.mock('@/lib/auth/person', () => ({
   resolvePerson: vi.fn(async () => ({ name: null, email: null, organizationName: null })),
@@ -133,7 +133,7 @@ import {
 } from './service'
 import { AGENT_RUN_INPUT_MAX_CHARS } from './types'
 import { getBudgetStatus } from '@/lib/budgets/service'
-import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
+import { buildRequestContextWireHeaders } from '@/lib/request-context'
 
 const emptySkill = {} as SkillSnapshot
 const skillSnapshot: SkillSnapshot = {
@@ -146,7 +146,7 @@ const skillSnapshot: SkillSnapshot = {
 
 const session = {
   userId: 'user_1',
-  email: 'p@grid.test',
+  email: 'p@example.test',
   organizationId: 'org_1',
   organizationMembershipId: 'om_1',
   role: 'member',
@@ -168,7 +168,7 @@ function definitionRow(overrides: Partial<TaskDefinition> = {}): TaskDefinition 
     title: 'Wochencheck',
     plan: { prompt: 'Prüf das', skill: emptySkill, dataSources: ['knowledge_layer'] },
     requesterUserId: 'user_1',
-    requesterEmail: 'p@grid.test',
+    requesterEmail: 'p@example.test',
     trigger: 'manual',
     enabled: true,
     scheduleCron: null,
@@ -193,7 +193,7 @@ function runRow(overrides: Partial<TaskRun> = {}): TaskRun {
     title: 'Wochencheck',
     plan: { prompt: 'Prüf das', skill: emptySkill, dataSources: ['knowledge_layer'] },
     requesterUserId: 'user_1',
-    requesterEmail: 'p@grid.test',
+    requesterEmail: 'p@example.test',
     trigger: 'schedule',
     triggeredBy: 'scheduler',
     status: 'running',
@@ -798,7 +798,7 @@ describe('submitAgentRun', () => {
     const before = Date.now()
     await submitAgentRun(spec)
 
-    const input = vi.mocked(buildGridRequestContextWireHeaders).mock.calls[0][0]
+    const input = vi.mocked(buildRequestContextWireHeaders).mock.calls[0][0]
     expect(input).toMatchObject({
       organizationId: 'org_1',
       userId: 'user_1',
@@ -806,7 +806,7 @@ describe('submitAgentRun', () => {
       conversationId: 's_conv',
     })
     // Without `issuedAt` the BFF refuses the envelope as an acting identity
-    // (`verifyGridRequestContextEnvelope`), and every person-acting tool with it.
+    // (`verifyRequestContextEnvelope`), and every person-acting tool with it.
     expect(input.issuedAt).toBeGreaterThanOrEqual(before)
     expect(input.issuedAt).toBeLessThanOrEqual(Date.now())
   })
@@ -823,7 +823,7 @@ describe('submitAgentRun', () => {
     await submitAgentRun(spec)
 
     // The agent reads a signed envelope's budget wholesale; without these the run has no token limit.
-    const input = vi.mocked(buildGridRequestContextWireHeaders).mock.calls[0][0]
+    const input = vi.mocked(buildRequestContextWireHeaders).mock.calls[0][0]
     expect(input.budget).toMatchObject({
       remainingOrgTokens: 900_000,
       remainingUserTokens: 40_000,

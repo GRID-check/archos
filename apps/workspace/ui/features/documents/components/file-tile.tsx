@@ -5,7 +5,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { motion, motionQuick, springPress } from '@/components/motion'
 import { cn } from '@/lib/utils'
 
-export interface GridTileShellProps extends Omit<ComponentProps<'div'>, 'ref'> {
+export interface FileTileShellProps extends Omit<ComponentProps<'div'>, 'ref'> {
   interactive?: boolean
   children: ReactNode
 }
@@ -43,11 +43,11 @@ const OFF_SCREEN_SKIP = '[content-visibility:auto] [contain-intrinsic-block-size
  * CONTENTS: a document shows its first page in the media well, a folder shows a
  * folder. That is why nobody ever noticed the branch was dead. It is gone, and
  * with it the last raw `amber-*` in this feature — chroma in this product
- * belongs to the source-signal system (`grid-design-language.md`), and gold
+ * belongs to the source-signal system (`design-language.md`), and gold
  * there means Büroablage provenance, which is what the `JPG` chip on the card
  * two cells over is saying.
  */
-export function GridTileShell({ interactive = true, className, children, ...rest }: GridTileShellProps): JSX.Element {
+export function GridTileShell({ interactive = true, className, children, ...rest }: FileTileShellProps): JSX.Element {
   const shell = (
     <div
       className={cn(
@@ -71,7 +71,7 @@ export function GridTileShell({ interactive = true, className, children, ...rest
   )
 }
 
-export function GridTileMedia({ className, children, ...rest }: ComponentProps<'div'>): JSX.Element {
+export function FileTileMedia({ className, children, ...rest }: ComponentProps<'div'>): JSX.Element {
   return (
     <div className={cn('relative w-full overflow-hidden border-b bg-card', className)} {...rest}>
       {children}
@@ -79,7 +79,7 @@ export function GridTileMedia({ className, children, ...rest }: ComponentProps<'
   )
 }
 
-export function GridTileBody({ className, children, ...rest }: ComponentProps<'div'>): JSX.Element {
+export function FileTileBody({ className, children, ...rest }: ComponentProps<'div'>): JSX.Element {
   return (
     <div className={cn('bg-card shadow-xs w-full overflow-hidden rounded-b-lg px-4 pb-3 pt-3.5', className)} {...rest}>
       {children}
@@ -87,7 +87,7 @@ export function GridTileBody({ className, children, ...rest }: ComponentProps<'d
   )
 }
 
-export function GridTileFooter({ className, children, ...rest }: ComponentProps<'div'>): JSX.Element {
+export function FileTileFooter({ className, children, ...rest }: ComponentProps<'div'>): JSX.Element {
   return (
     <div className={cn('text-muted-foreground mt-auto flex w-full items-center gap-1.5 px-3.5 py-2 text-xs', className)} {...rest}>
       {children}

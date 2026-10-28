@@ -93,7 +93,7 @@ METADATA_PREFIX = "langfuse.trace.metadata."
 #: the runner — see ``DeepResearcherAgent.run`` — the way ``cards/registry.py``
 #: and ``citations/session.py`` bind per turn.
 _CONTRIBUTED: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
-    "grid_langfuse_contributed", default=None
+    "langfuse_contributed", default=None
 )
 
 
@@ -310,7 +310,7 @@ def reset_contributions() -> None:
 # generation observation. The provider numbers DO enter the process:
 # OpenRouter's ``usage`` object (prompt/completion/total + ``cost`` +
 # cached/reasoning details) arrives on every chat completion and
-# ``GridCostTracker`` records it to ``llm_usage_events``. It never reaches
+# ``CostTracker`` records it to ``llm_usage_events``. It never reaches
 # the spans Langfuse renders, through two drops:
 #
 # 1. NAT's ``LangchainProfilerHandler.on_llm_end`` reads ONLY LangChain's
@@ -386,7 +386,7 @@ OBSERVATION_MODEL_NAME = "langfuse.observation.model.name"
 # `asyncio.to_thread` copies the context, so a `.set()` from the render thread
 # would die with it, while a mutation of the shared dict is what the loop sees.
 # LangGraph nodes copy the context too, which is why the box is bound in
-# `PilotiAgent.run` and not where the prompt is rendered.
+# `ChatAgent.run` and not where the prompt is rendered.
 #
 # THE KNOWN OVER-BROADNESS: a generation from another agent in this process —
 # the clarifier, deep research — renders its own prompt, which nothing manages,
@@ -401,7 +401,7 @@ _PROMPT_LINK: dict[str, Any] = {}
 
 #: The identity THIS turn rendered with, when a turn bound one; see the note.
 _TURN_PROMPT_LINK: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
-    "grid_turn_prompt_link", default=None
+    "turn_prompt_link", default=None
 )
 
 
@@ -793,10 +793,10 @@ def current_langfuse_attributes() -> dict[str, Any]:
     observe a concurrent researcher's later writes.
     """
     try:
-        from agent.project_context import GridRequestContext
+        from agent.project_context import RequestContext
         from agent.project_context import get_conversation_id_from_context
 
-        context = GridRequestContext.from_context()
+        context = RequestContext.from_context()
         return langfuse_attributes_for(
             organization_id=context.organization_id,
             project_id=context.project_id,

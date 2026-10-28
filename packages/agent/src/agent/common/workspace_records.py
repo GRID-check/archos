@@ -78,12 +78,12 @@ _JSON_STARTS = ("{", "[")
 #: The markers the workspace's wire puts on what Piloti wrote: a stored
 #: answer's ``role``, a Kommentar's or a Dokument's ``authoredBy``, a thread
 #: message's ``authorKind``. Matched casefolded.
-_PILOTI_AUTHORED: dict[str, frozenset[str]] = {
+_AGENT_AUTHORED: dict[str, frozenset[str]] = {
     "role": frozenset({"assistant"}),
     "authoredby": frozenset({"agent", "piloti"}),
     "authorkind": frozenset({"agent", "piloti"}),
 }
-_PILOTI_AUTHORED_TEXT_RE = re.compile(
+_AGENT_AUTHORED_TEXT_RE = re.compile(
     r'"(?:role|authoredBy|authorKind)"\s*:\s*"(?:assistant|agent|piloti)"', re.IGNORECASE
 )
 
@@ -144,23 +144,23 @@ def listing_record(text: str, tool: str = LISTING_TOOL) -> WorkspaceRecord | Non
     return WorkspaceRecord(tool, "read", stripped[:LISTING_MAX_CHARS])
 
 
-def _piloti_authored(value: Any) -> bool:
+def _agent_authored(value: Any) -> bool:
     """Whether ``value`` is an object the workspace marks as written by Piloti."""
     if not isinstance(value, dict):
         return False
     for key, item in value.items():
-        marks = _PILOTI_AUTHORED.get(str(key).casefold())
+        marks = _AGENT_AUTHORED.get(str(key).casefold())
         if marks and isinstance(item, str) and item.strip().casefold() in marks:
             return True
     return False
 
 
-def _without_piloti(value: Any) -> Any:
+def _without_agent_authorship(value: Any) -> Any:
     """``value`` with every object the workspace marks as Piloti's own taken out."""
     if isinstance(value, dict):
-        return {key: _without_piloti(item) for key, item in value.items() if not _piloti_authored(item)}
+        return {key: _without_agent_authorship(item) for key, item in value.items() if not _agent_authored(item)}
     if isinstance(value, list):
-        return [_without_piloti(item) for item in value if not _piloti_authored(item)]
+        return [_without_agent_authorship(item) for item in value if not _agent_authored(item)]
     return value
 
 
@@ -169,8 +169,8 @@ def _read_record(operation: str, text: str) -> WorkspaceRecord | None:
     try:
         parsed = json.loads(text)
     except ValueError:
-        return None if _PILOTI_AUTHORED_TEXT_RE.search(text) else WorkspaceRecord(operation, "read", text)
-    kept = None if _piloti_authored(parsed) else _without_piloti(parsed)
+        return None if _AGENT_AUTHORED_TEXT_RE.search(text) else WorkspaceRecord(operation, "read", text)
+    kept = None if _agent_authored(parsed) else _without_agent_authorship(parsed)
     if kept in (None, {}, []):
         return None
     return WorkspaceRecord(operation, "read", json.dumps(kept, ensure_ascii=False))

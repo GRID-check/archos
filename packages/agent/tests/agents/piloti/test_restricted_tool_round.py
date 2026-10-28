@@ -20,7 +20,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
 import nat.plugins.langchain.tool_wrapper  # noqa: F401  registers the LangChain wrapper
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
@@ -71,7 +71,7 @@ def _bypass_citation_pipeline():
         yield
 
 
-def _agent(tools: list[Any] | None = None) -> PilotiAgent:
+def _agent(tools: list[Any] | None = None) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
@@ -83,7 +83,7 @@ def _agent(tools: list[Any] | None = None) -> PilotiAgent:
     )
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=tools or [knowledge_search], max_tool_iterations=4)
+    return ChatAgent(llm_provider=provider, tools=tools or [knowledge_search], max_tool_iterations=4)
 
 
 async def _run(monkeypatch, answer: dict[str, Any] | None) -> tuple[list[str], RestrictedUse, list[dict]]:
@@ -135,7 +135,7 @@ async def test_an_admitted_result_reaches_the_model_and_confines_the_conversatio
 # the compiled graph can fail on that (docs/contributing/gotchas.md).
 
 
-class _QuietReaderConfig(FunctionBaseConfig, name="grid_test_quiet_restricted_reader"):
+class _QuietReaderConfig(FunctionBaseConfig, name="test_fixture_quiet_restricted_reader"):
     pass
 
 

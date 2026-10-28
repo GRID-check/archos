@@ -86,8 +86,8 @@ vi.mock('react-resizable-panels', async () => {
       )
     },
     Panel: ({ children, id, ...rest }: Record<string, unknown> & { children?: unknown; id?: string }) => {
-      if (id === 'grid-file-ask-file') declared.current = rest
-      if (id === 'grid-file-ask-chat') declaredChat.current = rest
+      if (id === 'file-ask-file') declared.current = rest
+      if (id === 'file-ask-chat') declaredChat.current = rest
       return React.createElement(
         'div',
         { 'data-slot': 'resizable-panel', id, ...pickDom(rest) },

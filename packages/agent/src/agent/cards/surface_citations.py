@@ -24,7 +24,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.surface_card import SURFACE_LAYOUTS
 from agent.cards.surface_card import SURFACE_TEXT
 from agent.cards.surface_card import SurfaceCard
@@ -135,7 +135,7 @@ def _hoisted(components: list[dict[str, Any]]) -> dict[str, Any] | None:
         return None
     props = {key: value for key, value in leaves[0].items() if key not in ("id", "component")}
     try:
-        return grid_card_adapter.validate_python({**props, "type": leaves[0]["component"]}).model_dump(
+        return answer_card_adapter.validate_python({**props, "type": leaves[0]["component"]}).model_dump(
             exclude_none=True
         )
     except ValidationError:

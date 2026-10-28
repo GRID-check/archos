@@ -513,7 +513,7 @@ class TestTheTwoReadersAgree:
             body="Brandabschnitte sind so auszubilden.",
         ),
         Hit(
-            file_name="konzept_piloti.md",
+            file_name="konzept_draft.md",
             page=2,
             collection="proj_abc",
             shelf="project",
@@ -595,7 +595,7 @@ class TestTheTwoReadersAgree:
         structured, _ = self.read_both_ways(self.RICH_HITS)
         assert [entry.citation_key for entry in structured] == [
             "oib-rl_2_ausgabe_mai_2023.pdf, p.12",
-            "konzept_piloti.md, p.2",
+            "konzept_draft.md, p.2",
             "lose_notiz.pdf",
             "langer_bericht.pdf, p.1",
         ]

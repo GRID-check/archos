@@ -38,7 +38,7 @@ vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
 vi.mock('@/lib/documents/version-content', () => ({ admitSubjectRead: vi.fn() }))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({
-  pilotiPeer: (conversationId: string, userId: string) => ({ peerId: `piloti-${conversationId}`, userId }),
+  agentPeer: (conversationId: string, userId: string) => ({ peerId: `piloti-${conversationId}`, userId }),
   publishAsAgent: vi.fn(),
   publishToDocumentRoom: vi.fn(async () => undefined),
   roomSnapshot: vi.fn(),
@@ -68,10 +68,10 @@ vi.mock('@/lib/db/tenant-context', async (original) => ({
   withTenant: (_scope: unknown, run: () => unknown) => run(),
 }))
 // The change record (ADR-0109) and the attention a write asks for, at their seams.
-vi.mock('@/lib/changes/repository', () => ({ insertPilotiChanges: vi.fn(async () => []) }))
+vi.mock('@/lib/changes/repository', () => ({ insertAgentChanges: vi.fn(async () => []) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/annotations/attention', () => ({
-  onPilotiWrote: vi.fn(async () => undefined),
+  onAgentWrote: vi.fn(async () => undefined),
   onMarkSettledByPerson: vi.fn(async () => undefined),
   onWakeEnded: vi.fn(async () => undefined),
   onAssigneeChanged: vi.fn(async () => undefined),
@@ -91,7 +91,7 @@ import { findDocumentInOrg } from '@/lib/documents/repository'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { admitSubjectRead } from '@/lib/documents/version-content'
 import { publishAsAgent, roomSnapshot } from '@/lib/realtime/document-channel'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import {
   deleteDocumentAnnotation,
@@ -113,12 +113,12 @@ import {
   onMarkReplied,
   onMarkSettledByPerson,
   onMarksSet,
-  onPilotiWrote,
+  onAgentWrote,
 } from '@/lib/annotations/attention'
-import { insertPilotiChanges } from '@/lib/changes/repository'
+import { insertAgentChanges } from '@/lib/changes/repository'
 import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
 import { expectRegistered } from '@/test-utils/audit'
-import type { PilotiChangeRow } from '@/lib/db/schema/piloti-changes'
+import type { AgentChangeRow } from '@/lib/db/schema/piloti-changes'
 import { POST } from './route'
 
 const SECRET = 'test-internal-token-annotations'
@@ -133,7 +133,7 @@ const CONTEXT = {
   conversationId: 'conv_1',
   issuedAt: Date.now(),
   collectionScope: ['proj_1_docs'],
-} as Partial<VerifiedGridRequestContext> as VerifiedGridRequestContext
+} as Partial<VerifiedRequestContext> as VerifiedRequestContext
 
 const post = (body: unknown) =>
   POST(
@@ -657,7 +657,7 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
         annotationId: MARK_ID,
         annotationNumber: 4,
         actorUserId: 'user_1',
-        byPiloti: true,
+        byAgent: true,
         previousAssigneeUserId: null,
         assigneeUserId: 'user_anna',
         open: true,
@@ -674,7 +674,7 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
 
     await vi.waitFor(() => expect(onMarkMoved).toHaveBeenCalledTimes(1))
     expect(onMarkMoved).toHaveBeenCalledWith(
-      expect.objectContaining({ move: 'resolved', actorUserId: 'user_1', byPiloti: true, annotationId: MARK_ID })
+      expect.objectContaining({ move: 'resolved', actorUserId: 'user_1', byAgent: true, annotationId: MARK_ID })
     )
     expect(onMarkSettledByPerson).toHaveBeenCalledWith({
       organizationId: 'org_1',
@@ -793,7 +793,7 @@ const TURN = {
   originMessageId: ANSWER,
   onBehalfOf: 'user_1',
 }
-const recorded = () => vi.mocked(insertPilotiChanges).mock.calls.flatMap(([, rows]) => rows)
+const recorded = () => vi.mocked(insertAgentChanges).mock.calls.flatMap(([, rows]) => rows)
 
 describe('POST /api/internal/document-annotations — what a turn changed is recorded with the turn', () => {
   beforeEach(() => {
@@ -835,8 +835,8 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
         },
       },
     ])
-    expect(vi.mocked(insertPilotiChanges).mock.calls[0][0]).toBe('org_1')
-    expect(onPilotiWrote).toHaveBeenCalledWith({
+    expect(vi.mocked(insertAgentChanges).mock.calls[0][0]).toBe('org_1')
+    expect(onAgentWrote).toHaveBeenCalledWith({
       organizationId: 'org_1',
       documentId: DOC_ID,
       annotationId: created[0].id,
@@ -859,7 +859,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
     expect(recorded()).toEqual([
       expect.objectContaining({ op: 'create', annotationId: 'ann_1', after: expect.objectContaining({ status: 'proposed' }) }),
     ])
-    expect(onPilotiWrote).toHaveBeenCalledWith(expect.objectContaining({ annotationId: 'ann_1', what: 'mark' }))
+    expect(onAgentWrote).toHaveBeenCalledWith(expect.objectContaining({ annotationId: 'ann_1', what: 'mark' }))
   })
 
   it('records a change with only the fields that moved, as they were and as Piloti left them', async () => {
@@ -877,7 +877,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
       },
     ])
     // The note is part of the change, not a reply of its own.
-    expect(onPilotiWrote).not.toHaveBeenCalled()
+    expect(onAgentWrote).not.toHaveBeenCalled()
   })
 
   it('records nothing for a change that moved nothing, or one refused as stale', async () => {
@@ -886,7 +886,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
     const stale = await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'open', expectedStatus: 'open', note: NOTE })
 
     expect(stale.status).toBe(409)
-    expect(insertPilotiChanges).not.toHaveBeenCalled()
+    expect(insertAgentChanges).not.toHaveBeenCalled()
   })
 
   it('records a delete with everything setting the mark again takes', async () => {
@@ -945,7 +945,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
         after: { body: 'Die Breite ist im Schnitt B-B kotiert.' },
       },
     ])
-    expect(onPilotiWrote).toHaveBeenCalledWith(
+    expect(onAgentWrote).toHaveBeenCalledWith(
       expect.objectContaining({ annotationId: MARK_ID, annotationNumber: 4, assigneeUserId: 'user_anna', what: 'reply', replyId })
     )
   })
@@ -958,7 +958,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
 
     expect(response.status).toBe(200)
     expect(stored().status).toBe('resolved')
-    expect(insertPilotiChanges).not.toHaveBeenCalled()
+    expect(insertAgentChanges).not.toHaveBeenCalled()
     warn.mockRestore()
   })
 
@@ -973,12 +973,12 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
     ]) {
       expect((await post({ ...body, answerMessageId: ANSWER })).status).toBe(200)
     }
-    expect(insertPilotiChanges).not.toHaveBeenCalled()
-    expect(onPilotiWrote).not.toHaveBeenCalled()
+    expect(insertAgentChanges).not.toHaveBeenCalled()
+    expect(onAgentWrote).not.toHaveBeenCalled()
   })
 
   it('does not fail a change that landed when its record cannot be written', async () => {
-    vi.mocked(insertPilotiChanges).mockRejectedValueOnce(new Error('connection reset'))
+    vi.mocked(insertAgentChanges).mockRejectedValueOnce(new Error('connection reset'))
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
     const response = await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'resolved', note: NOTE })
@@ -1013,8 +1013,8 @@ describe('POST /api/internal/document-annotations — what a turn changed is in 
   })
 
   it('records a change once, as the person the turn acted for, with the turn and the field names that moved', async () => {
-    vi.mocked(insertPilotiChanges).mockImplementationOnce(async (_org, rows) =>
-      rows.map((row) => ({ ...row, id: 'c0000000-0000-4000-8000-000000000001' }) as PilotiChangeRow)
+    vi.mocked(insertAgentChanges).mockImplementationOnce(async (_org, rows) =>
+      rows.map((row) => ({ ...row, id: 'c0000000-0000-4000-8000-000000000001' }) as AgentChangeRow)
     )
 
     await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'resolved', assignee: 'Anna Berger', note: NOTE })
@@ -1088,7 +1088,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is in 
   })
 
   it('records a change the ledger could not keep, without a change id: the change stands either way', async () => {
-    vi.mocked(insertPilotiChanges).mockRejectedValueOnce(new Error('connection reset'))
+    vi.mocked(insertAgentChanges).mockRejectedValueOnce(new Error('connection reset'))
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 
@@ -1113,7 +1113,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is in 
 
     expect(response.status).toBe(200)
     expect(stored().status).toBe('resolved')
-    expect(insertPilotiChanges).toHaveBeenCalledTimes(1)
+    expect(insertAgentChanges).toHaveBeenCalledTimes(1)
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('piloti.change.applied'), expect.any(Error))
     warn.mockRestore()
   })
@@ -1140,8 +1140,8 @@ describe('POST /api/internal/document-annotations — an office that has Piloti 
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toMatchObject({ ...refusal, details: { ...refusal.details, op: 'create' } })
     expect(insertDocumentAnnotations).not.toHaveBeenCalled()
-    expect(insertPilotiChanges).not.toHaveBeenCalled()
-    expect(onPilotiWrote).not.toHaveBeenCalled()
+    expect(insertAgentChanges).not.toHaveBeenCalled()
+    expect(onAgentWrote).not.toHaveBeenCalled()
   })
 
   it('still proposes: the mark the person asked for is born a proposal', async () => {

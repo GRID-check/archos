@@ -34,7 +34,7 @@ import { InsufficientStorageError, UnprocessableError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 
 /** The refusal every admitting path reports, so the reader sees one sentence. */
 export const STORAGE_QUOTA_EXCEEDED_MESSAGE =
@@ -253,7 +253,7 @@ export async function admitReplacementWithinQuota(
  * row in the record of who changed what. A guard one file away is a fact about
  * today's call graph; this one is a property of the function.
  *
- * It takes a `GridSession` because a platform owner browsing another org holds no
+ * It takes a `UserSession` because a platform owner browsing another org holds no
  * membership in it — `platformPermissions` covers that cross-org path.
  *
  * Refuses a quota below what the org already stores: accepting one strands the
@@ -261,7 +261,7 @@ export async function admitReplacementWithinQuota(
  * already there. Freeing space first is the only honest order of operations.
  */
 export async function setStorageQuota(
-  session: GridSession,
+  session: UserSession,
   organizationId: string,
   quotaBytes: number | null,
   request?: Request

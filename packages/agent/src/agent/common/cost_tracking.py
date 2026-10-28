@@ -1,6 +1,6 @@
 """Unified LLM cost capture and budget enforcement.
 
-One handler, zero per-agent wiring: ``GridCostTracker`` is installed through
+One handler, zero per-agent wiring: ``CostTracker`` is installed through
 LangChain's ``register_configure_hook`` seam, which adds the handler held in a
 ContextVar to *every* callback manager configured inside the active context.
 Every ``ainvoke``/``astream`` of every chat model in every agent therefore
@@ -77,7 +77,7 @@ _FLUSH_BATCH_SIZE = 5
 # Single background worker so ledger writes never block the answer path and
 # arrive in order. Daemon thread — a lost final batch on hard shutdown is
 # acceptable (the ledger is reconcilable via OpenRouter's generation API).
-_flush_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="grid-usage-flush")
+_flush_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="usage-flush")
 
 
 class BudgetExceededError(RuntimeError):
@@ -343,7 +343,7 @@ def extract_usage_event(response: Any) -> UsageEvent | None:
     )
 
 
-class GridCostTracker(BaseCallbackHandler):
+class CostTracker(BaseCallbackHandler):
     """Request-scoped callback: capture every generation's cost, enforce budget.
 
     Sync ``BaseCallbackHandler`` methods are invoked for async runs as well
@@ -604,12 +604,12 @@ def _post_usage_events(payload: dict[str, Any]) -> None:
 # register_configure_hook adds the handler held here to every callback manager
 # LangChain configures while the var is set (inheritable across sub-runs) —
 # the single seam that makes cost capture agent-agnostic.
-grid_cost_tracker_var: ContextVar[GridCostTracker | None] = ContextVar("grid_cost_tracker", default=None)
+cost_tracker_var: ContextVar[CostTracker | None] = ContextVar("cost_tracker", default=None)
 
 try:
     from langchain_core.tracers.context import register_configure_hook
 
-    register_configure_hook(grid_cost_tracker_var, inheritable=True)
+    register_configure_hook(cost_tracker_var, inheritable=True)
     _CONFIGURE_HOOK_INSTALLED = True
 except Exception:  # pragma: no cover - defensive against langchain-core API drift
     logger.exception("Could not install LangChain configure hook; LLM cost tracking is DISABLED")
@@ -654,7 +654,7 @@ def install_responses_cost_carrier() -> bool:
     if original is None:
         logger.error("langchain-openai has no _construct_lc_result_from_responses_api; Responses calls record no cost")
         return False
-    if getattr(original, "__grid_cost_carrier__", False):
+    if getattr(original, "__cost_carrier__", False):
         return True
 
     @functools.wraps(original)
@@ -669,7 +669,7 @@ def install_responses_cost_carrier() -> bool:
             logger.warning("Could not carry the Responses usage cost", exc_info=True)
         return result
 
-    construct.__grid_cost_carrier__ = True  # type: ignore[attr-defined]
+    construct.__cost_carrier__ = True  # type: ignore[attr-defined]
     lc_openai._construct_lc_result_from_responses_api = construct
     return True
 
@@ -707,7 +707,7 @@ def record_usage_event(
     reports no usage still costs money, and a row that says "estimate" is
     honest about which number it is, where a zero would read as free.
     """
-    tracker = grid_cost_tracker_var.get()
+    tracker = cost_tracker_var.get()
     if tracker is None:
         return False
     try:
@@ -777,7 +777,7 @@ def record_completion_usage(
     counted. Attribution is the ambient tracker's; with none nothing is
     recorded. Never raises.
     """
-    tracker = grid_cost_tracker_var.get()
+    tracker = cost_tracker_var.get()
     if tracker is None:
         return False
     try:
@@ -802,7 +802,7 @@ def _metered(create: Any, role: str) -> Any:
     @functools.wraps(create)
     def call(*args: Any, **kwargs: Any) -> Any:
         response = create(*args, **kwargs)
-        tracker = grid_cost_tracker_var.get()
+        tracker = cost_tracker_var.get()
         if tracker is not None:
             try:
                 event = _usage_event_from_openai(response, role=role, requested_model=kwargs.get("model"))
@@ -812,7 +812,7 @@ def _metered(create: Any, role: str) -> Any:
                 logger.warning("Could not record a %s usage event", role, exc_info=True)
         return response
 
-    call.__grid_metered__ = True  # type: ignore[attr-defined]
+    call.__metered__ = True  # type: ignore[attr-defined]
     return call
 
 
@@ -837,7 +837,7 @@ def meter_openai_client(client: Any, *, role: str) -> Any:
         except AttributeError:
             continue
         create = getattr(resource, "create", None)
-        if create is None or getattr(create, "__grid_metered__", False):
+        if create is None or getattr(create, "__metered__", False):
             continue
         resource.create = _metered(create, role)
     return client
@@ -932,14 +932,14 @@ def track_llm_costs(
     between the finished answer and its first delta. Every other caller keeps
     the inline post, which is what a worker about to exit needs.
     """
-    tracker: GridCostTracker | None = None
+    tracker: CostTracker | None = None
     token = None
     try:
         resolved_identity = identity if identity is not None else _read_identity_from_context()
         resolved_budget = budget
         if resolved_budget is None:
             resolved_budget = BudgetSnapshot.from_header(_read_budget_header_from_context())
-        tracker = GridCostTracker(
+        tracker = CostTracker(
             organization_id=resolved_identity.get("organization_id"),
             user_id=resolved_identity.get("user_id"),
             project_id=resolved_identity.get("project_id"),
@@ -949,14 +949,14 @@ def track_llm_costs(
             budget=resolved_budget,
             activity=activity,
         )
-        token = grid_cost_tracker_var.set(tracker)
+        token = cost_tracker_var.set(tracker)
     except Exception:
         logger.warning("Could not activate LLM cost tracking", exc_info=True)
     try:
         yield tracker
     finally:
         if token is not None:
-            grid_cost_tracker_var.reset(token)
+            cost_tracker_var.reset(token)
         if tracker is not None:
             tracker.log_prompt_cache_summary()
         if tracker is not None and inline_flush:

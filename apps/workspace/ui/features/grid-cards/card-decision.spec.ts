@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import {
   ACTING_CARD_TYPES,
   CARD_INTERACTIVITY,
@@ -75,9 +75,9 @@ describe('reconcileCardInteractions', () => {
       content,
       kind: 'preference',
       confidence: 'high',
-    }) as unknown as GridCard
+    }) as unknown as AnswerCard
 
-  const summary = () => ({ type: 'summary', title: 'Überblick' }) as unknown as GridCard
+  const summary = () => ({ type: 'summary', title: 'Überblick' }) as unknown as AnswerCard
 
   it('keeps a decision when the card at that index is unchanged', () => {
     const cards = [summary(), memory('REI 90')]
@@ -122,7 +122,7 @@ describe('reconcileCardInteractions', () => {
   })
 
   it('drops a decision whose index is now a rejected-card hole', () => {
-    // `validateGridCards` keeps wire positions with `undefined` holes rather
+    // `validateAnswerCards` keeps wire positions with `undefined` holes rather
     // than renumbering: a hole carries no card, so nothing can be decided
     // about it, and the decision must not slide onto a neighbour.
     const before = [memory('REI 90')]
@@ -156,7 +156,7 @@ describe('item decisions', () => {
       items: [
         { action: 'proposed', annotation_id: 'ann-7', number: 7, page: 1, shape: 'point', x: 0.1, y: 0.1, kind: 'hint', body },
       ],
-    }) as unknown as GridCard
+    }) as unknown as AnswerCard
 
   it('keys one item under its card and reads the card back out of the key', () => {
     const key = itemDecisionKey('canvas_activity-2', 'ann-7')

@@ -5,7 +5,7 @@
 /**
  * Only the dispatcher may enter the acting session (ADR-0122).
  *
- * `runAsActingSession` makes `getGridSession()` answer with a session no
+ * `runAsActingSession` makes `getUserSession()` answer with a session no
  * cookie proved, so every route's `authz` trusts whoever bound it. The
  * dispatcher binds a session `lib/agent-api/principal.ts` resolved from a
  * verified credential; a second caller would be a way past every gate, and

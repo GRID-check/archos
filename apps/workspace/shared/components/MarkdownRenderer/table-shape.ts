@@ -2,7 +2,7 @@
  * What a GFM table in an answer IS, read once off its cells, for the renderer.
  *
  * The answer writes its checks, comparisons and values-by-class as tables
- * (`piloti_static.md`, <formatting> STRUCTURE). Four things about such a table
+ * (`chat_static.md`, <formatting> STRUCTURE). Four things about such a table
  * are knowable only from all of its rows at once, which a per-cell component
  * never sees, so this rehype pass settles them and leaves the answer on the
  * element's properties:

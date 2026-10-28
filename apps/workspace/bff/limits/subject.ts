@@ -19,9 +19,9 @@
  * ioredis), which is more than a key-building helper should drag along.
  */
 
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 
 /** The bucket subject for a member acting inside their active organization. */
-export function memberSubject(session: Pick<GridSession, 'organizationId' | 'userId'>): string {
+export function memberSubject(session: Pick<UserSession, 'organizationId' | 'userId'>): string {
   return `${session.organizationId ?? 'no-org'}:${session.userId}`
 }

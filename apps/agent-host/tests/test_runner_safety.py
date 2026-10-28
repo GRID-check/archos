@@ -29,7 +29,7 @@ from agent_host.jobs.runner import JOB_DEGRADED_EVENT_TYPE
 from agent_host.jobs.runner import CancellationMonitor
 from agent_host.jobs.runner import _b64url_encode_text
 from agent_host.jobs.runner import _create_agent_instance
-from agent_host.jobs.runner import _generate_grid_cards
+from agent_host.jobs.runner import _generate_answer_cards
 from agent_host.jobs.runner import _purge_deep_checkpoint
 from agent_host.jobs.runner import _resolve_deep_research_checkpointer
 from agent_host.jobs.runner import _update_status_if_not_terminal
@@ -650,12 +650,12 @@ class TestCardFailureIsADegradedReason:
         assert transparency == {"research_truncated": True, "degraded_reasons": ["cards_generation_failed"]}
 
     @pytest.mark.asyncio
-    async def test_generate_grid_cards_reports_a_lost_attempt(self) -> None:
+    async def test_generate_answer_cards_reports_a_lost_attempt(self) -> None:
         with patch(
             "agent.cards.generate.generate_cards_result",
             AsyncMock(side_effect=RuntimeError("the worker has no card model")),
         ):
-            result = await _generate_grid_cards(MagicMock(), "q", "report")
+            result = await _generate_answer_cards(MagicMock(), "q", "report")
 
         assert result.cards is None
         assert result.failed is True
@@ -934,12 +934,12 @@ class TestWorkerHeaderTextEncoding:
         """The runner's encoding reaches the reader with the text intact."""
         from starlette.datastructures import Headers
 
-        from agent.project_context import GridRequestContext
+        from agent.project_context import RequestContext
 
         encoded = _b64url_encode_text(self.GERMAN_CONTEXT)
         assert encoded.isascii()
         headers = Headers(headers={"x-grid-project-context": encoded})
-        ctx = GridRequestContext.from_headers(dict(headers))
+        ctx = RequestContext.from_headers(dict(headers))
         assert ctx.project_context == self.GERMAN_CONTEXT
 
 

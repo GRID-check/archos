@@ -31,7 +31,7 @@ import { usePushNotifications } from '../hooks/use-push-notifications'
 import { promptIsDue, usePromptOnScreen, usePushPromptDismissal } from './notification-prompt'
 
 const SHOWN_KEY = 'push-offer.shown'
-const TOAST_ID = 'piloti-push-offer'
+const TOAST_ID = 'agent-push-offer'
 /** Long enough to read two sentences and decide; a toast, not a dialog. */
 const OFFER_MS = 20_000
 

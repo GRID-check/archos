@@ -30,8 +30,8 @@ vi.mock('@/lib/projects/folder-bin-jobs', () => ({ runPurgeBinnedChunksSlice: vi
 vi.mock('@/lib/projects/collection-placement', () => ({ runPlacementReingestSlice: vi.fn() }))
 vi.mock('@/lib/mail-import/job', () => ({ runMailImportSlice: vi.fn() }))
 vi.mock('@/lib/tasks/service', () => ({ runReportFilingJob: vi.fn() }))
-vi.mock('@/lib/annotations/wake-job', () => ({ runPilotiWake: vi.fn() }))
-vi.mock('@/lib/annotations/wake-stop-job', () => ({ runPilotiWakeStop: vi.fn() }))
+vi.mock('@/lib/annotations/wake-job', () => ({ runAgentWake: vi.fn() }))
+vi.mock('@/lib/annotations/wake-stop-job', () => ({ runAgentWakeStop: vi.fn() }))
 vi.mock('@/lib/project-intake/service', () => ({ runIntakeReadSlice: vi.fn() }))
 vi.mock('@/lib/filing/root-sort-run', () => ({
   endRunOfDepartedRequester: vi.fn(),
@@ -46,7 +46,7 @@ import { JOB_HANDLERS } from './handlers'
 const RUN = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
 const payload = {
   runId: RUN,
-  requester: { userId: 'anna', email: 'anna@grid.test', organizationMembershipId: 'om-1', role: 'member', permissions: [] },
+  requester: { userId: 'anna', email: 'anna@example.test', organizationMembershipId: 'om-1', role: 'member', permissions: [] },
 }
 const SESSION = { userId: 'anna', organizationId: 'org-1' } as Partial<AuthorizedSession> as AuthorizedSession
 
@@ -56,7 +56,7 @@ describe('JOB_HANDLERS.root_sort', () => {
   it('runs the slice as the requester, looked up strictly', async () => {
     vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue(SESSION)
     expect(await JOB_HANDLERS.root_sort({ organizationId: 'org-1', payload, attempts: 1 })).toEqual({ done: false, payload })
-    expect(resolvePinnedRequesterSessionStrict).toHaveBeenCalledWith({ userId: 'anna', email: 'anna@grid.test', organizationId: 'org-1' })
+    expect(resolvePinnedRequesterSessionStrict).toHaveBeenCalledWith({ userId: 'anna', email: 'anna@example.test', organizationId: 'org-1' })
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
     expect(runRootSortSlice).toHaveBeenCalledWith(SESSION, payload)
   })

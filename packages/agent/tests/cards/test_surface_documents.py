@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.surface_documents import _BRIEF_SNIPPET_MAX
 from agent.cards.surface_documents import _CHUNK_TOP_K
 from agent.cards.surface_documents import _TOOL_DESCRIPTION
@@ -169,7 +169,7 @@ class TestAggregateSurfaced:
         assert [d["file_name"] for d in out] == ["a.pdf"]
 
 
-class TestDocumentGridCardSchema:
+class TestDocumentAnswerCardSchema:
     def test_validates_one_or_many_the_same_type(self):
         one = {
             "type": "document_grid",
@@ -194,8 +194,8 @@ class TestDocumentGridCardSchema:
                 {"file_name": "Schnitt.pdf", "source": "project"},
             ],
         }
-        one_out = grid_card_adapter.validate_python(one).model_dump(exclude_none=True)
-        many_out = grid_card_adapter.validate_python(many).model_dump(exclude_none=True)
+        one_out = answer_card_adapter.validate_python(one).model_dump(exclude_none=True)
+        many_out = answer_card_adapter.validate_python(many).model_dump(exclude_none=True)
         assert one_out["type"] == many_out["type"] == "document_grid"
         assert len(one_out["documents"]) == 1
         assert len(many_out["documents"]) == 2
@@ -205,7 +205,7 @@ class TestDocumentGridCardSchema:
 
         card = {"type": "document_grid", "title": "Leer", "documents": []}
         with pytest.raises(Exception):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     def test_validate_cards_drops_model_fabricated_system_cards(self):
         from agent.cards.models import validate_cards

@@ -13,7 +13,7 @@ from agent.agents.piloti.conversation_register import chat_deepresearcher_agent
 from agent.common import profiler as profiler_mod
 from agent.common.platform_lessons import LessonsResolution
 from agent.knowledge import ingest_status_store
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.turn import context as context_mod
 from agent.turn import inventory as inventory_mod
 
@@ -78,13 +78,13 @@ def workflow_harness(monkeypatch):
     )
     # The scoping module parses the envelope on its own account; count only this module's parse.
     monkeypatch.setattr(register_mod, "get_scoped_collections_from_context", lambda: None)
-    real_from_context = GridRequestContext.from_context.__func__
+    real_from_context = RequestContext.from_context.__func__
 
     def counting(cls):
         seen["from_context"] += 1
         return real_from_context(cls)
 
-    monkeypatch.setattr(GridRequestContext, "from_context", classmethod(counting))
+    monkeypatch.setattr(RequestContext, "from_context", classmethod(counting))
 
     async def workflow(shallow):
         config = ChatDeepResearcherConfig()

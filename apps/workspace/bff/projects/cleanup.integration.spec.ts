@@ -69,7 +69,7 @@ const sessionOf = (userId: string, membershipId: string): AuthorizedSession =>
     userId,
     organizationId: ORG,
     organizationMembershipId: membershipId,
-    email: `${userId}@grid.test`,
+    email: `${userId}@example.test`,
     role: 'member',
     roles: ['member'],
     permissions: PROJECT_WRITE,

@@ -378,7 +378,7 @@ should not copy it without checking.
 
 There is no `presentation/` collection any more. Its one skill, `diagrams`,
 was retired because every rule it held was already in the static prompt
-(`piloti_static.md` `<formatting>`), and loading it cost a full round. What a
+(`chat_static.md` `<formatting>`), and loading it cost a full round. What a
 diagram is drawn as, and why, is in
 [`docs/design/answer-visuals.md`](../design/answer-visuals.md).
 

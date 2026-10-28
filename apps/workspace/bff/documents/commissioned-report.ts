@@ -9,7 +9,7 @@
  */
 
 import 'server-only'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 import { requesterOf } from '@/lib/jobs-queue/types'
 import { findProjectIdByCollectionName } from '@/lib/projects/repository'
 import { findFiledResearchReport, findReportFilingRefusal, queueResearchReportFiling } from './research-report'
@@ -158,7 +158,7 @@ export async function fileCommissionedReport({
   /** The backend async job id whose report was read. */
   runId: string
   /** The reader's session; `null` in anonymous mode, which files nothing. */
-  session: GridSession | null
+  session: UserSession | null
   /** The backend's report response, as `JobReportResponse` defines it. */
   body: unknown
 }): Promise<ReportFilingOutcome | null> {

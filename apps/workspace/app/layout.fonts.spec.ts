@@ -23,7 +23,7 @@ vi.mock('next/font/google', () => {
 vi.mock('./providers', () => ({ Providers: () => null }))
 vi.mock('./chunk-reload-guard', () => ({ ChunkReloadGuard: () => null }))
 vi.mock('@/components/shell/navigation-trail', () => ({ NavigationTrail: () => null }))
-vi.mock('@/lib/auth/session', () => ({ getGridSession: vi.fn() }))
+vi.mock('@/lib/auth/session', () => ({ getUserSession: vi.fn() }))
 vi.mock('@/lib/db/tenant-context', () => ({ runWithTenantSlot: vi.fn() }))
 vi.mock('@/lib/documents/vlm-capability', () => ({ isVlmConfigured: vi.fn() }))
 vi.mock('@/i18n/server', () => ({ getLocale: vi.fn() }))

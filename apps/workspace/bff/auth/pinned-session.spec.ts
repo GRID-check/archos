@@ -15,7 +15,7 @@ import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
 import { resolvePerson } from './person'
 import { resolvePinnedRequesterSession, resolvePinnedRequesterSessionStrict } from './pinned-session'
 
-const requester = { userId: 'user_owner', email: 'owner@grid.test', organizationId: 'org_1' }
+const requester = { userId: 'user_owner', email: 'owner@example.test', organizationId: 'org_1' }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -37,7 +37,7 @@ describe('resolvePinnedRequesterSession', () => {
     expect(resolveSubjectMembership).toHaveBeenCalledWith('org_1', 'user_owner')
     expect(session).toMatchObject({
       userId: 'user_owner',
-      email: 'owner@grid.test',
+      email: 'owner@example.test',
       organizationId: 'org_1',
       organizationMembershipId: 'om_1',
       role: 'member',
@@ -69,15 +69,15 @@ describe('resolvePinnedRequesterSession', () => {
 
   it('knows the person by name, as a live session does, so an unattended turn is not addressed as nobody', async () => {
     vi.mocked(resolvePerson).mockResolvedValueOnce({
-      name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord',
+      name: 'Anna Weber', email: 'anna@example.test', organizationName: 'Atelier Nord',
     })
 
     const session = await resolvePinnedRequesterSession({ ...requester, email: null })
 
     expect(resolvePerson).toHaveBeenCalledWith('org_1', 'user_owner')
     // The stored email stands where the row has one; WorkOS fills it where it does not.
-    expect(session).toMatchObject({ name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' })
-    expect((await resolvePinnedRequesterSession(requester))?.email).toBe('owner@grid.test')
+    expect(session).toMatchObject({ name: 'Anna Weber', email: 'anna@example.test', organizationName: 'Atelier Nord' })
+    expect((await resolvePinnedRequesterSession(requester))?.email).toBe('owner@example.test')
   })
 
   it('is nobody when the requester left the organization', async () => {

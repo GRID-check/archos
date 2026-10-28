@@ -48,7 +48,7 @@ from typing import Any
 from uuid import uuid4
 
 from agent.cards.look_card import MAX_LOOK_ITEMS
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import extend_or_add
 from agent.cards.registry import get_card_registry
 from agent.common.page_region_words import where_on_the_page
@@ -319,7 +319,7 @@ def place_look_cards(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) 
 
         def build(items: list[dict[str, Any]], document: dict[str, Any] = document) -> dict[str, Any]:
             card = {"type": CARD_TYPE, "document": document, "items": items}
-            return grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+            return answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
 
         if extend_or_add(registry, entry["item"], owns=owns, build=build, max_items=MAX_LOOK_ITEMS) is not None:
             landed += 1

@@ -14,7 +14,7 @@ import {
   type ScopedCollection,
 } from '@/lib/retrieval-scope/collection-scope'
 import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 
 export interface RequestContext {
   projectId?: string
@@ -67,7 +67,7 @@ function isAuthRequired(): boolean {
 }
 
 export async function resolveActiveProjectId(
-  session: GridSession | null,
+  session: UserSession | null,
   explicitProjectId?: string
 ): Promise<string | undefined> {
   if (explicitProjectId) {
@@ -184,7 +184,7 @@ async function resolveProjectCollectionName(
  * what non-shelf-aware paths pass along; the shelves live on the header.
  */
 export async function buildCollectionScopeFromRequest(
-  session: GridSession | null,
+  session: UserSession | null,
   context: RequestContext
 ): Promise<{
   scope: string[]

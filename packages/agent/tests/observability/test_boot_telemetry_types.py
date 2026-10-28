@@ -42,9 +42,9 @@ def test_nat_plugins_entry_points_name_the_telemetry_modules():
     assert plugins["otel_redaction"] == "agent.observability.otel_header_redaction_exporter"
 
 
-def test_start_web_registers_grid_telemetry_before_load_config():
+def test_start_web_registers_telemetry_before_load_config():
     src = START_WEB.read_text(encoding="utf-8")
-    register_at = src.index("register_grid_telemetry")
+    register_at = src.index("register_telemetry")
     load_at = src.index("load_config(")
     assert register_at < load_at
 
@@ -55,9 +55,9 @@ def test_the_web_boot_readings_are_named_after_the_role_not_after_web():
         assert 'BootClock("web")' not in path.read_text(encoding="utf-8"), path
 
 
-def test_worker_job_registers_grid_telemetry_before_load_config():
+def test_worker_job_registers_telemetry_before_load_config():
     src = AGENT_JOB.read_text(encoding="utf-8")
-    register_at = src.index("register_grid_telemetry()")
+    register_at = src.index("register_telemetry()")
     load_at = src.index("load_config(request.config_file_path)")
     assert register_at < load_at
 

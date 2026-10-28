@@ -8,7 +8,7 @@ is not valid. This module is the FAIL-CLOSED enforcement point for that rule.
 
 Design
 ------
-``GridContextEnvelopeMiddleware`` is a raw ASGI middleware, following the
+``RequestContextEnvelopeMiddleware`` is a raw ASGI middleware, following the
 same pattern as ``agent_host.auth.middleware.AuthMiddleware`` (not Starlette's
 ``BaseHTTPMiddleware``, which buffers the response body and breaks SSE
 streaming — several routes here stream). It is registered in
@@ -41,7 +41,7 @@ Enforcement (403 / WS policy-violation close) applies only when ALL of:
    "jwt"``, set by ``JWTValidator.validate`` — see ``auth/jwt_validator.py``);
 3. the request path is NOT one of the ``ENVELOPE_EXEMPT_*_PATH_PREFIXES``
    below;
-4. no valid envelope is present (see ``GridRequestContext.from_envelope``
+4. no valid envelope is present (see ``RequestContext.from_envelope``
    in ``agent.project_context`` — the single verify function this module
    calls, shared with the runtime ``from_context()`` parse path).
 
@@ -78,7 +78,7 @@ EXEMPT (enforcement never applies):
   signs (ADR-0084), so they are enforced like the submit.
 
 Fail-open note (dev): when ``INTERNAL_API_TOKEN`` is unset,
-``GridRequestContext.from_envelope`` skips HMAC verification but still
+``RequestContext.from_envelope`` skips HMAC verification but still
 requires the envelope header to be present and well-formed — so local dev
 without the token configured still exercises the "did every producer
 remember to attach the envelope" contract, just without the integrity check
@@ -100,7 +100,7 @@ from starlette.types import Send
 
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 
 from .auth.middleware import _load_external_hostnames
 from .auth.middleware import resolve_request_user
@@ -184,10 +184,10 @@ def _has_valid_envelope(headers: dict[bytes, bytes]) -> bool:
     envelope = _header(headers, REQUEST_CONTEXT_ENVELOPE_HEADER)
     sig = _header(headers, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER)
     secret = os.environ.get("INTERNAL_API_TOKEN")
-    return GridRequestContext.from_envelope(envelope, sig, secret) is not None
+    return RequestContext.from_envelope(envelope, sig, secret) is not None
 
 
-class GridContextEnvelopeMiddleware:
+class RequestContextEnvelopeMiddleware:
     """Fail-closed enforcement of the signed context envelope (see module docstring).
 
     Args:
@@ -221,7 +221,7 @@ class GridContextEnvelopeMiddleware:
         self._exempt_http = tuple(exempt_http_path_prefixes)
         self._exempt_websocket = tuple(exempt_websocket_path_prefixes)
         logger.info(
-            "GridContextEnvelopeMiddleware: require_auth=%s exempt_http=%s exempt_websocket=%s",
+            "RequestContextEnvelopeMiddleware: require_auth=%s exempt_http=%s exempt_websocket=%s",
             require_auth,
             self._exempt_http,
             self._exempt_websocket,

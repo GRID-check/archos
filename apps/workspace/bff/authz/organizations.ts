@@ -8,13 +8,13 @@
  * via hasPermission's back-compat rule / the explicit check below.
  */
 
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { hasPermission, ORG_PERMISSIONS } from './permissions'
 
 /** The WorkOS widget permission that gates member management. */
 export const USERS_TABLE_MANAGE = 'widgets:users-table:manage'
 
-type SessionSlice = Pick<GridSession, 'role' | 'permissions'>
+type SessionSlice = Pick<UserSession, 'role' | 'permissions'>
 
 /**
  * True when the session may administer its organization (settings, members).

@@ -53,7 +53,7 @@ function withoutMention(text: string, mentions: readonly DraftMention[], targetI
  * The reply box and the draft box: Enter sends, Shift+Enter breaks the line,
  * Escape lets go.
  *
- * `onAskPiloti`: a second way out, the text handed to Piloti instead
+ * `onAskAgent`: a second way out, the text handed to Piloti instead
  * (⌘/Ctrl+Enter, or the spark beside Send).
  *
  * Mentions are the chat's, gesture for gesture: „@" opens the chat's own
@@ -61,7 +61,7 @@ function withoutMention(text: string, mentions: readonly DraftMention[], targetI
  * records whom it means (`lib/mentions/mention-text.ts`). What
  * is sent is reconciled against the text at the last moment, so a name
  * deleted while editing is nobody mentioned, and a name typed by hand never
- * was. `mentionPiloti` offers Piloti (the spark beside Send writes its
+ * was. `mentionAgent` offers Piloti (the spark beside Send writes its
  * mention too); `documentId` offers everyone who may open that document. The
  * server keeps a mention only for someone who may open it; `onSubmit` answers
  * with the mentions it kept, and the box says whom it did not tell.
@@ -76,8 +76,8 @@ export function Composer({
   autoFocus,
   onSubmit,
   onEscape,
-  onAskPiloti,
-  mentionPiloti,
+  onAskAgent,
+  mentionAgent,
   documentId,
   pickerSide = 'below',
   maxLength = MAX_ANNOTATION_BODY,
@@ -92,8 +92,8 @@ export function Composer({
   /** Sends; answers with the mentions the server kept, where it says. */
   onSubmit: (body: string, options: ComposerSend) => Promise<readonly MarkMention[] | void>
   onEscape?: () => void
-  onAskPiloti?: (body: string) => void
-  mentionPiloti?: boolean
+  onAskAgent?: (body: string) => void
+  mentionAgent?: boolean
   /** The document whose readers may be mentioned; absent, nobody is offered. */
   documentId?: string
   /** Where the picker opens: under a box at the top of its card, over one at its foot. */
@@ -134,7 +134,7 @@ export function Composer({
   // Text to start from is edited from its end, as a reworded mark is.
   const pendingCaret = useRef<number | null>(autoFocus && initialBody ? initialBody.length : null)
   const { people, loading, failed: peopleFailed } = useMentionablePeople(documentId ?? null, attempt)
-  const mentionsOn = Boolean(mentionPiloti || documentId)
+  const mentionsOn = Boolean(mentionAgent || documentId)
 
   useEffect(() => {
     if (autoFocus) ref.current?.focus()
@@ -156,7 +156,7 @@ export function Composer({
 
   const candidates = useMemo<MentionCandidate[]>(
     () => [
-      ...(mentionPiloti
+      ...(mentionAgent
         ? [
             {
               targetId: AGENT_MENTION_ID,
@@ -176,10 +176,10 @@ export function Composer({
         needsInvite: false,
       })),
     ],
-    [mentionPiloti, agentName, people]
+    [mentionAgent, agentName, people]
   )
   const standing = useMemo(() => reconcileMentions(body, picked), [body, picked])
-  const pilotiMentioned = standing.some((mention) => mention.targetId === AGENT_MENTION_ID)
+  const agentMentioned = standing.some((mention) => mention.targetId === AGENT_MENTION_ID)
   const pickerOpen = mentionsOn && query !== null && !dismissed
 
   const syncQuery = (text: string, caret: number | null) => {
@@ -216,8 +216,8 @@ export function Composer({
   )
 
   /** The spark: Piloti's mention written at the start, or taken out again. */
-  const togglePiloti = () => {
-    if (pilotiMentioned) {
+  const toggleAgent = () => {
+    if (agentMentioned) {
       const text = withoutMention(body, picked, AGENT_MENTION_ID)
       setBody(text)
       setPicked((current) => reconcileMentions(text, current))
@@ -295,9 +295,9 @@ export function Composer({
         return
       }
     }
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && onAskPiloti) {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && onAskAgent) {
       event.preventDefault()
-      onAskPiloti(body.trim())
+      onAskAgent(body.trim())
       return
     }
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -310,7 +310,7 @@ export function Composer({
     }
   }
 
-  const pilotiButton = onAskPiloti ? (
+  const agentButton = onAskAgent ? (
     <Button
       type="button"
       variant="ghost"
@@ -319,21 +319,21 @@ export function Composer({
       aria-label={t('review.piloti.ask')}
       title={`${t('review.piloti.ask')} (⌘↵)`}
       data-testid={`${testId}-piloti`}
-      onClick={() => onAskPiloti(body.trim())}
+      onClick={() => onAskAgent(body.trim())}
     >
       <Sparkles aria-hidden />
     </Button>
-  ) : mentionPiloti ? (
+  ) : mentionAgent ? (
     <Button
       type="button"
       variant="ghost"
       size="icon"
-      className={cn('size-6 shrink-0 rounded-full [&_svg]:size-3.5', pilotiMentioned && 'bg-accent text-foreground')}
+      className={cn('size-6 shrink-0 rounded-full [&_svg]:size-3.5', agentMentioned && 'bg-accent text-foreground')}
       aria-label={t('review.piloti.mention')}
-      aria-pressed={pilotiMentioned}
+      aria-pressed={agentMentioned}
       title={t('review.piloti.mentionHint')}
       data-testid={`${testId}-mention`}
-      onClick={togglePiloti}
+      onClick={toggleAgent}
     >
       <Sparkles aria-hidden />
     </Button>
@@ -371,7 +371,7 @@ export function Composer({
             // iOS zooms the page on focus and does not zoom back out.
             className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0 pointer-coarse:text-base"
           />
-          {pilotiButton}
+          {agentButton}
           <Button
             type="button"
             size="icon"

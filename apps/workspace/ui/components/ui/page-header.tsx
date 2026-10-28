@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * PageHeader — the single, documented page-title block every content page opens
- * with (see `grid-design-language.md` §"Component patterns"). One primitive so
+ * with (see `design-language.md` §"Component patterns"). One primitive so
  * the title size stays on-spec (`text-xl`, the documented 20px) instead of the
  * drifted `text-2xl` copies each page hand-rolled.
  *
@@ -37,7 +37,7 @@ export interface PageHeaderProps extends Omit<React.HTMLAttributes<HTMLElement>,
  *
  * `sm:` and not `pointer-coarse:` on purpose: whether a title and a search field
  * fit side by side is a question about width, not about the pointer (see the
- * axis note in `grid-design-language.md`). Stacked, the action stretches so a
+ * axis note in `design-language.md`). Stacked, the action stretches so a
  * child's `w-full` has a real width to resolve against.
  */
 const TITLE_ROW_CLASS =

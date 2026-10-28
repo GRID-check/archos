@@ -10,7 +10,7 @@ import { getDb } from '@/lib/db'
 import { documentVersions } from '@/lib/db/schema/document-versions'
 import { documents } from '@/lib/db/schema/documents'
 import { messages } from '@/lib/db/schema/messages'
-import { pilotiAsks, type PilotiAskRow } from '@/lib/db/schema/piloti-asks'
+import { agentAsks, type AgentAskRow } from '@/lib/db/schema/piloti-asks'
 import { withTenant } from '@/lib/db/tenant-context'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 import type { AskDocument, AskState } from './ask-wire'
@@ -31,23 +31,23 @@ export async function insertAsk(values: {
   organizationId: string
   conversationId: string
   requestedBy: string
-}): Promise<PilotiAskRow> {
+}): Promise<AgentAskRow> {
   const db = getDb()
   const [row] = await withTenant({ organizationId: values.organizationId }, () =>
-    db.insert(pilotiAsks).values(values).returning(),
+    db.insert(agentAsks).values(values).returning(),
   )
   if (!row) throw new Error('the ask was not recorded')
   return row
 }
 
 /** One ask of the organization, or null. */
-export async function findAsk(organizationId: string, id: string): Promise<PilotiAskRow | null> {
+export async function findAsk(organizationId: string, id: string): Promise<AgentAskRow | null> {
   const db = getDb()
   const [row] = await withTenant({ organizationId }, () =>
     db
       .select()
-      .from(pilotiAsks)
-      .where(and(eq(pilotiAsks.organizationId, organizationId), eq(pilotiAsks.id, id)))
+      .from(agentAsks)
+      .where(and(eq(agentAsks.organizationId, organizationId), eq(agentAsks.id, id)))
       .limit(1),
   )
   return row ?? null
@@ -58,9 +58,9 @@ export async function findAsk(organizationId: string, id: string): Promise<Pilot
  * turn's outcome names the turn (the ask's id), and the ask names the
  * organization. Run it under platform access, then do the rest as that tenant.
  */
-export async function findAskById(id: string): Promise<PilotiAskRow | null> {
+export async function findAskById(id: string): Promise<AgentAskRow | null> {
   const db = getDb()
-  const [row] = await db.select().from(pilotiAsks).where(eq(pilotiAsks.id, id)).limit(1)
+  const [row] = await db.select().from(agentAsks).where(eq(agentAsks.id, id)).limit(1)
   return row ?? null
 }
 
@@ -73,16 +73,16 @@ export async function hasAskedInConversation(
   const db = getDb()
   const [row] = await withTenant({ organizationId }, () =>
     db
-      .select({ id: pilotiAsks.id })
-      .from(pilotiAsks)
+      .select({ id: agentAsks.id })
+      .from(agentAsks)
       .where(
         and(
-          eq(pilotiAsks.organizationId, organizationId),
-          eq(pilotiAsks.conversationId, conversationId),
-          eq(pilotiAsks.requestedBy, requestedBy),
+          eq(agentAsks.organizationId, organizationId),
+          eq(agentAsks.conversationId, conversationId),
+          eq(agentAsks.requestedBy, requestedBy),
         ),
       )
-      .orderBy(desc(pilotiAsks.createdAt))
+      .orderBy(desc(agentAsks.createdAt))
       .limit(1),
   )
   return row !== undefined
@@ -113,10 +113,10 @@ export async function markAskWorking(organizationId: string, id: string): Promis
   const db = getDb()
   const rows = await withTenant({ organizationId }, () =>
     db
-      .update(pilotiAsks)
+      .update(agentAsks)
       .set({ state: 'working', updatedAt: new Date() })
-      .where(and(eq(pilotiAsks.organizationId, organizationId), eq(pilotiAsks.id, id), eq(pilotiAsks.state, 'submitted')))
-      .returning({ id: pilotiAsks.id }),
+      .where(and(eq(agentAsks.organizationId, organizationId), eq(agentAsks.id, id), eq(agentAsks.state, 'submitted')))
+      .returning({ id: agentAsks.id }),
   )
   return rows.length > 0
 }
@@ -131,16 +131,16 @@ export type AskEnd =
  * word stands: the turn's outcome, a cancel and the start's own refusal cannot
  * overwrite each other. The row as ended, or null when it had already ended.
  */
-export async function endAsk(organizationId: string, id: string, end: AskEnd): Promise<PilotiAskRow | null> {
+export async function endAsk(organizationId: string, id: string, end: AskEnd): Promise<AgentAskRow | null> {
   const db = getDb()
   const now = new Date()
   const reason = 'reason' in end ? clipReason(end.reason) : null
   const open: AskState[] = ['submitted', 'working']
   const [row] = await withTenant({ organizationId }, () =>
     db
-      .update(pilotiAsks)
+      .update(agentAsks)
       .set({ state: end.state, reason, endedAt: now, updatedAt: now })
-      .where(and(eq(pilotiAsks.organizationId, organizationId), eq(pilotiAsks.id, id), inArray(pilotiAsks.state, open)))
+      .where(and(eq(agentAsks.organizationId, organizationId), eq(agentAsks.id, id), inArray(agentAsks.state, open)))
       .returning(),
   )
   return row ?? null
@@ -153,7 +153,7 @@ export async function endAsk(organizationId: string, id: string, end: AskEnd): P
  * only documents the reader may see (`documentVisibleTo`).
  */
 export async function listAskDocuments(
-  ask: Pick<PilotiAskRow, 'organizationId' | 'conversationId' | 'requestedBy' | 'createdAt' | 'endedAt'>,
+  ask: Pick<AgentAskRow, 'organizationId' | 'conversationId' | 'requestedBy' | 'createdAt' | 'endedAt'>,
   reader: DocumentReader,
 ): Promise<AskDocument[]> {
   const db = getDb()

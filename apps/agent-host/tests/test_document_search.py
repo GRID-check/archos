@@ -82,7 +82,7 @@ def _client(app):
 def _scope_headers(scope: list[str], secret: str | None = None) -> dict[str, str]:
     """Build the signed ``X-Grid-Request-Context`` envelope the BFF forwards.
 
-    Mirrors ``buildGridRequestContextWireHeaders({ collectionScope }, secret)`` on
+    Mirrors ``buildRequestContextWireHeaders({ collectionScope }, secret)`` on
     the TS side: base64url(JSON) payload + hex HMAC-SHA256 signature over the raw
     JSON. When ``secret`` is None the sig header is omitted (dev/anonymous).
     """

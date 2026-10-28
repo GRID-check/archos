@@ -119,7 +119,7 @@ class _OwnCallbacks(AsyncCallbackHandler):
     """Piloti's inner graph passes callbacks of its own (``agent._graph_config``)."""
 
 
-async def _piloti_behind_its_nat_function(state):
+async def _chat_behind_its_function(state):
     """What NAT's ``Function.ainvoke`` does around Piloti: push the function, await it in the same task."""
     with Context.get().push_active_function("shallow_research_agent", input_data=None):
         config = {"recursion_limit": 50, "configurable": {"binding": object()}, "callbacks": [_OwnCallbacks()]}
@@ -150,7 +150,7 @@ async def _golden_turn(workflow_harness, monkeypatch) -> list[dict]:
     monkeypatch.setattr(register_mod, "answer_streaming_enabled", lambda: True)
     loading = StatusStep(id="status:documents", slot="documents", key="status.documents.project")
     monkeypatch.setattr(register_mod, "documents_loading_step", lambda _shelves: loading)
-    workflow_harness["shallow"] = _piloti_behind_its_nat_function
+    workflow_harness["shallow"] = _chat_behind_its_function
     bodies = await workflow_harness["turn"](
         UserMessage(conversation_id="conv-1", message_id="msg-1", text="Wie lang darf der Fluchtweg in GK 4 sein?")
     )

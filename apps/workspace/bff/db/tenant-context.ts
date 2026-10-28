@@ -9,7 +9,7 @@
  *
  * ## Where the context comes from
  *
- * `getGridSession()` resolves who is asking — for API routes (via
+ * `getUserSession()` resolves who is asking — for API routes (via
  * `requireAuthorizedSession`), for server components and for server actions
  * (via `requireAuthorizedPageSession`). Every authenticated path in the app
  * funnels through it, so it is also where the answer is published to the
@@ -125,7 +125,7 @@ export class MissingTenantContextError extends Error {
     super(
       'Database access outside a tenant context. Every query must run inside ' +
         'withTenant() or withPlatformAccess() — see lib/db/tenant-context.ts. ' +
-        'Authenticated requests get this from getGridSession(); background and ' +
+        'Authenticated requests get this from getUserSession(); background and ' +
         'internal callers must state it.'
     )
     this.name = 'MissingTenantContextError'
@@ -148,7 +148,7 @@ export function requireTenantContext(): TenantContext {
  * Open an empty, request-scoped slot for `fn` to fill.
  *
  * Every route factory calls this before running its handler, which does two
- * things at once: it gives `getGridSession()` somewhere to publish the tenant,
+ * things at once: it gives `getUserSession()` somewhere to publish the tenant,
  * and — because `run()` restores the previous store when it returns — it
  * guarantees the request starts with NO inherited tenant and leaves none
  * behind. That is what makes "no context" mean no context, rather than
@@ -177,7 +177,7 @@ export function tenantSlotRoute<TArgs extends unknown[]>(
 /**
  * Publish the tenant for the rest of this request.
  *
- * Called by `getGridSession()` the moment a session resolves. A session with no
+ * Called by `getUserSession()` the moment a session resolves. A session with no
  * active organization publishes nothing: there is no tenant to answer as, and
  * `requireAuthorizedSession` is about to reject the request anyway.
  *
@@ -185,7 +185,7 @@ export function tenantSlotRoute<TArgs extends unknown[]>(
  * Without one — a server component or server action, which no factory wraps —
  * it falls back to `enterWith`, and that fallback is deliberately a fresh slot
  * OBJECT rather than a bare value: if a previous request on this socket leaked
- * its slot, the next `getGridSession()` replaces it wholesale instead of
+ * its slot, the next `getUserSession()` replaces it wholesale instead of
  * inheriting it. Pages resolve their session before they query, so the slot is
  * always filled by the time a query runs.
  */

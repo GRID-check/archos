@@ -140,13 +140,13 @@ describe("PostHog logs in the collector, by default and off", () => {
 });
 
 describe("the Python tiers' PostHog pair", () => {
-  const gridCfg = (host: string, projectToken: string, releaseId = "") =>
+  const appCfg = (host: string, projectToken: string, releaseId = "") =>
     ({
       posthog: { host, projectToken, logsEnabled: false, sessionReplay: false, replaySampleRate: "0.2", releaseId },
     }) as unknown as Parameters<typeof posthogEnv>[0];
 
   it("emits both names when both are set", () => {
-    expect(posthogEnv(gridCfg("https://eu.i.posthog.com", "phc_x"))).toEqual([
+    expect(posthogEnv(appCfg("https://eu.i.posthog.com", "phc_x"))).toEqual([
       { name: "POSTHOG_HOST", value: "https://eu.i.posthog.com" },
       { name: "POSTHOG_PROJECT_TOKEN", value: "phc_x" },
     ]);
@@ -157,17 +157,17 @@ describe("the Python tiers' PostHog pair", () => {
     ["token", "https://eu.i.posthog.com", ""],
     ["both", "", ""],
   ])("emits nothing without the %s, never a half-configured pod", (_what, host, token) => {
-    expect(posthogEnv(gridCfg(host, token))).toEqual([]);
+    expect(posthogEnv(appCfg(host, token))).toEqual([]);
   });
 
   // The id PostHog/resolve-release printed for the backend image, which
   // posthog-python sends as $release_id (deploy.yml sets the key per run).
   it("adds the release id the deploy resolved, and only beside the pair", () => {
-    expect(posthogEnv(gridCfg("https://eu.i.posthog.com", "phc_x", "0193f5a6-rel"))).toContainEqual({
+    expect(posthogEnv(appCfg("https://eu.i.posthog.com", "phc_x", "0193f5a6-rel"))).toContainEqual({
       name: "POSTHOG_RELEASE_ID",
       value: "0193f5a6-rel",
     });
-    expect(posthogEnv(gridCfg("", "", "0193f5a6-rel"))).toEqual([]);
+    expect(posthogEnv(appCfg("", "", "0193f5a6-rel"))).toEqual([]);
   });
 
   it("reaches chat, api and agent-worker, Piloti's project by default, and nothing once opted out", async () => {

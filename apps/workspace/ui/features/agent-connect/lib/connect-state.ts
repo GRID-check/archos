@@ -10,7 +10,7 @@
  */
 
 import { authkitDomain, mcpResourceUrl } from '@/lib/agent-api/mcp-config'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { FEATURE_FLAGS, isFeatureEnabled } from '@/lib/authz/feature-flags'
 import { ORG_PERMISSIONS, hasPermission } from '@/lib/authz/permissions'
 
@@ -42,7 +42,7 @@ export function deriveAgentConnectState(facts: AgentConnectFacts): AgentConnectS
 type Env = Record<string, string | undefined>
 
 export function loadAgentConnectState(
-  session: Pick<GridSession, 'featureFlags' | 'role' | 'permissions'>,
+  session: Pick<UserSession, 'featureFlags' | 'role' | 'permissions'>,
   env: Env = process.env,
 ): AgentConnectState {
   return deriveAgentConnectState({

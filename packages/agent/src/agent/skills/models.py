@@ -53,7 +53,7 @@ MAX_COMPATIBILITY_CHARS = 500
 #: ``grid-auto-invoke`` is the same kind of leftover, and is listed here for
 #: the same reason: it is still validated so an old document parses, and it is
 #: read by nobody.
-GRID_METADATA_KEYS = frozenset(
+SKILL_METADATA_KEYS = frozenset(
     {"grid-agents", "grid-cards", "grid-title", "grid-hidden", "grid-auto-invoke", "grid-catalog"}
 )
 
@@ -61,11 +61,11 @@ GRID_METADATA_KEYS = frozenset(
 #:
 #: A preference, not a contract: it costs nothing until the skill is activated,
 #: at which point its ``read_file`` appends a short block naming these types to
-#: the skill body. Values are card ``type`` literals from the ``GridCard``
+#: the skill body. Values are card ``type`` literals from the ``AnswerCard``
 #: union, minus ``SYSTEM_CARD_TYPES`` — a system card is emitted by a tool on a
 #: sanctioned path, so naming one here would be asking the model to fabricate
 #: something it must never produce.
-GRID_CARDS_KEY = "grid-cards"
+ANSWER_CARDS_KEY = "grid-cards"
 
 #: ``grid-title`` — the skill's HUMAN name, for a reader rather than a parser.
 #:
@@ -84,7 +84,7 @@ GRID_CARDS_KEY = "grid-cards"
 #: One value, no per-locale variants: a skill is authored in one language by
 #: one tenant, and a translation table in frontmatter would be a second
 #: catalog to keep in sync with nothing to keep it honest.
-GRID_TITLE_KEY = "grid-title"
+TITLE_KEY = "grid-title"
 
 #: A title is a label, not a sentence. Long enough for "IFC-Raumanalyse
 #: (Fluchtwege)", short enough that no surface has to truncate it.
@@ -109,7 +109,7 @@ MAX_TITLE_CHARS = 60
 #: A property of the SKILL, keyed off metadata rather than a name list in the
 #: runtime: the platform owner sets it on a row and it takes effect with no
 #: deploy.
-GRID_HIDDEN_KEY = "grid-hidden"
+HIDDEN_KEY = "grid-hidden"
 
 #: ``grid-auto-invoke`` — RETIRED. It said whether the model might pick this
 #: skill from L1, which is a person deciding which skill runs: the thing
@@ -117,7 +117,7 @@ GRID_HIDDEN_KEY = "grid-hidden"
 #: a stored ``false`` would hide a skill from every turn with nobody able to
 #: bring it back. The key is still validated, so an old document parses and
 #: keeps its value; nothing reads it, here or in the BFF.
-GRID_AUTO_INVOKE_KEY = "grid-auto-invoke"
+AUTO_INVOKE_KEY = "grid-auto-invoke"
 
 #: Case-insensitive truthy tokens that mark a skill hidden. Anything else —
 #: including the recognised falsy tokens, an empty string, and any unrecognised
@@ -240,7 +240,7 @@ def split_metadata_list(raw: str) -> list[str]:
     return out
 
 
-def _validate_grid_cards(value: str, *, strict: bool) -> str | None:
+def _validate_answer_cards(value: str, *, strict: bool) -> str | None:
     """Validate ``grid-cards`` against the model-facing card catalog.
 
     Returns the value to store, or ``None`` when nothing usable is left and the
@@ -265,12 +265,13 @@ def _validate_grid_cards(value: str, *, strict: bool) -> str | None:
     unknown = [name for name in names if name not in known]
     if unknown and strict:
         raise SkillValidationError(
-            f"Skill metadata {GRID_CARDS_KEY} names unknown or system card type(s) {unknown}; allowed: {sorted(known)}"
+            f"Skill metadata {ANSWER_CARDS_KEY} names unknown or system card type(s) {unknown}; "
+            f"allowed: {sorted(known)}"
         )
     if unknown:
         logger.warning(
             "Dropping unknown or system card type(s) from %s: %s (known: %s)",
-            GRID_CARDS_KEY,
+            ANSWER_CARDS_KEY,
             unknown,
             sorted(known),
         )
@@ -278,10 +279,10 @@ def _validate_grid_cards(value: str, *, strict: bool) -> str | None:
     return ",".join(kept) if kept else None
 
 
-def _validate_grid_title(value: str, *, strict: bool) -> str | None:
+def _validate_title(value: str, *, strict: bool) -> str | None:
     """Validate ``grid-title``; return the value to store, or ``None`` to drop it.
 
-    Same two tolerances as :func:`_validate_grid_cards`, for the same reason: a
+    Same two tolerances as :func:`_validate_answer_cards`, for the same reason: a
     SKILL.md is reviewed in this repo, so a title that is empty, over-long or
     carries markup is an authoring error we want at parse time; a BFF-served
     org row is tenant data over the wire, where a bad title must cost the
@@ -294,28 +295,26 @@ def _validate_grid_title(value: str, *, strict: bool) -> str | None:
     title = value.strip()
     if not title:
         if strict:
-            raise SkillValidationError(f"Skill metadata {GRID_TITLE_KEY} must not be empty")
-        logger.warning("Dropping empty %s", GRID_TITLE_KEY)
+            raise SkillValidationError(f"Skill metadata {TITLE_KEY} must not be empty")
+        logger.warning("Dropping empty %s", TITLE_KEY)
         return None
     if len(title) > MAX_TITLE_CHARS:
         if strict:
-            raise SkillValidationError(
-                f"Skill metadata {GRID_TITLE_KEY} exceeds {MAX_TITLE_CHARS} characters: {len(title)}"
-            )
-        logger.warning("Dropping over-long %s (%d characters)", GRID_TITLE_KEY, len(title))
+            raise SkillValidationError(f"Skill metadata {TITLE_KEY} exceeds {MAX_TITLE_CHARS} characters: {len(title)}")
+        logger.warning("Dropping over-long %s (%d characters)", TITLE_KEY, len(title))
         return None
     if XML_TAG_RE.search(title):
         if strict:
-            raise SkillValidationError(f"Skill metadata {GRID_TITLE_KEY} must not contain XML tags")
-        logger.warning("Dropping %s containing XML tags", GRID_TITLE_KEY)
+            raise SkillValidationError(f"Skill metadata {TITLE_KEY} must not contain XML tags")
+        logger.warning("Dropping %s containing XML tags", TITLE_KEY)
         return None
     return title
 
 
-def _validate_grid_hidden(value: str, *, strict: bool) -> str | None:
+def _validate_hidden(value: str, *, strict: bool) -> str | None:
     """Validate ``grid-hidden``; return canonical ``"true"`` to store, or ``None`` to drop.
 
-    Same two tolerances as :func:`_validate_grid_title`, for the same reason: a
+    Same two tolerances as :func:`_validate_title`, for the same reason: a
     SKILL.md is reviewed in this repo, so ``grid-hidden: maybe`` is an authoring
     typo we want at parse time (``strict``); a BFF-served org row is tenant data
     over the wire, where a garbage flag must cost the tenant the flag and not
@@ -334,22 +333,22 @@ def _validate_grid_hidden(value: str, *, strict: bool) -> str | None:
         return None
     if strict:
         raise SkillValidationError(
-            f"Skill metadata {GRID_HIDDEN_KEY} must be a boolean-ish value "
+            f"Skill metadata {HIDDEN_KEY} must be a boolean-ish value "
             f"(one of {sorted(_HIDDEN_TRUE | _HIDDEN_FALSE)}); got {value!r}"
         )
-    logger.warning("Dropping unrecognised %s value %r", GRID_HIDDEN_KEY, value)
+    logger.warning("Dropping unrecognised %s value %r", HIDDEN_KEY, value)
     return None
 
 
-def _validate_grid_auto_invoke(value: str, *, strict: bool) -> str | None:
+def _validate_auto_invoke(value: str, *, strict: bool) -> str | None:
     """Validate ``grid-auto-invoke``; return canonical ``"false"`` or ``None``.
 
     Kept only so an old document still parses (see
-    :data:`GRID_AUTO_INVOKE_KEY`). A truthy token and an empty string drop the
+    :data:`AUTO_INVOKE_KEY`). A truthy token and an empty string drop the
     key; a recognised falsy token is normalised to ``"false"`` and stored. No
     reader acts on either.
 
-    Same two tolerances as :func:`_validate_grid_hidden`. A garbage flag on a
+    Same two tolerances as :func:`_validate_hidden`. A garbage flag on a
     reviewed SKILL.md is an authoring error; on an org row it costs the flag
     (and so reads as on) rather than the skill.
     """
@@ -360,10 +359,10 @@ def _validate_grid_auto_invoke(value: str, *, strict: bool) -> str | None:
         return None
     if strict:
         raise SkillValidationError(
-            f"Skill metadata {GRID_AUTO_INVOKE_KEY} must be a boolean-ish value "
+            f"Skill metadata {AUTO_INVOKE_KEY} must be a boolean-ish value "
             f"(one of {sorted(_HIDDEN_TRUE | _HIDDEN_FALSE)}); got {value!r}"
         )
-    logger.warning("Dropping unrecognised %s value %r", GRID_AUTO_INVOKE_KEY, value)
+    logger.warning("Dropping unrecognised %s value %r", AUTO_INVOKE_KEY, value)
     return None
 
 
@@ -394,26 +393,26 @@ def _validate_metadata(metadata: Any, *, strict: bool = True) -> dict[str, str]:
         if not isinstance(key, str):
             raise SkillValidationError(f"Skill metadata key {key!r} must map a string to a string")
         value = _stringify_metadata_value(key, value)
-        if key == GRID_CARDS_KEY:
-            cards = _validate_grid_cards(value, strict=strict)
+        if key == ANSWER_CARDS_KEY:
+            cards = _validate_answer_cards(value, strict=strict)
             if cards is None:
                 continue
             validated[key] = cards
             continue
-        if key == GRID_TITLE_KEY:
-            title = _validate_grid_title(value, strict=strict)
+        if key == TITLE_KEY:
+            title = _validate_title(value, strict=strict)
             if title is None:
                 continue
             validated[key] = title
             continue
-        if key == GRID_HIDDEN_KEY:
-            hidden = _validate_grid_hidden(value, strict=strict)
+        if key == HIDDEN_KEY:
+            hidden = _validate_hidden(value, strict=strict)
             if hidden is None:
                 continue
             validated[key] = hidden
             continue
-        if key == GRID_AUTO_INVOKE_KEY:
-            auto_invoke = _validate_grid_auto_invoke(value, strict=strict)
+        if key == AUTO_INVOKE_KEY:
+            auto_invoke = _validate_auto_invoke(value, strict=strict)
             if auto_invoke is None:
                 continue
             validated[key] = auto_invoke
@@ -431,7 +430,7 @@ def preferred_cards(metadata: dict[str, str]) -> tuple[str, ...]:
     """
     from agent.cards.catalog import model_facing_card_types
 
-    raw = metadata.get(GRID_CARDS_KEY)
+    raw = metadata.get(ANSWER_CARDS_KEY)
     if not raw:
         return ()
     known = model_facing_card_types()
@@ -441,10 +440,10 @@ def preferred_cards(metadata: dict[str, str]) -> tuple[str, ...]:
 def skill_title(skill: Skill) -> str | None:
     """The skill's human display name, or ``None`` when the author gave none.
 
-    ``None`` is a real answer, not a failure: see :data:`GRID_TITLE_KEY` for
+    ``None`` is a real answer, not a failure: see :data:`TITLE_KEY` for
     why no title is ever synthesised from the id here.
     """
-    title = skill.metadata.get(GRID_TITLE_KEY)
+    title = skill.metadata.get(TITLE_KEY)
     return title if title else None
 
 
@@ -455,13 +454,13 @@ def skill_hidden(metadata: dict[str, str]) -> bool:
     one (see :mod:`agent.skills.events`), keeping it out of the noisy live
     line while the event still fires and still records. Hidden is never
     concealed: the disclosure still names the skill and a reader who turns on
-    the "reasoning" preference surfaces it — see :data:`GRID_HIDDEN_KEY`.
+    the "reasoning" preference surfaces it — see :data:`HIDDEN_KEY`.
 
     Read as tolerantly as it is written: the value stored is the canonical
     ``"true"``, but an un-revalidated snapshot may carry any truthy token, so an
     absent or unrecognised value reads as visible — the fail-open default.
     """
-    return metadata.get(GRID_HIDDEN_KEY, "").strip().lower() in _HIDDEN_TRUE
+    return metadata.get(HIDDEN_KEY, "").strip().lower() in _HIDDEN_TRUE
 
 
 def build_skill_from_payload(

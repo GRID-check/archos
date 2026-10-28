@@ -28,7 +28,7 @@ class _RefusingAdapter:
     has moved on from."""
 
     def validate_python(self, value):
-        raise ValidationError.from_exception_data("GridCard", [])
+        raise ValidationError.from_exception_data("AnswerCard", [])
 
 
 def _patch_context(monkeypatch, *, project_id="p1", organization_id="o1", conversation_id="c1"):
@@ -258,7 +258,7 @@ async def test_an_unbuildable_card_falls_back_to_the_error_string(monkeypatch):
     # A card the adapter refuses must not take the turn down with it.
     monkeypatch.setattr(
         register,
-        "grid_card_adapter",
+        "answer_card_adapter",
         _RefusingAdapter(),
     )
 

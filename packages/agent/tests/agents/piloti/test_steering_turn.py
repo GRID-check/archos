@@ -32,7 +32,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
 from agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.answer_pipeline import this_turn
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
@@ -121,17 +121,17 @@ class Scripted:
         return self.replies[len(self.requests) - 1]
 
 
-def _agent(model: Scripted, *, ceiling: int = 7) -> PilotiAgent:
+def _agent(model: Scripted, *, ceiling: int = 7) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=model.respond)
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=[look, mark], system_prompt=_PROMPT, max_tool_iterations=ceiling)
+    return ChatAgent(llm_provider=provider, tools=[look, mark], system_prompt=_PROMPT, max_tool_iterations=ceiling)
 
 
-async def _run(agent: PilotiAgent) -> ResearchAgentState:
+async def _run(agent: ChatAgent) -> ResearchAgentState:
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content=_QUESTION)]))
 
 
@@ -211,7 +211,7 @@ class TestTheNextRoundReadsTheNote:
         llm.ainvoke = AsyncMock(side_effect=model.respond)
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        agent = PilotiAgent(llm_provider=provider, tools=[slow_look, mark], system_prompt=_PROMPT)
+        agent = ChatAgent(llm_provider=provider, tools=[slow_look, mark], system_prompt=_PROMPT)
 
         await _run(agent)
 
@@ -234,7 +234,7 @@ class TestTheNextRoundReadsTheNote:
         tail = [m.content for m in model.requests[1][-2:]]
         assert _NOTE in tail[0] and "und das Podest" in tail[1]
 
-    async def test_a_box_drawn_while_piloti_works_travels_with_the_note(self, inbox):
+    async def test_a_box_drawn_while_the_chat_agent_works_travels_with_the_note(self, inbox):
         region = FocusRegion(page=3, x=0.41, y=0.22, w=0.17, h=0.18)
         model = Scripted(
             AIMessage(content="", tool_calls=[_call("look", "l1", page=3)]),

@@ -135,7 +135,7 @@ review reads.
 - The first primitive built this way: [ADR-0054](0054-document-versions-and-the-publish-door.md).
 - The client: `frontends/ui/src/lib/documents/lifecycle-client.ts`.
 - The design of record, §7:
-  [`../roadmap/piloti-writes-artifacts-and-approval.md`](../roadmap/piloti-writes-artifacts-and-approval.md).
+  [`../roadmap/agent-writes-artifacts-and-approval.md`](../roadmap/agent-writes-artifacts-and-approval.md).
 - **Revisit when** an in-process consumer's latency is measured to matter, or
   when a third primitive has been built this way and the client modules have
   enough in common to share a base — not before, because two examples is not a

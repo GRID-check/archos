@@ -35,7 +35,7 @@ from pydantic import Field
 from pydantic import ValidationError
 
 from agent import project_context
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import get_card_registry
 from agent.knowledge import project_memory as memory_client
 from agent.knowledge import scoping
@@ -245,7 +245,7 @@ async def _emit_memory_proposal_card(*, content: str, kind: str, confidence: str
         "supersedes": supersedes or None,
     }
     try:
-        validated = grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+        validated = answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
     except ValidationError:
         logger.exception("Failed to build memory_proposal card")
         return False

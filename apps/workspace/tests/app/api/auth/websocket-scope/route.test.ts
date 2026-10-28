@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NotFoundError } from '@/lib/api/errors'
 
 vi.mock('@/lib/auth/session', () => ({
-  getGridSession: vi.fn(),
+  getUserSession: vi.fn(),
 }))
 
 vi.mock('@/lib/authz/projects', () => ({
@@ -27,12 +27,12 @@ vi.mock('@/lib/projects/memory-service', () => ({
 }))
 
 import { GET } from '@/app/api/auth/websocket-scope/route'
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 
-const mockGetGridSession = vi.mocked(getGridSession)
+const mockGetUserSession = vi.mocked(getUserSession)
 const mockRequireProjectAccess = vi.mocked(requireProjectAccess)
 const mockBuildCollectionScopeFromRequest = vi.mocked(buildCollectionScopeFromRequest)
 const mockLoadProjectPromptView = vi.mocked(loadProjectPromptView)
@@ -46,7 +46,7 @@ describe('/api/auth/websocket-scope', () => {
 
   it('returns scope and header when auth is disabled', async () => {
     process.env.REQUIRE_AUTH = 'false'
-    mockGetGridSession.mockResolvedValue(null)
+    mockGetUserSession.mockResolvedValue(null)
     mockBuildCollectionScopeFromRequest.mockResolvedValue({
       scope: ['oib_knowledge'],
       scopedCollections: [{ collection: 'oib_knowledge', shelf: 'base' }],
@@ -86,7 +86,7 @@ describe('/api/auth/websocket-scope', () => {
 
   it('returns 401 when auth is required and there is no session', async () => {
     process.env.REQUIRE_AUTH = 'true'
-    mockGetGridSession.mockResolvedValue(null)
+    mockGetUserSession.mockResolvedValue(null)
 
     const req = new Request('http://localhost:3000/api/auth/websocket-scope')
     const res = await GET(req)
@@ -109,7 +109,7 @@ describe('/api/auth/websocket-scope', () => {
       permissions: [] as string[],
   featureFlags: null,
     }
-    mockGetGridSession.mockResolvedValue(session)
+    mockGetUserSession.mockResolvedValue(session)
     mockBuildCollectionScopeFromRequest.mockResolvedValue({
       scope: ['oib_knowledge', 'proj_proj-1'],
       scopedCollections: [{ collection: 'oib_knowledge', shelf: 'base' }, { collection: 'proj_proj-1', shelf: 'project' }],
@@ -149,7 +149,7 @@ describe('/api/auth/websocket-scope', () => {
       permissions: [] as string[],
   featureFlags: null,
     }
-    mockGetGridSession.mockResolvedValue(session)
+    mockGetUserSession.mockResolvedValue(session)
     // The access check inside the scope builder rejects (tenancy/FGA denial).
     mockBuildCollectionScopeFromRequest.mockRejectedValue(new NotFoundError())
 
@@ -163,7 +163,7 @@ describe('/api/auth/websocket-scope', () => {
 
   it('returns 500 for unexpected errors', async () => {
     process.env.REQUIRE_AUTH = 'false'
-    mockGetGridSession.mockRejectedValue(new Error('database unavailable'))
+    mockGetUserSession.mockRejectedValue(new Error('database unavailable'))
 
     const req = new Request('http://localhost:3000/api/auth/websocket-scope')
     const res = await GET(req)

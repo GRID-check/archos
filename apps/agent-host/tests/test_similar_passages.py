@@ -72,7 +72,7 @@ class _Embedder:
 
 
 def _scope_headers(scope: list[str], secret: str | None = SECRET) -> dict[str, str]:
-    """The signed ``X-Grid-Request-Context`` envelope the BFF forwards (``buildGridRequestContextWireHeaders``)."""
+    """The signed ``X-Grid-Request-Context`` envelope the BFF forwards (``buildRequestContextWireHeaders``)."""
     payload = json.dumps({"collectionScope": scope})
     headers = {"x-grid-request-context": base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")}
     if secret:

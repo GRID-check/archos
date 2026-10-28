@@ -15,7 +15,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = {
-    "packages/agent/tests/test_prompt.py": "PROMPT = 'agents/piloti/prompts/piloti_static.md'",
+    "packages/agent/tests/test_prompt.py": "PROMPT = 'agents/piloti/prompts/chat_static.md'",
     "tests/test_grounding.py": "FIXTURE = ROOT / 'tests/fixtures/citation_pipeline/grounding_block.txt'",
     "tests/test_decisions_eval.py": "CASES = sorted((ROOT / 'tests' / 'fixtures' / 'decisions').rglob('*.json'))",
     "tests/test_visual_eval.py": "SHAPES = list((ROOT / 'tests' / 'fixtures' / 'visual').iterdir())",

@@ -37,7 +37,7 @@ const DISCIPLINE_SET = new Set<string>(DISCIPLINE_TAGS)
  * When Piloti found no type, it says so plainly instead of drawing an empty
  * field, and offers the same correction as „Zuordnen".
  */
-export function PilotiReading({
+export function AgentReading({
   file,
   canManage,
   onTagsUpdated,
@@ -79,12 +79,12 @@ export function PilotiReading({
   const facts = readingFacts(file, locale, t)
 
   return (
-    <div className="flex flex-col gap-2.5" data-testid="piloti-reading">
+    <div className="flex flex-col gap-2.5" data-testid="agent-reading">
       {facts && <p className="text-muted-foreground text-xs">{facts}</p>}
       {file.capture && <CaptureLine capture={file.capture} />}
 
       {correcting ? (
-        <div className="flex flex-col gap-2 rounded-md border border-dashed p-2.5" data-testid="piloti-reading-editor">
+        <div className="flex flex-col gap-2 rounded-md border border-dashed p-2.5" data-testid="agent-reading-editor">
           <DocumentTagsEditor
             fileId={file.id}
             initialTags={tags}
@@ -121,7 +121,7 @@ export function PilotiReading({
               a bare word beside bordered disciplines. */}
           <div className="flex flex-wrap items-center gap-1.5">
             {types.map((tag) => (
-              <Chip key={tag} variant="default" size="sm" data-testid="piloti-reading-type">
+              <Chip key={tag} variant="default" size="sm" data-testid="agent-reading-type">
                 {tag}
               </Chip>
             ))}
@@ -136,7 +136,7 @@ export function PilotiReading({
                 variant="outline"
                 size="sm"
                 className="text-muted-foreground font-normal"
-                data-testid="piloti-reading-topic"
+                data-testid="agent-reading-topic"
               >
                 {topic}
               </Chip>
@@ -148,7 +148,7 @@ export function PilotiReading({
                 size="sm"
                 className="text-muted-foreground hover:text-foreground h-auto px-1 py-0 text-xs"
                 onClick={() => setCorrecting(true)}
-                data-testid="piloti-reading-correct"
+                data-testid="agent-reading-correct"
               >
                 {types.length + disciplines.length + topics.length > 0 ? t('preview.reading.correct') : t('preview.reading.assign')}
               </Button>
@@ -190,7 +190,7 @@ function CaptureLine({ capture }: { capture: PhotoCapture }) {
   const located = capture.latitude !== undefined && capture.longitude !== undefined
   if (!when && !capture.camera && !located) return null
   return (
-    <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs" data-testid="piloti-reading-capture">
+    <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs" data-testid="agent-reading-capture">
       {when && <span>{t('preview.reading.capturedAt', { when })}</span>}
       {capture.camera && (
         <>

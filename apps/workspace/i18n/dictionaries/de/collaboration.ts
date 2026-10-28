@@ -265,7 +265,7 @@ export const collaboration: typeof en.collaboration = {
       send: 'Senden',
       cancel: 'Abbrechen',
       sent: 'Antwort gesendet.',
-      sentPilotiNotAsked: 'Antwort gesendet. {productName} liest sie erst, wenn Sie es in der Prüfansicht mit @{productName} fragen.',
+      sentAgentNotAsked: 'Antwort gesendet. {productName} liest sie erst, wenn Sie es in der Prüfansicht mit @{productName} fragen.',
       resolve: 'Erledigen',
       resolved: 'Als erledigt markiert.',
       conflict: 'Jemand hat die Anmerkung zuerst geändert. Öffnen Sie sie, um den aktuellen Stand zu sehen.',
@@ -466,7 +466,7 @@ export const collaboration: typeof en.collaboration = {
       // (ADR-0130) und Vorschläge markiert. {subject} die neue Fassung,
       // {related} die verglichene, {marks} wie viele Vorschläge. Kein {actor}:
       // das war Piloti. Der Auszug ist die erste Stelle.
-      pilotiRevisionChecked: {
+      agentRevisionChecked: {
         title: '{productName} hat die neue Fassung „{subject}“ verglichen',
         titleRelated: '{productName} hat „{subject}“ mit „{related}“ verglichen',
         body: 'Vorschläge am Dokument, noch nicht übernommen.',
@@ -484,7 +484,7 @@ export const collaboration: typeof en.collaboration = {
           },
         },
       },
-      pilotiWorkDone: {
+      agentWorkDone: {
         title: '{productName} hat eine Anmerkung für Sie bearbeitet',
         titleRelated: '{productName} hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
         titleRelatedNoSubject: '{productName} hat Anmerkung {related} für Sie bearbeitet',
@@ -497,7 +497,7 @@ export const collaboration: typeof en.collaboration = {
       // Piloti konnte es nicht. `variants` sagen warum, nach der Klasse des
       // gespeicherten Grundes (`lib/annotations/wake-end-reason.ts`), und was
       // die Person tun kann; `body` gilt für einen Eintrag von davor.
-      pilotiWorkFailed: {
+      agentWorkFailed: {
         title: '{productName} konnte eine Anmerkung nicht bearbeiten',
         titleRelated: '{productName} konnte Anmerkung {related} in „{subject}“ nicht bearbeiten',
         titleRelatedNoSubject: '{productName} konnte Anmerkung {related} nicht bearbeiten',
@@ -520,7 +520,7 @@ export const collaboration: typeof en.collaboration = {
       // Piloti hat eine Rückfrage gestellt und wartet auf eine Person: die
       // Zuständige der Anmerkung, sonst die, für die es gearbeitet hat. Die
       // Frage steht als Auszug darunter.
-      pilotiAsksYou: {
+      agentAsksYou: {
         title: '{productName} hat eine Rückfrage an Sie',
         titleRelated: '{productName} hat eine Rückfrage an Sie zu Anmerkung {related} in „{subject}“',
         titleRelatedNoSubject: '{productName} hat eine Rückfrage an Sie zu Anmerkung {related}',
@@ -534,7 +534,7 @@ export const collaboration: typeof en.collaboration = {
       // Dateiänderung nach ihrem Verb, sonst nach Art:
       // `PROPOSAL_NOTICE_VARIANTS`); der Auszug darunter nennt die Dateien, die
       // Notiz oder die Änderung. Wörter wie auf der Karte.
-      pilotiProposalWaiting: {
+      agentProposalWaiting: {
         title: '{productName} hat einen Vorschlag für Sie',
         // Wo der Vorschlag steht, nach dem, worauf die Zeile zeigt: der Chat,
         // in dem er entstand, sonst die Datei unter Dateien (`bodyProject`)
@@ -557,7 +557,7 @@ export const collaboration: typeof en.collaboration = {
       // {related} die Zahl der Rückfragen, die die Gebäudeklasse entscheiden;
       // ohne Rückfragen fehlt sie, dann gilt `title`. Was Piloti zusammengefasst
       // hat, steht als Auszug darunter.
-      pilotiIntakeReady: {
+      agentIntakeReady: {
         title: '{productName} hat die Dokumente von „{subject}“ gelesen',
         titleRelated: '{productName} hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
         body: 'Prüfen Sie die Vorschläge und bestätigen Sie, was stimmt.',

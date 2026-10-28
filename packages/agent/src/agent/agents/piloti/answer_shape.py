@@ -13,7 +13,7 @@ is removed. Measured on the census: the two redundant mindmaps scored 0.8 and
 
 This is the backstop, not the fix. The prompt itself asked for the pair, and
 since 2026-09-28 it says a mindmap of parts replaces their table instead
-(``prompts/piloti_static.md``; 12 of 24 overviews redundant before, 0 after,
+(``prompts/chat_static.md``; 12 of 24 overviews redundant before, 0 after,
 ``docs/design/answer-visuals.md``). Streamed, a removed mindmap is seen and
 then vanishes when the answer settles, so every hit here is a prompt miss.
 """

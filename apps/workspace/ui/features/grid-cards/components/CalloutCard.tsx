@@ -8,7 +8,7 @@
  * paragraph such a sentence reads at exactly the weight of the sentence beside
  * it — which is the one weight it must not have — so it gets a frame, its
  * kind written in its own tone and an icon well to scan to. No accent edge:
- * side stripes are discouraged (grid-design-language.md, "Emphasis without a
+ * side stripes are discouraged (design-language.md, "Emphasis without a
  * stripe"); the well and the word carry the tone.
  *
  * The kind is ALWAYS written out („Hinweis", „Achtung", „Frist", „Tipp") next
@@ -28,7 +28,7 @@
  * Local `useState` only — nothing is committed, so there is nothing to persist
  * (`presentational` in CARD_INTERACTIVITY).
  *
- * THE WIDTH CAP is the card's mark (`docs/design/grid-card-charter.md` §A5:
+ * THE WIDTH CAP is the card's mark (`docs/design/answer-card-charter.md` §A5:
  * "the only card narrower than the column"). A remark that spans the whole
  * column reads as a section of the answer; one that stops short of it reads as
  * an aside, which is exactly what it is. `46ch` is a measure rather than a
@@ -140,7 +140,7 @@ export const CalloutCard: FC<CalloutCardProps> = ({ kind, text, title, detail, f
                 marker marks the kind word, it never fills behind running text.
                 And it shares a baseline with the title instead of sitting on a row
                 of its own: that quirk is this card's identity and stays
-                (grid-card-charter.md §B1 — do not "fix" it). */}
+                (answer-card-charter.md §B1 — do not "fix" it). */}
             <span className={cn('card-eyebrow rounded-sm px-1.5 py-0.5', tone.wash, tone.ink)}>{tone.label(t)}</span>
             {title && <p className="card-title text-foreground">{title}</p>}
           </div>

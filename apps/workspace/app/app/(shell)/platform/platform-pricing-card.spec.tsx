@@ -21,7 +21,7 @@ const version = (overrides: Record<string, unknown> = {}) => ({
   defaultOrgDailyCredits: 500,
   defaultOrgMonthlyCredits: 5000,
   note: 'Pilot pricing',
-  createdByEmail: 'owner@grid.example',
+  createdByEmail: 'owner@app.example',
   createdAt: '2026-08-01T09:00:00Z',
   status: 'active',
   ...overrides,
@@ -35,7 +35,7 @@ const pricing = (overrides: Record<string, unknown> = {}) => ({
   defaultOrgMonthlyCredits: 5000,
   explicit: true,
   note: 'Pilot pricing',
-  updatedByEmail: 'owner@grid.example',
+  updatedByEmail: 'owner@app.example',
   updatedAt: '2026-08-01T09:00:00Z',
   history: [
     version(),

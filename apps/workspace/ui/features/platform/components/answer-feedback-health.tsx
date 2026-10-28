@@ -342,7 +342,7 @@ export function AnswerFeedbackHealth({
   }
 
   return (
-    <div className="grid-usage-viz flex flex-col gap-6" data-testid="answer-feedback-health">
+    <div className="usage-viz flex flex-col gap-6" data-testid="answer-feedback-health">
       <SeriesPaletteStyle />
       {header}
       <Card>

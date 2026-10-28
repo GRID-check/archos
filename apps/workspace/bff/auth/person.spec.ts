@@ -20,16 +20,16 @@ beforeEach(() => {
 
 describe('resolvePerson', () => {
   it('names the person and the office from the cached directory and display name', async () => {
-    vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['user_1', person('Anna Weber', 'anna@grid.test')]]))
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['user_1', person('Anna Weber', 'anna@example.test')]]))
 
     expect(await resolvePerson('org_1', 'user_1')).toEqual({
-      name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord',
+      name: 'Anna Weber', email: 'anna@example.test', organizationName: 'Atelier Nord',
     })
     expect(loadOrganizationDirectory).toHaveBeenCalledWith('org_1')
   })
 
   it("reads the directory's placeholders as no name, never as one", async () => {
-    vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['user_1', person('anna@grid.test', 'anna@grid.test')]]))
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['user_1', person('anna@example.test', 'anna@example.test')]]))
     expect((await resolvePerson('org_1', 'user_1')).name).toBeNull()
 
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['user_1', person('Unknown', null)]]))

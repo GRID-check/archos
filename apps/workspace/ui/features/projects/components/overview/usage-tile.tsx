@@ -71,7 +71,7 @@ export function UsageTile({
         </p>
       )}
       {ceiling !== null && (
-        <div className="grid-spend-viz">
+        <div className="spend-viz">
           <BudgetMeter
             title={t('project.usage.thisMonth')}
             total={usage.month.amount}

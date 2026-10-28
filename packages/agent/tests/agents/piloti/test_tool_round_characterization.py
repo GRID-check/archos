@@ -37,7 +37,7 @@ from agent.agents.deep_researcher.models import DeepResearchAgentState
 from agent.agents.piloti.agent import _FAILED_FETCH_REPEAT_MESSAGE
 from agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
 from agent.agents.piloti.agent import _WIDTH_CAP_MESSAGE
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.agent import TurnConfig
 from agent.agents.piloti.conversation import ConversationGraph
 from agent.agents.piloti.models import ConversationState
@@ -142,14 +142,14 @@ def _call(name: str, call_id: str, **args: Any) -> dict:
     return {"name": name, "args": args, "id": call_id}
 
 
-def _agent(replies: Any, tools: list[Any], **kwargs: Any) -> PilotiAgent:
+def _agent(replies: Any, tools: list[Any], **kwargs: Any) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=replies)
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=tools, system_prompt=_PROMPT, max_tool_iterations=7, **kwargs)
+    return ChatAgent(llm_provider=provider, tools=tools, system_prompt=_PROMPT, max_tool_iterations=7, **kwargs)
 
 
 def _transcript(result: ResearchAgentState) -> list[tuple[str, str]]:

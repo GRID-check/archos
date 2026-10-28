@@ -36,7 +36,7 @@
  * where they are curated. See §11.3 for the change that would give them a turn.
  */
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { cardKey, type CardInteractions } from '@/features/grid-cards/card-decision'
 import type { DecidedProposals } from '@/features/grid-cards/decided-proposals'
 import type { MessageStages } from '@/lib/conversations/message-stages'
@@ -90,7 +90,7 @@ const SAVED: ReadonlySet<string> = new Set(['savedOrg', 'savedProject'])
  * the browser decided, and its decision is on the message.
  */
 function wasRemembered(
-  card: Extract<GridCard, { type: 'memory_proposal' }>,
+  card: Extract<AnswerCard, { type: 'memory_proposal' }>,
   key: string,
   cardInteractions: CardInteractions | undefined,
   decidedProposals: DecidedProposals | undefined
@@ -103,7 +103,7 @@ interface TurnMemoryInput {
   /** Post-answer stage output on this message. */
   stages?: MessageStages
   /** The cards this answer carried, in the order they were emitted. */
-  cards?: (GridCard | undefined)[]
+  cards?: (AnswerCard | undefined)[]
   /** The reader's answer to each interactive card, keyed by `cardKey`. */
   cardInteractions?: CardInteractions
   /**
@@ -126,7 +126,7 @@ export function turnMemoryItems({ stages, cards, cardInteractions, decidedPropos
   const items: TurnMemoryItem[] = []
 
   for (const [index, card] of (cards ?? []).entries()) {
-    // A hole is a card validation rejected (`validateGridCards` keeps wire
+    // A hole is a card validation rejected (`validateAnswerCards` keeps wire
     // positions): nothing to attribute a memory write to.
     if (!card || card.type !== 'memory_proposal') continue
     const key = cardKey(card, index)

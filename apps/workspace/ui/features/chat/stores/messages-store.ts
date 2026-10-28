@@ -1028,7 +1028,7 @@ export const createMessagesSlice: StateCreator<
     setComposerSubject: (subject: ComposerSubject | null) => {
       // Peek-bound callers (openFilePeek) pair this with hide/close of the
       // preview: if you set a subject because a peek is showing, hide/close
-      // of that peek must pass null. Ask-Piloti subjects are user intent and
+      // of that peek must pass null. Ask-Agent subjects are user intent and
       // are cleared only by the subject bar or a new session.
       set({ composerSubject: subject }, false, 'setComposerSubject')
     },

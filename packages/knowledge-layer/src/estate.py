@@ -140,7 +140,7 @@ class EstateBackend(BackendProtocol):
     tools call the richer methods (:meth:`read_file` and the others), which
     return the text the model reads. Writes are refused: nothing under the
     estate is writable through a filesystem verb
-    (``piloti-filesystem-design.md`` §2).
+    (``filesystem-design.md`` §2).
     """
 
     def __init__(

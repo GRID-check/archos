@@ -28,7 +28,7 @@ from agent.knowledge.factory import clear_active_ingestor
 from agent.knowledge.factory import set_active_ingestor
 from agent_host.routes.ingest import add_ingest_routes
 
-_PILOTI = {
+_AGENT_FILED = {
     "file_ref": "http://seaweedfs.test/bucket/aktenvermerk-2026-09-01.md?X-Amz-Signature=abc",
     "collection": "proj_test123",
     "document_id": "doc-1",
@@ -73,7 +73,7 @@ def _config(mock_ingestor) -> dict:
 
 @pytest.mark.asyncio
 async def test_the_four_keys_reach_the_ingest_job_config(app, mock_ingestor):
-    response = await _ingest(app, _PILOTI)
+    response = await _ingest(app, _AGENT_FILED)
 
     assert response.status_code == 202
     config = _config(mock_ingestor)
@@ -88,7 +88,7 @@ async def test_the_stated_file_name_is_what_the_chunks_are_filed_under(app, mock
     # The presigned URL's last segment is `aktenvermerk-2026-09-01.md` — the
     # OBJECT KEY's basename, which the BFF flattened. Filing chunks under it
     # would file them under a name no purge ever asks for.
-    response = await _ingest(app, _PILOTI)
+    response = await _ingest(app, _AGENT_FILED)
 
     assert response.status_code == 202
     assert _config(mock_ingestor)["original_filenames"] == ["piloti/doc-1/aktenvermerk-2026-09-01.md"]

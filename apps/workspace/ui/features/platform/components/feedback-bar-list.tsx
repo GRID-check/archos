@@ -5,8 +5,8 @@
  * "by topic" breakdowns of the answer-feedback surface.
  *
  * A four-category magnitude comparison is a bar list, which is plain HTML and
- * needs no chart library. ONE hue for every bar (`--grid-series-1`, scoped by
- * the organism's `grid-usage-viz`): the job is comparing length, every bar
+ * needs no chart library. ONE hue for every bar (`--chart-series-1`, scoped by
+ * the organism's `usage-viz`): the job is comparing length, every bar
  * already carries its own label and its own number, and a categorical hue per
  * row would encode nothing.
  *
@@ -98,7 +98,7 @@ export function FeedbackBarRow({
               className="duration-base block h-full w-full rounded-full transition-transform ease-out motion-reduce:transition-none"
               style={{
                 transform: `translateX(-${100 - Math.max(0, Math.min(100, pct))}%)`,
-                backgroundColor: 'var(--grid-series-1)',
+                backgroundColor: 'var(--chart-series-1)',
               }}
             />
           ) : null}

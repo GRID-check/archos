@@ -334,7 +334,7 @@ class TestConversationGraph:
         assert captured_state["data_sources"] == []
 
     @pytest.mark.asyncio
-    async def test_piloti_sets_the_listing_shelf_from_the_query(self, mock_deep_research, mock_clarifier):
+    async def test_chat_sets_the_listing_shelf_from_the_query(self, mock_deep_research, mock_clarifier):
         """A shelf named in the question is the one the inventory prints in
         full this turn. Piloti sets it as a ContextVar before the
         Piloti runs, so the prompt renderer sees it."""
@@ -402,7 +402,7 @@ class TestRoutingBoundary:
         return calls, research_answering, deep, clarifier
 
     @pytest.mark.asyncio
-    async def test_out_of_scope_is_answered_by_piloti(self, trackers):
+    async def test_out_of_scope_is_answered_by_chat(self, trackers):
         """An off-topic question is Piloti's to decline — there is
         no fixed redirect ahead of it any more. It declines without a source
         lookup, so the turn is observed as a direct reply; no clarifier, no
@@ -578,7 +578,7 @@ class TestTurnBoundary:
         assert TURN_SCOPED_FIELDS == set(ConversationState.model_fields) - CONVERSATION_SCOPED_FIELDS
 
     @pytest.mark.asyncio
-    async def test_in_flight_documents_reach_piloti(self):
+    async def test_in_flight_documents_reach_chat_agent(self):
         seen: dict[str, object] = {}
 
         async def research(state_input):

@@ -14,15 +14,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getTurnChanges } from '@/lib/changes/client'
-import type { PilotiChangeView } from '@/lib/changes/types'
+import type { AgentChangeView } from '@/lib/changes/types'
 
 export interface TurnChanges {
   /** The last list read, or null while none has been (not read yet, or every read failed). */
-  changes: readonly PilotiChangeView[] | null
+  changes: readonly AgentChangeView[] | null
   /** Read the list again. Resolves to it, or null when the read failed. */
-  refetch: () => Promise<readonly PilotiChangeView[] | null>
+  refetch: () => Promise<readonly AgentChangeView[] | null>
   /** Adopt one change an undo returned, without a second read. */
-  adopt: (change: PilotiChangeView) => void
+  adopt: (change: AgentChangeView) => void
 }
 
 export function useTurnChanges(
@@ -30,7 +30,7 @@ export function useTurnChanges(
   messageId: string | undefined,
   { enabled, token }: { enabled: boolean; token: number }
 ): TurnChanges {
-  const [changes, setChanges] = useState<readonly PilotiChangeView[] | null>(null)
+  const [changes, setChanges] = useState<readonly AgentChangeView[] | null>(null)
   // Reads started and the newest applied, so a slow old read never overwrites a newer one.
   const started = useRef(0)
   const applied = useRef(0)
@@ -54,7 +54,7 @@ export function useTurnChanges(
     if (enabled) void refetch()
   }, [enabled, refetch, token])
 
-  const adopt = useCallback((change: PilotiChangeView) => {
+  const adopt = useCallback((change: AgentChangeView) => {
     setChanges((previous) => previous?.map((existing) => (existing.id === change.id ? change : existing)) ?? previous)
   }, [])
 

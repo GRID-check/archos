@@ -22,7 +22,7 @@ const TX_DB = vi.hoisted(() => ({ handle: 'the tenant-scoped db' }))
 const session = {
   userId: 'user_1',
   organizationId: 'org_1',
-  email: 'a@grid.test',
+  email: 'a@example.test',
   name: 'Anna Berger',
   role: 'member',
   permissions: [] as string[],
@@ -101,7 +101,7 @@ import {
 } from '@/lib/annotations/repository'
 import {
   createAnnotation as createAs,
-  PILOTI,
+  AGENT,
   replyToAnnotation as replyAs,
   updateAnnotation as updateAs,
 } from '@/lib/annotations/service'
@@ -116,7 +116,7 @@ import { delegationEventId, documentThreadConversationId, wakeTurnId } from '@/l
 import { recordAuditEvent } from '@/lib/audit/service'
 import { expectRegistered } from '@/test-utils/audit'
 import type { DbTransaction } from '@/lib/db/executor'
-import type { DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { DocumentAnnotationReplyRow, AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
@@ -263,7 +263,7 @@ describe('a reply that wakes Piloti', () => {
         eventId: REPLY_ID,
         documentId: DOC_ID,
         annotationId: MARK_ID,
-        actor: { userId: 'user_1', email: 'a@grid.test' },
+        actor: { userId: 'user_1', email: 'a@example.test' },
       },
     })
     expect(insertWake).toHaveBeenCalledWith(TX, expect.objectContaining({ id: wakeTurnId(REPLY_ID), status: 'queued' }))
@@ -396,7 +396,7 @@ describe('a delegation to Piloti', () => {
 })
 
 /** The wake of the mark's current delegation, as `findLiveDelegationWake` answers it. */
-const liveWake = (status: 'queued' | 'started', actorUserId = 'user_1'): PilotiWakeRow => ({
+const liveWake = (status: 'queued' | 'started', actorUserId = 'user_1'): AgentWakeRow => ({
   id: WAKE_ID,
   organizationId: 'org_1',
   documentId: DOC_ID,
@@ -423,7 +423,7 @@ describe('a reply of Piloti’s on a delegated mark', () => {
   it('leaves the delegation alone: only the delegation’s own turn ending hands the mark back', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue(DELEGATED)
 
-    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Erledigt.' }, PILOTI)
+    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Erledigt.' }, AGENT)
 
     const [input] = vi.mocked(insertAnnotationReply).mock.calls[0]
     expect(input).not.toHaveProperty('handBack')
@@ -528,7 +528,7 @@ describe('taking a mark back from Piloti', () => {
   it('never stops the turn when Piloti closes the mark in the asker’s name, which is usually that turn finishing', async () => {
     vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('started'))
 
-    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, AGENT)
 
     expect(vi.mocked(updateDocumentAnnotation).mock.calls[0][4].delegation).toEqual({ delegatedBy: null, delegatedAt: null })
     expect(stopJobs()).toHaveLength(0)
@@ -537,7 +537,7 @@ describe('taking a mark back from Piloti', () => {
   it('still keeps a queued wake from starting when Piloti closes the mark', async () => {
     vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('queued'))
 
-    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, AGENT)
 
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'suppressed', reason: 'taken back' })
   })
@@ -578,7 +578,7 @@ describe('what a person’s decision leaves behind', () => {
   })
 
   it('does not call it for a reply of Piloti’s, or for a move that settles nothing (a rewording)', async () => {
-    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Erledigt.' }, PILOTI)
+    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Erledigt.' }, AGENT)
     await updateAnnotation(DOC_ID, MARK_ID, { body: 'Neu gefasst' }, { run })
 
     expect(onMarkSettledByPerson).not.toHaveBeenCalled()
@@ -613,7 +613,7 @@ describe('what a person’s decision leaves behind', () => {
     await updateAnnotation(DOC_ID, MARK_ID, { status: 'resolved' }, { run })
     vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
     await updateAnnotation(DOC_ID, MARK_ID, { body: 'Neu gefasst' }, { run })
-    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'open' }, PILOTI)
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'open' }, AGENT)
 
     expect(recordDecisionScore).not.toHaveBeenCalled()
   })
@@ -671,7 +671,7 @@ describe('what a change or a reply tells people', () => {
       annotationNumber: 4,
       projectId: 'proj_1',
       actorUserId: 'user_1',
-      byPiloti: false,
+      byAgent: false,
       markText: 'Türbreite prüfen',
       previousAssigneeUserId: 'user_2',
       assigneeUserId: 'user_3',
@@ -728,15 +728,15 @@ describe('what a change or a reply tells people', () => {
     await updateAnnotation(DOC_ID, MARK_ID, { status: 'open' }, { run })
 
     expect(onAssigneeChanged).toHaveBeenCalledWith(
-      expect.objectContaining({ previousAssigneeUserId: null, assigneeUserId: 'user_3', open: true, byPiloti: false })
+      expect.objectContaining({ previousAssigneeUserId: null, assigneeUserId: 'user_3', open: true, byAgent: false })
     )
     expect(onMarkMoved).not.toHaveBeenCalled()
   })
 
   it('says Piloti did it when Piloti assigns for the asker', async () => {
-    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { assigneeUserId: 'user_3' }, PILOTI)
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { assigneeUserId: 'user_3' }, AGENT)
 
-    expect(onAssigneeChanged).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 'user_1', byPiloti: true }))
+    expect(onAssigneeChanged).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 'user_1', byAgent: true }))
   })
 
   it('tells the author when someone resolves, dismisses or reopens their mark, and settles a closed one even when Piloti closed it', async () => {
@@ -744,11 +744,11 @@ describe('what a change or a reply tells people', () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, status: 'resolved' })
     await updateAnnotation(DOC_ID, MARK_ID, { status: 'open' }, { run })
     vi.mocked(findDocumentAnnotation).mockResolvedValue(MARK)
-    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, AGENT)
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, authorKind: 'piloti', status: 'proposed' })
     await updateAnnotation(DOC_ID, MARK_ID, { status: 'dismissed' }, { run })
 
-    expect(vi.mocked(onMarkMoved).mock.calls.map(([input]) => [input.move, input.byPiloti])).toEqual([
+    expect(vi.mocked(onMarkMoved).mock.calls.map(([input]) => [input.move, input.byAgent])).toEqual([
       ['resolved', false],
       ['reopened', false],
       ['resolved', true],
@@ -767,7 +767,7 @@ describe('what a change or a reply tells people', () => {
       annotationId: MARK_ID,
       annotationNumber: 4,
       actorUserId: 'user_1',
-      byPiloti: false,
+      byAgent: false,
       mark: MARK,
       replyText: 'Ist bestellt.',
     })
@@ -776,9 +776,9 @@ describe('what a change or a reply tells people', () => {
   })
 
   it('tells the thread when Piloti replies, as the person its turn acted for', async () => {
-    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Steht im Schnitt B-B.' }, PILOTI)
+    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Steht im Schnitt B-B.' }, AGENT)
 
-    expect(onMarkReplied).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 'user_1', byPiloti: true }))
+    expect(onMarkReplied).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 'user_1', byAgent: true }))
   })
 
   it('tells the Zuständige a person names when setting a mark, and nobody when they name themselves or nobody', async () => {
@@ -818,7 +818,7 @@ describe('the audit trail of a wake taken back', () => {
       {
         action: 'piloti.wake.stopped',
         organizationId: 'org_1',
-        actor: { userId: 'user_1', email: 'a@grid.test' },
+        actor: { userId: 'user_1', email: 'a@example.test' },
         targetType: 'document_annotation',
         targetId: MARK_ID,
         alsoTargets: [
@@ -871,12 +871,12 @@ describe('the audit trail of a wake taken back', () => {
 
   it('says Piloti took it back when Piloti closed the mark, and records no stop of the turn it does not stop', async () => {
     vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('queued'))
-    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, AGENT)
     expect(stopped().map((input) => input.metadata?.by)).toEqual(['piloti'])
 
     vi.mocked(recordAuditEvent).mockClear()
     vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('started'))
-    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, AGENT)
     expect(stopped()).toEqual([])
   })
 

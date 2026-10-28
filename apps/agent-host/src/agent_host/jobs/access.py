@@ -1,4 +1,4 @@
-"""AIQ-owned async job access control helpers."""
+"""agent-host-owned async job access control helpers."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from agent.common.source_kinds import is_office_shelf_collection
 from agent.knowledge.restricted_collections import base_collection_of
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 
 _job_access_schema_initialized: set[str] = set()
 
@@ -55,7 +55,7 @@ def _is_postgres(db_url: str) -> bool:
 
 
 def ensure_job_access_table(db_url: str) -> None:
-    """Create the AIQ-owned job access table if it does not exist."""
+    """Create the agent-host-owned job access table if it does not exist."""
     _ensure_job_access_schema(db_url)
 
 
@@ -431,7 +431,7 @@ def verified_envelope(
     user_id: str | None,
     organization_id: str | None = None,
     now_ms: int | None = None,
-) -> GridRequestContext | None:
+) -> RequestContext | None:
     """A request's signed envelope when it may speak for ``user_id``, else None.
 
     The bar every reader that TRUSTS the envelope here holds it to: signed with
@@ -443,7 +443,7 @@ def verified_envelope(
     secret = os.environ.get("INTERNAL_API_TOKEN")
     if not secret or not user_id:
         return None
-    context = GridRequestContext.from_envelope(
+    context = RequestContext.from_envelope(
         headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
         secret,

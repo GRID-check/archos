@@ -15,14 +15,14 @@ import pytest
 
 from agent.common import bff_http
 from agent.project_context import ORG_INSTRUCTIONS_TRUNCATED_MARKER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.turn import context_client as client
 from agent.turn.context_client import ContextBlocks
 from agent.turn.context_client import TurnContextError
 
 
 @pytest.fixture
-def request_context(monkeypatch) -> GridRequestContext:
+def request_context(monkeypatch) -> RequestContext:
     token = "test-context-token"  # noqa: S105 - local fixture only
     monkeypatch.setenv("INTERNAL_API_TOKEN", token)
     raw = json.dumps(
@@ -38,7 +38,7 @@ def request_context(monkeypatch) -> GridRequestContext:
     ).encode("utf-8")
     header = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
     signature = hmac.new(token.encode("utf-8"), raw, hashlib.sha256).hexdigest()
-    context = GridRequestContext.from_envelope(header, signature, token)
+    context = RequestContext.from_envelope(header, signature, token)
     assert context is not None
     return context
 

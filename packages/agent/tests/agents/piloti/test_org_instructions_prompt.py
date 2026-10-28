@@ -93,11 +93,11 @@ class TestWhereItSits:
 
 class TestTheLift:
     def test_the_turn_context_carries_it_from_the_request(self):
-        from agent.project_context import GridRequestContext
+        from agent.project_context import RequestContext
         from agent.turn.context import TurnContext
 
         assert "org_instructions" in TurnContext.__dataclass_fields__
-        assert "org_instructions" in GridRequestContext.__dataclass_fields__
+        assert "org_instructions" in RequestContext.__dataclass_fields__
 
     def test_the_conversation_state_hands_it_to_the_research_state(self):
         """The graph edge the field has to survive: a value that stops at the

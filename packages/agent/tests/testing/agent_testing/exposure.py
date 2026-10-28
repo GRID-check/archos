@@ -13,7 +13,7 @@ ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfi
 CONFIG = ROOT / "configs" / "config_oib_openrouter.yml"
 EXPOSURE = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "exposure.json"
 #: Piloti in chat: the agent whose tool list the door's `native:` names point at.
-PILOTI_AGENT = "shallow_research_agent"
+CHAT_AGENT = "shallow_research_agent"
 
 
 def _canvas_members() -> set[str]:
@@ -27,12 +27,12 @@ def _canvas_members() -> set[str]:
 GROUP_MEMBERS: dict[str, Callable[[], set[str]]] = {"document_canvas": _canvas_members}
 
 
-def piloti_tool_names() -> set[str]:
+def chat_tool_names() -> set[str]:
     """Piloti's chat tools as the model binds them: functions by name, a group's as ``<group>__<function>``."""
     config = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     groups = config.get("function_groups") or {}
     names: set[str] = set()
-    agent = config["functions"][PILOTI_AGENT]
+    agent = config["functions"][CHAT_AGENT]
     if agent.get("filesystem"):
         # Built per turn, not listed: the estate's readers (ADR-0133).
         from agent.tools.documents.tools import ESTATE_TOOL_NAMES

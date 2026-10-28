@@ -282,7 +282,7 @@ class TestGating:
         assert payload == {"v": ENVELOPE_VERSION, "kind": "walkthrough"}
 
 
-class TestAVerdictNeverRestsOnADocumentPilotiWrote:
+class TestAVerdictNeverRestsOnADocumentAgentWrote:
     """The gate that keeps an approved office document from becoming a norm.
 
     A published Piloti document is real evidence and it is citable — but a
@@ -329,7 +329,7 @@ class TestAVerdictNeverRestsOnADocumentPilotiWrote:
         assert payload is not None
         assert payload["verdict"] == _VERDICT
 
-    def test_a_verdict_with_no_reference_is_dropped_when_piloti_wrote_a_source(self):
+    def test_a_verdict_with_no_reference_is_dropped_when_the_agent_wrote_a_source(self):
         """THE HOLE. The gate above can only judge a reference it was given, so
         omitting it was the cheapest way to the same headline resting on the
         same document — with the evidence that would have failed it left out."""

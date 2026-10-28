@@ -525,7 +525,7 @@ export function TasksPanel({
           </div>
 
           {isTimetableView ? (
-            <div className="grid-usage-viz mx-auto w-full max-w-5xl p-4 md:p-6">
+            <div className="usage-viz mx-auto w-full max-w-5xl p-4 md:p-6">
               <SeriesPaletteStyle />
               <ScheduleTimetable
                 schedules={jobs}

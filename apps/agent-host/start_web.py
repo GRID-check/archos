@@ -157,12 +157,12 @@ def load_nat_config(config_file: str):
     The JOIN `start_web` actually runs: a process that has imported none of
     pytest's plugins. `load_config` alone is not enough.
     """
-    from agent.observability import ensure_registered as register_grid_telemetry
+    from agent.observability import ensure_registered as register_telemetry
     from agent.observability.boot_timing import BootClock
     from agent_host.roles import web_role
     from nat.runtime.loader import load_config
 
-    register_grid_telemetry()
+    register_telemetry()
     with BootClock(web_role().value).phase("load_config"):
         return load_config(config_file)
 

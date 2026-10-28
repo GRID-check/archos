@@ -36,13 +36,13 @@ import {
   type ReactNode,
 } from 'react'
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { CardPlaceholder } from '@/features/grid-cards/components/CardPlaceholder'
 import { CardRendererProvider, DrawnProvider, preflight, TextBlock, useDrawnReporter, type CardRenderer } from './catalog'
 import { surfaceComponents, surfaceLeaves } from './surface-messages'
 
 interface A2uiCardProps {
-  card: GridCard
+  card: AnswerCard
   /** Unique within the page; the surface id. */
   surfaceKey: string
   render: CardRenderer

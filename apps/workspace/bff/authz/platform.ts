@@ -42,7 +42,7 @@ import { recordAuditEvent } from '@/lib/audit/service'
 import { rolePermissions } from './org-role-permissions'
 import { ALL_PLATFORM_PERMISSION_SLUGS, PLATFORM_PERMISSIONS, type PlatformPermission } from './permissions'
 import { resolveSubjectMembership } from './project-membership'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 
 export const PLATFORM_ORG_EXTERNAL_ID = process.env.PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
 export const PLATFORM_OWNER_ROLE_SLUG = 'org-platform-owner'
@@ -56,7 +56,7 @@ let platformOrgCache: { fetchedAt: number; organizationId: string | null } | nul
 const BREAK_GLASS_AUDIT_INTERVAL_MS = 60 * 60 * 1000
 const breakGlassAuditedAt = new Map<string, number>()
 
-async function auditBreakGlassUse(session: GridSession): Promise<void> {
+async function auditBreakGlassUse(session: UserSession): Promise<void> {
   // Keyed per actor AND active org: an owner hopping across tenant orgs
   // inside the window leaves one trail entry per org, not one total —
   // cross-org break-glass access is exactly what must stay visible.
@@ -136,7 +136,7 @@ async function platformMembershipPermissions(
  * nothing", and only the first should read as *not staff*.
  */
 export async function platformPermissions(
-  session: GridSession | null
+  session: UserSession | null
 ): Promise<ReadonlySet<string> | null> {
   if (!session) return null
 
@@ -173,7 +173,7 @@ export async function platformPermissions(
  * as the factory's first gate; use {@link requirePlatformPermission} to
  * authorize an actual surface.
  */
-export async function isPlatformStaff(session: GridSession | null): Promise<boolean> {
+export async function isPlatformStaff(session: UserSession | null): Promise<boolean> {
   const permissions = await platformPermissions(session)
   if (permissions === null) return false
   // `platform:observability:view` opens Langfuse at the edge and nothing in
@@ -189,7 +189,7 @@ const EDGE_ONLY_PLATFORM_PERMISSIONS: ReadonlySet<string> = new Set([PLATFORM_PE
  * True when this session holds one specific platform permission.
  */
 export async function hasPlatformPermission(
-  session: GridSession | null,
+  session: UserSession | null,
   permission: PlatformPermission
 ): Promise<boolean> {
   const permissions = await platformPermissions(session)
@@ -214,7 +214,7 @@ export class PlatformAccessDeniedError extends Error {
  * mutating routes.
  */
 export async function requirePlatformPermission(
-  session: GridSession | null,
+  session: UserSession | null,
   permission: PlatformPermission
 ): Promise<void> {
   if (!(await hasPlatformPermission(session, permission))) {

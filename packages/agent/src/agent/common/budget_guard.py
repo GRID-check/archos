@@ -5,7 +5,7 @@ a single async job may consume across *every* LLM call it makes --
 orchestrator, planner, writer, source-router, and every concurrent researcher
 worker alike. It is a coarse run-away-job safety valve, independent of (and
 complementary to) the USD-denominated org/user/project budgets enforced by
-``agent.common.cost_tracking.GridCostTracker``.
+``agent.common.cost_tracking.CostTracker``.
 
 Mechanism: a ``BaseCallbackHandler`` with ``raise_error = True`` so an
 exception raised from one of its methods propagates out of LangChain's
@@ -16,7 +16,7 @@ propagate when ``handler.raise_error`` is set). Usage is only known
 *next* call: ``on_llm_start``/``on_chat_model_start`` check accumulated usage
 and raise ``RunBudgetExceededError`` once the ceiling was already exceeded by
 a prior call. A call already in flight is never interrupted mid-generation --
-the same soft-limit semantic ``GridCostTracker`` documents for its USD
+the same soft-limit semantic ``CostTracker`` documents for its USD
 budgets.
 
 Named ``RunBudgetExceededError`` (not ``BudgetExceededError``) to avoid

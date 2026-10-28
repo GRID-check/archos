@@ -23,7 +23,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.answer_pipeline import prose_without_references
 from agent.agents.piloti.grounding import MEASUREMENT_TOOL_NAMES
 from agent.agents.piloti.grounding import tool_result_is_measurement
@@ -341,7 +341,7 @@ class TestMeasurementSignalReachesTheState:
 
     async def _run(self, mock_llm_provider, mock_llm, responses, question="Wie hoch ist der Keller?"):
         mock_llm.ainvoke = AsyncMock(side_effect=responses)
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[ifc_measure])
+        agent = ChatAgent(llm_provider=mock_llm_provider, tools=[ifc_measure])
         return await agent.run(ResearchAgentState(messages=[HumanMessage(content=question)]))
 
     @pytest.mark.asyncio

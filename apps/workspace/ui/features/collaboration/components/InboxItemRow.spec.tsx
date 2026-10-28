@@ -909,11 +909,11 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
 
   test('a Piloti row wears Piloti’s glyph, and a person’s row its type icon', () => {
     const { unmount } = german(onMark())
-    expect(document.querySelector('[data-slot="piloti-glyph"]')).not.toBeNull()
+    expect(document.querySelector('[data-slot="agent-glyph"]')).not.toBeNull()
     unmount()
 
     german(onMark({ type: 'annotation.activity', actorName: 'Anna Weber', variant: 'reply' }))
-    expect(document.querySelector('[data-slot="piloti-glyph"]')).toBeNull()
+    expect(document.querySelector('[data-slot="agent-glyph"]')).toBeNull()
   })
 
   test('a Rückfrage asks the reader, with the question below', () => {
@@ -1468,7 +1468,7 @@ describe('InboxItemRow — who and what at a glance', () => {
     expect(screen.queryByTestId('person-avatar')).not.toBeInTheDocument()
     unmount()
     render(<InboxItemRow item={item({ type: 'piloti.work_done', actionable: false, actorName: null, actorUserId: null })} />)
-    expect(document.querySelector('[data-slot="piloti-glyph"]')).toHaveAttribute('data-tone', 'outline')
+    expect(document.querySelector('[data-slot="agent-glyph"]')).toHaveAttribute('data-tone', 'outline')
     expect(screen.queryByTestId('person-avatar')).not.toBeInTheDocument()
   })
 

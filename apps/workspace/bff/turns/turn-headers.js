@@ -10,7 +10,7 @@
  * cannot exist: before this, the mapping lived inline in `server.js` and the
  * wake would have been its second copy.
  *
- * The envelope builder below DUPLICATES `buildGridRequestContextEnvelopePayload`
+ * The envelope builder below DUPLICATES `buildRequestContextEnvelopePayload`
  * in `request-context.ts`, which stays the one canonical definition: this file
  * is plain CommonJS because `server.js` requires it at startup with no build
  * step, and cannot import a TS module. `request-context.spec.ts` pins the two:
@@ -49,7 +49,7 @@ const crypto = require('crypto')
  */
 
 /**
- * `GridRequester` in `request-context.ts`.
+ * `RequestPerson` in `request-context.ts`.
  *
  * @typedef {object} Requester
  * @property {string | null | undefined} [name]
@@ -72,7 +72,7 @@ function requesterOf(value) {
 }
 
 /**
- * `GridRequestContextInput` in `request-context.ts`, as far as the envelope reads it.
+ * `RequestContextInput` in `request-context.ts`, as far as the envelope reads it.
  *
  * @typedef {object} EnvelopeInput
  * @property {string | null} [organizationId]
@@ -96,7 +96,7 @@ function requesterOf(value) {
 /**
  * The signed `X-Grid-Request-Context` envelope (and its signature when
  * `secret` is set). Field list, omission rules and key order are those of
- * `buildGridRequestContextEnvelopePayload` in `request-context.ts`: every
+ * `buildRequestContextEnvelopePayload` in `request-context.ts`: every
  * field added since `memoryReflectionEnabled` was appended LAST so earlier
  * signed payloads stay byte-identical. `conversationId` and `issuedAt` make it
  * a credential (ADR-0054): which conversation asked, and when it was minted.
@@ -109,7 +109,7 @@ function requesterOf(value) {
  * @param {string | null | undefined} secret
  * @returns {Record<string, string>}
  */
-function buildGridRequestContextEnvelopeHeaders(input, secret) {
+function buildRequestContextEnvelopeHeaders(input, secret) {
   /** @type {Record<string, unknown>} */
   const payload = {}
   if (input.organizationId) payload.organizationId = input.organizationId
@@ -198,7 +198,7 @@ function turnContextHeaders(data, { issuedAt, secret }) {
   }
   Object.assign(
     headers,
-    buildGridRequestContextEnvelopeHeaders(
+    buildRequestContextEnvelopeHeaders(
       {
         organizationId: data.organizationId,
         userId: data.userId,
@@ -228,4 +228,4 @@ function turnContextHeaders(data, { issuedAt, secret }) {
   return headers
 }
 
-module.exports = { buildGridRequestContextEnvelopeHeaders, turnContextHeaders }
+module.exports = { buildRequestContextEnvelopeHeaders, turnContextHeaders }

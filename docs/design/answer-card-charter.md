@@ -1,6 +1,6 @@
 # Grid Card Charter
 
-> **Relation to `grid-design-language.md`.** The design language is the product-wide law: it governs every surface in Piloti — tokens, type ramp, spacing rhythm, motion vocabulary, provenance colour, the do-nots. This charter is the **card-specific application** of that law: it takes the general rules and resolves them into per-card decisions that the design language is too broad to make, and it adds constraints that only apply to cards (the figure rule, the shape vocabulary, the export-survival criterion). **Where the two disagree, the design language wins** — a conflict is a bug in this charter, and the fix is to change this file, not to deviate. Nothing here overrides `docs/design/grid-design-language.md`; where this charter is silent, the design language still applies in full.
+> **Relation to `design-language.md`.** The design language is the product-wide law: it governs every surface in Piloti — tokens, type ramp, spacing rhythm, motion vocabulary, provenance colour, the do-nots. This charter is the **card-specific application** of that law: it takes the general rules and resolves them into per-card decisions that the design language is too broad to make, and it adds constraints that only apply to cards (the figure rule, the shape vocabulary, the export-survival criterion). **Where the two disagree, the design language wins** — a conflict is a bug in this charter, and the fix is to change this file, not to deviate. Nothing here overrides `docs/design/design-language.md`; where this charter is silent, the design language still applies in full.
 
 **Purpose.** The product owner's brief: *"really also make each of the cards truly unique and look absolutely stunning here."* Not "same box, different accent colour and icon" — that is what exists and it is the complaint. This charter's job is the tension in that instruction: **maximum per-card distinctiveness inside one coherent system.**
 
@@ -49,7 +49,7 @@ The complaint "same box, different content" is half wrong, and that is why it ha
 | `Card` + hand-composed `SectionLabel` | key_takeaways, verdict_header, callout. *At the audit also:* follow_ups (now `FollowUpChips.tsx`, flat) | KeyTakeawaysCard.tsx, VerdictHeaderCard.tsx, CalloutCard.tsx |
 | Flat, no chrome at all | *At the audit:* summary, requirement_checklist, legal_basis (all retired, ADR-0069) | — |
 | `ProposalShell` | memory_proposal, project_profile_patch | ProposalShell.tsx:25–38 |
-| Borrowed from another feature | document_grid (FileCard/FileGrid), the 6 IFC cards | DocumentGridCard.tsx:6–8 |
+| Borrowed from another feature | document_grid (FileCard/FileGrid), the 6 IFC cards | DocumentAnswerCard.tsx:6–8 |
 
 Cards in group 1 and group 2 render an identical silhouette — `rounded-lg border bg-card p-5 shadow-xs`, eyebrow, 14px title, body — from two different code paths. That is the worst of both worlds: no visual variety and no shared implementation.
 
@@ -173,7 +173,7 @@ Forbidden: any size not in this table.
 
 ### A3. Colour roles — four orthogonal axes, one rendering each
 
-Chroma belongs to provenance (`grid-design-language.md` §Principles 2). These axes must never trade renderings.
+Chroma belongs to provenance (`design-language.md` §Principles 2). These axes must never trade renderings.
 
 **1. Verdict — "does it meet the rule?"** → the four `statusColor()` inks, always with an icon carrying `aria-label` **and** the German word. Unchanged; it is correct.
 
@@ -184,7 +184,7 @@ Chroma belongs to provenance (`grid-design-language.md` §Principles 2). These a
 
 The retired `norm_chain` and `condition_tree` cards already did this. Codify it so the next card does not invent a fifth hue family.
 
-**3. The binding constraint — "which one decides it?"** In a set of checks, exactly one usually decides the verdict, and nothing marks it today: `LimitBar` (kit.tsx:414–519) draws every check identically. The deciding row gets **its value at the Figure step and its label in `--foreground`**; every other row stays Body in the muted ink. No left rule: side stripes are discouraged since 2026-10-27 (grid-design-language.md, "Emphasis without a stripe"). One per card, or none.
+**3. The binding constraint — "which one decides it?"** In a set of checks, exactly one usually decides the verdict, and nothing marks it today: `LimitBar` (kit.tsx:414–519) draws every check identically. The deciding row gets **its value at the Figure step and its label in `--foreground`**; every other row stays Body in the muted ink. No left rule: side stripes are discouraged since 2026-10-27 (design-language.md, "Emphasis without a stripe"). One per card, or none.
 
 **4. Direction — "which way did it move?"** → glyph + word + a borrowed verdict ink:
 - `tightens` → ↑ + „strenger" in `--text-color-feedback-warning`
@@ -233,9 +233,9 @@ This is the mechanism that makes twenty voices one family. **The eyebrow is demo
 
 ### A6. Motion policy
 
-Governed by `grid-design-language.md` §Motion vocabulary. Card-specific rulings:
+Governed by `design-language.md` §Motion vocabulary. Card-specific rulings:
 
-- **Arrival**: `FadeIn distance={6}` at the dispatcher (GridCards.tsx:97), applied uniformly. No card animates its own entrance. The `ProposalShell` spring (ProposalShell.tsx:35) is the documented exception, because those two cards *ask* for something.
+- **Arrival**: `FadeIn distance={6}` at the dispatcher (AnswerCards.tsx:97), applied uniformly. No card animates its own entrance. The `ProposalShell` spring (ProposalShell.tsx:35) is the documented exception, because those two cards *ask* for something.
 - **Nothing inside a card animates on arrival.** No staggered rows, no bars filling to their value, no counting numbers. Three reasons and they compound: a bar animating to a legal value is a legal value in motion; the design language forbids animating a § reference at all; and a card renders mid-stream while the prose above it is still arriving, so a mount animation re-fires as flicker in the middle of an answer.
 - **Permitted in-card motion, exhaustively**: `Collapsible` height at `duration-base`, chevron rotation at `duration-quick`, hover `transition-colors` at `duration-quick`. All `motion-reduce:` guarded, as they already are.
 - **Springs are forbidden in every card body.** The design language's own veto: anything carrying legal, evidentiary, provenance or error content is tween-only.
@@ -288,7 +288,7 @@ A reader should be able to tell a schematic from a generic card instantly — th
 
 The rules the cards that remain keep at ~314px of card width, each held by a
 test or a lint where one exists. They apply on the pointer, not the breakpoint,
-wherever the thing being sized is a finger (`grid-design-language.md`, Touch).
+wherever the thing being sized is a finger (`design-language.md`, Touch).
 
 1. **A label that decides a verdict is never clipped.** `DimChecksList` rows
    (`schematics/kit.tsx`) wrap: the label takes the free width (basis 12rem) and
@@ -364,7 +364,7 @@ Keep verbatim: a row with no `detail` is not a button (line 58).
 
 > **SCHEMA ADDITIONS — REQUESTED, NOT YET IMPLEMENTED.** Neither field exists today. The card cannot render either treatment until they land in `packages/agent/src/agent/cards/models.py` and are regenerated through `contracts/cards/schemas.json` → `npm run generate:cards`.
 >
-> 1. **`lane`** — the code already states the case verbatim (LegalBasisCard.tsx:61–68): the OIB accent cannot be resolved because `legalBasisCardSchema` carries no lane, and deriving `'oib'` from the law string by hand is precisely the drift `accentForLane` exists to prevent. OIB vs RIS is the distinction architects compare most (`grid-design-language.md` §Accents vs signals). **Highest-value schema addition in this charter.**
+> 1. **`lane`** — the code already states the case verbatim (LegalBasisCard.tsx:61–68): the OIB accent cannot be resolved because `legalBasisCardSchema` carries no lane, and deriving `'oib'` from the law string by hand is precisely the drift `accentForLane` exists to prevent. OIB vs RIS is the distinction architects compare most (`design-language.md` §Accents vs signals). **Highest-value schema addition in this charter.**
 >
 > **IMPLEMENTED, and NOT in the shape this charter first asked for.** The charter specified `lane: 'oib' | 'law'`; that was wrong and the implementation correctly refused it. `accentForLane(lane, signal)` matches on `startsWith('baurecht_oib')` — the fine-lane vocabulary `norm_registry.lane_for_hit` stamps on every chunk and chip. `'oib' | 'law'` is the accent a lane RESOLVES TO (`SourceTint`), not a lane, so feeding it back in would have required a second hand-written mapping in the renderer — the exact drift the helper exists to prevent — and would have let the card and the „Belegt durch" chips disagree about one document. Shipped as `lane: Literal["baurecht_oib", "baurecht_ris"] | None`, with a `mode="before"` validator folding the other real lanes on. `baurecht_basis` is excluded by name so an unclassified upload can never inherit the RIS tier.
 > 2. **`edition: str | None`** — `NormReference` carries `edition` and the schematics print it (kit.tsx:637); `legal_basis` has no such field, so the product's most authoritative card is the one citation that cannot say *which Ausgabe*. „OIB-Richtlinie 2" without „Ausgabe Mai 2023" is not verifiable.
@@ -458,7 +458,7 @@ Rationale beyond aesthetics: this is the one card that is **not evidence** and m
 
 #### `document_grid` (system card)
 **Job.** The project files this answer leaned on.
-**Grammar.** **Leave it.** It borrows `FileCard`/`FileGrid` from the documents feature (DocumentGridCard.tsx:6–8) and its distinctiveness is precisely that it looks like the Files page — a file should look the same everywhere in the product. Its unresolved and error states (document-surface.tsx:24–79) are already better-designed than most of the generic family. One check only: it must be **flat register**, because a frame around a grid of file cards is a card-in-card (§A4). Unframe if framed.
+**Grammar.** **Leave it.** It borrows `FileCard`/`FileGrid` from the documents feature (DocumentAnswerCard.tsx:6–8) and its distinctiveness is precisely that it looks like the Files page — a file should look the same everywhere in the product. Its unresolved and error states (document-surface.tsx:24–79) are already better-designed than most of the generic family. One check only: it must be **flat register**, because a frame around a grid of file cards is a card-in-card (§A4). Unframe if framed.
 **Effort: S.**
 
 #### `memory_proposal` / `project_profile_patch`

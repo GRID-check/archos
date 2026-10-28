@@ -1319,7 +1319,7 @@
       "properties": {
         "card": {
           "additionalProperties": true,
-          "description": "A GridCard (cards/models.py); validated by gridCardSchema on render.",
+          "description": "A AnswerCard (cards/models.py); validated by answerCardSchema on render.",
           "title": "Card",
           "type": "object"
         },

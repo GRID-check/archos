@@ -26,7 +26,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.history import prune_tool_results
 from agent.agents.piloti.history import replay_retired_look_names
 from agent.agents.piloti.models import ResearchAgentState
@@ -102,14 +102,14 @@ class Scripted:
         return self.replies[len(self.requests) - 1]
 
 
-def _agent(model: Scripted) -> tuple[PilotiAgent, MagicMock]:
+def _agent(model: Scripted) -> tuple[ChatAgent, MagicMock]:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=model.respond)
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=[look], system_prompt="Du bist Piloti."), llm
+    return ChatAgent(llm_provider=provider, tools=[look], system_prompt="Du bist Piloti."), llm
 
 
 @pytest.mark.parametrize("retired", sorted(RETIRED_CALLS))

@@ -22,7 +22,7 @@ import type { StageId, TurnView } from './turn-fold'
 import type { ChatMessage } from '../types'
 import { citationsFromWireList } from './wire-citation'
 import { reconcileCardInteractions } from '@/features/grid-cards/card-decision'
-import { validateGridCards, type GridCard } from '@/shared/cards/schemas'
+import { validateAnswerCards, type AnswerCard } from '@/shared/cards/schemas'
 import { sanitizeAnswerMeta } from '@/lib/conversations/message-answer-meta'
 import { isChatEffort } from '@/lib/reasoning-settings/catalog'
 import { sanitizeRetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
@@ -75,10 +75,10 @@ const hasSomethingToDraw = (view: TurnView): boolean =>
   Boolean(view.text.trim() || view.answerMeta || view.sources.length > 0) || view.cards.some(Boolean)
 
 /** The cards by index, a refused or missing one a hole, a card the schema refuses a hole too. */
-const cardsOf = (view: TurnView): (GridCard | undefined)[] | undefined =>
+const cardsOf = (view: TurnView): (AnswerCard | undefined)[] | undefined =>
   view.cards.length === 0
     ? undefined
-    : Array.from(view.cards, (keyed) => (keyed ? validateGridCards([keyed.card])[0] : undefined))
+    : Array.from(view.cards, (keyed) => (keyed ? validateAnswerCards([keyed.card])[0] : undefined))
 
 /** What the terminal says about the answer, in the stored field names; absent fields stay absent. */
 const resultFields = (view: TurnView): Partial<ChatMessage> => {

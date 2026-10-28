@@ -18,7 +18,7 @@ vi.mock('@/features/chat/store', () => ({
 const person = (userId: string, name: string) => ({
   userId,
   name,
-  email: `${userId}@grid.test`,
+  email: `${userId}@example.test`,
   profilePictureUrl: null,
 })
 

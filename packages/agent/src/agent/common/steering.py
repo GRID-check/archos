@@ -147,7 +147,7 @@ class SteerInbox:
         return len(self._seen)
 
 
-_INBOX: contextvars.ContextVar[SteerInbox | None] = contextvars.ContextVar("grid_steer_inbox", default=None)
+_INBOX: contextvars.ContextVar[SteerInbox | None] = contextvars.ContextVar("steer_inbox", default=None)
 
 
 def bind_steer_inbox(inbox: SteerInbox | None) -> contextvars.Token[SteerInbox | None]:

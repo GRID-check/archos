@@ -2,7 +2,7 @@
  * Which message owns a card set rendered OUTSIDE a chat bubble.
  *
  * A card in the thread knows its message: `AgentResponse` draws
- * `message.cards` and hands `GridCards` that message's id, so an interactive
+ * `message.cards` and hands `AnswerCards` that message's id, so an interactive
  * card's answer lands on the message it belongs to (ADR-0030). The
  * deep-research REPORT tab draws the same cards from `deepResearchCards` — a
  * transient list lifted off the finished job's output — and had no message at
@@ -39,21 +39,21 @@
  *     card's decision to another is not.
  *
  * No match means NO OWNER, and the caller must then not offer a decision at all
- * (see `decisionsMustPersist` in `GridCards`). That is the honest outcome while
+ * (see `decisionsMustPersist` in `AnswerCards`). That is the honest outcome while
  * a run is still live: its cards are on the wire and in the panel, and the
  * message that will carry them is written by the worker at the end of the run.
  * A decision recorded before then has nowhere durable to go, and offering a
  * button that quietly drops what the user pressed is worse than offering none.
  */
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 
 /** The little of a `ChatMessage` this question needs. */
 export interface CardOwnerMessage {
   id: string
   /** The deep-research run this message belongs to, when it belongs to one. */
   deepResearchJobId?: string
-  cards?: readonly (GridCard | undefined)[]
+  cards?: readonly (AnswerCard | undefined)[]
 }
 
 /** The little of a `Conversation` this question needs. */
@@ -82,7 +82,7 @@ export interface CardOwnerSource {
 export const findCardOwnerMessageId = (
   source: CardOwnerSource,
   jobId: string | null | undefined,
-  cards: readonly (GridCard | undefined)[]
+  cards: readonly (AnswerCard | undefined)[]
 ): string | null => {
   if (!jobId || cards.length === 0) return null
 

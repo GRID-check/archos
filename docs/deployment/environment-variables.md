@@ -487,7 +487,7 @@ The collector's WARN-and-above log pipeline to PostHog Logs is not an environmen
 
 The static half of Piloti's system prompt — the platform prompt — is authored
 and versioned in Langfuse and PULLED by the agent at render time
-(`packages/agent/src/agent/common/prompt_store.py`). `prompts/piloti_static.md` in the
+(`packages/agent/src/agent/common/prompt_store.py`). `prompts/chat_static.md` in the
 image is the bundled fallback, and nothing here ever writes to Langfuse. The
 architecture section is `docs/architecture/backend-deep-dive.md` §Prompts.
 
@@ -506,7 +506,7 @@ store stays on the bundled file until `LANGFUSE_PROMPTS_ENABLED` is set.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `LANGFUSE_PROMPTS_ENABLED` | No | unset (off) | When truthy (`1`/`true`/`yes`/`on`), the agent serves the platform prompt from Langfuse instead of the bundled file. Off by default: it decides whether a remote store may be the authority for the text the fleet reasons with, which is a product decision rather than a performance knob. With it off, no client is built and no request is made. Before turning it on for an environment, publish the committed prompt to the label it serves (`task prompts:push -- --label <label> --apply`), and again with every deploy that changes `piloti_static.md`: the fleet renders what the label holds, not what the image carries. Backend (aiq-agent) and agent-worker services. |
+| `LANGFUSE_PROMPTS_ENABLED` | No | unset (off) | When truthy (`1`/`true`/`yes`/`on`), the agent serves the platform prompt from Langfuse instead of the bundled file. Off by default: it decides whether a remote store may be the authority for the text the fleet reasons with, which is a product decision rather than a performance knob. With it off, no client is built and no request is made. Before turning it on for an environment, publish the committed prompt to the label it serves (`task prompts:push -- --label <label> --apply`), and again with every deploy that changes `chat_static.md`: the fleet renders what the label holds, not what the image carries. Backend (aiq-agent) and agent-worker services. |
 | `LANGFUSE_PUBLIC_KEY` | No | unset | Langfuse project public key. Half of the capability: without both keys the store logs once and serves the bundled prompt. Also read by `task prompts:pull` and `task prompts:push`, and by the frontend (BFF) for answer-feedback scores, see below. |
 | `LANGFUSE_SECRET_KEY` | No | unset | Langfuse project secret key. See above. |
 | `LANGFUSE_HOST` | No | `https://cloud.langfuse.com` (agent); none (frontend) | Base URL of the Langfuse API. Self-hosted deployments set this to their own Langfuse web tier; the Python SDK's default is Langfuse Cloud, which is not where a self-hosted stack's prompts are. The frontend has NO default: without it, answer-feedback scoring is off, so keys alone can never send votes to Langfuse Cloud. |

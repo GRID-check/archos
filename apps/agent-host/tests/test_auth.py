@@ -956,7 +956,7 @@ class TestAuthMiddlewareExempt:
 
 
 class TestLoadExternalHostnames:
-    def test_reads_aiq_external_hostnames_env(self) -> None:
+    def test_reads_external_hostnames_env(self) -> None:
         with patch.dict(os.environ, {"EXTERNAL_HOSTNAMES": " a.com , b.com "}):
             from agent_host.auth.middleware import _load_external_hostnames
 

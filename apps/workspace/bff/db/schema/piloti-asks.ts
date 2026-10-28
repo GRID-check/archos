@@ -20,7 +20,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
  * `state` uses the A2A task-state words, lowercase. `reason` is set exactly
  * for `failed` and `rejected`; `ended_at` exactly for a terminal state.
  */
-export const pilotiAsks = pgTable(
+export const agentAsks = pgTable(
   'agent_asks',
   {
     id: uuid('id').primaryKey(),
@@ -63,4 +63,4 @@ export const pilotiAsks = pgTable(
   }),
 )
 
-export type PilotiAskRow = typeof pilotiAsks.$inferSelect
+export type AgentAskRow = typeof agentAsks.$inferSelect

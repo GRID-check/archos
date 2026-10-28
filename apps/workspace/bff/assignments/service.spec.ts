@@ -84,11 +84,11 @@ import { deleteAssignment, insertAssignment, listAssignmentsForResources } from 
 const session = {
   userId: 'user_me',
   organizationId: 'org_1',
-  email: 'me@grid.test',
+  email: 'me@example.test',
 } as unknown as AuthorizedSession
 
 function person(userId: string, name: string) {
-  return { userId, email: `${name.toLowerCase()}@grid.test`, name, profilePictureUrl: null }
+  return { userId, email: `${name.toLowerCase()}@example.test`, name, profilePictureUrl: null }
 }
 
 function stubCallerRole(role: ResourceRole, projectId: string | null = 'proj_1'): void {

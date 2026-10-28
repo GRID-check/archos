@@ -7,11 +7,11 @@
  * card and the record agree on how many there were.
  */
 import { describe, expect, it } from 'vitest'
-import type { PilotiChangeView } from '@/lib/changes/types'
+import type { AgentChangeView } from '@/lib/changes/types'
 import type { CanvasActivityItem } from './canvas-activity'
 import { matchChanges, standsAsChanged } from './canvas-changes'
 
-const change = (id: string, patch: Partial<PilotiChangeView> = {}): PilotiChangeView => ({
+const change = (id: string, patch: Partial<AgentChangeView> = {}): AgentChangeView => ({
   id,
   documentId: 'doc',
   annotationId: 'ann-4',

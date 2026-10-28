@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { DeployConfig } from "../config";
 import { BOOTSTRAP_JOB_RESOURCES, JOB_DEFAULTS, KEDA_SCALER_CONNECTION_LIMIT, PORT } from "../constants";
 import { commonLabels } from "../platform/namespaces";
 import { secretChecksum, secretChecksumAnnotations } from "../platform/rollout";
@@ -64,7 +64,7 @@ export interface PostgresRenameWiring {
  * too, because a rename clears an MD5 hash.
  */
 export function installPostgresRename(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   wiring: PostgresRenameWiring,
@@ -96,7 +96,7 @@ export function installPostgresRename(
  * renames do not touch.
  */
 export function installRlsRoleRename(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   wiring: PostgresRenameWiring,
@@ -113,7 +113,7 @@ export function installRlsRoleRename(
 }
 
 function renameJob(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   wiring: PostgresRenameWiring,

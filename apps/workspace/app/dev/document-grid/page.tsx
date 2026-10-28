@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dev preview for the DocumentGridCard (the chat `document_grid` surfacing card).
+ * Dev preview for the DocumentAnswerCard (the chat `document_grid` surfacing card).
  * Renders the REAL component with fixture data so the layout can be reviewed and
  * screenshotted without a backend. A module-scope fetch shim (browser + dev only)
  * serves the project/Archiv document lists the resolution hook fetches and 404s
@@ -11,7 +11,7 @@
 
 import type { JSX } from 'react'
 import { notFound } from 'next/navigation'
-import { DocumentGridCard } from '@/features/grid-cards/components/DocumentGridCard'
+import { DocumentAnswerCard } from '@/features/grid-cards/components/DocumentAnswerCard'
 
 function makeRow(id: string, filename: string, extra: Record<string, unknown> = {}) {
   return {
@@ -67,9 +67,9 @@ const OFFICE_SHELF_ROWS = [
 // Install the fetch shim at module scope (before any component effect fires) so
 // the resolution hook always sees the fixtures. Idempotent + dev/browser-guarded.
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  const w = window as unknown as { __docGridShim?: boolean }
-  if (!w.__docGridShim) {
-    w.__docGridShim = true
+  const w = window as unknown as { __docAnswerShim?: boolean }
+  if (!w.__docAnswerShim) {
+    w.__docAnswerShim = true
     const real = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
@@ -90,7 +90,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   }
 }
 
-export default function DocumentGridDevPage(): JSX.Element {
+export default function DocumentAnswerDevPage(): JSX.Element {
   if (process.env.NODE_ENV !== 'development') {
     notFound()
   }
@@ -106,7 +106,7 @@ export default function DocumentGridDevPage(): JSX.Element {
       </div>
 
       {/* One file — same card, receipt + peek. */}
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Brandschutzkonzept_Wohnbau-Nord.pdf"
         query="Brandschutzkonzept"
         projectId="proj-demo"
@@ -123,7 +123,7 @@ export default function DocumentGridDevPage(): JSX.Element {
       />
 
       {/* Several close project + Archiv matches. */}
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Relevante Dokumente – Fluchtwege &amp; Brandschutz"
         query="Fluchtwege Brandschutz GK4"
         projectId="proj-demo"
@@ -181,7 +181,7 @@ export default function DocumentGridDevPage(): JSX.Element {
       />
 
       {/* Compact example: a single strong hit. */}
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Relevante Dokumente – Stellplatznachweis"
         query="Stellplätze Wohnbau"
         projectId="proj-demo"

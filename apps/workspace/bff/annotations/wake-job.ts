@@ -40,7 +40,7 @@ import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import type { JobAttempt, JobSliceResult, PilotiWakePayload } from '@/lib/jobs-queue/types'
+import type { JobAttempt, JobSliceResult, AgentWakePayload } from '@/lib/jobs-queue/types'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from '@/lib/turns/headless-turn'
 import { HEADLESS_MODE_HEADERS } from '@/lib/turns/headless-mode'
@@ -53,7 +53,7 @@ import { regionAround } from './types'
 import { auditSuppressedWake, capReached, wakesEnabled } from './wake'
 import { auditWakeEnded, auditWakeStarted, type AuditedWake } from './wake-audit'
 import { delegationEventId } from './wake-ids'
-import { announcePilotiWork } from './piloti-work'
+import { announceAgentWork } from './agent-work'
 import { findWake, handBackDelegation, settleWake } from './wake-repository'
 
 /** The hello entries a server must name before a wake is sent: without `if_idle` it would supersede. */
@@ -72,23 +72,23 @@ const LONGEST_WAIT_MS = 5 * 60_000
 /** How long the wake waits before it asks again, after `waits` waits. */
 export const waitAfter = (waits: number): number => Math.min(FIRST_WAIT_MS * 2 ** waits, LONGEST_WAIT_MS)
 
-type Result = JobSliceResult<PilotiWakePayload>
+type Result = JobSliceResult<AgentWakePayload>
 
 /** What the turn is asked: the reply that woke Piloti, or the mark handed to it. */
-function questionOf(payload: PilotiWakePayload, mark: AnnotationRecord): string | null {
+function questionOf(payload: AgentWakePayload, mark: AnnotationRecord): string | null {
   if (payload.trigger === 'assigned') return mark.body
   return mark.replies.find((reply) => reply.id === payload.eventId)?.body ?? null
 }
 
 /** The line the thread keeps of the trigger: who, which mark, what they wrote. */
-function triggerLine(payload: PilotiWakePayload, mark: AnnotationRecord, who: string, text: string): string {
+function triggerLine(payload: AgentWakePayload, mark: AnnotationRecord, who: string, text: string): string {
   if (payload.trigger === 'assigned') return `${who} hat Anmerkung ${mark.number} an Piloti delegiert: „${text}“`
   return `${who} in Anmerkung ${mark.number}: „${text}“`
 }
 
 /** The question as the wire carries it (`docs/api/websocket-protocol.md`, „A turn an event woke"). */
 export function wakeMessage(input: {
-  payload: PilotiWakePayload
+  payload: AgentWakePayload
   conversationId: string
   doc: Pick<Document, 'id' | 'scope' | 'filename' | 'displayName'>
   mark: Pick<AnnotationRecord, 'id' | 'page' | 'x' | 'y' | 'w' | 'h'>
@@ -116,7 +116,7 @@ export function wakeMessage(input: {
 /** Write the trigger into the thread, once: its id is the turn's, so a retry writes nothing. */
 async function recordTrigger(
   conversationId: string,
-  payload: PilotiWakePayload,
+  payload: AgentWakePayload,
   mark: AnnotationRecord,
   who: string,
   text: string
@@ -145,7 +145,7 @@ async function recordTrigger(
 /** The wake as the audit trail names it (`./wake-audit.ts`). */
 const auditedWake = (
   organizationId: string,
-  payload: PilotiWakePayload,
+  payload: AgentWakePayload,
   doc: Document,
   mark: AnnotationRecord
 ): AuditedWake => ({
@@ -160,7 +160,7 @@ const auditedWake = (
 })
 
 /** Hand a delegation still this wake's back, and tell the room; whether it was handed back. Never throws. */
-async function handBack(organizationId: string, payload: PilotiWakePayload, doc: Document, mark: AnnotationRecord) {
+async function handBack(organizationId: string, payload: AgentWakePayload, doc: Document, mark: AnnotationRecord) {
   const delegatedAt = mark.delegatedAt ? new Date(mark.delegatedAt) : null
   const ownsDelegation =
     payload.trigger === 'assigned' && delegatedAt !== null && delegationEventId(mark.id, delegatedAt) === payload.eventId
@@ -195,7 +195,7 @@ async function handBack(organizationId: string, payload: PilotiWakePayload, doc:
  */
 async function afterEndWithoutAnswer(input: {
   organizationId: string
-  payload: PilotiWakePayload
+  payload: AgentWakePayload
   doc: Document
   mark: AnnotationRecord
   status: 'refused' | 'failed'
@@ -233,9 +233,9 @@ async function writableDocument(session: AuthorizedSession, documentId: string):
   }
 }
 
-export async function runPilotiWake(
+export async function runAgentWake(
   organizationId: string,
-  payload: PilotiWakePayload,
+  payload: AgentWakePayload,
   attempt: JobAttempt
 ): Promise<Result> {
   const done: Result = { done: true, payload }
@@ -246,7 +246,7 @@ export async function runPilotiWake(
   // Nothing to tell: the person's own act, a rule or a cap held it.
   const end = async (status: 'suppressed', reason: string): Promise<Result> => {
     if (await settleWake(organizationId, payload.wakeId, { status, reason })) {
-      void announcePilotiWork(wake)
+      void announceAgentWork(wake)
       auditSuppressedWake({
         organizationId,
         actor: payload.actor,
@@ -276,7 +276,7 @@ export async function runPilotiWake(
   // the settle that moved it from `queued` goes on: a turn that already reported its end adds nothing.
   const fail = async (status: 'refused' | 'failed', reason: string): Promise<Result> => {
     if (await settleWake(organizationId, payload.wakeId, { status, reason })) {
-      void announcePilotiWork(wake)
+      void announceAgentWork(wake)
       await afterEndWithoutAnswer({ organizationId, payload, doc, mark, status, reason })
     }
     return done
@@ -346,7 +346,7 @@ export async function runPilotiWake(
       // Only the settle that moved it from `queued`: a second run of the job, or
       // a turn that already reported its end, adds no line.
       if (await settleWake(organizationId, payload.wakeId, { status: 'started' })) {
-        void announcePilotiWork(wake)
+        void announceAgentWork(wake)
         auditWakeStarted(auditedWake(organizationId, payload, doc, mark), payload.waits)
       }
       return done

@@ -47,7 +47,7 @@ from agent.knowledge.leader_lock import require_direct_dsns
 from agent.observability import posthog_exceptions
 from agent.stages.delivery import register_stage_frame_sink
 from agent_host.auth.middleware import AuthMiddleware
-from agent_host.context_envelope import GridContextEnvelopeMiddleware
+from agent_host.context_envelope import RequestContextEnvelopeMiddleware
 from agent_host.legacy_headers import LegacyHeaderNamesMiddleware
 from nat.builder.workflow_builder import WorkflowBuilder
 from nat.cli.register_workflow import register_front_end  # noqa: TID251
@@ -392,13 +392,13 @@ def _add_request_middleware(app: FastAPI, *, validators: list, require_auth: boo
 
     Starlette's add_middleware() makes each newly added middleware the new
     OUTERMOST layer, so whichever is added LAST runs FIRST on the way in.
-    GridContextEnvelopeMiddleware is added BEFORE AuthMiddleware so that
+    RequestContextEnvelopeMiddleware is added BEFORE AuthMiddleware so that
     AuthMiddleware (added, and therefore outer, second) always resolves
     scope["state"]["user"] before the envelope-enforcement middleware reads it
     for HTTP requests. See agent_host.context_envelope's module docstring for the
     full enforcement design (matrix, WebSocket handling, exemptions).
     """
-    app.add_middleware(GridContextEnvelopeMiddleware, require_auth=require_auth, validators=validators)
+    app.add_middleware(RequestContextEnvelopeMiddleware, require_auth=require_auth, validators=validators)
     app.add_middleware(AuthMiddleware, validators=validators, require_auth=require_auth)
     # Outside both: a service header that arrives under its new name is copied
     # onto the old one before auth and the envelope read it (agent_host.legacy_headers).

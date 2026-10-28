@@ -326,7 +326,7 @@ Two of these exist:
 
 | Fixture | Producer side | Consumer side |
 |---|---|---|
-| `grid_request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
+| `request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
 | `job_fire_headers.json` | `tests/lib/jobs/fire-headers.test.ts` fires a real submit and captures what went out | `test_fire_path_contract.py` asserts each backend-required set is a subset |
 
 Such a fixture lives in `apps/workspace/tests/fixtures/`, once.

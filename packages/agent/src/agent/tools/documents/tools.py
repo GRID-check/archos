@@ -8,7 +8,7 @@ Two shapes, chosen per turn:
   ``CompositeBackend`` whose default is the read-only estate
   (``knowledge_layer.estate``) and whose ``/drafts/`` route is the draft store.
   ``read_file`` then reads both, and renders grounding blocks on the estate
-  (``filesystem.PilotiFilesystem``).
+  (``filesystem.DocumentFilesystem``).
 
 The drafts-only notes follow.
 
@@ -58,7 +58,7 @@ from agent.skills import SKILLS_ROOT
 from .draft_store import DRAFT_ROOT
 from .draft_store import DraftBackend
 from .draft_store import get_draft_backend
-from .filesystem import PilotiFilesystem
+from .filesystem import DocumentFilesystem
 from .filesystem import composite_backend
 from .filesystem import with_bare_schema
 
@@ -205,7 +205,7 @@ def filesystem_tools(
     permissions = list(_PERMISSIONS)
     if skills is not None:
         permissions.insert(0, _SKILL_PERMISSION)
-    middleware = PilotiFilesystem(
+    middleware = DocumentFilesystem(
         estate=estate,
         drafts=drafts is not None,
         backend=composite_backend(drafts, estate, skills=skills),

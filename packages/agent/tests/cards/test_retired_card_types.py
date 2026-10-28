@@ -3,7 +3,7 @@
 An answer is Markdown prose; a card carries what Markdown cannot (an
 interaction, geometry drawn to scale, a computed number, a live model binding).
 The table-, list- and quote-shaped cards, the envelope's former card twins and
-`follow_ups` were deleted from the `GridCard` union
+`follow_ups` were deleted from the `AnswerCard` union
 (`catalog.RETIRED_CARD_TYPES`). Deleting them makes every channel refuse them as
 unknown; the refusal must still TELL the model what to write instead, and no
 model-facing surface may offer one.
@@ -26,8 +26,8 @@ from agent.cards.catalog import render_card_index
 from agent.cards.envelope import REFUSED_RETIRED_TYPE
 from agent.cards.envelope import render_envelope_cards_contract
 from agent.cards.envelope import validate_model_card
-from agent.cards.models import GridCard
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import AnswerCard
+from agent.cards.models import answer_card_adapter
 from agent.cards.models import validate_cards
 from agent.cards.prompt import build_card_generation_prompt
 from agent.cards.registry import get_or_create_card_registry
@@ -73,10 +73,10 @@ def test_the_set_is_the_one_the_product_owner_retired():
 @pytest.mark.parametrize("card_type", RETIRED)
 class TestEveryChannelRefusesIt:
     def test_it_is_no_union_member(self, card_type):
-        members = {card.model_fields["type"].annotation.__args__[0] for card in GridCard.__args__}
+        members = {card.model_fields["type"].annotation.__args__[0] for card in AnswerCard.__args__}
         assert card_type not in members
         with pytest.raises(ValueError):
-            grid_card_adapter.validate_python(_payload(card_type))
+            answer_card_adapter.validate_python(_payload(card_type))
 
     def test_the_envelope_refuses_it_by_name_with_its_replacement(self, card_type):
         validated, refusal = validate_model_card(_payload(card_type))

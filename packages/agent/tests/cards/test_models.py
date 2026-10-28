@@ -6,8 +6,8 @@ from pydantic import ValidationError
 
 from agent.cards.card_model import CardModel
 from agent.cards.card_model import flatten_card_markup
-from agent.cards.models import GridCard
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import AnswerCard
+from agent.cards.models import answer_card_adapter
 from agent.cards.models import validate_cards
 from agent.cards.proposal_cards import MemoryProposalCard
 
@@ -32,7 +32,7 @@ class TestMemoryProposalCard:
             "kind": "preference",
             "confidence": "high",
         }
-        validated = grid_card_adapter.validate_python(raw)
+        validated = answer_card_adapter.validate_python(raw)
         assert isinstance(validated, MemoryProposalCard)
         assert validated.kind == "preference"
         assert validated.confidence == "high"
@@ -52,7 +52,7 @@ class TestMemoryProposalCard:
         ]
         assert validate_cards(raw) == []
         # The adapter itself (the sanctioned tool path) still accepts it.
-        assert grid_card_adapter.validate_python(raw[0]).confidence == "medium"
+        assert answer_card_adapter.validate_python(raw[0]).confidence == "medium"
 
 
 class TestValidateCards:
@@ -410,7 +410,7 @@ class TestTheCalculationCardCannotStateItsOwnAnswer:
     def test_the_worked_example_round_trips(self):
         from agent.cards.catalog import CARD_EXAMPLES
 
-        card = grid_card_adapter.validate_python(CARD_EXAMPLES["calculation"])
+        card = answer_card_adapter.validate_python(CARD_EXAMPLES["calculation"])
         assert card.type == "calculation"
         # The example has to SHOW the provenance vocabulary, not just allow it —
         # a derived number is only as honest as the inputs it was built from.
@@ -453,7 +453,7 @@ class TestCardTextIsPlainText:
     """
 
     def test_the_shipped_defect_reaches_the_card_as_text(self):
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {
                 "type": "ifc_model_picker",
                 "title": "Modell",
@@ -467,7 +467,7 @@ class TestCardTextIsPlainText:
         # sanitiser on this surface must not do. The brackets go; the target
         # stays, as text — nothing downstream turns a bare URL in a card field
         # into an anchor, so the card gains no link it did not already build.
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {"type": "ifc_model_picker", "title": "X", "note": "siehe [§ 3](https://ris.bka.gv.at/x)"}
         )
         assert "https://ris.bka.gv.at/x" in card.note
@@ -475,7 +475,7 @@ class TestCardTextIsPlainText:
         assert "](" not in card.note
 
     def test_doubled_emphasis_and_code_spans_lose_their_delimiters(self):
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {"type": "ifc_model_picker", "title": "**OIB-Richtlinie 2**", "note": "Mindestens `REI 90`."}
         )
         assert card.title == "OIB-Richtlinie 2"
@@ -486,13 +486,13 @@ class TestCardTextIsPlainText:
         # punctuation in a file reference; the line is drawn at delimiters that
         # have no second reading.
         excerpt = "Die Anforderung *) gilt sinngemäß für Anlage_1."
-        card = grid_card_adapter.validate_python({"type": "ifc_model_picker", "title": "X", "note": excerpt})
+        card = answer_card_adapter.validate_python({"type": "ifc_model_picker", "title": "X", "note": excerpt})
         assert card.note == excerpt
 
     def test_it_is_the_class_and_not_just_one_card(self):
         # Same markup, a different card and a nested building block: the guard
         # is on the shared base, so it is not a per-card patch.
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {
                 "type": "building_section",
                 "title": "**Schnitt**",
@@ -508,7 +508,7 @@ class TestCardTextIsPlainText:
         # The point of putting it on a base class: a card type added next sprint
         # is covered by BEING a card, not by someone remembering to annotate its
         # fields. 177 free-text fields across 71 models is 177 chances to forget.
-        for card_cls in GridCard.__args__:
+        for card_cls in AnswerCard.__args__:
             assert issubclass(card_cls, CardModel), card_cls.__name__
 
     def test_flattening_is_idempotent_and_leaves_plain_text_untouched(self):

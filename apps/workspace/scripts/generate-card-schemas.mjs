@@ -218,7 +218,7 @@ import { z } from 'zod'
 
 ${declarations.join('\n\n')}
 
-export const gridCardSchema = z.discriminatedUnion('${discriminator}', [
+export const answerCardSchema = z.discriminatedUnion('${discriminator}', [
   ${unionMembers},
 ])
 

@@ -157,7 +157,7 @@ from agent.observability.turn_trace import trace_id_for_message
 from agent.observability.turn_trace import trace_id_hex
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.tools.documents.filing import SignedEnvelope
 from agent.turn.admission import TurnRefusal
 from agent.turn.admission import refused
@@ -435,13 +435,13 @@ def may_act_for(asker: str | None, actor: str | None, *, internal: bool) -> bool
     return internal or asker is None or actor == asker
 
 
-def _handshake_envelope(scope: Mapping[str, Any]) -> GridRequestContext | None:
+def _handshake_envelope(scope: Mapping[str, Any]) -> RequestContext | None:
     """The verified ``X-Grid-Request-Context`` envelope of the upgrade, or None when absent or forged."""
     headers: dict[str, str] = {}
     for raw_name, raw_value in scope.get("headers", []) or []:
         with contextlib.suppress(AttributeError, UnicodeDecodeError):
             headers[raw_name.decode("latin-1").lower()] = raw_value.decode("latin-1")
-    return GridRequestContext.from_envelope(
+    return RequestContext.from_envelope(
         headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
         os.environ.get("INTERNAL_API_TOKEN"),
@@ -456,7 +456,7 @@ def handshake_conversation_binding(scope: Mapping[str, Any]) -> tuple[bool, str 
     ``/api/auth/websocket-scope`` ran ``authorizeConversationScope`` on, and
     nothing else on the upgrade is authorized. ``envelope_present`` is False
     only off the BFF (an internal caller, anonymous mode):
-    ``GridContextEnvelopeMiddleware`` closes an authenticated user's socket that
+    ``RequestContextEnvelopeMiddleware`` closes an authenticated user's socket that
     arrives without a valid envelope.
     """
     envelope = _handshake_envelope(scope)

@@ -17,7 +17,7 @@ import {
 } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { getPlatformOrganizationId } from '@/lib/authz/platform'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import {
   normRegistryEnvelopeSchema,
   verifyNormResponseSchema,
@@ -80,7 +80,7 @@ export async function getNormRegistry(): Promise<NormRegistryEnvelope> {
  * (targeting the platform org, never throwing on audit failure).
  */
 export async function putNormRegistry(
-  session: GridSession | null,
+  session: UserSession | null,
   body: PutNormRegistryBody,
   request?: Request,
 ): Promise<{ version: number }> {

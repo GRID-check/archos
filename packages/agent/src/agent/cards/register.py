@@ -20,7 +20,7 @@ import json
 import logging
 
 # Importing this module runs its ``@register_function`` so NAT discovers the
-# ``surface_documents`` tool through the same ``aiq_cards`` entry point that
+# ``surface_documents`` tool through the same ``card_tools`` entry point that
 # imports this file — no extra plugin entry needed.
 from agent.cards import surface_documents as _surface_documents  # noqa: F401
 

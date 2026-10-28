@@ -1259,7 +1259,7 @@ export const files: typeof en.files = {
   // ist eine ganz normale unvergebene Datei – in der Fußzeile steht daneben
   // weiterhin „Unvergeben“.
   authorship: {
-    byPiloti: 'Von {productName} erstellt',
+    byAgent: 'Von {productName} erstellt',
     filter: 'Von {productName}',
     /**
      * Die Frage, die dieser Filter bisher unbeantwortet ließ: WELCHE Dateien
@@ -1607,8 +1607,8 @@ export const files: typeof en.files = {
     follow: '{name} folgen',
     unfollow: 'Nicht mehr {name} folgen',
     following: 'Sie folgen {name} · Esc beendet',
-    pilotiWorking: '{productName} arbeitet am Dokument',
-    reviewWithPiloti: '{productName} prüfen lassen',
+    agentWorking: '{productName} arbeitet am Dokument',
+    reviewWithAgent: '{productName} prüfen lassen',
     reviewSeed:
       'Dieses Dokument prüfen und die Befunde als Anmerkungen an die Stellen setzen (vorher die Seite ansehen), um die es geht: Mängel, Rückfragen an die Fachplanung, Hinweise. Bei einem Befund, der auf einer Norm beruht, die Fundstelle nennen.',
     tools: {
@@ -1736,7 +1736,7 @@ export const files: typeof en.files = {
     peerRegion: 'markiert einen Bereich',
     // Piloti nennt auf dem Dokument, für wen es schreibt (ADR-0105; EU AI Act Art. 50).
     attribution: {
-      pilotiFor: '{productName} · für {name}',
+      agentFor: '{productName} · für {name}',
       proposalFor: 'Vorschlag von {productName} · für {name}',
       woken: {
         thread_mention: 'Geweckt durch eine Erwähnung',
@@ -1774,12 +1774,12 @@ export const files: typeof en.files = {
       box: 'Rahmen {w} % breit, {h} % hoch',
     },
     announce: {
-      pilotiProposed: '{productName} hat {count, plural, one {einen Vorschlag} other {# Vorschläge}} gesetzt',
+      agentProposed: '{productName} hat {count, plural, one {einen Vorschlag} other {# Vorschläge}} gesetzt',
       created: '{name}: {count, plural, one {neue Anmerkung {numbers}} other {# neue Anmerkungen}}',
       replied: '{name}: {count, plural, one {neue Antwort zu Anmerkung {numbers}} other {neue Antworten zu Anmerkungen {numbers}}}',
       updated: '{name} hat {count, plural, one {Anmerkung {numbers}} other {Anmerkungen {numbers}}} geändert',
       deleted: '{name} hat {count, plural, one {Anmerkung {numbers}} other {Anmerkungen {numbers}}} gelöscht',
-      pilotiAnswered: '{productName} hat geantwortet',
+      agentAnswered: '{productName} hat geantwortet',
     },
     page: 'Seite {page}',
     draftPlaceholder: 'Anmerkung schreiben … (Enter zum Speichern)',
@@ -1809,9 +1809,9 @@ export const files: typeof en.files = {
     more: 'Mehr',
     closeThread: 'Schließen',
     makeKind: 'Als {kind} führen',
-    askPiloti: '{productName} dazu fragen',
+    askAgent: '{productName} dazu fragen',
     delegateToPiloti: 'An {productName} delegieren',
-    takeBackFromPiloti: 'Von {productName} zurücknehmen',
+    takeBackFromAgent: 'Von {productName} zurücknehmen',
     copyLink: 'Link kopieren',
     linkCopied: 'Link kopiert',
     linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
@@ -1984,8 +1984,8 @@ export const files: typeof en.files = {
           proposed: 'Vorschlag',
         },
         setBy: 'Gesetzt von {name} · {date}',
-        pilotiSetFor: 'von {productName} gesetzt · für {name} · {date}',
-        pilotiSet: 'von {productName} gesetzt · {date}',
+        agentSetFor: 'von {productName} gesetzt · für {name} · {date}',
+        agentSet: 'von {productName} gesetzt · {date}',
         proposalFor: 'Vorschlag von {productName} · für {name} · {date}',
         proposal: 'Vorschlag von {productName} · {date}',
         closedResolved: 'Erledigt von {name} · {date}',

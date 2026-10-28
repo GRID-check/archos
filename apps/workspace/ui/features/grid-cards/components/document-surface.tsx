@@ -29,12 +29,12 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
   const t = useTranslations(chatCopy)
   const isOffice = entry.surfaced.source === 'office'
   const href = isOffice ? '/app/office-shelf' : projectId ? `/app/projects/${projectId}/files` : '/app/office-shelf'
-  const actionLabel = isOffice || !projectId ? t('documentGrid.openInOfficeShelf') : t('documentGrid.openInFiles')
+  const actionLabel = isOffice || !projectId ? t('documentAnswer.openInOfficeShelf') : t('documentAnswer.openInFiles')
 
   return (
     <a
       href={href}
-      data-testid="document-grid-unresolved"
+      data-testid="document-answer-unresolved"
       className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-dashed bg-muted/40 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
     >
       <div className="w-full flex-1 overflow-hidden rounded-b-lg bg-card/60 shadow-2xs">
@@ -46,7 +46,7 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
             {entry.surfaced.file_name}
           </p>
           <p className="mt-1 text-[11px] leading-[1.45] text-muted-foreground">
-            {t('documentGrid.unresolvedHint')}
+            {t('documentAnswer.unresolvedHint')}
           </p>
           <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary group-hover:underline">
             {actionLabel}
@@ -63,18 +63,18 @@ export const ResolveErrorState: FC<{ onRetry: () => void }> = ({ onRetry }) => {
   const t = useTranslations(chatCopy)
   return (
     <div
-      data-testid="document-grid-error"
+      data-testid="document-answer-error"
       className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/30 px-4 py-8 text-center"
     >
       <CloudAlert className="size-7 text-muted-foreground/50" aria-hidden />
-      <p className="text-xs text-muted-foreground">{t('documentGrid.loadError')}</p>
+      <p className="text-xs text-muted-foreground">{t('documentAnswer.loadError')}</p>
       <button
         type="button"
         onClick={onRetry}
         className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <RotateCcw className="size-3.5" aria-hidden />
-        {t('documentGrid.retry')}
+        {t('documentAnswer.retry')}
       </button>
     </div>
   )

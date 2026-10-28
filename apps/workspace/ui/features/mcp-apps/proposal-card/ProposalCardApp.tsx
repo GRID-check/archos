@@ -86,7 +86,7 @@ function CardBody({ result, app }: { result: CallToolResult | null; app: HostApp
     memory: t('cards.mcpApp.memoryTitle'),
   })
   if (drawn.kind === 'not-drawn') {
-    return <p className="text-muted-foreground text-sm" data-testid="mcp-app-decide-in-piloti">{t('cards.mcpApp.decideInPiloti')}</p>
+    return <p className="text-muted-foreground text-sm" data-testid="mcp-app-decide-in-workspace">{t('cards.mcpApp.decideInAgent')}</p>
   }
   if (drawn.kind === 'invalid') return <Unreadable />
   return (

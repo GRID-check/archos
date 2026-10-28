@@ -189,14 +189,14 @@ class TestADelete:
         assert registry.snapshot() == []
 
 
-#: What the BFF answers while the organization has Piloti propose only (``PilotiActsOffError``, ``agent.ts``).
+#: What the BFF answers while the organization has Piloti propose only (``AgentActsOffError``, ``agent.ts``).
 def _acts_off() -> CanvasRequestError:
     return CanvasRequestError(
         "This organization has Piloti propose only.", status=403, code="PILOTI_ACTS_OFF", reason="piloti-acts-off"
     )
 
 
-class TestAnOfficeThatHasPilotiProposeOnly:
+class TestAnOfficeThatHasAgentProposeOnly:
     """``piloti-acts`` off: the BFF refuses what Piloti would apply, and the model is told what to do instead."""
 
     async def test_an_open_mark_is_refused_with_the_way_to_propose_it(self, monkeypatch, calls, registry) -> None:

@@ -181,7 +181,7 @@ describe('KeyTakeawaysCard distillation marker', () => {
     const { container } = render(<KeyTakeawaysCard title={null} items={[{ text: 'Erstens' }]} />)
 
     const card = container.querySelector('[data-slot="card"]')
-    expect(card?.className, 'side stripes are discouraged (grid-design-language.md)').not.toMatch(/border-l/)
+    expect(card?.className, 'side stripes are discouraged (design-language.md)').not.toMatch(/border-l/)
     expect(
       card?.className,
       'the wash must not fill behind the running text — it rides the eyebrow pill alone',

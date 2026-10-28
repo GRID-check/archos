@@ -47,7 +47,7 @@ from jsonschema import FormatChecker
 
 import agent.project_context as pc
 from agent.cards.file_operation_card import MAX_FILE_OPERATIONS
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import CardRegistry
 from agent.cards.registry import reset_card_registry
 from agent.cards.registry import set_card_registry
@@ -428,7 +428,7 @@ class TestTheCardCarriesTheProposal:
         (card,) = registry.snapshot()
         assert card["proposal_id"] == FIRST
         assert card["operation"] == "move" and len(card["operations"]) == 1
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
         assert "NOTHING has been changed YET" in result
         assert "do not say it is done" in result
 

@@ -42,7 +42,7 @@ def install_request_trace_span_injection() -> None:
     from nat.observability.exporter.span_exporter import SpanExporter
 
     process_start_event = SpanExporter._process_start_event
-    if getattr(process_start_event, "__aiq_request_trace_patched__", False):
+    if getattr(process_start_event, "__request_trace_patched__", False):
         return
 
     def patched_process_start_event(self, event) -> None:
@@ -62,6 +62,6 @@ def install_request_trace_span_injection() -> None:
 
         _inject_request_trace_attributes(span)
 
-    patched_process_start_event.__aiq_request_trace_patched__ = True
+    patched_process_start_event.__request_trace_patched__ = True
     SpanExporter._process_start_event = patched_process_start_event
     logger.info("Installed NAT request trace span attribute injection")

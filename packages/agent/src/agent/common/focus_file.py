@@ -28,12 +28,12 @@ from agent.common.source_kinds import canonical_shelf_value
 SHELVES = frozenset({"office_shelf", "project", "session", "base"})
 PRESETS = frozenset({"law", "project", "office"})
 
-_focused_file_name: ContextVar[str | None] = ContextVar("grid_focused_file_name", default=None)
-_focused_shelf: ContextVar[str | None] = ContextVar("grid_focused_shelf", default=None)
-_turn_shelves: ContextVar[frozenset[str] | None] = ContextVar("grid_turn_shelves", default=None)
+_focused_file_name: ContextVar[str | None] = ContextVar("focused_file_name", default=None)
+_focused_shelf: ContextVar[str | None] = ContextVar("focused_shelf", default=None)
+_turn_shelves: ContextVar[frozenset[str] | None] = ContextVar("turn_shelves", default=None)
 #: The document (its BFF id) the composer or the review canvas says this turn is
 #: about: what the canvas tools act on when the model names no document.
-_focused_document_id: ContextVar[str | None] = ContextVar("grid_focused_document_id", default=None)
+_focused_document_id: ContextVar[str | None] = ContextVar("focused_document_id", default=None)
 
 
 def _normalize_shelf(value: object) -> str | None:

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const isOwner = { value: false }
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/auth/session', () => ({ getGridSession: vi.fn().mockResolvedValue({ userId: 'u_1' }) }))
+vi.mock('@/lib/auth/session', () => ({ getUserSession: vi.fn().mockResolvedValue({ userId: 'u_1' }) }))
 vi.mock('@/lib/authz/platform', () => {
   class PlatformAccessDeniedError extends Error {}
   return {

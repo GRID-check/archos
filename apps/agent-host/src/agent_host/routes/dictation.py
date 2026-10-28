@@ -53,7 +53,7 @@ from fastapi import Request
 from agent.common import provider_limiter
 from agent.common.cost_tracking import USAGE_ACTIVITY_DICTATION
 from agent.common.cost_tracking import USAGE_ROLE_DICTATION
-from agent.common.cost_tracking import GridCostTracker
+from agent.common.cost_tracking import CostTracker
 from agent.common.cost_tracking import UsageEvent
 from agent.common.credential_resolution import ResolvedCredential
 from agent.common.credential_resolution import read_api_key_env
@@ -240,7 +240,7 @@ def record_dictation_cost(
     if not organization_id:
         return
     seconds = result.audio_seconds if result.audio_seconds is not None else (duration_ms or 0) / 1000
-    tracker = GridCostTracker(organization_id=organization_id, user_id=user_id, activity=USAGE_ACTIVITY_DICTATION)
+    tracker = CostTracker(organization_id=organization_id, user_id=user_id, activity=USAGE_ACTIVITY_DICTATION)
     tracker.record(
         UsageEvent(
             model=result.model,

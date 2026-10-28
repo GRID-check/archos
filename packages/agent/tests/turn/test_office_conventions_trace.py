@@ -7,7 +7,7 @@ import pytest
 from agent.common.platform_lessons import LessonsResolution
 from agent.observability.langfuse_trace_attributes import reset_contributions
 from agent.observability.langfuse_trace_attributes import snapshot_contributions
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.stages.flags import TurnFlags
 from agent.turn import context as context_mod
 from agent.turn.context import load_turn_context
@@ -66,7 +66,7 @@ class TestTheTraceSaysWhatTheTurnWasShown:
         )
         reset_contributions()
         await load_turn_context(
-            GridRequestContext(context_transport="bff", organization_id="org"),
+            RequestContext(context_transport="bff", organization_id="org"),
             conversation_id="c1",
             query_text="Wo legen wir Gutachten ab?",
             resolve_stages=False,

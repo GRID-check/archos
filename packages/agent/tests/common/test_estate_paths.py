@@ -26,7 +26,7 @@ class TestTheLeaf:
         assert leaf_for("Notiz.txt") == "Notiz.txt"
         assert leaf_for("Liste.CSV") == "Liste.CSV"
 
-    def test_an_agent_filed_document_shows_no_piloti_directory(self) -> None:
+    def test_an_agent_filed_document_shows_no_agent_directory(self) -> None:
         assert leaf_for("piloti/Aktenvermerk.pdf") == "Aktenvermerk.pdf.md"
 
     def test_the_name_is_nfc(self) -> None:

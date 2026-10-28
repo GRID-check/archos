@@ -18,7 +18,7 @@ const render = (ui: ReactElement) =>
 
 describe('ProposalShell', () => {
   it('draws no accent edge in any state, and never the warning colour', () => {
-    // Side stripes are discouraged (grid-design-language.md, "Emphasis without
+    // Side stripes are discouraged (design-language.md, "Emphasis without
     // a stripe"), and lifecycle is its own axis (§A3): amber means "close to a
     // limit" everywhere else in the set.
     for (const tone of ['pending', 'accepted', 'dismissed'] as const) {

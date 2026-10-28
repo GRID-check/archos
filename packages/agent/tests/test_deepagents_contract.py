@@ -143,7 +143,7 @@ def test_the_allowlist_builds_only_the_listed_tools() -> None:
     assert allowed == {"ls", "read_file"}
 
 
-#: The private builders ``tools/documents/filesystem.PilotiFilesystem`` overrides (ADR-0133). They carry no
+#: The private builders ``tools/documents/filesystem.DocumentFilesystem`` overrides (ADR-0133). They carry no
 #: stability promise, so a rename is caught here rather than by a model that silently gets the stock tool.
 _OVERRIDDEN_BUILDERS = ("_create_read_file_tool", "_create_ls_tool", "_create_glob_tool", "_create_grep_tool")
 
@@ -154,7 +154,7 @@ def test_the_builders_the_estate_overrides_exist_and_take_nothing(builder: str) 
 
     method = getattr(FilesystemMiddleware, builder, None)
     assert method is not None, (
-        f"FilesystemMiddleware.{builder} is gone: PilotiFilesystem's override is never called, and the stock tool "
+        f"FilesystemMiddleware.{builder} is gone: DocumentFilesystem's override is never called, and the stock tool "
         "(no grounding blocks, no citations) is bound under our name. Port tools/documents/filesystem.py."
     )
     assert list(inspect.signature(method).parameters) == ["self"]

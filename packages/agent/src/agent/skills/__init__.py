@@ -13,10 +13,10 @@ from .backend import SKILLS_ROOT
 from .backend import SkillsBackend
 from .builtin import BUILTIN_SKILLS_DIR
 from .builtin import discover_builtin_skills
-from .models import GRID_CARDS_KEY
-from .models import GRID_METADATA_KEYS
+from .models import ANSWER_CARDS_KEY
 from .models import MAX_DESCRIPTION_CHARS
 from .models import MAX_NAME_CHARS
+from .models import SKILL_METADATA_KEYS
 from .models import Skill
 from .models import SkillValidationError
 from .models import parse_skill_md
@@ -29,8 +29,8 @@ from .runtime import skills_middleware
 
 __all__ = [
     "BUILTIN_SKILLS_DIR",
-    "GRID_CARDS_KEY",
-    "GRID_METADATA_KEYS",
+    "ANSWER_CARDS_KEY",
+    "SKILL_METADATA_KEYS",
     "MAX_DESCRIPTION_CHARS",
     "MAX_NAME_CHARS",
     "OFFICE_SOURCE",

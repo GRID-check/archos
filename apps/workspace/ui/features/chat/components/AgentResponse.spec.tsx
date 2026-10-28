@@ -6,7 +6,7 @@ import { asStoreState, type DeepPartial, type StoreSelector } from '@/test-utils
 import type { ChatStoreWithHydration } from '../store'
 import type { SourcePreviewChipProps } from './SourcePreview'
 import type { MessageStages } from '@/lib/conversations/message-stages'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
 import { useAnswerFileReferences } from '../hooks/use-answer-file-references'
 import { resetDecidedProposals } from '@/features/grid-cards/decided-proposals'
@@ -15,7 +15,7 @@ import { server } from '@/mocks/server'
 import { proposalBase, PROPOSAL_ID, decidedByAnna } from '@/features/grid-cards/components/proposal-test-kit'
 
 /** A presentational card that draws its title, for placement tests. */
-const calculationCard = (title: string): GridCard => ({ ...CARD_PREVIEW_FIXTURES.calculation!, title } as GridCard)
+const calculationCard = (title: string): AnswerCard => ({ ...CARD_PREVIEW_FIXTURES.calculation!, title } as AnswerCard)
 
 /**
  * A turn the post-answer reflection stage recorded something for. No hook is
@@ -100,7 +100,7 @@ describe('AgentResponse', () => {
       kind: 'decision',
       confidence: 'medium',
       proposal_id: PROPOSAL_ID,
-    } as unknown as GridCard
+    } as unknown as AnswerCard
 
     const serveProposal = (status: 'applied' | 'dismissed') =>
       server.use(
@@ -140,7 +140,7 @@ describe('AgentResponse', () => {
       content: 'Fluchtweg über den Innenhof',
       kind: 'decision',
       confidence: 'medium',
-    } as unknown as GridCard
+    } as unknown as AnswerCard
 
     test('offers no feedback even when it is handed a message id', () => {
       render(<AgentResponse content="Answer" messageId="m1" readOnly />)

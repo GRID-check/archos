@@ -13,7 +13,7 @@ import logging
 
 from pydantic import ValidationError
 
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ def emit_draft_card(
         **_filed_fields(filing),
     }
     try:
-        validated = grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+        validated = answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
     except ValidationError:
         logger.exception("Failed to build document_draft card for %s", path)
         return False

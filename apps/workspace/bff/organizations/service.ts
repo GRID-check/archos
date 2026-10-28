@@ -3,7 +3,7 @@
  *
  * Bridges the two sources of org truth:
  *   - WorkOS  — identity, domains, members, invitations (fetched live).
- *   - Grid DB — the `organizations` row holding Grid-specific settings.
+ *   - Grid DB — the `organizations` row holding app-specific settings.
  */
 
 import 'server-only'
@@ -19,7 +19,7 @@ import { requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 import { isLocale, type Locale } from '@/i18n/config'
 
 export interface OrganizationOverview {
@@ -33,7 +33,7 @@ export interface OrganizationOverview {
   pendingInviteCount: number
 }
 
-/** Grid-side settings for an org, with defaults applied. */
+/** app-side settings for an org, with defaults applied. */
 export interface OrgSettings {
   displayName: string | null
   /** The language members who never picked one start in; null until an admin chooses (their browser's then). */
@@ -188,7 +188,7 @@ const orgNameCacheKey = (organizationId: string): string => `orgname:${organizat
  * The org's human name, for chrome that has to say which organization the
  * reader is acting in.
  *
- * Prefers the Grid-side `displayName` (a local row) and only falls back to
+ * Prefers the app-side `displayName` (a local row) and only falls back to
  * WorkOS, because this is called from a layout on a navigation path — a
  * WorkOS round-trip per render would put an identity API in front of every
  * page. The fallback is cached for five minutes: an org rename is rare and
@@ -323,7 +323,7 @@ export async function updateOrgSettings(
  * cached predicate and means neither layer is load-bearing alone.
  */
 export async function updatePlatformOwnedOrgSettings(
-  session: GridSession | null,
+  session: UserSession | null,
   organizationId: string,
   patch: OrgSettingsPatch
 ): Promise<OrgSettings> {

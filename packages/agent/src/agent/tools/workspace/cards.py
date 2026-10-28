@@ -26,7 +26,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ def emit_operation_proposal_card(proposal: OperationProposal, call_input: dict[s
     if any(card.get("proposal_id") == proposal.proposal_id for card in registry.snapshot()):
         return True
     try:
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {
                 "type": CARD_TYPE,
                 "title": proposal.summary,
@@ -156,7 +156,7 @@ def emit_revision_compare_card(structured: object, call_input: dict[str, Any] | 
     if not summary:
         return None
     try:
-        card = grid_card_adapter.validate_python(
+        card = answer_card_adapter.validate_python(
             {
                 "type": REVISION_COMPARE_CARD_TYPE,
                 "older_id": body.get("older"),

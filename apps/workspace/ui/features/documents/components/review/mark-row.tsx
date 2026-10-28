@@ -9,7 +9,7 @@ import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import { MarkBody } from './mark-body'
-import { usePilotiByline } from './piloti-attribution'
+import { useAgentByline } from './agent-attribution'
 import { markInk, pinLabel } from './review-page-layer'
 
 /**
@@ -46,7 +46,7 @@ export function MarkRowContent({
 }): JSX.Element {
   const t = useTranslations(filesCopy)
   const { locale } = useLocale()
-  const byline = usePilotiByline()
+  const byline = useAgentByline()
   const overdue = isOverdue(annotation, localCalendarDay())
   const author =
     annotation.authorKind === 'piloti' ? byline(annotation.createdByName) : (annotation.createdByName ?? t('review.someone'))

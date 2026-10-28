@@ -208,7 +208,7 @@ import { uploadSessionDocument } from './service'
 const session = {
   userId: USER_ID,
   organizationId: ORG_ID,
-  email: 'me@grid.test',
+  email: 'me@example.test',
   role: 'member',
   roles: ['member'],
   permissions: [],

@@ -136,7 +136,7 @@ def normalize_source_section_layout(ref_section: str) -> str:
         # German-or-else binary mirrors the writer's contract, which allows the
         # label exactly two forms: "**Quellen:**" for a German answer and
         # "**References:**" for an answer in any other language, never a label
-        # translated into a third language (see piloti_static.md, CITATIONS
+        # translated into a third language (see chat_static.md, CITATIONS
         # in <answer_envelope>). A translated label would land on "## Sources".
         lines[0] = "## Quellen" if GERMAN_REFERENCE_HEADING_LABEL_RE.search(lines[0]) else "## Sources"
         ref_section = "\n".join(lines)

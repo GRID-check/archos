@@ -1,10 +1,10 @@
 /**
  * The wiring guard for interactive cards.
  *
- * `CARD_INTERACTIVITY` (card-decision.ts) is exhaustive over `GridCard['type']`,
+ * `CARD_INTERACTIVITY` (card-decision.ts) is exhaustive over `AnswerCard['type']`,
  * so a newly generated card type fails `tsc` until someone classifies it. This
  * spec closes the other half: once a type is classified `'interactive'`, it
- * must ALSO be wired through `GridCards` with a `cardKey` and record its
+ * must ALSO be wired through `AnswerCards` with a `cardKey` and record its
  * outcome via `setCardDecision` — otherwise the decision dies on reload and the
  * card re-offers a write that already happened.
  *
@@ -21,9 +21,9 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { cardKeyOfDecisionKey, INTERACTIVE_CARD_TYPES, LIVE_CARD_TYPES } from './card-decision'
-import { GridCardItem, GridCards, GridCardView } from './components/GridCards'
+import { AnswerCardItem, AnswerCards, AnswerCardView } from './components/AnswerCards'
 import { CARD_PREVIEW_FIXTURES } from './preview-fixtures'
 
 const setCardDecision = vi.fn()
@@ -49,7 +49,7 @@ vi.mock('@/features/chat/store', () => {
  * readable failure rather than silent under-coverage.
  */
 const SETTLE_CASES: Partial<
-  Record<GridCard['type'], { card: GridCard; action: string; response?: unknown }>
+  Record<AnswerCard['type'], { card: AnswerCard; action: string; response?: unknown }>
 > = {
   project_profile_patch: {
     card: {
@@ -57,7 +57,7 @@ const SETTLE_CASES: Partial<
       title: 'Update brief',
       rationale: 'Learned the class.',
       patch: [{ op: 'add', path: '/facts/gebaeudeklasse', value: 'GK4' }],
-    } as GridCard,
+    } as AnswerCard,
     // Reject settles without a network round trip — this spec is about wiring,
     // not about each card's own API contract (that lives in its own spec).
     action: 'Reject',
@@ -69,7 +69,7 @@ const SETTLE_CASES: Partial<
       content: 'The firm always uses REI 90 for GK4.',
       kind: 'preference',
       confidence: 'high',
-    } as GridCard,
+    } as AnswerCard,
     action: 'No',
   },
   document_draft: {
@@ -82,7 +82,7 @@ const SETTLE_CASES: Partial<
       document_id: 'doc-1',
       version_id: 'ver-1',
       version_state: 'draft',
-    } as GridCard,
+    } as AnswerCard,
     // Unlike the two above, this one HAS to reach its route: the card's only
     // decision is the submit, and there is no decline. So the case carries the
     // body the lifecycle client parses — a client that stopped agreeing with
@@ -124,7 +124,7 @@ const SETTLE_CASES: Partial<
  * in `setCardDecision`. Classifying such a type apart from `'interactive'`
  * (a `'live'` class) retires this set.
  */
-const DECIDED_ON_THE_SERVER: ReadonlySet<GridCard['type']> = new Set(['file_operation_proposal', 'operation_proposal'])
+const DECIDED_ON_THE_SERVER: ReadonlySet<AnswerCard['type']> = new Set(['file_operation_proposal', 'operation_proposal'])
 
 describe('interactive card wiring', () => {
   beforeEach(() => {
@@ -159,14 +159,14 @@ describe('interactive card wiring', () => {
     it(`records the decision on the owning message for ${type}`, async () => {
       stubFetch()
       const user = userEvent.setup()
-      render(<GridCards cards={[testCase.card]} projectId="proj-1" messageId="msg-1" />)
+      render(<AnswerCards cards={[testCase.card]} projectId="proj-1" messageId="msg-1" />)
 
       await user.click(await screen.findByRole('button', { name: testCase.action }))
 
       await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
       const [messageId, cardKey] = setCardDecision.mock.calls[0]
       expect(messageId).toBe('msg-1')
-      // The key GridCards hands down must be the positional card identity, so a
+      // The key AnswerCards hands down must be the positional card identity, so a
       // decision and the card it belongs to cannot drift apart. A card that
       // asks per item (`canvas_activity`) stores under `itemDecisionKey`, whose
       // card part is that same identity.
@@ -181,7 +181,7 @@ describe('interactive card wiring', () => {
       stubFetch()
       const user = userEvent.setup()
       render(
-        <GridCardItem card={testCase.card} index={2} projectId="proj-1" messageId="msg-1" />,
+        <AnswerCardItem card={testCase.card} index={2} projectId="proj-1" messageId="msg-1" />,
       )
 
       await user.click(await screen.findByRole('button', { name: testCase.action }))
@@ -199,7 +199,7 @@ describe('interactive card wiring', () => {
      * action must not be on screen at all.
      */
     it(`offers no way to settle ${type} when the decision could not be kept`, async () => {
-      render(<GridCards cards={[testCase.card]} projectId="proj-1" decisionsMustPersist />)
+      render(<AnswerCards cards={[testCase.card]} projectId="proj-1" decisionsMustPersist />)
       // The A2UI renderer loads after the first commit; until it does only the
       // placeholder is on screen, and a missing button would prove nothing.
       await waitFor(() => expect(document.querySelector('[data-slot="card-placeholder"]')).toBeNull())
@@ -213,7 +213,7 @@ describe('interactive card wiring', () => {
       const user = userEvent.setup()
       const filler = CARD_PREVIEW_FIXTURES.calculation!
       render(
-        <GridCards
+        <AnswerCards
           cards={[filler, testCase.card]}
           indices={[1]}
           projectId="proj-1"
@@ -234,7 +234,7 @@ describe('interactive card wiring', () => {
   it('keys a leaf of a surface on its id as well as the surface index', async () => {
     const { card, action } = SETTLE_CASES.memory_proposal!
     const user = userEvent.setup()
-    render(<GridCardView card={card} index={2} leafId="b" projectId="proj-1" messageId="msg-1" />)
+    render(<AnswerCardView card={card} index={2} leafId="b" projectId="proj-1" messageId="msg-1" />)
 
     await user.click(await screen.findByRole('button', { name: action }))
 
@@ -306,7 +306,7 @@ const proposedMark = (id: string, number: number) => ({
  * under-coverage.
  */
 const LIVE_CASES: Partial<
-  Record<GridCard['type'], { card: GridCard; routes: (url: string, init?: RequestInit) => unknown; scenarios: LiveScenario[] }>
+  Record<AnswerCard['type'], { card: AnswerCard; routes: (url: string, init?: RequestInit) => unknown; scenarios: LiveScenario[] }>
 > = {
   canvas_activity: {
     card: {
@@ -326,7 +326,7 @@ const LIVE_CASES: Partial<
           note: 'Erledigt.',
         },
       ],
-    } as GridCard,
+    } as AnswerCard,
     routes: (url, init) => {
       if (init?.method === 'PATCH') {
         const id = decodeURIComponent(url.split('/').pop() ?? '')
@@ -412,7 +412,7 @@ describe('live card wiring', () => {
         )
         vi.stubGlobal('fetch', fetchMock)
         const user = userEvent.setup()
-        render(<GridCards cards={[testCase.card]} projectId="proj-1" messageId="msg-1" />)
+        render(<AnswerCards cards={[testCase.card]} projectId="proj-1" messageId="msg-1" />)
 
         await scenario.press(user)
 

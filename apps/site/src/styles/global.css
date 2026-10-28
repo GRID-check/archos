@@ -484,30 +484,30 @@ html:not(.js) [data-solution-card] {
    The measure is set on the text, not the column: Inter at this size averages
    about 0.49em a character, so 34em holds a line near 70 characters (it ran to
    93 across the full column). Figures, images and code keep the full column. */
-.prose-piloti {
+.prose-measure {
   color: var(--color-ink-soft);
   font-size: 1.0625rem;
   line-height: 1.65;
 }
 @media (min-width: 1024px) {
-  .prose-piloti {
+  .prose-measure {
     font-size: 1.125rem;
   }
 }
-.prose-piloti > :where(p, ul, ol, blockquote, h2, h3, h4, dl, table) {
+.prose-measure > :where(p, ul, ol, blockquote, h2, h3, h4, dl, table) {
   max-width: 34em;
 }
-.prose-piloti > * + * {
+.prose-measure > * + * {
   margin-top: 1.15em;
 }
-.prose-piloti h1 {
+.prose-measure h1 {
   font-family: var(--font-sans);
   font-size: 1.875rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--color-ink);
 }
-.prose-piloti h2 {
+.prose-measure h2 {
   margin-top: 1.9em;
   font-family: var(--font-sans);
   font-size: 1.5rem;
@@ -515,66 +515,66 @@ html:not(.js) [data-solution-card] {
   letter-spacing: -0.015em;
   color: var(--color-ink);
 }
-.prose-piloti h3 {
+.prose-measure h3 {
   margin-top: 1.7em;
   font-family: var(--font-sans);
   font-size: 1.1875rem;
   font-weight: 600;
   color: var(--color-ink);
 }
-.prose-piloti a {
+.prose-measure a {
   color: var(--color-accent-600);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.prose-piloti a:hover {
+.prose-measure a:hover {
   color: var(--color-accent-700);
 }
-.prose-piloti strong {
+.prose-measure strong {
   color: var(--color-ink);
   font-weight: 600;
 }
-.prose-piloti ul,
-.prose-piloti ol {
+.prose-measure ul,
+.prose-measure ol {
   padding-left: 1.4em;
 }
-.prose-piloti ul {
+.prose-measure ul {
   list-style: disc;
 }
-.prose-piloti ol {
+.prose-measure ol {
   list-style: decimal;
 }
-.prose-piloti li + li {
+.prose-measure li + li {
   margin-top: 0.35em;
 }
-.prose-piloti blockquote {
+.prose-measure blockquote {
   border-left: 3px solid var(--color-accent-400);
   padding-left: 1.1em;
   font-style: italic;
   color: var(--color-ink);
 }
-.prose-piloti code {
+.prose-measure code {
   border-radius: 6px;
   background: var(--color-surface);
   padding: 0.15em 0.4em;
   font-family: var(--font-mono);
   font-size: 0.88em;
 }
-.prose-piloti pre {
+.prose-measure pre {
   overflow-x: auto;
   border-radius: 14px;
   background: var(--color-panel);
   padding: 1.1em 1.3em;
 }
-.prose-piloti pre code {
+.prose-measure pre code {
   background: transparent;
   padding: 0;
   color: var(--color-on-dark-strong);
 }
-.prose-piloti img {
+.prose-measure img {
   border-radius: 16px;
 }
-.prose-piloti hr {
+.prose-measure hr {
   border-color: rgb(42 48 31 / 0.14);
   margin: 2.2em 0;
 }

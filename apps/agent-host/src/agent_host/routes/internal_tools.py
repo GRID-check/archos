@@ -49,7 +49,7 @@ from agent.project_context import PROJECT_ID_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from agent.project_context import USER_ID_HEADER
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 
 from ..jobs.access import JOB_ENVELOPE_MAX_AGE_MS
 from .builder_state import get_active_builder
@@ -70,7 +70,7 @@ class ToolCall(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
-def _verified_context(request: Request) -> GridRequestContext:
+def _verified_context(request: Request) -> RequestContext:
     """The envelope's context, or a 403 saying why there is none.
 
     The bar every reader that trusts the envelope holds it to (``jobs.access.verified_envelope``):
@@ -79,7 +79,7 @@ def _verified_context(request: Request) -> GridRequestContext:
     envelope names the user it speaks for.
     """
     secret = os.environ.get("INTERNAL_API_TOKEN")
-    context = GridRequestContext.from_envelope(
+    context = RequestContext.from_envelope(
         request.headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         request.headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
         secret,
@@ -98,7 +98,7 @@ def _verified_context(request: Request) -> GridRequestContext:
 
 
 @contextmanager
-def _turn_headers(request: Request, context: GridRequestContext) -> Iterator[None]:
+def _turn_headers(request: Request, context: RequestContext) -> Iterator[None]:
     """Lay the verified context where the tools read a turn's, for the duration of one call.
 
     The tools read ``Context.get().metadata.headers``. The envelope travels as it

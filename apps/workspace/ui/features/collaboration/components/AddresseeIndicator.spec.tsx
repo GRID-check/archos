@@ -8,7 +8,7 @@ import { AddresseeIndicator } from './AddresseeIndicator'
 
 const ANNA: DraftMention = { targetId: 'u-anna', display: 'Anna Weber' }
 const MARKUS: DraftMention = { targetId: 'u-markus', display: 'Markus Hofer' }
-const PILOTI: DraftMention = { targetId: AGENT_MENTION_ID, display: 'Piloti' }
+const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: 'Piloti' }
 
 const line = () => screen.getByTestId('composer-addressee')
 
@@ -45,7 +45,7 @@ describe('AddresseeIndicator — the composer says where the message goes', () =
   })
 
   test('an explicit @Piloti overrides the wait — that is the documented way back', () => {
-    render(<AddresseeIndicator mentions={[PILOTI]} awaitingHuman />)
+    render(<AddresseeIndicator mentions={[AGENT]} awaitingHuman />)
     // The routing still changes out of `thread`, which is the load-bearing part
     // (MN-9.3). It simply no longer says so: the user typed the mention, so the
     // line would be reading their own keystroke back to them.
@@ -54,7 +54,7 @@ describe('AddresseeIndicator — the composer says where the message goes', () =
   })
 
   test('tagging a person AND the agent names both, because both are addressed (MN-1)', () => {
-    render(<AddresseeIndicator mentions={[ANNA, PILOTI]} awaitingHuman={false} />)
+    render(<AddresseeIndicator mentions={[ANNA, AGENT]} awaitingHuman={false} />)
     expect(line()).toHaveTextContent('Goes to Anna Weber, Piloti')
   })
 

@@ -108,7 +108,7 @@ picked out of its 44, and five from
 Thirteen are from [emilkowalski/skills](https://github.com/emilkowalski/skills),
 which is all of it except `animate-expo` and `write-swift`: there is no React
 Native or Swift in this repo. Where one of them disagrees with the motion
-vocabulary in [`grid-design-language.md`](../design/grid-design-language.md#motion-vocabulary),
+vocabulary in [`design-language.md`](../design/design-language.md#motion-vocabulary),
 the design language wins until it is changed, and changing it is a decision
 recorded there, not a drift in one component.
 `apm install cursor/plugins/pstack` takes the whole plugin in one dependency if

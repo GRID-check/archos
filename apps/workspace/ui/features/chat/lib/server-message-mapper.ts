@@ -54,7 +54,7 @@ import { sanitizeRunLedger, sanitizeRunTitle } from '@/lib/runs/run-ledger'
 
 import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
 import type { ChatMessage, ErrorCardData, FileCardData, MessageType } from '../types'
-import { validateGridCards } from '@/shared/cards/schemas'
+import { validateAnswerCards } from '@/shared/cards/schemas'
 import { sanitizeCardInteractions } from '@/features/grid-cards/card-decision'
 import { decodeCitations } from './citations'
 
@@ -151,12 +151,12 @@ export const mapServerMessageToChatMessage = (message: ServerMessageInput): Chat
     ...(readSources ? { readSources } : {}),
     ...(metadata.errorData ? { errorData: metadata.errorData as ErrorCardData } : {}),
     ...(metadata.fileData ? { fileData: metadata.fileData as FileCardData } : {}),
-    // Validated, not cast. The live websocket path runs `validateGridCards`;
+    // Validated, not cast. The live websocket path runs `validateAnswerCards`;
     // this one — every card read back out of the database — did not, so a
     // single row written under a different schema version reached a renderer
     // that indexes a lookup table by an unvalidated field, threw during
     // render, and blanked the WHOLE conversation rather than that one card.
-    ...(Array.isArray(metadata.cards) ? { cards: validateGridCards(metadata.cards) } : {}),
+    ...(Array.isArray(metadata.cards) ? { cards: validateAnswerCards(metadata.cards) } : {}),
     // Re-sanitized on read like `cards`: a stored row is client-written jsonb,
     // and the renderer must never meet an unbounded shape.
     ...(() => {

@@ -62,7 +62,7 @@ import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { loadProjectFederalState } from '@/lib/project-profile/prompt-view'
 import { fileCommissionedReport } from '@/lib/documents/commissioned-report'
-import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
+import { verifyRequestContextEnvelope } from '@/lib/request-context'
 
 const originalRequireAuth = process.env.REQUIRE_AUTH
 const originalInternalToken = process.env.INTERNAL_API_TOKEN
@@ -178,7 +178,7 @@ describe('/api/jobs/async/[...path] proxy — POST org model overrides', () => {
   const session = {
     userId: 'user-1',
     organizationId: 'org-1',
-    email: 'user@grid.example',
+    email: 'user@app.example',
     name: 'Test User',
     accessToken: 'token-abc',
     organizationMembershipId: 'membership-1',
@@ -267,7 +267,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
   const session = {
     userId: 'user-1',
     organizationId: 'org-1',
-    email: 'user@grid.example',
+    email: 'user@app.example',
     name: 'Test User',
     accessToken: 'token-abc',
     organizationMembershipId: 'membership-1',
@@ -346,7 +346,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
       // The backend refuses an envelope without one as a grant (ADR-0084).
       issuedAt: expect.any(Number),
       // Who the job is for, by name: what the agent's prompt calls the person.
-      requester: { name: 'Test User', email: 'user@grid.example', organizationName: null },
+      requester: { name: 'Test User', email: 'user@app.example', organizationName: null },
     })
   })
 
@@ -446,7 +446,7 @@ describe('/api/jobs/async/[...path] proxy — filing a commissioned report', () 
   const session = {
     userId: 'user-1',
     organizationId: 'org-1',
-    email: 'user@grid.example',
+    email: 'user@app.example',
     name: 'Test User',
     accessToken: 'token-abc',
     organizationMembershipId: 'membership-1',
@@ -576,7 +576,7 @@ describe('/api/jobs/async/[...path] proxy — every method carries the signed en
   const session = {
     userId: 'user-1',
     organizationId: 'org-1',
-    email: 'user@grid.example',
+    email: 'user@app.example',
     name: 'Test User',
     accessToken: 'token-abc',
     organizationMembershipId: 'membership-1',
@@ -591,7 +591,7 @@ describe('/api/jobs/async/[...path] proxy — every method carries the signed en
   /** The envelope as the BFF's own verifier reads it: signed, in its window, naming the checked scope. */
   const verifiedEnvelope = (call = 0) => {
     const headers = sentHeaders(call)
-    return verifyGridRequestContextEnvelope(
+    return verifyRequestContextEnvelope(
       headers['X-Grid-Request-Context'],
       headers['X-Grid-Request-Context-Sig'],
       SECRET

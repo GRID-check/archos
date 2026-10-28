@@ -55,7 +55,7 @@ async def run(stop: asyncio.Event) -> None:
     """Build the ingestor, claim until ``stop``, then drain."""
     from agent.knowledge.factory import get_active_ingestor
     from agent.observability import boot_timing
-    from agent.observability import ensure_registered as register_grid_telemetry
+    from agent.observability import ensure_registered as register_telemetry
     from agent.observability.boot_timing import BootClock
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.runtime.loader import load_config
@@ -63,7 +63,7 @@ async def run(stop: asyncio.Event) -> None:
     config_file = os.environ.get("CONFIG_FILE") or os.environ.get("NAT_CONFIG_FILE") or _DEFAULT_CONFIG
     liveness = os.environ.get("WORKER_LIVENESS_FILE", "/tmp/ingest-worker.alive")
     # Grid's telemetry `_type`s register at import; load_config fails without them.
-    register_grid_telemetry()
+    register_telemetry()
     clock = BootClock("ingest-worker")
     with clock.phase("load_config"):
         config = load_config(config_file)

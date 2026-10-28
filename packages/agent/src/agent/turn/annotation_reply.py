@@ -104,7 +104,7 @@ class ThreadReply:
         return self.annotation_id.strip().lower() in self.posted
 
 
-_thread_reply: contextvars.ContextVar[ThreadReply | None] = contextvars.ContextVar("grid_thread_reply", default=None)
+_thread_reply: contextvars.ContextVar[ThreadReply | None] = contextvars.ContextVar("thread_reply", default=None)
 
 
 def bind_thread_reply(record: ThreadReply | None) -> contextvars.Token:

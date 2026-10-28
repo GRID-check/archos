@@ -6,9 +6,9 @@
  * migration 0156). Never throws: anything it cannot read makes the answer
  * `{ known: false }`, and the request falls back to the mirror cookie.
  *
- * `withAuth` rather than `getGridSession`: this runs inside every server
+ * `withAuth` rather than `getUserSession`: this runs inside every server
  * render, and needs the user and organization ids only, not the membership
- * lookups or the tenant slot `getGridSession` publishes.
+ * lookups or the tenant slot `getUserSession` publishes.
  */
 
 import 'server-only'

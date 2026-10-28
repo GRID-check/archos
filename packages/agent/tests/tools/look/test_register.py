@@ -198,7 +198,7 @@ class TestTheBudget:
 
 
 class TestTheRoom:
-    async def test_the_room_sees_the_box_piloti_reads(self, stored, calls) -> None:
+    async def test_the_room_sees_the_box_agent_reads(self, stored, calls) -> None:
         set_turn_intent(file_name="Grundriss_EG.pdf", document_id=DOCUMENT)
 
         await run_look(page=2, region=[0.1, 0.2, 0.3, 0.25])

@@ -221,7 +221,7 @@ export const SourceCard: FC<{
       <div
         className={cn(
           // A long single word („Brandschutzkonzept“) hyphenates at a syllable
-          // rather than spill past a narrow column (grid-design-language
+          // rather than spill past a narrow column (design-language
           // §Typography); `break-word` is the last resort for a word the
           // dictionary does not know, never a mid-syllable cut by default.
           'bg-card relative min-w-0 flex-1 rounded-lg border px-3 py-2.5 shadow-xs hyphens-auto [overflow-wrap:break-word] [hyphenate-limit-chars:10_4_4]',

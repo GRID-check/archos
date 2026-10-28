@@ -11,7 +11,7 @@
  * Pure, so the pairing is specced without a component.
  */
 
-import type { PilotiChangeView } from '@/lib/changes/types'
+import type { AgentChangeView } from '@/lib/changes/types'
 import type { CanvasActivityItem, LiveMark } from './canvas-activity'
 
 /** The kind of change the server records for each row of the card. */
@@ -30,12 +30,12 @@ const queueKey = (objectKind: string, op: string, annotationId: string): string 
  */
 export function matchChanges(
   items: readonly CanvasActivityItem[],
-  changes: readonly PilotiChangeView[] | null
-): ReadonlyMap<number, PilotiChangeView> {
-  const matched = new Map<number, PilotiChangeView>()
+  changes: readonly AgentChangeView[] | null
+): ReadonlyMap<number, AgentChangeView> {
+  const matched = new Map<number, AgentChangeView>()
   if (!changes || changes.length === 0) return matched
 
-  const queues = new Map<string, PilotiChangeView[]>()
+  const queues = new Map<string, AgentChangeView[]>()
   for (const change of changes) {
     const key = queueKey(change.objectKind, change.op, change.annotationId)
     queues.set(key, [...(queues.get(key) ?? []), change])
@@ -45,7 +45,7 @@ export function matchChanges(
 
   let nextDeletion = 0
   items.forEach((item, index) => {
-    let change: PilotiChangeView | undefined
+    let change: AgentChangeView | undefined
     if (item.action === 'proposed' || item.action === 'created') {
       change = queues.get(queueKey('annotation', 'create', item.annotation_id))?.shift()
     } else if (item.action === 'changed') {
@@ -65,7 +65,7 @@ export function matchChanges(
  * its `after` names. Only the label under a row needs this ("changed since");
  * whether undo is offered is the server's `canUndo`, never this.
  */
-export function standsAsChanged(change: PilotiChangeView, live: LiveMark): boolean {
+export function standsAsChanged(change: AgentChangeView, live: LiveMark): boolean {
   const after = change.after
   if (!after) return true
   const same = (key: string, value: unknown) => !(key in after) || (after[key] ?? null) === (value ?? null)

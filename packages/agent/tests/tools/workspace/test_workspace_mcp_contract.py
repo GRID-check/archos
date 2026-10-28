@@ -4,7 +4,7 @@ Each side was tested alone: ``test_workspace_client.py`` against a fake socket,
 ``api/mcp/route.spec.ts`` against hand-built requests. Nothing proved the request
 this client really builds is one the real route answers, or that the answer is one
 this client really parses. Two committed fixtures close that, the pattern of
-``grid_request_context.json``:
+``request_context.json``:
 
 * ``apps/workspace/tests/fixtures/workspace_mcp_requests.json`` is written HERE from
   the real request builder (only the socket is replaced). The BFF spec

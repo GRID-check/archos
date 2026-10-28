@@ -1,5 +1,5 @@
 import type { ISecurityPolicySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/SecurityPolicySpec";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 
 /**
  * WorkOS permission that grants platform-tier access — the same value the app
@@ -101,7 +101,7 @@ export interface PlatformOidcGate {
  * (`docs/deployment/kubernetes.md` §9).
  */
 export function platformOidcSecurityPolicySpec(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   gate: PlatformOidcGate,
 ): ISecurityPolicySpec {
   // Every endpoint hangs off the one issuer, so there is no way for them to

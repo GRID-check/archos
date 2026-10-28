@@ -316,7 +316,7 @@
       // ERROR, not warn, because unlike the motion utilities there is no
       // legacy to be tolerant of here: a file only enters this list once it is
       // already clean. See eslint-rules/card-type-scale.mjs and
-      // grid-card-charter.md §A2.
+      // answer-card-charter.md §A2.
       //
       // The list is the cards that have been through a charter sprint and now
       // carry ONLY the §A2 type ramp, one line per card, added by the sprint

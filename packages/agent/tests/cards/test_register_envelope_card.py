@@ -35,7 +35,7 @@ from agent.cards.catalog import render_card_details
 from agent.cards.envelope import REFUSED_CONFINED
 from agent.cards.envelope import register_envelope_card
 from agent.cards.envelope import validate_model_card
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import CardRegistry
 from agent.cards.registry import reset_card_registry
 from agent.cards.registry import set_card_registry
@@ -158,7 +158,7 @@ class TestAnOpenTurn:
         }
         (card,) = registry.snapshot()
         assert card["type"] == "project_profile_patch" and card["proposal_id"] == FIRST
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
 
     async def test_the_index_counts_the_cards_the_tools_pushed_first(self, registry, transport):
         registry.add({"type": "document_draft"})

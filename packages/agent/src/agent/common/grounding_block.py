@@ -280,7 +280,7 @@ COVERAGE_GAP_NOTE = (
     "the rule may sit in a source this search does not cover."
 )
 
-#: Appended to the ``Herkunft:`` line of a Piloti-authored document, so every
+#: Appended to the ``Herkunft:`` line of a agent-authored document, so every
 #: tool that returns one (a search hit, a grep passage, a read) says it where
 #: the passage is. The line still starts with the frozen ``Piloti-Dokument``
 #: token the text parser reads (``citations.grounding_text._parse_kl_authored_by``).
@@ -535,7 +535,7 @@ def _doc_class_label(doc_class: str) -> str:
 _MAX_CAPTURED_BLOCKS = 64
 
 _captured_blocks: ContextVar[OrderedDict[str, GroundingBlock] | None] = ContextVar(
-    "grid_captured_grounding_blocks", default=None
+    "captured_grounding_blocks", default=None
 )
 
 

@@ -274,8 +274,8 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
   return (
     <TooltipProvider delayDuration={100}>
-      {/* `grid-spend-viz` scopes the validated chart tokens (end of globals.css). */}
-      <div className="grid-spend-viz animate-in fade-in-0 duration-base flex min-h-[16rem] flex-col gap-5 ease-out motion-reduce:animate-none">
+      {/* `spend-viz` scopes the validated chart tokens (end of globals.css). */}
+      <div className="spend-viz animate-in fade-in-0 duration-base flex min-h-[16rem] flex-col gap-5 ease-out motion-reduce:animate-none">
         <UsageOverviewView usage={usage} />
 
         {isAdmin && (

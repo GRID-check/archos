@@ -93,7 +93,7 @@ describe('the revision-subject suite is not silently skipped in CI', () => {
 function sessionOf(userId: string): AuthorizedSession {
   return {
     userId,
-    email: `${userId}@grid.test`,
+    email: `${userId}@example.test`,
     name: userId,
     accessToken: 'token',
     organizationId: ORG,

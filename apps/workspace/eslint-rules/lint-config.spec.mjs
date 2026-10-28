@@ -32,8 +32,8 @@ const FIXTURES = {
   'app/canary/page.tsx': [
     "'use client'",
     "import { useEffect, useState } from 'react'",
-    "import { getGridSession } from '@/lib/auth/session'",
-    'export async function unscoped() { return getGridSession() }',
+    "import { getUserSession } from '@/lib/auth/session'",
+    'export async function unscoped() { return getUserSession() }',
     'export const anything: any = 1',
     'export default function Page({ flag, id }: { flag: boolean; id: string }) {',
     '  if (flag) { const [x] = useState(0); void x }',
@@ -91,7 +91,7 @@ let workdir
 let findings
 
 beforeAll(() => {
-  workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'grid-lint-canary-'))
+  workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-canary-'))
   const config = fs
     .readFileSync(path.join(UI, '.oxlintrc.json'), 'utf8')
     .replace('"./eslint-rules/index.mjs"', JSON.stringify(path.join(UI, 'eslint-rules', 'index.mjs')))

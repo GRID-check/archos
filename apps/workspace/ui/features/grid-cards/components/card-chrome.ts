@@ -3,7 +3,7 @@
  *
  * "Cards" is the vocabulary of the schema, not of the pixels: the product
  * owner's brief moved from "each card unique and stunning" to "a card should
- * read as part of the answer, never as its own object" (grid-card-charter.md
+ * read as part of the answer, never as its own object" (answer-card-charter.md
  * records both). So the framed register stopped being a bordered, shadowed box
  * and became a QUIET GROUND: a soft `bg-muted` tint, no border, no shadow. An
  * exhibit then sits in the answer the way a figure sits in a book — grouped by

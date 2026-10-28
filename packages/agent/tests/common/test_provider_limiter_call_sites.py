@@ -303,7 +303,7 @@ async def test_a_per_request_copy_of_a_seam_model_still_holds_a_slot(pool):
 
     llm = await _resolved_through_nat(base_url="https://openrouter.ai/api/v1")
     copy = override_model(llm, "x-ai/grok-4.5")
-    assert getattr(type(copy), "__grid_request_contract__", False)
+    assert getattr(type(copy), "__request_contract__", False)
 
 
 # ------------------------------------------------- the limiter-only client

@@ -53,7 +53,7 @@ function Toaster({ ...props }: ToasterProps) {
           // gains the danger-subtle body. Icons are untouched throughout, so
           // error stays distinguishable without color alone.
           // One full hairline on every toast, and no accent edge (side
-          // stripes are discouraged, grid-design-language.md "Emphasis
+          // stripes are discouraged, design-language.md "Emphasis
           // without a stripe"): the tone is the icon, in its signal ink, and
           // the toast's own words.
           toast: 'text-popover-foreground border-border rounded-xl border shadow-md',

@@ -294,7 +294,7 @@ def _cited_sources_to_wire(registry: Any, valid_citations: list[dict[str, Any]])
     exists. Everything a reader needs from a citation — the page to open the
     PDF at, the snippet to hover, the lane and binding note — lives on the
     registry entry behind that binding. This is the join, mirroring
-    ``PilotiAgent``'s so both agents emit one shape.
+    ``ChatAgent``'s so both agents emit one shape.
 
     Deduplicated by entry identity in first-cited order: four passages of one
     Richtlinie are four citations but the reader wants the document once, and

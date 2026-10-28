@@ -21,7 +21,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
 from agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.agent import TurnConfig
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
@@ -83,7 +83,7 @@ def _call(name: str, call_id: str, **args) -> dict:
     return {"name": name, "args": args, "id": call_id}
 
 
-def _agent(*rounds: AIMessage, llm_calls: list | None = None) -> PilotiAgent:
+def _agent(*rounds: AIMessage, llm_calls: list | None = None) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
@@ -96,14 +96,14 @@ def _agent(*rounds: AIMessage, llm_calls: list | None = None) -> PilotiAgent:
     llm.ainvoke = AsyncMock(side_effect=_ainvoke)
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=_TOOLS, system_prompt=_PROMPT, max_tool_iterations=7)
+    return ChatAgent(llm_provider=provider, tools=_TOOLS, system_prompt=_PROMPT, max_tool_iterations=7)
 
 
 ANSWER = AIMessage(content="```answer_json\n" + json.dumps({"answer": "x" * 400 + " Antwort [1]."}) + "\n```")
 PREFETCH = ({"name": "knowledge_search", "args": {"query": "Was weißt du über die OIB 2?"}},)
 
 
-async def _run(agent: PilotiAgent, prefetch=PREFETCH, question="Was weißt du über die OIB 2?", **turn_kwargs):
+async def _run(agent: ChatAgent, prefetch=PREFETCH, question="Was weißt du über die OIB 2?", **turn_kwargs):
     turn = TurnConfig(prefetch=tuple(prefetch), **turn_kwargs)
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content=question)]), turn=turn)
 

@@ -36,11 +36,11 @@ from agent.cards.schematic_cards import GuardrailCheckCard
 from agent.cards.schematic_cards import SetbackPlanCard
 from agent.cards.schematic_cards import StairDiagramCard
 from agent.cards.surface_card import SurfaceCard
+from agent.cards.workspace_cards import DocumentAnswerCard
 from agent.cards.workspace_cards import DocumentDraftCard
-from agent.cards.workspace_cards import DocumentGridCard
 from agent.cards.workspace_cards import TaskCreatedCard
 
-GridCard = (
+AnswerCard = (
     ProjectProfilePatchCard
     | CalculationCard
     | FormulaCard
@@ -54,7 +54,7 @@ GridCard = (
     | FireAccessPlanCard
     | MemoryProposalCard
     | OperationProposalCard
-    | DocumentGridCard
+    | DocumentAnswerCard
     | DocumentDraftCard
     | TaskCreatedCard
     | FileOperationProposalCard
@@ -72,12 +72,12 @@ GridCard = (
 
 
 # Discriminated-union adapter — the canonical validator for a raw card dict.
-grid_card_adapter = TypeAdapter(Annotated[GridCard, Field(discriminator="type")])
+answer_card_adapter = TypeAdapter(Annotated[AnswerCard, Field(discriminator="type")])
 
 
 __all__ = [
-    "GridCard",
-    "grid_card_adapter",
+    "AnswerCard",
+    "answer_card_adapter",
     "validate_cards",
 ]
 
@@ -112,7 +112,7 @@ def validate_cards(raw: list[dict]) -> list[dict]:
             logger.warning("Dropping model-fabricated system/chat-only card (type=%s)", item.get("type"))
             continue
         try:
-            validated.append(grid_card_adapter.validate_python(item).model_dump(exclude_none=True))
+            validated.append(answer_card_adapter.validate_python(item).model_dump(exclude_none=True))
         except Exception as exc:
             logger.warning(
                 "Dropping invalid card (type=%s): %s",

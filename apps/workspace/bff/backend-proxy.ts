@@ -10,7 +10,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { isAuthRequired } from '@/lib/auth/auth-required'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 
 /**
  * Whether the backend requires WorkOS-authenticated requests.
@@ -28,7 +28,7 @@ export { getBackendUrl } from '@/lib/backend-url'
 /**
  * Resolve the current Grid session, or null when REQUIRE_AUTH=false.
  */
-export async function resolveOptionalSession(): Promise<GridSession | null> {
+export async function resolveOptionalSession(): Promise<UserSession | null> {
   if (!isAuthRequired()) {
     return null
   }
@@ -40,7 +40,7 @@ export async function resolveOptionalSession(): Promise<GridSession | null> {
  * incoming Authorization header on the request, otherwise fall back to the
  * session's WorkOS access token.
  */
-export function resolveBearerAuthHeader(req: Request, session: GridSession | null): string | null {
+export function resolveBearerAuthHeader(req: Request, session: UserSession | null): string | null {
   const headerToken = req.headers.get('Authorization')
   return headerToken || (session?.accessToken ? `Bearer ${session.accessToken}` : null)
 }

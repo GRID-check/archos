@@ -614,7 +614,7 @@ OUTLINE_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "read_passage_o
 
 @pytest.fixture
 def capturing():
-    """The turn-scoped capture ``PilotiAgent.run`` opens around a live turn."""
+    """The turn-scoped capture ``ChatAgent.run`` opens around a live turn."""
     token = begin_grounding_capture()
     yield
     end_grounding_capture(token)

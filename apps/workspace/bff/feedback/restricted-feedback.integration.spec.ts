@@ -313,7 +313,7 @@ describe.skipIf(!url)('answer feedback from a restricted conversation, against P
     const { submitAnswerFeedback } = await import('./service')
     const session: AuthorizedSession = {
       userId: USER,
-      email: `${USER}@grid.test`,
+      email: `${USER}@example.test`,
       name: USER,
       accessToken: 'token',
       organizationId: ORG,

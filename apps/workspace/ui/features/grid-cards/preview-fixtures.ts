@@ -4,10 +4,10 @@
  * The catalog endpoint (`/api/platform/cards`) can describe a card's fields but
  * not what it LOOKS like, and a platform owner deciding whether Grid can
  * present their question is answering a visual question. These fixtures let the
- * gallery render each type through the real `GridCards` dispatcher — the same
+ * gallery render each type through the real `AnswerCards` dispatcher — the same
  * path chat uses — so the page shows the actual component, not a mock of it.
  *
- * Deliberately in wire shape (`GridCard`, straight off the generated Zod
+ * Deliberately in wire shape (`AnswerCard`, straight off the generated Zod
  * schema) rather than component props: a fixture that stops matching the schema
  * is a type error here, so the gallery cannot drift into showing a card the
  * agent could never emit.
@@ -23,17 +23,17 @@
  */
 
 import { z } from 'zod'
-import { gridCardSchema, validateGridCards, type GridCard } from '@/shared/cards/schemas'
+import { answerCardSchema, validateAnswerCards, type AnswerCard } from '@/shared/cards/schemas'
 
 /**
  * Fixtures are authored in the schema's INPUT shape — the generated schemas
  * `.default(null)` every optional field, so an authored card may omit them
  * while a parsed one carries them. They are then run through the app's own
- * `validateGridCards`, so a fixture that no longer matches the union is
+ * `validateAnswerCards`, so a fixture that no longer matches the union is
  * dropped and warned about exactly like a bad card off the wire, rather than
  * throwing on import and taking the whole page down.
  */
-type CardInput = z.input<typeof gridCardSchema>
+type CardInput = z.input<typeof answerCardSchema>
 
 const OIB2 = { document: 'OIB-Richtlinie 2', section: 'Pkt. 3.1', edition: 'Ausgabe Mai 2023' }
 const OIB3 = { document: 'OIB-Richtlinie 3', section: 'Pkt. 9.1.1', edition: 'Ausgabe Mai 2023' }
@@ -477,15 +477,15 @@ const RAW_FIXTURES: CardInput[] = [
 
 /**
  * The validated fixtures, keyed by card type. Anything the union no longer
- * accepts is absent here (and warned about by `validateGridCards`), so the
+ * accepts is absent here (and warned about by `validateAnswerCards`), so the
  * gallery degrades to "described but not previewed" instead of rendering a
  * card shape the agent could never emit.
  */
-export const CARD_PREVIEW_FIXTURES: Partial<Record<GridCard['type'], GridCard>> = Object.fromEntries(
-  validateGridCards(RAW_FIXTURES).flatMap((card) => (card ? [[card.type, card] as const] : []))
+export const CARD_PREVIEW_FIXTURES: Partial<Record<AnswerCard['type'], AnswerCard>> = Object.fromEntries(
+  validateAnswerCards(RAW_FIXTURES).flatMap((card) => (card ? [[card.type, card] as const] : []))
 )
 
 /** The sample card for a type, or `undefined` when the gallery cannot preview it. */
-export function previewFixtureFor(type: string): GridCard | undefined {
-  return CARD_PREVIEW_FIXTURES[type as GridCard['type']]
+export function previewFixtureFor(type: string): AnswerCard | undefined {
+  return CARD_PREVIEW_FIXTURES[type as AnswerCard['type']]
 }

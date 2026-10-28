@@ -22,7 +22,7 @@ import re
 from pathlib import Path
 
 from agent.cards.catalog import INTERACTIVE_CARD_TYPES
-from agent.cards.models import GridCard
+from agent.cards.models import AnswerCard
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 TS_CARD_DECISION = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "grid-cards" / "card-decision.ts"
@@ -30,14 +30,16 @@ TS_CARD_DECISION = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "grid-
 
 def _card_types() -> set[str]:
     """Every ``type`` discriminator in the card union."""
-    return {getattr(card_cls.model_fields["type"].annotation, "__args__", ("?",))[0] for card_cls in GridCard.__args__}
+    return {
+        getattr(card_cls.model_fields["type"].annotation, "__args__", ("?",))[0] for card_cls in AnswerCard.__args__
+    }
 
 
 def _ts_interactive_types() -> set[str]:
     """The card types classified ``'interactive'`` in CARD_INTERACTIVITY."""
     source = TS_CARD_DECISION.read_text(encoding="utf-8")
     match = re.search(
-        r"export const CARD_INTERACTIVITY: Record<GridCard\['type'\], CardInteractivity> = \{(.*?)^\}",
+        r"export const CARD_INTERACTIVITY: Record<AnswerCard\['type'\], CardInteractivity> = \{(.*?)^\}",
         source,
         re.DOTALL | re.MULTILINE,
     )
@@ -63,7 +65,7 @@ def test_every_card_type_is_classified_in_the_frontend():
     """
     source = TS_CARD_DECISION.read_text(encoding="utf-8")
     match = re.search(
-        r"export const CARD_INTERACTIVITY: Record<GridCard\['type'\], CardInteractivity> = \{(.*?)^\}",
+        r"export const CARD_INTERACTIVITY: Record<AnswerCard\['type'\], CardInteractivity> = \{(.*?)^\}",
         source,
         re.DOTALL | re.MULTILINE,
     )
@@ -79,7 +81,7 @@ def test_every_card_type_is_classified_in_the_frontend():
 
 # A card type can clear every guard in this file and still draw nothing.
 #
-# ``GridCardItem`` dispatches on the discriminator in a flat chain of
+# ``AnswerCardItem`` dispatches on the discriminator in a flat chain of
 # ``if (card.type === '…')`` tests that ends in ``return null``. So a type that
 # is in the union, classified in ``CARD_INTERACTIVITY`` and given a preview
 # fixture STILL renders an empty gap when nobody wrote its branch — the model
@@ -87,17 +89,17 @@ def test_every_card_type_is_classified_in_the_frontend():
 # visible from the backend, which is where card types are born.
 #
 # The frontend mounts every type for real
-# (``GridCards.render-coverage.spec.tsx``, which also catches a branch that
+# (``AnswerCards.render-coverage.spec.tsx``, which also catches a branch that
 # exists but paints nothing). This is the cheap mirror, here for the same reason
 # as ``test_every_card_type_is_classified_in_the_frontend`` above: a backend
 # author who adds a card type without running the frontend suite still sees the
 # obligation fail in the suite they DO run.
-TS_GRID_CARDS = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "grid-cards" / "components" / "GridCards.tsx"
+TS_ANSWER_CARDS = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "grid-cards" / "components" / "AnswerCards.tsx"
 
 
 def _ts_rendered_types() -> set[str]:
-    """The card types ``GridCardItem`` has a dispatch branch for."""
-    source = TS_GRID_CARDS.read_text(encoding="utf-8")
+    """The card types ``AnswerCardItem`` has a dispatch branch for."""
+    source = TS_ANSWER_CARDS.read_text(encoding="utf-8")
     return set(re.findall(r"card\.type === '(\w+)'", source))
 
 
@@ -110,8 +112,8 @@ def test_every_card_type_has_a_renderer():
     """
     missing = _card_types() - _ts_rendered_types()
     assert not missing, (
-        f"Card type(s) {sorted(missing)} have no renderer branch in {TS_GRID_CARDS}. "
-        "GridCardItem falls through to `return null`, so a card of that type reaches "
+        f"Card type(s) {sorted(missing)} have no renderer branch in {TS_ANSWER_CARDS}. "
+        "AnswerCardItem falls through to `return null`, so a card of that type reaches "
         "the user as an empty gap in the answer — no warning, no dropped card. Add the "
         "branch (and a preview fixture) before the type ships."
     )
@@ -120,4 +122,4 @@ def test_every_card_type_has_a_renderer():
 def test_renderer_branches_are_real_card_types():
     """A renamed card must not leave a dead branch behind."""
     orphaned = _ts_rendered_types() - _card_types()
-    assert not orphaned, f"{TS_GRID_CARDS} dispatches on {sorted(orphaned)}, which the card union no longer has."
+    assert not orphaned, f"{TS_ANSWER_CARDS} dispatches on {sorted(orphaned)}, which the card union no longer has."

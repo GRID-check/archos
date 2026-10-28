@@ -26,7 +26,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
@@ -76,16 +76,16 @@ def _clean_slate():
 
 @pytest.fixture
 def scripted_agent():
-    """A PilotiAgent whose LLM plays a fixed script of tool rounds."""
+    """A ChatAgent whose LLM plays a fixed script of tool rounds."""
 
-    def build(*rounds: AIMessage) -> PilotiAgent:
+    def build(*rounds: AIMessage) -> ChatAgent:
         llm = MagicMock()
         llm.bind_tools = MagicMock(return_value=llm)
         llm.bind = MagicMock(return_value=llm)
         llm.ainvoke = AsyncMock(side_effect=list(rounds))
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        return PilotiAgent(
+        return ChatAgent(
             llm_provider=provider,
             tools=[knowledge_search, read_passage, remember],
             max_tool_iterations=6,

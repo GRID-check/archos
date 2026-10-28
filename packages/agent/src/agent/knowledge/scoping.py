@@ -217,9 +217,9 @@ def get_scoped_collections_from_context() -> list[ScopedCollection] | None:
     """
     scope: Any = None
     try:
-        from agent.project_context import GridRequestContext
+        from agent.project_context import RequestContext
 
-        ctx = GridRequestContext.from_context()
+        ctx = RequestContext.from_context()
         scope = ctx.collection_scope_entries if ctx.collection_scope_entries is not None else ctx.collection_scope
     except Exception:
         # project_context unavailable — fall back to the raw header so scoping
@@ -253,7 +253,7 @@ def get_collection_scope_from_context() -> list[str] | None:
     signs it into the ``X-Grid-Request-Context`` envelope (HMAC). We therefore
     consume the envelope's VERIFIED ``collection_scope``; the raw header is
     honored only when no valid envelope is present (anonymous / internal-service
-    / dev / legacy) — exactly ``GridRequestContext.from_context()``'s
+    / dev / legacy) — exactly ``RequestContext.from_context()``'s
     envelope-preferring fallback, and the agent_host enforcement middleware
     fail-closes authenticated turns that lack a valid envelope, so an
     authenticated request always resolves against the signed value. In legitimate

@@ -51,7 +51,7 @@ class CanvasPresence:
     documents: set[str] = field(default_factory=set)
 
 
-_presence: contextvars.ContextVar[CanvasPresence | None] = contextvars.ContextVar("grid_canvas_presence", default=None)
+_presence: contextvars.ContextVar[CanvasPresence | None] = contextvars.ContextVar("canvas_presence", default=None)
 
 
 def begin_canvas_presence() -> CanvasPresence:

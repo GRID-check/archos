@@ -61,7 +61,7 @@ CHAT_EFFORTS: tuple[str, ...] = ("minimal", "low", "medium", "high", "xhigh")
 # The asker's level for the turn in flight, set once per turn by
 # `turn.payload.extract_turn_inputs` (always, so a turn without one clears the
 # previous turn's) and read by `request_llm_context`.
-_turn_effort: ContextVar[str | None] = ContextVar("grid_turn_reasoning_effort", default=None)
+_turn_effort: ContextVar[str | None] = ContextVar("turn_reasoning_effort", default=None)
 
 
 class _CacheEntry:

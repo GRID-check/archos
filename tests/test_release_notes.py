@@ -77,7 +77,7 @@ def test_internal_and_markup_references_are_rejected(text, expected):
     assert any(expected in problem for problem in problems)
 
 
-def test_a_piloti_link_is_allowed():
+def test_a_product_link_is_allowed():
     assert lint_entry("The full changelog now lives at https://piloti.at/changelog for everyone.") == []
 
 
