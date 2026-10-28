@@ -23,11 +23,11 @@ from langgraph.errors import GraphRecursionError
 
 from aiq_agent.common.budget_guard import RunBudgetExceededError
 from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.turn_status import CUTOFF_RUN_BUDGET
-from aiq_agent.common.turn_status import CUTOFF_STEP_LIMIT
-from aiq_agent.common.turn_status import CUTOFF_UPSTREAM_TIMEOUT
-from aiq_agent.common.turn_status import CUTOFF_WALL_CLOCK
-from aiq_agent.common.turn_status import emit_deep_research_cutoff
+from aiq_agent.common.turn_notices import CUTOFF_RUN_BUDGET
+from aiq_agent.common.turn_notices import CUTOFF_STEP_LIMIT
+from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
+from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
+from aiq_agent.common.turn_notices import emit_deep_research_cutoff
 
 from .finalize import MIN_SALVAGE_REPORT_CHARS
 from .finalize import _salvaged_report_length

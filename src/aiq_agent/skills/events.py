@@ -73,7 +73,7 @@ SKILL_STEP_PREFIX = "skill:"
 KEY_SKILL_ACTIVATED = "skill.activated"
 
 #: EVERY key a skill step can put on the live line: the counterpart of
-#: :data:`~aiq_agent.common.turn_status.ALL_STATUS_KEYS`, and read by the same
+#: :data:`~aiq_agent.common.status_keys.ALL_STATUS_KEYS`, and read by the same
 #: two tests.
 ALL_SKILL_KEYS: tuple[str, ...] = ("skill.activated",)
 

@@ -27,7 +27,7 @@ from ris_adapter.lookup.trace import LookupTrace
 from ris_adapter.register import _make_planner
 
 from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.turn_status import ActionRow
+from aiq_agent.common.action_rows import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -111,7 +111,7 @@ async def ris_lookup(tool_config: RisLookupToolConfig, builder: Builder):
     ) -> str:
         # `conclusion` is deliberately unread, exactly like the knowledge
         # tools': it is the Herleitung's checkpoint slot, read off the CALL by
-        # turn_status.CONCLUSION_ARG, and a tool that acted on it would turn a
+        # tool_calls.CONCLUSION_ARG, and a tool that acted on it would turn a
         # transparency field into a control channel.
         question = (question or "").strip()
         if not question:

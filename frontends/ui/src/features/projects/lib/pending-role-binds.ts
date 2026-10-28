@@ -11,11 +11,9 @@
  * and sends it once the save has made the building real.
  */
 
-import {
-  answersFromProfile,
-  defaultBuildings,
-  type ProjectIntakeDefinition,
-} from '@/lib/project-profile/intake-definition'
+import { defaultBuildings } from '@/lib/project-profile/intake-building-keys'
+import { answersFromProfile } from '@/lib/project-profile/intake-profile'
+import type { ProjectIntakeDefinition } from '@/lib/project-profile/intake-types'
 import { documentRoleDefinition, type DocumentRole } from '@/lib/project-profile/document-roles'
 import type { ProjectProfile } from '@/lib/project-profile/types'
 

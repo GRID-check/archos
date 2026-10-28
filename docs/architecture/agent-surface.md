@@ -1129,6 +1129,12 @@ A completed answer carries `answer.sources` (`documentId`, `name`, `page`, and a
 `url` that opens the cited page in Piloti for the asker) and `answer.confidence`,
 both as the answer's message stored them and absent where it stored none: an
 answer with neither is not grounded in a document.
+`answer.text` is plain Markdown (`lib/piloti-asks/answer-text.ts`), for the MCP
+door and the A2A door alike: the answer's directive fences, `[[card:N]]`
+markers and `:project[key]` bindings go through the same projection as the copy
+button (`stripDirectives`), a binding printing the project's value, and the
+verifier's German labels become English ones. The stored message keeps the
+dialect; the chat renders it.
 
 **The wait, on the 2026-07-28 era** (`ask-calls.ts`). The ask is the one door
 call whose wait is ours; `task-run-start`, the uploads and `document-reingest`

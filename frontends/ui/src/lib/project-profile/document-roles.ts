@@ -26,8 +26,8 @@
  * `lib/db/schema/document-roles`; nothing here touches the database.
  */
 
-import { evaluateIntakeConditions } from './intake-definition'
-import type { ProjectIntakeCondition, ProjectIntakeScope } from './intake-definition'
+import { evaluateIntakeConditions } from './intake-conditions'
+import type { ProjectIntakeCondition, ProjectIntakeScope } from './intake-types'
 import type { ProjectPrimitiveValue } from './types'
 
 /**

@@ -170,6 +170,7 @@ ones that will fail your PR.
 | Write a commit, or open **or rename** a PR | Conventional Commits — `feat` `fix` `docs` `refactor` `perf` `test` `ci` `build` `chore` `revert`. The **PR title** most of all: the repo squash-merges it, so the title is the commit that lands on `develop`. [`CONTRIBUTING.md`](CONTRIBUTING.md#commits-and-pr-titles) | The **Conventional PR title** job blocks the PR. A prose title is the one that keeps slipping through, because nothing local checks it |
 | Add or change something a person can do (a route, a button, a setting) | Give it an operation in `frontends/ui/src/lib/agent-api/catalog/` in the same change, or a reason in `NOT_AN_AGENT_CAPABILITY`. Headless first: the operation is the capability, the UI one client of it. Who sees it (an outside agent, Piloti, a native tool of Piloti's instead, the platform door, or nobody: `withheld`, with category and reason) is its entry in `frontends/ui/src/lib/agent-api/exposure.config.ts`, the one file that decides it. [`docs/contributing/headless-first.md`](docs/contributing/headless-first.md) | `agent-reachability.spec.ts`; the config does not compile without the entry, and `exposure.config.spec.ts` fails a missing reason or a stale `exposure.json` |
 | Name anything in code: a file, folder, identifier, type, enum token, test id, route, API or schema field | **English only, no exceptions for domain words.** `profile-review.ts`, never `steckbrief.ts`; `buildingClass`, never `gebaeudeklasse`. German lives in the i18n dictionaries and in domain data (document names, addresses, legal citations), nowhere else. A German name you meet is a rename in your change; a persisted German key (a profile key such as `standort_adresse`, a stored JSON field) is renamed with its migration and the agent's side in the same change, never by adding a second name beside it German domain term to English code name: [`docs/glossary.md`](docs/glossary.md#german-domain-term-english-code-name) | `tests/test_english_names.py` (Python) and `frontends/ui/src/english-names.spec.ts` (UI), a per-file ratchet on identifiers with German stems (`ci/german_stems.json`); review for file names, routes and string tokens |
+| Name anything in code or infrastructure | **No product name**: no `aiq`, `grid` or `piloti` in an identifier, file, folder, environment variable, route, header, table, event or tool name. Name it for what it does; the product's name is copy, read from one place. [`code-conventions.md`](docs/contributing/code-conventions.md#no-brand-names) | The `brand-names` hook (`scripts/check_brand_names.py` against `ci/brand_names_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
 | Write a file or a function | A source file (Python, TypeScript or JavaScript) stays at or under 600 lines and a Python function at or under 60; one already over may not grow, and when it shrinks you lower its entry with `--update`. Generated files, tests, fixtures, migrations and copy are exempt. [`code-conventions.md`](docs/contributing/code-conventions.md#size-limits) | The `file-size` hook (`scripts/check_file_size.py` against `ci/size_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
 | Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `frontends/web/scripts/lint-claims.mjs` (the site); review elsewhere |
 | Describe what Piloti is, in a doc, a prompt or copy | Lead with the workspace for architects; building law is one capability, never the frame ([`VISION.md`](VISION.md)) | `tests/aiq_agent/test_product_framing.py` on the first-impression docs and every agent prompt; review elsewhere |
@@ -198,11 +199,15 @@ for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 ## Two rules that span services
 
 **One coarse `SourceKind` drives all rendering** (`building_law | office |
-project | web`), defined in `src/aiq_agent/common/source_kinds.py`, mirrored in
-`frontends/ui/src/lib/source-kinds.ts`. The fine `norm_registry`
-lanes are a sub-label within a kind. `doc_class` is human-set and beats every
-filename guess. There is no shared schema between the two files: changing one
-and not the other renders the chip as unknown.
+project | web | measurement`), defined in `src/aiq_agent/common/source_kinds.py`.
+The UI's `SOURCE_KINDS` and `SHELVES` are generated from it into
+`frontends/ui/src/shared/vocabularies.generated.ts` by
+`scripts/generate_vocabularies.py` (the `vocabularies` pre-commit hook), so a
+kind added in Python reaches the chip without a second edit;
+`frontends/ui/src/lib/source-kinds.ts` holds what the UI makes of each kind. The
+fine `norm_registry` lanes are a sub-label within a kind, and the lane→kind table
+is still a mirror, held by `test_collection_scope_parity.py`. `doc_class` is
+human-set and beats every filename guess.
 
 **Correlated substrate debt belongs in the change that tripped over it.** YAGNI
 forbids unused features, not known defects on the path you are walking. If B
