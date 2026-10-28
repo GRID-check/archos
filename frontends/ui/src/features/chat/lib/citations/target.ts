@@ -209,7 +209,7 @@ export const citedFileName = (doc: CitedDocument): string | null => documentLoca
 
 /**
  * Hosts the in-app RIS reader can serve — mirrors `ALLOWED_DOCUMENT_HOSTS` in
- * `sources/ris_adapter/src/client.py`, which is what actually enforces it.
+ * `packages/ris-adapter/src/client.py`, which is what actually enforces it.
  *
  * Stated here as well so a chip commits to the reader only for a URL the
  * backend will accept: promising an in-app open and then answering 404 is worse

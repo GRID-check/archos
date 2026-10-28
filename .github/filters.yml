@@ -39,7 +39,10 @@ backend:
   - 'shared/wire/**'
   # Read by tests/aiq_agent/tools/workspace/test_english_only.py.
   - 'ci/german_stems.json'
-  - 'sources/**'
+  # The Python packages (ADR-0145 row 6); ifc-spatial-py is the packages tier's.
+  - 'packages/knowledge-layer/**'
+  - 'packages/ris-adapter/**'
+  - 'packages/tavily-web-search/**'
   # The one-time Chroma exporter's own tests (`be:test:migration`).
   - 'deploy/migration/**'
   - 'tests/**'
@@ -64,7 +67,7 @@ backend:
 # are gone: the gate measured the real OIB Richtlinien, and those became
 # operator-provided and gitignored (data/oib/README.md), so no CI checkout can
 # hold a corpus to measure. The paths it watched
-# (sources/knowledge_layer, common/german_text.py, common/legal_terms.py,
+# (packages/knowledge-layer, common/german_text.py, common/legal_terms.py,
 # evals/oib-retrieval) are all inside `backend:` — the last of
 # them only since the `evals/**` line above, added here so
 # removing the filter did not leave the harness watched by nothing. So nothing
@@ -173,7 +176,6 @@ sast:
   - 'src/**'
   - 'frontends/**'
   - 'apps/**'
-  - 'sources/**'
   - 'packages/**'
   - 'deploy/**'
   - 'scripts/**'

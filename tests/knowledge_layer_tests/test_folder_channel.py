@@ -2,7 +2,7 @@
 
 The store side (folder points never reach a chunk read; the folder query finds
 them; a restricted folder's card is invisible without its scope) runs on a real
-Qdrant in ``sources/knowledge_layer/tests/test_qdrant_scope_kind.py``. Here the
+Qdrant in ``packages/knowledge-layer/tests/test_qdrant_scope_kind.py``. Here the
 tool: the lines it prints, that they are no citation, when the channel asks at
 all, and that it never costs the search its answer.
 """
