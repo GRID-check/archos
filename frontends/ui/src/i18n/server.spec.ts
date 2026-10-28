@@ -14,7 +14,7 @@ const findSavedLocale = vi.fn()
 vi.mock('@/lib/user-preferences/locale', () => ({ findSavedLocale: () => findSavedLocale() }))
 
 import { runAsJobSlice } from '@/lib/jobs-queue/slice-scope'
-import { defaultLocale } from './config'
+import { LEGACY_LOCALE_COOKIE, defaultLocale } from './config'
 import { getLocale, getTranslations } from './server'
 
 beforeEach(() => {
@@ -33,7 +33,7 @@ describe('getLocale', () => {
   })
 
   it('reads the cookie under its old name while the new one is missing (ADR-0145 rule 5)', async () => {
-    const jar: Record<string, string> = { 'grid-locale': 'de' }
+    const jar: Record<string, string> = { [LEGACY_LOCALE_COOKIE]: 'de' }
     cookies.mockResolvedValue({ get: (name: string) => (name in jar ? { value: jar[name] } : undefined) })
     headers.mockResolvedValue(new Headers({ 'accept-language': 'en' }))
     findSavedLocale.mockResolvedValue({ known: false, locale: null })

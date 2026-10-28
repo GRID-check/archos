@@ -32,9 +32,10 @@ export function getActiveLocale(): Locale {
   // read as English.
   const pageLang = document.documentElement.lang
   if (isLocale(pageLang)) return pageLang
-  const read = (name: string) => document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))
-  const match = read(LOCALE_COOKIE) ?? read(LEGACY_LOCALE_COOKIE)
-  return resolveLocale(match ? decodeURIComponent(match[1]) : undefined)
+  const cookies = document.cookie.split(';').map((pair) => pair.trim())
+  const read = (name: string) => cookies.find((pair) => pair.startsWith(`${name}=`))?.slice(name.length + 1)
+  const value = read(LOCALE_COOKIE) ?? read(LEGACY_LOCALE_COOKIE)
+  return resolveLocale(value ? decodeURIComponent(value) : undefined)
 }
 
 /**
