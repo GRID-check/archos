@@ -90,6 +90,7 @@
     "frontends/ui/src/features/product-feedback/components/feedback-threads.tsx": 822,
     "frontends/ui/src/features/product-feedback/components/feedback-triage.tsx": 748,
     "frontends/ui/src/features/projects/components/project-memory-panel.tsx": 614,
+    "frontends/ui/src/features/projects/components/use-project-intake-wizard-controller.tsx": 753,
     "frontends/ui/src/features/runs/components/RunBlock.tsx": 1046,
     "frontends/ui/src/features/search/components/search-atoms.tsx": 1176,
     "frontends/ui/src/features/skills/components/skill-editor-dialog.tsx": 1085,
