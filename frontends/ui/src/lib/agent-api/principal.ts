@@ -47,11 +47,12 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { FEATURE_FLAGS, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { getPlatformOrganizationId, isPlatformStaff } from '@/lib/authz/platform'
 import { isUuid } from '@/lib/ids'
-import { INTERNAL_TOKEN_HEADER, requireInternalToken } from '@/lib/internal-auth'
+import { CURRENT_INTERNAL_TOKEN_HEADER, requireInternalToken } from '@/lib/internal-auth'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { type DoorResource, acceptedAudiences, authkitDomain, authkitIssuer, doorOf, doorResourceUrl } from './mcp-config'
 import { SENSITIVITIES, type Sensitivity } from './operation'
 import type { AgentDoor } from './exposure'
+import { hasHeader, readHeader } from '@/lib/http/legacy-header-names'
 
 /**
  * Who acts, in the words of OAuth token exchange (RFC 8693): the SUBJECT is the
@@ -111,7 +112,7 @@ async function sensitiveOptInsOf(organizationId: string): Promise<Sensitivity[]>
 }
 
 /** The header Piloti names the turn's answer in; anything but a uuid is ignored. */
-export const ANSWER_MESSAGE_HEADER = 'x-grid-answer-message-id'
+export const ANSWER_MESSAGE_HEADER = 'x-answer-message-id'
 
 /** A request that did not authenticate, with the answer to send. */
 export interface AuthChallenge {
@@ -298,7 +299,7 @@ async function platformPrincipal(auth: AuthInfo, userId: string, organizationId:
 }
 
 function answerMessageIdOf(request: Request): string | null {
-  const value = request.headers.get(ANSWER_MESSAGE_HEADER)?.trim()
+  const value = readHeader(request.headers, ANSWER_MESSAGE_HEADER)?.trim()
   return value && isUuid(value) ? value : null
 }
 
@@ -335,7 +336,7 @@ export async function resolvePrincipal(
   request: Request,
   deps: PrincipalDeps = {},
 ): Promise<AgentPrincipal | AuthChallenge> {
-  if (request.headers.has(INTERNAL_TOKEN_HEADER)) {
+  if (hasHeader(request.headers, CURRENT_INTERNAL_TOKEN_HEADER)) {
     if (doorOf(request) === 'platform') return refuse(403, 'Piloti does not use the platform door.')
     return pilotiPrincipal(request)
   }

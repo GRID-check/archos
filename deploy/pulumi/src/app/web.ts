@@ -23,7 +23,7 @@ export interface Web {
 }
 
 /**
- * Landing site (frontends/web): Astro on the Node standalone adapter. The pages
+ * Landing site (apps/site): Astro on the Node standalone adapter. The pages
  * are prerendered at build time (static HTML + assets served by the adapter),
  * with SSR routes for the Keystatic admin, the sign-in hand-off and the
  * analytics script, which read their settings from the env below per request.

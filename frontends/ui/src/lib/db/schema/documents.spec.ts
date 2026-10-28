@@ -1,4 +1,4 @@
-// @disk-inputs: drizzle/0049_session_documents.sql, drizzle/0063_agent_authored_documents.sql, drizzle/0064_generated_document_idempotency.sql, drizzle/0065_diagram_document_producer_idempotency.sql, drizzle/0066_authored_ref_names_its_kind.sql, drizzle/0102_archiv_folders.sql, src/lib/documents/repository.ts
+// @disk-inputs: drizzle/0049_session_documents.sql, drizzle/0063_agent_authored_documents.sql, drizzle/0064_generated_document_idempotency.sql, drizzle/0065_diagram_document_producer_idempotency.sql, drizzle/0066_authored_ref_names_its_kind.sql, drizzle/0102_archiv_folders.sql, src/lib/documents/repository.ts, src/lib/documents/repository/*.ts
 /**
  * @vitest-environment node
  */
@@ -75,7 +75,7 @@
  * of them were satisfiable by a row nobody could resolve.
  */
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { PgDialect, getTableConfig } from 'drizzle-orm/pg-core'
 import { describe, expect, it } from 'vitest'
@@ -113,10 +113,13 @@ const MIGRATION_0066 = readFileSync(
  * module and a schema spec has no business booting one. The same arrangement
  * `document-status.spec.ts` uses on the poller.
  */
-const DOCUMENTS_REPOSITORY = readFileSync(
+const REPOSITORY_DIR = join(process.cwd(), 'src/lib/documents/repository')
+const DOCUMENTS_REPOSITORY = [
   join(process.cwd(), 'src/lib/documents/repository.ts'),
-  'utf8'
-)
+  ...readdirSync(REPOSITORY_DIR).map((name) => join(REPOSITORY_DIR, name)),
+]
+  .map((file) => readFileSync(file, 'utf8'))
+  .join('\n')
 
 const IDEMPOTENCY_INDEX = 'uniq_documents_authored_ref_producer_per_project'
 /** 0064's, which 0065 subsumes. Named so the pair of tests below can say so. */

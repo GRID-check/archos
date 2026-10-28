@@ -53,11 +53,9 @@ import {
   pruneResolvedAssumptions,
   pruneResolvedUnknowns,
 } from './patch-engine'
-import {
-  projectIntakeDefinitionV1,
-  validateProfilePatchVocabulary,
-  type ProjectIntakeDefinition,
-} from './intake-definition'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import type { ProjectIntakeDefinition } from './intake-types'
+import { validateProfilePatchVocabulary } from './intake-vocabulary'
 import type { AiConsistencyFinding, ConsistencyCheckField } from './intake-consistency'
 import { normalizeLegacyProfile } from './legacy-names'
 import type { ProjectProfile, ProjectProfilePatchOperation } from './types'

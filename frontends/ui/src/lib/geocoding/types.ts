@@ -47,7 +47,7 @@ export const geocodeResultSchema = z.preprocess(renameLegacyGeocodeFields, z.obj
   /**
    * The intake `A2_land` token (`wien`, `niederoesterreich`, …), or null when
    * the provider named no Land we can match. The wizard's own vocabulary:
-   * `FEDERAL_STATE_TOKENS` in `lib/project-profile/intake-definition.ts`.
+   * `FEDERAL_STATE_TOKENS` in `lib/project-profile/intake-conditions.ts`.
    */
   federalState: z.string().nullable(),
   /** The provider's state label as it reads to a person ("Niederösterreich"); Vienna is "Wien". */

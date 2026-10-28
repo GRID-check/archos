@@ -124,7 +124,7 @@ updates:
 
   # Landing site (Astro microservice). bun.lock, like the UI's (ADR-0103).
   - package-ecosystem: bun
-    directory: "/frontends/web"
+    directory: "/apps/site"
     schedule:
       interval: weekly
       day: monday
@@ -184,7 +184,7 @@ updates:
       # `pulumi preview`/`up` load TypeScript through ts-node, which calls the
       # compiler's JS API (@pulumi/pulumi cmd/run/run.js `require(typescriptRequire)`).
       # TypeScript 7 ships no JS API, so `tsc --noEmit` stays green while every
-      # deploy breaks. Same rule as frontends/web.
+      # deploy breaks. Same rule as apps/site.
       - dependency-name: "typescript"
         versions: [">=7"]
 

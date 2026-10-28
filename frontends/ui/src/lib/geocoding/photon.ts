@@ -12,7 +12,8 @@
  */
 
 import { z } from 'zod'
-import { findIntakeQuestion, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { findIntakeQuestion } from '@/lib/project-profile/intake-conditions'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import { foldDiacritics, latinize } from '@/lib/text/latinize'
 import { GEOCODE_DEFAULT_LIMIT, GEOCODE_MAX_LIMIT, type GeocodeKind, type GeocodeResult } from './types'
 

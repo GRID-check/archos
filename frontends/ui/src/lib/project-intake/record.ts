@@ -40,10 +40,8 @@
  * suggest it again, where a dismissed value stays refused.
  */
 
-import {
-  validateProfilePatchVocabulary,
-  type ProjectIntakeDefinition,
-} from '@/lib/project-profile/intake-definition'
+import type { ProjectIntakeDefinition } from '@/lib/project-profile/intake-types'
+import { validateProfilePatchVocabulary } from '@/lib/project-profile/intake-vocabulary'
 import type { DocumentEvidence } from '@/lib/project-profile/evidence-schema'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import {

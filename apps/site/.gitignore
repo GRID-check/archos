@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.astro/
+# Astro's build cache, relocated out of node_modules so `npm ci` cannot wipe it
+# (apps/site/astro.config.mjs). Restored by actions/cache in CI.
+.astro-cache/
+.env
+.env.*
+!.env.example
+# Riso exports that are not site assets (deck, email, social, print and its
+# separations): reproducible from the pinned kit with art/riso/export.mjs.
+art/riso/out/
