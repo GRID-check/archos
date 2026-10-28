@@ -251,7 +251,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0,<51" },
     { name = "deepagents", specifier = "==0.7.32" },
     { name = "fakeredis", extras = ["lua"], marker = "extra == 'dev'", specifier = ">=2.20.0" },
-    { name = "knowledge-layer", extras = ["all"], editable = "sources/knowledge_layer" },
+    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
     { name = "langchain-modal", specifier = "==0.0.7" },
     { name = "langchain-openai", specifier = ">=1.6.6" },
     { name = "langfuse", specifier = ">=4.15.3,<5" },
@@ -294,7 +294,7 @@ dev = [
     { name = "aiq-api", editable = "frontends/aiq_api" },
     { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
     { name = "import-linter", specifier = ">=2.15" },
-    { name = "knowledge-layer", extras = ["all"], editable = "sources/knowledge_layer" },
+    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
     { name = "mypy", specifier = ">=2.3.0" },
     { name = "oib-retrieval", editable = "evals/oib-retrieval" },
     { name = "pre-commit", specifier = ">=3.5.0" },
@@ -305,9 +305,9 @@ dev = [
     { name = "pytest-split", specifier = ">=0.11.0" },
     { name = "pytest-testmon", specifier = ">=2.2.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
-    { name = "ris-adapter", editable = "sources/ris_adapter" },
+    { name = "ris-adapter", editable = "packages/ris-adapter" },
     { name = "ruff", specifier = "~=0.17.0" },
-    { name = "tavily-web-search", editable = "sources/tavily_web_search" },
+    { name = "tavily-web-search", editable = "packages/tavily-web-search" },
     { name = "yapf", specifier = ">=0.40.0" },
 ]
 
@@ -1798,7 +1798,7 @@ wheels = [
 [[package]]
 name = "knowledge-layer"
 version = "1.0.0"
-source = { editable = "sources/knowledge_layer" }
+source = { editable = "packages/knowledge-layer" }
 dependencies = [
     { name = "boto3" },
     { name = "httpx" },
@@ -1835,7 +1835,7 @@ llamaindex = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.34" },
     { name = "httpx", specifier = ">=0.24.0" },
-    { name = "knowledge-layer", extras = ["llamaindex"], marker = "extra == 'all'", editable = "sources/knowledge_layer" },
+    { name = "knowledge-layer", extras = ["llamaindex"], marker = "extra == 'all'", editable = "packages/knowledge-layer" },
     { name = "llama-index", marker = "extra == 'llamaindex'", specifier = ">=0.14.23" },
     { name = "llama-index-embeddings-nvidia", marker = "extra == 'llamaindex'", specifier = ">=0.1.0" },
     { name = "openai", marker = "extra == 'llamaindex'", specifier = ">=2.53.0" },
@@ -4130,7 +4130,7 @@ wheels = [
 [[package]]
 name = "ris-adapter"
 version = "1.0.0"
-source = { editable = "sources/ris_adapter" }
+source = { editable = "packages/ris-adapter" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "httpx" },
@@ -4620,7 +4620,7 @@ wheels = [
 [[package]]
 name = "tavily-web-search"
 version = "1.0.0"
-source = { editable = "sources/tavily_web_search" }
+source = { editable = "packages/tavily-web-search" }
 dependencies = [
     { name = "httpx" },
     { name = "langchain-tavily" },

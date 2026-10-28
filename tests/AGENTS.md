@@ -9,7 +9,7 @@ pytest over `src/aiq_agent`, mirroring its package layout. This is the suite
 so `pytest` tests the code in front of you, whatever the venv was built from. A
 worktree without its own venv is the case this guards: before that setting, a
 bare `pytest` there tested the main checkout while everything passed.
-`knowledge_layer` (under `sources/`) is not covered; see
+`knowledge_layer` (under `packages/knowledge-layer`) is not covered; see
 [`docs/contributing/gotchas.md`](../docs/contributing/gotchas.md).
 `.venv/bin/pytest tests/aiq_agent/cards` for one area; `task be:test:ci` carries
 CI's 65% coverage gate.
@@ -34,7 +34,7 @@ CI's 65% coverage gate.
 | Share a helper between test files | Put it in the suite's `<distribution>_testing` package (`agent_testing`, `knowledge_layer_testing`, `ris_adapter_testing`) and import it by that name | `tests/test_test_imports.py` |
 | Assert on an LLM call | Assert the contract, never the prose: tools bound, prompt block present, bounds respected | The test passes until the model changes its wording, then fails for no reason |
 | Test tenant behaviour | Remember this suite does not exercise row-level security; `task db:test:rls` does, and `task verify` does not run it | A tenancy bug that only RLS would catch |
-| Add a suite under `sources/` | Nothing extra — `task be:test:sources` runs it, in `be:verify` and in CI. Do not add a `tests/__init__.py` to it: a package named `tests` collides with this suite's `tests.conftest` ([`sources/AGENTS.md`](../sources/AGENTS.md)) | The **Backend tests** CI job |
+| Add a Python package's suite under `packages/` | List the package in the three places [`packages/AGENTS.md`](../packages/AGENTS.md) names; `task be:test:sources` then runs it, in `be:verify` and in CI. Do not add a `tests/__init__.py` to it: a package named `tests` collides with this suite's `tests.conftest` | The **Backend tests** CI job |
 
 ## Reference
 

@@ -1,7 +1,7 @@
 """What a drawing's title block (Plankopf) says about the document: number, Index, date, scale, title.
 
 The vision model reads the title block once per drawing page, during ingestion
-(``sources/knowledge_layer/src/llamaindex/visual_analysis.py``); the first page
+(``packages/knowledge-layer/src/llamaindex/visual_analysis.py``); the first page
 that has one is stored per document as ``revision_facts``
 (``document_metadata.revision_facts``) and read back by the collection listing,
 the agent's ``list_files`` and the Fassung judge. This module is the one place

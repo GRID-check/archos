@@ -99,6 +99,8 @@ EXCLUDED = re.compile(
             r"^deploy/pulumi/index-postgres-rename\.spec\.ts$|^tests/test_postgres_rename_legacy_names\.py$",
             # The one-release move of the browser's stored keys off their old names, and its spec.
             r"^frontends/ui/src/app/storage-rename-boot(\.spec)?\.ts$",
+            # The one release the BFF also sends the mode header under its old name, beside `x-chat-mode`.
+            r"^frontends/ui/src/lib/turns/headless-mode\.ts$",
         )
     )
 )

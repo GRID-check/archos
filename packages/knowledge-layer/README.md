@@ -8,7 +8,7 @@ For comprehensive documentation, see [`KNOWLEDGE-LAYER-SETUP.md`](./KNOWLEDGE-LA
 ## Installation
 
 ```bash
-uv pip install -e "sources/knowledge_layer[llamaindex]"
+uv pip install -e "packages/knowledge-layer[llamaindex]"
 ```
 
 ## The backend

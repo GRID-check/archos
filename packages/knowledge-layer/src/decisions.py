@@ -25,7 +25,7 @@ numbers on legal retrieval (top-1 5 % → 18 %, top-10 38 % → 62 %) are those
 of a useful reranker, not of a cross-encoder trained for the task, and the
 golden set decides (``scripts/decision_eval.py``).
 
-This package must import without ``aiq_agent`` (``sources/AGENTS.md``), so
+This package must import without ``aiq_agent`` (``packages/AGENTS.md``), so
 the client is imported lazily and its absence is "no decision", which every
 caller already handles as "run as today".
 """

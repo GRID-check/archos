@@ -52,7 +52,7 @@ all = [
 ]
 
 [project.entry-points."nat.plugins"]
-# One per module that registers a tool (sources/AGENTS.md). `browse` and
+# One per module that registers a tool (packages/AGENTS.md). `browse` and
 # `read_passage` used to register only because the package `__init__` imported
 # them; it loads lazily now (docs/audit/blast-radius-2026-10.md).
 knowledge_layer = "knowledge_layer.register"

@@ -46,7 +46,7 @@ Phase 1 — data + corpus (days):
 
 Phase 2 — the one real code artifact (weeks):
 4. A source adapter for the country's legal database (Germany:
-   gesetze-im-internet + Länder portals), following `sources/ris_adapter` as
+   gesetze-im-internet + Länder portals), following `packages/ris-adapter` as
    the template — tools, planner prompt, URL predicates all live inside the
    adapter package. Note: the adapter's state-filter vocabulary must consume
    the profile's `states`, not re-declare it (RIS adapter currently

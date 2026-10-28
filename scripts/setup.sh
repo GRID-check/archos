@@ -55,8 +55,8 @@ echo "Backend host installed"
 # Install data sources
 echo ""
 echo "Installing data sources..."
-"${UV_BIN}" pip install -e ./sources/tavily_web_search
-"${UV_BIN}" pip install -e "./sources/knowledge_layer[llamaindex]"
+"${UV_BIN}" pip install -e ./packages/tavily-web-search
+"${UV_BIN}" pip install -e "./packages/knowledge-layer[llamaindex]"
 echo "Data Sources installed"
 
 # Setup pre-commit

@@ -16,7 +16,7 @@ DB URL decision: this store reuses the SAME database URL as the summary store
 new environment variable — the norm registry is a tiny single-row-per-country
 table and belongs in the same knowledge database the summaries already live in,
 so deployments configure one URL, not two. The wiring lives next to
-``configure_summary_db`` in ``sources/knowledge_layer/src/register.py``.
+``configure_summary_db`` in ``packages/knowledge-layer/src/register.py``.
 """
 
 from __future__ import annotations

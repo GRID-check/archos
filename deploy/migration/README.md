@@ -9,7 +9,7 @@ two steps that share a file format and nothing else:
    left in the repository. It runs in a throwaway Python environment holding
    `chromadb` at the server's version, never in the backend image.
 2. **Import**: `scripts/import_vectors.py`, in the backend image, reads that
-   format into Qdrant (`sources/knowledge_layer/src/qdrant/import_vectors.py`).
+   format into Qdrant (`packages/knowledge-layer/src/qdrant/import_vectors.py`).
    It knows nothing about Chroma.
 
 Nothing is re-parsed and nothing is re-embedded: the vectors Chroma holds are

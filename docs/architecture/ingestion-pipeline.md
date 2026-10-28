@@ -11,7 +11,7 @@ Older, deeper material is still right and is linked rather than repeated:
 [`visual-ingestion.md`](visual-ingestion.md) (the drawing schema and its rules),
 ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
-Short forms: **A** is `sources/knowledge_layer/src/llamaindex/adapter.py`, **S** is
+Short forms: **A** is `packages/knowledge-layer/src/llamaindex/adapter.py`, **S** is
 `frontends/ui/src/lib/documents/service.ts`, **D** is
 `frontends/aiq_api/src/aiq_api/jobs/ingest_dispatch.py`.
 
