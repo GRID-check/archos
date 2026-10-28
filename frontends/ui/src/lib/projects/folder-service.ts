@@ -333,7 +333,7 @@ export async function deleteProjectFolder(
   request?: Request,
 ): Promise<BinFolderResult> {
   // Loaded when a folder is deleted, not with this module: the bin erases and
-  // re-ingests through `@/lib/documents/service`, whose listing imports this
+  // re-ingests through `@/lib/documents/` (`document-edits`, `reingest`), whose listing imports this
   // module, and a static import would close that cycle at load time.
   const { moveFolderToBin } = await import('./folder-bin')
   return moveFolderToBin(session, input, request)

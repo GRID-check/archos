@@ -16,11 +16,15 @@ vi.mock('@/lib/auth/pinned-session', () => ({
   resolvePinnedRequesterSessionStrict: vi.fn(),
 }))
 // The other kinds' work is out of scope; stubbed so the import graph stays out of the database.
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/extraction-jobs', () => ({
   runBimExtractJob: vi.fn(),
   runOfficeRenditionJob: vi.fn(),
-  runReindexSlice: vi.fn(),
+}))
+vi.mock('@/lib/documents/ingest-recovery', () => ({
   runReingestFailedSlice: vi.fn(),
+}))
+vi.mock('@/lib/documents/reindex', () => ({
+  runReindexSlice: vi.fn(),
 }))
 vi.mock('@/lib/projects/folder-bin-jobs', () => ({ runPurgeBinnedChunksSlice: vi.fn(), runRestoreFolderSlice: vi.fn() }))
 vi.mock('@/lib/projects/collection-placement', () => ({ runPlacementReingestSlice: vi.fn() }))

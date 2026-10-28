@@ -25,12 +25,9 @@ import 'server-only'
 import type { ZodType } from 'zod'
 import { resolvePinnedRequesterSession, resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import {
-  runBimExtractJob,
-  runOfficeRenditionJob,
-  runReindexSlice,
-  runReingestFailedSlice,
-} from '@/lib/documents/service'
+import { runBimExtractJob, runOfficeRenditionJob } from '@/lib/documents/extraction-jobs'
+import { runReingestFailedSlice } from '@/lib/documents/ingest-recovery'
+import { runReindexSlice } from '@/lib/documents/reindex'
 import { runPurgeBinnedChunksSlice, runRestoreFolderSlice } from '@/lib/projects/folder-bin-jobs'
 import { runPlacementReingestSlice } from '@/lib/projects/collection-placement'
 import { runMailImportSlice } from '@/lib/mail-import/job'

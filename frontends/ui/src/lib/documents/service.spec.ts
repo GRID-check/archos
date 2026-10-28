@@ -207,35 +207,16 @@ import {
   requireFolderWrite,
   type ProjectFolderAccess,
 } from '@/lib/authz/folder-access'
-import {
-  listDocumentsPage,
-  probeProjectDocumentNames,
-  uploadDocument,
-  reingestDocument,
-  deleteDocument,
-  renameDocument,
-  getDocumentStatus,
-  getDocumentVisualDetails,
-  updateDocumentTags,
-  reindexProject,
-  runReindexSlice,
-  reingestFailedOrgDocuments,
-  runReingestFailedSlice,
-  REINDEX_SLICE_DOCUMENTS,
-  REINGEST_SLICE_DOCUMENTS,
-  resolveProjectDocumentsByName,
-  fetchGroupedSemanticHits,
-  joinHitsToFiles,
-  dispatchDocument,
-  getDocumentTextPreview,
-  getDocumentThumbnail,
-  getDocumentDownload,
-  getDocumentPreview,
-  streamDocumentFile,
-  streamDocumentImage,
-  AgentAuthoredDocumentNotIndexableError,
-  INGEST_DISPATCH_FAILED_MESSAGE,
-} from './service'
+import { getDocumentTextPreview, getDocumentThumbnail, getDocumentDownload, getDocumentPreview, streamDocumentFile, streamDocumentImage } from './document-delivery'
+import { getDocumentStatus, getDocumentVisualDetails } from './document-details'
+import { uploadDocument, dispatchDocument, AgentAuthoredDocumentNotIndexableError } from './document-dispatch'
+import { deleteDocument, renameDocument, updateDocumentTags } from './document-edits'
+import { listDocumentsPage, probeProjectDocumentNames, resolveProjectDocumentsByName } from './document-listing'
+import { INGEST_DISPATCH_FAILED_MESSAGE } from './ingest-dispatch'
+import { reingestFailedOrgDocuments, runReingestFailedSlice, REINGEST_SLICE_DOCUMENTS } from './ingest-recovery'
+import { reindexProject, runReindexSlice, REINDEX_SLICE_DOCUMENTS } from './reindex'
+import { reingestDocument } from './reingest'
+import { fetchGroupedSemanticHits, joinHitsToFiles } from './semantic-search'
 import { deleteOfficeShelfDocument } from '@/lib/office-shelf/service'
 import { encodeDocumentLevelCursor } from './list-cursor'
 import {

@@ -8,7 +8,7 @@
  * most a batch per call, and a failed purge leaves a document in place. In
  * that window the snapshot says "open" for a document that no longer is.
  * So the access is decided as the document hits beside it are decided
- * (`hiddenFolderIds` in `documents/service.ts`): from the document's live
+ * (`hiddenFolderIds` in `documents/semantic-search.ts`): from the document's live
  * `folder_id` against the project's folder tree, and the restriction the
  * hand-out records and the agent's admission reads is the live one too.
  */
