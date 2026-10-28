@@ -1622,7 +1622,7 @@
   "src/aiq_agent/knowledge/base.py": 1,
   "src/aiq_agent/knowledge/bim_query.py": 2,
   "src/aiq_agent/knowledge/collection_version.py": 3,
-  "src/aiq_agent/knowledge/document_metadata_store.py": 2,
+  "src/aiq_agent/knowledge/document_metadata_helpers.py": 2,
   "src/aiq_agent/knowledge/estate_tree_client.py": 1,
   "src/aiq_agent/knowledge/factory.py": 4,
   "src/aiq_agent/knowledge/folder_cards/__init__.py": 2,
