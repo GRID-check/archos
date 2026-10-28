@@ -55,13 +55,18 @@ def bm25_candidates(query: str, extra_terms: Sequence[str] = ()) -> list[str]:
     ``.``, „oib-rl_5_ausgabe_mai_2023.pdf“ asked BM25 for „ausgabe mai 2023“,
     which every Richtlinie's front matter holds, and pushed the named file out
     of the 60-chunk pool the dense channel alone puts it in.
+
+    Each term comes with its other German spelling (``german_text.umlaut_spellings``):
+    the index folds „ä“ to „a“ but keeps „ae“, so „Flaechenwidmung“ found none
+    of the passages „Flächenwidmung“ found. Pricing drops the spelling no chunk holds.
     """
     from aiq_agent.common import german_text
 
     prose = _FILE_NAME.sub(" ", query)
-    return [
-        term for term in german_text.query_terms(prose, extra_terms=extra_terms) if term not in BM25_FOLDED_STOPWORDS
-    ]
+    spellings = (german_text.umlaut_spellings(term) for term in german_text.query_terms(prose, extra_terms=extra_terms))
+    # A stopword typed either way („für“, „fuer“) is left out with both its spellings.
+    kept = (spelling for each in spellings if BM25_FOLDED_STOPWORDS.isdisjoint(each) for spelling in each)
+    return list(dict.fromkeys(kept))
 
 
 def search(

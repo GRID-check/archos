@@ -19,7 +19,8 @@
  * beyond the two Altstadt laws below.
  */
 
-import { FEDERAL_STATE_TOKENS, FOUND_IN } from '@/lib/project-profile/intake-definition'
+import { FEDERAL_STATE_TOKENS } from '@/lib/project-profile/intake-conditions'
+import { FOUND_IN } from '@/lib/project-profile/intake-options'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import type {
   DocumentRequest,

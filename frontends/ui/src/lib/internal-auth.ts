@@ -16,8 +16,12 @@
 import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { ServiceUnavailableError } from '@/lib/api/errors'
+import { readHeader } from '@/lib/http/legacy-header-names'
 
 export const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
+
+/** The token header's name without the product's: read beside the old one now, sent from the next release. */
+export const CURRENT_INTERNAL_TOKEN_HEADER = 'x-internal-token'
 
 /**
  * Which secret a route checks. The service token authorizes backend → BFF
@@ -75,7 +79,7 @@ export function requireInternalToken(
     )
     return NextResponse.json({ error: 'Internal API disabled' }, { status: 503 })
   }
-  if (!tokensMatch(request.headers.get(INTERNAL_TOKEN_HEADER), expectedToken)) {
+  if (!tokensMatch(readHeader(request.headers, CURRENT_INTERNAL_TOKEN_HEADER), expectedToken)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return null

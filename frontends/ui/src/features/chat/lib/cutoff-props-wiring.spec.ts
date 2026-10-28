@@ -1,4 +1,4 @@
-// @disk-inputs: src/features/layout/components/ChatArea.tsx
+// @disk-inputs: src/features/layout/components/chat-area/message-renderer.tsx
 /**
  * The cause reaches the answer, not just the schema.
  *
@@ -67,7 +67,7 @@ describe('ChatArea hands both props to the answer', () => {
     // Read as source: rendering ChatArea needs the whole chat shell. The
     // failure being prevented is a missing LINE, which the source shows.
     const { readFileSync } = await import('node:fs')
-    const source = readFileSync('src/features/layout/components/ChatArea.tsx', 'utf8')
+    const source = readFileSync('src/features/layout/components/chat-area/message-renderer.tsx', 'utf8')
     expect(source).toContain('truncationReason={message.truncationReason}')
     expect(source).toContain('degradedReasons={message.degradedReasons}')
   })
