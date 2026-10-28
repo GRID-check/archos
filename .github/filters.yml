@@ -45,6 +45,18 @@ backend:
   # The recorded wire v2 turns and their schema: the contract fixtures
   # tests/aiq_agent/common/test_wire_v2.py holds the producer to.
   - 'shared/wire/**'
+  # BFF source and fixtures the apps/backend tests read to hold both sides of
+  # a contract to one number or schema. #1318 split documents/service.ts and
+  # merged without this suite, which then failed on the next backend PR.
+  - 'frontends/ui/src/lib/cross-project/project-facts-mirror.ts'
+  - 'frontends/ui/src/lib/documents/semantic-search.ts'
+  - 'frontends/ui/src/lib/platform/vector-reconcile.ts'
+  - 'frontends/ui/src/lib/request-context.ts'
+  - 'frontends/ui/src/lib/runs/run-envelope-types.ts'
+  - 'frontends/ui/tests/fixtures/run-envelope.schema.json'
+  - 'frontends/ui/tests/fixtures/run-ledger.schema.json'
+  - 'frontends/ui/tests/fixtures/turn-outcome.schema.json'
+  - 'frontends/ui/workers/jobs/index.js'
   # Read by tests/aiq_agent/tools/workspace/test_english_only.py.
   - 'ci/german_stems.json'
   # The Python packages (ADR-0145 row 6); ifc-spatial-py is the packages tier's.
