@@ -8,12 +8,12 @@
  * shelf, in the reader's order, `limit` a page (default 100, at most 500;
  * ADR-0102, ADR-0131, `@/lib/documents/list-query`).
  *
- * Thin handler; the logic lives in `@/lib/documents/service` and
+ * Thin handler; the logic lives in `@/lib/documents/document-listing` and
  * `@/lib/office-shelf/service`.
  */
 
 import { apiRoute, parseQuery } from '@/lib/api/handler'
-import { listDocumentsPage } from '@/lib/documents/service'
+import { listDocumentsPage } from '@/lib/documents/document-listing'
 import { toDocumentWireRows } from '@/lib/documents/list-projection'
 import { documentListOptions, documentListQuerySchema } from '@/lib/documents/list-query'
 import { shelfOf } from '@/lib/documents/shelf-scope'

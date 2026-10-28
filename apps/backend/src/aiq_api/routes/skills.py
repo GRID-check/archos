@@ -305,9 +305,9 @@ def add_skill_routes(router: APIRouter) -> None:
         # registration; import the (NAT-pulling) validator only when we have one.
         builder = get_active_builder()
         if builder is not None:
-            from .jobs import _validate_data_sources_for_agent
+            from .job_data_sources import validate_data_sources_for_agent
 
-            await _validate_data_sources_for_agent(
+            await validate_data_sources_for_agent(
                 builder=builder,
                 agent_type=agent_type,
                 agent_config_name=agent_config.config_name,

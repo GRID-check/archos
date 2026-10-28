@@ -14,7 +14,7 @@ vi.mock('@/lib/documents/repository', () => ({
   markScreeningReleased: vi.fn(),
   QUARANTINE_LIST_LIMIT: 3,
 }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job-9', status: 'pending' as const }),
 }))
 vi.mock('@/lib/documents/folder-path', () => ({
@@ -30,7 +30,7 @@ import { folderReadOnlyError } from '@/lib/authz/folder-access-rule'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findDocumentInOrg, listQuarantinedDocuments, markScreeningReleased } from '@/lib/documents/repository'
 import { mayReadDocument } from '@/lib/documents/document-reader'
-import { dispatchDocument } from '@/lib/documents/service'
+import { dispatchDocument } from '@/lib/documents/document-dispatch'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { quarantineReviewersOf } from '@/lib/upload-batches/settle'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'

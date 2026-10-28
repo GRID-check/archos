@@ -30,8 +30,10 @@ vi.mock('@/lib/documents/collection-file-ref', async (importOriginal) => ({
 }))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn(async (rows: unknown[]) => rows) }))
 vi.mock('@/lib/documents/folder-path', () => ({ resolveDocumentFolderPath: vi.fn(async () => null) }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: vi.fn(async () => ({ jobId: 'job', status: 'pending' })),
+}))
+vi.mock('@/lib/documents/document-edits', () => ({
   eraseProjectDocument: vi.fn(async () => true),
 }))
 vi.mock('@/lib/authz/projects', async () => {

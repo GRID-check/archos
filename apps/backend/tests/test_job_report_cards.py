@@ -23,6 +23,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from aiq_agent.auth import Principal
+from aiq_api.routes import job_handlers
 
 LEGAL_BASIS_CARD = {
     "type": "legal_basis",
@@ -41,10 +42,9 @@ def report_app(tmp_path, monkeypatch):
     the job through it, and the handler reads ``job.output`` — the same jsonb the
     runner writes on success.
     """
-    import aiq_api.routes.jobs as jobs_routes
 
     monkeypatch.setenv("REQUIRE_AUTH", "false")
-    monkeypatch.setattr(jobs_routes, "require_verified_principal", lambda: Principal(type="jwt", sub="user-1"))
+    monkeypatch.setattr(job_handlers, "require_verified_principal", lambda: Principal(type="jwt", sub="user-1"))
 
     job_store = MagicMock()
     job_store.get_job = AsyncMock(return_value=None)

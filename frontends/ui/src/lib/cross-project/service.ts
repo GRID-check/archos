@@ -59,17 +59,8 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { clearanceOf, readableFolderIdsFor } from '@/lib/authz/folder-access'
 import { recordCrossProjectHandOut, type HandOutParty } from '@/lib/conversations/cross-project-use'
 import type { Project } from '@/lib/db/schema/projects'
-import {
-  BACKEND_SEARCH_MAX_COLLECTIONS,
-  fetchGroupedSemanticHits,
-  hydrateProjectHits,
-  planProjectSearch,
-  projectsWithinCollectionCap,
-  type GroupedSearchFilters,
-  type ListedDocument,
-  type ProjectSearchPlan,
-  type SearchedDocument,
-} from '@/lib/documents/service'
+import type { ListedDocument } from '@/lib/documents/document-listing'
+import { BACKEND_SEARCH_MAX_COLLECTIONS, fetchGroupedSemanticHits, hydrateProjectHits, planProjectSearch, projectsWithinCollectionCap, type GroupedSearchFilters, type ProjectSearchPlan, type SearchedDocument } from '@/lib/documents/semantic-search'
 import { similarityBoostOf } from './project-facts-mirror'
 import { buildProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { findProjectInOrg } from '@/lib/projects/repository'

@@ -20,6 +20,7 @@ import pytest
 
 from aiq_api.jobs.connection_manager import reset_connection_manager
 from aiq_api.jobs.event_store import EventStore
+from aiq_api.routes import job_event_stream
 
 #: The direct (non-pooled) DSN LISTEN connects to: `GRID_LISTEN_DB_URL` in a deployment.
 DIRECT_DSN = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
@@ -63,7 +64,6 @@ async def test_notification_gap_recovered_by_range_fetch_and_terminal_drain(db_u
     """A NOTIFY for only the newest event must still deliver all earlier unseen
     events (range fetch), and events written after the last NOTIFY must be
     delivered by the terminal drain's final range fetch."""
-    import aiq_api.routes.jobs as jobs_routes
 
     fake_conn = FakeListenConnection()
     fake_asyncpg = types.SimpleNamespace(connect=AsyncMock(return_value=fake_conn))
@@ -77,7 +77,7 @@ async def test_notification_gap_recovered_by_range_fetch_and_terminal_drain(db_u
     success = SimpleNamespace(status="success", error=None)
     job_store = SimpleNamespace(get_job=AsyncMock(side_effect=[running, success]))
 
-    gen = jobs_routes._sse_generator_postgres(job_store, job_id, db_url, 0)
+    gen = job_event_stream._sse_generator_postgres(job_store, job_id, db_url, 0)
 
     # No historical events yet: the first yield is the stream.mode announcement.
     first = await asyncio.wait_for(gen.__anext__(), timeout=5.0)
@@ -121,7 +121,6 @@ async def test_notification_gap_recovered_by_range_fetch_and_terminal_drain(db_u
 async def test_listen_connects_to_the_direct_dsn_never_the_job_store_url(db_url, monkeypatch):
     """LISTEN registers on one server connection; behind the transaction pooler
     that is not the client's, and no notification would ever arrive (ADR-0083)."""
-    import aiq_api.routes.jobs as jobs_routes
 
     connect = AsyncMock(return_value=FakeListenConnection())
     monkeypatch.setitem(sys.modules, "asyncpg", types.SimpleNamespace(connect=connect))
@@ -129,7 +128,7 @@ async def test_listen_connects_to_the_direct_dsn_never_the_job_store_url(db_url,
     job_store = SimpleNamespace(get_job=AsyncMock(return_value=SimpleNamespace(status="running", error=None)))
 
     # `db_url` stands for the job-store URL, which is the pooled one in a deployment.
-    gen = jobs_routes._sse_generator_postgres(job_store, "sse-job", db_url, 0)
+    gen = job_event_stream._sse_generator_postgres(job_store, "sse-job", db_url, 0)
     await asyncio.wait_for(gen.__anext__(), timeout=5.0)
     await gen.aclose()
 
@@ -144,13 +143,12 @@ async def test_the_stream_never_listens_on_the_job_store_url(db_url, monkeypatch
     `test_direct_dsn_startup.py`), so this is the assertion behind that check and
     not a runtime path: the stream does not connect.
     """
-    import aiq_api.routes.jobs as jobs_routes
 
     connect = AsyncMock()
     monkeypatch.setitem(sys.modules, "asyncpg", types.SimpleNamespace(connect=connect))
     monkeypatch.delenv("GRID_LISTEN_DB_URL", raising=False)
 
-    gen = jobs_routes._sse_generator_postgres(MagicMock(), "sse-job", db_url, 0)
+    gen = job_event_stream._sse_generator_postgres(MagicMock(), "sse-job", db_url, 0)
     with pytest.raises(KeyError, match="GRID_LISTEN_DB_URL"):
         await gen.__anext__()
 
@@ -161,7 +159,6 @@ async def test_the_stream_never_listens_on_the_job_store_url(db_url, monkeypatch
 async def test_pubsub_midstream_failure_resumes_polling_from_last_yielded_event(monkeypatch):
     """The polling fallback must resume from the pub-sub generator's cursor,
     not replay the whole stream from the original start_event_id."""
-    import aiq_api.routes.jobs as jobs_routes
 
     resume: dict = {}
 
@@ -175,11 +172,12 @@ async def test_pubsub_midstream_failure_resumes_polling_from_last_yielded_event(
         resume["start_event_id"] = start_event_id
         yield "id: 43\nevent: step.two\ndata: {}\n\n"
 
-    monkeypatch.setattr(jobs_routes, "_sse_generator_postgres", fake_postgres)
-    monkeypatch.setattr(jobs_routes, "_sse_generator_polling", fake_polling)
+    monkeypatch.setattr(job_event_stream, "_sse_generator_postgres", fake_postgres)
+    monkeypatch.setattr(job_event_stream, "_sse_generator_polling", fake_polling)
 
     chunks = [
-        chunk async for chunk in jobs_routes._sse_generator(MagicMock(), "job-1", "postgresql://db/x", start_event_id=5)
+        chunk
+        async for chunk in job_event_stream.sse_generator(MagicMock(), "job-1", "postgresql://db/x", start_event_id=5)
     ]
 
     assert resume["start_event_id"] == 42
@@ -189,7 +187,6 @@ async def test_pubsub_midstream_failure_resumes_polling_from_last_yielded_event(
 @pytest.mark.asyncio
 async def test_pubsub_failure_before_any_event_resumes_from_start_event_id(monkeypatch):
     """If pub-sub dies before yielding anything, polling starts at the original cursor."""
-    import aiq_api.routes.jobs as jobs_routes
 
     resume: dict = {}
 
@@ -201,11 +198,12 @@ async def test_pubsub_failure_before_any_event_resumes_from_start_event_id(monke
         resume["start_event_id"] = start_event_id
         yield "id: 5\nevent: stream.mode\ndata: {}\n\n"
 
-    monkeypatch.setattr(jobs_routes, "_sse_generator_postgres", fake_postgres)
-    monkeypatch.setattr(jobs_routes, "_sse_generator_polling", fake_polling)
+    monkeypatch.setattr(job_event_stream, "_sse_generator_postgres", fake_postgres)
+    monkeypatch.setattr(job_event_stream, "_sse_generator_polling", fake_polling)
 
     chunks = [
-        chunk async for chunk in jobs_routes._sse_generator(MagicMock(), "job-1", "postgresql://db/x", start_event_id=5)
+        chunk
+        async for chunk in job_event_stream.sse_generator(MagicMock(), "job-1", "postgresql://db/x", start_event_id=5)
     ]
 
     assert resume["start_event_id"] == 5
@@ -223,24 +221,23 @@ async def test_a_silent_stream_sends_a_keepalive_instead_of_going_byte_quiet(db_
     side at exactly the moment the reader was waiting hardest — the "deep
     research just stops" report, with a healthy job still running behind it.
     """
-    import aiq_api.routes.jobs as jobs_routes
 
     # Fire on the first silent tick rather than making the test wait 20 s.
-    monkeypatch.setattr(jobs_routes, "SSE_KEEPALIVE_SECONDS", 0.0)
+    monkeypatch.setattr(job_event_stream, "SSE_KEEPALIVE_SECONDS", 0.0)
 
     job_id = "sse-quiet-job"
     running = SimpleNamespace(status="running", error=None)
     job_store = SimpleNamespace(get_job=AsyncMock(return_value=running))
 
-    gen = jobs_routes._sse_generator_polling(job_store, job_id, db_url, 0)
+    gen = job_event_stream._sse_generator_polling(job_store, job_id, db_url, 0)
     try:
         chunks = []
         for _ in range(4):
             chunks.append(await asyncio.wait_for(gen.__anext__(), timeout=5.0))
 
-        assert any(chunk == jobs_routes.SSE_KEEPALIVE_FRAME for chunk in chunks), chunks
+        assert any(chunk == job_event_stream.SSE_KEEPALIVE_FRAME for chunk in chunks), chunks
         # A comment frame, so `EventSource` ignores it and no client sees an event.
-        assert jobs_routes.SSE_KEEPALIVE_FRAME.startswith(":")
+        assert job_event_stream.SSE_KEEPALIVE_FRAME.startswith(":")
     finally:
         await gen.aclose()
 
@@ -248,9 +245,8 @@ async def test_a_silent_stream_sends_a_keepalive_instead_of_going_byte_quiet(db_
 @pytest.mark.asyncio
 async def test_a_stream_carrying_real_events_sends_no_keepalives(db_url, monkeypatch):
     """The keepalive fills genuine silence; it must not add noise to a busy stream."""
-    import aiq_api.routes.jobs as jobs_routes
 
-    monkeypatch.setattr(jobs_routes, "SSE_KEEPALIVE_SECONDS", 0.0)
+    monkeypatch.setattr(job_event_stream, "SSE_KEEPALIVE_SECONDS", 0.0)
 
     job_id = "sse-busy-job"
     store = EventStore(db_url, job_id)
@@ -260,14 +256,14 @@ async def test_a_stream_carrying_real_events_sends_no_keepalives(db_url, monkeyp
     running = SimpleNamespace(status="running", error=None)
     job_store = SimpleNamespace(get_job=AsyncMock(return_value=running))
 
-    gen = jobs_routes._sse_generator_polling(job_store, job_id, db_url, 0)
+    gen = job_event_stream._sse_generator_polling(job_store, job_id, db_url, 0)
     try:
         # The replay of the three stored events must come through unpolluted.
         chunks = []
         for _ in range(4):
             chunks.append(await asyncio.wait_for(gen.__anext__(), timeout=5.0))
 
-        assert not any(chunk == jobs_routes.SSE_KEEPALIVE_FRAME for chunk in chunks), chunks
+        assert not any(chunk == job_event_stream.SSE_KEEPALIVE_FRAME for chunk in chunks), chunks
         for index in range(3):
             assert any(f"event: step.{index}" in chunk for chunk in chunks), chunks
     finally:

@@ -2,7 +2,7 @@
  * Which stored content types this product can show, and where.
  *
  * ONE LIST, because there are three readers of it and they have already drifted
- * twice. `PREVIEW_CONTENT_TYPES` in `lib/documents/service.ts` is what actually
+ * twice. `PREVIEW_CONTENT_TYPES` in `lib/documents/document-delivery.ts` is what actually
  * gates the presign, so it was the authority and the other two were copies:
  * `file-preview-pane.tsx` carried a copy that had lost BMP and TIFF — the BFF
  * would presign bytes the pane never asked for, and the reader got the "no
