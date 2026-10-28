@@ -105,8 +105,11 @@ throw while starting ends it `failed` too, never a 500 that leaves it
 start reads the row again before it sends the turn, so a cancel that lands
 first sends none; a turn sent while the ask was canceled is stopped. A cancel
 the server took answers `canceled` within five seconds even when the turn's own
-notice is late. An ask still open after `GRID_PILOTI_ASK_MAX_SECONDS` (30
-minutes) is ended `failed` when it is next read: its outcome notice was lost.
+notice is late. An ask still open after `GRID_PILOTI_ASK_MAX_SECONDS` (the
+chat turn's deadline, 45 minutes, plus two for the notice; it was 30 minutes
+until 2026-10-27, below the deadline) is ended `failed` when it is next read:
+its outcome notice was lost. A draining chat replica waits for the notices of
+the turns it ended before it exits.
 
 The states are the A2A task states, lowercase: `submitted`, `working`,
 `completed`, `canceled`, `failed`, `rejected`. `input-required` does not occur,

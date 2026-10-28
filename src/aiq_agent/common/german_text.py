@@ -53,8 +53,10 @@ diverges on ONE point, on purpose:
 
 Both agree on ``ß`` -> ``ss``, which is the measured case that matters
 (``Geschoß``/``Geschoss``). The residual gap — a user typing ``Tuerbreite`` for
-``Türbreite`` — is NOT handled here, and is not handled by Postgres either, so
-the two backends stay identical rather than one silently doing more.
+``Türbreite`` — is not closed by folding, which cannot tell a digraph from two
+letters („Michael“). The BM25 channel closes it on the query side instead: it
+asks both spellings (:func:`umlaut_spellings`, ``qdrant/retrieval.bm25_candidates``)
+and lets document frequency drop the one no chunk holds.
 
 STEMMING IS AN APPROXIMATION, AND ONLY FOR SQLITE
 -------------------------------------------------
@@ -326,6 +328,32 @@ def query_terms(text: str | None, *, extra_terms: Sequence[str] = ()) -> list[st
     silences the channel.
     """
     return _merge_terms(_plain_terms, text, extra_terms)
+
+
+#: An umlaut and the way a German writes it on a keyboard without one.
+_DIGRAPHS = (("ä", "ae"), ("ö", "oe"), ("ü", "ue"))
+
+
+def umlaut_spellings(term: str) -> list[str]:
+    """``term`` and its other German spelling, ``term`` first: „flächenwidmung“ and „flaechenwidmung“. Pure.
+
+    A lowercased query term. The BM25 index folds an umlaut to its vowel
+    (Qdrant's ``ascii_folding``: „flachenwidmung“) and keeps a digraph as
+    written, so a question typed one way missed every passage written the
+    other. Umlaut to digraph is exact; digraph to umlaut is a guess („michael“
+    becomes „michäl“), which costs nothing: a spelling no chunk holds has
+    document frequency 0 and :func:`select_terms` drops it.
+    """
+    spellings = [term]
+    digraphed = term
+    umlauted = term
+    for umlaut, digraph in _DIGRAPHS:
+        digraphed = digraphed.replace(umlaut, digraph)
+        umlauted = umlauted.replace(digraph, umlaut)
+    for spelling in (digraphed, umlauted):
+        if spelling not in spellings:
+            spellings.append(spelling)
+    return spellings
 
 
 def select_terms(

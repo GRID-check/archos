@@ -1322,7 +1322,14 @@
       "idx": 188,
       "version": "7",
       "when": 1792730000000,
-      "tag": "0188_agent_tables",
+      "tag": "0188_search_german_folding",
+      "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1792740000000,
+      "tag": "0189_agent_tables",
       "breakpoints": true
     }
   ]

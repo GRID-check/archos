@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState, type JSX } from 'react'
 import { useRouter } from 'next/navigation'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getProjectRecord } from '@/adapters/api/project-lifecycle-client'
 import { useTranslations } from '@/i18n'
 import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 import { ProjectRecordPeople, useProjectPeriodText } from './project-record-editor'
@@ -28,9 +29,7 @@ export function ClosingProjectRecord({ projectId }: { projectId: string }): JSX.
 
   const reload = useCallback(async (): Promise<void> => {
     try {
-      const res = await fetch(`/api/projects/${projectId}/project-record`)
-      if (!res.ok) throw new Error(String(res.status))
-      const body = (await res.json()) as Partial<ProjectRecordView>
+      const body = await getProjectRecord(projectId)
       if (!Array.isArray(body.people)) throw new Error('not a Steckbrief')
       setLoad({ state: 'ready', projectRecord: body as ProjectRecordView })
     } catch {

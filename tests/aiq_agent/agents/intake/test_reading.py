@@ -199,7 +199,7 @@ class TestReadsThePagesFromTheVectorStore:
     """``fetch_document_pages`` against a real Qdrant: the pages in order, an absent file as None."""
 
     def test_a_document_reads_page_by_page_in_order(self, qdrant_store):  # noqa: ARG002
-        from sources.knowledge_layer.tests import qdrant_testing as qt
+        from knowledge_layer_testing import qdrant as qt
 
         qt.write(
             "proj_intake",
