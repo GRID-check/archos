@@ -171,7 +171,6 @@
     "packages/ifc-spatial/src/operators/model.ts": 1314,
     "packages/ifc-spatial/src/render/project.ts": 1665,
     "packages/knowledge-layer/src/cross_encoder.py": 632,
-    "packages/knowledge-layer/src/estate.py": 1013,
     "packages/knowledge-layer/src/llamaindex/adapter.py": 5423,
     "packages/knowledge-layer/src/llamaindex/clause_chunking.py": 723,
     "packages/knowledge-layer/src/llamaindex/section_chunking.py": 768,
