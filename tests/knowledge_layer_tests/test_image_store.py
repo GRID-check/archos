@@ -16,11 +16,11 @@ import pytest
 from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex import image_store
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
+from knowledge_layer.search_results import format_results
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.src.register import _format_results
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 # =============================================================================
 # store_extracted_images against stub callables
@@ -124,7 +124,7 @@ def test_request_upload_slot_fail_open(monkeypatch):
     import httpx
 
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     assert image_store.request_upload_slot("d1", "proj_1", 0) is None
 
     calls: list[dict] = []
@@ -146,7 +146,7 @@ def test_request_upload_slot_fail_open(monkeypatch):
         return state["response"]
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000/")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "post", _post)
 
     assert image_store.request_upload_slot("d1", "proj_1", 2) == ("http://seaweed/put", "org/o1/_img/0.jpg")
@@ -317,7 +317,7 @@ def _hit(metadata: dict):
 
 
 def _format(chunks) -> str:
-    return _format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
+    return format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
 
 
 def test_hit_shows_the_image_line_only_when_a_raster_was_stored():

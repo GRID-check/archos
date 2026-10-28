@@ -16,6 +16,22 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.browse import _LIST_FILES_DESCRIPTION
+from knowledge_layer.browse import MAX_TOPIC_COUNTS
+from knowledge_layer.browse import MAX_TYPE_COUNTS
+from knowledge_layer.browse import ListFilesConfig
+from knowledge_layer.browse import file_row
+from knowledge_layer.browse import file_rows
+from knowledge_layer.browse import group_matches
+from knowledge_layer.browse import list_files
+from knowledge_layer.browse import no_match_message
+from knowledge_layer.browse import phrase_pattern
+from knowledge_layer.browse import pick_passages
+from knowledge_layer.browse import render_listing
+from knowledge_layer.browse import select_files
+from knowledge_layer.browse import split_alternatives
+from knowledge_layer.register import KnowledgeRetrievalConfig
+from knowledge_layer.register import knowledge_retrieval
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
@@ -24,22 +40,6 @@ from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.browse import _LIST_FILES_DESCRIPTION
-from sources.knowledge_layer.src.browse import MAX_TOPIC_COUNTS
-from sources.knowledge_layer.src.browse import MAX_TYPE_COUNTS
-from sources.knowledge_layer.src.browse import ListFilesConfig
-from sources.knowledge_layer.src.browse import file_row
-from sources.knowledge_layer.src.browse import file_rows
-from sources.knowledge_layer.src.browse import group_matches
-from sources.knowledge_layer.src.browse import list_files
-from sources.knowledge_layer.src.browse import no_match_message
-from sources.knowledge_layer.src.browse import phrase_pattern
-from sources.knowledge_layer.src.browse import pick_passages
-from sources.knowledge_layer.src.browse import render_listing
-from sources.knowledge_layer.src.browse import select_files
-from sources.knowledge_layer.src.browse import split_alternatives
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
-from sources.knowledge_layer.src.register import knowledge_retrieval
 
 
 def _doc(name: str, folder: str | None = None, *, shelf: str = "project", **extra) -> AvailableDocument:
@@ -248,8 +248,8 @@ def search_with(monkeypatch, scope):
     """Install a retriever into ``knowledge_search`` and neutralise its boot-time reach."""
 
     def install(retriever):
-        monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: retriever)
-        monkeypatch.setattr("sources.knowledge_layer.src.register._initialize_ingestor", lambda config, llm: None)
+        monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
+        monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
         monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
         monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         return retriever
@@ -318,7 +318,7 @@ class TestExactSearch:
 
 
 def test_the_exact_mode_is_never_withheld_as_a_repeat_of_the_ranked_one():
-    from aiq_agent.common.turn_status import fetch_signature
+    from aiq_agent.common.tool_calls import fetch_signature
 
     ranked = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03"}})
     exact = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03", "match": "exact"}})
@@ -364,7 +364,7 @@ def turn_shelves(monkeypatch):
 
 def _store_retriever():
     """The production retriever over the test's Qdrant (``qdrant_store``), with no embedder: exact mode needs none."""
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
     retriever = LlamaIndexRetriever.__new__(LlamaIndexRetriever)
     retriever._ensure_initialized = lambda: None
@@ -373,8 +373,8 @@ def _store_retriever():
 
 def _seed(name: str, rows: list[tuple[str, str, int, dict]]) -> None:
     """Write ``(file_name, text, page, metadata)`` rows into collection ``name``, as ingestion writes chunks."""
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
 
     write(name, [record(text, file_name, page_label=str(page), **meta) for file_name, text, page, meta in rows])
 
@@ -900,3 +900,49 @@ def test_no_file_is_called_a_plan_in_the_revision_marks():
     """CONTEXT.md, „Fassung“: a name with an index says a file has Fassungen, not what it is."""
     text = render_listing(select_files(_revisions(), shelf="project"))
     assert not any(word in text for word in ("Plan ", "Planstand", "Pläne"))
+
+
+class TestTheIngestsReadingInAListing:
+    def _row(self, **extra):
+        return file_row(
+            {
+                "file_name": "Baubeschreibung.pdf",
+                "collection": "proj_1",
+                "shelf": "project",
+                "summary": "Text.",
+                **extra,
+            }
+        )
+
+    def test_the_type_facts_references_and_unread_pages_are_on_the_row(self):
+        row = self._row(
+            dossier={
+                "document_type": "building_description",
+                "facts": [
+                    {"key": "building_class", "value": "4", "unit": None, "page": 3},
+                    {"key": "room_height", "value": "2,60", "unit": "m", "page": None},
+                ],
+            },
+            doc_references=[{"kind": "norm", "key": "önorm b 1600", "label": "ÖNORM B 1600", "pages": [2]}],
+            coverage={"pages": 12, "not_read": 1},
+        )
+        line = render_listing(select_files([row]))
+
+        assert "Type: building description" in line
+        assert "States: building_class 4 (p. 3); room_height 2,60 m" in line
+        assert "Refers to: ÖNORM B 1600" in line
+        assert "1 page(s) not fully read" in line
+
+    def test_a_row_without_a_reading_is_unchanged(self):
+        line = render_listing(select_files([self._row()]))
+        assert "Type:" not in line and "States:" not in line and "Refers to:" not in line
+
+    def test_the_facts_and_references_are_bounded(self):
+        from knowledge_layer.browse import MAX_ROW_FACTS
+        from knowledge_layer.browse import MAX_ROW_REFERENCES
+
+        row = self._row(
+            dossier={"facts": [{"key": "units", "value": str(n)} for n in range(20)]},
+            doc_references=[{"label": f"DIN {n}"} for n in range(20)],
+        )
+        assert len(row.facts) == MAX_ROW_FACTS and len(row.references) == MAX_ROW_REFERENCES

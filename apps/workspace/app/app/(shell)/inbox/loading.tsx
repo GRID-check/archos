@@ -1,0 +1,15 @@
+/**
+ * Route-level loading state for the Postfach's hard-load page — sheet-shaped,
+ * like the Archiv's, so a pasted `/app/inbox` link shows the panel arriving
+ * rather than a blank frame.
+ */
+
+import type { JSX } from 'react'
+import { PageSheetSkeleton } from '@/components/shell/page-sheet-skeleton'
+import { getTranslations } from '@/i18n/server'
+import { commonCopy } from '@/i18n/namespaces/common'
+
+export default async function InboxLoading(): Promise<JSX.Element> {
+  const t = await getTranslations(commonCopy)
+  return <PageSheetSkeleton loadingLabel={t('states.loading')} />
+}

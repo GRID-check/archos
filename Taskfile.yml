@@ -4,7 +4,7 @@
 # -------------------
 # The same commands were previously written down in three places that drifted
 # independently: `.github/workflows/ci.yml`, the verification table in
-# AGENTS.md, and the `ci:*` scripts in `frontends/ui/package.json` (which
+# AGENTS.md, and the `ci:*` scripts in `apps/workspace/package.json` (which
 # pointed at a `scripts/ci-check.sh` that did not exist). Documented commands
 # also assumed a Windows venv layout (`.venv/Scripts/python.exe`) and so did not
 # run in CI, the devcontainer, or an agent session.
@@ -24,11 +24,11 @@
 version: '3'
 
 vars:
-  UI: frontends/ui
+  UI: apps/workspace
   # Agent Package Manager CLI, pinned so every machine and CI resolve the same
   # skill bytes. Bump deliberately and re-run `task agents:audit`.
   APM_VERSION: 0.28.0
-  WEB: frontends/web
+  SITE: apps/site
   # go-task ships its own POSIX shell, so command SYNTAX is already portable and
   # nothing below needs an OS branch. These two are the exception, because they
   # are Python packaging facts rather than shell facts: a virtualenv puts its
@@ -38,6 +38,7 @@ vars:
   EXE: '{{if eq OS "windows"}}.exe{{end}}'
   PY: '{{.VENV_BIN}}/python{{.EXE}}'
   RUFF: '{{.VENV_BIN}}/ruff{{.EXE}}'
+  LINT_IMPORTS: '{{.VENV_BIN}}/lint-imports{{.EXE}}'
   # pytest-xdist, one worker per logical CPU, for the core and aiq_api suites.
   # Much of their wall clock is asyncio waits, so a serial run left the runner
   # idle: on two workers aiq_api went 67s -> 44s, the core suite ~3m20s -> 2m27s.
@@ -58,10 +59,10 @@ env:
   # The documented footgun, removed. Without this pytest resolves `aiq_agent`
   # from whatever is installed in the venv rather than from this worktree, and
   # validates the wrong code while appearing to pass.
-  PYTHONPATH: src
+  PYTHONPATH: packages/agent/src
 
 includes:
-  # flatten: task names stay literal (`fe:test`, not `frontend:fe:test`). dir: .
+  # flatten: task names stay literal (`workspace:test`, not `workspace:workspace:test`). dir: .
   # keeps every task's working directory what it was in the single file.
   # Each tier's file is what CI's paths filters (.github/filters.yml) watch.
   repo:
@@ -72,12 +73,12 @@ includes:
     taskfile: taskfiles/backend.yml
     flatten: true
     dir: .
-  frontend:
-    taskfile: taskfiles/frontend.yml
+  workspace:
+    taskfile: taskfiles/workspace.yml
     flatten: true
     dir: .
-  web:
-    taskfile: taskfiles/web.yml
+  site:
+    taskfile: taskfiles/site.yml
     flatten: true
     dir: .
   infra:
@@ -108,8 +109,9 @@ tasks:
       # `pkg:test` is deliberately NOT here, and the number is the reason:
       # packages/ifc-spatial-py is 636 tests in 1m40s on four workers (measured 2026-10-22)
       # against its own uv.lock and its own IfcOpenShell/shapely toolchain, on a
-      # directory most changes never touch. CI runs it behind a `packages/**`
-      # paths filter (ci.yml's `packages` job), which pays that cost only on the
+      # directory most changes never touch. CI runs it behind the `packages`
+      # paths filter (`packages/ifc-spatial*/**`, ci.yml's `packages` job; a new
+      # package with a suite adds its own line there), which pays that cost only on the
       # commits that earn it; making every local `task verify` pay it would be
       # the fastest way to get people to stop running `task verify`. Run
       # `task pkg:test` when you change `packages/`, the same discipline
@@ -121,58 +123,52 @@ tasks:
       # whole when it finishes. Ruff and the English-names test are skipped in
       # the hooks because be:verify runs both (be:lint, the core suite).
       - 'SKIP={{.VERIFY_SKIP}} {{.TASK_EXE}} lint:repo'
-      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:fe verify:web infra:types infra:test'
+      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:workspace verify:site infra:types infra:test'
 
   verify:fast:
     desc: Everything CI runs except the production builds (the slow step)
     cmds:
       - 'SKIP={{.VERIFY_SKIP}} {{.TASK_EXE}} lint:repo'
-      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:fe:fast verify:web:fast infra:types infra:test'
+      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:workspace:fast verify:site:fast infra:types infra:test'
 
   # The tiers as `verify` runs them, once lint:repo has checked the generated
   # card schemas (its card-schemas hook), so that check does not run twice.
-  verify:fe:
+  verify:workspace:
     cmds:
-      - task: verify:fe:fast
-      - task: fe:build
+      - task: verify:workspace:fast
+      - task: workspace:build
 
-  verify:fe:fast:
+  verify:workspace:fast:
     cmds:
-      - task: fe:lint
-      - task: fe:types
+      - task: workspace:lint
+      - task: workspace:types
       # Without coverage: CI's coverage is a comment, not a gate, and the
       # instrumentation only slows the suite down.
-      - task: fe:test
+      - task: workspace:test
 
-  verify:web:
+  verify:site:
     cmds:
-      - task: verify:web:fast
-      - task: web:build
+      - task: verify:site:fast
+      - task: site:build
 
-  verify:web:fast:
+  verify:site:fast:
     cmds:
-      - task: web:install
-      - task: web:check
+      - task: site:install
+      - task: site:check
 
   setup:
-    desc: Install every toolchain this repo needs (backend venv + UI + web + infra)
+    desc: Install every toolchain this repo needs (backend venv + UI + site + infra)
     env:
       # Same reason as .github/actions/setup-python-env: nltk pathsec refuses
       # hard-linked corpora, and SentenceSplitter (production + retrieval gate)
       # opens them. Copy mode is the install, not a per-job workaround.
       UV_LINK_MODE: copy
     cmds:
-      - uv venv .venv
+      # uv sync creates .venv itself; a separate `uv venv` fails on a second run.
       - uv sync --group dev
-      - task: fe:install
-      - task: web:install
-      # Two Node programs under deploy/pulumi, each with its own lockfile: the
-      # Pulumi program itself (which `infra:types` typechecks and `infra:test`
-      # runs) and the policy pack beside it. Installing only the policy pack
-      # left a fresh clone failing `task verify` at `infra:types`, because the
-      # program's own TypeScript and Vitest were never fetched.
-      - bun install --frozen-lockfile --cwd deploy/pulumi
-      - bun install --frozen-lockfile --cwd deploy/pulumi/policy
+      - task: workspace:install
+      - task: site:install
+      - task: infra:install
       # packages/ used to be skipped here too, so `task pkg:test` on a fresh
       # clone failed at "vitest: not found" rather than at an assertion.
       - task: pkg:install

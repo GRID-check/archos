@@ -90,7 +90,7 @@ Thirteen distinct sizes, ten of them arbitrary values — and note `text-[12px]`
 
 - **Modality** (binding vs interpretive): NormChainCard.tsx:76–78 uses weight + ink + a word. Correct.
 - **Currency** (applies to you vs hypothetical): the retired `condition_tree` used `border-dashed bg-muted/30` against a solid tinted panel — chrome differing *in kind*. Correct and excellent.
-- **Lifecycle**: ProposalShell.tsx:12 spends `border-l-warning` on "pending", which collides with `warning` meaning "close to a limit" everywhere else. **This is a live role collision.**
+- **Lifecycle**: ProposalShell.tsx:12 spent `border-l-warning` on "pending", which collided with `warning` meaning "close to a limit" everywhere else. Resolved twice over: pending became ink, and on 2026-10-27 the accent edge went altogether (the owner prefers no side stripes); the outcome is now a glyph beside the receipt's words.
 - **Direction** (`change_impact`): ChangeImpactCard.tsx:63–69 chose amber for `tightens` with an explicit note that red would be wrong. Correct, and it arrived at §A3 axis 4 independently — evidence the axis is real and should be written down before a sixth card guesses differently.
 
 ### 0.5 What the frontend cannot do — hard constraints
@@ -184,7 +184,7 @@ Chroma belongs to provenance (`grid-design-language.md` §Principles 2). These a
 
 The retired `norm_chain` and `condition_tree` cards already did this. Codify it so the next card does not invent a fifth hue family.
 
-**3. The binding constraint — "which one decides it?"** In a set of checks, exactly one usually decides the verdict, and nothing marks it today: `LimitBar` (kit.tsx:414–519) draws every check identically. The deciding row gets a **1px `--foreground` left rule and its value at the Figure step**; every other row stays Body with no rule. One per card, or none.
+**3. The binding constraint — "which one decides it?"** In a set of checks, exactly one usually decides the verdict, and nothing marks it today: `LimitBar` (kit.tsx:414–519) draws every check identically. The deciding row gets **its value at the Figure step and its label in `--foreground`**; every other row stays Body in the muted ink. No left rule: side stripes are discouraged since 2026-10-27 (grid-design-language.md, "Emphasis without a stripe"). One per card, or none.
 
 **4. Direction — "which way did it move?"** → glyph + word + a borrowed verdict ink:
 - `tightens` → ↑ + „strenger" in `--text-color-feedback-warning`
@@ -193,7 +193,7 @@ The retired `norm_chain` and `condition_tree` cards already did this. Codify it 
 
 Red is forbidden here: tightening is a cost, not an error, and error red is for errors only. `ChangeImpactCard.tsx:63–69` already reasons its way to exactly this.
 
-**Fix required:** `ProposalShell` `pending` → `border-l-warning` (ProposalShell.tsx:12). Change to ink (`border-l-foreground/40`).
+**Fixed:** `ProposalShell` `pending` no longer spends `--warning`; since 2026-10-27 no state draws an edge at all, and an outcome shows its glyph and its words.
 
 ### A4. Density, spacing, geometry
 
@@ -362,7 +362,7 @@ Keep verbatim: a row with no `detail` is not a button (line 58).
 **Unmistakable.** The only recessed card, the only right-margin § column, the only large quote mark.
 **Degradation.** No `original_text` → header + summary; the recessed ground still identifies it. No article/section → margin column collapses to 0 and text runs full width. **An article/section longer than 14 characters (`MARGIN_IDENTIFIER_MAX_CHARS`) is not marginalia** — a shipped card set „Punkte 8 bis 10 der OIB-Richtlinie 2" and „Anwendungsbereiche der ergänzenden Richtlinien" there and got a nine-line ragged pillar of mono beside a two-line header, with „§ " glued to a heading. Both halves then run inline with the law name, unprefixed and wrapping, because they are one Fundstelle and this is the citation an architect verifies: it loses the margin, never its content. The schema asks for identifiers (`LegalBasisCard.article` / `.section`); the renderer is what holds when the model writes prose anyway.
 
-> **SCHEMA ADDITIONS — REQUESTED, NOT YET IMPLEMENTED.** Neither field exists today. The card cannot render either treatment until they land in `src/aiq_agent/cards/models.py` and are regenerated through `shared/cards/schemas.json` → `npm run generate:cards`.
+> **SCHEMA ADDITIONS — REQUESTED, NOT YET IMPLEMENTED.** Neither field exists today. The card cannot render either treatment until they land in `packages/agent/src/aiq_agent/cards/models.py` and are regenerated through `contracts/cards/schemas.json` → `npm run generate:cards`.
 >
 > 1. **`lane`** — the code already states the case verbatim (LegalBasisCard.tsx:61–68): the OIB accent cannot be resolved because `legalBasisCardSchema` carries no lane, and deriving `'oib'` from the law string by hand is precisely the drift `accentForLane` exists to prevent. OIB vs RIS is the distinction architects compare most (`grid-design-language.md` §Accents vs signals). **Highest-value schema addition in this charter.**
 >
@@ -463,7 +463,7 @@ Rationale beyond aesthetics: this is the one card that is **not evidence** and m
 
 #### `memory_proposal` / `project_profile_patch`
 **Job.** Ask the user to commit something.
-**Grammar.** Correct and already unique — the only cards with buttons and the only ones whose appearance changes after you act (`ProposalShell`, lifecycle-tracking accent). One fix, from §A3: `pending` must stop spending `--warning` (ProposalShell.tsx:12). Use `border-l-foreground/40`.
+**Grammar.** Correct and already unique — the only cards with buttons and the only ones whose appearance changes after you act (`ProposalShell`, lifecycle-tracking accent). The §A3 fix landed: `pending` no longer spends `--warning`, and since 2026-10-27 the lifecycle shows as a glyph beside the receipt rather than an accent edge.
 **Effort: S.**
 
 #### IFC cards (`ifc_viewer`, `ifc_schedule`, `ifc_element`, `ifc_diff`, `ifc_compliance`, `ifc_model_picker`)
@@ -694,7 +694,7 @@ properties and a card legitimately overrides one of them. In the utilities layer
 which of `card-title` and `font-semibold` wins depends on Tailwind's internal
 ordering; in the components layer the ramp is a base every utility beats, by layer
 order rather than by luck. Enforced by a new `grid/card-type-scale` lint rule,
-switched on per file through its override in `frontends/ui/.oxlintrc.json` — the
+switched on per file through its override in `apps/workspace/.oxlintrc.json` — the
 compliant set is real project state and belongs in config, not in an exemption list
 inside the rule, which would report "clean" with eleven cards still off the ramp.
 
@@ -725,7 +725,7 @@ level, clearly heavier and darker than the hairline. It stays at /40.
 | `lane` (fine-lane keys) | legal_basis | LegalBasisCard.tsx:61–68 states the case verbatim; OIB vs RIS is the distinction architects compare most | **IMPLEMENTED** — as `Literal["baurecht_oib", "baurecht_ris"] \| None`, NOT the `'oib' \| 'law'` this charter asked for; see §B1 |
 | `edition: str \| None` | legal_basis | `NormReference` has it and the schematics print it (kit.tsx:637); without it the product's most authoritative card cannot say which Ausgabe | **IMPLEMENTED** as specified |
 
-Both require a change to `src/aiq_agent/cards/models.py`, regeneration of `shared/cards/schemas.json` via `scripts/generate_card_schema.py`, then `npm run generate:cards`.
+Both require a change to `packages/agent/src/aiq_agent/cards/models.py`, regeneration of `contracts/cards/schemas.json` via `scripts/generate_card_schema.py`, then `npm run generate:cards`.
 
 ### Known defects surfaced by this audit (not charter work, but should be filed)
 

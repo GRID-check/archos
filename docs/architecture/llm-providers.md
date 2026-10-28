@@ -55,7 +55,7 @@ Every agent names its models by `llms:` key, never by model id, so pointing a
 role at another model is a config edit and never a Python one. Each key must
 exist under `llms:`.
 
-Deep research (`deep_research_agent`, `src/aiq_agent/agents/deep_researcher/register.py`)
+Deep research (`deep_research_agent`, `packages/agent/src/aiq_agent/agents/deep_researcher/register.py`)
 binds one model per role:
 
 | Config field | `LLMRole` | Agent group an admin re-points |
@@ -68,9 +68,12 @@ binds one model per role:
 
 There is no generic `llm` field on deep research, so changing
 `orchestrator_llm` moves every role you did not set. Piloti reads `llm:`
-(`research_llm`). The clarify step is configured by the `clarifier:` block on
+(`research_llm`), and `claim_judge_llm` (`follow_ups_llm`) for the answer check
+that grades each answer against everything its turn registered (ADR-0139),
+resolved per turn on the `follow_ups` agent group and bound to temperature 0.
+The clarify step is configured by the `clarifier:` block on
 `chat_deepresearcher_agent` (`ClarifierSettings` in
-`src/aiq_agent/agents/piloti/clarify.py`): `llm` asks the questions and
+`packages/agent/src/aiq_agent/agents/piloti/clarify.py`): `llm` asks the questions and
 `planner_llm` writes the plan, falling back to `llm` when unset.
 
 ## Runtime per-org model overrides (ADR-0014)
@@ -99,17 +102,15 @@ bounded by per-org/member/project budgets — see
   sending unauthenticated requests.
 - The legacy Kimi config (`config_grid_oib.yml`) is **unmaintained/broken** — do
   not use it as a starting point; base new configs on the OpenRouter reference.
-- No call site sets provider prompt-caching hints on static prompt prefixes
-  (orchestrator/planner/researcher/writer system prompts, tool registry,
-  source registry) — every LLM call resends them in full. See
-  [`scaling-review-2026-07.md`](scaling-review-2026-07.md) §6.1 for the cost
-  impact. On the deep-research graph specifically, provider caching used to
-  be further undercut by `ToolResultPruningMiddleware` shifting message
-  bytes on nearly every model call; that truncation is now monotonic
-  (2026-07-16, `0b5d29d`), removing that specific defeat — see
-  `src/aiq_agent/agents/deep_researcher/README.md` "Known limitations" — but
-  no provider caching hints are actually set yet, so this remains an open
-  cost lever regardless.
+- **Prompt caching** is set per call in `common/prompt_caching.py`, through
+  `llm_factory.prepare_request`, on every OpenRouter call of an agent: a
+  `session_id` + `prompt_cache_key` so a turn's calls land on the endpoint that
+  holds the cache, and for `anthropic/*` models a top-level `cache_control`,
+  because Claude caches nothing unless asked. Until 2026-10-27 that field was
+  missing and 60 M Claude prompt tokens in 30 days were all billed at full
+  price; the OpenAI models, which cache on their own, were at 51 %. Read the
+  share per model from `llm_usage_hourly` (`cached_tokens / prompt_tokens`);
+  the „Costs and budgets (prod)" alert fires when Claude's drops to near zero.
 - **LLM request timeouts — fixed 2026-07-16 (`590ba1a`).** Every `llms.*`
   block in `configs/config_oib_openrouter.yml` now sets `request_timeout`
   (60–180 s depending on role) and `max_retries: 2`, so an unresponsive
@@ -132,56 +133,31 @@ bounded by per-org/member/project budgets — see
   middleware) are still independent and uncoordinated (no shared budget or
   deadline), but the worst case per logical turn is now on the order of a
   handful of attempts, not ~33. See
-  [`scaling-review-2026-07.md`](scaling-review-2026-07.md) §6.3 for the
+  [`docs/audit/scaling-review-2026-07.md`](../audit/scaling-review-2026-07.md) §6.3 for the
   cross-run multiplication this still doesn't address (bounded fan-out, not
   a shared retry budget).
-- **`api_type: responses` is a per-ROLE opt-in, not a fleet default
-  (ADR-0048).** `LLMBaseConfig.api_type` (`chat_completion` | `responses`) is
-  already understood by NAT: `nat.plugins.langchain.llm.openai_langchain`
-  builds `ChatOpenAI(use_responses_api=True, use_previous_response_id=True)`
-  when it is `responses`. The one app-side adjustment is `llm_factory.disable_previous_response_id`, which turns the response handle off for OpenRouter targets: its Responses API is stateless and rejects a non-null `previous_response_id` with a 400. Only roles
-  that require a Responses-only capability set it — today that is
-  `research_llm` when `shallow_research_agent.deferred_tool_loading` is
-  enabled, because OpenRouter's server-side tool search has no Chat
-  Completions equivalent. Enabling that feature without this line fails the
-  workflow build deliberately (`verify_deferred_tool_loading`) rather than
-  sending the tool schemas anyway. Every other role stays on the default;
-  `configs/config_grid_oib.yml` (Kimi, Chat Completions) cannot use either.
-- **`api_type: responses` is necessary but NOT sufficient — deferral is gated
-  per MODEL (ADR-0048).** The endpoint decides whether the *client* can express
-  OpenRouter's `tool_search` + `namespace` shape; whether the model on the other
-  end accepts it is a separate question, and the per-org override seam
-  (ADR-0014, `model_overrides`) changes that model per request — after the
-  build-time probe has run. So `bind_tools_deferred` also consults
-  `model_supports_deferred_tool_loading`, which requires two independent
-  conditions: the model is cleared for the shape (`deferred_tool_loading.models`
-  — `deny`, then `allow`, then `provisional`, then a cached probe verdict), and
-  it clears `deferred_tool_loading.min_intelligence_index` (default 50, from
-  Artificial Analysis's `intelligence_index`; an unscored model fails it).
-  Measured facts worth not re-deriving:
-  - **Capability tracks neither vendor nor quality.** `anthropic/claude-sonnet-4.5`
-    and Claude generally carry the shape; `openai/gpt-4o-mini` 400s. `x-ai/grok-4.6`
-    scores 60.9 and cannot defer; `google/gemini-3.5-flash` at 52.0 can. A
-    vendor-prefix or "use the best model" rule is wrong in both directions.
-  - **`supported_parameters` cannot answer it.** No `tool_search` /
-    `defer_loading` / `namespace` token exists in that vocabulary across all 411
-    models, and every model measured advertises `tools` — including the ones
-    that reject the shape.
-  - **Some models have no stable answer.** `meta-llama/llama-3.3-70b-instruct`
-    returned 200-and-defers 5 times in 6 and 422 once; OpenRouter spreads it
-    over provider endpoints that disagree. Denied for unreliability, not
-    incapacity.
-  - **A transient error is not a verdict.** Only 400/422 caches "unsupported";
-    5xx/408/429/timeouts leave the model re-probable. A 403 account gate
-    (`meta/muse-spark-1.1`: "requires 18+ age confirmation") must never be cached
-    as a capability answer.
-  None of this can fail a request or a build — every "no" means *bind the full
-  schemas*, i.e. the pre-ADR-0048 behaviour. The gate is scoped to
-  `shallow_research_agent` and lives on its per-agent settings object, never in
-  module scope: it is not, and must not become, a fleet-wide model policy.
-  Since ADR-0052 Piloti binds its full tool set on every turn,
-  greetings included, so this gate is what keeps the per-turn schema floor
-  from growing with the tool list.
+- **`api_type: responses` is a per-ROLE opt-in, not a fleet default.**
+  `LLMBaseConfig.api_type` (`chat_completion` | `responses`) is already
+  understood by NAT: `nat.plugins.langchain.llm.openai_langchain` builds
+  `ChatOpenAI(use_responses_api=True, use_previous_response_id=True)` when it
+  is `responses`. The one app-side adjustment is
+  `llm_factory.disable_previous_response_id`, which turns the response handle
+  off for OpenRouter targets: its Responses API is stateless and rejects a
+  non-null `previous_response_id` with a 400. Today only `research_llm` sets
+  it. It was switched on for OpenRouter's deferred tool loading (ADR-0048),
+  which was off from 2026-09-25 and whose code was removed on 2026-10-27; a
+  standards-based tool search replaces it in its own change. The line stays
+  until the answer suite has measured Chat Completions for this role, because
+  the transport of every research call is not a change to make as a side
+  effect. Every other role stays on the default.
+- **Deferral did not save tokens on any model measured (ADR-0048,
+  2026-09-23).** Every model probed echoed `defer_loading` and billed the
+  deferred schemas in full; capability tracked neither vendor nor quality, and
+  OpenRouter's `supported_parameters` has no token for it. The measurements
+  are in the ADR; a new tool search starts from them rather than re-deriving
+  them. Since ADR-0052 Piloti binds its full tool set on every turn, greetings
+  included; scope (`register._tools_in_scope`) is what keeps the BIM schemas
+  off a turn without a project.
 - `reasoning_effort` is a **native** `ChatOpenAI` field
   (`langchain_openai`'s `BaseChatOpenAI.reasoning_effort`), not something
   routed through `extra_body`: NAT's `OpenAIModelConfig` allows extra YAML

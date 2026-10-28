@@ -1,4 +1,4 @@
-# The office-file eval (`task be:eval:answer-suite -- --set files --arm search|navigate|both`, ADR-0127):
+# The office-file eval (`task be:eval:answer-suite -- --set files --arm semantic|grep|hybrid|all`, ADR-0127, ADR-0133):
 # questions about the files of a project, asked in the fixture project of `project.yaml` beside this
 # file, seeded by `scripts/turn_census/fixture_files.py`. Every run sits in that project's
 # collection with a signed envelope, as the workspace and precedent sets do.
@@ -23,7 +23,22 @@
 # Facts, read off the fixture: six top folders (Einreichung, Bestand, Behörde, Nachbarn, Gutachten,
 # Korrespondenz); Einreichung holds 6 documents in all (3 directly, 3 in Pläne); EP-01 Index B is
 # current; the Brandschutzkonzept has 14 pages and says „Fluchtweg“ on pages 3, 7 and 11; the newest
-# upload is the MA-37 letter; „Sprinkler“ is written nowhere.
+# upload is the MA-37 letter; „Sprinkler“ is written nowhere. „Rettungsweg“ stands five times in the
+# Brandschutzkonzept (pages 3, 7, 9), „Kopfbolzendübel“ and „Verbunddecke“ once each in the
+# Besprechungsprotokoll (page 2). The `pf-count-*` rows ask for those counts: on chunks cut as
+# production cuts them, a count that read the breadcrumb or the overlap says 8, 2 and 3.
+# The exact and outside rows read: „REI 90“ stands in four documents (Baubeschreibung, Bescheid,
+# Brandschutzkonzept, Brandschutzgutachten of Hubergasse 16); „§ 9“ only in the Bebauungsbestimmungen;
+# „Wärmepumpe“ only in the Baubeschreibung; „Tiefgarage“ nowhere (the Baubeschreibung's
+# „Garagengesetz“ is the near miss); „EI 60“ in the Brandschutzkonzept; the Bescheid's number 567812
+# in the Bescheid and the MA-37 letter; „Rauchansaug“ only in the neighbour's Gutachten; „C25/30“
+# only in the Besprechungsprotokoll.
+#
+# `open: <file>` asks the row with that document open; `turn_input.py` sends it.
+#
+# The tool names are today's. A call by an ADR-0133 name (`ls`, `glob`, `grep`, `read_file`,
+# `knowledge_search(path=)`) is read as the call it stands for (`files_eval.canonical`), so these rows
+# run unchanged before and after the rename, and a row may be written with the new names too.
 
 questions:
   - id: pf-orient-project
@@ -146,3 +161,91 @@ questions:
     expect:
       tools: {must: [knowledge_search]}
       mentions: ["Brandschutzkonzept", "OIB"]
+
+  - id: pf-count-overlap
+    question: Wie oft kommt „Kopfbolzendübel“ im Besprechungsprotokoll zur Tragwerksplanung vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["einmal", "ein Mal", "1 Mal", "1-mal", "1×", "eine Stelle", "einer Stelle", "ein Treffer", "1 Treffer", "eine Fundstelle", "1 Fundstelle"]]
+      not_mentions: ["zweimal", "zwei Mal", "2 Mal", "2-mal", "2×", "zwei Stellen", "2 Stellen", "zwei Treffer", "2 Treffer", "zwei Fundstellen", "2 Fundstellen"]
+
+  - id: pf-count-heading
+    question: Wie oft steht „Rettungsweg“ im Brandschutzkonzept, und auf welchen Seiten?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["5", "fünf"], "3", "7", "9"]
+      not_mentions: ["achtmal", "acht Mal", "8 Mal", "8-mal", "8×", "acht Stellen", "8 Stellen", "8 Treffer", "acht Treffer", "Seite 8", "S. 8"]
+
+  - id: pf-count-heading-section
+    question: Wie oft kommt das Wort „Verbunddecke“ im Besprechungsprotokoll vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["einmal", "ein Mal", "1 Mal", "1-mal", "1×", "eine Stelle", "einer Stelle", "ein Treffer", "1 Treffer", "eine Fundstelle", "1 Fundstelle"]]
+      not_mentions: ["dreimal", "drei Mal", "3 Mal", "3-mal", "3×", "drei Stellen", "3 Stellen", "drei Treffer", "3 Treffer", "Seite 3", "S. 3"]
+
+  # Asked with a document open (`open:`, sent as the composer's "Asking about"), about a fact that
+  # stands only in ANOTHER document: the open one is a hint, never the scope (ADR-0133 §3), so a turn
+  # that searches only the open document cannot answer. `pf-inside-open` is the control: the fact is
+  # in the open document, so a turn that ignores the hint and still answers counts the same.
+  - id: pf-inside-open
+    open: Brandschutzkonzept_Hubergasse14.pdf
+    question: Welche Feuerwiderstandsklasse haben die Wände des Aufzugsschachts?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: ["EI 60"]
+      # "EI 60" is a substring of "REI 60" (a load-bearing wall), which would be a wrong answer.
+      not_mentions: ["REI 60"]
+
+  - id: pf-outside-open-number
+    open: Brandschutzkonzept_Hubergasse14.pdf
+    question: Welche Geschäftszahl hat der Baubewilligungsbescheid?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: ["567812"]
+
+  - id: pf-outside-open-neighbour
+    open: Bescheid_MA37_Baubewilligung.pdf
+    question: Welche Brandmeldeanlage hat das Nachbarhaus Hubergasse 16?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: [Rauchansaug]
+
+  - id: pf-outside-open-protocol
+    open: Baubeschreibung_Hubergasse14.pdf
+    question: Welche Betonfestigkeitsklasse bekommt die Aufbetonschicht der Holz-Beton-Verbunddecke?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: ["C25/30"]
+
+  # Exact lookups: an identifier, a clause, a rating, and „is X written anywhere" with a true positive
+  # beside a true negative, so an agent that always says „nothing found" does not pass both. The
+  # Plannummer stands as „Plan Nr. B-01" in the drawing and as the title block's document number.
+  - id: pf-exact-plan-number
+    question: Welcher Plan hat die Plannummer B-01?
+    expect:
+      tools: {any: [{knowledge_search: {match: [exact, regex]}}, list_files]}
+      mentions: [Bestandsplan]
+
+  - id: pf-exact-clause
+    question: In welchem Dokument wird § 9 der Bauordnung für Wien genannt?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [Bebauungsbestimmungen]
+
+  - id: pf-exact-rating
+    question: In welchen Unterlagen kommt REI 90 vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      at_least: {n: 4, of: [Baubeschreibung, Bescheid, Brandschutzkonzept, Brandschutzgutachten]}
+
+  - id: pf-exact-present
+    question: Wird in den Unterlagen irgendwo eine Wärmepumpe erwähnt?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [Baubeschreibung]
+
+  - id: pf-exact-absent-near
+    question: Wird in den Unterlagen irgendwo eine Tiefgarage erwähnt?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      judge: [none_found]

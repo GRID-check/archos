@@ -1,9 +1,12 @@
+---
+status: accepted
+---
+
 # ADR-0026: Unified source-kind model for citations, Herleitung, and reports
 
-- **Status:** Accepted
 - **Date:** 2026-07-18
 - **Deciders:** GRID engineering
-- **Related:** ADR-0012 (cards as rich UI layer), ADR-0020 (Dragonfly shared cache), ADR-0024 (org-wide document Archiv), ADR-0025 (norm registry), `docs/superpowers/specs/2026-07-18-herleitung-source-hero-design.md`, `docs/design/click-dummy-overhaul-spec.md`
+- **Related:** ADR-0012 (cards as rich UI layer), ADR-0020 (Dragonfly shared cache), ADR-0024 (org-wide document Archiv), ADR-0025 (norm registry), `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`, `docs/design/click-dummy-overhaul-spec.md`
 
 ## Context
 
@@ -48,7 +51,7 @@ The coarse kinds (mirroring the click-dummy `TYPES`) are:
 is not part of the citation taxonomy.)
 
 - The taxonomy lives in **`src/aiq_agent/common/source_kinds.py`** (backend) and
-  a mirror **`frontends/ui/src/features/chat/lib/source-kinds.ts`** (frontend).
+  a mirror **`frontends/ui/src/lib/source-kinds.ts`** (frontend).
   The backend owns keys + German labels + a `css_token`; presentation colours
   live in frontend CSS custom properties (`var(--source-{css_token})`), so both
   ends share one source of truth without shipping colours from the backend.
@@ -167,5 +170,5 @@ Rules that keep the accent from becoming a fifth signal:
 ## References
 
 - Click-dummy: `Ask_Piloti_v6_standalone2.html` (`TYPES`, `threadSources`, `Belegt durch`).
-- `docs/superpowers/specs/2026-07-18-herleitung-source-hero-design.md`
+- `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`
 - ADR-0025 (norm registry), ADR-0024 (Archiv), ADR-0020 (Dragonfly cache).

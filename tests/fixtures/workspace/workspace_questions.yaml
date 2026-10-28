@@ -1,5 +1,5 @@
 # The workspace eval (`task be:eval:answer-suite -- --set workspace`, ADR-0123): office work
-# asked of Piloti in the fixture office (`frontends/ui/tests/fixtures/workspace/office.json`),
+# asked of Piloti in the fixture office (`apps/workspace/tests/fixtures/workspace/office.json`),
 # its door served by `scripts/turn_census/fixture_workspace.py`.
 #
 # Every run sits in the office's current project („Wohnhaus Mödling"), as Lena Berger, an
@@ -15,7 +15,7 @@
 #               `or_tool` names a native tool that does the same job (the check passes on it).
 #   uses:       tools the turn must have done the work with: a native tool's name as the model binds
 #               it (`remember`, `canvas__mark`) or a door operation; a list item means any one of them.
-#               Which tool is Piloti's for a job is `frontends/ui/src/lib/agent-api/exposure.config.ts`
+#               Which tool is Piloti's for a job is `apps/workspace/bff/agent-api/exposure.config.ts`
 #               (`piloti: 'native:<tool>'` hides the door's operation from Piloti).
 #   no_write:   true: nothing proposed (an ambiguous target is asked about, not guessed)
 #   no_workspace: true: the door was not used at all

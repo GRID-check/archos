@@ -27,11 +27,19 @@ while disabled):
 - `app/global-error.tsx` is the boundary above the root layout. Next replaces the
   whole document while it shows, so it renders its own `<html><body>`, imports
   `globals.css` and the theme boot script again, reads the locale from the
-  `grid-locale` cookie (no provider exists) and reuses `errors.appError` for its
+  `locale` cookie (no provider exists) and reuses `errors.appError` for its
   copy, German and English. The prop is `retry` (stable since Next 16.3).
 
-Neither boundary reports an authorization denial (`isAuthzError`: an expected
-outcome) or an error with a `digest` (thrown on the server, where
+Next's control flow (`redirect()`, `notFound()`, `forbidden()`: a throw the
+framework catches and turns into navigation) is never an exception.
+`lib/analytics/control-flow-error.ts` recognises it by `digest` or by the bare
+`NEXT_REDIRECT` message a server action's rejected promise carries, and three
+places drop it: `capturePosthogException`, the browser `before_send`
+(`scrubEvent`, for the unhandled-rejection autocapture) and the server
+`beforeCapture`.
+
+Neither boundary reports an authorization denial (an expected outcome, told by
+its message, since a server-thrown class does not survive the RSC boundary) or an error with a `digest` (thrown on the server, where
 `onRequestError` already reported it with its stack; the client copy is the
 redacted "error occurred in the Server Components render"). PostHog starts in
 the layout's providers, so a crash before they mount is reported by the server
@@ -53,7 +61,7 @@ version); `lib/analytics/request-error.ts` builds it with our configuration:
   `$http_method`, `nextjs_route_path` (the pattern,
   `/api/projects/[projectId]/files`), `nextjs_route_type`, `nextjs_router_kind`,
   `nextjs_render_source`, `nextjs_error_digest`. Ours, from `beforeCapture`:
-  `source`, `release` (`GRID_GIT_SHA`), `service`.
+  `source`, `release` (`GIT_SHA`), `service`.
 - The person is the visitor's: the package reads the PostHog cookie the browser
   writes (`localStorage+cookie` persistence) for the distinct id, the session id
   and the device id, so a server error sits on the same person and replay as
@@ -63,7 +71,8 @@ version); `lib/analytics/request-error.ts` builds it with our configuration:
   error of an opted-out visitor is still reported under their distinct id.
   Moving the opt-out to a cookie (`opt_out_capturing_persistence_type`) would
   forget every opt-out already stored, so it is left as an open decision.
-- Authorization denials are dropped, and each fingerprint (route, error name,
+- Authorization denials (`isAuthzRefusal`: an `ApiError` with status 401, 403
+  or 404, thrown in a page render or a server action) are dropped, and each fingerprint (route, error name,
   message) gets 5 events per 5 minutes, through `@posthog/core`'s
   `BucketedRateLimiter`.
 

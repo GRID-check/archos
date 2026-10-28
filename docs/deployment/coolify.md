@@ -19,14 +19,14 @@ NVIDIA base-image removal — see §2, apart from the stock `qdrant/qdrant`,
 
 | Service | Role | Exposed publicly? |
 |---|---|---|
-| `frontend` | Next.js UI + BFF gateway (auth, `grid_app` DB, WS proxy) — port 3000 | **Yes** (your domain) |
-| `aiq-agent` | Python FastAPI backend, **`chat` role** (`GRID_ROLE=chat`): the chat WebSocket, the only route a turn runs through — port 8000. The frontend dials it with `BACKEND_CHAT_URL` | No (internal) |
-| `aiq-api` | Python FastAPI backend, **`api` role** (`GRID_ROLE=api`): every other HTTP route (knowledge, jobs and SSE, LLM utilities, admin) — port 8000. The frontend, `purger` and `housekeeping` call it with `BACKEND_URL`. Mirrors the K8s `aiq-api` Deployment | No (internal) |
-| `agent-worker` | Deep-research worker (`GRID_ROLE=worker`): claims jobs from Postgres and runs them off the web tier. Mirrors the K8s worker Deployment | No (internal) |
-| `ingest-worker` | Ingestion tier (`GRID_ROLE=ingest-worker`): the one process that claims the durable ingest queue `POST /v1/ingest` fills (ADR-0076). Without it uploads sit pending. Mirrors the K8s ingest-worker Deployment | No (internal) |
-| `qdrant` | Shared Qdrant vector store (ADR-0115) — port 6333, with the API key Coolify generates (`SERVICE_PASSWORD_QDRANT`). One store every backend role (`aiq-agent`, `aiq-api`, `agent-worker`, `ingest-worker`) queries over HTTP. Mirrors the K8s Qdrant StatefulSet, single node | No (internal) |
+| `frontend` | Next.js UI + BFF gateway (auth, `app` DB, WS proxy) — port 3000 | **Yes** (your domain) |
+| `chat` | Python FastAPI backend, **`chat` role** (`PROCESS_ROLE=chat`): the chat WebSocket, the only route a turn runs through — port 8000. The frontend dials it with `BACKEND_CHAT_URL` | No (internal) |
+| `api` | Python FastAPI backend, **`api` role** (`PROCESS_ROLE=api`): every other HTTP route (knowledge, jobs and SSE, LLM utilities, admin) — port 8000. The frontend, `purger` and `housekeeping` call it with `BACKEND_URL`. Mirrors the K8s `api` Deployment | No (internal) |
+| `agent-worker` | Deep-research worker (`PROCESS_ROLE=worker`): claims jobs from Postgres and runs them off the web tier. Mirrors the K8s worker Deployment | No (internal) |
+| `ingest-worker` | Ingestion tier (`PROCESS_ROLE=ingest-worker`): the one process that claims the durable ingest queue `POST /v1/ingest` fills (ADR-0076). Without it uploads sit pending. Mirrors the K8s ingest-worker Deployment | No (internal) |
+| `qdrant` | Shared Qdrant vector store (ADR-0115) — port 6333, with the API key Coolify generates (`SERVICE_PASSWORD_QDRANT`). One store every backend role (`chat`, `api`, `agent-worker`, `ingest-worker`) queries over HTTP. Mirrors the K8s Qdrant StatefulSet, single node | No (internal) |
 | `seaweedfs` | S3-compatible object storage — port 8333 | **Yes** (presigned PDF URLs) |
-| `postgres` | Three logical DBs: `aiq_jobs`, `aiq_checkpoints`, `grid_app` | No (internal) |
+| `postgres` | Three logical DBs: `jobs`, `checkpoints`, `app` | No (internal) |
 | `dragonfly` | Redis-protocol shared cache + conversation bus (ADR-0020/0028) | No (internal) |
 | `gotenberg` | Office → PDF converter (ADR-0070), called by the frontend BFF only — port 3000. Required: Word, presentation, `.xls` and `.ods` files are indexed from its PDF (ADR-0071) | No (internal) |
 | `purger` | Grace-period hard-delete worker | No |
@@ -35,12 +35,12 @@ NVIDIA base-image removal — see §2, apart from the stock `qdrant/qdrant`,
 | `seaweedfs-init` | One-shot: creates the `grid-documents` bucket | No |
 
 > **Deep-research runs on its own worker.**
-> This compose mirrors the Kubernetes topology: the `aiq-agent` chat role enqueues
+> This compose mirrors the Kubernetes topology: the `chat` chat role enqueues
 > research jobs to Postgres and the `agent-worker` service claims and executes
 > them (`FOR UPDATE SKIP LOCKED`), so token-heavy runs scale and crash
 > independently of the chat tier, and every backend role reads and writes the
 > shared `qdrant` store. The value is fixed: a job submitted by the chat role is
-> streamed and cancelled by the `aiq-api` role (ADR-0082). See §7 for moving the
+> streamed and cancelled by the `api` role (ADR-0082). See §7 for moving the
 > vectors of a stack that ran Chroma.
 
 Only **frontend** and **seaweedfs** get a public domain. Everything else talks over
@@ -50,7 +50,7 @@ the internal Coolify network.
 > does not close host ports. Lock the server's firewall down to **80/443
 > inbound** (plus your SSH port) so that even if a service accidentally
 > publishes a host port, it is not reachable from the internet. This is why the
-> internal services (`aiq-agent`, `postgres`, `dragonfly`) carry a warning
+> internal services (`chat`, `postgres`, `dragonfly`) carry a warning
 > comment in the compose file: never give them a `ports:` mapping — Coolify
 > binds the host port regardless of Traefik, and only the firewall would then
 > stop public access.
@@ -88,7 +88,7 @@ You still need, at deploy time:
   auto-generated preview subdomains).
 - Two API keys total: **`OPENROUTER_API_KEY`** (LLMs, embeddings, and VLM — all
   through OpenRouter) and **`TAVILY_API_KEY`** (web search). See §6.
-- A **`GRID_ADMIN_TOKEN`** (any high-entropy string, e.g. `openssl rand -hex 32`)
+- A **`ADMIN_TOKEN`** (any high-entropy string, e.g. `openssl rand -hex 32`)
   gating the admin re-ingestion route — now required (see §4).
 - For production auth (default on): **`WORKOS_CLIENT_ID`**, **`WORKOS_API_KEY`**,
   **`WORKOS_COOKIE_PASSWORD`** — see the Auth section in §4.
@@ -107,7 +107,7 @@ which are generated per deployment and stay consistent across the stack:
 | `SERVICE_PASSWORD_POSTGRES` | Auto-generated Postgres password (embedded in every DB URL) |
 | `SERVICE_PASSWORD_SEAWEEDFS` | Auto-generated SeaweedFS secret key |
 | `SERVICE_PASSWORD_INTERNALTOKEN` | Auto-generated shared token for the single-writer memory endpoint |
-| `SERVICE_PASSWORD_QDRANT` | Auto-generated Qdrant API key: the `qdrant` service requires it, the backend roles send it (`AIQ_QDRANT_API_KEY`) |
+| `SERVICE_PASSWORD_QDRANT` | Auto-generated Qdrant API key: the `qdrant` service requires it, the backend roles send it (`QDRANT_API_KEY`) |
 
 Because these are stable per stack, each preview environment self-configures its
 own domains, DB password, and internal token with no manual input.
@@ -120,17 +120,17 @@ own domains, DB password, and internal token with no manual input.
    branch (e.g. `develop`).
 2. **Base Directory**: leave at repo root (`/`). **Compose file path**:
    `deploy/compose/docker-compose.coolify.yaml`.
-   > The compose `build:` contexts (`../..`, `../../frontends/ui`) and the
+   > The compose `build:` contexts (`../..`, `../../apps/workspace`) and the
    > Postgres `./init-db.sql` bind mount both resolve relative to the compose
    > file's directory, so they work as-is from the repo checkout.
 3. **Environment Variables** — set the required secrets:
    ```
    OPENROUTER_API_KEY=sk-or-...
    TAVILY_API_KEY=tvly-...
-   GRID_ADMIN_TOKEN=$(openssl rand -hex 32)
+   ADMIN_TOKEN=$(openssl rand -hex 32)
    ```
    The same OpenRouter key drives LLMs, embeddings, and the VLM (§6).
-   `GRID_ADMIN_TOKEN` gates the admin re-ingestion route. The `${...:?}` markers
+   `ADMIN_TOKEN` gates the admin re-ingestion route. The `${...:?}` markers
    make all three **required** (the deploy fails fast if missing). Because
    `REQUIRE_AUTH` defaults to `true` (see the Auth section below), a production
    deploy also needs `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, and
@@ -142,17 +142,17 @@ own domains, DB password, and internal token with no manual input.
    `SERVICE_FQDN_FRONTEND_3000`. Optionally override it with your own domain in
    the service's settings. Do the same for SeaweedFS if you want a stable S3 URL.
 5. **Deploy.** On first boot: Postgres runs `init-db.sql` (creates the 3 DBs),
-   `grid-migrate` runs the Drizzle migrations for `grid_app`, `seaweedfs-init`
-   creates the bucket, `grid-audit-schemas` reconciles the WorkOS Audit Log
+   `migrate` runs the Drizzle migrations for `app`, `seaweedfs-init`
+   creates the bucket, `audit-schemas` reconciles the WorkOS Audit Log
    schemas, and the backend starts. Once the frontend is healthy,
-   `grid-workos-authz` creates the authorization catalog's permissions and
+   `workos-authz` creates the authorization catalog's permissions and
    roles in WorkOS and carries folder grants over (ADR-0097). It ingests nothing at boot; the base-corpus
    housekeeping route does that, every ten minutes.
    The frontend waits for the first three; they are `depends_on:
    service_completed_successfully`, so a failure in any of them stops the
    frontend rather than letting it serve a half-provisioned environment.
 
-   > **`grid-audit-schemas` is why nothing here is a manual WorkOS step.** WorkOS
+   > **`audit-schemas` is why nothing here is a manual WorkOS step.** WorkOS
    > rejects an Audit Log event whose action has no schema in the environment —
    > and rejects one whose registered schema has the wrong targets or metadata
    > keys the same way. Most of the trail survives that (the default emitter
@@ -176,11 +176,11 @@ the browser Network tab for a `101 Switching Protocols` on `/websocket`.
 auto-creates one managed bridge network per compose stack (named after the
 resource UUID) and attaches every service to it, so **service-name DNS already
 works across the whole stack** — `frontend` reaches the backend at
-`http://aiq-agent:8000`, the backend reaches `http://frontend:3000`, and both
+`http://chat:8000`, the backend reaches `http://frontend:3000`, and both
 reach `postgres:5432`, `seaweedfs:8333`, and `dragonfly:6379` by name. No custom
 network is needed to get this.
 
-> **The dual-homed pitfall (why the custom `aiq-network` was removed).** Coolify
+> **The dual-homed pitfall (why the custom `app` was removed).** Coolify
 > [documents](https://coolify.io/docs/applications/build-packs/docker-compose)
 > that defining a custom network in a compose resource makes every container
 > **dual-homed** — attached to BOTH your custom bridge and Coolify's managed
@@ -215,7 +215,7 @@ resource's **Connect To Predefined Network** option instead. It is not needed fo
 anything in this stack, since all services live in the same compose project.
 
 > The bundled dev compose (`deploy/compose/docker-compose.yaml`) still declares
-> its own `aiq-network` — that is correct and unchanged. It runs under plain
+> its own `app` — that is correct and unchanged. It runs under plain
 > `docker compose` with **no** Coolify-managed network and **no** Traefik, so
 > there is nothing to be dual-homed against. The custom-network removal applies
 > **only** to the Coolify compose file.
@@ -230,10 +230,10 @@ service).
 
 ```bash
 # frontend → backend: expect the backend's health JSON, and NO proxy vars set
-docker exec <frontend-container> sh -c 'env | grep -i proxy; wget -T 10 -O- http://aiq-agent:8000/health'
+docker exec <frontend-container> sh -c 'env | grep -i proxy; wget -T 10 -O- http://chat:8000/health'
 
 # backend → frontend: expect HTTP 200 from the healthz endpoint
-docker exec <aiq-agent-container> sh -c 'curl -m 10 http://frontend:3000/api/healthz'
+docker exec <chat-container> sh -c 'curl -m 10 http://frontend:3000/api/healthz'
 ```
 
 - The `env | grep -i proxy` line should print **nothing** — Coolify does not
@@ -254,7 +254,7 @@ docker exec <aiq-agent-container> sh -c 'curl -m 10 http://frontend:3000/api/hea
 ### Auth
 
 `REQUIRE_AUTH` defaults to **`true`** in this production compose (both the
-frontend and the `aiq-agent` backend) → WorkOS AuthKit is required end-to-end.
+frontend and the `chat` backend) → WorkOS AuthKit is required end-to-end.
 Configure it by setting `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, and
 `WORKOS_COOKIE_PASSWORD` (`openssl rand -hex 32`), and register
 `https://<your-frontend-domain>/api/auth/callback` as the redirect URI in WorkOS
@@ -272,12 +272,12 @@ on job access control (a job's owner, or a caller whose signed envelope places t
 job in their project or conversation, ADR-0084) and the signed-envelope rule for
 WorkOS callers, for every request, so it is not only an external switch. In-cluster frontend→backend calls
 are classified internal and carry the user's token and envelope (or the internal
-token), so setting it `true` does not break them. `AIQ_EXTERNAL_HOSTNAMES` is wired to the
+token), so setting it `true` does not break them. `EXTERNAL_HOSTNAMES` is wired to the
 frontend FQDN as defense-in-depth: should the backend's port 8000 ever be
 exposed under that domain, requests would be forced through the path allowlist
 and auth instead of being trusted as internal.
 
-`GRID_ADMIN_TOKEN` is **required** (`${...:?}`) — it gates the admin
+`ADMIN_TOKEN` is **required** (`${...:?}`) — it gates the admin
 re-ingestion route (`POST /v1/admin/oib/sync`). An empty value made that route
 fail *open*, so the deploy now fails fast if it is unset. Generate one with
 `openssl rand -hex 32`.
@@ -325,7 +325,7 @@ There is **no separate embedding provider and no NVIDIA endpoint**. A single
 
 - Embeddings: `openai/text-embedding-3-large` via `https://openrouter.ai/api/v1`.
 - The embeddings client resolves its key through the shared credential
-  resolver (`AIQ_EMBED_API_KEY`, else the provider key inferred from the base
+  resolver (`EMBED_API_KEY`, else the provider key inferred from the base
   URL), so the OpenRouter key reaches it on its own. `NVIDIA_API_KEY` is not
   read anywhere. The compose defaults handle all of this; you only supply
   `OPENROUTER_API_KEY`.
@@ -335,7 +335,7 @@ So chat, web search, **and** the knowledge base all work with just
 
 > **Embedding-model stability rule:** the OIB embeddings are stored as vectors
 > from a specific model. Retrieval only returns correct results if
-> `AIQ_EMBED_MODEL` + `AIQ_EMBED_BASE_URL` at query time match what embedded the
+> `EMBED_MODEL` + `EMBED_BASE_URL` at query time match what embedded the
 > corpus. Keep the compose defaults
 > (`openai/text-embedding-3-large` @ OpenRouter); changing the embedder means the
 > persisted vectors must be re-generated (wipe the Qdrant volume; the next base-corpus
@@ -355,7 +355,7 @@ volume for it (ADR-0082 step A2):
   from. There is no `data/oib` mount and no registry file.
 - **Embeddings** — held by the shared `qdrant` store on its own persistent
   volume (`qdrant_data`, mounted at `/qdrant/storage`). Every backend role
-  reaches it at `AIQ_QDRANT_URL` (`http://qdrant:6333`) with the generated key.
+  reaches it at `QDRANT_URL` (`http://qdrant:6333`) with the generated key.
   There is no embedded fallback in this file. `qdrant/qdrant:v1.19.2` is pinned
   (`QDRANT_IMAGE` overrides): self-hosted Qdrant upgrades one minor at a time.
 
@@ -366,8 +366,8 @@ volume for it (ADR-0082 step A2):
 > what Chroma held until the vectors are moved once with the exporter and
 > importer. Coolify starts every service on a deploy, the housekeeping clock
 > included, so the order is: stop, export from `<uuid>_chroma_data`, set
-> `AIQ_VECTOR_IMPORT_PENDING=true`, deploy, stop the app services at once,
-> import on the `<uuid>` network with `aiq-api`'s environment, remove the
+> `VECTOR_IMPORT_PENDING=true`, deploy, stop the app services at once,
+> import on the `<uuid>` network with `api`'s environment, remove the
 > variable, restart ([`qdrant-runbook.md`](qdrant-runbook.md), "Migrating from
 > Chroma", "On Coolify"). Without the variable, the first base-corpus sync
 > takes the empty store for a reset and re-embeds the whole corpus. Delete the
@@ -406,7 +406,7 @@ redeploys of the same environment; each preview gets its own set.
 > PDFs are objects under `base-corpus/` in the `grid-documents` bucket (so
 > `seaweedfs-data` holds them next to the project/Archiv uploads), listed in the
 > `oib_corpus_files` table in `postgres-data`; its embeddings are on the Qdrant
-> volume. The backend (`aiq-agent`, `agent-worker`) mounts no volume at
+> volume. The backend (`chat`, `agent-worker`) mounts no volume at
 > all, and the copy of a PDF it keeps for rendering and ingestion is a cache under
 > `/tmp` that it rebuilds on demand. Deleting the Qdrant volume costs a
 > re-ingestion (the next sync cycle does it); deleting `seaweedfs-data` or
@@ -423,7 +423,7 @@ redeploys of the same environment; each preview gets its own set.
       resolves to SeaweedFS's public domain and the signature host matches.
 - [ ] Ask one question about an uploaded project document and one about an OIB-Richtlinie → knowledge results appear for both (confirms embeddings +
       ingestion). If empty, revisit §6 and §7.
-- [ ] (WorkOS environments) `grid-audit-schemas` exited 0 in the deploy log, and
+- [ ] (WorkOS environments) `audit-schemas` exited 0 in the deploy log, and
       a filed report produces a `document.generated` event in the org's audit
       log. A rejected event unfiles the document, so "the report is not in
       Berichte" and "the audit schema is stale" are the same symptom —
@@ -439,7 +439,7 @@ the PDF the frontend converts. A new backend next to the old frontend refuses
 them as `office_rendition_required`. The opposite order is harmless: the old
 backend ignores the new field.
 
-Coolify redeploys the whole stack, and `depends_on` recreates `aiq-agent`
+Coolify redeploys the whole stack, and `depends_on` recreates `chat`
 before `frontend`, so the wrong order is what happens. Office files uploaded
 in that window are marked failed with a retryable reason. After the deploy,
 open them in the Archiv and use "Erneut lesen". To avoid the window on a
@@ -457,13 +457,13 @@ docker compose -f docker-compose.coolify.yaml up -d
 
 | Concern | Dev compose | Coolify compose |
 |---|---|---|
-| Container names | fixed (`aiq-agent`, …) | none (Coolify namespaces) |
+| Container names | fixed (`chat`, …) | none (Coolify namespaces) |
 | Deep-research execution | dedicated `agent-worker` + shared `qdrant` store (mirrors K8s) |
-| Docker network | custom `aiq-network` (bridge) | none declared — Coolify's managed per-stack network (avoids dual-homed 504/DNS failures) |
+| Docker network | custom `app` (bridge) | none declared — Coolify's managed per-stack network (avoids dual-homed 504/DNS failures) |
 | Host ports | published (3000, 8000, 5432, 8333/8888) | none — proxy + FQDN vars |
-| Secrets | `deploy/.env` literals | Coolify UI (`${VAR:?}`) + generated passwords; `OPENROUTER_API_KEY`, `TAVILY_API_KEY`, `GRID_ADMIN_TOKEN` all required |
+| Secrets | `deploy/.env` literals | Coolify UI (`${VAR:?}`) + generated passwords; `OPENROUTER_API_KEY`, `TAVILY_API_KEY`, `ADMIN_TOKEN` all required |
 | Auth (`REQUIRE_AUTH`) | `false` (dev convenience) | **`true`** by default (WorkOS required; opt out per-preview) |
-| External-host classification | unset | `AIQ_EXTERNAL_HOSTNAMES` = frontend FQDN (defense-in-depth) |
+| External-host classification | unset | `EXTERNAL_HOSTNAMES` = frontend FQDN (defense-in-depth) |
 | Frontend/SeaweedFS exposure | `localhost:PORT` | `SERVICE_FQDN_*` https domains |
 | CORS / redirect / SeaweedFS public URL | `localhost` defaults | derived from generated FQDNs |
 | `configs/` bind mount | mounted read-only | dropped (baked into the image) |

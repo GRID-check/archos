@@ -24,7 +24,7 @@ then checked against the code before anything was changed.
 |---|---|---|---|
 | Tracing, OTel ingestion | yes | yes, via the collector | unchanged |
 | Sessions | yes | yes (NAT sets `session.id`) | unchanged |
-| Users | yes | yes, behind `GRID_TRACE_IDENTITY_ATTRIBUTES` | unchanged |
+| Users | yes | yes, behind `TRACE_IDENTITY_ATTRIBUTES` | unchanged |
 | Environments | yes | **no**: `deployment.environment` was a resource attribute Langfuse does not read as the environment | `langfuse.environment` on every span |
 | Releases | yes | **no**: the commit was on the log resource only | `langfuse.release` on every span, `service.version` on the trace resource |
 | Trace names | yes | `chat_deepresearcher_agent` | `chat-turn`, `research-job`, one per auxiliary feature |
@@ -54,7 +54,7 @@ The version moved from 4.54.0 to **4.56.0**, released 2026-10-09.
 
 1. **The privacy switch also switched off reporting.** Tool facts, the usage
    rollup and the dialect census reached spans only through the identity
-   processor, so with `GRID_TRACE_IDENTITY_ATTRIBUTES` off they were dropped
+   processor, so with `TRACE_IDENTITY_ATTRIBUTES` off they were dropped
    without a word. Contributions now have their own processor; identity gates
    only the user and the tenant.
 2. **Six model calls were invisible.** Titles, project summaries, the
@@ -134,7 +134,7 @@ needed.
     root span on purpose (they drowned the agent's). The BFF's own latency is
     visible only in logs.
 11. **PostHog receives users' names and e-mail addresses** on identify
-    (`frontends/ui/src/app/providers.tsx`), which contradicts the compliance
+    (`apps/workspace/app/providers.tsx`), which contradicts the compliance
     audit's "no analytics/tracking anywhere in the UI". Not a Langfuse issue,
     found on the way; it needs a privacy decision.
 12. **Ingest has no rollup.** Ingestion, OCR and vision calls are in the

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
 /**
@@ -126,13 +126,13 @@ describe("a stack with Langfuse and PostHog opted out", () => {
     expect(d.collector).not.toContain("err2issue");
     expect(d.collector).not.toContain("errors_only");
     const secret = RESOURCES.find((r) => r.type === "kubernetes:core/v1:Secret" && r.name === "grid-secrets");
-    expect(Object.keys(unsecret<Record<string, string>>(await resolve(secret?.inputs.stringData)))).not.toContain("GRID_GITHUB_TOKEN");
+    expect(Object.keys(unsecret<Record<string, string>>(await resolve(secret?.inputs.stringData)))).not.toContain("GITHUB_TOKEN");
     const frontend = RESOURCES.find((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "frontend");
     const env = ((await resolve(frontend?.inputs.spec)) as any).template.spec.containers[0].env.map(
       (e: { name: string }) => e.name,
     );
-    expect(env).not.toContain("GRID_GITHUB_TOKEN");
-    expect(env).not.toContain("GRID_FEEDBACK_ISSUES_REPO");
+    expect(env).not.toContain("GITHUB_TOKEN");
+    expect(env).not.toContain("FEEDBACK_ISSUES_REPO");
   });
 
   it("deploys the collector and Langfuse, and no dashboard whatever the config still says", () => {

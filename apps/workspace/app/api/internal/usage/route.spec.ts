@@ -1,0 +1,189 @@
+/**
+ * @vitest-environment node
+ */
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// The route factory (`@/lib/api/handler`) statically imports the session
+// guard, which pulls in authkit; internal routes never call it.
+vi.mock('@/lib/auth/require-auth', () => ({
+  requireAuthorizedSession: vi.fn(),
+}))
+
+vi.mock('@/lib/budgets/service', () => ({
+  recordUsageEvents: vi.fn().mockResolvedValue(1),
+}))
+
+const announceBudgetThresholds = vi.fn(async () => {})
+vi.mock('@/lib/budgets/budget-events', () => ({
+  announceBudgetThresholds: (...args: unknown[]) => announceBudgetThresholds(...(args as [])),
+}))
+
+import { POST } from './route'
+import { recordUsageEvents } from '@/lib/budgets/service'
+
+const VALID_EVENT = {
+  model: 'deepseek/deepseek-v4-flash',
+  requestedModel: 'deepseek/deepseek-v4-flash',
+  generationId: 'gen-abc123',
+  promptTokens: 1204,
+  completionTokens: 331,
+  totalTokens: 1535,
+  cachedTokens: 512,
+  reasoningTokens: 128,
+  costUsd: 0.00214,
+  costSource: 'usage_field',
+  isByok: false,
+}
+
+const request = (body: unknown, token: string | null = 'test-token'): Request =>
+  new Request('http://localhost/api/internal/usage', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'x-grid-internal-token': token } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+
+describe('POST /api/internal/usage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.INTERNAL_API_TOKEN = 'test-token'
+    process.env.APP_ENV = 'development'
+  })
+
+  it('rejects when the token is missing or wrong', async () => {
+    expect((await POST(request({ events: [VALID_EVENT] }, null))).status).toBe(403)
+    expect((await POST(request({ events: [VALID_EVENT] }, 'wrong'))).status).toBe(403)
+    expect(recordUsageEvents).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when the token is unconfigured', async () => {
+    delete process.env.INTERNAL_API_TOKEN
+    expect((await POST(request({}, 'anything'))).status).toBe(503)
+  })
+
+  it('records a valid batch (the backend tracker payload shape)', async () => {
+    const res = await POST(
+      request({
+        organizationId: 'org_1',
+        userId: 'user_1',
+        projectId: 'proj-1',
+        conversationId: 'conv-1',
+        jobId: null,
+        events: [VALID_EVENT],
+      })
+    )
+    expect(res.status).toBe(202)
+    expect(recordUsageEvents).toHaveBeenCalledTimes(1)
+    const rows = vi.mocked(recordUsageEvents).mock.calls[0][0]
+    expect(rows[0]).toMatchObject({
+      organizationId: 'org_1',
+      userId: 'user_1',
+      model: 'deepseek/deepseek-v4-flash',
+      generationId: 'gen-abc123',
+      costUsd: '0.00214000',
+      costSource: 'usage_field',
+    })
+  })
+
+  it('stamps every row with the answer the batch paid for', async () => {
+    await POST(request({ organizationId: 'org_1', conversationId: 'conv-1', messageId: 'answer-1', events: [VALID_EVENT] }))
+    const rows = vi.mocked(recordUsageEvents).mock.calls[0][0]
+    expect(rows[0]).toMatchObject({ conversationId: 'conv-1', messageId: 'answer-1' })
+  })
+
+  it('records a batch with no answer (a job) with no message id', async () => {
+    await POST(request({ organizationId: 'org_1', jobId: 'job-1', events: [VALID_EVENT] }))
+    const rows = vi.mocked(recordUsageEvents).mock.calls[0][0]
+    expect(rows[0]).toMatchObject({ jobId: 'job-1', messageId: null })
+  })
+
+  it('stamps an ingestion job\'s spend as ingest, and each call with what it was for', async () => {
+    await POST(
+      request({
+        organizationId: 'org_1',
+        projectId: 'proj-1',
+        jobId: 'ingest-job-1',
+        activity: 'ingest',
+        events: [{ ...VALID_EVENT, role: 'ingest_vision' }, VALID_EVENT],
+      })
+    )
+    const rows = vi.mocked(recordUsageEvents).mock.calls[0][0]
+    expect(rows[0]).toMatchObject({ activity: 'ingest', agentGroup: 'ingest_vision', jobId: 'ingest-job-1' })
+    expect(rows[1]).toMatchObject({ activity: 'ingest', agentGroup: null })
+  })
+
+  it('leaves a turn\'s spend unclassified', async () => {
+    await POST(request({ organizationId: 'org_1', events: [VALID_EVENT] }))
+    const rows = vi.mocked(recordUsageEvents).mock.calls[0][0]
+    expect(rows[0]).toMatchObject({ activity: null, agentGroup: null })
+  })
+
+  it('refuses an activity the ledger does not know, rather than storing it', async () => {
+    // The CHECK on the column would refuse it anyway, and with it the whole batch.
+    const res = await POST(request({ organizationId: 'org_1', activity: 'chat', events: [VALID_EVENT] }))
+    expect(res.status).toBe(400)
+    expect(recordUsageEvents).not.toHaveBeenCalled()
+  })
+
+  it('skips events without an organization (anonymous mode)', async () => {
+    const res = await POST(request({ organizationId: null, events: [VALID_EVENT] }))
+    expect(res.status).toBe(202)
+    expect(await res.json()).toEqual({ recorded: 0, skipped: 1 })
+    expect(recordUsageEvents).not.toHaveBeenCalled()
+  })
+
+  describe('budget_threshold_crossed (PostHog)', () => {
+    it('checks the thresholds for the batch’s organization, user and project after the write', async () => {
+      const order: string[] = []
+      vi.mocked(recordUsageEvents).mockImplementationOnce(async () => {
+        order.push('record')
+        return 1
+      })
+      announceBudgetThresholds.mockImplementationOnce(async () => {
+        order.push('announce')
+      })
+
+      const res = await POST(request({ organizationId: 'org_1', userId: 'user_1', projectId: 'proj-1', events: [VALID_EVENT] }))
+
+      expect(res.status).toBe(202)
+      expect(order).toEqual(['record', 'announce'])
+      expect(announceBudgetThresholds).toHaveBeenCalledWith({
+        organizationId: 'org_1',
+        userId: 'user_1',
+        projectId: 'proj-1',
+      })
+    })
+
+    it('passes null for a batch with no user or project', async () => {
+      await POST(request({ organizationId: 'org_1', events: [VALID_EVENT] }))
+
+      expect(announceBudgetThresholds).toHaveBeenCalledWith({ organizationId: 'org_1', userId: null, projectId: null })
+    })
+
+    it('answers at the same speed when the check never settles', async () => {
+      announceBudgetThresholds.mockReturnValueOnce(new Promise<void>(() => {}))
+
+      const res = await POST(request({ organizationId: 'org_1', events: [VALID_EVENT] }))
+
+      expect(res.status).toBe(202)
+      expect(await res.json()).toEqual({ recorded: 1 })
+    })
+
+    it('checks nothing for a batch that was dropped (anonymous) or refused', async () => {
+      await POST(request({ organizationId: null, events: [VALID_EVENT] }))
+      await POST(request({ organizationId: 'org_1', events: [] }))
+
+      expect(announceBudgetThresholds).not.toHaveBeenCalled()
+    })
+  })
+
+  it('rejects malformed payloads', async () => {
+    expect((await POST(request({ organizationId: 'org_1', events: [] }))).status).toBe(400)
+    expect(
+      (await POST(request({ organizationId: 'org_1', events: [{ ...VALID_EVENT, costUsd: -1 }] })))
+        .status
+    ).toBe(400)
+  })
+})

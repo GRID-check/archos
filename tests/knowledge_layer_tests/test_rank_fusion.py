@@ -18,13 +18,13 @@ All tests are offline: no ChromaDB, no embeddings, no network.
 from types import SimpleNamespace
 
 import pytest
-from knowledge_layer.register import _apply_diversity_cap
-from knowledge_layer.register import _merge_results
+from knowledge_layer.fusion import apply_diversity_cap
+from knowledge_layer.fusion import merge_results
+from knowledge_layer.llamaindex.hybrid import fuse_with_ranks
 
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import RetrievalResult
-from sources.knowledge_layer.src.llamaindex.hybrid import fuse_with_ranks
 
 
 def _chunk(chunk_id: str, score: float, rank: int, file_name: str = "doc.pdf", collection: str | None = None) -> Chunk:
@@ -80,7 +80,7 @@ def test_a_lexical_only_hit_with_a_poor_cosine_survives_the_merge_into_the_top_k
             _chunk("vec-2", 0.58, rank=2),
         ]
     )
-    merged = _merge_results([collection], query="q", top_k=2, backend_name="llamaindex", max_per_document=0)
+    merged = merge_results([collection], query="q", top_k=2, backend_name="llamaindex", max_per_document=0)
     assert _ids(merged) == ["lex-hit", "vec-1"]
 
 
@@ -90,7 +90,7 @@ def test_a_session_hit_at_rank_zero_beats_a_corpus_hit_at_rank_five() -> None:
     # score sort the user's own upload could never enter a slate the corpus can fill.
     corpus = _result([_chunk(f"corpus-{rank}", 0.70 - rank * 0.01, rank, "oib-rl2.pdf") for rank in range(6)])
     session = _result([_chunk("session-0", 0.45, rank=0, file_name="mein_projekt.pdf", collection="s_abc")])
-    merged = _merge_results([corpus, session], query="q", top_k=3, backend_name="llamaindex", max_per_document=0)
+    merged = merge_results([corpus, session], query="q", top_k=3, backend_name="llamaindex", max_per_document=0)
     assert _ids(merged) == ["corpus-0", "session-0", "corpus-1"]
     assert merged.chunks[1].score < merged.chunks[2].score, "it wins on rank while holding the worse similarity"
 
@@ -100,7 +100,7 @@ def test_the_base_corpus_wins_an_exact_tie_because_it_is_the_first_channel() -> 
     # session upload never silently displaces the corpus on an exact tie.
     corpus = _result([_chunk("corpus-0", 0.70, rank=0, collection="oib_knowledge")])
     session = _result([_chunk("session-0", 0.45, rank=0, file_name="mine.pdf", collection="s_abc")])
-    merged = _merge_results([corpus, session], query="q", top_k=2, backend_name="llamaindex", max_per_document=0)
+    merged = merge_results([corpus, session], query="q", top_k=2, backend_name="llamaindex", max_per_document=0)
     assert _ids(merged) == ["corpus-0", "session-0"]
 
 
@@ -109,7 +109,7 @@ def test_a_rank_gap_left_by_a_dropped_hit_does_not_promote_the_survivors() -> No
     # Reading the rank (not the list position) keeps rank 5 competing as rank 5.
     corpus = _result([_chunk("corpus-0", 0.70, rank=0), _chunk("corpus-5", 0.60, rank=5)])
     session = _result([_chunk("session-1", 0.40, rank=1, file_name="mine.pdf", collection="s_abc")])
-    merged = _merge_results([corpus, session], query="q", top_k=3, backend_name="llamaindex", max_per_document=0)
+    merged = merge_results([corpus, session], query="q", top_k=3, backend_name="llamaindex", max_per_document=0)
     assert _ids(merged) == ["corpus-0", "session-1", "corpus-5"]
 
 
@@ -118,7 +118,7 @@ def test_the_merge_never_raises_on_the_results_gather_hands_it() -> None:
     # whose collection does not exist yet, and objects with no `.success` at all.
     ok = _result([_chunk("corpus-0", 0.70, rank=0)])
     failed = RetrievalResult(chunks=[], query="q", backend="llamaindex", success=False, error_message="not found")
-    merged = _merge_results(
+    merged = merge_results(
         [ok, failed, RuntimeError("boom"), object()],
         query="q",
         top_k=5,
@@ -146,7 +146,7 @@ def test_the_diversity_cap_fill_pass_is_reachable() -> None:
         _chunk("b-1", 0.48, 4, "b.pdf"),
         _chunk("b-2", 0.46, 5, "b.pdf"),
     ]
-    capped = _apply_diversity_cap(ordered, top_k=5, max_per_document=2)
+    capped = apply_diversity_cap(ordered, top_k=5, max_per_document=2)
     assert len(capped) == 5, "the cap must be exceeded rather than return fewer than top_k"
     assert [chunk.chunk_id for chunk in capped] == ["a-0", "a-1", "a-2", "b-0", "b-1"]
 
@@ -157,7 +157,7 @@ def test_the_diversity_cap_output_is_monotone_in_the_rank_it_selected_by() -> No
     # `[:top_k]` trim then saw a slate whose head had been rebuilt out of deep hits.
     ordered = [_chunk(f"a-{rank}", 0.90 - rank / 100, rank, "a.pdf") for rank in range(4)]
     ordered += [_chunk(f"b-{rank}", 0.40 - rank / 100, 4 + rank, "b.pdf") for rank in range(4)]
-    capped = _apply_diversity_cap(ordered, top_k=6, max_per_document=2)
+    capped = apply_diversity_cap(ordered, top_k=6, max_per_document=2)
     positions = [ordered.index(chunk) for chunk in capped]
     assert positions == sorted(positions), "the returned slate must be a subsequence of the fused order"
 
@@ -172,14 +172,14 @@ def test_the_diversity_cap_never_returns_a_worse_slate_than_plain_top_k_when_doc
         _chunk(f"{name}-{i}", 0.39, 8 + offset, f"{name}.pdf")
         for offset, (name, i) in enumerate([("b", 0), ("b", 1), ("c", 0), ("c", 1)])
     ]
-    capped = _apply_diversity_cap(on_topic + off_topic, top_k=12, max_per_document=2)
+    capped = apply_diversity_cap(on_topic + off_topic, top_k=12, max_per_document=2)
     # What a later `[:8]` trim sees must still be the on-topic document.
     assert [chunk.chunk_id for chunk in capped[:8]] == [chunk.chunk_id for chunk in on_topic]
 
 
 def test_a_single_collection_with_the_cap_disabled_is_plain_top_k() -> None:
     chunks = [_chunk(f"a-{rank}", 0.90 - rank / 100, rank, "a.pdf") for rank in range(5)]
-    merged = _merge_results([_result(chunks)], query="q", top_k=3, backend_name="llamaindex", max_per_document=0)
+    merged = merge_results([_result(chunks)], query="q", top_k=3, backend_name="llamaindex", max_per_document=0)
     assert _ids(merged) == ["a-0", "a-1", "a-2"]
 
 

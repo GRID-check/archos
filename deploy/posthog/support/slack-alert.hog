@@ -1,5 +1,5 @@
 // Posts Piloti product feedback to Slack.
-// Fed by the BFF's server events (frontends/ui/src/lib/product-feedback/service.ts):
+// Fed by the BFF's server events (apps/workspace/bff/product-feedback/service.ts):
 //   product_feedback_ticket_opened  -> a new alert, per kind, with a claim button
 //   product_feedback_reply_sent     -> a reply in the alert's thread
 // Both carry app_host, the deployment the report lives in: staging and production

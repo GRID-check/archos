@@ -18,11 +18,11 @@ build/
 # Generated / vendored code
 **/generated.ts
 **/*.generated.*
-**/drizzle/**
+**/migrations/**
 **/migrations/**
 **/__mocks__/**
 **/mocks/**
-shared/cards/schemas.json
+contracts/cards/schemas.json
 
 # Non-source assets and data
 data/
@@ -36,3 +36,5 @@ docs/
 **/*.spec.tsx
 **/test_*.py
 **/conftest.py
+# The test-support packages (`<package>_testing`, ADR-0145 row 5); never in an image.
+**/testing/*_testing/**

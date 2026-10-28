@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0041: Row-level security as the last line of tenant isolation
 
-- **Status:** Accepted
 - **Date:** 2026-08-04
 - **Deciders:** Platform / backend
 - **Related:** ADR-0004 (tenancy, ownership and access model), ADR-0017 (BFF repository/service architecture), ADR-0038 (one authorization catalog and decision point), [`../database/row-level-security.md`](../database/row-level-security.md)
@@ -70,7 +73,7 @@ the whole security argument:
 NULL when unset and `organization_id = NULL` is not TRUE, so a query with no
 context matches no rows — fail-closed by default rather than by remembering.
 Migration `0031_row_level_security.sql` puts all 28 tables inside the boundary
-through a `grid_secure_table(table, predicate)` helper, so joining the boundary
+through a `secure_table(table, predicate)` helper, so joining the boundary
 is one line stating the tenancy rule.
 
 **The context comes from `getGridSession()`.** It is the one funnel every

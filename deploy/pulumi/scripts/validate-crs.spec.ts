@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "../src/config";
+import { loadConfig } from '../src/config'
 import { KEDA_CHART_VERSION } from "../src/platform/keda";
 import { installIngestWorker } from "../src/app/ingest-worker";
 import { installJobsQueueAuth } from "../src/app/jobs-queue-auth";
@@ -264,7 +264,7 @@ describe("the deploy's CR schema validator", () => {
       urn: "urn:pulumi:test::grid-oib::kubernetes:postgresql.cnpg.io/v1:Database::database",
       inputs: {
         apiVersion: "postgresql.cnpg.io/v1", kind: "Database",
-        metadata: { name: "database" }, spec: { name: "aiq_jobs", cluster: { name: "grid-pg" } },
+        metadata: { name: "database" }, spec: { name: "jobs", cluster: { name: "grid-pg" } },
       },
     } }] };
     const result = run(plan);

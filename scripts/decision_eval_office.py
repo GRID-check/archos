@@ -26,7 +26,7 @@ office's experience (ADR-0094, ADR-0096, docs/roadmap/office-experience.md):
     hand-labelled quotes.
 
 Every part reads fixtures that exist for their own sake: the precedent eval's
-fixture office (``frontends/ui/tests/fixtures/precedent/office.json``), its
+fixture office (``apps/workspace/tests/fixtures/precedent/office.json``), its
 catalog as the production renderer writes it (``rendered.json``) and its
 labelled questions (``tests/fixtures/precedent/precedent_questions.yaml``);
 the loop-eval questions (``tests/fixtures/derivation/loop_eval_questions.yaml``)
@@ -43,7 +43,7 @@ and chose the same corpus on every row.
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``). A few cents for every
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``). A few cents for every
 part together. It cannot run in CI for that reason alone.
 
 USAGE
@@ -72,9 +72,8 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(REPO_ROOT / "sources"))
 
-FIXTURES = REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = REPO_ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"
 NORM_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
 FINGERPRINT_QUOTES = REPO_ROOT / "tests" / "fixtures" / "decisions" / "fingerprint_quotes.yaml"
@@ -514,8 +513,8 @@ def main(argv: list[str] | None = None) -> int:
     unknown = [part for part in args.parts if part not in PARTS]
     if unknown:
         parser.error(f"unknown part(s): {', '.join(unknown)}")
-    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GRID_DECISIONS_API_KEY")):
-        print("decision_eval_office: set OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); nothing to measure.")
+    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("DECISIONS_API_KEY")):
+        print("decision_eval_office: set OPENROUTER_API_KEY (or DECISIONS_API_KEY); nothing to measure.")
         return 2
     results = asyncio.run(_run(list(args.parts or PARTS)))
     if args.out:

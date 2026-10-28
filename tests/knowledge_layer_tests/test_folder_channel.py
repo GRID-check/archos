@@ -2,7 +2,7 @@
 
 The store side (folder points never reach a chunk read; the folder query finds
 them; a restricted folder's card is invisible without its scope) runs on a real
-Qdrant in ``sources/knowledge_layer/tests/test_qdrant_scope_kind.py``. Here the
+Qdrant in ``packages/knowledge-layer/tests/test_qdrant_scope_kind.py``. Here the
 tool: the lines it prints, that they are no citation, when the channel asks at
 all, and that it never costs the search its answer.
 """
@@ -12,6 +12,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer import folder_channel
+from knowledge_layer.qdrant.folders import FolderHit
+from knowledge_layer.qdrant.folders import render_folder_hits
+from knowledge_layer.register import KnowledgeRetrievalConfig
+from knowledge_layer.register import knowledge_retrieval
 
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
@@ -23,11 +28,6 @@ from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src import folder_channel
-from sources.knowledge_layer.src.qdrant.folders import FolderHit
-from sources.knowledge_layer.src.qdrant.folders import render_folder_hits
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
-from sources.knowledge_layer.src.register import knowledge_retrieval
 
 PROJECT = "proj_1"
 BASE = "oib_knowledge"
@@ -39,8 +39,8 @@ class TestTheLines:
         text = render_folder_hits([HIT], "Grundriss EG")
 
         assert "Folder: Einreichung/Pläne — Einreichpläne Index C, Grundrisse und Schnitte." in text
-        assert 'list_files(folder="Einreichung/Pläne", view="tree")' in text
-        assert 'knowledge_search(query="Grundriss EG", folder="Einreichung/Pläne")' in text
+        # A fact, no tool: three agents with different tools read it (ADR-0133 slice 6).
+        assert 'list Einreichung/Pläne or search inside it ("Grundriss EG")' in text
         assert "not a source" in text
 
     def test_a_stale_card_says_so_and_a_long_abstract_is_cut(self):
@@ -85,7 +85,7 @@ def channel(monkeypatch):
     """A project and the base corpus in scope, one passage, and the channel's store read stood in for."""
     monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
     monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-    monkeypatch.setattr("sources.knowledge_layer.src.register._initialize_ingestor", lambda config, llm: None)
+    monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
     monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", lambda collection: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
         monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
@@ -101,7 +101,7 @@ def channel(monkeypatch):
         ]
     )
     retriever = _Retriever([_chunk("Grundriss_EG.pdf")])
-    monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: retriever)
+    monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
     from aiq_agent.knowledge.folder_cards import gate
 
     gate.forget()
@@ -176,7 +176,7 @@ class TestThroughTheTool:
         assert "Folder:" not in out
 
     async def test_an_empty_search_still_points_at_the_folder(self, channel, monkeypatch):
-        monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: _Retriever([]))
+        monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: _Retriever([]))
 
         out = await _search(query="Grundriss EG")
 

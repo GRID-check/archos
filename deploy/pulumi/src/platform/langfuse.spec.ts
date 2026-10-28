@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
 import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
@@ -560,6 +560,8 @@ describe("with the Langfuse tier enabled", () => {
     const BACKEND_TIERS: Array<[string, string]> = [
       ["aiq-agent", "kubernetes:apps/v1:StatefulSet"],
       ["aiq-api", "kubernetes:apps/v1:Deployment"],
+      ["chat", "kubernetes:apps/v1:StatefulSet"],
+      ["api", "kubernetes:apps/v1:Deployment"],
       ["agent-worker", "kubernetes:apps/v1:Deployment"],
     ];
 
@@ -579,13 +581,13 @@ describe("with the Langfuse tier enabled", () => {
       expect(Object.keys(env).filter((k) => k.startsWith("LANGFUSE_"))).toEqual([]);
     });
 
-    it("lets exactly the three key-holding backend roles reach the web tier", async () => {
+    it("lets exactly the three key-holding backend roles reach the web tier, chat and api under both names", async () => {
       const spec = (await resolve(
         find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-backend-to-langfuse").inputs.spec,
       )) as any;
 
       expect(spec.podSelector.matchLabels["app.kubernetes.io/name"]).toBe("langfuse-web");
-      expect(callers(spec)).toEqual(["agent-worker", "aiq-agent", "aiq-api"]);
+      expect(callers(spec)).toEqual(["agent-worker", "aiq-agent", "aiq-api", "api", "chat"]);
       expect(spec.ingress[0].ports).toEqual([{ protocol: "TCP", port: 3000 }]);
     });
 
@@ -624,7 +626,7 @@ describe("with the Langfuse tier enabled", () => {
       spec.template.spec.containers[0].env.map((e: any) => [e.name, e.value ?? e.valueFrom]),
     );
 
-    expect(env.GRID_TRACE_IDENTITY_ATTRIBUTES).toBe("true");
+    expect(env.TRACE_IDENTITY_ATTRIBUTES).toBe("true");
   });
 });
 

@@ -3,7 +3,7 @@
 The export behind **Plattform → Antwortqualität → Bewertungen → Exportieren…**:
 the votes the ratings tab shows, with the turn each one rated, as an Excel
 workbook for a person or a CSV for a script. The column list is defined once in
-`frontends/ui/src/lib/feedback/export-columns.ts`; both formats and the
+`apps/workspace/bff/feedback/export-columns.ts`; both formats and the
 workbook's own data dictionary are rendered from it. The key tables below
 must list the same keys in the same order. `export-columns.spec.ts` fails
 when they disagree.

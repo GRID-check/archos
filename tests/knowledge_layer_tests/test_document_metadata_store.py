@@ -142,6 +142,9 @@ class TestAvailableDocument:
             "revision_suggestion": None,
             "revision_facts": None,
             "page_count": None,
+            "dossier": None,
+            "doc_references": None,
+            "coverage": None,
             "change_summary": None,
             "change_basis": None,
             "added_at": None,
@@ -167,6 +170,9 @@ class TestAvailableDocument:
             "revision_suggestion": None,
             "revision_facts": None,
             "page_count": None,
+            "dossier": None,
+            "doc_references": None,
+            "coverage": None,
             "change_summary": None,
             "change_basis": None,
             "added_at": None,
@@ -901,7 +907,7 @@ class TestReSummarisingKeepsTheHumanColumns:
     rename, the platform owner's reclassification, and (once folders travelled)
     the user's filing. Postgres, on its `ON CONFLICT DO UPDATE` branch, kept all
     three. Same store, same call, two different outcomes, and the SQLite one is
-    what the default `AIQ_SUMMARY_DB` uses.
+    what the default `SUMMARY_DB` uses.
     """
 
     @pytest.fixture
@@ -1494,6 +1500,24 @@ class TestTopicsAndCapture:
     def test_register_without_topics_is_none_not_empty(self, store):
         store.register("coll", "plan.pdf", "A plan.")
         assert store.get_all("coll")[0].topics is None
+
+    def test_the_reading_is_written_together_and_read_back(self, store):
+        store.register("coll", "bsk.pdf", "Ein Brandschutzkonzept.")
+        dossier = {"version": 1, "document_type": "fire_safety_concept", "facts": []}
+        references = [{"kind": "norm", "key": "trvb 124 f", "label": "TRVB 124 F", "pages": [2]}]
+        coverage = {"pages": 4, "not_read": 0, "reasons": {}}
+
+        assert store.set_reading("coll", "bsk.pdf", dossier=dossier, references=references, coverage=coverage)
+        doc = store.get_all("coll")[0]
+        assert (doc.dossier, doc.doc_references, doc.coverage) == (dossier, references, coverage)
+
+        # A re-ingest that read nothing of the kind clears the old reading.
+        store.set_reading("coll", "bsk.pdf", dossier=None, references=[], coverage=None)
+        doc = store.get_all("coll")[0]
+        assert (doc.dossier, doc.doc_references, doc.coverage) == (None, None, None)
+
+    def test_a_reading_for_a_document_without_a_row_is_refused(self, store):
+        assert store.set_reading("coll", "ghost.pdf", dossier={"version": 1}, references=None, coverage=None) is False
 
     async def test_get_all_async_decodes_topics_and_capture(self, store):
         store.register("acoll", "plan.pdf", "A plan.", topics=["Attika"])

@@ -38,18 +38,24 @@ SCHEMA = {tool["name"]: tool for tool in json.loads(files_eval.TOOL_SCHEMA.read_
 
 def _canvas_members() -> set[str]:
     """The canvas group's members, as the model sees them (``canvas__point``), read off its DESCRIPTIONS."""
-    source = (REPO_ROOT / "src/aiq_agent/tools/canvas/register.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "packages/agent/src/aiq_agent/tools/canvas/register.py").read_text(encoding="utf-8")
     block = source.split("DESCRIPTIONS = {", 1)[1].split("\n}\n", 1)[0]
     return {f"canvas__{name}" for name in re.findall(r'^    "([a-z_]+)": \(', block, re.MULTILINE)}
 
 
 def _file_change_operations() -> set[str]:
-    source = (REPO_ROOT / "src/aiq_agent/tools/files/register.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "packages/agent/src/aiq_agent/tools/files/register.py").read_text(encoding="utf-8")
     return set(ast.literal_eval(re.search(r"^_OPERATIONS = (\(.*?\))", source, re.MULTILINE).group(1)))
 
 
+#: The estate's readers, built per turn rather than listed in the config (ADR-0133).
+ESTATE_TOOLS = {"ls", "glob", "grep", "read_file"}
+#: Spellings Piloti's chat no longer binds that a row may still name: `files_eval.aliases` counts the
+#: filesystem call that replaced one under its old name, so the parent-commit baseline and a run on this
+#: commit are matched by the same rows.
+ALIASED = {"read_passage"}
 #: Every name the model can call today: the configured tools, the canvas group spelled out, and `look`.
-TOOLS = {*files_eval.configured_tools(), *_canvas_members(), "look"} - {"canvas"}
+TOOLS = {*files_eval.configured_tools(), *_canvas_members(), "look", *ESTATE_TOOLS, *ALIASED} - {"canvas"}
 
 
 def _tool_items(row: dict) -> list:
@@ -313,7 +319,7 @@ class TestTheSuiteWiring:
         assert "Horizon, not run: ns-learn-office." in text
 
 
-CHECK_TS = REPO_ROOT / "frontends/ui/src/lib/document-check/check.ts"
+CHECK_TS = REPO_ROOT / "apps/workspace/bff/document-check/check.ts"
 
 
 def _check_instruction_lines() -> list[str]:

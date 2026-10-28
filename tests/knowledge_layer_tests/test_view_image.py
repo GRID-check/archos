@@ -10,21 +10,20 @@ import base64
 
 import knowledge_layer.llamaindex.adapter as llm_adapter
 import pytest
-
-from sources.knowledge_layer.src.view_image import ViewLimits
-from sources.knowledge_layer.src.view_image import _find_pdf
-from sources.knowledge_layer.src.view_image import _is_enabled
-from sources.knowledge_layer.src.view_image import _is_standalone_image
-from sources.knowledge_layer.src.view_image import _normalize_image_to_jpeg
-from sources.knowledge_layer.src.view_image import _render_page
-from sources.knowledge_layer.src.view_image import _render_page_from_bytes
-from sources.knowledge_layer.src.view_image import view_image
+from knowledge_layer.view_image import ViewLimits
+from knowledge_layer.view_image import _find_pdf
+from knowledge_layer.view_image import _is_enabled
+from knowledge_layer.view_image import _is_standalone_image
+from knowledge_layer.view_image import _normalize_image_to_jpeg
+from knowledge_layer.view_image import _render_page
+from knowledge_layer.view_image import _render_page_from_bytes
+from knowledge_layer.view_image import view_image
 
 _JPEG_BYTES = b"\xff\xd8\xff\xe0test-jpeg-payload"
 
 
 def _patch_env(monkeypatch, *, enabled: bool = True, vlm_key: str = "sk-test") -> None:
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true" if enabled else "false")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true" if enabled else "false")
     monkeypatch.setattr(llm_adapter, "_get_vlm_api_key", lambda: vlm_key)
 
 
@@ -50,20 +49,20 @@ async def _invoke(
         def _boom(*_args, **_kwargs):
             raise render_raises
 
-        monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page", _boom)
-        monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page_from_bytes", _boom)
+        monkeypatch.setattr("knowledge_layer.view_image._render_page", _boom)
+        monkeypatch.setattr("knowledge_layer.view_image._render_page_from_bytes", _boom)
     else:
         monkeypatch.setattr(
-            "sources.knowledge_layer.src.view_image._render_page",
+            "knowledge_layer.view_image._render_page",
             lambda _pdf_path, _page_number, _max_dim: render_result,
         )
         monkeypatch.setattr(
-            "sources.knowledge_layer.src.view_image._render_page_from_bytes",
+            "knowledge_layer.view_image._render_page_from_bytes",
             lambda _pdf_bytes, _page_number, _max_dim: render_result,
         )
 
     monkeypatch.setattr(
-        "sources.knowledge_layer.src.view_image._find_pdf",
+        "knowledge_layer.view_image._find_pdf",
         lambda _name: pdf_path,
     )
 
@@ -126,14 +125,14 @@ async def test_no_vlm_key_returns_text_only(monkeypatch, tmp_path) -> None:
 
 
 def test_is_enabled_respects_flag(monkeypatch) -> None:
-    monkeypatch.delenv("AIQ_VIEW_IMAGES_ENABLED", raising=False)
+    monkeypatch.delenv("VIEW_IMAGES_ENABLED", raising=False)
     assert _is_enabled() is True
 
     for off in ("0", "false", "no", "off", "OFF"):
-        monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", off)
+        monkeypatch.setenv("VIEW_IMAGES_ENABLED", off)
         assert _is_enabled() is False
 
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true")
     assert _is_enabled() is True
 
 
@@ -335,13 +334,13 @@ def _patch_seaweed_chain(
 
     _patch_seaweed_chain.seen = []
 
-    monkeypatch.setattr("sources.knowledge_layer.src.view_image._resolve_storage_location", _resolve)
+    monkeypatch.setattr("knowledge_layer.view_image._resolve_storage_location", _resolve)
     monkeypatch.setattr(
-        "sources.knowledge_layer.src.view_image._fetch_seaweed_bytes",
+        "knowledge_layer.view_image._fetch_seaweed_bytes",
         lambda _key, _bucket=None: fetched,
     )
     monkeypatch.setattr(
-        "sources.knowledge_layer.src.view_image._normalize_image_to_jpeg",
+        "knowledge_layer.view_image._normalize_image_to_jpeg",
         lambda _bytes, _max_dim: normalized,
     )
 
@@ -415,12 +414,11 @@ async def test_project_pdf_fetch_failure_returns_text_only(monkeypatch, tmp_path
 @pytest.mark.asyncio
 async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
     import httpx
-
-    from sources.knowledge_layer.src.view_image import _resolve_storage_location as _resolve_storage_key
+    from knowledge_layer.view_image import _resolve_storage_location as _resolve_storage_key
 
     # Unconfigured env -> None without any HTTP call.
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     assert await _resolve_storage_key("proj_1", "plan.png") is None
 
     class _Response:
@@ -451,7 +449,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
             return self.response
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
 
     assert await _resolve_storage_key("proj_1", "plan.png") == ("org/o1/k.png", None)
@@ -498,8 +496,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
 
 def test_fetch_seaweed_bytes_fail_open(monkeypatch) -> None:
     import boto3
-
-    from sources.knowledge_layer.src.view_image import _fetch_seaweed_bytes
+    from knowledge_layer.view_image import _fetch_seaweed_bytes
 
     for env in ("SEAWEED_ENDPOINT", "SEAWEED_ACCESS_KEY", "SEAWEED_SECRET_KEY", "SEAWEED_BUCKET"):
         monkeypatch.delenv(env, raising=False)
@@ -603,9 +600,9 @@ async def test_per_turn_cap_stops_the_tool_before_any_work(monkeypatch, tmp_path
     try:
         for _ in range(2):
             result = await _invoke(monkeypatch, tmp_path, pdf_path="x.pdf")
-            monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page", _counting_render)
+            monkeypatch.setattr("knowledge_layer.view_image._render_page", _counting_render)
             assert isinstance(result, list)
-        monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page", _counting_render)
+        monkeypatch.setattr("knowledge_layer.view_image._render_page", _counting_render)
         capped = await _invoke(monkeypatch, tmp_path, pdf_path="x.pdf")
     finally:
         end_image_view_budget(token)

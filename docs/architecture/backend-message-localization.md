@@ -16,9 +16,9 @@ strings are emitted verbatim by backend code and are always English:
 
 | String | Source |
 | --- | --- |
-| Budget exhausted (`BudgetExceededError` default message) | `src/aiq_agent/common/cost_tracking.py` (~L82-88), turned into the refused turn's response by `src/aiq_agent/turn/admission.py` |
-| Job-cap / admission messages (`JobAdmissionError`) | `frontends/aiq_api/src/aiq_api/jobs/submit.py` (~L61-89) |
-| "No response generated." | `src/aiq_agent/turn/response.py` (`NO_RESPONSE_TEXT`) |
+| Budget exhausted (`BudgetExceededError` default message) | `packages/agent/src/aiq_agent/common/cost_tracking.py` (~L82-88), turned into the refused turn's response by `packages/agent/src/aiq_agent/turn/admission.py` |
+| Job-cap / admission messages (`JobAdmissionError`) | `apps/backend/src/aiq_api/jobs/submit.py` (~L61-89) |
+| "No response generated." | `packages/agent/src/aiq_agent/turn/response.py` (`NO_RESPONSE_TEXT`) |
 
 These reach the user directly, without passing through any LLM, so no prompt
 change can localize them.
@@ -28,7 +28,7 @@ change can localize them.
 Localization must be driven by a **per-request locale signal**. Investigation
 found that **no locale/language signal currently reaches the backend**:
 
-- The gateway (`frontends/ui/server.js`) injects a fixed set of headers at the
+- The gateway (`apps/workspace/server.js`) injects a fixed set of headers at the
   WebSocket upgrade: `x-grid-collection-scope`, `x-grid-organization-id`,
   `x-grid-user-id`, `authorization`, `x-grid-project-context`,
   `x-grid-project-id`, `x-grid-project-memory`,
@@ -39,10 +39,10 @@ found that **no locale/language signal currently reaches the backend**:
   (TypeScript) route/BFF layer. There is no `locale` field in that payload
   today, and that layer is owned by other concurrent workstreams.
 - The backend reads these headers via `Context.get().metadata.headers.get(...)`
-  (see `src/aiq_agent/project_context.py`, `cost_tracking.py`). There is no
-  locale parsing anywhere in `src/aiq_agent` or `frontends/aiq_api`.
+  (see `packages/agent/src/aiq_agent/project_context.py`, `cost_tracking.py`). There is no
+  locale parsing anywhere in `packages/agent/src/aiq_agent` or `apps/backend`.
 - The async-job path (deep research) does **not** transparently forward
-  request headers. `frontends/aiq_api/src/aiq_api/jobs/runner.py` manually
+  request headers. `apps/backend/src/aiq_api/jobs/agent_job_setup.py` manually
   re-threads a **whitelist** of headers onto the reconstructed request
   (collection scope, project context, model overrides, budget). A new locale
   header would have to be added to that whitelist too, or async-job bubbles
@@ -69,21 +69,21 @@ decision rather than implemented ad hoc.
    stable, explicit product setting.
 2. **Inject at the gateway.** Add `locale` to the `result.data` payload
    produced by the BFF (`fetchCollectionScopeHeader` and the async submit
-   path), then inject a single header in `frontends/ui/server.js` alongside
+   path), then inject a single header in `apps/workspace/server.js` alongside
    the existing ones:
    `req.headers['x-grid-locale'] = result.data.locale` (a short BCP-47 tag,
    e.g. `de`, `en`). Absent header ⇒ default to `en` (fail-open).
 3. **Thread through async jobs.** Add `x-grid-locale` to the header whitelist
-   reconstructed in `frontends/aiq_api/src/aiq_api/jobs/runner.py` so deep-
+   reconstructed in `apps/backend/src/aiq_api/jobs/agent_job_setup.py` (`_inject_scope_headers`) so deep-
    research/job bubbles localize consistently with chat.
 4. **Parse in one place.** Add a small helper next to the existing header
-   readers in `src/aiq_agent/project_context.py`, e.g.
+   readers in `packages/agent/src/aiq_agent/project_context.py`, e.g.
    `get_request_locale() -> str` returning a normalized 2-letter code with an
    `en` fallback. `submit.py` (which is upstream of the agent context) can read
    the header directly from its request.
 5. **Message-code table.** Replace the inline English literals above with a
    tiny message table keyed by message code and locale, e.g.
-   `src/aiq_agent/common/messages.py`:
+   `packages/agent/src/aiq_agent/common/messages.py`:
 
    ```python
    MESSAGES = {

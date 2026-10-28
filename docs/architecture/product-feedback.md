@@ -28,13 +28,13 @@ team answers in PostHog ──▶ PostHog workflow ──▶ POST /api/webhooks/
 
 | Step | Code |
 |---|---|
-| The form (a pane of the „Mein Feedback" modal), and its entry points (org header; the avatar menu's and phone „Mehr"'s „Mein Feedback") | `frontends/ui/src/features/product-feedback/components/feedback-form.tsx`, `feedback-threads.tsx`, `feedback-provider.tsx` |
-| Submit route, rate limited by `FEEDBACK_REPORT_LIMIT` (10 an hour per person) | `frontends/ui/src/app/api/feedback/reports/route.ts` |
-| Store, announce, open the ticket | `frontends/ui/src/lib/product-feedback/service.ts`, `announce.ts` |
-| The PostHog Support client (open, list, read, change status) | `frontends/ui/src/lib/posthog-support/client.ts`, `config.ts`, `types.ts` |
-| Table, bounds, RLS | `frontends/ui/drizzle/0100_product_feedback.sql`, `0155_product_feedback_posthog_ticket.sql` |
-| Platform routes (`platform:settings:view` to read, `:manage` to change status) | `frontends/ui/src/app/api/platform/feedback/` |
-| Platform page | `frontends/ui/src/features/product-feedback/components/feedback-triage.tsx` |
+| The form (a pane of the „Mein Feedback" modal), and its entry points (org header; the avatar menu's and phone „Mehr"'s „Mein Feedback") | `apps/workspace/ui/features/product-feedback/components/feedback-form.tsx`, `feedback-threads.tsx`, `feedback-provider.tsx` |
+| Submit route, rate limited by `FEEDBACK_REPORT_LIMIT` (10 an hour per person) | `apps/workspace/app/api/feedback/reports/route.ts` |
+| Store, announce, open the ticket | `apps/workspace/bff/product-feedback/service.ts`, `announce.ts` |
+| The PostHog Support client (open, list, read, change status) | `apps/workspace/bff/posthog-support/client.ts`, `config.ts`, `types.ts` |
+| Table, bounds, RLS | `apps/workspace/migrations/0100_product_feedback.sql`, `0155_product_feedback_posthog_ticket.sql` |
+| Platform routes (`platform:settings:view` to read, `:manage` to change status) | `apps/workspace/app/api/platform/feedback/` |
+| Platform page | `apps/workspace/ui/features/product-feedback/components/feedback-triage.tsx` |
 | The member's cases (list, chat, reply), and their routes | `features/product-feedback/components/feedback-threads.tsx`, `feedback-atoms.tsx`, `app/api/feedback/reports/route.ts` (GET), `app/api/feedback/reports/[reportId]/messages/route.ts` |
 | The office view (`org:settings:manage`) | `app/api/feedback/office-reports/route.ts`, `listOfficeProductFeedbackThreads` in `lib/product-feedback/service.ts` |
 | Taking a ticket from Slack | `app/api/platform/feedback/claim/route.ts`, `claimProductFeedbackTicket` in `lib/product-feedback/service.ts` |
@@ -48,7 +48,7 @@ platform page only when they ticked "you may contact me".
 Active members of the GRID Platform organization whose role holds
 `platform:settings:manage`. That is the same rule the storage alert uses: a
 permission, never a role name, and an unknown role holds nothing.
-Break-glass owners (`GRID_PLATFORM_OWNER_EMAILS`) are not members, so they are
+Break-glass owners (`PLATFORM_OWNER_EMAILS`) are not members, so they are
 not told. They still see every report on the page.
 
 Announcing fails open. The report is stored first, and a WorkOS failure while
@@ -317,7 +317,7 @@ destination's `assignee_names` map, else from the assignee's PostHog profile.
 
 ## No GitHub issues
 
-Bug reports used to be filed as GitHub issues too (`GRID_FEEDBACK_ISSUES_REPO`,
+Bug reports used to be filed as GitHub issues too (`FEEDBACK_ISSUES_REPO`,
 err2issue's token). That is gone: it was off in production, borrowed another
 tool's PAT, and the issue could not be traced back to the report. A bug keeps
 its Postgres record, the platform owners' inbox row and its Support ticket.
@@ -329,7 +329,7 @@ The announcement rows are written into the **platform organization**, because
 the reporter's tenant has no business holding the platform's mail. Platform
 owners mostly work inside some tenant organization, and the inbox used to list
 only the active organization's rows. So the inbox service reads in **lanes**
-(`frontends/ui/src/lib/inbox/service.ts`):
+(`apps/workspace/bff/inbox/service.ts`):
 
 - the tenant lane: the active organization, and the types `visibleInboxTypes`
   allows;
@@ -352,7 +352,7 @@ Every inbox type states its email default in the registry
   cancels the mail.
 
 `feedback.submitted` is `if-unread` after 0 minutes, so it is mailed as soon as
-a sender exists; `feedback.replied` is `never`, in-app and push only. **Nothing sends mail yet.** `frontends/ui/src/lib/inbox/delivery.ts`
+a sender exists; `feedback.replied` is `never`, in-app and push only. **Nothing sends mail yet.** `apps/workspace/bff/inbox/delivery.ts`
 is the tested contract a sender is built against. Its module comment lists the
 steps. The one to get right: the `emailed_at` column ships in the same
 migration as the sender. Added earlier, every existing row reads as "due,

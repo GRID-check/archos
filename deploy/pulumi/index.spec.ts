@@ -147,8 +147,8 @@ describe("the program constructs in the split topology", () => {
     for (const container of containers) {
       expect(container.volumeMounts ?? []).toEqual([]);
       const env = container.env ?? [];
-      expect(env.find((e) => e.name === "AIQ_QDRANT_URL")?.value).toBeDefined();
-      for (const gone of ["AIQ_CHROMA_DIR", "OIB_UPLOADS_DIR", "GRID_BASE_CORPUS_STORE"]) {
+      expect(env.find((e) => e.name === "QDRANT_URL")?.value).toBeDefined();
+      for (const gone of ["CHROMA_DIR", "OIB_UPLOADS_DIR", "BASE_CORPUS_STORE"]) {
         expect(env.find((e) => e.name === gone)).toBeUndefined();
       }
     }
@@ -167,10 +167,36 @@ describe("the program constructs in the split topology", () => {
     const role = (type: string, name: string) => {
       const spec = RESOURCES.find((r) => r.type === type && r.name === name)?.inputs.spec;
       const env = spec?.template?.spec.containers[0].env as Array<{ name: string; value?: string }> | undefined;
-      return env?.filter((e) => e.name === "GRID_ROLE").map((e) => e.value);
+      return env?.filter((e) => e.name === "PROCESS_ROLE").map((e) => e.value);
     };
     expect(role("kubernetes:apps/v1:StatefulSet", "aiq-agent")).toEqual(["chat"]);
     expect(role("kubernetes:apps/v1:Deployment", "aiq-api")).toEqual(["api"]);
+  });
+
+  it("runs chat and api under their new names beside the legacy ones, which callers still dial", () => {
+    // ADR-0145 row 10c, the expand step (`src/app/tier-names.ts`). The rename
+    // recreates each object, so the new ones come up beside the old, identical
+    // but for the name, and take no traffic until the switch.
+    expect(named("kubernetes:apps/v1:StatefulSet")).toEqual(expect.arrayContaining(["aiq-agent", "chat"]));
+    expect(named("kubernetes:apps/v1:Deployment")).toEqual(expect.arrayContaining(["aiq-api", "api"]));
+    expect(named("kubernetes:core/v1:Service")).toEqual(
+      expect.arrayContaining(["aiq-agent", "aiq-agent-headless", "aiq-api", "chat", "chat-headless", "api"]),
+    );
+    expect(named("kubernetes:autoscaling/v2:HorizontalPodAutoscaler")).toEqual(
+      expect.arrayContaining(["aiq-api", "api"]),
+    );
+
+    const envOf = (type: string, name: string) =>
+      RESOURCES.find((r) => r.type === type && r.name === name)?.inputs.spec?.template?.spec.containers[0].env;
+    expect(envOf("kubernetes:apps/v1:StatefulSet", "chat")).toEqual(envOf("kubernetes:apps/v1:StatefulSet", "aiq-agent"));
+    expect(envOf("kubernetes:apps/v1:Deployment", "api")).toEqual(envOf("kubernetes:apps/v1:Deployment", "aiq-api"));
+
+    const frontend = envOf("kubernetes:apps/v1:Deployment", "frontend") as Array<{ name: string; value?: string }>;
+    const valueIn = (name: string) => frontend.find((e) => e.name === name)?.value;
+    expect(valueIn("BACKEND_URL")).toBe("http://aiq-api:8000");
+    expect(valueIn("BACKEND_CHAT_URL")).toBe("http://aiq-agent:8000");
+    // The fleet's turn count would size both chat tiers: only the serving one scales on it.
+    expect(named("kubernetes:keda.sh/v1alpha1:ScaledObject")).not.toContain("chat");
   });
 
   it("gives every backend tier the frontend's WorkOS posture, with a client id to validate against", () => {
@@ -248,7 +274,7 @@ describe("the program constructs in the split topology", () => {
     const frontend = RESOURCES.find((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "frontend");
     const env = frontend?.inputs.spec?.template?.spec.containers[0].env ?? [];
     expect(env.length).toBeGreaterThan(0);
-    expect(env.map((e) => e.name)).not.toContain("GRID_GEOCODER_URL");
+    expect(env.map((e) => e.name)).not.toContain("GEOCODER_URL");
     expect(STACK.geocoderUrl).toBeDefined();
   });
 
@@ -317,9 +343,9 @@ describe("the program constructs in the split topology", () => {
     ]) {
       const env = RESOURCES.find((r) => r.type === type && r.name === name)?.inputs.spec?.template?.spec.containers[0].env;
       const names = (env ?? []).map((e) => e.name);
-      expect(names, name).toContain("AIQ_QDRANT_URL");
-      expect(names, name).toContain("AIQ_QDRANT_API_KEY");
-      expect(names.filter((n) => n.startsWith("AIQ_CHROMA") || n === "AIQ_VECTOR_BACKEND"), name).toEqual([]);
+      expect(names, name).toContain("QDRANT_URL");
+      expect(names, name).toContain("QDRANT_API_KEY");
+      expect(names.filter((n) => n.startsWith("CHROMA") || n === "VECTOR_BACKEND"), name).toEqual([]);
     }
   });
 

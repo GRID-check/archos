@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0039: Live shared turns and composing presence
 
-- **Status:** Accepted
 - **Date:** 2026-07-31
 - **Deciders:** Platform engineering
 - **Related:** ADR-0028 (conversation affinity / conversation bus), ADR-0033

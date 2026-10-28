@@ -103,8 +103,8 @@ An honest snapshot of what exists today.
   per‑session collection TTL‑reaped after 24h.
 - **No "project" concept** exists anywhere. **No object store** is wired (only an
   aspirational `image_storage_uri` schema field + transitive `boto3`).
-- **Postgres is wired** in `docker-compose` (`postgres:16-alpine`, DBs `aiq_jobs` +
-  `aiq_checkpoints`) but holds **no app/identity data**. No Alembic, no ORM models
+- **Postgres is wired** in `docker-compose` (`postgres:16-alpine`, DBs `jobs` +
+  `checkpoints`) but holds **no app/identity data**. No Alembic, no ORM models
   (SQLAlchemy Core + raw SQL).
 
 ### Already‑committed foundations to build on
@@ -116,8 +116,8 @@ An honest snapshot of what exists today.
   `project_collections`.
 - **TTL reaper** now deletes only `s_`‑prefixed (session) collections; base/project corpora
   persist.
-- **Cards are a single source of truth.** Pydantic models in `src/aiq_agent/cards/models.py`
-  are canonical → generate `shared/cards/schemas.json` → generate frontend Zod.
+- **Cards are a single source of truth.** Pydantic models in `packages/agent/src/aiq_agent/cards/models.py`
+  are canonical → generate `contracts/cards/schemas.json` → generate frontend Zod.
 
 These are **done** and form the foundation this spec builds on.
 
@@ -131,7 +131,7 @@ Three tiers plus an external identity provider.
 | --- | --- | --- |
 | **Next.js (UI + Application/BFF)** | Owns the WorkOS session, orgs/projects CRUD, document upload, conversation persistence, and the **collection‑naming / scoping policy**. Calls Postgres and SeaweedFS **directly**. Calls Python over HTTP/WS with a Bearer JWT + explicit context. | System of record (via Postgres/SeaweedFS) |
 | **Python AI‑Q agent** | Stateless inference + embedding microservice. Two contracts: `infer` and `ingest`. Receives user **context** for attribution/personalization but **trusts the caller** and is not the system of record. Writes vectors to Qdrant **only**. | Stateless |
-| **Data stores** | PostgreSQL server with `grid_app` (app/identity metadata), `aiq_jobs` (agent job metadata + summaries), and `aiq_checkpoints` (LangGraph checkpoints); SeaweedFS (document bytes); Qdrant (vectors). | Authoritative for app + agent data |
+| **Data stores** | PostgreSQL server with `app` (app/identity metadata), `jobs` (agent job metadata + summaries), and `checkpoints` (LangGraph checkpoints); SeaweedFS (document bytes); Qdrant (vectors). | Authoritative for app + agent data |
 | **WorkOS** | External identity provider. | Authoritative for identity |
 
 We chose **Option A** (Next.js as the application/BFF) over a separate dedicated app server,
@@ -164,7 +164,7 @@ flowchart LR
     UI["Next.js UI"]
     BFF["Next.js BFF<br/>(authz + scoping policy)"]
     PGApp[("PostgreSQL\ngrid_app")]
-    PGAgent[("PostgreSQL\naiq_jobs + aiq_checkpoints")]
+    PGAgent[("PostgreSQL\naiq_jobs + checkpoints")]
     Obj[("SeaweedFS")]
     Py["Python agent\n(stateless)"]
     Vec[("Qdrant")]
@@ -356,7 +356,7 @@ For a resource `R` and a request token `{ sub = user_id, org_id, role, permissio
 >
 > **Since ADR-0041 this is no longer only an application rule.** PostgreSQL
 > enforces the same predicate underneath, on every **tenant-scoped** table in
-> `grid_app`: the app connects as `grid_app_rw`, which is subject to a
+> `app`: the app connects as `app_rw`, which is subject to a
 > row-level-security policy per table, so a query over tenant data that loses
 > its `organization_id` filter returns **no rows** rather than another tenant's.
 > The application check remains — it produces the right *error* — but it is no
@@ -485,8 +485,8 @@ sequenceDiagram
 
 ## 8. Data Model
 
-App‑owned schema lives in the **`grid_app` database** on the same PostgreSQL server as the
-agent's existing `aiq_jobs` and `aiq_checkpoints` databases. The BFF owns `grid_app`; the
+App‑owned schema lives in the **`app` database** on the same PostgreSQL server as the
+agent's existing `jobs` and `checkpoints` databases. The BFF owns `app`; the
 Python agent continues to own its own databases.
 
 **WorkOS IDs are stored as opaque `text` FKs.** There is **no users table** and **no
@@ -646,9 +646,9 @@ erDiagram
 
 ## 9. Service Contracts
 
-A thin, explicit boundary. **BFF → Postgres (`grid_app`)** and **BFF → SeaweedFS** are **direct**;
+A thin, explicit boundary. **BFF → Postgres (`app`)** and **BFF → SeaweedFS** are **direct**;
 only **embedding / inference** goes to Python. The Python agent continues to own its existing
-`aiq_jobs` and `aiq_checkpoints` databases directly.
+`jobs` and `checkpoints` databases directly.
 
 ### BFF responsibilities
 
@@ -707,7 +707,7 @@ classDiagram
 flowchart LR
     BFF["Next.js BFF"]
     PGApp[("PostgreSQL\ngrid_app")]
-    PGAgent[("PostgreSQL\naiq_jobs + aiq_checkpoints")]
+    PGAgent[("PostgreSQL\naiq_jobs + checkpoints")]
     Obj[("SeaweedFS")]
     Py["Python agent"]
     Vec[("Qdrant")]
@@ -857,7 +857,7 @@ The authorization model above is now PERMISSION-driven. Full decision record:
 `docs/adr/0016-platform-tier-and-permission-registry.md`; provisioning state:
 `docs/deployment/workos-provisioning.md`. Summary:
 
-- **Registry**: `frontends/ui/src/lib/authz/permissions.ts` defines the
+- **Registry**: `apps/workspace/bff/authz/permissions.ts` defines the
   `org:*` and `platform:*` permission slugs (provisioned in WorkOS, delivered
   via the AuthKit JWT `permissions` claim). Routes/pages check permissions via
   granular helpers (`canManageModels`, `canManageBudgets`,
@@ -872,13 +872,13 @@ The authorization model above is now PERMISSION-driven. Full decision record:
   organizations — WorkOS itself enforces the exclusivity. Resolution
   (`lib/authz/platform.ts`): JWT claims when the platform org is active, a
   cached membership lookup cross-org, or the break-glass
-  `GRID_PLATFORM_OWNER_EMAILS` allowlist (bootstrap only). WorkOS cannot
+  `PLATFORM_OWNER_EMAILS` allowlist (bootstrap only). WorkOS cannot
   model a resource type above its Organization root (API-verified), which is
   why the tier is an organization, not an FGA type.
 - **Platform surface**: `/app/platform` + `GET /api/platform/overview`
   (cross-org directory + ledger spend), platform-org widget tokens via
   `/api/widgets/token?org=platform` (users-table scope only).
-- **Sign-up policy**: `GRID_DISABLE_SELF_SERVE_ORGS=true` turns the platform
+- **Sign-up policy**: `DISABLE_SELF_SERVE_ORGS=true` turns the platform
   invite-only at the org-creation layer; account-level sign-up control
   (allowSignUp, waitlist, domain auto-join) is native WorkOS configuration —
   see the provisioning runbook.

@@ -12,8 +12,8 @@
 >
 > The decision this produced:
 > [ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md).
-> Complements [`latency-and-caching-audit-2026-09.md`](latency-and-caching-audit-2026-09.md)
-> (what a reader waits for) and [`rag-system-audit-2026-08.md`](rag-system-audit-2026-08.md)
+> Complements [`docs/audit/latency-and-caching-audit-2026-09.md`](../audit/latency-and-caching-audit-2026-09.md)
+> (what a reader waits for) and [`docs/audit/rag-system-audit-2026-08.md`](../audit/rag-system-audit-2026-08.md)
 > (retrieval quality).
 
 ---
@@ -80,7 +80,7 @@ retune · **D** = defect.
 
 | # | Constraint | Where | Removes / prescribes | Class | Real fix | Status |
 |---|---|---|---|---|---|---|
-| 1 | RIS is three tools plus a prompt-taught sequence | `configs/config_oib_openrouter.yml`, `sources/ris_adapter/src/register.py`, `piloti.j2` | Model must spend 2–3 of 7 charged calls (catalog → search → fetch) to reach one citable §; the fetched blob is not a grounding block, so nothing downstream can resolve a § | **H** | `ris_lookup` — §3 below | **In this change** (the design in §3 is what is being built) |
+| 1 | RIS is three tools plus a prompt-taught sequence | `configs/config_oib_openrouter.yml`, `packages/ris-adapter/src/register.py`, `piloti.j2` | Model must spend 2–3 of 7 charged calls (catalog → search → fetch) to reach one citable §; the fetched blob is not a grounding block, so nothing downstream can resolve a § | **H** | `ris_lookup` — §3 below | **In this change** (the design in §3 is what is being built) |
 | 2 | Research budget is charged per **emitted call**, never refunded; forced synthesis at the ceiling | `max_tool_iterations: 7`; `agent.py`, `_SYNTHESIS_ANCHOR` | A parallel round of five costs five. Trace A truncated on a family overview | **H** (the ceiling is fine; the *unit* is the hobble) | Charge **rounds**, not calls; keep 7 as a round ceiling, add a token/wall-clock stop | **In this change** |
 | 3 | `reasoning_effort: low` on `research_llm` | `configs/…` | The one role that decides *what to retrieve* is the only role denied deliberation; `clarifier`, `deep_*`, `card` all get `medium` | **H** | `medium` on the research role; re-measure latency, which is what the comment actually argues about | **In this change** |
 | 4 | Web search returns 8 snippets, each truncated to 1 000 chars, and there is no web fetch | `configs/…` `max_results: 8`, `max_content_length: 1000` | Nothing quotable comes back, and the prompt has no "fetch the page" move to offer — the RIS advice ("prefer the fetched text over search snippets") has no web twin | **H** | `web_lookup(question, conclusion=)`: search → fetch top 2 → extract passages → same grounding block. §4 | **Open** — deliberately after RIS, so the eval delta stays attributable |
@@ -99,7 +99,7 @@ retune · **D** = defect.
 | 17 | Repair: 2 retrievals, 1 rewrite | `repair.py` | Bounds the post-verification repair | **B**, keep | None. This is the model of a good bound: it caps cost without prescribing the shape | **Keep**. *Since ADR-0067: `MAX_PATCHES = 3`, `PATCH_TIMEOUT_S = 8.0` (`quote_patch.py`), no retrieval.* |
 | 18 | `max_llm_turns: 10` is dead, and the config reasons from it | `configs/…`; `register.py` warns it is ignored; real limit `agent.py::_recursion_limit` | The config comment computes "well under `recursion_limit` 30 (`max_llm_turns * 2 + 10`)". The code gives **46**, from a different formula | **D** | Delete the key, fix the comment. A stale derivation in the one file people tune is how the next budget decision goes wrong | **In this change**, with row 2 |
 | 19 | `top_k: 16`, `max_chunks_per_document: 5`, `rerank_candidates: 60`, relevance floor | `configs/…`; ADR-0057/0058 | Retrieval-side bounds with measured derivations | **B**, keep | None | **Keep** |
-| 20 | `tool_search` off; `deferred_tool_loading` on with `min_intelligence_index: 50` | `configs/…`; `piloti/tool_search.py`; ADR-0048 | Both *add* capability or leave it untouched; the off switch is argued from measurement (71 % answering-tool recall) | **B/R**, keep | None. `tool_search.py` names the real constraint — "turns are the scarce resource" — which is row #2 | **Keep** |
+| 20 | `tool_search` off; `deferred_tool_loading` on with `min_intelligence_index: 50` | `configs/…`; `piloti/tool_search.py`; ADR-0048 | Both *add* capability or leave it untouched; the off switch is argued from measurement (71 % answering-tool recall) | **B/R**, keep | None. `tool_search.py` names the real constraint — "turns are the scarce resource" — which is row #2 | **Removed 2026-10-27; re-adding is a new implementation.** *Both were off in every shipped config; the code went with ADR-0048's supersession* |
 | 21 | Citation verification only ever removes; confidence capped without verified citations | `piloti.j2`; `piloti/grounding.py`; `piloti/AGENTS.md` "two currencies" | Catches a false claim **after** the fact | **R**, keep | None. This is the archetype of what must stay | **Keep**. *ADR-0125 changed the form, not the ratchet: a dropped pointer is labelled, and the cap is per sentence (§5)* |
 | 22 | `conclusion=` required on every retrieval call | `knowledge_layer/register.py`; `turn_status.py` | One sentence per call, deliberately unread by the tool | **R** (it is the Herleitung's evidence, and it is a *slot*, not a sequence) | Keep. Extend to `ris_lookup` | **Keep**, and extended in §3 |
 | 23 | The DYNAMIC half restates tool contracts and standing doctrine | `piloti.j2` below the boundary: `<entwuerfe>` 788 · `<aufraeumen>` 329 · `<delegieren>` 383 · `ris_catalog` 1 544 · `norm_doctrine` 788 · the three `project_context` explanations 718 | 7 724 tokens on a realistic turn, none of it cacheable, so every call of every turn pays all of it. Row 8's pattern, three more times: a bound tool's contract written out beside the tool that already states it | **H** | Each rule into the tool description that owns it; standing doctrine ABOVE the boundary, where identical bytes are cached; the catalog deleted, because `ris_lookup` resolves a pointer from the question | **Closed** — ADR-0060 amendment. 7 724 → 2 962; two sentences of rule survive (`<entwuerfe>`: the anaphora, and that filing needs a project) and per-turn FACTS are all that is left |
@@ -588,6 +588,7 @@ the one merge candidate on the horizon, and it can wait.
   is written down and each was measured.
 * **`deferred_tool_loading`** (ADR-0048) and the *off* switch on `tool_search`.
   Both add capability or decline to remove it, and both are argued from numbers.
+  *Removed 2026-10-27; re-adding is a new implementation (row 20).*
 * **The duplicate-fetch guard's intent** (`agent.py`) — a fetch whose signature
   already ran this turn buys the turn nothing. Only its *return* was wrong
   (row 15).

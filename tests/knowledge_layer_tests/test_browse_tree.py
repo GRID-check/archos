@@ -5,21 +5,21 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.browse import _LIST_FILES_DESCRIPTION
+from knowledge_layer.browse import MAX_TREE_CARDS
+from knowledge_layer.browse import ListFilesConfig
+from knowledge_layer.browse import file_rows
+from knowledge_layer.browse import folder_cards
+from knowledge_layer.browse import list_files
+from knowledge_layer.browse import render_listing
+from knowledge_layer.browse import render_tree
+from knowledge_layer.browse import select_files
+from knowledge_layer.register import KnowledgeRetrievalConfig
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.inventory import set_turn_documents
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.browse import _LIST_FILES_DESCRIPTION
-from sources.knowledge_layer.src.browse import MAX_TREE_CARDS
-from sources.knowledge_layer.src.browse import ListFilesConfig
-from sources.knowledge_layer.src.browse import file_rows
-from sources.knowledge_layer.src.browse import folder_cards
-from sources.knowledge_layer.src.browse import list_files
-from sources.knowledge_layer.src.browse import render_listing
-from sources.knowledge_layer.src.browse import render_tree
-from sources.knowledge_layer.src.browse import select_files
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
 
 def _doc(name: str, folder: str | None = None, **extra) -> AvailableDocument:
@@ -216,7 +216,7 @@ def test_the_listing_and_the_store_parse_a_page_count_alike(raw):
 
 
 def test_a_small_folder_names_its_files_and_a_large_one_says_it_does_not():
-    from sources.knowledge_layer.src.browse import MAX_CARD_FILES
+    from knowledge_layer.browse import MAX_CARD_FILES
 
     few = _cards([_doc("b.pdf", "E"), _doc("a.pdf", "E"), _doc("c.pdf", "E/P")])
     assert few["E"].files == ("a.pdf", "b.pdf")  # direct documents only, by name
@@ -227,7 +227,7 @@ def test_a_small_folder_names_its_files_and_a_large_one_says_it_does_not():
     assert many["E"].files == ()
     text = render_tree(list(many.values()), total_rows=MAX_CARD_FILES + 1)
     assert f"Files here: {MAX_CARD_FILES + 1}, too many to name" in text
-    assert 'list_files(folder="E")' in text
+    assert "a listing of the folder lists them" in text
 
 
 def test_newest_uses_the_documents_own_date_and_says_which_date_it_is():

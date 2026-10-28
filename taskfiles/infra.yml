@@ -1,12 +1,23 @@
 # Infra tier (deploy/pulumi).
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`infra:types`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`infra:types`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 
 tasks:
   # ── infra (deploy/pulumi) ───────────────────────────────────────────────────
+
+  infra:install:
+    desc: Install the Pulumi program's and its policy pack's dependencies (two lockfiles)
+    cmds:
+      # Two Node programs under deploy/pulumi, each with its own lockfile: the
+      # Pulumi program itself (which `infra:types` typechecks and `infra:test`
+      # runs) and the CrossGuard policy pack beside it. Installing only the
+      # policy pack left a fresh clone failing `infra:types`, because the
+      # program's own TypeScript and Vitest were never fetched.
+      - bun install --frozen-lockfile --cwd deploy/pulumi
+      - bun install --frozen-lockfile --cwd deploy/pulumi/policy
 
   infra:types:
     desc: Typecheck the Pulumi program and its policy pack

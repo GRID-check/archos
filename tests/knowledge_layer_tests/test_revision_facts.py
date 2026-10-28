@@ -20,6 +20,10 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from knowledge_layer.browse import file_row
+from knowledge_layer.browse import file_rows
+from knowledge_layer.browse import render_listing
+from knowledge_layer.browse import select_files
 from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex import revisions
 from knowledge_layer.llamaindex import visual_analysis as va
@@ -27,10 +31,6 @@ from knowledge_layer.llamaindex import visual_domains as vd
 
 from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
 from aiq_agent.knowledge.schema import AvailableDocument
-from sources.knowledge_layer.src.browse import file_row
-from sources.knowledge_layer.src.browse import file_rows
-from sources.knowledge_layer.src.browse import render_listing
-from sources.knowledge_layer.src.browse import select_files
 
 
 @pytest.fixture
@@ -625,11 +625,11 @@ class TestListFiles:
 # Wired into the ingest: the facts are stored beside the summary and decide the suggestion
 # ---------------------------------------------------------------------------
 
-from tests.knowledge_layer_tests.test_revision_ingestion import _documents  # noqa: E402
-from tests.knowledge_layer_tests.test_revision_ingestion import _ingest  # noqa: E402
-from tests.knowledge_layer_tests.test_revision_ingestion import live_ingestor  # noqa: E402, F401
-from tests.knowledge_layer_tests.test_revision_ingestion import model  # noqa: E402, F401
-from tests.knowledge_layer_tests.test_revision_ingestion import stores  # noqa: E402, F401
+from knowledge_layer_testing.revision_ingestion import _documents  # noqa: E402
+from knowledge_layer_testing.revision_ingestion import _ingest  # noqa: E402
+from knowledge_layer_testing.revision_ingestion import live_ingestor  # noqa: E402, F401
+from knowledge_layer_testing.revision_ingestion import model  # noqa: E402, F401
+from knowledge_layer_testing.revision_ingestion import stores  # noqa: E402, F401
 
 
 @pytest.fixture

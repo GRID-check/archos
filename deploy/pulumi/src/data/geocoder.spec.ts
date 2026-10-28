@@ -15,7 +15,7 @@ import { baseStackConfig } from "../test-support/stack-config";
  * project dialog's address search.
  *
  * What a green plan would hide here:
- *   - A frontend left without `GRID_GEOCODER_URL`, or pointed somewhere other
+ *   - A frontend left without `GEOCODER_URL`, or pointed somewhere other
  *     than the in-cluster Service, works: the dialog silently falls back to a
  *     plain text field, or sends every typed address out of the cluster.
  *   - A pod any workload may call, or one that may dial anything, holds every
@@ -99,7 +99,7 @@ describe("geocoder", () => {
     };
     env = appConfig.frontendEnv({ ...wiring, geocoderUrl: g.url });
     envDisabled = appConfig.frontendEnv(wiring);
-    bffJobsEnv = appConfig.bffJobsEnv({ ...wiring, geocoderUrl: g.url });
+    bffJobsEnv = (await import("../app/bff-jobs-env")).bffJobsEnv({ ...wiring, geocoderUrl: g.url });
     await new Promise((done) => g.service.id.apply(done));
   });
 
@@ -160,13 +160,13 @@ describe("geocoder", () => {
     const svc = await resolve(find("kubernetes:core/v1:Service", "geocoder").inputs.spec);
     expect(svc.ports[0].port).toBe(2322);
 
-    const url = env.find((e) => e.name === "GRID_GEOCODER_URL");
+    const url = env.find((e) => e.name === "GEOCODER_URL");
     expect(await resolve(url?.value)).toBe("http://geocoder:2322");
     // Off means absent: `/api/geocode` answers `enabled: false`.
-    expect(envDisabled.some((e) => e.name === "GRID_GEOCODER_URL")).toBe(false);
+    expect(envDisabled.some((e) => e.name === "GEOCODER_URL")).toBe(false);
     // The pool inherits the frontend's environment, but the policy below does
     // not admit it.
-    expect(bffJobsEnv.some((e) => e.name === "GRID_GEOCODER_URL")).toBe(false);
+    expect(bffJobsEnv.some((e) => e.name === "GEOCODER_URL")).toBe(false);
   });
 
   it("admits the frontend alone, and lets the pod out to DNS and HTTPS only", async () => {

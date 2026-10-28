@@ -19,24 +19,24 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.read_passage import LABEL_FILTERS
+from knowledge_layer.read_passage import RangeRefused
+from knowledge_layer.read_passage import ReadCursor
+from knowledge_layer.read_passage import ReadPassageConfig
+from knowledge_layer.read_passage import _chunk_position
+from knowledge_layer.read_passage import _parse_pages
+from knowledge_layer.read_passage import _range_order
+from knowledge_layer.read_passage import _without_overlap
+from knowledge_layer.read_passage import decode_cursor
+from knowledge_layer.read_passage import encode_cursor
+from knowledge_layer.read_passage import read_passage
+from knowledge_layer.register import KnowledgeRetrievalConfig
 
 from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import fetch_signature
+from aiq_agent.common.tool_calls import fetch_signature
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.read_passage import LABEL_FILTERS
-from sources.knowledge_layer.src.read_passage import RangeRefused
-from sources.knowledge_layer.src.read_passage import ReadCursor
-from sources.knowledge_layer.src.read_passage import ReadPassageConfig
-from sources.knowledge_layer.src.read_passage import _chunk_position
-from sources.knowledge_layer.src.read_passage import _parse_pages
-from sources.knowledge_layer.src.read_passage import _range_order
-from sources.knowledge_layer.src.read_passage import _without_overlap
-from sources.knowledge_layer.src.read_passage import decode_cursor
-from sources.knowledge_layer.src.read_passage import encode_cursor
-from sources.knowledge_layer.src.read_passage import read_passage
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
 REPORT = "Brandschutzkonzept.pdf"
 OTHER = "Gutachten.pdf"
@@ -180,6 +180,16 @@ class TestWithoutOverlap:
         assert trimmed[0].content == first.content
         assert trimmed[1].content == "Danach folgt der Rauchabzug."
         assert (trimmed[1].chunk_id, trimmed[1].page_number) == (second.chunk_id, second.page_number)
+
+    def test_a_section_chunk_is_cut_after_its_breadcrumb_and_keeps_it(self):
+        # Before: the repeat was looked for at the very head of the text, which is the breadcrumb,
+        # so the overlap of every section cut in two was read twice.
+        first = _chunk(2, 3, f"3 Decke\n\nEinleitung zur Decke. {SENTENCE}")
+        second = _chunk(3, 4, f"3 Decke\n\n{SENTENCE} Danach folgt die Bekleidung.")
+        for chunk, part in ((first, 1), (second, 2)):
+            chunk.metadata.update({"chunking": "section", "clause_path": "3 Decke", "section_part": part})
+
+        assert _without_overlap([first, second])[1].content == "3 Decke\n\nDanach folgt die Bekleidung."
 
     def test_whitespace_differences_do_not_hide_the_overlap(self):
         first = _chunk(4, 0, f"Anfang.\n{SENTENCE}")

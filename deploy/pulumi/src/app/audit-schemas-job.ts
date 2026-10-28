@@ -1,15 +1,17 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, frontendImage } from "../config";
+import { GridConfig } from '../config'
+import { appPullPolicy, frontendImage } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { JOB_DEFAULTS, LIGHT_WORKER_RESOURCES, UID } from "../constants";
 import { AppSecrets, AppWiring, auditSchemaEnv } from "./config";
+import { logicalName } from "../names";
 
 /**
  * Reconciles the WorkOS Audit Log schemas with the app's audit registry
- * (`frontends/ui/src/lib/audit/schemas.mjs`) once per deploy, from the frontend
+ * (`apps/workspace/bff/audit/schemas.mjs`) once per deploy, from the frontend
  * image.
  *
  * It is a deploy step because the failure it prevents is silent: an action the
@@ -19,7 +21,7 @@ import { AppSecrets, AppWiring, auditSchemaEnv } from "./config";
  * nine actions (issues #255/#256) stayed broken behind a manual "run this once
  * per environment" runbook step. Tying it to the deploy makes the environment
  * follow the code by construction, the same way the drizzle Job does for the
- * schema of grid_app.
+ * schema of `app`.
  *
  * The script reconciles (reads first, writes only what is missing or changed),
  * which is what makes per-deploy execution safe: an unchanged registry writes
@@ -53,7 +55,7 @@ import { AppSecrets, AppWiring, auditSchemaEnv } from "./config";
  * be revisited if a second throwing emitter appears. Compose and Coolify make
  * the opposite call for a stack-specific reason — there is no rolling update to
  * protect and WorkOS is already a hard dependency of those stacks (see
- * `deploy/compose/docker-compose*.yaml`, service `grid-audit-schemas`).
+ * `deploy/compose/docker-compose*.yaml`, service `audit-schemas`).
  *
  * Two knobs follow from the premise change rather than from taste:
  *   - `backoffLimit` (10) is what actually closes the window — the Job retries
@@ -76,14 +78,14 @@ export function reconcileAuditSchemas(
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   return new k8s.batch.v1.Job(
-    "grid-app-audit-schemas",
+    logicalName("grid-app-audit-schemas"),
     {
       metadata: { namespace: w.namespace },
       spec: {
         backoffLimit: JOB_DEFAULTS.backoffLimit,
         ttlSecondsAfterFinished: JOB_DEFAULTS.ttlSecondsAfterFinished,
         template: {
-          metadata: { labels: commonLabels("grid-app-audit-schemas") },
+          metadata: { labels: commonLabels(logicalName("grid-app-audit-schemas")) },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,

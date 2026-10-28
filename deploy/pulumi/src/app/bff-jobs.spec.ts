@@ -16,7 +16,7 @@ const read = (...parts: string[]) => readFileSync(join(repoRoot, ...parts), "utf
  *
  * It crosses three boundaries this program cannot see into, and each one plans
  * and applies clean when it drifts:
- *   - the runner reads its env (`frontends/ui/workers/jobs/index.js`), and a
+ *   - the runner reads its env (`apps/workspace/workers/jobs/index.js`), and a
  *     renamed knob leaves the pool on its defaults;
  *   - KEDA counts the queue's table, and a table or status that moves leaves
  *     the pool at its floor with work waiting (or up forever for dead rows);
@@ -85,7 +85,8 @@ describe("the bff-jobs pool", () => {
     });
     const { loadConfig } = await import("../config");
     const { installBffJobs } = await import("./bff-jobs");
-    const { buildSecrets, bffJobsEnv } = await import("./config");
+    const { buildSecrets } = await import("./config");
+    const { bffJobsEnv } = await import("./bff-jobs-env");
     const { installNetworkPolicies } = await import("../platform/network-policies");
     const cfg = loadConfig();
     drainSeconds = cfg.bffJobs.drainSeconds;
@@ -119,10 +120,10 @@ describe("the bff-jobs pool", () => {
     expect(pod.containers).toHaveLength(1);
     expect(pod.containers[0].command).toEqual(["node", "workers/jobs/index.js"]);
     // A path that moves leaves a pod that crash-loops with a green plan.
-    expect(existsSync(join(repoRoot, "frontends", "ui", "workers", "jobs", "index.js"))).toBe(true);
+    expect(existsSync(join(repoRoot, "apps", "workspace", "workers", "jobs", "index.js"))).toBe(true);
     // The image copies `workers/` whole; a second COPY line per file is how
     // `purger/` once shipped without a module it required.
-    expect(read("frontends", "ui", "deploy", "Dockerfile")).toMatch(/COPY .*\/app\/workers \.\/workers/);
+    expect(read("apps", "workspace", "deploy", "Dockerfile")).toMatch(/COPY .*\/app\/workers \.\/workers/);
     expect(pod.securityContext).toMatchObject({ runAsNonRoot: true });
     expect(RESOURCES.filter((r) => r.type === "kubernetes:core/v1:Service" && r.name === "bff-jobs")).toEqual([]);
   });
@@ -143,30 +144,40 @@ describe("the bff-jobs pool", () => {
     expect(spec.template.spec.containers[0].readinessProbe.httpGet.path).toBe("/api/healthz");
   });
 
-  it("emits only GRID_BFF_JOBS_ names the runner reads, and the ones it needs", async () => {
+  it("emits only BFF_JOBS_ names the runner reads, and the ones it needs", async () => {
     const readByRunner = new Set(
-      [...read("frontends", "ui", "workers", "jobs", "index.js").matchAll(/(GRID_BFF_JOBS_[A-Z_]+)/g)].map((m) => m[1]),
+      [...read("apps", "workspace", "workers", "jobs", "index.js").matchAll(/\b((?:GRID_)?BFF_JOBS_[A-Z_]+)/g)].map((m) => m[1]),
     );
-    const emitted = env.map((e) => e.name as string).filter((name) => name.startsWith("GRID_BFF_JOBS_"));
+    const emitted = env.map((e) => e.name as string).filter((name) => /^(GRID_)?BFF_JOBS_/.test(name));
 
     expect(emitted.length).toBeGreaterThan(2);
     expect(emitted.filter((name) => !readByRunner.has(name))).toEqual([]);
     // What the runner and the BFF in its pod cannot start without.
     const names = env.map((e) => e.name);
-    expect(names).toEqual(expect.arrayContaining(["GRID_APP_DATABASE_URL", "GRID_INTERNAL_API_TOKEN"]));
+    expect(names).toEqual(expect.arrayContaining(["APP_DATABASE_URL", "INTERNAL_API_TOKEN"]));
+  });
+
+  it("runs slices in a spawned BFF unless told otherwise, and refuses a mode the runner does not know", async () => {
+    const { bffJobsMode } = await import("../config");
+
+    expect(env.find((e) => e.name === "BFF_JOBS_MODE")?.value).toBe("http");
+    expect(bffJobsMode("inprocess")).toBe("inprocess");
+    expect(() => bffJobsMode("in-process")).toThrow(/bffJobsMode/);
+    // The runner's own list of modes is the one this mirrors.
+    expect(read("apps", "workspace", "workers", "jobs", "index.js")).toMatch(/const MODES = .*\['http', 'inprocess'\]/);
   });
 
   it("carries the Web Push key pair and contact: this pool is the one that sends (ADR-0112)", async () => {
     const names = env.map((e) => e.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        "GRID_WEB_PUSH_VAPID_PUBLIC_KEY",
-        "GRID_WEB_PUSH_VAPID_PRIVATE_KEY",
-        "GRID_WEB_PUSH_SUBJECT",
+        "WEB_PUSH_VAPID_PUBLIC_KEY",
+        "WEB_PUSH_VAPID_PRIVATE_KEY",
+        "WEB_PUSH_SUBJECT",
       ]),
     );
-    const privateKey = env.find((e) => e.name === "GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
-    expect(privateKey).toMatchObject({ valueFrom: { secretKeyRef: { key: "GRID_WEB_PUSH_VAPID_PRIVATE_KEY" } } });
+    const privateKey = env.find((e) => e.name === "WEB_PUSH_VAPID_PRIVATE_KEY");
+    expect(privateKey).toMatchObject({ valueFrom: { secretKeyRef: { key: "WEB_PUSH_VAPID_PRIVATE_KEY" } } });
   });
 
   it("names no variable twice, and logs under its own service name", async () => {
@@ -175,15 +186,15 @@ describe("the bff-jobs pool", () => {
     expect(names.filter((name, i) => names.indexOf(name) !== i)).toEqual([]);
     expect(env.find((e) => e.name === "OTEL_SERVICE_NAME")?.value).toBe("grid-bff-jobs");
     // Stopped after the runner has drained, so it needs no long WebSocket drain.
-    expect(env.find((e) => e.name === "GRID_SHUTDOWN_DRAIN_MS")?.value).toBe("5000");
+    expect(env.find((e) => e.name === "SHUTDOWN_DRAIN_MS")?.value).toBe("5000");
   });
 
   it("scales on the table the queue is written to, leaving dead rows out", () => {
-    const migration = read("frontends", "ui", "drizzle", "0104_bff_job_queue.sql");
+    const migration = read("apps", "workspace", "migrations", "0104_bff_job_queue.sql");
     const table = migration.match(/CREATE TABLE IF NOT EXISTS "([a-z_]+)"/)?.[1];
 
     expect(table).toBe("bff_job_queue");
-    expect(read("frontends", "ui", "workers", "job-queue.js")).toContain(`FROM ${table}`);
+    expect(read("apps", "workspace", "workers", "job-queue.js")).toContain(`FROM ${table}`);
     // The retired set is shared by every tier, so `cancelled` is named here too.
     // This queue never writes it, and the clause is true on either status.
     expect(BFF_QUEUE_DEPTH_QUERY).toBe(
@@ -233,9 +244,9 @@ describe("the bff-jobs pool", () => {
     ]);
     // Not the schema owner: the read-only login `queue-scaler-grants.ts` grants.
     expect(requests).toContainEqual(
-      expect.objectContaining({ db: "grid_app", clusterWide: true, as: expect.objectContaining({ user: "grid_keda_scaler" }) }),
+      expect.objectContaining({ db: "app", clusterWide: true, as: expect.objectContaining({ user: "keda_scaler" }) }),
     );
-    expect(requests.every((r) => r.as?.user === "grid_keda_scaler" && r.clusterWide === true)).toBe(true);
+    expect(requests.every((r) => r.as?.user === "keda_scaler" && r.clusterWide === true)).toBe(true);
   });
 
   it("lets KEDA reach Postgres even when the ingest tier is off", async () => {

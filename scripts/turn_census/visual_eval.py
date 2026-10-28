@@ -19,7 +19,7 @@ What it scores per run:
 - whether every look reached a card item and a step. That needs the look card and step of V3, so until
   they exist (``parity_available``) it is reported ``n/a`` rather than 0.
 
-``--look off`` runs the same rows with ``AIQ_VIEW_IMAGES_ENABLED=0``: the paired run that says what looking
+``--look off`` runs the same rows with ``VIEW_IMAGES_ENABLED=0``: the paired run that says what looking
 is worth. Then ``must: [look]`` and ``gold_covered`` are not asked (the tool answers "disabled"); the
 looks still count, as attempts.
 """
@@ -45,8 +45,8 @@ COVERAGE_MIN = 0.8
 BOXES = ("found", "given")
 CATEGORIES = ("dimension", "count", "plankopf", "legend", "fassung", "skip")
 #: Where the look card and step of V3 are declared; until both are, parity is not applicable.
-CARD_MODELS = ROOT / "src" / "aiq_agent" / "cards" / "models.py"
-WIRE_MODELS = ROOT / "src" / "aiq_agent" / "common" / "wire_v2.py"
+CARD_MODELS = ROOT / "packages" / "agent" / "src" / "aiq_agent" / "cards" / "look_card.py"
+WIRE_MODELS = ROOT / "packages" / "agent" / "src" / "aiq_agent" / "common" / "wire_v2.py"
 
 Box = tuple[float, float, float, float]
 WHOLE_PAGE: Box = (0.0, 0.0, 1.0, 1.0)
@@ -133,7 +133,7 @@ def _region(value: Any) -> Box:
     """A call's ``region`` as a box; no region, or one that is not four numbers, is the whole page."""
     try:
         x, y, w, h = (float(part) for part in value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return WHOLE_PAGE
     return (x, y, w, h)
 

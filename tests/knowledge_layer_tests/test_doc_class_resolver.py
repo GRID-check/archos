@@ -11,11 +11,12 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
+from knowledge_layer.search_results import format_results
+
 from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
 from aiq_agent.knowledge.factory import configure_summary_db
 from aiq_agent.knowledge.factory import register_summary
 from aiq_agent.knowledge.factory import set_document_doc_class
-from sources.knowledge_layer.src.register import _format_results
 
 
 def _chunk(*, file_name: str, collection: str, doc_class: str | None):
@@ -47,7 +48,7 @@ def test_stored_doc_class_wins_over_chunk_metadata():
             chunks=[_chunk(file_name="doc.pdf", collection="oib_knowledge", doc_class="oib_guide")],
             error_message=None,
         )
-        text = _format_results(result, "q")
+        text = format_results(result, "q")
 
         # The STORED class is what the LLM sees, not the chunk-metadata one.
         assert "Dokumentart: oib_guideline" in text
@@ -69,7 +70,7 @@ def test_falls_back_to_chunk_metadata_when_store_empty():
             chunks=[_chunk(file_name="orphan.pdf", collection="oib_knowledge", doc_class="oib_guide")],
             error_message=None,
         )
-        text = _format_results(result, "q")
+        text = format_results(result, "q")
 
         assert "Dokumentart: oib_guide" in text
         DocumentMetadataStore.dispose_engine(db_url)
@@ -92,7 +93,7 @@ def test_stored_display_title_is_the_source_label():
             chunks=[_chunk(file_name="oib-rl_2_ausgabe_mai_2023.pdf", collection="oib_knowledge", doc_class=None)],
             error_message=None,
         )
-        text = _format_results(result, "q")
+        text = format_results(result, "q")
 
         # The human name is the Source label; the raw filename only appears in the
         # machine Citation (needed for preview/identity), never as the Source.
@@ -114,7 +115,7 @@ def test_display_title_falls_back_to_derived_default():
             chunks=[_chunk(file_name="oib-rl_2_ausgabe_mai_2023.pdf", collection="oib_knowledge", doc_class=None)],
             error_message=None,
         )
-        text = _format_results(result, "q")
+        text = format_results(result, "q")
 
         assert "Source: OIB-Richtlinie 2, Ausgabe Mai 2023" in text
         DocumentMetadataStore.dispose_engine(db_url)
@@ -132,7 +133,7 @@ def test_non_oib_upload_keeps_its_filename_as_source():
             chunks=[_chunk(file_name="Brandschutzkonzept.pdf", collection="s_session", doc_class=None)],
             error_message=None,
         )
-        text = _format_results(result, "q")
+        text = format_results(result, "q")
 
         assert "Source: Brandschutzkonzept.pdf" in text
         DocumentMetadataStore.dispose_engine(db_url)

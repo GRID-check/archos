@@ -1,0 +1,134 @@
+/**
+ * @vitest-environment node
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import {
+  buildCollectionScopeFromRequest,
+  resolveActiveProjectId,
+} from '@/lib/retrieval-scope/collection-scope-request'
+import type { AuthorizedSession } from '@/lib/auth/types'
+
+vi.mock('@/lib/db', () => ({
+  getDb: vi.fn(),
+}))
+
+vi.mock('@/lib/authz/projects', () => ({
+  requireProjectAccess: vi.fn(),
+}))
+
+// Partial mock, not a replacement. This used to hand-reimplement
+// `computeCollectionScope` — including its own copy of the `s_` prefix rule —
+// which made it a fourth copy of the rule that has since been centralised as
+// `sessionCollectionName`, and left the module's other exports undefined the
+// moment one was added. Spying the real implementations keeps the call
+// assertions while making the double impossible to drift from the module.
+vi.mock('@/lib/retrieval-scope/collection-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/retrieval-scope/collection-scope')>()
+  return {
+    ...actual,
+    // NOTE: this fake omits the org-wide Archiv collection that the real
+    // `computeCollectionScope` injects, so the expectations below describe a
+    // scope narrower than production's. Left as-is deliberately — widening it
+    // rewrites what six tests assert, which is its own change — but it means
+    // these cases do not cover Archiv injection. `collection-scope.spec.ts`
+    // does.
+    computeCollectionScope: vi.fn((_session, ctx) => {
+      const scope: string[] = ['oib_knowledge']
+      if (ctx.projectId) scope.push(`proj_${ctx.projectId}`)
+      if (ctx.conversationId) scope.push(actual.sessionCollectionName(ctx.conversationId))
+      return scope
+    }),
+    buildCollectionScopeHeader: vi.fn(actual.buildCollectionScopeHeader),
+  }
+})
+
+import { getDb } from '@/lib/db'
+import { requireProjectAccess } from '@/lib/authz/projects'
+
+const mockGetDb = vi.mocked(getDb)
+const mockRequireProjectAccess = vi.mocked(requireProjectAccess)
+
+const baseSession: AuthorizedSession = {
+  userId: 'user_1',
+  email: 'a@b.com',
+  name: null,
+  accessToken: 'tok',
+  organizationId: 'org_1',
+  organizationMembershipId: 'om_1',
+  role: 'member',
+  permissions: [],
+  featureFlags: null,
+}
+
+function mockDbSelect(rows: Array<{ prefs: Record<string, unknown> }>) {
+  return {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve(rows)),
+        })),
+      })),
+    })),
+  }
+}
+
+describe('resolveActiveProjectId', () => {
+  it('returns explicit projectId when provided', async () => {
+    const result = await resolveActiveProjectId(baseSession, 'explicit')
+    expect(result).toBe('explicit')
+    expect(mockGetDb).not.toHaveBeenCalled()
+  })
+
+  it('returns active_project_id from user_preferences', async () => {
+    mockGetDb.mockReturnValue(mockDbSelect([{ prefs: { active_project_id: 'pref_1' } }]) as never)
+    const result = await resolveActiveProjectId(baseSession)
+    expect(result).toBe('pref_1')
+  })
+
+  it('returns undefined when no preference exists', async () => {
+    mockGetDb.mockReturnValue(mockDbSelect([]) as never)
+    const result = await resolveActiveProjectId(baseSession)
+    expect(result).toBeUndefined()
+  })
+})
+
+describe('buildCollectionScopeFromRequest', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('builds base-only scope for anonymous mode', async () => {
+    process.env.REQUIRE_AUTH = 'false'
+    const { scope } = await buildCollectionScopeFromRequest(null, {})
+    expect(scope).toEqual(['oib_knowledge'])
+    expect(mockRequireProjectAccess).not.toHaveBeenCalled()
+    delete process.env.REQUIRE_AUTH
+  })
+
+  it('authorizes project and includes proj_ corpus', async () => {
+    process.env.REQUIRE_AUTH = 'true'
+    mockRequireProjectAccess.mockResolvedValue({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
+    const { scope } = await buildCollectionScopeFromRequest(baseSession, {
+      projectId: 'proj_1',
+      conversationId: 'conv_1',
+    })
+    expect(scope).toEqual(['oib_knowledge', 'proj_proj_1', 's_conv_1'])
+    // The collection scope is what a chat request retrieves against, so reaching
+    // it requires `project:chat`, not `project:view` — a reader gets the
+    // project's documents through the documents API, not the agent.
+    expect(mockRequireProjectAccess).toHaveBeenCalledWith(baseSession, 'proj_1', [
+      'project:chat',
+      'project:edit',
+    ])
+    delete process.env.REQUIRE_AUTH
+  })
+
+  it('reads active project from preferences when no explicit id', async () => {
+    process.env.REQUIRE_AUTH = 'true'
+    mockGetDb.mockReturnValue(mockDbSelect([{ prefs: { active_project_id: 'pref_1' } }]) as never)
+    mockRequireProjectAccess.mockResolvedValue({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
+    const { scope } = await buildCollectionScopeFromRequest(baseSession, {})
+    expect(scope).toEqual(['oib_knowledge', 'proj_pref_1'])
+    delete process.env.REQUIRE_AUTH
+  })
+})

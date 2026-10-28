@@ -6,11 +6,11 @@ events (`RUN_STARTED` … `RUN_FINISHED`, AG-UI's names), the client sends four
 messages. The design, and why it replaced NAT's step stream, is
 [`design/chat-wire-v2.md`](../design/chat-wire-v2.md) (ADR-0068).
 
-**The contract is code, not this page.** `src/aiq_agent/common/wire_v2.py`
-(Pydantic) is the source. `shared/wire/v2.schema.json` is its JSON Schema,
-`frontends/ui/src/adapters/api/wire-v2.generated.ts` the Zod module generated
+**The contract is code, not this page.** `packages/agent/src/aiq_agent/common/wire_v2.py`
+(Pydantic) is the source. `contracts/wire/v2.schema.json` is its JSON Schema,
+`apps/workspace/ui/adapters/api/wire-v2.generated.ts` the Zod module generated
 from that (`npm run generate:wire`; the `wire-schemas` pre-commit hook fails a
-commit that leaves either stale), and `shared/wire/v2/*.jsonl` the recorded
+commit that leaves either stale), and `contracts/wire/v2/*.jsonl` the recorded
 turns both sides test against, byte for byte. When this page and the models
 disagree, the models are right and this page is a bug.
 
@@ -36,14 +36,14 @@ ws://<host>/websocket?v=2&projectId=<uuid>&conversationId=<session_id>
 - **The server speaks first: `hello`.** Once the version and the caller have
   passed, the first frame on every socket is
   `{"v":2,"type":"CUSTOM","name":"hello","ts":…,"value":{"build":"<sha>","accepts":["cancel_turn.shown","user_message.posthog_session_id","user_message.focus_region","user_message.reply_in_thread","user_message.trigger","user_message.if_idle","steer"]}}`
-  (`build` is `GRID_GIT_SHA`, or `unknown`, as `/health` has it). `accepts`
+  (`build` is `GIT_SHA`, or `unknown`, as `/health` has it). `accepts`
   names the optional client fields this server reads, as `<type>.<field>`, and
   the one optional message type, `steer`, by its bare name; the
   client sends such a field only to a server whose hello names it (see
   "Client → server" below). Free strings: a hello naming one this
   page does not know is still a hello. `accepts`, like
   `RUN_FINISHED.result.reasoning_effort`, is sent only while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is on, its default; `off` is the rollback
+  `WIRE_V2_ADDITIVE_FIELDS` is on, its default; `off` is the rollback
   ([chat-wire-v2.md](../design/chat-wire-v2.md#compatibility-additive-changes-are-safe)). It is the
   other half of the version gate: `4426` tells an old page it is old, `hello`
   tells a current page the server is current. A server that predates this wire
@@ -77,7 +77,7 @@ ws://<host>/websocket?v=2&projectId=<uuid>&conversationId=<session_id>
 
 ## Gateway Handling
 
-**File:** `frontends/ui/server.js`
+**File:** `apps/workspace/server.js`
 
 The `server.js` gateway handles WebSocket upgrade requests:
 
@@ -102,7 +102,7 @@ object, plus `federal_state` — a structured jurisdiction field with no
 individual-header equivalent — and `requester`, `{ name, email,
 organizationName }`: who `userId` is, which the agent's prompt names, signed
 from the session the envelope is minted for, live or pinned) and `X-Grid-Request-Context-Sig` (hex
-HMAC-SHA256 of the envelope's raw JSON, keyed on `GRID_INTERNAL_API_TOKEN`).
+HMAC-SHA256 of the envelope's raw JSON, keyed on `INTERNAL_API_TOKEN`).
 Legacy HTTP/job callers keep the **dual-write transition**: individual headers
 and the envelope are still sent together. Authenticated WebSocket handshakes
 instead omit `projectContext`, `projectMemory` and `orgInstructions` from both
@@ -110,7 +110,7 @@ carriers and sign `contextTransport: "bff"`. Remaining context headers have an
 encoded-byte budget so an oversized capsule is refused explicitly. The envelope is minted by
 every submission path (WS upgrade, the async-jobs REST proxy, the skill-run
 internal-submit path) via the shared builder
-(`frontends/ui/src/lib/request-context.ts`'s `buildGridRequestContextWireHeaders`,
+(`apps/workspace/bff/request-context.ts`'s `buildGridRequestContextWireHeaders`,
 duplicated with a pinning comment in `server.js` since it is plain CommonJS).
 
 For compact WebSocket mode, the agent calls `POST /api/internal/turn-context`
@@ -147,7 +147,7 @@ policy. Those routes are no longer mounted at all: this socket is the only way
 a turn runs (`aiq_api.plugin.AIQAPIConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
 internal-token-authenticated service calls.
 See `docs/architecture/backend-deep-dive.md` and
-`frontends/aiq_api/src/aiq_api/context_envelope.py`'s module docstring for the
+`apps/backend/src/aiq_api/context_envelope.py`'s module docstring for the
 full design.
 
 ### Environment Variables
@@ -228,7 +228,7 @@ carries a tool's input or output.**
 | `look` | `round?`, `document_name`, `document_id?`, `revision_id?`, `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`, shares of the page), `image_index?`, `where?`, `question?`, `reading?`: one look that rendered (ADR-0128), an address and never pixels |
 
 The UI stores a folded step in a compact form, `StoredThinkingStep`
-(`frontends/ui/src/lib/conversations/message-provenance.ts`): `id`,
+(`apps/workspace/bff/conversations/message-provenance.ts`): `id`,
 `userMessageId`, `timestamp`, `isComplete`, `kind`, `scope?`, and per kind
 `turnEvent?`, `traceLanes?`, `round?`, `tool?`, `skill?`, `slot?`, `detail?`. A
 `look` step keeps its address in `detail` (`document`, `page`, `x`/`y`/`w`/`h`, …).
@@ -256,15 +256,16 @@ narration.
 | `read_sources` | `Array<{ document_id?, citation_key?, file_name?, page?, collection?, shelf?, kind?, lane?, lane_label?, title?, url? }>` | Retrieved-but-uncited documents this turn: identity + placement, NO prose. Renders the collapsed "Gelesen, nicht zitiert" disclosure inside the answer details (muted document chips, capped at eight with an overflow count). Absent when everything retrieved was cited. |
 | `job_admission_rejected` | `boolean` (default `false`) | Marks the answer text as a queue-rejection notice (NOT a research answer). The client renders a warning banner (error code `research.queue_full`) and leaves the composer unlocked. |
 | `retry_after_seconds` | `number` | Only alongside `job_admission_rejected` — retry hint (seconds). |
-| `skills_activated` | `string[]` | Agent Skills whose full instructions were LOADED this turn — the ones the model pulled in with `use_skill`, in call order, deduped. Absent/empty on a turn that activated none. Rendered as a quiet "Skills used" disclosure under the answer; persisted into assistant-message metadata with the rest of the result. Availability is the constant, activation is the event — see `docs/architecture/agent-skills.md`. |
+| `skills_activated` | `string[]` | Agent Skills whose full instructions were LOADED this turn — the ones whose `SKILL.md` the model read with `read_file`, or whose pinned body the answer envelope named in `skills_applied`, in order, deduped. Absent/empty on a turn that activated none. Rendered as a quiet "Skills used" disclosure under the answer; persisted into assistant-message metadata with the rest of the result. Availability is the constant, activation is the event — see `docs/architecture/agent-skills.md`. |
 | `skills_hidden` | `string[]` | The subset of `skills_activated` the disclosure de-emphasises. |
 | `research_truncated` | `boolean` (default `false`) | The turn's research was cut off at its budget ceiling. The answer says so, and the mark is persisted so a reopened thread keeps saying it. |
 | `retrieval_ledger` | `RetrievalLedgerEntry[]` | The backend's own account of this turn's retrieval rounds: per announced round what it was asked (query, tools), what it returned, and which documents it did work on (`new_docs`); `hits`/`documents` are tallies over `docs`. Absent when no round was announced. One `docs` entry is one PASSAGE — a document (`name`, `title`, `shelf`) at a page or Punkt (`detail`) — carrying `repeat: boolean`: true when an earlier round already returned that exact (document, `detail`) pair, or when an earlier round OPENED that document with a locator tool (`read_passage`). A search that merely ranked a document does not make the later open of it a repeat. `new_docs` is the document-level derivation of the same marks: a document is listed when at least one of its passages here is not a repeat. `repeat` is absent on turns stored before the backend stamped it, and the renderer then falls back to `new_docs`. The Herleitung spine draws each round's fan from it, one card per document: the pages or Punkte that round reached, listed under the card, „bereits abgerufen" on the passages it fetched a second time, and an „Öffnen" step kind for a round that only opened passages. Persisted into message metadata/provenance so reloads read the same account. Nothing retrieves outside it: the answer repair corrects a quote against a passage already in this turn's registry and retrieves nothing (ADR-0067). |
 | `quote_stamps` | `Array<{ text, status: "verbatim" \| "not_found" \| "unchecked", number?, title?, file_name?, page?, punkt?, url? }>` | The server's check of each quote line `> „…“ [N]` of the answer, one entry per line in document order (`common/quote_stamps.py`), against the passages the prose's own quote check reads. `verbatim` names the passage that holds the wording and its `[N]` (absent when the passage was read, not cited); `not_found` means no retrieved passage holds it; `unchecked` means nothing to check against, or a span under 20 characters. `text` is the wording between the quote marks as the final text writes it. The excerpt renders „Wortlaut belegt [N]" and „Stelle öffnen" from it, never from the model. Absent when the answer quotes nothing. Persisted into message metadata under the same key. |
-| `claim_stamps` | `Array<{ text, provenance: "quoted" \| "cited" \| "cited_dropped" \| "record" \| "action" \| "measured" \| "observed" \| "reasoning" \| "model_knowledge", claim_type: "normative" \| "value" \| "descriptive", load_bearing, numbers?, operation?, unmatched? }>` | Where each sentence of the answer comes from, one entry per sentence in document order (`common/claim_provenance.py`, ADR-0125). `load_bearing` sentences are the ones the confidence is held to; `operation` names the workspace operation behind a `record` or `action`; `unmatched` lists numbers a `record` sentence states that no record held. The confidence chip explains its level as their mix. Persisted into message provenance as `claimStamps`. |
-| `answer_confidence_version` | `1 \| 2` | Which rule computed `answer_confidence`: `2` the per-sentence formula (ADR-0125). Absent on every turn stored before it, which renders under the answer-level floors it was computed with. |
+| `confidence_check` | `{ status: "judged" \| "unavailable", level?: "low" \| "medium" \| "high", findings?: Array<{ statement, problem: "unbacked" \| "contradicted", reason, source }> }` | What the answer check found (`common/claim_judge.py`, ADR-0139): one model call grading the final answer against everything the turn registered. `judged`: `answer_confidence` is its `level` under the quote gate, and `findings` (at most eight, absent when none) names the statements the answer relies on that the evidence does not back or contradicts, with the evidence label each was checked against (`none` when nothing addressed it). `unavailable`: the check could not run, `answer_confidence` is absent, and the chip says „Belegprüfung nicht verfügbar". Absent when the answer graded nothing. Persisted into message provenance as `confidenceCheck`. |
+| `claim_stamps` | `Array<{ text, provenance, claim_type, load_bearing, numbers?, operation?, unmatched? }>` | No longer sent. Turns stored under rule 2 (ADR-0125) carry it in their metadata, and the chip renders them with it as before. |
+| `answer_confidence_version` | `1 \| 2` | Which rule computed `answer_confidence`: `2` a checked answer (ADR-0139; told apart from a stored per-sentence turn of ADR-0125 by `confidence_check`), `1` the answer-level floors. Absent when no level is surfaced. |
 | `lookup_found_nothing` | `boolean` (default `false`) | A search ran and found nothing; the answer is shown with a note that it rests on general knowledge. A `ruling` in that case is refused instead. |
-| `reasoning_effort` | `"none" \| "minimal" \| "low" \| "medium" \| "high" \| "xhigh"` | The thinking level the answering call ran at, resolved server-side (`reasoning_settings.effort_of` on the turn's model: the asker's `user_message.reasoning_effort`, else the platform's level for the group, else the configured one). On a Stopped turn it is the level the asker stated. Not on the frame when `GRID_WIRE_V2_ADDITIVE_FIELDS` is set off, the rollback (the row keeps it). Absent when no answering call ran or the model sends no level. The client prefers it over the level it recorded when it asked, so an observer and a turn the asker never saw finish carry it too; "Gründlicher neu beantworten" steps up from it. Persisted into message metadata under the same key, restored as `provenance.reasoningEffort` (a `none` is not a dial level and is dropped there). |
+| `reasoning_effort` | `"none" \| "minimal" \| "low" \| "medium" \| "high" \| "xhigh"` | The thinking level the answering call ran at, resolved server-side (`reasoning_settings.effort_of` on the turn's model: the asker's `user_message.reasoning_effort`, else the platform's level for the group, else the configured one). On a Stopped turn it is the level the asker stated. Not on the frame when `WIRE_V2_ADDITIVE_FIELDS` is set off, the rollback (the row keeps it). Absent when no answering call ran or the model sends no level. The client prefers it over the level it recorded when it asked, so an observer and a turn the asker never saw finish carry it too; "Gründlicher neu beantworten" steps up from it. Persisted into message metadata under the same key, restored as `provenance.reasoningEffort` (a `none` is not a dial level and is dropped there). |
 
 ```typescript
 /** One announced retrieval round, as the backend recorded it. */
@@ -308,12 +309,12 @@ does not matter which write lands first.
 
 A running turn heartbeats, and the client trusts the heartbeat, so a turn the
 server never ends is a spinner that never stops. Four things make sure it
-ends, each pinned by a test in `frontends/aiq_api/tests/test_chat_socket.py`:
+ends, each pinned by a test in `apps/backend/tests/test_chat_socket.py`:
 
 - **One terminal, structurally.** `run_turn`'s `finally` sends a `RUN_ERROR` if
   no terminal went out, whatever escaped (a `BaseExceptionGroup` from a task
   group included). The escaped error is logged by the task's done-callback.
-- **A deadline.** `GRID_CHAT_TURN_DEADLINE_SECONDS` (2700) on the turn's own
+- **A deadline.** `CHAT_TURN_DEADLINE_SECONDS` (2700) on the turn's own
   clock, which stops while the turn waits on a person's answer. At the deadline
   the turn is cancelled like a Stop and ends with
   `RUN_ERROR{workflow_error, details: "turn_deadline_exceeded: …"}`.
@@ -321,7 +322,7 @@ ends, each pinned by a test in `frontends/aiq_api/tests/test_chat_socket.py`:
   (`workflow_stream`, 10 s) for the workflow's `finally` blocks, then ends the
   turn without them.
 - **No hidden queue.** The chat runs with NAT's per-replica semaphore off; the
-  one concurrency gate is ADR-0040's admission (`GRID_MAX_ACTIVE_TURNS`), which
+  one concurrency gate is ADR-0040's admission (`MAX_ACTIVE_TURNS`), which
   refuses a turn at once with a retry hint rather than holding it after
   `RUN_STARTED`.
 
@@ -341,7 +342,7 @@ refuse the whole message.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?` | A question. With `if_idle` (a turn an event woke, [below](#a-turn-an-event-woke-trigger--if_idle)) it never supersedes: a conversation with a running turn refuses it as `rejected{busy}`, before its id is claimed, so it may be sent again under the same id. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `GRID_CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `GRID_CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `GRID_CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?` | A question. With `if_idle` (a turn an event woke, [below](#a-turn-an-event-woke-trigger--if_idle)) it never supersedes: a conversation with a running turn refuses it as `rejected{busy}`, before its id is claimed, so it may be sent again under the same id. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, structurally. Only the person the prompt addressed may answer; anyone else gets `rejected{not_asker}`, and an answer with no prompt waiting `rejected{no_pending_interaction}`. |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Only the asker's verified subject (or an internal caller) may cancel; anyone else gets `rejected{not_asker}`. The server cancels the graph run, not just the socket. `shown` says how much was on screen (the first `chars` code points of the answer as folded through `seq`), and the stopped answer is cut to it; sent only when the hello accepts `cancel_turn.shown`. |
 | `attach` | `turn_id`, `after_seq` | Replay the turn from `after_seq + 1`, then continue live. Sent for every open turn after a reconnect, and with `after_seq: 0` after a reload. `rejected{turn_not_found}` when the stream holds nothing for the turn: ask for the persisted answer instead. |
@@ -370,7 +371,7 @@ the matcher is `aiq_agent.common.content_screen`.
 ### Invoking a skill (no wire field)
 
 There is no `skills` field on this payload. A skill is a working method the
-model picks out of its L1 catalog with `use_skill`, and nothing a request says
+model picks out of its L1 catalog and reads with `read_file`, and nothing a request says
 can require one: the array the composer used to send (lifted onto the agent
 state as `force_skills`) is **no longer read anywhere in the backend**, and a
 client that still sends it is ignored.
@@ -420,7 +421,7 @@ expanded collection list:
 ```
 
 The backend maps that intent via `shelves_for_turn`
-(`src/aiq_agent/common/focus_file.py`) and subtracts other shelves at the
+(`packages/agent/src/aiq_agent/common/focus_file.py`) and subtracts other shelves at the
 knowledge-layer retrieve site. `include_shelves` does not exist: the contract
 **refuses** a message that carries it, because the mapping owns the expansion so a client cannot ask for
 Archiv while claiming a project file. A subject shelf never subtracts the
@@ -460,13 +461,13 @@ version nobody has published there are no chunks to prefer.
 
 Only a published version reaches the retrieval index (ADR-0054), so a draft has
 no chunks, the focus filter matches nothing, and it falls open to the whole
-corpus (`sources/knowledge_layer/src/register.py`) — the reader asks about the
+corpus (`packages/knowledge-layer/src/register.py`) — the reader asks about the
 Befund Piloti filed a minute ago and gets an answer sourced from everything
 except that Befund. Told which version the subject is, the backend reads that
 version's own bytes through
 `GET /api/internal/document-versions/[versionId]/content` and writes them into
 the conversation's working directory as `/entwuerfe/<name>.md`
-(`src/aiq_agent/turn/subject_document.py`), stamped with the filing record that
+(`packages/agent/src/aiq_agent/turn/subject_document.py`), stamped with the filing record that
 makes a later `file_draft` on that path replace this version rather than file a
 second document. The fail-open in the focus filter is unchanged; this is
 upstream of it.
@@ -481,7 +482,7 @@ three absent is every ordinary turn.
 
 - **Every stamped event is appended** to the conversation's stream on
   Dragonfly (`conv:<id>:stream`, `ConversationBus.publish_frame`, bounded by
-  `GRID_CONV_STREAM_MAXLEN` and its TTL). A `rejected` event (seq 0) is not.
+  `CONV_STREAM_MAXLEN` and its TTL). A `rejected` event (seq 0) is not.
 - **The cursor is `(turn_id, seq)`.** The client drops an event with
   `seq ≤ lastSeq` for its turn, and treats `seq > lastSeq + 1` as a gap: it
   sends `attach{turn_id, after_seq: lastSeq}`.
@@ -513,7 +514,7 @@ three absent is every ordinary turn.
 
 ## The client
 
-`frontends/ui/src/adapters/api/turn-socket.ts` connects with `?v=2`, waits for
+`apps/workspace/ui/adapters/api/turn-socket.ts` connects with `?v=2`, waits for
 the server's `hello`, sends client messages, reconnects with jittered backoff and
 an auth refresh before each attempt, and sends `attach` for every open turn once
 the hello has arrived. Every event is parsed with `parseWireEvent`
@@ -544,7 +545,7 @@ question asked while the socket has given up opens a new one with a fresh ladder
 
 A run — a deep-research run, a task run — streams its own events from
 `job_events` rather than over the socket: `GET /v1/jobs/async/{jobId}/events`
-(`aiq_api.routes.jobs.stream_job_events`), replayable from `last_event_id`. That
+(`aiq_api.routes.job_handlers.JobRouteHandlers.stream_job_events`), replayable from `last_event_id`. That
 stream carries the `job.*` lifecycle events (`job.phase`, `job.heartbeat`,
 `job.degraded`, `job.error`, `job.cancelled`), the `artifact.update` events the
 agent callbacks emit, and one more:
@@ -554,11 +555,11 @@ agent callbacks emit, and one more:
 | `run.ledger` | `{"ledger": RunLedger}` | The run's WHOLE account of itself, as of this moment |
 
 `RunLedger` is the contract in
-[`frontends/ui/src/lib/runs/run-ledger-types.ts`](../../frontends/ui/src/lib/runs/run-ledger-types.ts)
+[`apps/workspace/bff/runs/run-ledger-types.ts`](../../apps/workspace/bff/runs/run-ledger-types.ts)
 (`runId`, `status`, `phases[]`, `steps[]` with the intent the runner stated and
 the documents each step reached, `result` or `error`) — the same shape stored on
 the run's message as `metadata.run_ledger`, and the same one the JSON Schema
-fixture `frontends/ui/tests/fixtures/run-ledger.schema.json` pins.
+fixture `apps/workspace/tests/fixtures/run-ledger.schema.json` pins.
 
 Two properties a client should rely on:
 
@@ -576,13 +577,13 @@ Two properties a client should rely on:
 into, and the status pill still reads them directly.
 
 **How the browser consumes it.** The block in the thread
-(`frontends/ui/src/features/runs/hooks/use-run-ledger.ts`) does exactly what the
+(`apps/workspace/ui/features/runs/hooks/use-run-ledger.ts`) does exactly what the
 two properties above allow and nothing more. It starts from the ledger stored on
 the run's message (`metadata.run_ledger`, read back sanitised by the message
 mapper); if that ledger is not terminal it reads
 `GET /api/projects/[id]/runs/[runId]?include=stream` for `backendJobId`, opens the stream
 through the same-origin proxy (`/api/jobs/async/job/[jobId]/stream`, the SSE
-client in `frontends/ui/src/adapters/api/deep-research-client.ts`) with **no**
+client in `apps/workspace/ui/adapters/api/deep-research-client.ts`) with **no**
 `last_event_id`, so the replay runs from the first flush and the newest snapshot
 lands last, and wires only `onLedger`. Every snapshot goes through
 `sanitizeRunLedger` and **replaces** what is held, unless its `updatedAt` is older
@@ -617,7 +618,7 @@ sends `focus_document_id`, which the canvas tools act on when the model names
 no document. Both fields are on the turn's trace as `turn_surface`
 ([`langfuse.md`](../observability/langfuse.md)).
 
-Because `accepts` is itself withheld while `GRID_WIRE_V2_ADDITIVE_FIELDS` is
+Because `accepts` is itself withheld while `WIRE_V2_ADDITIVE_FIELDS` is
 off, a page sends neither field with that flag off. It is on by default; `off`
 is the rollback, and with it off a canvas question reaches Piloti without its
 box and no reply lands in its thread.
@@ -656,7 +657,7 @@ turn, not into a new one (`common/steering.py`, the steering research of
   sent as the note's `focus_region`.
 
 Like every optional entry, `steer` is in `accepts` only while
-`GRID_WIRE_V2_ADDITIVE_FIELDS` is on, its default; with it set off, the composer keeps its
+`WIRE_V2_ADDITIVE_FIELDS` is on, its default; with it set off, the composer keeps its
 type-ahead behaviour and the canvas says Piloti is busy.
 
 ### A turn an event woke (`trigger` / `if_idle`)
@@ -677,13 +678,13 @@ a server whose hello lists it (`user_message.trigger`, `user_message.if_idle`).
   same gateway route a browser takes (affinity by conversation), with the
   acting person's pinned session cookie or bearer token, and the signed
   `X-Grid-Request-Context` envelope **including `conversationId`** (without it
-  the canvas tools have no subject). Add `X-AIQ-Mode: headless`: the caller is
+  the canvas tools have no subject). Add `X-Chat-Mode: headless`: the caller is
   then marked `headless` (and `skip_clarifier`), so the clarifier and its plan
   approval are skipped and `ask_user` refuses without prompting; the model asks
   in the thread instead of waiting thirty minutes on a socket nobody reads.
 - **Before sending,** read the hello: `accepts` must hold
   `user_message.trigger` and `user_message.if_idle`. A server without them
-  (or `GRID_WIRE_V2_ADDITIVE_FIELDS` set off) would supersede a typed turn; do not
+  (or `WIRE_V2_ADDITIVE_FIELDS` set off) would supersede a typed turn; do not
   send, retry later.
 - **The message.** `{"v":2,"type":"user_message","conversation_id":…,
   "message_id":uuid5(<reply id>),"text":<the reply, masked server-side>,
@@ -706,14 +707,14 @@ pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
 
 - **Where it dials.** Straight to the chat role, picked as `server.js` picks it
   (`lib/proxy/backend-target.js`: `BACKEND_CHAT_URL`, or with
-  `GRID_CHAT_AFFINITY` the conversation's pod), not through the gateway, which
+  `CHAT_AFFINITY` the conversation's pod), not through the gateway, which
   resolves a browser's cookie. With no `authorization` header and a host on
   the internal network the backend reads an internal caller, marked headless,
   and takes who acts from the envelope.
 - **What it sends.** The headers `server.js` sends, built by the same
   `turnContextHeaders` (`lib/turns/turn-headers.js`) from the same
   `resolveTurnContext` (`lib/turns/turn-context.ts`), for the acting person's
-  pinned session and their own thread about the document, plus `x-aiq-mode:
+  pinned session and their own thread about the document, plus `x-chat-mode:
   headless`. The envelope carries `conversationId`. `message_id` is
   `wakeTurnId(<event id>)`, `author_name` the person's directory name.
 - **When it sends.** Only once the hello names `user_message.trigger`,
@@ -726,7 +727,7 @@ pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
   `duplicate_turn`: done. `RUN_FINISHED{refused}`: recorded `refused`.
   `auth_expired` / `conversation_mismatch`: the job throws, the queue retries
   with a fresh envelope, and the last attempt records `failed`. Each outcome
-  is on the `piloti_wakes` row and in the audit trail: one that started as
+  is on the `agent_wakes` row and in the audit trail: one that started as
   `piloti.wake.started`, one the job refused or gave up on as
   `piloti.wake.ended`, one held before it was sent as `piloti.wake.suppressed`.
 
@@ -736,9 +737,9 @@ The browser's PostHog session id (`posthog.get_session_id()`), sent per question
 while product analytics is configured, and only to a server whose hello lists
 `user_message.posthog_session_id` in `accepts`. The key is omitted, never `null`,
 when there is none. The server stamps it as trace metadata `$posthog_session_id`
-when `GRID_TRACE_IDENTITY_ATTRIBUTES` is on and the value is a UUIDv7, so
+when `TRACE_IDENTITY_ATTRIBUTES` is on and the value is a UUIDv7, so
 Langfuse's PostHog export can put the turn on the session's replay
 ([`langfuse.md`](../observability/langfuse.md#posthog-export)). A value that is
 not a UUIDv7 is dropped silently and the turn runs. Because `accepts` is itself
-withheld while `GRID_WIRE_V2_ADDITIVE_FIELDS` is off, the link flows only
+withheld while `WIRE_V2_ADDITIVE_FIELDS` is off, the link flows only
 with that flag on, its default.

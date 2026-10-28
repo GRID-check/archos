@@ -34,15 +34,15 @@ repos:
         # Scoped to the two inputs rather than run always: the generator stamps
         # a timestamp into its output, so running it on every commit would make
         # the file dirty on every commit.
-        entry: node frontends/ui/scripts/sync-platform-skills.mjs --check
+        entry: node apps/workspace/scripts/sync-platform-skills.mjs --check
         language: system
         pass_filenames: false
-        files: ^(src/aiq_agent/skills/builtin/.*/SKILL\.md|frontends/ui/src/lib/skills/platform-skills\.ts|frontends/ui/scripts/sync-platform-skills\.mjs)$
+        files: ^(packages/agent/src/aiq_agent/skills/builtin/.*/SKILL\.md|apps/workspace/bff/skills/platform-skills\.ts|apps/workspace/scripts/sync-platform-skills\.mjs)$
 
       - id: card-schemas
-        name: the card schemas are generated from cards/models.py
+        name: the card schemas are generated from the card models (cards/models.py and its card modules)
         # Two generated, committed artifacts in one pipeline: the Pydantic
-        # models render to shared/cards/schemas.json, which renders to the Zod
+        # models render to contracts/cards/schemas.json, which renders to the Zod
         # module the frontend validates with. Neither had a guard, and the
         # failure mode is the one platform-skills.ts already demonstrated three
         # times — a stale generated module type-checks perfectly, so nothing
@@ -58,20 +58,20 @@ repos:
         # langchain_core.
         # On Windows this path is .venv/Scripts/python.exe.
         #
-        # The Zod stage needs `json-schema-to-zod` from frontends/ui/node_modules,
+        # The Zod stage needs `json-schema-to-zod` from apps/workspace/node_modules,
         # which CI's repo-lint job does not install — it failed every run until
         # this guard existed. It is skipped where the modules are absent and
-        # covered instead by `task fe:cards:check`, which the frontend CI job
-        # runs after `task fe:install`.
+        # covered instead by `task workspace:cards:check`, which the frontend CI job
+        # runs after `task workspace:install`.
         entry: >-
-          bash -c 'PYTHONPATH=src .venv/bin/python scripts/generate_card_schema.py
-          && if [ -d frontends/ui/node_modules ];
-          then node frontends/ui/scripts/generate-card-schemas.mjs;
-          else echo "skipping the Zod stage, frontends/ui/node_modules is absent
-          (task fe:cards:check covers it)"; fi'
+          bash -c 'PYTHONPATH=packages/agent/src .venv/bin/python scripts/generate_card_schema.py
+          && if [ -d apps/workspace/node_modules ];
+          then node apps/workspace/scripts/generate-card-schemas.mjs;
+          else echo "skipping the Zod stage, apps/workspace/node_modules is absent
+          (task workspace:cards:check covers it)"; fi'
         language: system
         pass_filenames: false
-        files: ^(src/aiq_agent/cards/models\.py|shared/cards/schemas\.json|scripts/generate_card_schema\.py|frontends/ui/scripts/generate-card-schemas\.mjs|frontends/ui/src/shared/cards/generated\.ts)$
+        files: ^(packages/agent/src/aiq_agent/cards/(models|card_model|proposal_cards|schematic_cards|calculation_card|formula_card|workspace_cards|file_operation_card|canvas_activity_card|look_card|revision_compare_card|ifc_cards|surface_card)\.py|contracts/cards/schemas\.json|scripts/generate_card_schema\.py|apps/workspace/scripts/generate-card-schemas\.mjs|apps/workspace/shared/cards/generated\.ts)$
 
       - id: wire-schemas
         name: the chat wire v2 schemas are generated from common/wire_v2.py
@@ -80,13 +80,23 @@ repos:
         # python and for skipping the Zod stage where node_modules is absent
         # (scripts/generate-wire-schemas.spec.mjs covers it in the UI suite).
         entry: >-
-          bash -c 'PYTHONPATH=src .venv/bin/python scripts/generate_wire_schema.py
-          && if [ -d frontends/ui/node_modules ];
-          then node frontends/ui/scripts/generate-wire-schemas.mjs;
-          else echo "skipping the Zod stage, frontends/ui/node_modules is absent"; fi'
+          bash -c 'PYTHONPATH=packages/agent/src .venv/bin/python scripts/generate_wire_schema.py
+          && if [ -d apps/workspace/node_modules ];
+          then node apps/workspace/scripts/generate-wire-schemas.mjs;
+          else echo "skipping the Zod stage, apps/workspace/node_modules is absent"; fi'
         language: system
         pass_filenames: false
-        files: ^(src/aiq_agent/common/wire_v2\.py|shared/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|frontends/ui/scripts/generate-(wire|card)-schemas\.mjs|frontends/ui/src/adapters/api/wire-v2\.generated\.ts)$
+        files: ^(packages/agent/src/aiq_agent/common/wire_v2\.py|contracts/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|apps/workspace/scripts/generate-(wire|card)-schemas\.mjs|apps/workspace/ui/adapters/api/wire-v2\.generated\.ts)$
+
+      - id: vocabularies
+        name: the UI's shared vocabularies are generated from their Python sources
+        # One stage: each tuple in apps/workspace/shared/vocabularies.generated.ts
+        # is rendered straight from a Python source (scripts/generate_vocabularies.py).
+        # Running the generator is the check; a changed file fails the commit.
+        entry: bash -c 'PYTHONPATH=packages/agent/src .venv/bin/python scripts/generate_vocabularies.py'
+        language: system
+        pass_filenames: false
+        files: ^(packages/agent/src/aiq_agent/cards/workspace_cards\.py|packages/agent/src/aiq_agent/common/source_kinds\.py|scripts/generate_vocabularies\.py|apps/workspace/shared/vocabularies\.generated\.ts)$
 
       - id: agent-docs
         name: every AGENTS.md is reachable by the agents that need it
@@ -142,6 +152,43 @@ repos:
         pass_filenames: false
         files: \.py$|^ci/(german_stems|english_names_baseline_py)\.json$
 
+      - id: import-contracts
+        name: the Python packages keep their seams (import-linter)
+        # The contracts in pyproject.toml's [tool.importlinter]; `task be:lint`
+        # runs them too. About a second, only when Python or the contracts change.
+        entry: .venv/bin/lint-imports --no-cache
+        language: system
+        pass_filenames: false
+        files: ^(packages/agent/src/aiq_agent|apps/backend/src|packages/knowledge-layer/src)/.*\.py$|^pyproject\.toml$
+
+      - id: file-size
+        name: no source file passes 600 lines, no Python function 60, and no giant grows
+        # Files of 3,000 to 7,000 lines and a 962-line function each got there
+        # one reasonable hunk at a time, and review passed every hunk. A ratchet
+        # on ci/size_baseline.json is the layer that holds while people are
+        # tired, so a split stays split. The venv python, not python3: its
+        # `ast` must parse the 3.14 syntax the tree is written in, and a system
+        # interpreter that cannot would read a file as "no functions".
+        entry: .venv/bin/python scripts/check_file_size.py
+        language: system
+        pass_filenames: false
+        # Always, not on matching files: a commit that only deletes a baselined
+        # file passes no filename, and its stale entry would fail the next
+        # person's commit instead. The check takes about three seconds.
+        always_run: true
+
+      - id: brand-names
+        name: no new product name in a code or infrastructure name
+        # The product was AI-Q, then Grid, now Piloti, and each rename was a
+        # code change across thousands of lines. The name belongs in copy, read
+        # from one place; a ratchet on ci/brand_names_baseline.json keeps every
+        # new identifier, file, route and variable neutral. Always, for the
+        # reason file-size gives. About five seconds.
+        entry: .venv/bin/python scripts/check_brand_names.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: env-docs
         name: the queue workers' environment variables have a row in the env reference
         # AGENTS.md asks for a row per variable; nothing else checks it, and an
@@ -150,7 +197,7 @@ repos:
         entry: python3 scripts/check_env_docs.py
         language: system
         pass_filenames: false
-        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^frontends/aiq_api/src/aiq_api/jobs/.*\.py$|^src/aiq_agent/knowledge/ingest_.*\.py$|^frontends/ui/(workers|purger|scheduler)/.*\.js$|^frontends/ui/src/lib/(jobs-queue|mail-import)/.*\.ts$
+        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/aiq_api/jobs/.*\.py$|^packages/agent/src/aiq_agent/knowledge/ingest_.*\.py$|^apps/workspace/(workers|purger|scheduler)/.*\.js$|^apps/workspace/bff/(jobs-queue|mail-import)/.*\.ts$
 
       - id: validate-skills
         name: skill bundles are well-formed
@@ -173,18 +220,29 @@ repos:
         pass_filenames: false
         files: ^releasenotes/.*\.yaml$|^scripts/release_notes\.py$
 
+      - id: merge-release-notes
+        name: a merge commit writes no release note
+        # reno cannot read a merge commit that adds or edits a note, and no
+        # later commit clears it: the fix is a force-push or a new PR. That
+        # happened on #926, #1305 and #1342 with the gotchas row already
+        # written. Does nothing outside a merge.
+        entry: .venv/bin/python scripts/check_merge_release_notes.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/tcort/markdown-link-check
     rev: v3.11.2
     hooks:
       - id: markdown-link-check
         args: ["-q", "--config", "ci/markdown-link-check-config.json"]
         # The vendored SkillCheck rulebook is excluded because it is vendored
-        # VERBATIM (see src/aiq_agent/skills/review/README.md): its relative
+        # VERBATIM (see packages/agent/src/aiq_agent/skills/review/README.md): its relative
         # links resolve upstream, where the whole `references/` directory
         # exists, and we deliberately took only the one file. Rewriting its
         # links to make a link checker happy would break the byte-for-byte
         # guarantee that keeps its MIT licence and attribution intact.
-        exclude: ^src/aiq_agent/skills/review/skill-check/SKILL\.md$
+        exclude: ^packages/agent/src/aiq_agent/skills/review/skill-check/SKILL\.md$
 
 default_language_version:
   python: python3

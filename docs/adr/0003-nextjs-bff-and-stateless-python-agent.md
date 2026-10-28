@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0003: Next.js BFF + stateless Python agent
 
-- **Status:** Accepted
 - **Date:** 2026-06-30
 - **Deciders:** Grid Agent team
 - **Related:** [ADR-0002](0002-outsource-identity-to-workos.md), [ADR-0004](0004-tenancy-ownership-and-access-model.md), [ADR-0005](0005-object-storage-for-documents-minio.md), [ADR-0006](0006-knowledge-collection-scoping.md), [`../architecture/multitenancy-and-auth-spec.md`](../architecture/multitenancy-and-auth-spec.md)
@@ -85,6 +88,47 @@ server, keeping a thin explicit boundary so that extracting a dedicated server
 
 - Define and version the shared card Zod schema.
 - Confirm HTTP vs WS boundaries for streaming `infer`.
+
+## Amendment 1 (2026-10-27): the Option B triggers fired, and Next.js stays the host
+
+Two of the three Option B triggers have fired. Heavy background work exists:
+the BFF job queue (ADR-0079) runs 19 job kinds (`BFF_JOB_KINDS` in
+`frontends/ui/src/lib/jobs-queue/types.ts`) on its own `bff-jobs` pool, which
+KEDA scales on queue depth. Application logic has grown well past page
+rendering: `frontends/ui/src/app/api/internal/` holds 57 internal routes that
+no browser calls. The third trigger has not fired: the team still writes
+TypeScript.
+
+**Decision: Next.js stays the only host of the BFF.** No dedicated app server
+is extracted. What the triggers asked for is handled by two changes that keep
+one codebase and one image:
+
+- **The BFF code gets its own folder.** ADR-0145 row 9 moves
+  `frontends/ui` to `apps/workspace` with `app/`, `ui/` and `bff/` inside.
+  `bff/` is a file move of `src/lib/`, not a rewrite, so the boundary this
+  record asked for becomes a directory a reader can see and a seam rule can
+  check.
+- **Job pods no longer boot the UI server.** With
+  `GRID_BFF_JOBS_MODE=inprocess`, the `bff-jobs` supervisor runs each slice
+  from a bundled entry built with the image, instead of starting `node
+  server.js` to POST to `/api/internal/jobs/run` (PR #1259, ADR-0079
+  amendment 1). The default stays `http` until each stack opts in.
+
+**Option B is rejected again, on these premises:** the team writes TypeScript
+and nobody proposes a second language for the application tier; the job slices
+need the same services the routes call, and the bundled entry gives them those
+without an HTTP hop; and the pain the triggers predicted (job pods paying for
+a web server, application code hidden among UI code) is removed by the two
+changes above. When any premise turns false (a non-TypeScript team, job
+latency or memory that the bundled entry cannot meet, or a second client that
+needs the BFF without Next.js), re-open the extraction, and supersede this
+record and ADR-0145 together.
+
+**Confirmation.** `bff-jobs.spec.ts` in `deploy/pulumi` asserts the job pool's
+wiring, and the slice-bundle tests from PR #1259 build the bundle and run a
+slice through it. The boundary inside the host is not enforced yet: after row
+9, ADR-0145's two count ratchets on `apps/workspace/bff/` (client modules,
+imports from `@/features`) only let it tighten.
 
 ## References
 

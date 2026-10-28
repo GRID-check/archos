@@ -399,5 +399,5 @@ class TestTheSuiteWiring:
 
     def test_look_off_sets_the_env_the_tool_reads(self):
         workspace = fixture_visual.VisualWorkspace({})
-        assert workspace.env("http://x", look=False)["AIQ_VIEW_IMAGES_ENABLED"] == "0"
-        assert workspace.env("http://x", look=True)["AIQ_VIEW_IMAGES_ENABLED"] == "1"
+        assert workspace.env("http://x", look=False)["VIEW_IMAGES_ENABLED"] == "0"
+        assert workspace.env("http://x", look=True)["VIEW_IMAGES_ENABLED"] == "1"

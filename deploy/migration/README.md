@@ -9,7 +9,7 @@ two steps that share a file format and nothing else:
    left in the repository. It runs in a throwaway Python environment holding
    `chromadb` at the server's version, never in the backend image.
 2. **Import**: `scripts/import_vectors.py`, in the backend image, reads that
-   format into Qdrant (`sources/knowledge_layer/src/qdrant/import_vectors.py`).
+   format into Qdrant (`packages/knowledge-layer/src/qdrant/import_vectors.py`).
    It knows nothing about Chroma.
 
 Nothing is re-parsed and nothing is re-embedded: the vectors Chroma holds are
@@ -88,9 +88,9 @@ python scripts/import_vectors.py --in /exchange/export --verify-only  # compare 
 python scripts/import_vectors.py --in /exchange/export --collection oib_knowledge
 ```
 
-It reads the backend's environment (`AIQ_QDRANT_URL`, `AIQ_QDRANT_API_KEY`, the
-metadata store for the person-set facts, `AIQ_EMBED_MODEL` and
-`AIQ_EMBED_BASE_URL` for a collection whose export names no embedder), so run
+It reads the backend's environment (`QDRANT_URL`, `QDRANT_API_KEY`, the
+metadata store for the person-set facts, `EMBED_MODEL` and
+`EMBED_BASE_URL` for a collection whose export names no embedder), so run
 it where the backend runs.
 
 - **Insert-only.** Point ids are the chunk ids, so a re-run inserts only what
@@ -108,7 +108,7 @@ it where the backend runs.
   out (a warning names it), and `--verify` and `--prune` expect the new ones
   instead. Inserted, the old Fassung would answer beside the new one under one
   file name, and a prune would then delete the new one.
-- **The embedder must match.** Each collection's `aiq:embed_fingerprint` is
+- **The embedder must match.** Each collection's `aiq:embed_fingerprint` (Chroma's name; Qdrant keeps it as `embed_fingerprint`) is
   checked against the Qdrant collection it lands in before anything is written;
   one mismatch refuses the whole run (exit 2). A collection without a
   fingerprint takes the configured embedder's.
@@ -126,7 +126,7 @@ it where the backend runs.
   or a whole new project (the re-ingested file above is the one exception).
 - **Once, unless forced.** A run with `--verify` over every collection that
   ends in step records it in the Qdrant collections' metadata
-  (`aiq:vector_import`: which export, verified when). Every later run that
+  (`vector_import`: which export, verified when). Every later run that
   would write is then refused with exit 2 and writes nothing, unless
   `--force`: an old export imported again brings back the chunks of every
   document deleted since. `--dry-run` and `--verify-only` are never refused.
@@ -211,7 +211,7 @@ The exporter needs `chromadb`, which is not a dependency of this repository, so
 its tests run in an environment of their own and never in `task be:test*`:
 
 ```bash
-AIQ_QDRANT_TEST_URL=http://localhost:6333 task be:test:migration
+QDRANT_TEST_URL=http://localhost:6333 task be:test:migration
 # which runs
 uvx --python 3.12 --with-requirements deploy/migration/chroma_export.py --with pytest \
   pytest deploy/migration/tests -q -p no:cacheprovider
@@ -224,6 +224,6 @@ They build a real persist directory, export it in both modes (the HTTP mode
 against `chroma run`), and check the manifest and every record. The last test
 hands the export to `scripts/import_vectors.py` in the repository's venv
 (`.venv/bin/python`, or `PILOTI_VENV_PYTHON`) and checks every point in Qdrant;
-it skips without `AIQ_QDRANT_TEST_URL` locally and fails without it on CI. The
+it skips without `QDRANT_TEST_URL` locally and fails without it on CI. The
 importer's own tests were deleted on 2026-10-22: the move ran on production on
 2026-10-18, and this end-to-end test is what still covers the importer.

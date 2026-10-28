@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
-import { loadConfig, POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } from "../config";
+import { loadConfig } from '../config'
+import { POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } from '../config/posthog'
 import { posthogEnv } from "../app/config";
 import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
@@ -180,6 +181,8 @@ describe("the Python tiers' PostHog pair", () => {
     const tiers: Array<[string, string]> = [
       ["aiq-agent", "kubernetes:apps/v1:StatefulSet"],
       ["aiq-api", "kubernetes:apps/v1:Deployment"],
+      ["chat", "kubernetes:apps/v1:StatefulSet"],
+      ["api", "kubernetes:apps/v1:Deployment"],
       ["agent-worker", "kubernetes:apps/v1:Deployment"],
     ];
     for (const [name, type] of tiers) {

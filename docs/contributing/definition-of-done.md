@@ -18,8 +18,8 @@ is not blamed on your change and your change cannot hide behind one:
 
 ```bash
 task be:test 2>&1 | tail -5
-task fe:test 2>&1 | tail -5
-task fe:types 2>&1 | tail -20
+task workspace:test 2>&1 | tail -5
+task workspace:types 2>&1 | tail -20
 ```
 
 Write the failing test names down. Only new failures block your change, but a
@@ -34,8 +34,8 @@ change done.
 
 | You changed | Show the output of |
 |---|---|
-| Python under `src/`, `sources/` or `frontends/aiq_api/` | the targeted tests (`.venv/bin/pytest <path> -q`), then the suite they belong to (`task be:test`, `task be:test:sources`, `task be:test:api`), and `task be:lint` |
-| The UI (`frontends/ui/`) | the targeted specs, then `task fe:test`; `task fe:types` with no new errors against the baseline; `task fe:lint` exiting clean, with zero problems rather than "no new ones" |
+| Python under `src/`, the Python packages under `packages/`, or `apps/backend/` | the targeted tests (`.venv/bin/pytest <path> -q`), then the suite they belong to (`task be:test`, `task be:test:sources`, `task be:test:api`), and `task be:lint` |
+| The UI (`apps/workspace/`) | the targeted specs, then `task workspace:test`; `task workspace:types` with no new errors against the baseline; `task workspace:lint` exiting clean, with zero problems rather than "no new ones" |
 | A WebSocket or SSE message, or any schema two services share | both sides: the producer's tests and the consumer's parser tests, over the same field names. Where a fixture under `tests/fixtures/` is the contract, both suites read it ([cross-service contract fixtures](testing-and-verification.md#cross-service-contract-fixtures)) |
 | What shapes an answer: prompt, model, structured output, retrieval | the answer suite before and after (the obligation in [`AGENTS.md`](../../AGENTS.md#obligations)), or at least a live call proving the contract parses, with a note saying why the suite could not run |
 | Something a user can see | a capture attached to the pull request, never committed ([visual-screenshots.md](../ux/visual-screenshots.md)), and the exact user-visible copy quoted in your summary. A new component without it is not done |
@@ -127,7 +127,7 @@ evidence or by "not verified because …":
 ```text
 - Baseline captured: <failing tests before work>
 - Tests: <suite results after the change, new failures = 0>
-- Lint and types: <task be:lint / task fe:types results; task fe:lint exit code>
+- Lint and types: <task be:lint / task workspace:types results; task workspace:lint exit code>
 - `any` introduced: NONE <or each site, and why no real type was reachable>
 - New or regression tests: <names>
 - Revert-check: <"removed <fix>, N of M cases failed, restored" | why not possible>

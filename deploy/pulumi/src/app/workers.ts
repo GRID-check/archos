@@ -1,7 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, frontendImage } from "../config";
+import { GridConfig } from '../config'
+import { appPullPolicy, frontendImage } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import {
@@ -46,7 +47,7 @@ type HousekeepingSweep = {
 function internalSweepScript(label: string, timeoutMs: number): string {
   return [
     "const url = process.env.SWEEP_URL;",
-    "const token = process.env.GRID_INTERNAL_API_TOKEN;",
+    "const token = process.env.INTERNAL_API_TOKEN;",
     // A ceiling: anything near it is a fault, and hanging forever would block
     // the next tick under concurrencyPolicy: Forbid.
     `const signal = AbortSignal.timeout(${timeoutMs});`,
@@ -145,7 +146,7 @@ function internalSweepCronJob(
                       // The token never reaches the command line — an `-H`
                       // argument would show up in `kubectl describe pod` and
                       // in every process listing in the container.
-                      sref("GRID_INTERNAL_API_TOKEN"),
+                      sref("INTERNAL_API_TOKEN"),
                     ],
                   },
                 ],
@@ -228,7 +229,7 @@ export function installWorkers(
   );
 
   // Always created. It drives the run reconciler
-  // (`frontends/ui/src/lib/runs/reconcile.ts`) as well as the schedules, and
+  // (`apps/workspace/bff/runs/reconcile.ts`) as well as the schedules, and
   // runs exist without Agent Skills (an escalated chat question). Whether a
   // schedule fires is the organization's `skills` WorkOS flag, checked by the
   // BFF per fire, so there is no deployment switch here.

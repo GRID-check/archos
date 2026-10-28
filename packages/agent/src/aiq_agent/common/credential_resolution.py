@@ -1,0 +1,254 @@
+"""Unified LLM credential resolution for the bespoke, non-NAT call sites.
+
+Six credential paths grew up outside the NAT ``LLMProvider``/BYOK system (the
+VLM captioner, the embeddings client, the tag-backfill script, and the two
+BFF-invoked FastAPI routes — consistency-check and generate-summary). Each had
+its own hand-rolled env chain, and none could reach an org's bring-your-own-key
+(BYOK) credential. This module gives them ONE resolver so the same deployment
+key (the org's OpenRouter/BYOK key) powers everything, exactly like the NAT
+agents already do.
+
+Resolution order (see :func:`resolve_llm_credential`):
+
+  1. **BYOK** — when an ``organization_id`` is supplied, the org's bring-your-own
+     credential from the BFF's internal endpoint wins. Mirroring ADR-0022/0014,
+     a BYOK swap replaces ``api_key`` + ``base_url`` ONLY — never the model.
+  2. **primary_env** — the call site's explicit override env var.
+  3. **fallback_envs** — additional env vars, in order.
+  4. **provider inference** — map the RESOLVED ``base_url`` host to that
+     provider's conventional key env var (e.g. an ``openrouter.ai`` base URL
+     pulls ``OPENROUTER_API_KEY``). This is what lets "just set OPENROUTER_API_KEY
+     and point the base URL at OpenRouter" light up every call site with no
+     per-site env plumbing.
+
+Every env read goes through :func:`read_api_key_env`, which treats an
+unresolved ``${...}`` placeholder as unset — docker compose ``env_file`` does
+NOT interpolate ``${VAR}`` references, so a line like
+``VLM_API_KEY=${OPENROUTER_API_KEY}`` reaches the process as a literal
+placeholder rather than a key.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from collections.abc import Mapping
+from dataclasses import dataclass
+from dataclasses import replace
+from typing import Any
+from urllib.parse import urlsplit
+
+from aiq_agent.common.config_validation import NIM_API_HOST
+from aiq_agent.common.config_validation import NIM_UNSUPPORTED_MESSAGE
+from aiq_agent.common.openrouter import NO_RETENTION_LIMITS
+from aiq_agent.common.openrouter import DataPolicy
+from aiq_agent.common.openrouter import data_policy_for
+from aiq_agent.common.openrouter import targets_openrouter
+
+logger = logging.getLogger(__name__)
+
+#: Env var of the removed NVIDIA NIM provider. Deployments still carrying it
+#: get a deprecation warning pointing at the supported key (see
+#: :func:`warn_on_legacy_nvidia_key`); nothing reads it as a credential.
+LEGACY_NVIDIA_KEY_ENV = "NVIDIA_API_KEY"
+
+_nvidia_deprecation_warned = False
+
+
+def warn_on_legacy_nvidia_key() -> bool:
+    """Log a one-time deprecation warning when the env still carries only the legacy key.
+
+    An env with ``NVIDIA_API_KEY`` set but no ``OPENROUTER_API_KEY`` is a
+    deployment left behind by the OpenRouter migration: warn once per process
+    and point at the supported key. Returns True when the warning was emitted.
+    """
+    global _nvidia_deprecation_warned
+    if _nvidia_deprecation_warned:
+        return False
+    if read_api_key_env(LEGACY_NVIDIA_KEY_ENV) and not read_api_key_env("OPENROUTER_API_KEY"):
+        _nvidia_deprecation_warned = True
+        logger.warning(
+            "%s is set but OPENROUTER_API_KEY is not — NVIDIA NIM is no longer supported. "
+            "Set OPENROUTER_API_KEY instead (see configs/config_oib_openrouter.yml).",
+            LEGACY_NVIDIA_KEY_ENV,
+        )
+        return True
+    return False
+
+
+def read_api_key_env(name: str) -> str:
+    """Read an env var, treating an unresolved ``${...}`` placeholder as unset.
+
+    docker compose ``env_file`` does not interpolate ``${VAR}`` references, so a
+    line like ``VLM_API_KEY=${OPENROUTER_API_KEY}`` reaches the process as a
+    literal placeholder string rather than a resolved value. Returning ``""`` for
+    such values keeps a mis-wired compose file from being read as a configured
+    key/URL (which would, e.g., make ``vlm_available`` lie).
+    """
+    value = os.environ.get(name, "")
+    if value.startswith("${") and value.endswith("}"):
+        # The name, never the value: this reads API-key variables, and a value
+        # that merely looks like a placeholder is still what the variable holds.
+        logger.error("%s contains an unresolved ${...} placeholder - treating as unset", name)
+        return ""
+    return value
+
+
+# Map a resolved base-URL host -> the env var conventionally holding that
+# provider's API key. Small and extensible on purpose: add a row when a new
+# OpenAI-compatible provider is deployed. Matched by host substring (see
+# :func:`_infer_provider_key_env`) so subdomains/paths do not matter.
+PROVIDER_KEY_ENV_BY_HOST: dict[str, str] = {
+    "openrouter.ai": "OPENROUTER_API_KEY",
+    "api.openai.com": "OPENAI_API_KEY",
+}
+
+
+@dataclass(frozen=True)
+class ResolvedCredential:
+    """The outcome of a resolution.
+
+    ``source`` labels WHERE ``api_key`` came from: ``'byok'`` (org credential),
+    ``'env'`` (primary or fallback env var), ``'provider-default'`` (inferred
+    from the base-URL host), or ``'none'`` (nothing resolved — ``api_key`` is
+    ``""``). ``base_url``/``model`` are always populated (from env/defaults; a
+    BYOK hit overrides ``base_url`` but never ``model``). ``api_key`` must never
+    be logged.
+
+    ``data_policy`` is the organization's retention policy (``common/openrouter``).
+    Send every request body through :meth:`request_body` (or pass
+    :meth:`request_extra_body` as the OpenAI SDK's ``extra_body``): it applies the
+    policy when ``base_url`` is OpenRouter and is a copy otherwise.
+    """
+
+    api_key: str
+    base_url: str
+    model: str
+    source: str
+    data_policy: DataPolicy = NO_RETENTION_LIMITS
+
+    def request_body(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        """``body`` with this endpoint's data policy applied."""
+        if not targets_openrouter(self.base_url):
+            return dict(body)
+        return self.data_policy.apply(body)
+
+    def request_extra_body(self, extra_body: Mapping[str, Any] | None = None) -> dict[str, Any] | None:
+        """The OpenAI SDK ``extra_body`` for a call to this endpoint, or None when there is nothing to add."""
+        merged = self.request_body(extra_body or {})
+        return merged or None
+
+
+def _infer_provider_key_env(base_url: str) -> str | None:
+    """Return the conventional key env var for ``base_url``'s host, or ``None``.
+
+    Matches by host substring against :data:`PROVIDER_KEY_ENV_BY_HOST` so that,
+    e.g., ``https://openrouter.ai/api/v1`` resolves to ``OPENROUTER_API_KEY``.
+    """
+    host = urlsplit(base_url).hostname or ""
+    if not host:
+        return None
+    for needle, env_name in PROVIDER_KEY_ENV_BY_HOST.items():
+        if needle in host:
+            return env_name
+    return None
+
+
+def resolve_llm_credential(
+    *,
+    primary_env: str,
+    fallback_envs: tuple[str, ...] = (),
+    default_base_url: str,
+    default_model: str,
+    base_url_env: str | None = None,
+    model_env: str | None = None,
+    organization_id: str | None = None,
+    data_policy: DataPolicy | None = None,
+) -> ResolvedCredential:
+    """Resolve an LLM credential for a bespoke (non-NAT) call site.
+
+    See the module docstring for the resolution order. ``base_url`` and
+    ``model`` are resolved first (from ``base_url_env``/``model_env`` when given,
+    else the defaults) because the resolved ``base_url`` drives provider
+    inference and both are returned to the caller.
+
+    A BYOK hit (``organization_id`` given and the org has a credential) swaps
+    ``api_key`` + ``base_url`` only — the model is left as resolved from
+    env/defaults, matching the NAT model/credential separation (ADR-0022/0014).
+
+    ``data_policy`` defaults to the organization's (``openrouter.data_policy_for``,
+    fails closed). Pass one explicitly only for work that is not one
+    organization's: a cross-tenant pipeline carrying several tenants' text
+    passes ``ZERO_DATA_RETENTION``, since it cannot honour each tenant separately.
+    """
+    resolved = _resolve(
+        primary_env=primary_env,
+        fallback_envs=fallback_envs,
+        default_base_url=default_base_url,
+        default_model=default_model,
+        base_url_env=base_url_env,
+        model_env=model_env,
+        organization_id=organization_id,
+    )
+    policy = data_policy if data_policy is not None else data_policy_for(organization_id)
+    return replace(resolved, data_policy=policy)
+
+
+def _resolve(
+    *,
+    primary_env: str,
+    fallback_envs: tuple[str, ...],
+    default_base_url: str,
+    default_model: str,
+    base_url_env: str | None,
+    model_env: str | None,
+    organization_id: str | None,
+) -> ResolvedCredential:
+    base_url = (read_api_key_env(base_url_env) if base_url_env else "") or default_base_url
+    base_url = base_url.rstrip("/")
+    model = (read_api_key_env(model_env) if model_env else "") or default_model
+
+    warn_on_legacy_nvidia_key()
+
+    # Fail fast on the removed NVIDIA endpoint: a base URL still pointing at
+    # NIM is a stale config and must say so here, not fail deep inside a
+    # client call.
+    if NIM_API_HOST in (urlsplit(base_url).hostname or ""):
+        raise ValueError(f"{NIM_UNSUPPORTED_MESSAGE} (base_url {base_url} points at the removed endpoint)")
+
+    # 1. BYOK — the org's bring-your-own credential wins when we know the org.
+    #    Fail-open lives in resolve_org_llm_credential (a BYOK hiccup returns
+    #    None, so we fall through to the env chain below).
+    if organization_id:
+        from aiq_agent.common.llm_credentials import resolve_org_llm_credential
+
+        credential = resolve_org_llm_credential(organization_id)
+        if credential is not None:
+            return ResolvedCredential(
+                api_key=credential.api_key,
+                base_url=credential.base_url.rstrip("/"),
+                model=model,
+                source="byok",
+            )
+
+    # 2. primary env override.
+    key = read_api_key_env(primary_env) if primary_env else ""
+    if key:
+        return ResolvedCredential(api_key=key, base_url=base_url, model=model, source="env")
+
+    # 3. fallback envs, in order.
+    for name in fallback_envs:
+        key = read_api_key_env(name)
+        if key:
+            return ResolvedCredential(api_key=key, base_url=base_url, model=model, source="env")
+
+    # 4. provider inference: the key env for whatever provider base_url points
+    #    at. This never changes base_url — it only picks the KEY for the
+    #    already-configured endpoint.
+    inferred_env = _infer_provider_key_env(base_url)
+    if inferred_env:
+        key = read_api_key_env(inferred_env)
+        if key:
+            return ResolvedCredential(api_key=key, base_url=base_url, model=model, source="provider-default")
+
+    return ResolvedCredential(api_key="", base_url=base_url, model=model, source="none")

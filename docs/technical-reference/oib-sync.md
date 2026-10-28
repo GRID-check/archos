@@ -2,7 +2,7 @@
 
 How the base corpus (the OIB, Österreichisches Institut für Bautechnik, Richtlinien and the other documents the platform owner uploads) is stored and ingested into the `oib_knowledge` collection in Qdrant. ADR-0082 step A2.
 
-There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `src/aiq_agent/corpus_store.py` (storage, table, cache), `src/aiq_agent/oib_sync.py` (ingestion), `src/aiq_agent/oib_status.py` (the status view) and `frontends/aiq_api/src/aiq_api/routes/oib.py` (the routes).
+There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `packages/agent/src/aiq_agent/corpus_store.py` (storage, table, cache), `packages/agent/src/aiq_agent/oib_sync.py` (ingestion), `packages/agent/src/aiq_agent/oib_status.py` (the status view) and `apps/backend/src/aiq_api/routes/oib.py` (the routes).
 
 ---
 
@@ -11,8 +11,8 @@ There is one design and no switch: the corpus lives in object storage, one table
 | Piece | Where |
 |-------|-------|
 | A PDF | The object `base-corpus/<file name>` in `SEAWEED_BUCKET`. Written through the BFF (`POST /api/internal/base-corpus/upload-url`, then a presigned `PUT` as `application/pdf`; `DELETE /api/internal/base-corpus/<name>`, header `x-grid-internal-token`), because the backend's S3 credential is read-only. Read with that credential (`aiq_agent.common.seaweed_s3`, shared with `look`) |
-| The list of PDFs and what ingestion knows about each | One table in the knowledge database (`AIQ_SUMMARY_DB`), `oib_corpus_files`, created on first use |
-| A copy on a replica's disk | A cache in `GRID_BASE_CORPUS_CACHE_DIR` (default `/tmp/base-corpus`), filled one file at a time |
+| The list of PDFs and what ingestion knows about each | One table in the knowledge database (`SUMMARY_DB`), `oib_corpus_files`, created on first use |
+| A copy on a replica's disk | A cache in `BASE_CORPUS_CACHE_DIR` (default `/tmp/base-corpus`), filled one file at a time |
 
 ```
 oib_corpus_files
@@ -26,7 +26,7 @@ oib_corpus_files
   failed_job_id          text null          -- the ingest job that ran for these bytes and gave up
 ```
 
-Without `AIQ_SUMMARY_DB` the store fails with an error. It does not fall back to a local SQLite file, which would recreate the per-replica state it exists to remove.
+Without `SUMMARY_DB` the store fails with an error. It does not fall back to a local SQLite file, which would recreate the per-replica state it exists to remove.
 
 There are no files on the backend that matter. A replica that loses its cache downloads again what it needs; nothing is pulled speculatively. The backend image ships no PDFs and reads no bind mount.
 
@@ -49,7 +49,7 @@ OR chunk_format_version IS DISTINCT FROM CHUNK_FORMAT_VERSION
 | An upload that replaces a file | `sha256` changed, `ingested_sha256` is still the old one |
 | A failed ingestion | Nothing was recorded as ingested, so the rule keeps firing, but no new job is queued: the file reads `failed` (see below) until its bytes change or an admin re-indexes it |
 | A change to chunking or to what a chunk carries | Bump `CHUNK_FORMAT_VERSION` in `oib_sync.py`; every file's recorded version differs (and its job id changes), so the next cycle queues the whole corpus again. The ingestor replaces a document's chunks by name once the new version is indexed, so the re-ingest is not additive |
-| A Qdrant cluster that was wiped or repointed (`AIQ_QDRANT_URL`) | The cycle sees rows claiming ingestion while the collection is empty, forgets every `ingested_sha256` and re-ingests |
+| A Qdrant cluster that was wiped or repointed (`QDRANT_URL`) | The cycle sees rows claiming ingestion while the collection is empty, forgets every `ingested_sha256` and re-ingests |
 | An admin's "re-index" | `POST /v1/admin/oib/reingest` clears `ingested_sha256` and `failed_job_id` for the named files, drops their finished or failed job and queues a new one |
 
 The hash and version are written only after the file's job reached `FileStatus.SUCCESS`, and only if the row still holds the bytes that were ingested (`mark_ingested` is a conditional update), so a file replaced while it was being ingested still needs ingestion afterwards. The worker never writes the table; whoever reads the job's status next does (`oib_sync.settle`, called by the sync cycle and by the status view).
@@ -58,9 +58,9 @@ The hash and version are written only after the file's job reached `FileStatus.S
 
 ## Who runs ingestion
 
-**The ingest workers do.** A file that needs ingestion becomes exactly one job on the `ingest_job_queue` table, the queue `POST /v1/ingest` uses (`aiq_agent.knowledge.ingest_queue`), in the platform lane (no organisation) at `bulk` priority. It is claimed by the ingest-worker tier, and by nothing else: the `chat` and `api` roles only enqueue (ADR-0082 step B). Kubernetes runs it as the `ingest-worker` Deployment and both Compose files as the `ingest-worker` service, with the queue's heartbeat, stale-claim reclaim, attempt limit, dead rows and drain behaviour. The queue is on whenever `AIQ_SUMMARY_DB` is set, which the corpus needs anyway.
+**The ingest workers do.** A file that needs ingestion becomes exactly one job on the `ingest_job_queue` table, the queue `POST /v1/ingest` uses (`aiq_agent.knowledge.ingest_queue`), in the platform lane (no organisation) at `bulk` priority. It is claimed by the ingest-worker tier, and by nothing else: the `chat` and `api` roles only enqueue (ADR-0082 step B). Kubernetes runs it as the `ingest-worker` Deployment and both Compose files as the `ingest-worker` service, with the queue's heartbeat, stale-claim reclaim, attempt limit, dead rows and drain behaviour. The queue is on whenever `SUMMARY_DB` is set, which the corpus needs anyway.
 
-**There is no in-process path.** `oib_sync` never calls `upload_file`, `submit_job` or `run_prepared`, and has no thread pool (a test greps for it). If the queue is off or cannot take the job (`GRID_INGEST_QUEUE=off`, no database, a write error), `ingest_dispatch.enqueue_only` (reached through the agent tier's one seam into the API tier, `aiq_agent.turn.api_seam.enqueue_ingest_job`) raises `QueueUnavailable`: the upload route answers 500, the sync cycle fails loudly, and the next cycle queues the file once the queue is back.
+**There is no in-process path.** `oib_sync` never calls `upload_file`, `submit_job` or `run_prepared`, and has no thread pool (a test greps for it). If the queue is off or cannot take the job (`INGEST_QUEUE=off`, no database, a write error), `ingest_dispatch.enqueue_only` (the API tier's own enqueue, which its routes hand to `oib_sync` as `enqueue`, so the agent tier never imports the API tier) raises `QueueUnavailable`: the upload route answers 500, the sync cycle fails loudly, and the next cycle queues the file once the queue is back.
 
 **The job** is built like `POST /v1/ingest` builds one: `ingestor.prepare_job(...)` records a `PENDING` status and `ingest_dispatch.enqueue_only(prepared)` stores it. Its pieces:
 
@@ -75,7 +75,7 @@ The hash and version are written only after the file's job reached `FileStatus.S
 
 **A sync cycle** (`oib_sync.sync()`) is housekeeping. It runs
 
-- every ten minutes, as the base-corpus housekeeping route `POST /v1/maintenance/housekeeping/base-corpus` (internal token). On Kubernetes that is the `housekeeping-base-corpus` CronJob (`deploy/pulumi/src/app/workers.ts`, `*/10 * * * *`, `concurrencyPolicy: Forbid`); in Compose it is the housekeeping clock (`frontends/ui/workers/housekeeping-clock.js`);
+- every ten minutes, as the base-corpus housekeeping route `POST /v1/maintenance/housekeeping/base-corpus` (internal token). On Kubernetes that is the `housekeeping-base-corpus` CronJob (`deploy/pulumi/src/app/workers.ts`, `*/10 * * * *`, `concurrencyPolicy: Forbid`); in Compose it is the housekeeping clock (`apps/workspace/workers/housekeeping-clock.js`);
 - on demand, as `POST /v1/admin/oib/sync`, the admin's "run it now". It calls the same function.
 
 There is no sync at boot and no boot thread. A cycle does bookkeeping and queues; it ingests nothing:
@@ -155,13 +155,13 @@ The fields per file are `file_name`, `state`, `size_bytes`, `chunk_count`, `inge
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GRID_BASE_CORPUS_CACHE_DIR` | `/tmp/base-corpus` | This process's cache of corpus files. May be lost at any restart |
-| `AIQ_SUMMARY_DB` | none | The knowledge database; holds `oib_corpus_files`. Required |
-| `FRONTEND_INTERNAL_URL`, `GRID_INTERNAL_API_TOKEN` | none | How the backend reaches the BFF to write and delete objects |
+| `BASE_CORPUS_CACHE_DIR` | `/tmp/base-corpus` | This process's cache of corpus files. May be lost at any restart |
+| `SUMMARY_DB` | none | The knowledge database; holds `oib_corpus_files`. Required |
+| `FRONTEND_INTERNAL_URL`, `INTERNAL_API_TOKEN` | none | How the backend reaches the BFF to write and delete objects |
 | `SEAWEED_ENDPOINT`, `SEAWEED_ACCESS_KEY`, `SEAWEED_SECRET_KEY`, `SEAWEED_BUCKET` | none, none, none, `grid-documents` | The read-only credential and bucket the backend downloads with |
-| `GRID_INGEST_QUEUE` | on when a database is set | `off` turns the durable ingest queue off. The base corpus then cannot be ingested: uploads and sync cycles fail loudly |
+| `INGEST_QUEUE` | on when a database is set | `off` turns the durable ingest queue off. The base corpus then cannot be ingested: uploads and sync cycles fail loudly |
 | `OIB_COLLECTION_NAME` | `oib_knowledge` | Target collection (a scope in Qdrant's corpus collection) |
-| `AIQ_QDRANT_URL` | none (required) | The Qdrant cluster every chunk is stored in |
+| `QDRANT_URL` | none (required) | The Qdrant cluster every chunk is stored in |
 
 ---
 
@@ -170,7 +170,7 @@ The fields per file are `file_name`, `state`, `size_bytes`, `chunk_count`, `inge
 Upload them in the platform-admin UI. A developer with a directory of PDFs runs
 
 ```bash
-GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
+ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
 ```
 
 which sends each PDF through `POST /v1/admin/oib/documents` (header `X-Admin-Token`). The upload queues one ingest job per file; watch `/v1/oib/status`.
@@ -187,22 +187,22 @@ from aiq_agent.knowledge.factory import get_ingestor
 ingestor = get_ingestor("llamaindex")
 ```
 
-The adapter reaches Qdrant at `AIQ_QDRANT_URL`, in every deployment and in local development alike.
+The adapter reaches Qdrant at `QDRANT_URL`, in every deployment and in local development alike.
 
 ---
 
 ## Dependency graph
 
 ```
-frontends/aiq_api routes/oib.py  ·  routes/jobs.py (housekeeping/base-corpus)
+apps/backend routes/oib.py  ·  routes/jobs.py (housekeeping/base-corpus)
        │
        ▼
-src/aiq_agent/oib_sync.py ──────────► src/aiq_agent/corpus_store.py
-       │   │                              │ table: oib_corpus_files (AIQ_SUMMARY_DB)
+packages/agent/src/aiq_agent/oib_sync.py ──────────► packages/agent/src/aiq_agent/corpus_store.py
+       │   │                              │ table: oib_corpus_files (SUMMARY_DB)
        │   │                              │ writes: BFF presigned URLs / delete
        │   │                              │ reads:  aiq_agent.common.seaweed_s3
-       │   │                              └ cache:  GRID_BASE_CORPUS_CACHE_DIR
-       │   └── turn/api_seam.enqueue_ingest_job ─► aiq_api.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
+       │   │                              └ cache:  BASE_CORPUS_CACHE_DIR
+       │   └── enqueue (handed in by the route) ─► aiq_api.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
        │                                                          │ claimed by
        │                                                          ▼
        │                                         ingest workers (QueueSource) ─► CorpusObjectDownload

@@ -141,9 +141,9 @@ Phase 1, in parallel:
    `priority`; release claims on drain; maximum job runtime and a progress
    heartbeat; dead rows instead of `DELETE`; one per-organisation cap name;
    queue meters. `/v1/ingest` accepts `priority: "interactive" | "bulk"`
-   (default `interactive`). Not done: the cap name. Ingestion reads
-   `GRID_INGEST_MAX_PER_ORG` and still honours the deprecated
-   `AIQ_INGEST_MAX_PER_ORG` (`ingest_scheduler.per_org_cap_from_env`), and the
+   (default `interactive`). Ingestion reads `GRID_INGEST_MAX_PER_ORG`
+   (`ingest_scheduler.per_org_cap_from_env`); the old `AIQ_` name is adopted by
+   the image entrypoint for one release (ADR-0145 row 10b). Not done: the
    meters record into no provider (see Measured).
 2. **Provider limiter.** `provider_limiter` with priority classes and AIMD,
    wrapped around the single LLM and embedding choke points; embeddings gated
@@ -181,3 +181,50 @@ substrates; `task verify` passes on the merged branch.
   (provider limiter).
 * `docs/architecture/rate-limiting-and-load-protection.md`, whose L3 and L3b
   this extends.
+
+## Amendment 1 (2026-10-27): a slice can run in the supervisor, from a bundle
+
+The `bff-jobs` supervisor used to spawn the whole BFF (`node server.js`: the
+Next server, every page, the WebSocket proxy) to run work that needs none of
+it, because the claim loop is plain Node and could not import the TypeScript
+services. It can now. `scripts/build-jobs-bundle.ts` bundles
+`lib/jobs-queue/slice-entry.ts` (the same `runJobSlice` the internal route
+calls, in the same tenant slot) into `dist-jobs/slice.mjs` at image build, our
+`src/` inlined and packages left to the production `node_modules`, as the
+deploy scripts in `dist-scripts/` already were. With
+`GRID_BFF_JOBS_MODE=inprocess` (Pulumi `bffJobsMode`) the supervisor imports
+it, spawns no server, and answers the probes' `/api/healthz` itself, so the
+Deployment's probes hold in both modes. The default stays `http` until the
+in-process host has run in every environment; switching back is one value.
+
+What stays as decided above: the claim, the drain order (the loop drains, then
+the host ends: in process, the bundle flushes PostHog after the drain), the
+reading of a slice. The bundle answers what the route answered as a status
+(409 lost; a database outage, 502, 503 and 504 transient; anything else a failed
+attempt with its message) as the runner's own outcome, and a slice past
+`GRID_BFF_JOBS_SLICE_TIMEOUT_MS` is transient in both. One difference: a 404
+over HTTP was read as transient, for a frontend pod a rollout had not replaced
+yet; in process there is no such pod, and a handler's own `NotFoundError` is
+the job's failure. And as the Next server does, the in-process host logs an
+unhandled rejection or uncaught exception instead of exiting: a service that
+starts a promise and does not await it must not take every claim in the pod
+down when it rejects.
+
+What running without a request found: `file_research_report` read the locale
+(`getLocale`, `getTranslations`), and Next's `cookies()` throws outside a
+request scope. Over HTTP it had read the runner's own POST, which carried no
+locale either, so every report already rendered in the default locale. A slice
+is now marked (`lib/jobs-queue/slice-scope.ts`) and `getLocale` answers the
+default inside one, through both doors. A report in its requester's language is
+a separate change. No handler reaches `getGridSession()`: the walks build their
+session with `resolvePinnedRequesterSession`.
+
+Measured on a development container (load average about 17, so rough): the
+supervisor in process is ready to claim in 4.0 to 4.8 s at about 255 MB RSS,
+most of it importing the 4.8 MB bundle and its packages (`exceljs` and
+`@react-pdf/renderer` about 0.55 s each), and leaves 0.26 s after SIGTERM with
+nothing in flight. The `http` host's numbers (`node server.js` beside the
+supervisor) could not be taken there: `next build` was killed by the memory
+limit twice. Confirmation: `scripts/build-jobs-bundle.spec.mjs` builds the
+bundle and loads it in plain Node; `workers/jobs/slice-bundle.integration.spec.mjs`
+(run by `task db:test:rls`) runs slices through it against Postgres.

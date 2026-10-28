@@ -40,8 +40,8 @@ COPY pyproject.toml uv.lock ./
 COPY --chown=app:app src/ ./src/
 COPY --from=builder /app /app
 ADD scripts/*.sh /usr/local/bin/
-COPY deploy/entrypoint.py \\
-     deploy/start_web.py ./deploy/
+COPY apps/backend/entrypoint.py \\
+     apps/backend/start_web.py ./deploy/
 COPY ["configs/a.yml", "/etc/a.yml"]
 copy lower/ ./lower/
 """
@@ -50,8 +50,8 @@ copy lower/ ./lower/
         "uv.lock",
         "src/",
         "scripts",
-        "deploy/entrypoint.py",
-        "deploy/start_web.py",
+        "apps/backend/entrypoint.py",
+        "apps/backend/start_web.py",
         "configs/a.yml",
         "lower/",
     ]
@@ -69,13 +69,13 @@ def test_the_backend_image_watches_what_its_dockerfile_copies(mod):
     inputs = mod.inputs(backend)
 
     assert "packages/ifc-spatial-py" in inputs
-    assert {"deploy/Dockerfile", "src", "uv.lock", "deploy/start_web.py"} <= set(inputs)
+    assert {"apps/backend/Dockerfile", "apps/backend", "packages/agent", "uv.lock"} <= set(inputs)
     assert "tests" not in inputs and "docs" not in inputs
 
 
 def test_a_copy_that_leaves_the_context_is_refused(mod):
     with pytest.raises(ValueError, match="leaves the build context"):
-        mod._normalise("frontends/ui", "../../etc/passwd")
+        mod._normalise("apps/workspace", "../../etc/passwd")
 
 
 # --- Hashing, on a repository of our own ---------------------------------------
@@ -107,13 +107,13 @@ def repo(mod, tmp_path, monkeypatch):
     write(
         tmp_path,
         {
-            "deploy/Dockerfile": "FROM debian\nCOPY src/ ./src/\nCOPY pyproject.toml ./\n",
+            "apps/backend/Dockerfile": "FROM debian\nCOPY src/ ./src/\nCOPY pyproject.toml ./\n",
             "src/app.py": "print(1)\n",
             "pyproject.toml": "[project]\n",
-            "frontends/ui/deploy/Dockerfile": "FROM node\nCOPY . .\n",
-            "frontends/ui/page.tsx": "export {}\n",
-            "frontends/web/Dockerfile": "FROM node\nCOPY . .\n",
-            "frontends/web/index.astro": "<p/>\n",
+            "apps/workspace/deploy/Dockerfile": "FROM node\nCOPY . .\n",
+            "apps/workspace/page.tsx": "export {}\n",
+            "apps/site/Dockerfile": "FROM node\nCOPY . .\n",
+            "apps/site/index.astro": "<p/>\n",
             "docs/readme.md": "hi\n",
         },
     )
@@ -140,7 +140,7 @@ def test_a_new_week_renames_every_image_so_base_images_are_refreshed(mod, repo):
 
 
 def test_a_copied_path_the_commit_does_not_track_fails_loudly(mod, repo):
-    write(repo, {"deploy/Dockerfile": "FROM debian\nCOPY generated/ ./generated/\n"})
+    write(repo, {"apps/backend/Dockerfile": "FROM debian\nCOPY generated/ ./generated/\n"})
 
     with pytest.raises(ValueError, match="does not track"):
         mod.hashes("HEAD", week=WEEK)
@@ -149,7 +149,7 @@ def test_a_copied_path_the_commit_does_not_track_fails_loudly(mod, repo):
 def test_a_pull_request_builds_the_images_it_changes(mod, repo):
     base = git(repo, "rev-parse", "HEAD")
     git(repo, "checkout", "-q", "-b", "feature")
-    write(repo, {"frontends/ui/page.tsx": "export const x = 1\n"})
+    write(repo, {"apps/workspace/page.tsx": "export const x = 1\n"})
     # develop moves on under the PR; its change is not the PR's to build.
     git(repo, "checkout", "-q", "develop")
     moved = write(repo, {"src/app.py": "print(3)\n"})
@@ -159,8 +159,23 @@ def test_a_pull_request_builds_the_images_it_changes(mod, repo):
 
     assert [entry["name"] for entry in build] == ["frontend"]
     assert [entry["name"] for entry in images] == ["backend", "frontend", "web"]
-    assert build[0]["repository"] == "grid-oib-frontend" and build[0]["context"] == "frontends/ui"
+    assert build[0]["repository"] == "grid-oib-frontend" and build[0]["context"] == "apps/workspace"
     assert mod.plan_pull_request(base, week=WEEK)[0] == build
+
+
+def test_a_pull_request_that_moves_an_image_builds_it(mod, repo):
+    # The base had the site somewhere else, so it has no Dockerfile at the path
+    # the image names now: nothing to compare, so the image is built.
+    git(repo, "mv", "apps/site", "site-before-the-move")
+    git(repo, "commit", "-q", "-m", "the old layout")
+    base = git(repo, "rev-parse", "HEAD")
+    git(repo, "checkout", "-q", "-b", "move")
+    git(repo, "mv", "site-before-the-move", "apps/site")
+    git(repo, "commit", "-q", "-m", "the move")
+
+    build, _ = mod.plan_pull_request(base, week=WEEK)
+
+    assert [entry["name"] for entry in build] == ["web"]
 
 
 @pytest.mark.parametrize(

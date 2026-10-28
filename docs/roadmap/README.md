@@ -14,6 +14,7 @@ Status is read from each doc's header. A **dated review** is a record of what wa
 | [continuous-improvement-ledger.md](continuous-improvement-ledger.md) | live, loop state | The improvement loop's running state: a ranked backlog and one row per iteration, with evidence. |
 | [cross-project-rag-vision.md](cross-project-rag-vision.md) | superseded by [office-experience.md](office-experience.md) (2026-10-07) | The July goal of learning across projects. Kept for its reasoning; do not plan from it. |
 | [feature-opportunities.md](feature-opportunities.md) | unclear: undated menu; frame superseded by VISION.md (banner) | A menu of feature options after the stabilization work, one shipped item, and a recommended sequence. |
+| [ingestion-north-star.md](ingestion-north-star.md) | live, proposed 2026-10-27 | Ingestion read in layers: a cheap look at every page first, then the deep read, the document dossier, references and findings at extraction, and the Eingangsbericht. With the measurements behind each slice. |
 | [ifc-compliance-ledger.md](ifc-compliance-ledger.md) | live, proposed | A ledger that records each check of the building model against the rules. Extends ADR-0045. |
 | [ifc-review-findings.md](ifc-review-findings.md) | live, open findings | IFC/BIM review findings that are not fixed yet, each with its file and failure. |
 | [ifc-viewer-capabilities.md](ifc-viewer-capabilities.md) | live, audit | What the ifc-lite packages offer against what the viewer uses, read from their type declarations. |

@@ -1,6 +1,6 @@
 # Chat wire v2
 
-**Status:** Designed 2026-09-27; contract committed (`src/aiq_agent/common/wire_v2.py`
+**Status:** Designed 2026-09-27; contract committed (`packages/agent/src/aiq_agent/common/wire_v2.py`
 and what is generated from it), the cut not yet started.
 **Decision:** [ADR-0068](../adr/0068-use-nemo-agent-toolkit-as-designed.md), option A,
 as one cut with no `v: 1` period. The NAT 1.7 → 1.9 upgrade is part of the cut, as
@@ -29,7 +29,7 @@ A production trace of one turn on the old wire showed:
 
 When the cut is done, a turn is a few dozen frames. Each one carries a single
 typed fact, and no frame's size depends on how long the prompt is. The recorded
-answered turn in `shared/wire/v2/turn-answered.jsonl` is 22 frames and 8.5 KB in
+answered turn in `contracts/wire/v2/turn-answered.jsonl` is 22 frames and 8.5 KB in
 total. Its largest frame is the terminal, at about 2 KB. The UI folds each frame in
 constant time. Stop cancels the turn on the server. Nothing in the UI reads a NAT
 function name.
@@ -72,7 +72,7 @@ and what of ours that deletes.
 |---|---|---|
 | **`nat.plugin_api`**: the stable plugin surface. `Context`, `ContextState`, `Builder`, `Function`, `FunctionInfo`, `FunctionBaseConfig`, `LLMFrameworkEnum`, the `*Ref` types, `register_*`, every HITL model (`InteractionPrompt`, `HumanPrompt{Text,Radio,…}`, `HumanResponse{Text,Radio,…}`, `InteractionResponse`), `HITLMiddleware`, `FunctionMiddleware` | **Yes, everywhere** | S0 moves every import it covers (`nat.builder.context` ×19, `nat.cli.register_workflow` ×22, `nat.builder.builder` ×21, `nat.data_models.function` ×20, `nat.builder.function_info` ×19, `nat.data_models.component_ref` ×14, `nat.builder.framework_enum` ×8, `nat.data_models.interactive` ×8) onto `nat.plugin_api`. A ruff `banned-api` then bans the internal modules for those names. This is ADR-0068's "stop importing internals": no lines saved, but one import surface to re-check per NAT minor instead of eight |
 | `SessionManager.session(user_id=…)`, `Context.user_id` | **Yes** | The chat socket passes the verified subject as `user_id`, so NAT's per-user builders and `Context.user_id` see the real person rather than whatever NAT's unverified decode would have made of the header |
-| **Verified WebSocket identity**: `front_end.identity_authentication` → `_type: jwt` providers (`issuer_url`, `jwks_uri`, **`audience: str`**, required), `accepted_identity_credentials`, `identity_header`, `UserManager.extract_user_from_connection_with_verification` | **No, not in this cut** | WorkOS AuthKit access tokens carry **no `aud`**. Our validator skips audience deliberately (`auth/workos_validator.py:33`), and 1.9's `JwtAuthProviderConfig` requires one. Pointing it at WorkOS would reject every token, or pin an audience the token does not have. `aiq_api/auth/jwt_validator.py` (246) and `aiq_agent/auth/workos_validator.py` (55) therefore stay, and so does the HTTP middleware that shares them (ADR-0002). S0 confirms this against a real token. If authlib turns out to accept a token without `aud`, a follow-up replaces the WS half, and we file `audience: str \| None` upstream. `identity_header` is not taken either: it trusts a bare header, and our signed context envelope (HMAC over the whole context) is strictly stronger |
+| **Verified WebSocket identity**: `front_end.identity_authentication` → `_type: jwt` providers (`issuer_url`, `jwks_uri`, **`audience: str`**, required), `accepted_identity_credentials`, `identity_header`, `UserManager.extract_user_from_connection_with_verification` | **No, not in this cut** | WorkOS AuthKit access tokens carry **no `aud`**. Our validator skips audience deliberately (`auth/workos_validator.py:33`), and 1.9's `JwtAuthProviderConfig` requires one. Pointing it at WorkOS would reject every token, or pin an audience the token does not have. `aiq_api/auth/jwt_validator.py` (246) and `aiq_api/auth/workos_validator.py` (55) therefore stay, and so does the HTTP middleware that shares them (ADR-0002). S0 confirms this against a real token. If authlib turns out to accept a token without `aud`, a follow-up replaces the WS half, and we file `audience: str \| None` upstream. `identity_header` is not taken either: it trusts a bare header, and our signed context envelope (HMAC over the whole context) is strictly stronger |
 | **Reconnection bound to identity**: `worker.get_conversation_handler(user_id, conversation_id)` | **No** | It lives inside NAT's `WebSocketMessageHandler`, which v2 no longer runs. v2 binds a socket to the conversation the BFF **signed**, which is stronger than the user alone, and resumes by `attach` (§d). What it deletes is our override of it: `_restore_execution_state` and its query-param rewrite go with S3 |
 | **`HITLMiddleware`**: a prompt before or after any NAT function, through `prompt_user_input` | **Available at no cost** | It rides the same `user_input_callback` → `interaction_request` path as `ask_user` and the clarifier, so it needs nothing on the wire. It is not configured in this cut: today's write-side tools propose through cards and never write (ADR-0003). It is the candidate for approving a write tool when one exists |
 | `langgraph_wrapper` (`nat.plugins.langchain.langgraph_workflow`): `conversation_id` → `thread_id` | **No** | Our `thread_id_for_turn` already maps `conversation_id` → `thread_id`, identically. The wrapper only drives graphs whose state is `messages`, and streams only the default `updates` mode, so it cannot carry our state or the `custom` stream |
@@ -182,7 +182,7 @@ missing (checked in the 1.9.0 wheel). So `workflow_stream.py` and
   still `[all]`. The narrowing in gain 2 is our choice, and S0 makes it.
 - **Tavily moved out of `nvidia-nat-langchain`** (1.8, migration guide
   "Tavily Internet Search Package Migration (Breaking)"; #2015). Our
-  `sources/tavily_web_search` has its own `_type: tavily_web_search` and
+  `packages/tavily-web-search` has its own `_type: tavily_web_search` and
   declares `langchain-tavily` itself, so there is no config change. S0 checks the
   lock still resolves it.
 - **Only braced `${VAR}` is interpolated** (1.8, migration guide "Workflow YAML
@@ -227,7 +227,10 @@ are the models. What follows is the decision, per event.
 | `RUN_STARTED` | `message_id`: the answer's deterministic id | AG-UI's name. Sent by the handler before any setup I/O, so it is the delivery ack. It deletes the client's "no response received" timeout that ran before the first backend frame |
 | `TEXT_MESSAGE_START` / `_CONTENT` / `_END` | `message_id`; `delta` (min 1 char) | AG-UI's names and semantics. START is the first prose of a streamed call, CONTENT appends, END marks the envelope's `answer` string as closed. The producer coalesces deltas to at most one per `RELAY_WINDOW_S` (50 ms) |
 | `STATE_SNAPSHOT` | `snapshot: {text, sources[], answer_meta?}` | ADR-0066's settle. AG-UI's STATE_SNAPSHOT means "replace the state you hold", and that is exactly this: text, citations and masthead are replaced, and an absent `answer_meta` removes the masthead. Cards are untouched. It is chosen over MESSAGES_SNAPSHOT, which has no place for sources. It is not a STATE_DELTA, because the settled text is rewritten, not patched |
-| `STEP_STARTED` / `STEP_FINISHED` | `step`: a typed `Step` (below) | One event family for every Herleitung row. A step with a duration (a tool call) sends STARTED, then FINISHED with the same `id`. An instant step (a status line, a round, a skill) sends only FINISHED. The same `id` again replaces the row, newest wins, which is the old name-dedupe made explicit. AG-UI's `TOOL_CALL_*` is deliberately **not** used: it implies streamed arguments and results, and a step must never carry either |
+| `STEP_STARTED` / `STEP_FINISHED` | `step`: a typed `Step` (below); `subagent_run_id?`: the subagent invocation that took it (AG-UI's `subagentRunId`), absent for the turn's own agent | One event family for every Herleitung row. A step with a duration (a tool call) sends STARTED, then FINISHED with the same `id`. An instant step (a status line, a round, a skill) sends only FINISHED. The same `id` again replaces the row, newest wins, which is the old name-dedupe made explicit. AG-UI's `TOOL_CALL_*` is deliberately **not** used: a tool call the reader sees is a Herleitung row, and a second event family for the same fact would be two ways to say a tool ran. (Streaming is not the reason: `TOOL_CALL_CHUNK` carries a call in one frame and `TOOL_CALL_RESULT` is optional, ADR-0144.) A step never carries a tool's arguments or result |
+| `SUBAGENT_STARTED` | `subagent_run_id`, `name`, `description?` (≤ 160 chars, the model's words), `parent_subagent_run_id?`, `parent_tool_call_id?` | AG-UI 1.0's names and fields, snake case. A subagent invocation began inside this turn: today an in-process deep research (`deep_researcher`), the orchestrator's `task` calls (`planner-agent`, `writer-agent`, `source-router-agent`, `general-purpose`) and each `run_research_batch` worker (`researcher-agent`, its query as `description`). Every step it takes carries its `subagent_run_id`; a nested one names its parent. A run the turn **commissions** is not a subagent: it is a separate run, `result.run` (ADR-0062) |
+| `SUBAGENT_FINISHED` | `subagent_run_id` | The invocation completed. AG-UI's `outcome` is omitted, which AG-UI reads as success; `suspended` arrives with pausing a run ([ADR-0140](../adr/0140-a-turn-that-needs-the-person-pauses-and-a-new-run-resumes-it.md)) |
+| `SUBAGENT_ERROR` | `subagent_run_id`, `message` (a fixed sentence, never the exception), `code?` (the exception class, or `tool_error`) | The invocation failed and the turn goes on, which is why it is not `RUN_ERROR`. An invocation ends exactly once: no `SUBAGENT_FINISHED` follows its error |
 | `RUN_FINISHED` | `outcome: answered \| refused \| handed_off \| cancelled`, `result: TurnResult` | AG-UI's name. The result is authoritative and is what the server persists: text, keyed cards, sources, read_sources, masthead, confidence and its reasons, routing, escalation reason, citations removed, truncation, queue refusal and retry hint, skills, retrieval ledger, the thinking level the answering call ran at (`reasoning_effort`), and the `run` hand-off `{run_id, run_message_id}` (both or neither, structurally) |
 | `RUN_ERROR` | `code: workflow_error \| auth_error \| interaction_expired`, `message`, `details?` | AG-UI's name, used only for failures that **end** the turn. Nothing is persisted, and the client asks the server for a finished answer before it shows the banner |
 | `CUSTOM` `masthead` | `{answer_meta}` | ADR-0066's masthead before the first word. A custom event, not a state delta, because it is set once and the text does not change |
@@ -239,6 +242,7 @@ are the models. What follows is the decision, per event.
 | `CUSTOM` `interaction_request` | `{interaction_id, input: text \| choice, text, options[{id,label}], placeholder?, expires_at}` | HITL, over NAT's `prompt_user_input` (below). Only the two shapes a producer builds exist. The legacy `approval` and `multiple_choice`, and the never-produced checkbox, dropdown, notification and oauth inputs, are gone |
 | `CUSTOM` `interaction_resolved` | `{interaction_id, outcome: answered \| expired \| cancelled}` | Closes the prompt in every tab and for spectators, who used to learn it only from the next frame |
 | `CUSTOM` `steer_received` / `steer_applied` | `{steer_id, text}` / `{steer_id, round}` | A note the asker typed into the running turn reached its inbox, then was read before decision `round`. A note with no `steer_applied` by the terminal is the client's to ask next ([`websocket-protocol.md`](../api/websocket-protocol.md#steering-a-running-turn-steer)) |
+| `CUSTOM` `viewer_action` | `{tool_call_id, tool_call_name, args}` | An AG-UI frontend tool call, whole in one frame (ADR-0144): Piloti proposes to move the asker's own viewer. Sent only in a turn whose `user_message.client_tools` declared `show_in_viewer`, at most once per turn. `tool_call_name` is the allow-list (`open_document`, `highlight_passage`, `highlight_region`, `compare_revisions`, `focus_ifc_element`); the schema reads it as a string, so a page passes over a name it does not know. `args` are the document and the place, checked by the tool against the BFF before it is sent. Not `TOOL_CALL_*`, for the reason in that row. Folded by every reader; held by the page that asked the turn until `RUN_FINISHED` `answered`, dropped on any other end, and read again with `GET /api/documents/{id}` before anything moves. Ignored after a Stop on this page, and never stored with the answer |
 | `CUSTOM` `rejected` | `{of, code, message?}`, with `seq: 0` | A client message was refused (`auth_expired`, `conversation_mismatch`, `duplicate_turn`, `not_asker`, `no_pending_interaction`, `turn_not_found`, `invalid_message`, `busy` for an `if_idle` question, `steer_limit`). It is out of band and never ends a turn. That is why an unauthorised Stop is not a `RUN_ERROR`. `of: unknown` answers a frame with no type this wire has, which used to be dropped: a client never waits on silence |
 
 **One frame is not a turn's: `hello`.** `{v: 2, type: CUSTOM, name: hello, ts,
@@ -269,14 +273,18 @@ Each step is compact, typed data. None of them carries a tool's input or output.
 | `kind` | Fields | Producer |
 |---|---|---|
 | `status` | `slot`, `key?`, `values{}`, `channel: live \| technical`, `detail{}` (scalars and string lists) | every `turn_status.emit_*`, the decision records, the budget, cutoff and degraded records |
-| `retrieval` | `round`, `key`, `values{}`, `tools[]`, `reason?` (the model's conclusion, at most 160 chars) | `turn_status.emit_retrieval` |
+| `retrieval` | `round`, `key`, `values{}`, `tools[]`, `reason?` (the model's conclusion, at most 160 chars) | `retrieval_status.emit_retrieval` |
 | `sources` | `round?`, `tool`, `lanes[]` (`TraceLane{key,label,kind,hit_count,sources[{name,title?,detail?,shelf?,round?,provenance?}]}`) | `grounding_block.render_grounding_block`, built from the records it is given, never scraped from the text |
 | `tool` | `tool` (basename), `status: running \| ok \| error` | one LangChain callback on the graph run (`on_tool_start`/`_end`/`_error`) |
 | `skill` | `phase: offered \| activated \| loaded`, `skill?`, `title?`, `hidden`, `count?`, `channel` | `skills/events.py` |
 | `clarification` | `max_turns` | `agents/piloti/clarify.py` |
-| `look` | `round?`, `document_name`, `document_id?`, `revision_id?` (the Fassung; absent: the current one), `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`), `image_index?`, `where?` (the region in words), `question?`, `reading?`. One per look that rendered, id `look:<n>`; a refused look leaves none | `turn_status.emit_look_step`, called by `tools/look/cards.note_look` (ADR-0128) |
+| `look` | `round?`, `document_name`, `document_id?`, `revision_id?` (the Fassung; absent: the current one), `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`), `image_index?`, `where?` (the region in words), `question?`, `reading?`. One per look that rendered, id `look:<n>`; a refused look leaves none | `retrieval_status.emit_look_step`, called by `tools/look/cards.note_look` (ADR-0128) |
 
 `scope: chat | deep` sits on every step. In-process deep research sets `deep`.
+Which *invocation* took a step is not the step's but the event's
+(`subagent_run_id`, as AG-UI attributes every event), and the deepagents `task`
+call that spawns a subagent is its parent's row, not the child's
+(`action_rows._tool_subagent`).
 
 ### Client → server
 
@@ -284,7 +292,7 @@ The client sends five messages, all with `v: 2` and `conversation_id`.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?` | The fields are flat, where they used to be a JSON string inside a NAT text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?`, `client_tools?` (the frontend tools this page can run this turn, AG-UI's `RunAgentInput.tools` by name; ADR-0144) | The fields are flat, where they used to be a JSON string inside a NAT text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, and the contract enforces that structurally |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Authorised: only the asker's verified subject, or an internal caller, may cancel. Anyone else gets `rejected{not_asker}`. `shown` is how much of the answer was on screen: the first `chars` code points of the text the client had folded through `seq`. A position, not the text, so the server keeps only what the model wrote and the frame stays small enough for the gateway's limiter to read whole (`ws-frames.js` peeks 512 bytes and charges a longer message as a turn). Sent only when the hello accepts `cancel_turn.shown` |
 | `attach` | `turn_id`, `after_seq` | After a reconnect or a reload: replay the turn from `after_seq + 1`, then continue live |
@@ -310,6 +318,14 @@ client reads leniently:**
   dropped. The fold passes over it, so its `seq` still counts and the turn
   settles; the Herleitung draws nothing for it.
 
+Changing what a known field may hold is a break. `answer_confidence_version`
+is the worked example: the confidence rule changed (the answer check,
+ADR-0139), and a `3` would have failed every open tab's `1 | 2`. A checked
+answer therefore travels as `2`, and the new `confidence_check` tells it apart
+from a stored per-sentence turn; an older bundle strips it and shows the level.
+`packages/agent/tests/common/test_wire_v2_open_tabs.py` checks a checked and an
+unavailable `RUN_FINISHED` against the schema as it stood before.
+
 So a new field on `TurnResult`, a new step kind, a new `CUSTOM` or a new event
 type needs no client release first. An old tab simply does not show it, and
 `RUN_FINISHED` stays authoritative for the answer. A new *terminal* type is the
@@ -327,7 +343,7 @@ the same holds: a relayed Stop carries `shown` beside the message on the bus,
 not inside it, so an older owner still parses the Stop. A frame that names only
 known things and still does not parse remains a break that asks an open tab to reload: a renamed or retyped
 field, a new required field, a known `CUSTOM` whose value no longer parses.
-`shared/wire/v2/newer-events.jsonl` holds the tolerated drift; the UI spec
+`contracts/wire/v2/newer-events.jsonl` holds the tolerated drift; the UI spec
 reads it, the Python test refuses it.
 
 **The release that shipped the lenient read was staged.** The bundle before
@@ -335,7 +351,7 @@ it generated every server-to-client schema `.strict()`. A tab of that bundle
 still open after the deploy refused a hello that names `accepts` (its socket
 ends `outdated`) and a `RUN_FINISHED` whose result has `reasoning_effort` (the
 turn never ends). So for that one release the server withheld both behind
-`GRID_WIRE_V2_ADDITIVE_FIELDS`, off by default (`STAGED_SERVER_FIELDS`,
+`WIRE_V2_ADDITIVE_FIELDS`, off by default (`STAGED_SERVER_FIELDS`,
 `aiq_api/chat_socket.py`). Every bundle since parses leniently, so the flag is
 now on by default; `off` is the rollback. A new tab works without the two
 fields: with no `accepts` it sends no `shown`, so a Stop stores everything
@@ -353,7 +369,7 @@ which bundle it talks to.
 (`agents/piloti/conversation.py`, today `self._graph.ainvoke` at ~687). Every
 producer inside a graph run calls `get_stream_writer()` and writes a wire
 **body**. This was measured on the installed LangGraph, not assumed
-(`tests/aiq_agent/turn/test_stream_writer_reach.py`, committed with this design): the writer reaches a node in a graph that another node
+(`packages/agent/tests/turn/test_stream_writer_reach.py`, committed with this design): the writer reaches a node in a graph that another node
 `ainvoke`s through a plain async function, which is the shape of Piloti's NAT
 function boundary, and LangChain callbacks such as the token callback, tools
 inside `ToolNode`, child tasks and `asyncio.to_thread` workers. Under `ainvoke`
@@ -423,22 +439,22 @@ where it emits in v2:
 |---|---|---|
 | `turn_status.push_custom_step`: a balanced NAT FUNCTION START/END pair disguised as a function, with JSON inside an HTML-escaped code block | `common/turn_status.py` | **Deleted.** `emit_step(Step)`. The disguise, the span-stack balancing and its docstring go with it |
 | `emit_status` and its callers: `emit_documents_loading`, `_waiting`, `emit_retrieval_requery`, `emit_citation_check`, `emit_answer_repair`, `emit_escalation`, `emit_synthesis`, `emit_family_coverage`, `emit_repeat_fetch`, `emit_refused_source`, `emit_width_cap`, `emit_research_truncated`, `emit_input_budget_exhausted`, `emit_deep_research_cutoff`, `emit_answer_degraded`, `emit_card_invalid`, `emit_anatomy_dropped`, `emit_verdict_dropped`, `emit_checkpoint` | `common/turn_status.py`, called from `agents/piloti/*`, `agents/deep_researcher/{agent,cutoff,finalize,tools/research}.py`, `common/{retrieval_rounds,answer_envelope,grounding_block}.py`, `cards/surface_documents.py`, `tools/bim/measurement_sources.py`, `sources/{ris_adapter,tavily_web_search,knowledge_layer}` | Each builds a `StatusStep` and calls `emit_step`. The `slot` stays the step id's suffix (`status:<slot>`), and the keys are unchanged (`ALL_STATUS_KEYS`) |
-| `emit_retrieval` | `common/turn_status.py`, from Piloti's agent node and deep research | `RetrievalStep` with `round`, `tools` and `reason`, and `prefetch` on the round the decision ran before the model (`_prefetch_node`). It still sets `_retrieval_round` |
+| `emit_retrieval` | `common/retrieval_status.py`, from Piloti's agent node and deep research | `RetrievalStep` with `round`, `tools` and `reason`, and `prefetch` on the round the decision ran before the model (`_prefetch_node`). It still sets `_retrieval_round` |
 | `emit_subject_document` | `turn/subject_document.py`, **setup phase** | `load_subject_document` **returns** the outcome as a `StatusStep`, and `_run` yields it. Nothing is emitted from outside a graph |
 | `emit_documents_loading` | `conversation_register._run`, **setup phase** | `_run` yields the `StatusStep` |
 | `emit_documents_waiting` | `turn/inventory.py`, **setup phase**, before waiting on indexing | `load_inventory` is split: `pending_uploads()` returns what is pending, `_run` yields the waiting step, then awaits `wait_for_uploads()` |
 | Skill events (`SELECTION_STEP_NAME`, `skill:<name>`) | `skills/events.py` | `SkillStep` through `emit_step` |
 | Clarification trace row | `agents/piloti/clarify.py:676` | `ClarificationStep` |
-| Decision records (`status:decision:*`) | `common/decisions.py:478`, `sources/knowledge_layer/src/decisions.py:167` | technical `StatusStep` |
-| The Trace-Lanes fan-out, which the UI regex-read out of the NAT TOOL_END payload (`## Trace-Lanes` + JSON) | `sources/knowledge_layer/src/register.py` `_trace_lanes_for_hits`, `read_passage.py`, `ris_adapter/lookup/render.py`, rendered by `common/grounding_block.render_grounding_block` | `render_grounding_block` emits one `SourcesStep` from `block.lanes`, which becomes typed `TraceLane` models rather than a JSON string. That is one producer site for every evidence tool. The `## Trace-Lanes` line in the tool text is left for now; see F2 |
-| Tool calls (NAT TOOL steps that the executed-steps chips read) | NAT's LangChain profiler, through the step adaptor | One `AsyncCallbackHandler` (`turn_status.ToolStepCallback`: `on_tool_start/end/error` → `ToolStep`, basename only), added once to the conversation graph's run config. NAT's profiler still bills and traces through its own handler |
+| Decision records (`status:decision:*`) | `common/decisions.py:478`, `packages/knowledge-layer/src/decisions.py:167` | technical `StatusStep` |
+| The Trace-Lanes fan-out, which the UI regex-read out of the NAT TOOL_END payload (`## Trace-Lanes` + JSON) | `packages/knowledge-layer/src/trace_lanes.py` `trace_lanes_for_hits`, `read_passage.py`, `ris_adapter/lookup/render.py`, rendered by `common/grounding_block.render_grounding_block` | `render_grounding_block` emits one `SourcesStep` from `block.lanes`, which becomes typed `TraceLane` models rather than a JSON string. That is one producer site for every evidence tool. The `## Trace-Lanes` line in the tool text is left for now; see F2 |
+| Tool calls (NAT TOOL steps that the executed-steps chips read) | NAT's LangChain profiler, through the step adaptor | One `AsyncCallbackHandler` (`action_rows.ToolStepCallback`: `on_tool_start/end/error` → `ToolStep`, basename only), added once to the conversation graph's run config. NAT's profiler still bills and traces through its own handler |
 | Live prose: `_ProseTokenHandler` → `AnswerStreamSink.push/put/retract` (deltas, `Masthead`, `Snapshot`, `Cards`) | `turn/answer_stream.py`, with `common/answer_prose_stream.py` and `agents/piloti/answer_pipeline.LiveAnswer` | The handler writes bodies: `TEXT_MESSAGE_START`, coalesced `_CONTENT` (flushed when 50 ms have passed since the last flush, before any other body, and at `on_llm_end`), `_END` when the `answer` string closes, `STATE_SNAPSHOT` from `LiveAnswer.settle` (still in `to_thread`, where the writer works), `masthead`, one `card`/`card_refused` per card (the tools' cards first, then the envelope's, as today), and `answer_retracted`. `LiveAnswer` and the verifier are unchanged |
 | The terminal `ChatResponseChunk` with its extras on `model_extra`, lifted by name in `websocket_reconnect.py` (`_TRANSPARENCY_EXTRA_FIELDS`, `_SKILLS_EXTRA_FIELDS`, `_PERSISTED_EXTRA_FIELDS`) | `turn/response.py` `build_response`, `conversation_register._answer_chunks` | `build_result(state, cards, message_id) -> TurnResult`, a typed model, and `_run` yields `RunFinishedBody`. The lift tables, the `setattr` loops and `common/nat_converters.py` are deleted. A refusal is `RunFinishedBody(outcome="refused")` |
 | Run hand-off (ADR-0062) | `turn/commission.py`, lifted as `run_id`/`run_message_id` | `TurnResult.run`, with `outcome="handed_off"` |
 | Heartbeat | `websocket_reconnect._beat_while_running` (`GridTurnHeartbeat`) | the same task in the handler, writing a `HeartbeatBody` stamped by the turn's sequencer. The `grid_`-prefixed NAT workaround model is deleted |
 | Stage frames | `stages/delivery.deliver_stage_frame` → `websocket_reconnect.send_stage_frame` (`GridStageMessage`) | `StageFrameSink` becomes `(conversation_id, turn_id, StageValue) -> bool`. The handler stamps it with the turn's sequencer, which the registry keeps after the terminal until the last stage lands or `STAGE_WIRE_TTL_S` (10 min) passes. `GridStageMessage` is deleted. The `rejected` half of `shared/stages/frames.json` becomes schema refusal; the `delivered` half moves into the wire fixtures |
 | HITL: `clarify.py:703` and `ask_user.py:244` → `user_interaction_manager.prompt_user_input(build_human_prompt(...))` | `common/human_prompt.py` (NAT `HumanPromptText`/`Radio`) | **Unchanged for producers** (ADR-0068 §3). The handler's `user_input_callback` maps the NAT prompt to `interaction_request` and the answer back to `HumanResponseText`/`HumanResponseRadio`. The HITL models come from `nat.plugin_api` (1.9), and this mapping is their only use in `aiq_api` |
-| Deep-research progress, when it runs in process on the socket | its `turn_status` calls and its tool calls, inside the deep graph under the conversation graph's node | The same writer: steps carry `scope: "deep"`, set from a `ContextVar` that the deep node binds. A deep-research **job** runs under `ainvoke` in a worker, so its writer calls are no-ops. Its events stay on `job_events` and SSE, unchanged |
+| Deep-research progress, when it runs in process on the socket | its `turn_status` calls and its tool calls, inside the deep graph under the conversation graph's node | The same writer: steps carry `scope: "deep"`, set from a `ContextVar` that the deep node binds. Its subagents are `SUBAGENT_*` events from one producer, `turn_status.subagent_run`, bound around the run (`DeepResearcherAgent.run`), around each orchestrator `task` call (`SubagentEventsMiddleware`, the orchestrator's innermost middleware) and around each researcher worker (`tools/research._run_research_query`); a second `ContextVar` attributes every step inside. A deep-research **job** runs under `ainvoke` in a worker, so its writer calls are no-ops. Its events stay on `job_events` and SSE, unchanged |
 | `retrieval_trace.emit_retrieval_span` (`retrieve.<tool>` NAT steps) | `observability/retrieval_trace.py` | **Unchanged.** It is telemetry, it never reached the reader, and with the adaptor `off` it cannot |
 
 ## c. The route and the handler
@@ -534,7 +550,7 @@ same text on both sides. The client stores the same cut (`stopStreaming`,
 whichever of the two writes of the row reaches the BFF first (both insert under
 one id and the second no-ops). The rule has one copy per language,
 `TurnTextFold.stopped` and `features/chat/lib/stopped-answer.ts`, and
-`shared/wire/v2/stopped-cases.jsonl` holds both to the same cases. A Stop that
+`contracts/wire/v2/stopped-cases.jsonl` holds both to the same cases. A Stop that
 crosses the finished answer (the reveal runs up to about a second behind the
 wire) finds no turn to cancel: the server has stored the whole answer and
 answers `turn_not_found`. The client then cuts its own copy where the text on
@@ -553,7 +569,7 @@ still cancels a stale turn, as `set_workflow_task` does today.
 
 **HITL.** `RunningTurn.ask(prompt) -> HumanResponse` registers the pending
 interaction, with the subject it is addressed to, and sends
-`interaction_request` with `expires_at = now + GRID_HITL_RESPONSE_TIMEOUT_SECONDS`.
+`interaction_request` with `expires_at = now + HITL_RESPONSE_TIMEOUT_SECONDS`.
 It awaits the answer, sends `interaction_resolved`, and converts the answer into
 NAT's response. A relay replica publishes the answer on the bus as today.
 Expiry sends `interaction_resolved{expired}`, then `RUN_ERROR{interaction_expired}`.
@@ -562,7 +578,7 @@ Expiry sends `interaction_resolved{expired}`, then `RUN_ERROR{interaction_expire
 
 - **Every stamped frame is still `XADD`ed** to `conv:<id>:stream`
   (`ConversationBus.publish_frame`), within the same bounds
-  (`GRID_CONV_STREAM_MAXLEN`, `_TTL_SECONDS`). A `rejected` frame (seq 0) is not.
+  (`CONV_STREAM_MAXLEN`, `_TTL_SECONDS`). A `rejected` frame (seq 0) is not.
 - **The cursor is `(turn_id, seq)`**, not the stream entry id. `grid_frame_id`
   and `with_frame_id` are deleted. The client drops any event with
   `seq ≤ lastSeq` for its turn, and treats `seq > lastSeq + 1` as a gap: it sends
@@ -633,7 +649,14 @@ its own text, sources, masthead and cards, which are what was on screen
 (§c, Cancel). A replay or a spectator folds the terminal as sent. **Lanes are derived once, at fold time**:
 a `sources` step's `TraceLane[]` becomes the stored `TraceLaneCard[]` (with its
 `SourceSignal`) when the step is folded, never during a render. The fold ignores
-`seq: 0`: the driver routes `rejected`.
+`seq: 0`: the driver routes `rejected`. **A subagent is one stored row**:
+`SUBAGENT_*` fold into a technical `status` step `subagent:<run id>` (`detail`:
+`name`, `status: running | ok | error`, `description`, `code`), whose
+`subagentRunId` is its parent; a step a subagent took stores its
+`subagentRunId`. So the persisted Herleitung needs no second column, and
+`SubagentGroups` (under the graph) draws the nested groups from the steps
+alone, live, after a reload and for an observer. An error is never undone by
+a later `FINISHED`.
 
 ### e.2 A thin socket client
 
@@ -704,13 +727,14 @@ interface StoredThinkingStep {
   turnEvent?: { key: string; values?: Record<string, string>; reason?: string; tools?: string[] }
   traceLanes?: TraceLaneCard[]; round?: number; tool?: string; slot?: string
   detail?: Record<string, string | number | boolean | string[]>
+  subagentRunId?: string  // the invocation that took it; on a `subagent:` row, its parent
 }
 ```
 
 `functionName`, `displayName`, `category`, `isTopLevel`, `content`,
 `rawPayload` and `isDeepResearch` are gone.
 
-- **Postgres: one migration**, `frontends/ui/drizzle/0097_herleitung_steps_v2.sql`
+- **Postgres: one migration**, `apps/workspace/migrations/0097_herleitung_steps_v2.sql`
   (plus `.down.sql`). It rewrites `metadata->'provenance'->'thinkingSteps'` in
   place with a plpgsql function that applies the same rules the old readers
   applied, once:
@@ -773,12 +797,12 @@ and a reader-order change, nothing more.
 
 | Layer | What | Where |
 |---|---|---|
-| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `tests/aiq_agent/common/test_wire_v2.py` (committed) |
+| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `packages/agent/tests/common/test_wire_v2.py` (committed) |
 | Contract, UI side | The same files through the generated zod: every event parses to its type, defaults restored, and every invalid frame refused. `newer-events.jsonl` parses, its unknown keys stripped and its unknown types, step kinds and `CUSTOM` names folded as no-ops (§a, Compatibility). The generated module is the generator's output | `src/adapters/api/wire-v2.spec.ts`, `scripts/generate-wire-schemas.spec.mjs` (committed) |
-| Generation | Pydantic → `shared/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
-| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `tests/aiq_agent/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
-| Handler | Auth, binding, rejection codes, cancel authorisation (asker yes, colleague `not_asker`, bus path), HITL round trip and expiry, attach replay and splice with no duplicate or missing seq, stage stamping after the terminal, persistence built from `TurnResult`. A test that builds the app and asserts NAT's `websocket_endpoint` and `WebSocketMessageHandler` are NAT's own objects. A ruff `banned-api` for `nat.data_models.api_server` everywhere, and for the internal modules `nat.plugin_api` covers | `frontends/aiq_api/tests/test_chat_socket.py` |
-| Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `tests/aiq_agent/turn/test_golden_turn.py` |
+| Generation | Pydantic → `contracts/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
+| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `packages/agent/tests/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
+| Handler | Auth, binding, rejection codes, cancel authorisation (asker yes, colleague `not_asker`, bus path), HITL round trip and expiry, attach replay and splice with no duplicate or missing seq, stage stamping after the terminal, persistence built from `TurnResult`. A test that builds the app and asserts NAT's `websocket_endpoint` and `WebSocketMessageHandler` are NAT's own objects. A ruff `banned-api` for `nat.data_models.api_server` everywhere, and for the internal modules `nat.plugin_api` covers | `apps/backend/tests/test_chat_socket.py` |
+| Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `packages/agent/tests/turn/test_golden_turn.py` |
 | Fold | Every fixture turn folds to the expected `TurnView`. Duplicate seq keeps identity, and a gap is flagged. Snapshot, retraction and terminal replacement. Card before marker. Spectator mid-turn start. The persisted projection round-trips through `sanitizeProvenance` | `features/chat/lib/turn-fold.spec.ts` |
 | Migration | Old stored steps (real rows captured from staging, anonymised) convert to the v2 shape, and the dropped kinds are gone | `message-provenance.spec.ts`; the migration spec for 0097 was retired once 0097 had run in production |
 | Browser | `/dev/stream-socket` (being built now by another engineer) is ported to v2: it replays the fixtures and a recorded long turn through the real socket client, fold and store, and reports frame bytes and main-thread time in `window.__streamSocket` | `app/dev/stream-socket` |
@@ -819,10 +843,10 @@ separately. The exit criterion in the definition of done is the measured diff.
 
 **S1 · Backend producers → writer.**
 - **Owns:** `common/turn_status.py`, `skills/events.py`, `common/decisions.py`,
-  `sources/knowledge_layer/src/decisions.py`, `sources/knowledge_layer/src/register.py`
+  `packages/knowledge-layer/src/decisions.py`, `packages/knowledge-layer/src/register.py`
   (lanes as models), `common/grounding_block.py`, `turn/inventory.py`,
   `turn/subject_document.py`, and the one-line call sites in
-  `agents/piloti/clarify.py`, `agents/deep_researcher/*` and `sources/*`
+  `agents/piloti/clarify.py`, `agents/deep_researcher/*` and the Python packages under `packages/`
   (`emit_*` names unchanged).
 - **Adds:** `emit`, `emit_step`, `ToolStepCallback`, `StatusStep` builders
   (~+110).
@@ -849,7 +873,7 @@ separately. The exit criterion in the definition of done is the measured diff.
   line is still emitted.
 
 **S3 · Backend socket.**
-- **Owns:** `frontends/aiq_api/src/aiq_api/websocket_reconnect.py` (deleted) →
+- **Owns:** `apps/backend/src/aiq_api/websocket_reconnect.py` (deleted) →
   `chat_socket.py`, `plugin.py`, `workflow_stream.py`, `conversation_bus.py`,
   `configs/config_oib_openrouter.yml`, `common/human_prompt.py`,
   `observability/langfuse_trace_attributes.py` (the user half, gain 3), and the
@@ -907,7 +931,7 @@ separately. The exit criterion in the definition of done is the measured diff.
 - **Owns:** `lib/conversations/message-provenance.ts`,
   `features/chat/lib/server-message-mapper.ts`,
   `lib/conversations/agent-answer-metadata.ts` (`stopped`),
-  `drizzle/0097_herleitung_steps_v2{,.down}.sql`,
+  `migrations/0097_herleitung_steps_v2{,.down}.sql`,
   `lib/events/conversation-frames.ts`,
   `app/api/conversations/[id]/{frames,live}/route.ts`,
   `docs/api/websocket-protocol.md` (rewritten from this doc),
@@ -944,11 +968,11 @@ outside the slices.
 
 1. **The diff deletes more than it adds.** `git diff --stat develop...feat/chat-wire-v2`
    across `src/`, `sources/`, `frontends/` and `configs/`, excluding
-   `shared/wire/`, `wire-v2.generated.ts` and the contract tests, is net
+   `contracts/wire/`, `wire-v2.generated.ts` and the contract tests, is net
    negative. The PR carries a **deletion ledger** per slice: file → lines
    removed → what replaced it.
 2. `task verify:fast` is green **on `nvidia-nat*==1.9.0`**. That covers Python
-   lint (including the `nat.plugin_api` ban), type checks and tests, `fe:types`,
+   lint (including the `nat.plugin_api` ban), type checks and tests, `workspace:types`,
    eslint, vitest, and repo-lint including the `card-schemas` and
    `wire-schemas` hooks.
 3. The wire contract tests are green on both sides, and the golden replay

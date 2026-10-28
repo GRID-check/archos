@@ -1,7 +1,7 @@
 """Revision parsing and series grouping, held to the cases the TS twin is held to.
 
 The cases live in ``tests/fixtures/revision_series_cases.json``, shared with
-``frontends/ui/src/lib/documents/revision-series.spec.ts``. Both sides read
+``apps/workspace/bff/documents/revision-series.spec.ts``. Both sides read
 the same names the same way, so the folder brief and the agent's ``list_files``
 cannot disagree about which Fassung is current. Do not edit the fixture to make
 a case pass here; a difference is a finding to report.
@@ -13,11 +13,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from sources.knowledge_layer.src.revision_series import RevisionName
-from sources.knowledge_layer.src.revision_series import find_revision_series
-from sources.knowledge_layer.src.revision_series import parse_revision_name
-from sources.knowledge_layer.src.revision_series import revision_label
+from knowledge_layer.revision_series import RevisionName
+from knowledge_layer.revision_series import find_revision_series
+from knowledge_layer.revision_series import parse_revision_name
+from knowledge_layer.revision_series import revision_label
 
 CASES: dict[str, Any] = json.loads(
     (Path(__file__).parents[2] / "tests" / "fixtures" / "revision_series_cases.json").read_text(encoding="utf-8")

@@ -1,14 +1,14 @@
 """The two boundaries ADR-0100 draws around PostHog, held by something other than review.
 
-1. **One client per runtime.** ``src/aiq_agent/observability/posthog_client.py``
+1. **One client per runtime.** ``packages/agent/src/aiq_agent/observability/posthog_client.py``
    is the only Python module that imports the ``posthog`` SDK, and
-   ``frontends/ui/src/lib/analytics/posthog-server.ts`` the only BFF module that
+   ``apps/workspace/bff/analytics/posthog-server.ts`` the only BFF module that
    imports ``posthog-node``. ``posthog-js`` is reached only through
-   ``frontends/ui/src/lib/analytics/posthog.ts``. A second client is a second
+   ``apps/workspace/bff/analytics/posthog.ts``. A second client is a second
    place deciding whether PostHog is on, which host it talks to and what it may
    send. That is how a privacy default gets lost. The one bought exception is
    ``@posthog/next``'s request-error capture, which builds its own posthog-node
-   client: ``frontends/ui/src/lib/analytics/request-error.ts`` is the only module
+   client: ``apps/workspace/bff/analytics/request-error.ts`` is the only module
    that imports it (and ``@posthog/core``'s rate limiter beside it), and it
    configures that client from ``posthog-server.ts``'s settings and scrubber.
 2. **LLM data reaches PostHog through Langfuse.** Langfuse's PostHog
@@ -28,14 +28,36 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-PYTHON_ROOTS = ("src", "sources", "frontends/aiq_api/src", "scripts")
-TS_ROOTS = ("frontends/ui/src", "frontends/ui/workers", "frontends/ui/purger", "frontends/ui/scheduler")
+PYTHON_ROOTS = (
+    "src",
+    "packages/knowledge-layer",
+    "packages/ris-adapter",
+    "packages/tavily-web-search",
+    "apps/backend/src",
+    "scripts",
+)
+TS_ROOTS = tuple(
+    f"apps/workspace/{root}"
+    for root in (
+        "app",
+        "bff",
+        "ui",
+        "i18n",
+        "shared",
+        "types",
+        "utils",
+        "tests/test-utils",
+        "workers",
+        "purger",
+        "scheduler",
+    )
+)
 TS_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".cjs"}
 
-PYTHON_CLIENT = "src/aiq_agent/observability/posthog_client.py"
-BROWSER_CLIENT = "frontends/ui/src/lib/analytics/posthog.ts"
-SERVER_CLIENT = "frontends/ui/src/lib/analytics/posthog-server.ts"
-REQUEST_ERRORS = "frontends/ui/src/lib/analytics/request-error.ts"
+PYTHON_CLIENT = "packages/agent/src/aiq_agent/observability/posthog_client.py"
+BROWSER_CLIENT = "apps/workspace/bff/analytics/posthog.ts"
+SERVER_CLIENT = "apps/workspace/bff/analytics/posthog-server.ts"
+REQUEST_ERRORS = "apps/workspace/bff/analytics/request-error.ts"
 
 _PY_IMPORT = re.compile(r"^\s*(?:from\s+posthog(?:\.\w+)*\s+import|import\s+posthog\b)", re.MULTILINE)
 _TS_IMPORT = re.compile(

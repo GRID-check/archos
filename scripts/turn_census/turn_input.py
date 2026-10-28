@@ -4,7 +4,7 @@
 ``box: given`` (``north_star_eval``) needs one: the review canvas sends ``user_message.focus_region``
 (``common/wire_v2.py::FocusRegion``) with the open document's name, and the turn's prompt then carries
 the „Fokusbereich“ section (``agents/piloti/prompt.py::focus_region_block``) that tells the model to
-look at exactly that crop. The suite hands the row's box to the run through ``GRID_EVAL_USER_MESSAGE``
+look at exactly that crop. The suite hands the row's box to the run through ``EVAL_USER_MESSAGE``
 (:func:`env_for`); ``sitecustomize.py`` calls :func:`install` in the run's process, which makes the
 turn's own parse (``aiq_agent.turn.payload.extract_turn_inputs``) read the string as the
 ``UserMessage`` the socket would have built. Nothing else about the turn is faked.
@@ -12,9 +12,11 @@ turn's own parse (``aiq_agent.turn.payload.extract_turn_inputs``) read the strin
 What a row's two harness needs mean here:
 
 - ``given_box``: the turn carries the drawn box (``focus_region``: page, x, y, w, h);
-- ``trigger``: the turn is the headless one an upload starts (``frontends/ui/src/lib/document-check/job.ts``,
+- ``trigger``: the turn is the headless one an upload starts (``apps/workspace/bff/document-check/job.ts``,
   ``checkTurnMessage``): the row's question is the fixed instruction, and the message carries the open
   document (``focus_file_name``, ``focus_shelf``, ``focus_document_id``) and ``trigger: new_document``;
+- ``open`` (a files-set row's key, the document's name): the turn is asked with that document open
+  (``focus_file_name``, ``focus_shelf``, ``focus_document_id``), as the composer's "Asking about" sends it;
 - ``canvas``: the turn is asked with a document open (``focus_file_name``, on the project's shelf), the
   way the canvas chat is, so the turn's surface is ``review_canvas`` and ``canvas__*`` is in play.
 """
@@ -26,7 +28,7 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-ENV = "GRID_EVAL_USER_MESSAGE"
+ENV = "EVAL_USER_MESSAGE"
 #: The harness abilities this module gives a row (``north_star_eval.HARNESS``).
 ABILITIES = frozenset({"given_box", "canvas", "trigger"})
 #: The ids the wire frame requires; the turn's own ids come from the run's conversation (`--conversation_id`).
@@ -42,6 +44,8 @@ def message_fields(row: dict[str, Any]) -> dict[str, Any] | None:
     """
     if row.get("trigger"):
         return trigger_fields(row)
+    if row.get("open"):
+        return open_fields(row)
     if row.get("box") != "given":
         return None
     gold = row.get("gold") or []
@@ -75,6 +79,25 @@ def trigger_fields(row: dict[str, Any]) -> dict[str, Any]:
         "focus_shelf": "project",
         "focus_document_id": fixture_files.document_id(project, name),
         "trigger": {"kind": "new_document", "event_id": str(row["id"]), "annotation_id": None},
+    }
+
+
+def open_fields(row: dict[str, Any]) -> dict[str, Any]:
+    """A files-set row's ``open``: the turn is asked with that fixture document open, as the composer sends it.
+
+    The open document is a hint to the turn, not its scope (ADR-0133: scope by path is advised, never
+    automatic); the ``pf-outside-*`` rows ask about another document to measure that.
+    """
+    import fixture_files
+
+    name = str(row["open"])
+    project = fixture_files.load_project()
+    if name not in project.names:
+        raise ValueError(f"{row.get('id')}: open: {name} is not in the fixture project")
+    return {
+        "focus_file_name": name,
+        "focus_shelf": "project",
+        "focus_document_id": fixture_files.document_id(project, name),
     }
 
 

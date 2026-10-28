@@ -46,7 +46,8 @@ describe("Langfuse's API credentials, with the tier deployed", () => {
   beforeAll(async () => {
     pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...langfuseStackConfig() });
     const { loadConfig } = await import("../config");
-    const { bffJobsEnv, frontendEnv, purgerEnv, schedulerEnv } = await import("./config");
+    const { frontendEnv, purgerEnv, schedulerEnv } = await import("./config");
+    const { bffJobsEnv } = await import("./bff-jobs-env");
     const cfg = loadConfig();
     expect(cfg.langfuse.enabled).toBe(true);
     const wiring = {
@@ -82,10 +83,12 @@ describe("Langfuse's API credentials, with the tier deployed", () => {
   it("are not reached for by the BFF's own code", () => {
     // The trace client lives in `workers/` for the purger and the scheduler. A
     // BFF module that imports it erases nothing, and says it did.
-    const src = join(repoRoot, "frontends", "ui", "src");
-    const importers = (readdirSync(src, { recursive: true }) as string[])
-      .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.spec\.tsx?$/.test(file))
-      .filter((file) => readFileSync(join(src, file), "utf8").includes("workers/langfuse-traces"));
+    const importers = ["app", "bff", "ui", "i18n", "shared", "types", "utils"].flatMap((dir) => {
+      const root = join(repoRoot, "apps", "workspace", dir);
+      return (readdirSync(root, { recursive: true }) as string[])
+        .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.spec\.tsx?$/.test(file))
+        .filter((file) => readFileSync(join(root, file), "utf8").includes("workers/langfuse-traces"));
+    });
     expect(importers).toEqual([]);
   });
 });

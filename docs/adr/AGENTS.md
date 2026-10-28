@@ -16,8 +16,9 @@ python3 scripts/check_adrs.py            # what `task lint:repo` runs
 
 New ADRs use [MADR 4](0000-template.md): YAML frontmatter, then *Context and
 Problem Statement*, *Considered Options*, *Decision Outcome*. ADRs 0001–0049
-predate it and keep the shape they were written in; the checker knows which is
-which and does not ask you to convert them.
+predate it and keep the body they were written in. Every record, old or new,
+states its status once, as frontmatter `status:`; a `**Status:**` line or a
+`## Status` section in the body fails `check_adrs.py`.
 
 ## Obligations
 
@@ -27,12 +28,14 @@ which and does not ask you to convert them.
 | Add an ADR | Add its row to [`README.md`](README.md) in the same commit | `check_adrs.py`. An ADR nobody can find from the index is one nobody reads |
 | Change a status | Change it in the file **and** the index row | `check_adrs.py`. The two drifted apart for 0021 and 0045, and the index was the one people trusted |
 | Supersede an ADR | Set the new one's status, and set the old one's to `superseded by ADR-NNNN` | A reader lands on the old decision with nothing saying it was replaced |
+| Reject an option | Name the premise the rejection rests on, as a fact that can turn false (a version, a measurement, a property of one tool), so a later reader re-checks the premise rather than re-arguing the option | Review. ADR-0046 and ADR-0127 each rejected an option on a premise that later stopped holding; [the case](../contributing/working-style.md#a-rejection-names-its-premise) |
 | Accept an ADR | Fill in **Confirmation**, the gate that keeps the decision true, or an explicit "nothing enforces this yet" | Review. An unenforced decision decays quietly and reads as enforced |
 
 ## Rules that need more than a row
 
-**A status field holds one of five values and nothing else.** `proposed`,
-`rejected`, `accepted`, `deprecated`, `superseded by ADR-NNNN`. Qualifications
+**A status field holds one of six values and nothing else.** `proposed`,
+`rejected`, `accepted`, `deprecated`, `superseded by ADR-NNNN`, and bare
+`superseded` only while the replacing record is not written yet. Qualifications
 belong in Consequences: they are where a reader looks for them, and a status
 carrying a paragraph cannot be read by the index, the checker, or a person
 scanning for what is in force.

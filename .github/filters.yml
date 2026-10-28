@@ -16,23 +16,41 @@
 # which third-party image pins trivy scans: ci/pinned_images.py.
 #
 # Adding a path: put it in the tier it belongs to, and say why if the reason is
-# not obvious from the path.
+# not obvious from the path. tests/test_ci_filter_coverage.py fails on any
+# tracked path that no tier below names and that its UNFILTERED list does not
+# excuse, so a directory move that forgets this file is caught.
+#
+# A test that reads another area's file as source (a Pulumi spec reading the
+# env names a Python module reads, a backend test reading a BFF constant) must
+# run when that file changes. The block at the end of each tier, between "Read
+# as source by this tier's tests" and "End of the files this tier's tests read",
+# lists those files and is written by `python scripts/check_ci_filter_reads.py
+# --fix`; tests/test_ci_filter_reads.py fails when it differs from what the
+# tests read. Edit the lines above each block by hand, never the block.
 
 # Every filter also watches the tooling its jobs depend on: the tier's own
 # task file (taskfiles/<tier>.yml, which defines the commands the jobs run),
 # the root Taskfile.yml (the variables every task reads) and the composite
-# setup actions the jobs use. Otherwise a change to `fe:verify`,
+# setup actions the jobs use. Otherwise a change to `workspace:verify`,
 # `infra:types` or a setup action merges without its job running. Only
 # what a tier's jobs use: a new backend task does not run the UI suite.
 backend:
-  - 'src/**'
-  - 'frontends/aiq_api/**'
-  # The offline eval harnesses. `be:test:ci` runs `tests/benchmarks/`, which
-  # imports them, so a harness-only change must still run the backend suite.
+  - 'packages/agent/**'
+  - 'apps/backend/**'
+  # The eval harnesses and their tests: `be:test:ci` runs `evals/` beside
+  # `tests/`, so a harness-only change must still run the backend suite.
   # It used to arrive here via the `retrieval` filter; that filter is gone
   # (see below) and this line is what replaces it.
-  - 'frontends/benchmarks/**'
-  - 'sources/**'
+  - 'evals/**'
+  # The recorded wire v2 turns and their schema: the contract fixtures
+  # packages/agent/tests/common/test_wire_v2.py holds the producer to.
+  - 'contracts/wire/**'
+  # Read by packages/agent/tests/tools/workspace/test_english_only.py.
+  - 'ci/german_stems.json'
+  # The Python packages (ADR-0145 row 6); ifc-spatial-py is the packages tier's.
+  - 'packages/knowledge-layer/**'
+  - 'packages/ris-adapter/**'
+  - 'packages/tavily-web-search/**'
   # The one-time Chroma exporter's own tests (`be:test:migration`).
   - 'deploy/migration/**'
   - 'tests/**'
@@ -47,6 +65,91 @@ backend:
   - '.github/workflows/ci.yml'
   - '.github/actions/setup-python-env/**'
   - '.github/actions/setup-task/**'
+  # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):
+  - 'ci/brand_names_baseline.json'
+  - 'ci/english_names_baseline_py.json'
+  - 'ci/size_baseline.json'
+  - 'deploy/compose/docker-compose.yaml'
+  - 'deploy/postgres/rename-legacy-names.sh'
+  - 'deploy/posthog/support/copy.de.json'
+  - 'deploy/pulumi/src/app/config.ts'
+  - 'docs/README.md'
+  - 'docs/adr/README.md'
+  - 'docs/architecture/agent-capabilities.md'
+  - 'docs/architecture/north-star-answers.md'
+  - 'docs/audit/qdrant-gates-2026-10.md'
+  - 'docs/observability/langfuse.md'
+  - 'docs/technical-reference/answer-feedback-export.md'
+  - 'apps/workspace/scripts/legacy-env-names.cjs'
+  - 'apps/workspace/app/api/internal/usage/route.ts'
+  - 'apps/workspace/ui/features/a2ui/catalog.tsx'
+  - 'apps/workspace/ui/features/chat/lib/executed-steps.ts'
+  - 'apps/workspace/ui/features/documents/lib/ingest-failure.ts'
+  - 'apps/workspace/ui/features/grid-cards/card-decision.ts'
+  - 'apps/workspace/ui/features/grid-cards/components/GridCards.tsx'
+  - 'apps/workspace/ui/features/grid-cards/lib/formula-cases.json'
+  - 'apps/workspace/ui/features/layout/components/InputArea.tsx'
+  - 'apps/workspace/i18n/dictionaries/de/chat.ts'
+  - 'apps/workspace/i18n/dictionaries/en/chat.ts'
+  - 'apps/workspace/i18n/dictionaries/index.ts'
+  - 'apps/workspace/i18n/index.ts'
+  - 'apps/workspace/bff/agent-api/backend-operations.ts'
+  - 'apps/workspace/bff/agent-api/exposure.config.ts'
+  - 'apps/workspace/bff/agent-asks/answer-text.ts'
+  - 'apps/workspace/bff/analytics/posthog-server.ts'
+  - 'apps/workspace/bff/analytics/posthog.ts'
+  - 'apps/workspace/bff/analytics/request-error.ts'
+  - 'apps/workspace/bff/brand.ts'
+  - 'apps/workspace/bff/cross-project/project-facts-mirror.ts'
+  - 'apps/workspace/bff/db/schema/budgets.ts'
+  - 'apps/workspace/bff/diagrams/__fixtures__/sketch-fences.json'
+  - 'apps/workspace/bff/document-check/check.ts'
+  - 'apps/workspace/bff/documents/preview-types.ts'
+  - 'apps/workspace/bff/documents/retry-policy.ts'
+  - 'apps/workspace/bff/documents/semantic-search.ts'
+  - 'apps/workspace/bff/documents/tag-vocabulary.ts'
+  - 'apps/workspace/bff/jobs/types.ts'
+  - 'apps/workspace/bff/model-config/agent-groups.ts'
+  - 'apps/workspace/bff/platform/vector-reconcile.ts'
+  - 'apps/workspace/bff/project-profile/legacy-names.json'
+  - 'apps/workspace/bff/projects/project-status.ts'
+  - 'apps/workspace/bff/proxy/ws-upgrade-headers.js'
+  - 'apps/workspace/bff/request-context.ts'
+  - 'apps/workspace/bff/runs/run-envelope-types.ts'
+  - 'apps/workspace/bff/source-kinds.ts'
+  - 'apps/workspace/bff/text/answer-directives.ts'
+  - 'apps/workspace/bff/workos/feature-flags.ts'
+  - 'apps/workspace/shared/cards/generated.ts'
+  - 'apps/workspace/tests/fixtures/backend-tools.schema.json'
+  - 'apps/workspace/tests/fixtures/cross-project.schema.json'
+  - 'apps/workspace/tests/fixtures/document-annotations.schema.json'
+  - 'apps/workspace/tests/fixtures/document-lifecycle.schema.json'
+  - 'apps/workspace/tests/fixtures/estate-tree.schema.json'
+  - 'apps/workspace/tests/fixtures/exposure.json'
+  - 'apps/workspace/tests/fixtures/grid_request_context.json'
+  - 'apps/workspace/tests/fixtures/job_fire_headers.json'
+  - 'apps/workspace/tests/fixtures/precedent/office.json'
+  - 'apps/workspace/tests/fixtures/precedent/permits.json'
+  - 'apps/workspace/tests/fixtures/proposals.schema.json'
+  - 'apps/workspace/tests/fixtures/reasoning_efforts_catalog.json'
+  - 'apps/workspace/tests/fixtures/retrieval_settings_catalog.json'
+  - 'apps/workspace/tests/fixtures/run-envelope.schema.json'
+  - 'apps/workspace/tests/fixtures/run-ledger.schema.json'
+  - 'apps/workspace/tests/fixtures/surface-parity.json'
+  - 'apps/workspace/tests/fixtures/turn-outcome.schema.json'
+  - 'apps/workspace/tests/fixtures/workspace/rendered.json'
+  - 'apps/workspace/tests/fixtures/workspace_mcp_requests.json'
+  - 'apps/workspace/tests/fixtures/workspace_mcp_responses.json'
+  - 'apps/workspace/workers/job-queue.js'
+  - 'apps/workspace/workers/jobs/index.js'
+  - 'apps/workspace/workers/jobs/runner.js'
+  - 'packages/ifc-spatial/test/fixtures/Ifc4_SampleHouse.ifc'
+  - 'packages/ifc-spatial/test/fixtures/floor-slab-and-window.ifc'
+  - 'packages/ifc-spatial/test/fixtures/house-with-rooms.ifc'
+  - 'packages/ifc-spatial/test/fixtures/road-ifc4x3.ifc'
+  - 'packages/ifc-spatial/test/fixtures/units-feet.ifc'
+  - 'contracts/cards/schemas.json'
+  # End of the files this tier's tests read.
 # NOT here, though tests read them: `ci/**`, `releasenotes/**`, the other
 # workflows and this file. Their tests (`task be:test:harness`: the workflow,
 # plan-script and release-note suites, ~10s) run in the Repo checks job, which
@@ -57,91 +160,157 @@ backend:
 # are gone: the gate measured the real OIB Richtlinien, and those became
 # operator-provided and gitignored (data/oib/README.md), so no CI checkout can
 # hold a corpus to measure. The paths it watched
-# (sources/knowledge_layer, common/german_text.py, common/legal_terms.py,
-# frontends/benchmarks/oib_retrieval) are all inside `backend:` — the last of
-# them only since the `frontends/benchmarks/**` line above, added here so
+# (packages/knowledge-layer, common/german_text.py, common/legal_terms.py,
+# evals/oib-retrieval) are all inside `backend:` — the last of
+# them only since the `evals/**` line above, added here so
 # removing the filter did not leave the harness watched by nothing. So nothing
 # lost a filter; only the job went. See ci.yml's `ci-ok` comment and ADR-0058's
 # "Update (2026-09-09)".
-frontend:
-  - 'frontends/ui/**'
+workspace:
+  - 'apps/workspace/**'
   # The BFF's model-config tests read the workflow config (the agent
   # groups it seeds are derived from `llms:`), so a PR touching only
   # `configs/` must still run them — otherwise a drift between the
-  # two lands green because no frontend job ran at all.
+  # two lands green because no workspace job ran at all.
   - 'configs/**'
   - 'Taskfile.yml'
-  - 'taskfiles/frontend.yml'
+  - 'taskfiles/workspace.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'
   - '.github/actions/setup-task/**'
   # `scripts/rls-test-db.sh` IS the tenant-isolation gate. Without
-  # this line a change to it leaves `frontend` false, the gate job
+  # this line a change to it leaves `workspace` false, the gate job
   # is skipped, and `ci-ok` counts skipped as passed — so a broken
   # row-level-security harness merges unverified. It is the only root
-  # script the frontend jobs run (the UI's own are under frontends/ui).
+  # script the workspace jobs run (the UI's own are under apps/workspace).
   - 'scripts/rls-test-db.sh'
-  # The card schema is generated from these two into the Zod module
-  # the UI validates with, and `task fe:cards:check` is the only gate
+  # The card schema is generated from the card models and the JSON schema into the Zod module
+  # the UI validates with, and `task workspace:cards:check` is the only gate
   # that sees the Zod half (repo-lint has no node_modules). Without
   # these lines a models-only PR skips this job and ships a stale
   # `generated.ts`, which type-checks.
-  - 'src/aiq_agent/cards/models.py'
-  - 'shared/cards/schemas.json'
-web:
-  - 'frontends/web/**'
-  # The brand master and the app's copy: web's `npm run check` holds both
-  # apps' copies to the master (scripts/build-brand-assets.mjs --check).
-  - 'shared/brand/**'
-  - 'frontends/ui/src/app/icon.svg'
-  # The app's riso art: exported from frontends/web/art/riso and held to its
-  # JOBS tables by web's `npm run check` (art/riso/check.mjs).
-  - 'frontends/ui/public/art/**'
-  - 'frontends/ui/src/lib/art/**'
+  - 'packages/agent/src/aiq_agent/cards/models.py'
+  - 'packages/agent/src/aiq_agent/cards/card_model.py'
+  - 'packages/agent/src/aiq_agent/cards/proposal_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/schematic_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/calculation_card.py'
+  - 'packages/agent/src/aiq_agent/cards/formula_card.py'
+  - 'packages/agent/src/aiq_agent/cards/workspace_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/file_operation_card.py'
+  - 'packages/agent/src/aiq_agent/cards/canvas_activity_card.py'
+  - 'packages/agent/src/aiq_agent/cards/look_card.py'
+  - 'packages/agent/src/aiq_agent/cards/revision_compare_card.py'
+  - 'packages/agent/src/aiq_agent/cards/ifc_cards.py'
+  - 'packages/agent/src/aiq_agent/cards/surface_card.py'
+  - 'contracts/cards/schemas.json'
+  # The same wire v2 recordings, read by the UI's store and socket specs
+  # (apps/workspace/tests/test-utils/wire-v2-fixtures.ts).
+  - 'contracts/wire/**'
+  # Data the UI specs read from ci/ and .github/: the German stems
+  # (english-names.spec.ts, english-only.spec.ts), the browser work loops
+  # (browser-work-loops.spec.ts) and the image build action
+  # (scripts/sourcemaps-wiring.spec.mjs).
+  - 'ci/german_stems.json'
+  - 'ci/browser_work_loops.json'
+  - '.github/actions/build-image/**'
+  # The brand script writes the app's icons (packages/brand/build-brand-assets.mjs).
+  - 'packages/brand/**'
+  # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):
+  - 'apps/backend/src/aiq_api/models/requests.py'
+  - 'deploy/compose/init-db.sql'
+  - 'docs/technical-reference/answer-feedback-export.md'
+  - 'packages/ris-adapter/src/client.py'
+  - 'packages/agent/src/aiq_agent/common/status_keys.py'
+  - 'packages/agent/src/aiq_agent/skills/events.py'
+  # End of the files this tier's tests read.
+site:
+  - 'apps/site/**'
+  # The brand master and the app's copy: the site's `npm run check` holds
+  # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
+  - 'packages/brand/**'
+  - 'apps/workspace/app/icon.svg'
+  # The app's inline copy of the mark's path, held by the same --check.
+  - 'apps/workspace/bff/brand.ts'
+  # The app's riso art: exported from apps/site/art/riso and held to its
+  # JOBS tables by the site's `npm run check` (art/riso/check.mjs).
+  - 'apps/workspace/public/art/**'
+  - 'apps/workspace/bff/art/**'
   - 'Taskfile.yml'
-  - 'taskfiles/web.yml'
+  - 'taskfiles/site.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'
   - '.github/actions/setup-task/**'
 infra:
   - 'deploy/**'
+  # deploy/pulumi/src/app/web.spec.ts reads the site's Dockerfile and the
+  # server its CMD starts.
+  - 'apps/site/Dockerfile'
+  - 'apps/site/runtime/server.mjs'
+  # deploy/pulumi/src/data/qdrant-alerts.spec.ts reads the runbook it links.
+  - 'docs/deployment/qdrant-runbook.md'
   - 'Taskfile.yml'
   - 'taskfiles/infra.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'
   - '.github/actions/setup-task/**'
+  # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):
+  - 'apps/backend/entrypoint.py'
+  - 'apps/backend/src/aiq_api/chat_socket.py'
+  - 'apps/backend/src/aiq_api/jobs/ingest_dispatch.py'
+  - 'apps/backend/src/aiq_api/jobs/ingest_worker.py'
+  - 'apps/backend/src/aiq_api/jobs/queue.py'
+  - 'apps/backend/src/aiq_api/jobs/worker.py'
+  - 'apps/backend/src/aiq_api/roles.py'
+  - 'apps/backend/src/aiq_api/routes/chat_occupancy.py'
+  - 'apps/backend/src/aiq_api/routes/internal_auth.py'
+  - 'apps/backend/src/aiq_api/routes/jobs.py'
+  - 'apps/workspace/deploy/Dockerfile'
+  - 'apps/workspace/migrations/0104_bff_job_queue.sql'
+  - 'apps/workspace/server.js'
+  - 'apps/workspace/workers/app-database.js'
+  - 'apps/workspace/workers/housekeeping-clock.js'
+  - 'apps/workspace/workers/job-queue.js'
+  - 'apps/workspace/workers/jobs/index.js'
+  - 'apps/workspace/workers/langfuse-traces.js'
+  - 'packages/knowledge-layer/src/llamaindex/adapter.py'
+  - 'packages/knowledge-layer/src/llamaindex/processing.py'
+  - 'packages/agent/src/aiq_agent/common/claim_queue.py'
+  - 'packages/agent/src/aiq_agent/common/provider_limiter.py'
+  - 'packages/agent/src/aiq_agent/knowledge/ingest_queue.py'
+  - 'packages/agent/src/aiq_agent/knowledge/ingest_scheduler.py'
+  # End of the files this tier's tests read.
 # The two standalone IFC packages (ADR-0045). Their own family rather than a
-# line in `backend:` or `frontend:`, because they are outside BOTH workspaces —
+# line in `backend:` or `workspace:`, because they are outside BOTH workspaces —
 # own bun.lock, own uv.lock, own toolchains — so nothing the backend or
-# frontend jobs install can run them, and a `packages/`-only PR has no reason to
+# workspace jobs install can run them, and a `packages/`-only PR has no reason to
 # pay for a Next.js build. The `packages` job is ~4 minutes, essentially all of
 # it packages/ifc-spatial-py, which is why it is filtered at all.
 packages:
-  - 'packages/**'
+  # The IFC packages only: packages/brand has no suite of its own and is
+  # checked by the site and workspace tiers (ADR-0145).
+  - 'packages/ifc-spatial*/**'
+  # The guide for both, beside them.
+  - 'packages/*.md'
   - 'Taskfile.yml'
   - 'taskfiles/packages.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'
   - '.github/actions/setup-task/**'
-
 # The per-migration backfill and down checks at the end of
 # scripts/rls-test-db.sh. They read only the migrations and the script, so the
-# frontend job skips them unless one of those changed. The rest of the tenant
-# isolation suite runs with the frontend tier as before.
+# workspace job skips them unless one of those changed. The rest of the tenant
+# isolation suite runs with the workspace tier as before.
 migrations:
-  - 'frontends/ui/drizzle/**'
+  - 'apps/workspace/migrations/**'
   - 'scripts/rls-test-db.sh'
-
 # The pull request SAST scan. Semgrep is diff-aware, so it only ever reports
 # findings the change introduces; this decides whether there is code to scan.
 sast:
-  - 'src/**'
-  - 'frontends/**'
-  - 'sources/**'
+  - 'apps/**'
   - 'packages/**'
   - 'deploy/**'
   - 'scripts/**'

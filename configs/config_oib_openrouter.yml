@@ -37,7 +37,7 @@ general:
       # (only SDK env-var defaults get the signal path appended).
       otelcollector_redaction:
         _type: otelcollector_redaction
-        project: ${OTEL_SERVICE_NAME:-grid-aiq-agent}
+        project: ${OTEL_SERVICE_NAME:-backend-chat}
         endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
         resource_attributes:
           deployment.environment: ${APP_ENV:-production}
@@ -89,7 +89,7 @@ llms:
   #
   # So: do NOT edit these to move the fleet to a newer model — that is a save in
   # the admin UI, not a commit and a redeploy. Change them (or set
-  # GRID_DEFAULT_MODEL) only to move the *floor*, e.g. for a deployment that
+  # DEFAULT_MODEL) only to move the *floor*, e.g. for a deployment that
   # runs without the BFF. What this file remains the sole owner of is the
   # plumbing: base_url, api_key, temperature, max_tokens, timeouts and
   # retries — none of which an override may touch. reasoning_effort is a
@@ -126,7 +126,7 @@ llms:
   # Shallow Research — fast retrieval + synthesis (the quick-answer tier).
   research_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -153,14 +153,12 @@ llms:
     # weigh it knowing that a truncated answer at 27 s is worse than a complete
     # one at 35 s.
     reasoning_effort: medium
-    # The Responses API, for `shallow_research_agent.deferred_tool_loading`
-    # below: that feature needs it and fails the workflow build without it,
-    # deliberately, rather than sending the tool schemas anyway (ADR-0048).
-    # Nothing else in this file needs it; the default (chat_completion) is what
-    # every other role runs on. Deferral is off since 2026-09-25 (see below);
-    # this stays on until the answer suite has measured Chat Completions for
-    # this role, because the transport of every research call is not a change
-    # to make as a side effect.
+    # The Responses API. Nothing in this file needs it any more (the deferred
+    # tool loading it was switched on for is gone, ADR-0048), and the default
+    # (chat_completion) is what every other role runs on. It stays until the
+    # answer suite has measured Chat Completions for this role, because the
+    # transport of every research call is not a change to make as a side
+    # effect.
     api_type: responses
     # ── PROMPT CACHING: nothing to configure here, and that is the point ──
     # This role re-sends ~35 KB of identical prefix (system prompt + tool
@@ -177,8 +175,10 @@ llms:
     #    provider's `cost` and `is_byok` back, so this role is charged in credits.
     # 2. THE CACHE KEY IS DERIVED, NOT CONFIGURED. Caching itself is automatic
     #    for the OpenAI family (≥1024 prompt tokens, no `cache_control`
-    #    breakpoint); what needs a request field is landing twice on the SAME
-    #    upstream endpoint. `common/prompt_caching.py` derives a `session_id` +
+    #    breakpoint). Claude caches only when asked, so the same module adds a
+    #    top-level `cache_control` for `anthropic/*` models (0 % cached over a
+    #    month until 2026-10-27). What every family needs is landing twice on
+    #    the SAME upstream endpoint. `common/prompt_caching.py` derives a `session_id` +
     #    `prompt_cache_key` from the org, the model, the system prompt and the
     #    tool set, and `common/llm_factory.py` attaches them to every OpenRouter
     #    call — so this works unchanged when an admin re-points the group at
@@ -190,7 +190,7 @@ llms:
   # HITL Clarification & Planning — clarify ambiguity, generate the research plan.
   clarifier_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -203,7 +203,7 @@ llms:
   # Deep Researcher — Orchestrator (also the report writer): top-level control.
   deep_orchestrator_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -220,7 +220,7 @@ llms:
   # Deep Researcher — Planning sub-agents.
   deep_planner_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -233,7 +233,7 @@ llms:
   # Deep Researcher — Researcher sub-agents (parallel investigations).
   deep_researcher_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -246,7 +246,7 @@ llms:
   # Deep Researcher — source routing (which source to query). Lighter decision.
   deep_router_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -262,7 +262,7 @@ llms:
   # which is also the deep-research source_router_llm where medium still matters.
   ris_planner_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -275,7 +275,7 @@ llms:
   # Card generation — structured rich-UI compliance cards.
   card_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -297,7 +297,7 @@ llms:
   # already dead when the bound fired.
   follow_ups_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -310,7 +310,7 @@ llms:
   # Document / project summaries — trivial one-liners.
   summary_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -345,7 +345,7 @@ llms:
   # can be silently inert on a given model; `seed` is set for the same reason.
   rerank_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 0
@@ -356,7 +356,7 @@ llms:
     request_timeout: 25
     reasoning_effort: none
 
-# The review canvas (src/aiq_agent/tools/canvas), one NAT function group: Piloti
+# The review canvas (packages/agent/src/aiq_agent/tools/canvas), one NAT function group: Piloti
 # works a document the way a person at the canvas does. See who is in the
 # `room`, `point` and `highlight` for everyone,
 # read the `marks`, propose a `mark` (a person takes it over), and, when the
@@ -370,7 +370,7 @@ function_groups:
     _type: document_canvas
 
   # Everything a person can do in Piloti, through Piloti's own MCP server
-  # (src/aiq_agent/tools/workspace, ADR-0122): `workspace__search`,
+  # (packages/agent/src/aiq_agent/tools/workspace, ADR-0122): `workspace__search`,
   # `workspace__describe`, `workspace__call`, `workspace__report_missing`. The
   # model finds an operation, reads its schema, calls it; a write comes back as a
   # proposal the person accepts. Each call echoes the turn's signed envelope, so
@@ -401,6 +401,12 @@ functions:
           # The file browser reads the same files through the same scope, so
           # switching the knowledge base off must take it too.
           - list_files
+          # The filesystem verbs (`ls`, `glob`, `grep`, `read_file`, ADR-0133)
+          # read the same files through the same scope, and belong to this
+          # source for the same reason. They are not NAT functions, so they are
+          # not listed here: `common/data_sources.source_id_for_call` maps them
+          # to the source `knowledge_search` belongs to, PER MOUNT, so a call
+          # under /drafts/ is never refused and never captured as a source.
           # Other projects' uploaded documents (ADR-0094). Without this line
           # nothing the lookup returns is captured as a citable source, and a
           # turn whose only finding was a precedent was replaced by the canned
@@ -474,7 +480,7 @@ functions:
 
   # The chat surface's single RIS tool: question in, citable passages out.
   # Its bounds are its own (candidates 3, fetches 2, passages 6) and live in
-  # `sources/ris_adapter/src/lookup/`, one module per stage — they are not
+  # `packages/ris-adapter/src/lookup/`, one module per stage — they are not
   # tunable here, because each is a claim about what one charged call may cost.
   # `planner_llm` serves BOTH internal LLM calls: planning a live search and
   # picking the answering §§ out of a law's headings. Neither happens when the
@@ -485,7 +491,7 @@ functions:
     ingest_into_knowledge: true
 
   # Norm registry (configs/norms/<country>/registry.yml, override via
-  # GRID_NORMS_DIR; ADR-0025): typed spine with verified RIS pointers.
+  # NORMS_DIR; ADR-0025): typed spine with verified RIS pointers.
   # ris_search short-circuits to these pointers on a catalog match
   # (catalog_shortcut), ris_catalog_lookup annotates hits with registry
   # relations, and both answering prompts show the lane-rendered block.
@@ -495,17 +501,24 @@ functions:
 
   # LET THE MODEL SEE A DRAWING, NOT ONLY ITS CAPTION.
   #
-  # `look` (src/aiq_agent/tools/look, ADR-0128): a page, a region of it, or an
+  # `look` (packages/agent/src/aiq_agent/tools/look, ADR-0128): a page, a region of it, or an
   # embedded image, in every context. It replaced the knowledge layer's image
   # viewer and the canvas group's own look, one function under two names. Until
   # 2026-09 the viewer was declared in no config at all, so retrieval returned
   # VLM captions OF drawings and the model never saw a drawing: NAT only binds a
   # function that appears under `functions:`.
   #
-  # It fails closed on its own: no vision key, or `AIQ_VIEW_IMAGES_ENABLED`
+  # It fails closed on its own: no vision key, or `VIEW_IMAGES_ENABLED`
   # off, and it returns a sentence saying so rather than an image.
   look:
     _type: look
+
+  # TAKE THE PERSON TO THE PLACE (`tools/viewer`, ADR-0144). One allow-listed
+  # viewer action per call (open at a page, mark a passage or a box, compare two
+  # Fassungen, select a model element), sent as an AG-UI frontend tool call that
+  # only the asker's live page runs. Chat only: deep research has no screen.
+  show_in_viewer:
+    _type: show_in_viewer
 
   knowledge_search:
     _type: knowledge_retrieval
@@ -536,7 +549,7 @@ functions:
       - oib-rl_zitierte_normen_und_sonstige_technische_regelwerke_ausgabe_mai_2023.pdf
     generate_summary: true
     summary_model: summary_llm
-    summary_db: ${AIQ_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
+    summary_db: ${SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
     # top_k=16 with a 5-per-document diversity cap still spans >=4 distinct
     # Richtlinien on cross-cutting questions instead of 5 chunks from the 1-2
     # top-scoring PDFs, and gives each of them enough consecutive text to reason
@@ -562,7 +575,7 @@ functions:
     # exactly that and answers in ~100ms over the FULL chunk, where the judge is
     # one frontier-model call reading 60 excerpts of 1200 chars: ~16k input
     # tokens, ~14s of decoding, on the path to the first answer token of every
-    # research turn (docs/architecture/latency-and-caching-audit-2026-09.md §3.2).
+    # research turn (docs/audit/latency-and-caching-audit-2026-09.md §3.2).
     #
     # `openrouter` because it is the one key every deployment already holds:
     # `OPENROUTER_API_KEY` is the credential, `POST /api/v1/rerank` the route
@@ -570,15 +583,15 @@ functions:
     # `qwen/qwen3-reranker-8b`, multilingual, which a German corpus needs, and
     # served from a zero-data-retention endpoint, which every rerank is pinned to
     # (`cohere/rerank-v3.5`, the default until 2026-09, has none).
-    # `AIQ_RERANKER_MODEL` / `AIQ_RERANKER_BASE_URL` override per deployment.
+    # `RERANKER_MODEL` / `RERANKER_BASE_URL` override per deployment.
     #
     # Fail-open: a key that does not resolve or any provider error falls back to
     # the judge (first failure per 5 min warns, the rest debug; 5 consecutive
     # failures disable the cross-encoder for 5 min). A provider that HANGS costs
-    # `AIQ_RERANKER_TIMEOUT_SECONDS` (3s) before that fallback, so worst case a
+    # `RERANKER_TIMEOUT_SECONDS` (3s) before that fallback, so worst case a
     # turn pays 3s + the judge's own 30s bound — never the other way round. Set
     # `reranker_provider: none` to hand reranking back to the judge. No offline
-    # eval covers reranking (`frontends/benchmarks/
+    # eval covers reranking (`evals/
     # oib_retrieval` stops upstream of it); the golden compliance eval and the
     # profiler's `tool` spans for `knowledge_search` are the before/after.
     reranker_provider: openrouter
@@ -593,7 +606,7 @@ functions:
     requery_max_queries: 2
     # The prefetch requeries like any search. Skipping it was measured 3.4 s
     # slower on the turns it applied to, and the switch was removed
-    # (docs/architecture/turn-latency-measured-2026-09.md §3.5).
+    # (docs/audit/turn-latency-measured-2026-09.md §3.5).
     # Who answers the judge's yes/no (ADR-0064). `jev` asks the decision model
     # one noul per passage of the fused head — ~300 ms in parallel, a fraction
     # of a cent — and runs `requery_llm` only when the head is insufficient,
@@ -608,6 +621,9 @@ functions:
 
   # The locator beside the search: open the passage a conclusion NAMED
   # (document + Punkt, or document + page) instead of searching for it again.
+  # Bound by deep research, intake and the door; Piloti's chat reads with
+  # `read_file` instead (ADR-0133 slice 6); a `read_passage` call there is
+  # answered by the tool node with the tools it has.
   # Deterministic — one filtered fetch, no reranker, no requery judge, no LLM.
   # Collection scope, base corpus and file exclusions are read off the
   # `knowledge_search` instance named here rather than restated, so the two
@@ -616,13 +632,14 @@ functions:
     _type: read_passage
     knowledge_search: knowledge_search
 
-  # The file browser (sources/knowledge_layer/src/browse.py): `ls` over the
+  # The file browser (packages/knowledge-layer/src/browse.py): `ls` over the
   # reader's own shelves — every file, by folder, name, Dokumentart and upload
   # date, paged. The prompt inventory stops at a few dozen names; this does
   # not. Deterministic, no LLM, and it reads only the scope `knowledge_search`
-  # reads. Its partner, Ctrl+F across the files, is NOT a tool: it is
-  # `knowledge_search(match="exact")`, the same verb over the same scope
-  # (docs/architecture/agent-tool-surface.md).
+  # reads. Its partner, Ctrl+F across the files, is `knowledge_search(match=
+  # "exact")` for deep research and intake, and `grep` for Piloti's chat, which
+  # binds `list_files` without its tree view (`ls(depth=…)` draws the tree;
+  # `knowledge_layer.chat_binding`) (docs/architecture/agent-tool-surface.md).
   list_files:
     _type: list_files
     knowledge_search: knowledge_search
@@ -675,13 +692,13 @@ functions:
   surface_documents:
     _type: surface_documents
 
-  # The WRITE-side workspace tool (src/aiq_agent/tools/files): move, rename,
+  # The WRITE-side workspace tool (packages/agent/src/aiq_agent/tools/files): move, rename,
   # create_folder and assign as one `operation` argument — four tools until
   # they were merged (docs/architecture/agent-tool-surface.md). It proposes: it
   # resolves the file or the folder against what the turn can already see,
   # renders ONE `file_operation_proposal` card, and changes nothing. Accepting the card runs the operation through the routes
   # the Files pane already uses, in the reader's own session — the BFF stays
-  # the single writer of `grid_app` (ADR-0003), which is why there is no
+  # the single writer of `app` (ADR-0003), which is why there is no
   # backend path here to write with.
   #
   # Bound on Piloti only. Deep research runs unattended on the
@@ -691,7 +708,7 @@ functions:
   propose_file_change:
     _type: propose_file_change
 
-  # The working directory's door into the project (src/aiq_agent/tools/
+  # The working directory's door into the project (packages/agent/src/aiq_agent/tools/
   # documents). `file_draft` puts a draft the turn WROTE into the project as a
   # draft version, and with `submit: true` sends that version for review (it was
   # a second tool, `submit_draft`, until the two merged). Unlike the proposal
@@ -699,7 +716,7 @@ functions:
   # `POST /api/internal/document-versions`, echoing the BFF-signed request
   # envelope, so the write happens in the requesting person's pinned session
   # under their permissions and their audit actor (ADR-0054 §4). The BFF stays
-  # the single writer of `grid_app`.
+  # the single writer of `app`.
   #
   # Bound on Piloti only, for the same reason as the proposal
   # tool and one more: the envelope is minted per chat turn, so an unattended
@@ -707,7 +724,7 @@ functions:
   file_draft:
     _type: file_draft
 
-  # Delegation (src/aiq_agent/tools/tasks). Hands work that outlives this turn
+  # Delegation (packages/agent/src/aiq_agent/tools/tasks). Hands work that outlives this turn
   # to a `tasks` row (ADR-0051) — a norm check, the Einreichcheck
   # skill, a document to write, a draft to revise — through
   # `POST /api/internal/tasks`, echoing the same BFF-signed envelope, so the row
@@ -721,7 +738,7 @@ functions:
   create_task:
     _type: create_task
 
-  # Cross-project lookups for a chat, shared or solo (src/aiq_agent/tools/cross_project,
+  # Cross-project lookups for a chat, shared or solo (packages/agent/src/aiq_agent/tools/cross_project,
   # ADR-0094): search other projects' documents, find projects, read a brief.
   # Chat only: deep research gets no admission round, so it must never be
   # handed another project's content.
@@ -762,14 +779,22 @@ functions:
   shallow_research_agent:
     _type: research_agent
     llm: research_llm
+    # The filesystem verbs read the office's documents through this search's
+    # scope (ADR-0133): `ls`, `glob`, `grep` and `read_file` over /project/,
+    # /office/, /chat/ and /law/oib/, beside the conversation's drafts under
+    # /drafts/. They are built per turn (the drafts are per conversation), not
+    # listed below. They replace `read_passage` and the literal modes of
+    # `knowledge_search` on this binding (slice 6); `knowledge_search` and
+    # `list_files` are rebound at build time, only when this is set.
+    filesystem: knowledge_search
     # Explicit list (replaces registry inheritance) so the non-data-source
     # `remember` and `ask_user` tools are included alongside search/knowledge.
     tools:
       - web_search_tool
       - knowledge_search
-      - read_passage
       - list_files
       - look
+      - show_in_viewer
       # ONE RIS tool on the chat surface. Search → pick → fetch → find the
       # paragraph was three charged calls and a 40 000-character blob that
       # carried no Citation key, so nothing downstream could treat it as
@@ -807,7 +832,7 @@ functions:
     #   * PARALLEL calls inside one round cost ONE between them. That is the
     #     point: a model that opens all five members of a Richtlinien-Familie in
     #     one batch is using its round well, and „was weißt du über die OIB 2"
-    #     — one `knowledge_search` plus five parallel `read_passage` — used to
+    #     — one `knowledge_search` plus five parallel `read_file` — used to
     #     exhaust a budget of seven on the single most ordinary question the
     #     product answers. The prompt asks for that fan-out; the budget used to
     #     forbid it;
@@ -839,7 +864,7 @@ functions:
     #     find_elements, egressPath+clearWidth over the door list,
     #     fire/doorGraph                                                    = 5
     #   „was weißt du über die OIB 2"  knowledge_search, then the family
-    #     opened in one parallel batch of read_passage                      = 2
+    #     opened in one parallel batch of read_file                         = 2
     #
     # Truncation is still silent TO THE READER — the synthesis anchor says
     # „exhausted your research budget" to the MODEL and asks for no disclosure,
@@ -908,18 +933,19 @@ functions:
     # shape in a few thousand tokens — instead of costing the full-context
     # round the `emit_card` retry used to. Unset = drop it and record it.
     card_repair_llm: card_llm
-    # Agent skills (progressive-disclosure `use_skill` tool) active on research
-    # turns. Empty allowlist = every resolved skill (builtin + org) is offered.
+    # The answer check (ADR-0139): one structured call at temperature 0, after
+    # the answer streamed, grades the answer against everything the turn
+    # registered. The follow-ups model: the smallest role an organisation
+    # configures, resolved with its override and BYOK for that group. Unset =
+    # no confidence level, the chip says the check was unavailable.
+    claim_judge_llm: follow_ups_llm
+    # Agent skills (ADR-0135): Deep Agents' SkillsMiddleware catalog in the turn
+    # context, each SKILL.md read with `read_file` under /skills/. Empty
+    # allowlist = every resolved skill (builtin + org) is offered. No body
+    # rides the prompt by size; the turn-start decision below pins the ONE
+    # method the question is the subject of (~400 tokens, or the IFC method on
+    # a model question).
     skills_enabled: true
-    # No skill body rides the prompt by size (ADR-0063, amended): all nine
-    # chat methods together were ~4 600 tokens on every call, for methods most
-    # turns never use. The turn-start decision below picks the ONE method the
-    # question is the subject of and reads that body in (~400 tokens, or the
-    # IFC method on a model question); the rest stay a catalog line behind
-    # `use_skill`. These two are an opt-in budget for an org that wants a
-    # method on every turn regardless.
-    skills_inline_max_body_chars: 0
-    skills_inline_budget_chars: 0
     # The turn-start decision (ADR-0064): one decision-model request beside
     # the skill resolution — does the message need evidence, which corpus and
     # which OIB families, which skill, which card types — acted on by ADDING
@@ -927,127 +953,9 @@ functions:
     # budget spent, answered by the duplicate guard when the model asks
     # again), the chosen skill's body and card shapes ride this turn's prompt. Every tool stays bound whatever it
     # says (ADR-0052). `scripts/decision_eval.py` is the adoption gate;
-    # GRID_DECISIONS_ENABLED=false switches every decision off at once.
+    # DECISIONS_ENABLED=false switches every decision off at once.
     turn_decisions: true
     skill_allowlist: []
-    # Retrieval-based tool narrowing. OFF, deliberately — the block below is the
-    # tested configuration, not a suggestion, and it is commented out because on
-    # THIS surface the trade is not yet worth taking.
-    #
-    # The two BIM tools are 81 % of the ~9 000 tokens of tool schema that ride on
-    # every call here, so narrowing to four tools saves ~24 % of that payload on
-    # average and 81 % on a pure-Normen question. But tokens are not what this
-    # agent runs out of — TURNS are, and narrowing does not buy one back. What it
-    # can spend is an answer: measured against the eleven tools it had then, a lexical rank
-    # over the user's turn alone keeps the answering tool for only 71 % of a
-    # realistic German question set. The pins below carry that to 100 %, because
-    # they cover the two shapes a query-time ranking structurally cannot see —
-    # tools named by INTENT rather than subject (`remember`, `use_skill`,
-    # `surface_documents`) and tools that are SEQUENCED, whose turn
-    # comes from what a previous tool returned (`ris_fetch_tool` after
-    # `ris_search_tool`). Both are guarded by tests.
-    #
-    # Turn it on when the surface grows past what a prompt can hold — an MCP
-    # server with thirty tools — not to shave tokens off eleven.
-    #
-    # tool_search:
-    #   enabled: true
-    #   top_k: 4
-    #   always_include:
-    #     - remember
-    #     - use_skill
-    #     - surface_documents
-    #     - ris_fetch_tool
-    #
-    # OpenRouter server-side tool search (ADR-0048). ON, but as of 2026-09-23
-    # NO model we measured honours it, so today it binds full schemas
-    # everywhere (see below). Orthogonal to `tool_search` above: that one decides
-    # WHICH tools are bound, this one decides whether their schemas travel with
-    # the request. Requires `api_type: responses` on research_llm — enabling it
-    # without that fails the workflow build instead of quietly sending the
-    # schemas. The build-time probe measures whether the deferral is HONOURED,
-    # not whether the flag is echoed: it sends the canary namespace, then the
-    # same plus a ~4 000-token deferred ballast function, and accepts only if
-    # usage.input_tokens grows by < 200. A model that bills the ballast binds
-    # full schemas and the build logs a WARNING naming the growth; it never
-    # fails the build.
-    #
-    # Measured 2026-09-23. A replayed Piloti research call to
-    # openai/gpt-5.6-luna (19 functions, all defer_loading: true, echoed back
-    # on every one) billed 40 154 input tokens with defer_loading true AND
-    # false; dropping three large tools from the namespace cut 10 012. The
-    # earlier "14 023 -> 437" saving recorded here no longer holds. The probe:
-    #
-    #                                  canary   + deferred ballast    growth
-    #   openai/gpt-5.6-luna              187          4 100           +3 913
-    #   openai/gpt-5.6-sol               187          4 100           +3 913
-    #   anthropic/claude-sonnet-5        847          6 034           +5 187
-    #   google/gemini-3.7-flash          175          5 072           +4 897
-    #
-    # Where a provider does honour it, deferral still saves nothing on the turn
-    # that loads a schema (it adds the ~620-token tool-search apparatus); it
-    # saves the other turns. Where it does not, it would cost that apparatus on
-    # every turn, which is why the probe now turns it off.
-    #
-    # Deferral is gated PER MODEL as well as per endpoint, because the per-org
-    # override seam (ADR-0014) can hand a single research turn a model this
-    # workflow was never built against. Two independent conditions must hold:
-    # the model is cleared for the tool_search + namespace shape, AND it scores
-    # at least `min_intelligence_index` on Artificial Analysis's
-    # intelligence_index. Neither implies the other — x-ai/grok-4.6 scores 60.9
-    # and cannot defer at all; anthropic/claude-sonnet-4.6 defers (it was one of
-    # six models seen emitting a real function_call) and is excluded on SCORE
-    # alone, at 48.4. Do not re-add sonnet-4.6 or minimax/minimax-m3 (45.4) to
-    # the allowlist without also moving the threshold — their absence is a
-    # threshold decision, not a missing measurement.
-    #
-    # A "no" from either condition means BIND THE FULL SCHEMAS. It is never a
-    # refused request or a failed build, so a sub-floor model runs exactly as it
-    # did before this existed.
-    #
-    # The defaults ship the measured lists (see `deferred_tool_loading.py`), so
-    # `enabled: true` alone turns it on. The `allow` list means the provider
-    # accepted and echoed the shape — NOT that it saves anything.
-    #
-    # Any model not denied is probed ONCE, off the request path, and the
-    # verdict cached; until a probe has measured the saving, an unlisted or
-    # allowlisted model gets full schemas. So a new model costs one background
-    # request, never a wasted round trip on a live turn.
-    # OFF since 2026-09-25. Every model measured on 2026-09-23 echoed
-    # `defer_loading` and billed the deferred schemas in full, and the boot
-    # model measured +3,913 input tokens with it on; no model has been shown
-    # to save. What it did send was the `tool_search` payload, which NAT's
-    # trace callback cannot parse (one ERROR per call, #635). Turn it back on
-    # when a model's probe measures a saving: from then on only such a model
-    # defers, an allowlisted one included.
-    deferred_tool_loading:
-      enabled: false
-      # Floor on Artificial Analysis intelligence_index. 0 disables it.
-      min_intelligence_index: 50
-    #   models:
-    #     # Only override these to add a model the shipped lists do not know.
-    #     # Every list REPLACES its seeded counterpart rather than extending it
-    #     # — `deny` no less than `allow`. So an override has to restate the
-    #     # shipped entries it still wants, or it silently re-enables them: the
-    #     # three-line example below would readmit the four denied ids it omits,
-    #     # and each of those would then cost a wasted round trip per tool
-    #     # subset before the fallback latched. The shipped `deny` is:
-    #     #   x-ai/grok-4.6, x-ai/grok-4.5, deepseek/deepseek-v4-pro-0813,
-    #     #   deepseek/deepseek-v4-flash-0731, moonshotai/kimi-k3,
-    #     #   meta-llama/llama-3.3-70b-instruct, openai/gpt-4o-mini
-    #     deny:
-    #       - x-ai/grok-4.6                    # 422, and scores 60.9 — capability is not quality
-    #       - deepseek/deepseek-v4-flash-0731  # routing-flaky: two sweeps disagreed
-    #       - meta-llama/llama-3.3-70b-instruct  # routing-flaky: 5 of 6 defer, the 6th 422s
-    #     provisional:
-    #       # Permitted on request, capability UNVERIFIED — OpenRouter answers 403
-    #       # "requires 18+ age confirmation", an ACCOUNT gate that fires before
-    #       # the payload is read, so nobody knows whether it takes the shape.
-    #       # Yields to whatever the probe or a real request learns (unlike
-    #       # `allow`, which is an assertion). Deliberate and informed: if it
-    #       # cannot defer, the fallback costs one round trip per tool subset,
-    #       # then latches. Not a precedent for listing unverified models.
-    #       - meta/muse-spark-1.1
 
   # Filesystem skills for deep research. Researcher workers load OIB/BIM
   # methods with read_file from /skills/; the writer loads synthesis the same
@@ -1097,12 +1005,12 @@ functions:
     # Durable checkpointing for async deep-research jobs (T3-8), mirroring
     # workflow.checkpoint_db below: re-invoking the same job_id resumes from
     # the last persisted checkpoint instead of starting over. STRICTLY OPT-IN:
-    # empty/unset AIQ_DEEP_CHECKPOINT_DB means no durability (in-memory graph,
+    # empty/unset DEEP_CHECKPOINT_DB means no durability (in-memory graph,
     # today's behavior). Do NOT default to a relative sqlite path here — the
     # container's working directory is not guaranteed writable, and a default-on
     # value took application startup down (post-#72 incident). Point the env var
     # at a writable volume path or a Postgres DSN to enable resume-by-job_id.
-    checkpoint_db: ${AIQ_DEEP_CHECKPOINT_DB:-}
+    checkpoint_db: ${DEEP_CHECKPOINT_DB:-}
 
   # The Erfassungs-Agent (ADR-0111, docs/design/agentic-project-intake.md):
   # Piloti sets a new project's profile up from its documents, as a background
@@ -1149,13 +1057,13 @@ workflow:
     log_response_max_chars: 2000
     verbose: true
   use_async_deep_research: true
-  checkpoint_db: ${AIQ_CHECKPOINT_DB:-./checkpoints.db}
+  checkpoint_db: ${CHECKPOINT_DB:-./checkpoints.db}
   # Enables the async post-answer memory-reflection stage (reuses the cheap
   # card_llm). This only makes the capability AVAILABLE; whether it runs is
   # decided per TURN by the BFF (`GET /api/internal/stages`) from the
   # `memory-reflection` WorkOS flag, with no env-var fallback. A deployment that
   # signs nobody in (REQUIRE_AUTH not true) gets it, as every rollout flag is on
-  # there (`frontends/ui/src/lib/authz/feature-flags.ts`).
+  # there (`apps/workspace/bff/authz/feature-flags.ts`).
   memory_reflection_llm: card_llm
   # Enables the async post-answer follow-up-questions stage. As above, this only
   # makes the capability AVAILABLE; whether it runs is decided per TURN by the

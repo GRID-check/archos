@@ -7,7 +7,7 @@
 > repo's primitives, and the two prior documents the first revision had not
 > read: [`piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md)
 > (the exploration, with its threat model and the work/estate line) and
-> [`2026-08-20-agent-authored-documents-design.md`](../superpowers/specs/2026-08-20-agent-authored-documents-design.md)
+> [`agent-authored-documents.md`](../architecture/agent-authored-documents.md)
 > (the build spec, one producer, with the seams it left open). §9 lists what
 > the review broke and what changed.
 >
@@ -74,9 +74,9 @@ the "second hundred lines of something general" the doctrine says to look up
 a library for first. The prior exploration reached the same verdict
 (`piloti-filesystem-design.md` §12b).
 
-**Storage.** `langgraph.store.postgres.PostgresStore` on `AIQ_CHECKPOINT_DB`
-(the Python service's own Postgres database, `aiq_checkpoints`, already
-pooled in `common/__init__.py`). No table in `grid_app`; the single-writer
+**Storage.** `langgraph.store.postgres.PostgresStore` on `CHECKPOINT_DB`
+(the Python service's own Postgres database, `checkpoints`, already
+pooled in `common/__init__.py`). No table in `app`; the single-writer
 rule holds. Namespace `("conversation", <id>, "drafts")`. A byte ceiling per
 conversation. Cleanup rides the conversation's deletion cascade through one
 internal call.
@@ -175,7 +175,7 @@ later `scheduled` state attaches to publish without touching approval.
 `tasks_review_complete`); published requires `approved_by` and `approved_at`;
 changes requested and rejected require a comment; one open draft per item and
 one published version per item as partial unique indexes with `COMMENT ON
-INDEX`. `grid_secure_table` in the same migration, the table listed in
+INDEX`. `secure_table` in the same migration, the table listed in
 `BOUNDARY_MIGRATIONS`, a `.down.sql`, the journal entry. No new permission.
 
 **No state-machine library.** The authority is Postgres (the CHECKs plus a
@@ -338,8 +338,8 @@ compared against YAML is the weak end of the ratchet. What survives:
 
 - `_INTERACTION_TOOL_BASENAMES` is the one runtime-read classification and
   gains the file verbs. No second table.
-- `sources/*` stays where it is: evidence sources are packages. Workspace
-  tools live under `src/aiq_agent/tools/`: `documents/` (the working
+- The evidence sources stay packages under `packages/`. Workspace
+  tools live under `packages/agent/src/aiq_agent/tools/`: `documents/` (the working
   directory backend and the `file_draft` tool), `tasks/` (`create_task`),
   `files/` (the proposal-card tools), beside the BIM tools already there.
 - Every tool row in `TOOL_CONTEXT_REQUIREMENTS` declares what it needs from
@@ -351,7 +351,7 @@ Every primitive this build adds is an HTTP route with a typed client first,
 and the agent's tools, the UI, the task runner and any later integration are
 equal clients of it. No service function is reached from a second path. This
 is written as an ADR, given one row in the root `AGENTS.md`, and stated in the
-scoped guides beside `lib/documents/` and `src/aiq_agent/tools/`.
+scoped guides beside `lib/documents/` and `packages/agent/src/aiq_agent/tools/`.
 
 ## 8. Slices, order, and done-when
 

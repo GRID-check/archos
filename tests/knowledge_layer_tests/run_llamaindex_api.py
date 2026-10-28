@@ -9,7 +9,7 @@ This script tests all abstract methods implemented in the LlamaIndex adapter:
 
 Prerequisites:
     - OPENROUTER_API_KEY environment variable (via export or .env file)
-    - LlamaIndex dependencies: uv pip install -e "sources/knowledge_layer[llamaindex]"
+    - LlamaIndex dependencies: uv pip install -e "packages/knowledge-layer[llamaindex]"
 
 Usage:
     # Option 1: Export env var
@@ -366,7 +366,7 @@ def main():
     print("\nConfiguration:")
     print(f"  Test File:    {test_file}")
     print(f"  Collection:   {args.collection}")
-    print(f"  Qdrant:       {os.environ.get('AIQ_QDRANT_URL', '(AIQ_QDRANT_URL not set)')}")
+    print(f"  Qdrant:       {os.environ.get('QDRANT_URL', '(QDRANT_URL not set)')}")
     print(f"  Text Only:    {args.text_only}")
     print(f"  Cleanup:      {not args.no_cleanup}")
 

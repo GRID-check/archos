@@ -1,0 +1,1096 @@
+/**
+ * The citation model — TWO levels, named once, read by every surface.
+ *
+ * A citation is not one thing. It is a **document** (which source) and a
+ * **locus** inside it (which page/passage). Every defect this module replaces
+ * came from a surface silently picking one level and assuming the other agreed:
+ *
+ *  - the "Belegt durch" chips deduplicated to the DOCUMENT level, then matched
+ *    1:1 against the answer's written source list, which is at the LOCUS level.
+ *    One document cited at four pages produced one full chip and three
+ *    degraded ones — raw filename, no authority badge, wrong tint — because the
+ *    single deduplicated ref was consumed by `[1]` and `[2]`–`[4]` had nothing
+ *    left to match;
+ *  - the Herleitung fan-out grouped at the DOCUMENT level from a different
+ *    input entirely (the trace-lane text block), so it could show what was
+ *    searched but never which document became `[3]`;
+ *  - the report bibliography re-parsed the LOCUS level back out of prose.
+ *
+ * Three parsers, three identities, no shared object. This module is that
+ * object. Nothing downstream classifies, labels, or deduplicates a source
+ * again — surfaces project {@link CitedDocument}s, they do not derive them.
+ *
+ * Identity is hierarchical and so is the data:
+ *
+ *     CitedDocument   ← WHAT   (collection, fileName) | url | canonical OIB key
+ *       └─ loci[]     ← WHERE  page / section, its `[N]`, its passage
+ *
+ * The backend model is already this shape — `SourceRegistry` keys entries on
+ * `(collection, filename, page)`, which is exactly (document, locus). It was
+ * only ever flattened for the wire.
+ */
+
+import { mergePageRegions, type PageRegion } from '@/features/knowledge/lib/page-region'
+import type { CitationProject, CitationSource } from '../../types'
+import {
+  KIND_TO_SIGNAL,
+  accentForLane,
+  authorityTag,
+  asSourceKind,
+  kindForLane,
+  type Shelf,
+  type SourceKind,
+  type SourceTint,
+} from '@/lib/source-kinds'
+import { documentDisplayName } from '../document-names'
+
+/** Origin token the backend stamps on a source line (`[KB]` / `[RIS]` / `[Web]`). */
+export type CitationOrigin = 'kb' | 'ris' | 'web'
+
+/**
+ * WHERE the evidence sits inside a document — one retrieved passage.
+ *
+ * A locus exists whether or not the answer cited it: the Herleitung must be
+ * able to say "retrieved, not cited", which is a claim about a locus, not a document.
+ */
+export interface CitationLocus {
+  /** Stable key within the owning document. */
+  key: string
+  /** 1-based page, when retrieval carried one. */
+  page?: number
+  /** The Punkt within the document ("3.5.2"), when the chunker established one. */
+  clause?: string
+  /** How nearly this passage matched the query: the retrieval score, when carried. */
+  score?: number
+  /**
+   * The `[N]` this locus carries in the answer prose. Present only when the
+   * answer actually cited it AND the number is known (backend `verify_citations`
+   * owns that binding; the written source list is the fallback carrier).
+   */
+  number?: number
+  /** True when the answer cited this passage, false when it was only retrieved. */
+  isCited: boolean
+  /** Retrieved passage text, when the wire carried one. */
+  snippet?: string
+  /** The exact key the backend registry used — drives preview + copy-citation. */
+  citationKey?: string
+  /**
+   * Where on the page the passage sits, for one read off a picture of the page
+   * (a plan's depiction, a photo). The viewer marks these instead of searching
+   * the text for `snippet` (issue #433).
+   */
+  regions?: PageRegion[]
+}
+
+/**
+ * A locus as an observation states it: before it has a key, and before anyone
+ * has decided it was cited. One named shape for every path that folds a locus
+ * into a document, so a field added to {@link CitationLocus} reaches all of
+ * them or fails to compile.
+ */
+export type LocusObservation = Omit<CitationLocus, 'key' | 'isCited'> & { isCited?: boolean }
+
+/** One element a measured value was derived from. */
+export interface MeasuredElement {
+  globalId: string
+  name?: string
+  ifcType?: string
+}
+
+/**
+ * What a MEASUREMENT knows about itself — the audit trail a citation cannot have.
+ *
+ * A citation says "this passage exists in this document"; a measurement says
+ * "this number came from these elements by this method, ±this much". The second
+ * is reproducible, and every field here comes off one
+ * `ifc_spatial.envelope.Answer` rather than from prose about it.
+ *
+ * The German is the backend renderer's, not this file's: `provenanceLabel` is
+ * the same verb `measure_register._provenance_line` puts in front of the value
+ * and `valueText` is rounded by the same rule, so the card and the sentence the
+ * answer makes about it cannot drift apart.
+ */
+export interface MeasurementFacts {
+  /** `declared` | `computed` | `inferred`, raw off the envelope. */
+  provenance: string
+  /** That provenance in German: deklariert / gemessen / vermutlich. */
+  provenanceLabel: string
+  /** The value with its unit, rounded to its tolerance band ("2.703 m"). */
+  valueText: string
+  /** "±0.005 m". Absent for a declared value, which has no measurement error. */
+  toleranceText?: string
+  /** The operator expression, as text a reviewer can read back. */
+  method: string
+  /** The full German provenance sentence the answer quotes. */
+  statement: string
+  /** GlobalIds the value was derived from, in the order they were used. */
+  elements: MeasuredElement[]
+  /** Which file was measured ("Institut.ifc (IFC4, 12043 Bauteile)"). */
+  model?: string
+  /** A qualification the value is not valid without. */
+  caveat?: string
+}
+
+/**
+ * WHAT was cited — one document, with every place in it this turn touched.
+ *
+ * All presentation facts (title, tint, authority badge) live here and nowhere
+ * else, so two surfaces rendering the same document cannot disagree about how
+ * it looks.
+ */
+export interface CitedDocument {
+  /** Canonical identity — see {@link documentIdentity}. Stable render key. */
+  id: string
+  /** Human display name. Never a raw corpus filename when a title is derivable. */
+  title: string
+  /** Raw filename behind `title`, for the tooltip and preview resolution. */
+  fileName?: string
+  /** Retrieval collection — the other half of a document's true identity. */
+  collection?: string
+  /**
+   * The SHELF the document sits on — `archiv | project | session | base`
+   * (ADR-0047), a different axis from `kind` above.
+   *
+   * It ARRIVES AS DATA on the citation payload; it is never derived from the
+   * collection id, and the German label a surface renders is derived FROM it
+   * (`documentShelfLabel`), not the other way round. A legacy key's `(Büroablage)`
+   * qualifier is the only fallback, for messages persisted before the wire
+   * carried the field.
+   *
+   * Undefined means UNKNOWN — the document renders unattributed. It is never
+   * defaulted to `base`: an unknown document claiming to be authoritative base
+   * law is the fail-open defect ADR-0047 removes.
+   */
+  shelf?: Shelf
+  /** Outbound link, for web/RIS sources. */
+  url?: string
+  /** Coarse kind (ADR-0026) — the provenance/trust family. */
+  kind: SourceKind
+  /** Fine lane stratum-key (`building_law_oib`, `building_law_ris`, …). */
+  lane?: string
+  /** Human lane label ("OIB-Richtlinie") for the popover. */
+  laneLabel?: string
+  /** `--source-*` family this document paints with (kind, refined by lane). */
+  tint: SourceTint
+  /** Compact authority badge (OIB / RIS / ÖNORM), when the lane names a tier. */
+  authority?: string
+  /** Bindingness note from the norm registry, for the popover. */
+  bindingNote?: string
+  /**
+   * Coarse binding classification (`binding` / `declared_binding` /
+   * `interpretive`). Orthogonal to `authority`: that names the tier, this names
+   * whether it binds. Never `unknown` here — the unknown case is dropped to
+   * undefined upstream so it renders as no badge.
+   */
+  bindingStatus?: string
+  /** The other project a cross-project lookup found it in (ADR-0094); the chip names it. */
+  project?: CitationProject
+  /** Backend origin token, when one was stamped. */
+  origin?: CitationOrigin
+  /** Tool that produced the hit. */
+  tool?: string
+  /**
+   * The passage the wire stated for this document, when it stated one.
+   */
+  snippet?: string
+  /** Every place in this document the turn read or cited. Empty only for a label-only source. */
+  loci: CitationLocus[]
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+/**
+ * Canonical identity for an OIB base-corpus document, from either its filename
+ * (`oib-rl_2_ausgabe_mai_2023.pdf`) or a human label (`OIB-Richtlinie 2`).
+ *
+ * The shared key that collapses the two provenance streams — a KB citation and
+ * a bare name for the SAME Richtlinie — onto one document. It
+ * ignores edition and section deliberately: neither changes WHICH document is
+ * cited. Returns null for anything not recognisably OIB, so every other source
+ * keeps its own (collection, filename) / URL identity untouched.
+ *
+ * Mirrors the backend filename convention (`norm_registry.oib_doc_class`), but
+ * only needs to produce a stable key, not a name.
+ */
+const OIB_NUMBER_RE = /(?:oib[\s._-]*(?:rl|richtlinie)?|richtlinie)[\s._-]*(\d+(?:\.\d+)?)/i
+
+export const oibDocumentKey = (nameOrLabel: string | undefined | null): string | null => {
+  const raw = (nameOrLabel ?? '').trim().toLowerCase()
+  if (!raw || !/(oib|richtlinie)/.test(raw)) return null
+
+  const role = /erl[aä]uterung|erlaeuterung/.test(raw)
+    ? 'erl'
+    : /[äa]nderung|aenderung/.test(raw)
+      ? 'aen'
+      : ''
+  const guide = /leitfaden/.test(raw) ? 'lf' : ''
+
+  let subject: string | null = null
+  if (/begriffsbestimmung/.test(raw)) subject = 'begriffe'
+  else if (/zitierte/.test(raw) && /normen/.test(raw)) subject = 'zitnormen'
+  else subject = OIB_NUMBER_RE.exec(raw)?.[1] ?? null
+
+  if (!subject) return null
+  return ['oib', role, subject, guide].filter(Boolean).join(':')
+}
+
+/** Identity prefix of a document known only as a law name — see `documentIdentity`. */
+const OIB_IDENTITY_PREFIX = 'oib:'
+
+/** The `oib:` identity a name would produce, or null. */
+const oibKeyFrom = (nameOrLabel: string | undefined | null): string | null => {
+  const key = oibDocumentKey(nameOrLabel)
+  return key ? `${OIB_IDENTITY_PREFIX}${key}` : null
+}
+
+/**
+ * Words a corpus OIB filename may carry beyond its own number — everything the
+ * key already models (role, Leitfaden, subject), plus edition and date noise.
+ */
+const OIB_NAME_NOISE_RE =
+  /\b(?:oib|richtlinien?|rl|ausgabe|fassung|vom|leitfaden|erl(?:ae|ä)uterung(?:en)?|(?:ae|ä)nderung(?:en)?|begriffsbestimmung(?:en)?|zitierte|normen|jan(?:uar)?|feb(?:ruar)?|m(?:ae|ä)rz|apr(?:il)?|mai|jun[i]?|jul[i]?|aug(?:ust)?|sep(?:tember)?|okt(?:ober)?|nov(?:ember)?|dez(?:ember)?)\b/g
+
+/**
+ * The OIB key of a name that IS an OIB corpus document, or null.
+ *
+ * `oibDocumentKey` answers "does this name mention OIB-Richtlinie 6", which is
+ * the right question for a bare law name — the name IS the law — and the wrong
+ * one for a FILE. „OIB-Richtlinie 6 Kommentar.pdf" is a project
+ * upload ABOUT a Richtlinie, and merging it into the name that names the
+ * Richtlinie made two sources one chip whose page-9 locus opened somebody's
+ * commentary in place of the base-law document. The shelf rule does not save it:
+ * a source known only from the answer's written list carries no shelf at all.
+ *
+ * So the file side has to survive a residue test — strip the number and every
+ * word the key already models, and what is left must be nothing.
+ */
+const oibCorpusKey = (nameOrLabel: string | undefined | null): string | null => {
+  const key = oibKeyFrom(nameOrLabel)
+  if (!key) return null
+  const residue = (nameOrLabel ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\.[a-z0-9]{2,5}$/, '')
+    // Separators to spaces FIRST, so the word tests below have boundaries to
+    // find: a corpus filename spells them `_`, which is a word character, and
+    // `\bausgabe\b` never matches inside `…_ausgabe_…`. The dot survives — it
+    // is part of the number in `oib-rl_2.1`.
+    .replace(/[_\-]+/g, ' ')
+    .replace(OIB_NUMBER_RE, ' ')
+    .replace(OIB_NAME_NOISE_RE, ' ')
+    // Only LETTERS decide. Digits, punctuation and separators are edition and
+    // filename noise; a residue check that kept them failed on the perfectly
+    // ordinary „OIB-Richtlinie 2.1, Ausgabe Mai 2023" over a stray comma.
+    .replace(/[^a-zäöüß]+/g, '')
+  return residue === '' ? key : null
+}
+
+/** Base law, or a document that has not said — never another shelf. */
+const isBaseOrUnknownShelf = (shelf: Shelf | undefined): boolean =>
+  shelf === undefined || shelf === 'base'
+
+
+/** URL reduced to a comparison form (scheme/host lowercased, trailing slash dropped). */
+export const normalizeUrl = (url: string): string => url.trim().toLowerCase().replace(/\/+$/, '')
+
+/**
+ * Filename reduced to a comparison form: trimmed, lowercased, separators
+ * (`_`, whitespace, `-`) unified to a single `-`, and ONE trailing
+ * `.pdf`-ish extension stripped.
+ *
+ * The model writes the `## Quellen` list from memory, so its spelling of a
+ * filename never matches the wire byte-for-byte (`oib-rl_2_ausgabe_mai_2023.pdf`
+ * on the wire, `oib-rl-2 ausgabe mai 2023` in prose — no extension at all).
+ * Comparing raw strings made the pair TWO documents claiming the same `[N]`:
+ * one full chip and one dead info popover. Comparing normalized forms merges
+ * them; the ORIGINALS stay on the document for display and preview resolution.
+ *
+ * Only the extension goes, and only for comparison: stripping more (edition,
+ * `rev.1`) would reintroduce the identity collapse that keeps two revisions of
+ * one corpus list apart.
+ */
+const DOCUMENT_EXTENSION_RE =
+  /\.(?:pdf|docx?|xlsx?|pptx?|odt|ods|odp|rtf|txt|md|csv|tsv|html?|xml|json|zip|dwg|dxf|ifc|png|jpe?g|tiff?|bmp|gif|webp|svg)$/
+
+/**
+ * Case- and separator-normalized, extension PRESERVED. The identity form.
+ *
+ * `Einreichplan.pdf` and `Einreichplan.docx` are two uploads, not one: while
+ * identity dropped the extension they shared `doc:<collection>:einreichplan`,
+ * merged into a single chip carrying both documents' loci, and its page opened
+ * whichever won the race. Same collapse the file's other comments describe,
+ * reached through the extension instead of the name.
+ */
+export const normalizeFileKey = (value: string | undefined | null): string =>
+  (value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s-]+/g, '-')
+
+/** The known document extension a name carries (`.pdf`), or `''`. */
+export const documentExtensionOf = (value: string | undefined | null): string =>
+  normalizeFileKey(value).match(DOCUMENT_EXTENSION_RE)?.[0] ?? ''
+
+/**
+ * The MATCHING form: {@link normalizeFileKey} with a known document extension
+ * dropped, so the answer's written spelling (`oib-rl 2`, no extension) meets
+ * the wire's (`oib-rl_2.pdf`).
+ *
+ * The strip is an allowlist, not `\.[a-z0-9]{2,5}$`. That pattern was not an
+ * extension test but a "dot near the end" test, and this function is also
+ * applied to TITLES: „Bescheid vom 12.03" and „Bescheid vom 12.04" both lost
+ * their last segment and matched each other as one document.
+ */
+export const normalizeFileName = (value: string | undefined | null): string =>
+  normalizeFileKey(value).replace(DOCUMENT_EXTENSION_RE, '')
+
+/** Minimal facts needed to identify a document, from any producer. */
+export interface DocumentIdentityInput {
+  /**
+   * The backend's own document identity (`document_id` on the wire). When
+   * present it wins outright — it is computed from the same
+   * `(collection, filename)` the registry groups on, so honouring it is how
+   * the two ends stop deriving identity independently.
+   */
+  documentId?: string
+  fileName?: string
+  collection?: string
+  url?: string
+  /** Any human label — a law name, a chip label, a citation key. */
+  label?: string
+}
+
+/**
+ * The key a document is unique under, most specific first:
+ *
+ *  1. `document_id` — the backend's own identity, computed from the same
+ *     `(collection, filename)` the registry groups on;
+ *  2. `(collection, fileName)` — the true primary key, and the only pair that
+ *     is actually unique: one search fans out across the base corpus, the
+ *     session collection and the project collections at once, so two different
+ *     `Plan.pdf`s can arrive together;
+ *  3. bare `fileName` — when the collection is unknown (written source entries
+ *     and legacy persisted messages carry no collection);
+ *  4. normalized URL;
+ *  5. the canonical OIB key, for an observation that names a Richtlinie and
+ *     nothing else — a bare law name;
+ *  6. the label, as a last resort so a source is never silently dropped.
+ *
+ * THE OIB KEY IS LAST, NOT FIRST. It used to win outright, and it deliberately
+ * discards edition, revision and everything after the number — so every
+ * document whose name merely mentions OIB or "Richtlinie" was identified by its
+ * Richtlinie number alone, and two different documents became one. Both are in
+ * the shipped corpus: `oib-rl_zitierte_normen_…_ausgabe_mai_2023.pdf` and the
+ * same list `_rev.1`, two different tables of normative references, one
+ * identity — so a citation to Rev. 1 at p. 14 opened the superseded list at
+ * p. 14, with nothing on screen suggesting anything was wrong.
+ *
+ * Worse across shelves: a project upload called `OIB-Richtlinie 6 Kommentar.pdf`
+ * was absorbed into the base-corpus Richtlinie 6 outright — one chip, the base
+ * filename, the base shelf, and the reader's own document gone from the answer
+ * while its page carried on pointing into the Richtlinie. That is the identity
+ * collapse ADR-0047 exists to prevent.
+ *
+ * The one thing the key was actually FOR — letting a name that knows only
+ * „OIB-Richtlinie 2" join the citation of that Richtlinie — is a MERGE, not an
+ * identity, and it is done as one (see `CitationAccumulator.find`).
+ */
+export const documentIdentity = (input: DocumentIdentityInput): string => {
+  const supplied = input.documentId?.trim()
+  if (supplied) return supplied
+  // Compared NORMALIZED: the wire and the answer's written list spell one
+  // filename two ways (separators, case, a missing extension), and raw keys
+  // made them two documents. The original spelling stays on the document.
+  const fileName = normalizeFileKey(input.fileName)
+  if (fileName) {
+    const collection = input.collection?.trim().toLowerCase()
+    return collection ? `doc:${collection}:${fileName}` : `doc:${fileName}`
+  }
+  const url = input.url?.trim()
+  if (url) return `url:${normalizeUrl(url)}`
+  // Nothing structured: this is a bare name for a law. The OIB key is its
+  // identity because the law name is all it has, and it is what lets the same
+  // Richtlinie cited from retrieval find it (`CitationAccumulator.find`).
+  const oib = oibDocumentKey(input.label)
+  if (oib) return `oib:${oib}`
+  const label = (input.label ?? '').trim().toLowerCase().slice(0, 120)
+  // Empty rather than `label:` — an observation that names no document, no
+  // link and no label identifies NOTHING, and must not be able to occupy a
+  // chip or a Herleitung card. See `CitationAccumulator.add`.
+  return label ? `label:${label}` : ''
+}
+
+/**
+ * Whether two identities describe the same document when one of them was
+ * derived WITHOUT a collection.
+ *
+ * A written source entry says `oib-rl_2.pdf, p.3` and nothing more, while the
+ * structured wire for the same hit says `(oib_knowledge, oib-rl_2.pdf, p.3)`.
+ * Both are the same document, but rule 2 and rule 3 above give them different
+ * keys. Rather than weaken the primary key — which exists precisely so two
+ * projects' `Plan.pdf` never merge — collection-less keys are matched
+ * permissively and collection-bearing keys strictly.
+ */
+export const identityMatches = (a: string, b: string): boolean => {
+  if (a === b) return true
+  /** The raw (extension-bearing) filename half of a `doc:` key. */
+  const fileKeyOf = (key: string): string => {
+    if (!key.startsWith('doc:')) return ''
+    const rest = key.slice('doc:'.length)
+    const sep = rest.indexOf(':')
+    return sep === -1 ? rest : rest.slice(sep + 1)
+  }
+  const fileOf = (key: string): { collection: string | null; file: string } | null => {
+    if (!key.startsWith('doc:')) return null
+    const rest = key.slice('doc:'.length)
+    const sep = rest.indexOf(':')
+    // Normalized on BOTH sides: a collection-less written entry
+    // (`oib-rl-2 ausgabe mai 2023`) meets its wire document
+    // (`oib-rl_2_ausgabe_mai_2023.pdf`) here rather than as a duplicate chip.
+    if (sep === -1) return { collection: null, file: normalizeFileName(rest) }
+    return { collection: rest.slice(0, sep), file: normalizeFileName(rest.slice(sep + 1)) }
+  }
+  const fa = fileOf(a)
+  const fb = fileOf(b)
+  if (!fa || !fb || fa.file !== fb.file || !fa.file) return false
+  // Stems agree. Two keys that both name a FORMAT are the same document only
+  // if it is the same format — `Einreichplan.pdf` is not `Einreichplan.docx`.
+  // A key with no extension is the written list's spelling of either, so it
+  // stays permissive, which is what this function is for.
+  const extA = documentExtensionOf(fileKeyOf(a))
+  const extB = documentExtensionOf(fileKeyOf(b))
+  if (extA && extB && extA !== extB) return false
+  // One side collection-less, the other collection-bearing: the permissive
+  // half of the primary key. Two collection-bearing keys with different
+  // collections are two documents (`Plan.pdf` per shelf), never merged.
+  return fa.collection === null || fb.collection === null
+}
+
+// ---------------------------------------------------------------------------
+// Locus identity
+// ---------------------------------------------------------------------------
+
+/**
+ * The key a locus is unique under inside its document.
+ *
+ * Page first: two chunks from the same document at different pages are distinct
+ * evidence and must both survive (the backend registry keys on page for the
+ * same reason). A document-level hit with no page collapses onto one `whole`
+ * locus, so a source retrieved five times without page numbers does not render
+ * as five identical rows.
+ */
+export const locusKey = (page: number | undefined, citationKey?: string): string => {
+  if (typeof page === 'number' && Number.isFinite(page)) return `p:${page}`
+  const key = citationKey?.trim().toLowerCase()
+  return key ? `k:${key}` : 'whole'
+}
+
+// ---------------------------------------------------------------------------
+// Presentation — derived once, here
+// ---------------------------------------------------------------------------
+
+const ORIGIN_TOKEN_RE = /^\s*\[(KB|Web|RIS)\]\s*/i
+
+/** Strip a leading `[KB]`/`[RIS]`/`[Web]` token from display text. */
+export const stripOriginToken = (text: string): string => text.replace(ORIGIN_TOKEN_RE, '').trim()
+
+export const isHttpUrl = (url: string | undefined | null): boolean =>
+  !!url && /^https?:\/\//i.test(url)
+
+export const hostnameOf = (url: string): string | null => {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Coarse kind for a source, canonical wire value first.
+ *
+ * `kind` is what the backend classified (ADR-0026) and is always preferred.
+ * The fallbacks exist for messages persisted before the wire carried it and
+ * for label-only documents: lane → kind uses the same shared table the
+ * backend applies, and the origin/URL heuristics are last.
+ */
+export const resolveKind = (source: {
+  kind?: string | null
+  lane?: string | null
+  origin?: string | null
+  url?: string | null
+}): SourceKind => {
+  const canonical = asSourceKind(source.kind)
+  if (canonical) return canonical
+  if (source.lane?.trim()) return kindForLane(source.lane)
+  if (source.origin === 'ris') return 'building_law'
+  if (source.origin === 'kb') return 'building_law'
+  if (source.url && /ris\.bka\.gv\.at/i.test(source.url)) return 'building_law'
+  if (isHttpUrl(source.url)) return 'web'
+  return 'building_law'
+}
+
+/**
+ * The `--source-*` family a document paints with: its coarse kind, refined by
+ * the fine lane so an OIB document is the OIB accent rather than generic law.
+ */
+export const resolveTint = (kind: SourceKind, lane?: string | null): SourceTint =>
+  accentForLane(lane, KIND_TO_SIGNAL[kind])
+
+/**
+ * The user-facing name of a document.
+ *
+ * `documentDisplayName` is the single derivation: the backend's stored/derived
+ * display title wins, then the deterministic OIB filename mirror, then a
+ * humanized filename. Applying it HERE — once, in the model — is what stops a
+ * source from rendering as `oib-rl_2.1_ausgabe_mai_2023.pdf` on one surface and
+ * "OIB-Richtlinie 2.1, Ausgabe Mai 2023" on another.
+ */
+export const resolveTitle = (input: {
+  title?: string | null
+  fileName?: string | null
+  url?: string | null
+  label?: string | null
+}): string => {
+  const explicit = input.title?.trim()
+  const fileName = input.fileName?.trim()
+  if (explicit || fileName) return documentDisplayName(fileName ?? '', explicit)
+  if (isHttpUrl(input.url)) {
+    const host = hostnameOf(input.url!)
+    if (host) return host
+  }
+  const label = stripOriginToken(input.label ?? '')
+  if (label) return documentDisplayName(label)
+  return input.url?.trim() ?? ''
+}
+
+/**
+ * A reference TO a citation: a document, optionally narrowed to one locus.
+ *
+ * This is the unit every citation-shaped affordance works in — a chip, a
+ * bibliography row, a copyable citation, a preview click. Making the locus
+ * optional is what lets the same component render "OIB-Richtlinie 2.1" (the
+ * document the answer leans on) and "OIB-Richtlinie 2.1, S. 18" (the passage
+ * `[3]` points at) without two code paths.
+ */
+export interface CitationRef {
+  document: CitedDocument
+  /** Undefined for a document-level reference. */
+  locus?: CitationLocus
+}
+
+// ---------------------------------------------------------------------------
+// Queries — the vocabulary surfaces use instead of re-deriving
+// ---------------------------------------------------------------------------
+
+/** The loci the answer actually cited, in citation order. */
+export const citedLoci = (doc: CitedDocument): CitationLocus[] =>
+  doc.loci
+    .filter((locus) => locus.isCited)
+    .sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity))
+
+/** True when the answer cited this document anywhere. */
+export const isCited = (doc: CitedDocument): boolean => doc.loci.some((locus) => locus.isCited)
+
+/** The `[N]` markers this document carries in the prose, ascending. */
+export const citationNumbers = (doc: CitedDocument): number[] =>
+  Array.from(
+    new Set(
+      doc.loci
+        .map((locus) => locus.number)
+        .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+    )
+  ).sort((a, b) => a - b)
+
+/** Pages of the given loci, deduplicated and ascending. */
+const pagesOf = (loci: readonly CitationLocus[]): number[] =>
+  Array.from(
+    new Set(
+      loci
+        .map((locus) => locus.page)
+        .filter((p): p is number => typeof p === 'number' && Number.isFinite(p))
+    )
+  ).sort((a, b) => a - b)
+
+/**
+ * The pages the answer CITED this document at, ascending.
+ *
+ * `isCited` is the distinction this whole model exists to carry — "read" and
+ * "used" are different claims — and this function used to ignore it. The
+ * trace-lane fan-out contributes a locus per RETRIEVED page with
+ * `isCited: false`, so a document retrieved at pp. 5, 12 and 18 and cited only
+ * at 5 rendered "S. 5, 12, 18" under the heading „Belegt durch". Worse, `refPage`
+ * names a page only when there is exactly one, so the same document's copied
+ * Fachtext citation carried NO page at all — the model held the right answer and
+ * the surface printed a wrong one and a missing one from the same call.
+ *
+ * Empty for a document cited only as a whole. Use {@link readPages} for the
+ * Herleitung's honest wider claim.
+ */
+export const citedPages = (doc: CitedDocument): number[] =>
+  pagesOf(doc.loci.filter((locus) => locus.isCited))
+
+/** Every page this document was READ at, cited or not — the Herleitung's claim. */
+export const readPages = (doc: CitedDocument): number[] => pagesOf(doc.loci)
+
+/**
+ * The pages to PRINT beside a document, on any surface.
+ *
+ * `citedPages` is the precise claim and the right one whenever the turn has a
+ * binding to be precise about. But two real populations have no binding at all:
+ * messages persisted before `isCited` existed, and turns whose backend never
+ * resolved a `[N]`. {@link answerDocuments} already meets those by widening —
+ * "everything retrieved" is a weaker claim than "these are the sources", and an
+ * honest one — and the page line has to widen with it or the row it belongs to
+ * silently loses its pages. Same rule, read once here rather than four times at
+ * the call sites: be precise when precision exists, be honest when it does not.
+ *
+ * A document cited only as a whole (a cited locus carrying no page) keeps an
+ * empty list. Its binding IS resolved, and it says the answer used no page.
+ */
+export const documentPages = (doc: CitedDocument): number[] =>
+  isCited(doc) ? citedPages(doc) : readPages(doc)
+
+/** Total evidence count for a document — what "N Treffer" means. */
+export const hitCount = (doc: CitedDocument): number => Math.max(doc.loci.length, 1)
+
+/** The `[N]` a reference carries: the locus's, or the document's first. */
+export const refNumber = (ref: CitationRef): number | undefined =>
+  ref.locus?.number ?? citationNumbers(ref.document)[0]
+
+/**
+ * The page a reference names.
+ *
+ * A document-level reference has one only when the document was read at exactly
+ * one page — otherwise naming a single page would be a claim the reference does
+ * not make, and "S. 5" on a chip that stands for pages 5, 12 and 18 is exactly
+ * the kind of quiet inaccuracy the flat shape used to produce.
+ */
+export const refPage = (ref: CitationRef): number | undefined => {
+  if (ref.locus) return ref.locus.page
+  const pages = documentPages(ref.document)
+  return pages.length === 1 ? pages[0] : undefined
+}
+
+/** Every page a reference covers — for the "S. 5, 12, 18" meta line. */
+export const refPages = (ref: CitationRef): number[] =>
+  ref.locus?.page != null ? [ref.locus.page] : documentPages(ref.document)
+
+/** Host of a reference's outbound link, when it has one. */
+export const refHost = (ref: CitationRef): string | undefined =>
+  ref.document.url && isHttpUrl(ref.document.url)
+    ? (hostnameOf(ref.document.url) ?? undefined)
+    : undefined
+
+/** Stable render key for a reference. */
+export const refKey = (ref: CitationRef): string =>
+  ref.locus ? `${ref.document.id}#${ref.locus.key}` : ref.document.id
+
+/**
+ * Stable presentation order: by provenance family (Baurecht first — it is the
+ * strongest claim and the one an architect checks first), then by the lowest
+ * `[N]` the document carries, then by title. Documents the prose numbered
+ * always precede unnumbered ones within their family.
+ */
+const KIND_ORDER: Record<SourceKind, number> = {
+  building_law: 0,
+  office: 1,
+  project: 2,
+  measurement: 3,
+  web: 4,
+}
+
+export const compareDocuments = (a: CitedDocument, b: CitedDocument): number => {
+  const numbersA = citationNumbers(a)
+  const numbersB = citationNumbers(b)
+  const firstA = numbersA[0] ?? Infinity
+  const firstB = numbersB[0] ?? Infinity
+  if (firstA !== firstB) return firstA - firstB
+  const kind = KIND_ORDER[a.kind] - KIND_ORDER[b.kind]
+  if (kind !== 0) return kind
+  return a.title.localeCompare(b.title, 'de')
+}
+
+// ---------------------------------------------------------------------------
+// Accumulation
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds {@link CitedDocument}s by folding in one observation at a time.
+ *
+ * Producers (structured wire, written source entries, trace lanes) each
+ * contribute what they know; the accumulator merges on identity and keeps the
+ * more specific value field by field. Order of contribution does not change the
+ * result, which is what lets a late `citation_use` event raise a locus to cited
+ * without erasing the richer discovery payload that arrived first.
+ */
+export class CitationAccumulator {
+  private readonly docs = new Map<string, CitedDocument>()
+  /**
+   * Which documents have been told their shelf EXPLICITLY.
+   *
+   * `doc.shelf` alone cannot answer that — a shelf a citation key's German
+   * qualifier merely implied looks identical once it is stored. Without the
+   * distinction the two competed on ARRIVAL ORDER, so a guess that landed first
+   * permanently outranked the wire's own statement.
+   */
+  private readonly explicitShelves = new WeakMap<CitedDocument, Shelf>()
+
+  /**
+   * Fold one observation into the model.
+   *
+   * Returns `null` for an observation that identifies nothing — no filename, no
+   * URL, no label. Such a thing cannot be cited, previewed or copied, so
+   * rendering it would put a nameless card on the surface whose whole job is to
+   * say where an answer came from. Dropping it is the honest outcome.
+   */
+  add(observation: {
+    identity: DocumentIdentityInput
+    title?: string | null
+    fileName?: string | null
+    collection?: string | null
+    /**
+     * The shelf as DATA — stated by the producer itself (the citation payload's
+     * own field). An explicit shelf always wins, whenever it arrives.
+     */
+    shelf?: Shelf
+    /**
+     * The shelf as INFERENCE — derived from a legacy citation key's German
+     * qualifier, or quoted inside prose the model wrote. It fills a gap only:
+     * it can never displace, or be displaced by arriving before, an explicit
+     * one.
+     */
+    shelfFallback?: Shelf
+    url?: string | null
+    kind?: string | null
+    lane?: string | null
+    laneLabel?: string | null
+    bindingNote?: string | null
+    bindingStatus?: string | null
+    project?: CitationProject
+    origin?: string | null
+    tool?: string | null
+    snippet?: string | null
+    locus?: LocusObservation
+  }): CitedDocument | null {
+    const id = documentIdentity(observation.identity)
+    if (!id) return null
+    // What this observation will be called — computed up front so `find` can
+    // match it against a document identified by nothing but its name.
+    const incomingTitle = resolveTitle({
+      title: observation.title,
+      fileName: observation.fileName,
+      url: observation.url,
+      label: observation.identity.label,
+    })
+    const existing = this.find(id, incomingTitle, observation.shelf ?? observation.shelfFallback, observation.fileName)
+    // A document whose NAME yields the canonical OIB key is an OIB document.
+    // Inferring the lane from it is what lets a source known ONLY from the
+    // answer's written list ("oib-rl_2.1_….pdf, p.9", no wire, no lane) still
+    // render with the OIB accent and the OIB badge, instead of sitting next to
+    // an identical structured citation in a different colour with no badge.
+    //
+    // Read off the NAME rather than off `id`, which is where it used to come
+    // from: the OIB key is no longer an identity (it collapsed two revisions of
+    // one corpus document into each other), so an identity that starts with
+    // `oib:` is now only the label-only document. The name is what the inference
+    // always actually meant.
+    const laneFromIdentity = oibKeyFrom(observation.fileName || observation.identity.label)
+      ? 'building_law_oib'
+      : undefined
+    const kind = resolveKind({
+      kind: observation.kind,
+      lane: observation.lane ?? laneFromIdentity,
+      origin: observation.origin,
+      url: observation.url,
+    })
+    const lane = observation.lane?.trim() || existing?.lane || laneFromIdentity
+    const resolvedKind = existing && !asSourceKind(observation.kind) ? existing.kind : kind
+
+    const doc: CitedDocument = existing ?? {
+      id,
+      title: '',
+      kind: resolvedKind,
+      tint: resolveTint(resolvedKind, lane),
+      loci: [],
+    }
+
+    // Field-wise "the first NON-EMPTY value wins". `||`, never `??`: a trimmed
+    // whitespace-only value is `''`, which is not nullish — so `??` would both
+    // accept it AND make every later observation carrying a real value lose to
+    // it, permanently.
+    doc.fileName = doc.fileName || observation.fileName?.trim() || undefined
+    doc.collection = doc.collection || observation.collection?.trim() || undefined
+    // The shelf is taken, never guessed, and the two ways of taking it are kept
+    // APART. An explicit shelf (the payload's own field) always wins, no matter
+    // which observation carried it or when it arrived; a shelf inferred from a
+    // legacy key's German qualifier only ever fills a gap, first non-empty.
+    // Collapsing the two made the winner a function of arrival order, so a guess
+    // could outrank the wire. The collection id is still never consulted — that
+    // prefix match is what filed a private session attachment under
+    // "Projektwissen" and an unknown collection under base law (ADR-0047).
+    const explicitShelf = this.explicitShelves.get(doc) ?? observation.shelf
+    if (explicitShelf) {
+      this.explicitShelves.set(doc, explicitShelf)
+      doc.shelf = explicitShelf
+    } else {
+      doc.shelf = doc.shelf ?? observation.shelfFallback
+    }
+    doc.url = doc.url ?? (observation.url?.trim() || undefined)
+    doc.tool = doc.tool ?? (observation.tool?.trim() || undefined)
+    doc.bindingNote = doc.bindingNote ?? (observation.bindingNote?.trim() || undefined)
+    doc.bindingStatus = doc.bindingStatus ?? (observation.bindingStatus?.trim() || undefined)
+    doc.project = doc.project ?? observation.project
+    doc.snippet = doc.snippet ?? (observation.snippet?.trim() || undefined)
+    doc.laneLabel = doc.laneLabel ?? (observation.laneLabel?.trim() || undefined)
+    const origin = observation.origin?.trim().toLowerCase()
+    if (!doc.origin && (origin === 'kb' || origin === 'ris' || origin === 'web')) {
+      doc.origin = origin
+    }
+    // A canonical kind from the wire always upgrades a heuristic one.
+    if (asSourceKind(observation.kind)) doc.kind = asSourceKind(observation.kind)!
+    if (lane) doc.lane = lane
+    doc.tint = resolveTint(doc.kind, doc.lane)
+    doc.authority = authorityTag(doc.lane) ?? doc.authority ?? undefined
+
+    // A later observation may carry the authoritative backend display title the
+    // first one lacked, so the title is re-resolved against the MERGED document
+    // (which by now may know a filename the incoming observation did not).
+    const title =
+      resolveTitle({
+        title: observation.title,
+        fileName: doc.fileName,
+        url: doc.url,
+        label: observation.identity.label,
+      }) || incomingTitle
+    if (title && (!doc.title || looksLikeFilename(doc.title))) doc.title = title
+
+    if (observation.locus) this.mergeLocus(doc, observation.locus)
+
+    this.docs.set(doc.id, doc)
+    return doc
+  }
+
+  /** Merge one locus into a document, keeping the richer of the two. */
+  private mergeLocus(
+    doc: CitedDocument,
+    locus: LocusObservation
+  ): void {
+    const page =
+      typeof locus.page === 'number' && Number.isFinite(locus.page) ? locus.page : undefined
+    const score =
+      typeof locus.score === 'number' && Number.isFinite(locus.score) ? locus.score : undefined
+    const key = locusKey(page, locus.citationKey)
+    const existing = doc.loci.find((candidate) => candidate.key === key)
+    if (existing) {
+      // `isCited` is sticky once true, and a number never un-sets: a sparser
+      // later event must be able to RAISE a locus without erasing anything.
+      existing.isCited = existing.isCited || !!locus.isCited
+      existing.number = existing.number ?? locus.number
+      // `||` for the same reason as the document fields above.
+      existing.snippet = existing.snippet || locus.snippet?.trim() || undefined
+      existing.citationKey = existing.citationKey || locus.citationKey?.trim() || undefined
+      existing.clause = existing.clause || locus.clause?.trim() || undefined
+      // A page's boxes fold together, as the backend registry folds them.
+      existing.regions = mergePageRegions(existing.regions, locus.regions)
+      // Several chunks of one page fold onto one locus; the page keeps the
+      // best match any of them earned, mirroring the backend registry.
+      existing.score =
+        existing.score === undefined
+          ? score
+          : score === undefined
+            ? existing.score
+            : Math.max(existing.score, score)
+      return
+    }
+    doc.loci.push({
+      key,
+      page,
+      clause: locus.clause?.trim() || undefined,
+      score,
+      number: locus.number,
+      isCited: !!locus.isCited,
+      snippet: locus.snippet?.trim() || undefined,
+      citationKey: locus.citationKey?.trim() || undefined,
+      regions: locus.regions?.length ? locus.regions : undefined,
+    })
+  }
+
+  /**
+   * Look up a document by identity, honouring the two cases where equal keys
+   * are not the only way two observations describe the same document:
+   *
+   *  - a collection-less key against a collection-bearing one
+   *    ({@link identityMatches});
+   *  - a LABEL-only key against a document with that name. A source with no
+   *    filename and no URL is identified by its name and nothing else, which is
+   *    what a trace-lane hit for a RIS norm looks like ("Bauordnung für
+   *    Wien"); the answer's citation of the same norm arrives with a real RIS
+   *    URL. Same document, two identities — and without this it rendered twice
+   *    in the fan-out, once cited and once "abgerufen, nicht zitiert".
+   */
+  private find(
+    id: string,
+    title: string,
+    shelf?: Shelf,
+    fileName?: string | null
+  ): CitedDocument | undefined {
+    const exact = this.docs.get(id)
+    if (exact) return exact
+    for (const doc of this.docs.values()) {
+      if (identityMatches(doc.id, id)) return doc
+    }
+    // Label matching, both directions: the label-only observation may arrive
+    // before or after the one that knows the document's real identity.
+    // Compared NORMALIZED, for the same model-written spelling drift that
+    // `documentIdentity` absorbs: separators, case, a missing extension.
+    const incomingLabel = labelOf(id)
+    const normIncomingLabel = incomingLabel ? normalizeFileName(incomingLabel) : ''
+    const normName = normalizeFileName(title)
+    for (const doc of this.docs.values()) {
+      if (normIncomingLabel && normalizeFileName(doc.title) === normIncomingLabel) return doc
+      const heldLabel = labelOf(doc.id)
+      if (normName && heldLabel && normalizeFileName(heldLabel) === normName) return doc
+    }
+    return this.findOibCounterpart(id, title, shelf, fileName)
+  }
+
+  /**
+   * The corpus document a bare law name refers to, or the label-only document
+   * a corpus citation should join.
+   *
+   * This is what the canonical OIB key is FOR: a written entry knows
+   * „OIB-Richtlinie 2" and no filename, retrieval knows `oib-rl_2_ausgabe_mai_2023.pdf` and no law
+   * name, and they are one document. Doing it here rather than in
+   * `documentIdentity` is the whole point — as an IDENTITY the key also
+   * collapsed two revisions of one corpus list, and swallowed a project upload
+   * whose name happened to mention a Richtlinie.
+   *
+   * EXACTLY ONE SIDE MAY BE LABEL-ONLY. Two observations that both name a FILE
+   * are two documents, whatever their names suggest; a match here requires one
+   * of them to have nothing but a law name to go on.
+   *
+   * And only against the base corpus. A Richtlinie is base law: a name for
+   * one must never attach itself to a project upload or a private attachment
+   * that mentions it, which is the cross-shelf half of the same defect. A
+   * document whose shelf is UNKNOWN stays eligible — it contradicts nothing —
+   * exactly as `resolveCitationTarget` treats an untagged row.
+   */
+  private findOibCounterpart(
+    id: string,
+    title: string,
+    shelf: Shelf | undefined,
+    fileName: string | null | undefined
+  ): CitedDocument | undefined {
+    const incomingOib = id.startsWith(OIB_IDENTITY_PREFIX) ? id : null
+    // The incoming observation names a file; look for a label holding its key.
+    const incomingKey = incomingOib ?? oibCorpusKey(fileName ?? title)
+    if (!incomingKey) return undefined
+    // The shelf rule applies to BOTH sides. Cards run last today, so the
+    // incoming side is always the label-only one and this cannot fire through
+    // `buildCitationModel` — it is here so that reordering the producers is a
+    // reordering rather than a silent reintroduction of the defect, and
+    // `build.spec.ts` drives the accumulator directly to keep it honest.
+    if (!isBaseOrUnknownShelf(shelf)) return undefined
+
+    for (const doc of this.docs.values()) {
+      const heldIsLabelOnly = doc.id.startsWith(OIB_IDENTITY_PREFIX)
+      // One side, and only one side, must be the label-only document.
+      if (heldIsLabelOnly === Boolean(incomingOib)) continue
+      if (!isBaseOrUnknownShelf(doc.shelf)) continue
+      const heldKey = heldIsLabelOnly ? doc.id : oibCorpusKey(doc.fileName ?? doc.title)
+      if (heldKey && heldKey === incomingKey) return doc
+    }
+    return undefined
+  }
+
+  /**
+   * The document the wire already numbers `[N]`, if any.
+   *
+   * The wire's number IS the backend's verified binding (`verify_citations`
+   * resolved the written line against the registry of what was retrieved).
+   * A written line carrying the same `[N]` is that binding restated in prose,
+   * so it can only ever join this document — never mint another, whatever
+   * its spelling of the filename. Two chips for one `[N]` is the defect this
+   * lookup exists to make impossible.
+   */
+  findByNumber(number: number | undefined): CitedDocument | undefined {
+    if (typeof number !== 'number') return undefined
+    for (const doc of this.docs.values()) {
+      if (doc.loci.some((locus) => locus.number === number)) return doc
+    }
+    return undefined
+  }
+
+  /**
+   * The one document whose filename normalises to `normFile`, or undefined
+   * when none or several do. For a written line whose `[N]` the wire does NOT
+   * carry (a message persisted before the wire numbered sources, a sparse
+   * number map): the filename is then the only bridge, and an ambiguous one
+   * (`Plan.pdf` on two shelves) is no bridge at all.
+   */
+  findByFile(normFile: string): CitedDocument | undefined {
+    if (!normFile) return undefined
+    const matches = Array.from(this.docs.values()).filter(
+      (doc) => !!doc.fileName && normalizeFileName(doc.fileName) === normFile
+    )
+    return matches.length === 1 ? matches[0] : undefined
+  }
+
+  /**
+   * Let a written line add what the wire's `[N]` locus lacks — a page — and
+   * nothing else. The wire's page wins when it has one: the written list is
+   * the model's memory of the locator, the wire is the registry's record.
+   */
+  adoptWrittenLocus(doc: CitedDocument, locus: { number: number; page?: number }): void {
+    const numbered = doc.loci.find((candidate) => candidate.number === locus.number)
+    if (numbered?.page !== undefined) return
+    this.mergeLocus(doc, { page: locus.page, number: locus.number, isCited: true })
+  }
+
+  /** Fold a written-list locus into an already-matched document (see above). */
+  attachLocus(
+    doc: CitedDocument,
+    locus: LocusObservation
+  ): void {
+    this.mergeLocus(doc, locus)
+  }
+
+  /** The accumulated documents, in stable presentation order. */
+  build(): CitedDocument[] {
+    const docs = Array.from(this.docs.values())
+    for (const doc of docs) {
+      doc.loci.sort(locusOrder)
+      if (!doc.title) doc.title = doc.fileName ?? doc.url ?? doc.id
+    }
+    return docs.sort(compareDocuments)
+  }
+}
+
+/** Loci order: cited-and-numbered first (by `[N]`), then by page. */
+const locusOrder = (a: CitationLocus, b: CitationLocus): number => {
+  const numberDelta = (a.number ?? Infinity) - (b.number ?? Infinity)
+  if (numberDelta !== 0) return numberDelta
+  return (a.page ?? Infinity) - (b.page ?? Infinity)
+}
+
+/** The human label a `label:`-scheme identity carries, or null. */
+const labelOf = (id: string): string | null =>
+  id.startsWith('label:') ? id.slice('label:'.length) : null
+
+/** A title that is still a raw filename, so a better one may replace it. */
+const FILENAME_LIKE_RE = /^\S*\.\w{2,5}$/
+const looksLikeFilename = (value: string): boolean => FILENAME_LIKE_RE.test(value.trim())
+
+/** A locus of a `CitationSource`, for producers that need the same rule. */
+export const locusOf = (citation: CitationSource): CitationLocus => ({
+  key: locusKey(citation.page, citation.citationKey),
+  page: typeof citation.page === 'number' ? citation.page : undefined,
+  clause: citation.clause?.trim() || undefined,
+  score: typeof citation.score === 'number' ? citation.score : undefined,
+  number: citation.number,
+  isCited: !!citation.isCited,
+  citationKey: citation.citationKey?.trim() || undefined,
+  regions: citation.regions,
+})

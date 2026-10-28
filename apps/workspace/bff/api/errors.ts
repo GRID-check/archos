@@ -1,0 +1,285 @@
+/**
+ * Typed API errors for the BFF service layer.
+ *
+ * Services and repositories throw these instead of returning HTTP responses;
+ * the route-handler wrapper in `@/lib/api/handler` maps them to the JSON
+ * error envelope. This keeps HTTP concerns out of the service layer while
+ * guaranteeing every route returns consistent, non-leaky error responses.
+ *
+ * About 600 specs reach this module, so it is a leaf: it imports types and
+ * `./api-error` (itself import-free) only, or everything it imports is re-run
+ * with them (`errors-leaf.spec.ts`).
+ */
+
+import type { RateLimitDecision } from '@/lib/limits/types'
+import { ApiError, ForbiddenError } from './api-error'
+
+export { ApiError, BadRequestError, ForbiddenError } from './api-error'
+
+/**
+ * Bytes in a decimal MB. Declared here rather than imported from
+ * `@/shared/config/request-body-limit` to keep this module a leaf, the
+ * convention that file states for itself; `errors-leaf.spec.ts` holds the two
+ * equal.
+ */
+const BYTES_PER_MB = 1e6
+
+/** 401 — no valid session. */
+export class UnauthorizedError extends ApiError {
+  constructor(message = 'Unauthorized') {
+    super(401, 'UNAUTHORIZED', message)
+  }
+}
+
+/**
+ * 401 — no signed-in session at all (`requireGridSession`).
+ *
+ * Its own class because the route wrapper answers it as `403 { error:
+ * 'Forbidden' }`, the answer it got while the session guard threw a plain
+ * `Error` matched by message; a client sees no change. 401 is the HTTP answer
+ * for a missing session, and moving to it is its own decision.
+ */
+export class SessionRequiredError extends UnauthorizedError {
+  constructor() {
+    super('Unauthorized: Grid session required')
+  }
+}
+
+/**
+ * Whether `error` is an authorization refusal: no session (401), not allowed
+ * (403), or not there for this caller (404).
+ *
+ * Server-side only. An error that crosses the RSC boundary to a client error
+ * boundary arrives as a plain `Error` and keeps only its message; `app/error.tsx`
+ * classifies by message for that reason.
+ */
+export function isAuthzRefusal(error: unknown): error is ApiError {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403 || error.status === 404)
+}
+
+/**
+ * 403 — a signed-in session that has not selected a WorkOS organization
+ * (`requireAuthorizedSession`). The route wrapper answers it as it answers
+ * {@link SessionRequiredError}; page and server-action code calls
+ * `requireAuthorizedPageSession`, which redirects instead.
+ */
+export class NoOrganizationError extends ForbiddenError {
+  constructor() {
+    super('Forbidden: no organization selected')
+  }
+}
+
+/**
+ * 403 — agent org-scoped memory writes are disabled by deployment policy.
+ * A DISTINCT code from the generic ForbiddenError('FORBIDDEN') the internal
+ * token guard emits, so the Python backend can tell an intentional org-memory
+ * default-deny apart from a service-token mismatch (audit finding S1).
+ */
+export class OrgMemoryDisabledError extends ApiError {
+  constructor(message = 'Agent organization-scoped memory is disabled') {
+    super(403, 'ORG_MEMORY_DISABLED', message)
+  }
+}
+
+/**
+ * 403 — a conversation that drew on a folder with restricted access may not
+ * carry its content to where others read it (ADR-0087): a deep-research run, a
+ * task, the project profile, or a folder not restricted at least as narrowly.
+ * `revision` is the same refusal for a document rather than a conversation: a
+ * draft in such a folder is not quoted into a project-wide revision task.
+ * The same refusal answers a run's Unterlagen naming a document from such a
+ * folder (`planDocument`): the run's Grundlage is read by the whole project.
+ * Its own code, so a caller (the agent's tools, a card) can tell this refusal
+ * from a missing permission; `details.action` says which door refused. The
+ * message is already the reader's sentence (`lib/conversations/restricted-egress.ts`).
+ */
+export class ConversationConfinedError extends ApiError {
+  constructor(
+    readonly action: 'deepResearch' | 'task' | 'profilePatch' | 'memory' | 'filing' | 'revision' | 'planDocument',
+    message: string
+  ) {
+    super(403, 'CONVERSATION_CONFINED', message, { action })
+  }
+}
+
+/**
+ * 409 — a cross-project lookup (ADR-0094) whose conversation changed who may
+ * read it while the lookup ran: the reach it searched was computed for the old
+ * audience, so nothing is handed out. Asking again searches as the new one. The
+ * message is the reader's sentence, relayed by the agent.
+ */
+export class CrossProjectAudienceChangedError extends ApiError {
+  constructor(message: string) {
+    super(409, 'CROSS_PROJECT_AUDIENCE_CHANGED', message)
+  }
+}
+
+/**
+ * 409 — a memory write from a conversation that drew on another project
+ * (ADR-0094). Project and organization memory are read by everyone in the
+ * project, so nothing found in another project may reach them from a chat.
+ */
+export class CrossProjectMemoryError extends ApiError {
+  constructor(message: string) {
+    super(409, 'CROSS_PROJECT_MEMORY', message)
+  }
+}
+
+/** The machine-readable reason a person no longer has the rights to read a resource's content. */
+export const RIGHTS_LOST_REASON = 'rights-lost'
+
+/**
+ * 403 — the caller is still a party to the resource (a grant, its creator) but
+ * can no longer read what it was drawn from: a conversation that recorded a
+ * folder they may not read now (ADR-0088). Its own code, so the client shows
+ * "you no longer have the rights" instead of "not found", and its message and
+ * details carry nothing of the content: not its title, not the folder.
+ */
+export class ResourceRightsLostError extends ApiError {
+  constructor(readonly resourceType: string) {
+    super(403, 'RESOURCE_RIGHTS_LOST', 'You no longer have the rights to view this content.', {
+      reason: RIGHTS_LOST_REASON,
+      resourceType,
+    })
+  }
+}
+
+/**
+ * 404 — resource missing OR the caller may not know it exists.
+ * Cross-tenant and no-access lookups throw this (never Forbidden) so
+ * responses do not leak resource existence to unauthorized callers.
+ */
+export class NotFoundError extends ApiError {
+  constructor(message = 'Not found') {
+    super(404, 'NOT_FOUND', message)
+  }
+}
+
+/** 409 — state conflict (duplicate id, concurrent update). */
+export class ConflictError extends ApiError {
+  constructor(message = 'Conflict', details?: unknown) {
+    super(409, 'CONFLICT', message, details)
+  }
+}
+
+/** 422 — well-formed input that fails domain validation. */
+export class UnprocessableError extends ApiError {
+  constructor(message = 'Unprocessable', details?: unknown) {
+    super(422, 'UNPROCESSABLE', message, details)
+  }
+}
+
+/**
+ * 413 — the request body was larger than the server will accept.
+ *
+ * Distinct from {@link FileTooLargeError}, which judges one named file against
+ * its organization's limit: this one is reached when the body has ALREADY been
+ * cut off in transit, so nothing downstream can
+ * name the file — the multipart stream carrying its name is the thing that
+ * failed to parse. The limit is worth stating for exactly that reason: it is
+ * the only actionable fact left.
+ */
+export class PayloadTooLargeError extends ApiError {
+  constructor(limitBytes?: number) {
+    super(
+      413,
+      'PAYLOAD_TOO_LARGE',
+      limitBytes
+        ? `Request body exceeds the maximum accepted size of ${formatMegabytes(limitBytes)} MB`
+        : 'Request body exceeds the maximum accepted size',
+      limitBytes ? { limitBytes } : undefined
+    )
+  }
+}
+
+/**
+ * A byte limit in the decimal MB it was configured in, for a server message.
+ *
+ * These messages used to divide by 1024², so a 100 MB limit read "95 MB" — a
+ * number nobody configured. One decimal, and only when it is not whole.
+ */
+export function formatMegabytes(bytes: number): string {
+  return String(Math.round((bytes / BYTES_PER_MB) * 10) / 10)
+}
+
+/**
+ * 413 — one uploaded file is larger than its organization may upload.
+ *
+ * The limit is per organization (platform staff may set it, else the deployment
+ * default; `@/lib/storage/upload-limit`) or, for a model, `BIM_MAX_IFC_BYTES`.
+ * The message names that limit in MB because it is what the uploader can act on,
+ * and the client shows the server's sentence as the row's error.
+ */
+export class FileTooLargeError extends ApiError {
+  constructor(details: { fileSize: number; maxSizeBytes: number }) {
+    super(
+      413,
+      'FILE_TOO_LARGE',
+      `File exceeds the maximum upload size of ${formatMegabytes(details.maxSizeBytes)} MB`,
+      details
+    )
+  }
+}
+
+/**
+ * 507 — the organization's storage quota would be exceeded by this write.
+ *
+ * Distinct from 413 {@link FileTooLargeError}, which judges the ONE file:
+ * this one says the file is acceptable but the tenant has no room left, so the
+ * remedy is different (delete something, or raise the quota) and the UI has to
+ * say so. RFC 4918's Insufficient Storage is exactly this case.
+ *
+ * NOT a rate limit: 429 means come back later, this means nothing changes until
+ * someone acts.
+ */
+export class InsufficientStorageError extends ApiError {
+  constructor(
+    message = 'Storage quota exceeded',
+    details?: { quotaBytes: number; usedBytes: number; requestedBytes: number }
+  ) {
+    super(507, 'STORAGE_QUOTA_EXCEEDED', message, details)
+  }
+}
+
+/**
+ * 429 — an abuse bound was reached (ADR-0040 L2).
+ *
+ * Carries the decision itself rather than a bare message, because the three
+ * things a client needs — which policy bit, how much is left, when to come back
+ * — are all in it, and `@/lib/api/handler` turns them into the `Retry-After` and
+ * `X-RateLimit-*` headers. `retryAfterSeconds` comes from the limiter's own
+ * arithmetic (GCRA knows exactly when the request would be admitted), so it is
+ * a fact rather than the usual "try again in a window".
+ *
+ * NOT the error for a budget refusal: running out of euros is ADR-0015's
+ * business and has its own, fail-closed path.
+ */
+export class TooManyRequestsError extends ApiError {
+  readonly retryAfterSeconds: number
+
+  constructor(decision: RateLimitDecision, message = 'Too many requests') {
+    super(429, 'RATE_LIMITED', message, {
+      policy: decision.rule,
+      retryAfterSeconds: decision.retryAfterSeconds,
+    })
+    this.retryAfterSeconds = decision.retryAfterSeconds
+    this.decision = decision
+  }
+
+  /** The full decision, for `rateLimitHeaders`. */
+  readonly decision: RateLimitDecision
+}
+
+/** 502 — an upstream dependency (backend, WorkOS, SeaweedFS) failed. */
+export class UpstreamError extends ApiError {
+  constructor(message = 'Upstream service error', details?: unknown) {
+    super(502, 'UPSTREAM_ERROR', message, details)
+  }
+}
+
+/** 503 — endpoint deliberately disabled (e.g. internal token unconfigured). */
+export class ServiceUnavailableError extends ApiError {
+  constructor(message = 'Service unavailable', details?: unknown) {
+    super(503, 'SERVICE_UNAVAILABLE', message, details)
+  }
+}

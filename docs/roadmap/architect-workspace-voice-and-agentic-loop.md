@@ -41,7 +41,7 @@
 > repair as workflows the agent could neither see nor react to. Both now leave
 > an observation the model reads: a widened `knowledge_search` leads its result
 > with one German line naming the alternative formulations and why they were
-> tried (`sources/knowledge_layer/src/requery.py::requery_notice`). The
+> tried (`packages/knowledge-layer/src/requery.py::requery_notice`). The
 > repair half did not last: a failed verification used to reach the rewrite
 > as a `citation_check` tool result naming the marker and the quote that
 > failed, and that observation went with the rewrite
@@ -53,7 +53,7 @@
 > them, each checkpoint FOLDS to the count of what that fetch returned, and a
 > spine of three or more rounds arrives with everything but the newest layer
 > folded. Since chat wire v2 the round walker reads typed `retrieval` and
-> `sources` steps, pinned by the contract fixtures under `shared/wire/v2/` on
+> `sources` steps, pinned by the contract fixtures under `contracts/wire/v2/` on
 > both sides.
 > **Method.** Read the live system prompt, the answer envelope, the shallow ReAct loop, the Herleitung graph, and the production config. Cross-checked against the 2026-09-01 workspace architecture review, ADRs 0051–0052, and current industry writing on agentic RAG, coding agents, legal AI, and AEC clouds.
 
@@ -101,11 +101,11 @@ The first sentence the model reads on every chat turn:
 
 > You are the Grid OIB Research Agent. You cover internal office knowledge (Bürowissen), Austrian building regulations (OIB Richtlinien, Bauordnung, Baurecht, RIS), technische Richtlinien, and related technical and energy standards. Your job is fast, citation-backed answers from the tools you have.
 
-`src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2:2`
+`packages/agent/src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2:2`
 
 Deep research copies the same frame. Planner, researcher, writer, and orchestrator all open as “Grid OIB — an assistant for … Austrian building regulations”. The fallback if the Jinja file is missing is still “You are a research assistant.” (`shallow_researcher/agent.py:600`)
 
-The product UI has already renamed the speaker. The composer says “Fragen Sie **Piloti** zu diesem Projekt”. The permission denial still says “Der **Recherche-Agent** steht Ihnen in diesem Projekt derzeit nicht zur Verfügung.” (`frontends/ui/src/i18n/dictionaries/de/chat.ts:94–95`)
+The product UI has already renamed the speaker. The composer says “Fragen Sie **Piloti** zu diesem Projekt”. The permission denial still says “Der **Recherche-Agent** steht Ihnen in diesem Projekt derzeit nicht zur Verfügung.” (`apps/workspace/i18n/dictionaries/de/chat.ts:94–95`)
 
 The product currently claims **three identities**, written about six weeks apart. The live agent still speaks the oldest.
 
@@ -117,10 +117,10 @@ The product currently claims **three identities**, written about six weeks apart
 
 The live app chrome is a mix, and the oldest label is still in the window title:
 
-- `{PRODUCT_NAME} — OIB Compliance Assistant` (`frontends/ui/src/app/layout.tsx:77`)
+- `{PRODUCT_NAME} — OIB Compliance Assistant` (`apps/workspace/app/layout.tsx:77`)
 - Tagline: “KI-gestützter Recherche-Assistent”
 - Project copy: “Piloti is an OIB/RIS **building-compliance copilot**” / “Copilot für die OIB/RIS-**Baukonformität**” (`dictionaries/{en,de}/projects.ts`)
-- Marketing site (`frontends/web`): “Die KI-Plattform für Architektur- und Planungsbüros”, hero “Planen. Statt suchen.”, “Sie entwerfen, Piloti liefert den Kontext”, and **“Zu jeder Empfehlung sehen Sie Begründung, Annahmen und Regeln.”**
+- Marketing site (`apps/site`): “Die KI-Plattform für Architektur- und Planungsbüros”, hero “Planen. Statt suchen.”, “Sie entwerfen, Piloti liefert den Kontext”, and **“Zu jeder Empfehlung sehen Sie Begründung, Annahmen und Regeln.”**
 - Composer: “Fragen Sie Piloti zu diesem Projekt …” (EN still: “Check data sources and ask a research question…”)
 - Permission denial: “Der **Recherche-Agent** …”
 - Direct-reply example in the prompt teaches the model to introduce itself as answering OIB/RIS/Bürowissen questions, not as an office colleague.
@@ -205,7 +205,7 @@ The calendar makes the miss obvious. **[PR #590](https://github.com/GRID-check/g
 
 Two product bets merged past each other:
 
-- Answer-layer worklog (`plans/answer-layer-worklog.md`): “**better, richer, nicer answers**.” Cites **Harvey’s published design principles** and legal-UX: inverted pyramid, ruling or number in the first sentence, reasoning as the audit trail the reader reads second. `338732f31` (2026-08-18) added `<answer_shape>` for that. The seeded `piloti-voice` body (`drizzle/0053_piloti_voice_standard_skill.sql`) is the same German that now lives in `<stimme>`.
+- Answer-layer worklog (`docs/plans/answer-layer-worklog.md` at `56ee3329`): “**better, richer, nicer answers**.” Cites **Harvey’s published design principles** and legal-UX: inverted pyramid, ruling or number in the first sentence, reasoning as the audit trail the reader reads second. `338732f31` (2026-08-18) added `<answer_shape>` for that. The seeded `piloti-voice` body (`migrations/0053_piloti_voice_standard_skill.sql`) is the same German that now lives in `<stimme>`.
 - Workspace review, nine hours later: “**nobody asked for a better answer.** They asked for folder upload…”
 
 Harvey-the-answer-document is CoCounsel’s shape (research-first, conclusion then audit trail). Harvey-the-2026-platform is the workspace. The repo copied the former on the morning of 1 September and declared the latter that evening, without touching the prompt.
@@ -226,7 +226,7 @@ A researched reply **is** one fenced `answer_json` object. The module header sta
 
 > a verdict is not an exhibit attached BESIDE the answer the way a stair diagram is, it is the answer's own headline. … the frontend renders them in a FIXED layout (**verdict above the prose**, callout and takeaways after it). The model decides content, never placement.
 
-`src/aiq_agent/common/answer_envelope.py:13–21`
+`packages/agent/src/aiq_agent/common/answer_envelope.py:13–21`
 
 Fields:
 
@@ -310,7 +310,7 @@ Function calling without an explicit Thought step is a known collapse. ReAct int
 
 Two quality loops already exist. Both are **workflows inside a tool or after the answer**, not agent decisions.
 
-**Requery (CRAG-shaped, inside `knowledge_search`).** If `requery_llm` is set, a sufficiency judge may fire alternative formulations against every in-scope collection, fuse them with RRF, and rerank. The live line can show `status.retrieval.requery`. The model issued one search. The pipeline widened it. (`sources/knowledge_layer/src/requery.py`, `register.py` around the `judge_sufficiency` call; `turn_status.py:164–167`)
+**Requery (CRAG-shaped, inside `knowledge_search`).** If `requery_llm` is set, a sufficiency judge may fire alternative formulations against every in-scope collection, fuse them with RRF, and rerank. The live line can show `status.retrieval.requery`. The model issued one search. The pipeline widened it. (`packages/knowledge-layer/src/requery.py`, `register.py` around the `judge_sufficiency` call; `turn_status.py:164–167`)
 
 **Repair pass (evaluator-optimizer, after verification).** If a citation or quote fails, the turn may retrieve once more aimed at the failing text and rewrite, then re-verify (`repair_pass: true`). The reader may see `status.repair`. The model did not choose this. *(2026-09-24: superseded by [ADR-0067](../adr/0067-the-repair-corrects-a-misremembered-quote-in-place.md). With the prose streaming, the rewrite replaced an answer the reader had read; the repair now corrects only a misremembered quote, in place, on the small model.)*
 
@@ -328,7 +328,7 @@ Deep research is the one place the backend is genuinely multi-agent (orchestrato
 
 > Expanded: the connected reasoning-chain — the **framing node**, the **parallel Quellen fan-out**, the **assessment node**, and (when a live HITL choice exists) the next-steps branches.
 
-`frontends/ui/src/features/chat/components/ChatThinking.tsx:6–8`
+`apps/workspace/ui/features/chat/components/ChatThinking.tsx:6–8`
 
 The graph builder is tested to refuse a chain:
 
@@ -406,7 +406,7 @@ Law360 Pulse (2026-08-24): legal AI is moving from attorneys prompting chatbots 
 
 The lesson is not “drop citations”. Harvey still cites. The lesson is **do not let the research-assistant envelope remain the only document the agent can produce** once the product is a workspace.
 
-This repo already copied Harvey once, and it copied the **answer document**, not the platform. `plans/answer-layer-worklog.md` cites Harvey’s inverted pyramid as the reason the first sentence is the ruling. That is CoCounsel-shaped. Harvey II is Spaces + agents + memory. Using Harvey as a citation for `<stimme>` and as a citation for “become a workspace” are two different Harveys.
+This repo already copied Harvey once, and it copied the **answer document**, not the platform. `docs/plans/answer-layer-worklog.md` at `56ee3329` cites Harvey’s inverted pyramid as the reason the first sentence is the ruling. That is CoCounsel-shaped. Harvey II is Spaces + agents + memory. Using Harvey as a citation for `<stimme>` and as a citation for “become a workspace” are two different Harveys.
 
 ### AEC: “AI native” means the agent is in the project, not a sidebar QA
 
@@ -484,15 +484,15 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 
 ### This repo (primary)
 
-- `src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2` — identity, output contract, stimme, envelope teaching, 2-call cap
-- `src/aiq_agent/common/answer_envelope.py` — schema, gates, “verdict is the headline”
-- `src/aiq_agent/agents/shallow_researcher/agent.py` — ReAct loop, budgets, forced synthesis, repair
+- `packages/agent/src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2` — identity, output contract, stimme, envelope teaching, 2-call cap
+- `packages/agent/src/aiq_agent/common/answer_envelope.py` — schema, gates, “verdict is the headline”
+- `packages/agent/src/aiq_agent/agents/shallow_researcher/agent.py` — ReAct loop, budgets, forced synthesis, repair
 - `configs/config_oib_openrouter.yml` — tool list, `max_tool_iterations: 7`, `repair_pass` (the `compliance_check` binding is retired; see §1)
-- `src/aiq_agent/common/turn_status.py` — live status keys, requery/repair events, replace-not-accumulate
-- `sources/knowledge_layer/src/requery.py` — hidden sufficiency judge
-- `frontends/ui/src/features/chat/components/reasoning/ReasoningFlow.tsx` + `.spec.ts` — fan-out, never a chain
-- `frontends/ui/src/features/chat/components/ChatThinking.tsx`, `AnswerAnatomy.tsx`
-- `frontends/ui/src/i18n/dictionaries/de/chat.ts` — Piloti vs Recherche-Agent
+- `packages/agent/src/aiq_agent/common/turn_status.py` — live status keys, requery/repair events, replace-not-accumulate
+- `packages/knowledge-layer/src/requery.py` — hidden sufficiency judge
+- `apps/workspace/ui/features/chat/components/reasoning/ReasoningFlow.tsx` + `.spec.ts` — fan-out, never a chain
+- `apps/workspace/ui/features/chat/components/ChatThinking.tsx`, `AnswerAnatomy.tsx`
+- `apps/workspace/i18n/dictionaries/de/chat.ts` — Piloti vs Recherche-Agent
 - `docs/product/vision.md`
 - `docs/architecture/system-overview.md`
 - `docs/roadmap/agentic-workspace-architecture.md`
@@ -500,10 +500,10 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 - `docs/roadmap/collaborative-workspace-vision.md`
 - `docs/audit/pilot-feedback-triage-2026-09.md`
 - `docs/adr/0051-tasks-are-the-durable-unit-of-delegated-work.md`, `docs/adr/0052-one-answering-agent-no-intent-router.md`
-- `frontends/web/src/i18n/ui.ts` (marketing: Empfehlung)
-- `frontends/ui/src/app/layout.tsx` (window title: OIB Compliance Assistant)
+- `apps/site/src/i18n/ui.ts` (marketing: Empfehlung)
+- `apps/workspace/app/layout.tsx` (window title: OIB Compliance Assistant)
 - Builtin OIB `SKILL.md` L1 lines (Prüfkette)
-- `src/aiq_agent/agents/compliance_checker/README.md`
+- `packages/agent/src/aiq_agent/agents/compliance_checker/README.md`
 
 ### Industry (inspected pages)
 

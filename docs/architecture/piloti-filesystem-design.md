@@ -1,12 +1,16 @@
 # Piloti in the File System — Design Spec
 
+> **The read side lives in [`agent-filesystem.md`](agent-filesystem.md)**
+> (ADR-0133, ADR-0134): the mounts, `ls`/`glob`/`grep`/`read_file` and how each
+> document appears. This spec stays the exploration of the write side.
+
 > Piloti can read the office's files. It cannot write one. This spec designs the
 > write side as a substrate rather than a tool: one namespace, one write path,
 > one authorization decision, one lifecycle — mounted under every agent, not
 > only the deep researcher.
 > Status: **EXPLORATION — superseded in scope, and the narrowed part is now
 > BUILT.** The build spec is
-> [`docs/superpowers/specs/2026-08-20-agent-authored-documents-design.md`](../superpowers/specs/2026-08-20-agent-authored-documents-design.md);
+> [`docs/architecture/agent-authored-documents.md`](agent-authored-documents.md);
 > it shipped on branch `claude/piloti-filesystem-write-design-mftg4d`. What
 > survived review: §2's threat analysis, the work/estate line, and the
 > invariants. What was cut: the node/version/blob store, mounts as an
@@ -50,7 +54,7 @@ and visibly *not yet* the office's word until a human says it is.
 ## 0.05 [CORRECTED] The spec this failed to reference
 
 This document was written without reference to
-[`2026-08-13-file-native-ownership-design.md`](../superpowers/specs/2026-08-13-file-native-ownership-design.md),
+`2026-08-13-file-native-ownership-design.md` (removed; in git history at `56ee3329`),
 which was **merged in PR #416** before this was drafted. That spec makes a file
 three things — bytes, a subject of a conversation, and a place with people —
 registers `document` as the second shareable-resource consumer, and ships
@@ -108,7 +112,7 @@ exists only as a stream.
 |---|---|---|---|---|---|
 | 1 | **The estate** — `documents` + `project_folders` + SeaweedFS + Chroma + `document_metadata` | the user, through the BFF | read, and only through retrieval (`knowledge_search`) or `surface_documents` | permanent | yes — the Files/Archiv panes |
 | 2 | **Run scratch** — DeepAgents `StateBackend` (`deepagents_runtime.py`) | the deep researcher | full read/write | the run | no |
-| 3 | **Skills mount** — `FilesystemBackend(/skills/, virtual_mode=True)` + the `skills` table | this repository / an org admin | read | permanent | partly (org rows) |
+| 3 | **Skills mount** — `SkillsBackend` at `/skills/` (ADR-0135): one run's resolved skills, builtin files and the `skills` table's rows, in memory and read-only (until 2026-10-27 a `FilesystemBackend(/skills/, virtual_mode=True)` over the builtins alone) | this repository / an org admin | read | permanent | partly (org rows) |
 | 4 | **Memory** — `project_memory` rows | agent (`remember`), user | insert, never update | permanent | yes — memory panels |
 | 5 | **Work products** — BCF export, Raumbuch, Massenermittlung, the deep-research report, every card | the agent, per request | writes them to a *stream* | **none** | for one screenful |
 
@@ -498,7 +502,7 @@ author, and a one-line description. Below that, the current view. Nothing else.
 
 The description field is what makes a file system legible to a model at all —
 it is the same L1/L2 progressive disclosure the skills substrate already uses
-(`description` in the prompt, `body` only via `use_skill`). For uploads the
+(`description` in the prompt, `body` only via `read_file`, ADR-0135). For uploads the
 existing summarizer writes it; for agent-authored nodes the author writes it,
 and a write without one is rejected by the validator. A file nobody can describe
 in a line is a file nobody will find.
@@ -561,7 +565,7 @@ idea makes, and the same one the skills substrate already makes with
 
 Per §0.1 this does **not** mean deleting `available_documents`. The two coexist;
 the cap stays where it is. If the digest turns out to be better, it wins on a
-measurement, and `GRID_AVAILABLE_DOCUMENTS_MAX` goes to zero on purpose rather
+measurement, and `AVAILABLE_DOCUMENTS_MAX` goes to zero on purpose rather
 than by assumption.
 
 ### Where scale does cost something
@@ -681,10 +685,10 @@ set actually is.
 
 **Let the agent write as the user.** **[CORRECTED — the premise was false.]**
 This section claimed the agent holds a *narrower* principal than the user. It
-does not. It holds the shared `GRID_INTERNAL_API_TOKEN`, and the internal memory
+does not. It holds the shared `INTERNAL_API_TOKEN`, and the internal memory
 route says so itself: *"this service-token endpoint cannot verify the human's
 org role"* (`app/api/internal/memory/route.ts`). The org-memory denial is one
-env flag (`GRID_ALLOW_AGENT_ORG_MEMORY`) on one endpoint, not a principal;
+env flag (`ALLOW_AGENT_ORG_MEMORY`) on one endpoint, not a principal;
 project-scoped writes resolve through `withOptionalTenant(undefined)` →
 `withPlatformAccess`. The agent's principal is **wider**.
 

@@ -1,4 +1,4 @@
-# Agent Skills and Jobs (ADR-0046)
+# Agent Skills and Jobs (ADR-0046, ADR-0135)
 
 Skills are reusable, versioned instruction packages (the agentskills.io
 format) that extend what the model can be told how to do on:
@@ -7,7 +7,10 @@ format) that extend what the model can be told how to do on:
 
 A skill is a **working method the model chooses**, never one it is told to run:
 it reaches the model as one line in a catalog, and its body arrives only when
-the model calls `use_skill`. Nothing can require one — not a request, not a
+the model reads its `SKILL.md` with `read_file`. Both agents run that through
+Deep Agents' `SkillsMiddleware` (the Agent Skills spec's progressive
+disclosure, [ADR-0135](../adr/0135-skills-run-on-deep-agents-skills-middleware.md)).
+Nothing can require one — not a request, not a
 deployment, not a job. What must hold on every answer is prompt text instead,
 at two levels (the platform prompt and the organization's own instruction
 block); that split is [ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md),
@@ -32,20 +35,20 @@ surfaces are tabulated in `docs/api/python-endpoints.md` and
 
 Feature gate: `FEATURE_FLAGS.skills` (`skills` in WorkOS), an entitlement with
 no env fallback — `isSkillsEnabled` / `requireSkillsEnabled` in
-`frontends/ui/src/lib/authz/feature-flags.ts`. Jobs
+`apps/workspace/bff/authz/feature-flags.ts`. Jobs
 ride the same flag: the two ship as one feature and are turned on together, so
 a second flag would only add a way for them to disagree.
 
 ## Skill model
 
 A skill is a `SKILL.md` with YAML frontmatter (agentskills.io contract),
-validated strictly by `src/aiq_agent/skills/models.py`:
+validated strictly by `packages/agent/src/aiq_agent/skills/models.py`:
 
 | Field | Rule |
 |-------|------|
 | `name` | 1–64 chars, lowercase `a-z0-9` + hyphens; for filesystem skills it must equal the parent dir name |
 | `description` | 1–1024 chars, non-empty; the one-line L1 summary the model sees |
-| `body` | The full markdown instructions (L2), loaded only via the `use_skill` tool |
+| `body` | The full markdown instructions (L2), read only when the model opens `/skills/<source>/<name>/SKILL.md` with `read_file` |
 | `metadata` | String-map; reserved GRID keys are validated — `grid-agents` (who may use it), `grid-cards` (preferred output card types), `grid-title`, `grid-hidden` (mute the live line), `grid-catalog` (`curated` = offer, absent = machinery). Every other key is opaque |
 | `license` / `compatibility` / `allowed_tools` | Optional free-form strings |
 
@@ -67,8 +70,8 @@ warning (`resolver._build_org_skills`), never silently half-loaded.
 `grid-schedulable` used to be reserved keys here; both were removed when
 schedules became jobs. Scheduling is a property of the job, and so is the
 output kind (`jobs.output`). The removed keys are **not rejected** — they are
-simply unreserved (`GRID_METADATA_KEYS` in `src/aiq_agent/skills/models.py`,
-`METADATA_AGENTS`/`METADATA_CARDS` in `frontends/ui/src/lib/skills/types.ts`),
+simply unreserved (`GRID_METADATA_KEYS` in `packages/agent/src/aiq_agent/skills/models.py`,
+`METADATA_AGENTS`/`METADATA_CARDS` in `apps/workspace/bff/skills/types.ts`),
 so a stored org row or a pasted SKILL.md still carrying one keeps it as
 ordinary free-form metadata and nothing reads it. Rejecting them would turn a
 deployed row into a read-time validation error and take a working skill out of
@@ -78,8 +81,8 @@ the toolbox to punish a key that costs nothing to ignore.
 generated card `type`s (SYSTEM cards excluded — those are emitted by tools on
 sanctioned paths, and asking the model for one would invite it to fabricate a
 card the product treats as trustworthy). It costs nothing until the skill is
-activated, at which point `SkillRuntime._preferred_cards_block` appends a short
-block naming those types to the loaded body — **and their full shapes with it**,
+activated, at which point the skills backend's read (`runtime.preferred_cards_block`)
+appends a short block naming those types to the body it hands over — **and their full shapes with it**,
 by calling the card catalog's `render_card_details()`. A skill that names its
 cards is the moment we know which of the 38 card shapes this turn could possibly
 need, so it is the moment to spend context on them, and it saves the activated
@@ -94,10 +97,10 @@ are a parse error for a builtin
 ### Origins
 
 - **Builtin** (`origin="platform"`): SKILL.md files shipped under
-  `src/aiq_agent/skills/builtin/<collection>/<name>/SKILL.md`, discovered
+  `packages/agent/src/aiq_agent/skills/builtin/<collection>/<name>/SKILL.md`, discovered
   deterministically by `discover_builtin_skills()`. The BFF sees the same
   files through the generated `@/lib/skills/platform-skills` module
-  (`frontends/ui/scripts/sync-platform-skills.mjs`), so both tiers read one
+  (`apps/workspace/scripts/sync-platform-skills.mjs`), so both tiers read one
   source of truth.
 - **Org** (`origin="org"` / `"platform-clone"`): rows in the `skills` table,
   authored in the organization. The backend reads them through the BFF internal
@@ -112,7 +115,7 @@ are a parse error for a builtin
 
 | source | who writes it | who sees it |
 |---|---|---|
-| `src/aiq_agent/skills/builtin/**` (files) | this repository | **nobody.** Pipeline machinery: never listed, never switchable, always resolved. |
+| `packages/agent/src/aiq_agent/skills/builtin/**` (files) | this repository | **nobody.** Pipeline machinery: never listed, never switchable, always resolved. |
 | `platform_skills` rows, `delivery: 'offer'` | the platform owner, in **Platform → Skills** | every organization, as an OFFER it may switch on. |
 | `skills` (rows) | an organization | that organization. |
 
@@ -152,8 +155,8 @@ every organization, never listed, not switchable" — and resolving it only put
 the skill's one-line **description** in the L1 catalogue. The answer at the time
 was to FORCE it: name it in an "Active skills" block and tell the model to open
 it. That bought less than it looked like. Forcing puts a NAME in the prompt and
-nothing else, because the body travels through exactly one path (the `use_skill`
-closure), so a model that skipped the call read not one word of the instruction
+nothing else, because the body travelled through exactly one path (the
+`use_skill` closure of the time), so a model that skipped the call read not one word of the instruction
 while a model that made it paid a tool call and thousands of tokens for a
 standing rule that could have been three sentences of prompt.
 
@@ -211,8 +214,8 @@ chat turn that cannot execute it.
 disclosure under an answer reports what shaped it, and a product built on
 traceable sourcing must not have a class of instruction it declines to admit
 ran. With forcing gone there is one way a skill runs — the model read its line
-in the catalog and called `use_skill`, or (ADR-0063) read its body in the
-prompt and named it in the envelope's `skills_applied` — so the panel names
+in the catalog and read its `SKILL.md`, or (ADR-0063) was given its body
+pinned in the prompt and named it in the envelope's `skills_applied` — so the panel names
 exactly the bodies that reached the model and that it says it followed.
 
 **Fail-open drops offers and keeps machinery** — see Resolution below. Offers
@@ -253,7 +256,7 @@ Eight builtins were renamed to English (migration `0169`): `einreichcheck` →
 type after a slash, what a stored schedule's prompt says and what the activation
 rows refer to, so the old names keep resolving for one release: `LEGACY_SKILL_NAMES`
 (`skills/builtin.py`, mirrored in `lib/skills/legacy-names.ts` and pinned against
-each other by `legacy-names.spec.ts`) is the one table. `use_skill`, the skills a
+each other by `legacy-names.spec.ts`) is the one table. The pinned skill, the skills a
 reply reports as followed, the slash chip and menu, a job's skill snapshot and the
 organization's switch all pass a name through `canonical_skill_name` /
 `canonicalSkillName`; nothing writes an old name again.
@@ -269,7 +272,7 @@ The split is enforced on both tiers, and both must agree:
   activation; `setCuratedSkillEnabled` 404s anything that is not an offer, so
   the machinery cannot be switched off by hand-crafting a request.
 - Backend — `_is_curated` and `SkillResolver.always_on`
-  (`src/aiq_agent/skills/resolver.py`). `resolve()` starts from `always_on`
+  (`packages/agent/src/aiq_agent/skills/resolver.py`). `resolve()` starts from `always_on`
   rather than every builtin, because the BFF payload can only ADD to that
   baseline: a curated skill left in it would be on for every tenant regardless
   of what any of them decided. An activated one arrives through the org payload
@@ -283,7 +286,7 @@ must not expose an internal instruction to every tenant as something switchable.
 
 ## Resolution
 
-`SkillResolver(agent)` in `src/aiq_agent/skills/resolver.py` produces the
+`SkillResolver(agent)` in `packages/agent/src/aiq_agent/skills/resolver.py` produces the
 effective skill set for one run:
 
 1. Builtin set is discovered once per resolver instance (never per turn).
@@ -291,8 +294,8 @@ effective skill set for one run:
    - Cached in the shared Dragonfly/Redis cache
      (`aiq_agent.common.cache`, ADR-0020) keyed
      `skills:{organization_id}:{agent}` for
-     `GRID_SKILLS_CACHE_TTL_SECONDS` (default 60s).
-   - Any failure (no `GRID_INTERNAL_API_TOKEN`, timeout, non-2xx, malformed
+     `SKILLS_CACHE_TTL_SECONDS` (default 60s).
+   - Any failure (no `INTERNAL_API_TOKEN`, timeout, non-2xx, malformed
      payload) degrades to the builtin set — skills are an additive
      capability and must never take chat down.
 3. Per-agent filtering (below).
@@ -305,8 +308,8 @@ identically on both tiers:
 
 | Tier | Function | File |
 |------|----------|------|
-| Backend | `_skill_applies_to_agent` (delegating to `_agent_allows`) | `src/aiq_agent/skills/resolver.py:89` |
-| BFF | `skillTargetsAgent` — **module-private**, called by `resolveSkillsForAgent` | `frontends/ui/src/lib/skills/service.ts:320` |
+| Backend | `_skill_applies_to_agent` (delegating to `_agent_allows`) | `packages/agent/src/aiq_agent/skills/resolver.py:89` |
+| BFF | `skillTargetsAgent` — **module-private**, called by `resolveSkillsForAgent` | `apps/workspace/bff/skills/service.ts:320` |
 
 They are a deliberate contract pair, kept close in shape as well as behaviour,
 and `service.spec.ts` pins the TypeScript against the same cases the Python
@@ -329,12 +332,12 @@ skill from the chat agent, with no error and no log a user could see. The key
 no longer exists on the skill at all; the output kind is now `jobs.output`,
 chosen by the user, and it decides only **which agent runs the job**
 (`routes/skills.py::_OUTPUT_AGENT_TYPES`, mirrored by `AGENT_FOR_OUTPUT` in
-`frontends/ui/src/lib/jobs/types.ts`). The skill picker in the job builder then
+`apps/workspace/bff/jobs/types.ts`). The skill picker in the job builder then
 offers exactly the skills this one gate resolves for that agent — which is the
 payoff of consolidating availability onto a single key.
 
 The agent vocabulary is the `AGENT_REGISTRY` identifiers
-(`frontends/aiq_api/src/aiq_api/registry.py`): **`researcher`** and
+(`apps/backend/src/aiq_api/registry.py`): **`researcher`** and
 **`deep_researcher`**. There is one spelling; the older `deep_research_agent`
 name is gone from the skills path entirely, because two vocabularies for one
 agent meant a `grid-agents` value that was correct in one file and inert in
@@ -347,10 +350,10 @@ It stayed `researcher` when that agent's package was renamed again, to
 moving it costs another migration and another alias pair.
 Because the name is author-written and was seeded by ten migrations, both
 resolvers read the old spelling as the new one (`AGENT_ALIASES` in
-`src/aiq_agent/skills/resolver.py`, `SKILL_AGENT_ALIASES` in
-`frontends/ui/src/lib/skills/types.ts`, and the mirror in
+`packages/agent/src/aiq_agent/skills/resolver.py`, `SKILL_AGENT_ALIASES` in
+`apps/workspace/bff/skills/types.ts`, and the mirror in
 `features/skills/lib/agent-scope.ts`), and
-`frontends/ui/drizzle/0081_grid_agents_researcher_rename.sql` moved the stored
+`apps/workspace/migrations/0081_grid_agents_researcher_rename.sql` moved the stored
 rows. The alias is not decoration: an unknown name is IGNORED, and an allowlist
 of only ignored names reads as absent — so dropping it would silently offer
 every chat-scoped skill to deep research as well.
@@ -390,7 +393,7 @@ filter applies to platform rows as well as org rows.
 Skill selection is **model-chosen, and only model-chosen**. Nothing can force a
 skill onto a turn: not the request, not the deployment, not a job.
 
-- Chat turns: `src/aiq_agent/turn/payload.py` parses `data_sources` out of the
+- Chat turns: `packages/agent/src/aiq_agent/turn/payload.py` parses `data_sources` out of the
   turn input and nothing else. The `skills` array it used to read is gone
   (`force_skills` with it), so a client that still sends one is ignored. The
   `/name` composer invocation below writes a MENTION into the message text
@@ -404,59 +407,86 @@ skill onto a turn: not the request, not the deployment, not a job.
   their skills the deepagents-native way (see Config).
 - Standing instructions are not skills. What must hold on every answer is
   prompt text: the platform prompt, and the office's own bounded block
-  (`X-Grid-Org-Instructions` → `## Anweisungen des Büros`, rendered in the
+  (`X-Grid-Org-Instructions` → `## Office instructions`, rendered in the
   turn context, never a source and never above the rules it may not
   override).
 
-Progressive disclosure has two levels, and a measured shortcut (ADR-0063 as
-amended, ADR-0064): the turn-start decision asks a `skill` choice over every
-resolved skill with `none`, verified by one "fits" noul per skill, and the ONE
-chosen body rides this turn's prompt in full (`SkillRuntime.inline_also`,
-~400 tokens for a chat method, the IFC method on a model question) with its
-preferred card shapes beyond the eight the envelope teaches. An inlined body
-renders as a `<skill name="…">` element under `## Skills`, the rest as one
-line each under `### Available by name`. The model names the inlined skill it
-followed in the envelope's `skills_applied`; the runtime accepts a name only
-when that body was in the prompt, and that is what makes it `activated`.
-Inlining every short method by size (`skills_inline_max_body_chars` /
-`skills_inline_budget_chars`) is an opt-in budget an org can set; the shipped
-config sets neither, because nine bodies were ~4,600 tokens on every call for
-methods most turns never use. Deep research sets nothing and keeps the
-catalog.
+Progressive disclosure is Deep Agents' `SkillsMiddleware` in both agents
+([ADR-0135](../adr/0135-skills-run-on-deep-agents-skills-middleware.md)), with
+one measured shortcut (ADR-0063 as amended, ADR-0064).
 
-- **L1 — the catalog.** One line per RESOLVED skill (`name: description`)
-  under the system prompt's `## Available skills` heading (or `### Available
-  by name` when a budget is set), and nothing else —
-  there is no second, "active" block any more, and nothing a person sets takes
-  a row out. `grid-auto-invoke: false` used to; its author-facing switch is
-  gone, so honouring the stored token would hide a skill from every turn with
-  nobody able to bring it back. The key still parses on an old document and
-  decides nothing. The block is pre-collated by the register layer
-  (`piloti/register.py::_skills_block`, `deep_researcher/agent.py::_skills_block`)
-  and renders via the runtime's `prompt_block()`; `None` renders no section.
-- **L2 — the body.** A body over the budget is loaded with the `use_skill`
-  tool before it is followed. A failed lookup returns an error listing the
-  available names, so a hallucinated skill name is self-correcting rather
-  than a fatal turn. `use_skill` still answers for an inlined body (a model on
-  an older prompt), and that delivery activates it exactly as before.
+**One backend.** `SkillRuntime` (`packages/agent/src/aiq_agent/skills/runtime.py`) is built
+per run from the skills already resolved for this tenant and agent (see
+Resolution), laid out as sources on one `SkillsBackend`
+(`packages/agent/src/aiq_agent/skills/backend.py`): an in-memory, read-only filesystem that
+serves each skill as `/<source>/<name>/SKILL.md`, rendered from the validated
+model (frontmatter, then body), mounted at `/skills/` behind a
+`CompositeBackend`. Nothing is on disk behind it, and every write verb refuses.
+The sources are the gate on who sees what:
 
-**Every scaffolding string in the runtime is English**, and that is a decision
-rather than an oversight. The one heading left was German once (`## Verfügbare
-Skills`; its sibling `## Aktive Skills (vom Nutzer erzwungen)` is gone with
-forcing). The agent answers in the
-user's language, and that is decided per turn from the question — not baked into
-the machinery — so a prompt that mixes German block headings into English
-instructions is neither localised nor language-agnostic. It is also a country
-coupling of exactly the kind `country-extensibility.md` exists to remove: text
-that assumes Austria in a mechanism that has nothing to do with Austria.
-Country- or language-specific wording belongs in `CountryProfile` or in an
-authored skill body, never in string constants in `runtime.py`.
+| Agent | Sources it lists | What is in them |
+|---|---|---|
+| Piloti (chat) | `/skills/office/` | everything `SkillResolver(agent="researcher")` resolved: machinery, the offers the office took up, its own rows, after `skill_allowlist` |
+| Deep research, researcher | `/skills/oib/`, `/skills/bim/` (`deep_research_skills.agents`) | the non-curated builtins of each assigned collection |
+| Deep research, writer | `/skills/synthesis/`, then `/skills/office/` | the assigned collection, then what `resolve_served_skills("deep_researcher", org)` served: offers taken up and the office's rows |
 
-`SkillRuntime` (`src/aiq_agent/skills/runtime.py`) is **per run**
-(ADR-0018 — never cached on a shared agent instance): it owns the activation
-list, so `skills_activated` on the terminal frame records exactly which bodies
-were delivered this run — and nothing else, because delivery is the only event
-there is.
+A later source wins a name clash, which is the middleware's own layering.
+
+- **L1 — the catalog.** One entry per skill (name, description, the path to
+  read), rendered by the middleware with our template (`SKILLS_PROMPT`, English,
+  under `## Skills`) instead of the stock text, which tells the model about
+  "Deepagents" sources and helper scripts it has none of. The deep researcher's
+  subagents host the middleware (a `SkillsMiddleware` in a subagent spec's
+  `middleware` takes the skills slot by name). Piloti's loop is its own
+  LangGraph graph, not `create_agent`, so it cannot host `AgentMiddleware`, and
+  its system prompt must stay byte-identical across turns
+  (`test_turn_context_message.py`); `SkillRuntime.catalog_block` therefore runs
+  the middleware's own `before_agent` (load from the backend) and
+  `modify_request` (render) and puts the section in the turn context
+  (`piloti.j2` `skills_block`). Same text, same loader, both agents. Nothing a
+  person sets takes a row out: `grid-auto-invoke: false` still parses and
+  decides nothing.
+- **L2 — the body.** The model reads `SKILL.md` with `read_file`. In deep
+  research that is the subagent's stock filesystem tool, gated by
+  `factory.skill_filesystem_permissions` (read only the agent's own sources,
+  never write). Piloti gets the same verb from `tools/documents/tools.py`: the
+  skills backend is a `/skills/` route beside the working directory, so one
+  `read_file` reads drafts and skills, and a turn without a conversation gets
+  `read_file` for its skills alone. A path that is not a skill gets a
+  prescriptive error naming the paths to read instead (every offered path up
+  to twelve, else the three closest by name), so a hallucinated name costs no
+  round. The `grid-cards` block rides on that read.
+- **Pinned — the shortcut.** The turn-start decision (ADR-0064) asks a `skill`
+  choice over every resolved skill with `none`, verified by one "fits" noul per
+  skill, and the ONE chosen body is pinned (`SkillRuntime.pin`): it rides this
+  turn's prompt in full under `### Given in full for this question`, in the
+  middleware's own pinned shape `<skill name="…" path="…">`, with its preferred
+  card shapes beyond the eight the envelope teaches. Deep Agents' own
+  `pinned_skills` (0.7.23) appends the body as a `HumanMessage`; Piloti cannot
+  use it, because a `HumanMessage` is where its turn begins
+  (`answer_pipeline.this_turn`). The model names a pinned skill it followed in
+  the envelope's `skills_applied`; the runtime accepts a name only when that
+  body was pinned. The size budget that used to inline every short body
+  (`skills_inline_max_body_chars` / `skills_inline_budget_chars`, both 0 in the
+  shipped config) is gone. Deep research pins nothing.
+- **Skill tools** (Deep Agents 0.7.22, `metadata.include_tools`) are not used:
+  no skill needs a tool the agent does not already have.
+
+**Every scaffolding string is English**, and that is a decision rather than an
+oversight. The agent answers in the user's language, decided per turn from the
+question — not baked into the machinery — so a prompt that mixes German block
+headings into English instructions is neither localised nor language-agnostic.
+It is also a country coupling of exactly the kind `country-extensibility.md`
+exists to remove. Country- or language-specific wording belongs in
+`CountryProfile` or in an authored skill body, never in string constants in
+`runtime.py`.
+
+`SkillRuntime` is **per run** (ADR-0018 — never cached on a shared agent
+instance): it owns the activation list, so `skills_activated` on the terminal
+frame records exactly which bodies reached the model this run, from the reads
+of every subagent in deep research. The deep researcher's `CompositeBackend` is
+built per run for the same reason; only the job's default backend (state or
+sandbox) is cached on the agent.
 
 ## Invoking a skill in chat (`/name`)
 
@@ -464,7 +494,7 @@ Typing `/` as the first non-whitespace character of a composer message opens a
 picker of the skills this member may invoke; picking one inserts a `/name`
 mention into the message TEXT, and that text is what is sent. Nothing rides
 beside it on the wire: the model reads the mention in the question, sees the
-skill's line in its catalog, and calls `use_skill` if it agrees the skill
+skill's line in its catalog, and reads its `SKILL.md` if it agrees the skill
 applies.
 
 - **Endpoint:** `GET /api/skills/invocable` → `listInvocableSkills`, filtered
@@ -479,8 +509,8 @@ applies.
   For the skills that *are* in the menu, that is exactly the metadata the
   agent is given at the start of a turn, so a description that fails to say
   when a skill applies is visibly unhelpful to both. Bodies are never fetched
-  to draw it; they enter the conversation only when the agent calls
-  `use_skill`.
+  to draw it; they enter the conversation only when the agent reads the
+  skill's `SKILL.md`.
 - **Why only at the start of a message.** The trigger is deliberately narrower
   than `@`: slashes are ordinary punctuation in this domain (`12/05`,
   `OIB-RL 2/3`, `und/oder`, `m/s`, `/etc/hosts`), and a menu firing on those
@@ -499,7 +529,7 @@ applies.
   ordinary character again. A successful empty answer still opens the panel —
   that panel is where the product explains what a skill is.
 
-Files: `frontends/ui/src/features/skills/lib/slash-command.ts` (pure text
+Files: `apps/workspace/ui/features/skills/lib/slash-command.ts` (pure text
 logic), `hooks/use-slash-command.ts` (composer behaviour),
 `components/SlashCommandPicker.tsx` (the menu, deliberately the same keyboard
 contract and panel as `MentionPicker`) and `components/InvokedSkillChip.tsx`
@@ -507,9 +537,13 @@ contract and panel as `MentionPicker`) and `components/InvokedSkillChip.tsx`
 
 ## Activation transparency (`skills_activated`)
 
-The runtime records which skills were actually **loaded** — the ones invoked
-via `use_skill`, in call order, deduped — and the agent lifts that list onto the
-terminal `system_response_message` as `skills_activated`; the reconnect path
+The runtime records which skills were actually **loaded** — the ones whose
+`SKILL.md` the model read (`SkillsBackend.read`, not the catalog's own
+download), plus a pinned body the envelope named, in order, deduped — and the
+agent lifts that list onto the terminal `system_response_message` as
+`skills_activated`. It is also Langfuse trace metadata (`skills_activated`, with
+`skills_offered` and `skills_pinned` for the turn,
+[`langfuse.md`](../observability/langfuse.md)); the reconnect path
 persists it into assistant-message metadata
 (`docs/api/websocket-protocol.md`).
 
@@ -535,34 +569,33 @@ name is still a true record of what ran.
 workflow YAML — NAT's own vocabulary for an agent config):
 
 ```yaml
-skills_enabled: true        # default true; false disables the use_skill tool + catalog
+skills_enabled: true        # default true; false offers no catalog and no skill read
 skill_allowlist: []         # empty = every resolved skill is offered
 ```
 
-Both are fields on `ResearchAgentConfig`. `use_skill` and the skill
-index are bound on **every** turn, greetings included: there is no classifier
-and no `requires_sources` gate in front of the answering agent any more
-(ADR-0052), so whether a turn loads a skill is the model's call, pinned by the
-prompt. The allowlist filters to the actual resolved set; an unknown name in it
-is simply ignored (fail-open, so a typo never errors a turn).
+Both are fields on `ResearchAgentConfig`. The catalog and the skill read are
+there on **every** turn, greetings included: there is no classifier and no
+`requires_sources` gate in front of the answering agent any more (ADR-0052), so
+whether a turn reads a skill is the model's call. The allowlist filters the
+resolved set; an unknown name in it is simply ignored (fail-open, so a typo
+never errors a turn). The WorkOS `skills` entitlement gates authoring and jobs
+in the BFF; it does not gate the catalog, which carries the pipeline's own
+machinery for every organization.
 
-The deep-research side is different by construction: it does NOT use the
-`use_skill` tool or these config keys. Its skills are deepagents-native
-(`deep_research_skills`, a `DeepResearchSkillsConfig` function-ref in the
-config): per-agent skill *sources* wired through `SkillsMiddleware` with a
-`FilesystemBackend` over `src/aiq_agent/skills/builtin/` and read-only
-filesystem permission rules (`factory.runtime_skill_filesystem_permissions`).
-The writer's BFF-served skills reach it the same way they reach chat: as the L1
-catalog it may pick from, never as a body it was told to open.
+The deep-research side has no such keys. `deep_research_skills` (a
+`DeepResearchSkillsConfig` function-ref) names the builtin collections each
+subagent lists, and the office's skills are added to the writer's sources when
+the BFF served any. Both reach the subagents through the one `SkillsMiddleware`
+and backend described under Selection; there is no second channel.
 
-## Data model (grid_app, Drizzle)
+## Data model (`app`, Drizzle)
 
 **Since migration 0086 the trigger and the attempt live in two tables of their
 own: `task_definitions` (kind, plan, requester, `trigger` = manual | once |
 schedule, and the schedule/due columns live per arm) and `task_runs` (one
 attempt, including skipped/errored fires that never reached the agent; runner
 fields from `job_runs`, lifecycle/filing/review from `tasks`).**
-`frontends/ui/src/lib/db/schema/task-model.ts` declares them; `jobs`,
+`apps/workspace/bff/db/schema/task-model.ts` declares them; `jobs`,
 `job_runs` and `tasks` are LEGACY, read only by the 0086 backfill until
 migration 0087 drops them. `conversations.job_id` was repointed to
 `task_definitions.id` in 0086 (job ids were reused for their definitions).
@@ -570,8 +603,8 @@ The sections below still describe the shipped `skills` table and the pre-0086
 shape of the others.
 
 Five tables. `skills`/`jobs`/`job_runs` live in
-`frontends/ui/src/lib/db/schema/jobs.ts`, created by
-`frontends/ui/drizzle/0041_agent_skills.sql` as `skills`/`skill_schedules`/
+`apps/workspace/bff/db/schema/jobs.ts`, created by
+`apps/workspace/migrations/0041_agent_skills.sql` as `skills`/`skill_schedules`/
 `skill_runs` and reshaped by `0043_jobs.sql`; `0044_conversation_job_provenance.sql`
 adds the link from a conversation back to the job that produced it, and
 `0046_curated_skill_activations.sql` adds `curated_skill_activations`,
@@ -587,7 +620,7 @@ surviving standard row becomes an offer, the CHECK narrows to `offer` and the
 partial index goes. Its counterpart `0087_organization_instructions.sql` adds
 `organization_instructions`, the tenant-side home for what the tier was misused
 for (ADR-0060). Each
-tenant table joins the tenant boundary with a `grid_secure_table()` line (ADR-0041) —
+tenant table joins the tenant boundary with a `secure_table()` line (ADR-0041) —
 re-emitted by 0043 under the new names, because a rename carries the policy
 along but leaves its stored predicate written against the old table name.
 `0086_task_definitions.sql` adds the collapsed pair and re-secures them the same
@@ -625,7 +658,7 @@ way.
   `published`, and the two closed defaults mean different things: unpublished is
   *invisible*, `offer` *requires consent*
 - No `organization_id`: one row reaches every tenant at once. Secured with
-  `grid_secure_platform_table` — every tenant reads it, only the platform role
+  `secure_platform_table` — every tenant reads it, only the platform role
   writes it, so the fleet catalogue is an enforced boundary rather than a
   convention
 
@@ -640,8 +673,8 @@ way.
 - Its own table rather than a key in `organizations.settings`, for three things
   the jsonb bag cannot hold: the bound in SQL, attribution for "who told the
   agent to do that", and its own cache entry on the WS-upgrade hot path
-- Secured with `grid_secure_table('organization_instructions',
-  'organization_id = grid_current_org()')` and listed in `rls-coverage.spec.ts`
+- Secured with `secure_table('organization_instructions',
+  'organization_id = current_org()')` and listed in `rls-coverage.spec.ts`
 - It is **not a skill** and does not appear in any catalog: see ADR-0060
 
 `curated_skill_activations` — an org's decision about one curated skill
@@ -742,7 +775,7 @@ All routes are feature-gated (`requireSkillsEnabled`). Authorization is
 enforced in the service, not the route (ADR-0017); the routes are thin
 adapters. Every query is additionally org-filtered.
 
-Org toolbox (`frontends/ui/src/app/api/skills/…`):
+Org toolbox (`apps/workspace/app/api/skills/…`):
 
 - `GET  /api/skills` — what the organization has: its own rows plus the
   platform's **offers** (each carrying the org's on/off decision), org
@@ -762,7 +795,7 @@ Org toolbox (`frontends/ui/src/app/api/skills/…`):
   fleet's copy. The service 404s any name that is not a published offer, so
   the machinery cannot be switched off by hand-crafting a request.
 
-Platform catalogue (`frontends/ui/src/app/api/platform/skills/…`) — platform
+Platform catalogue (`apps/workspace/app/api/platform/skills/…`) — platform
 owners only (ADR-0016), no per-org feature flag; this is the layer *under*
 every tenant's skill list:
 
@@ -780,7 +813,7 @@ every tenant's skill list:
 - `GET  /api/skills/invocable` — the `/name` picker's list (name +
   description only, chat-executable, enabled). Any org member.
 
-Organization settings (`frontends/ui/src/app/api/organization/instructions`) —
+Organization settings (`apps/workspace/app/api/organization/instructions`) —
 not a skill route, and here because it is where forcing went:
 
 - `GET  /api/organization/instructions` — the org's standing instruction block.
@@ -826,7 +859,7 @@ compose network):
 
 ### The fire path
 
-`fireJob(job, trigger, actor)` (`frontends/ui/src/lib/jobs/service.ts`) is the
+`fireJob(job, trigger, actor)` (`apps/workspace/bff/jobs/service.ts`) is the
 single submission path for both manual and scheduled runs. Tenancy is derived
 from the job row itself, and it never throws for a skip:
 
@@ -859,7 +892,7 @@ however triggered — is visible in history. Capacity
 never skips an occurrence (ADR-0079): the job joins the research queue as `bulk`
 priority, the run is recorded `queued`, and the worker's first flush moves it to
 `running`; only an organization's waiting queue past
-`GRID_MAX_QUEUED_JOBS_PER_ORG` still yields a `skipped` run.
+`MAX_QUEUED_JOBS_PER_ORG` still yields a `skipped` run.
 
 ### The worker's side, and the outcome
 
@@ -927,7 +960,7 @@ worker, and the worker writes the turn at completion.
 
 The conversation id is minted exactly as the interactive path mints one —
 `s_` + a uuid with hyphens as underscores — because that id doubles as the
-session's Qdrant collection name (`lib/collection-scope.ts`,
+session's Qdrant collection name (`lib/retrieval-scope/collection-scope.ts`,
 `lib/proxy/collection-authz.ts` both key off the `s_` prefix).
 
 Three properties, each forced rather than chosen:
@@ -971,7 +1004,7 @@ is about to write into would destroy the output to tidy up a row.
 ## Backend internal route (Python, aiq_api)
 
 `POST /v1/internal/skills/submit` (`aiq_api.routes.skills`) — guarded by
-`GRID_INTERNAL_API_TOKEN` (constant-time compare, dev-default-token refusal
+`INTERNAL_API_TOKEN` (constant-time compare, dev-default-token refusal
 outside dev — the `maintenance.py` pattern; NOT on the external-path
 allowlist). It wraps `submit_agent_job`, so admission control, cost tracking
 and `job_access` ownership apply exactly like the public submit route; the
@@ -1002,7 +1035,7 @@ sending `output` is deployed.
 comparison count does not depend on which spelling arrived). This is a bug fix,
 and worth remembering: the guard used to read `x-internal-token` **only**,
 while every caller in the repo — the BFF's skill submit and model-config fetch,
-and the nine Python clients under `src/aiq_agent` — sends
+and the nine Python clients under `packages/agent/src/aiq_agent` — sends
 `x-grid-internal-token`. So `/v1/internal/skills/submit` 403'd every real
 request and scheduled runs never worked in a deployment. Nothing caught it
 because the two sides are tested separately and each test pinned its own
@@ -1018,7 +1051,7 @@ job's prompt as a `user` message and the report as an `agent_response`,
 carrying the cards in metadata. A run with a run message writes its report
 through the run report route instead, onto the block (ADR-0062).
 
-- **Python never touches Postgres.** `grid_app` is single-writer and the BFF
+- **Python never touches Postgres.** `app` is single-writer and the BFF
   owns it, so this goes over `POST /api/internal/conversations/{id}/messages`
   with the service token, exactly as the memory-reflection step already does
   from inside a worker.
@@ -1068,7 +1101,7 @@ block on the fire prompt (`previousDecisionsBlock`), so what a person told
 Piloti "no" about reaches the run rather than a log line.
 `GET /api/projects/[id]/tasks` lists a project's tasks, newest first.
 
-## Scheduler worker (`frontends/ui/scheduler/`)
+## Scheduler worker (`apps/workspace/scheduler/`)
 
 Plain-Node worker (purger idiom: CommonJS, `postgres` client, `.spec.mjs`
 tests), compose service `skill-scheduler` (container `grid-skill-scheduler`)
@@ -1106,13 +1139,13 @@ next interval:
    the BFF records run rows, and if the BFF itself was unreachable the
    occurrence is missed once and the next occurrence heals it (ADR-0023 risks).
 3. Retention: `DELETE FROM task_runs WHERE created_at < now() - interval
-   '$GRID_SKILL_RUNS_RETENTION_DAYS days'` (batched by id-subselect so each
+   '$SKILL_RUNS_RETENTION_DAYS days'` (batched by id-subselect so each
    statement locks a bounded set). The definition survives its pruned runs, so
    a schedule keeps firing after its oldest attempts age out.
 4. Run reconciler, every tick and whatever the gate says: `POST
    {FRONTEND_INTERNAL_URL}/api/internal/runs/reconcile`. The BFF does the work
    (`lib/runs/reconcile.ts`): it claims up to 25 still-`queued`/`running` runs
-   nothing has checked for `GRID_RUN_RECONCILE_STALE_MINUTES` (default 10),
+   nothing has checked for `RUN_RECONCILE_STALE_MINUTES` (default 10),
    stamping `reconcile_checked_at` in the same statement (`FOR UPDATE SKIP
    LOCKED`, migration 0096), asks the job store for each job's real verdict
    (`GET /v1/internal/jobs/{id}/outcome`, service token), and for a finished job
@@ -1120,7 +1153,7 @@ next interval:
    its block's ledger (`recordRunOutcome` with `onlyIfActive`) — the same
    functions the worker's own writes reach. A job the
    store cannot find, or a run that never got a backend job id, is closed as
-   failed once it is older than `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES`
+   failed once it is older than `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES`
    (default 120). The same sweep then heals up to 100 CLOSED runs nothing has
    looked at since they ended (`claimClosedRunsToHeal`, migration 0099): a block
    still reading „läuft" takes the ending its row records (`settleRunLedger`).
@@ -1163,7 +1196,7 @@ renaming them is a deployment change with no user-visible gain.
 
 - 5-field cron, validated at save time in the BFF with `cron-parser`.
 - Per-job IANA timezone (DST handled by the library).
-- Minimum interval between occurrences: `GRID_SKILL_MIN_INTERVAL_MINUTES`
+- Minimum interval between occurrences: `SKILL_MIN_INTERVAL_MINUTES`
   (default 15) — enforced at save time by sampling successive occurrences.
 - **No skill can veto a schedule.** `grid-schedulable` is gone: whether
   something may run on a timer is a property of the job, not of a skill that
@@ -1173,18 +1206,18 @@ renaming them is a deployment change with no user-visible gain.
 
 | Variable | Service | Default | Purpose |
 |---|---|---|---|
-| `GRID_RUN_RECONCILE_STALE_MINUTES` | frontend | `10` | A still-active run is asked about once nothing has checked it for this long |
-| `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | frontend | `120` | A run whose job cannot be found is closed as failed once this old |
-| `GRID_SKILL_SCHEDULER_POLL_MS` | skill-scheduler | `30000` | Tick interval |
-| `GRID_SKILL_SCHEDULER_BATCH` | skill-scheduler | `20` | Max claims per tick |
-| `GRID_SKILL_MIN_INTERVAL_MINUTES` | frontend | `15` | Minimum cron cadence accepted at save time |
-| `GRID_SKILL_RUNS_RETENTION_DAYS` | skill-scheduler | `90` | Run-history retention |
-| `GRID_SKILLS_CACHE_TTL_SECONDS` | aiq-agent | `60` | Backend org-skill resolution cache TTL (ADR-0020) |
+| `RUN_RECONCILE_STALE_MINUTES` | frontend | `10` | A still-active run is asked about once nothing has checked it for this long |
+| `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | frontend | `120` | A run whose job cannot be found is closed as failed once this old |
+| `SKILL_SCHEDULER_POLL_MS` | skill-scheduler | `30000` | Tick interval |
+| `SKILL_SCHEDULER_BATCH` | skill-scheduler | `20` | Max claims per tick |
+| `SKILL_MIN_INTERVAL_MINUTES` | frontend | `15` | Minimum cron cadence accepted at save time |
+| `SKILL_RUNS_RETENTION_DAYS` | skill-scheduler | `90` | Run-history retention |
+| `SKILLS_CACHE_TTL_SECONDS` | aiq-agent | `60` | Backend org-skill resolution cache TTL (ADR-0020) |
 
-(Existing: `GRID_APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`,
-`GRID_INTERNAL_API_TOKEN`, `BACKEND_URL` are reused, not new.)
+(Existing: `APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`,
+`INTERNAL_API_TOKEN`, `BACKEND_URL` are reused, not new.)
 
-The workflow-era names (`GRID_WORKFLOWS_ENABLED`,
+The workflow-era names (`WORKFLOWS_ENABLED`,
 `GRID_WORKFLOW_SCHEDULER_POLL_MS`, `GRID_WORKFLOW_SCHEDULER_BATCH`,
 `GRID_WORKFLOW_RUNS_RETENTION_DAYS`, `GRID_WORKFLOW_MIN_INTERVAL_MINUTES`) are
 **not** read as fallbacks: they gated a feature that never shipped enabled, so
@@ -1278,14 +1311,22 @@ history surfaces, and the run-history link and job-glyph rendering that
 
 ## Tests
 
-- `tests/aiq_agent/skills/` — model validation, builtin discovery, resolver
+- `packages/agent/tests/skills/` — model validation, builtin discovery, resolver
   caching/shadowing/fail-open (including the resolve query contract: URL,
-  token header, both param cases), runtime prompt/tool wiring, and the rule
-  that nothing may require a skill: `test_runtime.py` pins that the runtime
-  offers and cannot require, that a `standard` marker on the payload is an
-  ordinary catalog entry, and that only a delivered body counts as activated.
-- `tests/aiq_agent/turn/test_payload.py` and
-  `tests/aiq_agent/turn/test_payload_parsing.py` — the envelope parsing,
+  token header, both param cases), and the rule that nothing may require a
+  skill: `test_runtime.py` pins the catalog the middleware renders, that only a
+  read body (or a pinned one the envelope named) counts as activated, and that
+  the runtime offers and cannot require; `test_backend.py` pins the backend:
+  read-only, what it serves parses back as the skill, an office skill is
+  visible only to its organization, and a curated offer is absent until taken
+  up.
+- `packages/agent/tests/tools/documents/test_draft_tools.py` — the one `read_file`
+  reading drafts and skills, and a skill path never writable;
+  `packages/agent/tests/agents/deep_researcher/test_factory.py` — the office's skills
+  go to the writer alone; `packages/agent/tests/test_deepagents_contract.py` — the
+  Deep Agents internals the backend and the catalog render rest on.
+- `packages/agent/tests/turn/test_payload.py` and
+  `packages/agent/tests/turn/test_payload_parsing.py` — the envelope parsing,
   including that a `skills` array from an older client is dropped rather than
   obeyed.
 - BFF vitest, toolbox: `lib/skills/service.spec.ts` (authz, tenant filters,

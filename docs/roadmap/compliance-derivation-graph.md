@@ -24,7 +24,7 @@ assumptions. Each is the 2024 industry default. Each is wrong for this domain.
 
 | Assumption | Where it shows | Why it is wrong for building law |
 |---|---|---|
-| **The law is a corpus.** Chunk it, embed it, retrieve by similarity, hand the model sixteen passages | `sources/knowledge_layer/src/register.py:1312`, `top_k: 16` | The OIB Richtlinien are a *rule system*: numbered requirements with applicability conditions over a small set of project facts (Gebäudeklasse, Nutzung, Höhe, Fläche, Bundesland), thresholds, exceptions, cross-references and editions. Which requirement applies is a function of the project, not of the wording of the question. A similarity search over a user's sentence is the weakest possible way to find it |
+| **The law is a corpus.** Chunk it, embed it, retrieve by similarity, hand the model sixteen passages | `packages/knowledge-layer/src/register.py:1312`, `top_k: 16` | The OIB Richtlinien are a *rule system*: numbered requirements with applicability conditions over a small set of project facts (Gebäudeklasse, Nutzung, Höhe, Fläche, Bundesland), thresholds, exceptions, cross-references and editions. Which requirement applies is a function of the project, not of the wording of the question. A similarity search over a user's sentence is the weakest possible way to find it |
 | **The project is a set of documents.** Chunk them the same way as the law | `adapter.py:3157` (same splitter), `proj_<id>` collections | A plan, a Nachweis, a Baubeschreibung are carriers of *facts*: a room height, a door width, a fire compartment, a U-value. The check the user wants is a join between a requirement and a fact, and neither side of that join is a chunk |
 | **The answer is a message.** Generate text, then verify what can be verified and strip the rest | `citation_verification.py:2295-2365`; `deep_researcher/agent.py:1090` ("it still ships") | A compliance answer is a *derivation*: these facts, this rule, this passage, therefore this verdict. When the derivation is the object, verification is structural (is a leaf missing?) and repair is targeted (find that leaf). When the message is the object, verification can only subtract |
 | **The agent is a searcher.** A ReAct loop with a budget of calls | `configs/config_oib_openrouter.yml:705` (7 calls), `piloti/agent.py:997` | A searcher spends its budget guessing what to look for. A deriver knows what it needs (the facts the applicable rules depend on) and spends the budget filling exactly those slots |
@@ -45,8 +45,8 @@ knows about the others:
 |---|---|---|---|---|
 | 1 | Passages in the vector store, with a Punkt id in the chunk metadata | `oib_knowledge`, `clause_chunking.py`, `fixtures/clause_index.json` (946 Punkte) | Punkt | ingest |
 | 2 | A `RequirementProfile` extracted **per run** by one LLM call per Richtlinie, never cached, never reviewed | `agents/compliance_checker/agent.py` Stage 1; README: "For each Richtlinie … ONE structured LLM call" | requirement | nobody; regenerated and discarded on every check |
-| 3 | Hand-written TypeScript rules with thresholds and OIB citations | `frontends/ui/src/lib/bim/rules.ts` (1531 lines): `oib3-raumhoehe`, `oib4-tuer-durchgangsbreite`, `oib2-feuerwiderstand-tragend`, `oib6-u-wert-aussenwand`, … | requirement, for what IFC can measure | a developer, by hand |
-| 4 | Hand-written Richtlinie-level applicability, in Python **and** in TypeScript, kept in step "by construction" | `src/aiq_agent/common/applicability.py:143`, `frontends/ui/src/lib/oib/applicable-standards.ts:83` | Richtlinie (OIB 1 … 6) | two developers, by hand, twice |
+| 3 | Hand-written TypeScript rules with thresholds and OIB citations | `apps/workspace/bff/bim/rules.ts` (1531 lines): `oib3-raumhoehe`, `oib4-tuer-durchgangsbreite`, `oib2-feuerwiderstand-tragend`, `oib6-u-wert-aussenwand`, … | requirement, for what IFC can measure | a developer, by hand |
+| 4 | Hand-written Richtlinie-level applicability, in Python **and** in TypeScript, kept in step "by construction" | `packages/agent/src/aiq_agent/common/applicability.py:143`, `apps/workspace/bff/oib/applicable-standards.ts:83` | Richtlinie (OIB 1 … 6) | two developers, by hand, twice |
 | 5 | Prose `binding_note`s on the curated norm registry, injected into prompts | `configs/norms/at/registry.yml` | law | a human curator |
 
 And a sixth that was deleted. The docstring of encoding 4 says it plainly:
@@ -232,7 +232,7 @@ render    the tree, with every leaf a passage or a fact locus
 Budget is per slot, not per turn. A slot that cannot be filled is not a
 truncated answer; it is an `unknown` fact with a named source that was tried,
 which is exactly what `ask_user` should be for (today its description forbids
-asking what a search could establish, `backlog.md` PF-14). A verdict with a
+asking what a search could establish, `docs/audit/overnight-run-backlog.md` PF-14). A verdict with a
 missing leaf is *incomplete by construction*, so the repair pass the first
 review proposed becomes targeted: fill this slot, not "search again".
 

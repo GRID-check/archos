@@ -18,6 +18,8 @@ from datetime import datetime
 import pytest
 from knowledge_layer.llamaindex import adapter as adapter_module
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
+from knowledge_layer_testing import reingest
+from knowledge_layer_testing.qdrant import FakeEmbedder
 
 from aiq_agent.knowledge import ingest_status_store
 from aiq_agent.knowledge.schema import FileProgress
@@ -25,8 +27,6 @@ from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 from aiq_agent.knowledge.schema import stable_file_id
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from tests.knowledge_layer_tests import test_reingest_replaces_versions as reingest
 
 COLLECTION = "proj_two_processes"
 
@@ -38,7 +38,7 @@ stores = reingest.stores
 def processes(tmp_path, monkeypatch, stores, qdrant_store):
     """``(worker, api)``: two ingestors over one status store and one Qdrant."""
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
 
     def encrypted(_path):
         raise ValueError("PDF is encrypted")

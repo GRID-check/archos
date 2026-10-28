@@ -1,6 +1,6 @@
 """What models asked the spatial surface for and did not get — as a report.
 
-The ledger at ``AIQ_CAPABILITY_GAP_LOG`` (default ``/tmp/aiq-capability-gaps.jsonl``)
+The ledger at ``CAPABILITY_GAP_LOG`` (default ``/tmp/aiq-capability-gaps.jsonl``)
 collects one kind of row: a caller asked for a name this surface does not have.
 Not a refusal about somebody's export, not a wrong GlobalId — a missing feature.
 This renders it as a ranked table you can paste into an issue.
@@ -30,7 +30,7 @@ from aiq_agent.tools.bim.capability_gaps import render_report  # noqa: E402
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--path", type=Path, default=None, help="ledger to read (default: AIQ_CAPABILITY_GAP_LOG)")
+    parser.add_argument("--path", type=Path, default=None, help="ledger to read (default: CAPABILITY_GAP_LOG)")
     arguments = parser.parse_args()
 
     target = arguments.path or ledger_path()

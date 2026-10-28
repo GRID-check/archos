@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { RETIRED_VECTOR_KEYS, loadConfig } from "./config";
+import { loadConfig } from './config'
+import { RETIRED_VECTOR_KEYS } from './config/qdrant'
 import { baseStackConfig } from "./test-support/stack-config";
 
 // `new pulumi.Config()` (config.ts:873) namespaces every key by the PROJECT

@@ -11,7 +11,8 @@
 # existing cluster is touched.
 set -euo pipefail
 
-UI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../frontends/ui" && pwd)"
+UI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../apps/workspace" && pwd)"
+REPO_ROOT="$(cd "$UI_DIR/../.." && pwd)"
 # A port nobody holds, unless the caller names one. Parallel runs in one
 # container (two agents, two worktrees) each get their own: a fixed default made
 # the second die at `pg_ctl: could not start server` before any migration ran.
@@ -80,12 +81,12 @@ PSQL="$PGBIN/psql -h $WORKDIR -p $PORT -U postgres"
 # `--exec <command…>`: the same throwaway cluster, without the migration chain or
 # the suites below, for the Python suites whose Postgres branch would otherwise
 # skip (`task be:test:postgres`). They create and drop their own tables, so they
-# get an empty scratch database as the superuser, in AIQ_TEST_POSTGRES_URL.
+# get an empty scratch database as the superuser, in TEST_POSTGRES_URL.
 if [ "${1:-}" = "--exec" ]; then
   shift
   $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE aiq_queues;"
   echo "==> running: $*"
-  AIQ_TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
+  TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
   exit 0
 fi
 
@@ -106,14 +107,51 @@ echo "==> applying the migration chain as grid_app_owner (no CREATEROLE, no BYPA
 cd "$UI_DIR"
 MIGRATE="$PGBIN/psql -h $WORKDIR -p $PORT -U grid_app_owner -d grid_app"
 node -e '
-  const j = require("./drizzle/meta/_journal.json");
+  const j = require("./migrations/meta/_journal.json");
   console.log(j.entries.map((e) => e.tag).join("\n"));
 ' | while read -r tag; do
-  $MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
+  $MIGRATE -v ON_ERROR_STOP=1 -q -f "migrations/$tag.sql" >/dev/null || {
     echo "MIGRATION FAILED at $tag — re-run without -q to see the error" >&2
     exit 1
   }
 done
+
+# The deploy renames the row-level-security roles once the migrations have run
+# (ADR-0145 row 10d): the migrations written before the rename grant to their
+# old names, which is why the chain above ran under those. The app steps up to
+# the NEW platform name, so the suites run after the same rename the deploy
+# does, with the deploy's own script. The per-migration checks further down
+# replay old migrations into fresh databases, so they get the old names back.
+RLS_RENAMES="grid_app_owner:app_owner grid_app_platform:app_platform grid_app_rw:app_rw"
+OWNER=grid_app_owner  # the schema owner's current name, for the helpers below
+rename_rls_roles() {
+  PATH="$PGBIN:$PATH" PGHOST="$WORKDIR" PGPORT="$PORT" PGUSER=postgres RUNTIME_PASSWORD="$RUNTIME_PASSWORD" \
+    sh "$REPO_ROOT/deploy/postgres/rename-legacy-names.sh" after-migrate >/dev/null
+  OWNER=app_owner
+}
+restore_rls_role_names() {
+  local pair
+  for pair in $RLS_RENAMES; do
+    $PSQL -q -v ON_ERROR_STOP=1 -c "ALTER ROLE ${pair#*:} RENAME TO ${pair%%:*};"
+  done
+  $PSQL -q -v ON_ERROR_STOP=1 -c "ALTER ROLE grid_app_rw PASSWORD '$RUNTIME_PASSWORD';"
+  OWNER=grid_app_owner
+}
+
+# `--only <spec…>`: the migrated cluster and the restricted role, for the specs
+# named and nothing else. For one suite while you work on it, and for the
+# measurements that are not part of the gate (`task workspace:search:latency`). The
+# owner's URL is passed too, for a measurement that has to ANALYZE its seed:
+# the runtime role may not, and production's statistics are autovacuum's.
+if [ "${1:-}" = "--only" ]; then
+  shift
+  rename_rls_roles
+  echo "==> running $* as app_rw"
+  TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+  TEST_OWNER_DATABASE_URL="postgres://app_owner@127.0.0.1:$PORT/grid_app" \
+    npx vitest run "$@"
+  exit 0
+fi
 
 # Every suite here needs the same cluster and the same restricted role. The BIM
 # and memory ones are here rather than in the unit shards because every claim
@@ -122,87 +160,96 @@ done
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte and folder cards suites as grid_app_rw"
-GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+echo "==> renaming the row-level-security roles as the deploy does, after the migrations"
+rename_rls_roles
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers and workspace search suites as app_rw"
+TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
-    src/lib/db/tenant-isolation.integration.spec.ts \
-    src/lib/bim/query.integration.spec.ts \
-    src/lib/bim/model-shelf.integration.spec.ts \
-    src/lib/projects/memory-service.integration.spec.ts \
-    src/lib/projects/memory-restricted.integration.spec.ts \
-    src/lib/documents/document-versions.integration.spec.ts \
-    src/lib/documents/list-page.integration.spec.ts \
-    src/lib/documents/quarantine-listing.integration.spec.ts \
-    src/lib/documents/visibility.integration.spec.ts \
-    src/lib/upload-batches/upload-batches.integration.spec.ts \
-    src/lib/authz/folder-access.integration.spec.ts \
-    src/lib/projects/collection-placement.integration.spec.ts \
-    src/lib/projects/folder-visibility.integration.spec.ts \
-    src/lib/documents/shelf-folders.integration.spec.ts \
-    src/lib/projects/folder-bin.integration.spec.ts \
-    src/lib/documents/stuck-processing.integration.spec.ts \
-    src/lib/documents/retry-policy.integration.spec.ts \
-    src/lib/project-profile/profile-bindings.integration.spec.ts \
-    src/lib/compliance/legal-hold.integration.spec.ts \
-    src/lib/conversations/erasure-queue.integration.spec.ts \
-    src/lib/conversations/restricted-use.integration.spec.ts \
-    src/lib/feedback/restricted-feedback.integration.spec.ts \
-    src/lib/tasks/subject-access.integration.spec.ts \
-    src/lib/tasks/active-runs.integration.spec.ts \
-    src/lib/conversations/cross-project-use.integration.spec.ts \
-    src/lib/cross-project/decisions-repository.integration.spec.ts \
-    src/lib/similar-passages/service.integration.spec.ts \
-    src/lib/permits/repository.integration.spec.ts \
-    src/lib/annotations/repository.integration.spec.ts \
-    src/lib/annotations/project-repository.integration.spec.ts \
-    src/lib/proposals/repository.integration.spec.ts \
-    src/lib/agent-api/operation-proposals.integration.spec.ts \
-    src/lib/agent-api/read-gate.integration.spec.ts \
-    src/lib/project-intake/repository.integration.spec.ts \
-    src/lib/changes/repository.integration.spec.ts \
-    src/lib/push/repository.integration.spec.ts \
-    src/lib/piloti-asks/repository.integration.spec.ts \
-    src/lib/inbox/repository.integration.spec.ts \
-    src/lib/project-experience/readable-files.integration.spec.ts \
-    src/lib/projects/memory-evidence.integration.spec.ts \
-    src/lib/download-log/download-log.integration.spec.ts \
-    src/lib/runs/reconcile.integration.spec.ts \
-    src/lib/budgets/service.integration.spec.ts \
-    src/lib/analytics/usage-export-repository.integration.spec.ts \
-    src/lib/feedback/repository.integration.spec.ts \
-    src/lib/citations/repository.integration.spec.ts \
-    src/lib/profiler/repository.integration.spec.ts \
-    src/lib/projects/project-status.integration.spec.ts \
-    src/lib/projects/project-record.integration.spec.ts \
-    src/lib/projects/cleanup.integration.spec.ts \
-    src/lib/feedback/repository.integration.spec.ts \
-    src/lib/filing/root-sort-run-repository.integration.spec.ts \
-    src/lib/folder-cards/repository.integration.spec.ts
+    bff/db/tenant-isolation.integration.spec.ts \
+    bff/bim/query.integration.spec.ts \
+    bff/bim/model-shelf.integration.spec.ts \
+    bff/projects/memory-service.integration.spec.ts \
+    bff/projects/memory-restricted.integration.spec.ts \
+    bff/documents/document-versions.integration.spec.ts \
+    bff/documents/list-page.integration.spec.ts \
+    bff/documents/quarantine-listing.integration.spec.ts \
+    bff/documents/visibility.integration.spec.ts \
+    bff/upload-batches/upload-batches.integration.spec.ts \
+    bff/authz/folder-access.integration.spec.ts \
+    bff/projects/collection-placement.integration.spec.ts \
+    bff/projects/folder-visibility.integration.spec.ts \
+    bff/documents/shelf-folders.integration.spec.ts \
+    bff/projects/folder-bin.integration.spec.ts \
+    bff/documents/stuck-processing.integration.spec.ts \
+    bff/documents/retry-policy.integration.spec.ts \
+    bff/project-profile/profile-bindings.integration.spec.ts \
+    bff/compliance/legal-hold.integration.spec.ts \
+    bff/conversations/erasure-queue.integration.spec.ts \
+    bff/conversations/restricted-use.integration.spec.ts \
+    bff/feedback/restricted-feedback.integration.spec.ts \
+    bff/tasks/subject-access.integration.spec.ts \
+    bff/tasks/active-runs.integration.spec.ts \
+    bff/conversations/cross-project-use.integration.spec.ts \
+    bff/cross-project/decisions-repository.integration.spec.ts \
+    bff/similar-passages/service.integration.spec.ts \
+    bff/permits/repository.integration.spec.ts \
+    bff/annotations/repository.integration.spec.ts \
+    bff/annotations/project-repository.integration.spec.ts \
+    bff/proposals/repository.integration.spec.ts \
+    bff/agent-api/operation-proposals.integration.spec.ts \
+    bff/agent-api/read-gate.integration.spec.ts \
+    bff/project-intake/repository.integration.spec.ts \
+    bff/changes/repository.integration.spec.ts \
+    bff/push/repository.integration.spec.ts \
+    bff/agent-asks/repository.integration.spec.ts \
+    bff/inbox/repository.integration.spec.ts \
+    bff/project-experience/readable-files.integration.spec.ts \
+    bff/projects/memory-evidence.integration.spec.ts \
+    bff/download-log/download-log.integration.spec.ts \
+    bff/runs/reconcile.integration.spec.ts \
+    bff/budgets/service.integration.spec.ts \
+    bff/analytics/usage-export-repository.integration.spec.ts \
+    bff/feedback/repository.integration.spec.ts \
+    bff/citations/repository.integration.spec.ts \
+    bff/profiler/repository.integration.spec.ts \
+    bff/projects/project-status.integration.spec.ts \
+    bff/projects/project-record.integration.spec.ts \
+    bff/projects/cleanup.integration.spec.ts \
+    bff/feedback/repository.integration.spec.ts \
+    bff/filing/root-sort-run-repository.integration.spec.ts \
+    bff/folder-cards/repository.integration.spec.ts \
+    bff/estate-tree/repository.integration.spec.ts \
+    bff/search/providers.integration.spec.ts \
+    bff/search/document-repository.integration.spec.ts
 
 # The tenant suites above may leave queued jobs behind: Ausmisten bins a
 # subfolder, and a Papierkorb delete queues its purge takeover and a refused
 # one its restore. The job-queue suites claim from the whole table and expect
 # only their own seeds, so they start from an empty one.
-$MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
+$PSQL -d grid_app -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
 
 # The job-queue suites claim from ONE table, whichever lane a job is in, so run
 # in parallel they claim each other's seeded jobs. One file at a time. The
 # scheduler's due-scan is the same shape over task_definitions, every tenant's.
-echo "==> running the job-queue and scheduler-claim suites one file at a time as grid_app_rw"
-GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+echo "==> running the job-queue and scheduler-claim suites one file at a time as app_rw"
+TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
-    src/lib/jobs-queue/queue.integration.spec.ts \
-    src/lib/jobs-queue/repository.integration.spec.ts \
+    bff/jobs-queue/queue.integration.spec.ts \
+    bff/jobs-queue/repository.integration.spec.ts \
     workers/jobs/runner.integration.spec.mjs \
+    workers/jobs/slice-bundle.integration.spec.mjs \
     scheduler/db.integration.spec.mjs
 
 # Everything below re-proves one migration of the chain at a time: a database
 # migrated to just before it, seeded with the old shapes, checked row by row,
-# then taken down. Those claims read nothing but frontends/ui/drizzle/ and this
+# then taken down. Those claims read nothing but apps/workspace/migrations/ and this
 # script, and they are ~60% of this script's time. CI's Plan sets
-# GRID_RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
+# RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
 # .github/filters.yml); unset, as locally, they run.
-if [ "${GRID_RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
+echo "==> the old role names again, for the migrations replayed below"
+restore_rls_role_names
+
+if [ "${RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
   echo "==> per-migration backfill and down checks skipped: no migration and not this script changed"
   exit 0
 fi
@@ -226,7 +273,7 @@ fi
 # ---------------------------------------------------------------------------
 JOURNAL=()
 while read -r tag; do JOURNAL+=("$tag"); done < <(node -e '
-  const j = require("./drizzle/meta/_journal.json");
+  const j = require("./migrations/meta/_journal.json");
   console.log(j.entries.map((e) => e.tag).join("\n"));
 ')
 CHAIN_AT=-1  # index in JOURNAL of the last migration grid_chain holds; -1 = no grid_chain
@@ -251,7 +298,7 @@ clone_chain_at() {
   fi
   for ((i = CHAIN_AT + 1; i <= target; i++)); do
     $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_chain -v ON_ERROR_STOP=1 -q \
-      -f "drizzle/${JOURNAL[$i]}.sql" >/dev/null || {
+      -f "migrations/${JOURNAL[$i]}.sql" >/dev/null || {
       echo "SETUP OF $db FAILED at ${JOURNAL[$i]} — re-run without -q to see the error" >&2
       exit 1
     }
@@ -283,15 +330,15 @@ migrate_before() {
 # ---------------------------------------------------------------------------
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
-  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q -f "drizzle/$2" >/dev/null || {
+  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q -f "migrations/$2" >/dev/null || {
     echo "MIGRATION $2 FAILED on $1 — re-run without -q to see the error" >&2
     exit 1
   }
 }
-sql_in() { $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q >/dev/null; }
+sql_in() { $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q >/dev/null; }
 check_in() {
   local got
-  got=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -tAc "$2")
+  got=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -tAc "$2")
   if [ "$got" != "$3" ]; then
     echo "MIGRATION ASSERTION FAILED on $1: $4" >&2
     echo "  query: $2" >&2
@@ -303,7 +350,7 @@ check_in() {
 # Run SQL that must be REFUSED on <db>, and check the refusal names the rule ($3).
 refused_in() {
   local out
-  if out=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q 2>&1 <<<"$2"); then
+  if out=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q 2>&1 <<<"$2"); then
     echo "MIGRATION ASSERTION FAILED on $1: $4 (the statement was accepted)" >&2
     exit 1
   fi
@@ -1998,6 +2045,72 @@ check_in grid_feedbacknotice "SELECT count(*) FROM information_schema.columns WH
 echo "==> 0184 product feedback reply notice and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0185: the search projection (ADR-0136). The full-text vector is
+# generated with German stemming, so a plural finds the singular; the shelf key
+# names its project or the office shelf and nothing else; what a Fassung changed
+# keeps its keys and its entries to one length; a row goes with its document; the
+# down drops both tables and 0185 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0185 search projection and its down migration on grid_documentsearch"
+migrate_until grid_documentsearch 0185_document_search
+sql_in grid_documentsearch <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name) VALUES
+  ('aaaaaaaa-0000-4000-8000-000000000185', 'org_0185', 'Haus Wien', 'user_1', 'proj_0185');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000185', 'org_0185', 'user_1', 'bsk.pdf', 'k/0185/a', 'proj_0185', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000185');
+INSERT INTO document_search_facets (document_id, organization_id, document_type, reference_tokens, fact_tokens, fact_numbers, search_text, fingerprint) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000185', 'org_0185', 'fire_safety_concept', '{"norm:önorm b 1600"}', '{"building_class=4"}',
+   '{"building_class": 4}', 'Brandschutzkonzept · Fluchtwege und Stiegenhäuser', 'f1');
+INSERT INTO document_search_shelves (organization_id, shelf_key, project_id, source_fingerprint, synced_at) VALUES
+  ('org_0185', 'project:aaaaaaaa-0000-4000-8000-000000000185', 'aaaaaaaa-0000-4000-8000-000000000185', '1@x', now());
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE search_vector @@ websearch_to_tsquery('german', 'Brandschutzkonzepte Fluchtweg')" "1" "0185: the German vector finds a plural and a singular"
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE reference_tokens @> ARRAY['norm:önorm b 1600'] AND (fact_numbers->>'building_class')::numeric BETWEEN 3 AND 4" "1" "0185: a reference token and a numeric fact range"
+refused_in grid_documentsearch "INSERT INTO document_search_facets (document_id, organization_id, fingerprint) VALUES ('d1d1d1d1-0000-4000-8000-000000000185', 'org_other', 'f2') ON CONFLICT (document_id) DO UPDATE SET organization_id = excluded.organization_id" "document_search_facets_document_tenant_fkey" "0185: a search row cannot move to another organization than its document's"
+sql_in grid_documentsearch <<'SQL'
+UPDATE document_search_facets SET changed_facts = '[{"key": "building_class", "before": "3", "after": "4", "page": 2}]', changed_fact_keys = '{building_class}'
+  WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185';
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE changed_fact_keys && ARRAY['building_class', 'units'] AND cardinality(changed_fact_keys) > 0" "1" "0185: a changed fact is found by its key"
+refused_in grid_documentsearch "UPDATE document_search_facets SET changed_fact_keys = '{}' WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185'" "document_search_facets_changes_keyed" "0185: a change cannot lose its key, nor a key its change"
+refused_in grid_documentsearch "UPDATE document_search_facets SET changed_facts = '{}', changed_fact_keys = '{}' WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185'" "document_search_facets_changes_array" "0185: changed_facts is a list"
+refused_in grid_documentsearch "INSERT INTO document_search_shelves (organization_id, shelf_key, project_id) VALUES ('org_0185', 'project:other', 'aaaaaaaa-0000-4000-8000-000000000185')" "document_search_shelves_key_shape" "0185: a shelf key names its own project"
+sql_in grid_documentsearch <<'SQL'
+DELETE FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000185';
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets" "0" "0185: a search row goes with its document"
+apply_in grid_documentsearch 0185_document_search.down.sql
+check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_search_facets', 'document_search_shelves')" "0" "0185 down drops both tables"
+apply_in grid_documentsearch 0185_document_search.sql
+check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_search_facets', 'document_search_shelves')" "2" "0185 applies again after its down"
+echo "==> 0185 search projection and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0186: saved searches (ADR-0136, slice 5). A saved search holds a
+# question, never an answer: scope and query are objects, the query is bounded,
+# a name is 1 to 120 characters and unique per owner (two owners may share one
+# name); the down drops the table and 0186 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0186 saved searches and their down migration on grid_savedsearch"
+migrate_until grid_savedsearch 0186_saved_searches
+sql_in grid_savedsearch <<'SQL'
+INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query, shared) VALUES
+  ('org_0186', 'user_a', 'Brandschutz', '{}', '{"text":"Brandschutzkonzept","kinds":["document"]}', true),
+  ('org_0186', 'user_b', 'Brandschutz', '{"scope":"office_shelf"}', '{"text":"Brandschutz"}', false);
+SQL
+check_in grid_savedsearch "SELECT count(*) FROM saved_searches WHERE organization_id = 'org_0186' AND (owner_user_id = 'user_a' OR shared)" "1" "0186: user_a sees their own and the shared ones"
+check_in grid_savedsearch "SELECT count(*) FROM saved_searches WHERE name = 'Brandschutz'" "2" "0186: two owners may use one name"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Brandschutz', '{}', '{}')" "saved_searches_owner_name_key" "0186: a name is unique per owner"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', '', '{}', '{}')" "saved_searches_name_bounded" "0186: a name is not empty"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Liste', '{}', '[]')" "saved_searches_query_object" "0186: the query is an object"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Gross', '{}', jsonb_build_object('text', repeat('x', 16000)))" "saved_searches_query_bounded" "0186: the query is bounded"
+apply_in grid_savedsearch 0186_saved_searches.down.sql
+check_in grid_savedsearch "SELECT count(*) FROM information_schema.tables WHERE table_name = 'saved_searches'" "0" "0186 down drops the table"
+apply_in grid_savedsearch 0186_saved_searches.sql
+check_in grid_savedsearch "SELECT count(*) FROM information_schema.tables WHERE table_name = 'saved_searches'" "1" "0186 applies again after its down"
+echo "==> 0186 saved searches and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose
@@ -2184,3 +2297,177 @@ refused_in grid_shelfscope "INSERT INTO upload_batches (id, organization_id, cre
 apply_in grid_shelfscope 0170_office_shelf_scope.sql
 check_in grid_shelfscope "$SCOPES_0170" "office_shelf,office_shelf,project|office_shelf,project|office_shelf|office_shelf" "0170 re-applies after its down"
 echo "==> 0170/0171 office shelf scope and down migrations verified"
+
+# ---------------------------------------------------------------------------
+# 0187: the office shelf's value inside stored JSON. A message whose citation,
+# answered card and plan fence each name the `archiv` shelf beside a `note` and a
+# `bookshelf` that merely hold the word, a task and a run that froze an `archiv`
+# document, and a message already English. The up rewrites only the `shelf`
+# pairs, a second run changes nothing, the down puts them back.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0187 office shelf in stored JSON and its down migration on shelfjson_0187"
+migrate_before shelfjson_0187 0187_office_shelf_in_stored_json
+sql_in shelfjson_0187 <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000187', 'org_0187', 'Shelf 0187', 'user_1', 'proj_0187');
+INSERT INTO conversations (id, organization_id, created_by, project_id) VALUES ('s_0187', 'org_0187', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000187');
+INSERT INTO messages (id, conversation_id, organization_id, role, content, metadata) VALUES
+  ('a0000000-0000-4000-8000-000000000187', 's_0187', 'org_0187', 'assistant',
+   E'Plan\n```plan_json\n{"documents": [{"name": "norm.pdf", "shelf" : "archiv"}]}\n```\nim archiv',
+   '{"citations": {"sources": [{"kind": "office", "shelf": "archiv"}, {"kind": "project", "shelf": "project"}]}, "note": "archiv", "bookshelf": "archiv", "promptState": {"response": "approve {\"documents\":[{\"shelf\":\"archiv\"}]}"}}'),
+  ('a0000000-0000-4000-8000-000000000188', 's_0187', 'org_0187', 'assistant', 'ok', '{"citations": {"sources": [{"shelf": "office_shelf"}]}}');
+INSERT INTO tasks (id, organization_id, project_id, kind, title, plan, requester_user_id) VALUES
+  ('eeeeeeee-0000-4000-8000-000000000187', 'org_0187', 'aaaaaaaa-0000-4000-8000-000000000187', 'document', 'Dokument',
+   '{"prompt": "x", "skill": {}, "dataSources": null, "documents": {"basis": [{"name": "norm.pdf", "shelf": "archiv"}], "excluded": []}}', 'user_1');
+INSERT INTO task_runs (organization_id, project_id, kind, title, plan, requester_user_id, trigger, status, skill_snapshot) VALUES
+  ('org_0187', 'aaaaaaaa-0000-4000-8000-000000000187', 'document', 'Dokument',
+   '{"prompt": "x", "skill": {}, "dataSources": null, "documents": {"basis": [], "excluded": [{"name": "norm.pdf", "shelf": "archiv"}]}}', 'user_1', 'delegated', 'succeeded', '{}');
+SQL
+SHELF_0187="SELECT md5((SELECT string_agg(content || coalesce(metadata::text, '-'), '|' ORDER BY id) FROM messages) || (SELECT plan::text FROM tasks) || (SELECT plan::text FROM task_runs))"
+BEFORE_0187=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d shelfjson_0187 -tAc "$SHELF_0187")
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
+check_in shelfjson_0187 "SELECT content FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000187'" $'Plan\n```plan_json\n{"documents": [{"name": "norm.pdf", "shelf" : "office_shelf"}]}\n```\nim archiv' "0187 rewrites the shelf in a plan fence, keeping its spacing, and not the prose"
+check_in shelfjson_0187 "SELECT metadata::text FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000187'" '{"note": "archiv", "bookshelf": "archiv", "citations": {"sources": [{"kind": "office", "shelf": "office_shelf"}, {"kind": "project", "shelf": "project"}]}, "promptState": {"response": "approve {\"documents\":[{\"shelf\":\"office_shelf\"}]}"}}' "0187 rewrites a citation's shelf and the answered card's reply, and nothing that is not a shelf"
+check_in shelfjson_0187 "SELECT (plan #>> '{documents,basis,0,shelf}') || ',' || (SELECT plan #>> '{documents,excluded,0,shelf}' FROM task_runs) FROM tasks" "office_shelf,office_shelf" "0187 rewrites a task's and a run's documents"
+check_in shelfjson_0187 "SELECT count(*) FROM messages WHERE metadata::text ~ '\"shelf\": \"archiv\"' OR content ~ '\"shelf\" ?: \"archiv\"'" "0" "0187 leaves no archiv shelf behind"
+AFTER_0187=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d shelfjson_0187 -tAc "$SHELF_0187")
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
+check_in shelfjson_0187 "$SHELF_0187" "$AFTER_0187" "0187 re-applied changes nothing"
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.down.sql
+check_in shelfjson_0187 "SELECT (plan #>> '{documents,basis,0,shelf}') FROM tasks" "archiv" "0187 down puts the old value back"
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
+check_in shelfjson_0187 "$SHELF_0187" "$AFTER_0187" "0187 re-applies after its down"
+[ "$BEFORE_0187" != "$AFTER_0187" ] || { echo "MIGRATION ASSERTION FAILED: 0187 changed nothing" >&2; exit 1; }
+echo "==> 0187 office shelf in stored JSON and down migration verified"
+
+# ---------------------------------------------------------------------------
+# 0189: piloti_wakes, piloti_changes and piloti_asks become agent_* (ADR-0145
+# rule 5). An ask written before the rename is kept; each table's constraints
+# and indexes carry the new name; the old name is a view the runtime role
+# reads and writes through, inside its own organization only; a second run
+# changes nothing; the down puts the tables back under their old names.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0189 agent tables and their down migration on agents_0189"
+migrate_before agents_0189 0189_agent_tables
+sql_in agents_0189 <<'SQL'
+INSERT INTO conversations (id, organization_id, created_by) VALUES
+  ('conv_0189_a', 'org_0189_a', 'user_1'),
+  ('conv_0189_b', 'org_0189_b', 'user_2');
+INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES
+  ('a1a1a1a1-0000-4000-8000-000000000189', 'org_0189_a', 'conv_0189_a', 'user_1'),
+  ('b1b1b1b1-0000-4000-8000-000000000189', 'org_0189_b', 'conv_0189_b', 'user_2');
+SQL
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "agent_asks:r,agent_changes:r,agent_wakes:r,piloti_asks:v,piloti_changes:v,piloti_wakes:v" "0189 renames the tables and leaves a view under each old name"
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "2" "0189 keeps the asks"
+check_in agents_0189 "SELECT count(*) FROM pg_constraint WHERE conname ~ '^piloti_(wakes|changes|asks)_'" "0" "0189 leaves no constraint under an old name"
+check_in agents_0189 "SELECT count(*) FROM pg_indexes WHERE indexname ~ '^idx_piloti_(wakes|changes|asks)_'" "0" "0189 leaves no index under an old name"
+check_in agents_0189 "SELECT count(*) FROM pg_indexes WHERE indexname IN ('idx_agent_wakes_document_annotation_created', 'idx_agent_changes_origin', 'idx_agent_asks_conversation')" "3" "0189 renames the indexes by prefix"
+refused_in agents_0189 "INSERT INTO agent_asks (id, organization_id, conversation_id, requested_by, state, ended_at) VALUES (gen_random_uuid(), 'org_0189_a', 'conv_0189_a', 'user_1', 'working', now())" "agent_asks_ended_when_terminal" "a running ask with an end, after the rename"
+check_in agents_0189 "SELECT relrowsecurity FROM pg_class WHERE relname = 'agent_asks'" "t" "0189 keeps row-level security on"
+RW189=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d agents_0189 -qtA -v ON_ERROR_STOP=1 \
+  -c "SET grid.organization_id = 'org_0189_a'" \
+  -c "INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES ('c1c1c1c1-0000-4000-8000-000000000189', 'org_0189_a', 'conv_0189_a', 'user_1')" \
+  -c "SELECT string_agg(id::text, ',' ORDER BY id) FROM piloti_asks")
+if [ "$RW189" != "a1a1a1a1-0000-4000-8000-000000000189,c1c1c1c1-0000-4000-8000-000000000189" ]; then
+  echo "MIGRATION ASSERTION FAILED on agents_0189: through the old name the runtime role saw or wrote outside its organization (got: $RW189)" >&2
+  exit 1
+fi
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "3" "0189: a write through the old name lands in the new table"
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "agent_asks:r,agent_changes:r,agent_wakes:r,piloti_asks:v,piloti_changes:v,piloti_wakes:v" "0189 re-applied changes nothing"
+apply_in agents_0189 0189_agent_tables.down.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "piloti_asks:r,piloti_changes:r,piloti_wakes:r" "0189 down puts the tables back under their old names"
+check_in agents_0189 "SELECT count(*) FROM pg_constraint WHERE conname = 'piloti_asks_state_known'" "1" "0189 down puts the constraints back"
+check_in agents_0189 "SELECT count(*) FROM piloti_asks" "3" "0189 down keeps the asks"
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "3" "0189 re-applies after its down"
+echo "==> 0189 agent tables and down migration verified"
+
+# ---------------------------------------------------------------------------
+# 0190: the database's own functions lose the `grid_` prefix (ADR-0145 rule 5).
+# Every `grid_` function is renamed; no body still calls a `grid_` function;
+# each one that is not a trigger function answers under its old name too, with
+# its grant (secure_table stays closed to the runtime role under both names);
+# the new secure_table secures a table; a second run changes nothing; the down
+# puts the old names back and drops the wrappers. The suites above ran against
+# grid_app migrated through this, so every policy and trigger still works.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0190 function names and their down migration on functions_0190"
+migrate_before functions_0190 0190_brand_free_functions
+OLD_0190="SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname ~ '^grid_' AND coalesce(obj_description(oid, 'pg_proc'), '') NOT LIKE 'Old name, kept for one release by migration 0190%'"
+WRAPPERS_0190="SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND obj_description(oid, 'pg_proc') LIKE 'Old name, kept for one release by migration 0190%'"
+CALLS_OLD_0190="SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname !~ '^grid_' AND prosrc ~ 'grid_[a-z_]+\('"
+SHAPE_0190="SELECT md5(string_agg(proname || '(' || pg_get_function_identity_arguments(oid) || ')' || prosrc || coalesce(proacl::text, ''), '|' ORDER BY proname, pg_get_function_identity_arguments(oid))) FROM pg_proc WHERE pronamespace = 'public'::regnamespace"
+check_in functions_0190 "$OLD_0190" "30" "before 0190 the 30 functions carry the prefix"
+apply_in functions_0190 0190_brand_free_functions.sql
+check_in functions_0190 "$OLD_0190" "0" "0190 leaves no function under a grid_ name but its wrappers"
+check_in functions_0190 "$CALLS_OLD_0190" "0" "0190 leaves no body calling a grid_ function"
+check_in functions_0190 "SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname IN ('secure_table', 'current_org', 'legal_hold_blocks', 'refuse_held_delete', 'uuid_or_null')" "5" "0190 names the functions without the brand"
+check_in functions_0190 "SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname IN ('grid_refuse_held_delete', 'grid_refuse_insert_into_closed_project')" "0" "0190 leaves no wrapper for a trigger function"
+check_in functions_0190 "SELECT has_function_privilege('grid_app_rw', 'secure_table(text, text)', 'EXECUTE')::text || ',' || has_function_privilege('grid_app_rw', 'grid_secure_table(text, text)', 'EXECUTE')::text" "false,false" "secure_table stays closed to the runtime role under both names"
+RW190=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d functions_0190 -qtA -v ON_ERROR_STOP=1 \
+  -c "SET grid.organization_id = 'org_0190'" \
+  -c "SELECT current_org() || ',' || grid_current_org() || ',' || coalesce(uuid_or_null('x')::text, 'null') || ',' || coalesce(grid_uuid_or_null('x')::text, 'null')")
+if [ "$RW190" != "org_0190,org_0190,null,null" ]; then
+  echo "MIGRATION ASSERTION FAILED on functions_0190: the runtime role did not get the same answer under both names (got: $RW190)" >&2
+  exit 1
+fi
+sql_in functions_0190 <<<"CREATE TABLE t_0190 (organization_id text); SELECT secure_table('t_0190', 'organization_id = current_org()');"
+check_in functions_0190 "SELECT relrowsecurity FROM pg_class WHERE relname = 't_0190'" "t" "secure_table secures a table after 0190"
+AFTER_0190=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d functions_0190 -tAc "$SHAPE_0190")
+apply_in functions_0190 0190_brand_free_functions.sql
+check_in functions_0190 "$SHAPE_0190" "$AFTER_0190" "0190 re-applied changes nothing"
+apply_in functions_0190 0190_brand_free_functions.down.sql
+check_in functions_0190 "$OLD_0190" "30" "0190 down puts the 30 grid_ names back"
+check_in functions_0190 "$WRAPPERS_0190" "0" "0190 down drops the wrappers"
+check_in functions_0190 "SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname IN ('secure_table', 'current_org', 'legal_hold_blocks')" "0" "0190 down leaves no brand-free name"
+apply_in functions_0190 0190_brand_free_functions.sql
+check_in functions_0190 "$SHAPE_0190" "$AFTER_0190" "0190 re-applies after its down to the same functions"
+echo "==> 0190 function names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# 0191: the policies lose `grid_`, and nothing the database runs names a role by
+# its old name. On a database migrated to just before it, with a document access
+# log row: the up renames every `grid_` policy (one `tenant_isolation` per secured
+# table, the write guards), a second run changes nothing, and the down puts the
+# old names back. Then the deploy's rename of the roles, after which
+# `secure_table` grants to `app_rw` and the access log's guard still lets the
+# platform role delete, now under its new name. The old names come back at the
+# end, for nothing after this, as for the suites above.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0191 policy names and their down migration on policies_0191"
+migrate_before policies_0191 0191_brand_free_policies
+OLD_POLICIES_0191="SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND left(policyname, 5) = 'grid_'"
+SHAPE_0191="SELECT string_agg(tablename || ':' || policyname, ',' ORDER BY tablename, policyname) FROM pg_policies WHERE schemaname = 'public'"
+BEFORE_0191=$($PSQL -d policies_0191 -tAc "SELECT count(*) FROM pg_policies WHERE schemaname = 'public'")
+apply_in policies_0191 0191_brand_free_policies.sql
+check_in policies_0191 "$OLD_POLICIES_0191" "0" "0191 leaves no policy under a grid_ name"
+check_in policies_0191 "SELECT count(*) FROM pg_policies WHERE schemaname = 'public'" "$BEFORE_0191" "0191 renames policies and adds none"
+check_in policies_0191 "SELECT count(*) FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relrowsecurity AND (SELECT count(*) FROM pg_policies p WHERE p.tablename = c.relname AND p.policyname = 'tenant_isolation') <> 1" "0" "0191: every table under row-level security has exactly one tenant_isolation policy"
+check_in policies_0191 "SELECT count(*) FROM pg_policies WHERE tablename = 'skill_categories' AND policyname LIKE 'tenant_write_guard%'" "3" "0191 renames the restrictive write guards"
+check_in policies_0191 "SELECT count(*) FROM pg_proc WHERE proname IN ('document_access_log_guard', 'document_quarantine_decisions_guard') AND prosrc LIKE '%rls_role(''platform'')%'" "2" "0191 has the delete guards ask rls_role()"
+AFTER_0191=$($PSQL -d policies_0191 -tAc "$SHAPE_0191")
+apply_in policies_0191 0191_brand_free_policies.sql
+check_in policies_0191 "$SHAPE_0191" "$AFTER_0191" "0191 re-applied changes nothing"
+apply_in policies_0191 0191_brand_free_policies.down.sql
+check_in policies_0191 "SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND policyname = 'tenant_isolation'" "0" "0191 down puts the grid_ policy names back"
+check_in policies_0191 "SELECT count(*) FROM pg_proc WHERE proname = 'rls_role'" "0" "0191 down drops rls_role"
+apply_in policies_0191 0191_brand_free_policies.sql
+check_in policies_0191 "$SHAPE_0191" "$AFTER_0191" "0191 re-applies after its down"
+
+echo "==> renaming the roles as the deploy does, then securing a table and deleting a log row as the platform role"
+sql_in policies_0191 <<<"INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name) VALUES ('org_0191', 'user_1', 'download', 'session', gen_random_uuid(), 'a.pdf');"
+rename_rls_roles
+check_in policies_0191 "SELECT rls_role('rw') || ',' || rls_role('platform')" "app_rw,app_platform" "after the rename rls_role() answers the new names"
+sql_in policies_0191 <<<"CREATE TABLE t_0191 (organization_id text); SELECT secure_table('t_0191', 'organization_id = current_org()');"
+check_in policies_0191 "SELECT has_table_privilege('app_rw', 't_0191', 'INSERT')::text || ',' || (SELECT count(*) FROM pg_policies WHERE tablename = 't_0191' AND policyname = 'tenant_isolation')" "true,1" "secure_table grants to app_rw and installs one tenant_isolation after the rename"
+RW191=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U app_rw -d policies_0191 -qtA -v ON_ERROR_STOP=1 \
+  -c "BEGIN" -c "SET LOCAL ROLE app_platform" -c "DELETE FROM document_access_log" -c "SELECT current_user" -c "COMMIT")
+check_in policies_0191 "SELECT count(*) FROM document_access_log" "0" "the platform role deleted the log row under its new name"
+if [ "$RW191" != "app_platform" ]; then
+  echo "MIGRATION ASSERTION FAILED on policies_0191: the platform role under its new name was refused by the access log's guard (got: $RW191)" >&2
+  exit 1
+fi
+restore_rls_role_names
+echo "==> 0191 policy names, the role rename and down migration verified"

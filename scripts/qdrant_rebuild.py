@@ -15,8 +15,8 @@ mean length and, when that is more than 10 % from the live collection's
 parity sweep's result); ``--keep-bm25`` copies the lexical vectors as stored.
 ``scripts/qdrant_chunk_length_stats.py`` shows the measurement without copying.
 
-It reads the environment the backend reads: ``AIQ_QDRANT_URL`` and
-``AIQ_QDRANT_API_KEY``. The full procedure is ``docs/deployment/qdrant-runbook.md``.
+It reads the environment the backend reads: ``QDRANT_URL`` and
+``QDRANT_API_KEY``. The full procedure is ``docs/deployment/qdrant-runbook.md``.
 
 EXIT CODES: ``0`` done (a copy with equal counts); ``1`` the copy's counts
 differ, or the target is refused; ``2`` Qdrant could not be reached.

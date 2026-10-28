@@ -1,0 +1,57 @@
+/**
+ * i18n configuration.
+ *
+ * Grid supports English and German. Locale is a per-user preference — it is
+ * persisted server-side against the WorkOS user (see /api/user/preferences)
+ * and mirrored into a cookie so server components can resolve it without a DB
+ * round-trip. There is deliberately no locale URL segment: this is an
+ * authenticated product, not an SEO surface, so a `/en` / `/de` route prefix
+ * would add churn without benefit.
+ */
+
+export const locales = ['en', 'de'] as const
+
+export type Locale = (typeof locales)[number]
+
+export const defaultLocale: Locale = 'en'
+
+/**
+ * Cookie that mirrors the active locale for SSR. A signed-in request reads the
+ * saved preference first; the cookie stands in when it cannot
+ * (`request-locale.ts`).
+ */
+export const LOCALE_COOKIE = 'locale'
+
+/**
+ * The cookie's name before ADR-0145 rule 5. Read when `locale` is missing and
+ * expired whenever `locale` is written, for one release; then deleted here.
+ */
+export const LEGACY_LOCALE_COOKIE = 'grid-locale'
+
+/** How long the mirror cookie lives: a year, from the server and from the page alike. */
+export const LOCALE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
+
+/** Human-readable, self-referential language names for pickers. */
+export const localeNames: Record<Locale, string> = {
+  en: 'English',
+  de: 'Deutsch',
+}
+
+/** Type guard narrowing an arbitrary string to a supported {@link Locale}. */
+export function isLocale(value: unknown): value is Locale {
+  return typeof value === 'string' && (locales as readonly string[]).includes(value)
+}
+
+/**
+ * Coerce an arbitrary value to a supported locale, falling back to the
+ * default. Accepts full BCP-47 tags (e.g. `de-DE`) by matching the primary
+ * subtag, which lets us derive a locale from an `Accept-Language` header.
+ */
+export function resolveLocale(value: unknown): Locale {
+  if (isLocale(value)) return value
+  if (typeof value === 'string') {
+    const primary = value.split('-')[0]?.toLowerCase()
+    if (isLocale(primary)) return primary
+  }
+  return defaultLocale
+}

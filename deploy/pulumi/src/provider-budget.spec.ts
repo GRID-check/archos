@@ -8,7 +8,7 @@ import { baseStackConfig } from "./test-support/stack-config";
 /**
  * The one OpenRouter key's budget (ADR-0076, ADR-0081), as the stack files state it.
  *
- * Vision calls are held to `AIQ_VLM_FLEET_CONCURRENCY` fleet-wide whatever the
+ * Vision calls are held to `VLM_FLEET_CONCURRENCY` fleet-wide whatever the
  * replica count, so an ingest tier sized past that number only queues: replicas
  * that hold memory and wait for a slot, and a wait that can outlast the client's
  * own timeout. The two numbers are set in different places and neither looks
@@ -40,7 +40,8 @@ async function load(config: Record<string, string> = {}) {
     "grid-oib:observabilityEnabled": "false",
     ...config,
   });
-  return import("./config").then((m) => ({ ...m, cfg: m.loadConfig() }));
+  const [configModule, budget] = await Promise.all([import("./config"), import("./config/vlm-ceiling")]);
+  return { ...budget, cfg: configModule.loadConfig() };
 }
 
 /** A knob as a stack file sets it, or the default the program falls back to. */
@@ -173,10 +174,10 @@ describe("the budget reaches the pods that spend it", () => {
       imagePullSecrets: [],
     };
     const expected = {
-      AIQ_VLM_FLEET_CONCURRENCY: "40",
-      AIQ_VLM_BATCH_WORKERS: "5",
-      GRID_PROVIDER_LIMIT_CEILING: "100",
-      GRID_PROVIDER_MODEL_LIMIT_CEILING: "20",
+      VLM_FLEET_CONCURRENCY: "40",
+      VLM_BATCH_WORKERS: "5",
+      PROVIDER_LIMIT_CEILING: "100",
+      PROVIDER_MODEL_LIMIT_CEILING: "20",
     };
 
     for (const env of [backendEnv(wiring as never), ingestWorkerEnv(wiring as never, "/tmp/alive")]) {
@@ -185,9 +186,9 @@ describe("the budget reaches the pods that spend it", () => {
     }
 
     const sources = [
-      read("sources", "knowledge_layer", "src", "llamaindex", "adapter.py"),
-      read("sources", "knowledge_layer", "src", "llamaindex", "processing.py"),
-      read("src", "aiq_agent", "common", "provider_limiter.py"),
+      read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py"),
+      read("packages", "knowledge-layer", "src", "llamaindex", "processing.py"),
+      read("packages", "agent", "src", "aiq_agent", "common", "provider_limiter.py"),
     ].join("\n");
     for (const name of Object.keys(expected)) expect(sources, name).toContain(`"${name}"`);
   });
@@ -197,16 +198,16 @@ describe("the budget reaches the pods that spend it", () => {
     const python = (path: string[], pattern: RegExp) => Number(read(...path).match(pattern)?.[1]);
 
     expect(cfg.providerLimits.vlmFleetConcurrency).toBe(
-      python(["sources", "knowledge_layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = _env_int\("AIQ_VLM_FLEET_CONCURRENCY", (\d+)\)/),
+      python(["packages", "knowledge-layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = env_int\("VLM_FLEET_CONCURRENCY", (\d+)\)/),
     );
     expect(cfg.providerLimits.vlmBatchWorkers).toBe(
-      python(["sources", "knowledge_layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("AIQ_VLM_BATCH_WORKERS", "(\d+)"\)/),
+      python(["packages", "knowledge-layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("VLM_BATCH_WORKERS", "(\d+)"\)/),
     );
     expect(cfg.providerLimits.limitCeiling).toBe(
-      python(["src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_CEILING = (\d+)$/m),
+      python(["packages", "agent", "src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_CEILING = (\d+)$/m),
     );
     expect(cfg.providerLimits.modelLimitCeiling).toBe(
-      python(["src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_MODEL_CEILING = (\d+)$/m),
+      python(["packages", "agent", "src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_MODEL_CEILING = (\d+)$/m),
     );
   });
 });

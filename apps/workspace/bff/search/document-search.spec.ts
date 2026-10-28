@@ -1,0 +1,419 @@
+/**
+ * @vitest-environment node
+ */
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const repository = vi.hoisted(() => ({
+  searchDocumentPage: vi.fn(),
+  documentFacetCounts: vi.fn(),
+  countUnreadDocuments: vi.fn(),
+  readReferenceSubject: vi.fn(),
+  listCandidateDocuments: vi.fn(),
+}))
+vi.mock('./document-repository', async (importOriginal) => ({
+  contentKey: (await importOriginal<typeof import('./document-repository')>()).contentKey,
+  ...repository,
+}))
+const providers = vi.hoisted(() => ({
+  searchAnnotations: vi.fn(),
+  searchFolders: vi.fn(),
+  searchProjects: vi.fn(),
+  searchConversations: vi.fn(),
+}))
+vi.mock('./providers', () => providers)
+vi.mock('./reach', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./reach')>()),
+  reachFor: vi.fn(),
+}))
+vi.mock('./shelf-projection', () => ({ refreshStaleShelves: vi.fn().mockResolvedValue({ building: ['office_shelf'] }) }))
+vi.mock('@/lib/sharing/directory', () => ({
+  resolvePeople: vi.fn().mockResolvedValue(new Map([['user_1', { userId: 'user_1', name: 'Lena Huber' }]])),
+}))
+vi.mock('@/lib/documents/semantic-search', () => ({
+  BACKEND_SEARCH_MAX_COLLECTIONS: 500,
+  fetchGroupedSemanticHits: vi.fn(),
+}))
+
+import { UpstreamError } from '@/lib/api/errors'
+import type { AuthorizedSession } from '@/lib/auth/types'
+import type { Project } from '@/lib/db/schema/projects'
+import { fetchGroupedSemanticHits } from '@/lib/documents/semantic-search'
+import {
+  contentPrefilter,
+  decodeSearchCursor,
+  documentOrder,
+  encodeSearchCursor,
+  runSearch,
+  runTimedSearch,
+  serverTimingHeader,
+} from './document-search'
+import type { DocumentSearchRow } from './document-repository'
+import { reachFor, type SearchReach } from './reach'
+
+const session = { organizationId: 'org_1', userId: 'user_1' } as AuthorizedSession
+const PROJECT = '11111111-1111-4111-8111-111111111111'
+
+const reach: SearchReach = {
+  organizationId: 'org_1',
+  userId: 'user_1',
+  scope: { kind: 'office' },
+  projects: [
+    {
+      project: { id: PROJECT, name: 'Hubergasse 14', collectionName: 'proj_a' } as Project,
+      hiddenFolderIds: [],
+      collections: ['proj_a'],
+      reviewsQuarantine: false,
+    },
+  ],
+  officeShelf: { collection: 'office_org_1', reviewsQuarantine: false },
+  folderIds: null,
+}
+
+const row = (overrides: Partial<DocumentSearchRow> = {}): DocumentSearchRow => ({
+  id: 'd1',
+  filename: 'bsk.pdf',
+  displayName: 'Brandschutzkonzept',
+  scope: 'project',
+  projectId: PROJECT,
+  projectName: 'Hubergasse 14',
+  folderId: null,
+  folderName: null,
+  folderPath: '',
+  collectionName: 'proj_a',
+  status: 'completed',
+  contentType: 'application/pdf',
+  createdAt: new Date('2026-10-20T08:00:00Z'),
+  createdBy: 'user_1',
+  authoredBy: 'user',
+  documentType: 'fire_safety_concept',
+  title: 'Brandschutzkonzept',
+  planNumber: null,
+  planIndex: null,
+  planDate: null,
+  scale: null,
+  documentDate: '2025-02-01',
+  pageCount: 24,
+  pagesNotRead: 0,
+  superseded: false,
+  changedFacts: [],
+  municipality: 'Wien',
+  author: null,
+  matchedName: false,
+  matchedReading: true,
+  ...overrides,
+})
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(reachFor).mockResolvedValue(reach)
+  repository.searchDocumentPage.mockResolvedValue({ rows: [row()], total: 1 })
+  repository.documentFacetCounts.mockResolvedValue({
+    documentType: [{ value: 'fire_safety_concept', count: 1 }],
+    project: [{ value: PROJECT, count: 1 }],
+    status: [{ value: 'completed', count: 1 }, { value: 'failed', count: 2 }, { value: 'COMPLETED', count: 1 }],
+    cites: [{ value: 'norm:önorm b 1600', count: 1 }],
+  })
+  repository.countUnreadDocuments.mockResolvedValue(4)
+  for (const provider of Object.values(providers)) provider.mockResolvedValue({ hits: [], total: 0 })
+})
+
+describe('runSearch', () => {
+  it('narrows annotations through their document and sets aside the kinds a document filter cannot narrow', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.listCandidateDocuments.mockResolvedValue([{ id: 'd1', filename: 'bsk.pdf' }])
+    const filters = { documentTypes: ['submission_drawing' as const], planNumber: 'EP-0' }
+
+    const answer = await runSearch(session, {}, { text: 'Brandschutz', filters })
+
+    expect(answer.setAside).toEqual({ folder: 'document_filters', project: 'document_filters', conversation: 'document_filters' })
+    expect(Object.keys(answer.sections).sort()).toEqual(['annotation', 'document'])
+    expect(providers.searchFolders).not.toHaveBeenCalled()
+    expect(providers.searchProjects).not.toHaveBeenCalled()
+    expect(providers.searchConversations).not.toHaveBeenCalled()
+    // The annotations are asked the documents' own question: one rule.
+    expect(providers.searchAnnotations.mock.calls[0][3]).toEqual({ filters, citedBy: null, citing: null })
+    expect(repository.searchDocumentPage.mock.calls[0][1].filters).toEqual(filters)
+  })
+
+  it('sets aside the documents and the other kinds while an annotation filter is set, and drops their facets', async () => {
+    const answer = await runSearch(session, {}, { text: 'Tür', annotationFilters: { assignedToMe: true } })
+
+    expect(answer.setAside).toEqual({
+      document: 'annotation_filters',
+      folder: 'annotation_filters',
+      project: 'annotation_filters',
+      conversation: 'annotation_filters',
+    })
+    expect(Object.keys(answer.sections)).toEqual(['annotation'])
+    expect(answer.facets).toBeNull()
+    expect(repository.searchDocumentPage).not.toHaveBeenCalled()
+  })
+
+  it('sets nothing aside for a project filter, which narrows every kind, nor names a kind it would not have searched', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.listCandidateDocuments.mockResolvedValue([{ id: 'd1', filename: 'bsk.pdf' }])
+    expect((await runSearch(session, {}, { text: 'Brandschutz', filters: { projectIds: [PROJECT], includeArchived: true } })).setAside).toEqual({})
+    expect(providers.searchFolders).toHaveBeenCalled()
+    // Without words no folder is searched anyway: nothing to set aside.
+    expect((await runSearch(session, {}, { filters: { currentOnly: true } })).setAside).toEqual({})
+  })
+
+  it('finds no annotation when a reference filter names a document out of reach', async () => {
+    repository.readReferenceSubject.mockResolvedValue(null)
+    const answer = await runSearch(session, {}, { text: 'Tür', kinds: ['annotation'], filters: { citedBy: '22222222-2222-4222-8222-222222222222' } })
+    expect(providers.searchAnnotations).not.toHaveBeenCalled()
+    expect(answer.sections.annotation).toEqual({ hits: [], total: 0, totalIsLowerBound: false, nextCursor: null })
+  })
+
+  it('joins content passages to the rows by collection and file name, and says what matched', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
+      { file_name: 'bsk.pdf', collection: 'proj_a', snippet: 'Fluchtweglänge max. 40 m', page_number: 7, score: 0.8, rank: 0 },
+    ])
+
+    const answer = await runSearch(session, {}, { text: 'Fluchtweg', kinds: ['document'] })
+
+    expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400, { purpose: 'workspace_search' })
+    expect(repository.listCandidateDocuments).not.toHaveBeenCalled()
+    const query = repository.searchDocumentPage.mock.calls[0][1]
+    expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u001fbsk.pdf'], contentIds: [''] })
+    expect(repository.searchDocumentPage.mock.calls[0][2]).toEqual({ sort: 'relevance', dir: 'desc', limit: 25, offset: 0 })
+    const [hit] = answer.sections.document?.hits ?? []
+    expect(hit.passage).toEqual({ text: 'Fluchtweglänge max. 40 m', page: 7 })
+    expect(hit.matchedOn).toEqual(['reading', 'content'])
+    expect(hit.uploadedBy).toBe('Lena Huber')
+    expect(answer.building).toEqual(['office_shelf'])
+  })
+
+  it('hands each hit its folder path from the shelf root, the root as an empty path', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.searchDocumentPage.mockResolvedValue({
+      rows: [row({ folderId: 'f2', folderName: 'Grundrisse', folderPath: '03 Einreichung/Grundrisse' }), row({ id: 'd2' })],
+      total: 2,
+    })
+
+    const answer = await runSearch(session, {}, { kinds: ['document'] })
+
+    expect(answer.sections.document?.hits.map((hit) => [hit.folderName, hit.folderPath])).toEqual([
+      ['Grundrisse', '03 Einreichung/Grundrisse'],
+      [null, ''],
+    ])
+  })
+
+  it('says a passage matched by meaning alone when the content search found none of the words in it', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
+      { file_name: 'bsk.pdf', collection: 'proj_a', snippet: 'Reisekostenabrechnung', page_number: 1, score: 0.4, rank: 0, lexical: false },
+    ])
+    repository.searchDocumentPage.mockResolvedValue({ rows: [row({ matchedReading: false })], total: 1 })
+
+    const answer = await runSearch(session, {}, { text: 'Rechnung', kinds: ['document'] })
+
+    expect(answer.sections.document?.hits[0].matchedOn).toEqual(['meaning'])
+  })
+
+  it('joins a hit that names its document by id, whatever the file is called now', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
+      { file_name: 'old-name.pdf', collection: 'proj_a', snippet: 'Auflage 3', page_number: 2, score: 0.7, rank: 0, grid_document_id: 'd1' },
+    ])
+
+    const answer = await runSearch(session, {}, { text: 'Auflage', kinds: ['document'] })
+
+    expect(repository.searchDocumentPage.mock.calls[0][1].text.contentIds).toEqual(['d1'])
+    expect(answer.sections.document?.hits[0].passage).toEqual({ text: 'Auflage 3', page: 2 })
+  })
+
+  it('never hands a passage to another document, nor a person\'s passage to a machine-written row of the same name', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
+      { file_name: 'bsk.pdf', collection: 'proj_a', snippet: 'of R', page_number: 3, score: 0.9, rank: 0, grid_document_id: 'other' },
+      { file_name: 'bericht.pdf', collection: 'proj_a', snippet: 'of a person', page_number: 1, score: 0.8, rank: 1 },
+    ])
+    repository.searchDocumentPage.mockResolvedValue({
+      rows: [row(), row({ id: 'm1', filename: 'bericht.pdf', authoredBy: 'agent' })],
+      total: 2,
+    })
+
+    const answer = await runSearch(session, {}, { text: 'Bericht', kinds: ['document'] })
+
+    expect(answer.sections.document?.hits.map((hit) => hit.passage)).toEqual([null, null])
+    expect(repository.searchDocumentPage.mock.calls[0][1].text).toMatchObject({
+      contentKeys: ['', 'proj_a\u001fbericht.pdf'],
+      contentIds: ['other', ''],
+    })
+  })
+
+  it('cuts every kind to the projects a projectIds filter names, and leaves the office shelf out', async () => {
+    const other = { ...reach.projects[0], project: { ...reach.projects[0].project, id: 'p-other' } }
+    vi.mocked(reachFor).mockResolvedValue({ ...reach, projects: [...reach.projects, other] })
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.listCandidateDocuments.mockResolvedValue([{ id: 'd1', filename: 'bsk.pdf' }])
+
+    await runSearch(session, {}, { text: 'Einreichung', filters: { projectIds: [PROJECT] } })
+
+    const narrowed = providers.searchFolders.mock.calls[0][0] as SearchReach
+    expect(narrowed.projects.map((reached) => reached.project.id)).toEqual([PROJECT])
+    expect(narrowed.officeShelf).toBeNull()
+    expect(narrowed.narrowedToProjects).toBe(true)
+    expect((repository.searchDocumentPage.mock.calls[0][0] as SearchReach).officeShelf).toBeNull()
+  })
+
+  it('still answers from names and the reading when the content search is down, and says the total may be more', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockRejectedValue(new UpstreamError('down'))
+
+    const answer = await runSearch(session, {}, { text: 'Fluchtweg', kinds: ['document'] })
+
+    expect(answer.sections.document?.total).toBe(1)
+    expect(answer.sections.document?.totalIsLowerBound).toBe(true)
+    expect(answer.contentPartial).toBe(true)
+  })
+
+  it('labels facets: project names, reference spellings, statuses folded into their families', async () => {
+    const answer = await runSearch(session, {}, { kinds: ['document'] })
+
+    expect(answer.facets?.project).toEqual([{ value: PROJECT, label: 'Hubergasse 14', count: 1 }])
+    expect(answer.facets?.cites).toEqual([{ value: 'norm:önorm b 1600', label: 'önorm b 1600', count: 1 }])
+    expect(answer.facets?.state).toEqual([
+      { value: 'readable', label: null, count: 2 },
+      { value: 'failed', label: null, count: 2 },
+    ])
+  })
+
+  it('says how many documents in scope are not read yet with the facets, and counts none without them', async () => {
+    const counted = await runSearch(session, {}, { kinds: ['document'], filters: { includeArchived: true } })
+    expect(counted.unread).toBe(4)
+    expect(repository.countUnreadDocuments).toHaveBeenCalledWith(reach, true)
+
+    repository.countUnreadDocuments.mockClear()
+    const palette = await runSearch(session, {}, { kinds: ['document'], facets: false })
+    expect(palette.unread).toBeNull()
+    expect(repository.countUnreadDocuments).not.toHaveBeenCalled()
+  })
+
+  it('hands a hit what its Fassung changed against the one it replaced', async () => {
+    const changedFacts = [{ key: 'building_class', before: '3', after: '4', page: 2 }]
+    repository.searchDocumentPage.mockResolvedValue({ rows: [row({ changedFacts })], total: 1 })
+    const answer = await runSearch(session, {}, { kinds: ['document'], filters: { factsChanged: true } })
+    expect(answer.sections.document?.hits[0].changedFacts).toEqual(changedFacts)
+  })
+
+  it('answers no documents when a citedBy document is out of reach, without running the query', async () => {
+    repository.readReferenceSubject.mockResolvedValue(null)
+    const answer = await runSearch(session, {}, { kinds: ['document'], filters: { citedBy: '22222222-2222-4222-8222-222222222222' } })
+    expect(answer.sections.document?.hits).toEqual([])
+    expect(repository.searchDocumentPage).not.toHaveBeenCalled()
+  })
+
+  it('turns a citedBy document into the drawing numbers and types it references', async () => {
+    repository.readReferenceSubject.mockResolvedValue({
+      planNumberKey: null,
+      documentType: 'permit',
+      referenceTokens: ['plan:ep-05', 'norm:önorm b 1600', 'document:fire_safety_concept'],
+    })
+    await runSearch(session, {}, { kinds: ['document'], filters: { citedBy: '22222222-2222-4222-8222-222222222222' } })
+    expect(repository.searchDocumentPage.mock.calls[0][1].citedBy).toEqual({ planKeys: ['ep05'], documentTypes: ['fire_safety_concept'] })
+  })
+
+  it('asks the other kinds only for words, shows a preview of each beside the documents, and pages one kind alone', async () => {
+    providers.searchFolders.mockResolvedValue({ hits: [{ kind: 'folder', id: 'f1' }], total: 12 })
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+
+    const all = await runSearch(session, {}, { text: 'Einreichung' })
+    expect(providers.searchFolders).toHaveBeenCalledWith(reach, 'Einreichung', { limit: 5, offset: 0 })
+    expect(all.sections.folder?.nextCursor).toBe(encodeSearchCursor('folder', 1))
+
+    await runSearch(session, {}, { text: 'Einreichung', kinds: ['folder'], cursor: encodeSearchCursor('folder', 5) })
+    expect(providers.searchFolders).toHaveBeenLastCalledWith(reach, 'Einreichung', { limit: 25, offset: 5 })
+
+    await runSearch(session, {}, { kinds: ['folder'] })
+    expect(providers.searchFolders).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows no more of another kind than was asked: the palette asks three of each', async () => {
+    providers.searchFolders.mockResolvedValue({ hits: [{ kind: 'folder', id: 'f1' }], total: 12 })
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    await runSearch(session, {}, { text: 'Einreichung', limit: 3, facets: false })
+    expect(providers.searchFolders).toHaveBeenLastCalledWith(reach, 'Einreichung', { limit: 3, offset: 0 })
+  })
+
+  it('refuses a cursor with several kinds, or one written for another kind', async () => {
+    await expect(runSearch(session, {}, { text: 'x', cursor: encodeSearchCursor('folder', 5) })).rejects.toThrow('cursor')
+    expect(() => decodeSearchCursor(encodeSearchCursor('folder', 5), 'document')).toThrow('cursor')
+    expect(() => decodeSearchCursor('nonsense', 'document')).toThrow('cursor')
+  })
+})
+
+describe('runTimedSearch', () => {
+  it('splits the time into the wait on the content search and the rest', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      return []
+    })
+
+    const { response, timing } = await runTimedSearch(session, {}, { text: 'Fluchtweg', kinds: ['document'] })
+
+    expect(response.sections.document?.total).toBe(1)
+    expect(timing.contentMs).toBeGreaterThanOrEqual(25)
+    expect(timing.totalMs).toBeGreaterThanOrEqual(timing.contentMs)
+    expect(timing.sqlMs).toBeCloseTo(timing.totalMs - timing.contentMs, 5)
+  })
+
+  it('spends nothing on content without text', async () => {
+    const { timing } = await runTimedSearch(session, {}, { kinds: ['document'] })
+    expect(fetchGroupedSemanticHits).not.toHaveBeenCalled()
+    expect(timing.contentMs).toBe(0)
+  })
+
+  it('writes the split as a Server-Timing header', () => {
+    expect(serverTimingHeader({ sqlMs: 12.345, contentMs: 80.06, totalMs: 92.4 })).toBe('sql;dur=12.3, content;dur=80.1, total;dur=92.4')
+  })
+})
+
+describe('documentOrder', () => {
+  it('ranks by relevance with text, newest first without, and reads names and numbers ascending', () => {
+    expect(documentOrder({ text: 'x' })).toEqual({ sort: 'relevance', dir: 'desc' })
+    expect(documentOrder({})).toEqual({ sort: 'added', dir: 'desc' })
+    expect(documentOrder({ sort: 'relevance' })).toEqual({ sort: 'added', dir: 'desc' })
+    expect(documentOrder({ sort: 'plan_number' })).toEqual({ sort: 'plan_number', dir: 'asc' })
+    expect(documentOrder({ sort: 'plan_date', dir: 'asc' })).toEqual({ sort: 'plan_date', dir: 'asc' })
+  })
+})
+
+describe('contentPrefilter', () => {
+  const base = { text: null, citedBy: null, citing: null }
+
+  it('narrows the content search to the filtered documents when they are few', async () => {
+    repository.listCandidateDocuments.mockResolvedValue([
+      { id: 'd1', filename: null },
+      { id: 'd2', filename: null },
+    ])
+    expect(await contentPrefilter(reach, { ...base, filters: { documentTypes: ['permit'] } })).toEqual({
+      filters: { document_ids: ['d1', 'd2'] },
+    })
+  })
+
+  it('names the uploads by file name too, for their passages that carry no document id', async () => {
+    // A currentOnly search lost „Screenshot … .png“: its passages, copied from Chroma, carry no grid_document_id.
+    repository.listCandidateDocuments.mockResolvedValue([
+      { id: 'd1', filename: 'Screenshot 2026-08-28 175733.png' },
+      { id: 'd2', filename: 'sample.pdf' },
+      { id: 'd3', filename: 'sample.pdf' },
+      { id: 'd4', filename: null },
+    ])
+    expect(await contentPrefilter(reach, { ...base, filters: { currentOnly: true } })).toEqual({
+      filters: { document_ids: ['d1', 'd2', 'd3', 'd4'], file_names: ['Screenshot 2026-08-28 175733.png', 'sample.pdf'] },
+    })
+  })
+
+  it('narrows by the payload when the filtered documents are too many to name, and skips a search none can match', async () => {
+    repository.listCandidateDocuments.mockResolvedValue(Array.from({ length: 1001 }, (_, i) => ({ id: `d${i}`, filename: null })))
+    expect(
+      await contentPrefilter(reach, { ...base, filters: { documentTypes: ['permit'], cites: ['ÖNORM B 1600'], currentOnly: true } })
+    ).toEqual({ filters: { reading_types: ['permit'], refers_to: ['ÖNORM B 1600'] } })
+
+    repository.listCandidateDocuments.mockResolvedValue([])
+    expect(await contentPrefilter(reach, { ...base, filters: { planNumber: 'XX-99' } })).toBeNull()
+  })
+
+  it('does not narrow a search without filters', async () => {
+    expect(await contentPrefilter(reach, { ...base, filters: { includeArchived: true } })).toEqual({ filters: undefined })
+    expect(repository.listCandidateDocuments).not.toHaveBeenCalled()
+  })
+})

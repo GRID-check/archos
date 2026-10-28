@@ -12,13 +12,13 @@ from unittest.mock import MagicMock
 
 import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
-from knowledge_layer.register import _coverage_gap
 from knowledge_layer.register import knowledge_retrieval
 from knowledge_layer.requery import SUFFICIENT
 from knowledge_layer.requery import SufficiencyVerdict
 from knowledge_layer.requery import _parse_verdict
 from knowledge_layer.requery import judge_sufficiency
 from knowledge_layer.requery import requery_notice
+from knowledge_layer.search_results import coverage_gap
 
 from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
 
@@ -182,10 +182,10 @@ def loop_harness(monkeypatch):
     def install(retriever, judge):
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("knowledge_layer.register._format_results", _grounding)
+        monkeypatch.setattr("knowledge_layer.search_results.format_results", _grounding)
         monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
         monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
         async def _resolve(_builder, name):
@@ -353,7 +353,7 @@ class TestLaneToolScope:
 
     It rides this harness because this is where a real ``search()`` is driven
     against a fake store. What it pins is placement, not plumbing: the scope
-    has to be open when ``_format_results`` runs, and that render happens in
+    has to be open when ``format_results`` runs, and that render happens in
     ``asyncio.to_thread``, which copies the context AT CALL TIME. A scope
     entered inside the thread, or after the await, is a copy nobody reads back
     and every hit of every search would reach the ledger unstamped — where it
@@ -371,7 +371,7 @@ class TestLaneToolScope:
 
         retriever = _FakeRetriever({"Fluchtweg GK4": [_chunk("a", "a")]})
         loop_harness(retriever, None)
-        monkeypatch.setattr("knowledge_layer.register._format_results", _spy)
+        monkeypatch.setattr("knowledge_layer.search_results.format_results", _spy)
 
         await _search(_config())
 
@@ -486,7 +486,7 @@ class TestTheCoverageSignal:
 
 
 class TestTheCoverageGate:
-    """``_coverage_gap`` asks only where the judge ran, said no, and the pool is whole."""
+    """``coverage_gap`` asks only where the judge ran, said no, and the pool is whole."""
 
     CONFIG = SimpleNamespace(requery_decider="jev", decision_sufficiency_threshold=0.55)
 
@@ -505,18 +505,18 @@ class TestTheCoverageGate:
             raise AssertionError("coverage asked")
 
         monkeypatch.setattr("knowledge_layer.requery.judge_coverage", _never)
-        assert await _coverage_gap("q", pool, verdict, self.CONFIG, widened=False) is None
+        assert await coverage_gap("q", pool, verdict, self.CONFIG, widened=False) is None
 
     def test_the_real_renderer_states_the_gap_and_stops_calling_the_hits_relevant(self):
-        from knowledge_layer.register import _format_results
+        from knowledge_layer.search_results import format_results
 
         result = SimpleNamespace(success=True, error_message=None, chunks=[_chunk("nah", "a")])
-        rendered = _format_results(result, "q", coverage_gap="kein Beleg")
+        rendered = format_results(result, "q", coverage_gap="kein Beleg")
         assert rendered.startswith(
             "Found 1 document(s); none of the judged ones answers the question:\n"
-            "Abdeckung: unzureichend — kein Beleg\n\n"
+            "Coverage: insufficient — kein Beleg. No passage here states what was asked"
         )
-        assert _format_results(result, "q").startswith("Found 1 relevant document(s):\n\n--- Result 1 ---")
+        assert format_results(result, "q").startswith("Found 1 relevant document(s):\n\n--- Result 1 ---")
 
 
 class TestTheSearchRetrieverHandle:

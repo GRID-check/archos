@@ -1,0 +1,551 @@
+/**
+ * @vitest-environment node
+ */
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+
+const createEvent = vi.fn()
+const generateLink = vi.fn()
+
+vi.mock('@/lib/workos/client', () => ({
+  getWorkOS: () => ({
+    auditLogs: { createEvent },
+    adminPortal: { generateLink },
+  }),
+}))
+
+const folderVisible = vi.fn<(organizationId: string, projectId: string, folderId: string | null, clearance: unknown) => Promise<boolean>>()
+const ANY_MEMBER_CLEARANCE = { levels: {}, seesEverything: false }
+vi.mock('@/lib/authz/folder-access', () => ({
+  ANY_MEMBER: ANY_MEMBER_CLEARANCE,
+  isFolderVisibleToClearance: folderVisible,
+}))
+
+import {
+  AuditEmitError,
+  DOCUMENT_NAME_ACTIONS,
+  DOCUMENT_NAME_KEYS,
+  UNRESTRICTED_NAME_ACTIONS,
+  auditLogsEnabled,
+  generateAuditPortalLink,
+  recordAuditEvent,
+  recordAuditEventOrThrow,
+  trustedAppOrigin,
+  type AuditAction,
+} from './service'
+import { AUDIT_SCHEMAS } from './schemas.mjs'
+
+/** The parts of the WorkOS event this file asserts on. */
+interface EmittedEvent {
+  action: string
+  actor: { type: string; id: string; name?: string; metadata: Record<string, unknown> }
+  targets: { type: string; id: string }[]
+  context: { location: string; userAgent?: string }
+  metadata: Record<string, string | number | boolean>
+  occurredAt: Date
+}
+
+/**
+ * The one place the untyped mock is given a shape. `vi.fn()` records its calls
+ * as `any[]`, so reading `.mock.calls` inline would spread that `any` through
+ * every assertion below; naming the boundary once keeps the rest typed.
+ */
+const lastEvent = (): EmittedEvent => createEvent.mock.calls[0][1] as unknown as EmittedEvent
+
+
+describe('recordAuditEvent (WorkOS-native audit trail)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createEvent.mockResolvedValue(undefined)
+    // The emission gate defaults OFF; these tests exercise the emit path.
+    process.env.AUDIT_LOGS_ENABLED = 'true'
+  })
+
+  it('emits an org-scoped WorkOS audit event with actor, target and context', async () => {
+    const request = new Request('https://grid.example/api/organization/budgets', {
+      headers: { 'x-forwarded-for': '203.0.113.7, 10.0.0.1', 'user-agent': 'vitest' },
+    })
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1', email: 'admin@acme.at' },
+      action: 'budget.policy.set',
+      targetType: 'budget_policy',
+      targetId: 'policy_1',
+      metadata: { scope: 'organization', subjectId: null, unit: 'credit', dailyLimit: 1000 },
+      request,
+    })
+
+    expect(createEvent).toHaveBeenCalledTimes(1)
+    const [orgId, event] = createEvent.mock.calls[0]
+    expect(orgId).toBe('org_1')
+    expect(event.action).toBe('budget.policy.set')
+    expect(event.actor).toEqual({ type: 'user', id: 'user_1', name: 'admin@acme.at', metadata: {} })
+    expect(event.targets).toEqual([{ type: 'budget_policy', id: 'policy_1' }])
+    // First x-forwarded-for hop is the client.
+    expect(event.context).toEqual({ location: '203.0.113.7', userAgent: 'vitest' })
+    // Nulls are stripped — WorkOS metadata allows flat primitives only.
+    expect(event.metadata).toEqual({ scope: 'organization', unit: 'credit', dailyLimit: 1000 })
+    expect(event.occurredAt).toBeInstanceOf(Date)
+  })
+
+  it('falls back to the org id as target and "unknown" location without a request', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1' },
+      action: 'org.settings.updated',
+      targetType: 'organization',
+    })
+    const [, event] = createEvent.mock.calls[0]
+    expect(event.targets).toEqual([{ type: 'organization', id: 'org_1' }])
+    expect(event.context.location).toBe('unknown')
+    expect(event.metadata).toEqual({})
+  })
+
+  // An event an outbox sends again (the quarantine decisions, ADR-0086) must
+  // be the SAME event: its own key, and the decision's time rather than now.
+  it('passes a fixed occurredAt and the idempotency key through, and mints neither when absent', async () => {
+    const decidedAt = new Date('2026-10-01T08:00:00Z')
+    await recordAuditEventOrThrow({
+      organizationId: 'org_1',
+      actor: { userId: 'system:upload_screening' },
+      action: 'document.quarantined',
+      targetType: 'document',
+      targetId: 'doc_1',
+      filedIn: null,
+      occurredAt: decidedAt,
+      idempotencyKey: 'document.quarantined:decision_1',
+    })
+    const [, event, options] = createEvent.mock.calls[0]
+    expect(event.occurredAt).toEqual(decidedAt)
+    expect(options).toEqual({ idempotencyKey: 'document.quarantined:decision_1' })
+
+    await recordAuditEvent({ organizationId: 'org_1', actor: { userId: 'u' }, action: 'org.settings.updated', targetType: 'organization' })
+    expect(createEvent.mock.calls[1][2]).toBeUndefined()
+  })
+
+  // Issues #274/#277. WorkOS derives the validator from the registered schema
+  // and marks BOTH `metadata` and `actor.metadata` required for every action
+  // that registers a metadata map — so an omitted key is a 400, not a smaller
+  // event, and the emitter swallows that 400 by design. Both keys must
+  // therefore be present on every emit, whatever the caller passed.
+  it.each([
+    ['no metadata at all', undefined],
+    ['metadata that is entirely null', { subject: null, role: undefined }],
+  ])('always sends actor.metadata and metadata — %s', async (_case, metadata) => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1' },
+      action: 'resource.shared',
+      targetType: 'conversation',
+      targetId: 'conv_1',
+      metadata: metadata as Record<string, string | number | boolean | null | undefined> | undefined,
+    })
+    const [, event] = createEvent.mock.calls[0]
+    expect(event.actor.metadata).toEqual({})
+    expect(event.metadata).toEqual({})
+  })
+
+  it('never throws — a WorkOS failure is logged, not propagated', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    createEvent.mockRejectedValue(new Error('422 unknown action'))
+    await expect(
+      recordAuditEvent({
+        organizationId: 'org_1',
+        actor: { userId: 'user_1' },
+        action: 'org.created',
+        targetType: 'organization',
+      }),
+    ).resolves.toBeUndefined()
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  // Deployment gate (AUDIT_LOGS_ENABLED, default OFF): a suppressed emit
+  // must reach neither the WorkOS client nor the error log.
+  describe('emission gate', () => {
+    it.each([
+      ['unset', undefined],
+      ['empty', ''],
+      ['false', 'false'],
+      ['truthy junk', 'yes'],
+    ])('suppresses emission when AUDIT_LOGS_ENABLED is %s', async (_case, value) => {
+      if (value === undefined) delete process.env.AUDIT_LOGS_ENABLED
+      else process.env.AUDIT_LOGS_ENABLED = value
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await recordAuditEvent({
+        organizationId: 'org_1',
+        actor: { userId: 'user_1' },
+        action: 'org.created',
+        targetType: 'organization',
+      })
+
+      expect(createEvent).not.toHaveBeenCalled()
+      expect(consoleError).not.toHaveBeenCalled()
+      consoleError.mockRestore()
+    })
+
+    it('accepts true case- and whitespace-insensitively', () => {
+      for (const value of ['true', 'TRUE', ' true ']) {
+        process.env.AUDIT_LOGS_ENABLED = value
+        expect(auditLogsEnabled()).toBe(true)
+      }
+    })
+  })
+})
+
+describe('agent-authored events', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createEvent.mockResolvedValue(undefined)
+  })
+
+  // The enterprise question is "who authorized the creation of this
+  // AI-generated document", so the actor slot has to keep answering it. The
+  // run is the second fact, not a replacement for the first.
+  it('keeps the authorizing human as the actor and names the run as a second target', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: {
+        type: 'agent',
+        userId: 'user_1',
+        email: 'architect@acme.at',
+        ref: { kind: 'agent_run', id: 'run_7' },
+      },
+      action: 'document.generated',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+      metadata: { projectId: 'proj_1', filename: 'Bericht.docx', fileSize: 4096 },
+    })
+
+    const event = lastEvent()
+    expect(event.actor).toEqual({ type: 'user', id: 'user_1', name: 'architect@acme.at', metadata: {} })
+    expect(event.targets).toEqual([
+      { type: 'document', id: 'doc_9' },
+      { type: 'agent_run', id: 'run_7' },
+    ])
+  })
+
+  // The target TYPE is the reference's kind, not a constant. A diagram's
+  // reference is `{chat answer}-{hash of its source}` and was emitted as
+  // `agent_run` until migration 0066, so an auditor filtering the export for
+  // that run found a job that does not exist — and got the same empty answer a
+  // real but unvisited run gives, which is why nobody noticed.
+  it('names the second target for what the reference actually is', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: {
+        type: 'agent',
+        userId: 'user_1',
+        ref: { kind: 'answer_artifact', id: 'msg_42-1a2b3c4d' },
+      },
+      action: 'document.generated',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+    })
+    expect(lastEvent().targets).toEqual([
+      { type: 'document', id: 'doc_9' },
+      { type: 'answer_artifact', id: 'msg_42-1a2b3c4d' },
+    ])
+  })
+
+  it('adds no run target when the author is human — the default is unchanged', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1' },
+      action: 'document.uploaded',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+      metadata: { projectId: 'proj_1', filename: 'plan.pdf', fileSize: 12 },
+    })
+    expect(lastEvent().targets).toEqual([{ type: 'document', id: 'doc_9' }])
+  })
+
+  // A target type the action does not register is rejected exactly like an
+  // unregistered action (issues #255/#256) — and this emit path is the one that
+  // must not fail, so the two files are checked against each other here.
+  it('emits only target types the action registers a schema for', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { type: 'agent', userId: 'user_1', ref: { kind: 'agent_run', id: 'run_7' } },
+      action: 'document.generated',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+    })
+    const registered = AUDIT_SCHEMAS['document.generated'].targets.map((target) => target.type)
+    for (const target of lastEvent().targets) expect(registered).toContain(target.type)
+  })
+})
+
+// An act of Piloti's is about a mark, the document it is on, the project and
+// the turn's conversation: each a target, so the viewer filters by each.
+describe('further targets', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createEvent.mockResolvedValue(undefined)
+    process.env.AUDIT_LOGS_ENABLED = 'true'
+  })
+
+  it('follow the subject in order, and one without an id is left out', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1', email: 'anna@acme.at' },
+      action: 'piloti.change.applied',
+      targetType: 'document_annotation',
+      targetId: 'mark_1',
+      alsoTargets: [
+        { type: 'document', id: 'doc_1' },
+        { type: 'project', id: null },
+        { type: 'conversation', id: 'conv_1' },
+      ],
+      metadata: { op: 'update', markNumber: 4, messageId: null },
+    })
+
+    expect(lastEvent().targets).toEqual([
+      { type: 'document_annotation', id: 'mark_1' },
+      { type: 'document', id: 'doc_1' },
+      { type: 'conversation', id: 'conv_1' },
+    ])
+    expect(lastEvent().actor).toEqual({ type: 'user', id: 'user_1', name: 'anna@acme.at', metadata: {} })
+    expect(lastEvent().metadata).toEqual({ op: 'update', markNumber: 4 })
+  })
+
+  it('come before what produced an agent-authored event', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { type: 'agent', userId: 'user_1', ref: { kind: 'agent_run', id: 'run_7' } },
+      action: 'document.generated',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+      alsoTargets: [{ type: 'document', id: 'doc_8' }],
+    })
+    expect(lastEvent().targets).toEqual([
+      { type: 'document', id: 'doc_9' },
+      { type: 'document', id: 'doc_8' },
+      { type: 'agent_run', id: 'run_7' },
+    ])
+  })
+})
+
+describe('recordAuditEventOrThrow (the events whose absence is the failure)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createEvent.mockResolvedValue(undefined)
+  })
+
+  it('emits the same event as the swallowing path', async () => {
+    await recordAuditEventOrThrow({
+      organizationId: 'org_1',
+      actor: { type: 'agent', userId: 'user_1', ref: { kind: 'agent_run', id: 'run_7' } },
+      action: 'document.generated',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+    })
+    expect(createEvent).toHaveBeenCalledTimes(1)
+    expect(lastEvent().targets).toContainEqual({ type: 'agent_run', id: 'run_7' })
+  })
+
+  // The whole point of the opt-in: a record that silently does not exist is
+  // worse than none, because its absence is indistinguishable from the document
+  // never having been generated. The caller is expected to fail the write.
+  it('throws AuditEmitError, carrying the WorkOS failure as the cause', async () => {
+    const rejection = new Error('422 unknown action')
+    createEvent.mockRejectedValue(rejection)
+
+    const thrown = await recordAuditEventOrThrow({
+      organizationId: 'org_1',
+      actor: { type: 'agent', userId: 'user_1', ref: { kind: 'agent_run', id: 'run_7' } },
+      action: 'document.generated',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+    }).then(
+      () => null,
+      (error: unknown) => error,
+    )
+
+    expect(thrown).toBeInstanceOf(AuditEmitError)
+    const failure = thrown as AuditEmitError
+    expect(failure.action).toBe('document.generated')
+    expect(failure.organizationId).toBe('org_1')
+    expect(failure.cause).toBe(rejection)
+  })
+})
+
+// Gap 10 of the upload-governance audit: the WorkOS audit portal opens with
+// `org:audit:view`, which roles that are not organization admins hold, so the
+// name of a document under a folder not every member may read stays out.
+describe('a restricted document is not named in the trail (ADR-0087)', () => {
+  /** The registry as the metadata maps these checks read. */
+  const SCHEMAS: Readonly<
+    Record<AuditAction, { readonly targets: readonly { readonly type: string }[]; readonly metadata?: Readonly<Record<string, string>> }>
+  > = AUDIT_SCHEMAS
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createEvent.mockResolvedValue(undefined)
+    process.env.AUDIT_LOGS_ENABLED = 'true'
+  })
+
+  const rename = (folderId: string | null) =>
+    recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1' },
+      action: 'document.renamed',
+      targetType: 'document',
+      targetId: 'doc_9',
+      filedIn: { projectId: 'proj_1', folderId },
+      metadata: {
+        filename: 'Gehaltsliste-2026.xlsx',
+        previousName: 'Gehaltsliste',
+        displayName: 'Gehälter',
+        collectionName: 'proj_1__f_folder_lohn',
+      },
+    })
+
+  it('leaves every name key out for a folder not every member may read, and says so', async () => {
+    folderVisible.mockResolvedValue(false)
+
+    await rename('folder_lohn')
+
+    expect(folderVisible).toHaveBeenCalledWith('org_1', 'proj_1', 'folder_lohn', ANY_MEMBER_CLEARANCE)
+    const event = lastEvent()
+    expect(event.metadata).toEqual({ collectionName: 'proj_1__f_folder_lohn', nameWithheld: true })
+    expect(JSON.stringify(event)).not.toMatch(/Gehalt/)
+    // The target still says which document: someone cleared for the folder resolves it.
+    expect(event.targets).toEqual([{ type: 'document', id: 'doc_9' }])
+  })
+
+  it('names a document in a folder every member may read, as before', async () => {
+    folderVisible.mockResolvedValue(true)
+
+    await rename('folder_plaene')
+
+    expect(lastEvent().metadata).toEqual({
+      filename: 'Gehaltsliste-2026.xlsx',
+      previousName: 'Gehaltsliste',
+      displayName: 'Gehälter',
+      collectionName: 'proj_1__f_folder_lohn',
+    })
+  })
+
+  it('asks nothing for the project root or a document on no project shelf', async () => {
+    await rename(null)
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1' },
+      action: 'document.screening_overridden',
+      targetType: 'document',
+      targetId: 'doc_9',
+      filedIn: null,
+      metadata: { projectId: '', filename: 'Vertrag.pdf', terms: 'vertrag' },
+    })
+
+    expect(folderVisible).not.toHaveBeenCalled()
+    expect(createEvent.mock.calls.map((call) => (call[1] as EmittedEvent).metadata.filename)).toEqual([
+      'Gehaltsliste-2026.xlsx',
+      'Vertrag.pdf',
+    ])
+  })
+
+  it('withholds the name-gate terms of an override with the name, since they matched a piece of it', async () => {
+    folderVisible.mockResolvedValue(false)
+
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1' },
+      action: 'document.screening_overridden',
+      targetType: 'document',
+      targetId: 'doc_9',
+      filedIn: { projectId: 'proj_1', folderId: 'folder_lohn' },
+      metadata: { projectId: 'proj_1', filename: 'Gehaltsliste-2026.xlsx', terms: 'gehalt,lohn' },
+    })
+
+    expect(lastEvent().metadata).toEqual({ projectId: 'proj_1', nameWithheld: true })
+    expect(JSON.stringify(lastEvent())).not.toMatch(/gehalt|lohn/i)
+  })
+
+  it('withholds the name when the folder rule cannot be read (fails closed)', async () => {
+    folderVisible.mockRejectedValue(new Error('database unavailable'))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    await rename('folder_lohn')
+
+    expect(lastEvent().metadata).toEqual({ collectionName: 'proj_1__f_folder_lohn', nameWithheld: true })
+  })
+
+  it('withholds it on the throwing emitter too', async () => {
+    folderVisible.mockResolvedValue(false)
+
+    await recordAuditEventOrThrow({
+      organizationId: 'org_1',
+      actor: { type: 'agent', userId: 'user_1', ref: { kind: 'agent_run', id: 'run_7' } },
+      action: 'document.generated',
+      targetType: 'document',
+      targetId: 'doc_9',
+      filedIn: { projectId: 'proj_1', folderId: 'folder_lohn' },
+      metadata: { projectId: 'proj_1', producer: 'report', filename: 'Lohnauswertung.docx', fileSize: 10 },
+    })
+
+    expect(lastEvent().metadata).toEqual({ projectId: 'proj_1', producer: 'report', fileSize: 10, nameWithheld: true })
+  })
+
+  it('classifies every action that registers a name: withheld when restricted, or never restricted with the reason', () => {
+    const NAME_KEYS = new Set<string>([...DOCUMENT_NAME_KEYS, 'name', 'documentName', 'folderName', 'title'])
+    const naming = (Object.keys(SCHEMAS) as AuditAction[]).filter((action) => {
+      const metadata = SCHEMAS[action].metadata ?? {}
+      return Object.keys(metadata).some((key) => NAME_KEYS.has(key))
+    })
+    const classified = new Set<string>([...DOCUMENT_NAME_ACTIONS, ...Object.keys(UNRESTRICTED_NAME_ACTIONS)])
+    expect(
+      naming.filter((action) => !classified.has(action)),
+      'An audit action carries a name. If it can name a document in a restricted folder, add it to ' +
+        'DOCUMENT_NAME_ACTIONS (the compiler then asks every call site for filedIn); otherwise give the reason in ' +
+        'UNRESTRICTED_NAME_ACTIONS.'
+    ).toEqual([])
+    for (const reason of Object.values(UNRESTRICTED_NAME_ACTIONS)) expect(reason.length).toBeGreaterThan(20)
+  })
+
+  it('registers nameWithheld on every action that can withhold a name, or WorkOS would reject the event', () => {
+    for (const action of DOCUMENT_NAME_ACTIONS) {
+      const metadata = SCHEMAS[action].metadata ?? {}
+      expect(metadata.nameWithheld, action).toBe('boolean')
+    }
+  })
+})
+
+describe('trustedAppOrigin', () => {
+  it('prefers the configured origin over the (spoofable) request Host', () => {
+    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI = 'https://grid.bigls.net/api/auth/callback'
+    try {
+      expect(trustedAppOrigin(new Request('https://evil.example/api/x'))).toBe('https://grid.bigls.net')
+    } finally {
+      delete process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
+    }
+  })
+
+  it('falls back to the request origin when unconfigured', () => {
+    delete process.env.WORKOS_REDIRECT_URI
+    delete process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
+    expect(trustedAppOrigin(new Request('https://grid.example/api/x'))).toBe('https://grid.example')
+  })
+})
+
+describe('generateAuditPortalLink', () => {
+  it('requests a native Admin Portal audit-logs link for the org', async () => {
+    generateLink.mockResolvedValue({ link: 'https://portal.workos.com/x' })
+    const link = await generateAuditPortalLink('org_1', 'https://grid.example/app/organization')
+    expect(link).toBe('https://portal.workos.com/x')
+    expect(generateLink).toHaveBeenCalledWith({
+      intent: 'audit_logs',
+      organization: 'org_1',
+      returnUrl: 'https://grid.example/app/organization',
+    })
+  })
+})

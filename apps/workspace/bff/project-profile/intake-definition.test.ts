@@ -1,0 +1,1131 @@
+/**
+ * @vitest-environment node
+ */
+import { describe, expect, it } from 'vitest'
+
+import { answerKeyFor, modeKeyFor } from './intake-building-keys'
+import { FEDERAL_STATE_TOKENS, COUNTRY_TOKENS, evaluateIntakeCondition, findIntakeQuestion, flattenIntakeQuestions, isValidFederalStateToken, isValidCountryToken, pruneStaleConditionalAnswers } from './intake-conditions'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { answersFromProfile, buildIntakeProfile, mergeIntakeProfile } from './intake-profile'
+import { formatIntakeAnswer, humanizeProfileKey, labelForProfileKey, validateProfilePatchVocabulary } from './intake-vocabulary'
+import { ProjectProfileSchema } from './types'
+import type {
+  ProfileAlternative,
+  ProfileEvidence,
+  ProjectAssumption,
+  ProjectFact,
+  ProjectPrimitiveValue,
+  ProjectProfile,
+  ProjectProfilePatchOperation,
+} from './types'
+
+const definition = projectIntakeDefinitionV1
+type Answers = Record<string, ProjectPrimitiveValue>
+
+describe('buildIntakeProfile', () => {
+  it('writes confirmed facts through the shared patch engine', () => {
+    const answers: Answers = {
+      A2_country: 'at',
+      A2_land: 'tyrol',
+      A2_adr: 'Innrain 1, 6020 Innsbruck',
+      A5: ['new_build'],
+    }
+
+    const profile = buildIntakeProfile(answers, definition)
+
+    expect(() => ProjectProfileSchema.parse(profile)).not.toThrow()
+    expect(profile.facts.federal_state?.value).toBe('tyrol')
+    expect(profile.facts.federal_state?.source).toBe('onboarding')
+    expect(profile.facts.federal_state?.confidence).toBe('confirmed')
+    expect(profile.facts.site_address?.value).toBe('Innrain 1, 6020 Innsbruck')
+    expect(profile.facts.work_type?.value).toEqual(['new_build'])
+  })
+
+  it('seeds project_name from the created project instead of asking again', () => {
+    const profile = buildIntakeProfile({}, definition, { projectName: '  Haus am See ' })
+
+    expect(profile.facts.project_name?.value).toBe('Haus am See')
+    expect(profile.facts.project_name?.source).toBe('onboarding')
+    expect(profile.facts.project_name?.confidence).toBe('confirmed')
+  })
+
+  it('lets an explicit A1 answer override the seeded project name', () => {
+    const profile = buildIntakeProfile({ A1: 'Renamed Project' }, definition, {
+      projectName: 'Seed',
+    })
+    expect(profile.facts.project_name?.value).toBe('Renamed Project')
+  })
+
+  it('captures the federal state as a confirmed fact (jurisdiction is a hard fact)', () => {
+    const profile = buildIntakeProfile({ A2_country: 'at', A2_land: 'tyrol' }, definition)
+
+    expect(profile.facts.federal_state?.value).toBe('tyrol')
+    expect(profile.facts.federal_state?.confidence).toBe('confirmed')
+    expect(profile.unknowns).not.toContain('federal_state')
+    expect(profile.unknowns).not.toContain('site_details')
+  })
+
+  it('records the missing federal state as an unknown', () => {
+    const profile = buildIntakeProfile({ A2_country: 'at', A5: ['new_build'] }, definition)
+    expect(profile.unknowns).toContain('federal_state')
+  })
+
+  it('asks for a free-text location only outside Austria', () => {
+    const profile = buildIntakeProfile({ A2_country: 'de' }, definition)
+    expect(profile.unknowns).toContain('site_details')
+
+    const withDetails = buildIntakeProfile(
+      { A2_country: 'de', site_details: 'Bayern, Deutschland' },
+      definition
+    )
+    expect(withDetails.facts.site_details?.value).toBe('Bayern, Deutschland')
+    expect(withDetails.facts.federal_state?.value).toBe('outside_austria')
+  })
+
+  it('maps the number_tri answer modes onto facts / assumptions / unknowns', () => {
+    // C3 (above-ground storeys, per building) needs its building to be a building.
+    const base: Answers = { 'C1@bldg1': 'building' }
+
+    const confirmed = buildIntakeProfile(
+      { ...base, 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'value' },
+      definition
+    )
+    expect(confirmed.facts['storeys_above_ground@bldg1']?.value).toBe(3)
+
+    const estimated = buildIntakeProfile(
+      { ...base, 'C3@bldg1': 4, [modeKeyFor('C3@bldg1')]: 'estimated' },
+      definition
+    )
+    expect(estimated.facts['storeys_above_ground@bldg1']).toBeUndefined()
+    expect(estimated.assumptions['storeys_above_ground@bldg1']?.value).toBe(4)
+    expect(estimated.assumptions['storeys_above_ground@bldg1']?.status).toBe('unconfirmed')
+
+    const open = buildIntakeProfile({ ...base, [modeKeyFor('C3@bldg1')]: 'open' }, definition)
+    expect(open.unknowns).toContain('storeys_above_ground@bldg1')
+  })
+
+  it('derives federal_state=outside_austria when country is de', () => {
+    const profile = buildIntakeProfile({ A2_country: 'de' }, definition)
+    expect(profile.facts.federal_state?.value).toBe('outside_austria')
+  })
+
+  it('derives country=at from an AT bundesland for legacy profiles', () => {
+    const profile = buildIntakeProfile(
+      { A2_country: 'at', A2_land: 'vienna', A2_adr: 'Test', A5: ['new_build'] },
+      definition,
+      { projectName: 'Test' }
+    )
+    expect(profile.facts.country?.value).toBe('at')
+    expect(profile.facts.federal_state?.value).toBe('vienna')
+  })
+
+  it('leaves bundesland unset when country is de and standort_details provided', () => {
+    const profile = buildIntakeProfile(
+      { A2_country: 'de', site_details: 'Bayern, Deutschland' },
+      definition,
+      { projectName: 'Test' }
+    )
+    expect(profile.facts.federal_state?.value).toBe('outside_austria')
+    expect(profile.facts.site_details?.value).toBe('Bayern, Deutschland')
+  })
+
+  it('maps yes_no_open onto a boolean fact or an unknown', () => {
+    const yes = buildIntakeProfile({ B8: 'yes' }, definition)
+    expect(yes.facts.build_to_plot_boundary?.value).toBe(true)
+
+    const no = buildIntakeProfile({ B8: 'no' }, definition)
+    expect(no.facts.build_to_plot_boundary?.value).toBe(false)
+
+    const open = buildIntakeProfile({ B8: 'open' }, definition)
+    expect(open.facts.build_to_plot_boundary).toBeUndefined()
+    expect(open.unknowns).toContain('build_to_plot_boundary')
+  })
+
+  it('expands the building scope over every building and the zone scope over selected uses', () => {
+    const buildings = [
+      { id: 'bldg1', name: 'Haupthaus' },
+      { id: 'bldg2', name: 'Nebengebäude' },
+    ]
+    const answers: Answers = {
+      'C1@bldg1': 'building',
+      'C3@bldg1': 5,
+      [modeKeyFor('C3@bldg1')]: 'value',
+      'C1@bldg2': 'building',
+      'D0@bldg1': ['residential'],
+      'D_we@bldg1@residential': 12,
+      [modeKeyFor('D_we@bldg1@residential')]: 'value',
+    }
+
+    const profile = buildIntakeProfile(answers, definition, { buildings })
+
+    expect(profile.facts['storeys_above_ground@bldg1']?.value).toBe(5)
+    expect(profile.facts['building_name@bldg1']?.value).toBe('Haupthaus')
+    expect(profile.facts['building_name@bldg2']?.value).toBe('Nebengebäude')
+    expect(profile.facts['dwelling_units@bldg1@residential']?.value).toBe(12)
+  })
+})
+
+describe('answersFromProfile', () => {
+  it('round-trips a built profile back into wizard answers and the building list', () => {
+    const buildings = [{ id: 'bldg1', name: 'Haupthaus' }]
+    const answers: Answers = {
+      A2_country: 'at',
+      A2_land: 'vienna',
+      A5: ['new_build', 'conversion'],
+      'C1@bldg1': 'building',
+      'C5@bldg1': 9,
+      [modeKeyFor('C5@bldg1')]: 'estimated',
+      B8: 'yes',
+    }
+
+    const profile = buildIntakeProfile(answers, definition, { buildings })
+    const restored = answersFromProfile(profile, definition)
+
+    expect(restored.answers.A2_land).toBe('vienna')
+    expect(restored.answers.A5).toEqual(['new_build', 'conversion'])
+    expect(restored.answers['C1@bldg1']).toBe('building')
+    expect(restored.answers['C5@bldg1']).toBe(9)
+    expect(restored.answers[modeKeyFor('C5@bldg1')]).toBe('estimated')
+    expect(restored.answers.B8).toBe('yes')
+    expect(restored.buildings).toEqual([{ id: 'bldg1', name: 'Haupthaus' }])
+  })
+})
+
+describe('formatIntakeAnswer', () => {
+  const landQuestion = findIntakeQuestion(definition, 'A2_land')!
+
+  it('renders option labels rather than raw values', () => {
+    expect(formatIntakeAnswer(landQuestion, 'vienna')).toBe('Wien')
+  })
+
+  it('renders a dash for missing answers', () => {
+    expect(formatIntakeAnswer(landQuestion, undefined)).toBe('—')
+  })
+
+  it('appends the unit for a number_tri answer', () => {
+    const c4 = findIntakeQuestion(definition, 'C5')!
+    expect(formatIntakeAnswer(c4, 9)).toBe('9 m')
+  })
+})
+
+describe('labelForProfileKey', () => {
+  it('maps a raw fact key back to its intake question label', () => {
+    expect(labelForProfileKey(definition, 'escape_level_m')).toBe('Fluchtniveau (Zielzustand)')
+    expect(labelForProfileKey(definition, 'federal_state')).toBe('Bundesland')
+  })
+
+  it('resolves a scoped key by its base', () => {
+    expect(labelForProfileKey(definition, 'storeys_above_ground@bldg1')).toBe(
+      'Anzahl oberirdischer Geschoße (Zielzustand)'
+    )
+  })
+
+  it('falls back to a title-cased humanization for genuinely unknown keys', () => {
+    expect(labelForProfileKey(definition, 'some_unmapped_key')).toBe('Some Unmapped Key')
+  })
+})
+
+describe('humanizeProfileKey', () => {
+  it('title-cases snake_case keys and strips a scope suffix', () => {
+    expect(humanizeProfileKey('development_plan_notes')).toBe('Development Plan Notes')
+    expect(humanizeProfileKey('escape_level_m@bldg1')).toBe('Escape Level M')
+  })
+})
+
+describe('validateProfilePatchVocabulary', () => {
+  const validate = (op: ProjectProfilePatchOperation['op'], path: string, value?: unknown) =>
+    validateProfilePatchVocabulary([{ op, path, value }])
+
+  it('accepts an allowed single-select value', () => {
+    expect(() => validate('add', '/facts/building_type', 'building')).not.toThrow()
+  })
+
+  it('rejects a single-select value outside the options', () => {
+    expect(() => validate('add', '/facts/building_type', 'nope')).toThrow(/Bauwerkstyp/)
+  })
+
+  it('rejects a federal state outside the vocabulary', () => {
+    expect(() => validate('add', '/facts/federal_state', 'bayern')).toThrow(/Bundesland/)
+    expect(() => validate('add', '/facts/federal_state', 'vienna')).not.toThrow()
+    expect(() => validate('add', '/facts/federal_state', 'outside_austria')).not.toThrow()
+  })
+
+  it('rejects a non-boolean for a yes_no_open fact', () => {
+    expect(() => validate('add', '/facts/heritage_protection', 'yes')).toThrow(/Denkmalschutz/)
+  })
+
+  it('accepts a finite number for a number_tri fact', () => {
+    expect(() => validate('add', '/facts/storeys_above_ground', 3)).not.toThrow()
+  })
+
+  it('resolves a scoped key by its base', () => {
+    expect(() => validate('add', '/facts/storeys_above_ground@bldg1', 3)).not.toThrow()
+    expect(() => validate('add', '/facts/building_type@bldg1', 'nope')).toThrow(/Bauwerkstyp/)
+  })
+
+  it('lets unknown keys through — the model may record novel facts', () => {
+    expect(() => validate('add', '/facts/some_novel_fact', 'anything')).not.toThrow()
+  })
+
+  it('validates a shaped { value } op the same as a bare value', () => {
+    expect(() =>
+      validate('add', '/facts/building_type', {
+        value: 'nope',
+        confidence: 'confirmed',
+        source: 'user_confirmed',
+        updatedAt: '2026-07-08T00:00:00.000Z',
+      })
+    ).toThrow(/Bauwerkstyp/)
+  })
+
+  it('validates the deep /facts/<key>/value path form', () => {
+    expect(() => validate('add', '/facts/building_type/value', 'nope')).toThrow(/Bauwerkstyp/)
+  })
+
+  it('always passes remove operations', () => {
+    expect(() => validate('remove', '/facts/building_type')).not.toThrow()
+  })
+
+  it('rejects a multi-select value outside the options', () => {
+    expect(() => validate('add', '/facts/work_type', ['new_build', 'nope'])).toThrow(
+      /Art des Vorhabens/
+    )
+  })
+})
+
+describe('pruneStaleConditionalAnswers', () => {
+  it('drops a conditional answer once its condition no longer holds', () => {
+    // CB1 (Baujahr) belongs to a Bestandsgebäude. Flip C2 to Neubau → prune it.
+    const pruned = pruneStaleConditionalAnswers(
+      { 'C2@bldg1': 'new_build', 'CB1@bldg1': 1962, [modeKeyFor('CB1@bldg1')]: 'value' },
+      definition
+    )
+    expect(pruned['CB1@bldg1']).toBeUndefined()
+    expect(pruned[modeKeyFor('CB1@bldg1')]).toBeUndefined()
+    expect(pruned['C2@bldg1']).toBe('new_build')
+  })
+
+  it('keeps a conditional answer whose condition still holds', () => {
+    const answers = { 'C2@bldg1': 'existing', 'CB1@bldg1': 1962, [modeKeyFor('CB1@bldg1')]: 'value' }
+    const pruned = pruneStaleConditionalAnswers(answers, definition)
+    expect(pruned['CB1@bldg1']).toBe(1962)
+  })
+
+  it('prunes a building-scope conditional within its instance', () => {
+    // C2@bldg1 depends on C1@bldg1 === 'building'. Flip the building type → prune C2.
+    const pruned = pruneStaleConditionalAnswers(
+      { 'C1@bldg1': 'small', 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'value' },
+      definition
+    )
+    expect(pruned['C3@bldg1']).toBeUndefined()
+    expect(pruned['C1@bldg1']).toBe('small')
+  })
+
+  it('leaves unconditional and unrelated answers untouched', () => {
+    const answers = { A2_country: 'at', A2_land: 'vienna', A5: ['new_build'] }
+    const pruned = pruneStaleConditionalAnswers(answers, definition)
+    expect(pruned).toEqual(answers)
+    expect(pruned).toBe(answers)
+  })
+
+  it('is a no-op when the definition is missing', () => {
+    const answers = { A5: ['new_build'], 'CB1@bldg1': 1962 }
+    expect(pruneStaleConditionalAnswers(answers, null)).toBe(answers)
+  })
+})
+
+describe('mergeIntakeProfile', () => {
+  const fact = (value: ProjectPrimitiveValue) => ({
+    value,
+    confidence: 'confirmed' as const,
+    source: 'user_confirmed' as const,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  })
+
+  const storedProfile: ProjectProfile = {
+    facts: {
+      federal_state: fact('vienna'),
+      // Agent-recorded NOVEL fact (no intake question owns this key):
+      brandabschnitt_flaeche: fact(1200),
+    },
+    goals: { zieltermin: '2027-03-01' },
+    unknowns: ['statik_gutachten'],
+    assumptions: {
+      land_designation: {
+        value: 'bauland',
+        status: 'unconfirmed' as const,
+        reason: 'agent guess',
+        source: 'agent_suggested' as const,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    },
+  }
+
+  it('preserves agent-recorded novel facts, goals, unknowns, and assumptions', () => {
+    const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'tyrol' }, definition)
+    const merged = mergeIntakeProfile(built, storedProfile, definition)
+
+    // Intake-owned key wins from the wizard...
+    expect(merged.facts.federal_state?.value).toBe('tyrol')
+    // ...while everything the wizard doesn't own survives.
+    expect(merged.facts.brandabschnitt_flaeche?.value).toBe(1200)
+    expect(merged.goals.zieltermin).toBe('2027-03-01')
+    expect(merged.unknowns).toContain('statik_gutachten')
+    expect(merged.assumptions.land_designation?.value).toBe('bauland')
+    expect(() => ProjectProfileSchema.parse(merged)).not.toThrow()
+  })
+
+  it('does NOT resurrect an intake answer the user just cleared', () => {
+    const built = buildIntakeProfile({ A2_country: 'at' }, definition)
+    const merged = mergeIntakeProfile(built, storedProfile, definition)
+
+    expect(merged.facts.federal_state).toBeUndefined()
+    expect(merged.unknowns).toContain('federal_state')
+  })
+
+  it('returns the built profile unchanged when there is no stored profile', () => {
+    const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'vienna' }, definition)
+    expect(mergeIntakeProfile(built, null, definition)).toBe(built)
+  })
+
+  describe('what a reading left (ADR-0111)', () => {
+    const NOW = '2026-01-01T00:00:00.000Z'
+    const evidenceOn = (quote: string): ProfileEvidence[] => [
+      { kind: 'document', fileName: 'Baubeschreibung.pdf', page: 4, quote },
+    ]
+    const suggestion = (
+      value: ProjectPrimitiveValue,
+      extra: Partial<ProjectAssumption> = {}
+    ): ProjectAssumption => ({
+      value,
+      status: 'unconfirmed',
+      reason: 'Baubeschreibung.pdf, S. 4',
+      source: 'agent_suggested',
+      updatedAt: NOW,
+      evidence: evidenceOn('3 oberirdische Geschoße'),
+      ...extra,
+    })
+    const alternative = (value: ProjectPrimitiveValue): ProfileAlternative => ({
+      value,
+      evidence: evidenceOn('laut Einreichplan'),
+      recordedAt: NOW,
+    })
+    const previousWith = (partial: Partial<ProjectProfile>): ProjectProfile => ({
+      facts: {},
+      goals: {},
+      unknowns: [],
+      assumptions: {},
+      ...partial,
+    })
+
+    it('keeps an agent suggestion under an intake key when the save does not answer that key', () => {
+      const previous = previousWith({
+        assumptions: {
+          'storeys_above_ground@bldg1': suggestion(3),
+          federal_state: suggestion('tyrol'),
+        },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'vienna' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      // Untouched suggestion: value and evidence survive whole.
+      expect(merged.assumptions['storeys_above_ground@bldg1']).toEqual(
+        previous.assumptions['storeys_above_ground@bldg1']
+      )
+      // The save answered `federal_state`; the fact wins and the suggestion is gone.
+      expect(merged.facts.federal_state?.value).toBe('vienna')
+      expect(merged.assumptions.federal_state).toBeUndefined()
+    })
+
+    it('drops a suggestion the save estimates instead', () => {
+      const previous = previousWith({ assumptions: { 'storeys_above_ground@bldg1': suggestion(3) } })
+      const built = buildIntakeProfile(
+        { 'C1@bldg1': 'building', 'C3@bldg1': 4, [modeKeyFor('C3@bldg1')]: 'estimated' },
+        definition,
+        { buildings: [{ id: 'bldg1', name: 'Bauwerk 1' }] }
+      )
+      expect(built.assumptions['storeys_above_ground@bldg1']?.source).toBe('onboarding_default')
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.assumptions['storeys_above_ground@bldg1']).toMatchObject({
+        value: 4,
+        source: 'onboarding_default',
+      })
+    })
+
+    it('carries the evidence when the confirmed value is the suggested one', () => {
+      const previous = previousWith({
+        assumptions: { federal_state: suggestion('vienna', { evidence: evidenceOn('Wien') }) },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'vienna' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.federal_state?.evidence).toEqual(evidenceOn('Wien'))
+    })
+
+    it('carries the evidence of a previous fact when its value is unchanged, and drops it when the value changed', () => {
+      const fact = (value: ProjectPrimitiveValue): ProjectFact => ({
+        value,
+        confidence: 'confirmed',
+        source: 'user_confirmed',
+        updatedAt: NOW,
+        evidence: evidenceOn('Wien'),
+      })
+      const previous = previousWith({ facts: { federal_state: fact('vienna') } })
+
+      const unchanged = mergeIntakeProfile(
+        buildIntakeProfile({ A2_country: 'at', A2_land: 'vienna' }, definition),
+        previous,
+        definition
+      )
+      const changed = mergeIntakeProfile(
+        buildIntakeProfile({ A2_country: 'at', A2_land: 'tyrol' }, definition),
+        previous,
+        definition
+      )
+
+      expect(unchanged.facts.federal_state?.evidence).toEqual(evidenceOn('Wien'))
+      expect(changed.facts.federal_state?.value).toBe('tyrol')
+      expect(changed.facts.federal_state?.evidence).toBeUndefined()
+    })
+
+    it('treats a multi-select as unchanged whatever the order of its options', () => {
+      const previous = previousWith({
+        facts: {
+          work_type: {
+            value: ['refurbishment', 'new_build'],
+            confidence: 'confirmed',
+            source: 'user_confirmed',
+            updatedAt: NOW,
+            evidence: evidenceOn('Neubau und Sanierung'),
+          },
+        },
+      })
+      const built = buildIntakeProfile(
+        { A2_country: 'at', A5: ['new_build', 'refurbishment'] },
+        definition
+      )
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.work_type?.evidence).toEqual(evidenceOn('Neubau und Sanierung'))
+    })
+
+    it('carries the alternatives of a fact, except the one that equals the new value', () => {
+      const previous = previousWith({
+        facts: {
+          federal_state: {
+            value: 'vienna',
+            confidence: 'confirmed',
+            source: 'user_confirmed',
+            updatedAt: NOW,
+            alternatives: [alternative('tyrol'), alternative('salzburg')],
+          },
+        },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'tyrol' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.federal_state?.alternatives?.map((entry) => entry.value)).toEqual([
+        'salzburg',
+      ])
+    })
+
+    it('carries the alternatives of a suggestion onto the fact the save writes for its key', () => {
+      const previous = previousWith({
+        assumptions: { federal_state: suggestion('vienna', { alternatives: [alternative('tyrol')] }) },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'vienna' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.federal_state?.alternatives?.map((entry) => entry.value)).toEqual(['tyrol'])
+    })
+
+    it("still retires the wizard's own onboarding_default assumptions under an intake key", () => {
+      const previous = previousWith({
+        assumptions: {
+          'storeys_above_ground@bldg1': {
+            value: 3,
+            status: 'unconfirmed',
+            reason: 'Während der Erhebung geschätzt',
+            source: 'onboarding_default',
+            updatedAt: NOW,
+          },
+        },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.assumptions['storeys_above_ground@bldg1']).toBeUndefined()
+    })
+
+    it('keeps the profile parseable', () => {
+      const previous = previousWith({
+        assumptions: {
+          'storeys_above_ground@bldg1': suggestion(3, { alternatives: [alternative(4)] }),
+        },
+      })
+      const merged = mergeIntakeProfile(
+        buildIntakeProfile({ A2_country: 'at' }, definition),
+        previous,
+        definition
+      )
+      expect(() => ProjectProfileSchema.parse(merged)).not.toThrow()
+    })
+  })
+})
+
+describe('evaluateIntakeCondition', () => {
+  it('handles includes_any against a building-scope multi-select', () => {
+    // CB6 needs C2=bestand AND a hull-touching measure in CB4.
+    const cb6 = findIntakeQuestion(definition, 'CB6')!
+    const base = { 'C2@bldg1': 'existing' }
+    expect(evaluateIntakeCondition(cb6, { ...base, 'CB4@bldg1': ['interior_conversion'] }, 'bldg1')).toBe(false)
+    expect(evaluateIntakeCondition(cb6, { ...base, 'CB4@bldg1': ['core_refurbishment'] }, 'bldg1')).toBe(
+      true
+    )
+  })
+
+  it('asks for the federal state while the country is open or Austria, never elsewhere', () => {
+    const land = findIntakeQuestion(definition, 'A2_land')!
+    expect(evaluateIntakeCondition(land, {})).toBe(true)
+    expect(evaluateIntakeCondition(land, { A2_country: 'at' })).toBe(true)
+    for (const country of ['de', 'ch', 'other']) {
+      expect(evaluateIntakeCondition(land, { A2_country: country })).toBe(false)
+    }
+  })
+
+  it('resolves a building-scope param within the current instance', () => {
+    const c3 = findIntakeQuestion(definition, 'C3')!
+    expect(evaluateIntakeCondition(c3, { 'C1@bldg1': 'building' }, 'bldg1')).toBe(true)
+    expect(evaluateIntakeCondition(c3, { 'C1@bldg1': 'small' }, 'bldg1')).toBe(false)
+  })
+
+  it('answerKeyFor composes scope instance keys', () => {
+    expect(answerKeyFor('C3', 'bldg1')).toBe('C3@bldg1')
+    expect(answerKeyFor('D_we', 'bldg2', 'residential')).toBe('D_we@bldg2@residential')
+  })
+
+  describe('lte (the C8 gate)', () => {
+    const c8 = findIntakeQuestion(definition, 'C8')!
+    const building = { 'C1@bldg1': 'building' }
+
+    it('is satisfied below the bound, not only AT it', () => {
+      // 3 as well as 4: a bound of 4 exercised only with 4 passes just as well
+      // under plain `equals`, so it cannot tell a real `lte` from no `lte`.
+      for (const storeys of [3, 4]) {
+        expect(
+          evaluateIntakeCondition(
+            c8,
+            { ...building, 'C3@bldg1': storeys, [modeKeyFor('C3@bldg1')]: 'value' },
+            'bldg1'
+          )
+        ).toBe(true)
+      }
+      expect(
+        evaluateIntakeCondition(
+          c8,
+          { ...building, 'C3@bldg1': 5, [modeKeyFor('C3@bldg1')]: 'value' },
+          'bldg1'
+        )
+      ).toBe(false)
+    })
+
+    it('an estimate can satisfy it, an explicitly open value cannot', () => {
+      // Spec conventions: lte needs a present value whose mode is not 'open'.
+      expect(
+        evaluateIntakeCondition(
+          c8,
+          { ...building, 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'estimated' },
+          'bldg1'
+        )
+      ).toBe(true)
+      expect(
+        evaluateIntakeCondition(c8, { ...building, [modeKeyFor('C3@bldg1')]: 'open' }, 'bldg1')
+      ).toBe(false)
+    })
+
+    it('an absent storey count never reveals the question', () => {
+      expect(evaluateIntakeCondition(c8, building, 'bldg1')).toBe(false)
+    })
+  })
+})
+
+describe('projectIntakeDefinitionV1 shape', () => {
+  it('starts with module A and carries the stable spec anchors', () => {
+    expect(definition.stages[0].id).toBe('A')
+    const ids = flattenIntakeQuestions(definition).map((q) => q.id)
+    for (const anchor of [
+      'A5',
+      'C2',
+      'CB1',
+      'CB7_fn',
+      'C8',
+      'C10_text',
+      'B3_stellplatz',
+      'D0',
+      'D_garagenfl',
+    ]) {
+      expect(ids).toContain(anchor)
+    }
+  })
+
+  it('reveals the abbruch-only question F5 only when Abbruch is selected', () => {
+    const f5 = findIntakeQuestion(definition, 'F5')!
+    expect(evaluateIntakeCondition(f5, { A5: ['new_build'] })).toBe(false)
+    expect(evaluateIntakeCondition(f5, { A5: ['new_build', 'demolition'] })).toBe(true)
+  })
+
+  it('marks exactly the konzept-required questions as required', () => {
+    const required = flattenIntakeQuestions(definition)
+      .filter((q) => q.required)
+      .map((q) => q.id)
+    expect(new Set(required)).toEqual(new Set(['A1', 'A2_adr', 'A2_country', 'A2_land', 'A5']))
+  })
+})
+
+describe('FEDERAL_STATE_TOKENS / isValidFederalStateToken', () => {
+  it('contains exactly the nine federal state tokens plus ausserhalb_oesterreichs', () => {
+    expect(new Set(FEDERAL_STATE_TOKENS)).toEqual(
+      new Set([
+        'vienna',
+        'lower_austria',
+        'upper_austria',
+        'styria',
+        'carinthia',
+        'salzburg',
+        'tyrol',
+        'vorarlberg',
+        'burgenland',
+        'outside_austria',
+      ])
+    )
+  })
+
+  it('stays byte-identical to the A2_land question options (single source of truth)', () => {
+    const question = flattenIntakeQuestions(definition).find((q) => q.id === 'A2_land')!
+    expect(FEDERAL_STATE_TOKENS).toEqual(question.options?.map((option) => option.value))
+  })
+
+  it('isValidFederalStateToken accepts every known token', () => {
+    for (const token of FEDERAL_STATE_TOKENS) {
+      expect(isValidFederalStateToken(token)).toBe(true)
+    }
+  })
+
+  it('isValidFederalStateToken rejects unknown/malformed tokens', () => {
+    expect(isValidFederalStateToken('atlantis')).toBe(false)
+    expect(isValidFederalStateToken('')).toBe(false)
+    expect(isValidFederalStateToken('Wien')).toBe(false)
+  })
+})
+
+describe('COUNTRY_TOKENS / isValidCountryToken', () => {
+  it('contains the four country options', () => {
+    expect(COUNTRY_TOKENS).toEqual(['at', 'de', 'ch', 'other'])
+  })
+
+  it('accepts recognized country tokens', () => {
+    expect(isValidCountryToken('at')).toBe(true)
+    expect(isValidCountryToken('de')).toBe(true)
+    expect(isValidCountryToken('ch')).toBe(true)
+    expect(isValidCountryToken('other')).toBe(true)
+  })
+
+  it('rejects unknown country tokens', () => {
+    expect(isValidCountryToken('fr')).toBe(false)
+    expect(isValidCountryToken('')).toBe(false)
+    expect(isValidCountryToken('AT')).toBe(false)
+  })
+})
+
+describe('v1.0 → v1.2 legacy bridges (answersFromProfile)', () => {
+  const fact = (value: ProjectPrimitiveValue) => ({
+    value,
+    confidence: 'confirmed' as const,
+    source: 'user_confirmed' as const,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  })
+  const empty: ProjectProfile = { facts: {}, goals: {}, unknowns: [], assumptions: {} }
+
+  it('inverts the stored ne_unter_400 into C8 instead of reusing its key', () => {
+    // v1.0 asked "alle Einheiten ≤ 400 m²?"; v1.2's C8 asks the inverse. A
+    // reused key would silently flip the meaning of every stored answer — and
+    // the GK derivation with it.
+    const allSmall = answersFromProfile(
+      { ...empty, facts: { 'units_under_400@bldg1': fact(true) } },
+      definition
+    )
+    expect(allSmall.answers['C8@bldg1']).toBe('no')
+
+    const hasLarge = answersFromProfile(
+      { ...empty, facts: { 'units_under_400@bldg1': fact(false) } },
+      definition
+    )
+    expect(hasLarge.answers['C8@bldg1']).toBe('yes')
+  })
+
+  it('keeps an openly-unknown ne_unter_400 open', () => {
+    const restored = answersFromProfile({ ...empty, unknowns: ['units_under_400@bldg1'] }, definition)
+    expect(restored.answers['C8@bldg1']).toBe('open')
+  })
+
+  it('C8 writes einheiten_ueber_400, never the legacy key', () => {
+    const profile = buildIntakeProfile(
+      {
+        'C1@bldg1': 'building',
+        'C3@bldg1': 3,
+        [modeKeyFor('C3@bldg1')]: 'value',
+        'C8@bldg1': 'yes',
+      },
+      definition
+    )
+    expect(profile.facts['units_over_400@bldg1']?.value).toBe(true)
+    expect(profile.facts['units_under_400@bldg1']).toBeUndefined()
+  })
+
+  it('moves the project-scope Bestand block onto the single building', () => {
+    // v1.0's A6/A7 were one project-global statement; with exactly one
+    // building it is that building's, and C2 gates open so the block shows.
+    const restored = answersFromProfile(
+      { ...empty, facts: { existing_year_built: fact(1962), heritage_protection: fact(true) } },
+      definition
+    )
+    expect(restored.answers['CB1@bldg1']).toBe(1962)
+    expect(restored.answers[modeKeyFor('CB1@bldg1')]).toBe('value')
+    expect(restored.answers['CB3@bldg1']).toBe('yes')
+    expect(restored.answers['C2@bldg1']).toBe('existing')
+  })
+
+  it('does NOT guess which of several buildings a legacy Bestand answer describes', () => {
+    const restored = answersFromProfile(
+      {
+        ...empty,
+        facts: {
+          existing_year_built: fact(1962),
+          'building_name@bldg1': fact('Haupthaus'),
+          'building_name@bldg2': fact('Hoftrakt'),
+        },
+      },
+      definition
+    )
+    expect(restored.answers['CB1@bldg1']).toBeUndefined()
+    expect(restored.answers['CB1@bldg2']).toBeUndefined()
+  })
+
+  it('folds the legacy Altlast/Baum/Schutzgebiet booleans into B4', () => {
+    const restored = answersFromProfile(
+      {
+        ...empty,
+        facts: {
+          hazard_zones: fact(['flood_hq100']),
+          contaminated_land: fact(true),
+          protected_area: fact(true),
+          tree_stock: fact(false),
+        },
+      },
+      definition
+    )
+    expect(restored.answers['B4']).toEqual(['flood_hq100', 'contaminated_land', 'protected_area'])
+  })
+
+  it('condenses the three Erschließungs-booleans, refusing a partial picture', () => {
+    // Never 'yes': B6 also covers electricity, which v1.0 never asked, so all
+    // three legacy yeses still leave the new question genuinely unanswered.
+    const full = answersFromProfile(
+      {
+        ...empty,
+        facts: { sewer: fact(true), drinking_water: fact(true), fire_brigade_access: fact(true) },
+      },
+      definition
+    )
+    expect(full.answers['B6']).toBeUndefined()
+
+    const mixed = answersFromProfile(
+      {
+        ...empty,
+        facts: { sewer: fact(true), drinking_water: fact(false), fire_brigade_access: fact(true) },
+      },
+      definition
+    )
+    expect(mixed.answers['B6']).toBe('partial')
+
+    const partial = answersFromProfile({ ...empty, facts: { sewer: fact(true) } }, definition)
+    expect(partial.answers['B6']).toBeUndefined()
+  })
+
+  it('maps Fernwärme booleans onto the status select, Anschlussgebiet first', () => {
+    const zone = answersFromProfile(
+      { ...empty, facts: { district_heating: fact(true), district_heating_zone: fact(true) } },
+      definition
+    )
+    expect(zone.answers['B7']).toBe('connection_area')
+
+    const available = answersFromProfile(
+      { ...empty, facts: { district_heating: fact(true) } },
+      definition
+    )
+    expect(available.answers['B7']).toBe('available')
+  })
+
+  it('maps the legacy single Bauweise token into the multi-select', () => {
+    const restored = answersFromProfile(
+      { ...empty, facts: { 'construction_method@bldg1': fact('massivbau') } },
+      definition
+    )
+    expect(restored.answers['C10@bldg1']).toEqual(['masonry_solid'])
+  })
+
+  it('does not silently drop a legacy hybrid Bauweise', () => {
+    // This case previously asserted the deletion. That was pinning a data-loss
+    // bug: `construction_method` is intake-owned, so dropping the answer made
+    // `mergeIntakeProfile` remove the stored fact as well.
+    const restored = answersFromProfile(
+      { ...empty, facts: { 'construction_method@bldg1': fact('hybrid') } },
+      definition
+    )
+    expect(restored.answers['C10@bldg1']).toEqual(['open'])
+  })
+
+  it('carries a legacy Zertifizierung into the fused F4', () => {
+    const restored = answersFromProfile(
+      {
+        ...empty,
+        facts: { funding: fact(['housing_subsidy']), certification: fact('klimaaktiv') },
+      },
+      definition
+    )
+    expect(restored.answers['F4']).toEqual(['housing_subsidy', 'klimaaktiv'])
+  })
+
+  it('appends the merged G-texts instead of overwriting', () => {
+    const restored = answersFromProfile(
+      {
+        ...empty,
+        facts: {
+          context_description: fact('Ein Wohnhaus.'),
+          context_plot: fact('Hanglage.'),
+          context_other: fact('Noch etwas.'),
+        },
+      },
+      definition
+    )
+    expect(restored.answers['G1']).toBe('Ein Wohnhaus.\n\nHanglage.')
+    expect(restored.answers['G4']).toBe('Noch etwas.')
+  })
+
+  it('folds the four legacy Technik booleans into E2', () => {
+    const restored = answersFromProfile(
+      {
+        ...empty,
+        facts: {
+          'pv@bldg1': fact(true),
+          'infiltration@bldg1': fact(true),
+          'cooling@bldg1': fact(false),
+        },
+      },
+      definition
+    )
+    expect(restored.answers['E2@bldg1']).toEqual(['pv', 'infiltration'])
+  })
+})
+
+describe('v1.2 catalog shape', () => {
+  it('carries the Schnellstart core path', () => {
+    const core = flattenIntakeQuestions(definition)
+      .filter((q) => q.core)
+      .map((q) => q.id)
+    // The spec's core:true set — the Schnellstart path.
+    expect(new Set(core)).toEqual(
+      new Set([
+        'A1',
+        'A2_adr',
+        'A2_country',
+        'A2_land',
+        'A4',
+        'A5',
+        'B1',
+        'B1_text',
+        'B2',
+        'B2_upl',
+        'C1',
+        'C2',
+        'CB3',
+        'CB4',
+        'C3',
+        'C5',
+        'C7',
+        'D0',
+        'DX1',
+        'G1',
+      ])
+    )
+  })
+
+  it('marks the B-Plan extraction Kernset', () => {
+    const kernset = flattenIntakeQuestions(definition)
+      .filter((q) => q.kernset)
+      .map((q) => q.id)
+    expect(new Set(kernset)).toEqual(
+      new Set(['B3_hoehe', 'B3_weise', 'B3_dichte', 'B3_flucht', 'B3_bes', 'B3_stellplatz'])
+    )
+  })
+
+  it('dropped the v1.0-only questions', () => {
+    const ids = new Set(flattenIntakeQuestions(definition).map((q) => q.id))
+    for (const gone of [
+      'A3',
+      'A6',
+      'A11',
+      'B1_orig',
+      'B6_tag',
+      'B7_kanal',
+      'B9',
+      'C12',
+      'E6',
+      'F6',
+      'G5',
+    ]) {
+      expect(ids.has(gone)).toBe(false)
+    }
+  })
+})
+
+describe('v1.0 → v1.2 bridges — the second review pass', () => {
+  const fact = (value: ProjectPrimitiveValue) => ({
+    value,
+    confidence: 'confirmed' as const,
+    source: 'user_confirmed' as const,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  })
+  const empty: ProjectProfile = { facts: {}, goals: {}, unknowns: [], assumptions: {} }
+
+  it('keeps a legacy hybrid Bauweise instead of dropping the fact', () => {
+    const restored = answersFromProfile(
+      { ...empty, facts: { 'construction_method@bldg1': fact('hybrid') } },
+      definition
+    )
+
+    // Deleting the answer lost a construction type the user had stated:
+    // `construction_method` is intake-owned, so the merge removed the stored fact too.
+    expect(restored.answers['C10@bldg1']).toEqual(['open'])
+    expect(String(restored.answers['C10_text@bldg1'])).toContain('Hybrid')
+  })
+
+  it('does not overwrite a description the user already wrote', () => {
+    const restored = answersFromProfile(
+      {
+        ...empty,
+        facts: {
+          'construction_method@bldg1': fact('hybrid'),
+          'construction_method_description@bldg1': fact('EG Stahlbeton, ab 1. OG Holzbau'),
+        },
+      },
+      definition
+    )
+    expect(restored.answers['C10_text@bldg1']).toBe('EG Stahlbeton, ab 1. OG Holzbau')
+  })
+
+  it('appends a legacy G-text once, however often the profile is reopened', () => {
+    // `context_plot` is owned by no current question, so the merge keeps
+    // it — and the merged text is already in G1. Appending unconditionally grew
+    // the field on every save.
+    const first = answersFromProfile(
+      {
+        ...empty,
+        facts: {
+          context_description: fact('Ein Wohnhaus.'),
+          context_plot: fact('Hanglage.'),
+        },
+      },
+      definition
+    )
+    expect(first.answers['G1']).toBe('Ein Wohnhaus.\n\nHanglage.')
+
+    const reopened = answersFromProfile(
+      {
+        ...empty,
+        facts: {
+          context_description: fact('Ein Wohnhaus.\n\nHanglage.'),
+          context_plot: fact('Hanglage.'),
+        },
+      },
+      definition
+    )
+    expect(reopened.answers['G1']).toBe('Ein Wohnhaus.\n\nHanglage.')
+  })
+})
+
+describe('where a value is found, and what it feeds', () => {
+  const questions = flattenIntakeQuestions(definition)
+  const byId = (id: string) => {
+    const question = findIntakeQuestion(definition, id)
+    if (!question) throw new Error(`no question ${id}`)
+    return question
+  }
+
+  it('names the documents of every core question in modules A to F that writes a key', () => {
+    const coreWriters = definition.stages
+      .filter((stage) => 'ABCDEF'.includes(stage.id))
+      .flatMap((stage) => stage.questions)
+      .filter((question) => question.core && question.writesTo)
+    expect(coreWriters.length).toBeGreaterThan(10)
+    for (const question of coreWriters) {
+      expect(question.foundIn?.length, question.id).toBeGreaterThan(0)
+    }
+  })
+
+  it('marks exactly the inputs of the building class as feeding it', () => {
+    const feeding = questions
+      .filter((question) => question.feeds === 'building_class')
+      .map((question) => question.id)
+    expect(feeding.sort()).toEqual(['C1', 'C3', 'C5', 'C6', 'C7', 'C8', 'C9', 'C9_zugang', 'D0'])
+  })
+
+  it('asks about access on three sides only for a freistehendes building, after the Gebäudestellung', () => {
+    const ids = definition.stages
+      .find((stage) => stage.id === 'C')!
+      .questions.map((question) => question.id)
+    expect(ids.indexOf('C9_zugang')).toBe(ids.indexOf('C9') + 1)
+    const question = byId('C9_zugang')
+    expect(question).toMatchObject({
+      type: 'yes_no_open',
+      writesTo: '/facts/access_three_sides/value',
+    })
+
+    const asked = (stellung: string) =>
+      evaluateIntakeCondition(question, { 'C1@bldg1': 'building', 'C9@bldg1': stellung }, 'bldg1')
+    expect(asked('freestanding')).toBe(true)
+    expect(asked('attached')).toBe(false)
+    expect(
+      evaluateIntakeCondition(question, { 'C1@bldg1': 'small', 'C9@bldg1': 'freestanding' }, 'bldg1')
+    ).toBe(false)
+  })
+
+  it('stores the access answer as a boolean fact and reads it back', () => {
+    const answers: Answers = {
+      'C1@bldg1': 'building',
+      'C9@bldg1': 'freestanding',
+      'C9_zugang@bldg1': 'yes',
+    }
+    const profile = buildIntakeProfile(answers, definition, {
+      buildings: [{ id: 'bldg1', name: 'Haus' }],
+    })
+    expect(profile.facts['access_three_sides@bldg1']?.value).toBe(true)
+    expect(answersFromProfile(profile, definition).answers['C9_zugang@bldg1']).toBe('yes')
+  })
+
+  it('defines the Fluchtniveau as the OIB does', () => {
+    const hint = byId('C5').hint ?? ''
+    expect(hint).toContain('höchstgelegenen oberirdischen Geschoßes')
+    expect(hint).toContain('Geländeoberfläche nach Fertigstellung im Mittel')
+    expect(hint).not.toContain('Aufenthaltsräumen')
+    expect(hint).not.toContain('tiefsten Punkt')
+  })
+})

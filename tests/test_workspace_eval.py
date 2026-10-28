@@ -23,13 +23,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "turn_census"))
 
 import workspace_eval  # noqa: E402
+from agent_testing.exposure import piloti_tool_names  # noqa: E402
 from fixture_bff import FixtureBFF  # noqa: E402
 from fixture_workspace import FIXTURES  # noqa: E402
 from fixture_workspace import PROPOSED_TEXT  # noqa: E402
 from fixture_workspace import FixtureWorkspace  # noqa: E402
 from fixture_workspace import workspace_calls  # noqa: E402
-
-from tests.aiq_agent.tools.test_exposure_config import piloti_tool_names  # noqa: E402
 
 CATALOG = json.loads((FIXTURES / "catalog.json").read_text(encoding="utf-8"))
 OFFICE = json.loads((FIXTURES / "office.json").read_text(encoding="utf-8"))
@@ -104,13 +103,13 @@ def test_a_read_answers_from_the_office_by_project() -> None:
 
 
 def test_the_agents_own_client_reads_the_doors_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from aiq_agent.tools.documents.filing import SignedEnvelope
+    from aiq_agent.common.bff_http import SignedEnvelope
     from aiq_agent.tools.workspace.client import call_tool_result
 
     bff = FixtureBFF(TOKEN, tmp_path / "requests.jsonl", workspace=FixtureWorkspace()).start()
     try:
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", bff.url)
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
         envelope = SignedEnvelope(header="e30", signature="sig")
         result = call_tool_result("search-operations", {"query": "list project members"}, envelope)
         assert "project-member-list" in result.text

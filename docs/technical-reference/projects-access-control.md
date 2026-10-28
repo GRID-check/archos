@@ -11,33 +11,31 @@ When a project is created (via server action or API route), the flow is:
 3. The returned WorkOS resource ID is stored back in the `workosResourceId` column.
 4. The creator is assigned the `project-admin` role via `workos.authorization.assignRole()`.
 
-Source: `frontends/ui/src/app/projects/actions.ts:30`, `frontends/ui/src/app/api/projects/route.ts:52`
+Source: `apps/workspace/app/projects/actions.ts:30`, `apps/workspace/app/api/projects/route.ts:52`
 
 ## Permission check (`requireProjectAccess`)
 
-`frontends/ui/src/lib/authz/projects.ts`
+`apps/workspace/bff/authz/projects.ts`
 
 ```typescript
 export async function requireProjectAccess(
   session: AuthorizedSession,
   projectId: string,
-  permission: ProjectPermission = "project:view",
-): Promise<{ role: "project-viewer" | "project-editor" | "project-admin" }>
+  permission: ProjectPermission | readonly ProjectPermission[] = "project:view",
+  options?: { includeDeleted?: boolean; evenWhenClosed?: boolean },
+): Promise<ProjectAccess> // { role, closed, readsBecauseClosed }
 ```
 
 ### Check flow
 
-1. **Org admin bypass**: If the session's `role` is `"admin"`, the check passes immediately and returns `"project-admin"`.
-2. **Org validation**: The project's `organizationId` is fetched from PostgreSQL. If the project doesn't exist or the org doesn't match the session's org, the function throws `"Not found"`.
-3. **FGA check**: Calls `workos.authorization.check()` with:
-   - `organizationMembershipId` from the session
-   - `permissionSlug` (the requested permission)
-   - `resourceExternalId` (project UUID)
-   - `resourceTypeSlug`: `"project"`
-4. **Role resolution**: After the permission check passes, two additional FGA checks determine the effective role:
+1. **Tenancy**: The project's `organizationId` is read from PostgreSQL. If the project does not exist, belongs to another organization, or is soft-deleted (unless `includeDeleted`), the function throws `"Not found"`. This runs for everyone, admins included.
+2. **Closed project** (ADR-0090): a closed project keeps only the permissions it still allows; a request that asked only for writes is refused with a named reason.
+3. **Org admin bypass**: a session whose token carries `org:projects:administer` returns `"project-admin"`. The permission decides, never the role name.
+4. **Effective permissions**: one WorkOS call, `authorization.listEffectivePermissionsByExternalId`, with the session's `organizationMembershipId`, `resourceTypeSlug: "project"` and the project id as `externalId`. It counts roles assigned on the project and on its ancestors. Cached for `AUTHZ_CACHE_TTL_MS` (`effectiveResourcePermissions` in `lib/authz/resource-check.ts`); a failed lookup holds nothing and is not cached.
+5. **Access and role**: holding any one requested permission grants access. The role is read from the same set:
    - `project:manage` → `"project-admin"`
-   - `project:edit` → `"project-editor"`
-   - Otherwise → `"project-viewer"`
+   - any of `project:edit`, `project:documents:write`, `project:memory:write` → `"project-editor"`
+   - otherwise → `"project-viewer"`
 
 If the FGA check fails, the function throws `"Not found"` (not `"Forbidden"`) to avoid leaking information about project existence.
 
@@ -54,7 +52,7 @@ If the FGA check fails, the function throws `"Not found"` (not `"Forbidden"`) to
 
 | Action | Route / Action | Permission |
 |--------|---------------|------------|
-| List projects | `GET /api/projects`, `page.tsx` | Org-scoped (no FGA — project rows filtered by org) |
+| List projects | `GET /api/projects`, `page.tsx` | `project:view` per project (`projectsHolding`, the same cached effective permissions); closed projects listed for every member |
 | View project | `GET /api/projects/[id]` | `project:view` |
 | Edit project name | `PATCH /api/projects/[id]` | `project:manage` |
 | Delete project | `DELETE /api/projects/[id]` | `project:manage` |
@@ -70,7 +68,7 @@ If the FGA check fails, the function throws `"Not found"` (not `"Forbidden"`) to
 
 The project creator is automatically assigned `project-admin` via `workos.authorization.assignRole()` in the same transaction that inserts the project. No additional setup is needed.
 
-Source: `frontends/ui/src/app/projects/actions.ts:57`
+Source: `apps/workspace/app/projects/actions.ts:57`
 
 ## Project-org validation
 
@@ -82,13 +80,13 @@ Every project belongs to exactly one organization (the `organizationId` FK on th
 
 This prevents cross-org access even if an FGA check would pass (e.g., due to configuration error).
 
-Source: `frontends/ui/src/lib/authz/projects.ts:24`
+Source: `apps/workspace/bff/authz/projects.ts:24`
 
 ## Anonymous mode
 
 When `REQUIRE_AUTH=false`, the `resolveSession()` helper returns `null` and all project access checks are skipped. The `validateCollectionName()` function in the v1 proxy route blocks uploads to `proj_*` collections with a `403` when there is no session, but read operations may pass through depending on backend configuration.
 
-Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:84`
+Source: `apps/workspace/app/api/v1/[...path]/route.ts:84`
 
 ## Member management
 
@@ -96,4 +94,4 @@ Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:84`
 - **Add**: Calls `workos.authorization.assignRole()` with `organizationMembershipId`, `resourceExternalId`, and `roleSlug`.
 - **Remove**: Finds the role assignment by querying `listRoleAssignmentsForResource()`, then calls `workos.authorization.removeRoleAssignment()`.
 
-Source: `frontends/ui/src/app/api/projects/[id]/members/route.ts`, `frontends/ui/src/app/api/projects/[id]/members/[assignmentId]/route.ts`
+Source: `apps/workspace/app/api/projects/[id]/members/route.ts`, `apps/workspace/app/api/projects/[id]/members/[assignmentId]/route.ts`

@@ -10,7 +10,7 @@
 #
 # ADR-0115 removed Chroma, and with it `deploy/pulumi/src/data/chroma.ts`, the
 # file that deployed the server. A backend image built while that file existed
-# reads AIQ_CHROMA_URL, which a program without it no longer sets, and falls
+# reads CHROMA_URL, which a program without it no longer sets, and falls
 # back to an embedded Chroma in each pod's /tmp: retrieval answers from nothing,
 # without an error, and every upload is lost with the pod. The reverse, an image
 # built after the removal under a program that still deploys Chroma (after a

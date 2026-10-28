@@ -2,7 +2,7 @@
 
 The BFF decides whether reading a failed document again is worth anything from
 ``FileProgress.failure_category`` / ``retryable`` and the job's
-``reader_version`` (``frontends/ui/src/lib/documents/retry-policy.ts``). These
+``reader_version`` (``apps/workspace/bff/documents/retry-policy.ts``). These
 run real jobs through the adapter, with the embedder faked and a real Qdrant
 (the shared ``qdrant_store`` fixture), and read what the job reports: what the
 BFF's reconcile reads.
@@ -36,7 +36,7 @@ def summary_db(tmp_path):
 
 @pytest.fixture
 def ingestor(monkeypatch, summary_db, qdrant_store):
-    from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
+    from knowledge_layer_testing.qdrant import FakeEmbedder
 
     ing = LlamaIndexIngestor({"generate_summary": False})
     ing._embed_model = FakeEmbedder()

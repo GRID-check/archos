@@ -46,26 +46,17 @@ echo "Installing core framework with dev dependencies..."
 "${UV_BIN}" sync --dev
 echo "Core framework installed"
 
-# Install frontends (--no-deps: dependencies already resolved by uv sync)
+# Install the backend host (--no-deps: dependencies already resolved by uv sync)
 echo ""
-echo "Installing frontends..."
-"${UV_BIN}" pip install -e ./frontends/cli
-"${UV_BIN}" pip install -e ./frontends/debug
-"${UV_BIN}" pip install -e ./frontends/aiq_api
-echo "Frontends installed (CLI, Debug, AI-Q API)"
-
-# Install benchmarks
-echo ""
-echo "Installing benchmarks..."
-"${UV_BIN}" pip install -e ./frontends/benchmarks/freshqa
-"${UV_BIN}" pip install -e ./frontends/benchmarks/deepsearch_qa
-echo "Benchmarks installed"
+echo "Installing the backend host..."
+"${UV_BIN}" pip install -e ./apps/backend
+echo "Backend host installed"
 
 # Install data sources
 echo ""
 echo "Installing data sources..."
-"${UV_BIN}" pip install -e ./sources/tavily_web_search
-"${UV_BIN}" pip install -e "./sources/knowledge_layer[llamaindex]"
+"${UV_BIN}" pip install -e ./packages/tavily-web-search
+"${UV_BIN}" pip install -e "./packages/knowledge-layer[llamaindex]"
 echo "Data Sources installed"
 
 # Setup pre-commit
@@ -86,9 +77,9 @@ fi
 
 # Setup UI dependencies (optional)
 echo ""
-if [ -d "frontends/ui" ]; then
+if [ -d "apps/workspace" ]; then
     echo "Setting up UI dependencies..."
-    cd frontends/ui
+    cd apps/workspace
 
     if command -v npm &> /dev/null; then
         npm ci
@@ -100,7 +91,7 @@ if [ -d "frontends/ui" ]; then
 
     cd ../..
 else
-    echo "UI directory not found at frontends/ui"
+    echo "UI directory not found at apps/workspace"
 fi
 
 echo ""
@@ -110,7 +101,6 @@ echo "Next steps:"
 echo "1. Activate virtual environment: source .venv/bin/activate"
 echo "2. Add your OPENROUTER_API_KEY to deploy/.env"
 echo "3. Run the agent:"
-echo "   - CLI mode:        ./scripts/start_cli.sh"
 echo "   - Server mode:     ./scripts/start_server_in_debug_mode.sh"
 echo "   - End-to-End (UI): ./scripts/start_e2e.sh"
 echo ""

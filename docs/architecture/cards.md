@@ -33,9 +33,11 @@ sources, and the persisted decisions of interactive cards.
 
 ## Current card types
 
-Defined in `src/aiq_agent/cards/models.py` as a discriminated union (`GridCard`)
-— **25 types in four families**: 17 the answering model may emit, 16 of them
-through `emit_card` too; the 17th is `surface` (ADR-0065), a composition whose
+Each card's model lives in a module named after it under `packages/agent/src/aiq_agent/cards/`
+(`look_card.py`, `ifc_cards.py`, …; the base and its plain-text rule in
+`card_model.py`), and `cards/models.py` joins them in a discriminated union (`GridCard`)
+— **26 types in four families**: 18 the answering model may emit, 17 of them
+through `emit_card` too; the 18th is `surface` (ADR-0065), a composition whose
 leaves are content cards or `Text`, offered on the chat envelope only
 (`CHAT_ONLY_CARD_TYPES`: `emit_card`, `describe_card` and the post-hoc
 validator refuse it, because only the chat pipeline recites its `[N]`); and
@@ -53,7 +55,7 @@ coverage/GFZ readout), `elevator_requirement` (now `dimension_diagram`'s
 `lift_cabin` template), `follow_ups` (the post-answer stage), and the four
 envelope twins `summary`, `verdict_header`, `key_takeaways`, `callout`. Those
 four are native answer anatomy: a research answer is generated as one JSON
-envelope (```answer_json — `src/aiq_agent/common/answer_envelope.py`) whose
+envelope (```answer_json — `packages/agent/src/aiq_agent/common/answer_envelope.py`) whose
 optional fields carry the summary, the verdict, the takeaways and the callout,
 validated and gated platform-side and rendered as answer typography
 (`features/chat/components/AnswerAnatomy.tsx`); the callout sits beside the
@@ -80,6 +82,7 @@ answer it has just written.
 |---|---|---|
 | `project_profile_patch` **(interactive)** | A proposed change to the project brief. With `proposal_id` it is the receipt of a stored `project_profile` proposal (`ProposalReceipt`): the server applies the patch in the deciding person's session and the card says who decided when. Without one, the browser applies it, as before | `title`, `rationale`, `patch[]` — JSON-Patch ops restricted to `/facts`, `/goals`, `/unknowns`, `/assumptions` (the before/after rows are built from the patch and the live profile, never from the model) |
 | `calculation` | The derivation behind a computed number — the Schrittmaßregel, a GFZ, a Brandlast, a U-value from its resistances. **There is no result field**: the model supplies operands, an operation from a closed set (`sum`, `product`, `quotient`, `percent_of`, `percent_ratio`) and the limit; the renderer computes, propagates the ± band, rounds and judges | `title`, `steps[]` (`label`, `operation`, `operands[]`, `unit`), `limit`, `reference`, `note` |
+| `formula` | A named rule the reader can ask "what if" of (ADR-0143): `u_value` (ÖNORM EN ISO 6946, held against OIB-RL 6 Pkt. 4.4.1), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1 and Tabelle 3), `escape_route_length` (OIB-RL 2 Pkt. 5.1.1, 5.1.2), `daylight_ratio` (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). **No result, no unit and no limit on the wire**: the model names the case and fills each input with its source's value and where it is written; the renderer compiles the rule to `calculation` steps, takes the bound from its own table for that case, recomputes when the reader changes an input and marks a changed value „Ihre Annahme" | `title` (the component, no figure), `formula` (`name`, its case: `stair_type`, `component` and `measure` (`new_build`, `renovation`, `major_renovation`), or `start`, and its inputs: `value`, `editable`, `min`, `max`, `step`, `provenance`, `source`, `reference`), `note` (no figure) |
 | `surface` | Variants the reader picks one of, or cards that read together in one slot (ADR-0065). An A2UI v0.9 component list: a `Row`, `Column` or `Tabs` root whose leaves are content cards or `Text`; see [Every card is drawn through A2UI](#every-card-is-drawn-through-a2ui) | `title`, `components[]` |
 
 **Schematic cards** — eight programmatically-drawn technical diagrams (SVG kit
@@ -138,8 +141,8 @@ catalog omits them entirely).
 | `memory_proposal` **(interactive)** | a finding to be written to org- or project-scoped memory, for the user to confirm. With `proposal_id` it is the receipt of a stored `memory` proposal (same frame as the file card, `ProposalReceipt`): the note, its kind and confidence, where it goes, „Ersetzt: …“ for a correction, „Übernehmen“ / „Verwerfen“ for whoever `canDecide`, „Nur im Projekt merken“ for an office note, and who decided when. Without one, the browser writes it, as before | the `remember` tool |
 | `document_draft` | a document written into this conversation's working directory — title, path, `v{n}` and size, with the Files feature's „Von Piloti erstellt" byline. Its „Ins Projekt übernehmen" is drawn **inert**: filing is a later slice, and until it is wired the card reports the draft rather than offering to move it | the working directory's `write_file` / `edit_file` |
 | `task_created` | work Piloti has taken on, as a task row somebody can come back to — title, goal, due date and a link to the run's thread. Informational: the task is already queued when it renders, so there is no Accept | the `create_task` tool |
-| `file_operation_proposal` **(interactive)** | a workspace change the agent PROPOSED and did not make — a move, a rename, a new folder, an assignment. One card type for four verbs, discriminated by `operation`, carrying a capped LIST so an „organise the Einreichung" turn is one decision and not four. With `proposal_id` it shows a proposal stored on the server ([`proposed-changes.md`](proposed-changes.md), ADR-0105): accepting asks the server to apply it in the accepting person's session, and every reader sees the same decision. The result is reported per row — a batch where the third fails says two landed and one did not, with the reason. Without one (an answer older than server proposals, or one the agent could not store) the card is read-only: nothing runs in the browser any more, a decision recorded on the message is replayed, and an undecided card says „Konnte nicht als Vorschlag angelegt werden“ | `propose_file_change` under `src/aiq_agent/tools/files/` (a Dokumentart proposal waits for a project-scoped doc_class route) |
-| `canvas_activity` **(interactive)** | what Piloti did on ONE document: the marks it proposed (each drawn on a small page at its normalized place, numbered like the canvas's pins, dashed while a proposal), the marks it set, changed or deleted because the person asked, and the threads it answered in. Each proposed mark is answered on its own, „Übernehmen" / „Verwerfen", through the annotations client (`PATCH …/annotations/{id}`, status `open` / `dismissed`), and stored per mark under `itemDecisionKey`. A change reads „#4 erledigt" with Piloti's note, and „Rückgängig" PATCHes the inverse with the status Piloti left as `expectedStatus`, stored per row. The card reads the document's marks once it is on screen and lets the canvas win, so a mark a colleague answered there reads as answered here. „Im Dokument zeigen" opens the Prüfansicht at that mark over the chat (`features/documents/lib/open-review.ts`) | the canvas tools under `src/aiq_agent/tools/canvas/` |
+| `file_operation_proposal` **(interactive)** | a workspace change the agent PROPOSED and did not make — a move, a rename, a new folder, an assignment. One card type for four verbs, discriminated by `operation`, carrying a capped LIST so an „organise the Einreichung" turn is one decision and not four. With `proposal_id` it shows a proposal stored on the server ([`proposed-changes.md`](proposed-changes.md), ADR-0105): accepting asks the server to apply it in the accepting person's session, and every reader sees the same decision. The result is reported per row — a batch where the third fails says two landed and one did not, with the reason. Without one (an answer older than server proposals, or one the agent could not store) the card is read-only: nothing runs in the browser any more, a decision recorded on the message is replayed, and an undecided card says „Konnte nicht als Vorschlag angelegt werden“ | `propose_file_change` under `packages/agent/src/aiq_agent/tools/files/` (a Dokumentart proposal waits for a project-scoped doc_class route) |
+| `canvas_activity` **(interactive)** | what Piloti did on ONE document: the marks it proposed (each drawn on a small page at its normalized place, numbered like the canvas's pins, dashed while a proposal), the marks it set, changed or deleted because the person asked, and the threads it answered in. Each proposed mark is answered on its own, „Übernehmen" / „Verwerfen", through the annotations client (`PATCH …/annotations/{id}`, status `open` / `dismissed`), and stored per mark under `itemDecisionKey`. A change reads „#4 erledigt" with Piloti's note, and „Rückgängig" PATCHes the inverse with the status Piloti left as `expectedStatus`, stored per row. The card reads the document's marks once it is on screen and lets the canvas win, so a mark a colleague answered there reads as answered here. „Im Dokument zeigen" opens the Prüfansicht at that mark over the chat (`features/documents/lib/open-review.ts`) | the canvas tools under `packages/agent/src/aiq_agent/tools/canvas/` |
 | `look` | where Piloti looked on ONE document in this turn (ADR-0128): an item per look the answer relies on (page, region as `[x, y, w, h]`, `where` in words, the `question` and the first `reading`) and a `reference` item per box or pointer it showed the room. An ADDRESS (document id, Fassung as `revision_id`, page, region, `image_index`), never pixels: a `data:` string is refused anywhere on it, by the model and by the generated schema. Which looks become items is decided once the answer is final: the looked-at documents the answer cites, or all of them when it cites none, and every gesture (`tools/look/cards.py`). Drawn per item as the page clip with the place marked (`PageRegionThumbnail`, from the document's own routes, so only a reader who may open the document sees it), the place in words, the question and the reading marked as read, not measured; pressing an item opens the viewer at the page with the box glowing (`PagePlaceButton`). Not exported: printed, it is coordinates without the picture | `look`, through `place_look_cards` in `finalize_answer`; `canvas__highlight` and `canvas__point` add the `reference` items |
 | `revision_compare` | the same page of two Fassungen side by side, the changes boxed on each (ADR-0128, V10): `older_id`, `newer_id`, optional `older_name` / `newer_name` (the file names `document-revision-compare` returns; the sides are labelled with them, and with the role words when absent), `page`, `changes` (`region` as `[x, y, w, h]` and a `label`) and the `summary` sentences. An ADDRESS, never pixels (a `data:` string is refused). The boxes were found on the newer page and are drawn at the same place on the older. Each side is the whole page drawn from its own document's routes (`PageRegionThumbnail`, so only a reader who may open both sees them); pressing a side opens the viewer at the page with every box (`PagePlaceButton` with `marks`). Not exported | `workspace__call` of `document-revision-compare`, once the result is in (`tools/workspace/cards.py`); one card per pair and page |
 
@@ -148,6 +151,38 @@ persisted on the message; see
 [Interactive cards](#interactive-cards-the-answer-must-be-persisted).
 
 `validate_cards()` validates against the union and drops null fields.
+
+### `formula`: the reader's what-if, bound into the surface (ADR-0143)
+
+`formula` is `calculation` with a name instead of operations, and inputs the
+reader may change. The name picks one of four rules in
+`apps/workspace/ui/features/grid-cards/lib/formulas.ts`, each of which compiles
+to `CalculationStepData`: the same `evaluate`, the same `verdictFor` and the one
+derivation renderer (`components/Derivation.tsx`) serve both cards. The rule's
+bounds are not on the wire at all. They are typed tables in `formulas.ts`,
+transcribed from the Mai 2023 Richtlinien and keyed by the case the model names
+(`stair_type`, `component`, `start`); the reader has no control over them, and a
+`limits` list or a `result` the model writes is dropped by validation and
+counted (`card-validity`, `stripped`). The rules are tested against
+hand-computed cases in `formula-cases.json` beside `formulas.ts`, which
+`packages/agent/tests/cards/test_formula_card.py` validates as cards.
+
+Pydantic and the generated Zod schema do not refuse the same inputs: pydantic
+refuses a `value` outside its own `min`/`max` and a `min` at or above `max`, the
+TS schema accepts both. The renderer reconciles them (`inputSlots` drops the
+bound the source's value breaks), so a card that reaches the browser either way
+shows the source's value, never as an error. The title, a layer's or a leg's
+label is an alphabet (letters, spaces, a few marks, digits only in an
+allow-listed citation or identifier), the note and an input's `source` may
+also name documents (plan code, Index, Rev., Pos., a date) but hold no
+measurement, sign or symbol, and neither holds a verdict word (`_figure_in` in
+`cards/models.py`); pydantic refuses them, the TS schema does not check.
+
+A changed input is written to the card's A2UI surface data model at
+`/inputs/<leaf id>` (`features/a2ui/reader-inputs.ts`): never to the message,
+never to a backend, never to an export, and gone on reload. Langfuse records
+`formula-input-provenance` per card, the share of given inputs that say where
+they are written.
 
 ### `calculation` has nowhere to put a wrong answer
 
@@ -203,7 +238,7 @@ for an Energieeffizienzklasse, and a cited quote line `> „…“ [N]` for the
 wording an answer turns on, verified against the source like every quote
 (`verify_quoted_spans`). The backend treats the directive lines as inert text:
 citation verification, renumbering, quote verification and the report hygiene
-pass keep them byte-equal (`tests/aiq_agent/agents/piloti/test_answer_pipeline_directives.py`;
+pass keep them byte-equal (`packages/agent/tests/agents/piloti/test_answer_pipeline_directives.py`;
 the hygiene pass keeps a line's leading indentation and never pulls the space
 out of „Klasse :energy-class[B]").
 
@@ -391,20 +426,20 @@ its schema no longer knows with a generic fallback rather than a hole.
 
 The checklist:
 
-1. delete the model from `cards/models.py` (and from `GridCard`, `__all__`,
+1. delete the model from its module under `cards/` (and from `GridCard` in `cards/models.py`,
    `CARD_EXAMPLES`, the trigger table and any craft or note naming it);
 2. add its name and replacement to `RETIRED_CARD_REPLACEMENTS`;
 3. regenerate: `uv run python scripts/generate_card_schema.py`, then
-   `npm run generate:cards` in `frontends/ui`;
+   `npm run generate:cards` in `apps/workspace`;
 4. remove it from every builtin skill's `grid-cards` and body, then run
-   `node frontends/ui/scripts/sync-platform-skills.mjs`;
+   `node apps/workspace/scripts/sync-platform-skills.mjs`;
 5. remove the renderer, its `CARD_INTERACTIVITY` entry, its export mapping and
    its entry in the frontend's `SURFACE_EXCLUDED_LEAVES` if it had one
    (`test_interactive_card_parity.py` and `test_surface_excluded_parity.py`
    hold the two halves together);
 6. teach the replacement in `piloti_static.md` if it is Markdown.
 
-`tests/aiq_agent/cards/test_retired_card_types.py` holds every retired name to
+`packages/agent/tests/cards/test_retired_card_types.py` holds every retired name to
 every channel.
 
 ### `emit_card` carries the doctrine, not a disclaimer
@@ -536,8 +571,8 @@ and the shapes of `ENVELOPE_SHAPE_TYPES` ride in the envelope contract
 enough to name the right card AND to build it, with a card the validator
 refuses handed to the small repair model (`cards/repair.py`) rather than back
 to the answering agent. Deep research still reads the doctrine in
-`emit_card`'s description, and gets the shape on the retry. Skills, too, are bound on
-every turn (`use_skill`); there is no gate in front of the skill runtime any
+`emit_card`'s description, and gets the shape on the retry. Skills, too, are offered on
+every turn (the catalog, and `read_file` on a `SKILL.md`); there is no gate in front of the skill runtime any
 more, and no way to require a skill either, so a greeting that loads no skill is
 the model's judgment, pinned by the prompt.
 
@@ -645,10 +680,14 @@ per card type, named by the type and validated by that card's generated Zod
 schema, plus `Row`, `Column`, `Tabs` and `Text` in the basic catalog's shapes. Each
 card component calls back into `GridCardView`, the per-type dispatch that used
 to be `GridCardItem`, so the pixels are the same components as before.
+`@a2ui/react` is imported only by `react-catalog.tsx`, which `A2uiCard` loads
+in the browser: the library defines custom elements on import and cannot load
+on the server. `catalog.tsx` is the server-safe half (component APIs,
+`preflight`, the contexts), and `ssr.spec.tsx` keeps it that way.
 
 - **Composition.** A `surface` card carries an A2UI component list: a
   container with id `root` and the content cards it holds. `SurfaceCard` in
-  `cards/models.py` checks the structure with `a2ui-core` (unique ids, a root,
+  `cards/surface_card.py` checks the structure with `a2ui-core` (unique ids, a root,
   no dangling reference, no cycle, no orphan) and each card with its own
   model; tool, interactive and envelope cards may not be leaves. The model is
   taught the shape in the envelope contract's COMPOSE paragraph. A `Row` sits
@@ -689,7 +728,7 @@ to be `GridCardItem`, so the pixels are the same components as before.
   red text), and refuses a surface that is not one tree under `root`: ids
   unique, `root` present, every child and tab id resolves, each id referenced
   once, no cycle, every component reachable (`structuralRefusal`, the same
-  checks `SurfaceCard` runs in `cards/models.py`). A render that throws inside
+  checks `SurfaceCard` runs in `cards/surface_card.py`). A render that throws inside
   A2UI falls back to the direct component. A refused surface falls back to its
   cards stacked in order, leaving out any leaf in `SURFACE_EXCLUDED_LEAVES`.
   That list refuses a leaf only inside a surface: a lone card of such a type
@@ -865,26 +904,28 @@ Three guards, on both sides of the stack:
    `GridCards`, clicks it, and asserts the decision reached the store.
 3. **A pytest parity guard fails on cross-stack drift.**
    `INTERACTIVE_CARD_TYPES` (`aiq_agent/cards/catalog.py`) must agree with the
-   TS map — `tests/aiq_agent/cards/test_interactive_card_parity.py`.
+   TS map — `packages/agent/tests/cards/test_interactive_card_parity.py`.
 
 ## Design intent (why it's a layer, not a feature)
 
-Adding a new card type should be: **define the model** (`cards/models.py`) → **add
+Adding a new card type should be: **define the model** (a module under `cards/`, joined in `cards/models.py`) → **add
 a renderer** (`features/grid-cards/`). No pipeline surgery. That keeps the set open
 to future types (requirement checklists, comparison tables, applicability panels)
 without re-plumbing generation or transport.
 
 ### Checklist: adding a card type
 
-1. Define the Pydantic model in `src/aiq_agent/cards/models.py` and add it to the
-   `GridCard` union. **The docstring's first line is the L1 index entry** the
+1. Define the Pydantic model in a module named after it under `packages/agent/src/aiq_agent/cards/`
+   (subclassing `CardModel` from `card_model.py`), add it to the `GridCard` union in
+   `cards/models.py`, and add the module to the `card-schemas` hook's `files:` in
+   `.pre-commit-config.yaml` and to the card paths in `.github/filters.yml`. **The docstring's first line is the L1 index entry** the
    model reads on every turn — write it as a trigger ("Emit for … questions"),
    not as a label, because the index is all the model has to go on before it
    spends a `describe_card` call. Nothing else is needed to advertise the type:
    the index, the shapes, the human catalog endpoint and the gallery are all
    derived from the union.
 2. Regenerate the schema: `uv run python scripts/generate_card_schema.py`, then
-   `cd frontends/ui && npm run generate:cards`.
+   `cd apps/workspace && npm run generate:cards`.
 3. **Classify it in `CARD_INTERACTIVITY`** (`features/grid-cards/card-decision.ts`).
    `tsc` fails until you do — see [Interactive cards](#interactive-cards-the-answer-must-be-persisted)
    for how to decide, and for what an `'interactive'` classification obliges.
@@ -923,9 +964,9 @@ without re-plumbing generation or transport.
 
 ## Card catalog
 
-The catalog is the twenty-three types tabulated under
-[Current card types](#current-card-types) — three structured
-(`project_profile_patch`, `calculation`, `surface`), eight schematic, six
+The catalog is the types tabulated under
+[Current card types](#current-card-types) — four structured
+(`project_profile_patch`, `calculation`, `formula`, `surface`), eight schematic, six
 model-facing IFC and six system — and that is the only place in this document
 where they are listed, on purpose: a card type appearing in two tables means one
 of them is already wrong. See
@@ -987,7 +1028,7 @@ focus order and the accessibility tree (`inert`) — `pointer-events-none` alone
 would leave them keyboard-reachable, and a tabbed-to "Yes" still writes.
 
 The card-generation LLM is `card_llm` (config `reasoning_effort: medium`). Adding a
-card type = define the Pydantic model (`cards/models.py`), regenerate the schema
+card type = define the Pydantic model (a module under `cards/`, joined in `cards/models.py`), regenerate the schema
 (`scripts/generate_card_schema.py` → `npm run generate:cards`), add a renderer, and
 wire the `GridCards` dispatcher. A dev-only gallery at `/dev/cards`
 (`src/app/dev/cards/page.tsx`, 404 outside development) renders every card type
@@ -998,7 +1039,7 @@ are committed (see `docs/ux/visual-screenshots.md`).
 For a system card emitted by a tool (`document_grid`), that tool must be added to
 the agent's `tools:` list in the config (both `shallow_research_agent` and
 `deep_research_agent` bind it) and its `_type` registered — see `surface_documents`
-in `configs/config_oib_openrouter.yml`; `tests/aiq_agent/test_config_tool_wiring.py`
+in `configs/config_oib_openrouter.yml`; `packages/agent/tests/test_config_tool_wiring.py`
 is the gate.
 If the new card is one the MODEL may emit and its contents must be **copied
 from a tool result** rather than written from the answer, add its type to

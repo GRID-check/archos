@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0017: BFF repository/service architecture
 
-- **Status:** Accepted
 - **Date:** 2026-07-08
 - **Deciders:** Grid engineering
 - **Related:** ../architecture/bff-service-architecture.md, ADR-0016 (permission registry), docs/architecture/multitenancy-and-auth-spec.md

@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0018: Per-run construction of deep research run state
 
-- **Status:** Accepted
 - **Date:** 2026-07-09
 - **Deciders:** Grid engineering
 - **Related:** ADR-0003 (stateless Python agent), `src/aiq_agent/agents/deep_researcher/README.md`, `docs/architecture/backend-deep-dive.md`

@@ -34,6 +34,7 @@ from langchain_core.callbacks import AsyncCallbackHandler
 
 from .bff import JOB_ID
 from .bff import FakeIntakeBff
+from .bff import FakeIntakeRoute
 from .bff import Gate
 from .fixture import REPO_ROOT
 from .fixture import Fixture
@@ -221,7 +222,6 @@ def fixture_world(fixture: Fixture, bff: FakeIntakeBff) -> Iterator[None]:
     from aiq_agent import project_context
     from aiq_agent.agents.intake import client
     from aiq_agent.agents.intake import reading
-    from tests.aiq_agent.agents.intake.conftest import FakeIntakeRoute
 
     route = FakeIntakeRoute(**bff.answers())
     patches = [
@@ -230,7 +230,7 @@ def fixture_world(fixture: Fixture, bff: FakeIntakeBff) -> Iterator[None]:
         (client._opener, "open", route),
         (project_context, "get_request_envelope_from_context", lambda: ("intake-eval-envelope", "intake-eval")),
     ]
-    environment = {"GRID_INTERNAL_API_TOKEN": "intake-eval", "FRONTEND_INTERNAL_URL": "http://intake-eval.invalid"}
+    environment = {"INTERNAL_API_TOKEN": "intake-eval", "FRONTEND_INTERNAL_URL": "http://intake-eval.invalid"}
     saved = [(target, name, getattr(target, name)) for target, name, _ in patches]
     saved_env = {name: os.environ.get(name) for name in environment}
     for target, name, value in patches:

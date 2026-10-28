@@ -1,11 +1,12 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { EDGE_TIMEOUT, PORT, QDRANT } from "../constants";
 import { GATEWAY_NAME } from "./gateway";
 import { commonLabels } from "./namespaces";
 import { OIDC_CLIENT_SECRET_KEY, platformOidcSecurityPolicySpec } from "./platform-oidc";
+import { logicalName } from "../names";
 
 /**
  * Request headers dropped before a dashboard request reaches Qdrant.
@@ -130,7 +131,7 @@ export function installQdrantDashboard(
     ],
   };
   const securityPolicy = new k8s.apiextensions.CustomResource(
-    "grid-qdrant-dashboard-security-policy",
+    logicalName("grid-qdrant-dashboard-security-policy"),
     {
       apiVersion: "gateway.envoyproxy.io/v1alpha1",
       kind: "SecurityPolicy",
@@ -145,7 +146,7 @@ export function installQdrantDashboard(
   );
 
   new k8s.apiextensions.CustomResource(
-    "grid-qdrant-dashboard-route",
+    logicalName("grid-qdrant-dashboard-route"),
     {
       apiVersion: "gateway.networking.k8s.io/v1",
       kind: "HTTPRoute",

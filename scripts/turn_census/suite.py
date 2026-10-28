@@ -11,7 +11,7 @@ Per run it records what the provider billed and what the reader got:
 - seconds (wall, answering call), research calls, tool calls, reasoning tokens and
   the largest single-call spike: the September 2026 census found that time
   follows reasoning tokens at ~85 tok/s, and that the spike, not the round
-  count, is the variance (`docs/architecture/turns-per-answer-audit-2026-09.md`);
+  count, is the variance (`docs/audit/turns-per-answer-audit-2026-09.md`);
 - seconds until the reader saw prose (`first_text_s`);
 - the pipeline's own signals from the log (`_LOG_SIGNALS`): a flagged quote, a
   quote patch, the terminal frame replacing the settled text, a gated summary,
@@ -25,8 +25,8 @@ Per run it records what the provider billed and what the reader got:
 
 No backend, no BFF: a question about an office's own files needs a project and
 is skipped, and says so. Needs OPENROUTER_API_KEY and the corpus ingested into
-the Qdrant at AIQ_QDRANT_URL (`--ingest` queues the corpus's ingest jobs from the table in
-AIQ_SUMMARY_DB and the object store, and claims and runs them in this process; with `--corpus data/oib`
+the Qdrant at QDRANT_URL (`--ingest` queues the corpus's ingest jobs from the table in
+SUMMARY_DB and the object store, and claims and runs them in this process; with `--corpus data/oib`
 the corpus is that directory's PDFs and needs no BFF or object store). Every run costs model calls.
 
 `--set precedent` runs the precedent eval instead
@@ -41,7 +41,7 @@ comparable exists, and flagged an older edition
 `--set visual` (`tests/fixtures/visual/visual_questions.yaml`, ADR-0128) asks questions answered by looking
 at a drawing: three sheets are rendered from `drawings.json` into the output directory and served by the
 fixture BFF, and the report counts looks and the IoU of their regions against the gold boxes. `--look off`
-is its paired arm (`AIQ_VIEW_IMAGES_ENABLED=0`). Needs `AIQ_QDRANT_URL` and `AIQ_SUMMARY_DB` like `--set files`.
+is its paired arm (`VIEW_IMAGES_ENABLED=0`). Needs `QDRANT_URL` and `SUMMARY_DB` like `--set files`.
 
 `--set north-star` (`tests/fixtures/north_star/north_star_questions.yaml`) asks the exemplars of
 docs/architecture/north-star-answers.md: each row is a files-set or visual-set row, run behind its own
@@ -56,6 +56,13 @@ reported not applicable; horizon rows are listed, never run.
     python scripts/turn_census/suite.py --set precedent --runs 2
     python scripts/turn_census/suite.py --set visual --runs 2 [--look off]
     python scripts/turn_census/suite.py --set north-star --runs 2
+    python scripts/turn_census/suite.py --set files --arm all --runs 3 --out /tmp/fs/before
+    python scripts/turn_census/suite.py --set files --arm all --runs 3 --out /tmp/fs/after --baseline /tmp/fs/before
+    python scripts/turn_census/suite.py --compare /tmp/fs/before /tmp/fs/after   # no model calls
+
+Every run records what the provider billed for the turn (``cost_usd``, OpenRouter's ``usage.cost``), and
+``compare.py`` turns runs into the before/after table: accuracy, rounds, tool calls, tokens and cost per
+answer and latency, per arm and per row.
 """
 
 from __future__ import annotations
@@ -149,6 +156,10 @@ class Run:
     max_reasoning_tokens: int = 0
     output_tokens: int = 0
     input_tokens: int = 0
+    #: What the provider billed for every model call of the turn, in USD (OpenRouter's ``usage.cost``);
+    #: None in a results.json from before it was captured. ``cost_missing`` counts calls billed without one.
+    cost_usd: float | None = None
+    cost_missing: int = 0
     signals: list[str] = field(default_factory=list)
     kind: str = ""
     cited_families: list[str] = field(default_factory=list)
@@ -270,6 +281,13 @@ def _usage(entry: dict) -> tuple[int, int, int]:
     )
 
 
+def turn_cost(rows: list[dict]) -> tuple[float, int]:
+    """USD billed over every recorded call, and how many calls carried usage but no ``cost``."""
+    billed = [row["usage"] for row in rows if row.get("usage")]
+    costs = [float(usage["cost"]) for usage in billed if isinstance(usage.get("cost"), int | float)]
+    return round(sum(costs), 6), len(billed) - len(costs)
+
+
 def final_answer(log_text: str) -> str:
     """The answer the pipeline delivered: `nat run`'s Workflow Result, minus the colour codes."""
     plain = _ANSI.sub("", log_text)
@@ -367,6 +385,7 @@ def observe(
     # The call that ends last need not start last: quote patches and checks overlap.
     run.wall_s = round(max(row["t_end"] for row in rows) - rows[0]["t_start"], 1)
     _read_calls(run, research, answered_at, rows[0]["t_start"])
+    run.cost_usd, run.cost_missing = turn_cost(rows)
     run.signals = log_signals(log_text)
     run.precedent_p = precedent_of(log_text)
     run.answer = final_answer(log_text)
@@ -845,16 +864,13 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
     from aiq_agent import oib_sync
     from aiq_api.jobs import ingest_dispatch
 
-    print("queueing the corpus:", oib_sync.sync())
+    print("queueing the corpus:", oib_sync.sync(enqueue=ingest_dispatch.enqueue_only))
     if not ingest_dispatch.attach(oib_sync._get_oib_ingestor()):
-        return (
-            "the ingest queue is off or has no database (GRID_INGEST_QUEUE, AIQ_SUMMARY_DB): "
-            "nothing can ingest the corpus"
-        )
+        return "the ingest queue is off or has no database (INGEST_QUEUE, SUMMARY_DB): nothing can ingest the corpus"
     unfinished = (oib_sync.JobProgress.WAITING, oib_sync.JobProgress.RUNNING)
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        result = oib_sync.sync()
+        result = oib_sync.sync(enqueue=ingest_dispatch.enqueue_only)
         rows = corpus_store.list_files()
         waiting = [
             name
@@ -913,7 +929,7 @@ def use_local_corpus(directory: Path) -> int:
 
 
 def _corpus_ready() -> bool:
-    """Whether the OIB collection holds chunks in the Qdrant at ``AIQ_QDRANT_URL``.
+    """Whether the OIB collection holds chunks in the Qdrant at ``QDRANT_URL``.
 
     Asked through the process-wide store the ingest itself writes through.
     The reason a check fails is printed, so a corpus that reads as "not
@@ -933,13 +949,13 @@ def _corpus_ready() -> bool:
 def inventory_database() -> Path | None:
     """The SQLite file the runs will read the document inventory from, or None when it is not SQLite.
 
-    ``AIQ_SUMMARY_DB`` or the config's default, ``./summaries.db``. A relative
+    ``SUMMARY_DB`` or the config's default, ``./summaries.db``. A relative
     path is resolved against the REPO ROOT, because that is the working
     directory every run's ``nat run`` gets (``census.run_once``), whatever
     directory the suite itself was started from. A worktree has its own root,
     and its own empty ``summaries.db``.
     """
-    url = os.environ.get("AIQ_SUMMARY_DB") or "sqlite+aiosqlite:///./summaries.db"
+    url = os.environ.get("SUMMARY_DB") or "sqlite+aiosqlite:///./summaries.db"
     prefix = "sqlite+aiosqlite:///"
     if not url.startswith(prefix):
         return None
@@ -1054,7 +1070,7 @@ def precedent_envelope(
     """The signed request-context envelope the BFF would mint for a turn in the fixture office's current project.
 
     Base64url JSON, HMAC-SHA256 over the exact bytes with the run's
-    ``GRID_INTERNAL_API_TOKEN``: the agent verifies it like a real one
+    ``INTERNAL_API_TOKEN``: the agent verifies it like a real one
     (``GridRequestContext.from_envelope``). A solo chat, as the conversation
     has no row: the fixture BFF searches every project in the office. ``extra`` adds payload
     fields (``--set files`` states the project's ``collectionScope`` this way).
@@ -1104,9 +1120,9 @@ def start_workspace_bff(out: Path) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
         }
 
     return bff, env_for
@@ -1134,9 +1150,9 @@ def start_files_bff(out: Path) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
             # A row an upload starts carries its trigger and open document, as the headless turn does.
             **turn_input.env_for(question),
         }
@@ -1150,7 +1166,7 @@ def start_visual_bff(out: Path, look: bool = True) -> tuple[Any, Any]:
     The drawings are drawn from ``drawings.json`` into ``out/drawings`` now. The fixture BFF answers the
     document lookup and is the object store the run reads the bytes from (``fixture_visual.py``); the
     run's scope is the project's collection, as in ``--set files``. ``look`` False sets
-    ``AIQ_VIEW_IMAGES_ENABLED=0`` for every run.
+    ``VIEW_IMAGES_ENABLED=0`` for every run.
     """
     import secrets
 
@@ -1167,9 +1183,9 @@ def start_visual_bff(out: Path, look: bool = True) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
             **workspace.env(bff.url, look),
             # A row with a drawn box sends it on the turn, as the canvas does (turn_input.py).
             **turn_input.env_for(question),
@@ -1197,9 +1213,9 @@ def start_fixture_bff(out: Path) -> tuple[Any, Any]:
         header, signature = precedent_envelope(office.office, conversation_id, token, office.current)
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
-            "GRID_EVAL_ENVELOPE": header,
-            "GRID_EVAL_ENVELOPE_SIG": signature,
+            "INTERNAL_API_TOKEN": token,
+            "EVAL_ENVELOPE": header,
+            "EVAL_ENVELOPE_SIG": signature,
         }
 
     return bff, env_for
@@ -1293,17 +1309,17 @@ def _preflight(out: Path, ingest: bool, corpus: Path | None = None, needs_corpus
             print(problem, file=sys.stderr)
     if not _corpus_ready():
         print(
-            "The OIB corpus is not ingested into the Qdrant at AIQ_QDRANT_URL. Upload the PDFs "
+            "The OIB corpus is not ingested into the Qdrant at QDRANT_URL. Upload the PDFs "
             "(scripts/upload_oib_corpus.py) and run with --ingest.",
             file=sys.stderr,
         )
         return 2
-    summary_db = os.environ.get("AIQ_SUMMARY_DB", "")
+    summary_db = os.environ.get("SUMMARY_DB", "")
     if summary_db and "://" not in summary_db:
         # A bare path is not a database URL: every run then fails to start, after
         # the suite has already launched them all.
         print(
-            f"AIQ_SUMMARY_DB is a path, not a database URL: {summary_db}. "
+            f"SUMMARY_DB is a path, not a database URL: {summary_db}. "
             "Use sqlite+aiosqlite:////absolute/path/summaries.db.",
             file=sys.stderr,
         )
@@ -1312,7 +1328,7 @@ def _preflight(out: Path, ingest: bool, corpus: Path | None = None, needs_corpus
     if not inventory_ready(database):
         print(
             f"The document inventory at {database} lists no corpus documents: runs would have no inventory, "
-            "no family overviews and no quote checks. Point AIQ_SUMMARY_DB at the database the ingest wrote "
+            "no family overviews and no quote checks. Point SUMMARY_DB at the database the ingest wrote "
             "(sqlite+aiosqlite:////absolute/path/summaries.db).",
             file=sys.stderr,
         )
@@ -1412,7 +1428,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--runs", type=int, default=2)
     parser.add_argument("--workers", type=int, default=3)
     parser.add_argument("--out", type=Path, default=Path("/tmp/answer_suite") / time.strftime("%Y%m%d-%H%M%S"))
-    parser.add_argument("--baseline", type=Path, help="an earlier results.json to compare medians against")
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        help="an earlier results.json (or --arm all directory) to compare against; also writes compare.md",
+    )
     parser.add_argument("--report", type=Path, help="re-render a results.json; no model calls")
     parser.add_argument("--ingest", action="store_true", help="sync the OIB corpus into Qdrant first")
     parser.add_argument(
@@ -1437,23 +1457,38 @@ def main(argv: list[str] | None = None) -> int:
         "--look",
         choices=("on", "off"),
         default="on",
-        help="--set visual: off sets AIQ_VIEW_IMAGES_ENABLED=0 for the run, the paired arm for what looking is worth",
+        help="--set visual: off sets VIEW_IMAGES_ENABLED=0 for the run, the paired arm for what looking is worth",
     )
     parser.add_argument(
         "--arm",
-        choices=("search", "navigate", "both"),
-        default="both",
-        help="--set files: search = ranked search only; navigate = list, read, literal search; both = as shipped",
+        choices=("semantic", "grep", "hybrid", "all", "search", "navigate", "both"),
+        default="hybrid",
+        help=(
+            "--set files (ADR-0133): semantic = ranked search only; grep = list, read and literal search; "
+            "hybrid = as shipped; all = the three in turn, each into its own directory under --out. "
+            "search, navigate and both are the earlier names of the three"
+        ),
+    )
+    parser.add_argument(
+        "--compare",
+        nargs=2,
+        type=Path,
+        metavar=("BEFORE", "AFTER"),
+        help="compare two runs (each a results.json or an --arm all directory) arm by arm; no model calls",
     )
     args = parser.parse_args(argv)
     if args.corpus is not None and not args.ingest:
         parser.error("--corpus is what --ingest reads; give both")
-    if args.arm != "both" and args.set != "files":
+    if args.arm != "hybrid" and args.set != "files":
         parser.error("--arm is for --set files")
     if args.look != "on" and args.set != "visual":
         parser.error("--look is for --set visual")
-    baseline = json.loads(args.baseline.read_text()) if args.baseline else None
+    if args.baseline is not None and not args.baseline.exists():
+        parser.error(f"--baseline {args.baseline} does not exist")
+    if args.compare:
+        return write_compare(*args.compare)
     if args.report:
+        baseline = json.loads(args.baseline.read_text()) if args.baseline else None
         return _rerender(args.report, baseline)
     # The ids first: a typo must not cost an ingest.
     not_applicable: list[str] = []
@@ -1502,32 +1537,90 @@ def main(argv: list[str] | None = None) -> int:
         if args.set == "north-star":
             # Its files rows ask the office-file project, which the files set leaves to be seeded beforehand.
             print(f"seeded {sum(seed().values())} chunk(s) of the office-file project")
-    if args.set == "files":
-        from files_eval import arm_overrides
-        from files_eval import configured_tools
-
-        args.override = [*arm_overrides(args.arm, configured_tools()), *(args.override or [])]
     questions, skipped = selected
     families = corpus_families() if args.set not in ("workspace", *fixture_sets) else None
     not_in_corpus = [f"{q['id']} ({lacking})" for q in questions if (lacking := lacking_family(q, families))]
     questions = [q for q in questions if lacking_family(q, families) is None]
     commit = source_commit()
     _warn_if_dirty(commit)
+    arms = arms_for(args)
     stamp = run_stamp()
-    meta = {
-        "started": time.strftime("%Y-%m-%d %H:%M"),
-        "commit": commit,
-        "config": "configs/config_oib_openrouter.yml",
-        "runs_per_question": args.runs,
-        "overrides": args.override or [],
-        "stamp": stamp,
-        "set": args.set,
-        "arm": args.arm if args.set == "files" else None,
-        "look": args.look if args.set == "visual" else None,
-        "not_applicable": not_applicable,
-        "horizon": horizon,
-    }
-    print(f"{len(questions)} question(s) × {args.runs} run(s), {args.workers} at a time → {args.out}")
+    for arm in arms:
+        # Its own directory and conversation ids per arm: a shared id would answer one arm with another's history.
+        arm_args = argparse.Namespace(
+            **{
+                **vars(args),
+                "out": args.out / arm if len(arms) > 1 else args.out,
+                "override": [*arm_pairs(arm), *(args.override or [])],
+                "arm": arm,
+            }
+        )
+        arm_stamp = f"{stamp}-{arm}" if len(arms) > 1 else stamp
+        meta = {
+            "started": time.strftime("%Y-%m-%d %H:%M"),
+            "commit": commit,
+            "config": "configs/config_oib_openrouter.yml",
+            "runs_per_question": args.runs,
+            "overrides": arm_args.override,
+            "stamp": arm_stamp,
+            "set": args.set,
+            "arm": arm,
+            "look": args.look if args.set == "visual" else None,
+            "not_applicable": not_applicable,
+            "horizon": horizon,
+        }
+        measure(questions, arm_args, arm_stamp, meta, skipped, not_in_corpus, baseline_for(args.baseline, arm))
+    if len(arms) > 1:
+        from compare import arms_report
+        from compare import load
+
+        (args.out / "arms.md").write_text(arms_report(load(args.out)), encoding="utf-8")
+        print(f"Written: {args.out / 'arms.md'}")
+    if args.baseline:
+        write_compare(args.baseline, args.out)
+    return 0
+
+
+def arms_for(args: argparse.Namespace) -> list[str | None]:
+    """The arms this invocation runs: the files set's one or three, None for every other set."""
+    if args.set != "files":
+        return [None]
+    from files_eval import arms_of
+
+    return list(arms_of(args.arm))
+
+
+def arm_pairs(arm: str | None) -> list[list[str]]:
+    """The ``--override`` pairs that restrict the agent to ``arm`` (``files_eval.arm_overrides``)."""
+    if arm is None:
+        return []
+    from files_eval import arm_overrides
+    from files_eval import configured_tools
+
+    return arm_overrides(arm, configured_tools())
+
+
+def baseline_for(baseline: Path | None, arm: str | None) -> dict | None:
+    """The earlier results.json an arm's report diffs against: the file given, or the arm's in a directory."""
+    if baseline is None:
+        return None
+    candidates = [baseline] if baseline.is_file() else [baseline / str(arm) / "results.json", baseline / "results.json"]
+    found = next((path for path in candidates if path.is_file()), None)
+    return json.loads(found.read_text(encoding="utf-8")) if found else None
+
+
+def measure(
+    questions: list[dict],
+    args: argparse.Namespace,
+    stamp: str,
+    meta: dict,
+    skipped: list[str],
+    not_in_corpus: list[str],
+    baseline: dict | None,
+) -> list[Run]:
+    """One arm's runs, written to ``args.out`` as results.json and report.md."""
+    arm = f" (arm {meta['arm']})" if meta.get("arm") else ""
+    print(f"{len(questions)} question(s) × {args.runs} run(s){arm}, {args.workers} at a time → {args.out}")
     args.out.mkdir(parents=True, exist_ok=True)
     if args.set == "north-star":
         runs = run_north_star(questions, args, stamp)
@@ -1539,6 +1632,23 @@ def main(argv: list[str] | None = None) -> int:
     (args.out / "report.md").write_text(report)
     print(report)
     print(f"Written: {args.out / 'report.md'}, {args.out / 'results.json'}")
+    return runs
+
+
+def write_compare(before: Path, after: Path) -> int:
+    """``--compare``: the before/after report, printed and written beside ``after`` as compare.md."""
+    from compare import compare_report
+    from compare import load
+
+    try:
+        report = compare_report(load(before), load(after))
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"compare: {exc}", file=sys.stderr)
+        return 2
+    target = (after if after.is_dir() else after.parent) / "compare.md"
+    target.write_text(report, encoding="utf-8")
+    print(report)
+    print(f"Written: {target}")
     return 0
 
 

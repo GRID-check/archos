@@ -1,6 +1,9 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, backendAutoscaled, backendImage, toResourceRequirements } from "../config";
+import { GridConfig } from '../config'
+import { backendAutoscaled } from '../config/chat-tier'
+import { appPullPolicy, backendImage } from '../config/images'
+import { toResourceRequirements } from '../config/resources'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
@@ -13,6 +16,7 @@ import {
 import { withLangfuseKeysChecksum } from "../platform/langfuse";
 import { AppSecrets, AppWiring, chatEnv } from "./config";
 import { PORT, UID } from "../constants";
+import { CHAT_TIER } from "./tier-names";
 
 export interface Backend {
   statefulSet: k8s.apps.v1.StatefulSet;
@@ -23,12 +27,12 @@ export interface Backend {
 }
 
 /**
- * The chat tier (aiq-agent, `GRID_ROLE=chat`, ADR-0082): the chat socket and the
- * answers running on it, plus NAT's own routes. Every other backend route is the
- * api tier's (`api.ts`, the `aiq-api` Service). It keeps no files: the vectors
+ * The chat tier (`PROCESS_ROLE=chat`, ADR-0082), under `name` (`tier-names.ts`):
+ * the chat socket and the answers running on it, plus NAT's own routes. Every
+ * other backend route is the api tier's (`api.ts`). It keeps no files: the vectors
  * live in the shared Qdrant cluster, the base corpus in SeaweedFS and a Postgres
  * table (ADR-0082 step A2), and what it caches on its own disk
- * (`GRID_BASE_CORPUS_CACHE_DIR`, under /tmp) it can lose at any restart.
+ * (`BASE_CORPUS_CACHE_DIR`, under /tmp) it can lose at any restart.
  *
  * The chat and retrieval path is replica-safe (shared Qdrant, Postgres DSNs,
  * shared cache, DB-persisted ingest status, advisory-locked reapers), so it runs
@@ -44,8 +48,10 @@ export function installBackend(
   cfg: GridConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
+  name: string = CHAT_TIER,
 ): Backend {
-  const labels = commonLabels("aiq-agent");
+  const labels = commonLabels(name);
+  const headlessName = `${name}-headless`;
   const autoscaled = backendAutoscaled(cfg);
   const multiReplica = cfg.backend.replicas > 1 || autoscaled;
   // The grace period is the chat drain plus the endpoint drain and slack: a
@@ -54,14 +60,14 @@ export function installBackend(
   const shutdown = gracefulShutdown(profile, "python");
 
   const statefulSet = new k8s.apps.v1.StatefulSet(
-    "aiq-agent",
+    name,
     {
-      metadata: { name: "aiq-agent", namespace: w.namespace, labels },
+      metadata: { name, namespace: w.namespace, labels },
       spec: {
         // Headless governing service → stable per-pod DNS
-        // (aiq-agent-<i>.aiq-agent-headless), which the frontend uses for
+        // (<name>-<i>.<name>-headless), which the frontend uses for
         // conversation affinity so a chat pins to its owning replica.
-        serviceName: "aiq-agent-headless",
+        serviceName: headlessName,
         // Multi-replica chat tier (safe with conversation affinity, ADR-0028, or
         // the conversation bus, ADR-0080). The floor when KEDA scales it
         // (backend-scaling.ts).
@@ -94,7 +100,7 @@ export function installBackend(
             ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
-                name: "aiq-agent",
+                name,
                 image: backendImage(cfg),
                 imagePullPolicy: appPullPolicy(cfg, backendImage(cfg)),
                 securityContext: hardenedContainerSecurityContext(),
@@ -145,12 +151,12 @@ export function installBackend(
     },
   );
 
-  // Headless service: stable per-pod DNS (aiq-agent-<i>.aiq-agent-headless) for
+  // Headless service: stable per-pod DNS (<name>-<i>.<name>-headless) for
   // conversation affinity (the frontend routes a conversation to its owning pod).
   const headlessService = new k8s.core.v1.Service(
-    "aiq-agent-headless",
+    headlessName,
     {
-      metadata: { name: "aiq-agent-headless", namespace: w.namespace, labels },
+      metadata: { name: headlessName, namespace: w.namespace, labels },
       spec: {
         clusterIP: "None",
         selector: labels,
@@ -167,9 +173,9 @@ export function installBackend(
   // WebSocket proxy when it has no pod address (BACKEND_CHAT_URL), and KEDA's
   // occupancy scaler. HTTP callers use the api tier's Service, not this one.
   const service = new k8s.core.v1.Service(
-    "aiq-agent",
+    name,
     {
-      metadata: { name: "aiq-agent", namespace: w.namespace, labels },
+      metadata: { name, namespace: w.namespace, labels },
       spec: {
         selector: labels,
         ports: [{ port: PORT.backend, targetPort: PORT.backend, name: "http" }],
@@ -182,7 +188,7 @@ export function installBackend(
   // a maxUnavailable:1 PDB is a no-op, but adding it conditionally keeps the
   // intent explicit and avoids churn on a single-replica stack.
   const pdb = multiReplica
-    ? installPdb("aiq-agent", w.namespace, w.provider, labels, [statefulSet])
+    ? installPdb(name, w.namespace, w.provider, labels, [statefulSet])
     : undefined;
 
   return { statefulSet, service, headlessService, pdb };

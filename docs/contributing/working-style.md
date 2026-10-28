@@ -272,14 +272,14 @@ an hour of work, not "the backend half".
 The case: the Anmerkungen canvas was built by three builders each owning a
 large area. Every later piece touched one of those areas and queued behind it,
 so the work ran mostly in series and took far longer than it needed to. The
-fix was a contract file (`frontends/ui/src/lib/proposals/types.ts`) written
+fix was a contract file (`apps/workspace/bff/proposals/types.ts`) written
 first, and five slices started at once, each told which files it owns and which
 it must not touch.
 
 Rules that kept the parallel slices from colliding:
 
 * **Hot files have one owner at a time:** migration bookkeeping
-  (`drizzle/meta/_journal.json`, `rls-coverage.spec.ts`, `scripts/rls-test-db.sh`),
+  (`migrations/meta/_journal.json`, `rls-coverage.spec.ts`, `scripts/rls-test-db.sh`),
   `lib/db/schema/index.ts`, each i18n namespace, a shared service. A slice that
   needs one reports the exact lines instead of editing.
 * **Only the integrator touches git.** Builders make file changes; a shared
@@ -324,3 +324,31 @@ The philosophy those sources serve, in the owner's words: unhobble the model.
 Say what the agent is for, what a good answer is and which rails hold, give it
 well-described tools, and leave the thinking to it. A rule earns its place by
 the reason it states, once, where it applies.
+
+## A rejection names its premise
+
+An ADR's rejected option is only as durable as the reason it was rejected for.
+Write that reason as a premise that can turn false: a version, a measurement, a
+property of one tool, a constraint that holds today. A later reader then checks
+the premise in a minute, where a bare verdict ("too costly", "doesn't fit")
+invites re-arguing the whole option, or worse, treating it as settled forever.
+
+The cases, both found on 2026-10-27 while deciding how Piloti reads the office's
+documents ([ADR-0133](../adr/0133-piloti-reads-the-estate-through-standard-filesystem-tools.md)):
+
+* [ADR-0046](../adr/0046-agent-skills.md) rejected Deep Agents'
+  `SkillsMiddleware` for the chat because it had no request-driven forcing and
+  "offers the skill filesystem as tool content rather than a catalog". By then
+  the forcing was gone from our own code (`packages/agent/src/aiq_agent/skills/runtime.py`: "Nothing in this
+  module can REQUIRE a skill"), and the middleware rendered a name and
+  description catalog with progressive disclosure. The rejection still read as
+  in force.
+* [ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md) rejected "a
+  shell over a virtual projection of the files". Its three reasons were
+  properties of `just-bash` (grep materialising every document, `cat` without
+  chunk identity, no isolation), and none of them holds for standard
+  filesystem tools served by our own backend. Because the reasons were written
+  as facts about that tool, the re-check took one paragraph.
+
+The rule lives in [`docs/adr/AGENTS.md`](../adr/AGENTS.md) and in the
+template's comments.

@@ -1,0 +1,16 @@
+---
+fixes:
+  - >
+    The confidence under an answer is now a check of the whole answer against
+    everything Piloti read for it, and the chip names the statements nothing
+    backs or a source contradicts. A listing of your files or an answer drawn
+    from the project details no longer shows low confidence for a suggested
+    next step.
+  - >
+    When the confidence check cannot run, the chip says so instead of showing
+    a level.
+  - >
+    When an answer numbers its sources without listing them, each number now
+    points to the passage this answer read that says what the sentence says,
+    and the source list is added for you, instead of an unrelated source from
+    earlier in the conversation.

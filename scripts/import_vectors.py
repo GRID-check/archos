@@ -28,10 +28,10 @@ the chunks of every document deleted since. ``--dry-run`` and
 ``--verify-only`` write nothing and are never refused.
 
 Each collection's vectors must come from the embedder the Qdrant collection
-was created with (``aiq:embed_fingerprint``); a mismatch refuses the run
+was created with (``embed_fingerprint``); a mismatch refuses the run
 before anything is written. A collection the export names no embedder for
-takes the configured one (``AIQ_EMBED_MODEL``, ``AIQ_EMBED_BASE_URL``). It
-reads ``AIQ_QDRANT_URL``, ``AIQ_QDRANT_API_KEY`` and, for the person-set
+takes the configured one (``EMBED_MODEL``, ``EMBED_BASE_URL``). It
+reads ``QDRANT_URL``, ``QDRANT_API_KEY`` and, for the person-set
 facts, the metadata store's settings, as the backend does.
 
 EXIT CODES: ``0`` done and, with ``--verify``, every collection in step;
@@ -77,11 +77,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def _configured_identity() -> dict[str, str]:
     """The embedder this deployment is configured for: the fallback for a collection the export names none for."""
-    from knowledge_layer.llamaindex.adapter import embed_fingerprint_metadata
+    from knowledge_layer.llamaindex.embedding import embed_fingerprint_metadata
 
     return embed_fingerprint_metadata(
-        os.environ.get("AIQ_EMBED_MODEL", "openai/text-embedding-3-large"),
-        os.environ.get("AIQ_EMBED_BASE_URL", "https://openrouter.ai/api/v1"),
+        os.environ.get("EMBED_MODEL", "openai/text-embedding-3-large"),
+        os.environ.get("EMBED_BASE_URL", "https://openrouter.ai/api/v1"),
     )
 
 

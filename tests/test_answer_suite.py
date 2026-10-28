@@ -173,7 +173,7 @@ def test_a_question_about_a_guideline_the_corpus_lacks_is_skipped_by_name(tmp_pa
     assert suite.lacking_family({"family": "OIB-RL 5"}, families) == "OIB-RL 5"
     assert suite.lacking_family(QUESTION, families) is None
     assert suite.lacking_family({"family": "Bauordnung"}, families) is None
-    monkeypatch.delenv("AIQ_SUMMARY_DB")
+    monkeypatch.delenv("SUMMARY_DB")
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     assert suite.lacking_family({"family": "OIB-RL 5"}, suite.corpus_families()) is None
     report = suite.render([], [], {"started": "t", "runs_per_question": 1}, None, ["schallschutz (OIB-RL 5)"])
@@ -317,10 +317,10 @@ def test_the_inventory_checked_is_the_one_the_runs_read(monkeypatch, tmp_path):
     # Every run's `nat run` starts in the repo root, so a relative path means
     # the root's file, wherever the suite itself was started from.
     monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("SUMMARY_DB", raising=False)
     assert suite.inventory_database() == (suite.ROOT / "summaries.db").resolve()
 
-    monkeypatch.setenv("AIQ_SUMMARY_DB", f"sqlite+aiosqlite:///{tmp_path}/elsewhere.db")
+    monkeypatch.setenv("SUMMARY_DB", f"sqlite+aiosqlite:///{tmp_path}/elsewhere.db")
     assert suite.inventory_database() == tmp_path / "elsewhere.db"
 
 
@@ -331,9 +331,9 @@ def test_the_runs_import_this_checkout(tmp_path):
 
     path = census.tree_pythonpath(tmp_path).split(os.pathsep)
     shim = Path(path[1])
-    assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "src")
+    assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "packages" / "agent" / "src")
     assert shim.parent == tmp_path and shim.name.startswith(".tree-")
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
     assert suite.foreign_imports(tmp_path) == []
 
 
@@ -379,9 +379,8 @@ def test_the_frontend_plugins_a_run_loads_come_from_this_checkout():
     import census
 
     packages = census.source_packages()
-    for name in ("aiq_api", "aiq_debug"):
-        assert packages[name].is_relative_to(census.ROOT.resolve())
-        assert (packages[name] / "__init__.py").exists()
+    assert packages["aiq_api"].is_relative_to(census.ROOT.resolve())
+    assert (packages["aiq_api"] / "__init__.py").exists()
 
 
 def test_one_failing_run_does_not_sink_the_suite(tmp_path, monkeypatch):
@@ -556,7 +555,7 @@ def test_the_startup_probe_reexecutes_into_this_checkout(monkeypatch, tmp_path):
     assert seen["env"][startup_probe._IN_TREE] == "1" and "REC_OUT" not in seen["env"]
     shim = Path(seen["env"]["PYTHONPATH"].split(os.pathsep)[1])
     assert shim.is_relative_to(tmp_path)
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
 
     # The re-executed process does not re-execute.
     monkeypatch.setenv(startup_probe._IN_TREE, "1")
@@ -647,7 +646,7 @@ def test_a_summary_db_given_as_a_path_is_refused_before_any_run(monkeypatch, tmp
     monkeypatch.setattr(suite, "ensure_key", lambda: True)
     monkeypatch.setattr(suite, "foreign_imports", lambda out: [])
     monkeypatch.setattr(suite, "_corpus_ready", lambda: True)
-    monkeypatch.setenv("AIQ_SUMMARY_DB", str(tmp_path / "summaries.db"))
+    monkeypatch.setenv("SUMMARY_DB", str(tmp_path / "summaries.db"))
 
     assert suite._preflight(tmp_path, ingest=False) == 2
     assert "not a database URL" in capsys.readouterr().err
@@ -661,9 +660,10 @@ def test_the_suite_reads_the_dialect_the_validator_holds():
 
 def test_a_corpus_in_the_store_reads_as_ready(qdrant_store):
     """Readiness is the corpus's chunk count in the store the ingest writes through."""
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
+
     from aiq_agent import oib_sync
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
 
     assert not suite._corpus_ready()
     write(oib_sync.COLLECTION_NAME, [record("Punkt 12", "oib-rl_2.pdf")])
@@ -774,7 +774,7 @@ def test_the_startup_probe_times_only_methods_the_retriever_has():
     import re
 
     import startup_probe
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
     timed = re.findall(r"retriever\.(\w+) = timed\(", Path(startup_probe.__file__).read_text())
     assert timed, "the probe times no retriever method; this test reads its source"

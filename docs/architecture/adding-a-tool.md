@@ -15,17 +15,17 @@ second one beside it.
 
 | It | Put it in | Entry point in |
 |---|---|---|
-| Retrieves evidence from a corpus or an external service | a package under `sources/` ([`sources/AGENTS.md`](../../sources/AGENTS.md)) | the package's own `pyproject.toml` |
-| Acts on the user's workspace (files, drafts, the model) | `src/aiq_agent/tools/` ([its `AGENTS.md`](../../src/aiq_agent/tools/AGENTS.md)) | the root `pyproject.toml` |
+| Retrieves evidence from a corpus or an external service | a Python package under `packages/` ([`packages/AGENTS.md`](../../packages/AGENTS.md#the-python-packages-agent-knowledge-layer-ris-adapter-tavily-web-search)) | the package's own `pyproject.toml` |
+| Acts on the user's workspace (files, drafts, the model) | `packages/agent/src/aiq_agent/tools/` ([its `AGENTS.md`](../../packages/agent/src/aiq_agent/tools/AGENTS.md)) | the root `pyproject.toml` |
 
 Copy the closest existing package rather than inventing a shape:
-`sources/tavily_web_search/` is the minimal one, `sources/ris_adapter/` has a
+`packages/tavily-web-search/` is the minimal one, `packages/ris-adapter/` has a
 client, a cache and tests for each layer.
 
-## A package under `sources/`
+## A Python package under `packages/`
 
 ```text
-sources/my_tool/
+packages/my-tool/
   pyproject.toml
   README.md
   src/
@@ -57,8 +57,11 @@ requires-python = ">=3.14,<3.15"
 my_tool = "my_tool.register"
 ```
 
-`[tool.uv.workspace]` globs `sources/*`, so `uv sync --group dev` installs the
-new package into the shared venv. Use the venv's interpreter
+List the package in the root `pyproject.toml` (`[tool.uv.workspace]` members and
+pytest `testpaths`) and in `PY_PACKAGES` in `taskfiles/backend.yml`; nothing
+globs `packages/*`, because the IFC packages there must stay out of this
+workspace, and `tests/test_python_packages.py` fails until all three agree.
+Then `uv sync --group dev` installs it into the shared venv. Use the venv's interpreter
 (`.venv/bin/pytest`), not `uv run`, which resolves an environment without the
 workspace packages.
 
@@ -66,7 +69,7 @@ workspace packages.
 
 `register.py` defines a `FunctionBaseConfig` subclass whose `name=` becomes the
 YAML `_type`, and an async `@register_function` that yields a `FunctionInfo`.
-`sources/tavily_web_search/src/register.py` is the worked example.
+`packages/tavily-web-search/src/register.py` is the worked example.
 
 - **The description is the contract.** The function's docstring becomes the
   description the model reads; a docstring `Args:` section never reaches it.
@@ -82,10 +85,10 @@ YAML `_type`, and an async `@register_function` that yields a `FunctionInfo`.
   on, naming the next call where there is one.
 - **Evidence goes through the grounding block.** A tool whose results an answer
   may cite builds `GroundingHit` records and calls `render_grounding_block`
-  (`src/aiq_agent/common/grounding_block.py`, ADR-0061). It never writes
+  (`packages/agent/src/aiq_agent/common/grounding_block.py`, ADR-0061). It never writes
   `Source:` or `Citation:` lines itself.
 - A new kind of evidence is a `SourceKind`, changed in both
-  `src/aiq_agent/common/source_kinds.py` and its TypeScript mirror (the rule in
+  `packages/agent/src/aiq_agent/common/source_kinds.py` and its TypeScript mirror (the rule in
   [`AGENTS.md`](../../AGENTS.md#two-rules-that-span-services)).
 
 ## Binding it to an agent
@@ -115,7 +118,7 @@ agent's list is empty, and neither shipped agent's is.
 ## Making it a data source
 
 Add an entry to `data_sources.sources` in the same config. The fields are
-`DataSourceEntry` in `src/aiq_agent/common/data_source_registry.py`:
+`DataSourceEntry` in `packages/agent/src/aiq_agent/common/data_source_registry.py`:
 
 ```yaml
 functions:
@@ -138,14 +141,14 @@ functions:
 - A conversation that switches the source off does not unbind the tool on
   Piloti: the call is refused with one sentence the model can repeat, so the
   tool payload and its prompt-cache shard stay the same
-  (`src/aiq_agent/common/data_sources.py`). Deep research drops the tool
+  (`packages/agent/src/aiq_agent/common/data_sources.py`). Deep research drops the tool
   instead, because its workers have no point at which to refuse.
 
 ## Verifying it
 
 ```bash
-.venv/bin/pytest sources/my_tool/tests -q   # the package
-task be:test:sources                        # every sources/ package, as CI runs it
+.venv/bin/pytest packages/my-tool/tests -q  # the package
+task be:test:sources                       # every Python package, as CI runs it
 task be:lint
 ```
 

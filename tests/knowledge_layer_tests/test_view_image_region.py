@@ -15,16 +15,16 @@ import knowledge_layer.llamaindex.adapter as llm_adapter
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 import pytest
+from knowledge_layer import view_image as view
+from knowledge_layer.view_image import ViewLimits
+from knowledge_layer.view_image import _crop_image_region
+from knowledge_layer.view_image import _render_pdf_region
+from knowledge_layer.view_image import parse_region
+from knowledge_layer.view_image import region_render_args
 from PIL import Image
 
 from aiq_agent.common import image_view_budget
 from aiq_agent.common import model_vision
-from sources.knowledge_layer.src import view_image as view
-from sources.knowledge_layer.src.view_image import ViewLimits
-from sources.knowledge_layer.src.view_image import _crop_image_region
-from sources.knowledge_layer.src.view_image import _render_pdf_region
-from sources.knowledge_layer.src.view_image import parse_region
-from sources.knowledge_layer.src.view_image import region_render_args
 
 A4 = (595.0, 842.0)
 A0 = (2384.0, 3370.0)
@@ -221,7 +221,7 @@ def test_an_uploaded_image_is_cropped_to_the_box():
 
 @pytest.fixture
 def _viewable(monkeypatch, tmp_path):
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true")
     monkeypatch.setattr(llm_adapter, "_get_vlm_api_key", lambda: "sk-test")
     path = tmp_path / "Grundriss_EG.pdf"
     path.write_bytes(_pdf(*A4))

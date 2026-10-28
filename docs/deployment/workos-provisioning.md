@@ -9,19 +9,19 @@
 ## The catalog is the source of truth
 
 Since ADR-0038 the tables below are **generated from, and verified against**,
-`frontends/ui/src/lib/authz/catalog.ts`. That file is what the app derives its
+`apps/workspace/bff/authz/catalog.ts`. That file is what the app derives its
 permission types from AND what the provisioning script applies, so this runbook
 documents the catalog rather than competing with it.
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 WORKOS_API_KEY=sk_… npm run provision:authz            # read-only drift check
 WORKOS_API_KEY=sk_… npm run provision:authz -- --apply # reconcile
 ```
 
 **Every deploy runs `--apply`.** The Kubernetes Job `grid-app-authz-catalog`
 (`deploy/pulumi/src/app/workos-authz-jobs.ts`) and the compose service
-`grid-workos-authz` run it against the environment the stack's
+`workos-authz` run it against the environment the stack's
 `WORKOS_API_KEY` belongs to, so a permission or role added to the catalog
 exists in WorkOS once the release that checks it is deployed. It creates what
 is missing, sets a catalog role's permissions to the catalog's (a permission
@@ -39,8 +39,8 @@ weeks later) were invisible to everything except a human re-reading the file.
 The product renamed the org-wide shelf from „Archiv" to „Büroablage" („Office
 filing" in English) on 6 Oct 2026. The slug is now `org:office_shelf:manage`; `org:archiv:manage` stays in the catalog, deprecated, until roles are re-granted ([runbook](office-shelf-rename-runbook.md)). Its
 label is NOT taken from the dictionary: Organisation → Zugriff
-(`frontends/ui/src/features/organization/components/permission-reference.tsx`) shows the `name` and `description` from
-`frontends/ui/src/lib/authz/catalog.ts`, so it still reads „Manage document Archiv" there until
+(`apps/workspace/ui/features/organization/components/permission-reference.tsx`) shows the `name` and `description` from
+`apps/workspace/bff/authz/catalog.ts`, so it still reads „Manage document Archiv" there until
 the next provisioning changes them. Changing them rewrites the permission's
 name and description in WorkOS, a provisioning step that waits for the
 product owner's go. Change the
@@ -60,7 +60,7 @@ conventions: read-only check by default, `--apply` reconciles, non-zero exit
 on drift.
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 WORKOS_API_KEY=sk_… npm run provision:workos-env            # read-only drift check
 WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply # reconcile
 ```
@@ -70,8 +70,8 @@ cleanly when unset, so a partial run only verifies what it knows:
 
 | Section | Desired state via | Reconciles |
 |---|---|---|
-| Platform organization | `GRID_PLATFORM_ORG_EXTERNAL_ID` (default `grid-platform`) | creates "GRID Platform" with that external id when missing |
-| Owner membership | `GRID_PLATFORM_OWNER_EMAIL` | seats the user in the platform org and assigns `org-platform-owner` (the invite itself stays manual) |
+| Platform organization | `PLATFORM_ORG_EXTERNAL_ID` (default `grid-platform`) | creates "GRID Platform" with that external id when missing |
+| Owner membership | `PLATFORM_OWNER_EMAIL` | seats the user in the platform org and assigns `org-platform-owner` (the invite itself stays manual) |
 | AuthKit redirect URIs / CORS origins | `WORKOS_DESIRED_REDIRECT_URIS`, `WORKOS_DESIRED_CORS_ORIGINS` (comma-separated) | adds missing entries; extras are REPORTED, never deleted without `--apply --prune` |
 | Observability Connect app | `WORKOS_CONNECT_APP_NAME` (default `GRID Observability`), `WORKOS_CONNECT_REDIRECT_URIS` | matches by name; creates a confidential OAuth app and prints client id + secret ONCE; updates redirect URIs on an existing app. The Scopes permission assignment stays manual |
 | Feature-flag targeting | `WORKOS_FLAG_TARGETS_JSON` (`{"<slug>": ["org_…", …]}`) | ADDITIVE only — adds missing targets per org, never removes one; flags missing from WorkOS are reported as MANUAL because creation has no SDK binding |
@@ -110,7 +110,7 @@ Two Production-specific notes:
 
 - **No users exist yet**, so the GRID Platform organization has no
   `org-platform-owner` membership. Until the first owner signs in, platform
-  access comes from the `GRID_PLATFORM_OWNER_EMAILS` break-glass allowlist —
+  access comes from the `PLATFORM_OWNER_EMAILS` break-glass allowlist —
   which is exactly the first-run case it exists for. Clear it once the
   membership is assigned.
 - **`multipleRolesEnabled` is `false` in Production and `true` in Staging.**
@@ -133,7 +133,6 @@ Organization.
 |---|---|---|
 | `organization` | — | System root. Carries org-tier and platform-tier permissions. |
 | `project` | `organization` | Tenant workspace: documents, memory, conversations. |
-| `skill` | `project` | A scheduled agent-skill job attached to a project (Agent Skills). |
 | `folder` | `project` | A project folder with its own access list (ADR-0097). Who may read or change it is a folder role (§2a) assigned on it to a person. |
 
 **Only a folder with its own list is a resource**, and it sits directly under
@@ -153,11 +152,16 @@ About 5,000 resources of one type per organization is WorkOS's soft limit.
 > the parent project, enforced in `lib/documents/service.ts`. See ADR-0038.
 >
 > The `workflow` resource type and its three permissions/roles met the same
-> fate when Agent Skills replaced Workflows: the catalog now defines the
-> `skill` type instead. Environments the old feature reached still carry the
-> `workflow:*` leftovers — the provisioning script reports them as
-> `UNKNOWN … absent from the catalog`, which is how they stay visible until an
-> operator deletes them in the dashboard.
+> fate when Agent Skills replaced Workflows. Environments the old feature
+> reached still carry the `workflow:*` leftovers — the provisioning script
+> reports them as `UNKNOWN … absent from the catalog`, which is how they stay
+> visible until an operator deletes them in the dashboard.
+>
+> So did the `skill` type and `skill:view` / `skill:run` / `skill:manage`
+> (2026-10-27, ADR-0038's amendment): no skill resource was ever created and no
+> role held them, so a skill schedule is decided by its project's permissions
+> (`project:skills:manage`, `project:view`). They were deleted in both
+> environments when the catalog dropped them.
 
 ### 1. Organization-tier permissions (resource type: Organization)
 
@@ -192,20 +196,7 @@ project access comes from project-scoped roles.
 | `project:members:manage` | Grant and revoke project roles |
 | `project:skills:manage` | Create, edit, delete and run skill schedules in a project (Agent Skills Phase A) |
 
-### 1b. Skill-tier permissions (resource type: Skill)
-
-| Slug | Meaning |
-|---|---|
-| `skill:view` | See a skill schedule's definition, schedule and run history |
-| `skill:run` | Trigger it manually, outside its schedule (spends budget) |
-| `skill:manage` | Edit its definition/schedule, or delete it |
-
-Creating a skill schedule is `project:skills:manage` (there is no schedule yet
-to check against); operating an existing one is skill-tier, with the
-project-tier fallback in `lib/authz/decide.ts` keeping project admins working
-without provisioning per-skill roles.
-
-### 1c. Folder-tier permissions (resource type: Folder)
+### 1b. Folder-tier permissions (resource type: Folder)
 
 | Slug | Meaning |
 |---|---|
@@ -270,21 +261,21 @@ change, which is the property that silently broke for `org:audit:view` and
 to key off the role slug `admin`, so a custom administrator role reached no
 project at all however many `org:*` permissions it held. It is a permission now —
 grant it to any role that should administer every project in its organization.
-Existing `admin` sessions keep it through the bounded catalog implication in
-`lib/authz/permissions.ts`, so nobody re-logs-in; a custom role needs it
-provisioned before it can hold it.
+A session holds it when its token's `permissions` claim names it, and nothing
+else (the role-name implication was retired, ADR-0038's 2026-10-27 amendment);
+a role needs it provisioned before it can hold it.
 
 **A catalog change is not live until `--apply` has run against the environment.**
 The project tier reads its grants from WorkOS at request time and has no
 fallback, so a project-tier permission that exists only in the catalog is held by
 nobody. The current gap in both environments, and what it costs users, is in
-[`docs/architecture/authorization-audit-2026-08.md`](../architecture/authorization-audit-2026-08.md) §6.
+[`docs/audit/authorization-audit-2026-08.md`](../audit/authorization-audit-2026-08.md) §6.
 
 ### 3. The platform organization + exclusive role
 
 - Organization **"GRID Platform"**, external id **`grid-platform`**
   (Staging id: `org_01KX06QQJN3KA25R9G2PNFBGXV`). The app resolves it by
-  external id (`GRID_PLATFORM_ORG_EXTERNAL_ID`).
+  external id (`PLATFORM_ORG_EXTERNAL_ID`).
 - **Org-scoped role** `org-platform-owner` ("Platform Owner") **created
   inside that org only** — WorkOS org-scoped roles cannot be assigned in
   any other organization, which is the exclusivity guarantee. Permissions:
@@ -330,16 +321,16 @@ nobody. The current gap in both environments, and what it costs users, is in
      dashboard (or via the management API `updateAuthkitSettings`,
      `allowSignUp: false`) for Staging, and again when Production is
      provisioned.
-  2. **App-side**: `GRID_DISABLE_SELF_SERVE_ORGS=true` in the deploy
+  2. **App-side**: `DISABLE_SELF_SERVE_ORGS=true` in the deploy
      environment (Coolify) — org creation becomes platform-team-only and
      onboarding shows the invite-only notice up front.
 
 ### 5. Audit Logs (native WorkOS product)
 
 The app emits every privileged admin action as a **WorkOS Audit Log event**
-(`frontends/ui/src/lib/audit/service.ts`) — no app-side audit table.
+(`apps/workspace/bff/audit/service.ts`) — no app-side audit table.
 
-**The registry is `frontends/ui/src/lib/audit/schemas.mjs`**, and it is not a
+**The registry is `apps/workspace/bff/audit/schemas.mjs`**, and it is not a
 list of action names: each action is stored WITH the schema WorkOS validates
 its events against, and `AUDIT_ACTIONS` is derived from those keys. That is
 deliberate. The two used to be separate lists — actions in `service.ts`,
@@ -373,7 +364,7 @@ work (`piloti.mark.decided`).
 
   | Action | When | Actor | Targets | Metadata |
   |---|---|---|---|---|
-  | `piloti.change.applied` | Piloti set, changed or deleted a mark, or answered in its thread, in the asker's name: one per `piloti_changes` row (`lib/changes/service.ts`) | the person the turn acted for | mark, document, project, conversation | `op` (create, update, delete, reply), `markNumber`, `markKind`, `status`, `fields` (names of the fields that moved), `messageId`, `changeId` |
+  | `piloti.change.applied` | Piloti set, changed or deleted a mark, or answered in its thread, in the asker's name: one per `agent_changes` row (`lib/changes/service.ts`) | the person the turn acted for | mark, document, project, conversation | `op` (create, update, delete, reply), `markNumber`, `markKind`, `status`, `fields` (names of the fields that moved), `messageId`, `changeId` |
   | `piloti.change.undone` | a person undid one (`POST /api/piloti-changes/[id]/undo`) | who undid it | mark, document, conversation | `op`, `inverse`, `markNumber`, `onBehalfOf`, `messageId`, `changeId` |
   | `piloti.proposal.created` | Piloti filed a proposed change, once per card (`lib/proposals/service.ts`) | the person Piloti acted for | proposal, project, conversation | `kind`, `operation`, `items`, `memoryScope`, `messageId` |
   | `piloti.proposal.decided` | a person applied or dismissed it | the decider | proposal, project, conversation | `kind`, `decision` (applied, partially_applied, failed, dismissed), `operation`, `items`, `appliedItems`, `memoryScope`, `onBehalfOf`, `messageId` |
@@ -428,7 +419,7 @@ work (`piloti.mark.decided`).
   | Path | How | Does the app wait? |
   |---|---|---|
   | Kubernetes (Pulumi) | Job `grid-app-audit-schemas` (`deploy/pulumi/src/app/audit-schemas-job.ts`), created when `requireAuth` is on | **No** — the frontend Deployment does not depend on it |
-  | Docker Compose | one-shot service `grid-audit-schemas` | **Yes** — `frontend` waits on `service_completed_successfully` |
+  | Docker Compose | one-shot service `audit-schemas` | **Yes** — `frontend` waits on `service_completed_successfully` |
   | Coolify | the same one-shot service in `docker-compose.coolify.yaml` | **Yes** |
 
   On the compose paths the container exits 0 without doing anything when
@@ -447,7 +438,7 @@ work (`piloti.mark.decided`).
   one deploy long, loud, and self-healing, while gating would put every release
   behind a third party; the reasoning is in the Job file's own header.
 - **Manual escape hatch** (a fresh environment, or a key the cluster does not
-  hold — from `frontends/ui`):
+  hold — from `apps/workspace`):
 
   ```bash
   WORKOS_API_KEY=sk_… npm run provision:audit-schemas            # read-only drift check
@@ -492,7 +483,7 @@ work (`piloti.mark.decided`).
 
 Every feature switch is a **WorkOS Feature Flag**, per organization,
 delivered in the AuthKit JWT `feature_flags` claim (registry:
-`frontends/ui/src/lib/authz/feature-flags.ts`). There is one semantic: a flag is
+`apps/workspace/bff/authz/feature-flags.ts`). There is one semantic: a flag is
 on exactly when WorkOS says so for the organization, and anything short of a
 yes — a stale token, a slug missing from WorkOS, a failed lookup, no
 organization — is off. There are no env switches and no enforcement toggle.
@@ -511,7 +502,7 @@ the Staging WorkOS environment.
 | `deep-research` | entitlement | Deep-research runs, on all three paths that reach one: job submission (`POST /api/jobs/async/submit`), the commissioned run (`POST /api/internal/tasks`, op `research`), and — since the agent reads it per turn — whether a run is OFFERED at all, so the escalation and its plan-approval card never appear for a tenant without it. **OFF for all organizations in Production since 2026-09-18**; ON in Staging |
 | `byok-llm` | entitlement | BYOK LLM credentials (ADR-0022): org page card, all `/api/organization/llm-credentials` routes, and the internal resolution endpoint |
 | `web-search` | rollout | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade (like `memory-reflection`), combined with the tenant's own `settings.webSearchEnabled` toggle |
-| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`AIQ_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
+| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
 | `wizard-conflict-check` | rollout | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
 | `skills` | entitlement | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/tasks` route, and every scheduled fire (`fireScheduledJob` asks per organization and records a `skipped` run when it is off; the `skill-scheduler` itself has no gate). Created 2026-09-18, **OFF for all organizations in both environments** |
 | `task-automation` | entitlement | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. Created 2026-09-18, **OFF for all organizations in both environments** |
@@ -520,10 +511,10 @@ the Staging WorkOS environment.
 | `piloti-notices` | entitlement | Piloti notices a new Fassung (ADR-0130): when a document is linked as the newer Fassung of another, the `revision_notice` job compares the changed pages with a vision model and proposes marks on the new Fassung where something moved, as the person whose upload or link made it, with one message in their thread about the document and one inbox row. Read per organization when the job is queued (`isOrgFeatureEnabled`) and from that person's pinned session when it runs (`isPilotiNoticesEnabled`). Off: a new Fassung is announced as before and compared only when someone opens „Vergleichen“. An entitlement because a notice is a vision call nobody asked for. **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
 | `piloti-acts` | entitlement | Piloti acts when asked (ADR-0105): sets a mark born open, changes one (resolve, reopen, dismiss, take over, assign, date, reword) or deletes one the person set, in the asker's name, through `POST /api/internal/document-annotations` (ops `create`, `update`, `delete`). Read from the asker's pinned session on that route (`isPilotiActsEnabled`, `lib/authz/feature-flags.ts`). Off: those ops are refused with a 403, code `PILOTI_ACTS_OFF`, `details.reason` `piloti-acts-off`, and Piloti proposes the mark instead or tells the person to make the change themselves; reads, the room, pointing, highlighting, thread replies and proposals are unaffected. An entitlement so an office starts with Piloti proposing only and switches acting on once it trusts it. **Not created yet in either environment**: create it OFF, then switch it on per organization; an organization that already relies on acting needs it targeted in the same release |
 | `agent-mcp` | entitlement | The agent door (ADR-0122): external agents (Claude, Cursor, ChatGPT) reach the workspace as a person through the MCP server at `POST /api/mcp`, authenticated by a WorkOS AuthKit bearer token. Read per organization from the token's `org_id` (`isOrgFeatureEnabled`, `lib/agent-api/principal.ts`), because a bearer token carries no `feature_flags` claim; off: the call is refused with a 403 and a message naming the flag. Piloti's own in-product calls to the same server (signed request-context envelope) are not gated by it. An entitlement: it lets software outside the browser act with a person's rights, so nobody has it until an operator targets the organization. **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
-| `agent-mcp-access` | entitlement | The organization's second opt-in for the agent door (ADR-0122, "Sensitive operations"): with it on, an external agent may be offered the operations marked `sensitivity: 'access'` (sharing grants and visibility, folder access, custom role definitions). Read per organization with `agent-mcp` (`lib/agent-api/principal.ts`); off: those operations are absent from `tools/list` and search, and a call names an unknown operation. The client must also hold the `piloti:sensitive` scope, which counts only once `SENSITIVE_SCOPE_ENFORCED_BY_WORKOS` is set in `lib/agent-api/policy.ts`. Piloti in-product never sees them. An entitlement: it lets an agent change who may see what. **State (2026-10-22):** created; ON for every organization in Staging, OFF in Production: the per-organization opt-in it is, switched on for an organization that asks. |
-| `agent-mcp-secrets` | entitlement | The same opt-in for the operations marked `sensitivity: 'secret'`: the organization's LLM provider keys (list, connect, revoke, verify, mode) and the audit-log Admin Portal link. **Since the amendment of ADR-0122 (2026-10-21) every one of them is withheld from the agent door, so this flag offers nothing today**; it applies again if one is offered. A key is write-only through the agent door as everywhere: no answer carries it. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-22):** created; ON for every organization in Staging, OFF in Production: the per-organization opt-in it is, switched on for an organization that asks. |
-| `agent-mcp-controls` | entitlement | The same opt-in for the operations marked `sensitivity: 'control'`, which turn a security or compliance control down or off: zero data retention, the upload screening policy (the office's and a project's), letting a held file through screening, lifting a legal hold, download-log retention and the deleted-folder content policy. **Since the amendment of ADR-0122 (2026-10-21) only letting a held file through and lifting a legal hold are on the agent door**; the policies are withheld as product configuration. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-22):** created; ON for every organization in Staging, OFF in Production: the per-organization opt-in it is, switched on for an organization that asks. |
-| `piloti-ask` | entitlement | Agents consult Piloti (ADR-0124): an agent acting for a person asks Piloti a question (`piloti-ask-create` on the agent door, `SendMessage` / `message/send` on the A2A door at `/api/a2a`) and Piloti answers in a turn run as that person, in their own private thread, on their and the organization's LLM budget. Read from the person's session on `POST /api/piloti-asks` (`isPilotiAskEnabled`); off: the ask is refused with 403 (`piloti-ask-off`) and nothing else changes. The agent door itself still needs `agent-mcp`, which the A2A door shares. An entitlement because every ask is a model turn nobody typed. **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
+| `agent-mcp-access` | entitlement | The organization's second opt-in for the agent door (ADR-0122, "Sensitive operations"): with it on, an external agent may be offered the operations marked `sensitivity: 'access'` (sharing grants and visibility, folder access, custom role definitions). Read per organization with `agent-mcp` (`lib/agent-api/principal.ts`); off: those operations are absent from `tools/list` and search, and a call names an unknown operation. The client must also hold the `piloti:sensitive` scope, which counts only once `SENSITIVE_SCOPE_ENFORCED_BY_WORKOS` is set in `lib/agent-api/policy.ts`. Piloti in-product never sees them. An entitlement: it lets an agent change who may see what. **State (2026-10-27):** created; ON for every organization in Staging and in Production (Production switched to every organization on 2026-10-27, at the product owner's request). Switching Production back to SOME makes it the per-organization opt-in again, switched on for an organization that asks. |
+| `agent-mcp-secrets` | entitlement | The same opt-in for the operations marked `sensitivity: 'secret'`: the organization's LLM provider keys (list, connect, revoke, verify, mode) and the audit-log Admin Portal link. **Since the amendment of ADR-0122 (2026-10-21) every one of them is withheld from the agent door, so this flag offers nothing today**; it applies again if one is offered. A key is write-only through the agent door as everywhere: no answer carries it. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-27):** created; ON for every organization in Staging and in Production (Production switched to every organization on 2026-10-27, at the product owner's request). Switching Production back to SOME makes it the per-organization opt-in again, switched on for an organization that asks. |
+| `agent-mcp-controls` | entitlement | The same opt-in for the operations marked `sensitivity: 'control'`, which turn a security or compliance control down or off: zero data retention, the upload screening policy (the office's and a project's), letting a held file through screening, lifting a legal hold, download-log retention and the deleted-folder content policy. **Since the amendment of ADR-0122 (2026-10-21) only letting a held file through and lifting a legal hold are on the agent door**; the policies are withheld as product configuration. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-27):** created; ON for every organization in Staging and in Production (Production switched to every organization on 2026-10-27, at the product owner's request). Switching Production back to SOME makes it the per-organization opt-in again, switched on for an organization that asks. |
+| `piloti-ask` | entitlement | Agents consult Piloti (ADR-0124): an agent acting for a person asks Piloti a question (`agent-ask-create` on the agent door, `SendMessage` / `message/send` on the A2A door at `/api/a2a`) and Piloti answers in a turn run as that person, in their own private thread, on their and the organization's LLM budget. Read from the person's session on `POST /api/agent-asks` (`isPilotiAskEnabled`); off: the ask is refused with 403 (`piloti-ask-off`) and nothing else changes. The agent door itself still needs `agent-mcp`, which the A2A door shares. An entitlement because every ask is a model turn nobody typed. **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
 | `platform-agent-mcp` | entitlement | The platform door (ADR-0126): a platform operator's agent reaches the operator console through its own MCP server at `POST /api/platform/mcp`, with a WorkOS AuthKit token for that door's audience. Read for the **GRID Platform organization only**, from the token's `org_id` (`lib/agent-api/principal.ts`); a token of any other organization is refused before the flag is read, so targeting it at an office does nothing. Off: the call is refused with a 403. The office door's `agent-mcp` does not open it, and it does not open the office door. The caller must also be platform staff (`isPlatformStaff`), and each operation's route still checks its own `platform:*` permission, so Platform Support stays read-only. The `secret` opt-in (`agent-mcp-secrets`) of the platform organization governs the one sensitive console operation, the audit-log Admin Portal link, under the same scope rule as the office door. An entitlement: every write there reaches every tenant. **State (2026-10-22):** created; ON in Staging and in Production. Target only the GRID Platform organization. The door also needs its resource indicator registered (`docs/architecture/agent-surface.md`, "WorkOS dashboard setup") |
 | `mail-import` | entitlement | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). **Not created yet in either environment**, so the import is off for everybody until it is: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
 | `folder-cards` | entitlement | Written folder cards (ADR-0127, tier 1): a model-written abstract per folder, built in the background when a document's facts change, shown in `list_files(view="tree")` and in the folder channel of a ranked `knowledge_search`. Read per organization by the agent tier through `GET /api/internal/stages` (`features.folderCards`, `isOrgFeatureEnabled`) when a change is marked, when a folder is claimed to be built, when the nightly reconcile visits a collection and when a listing reads the cards. Off: nothing is marked or built, a queued folder is dropped and a listing shows the live counts alone. An entitlement because a card is a model call nobody asked for. Description to enter: "Written folder cards: a model-written abstract per folder, built in the background and shown in file listings and search." **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
@@ -550,7 +541,7 @@ Rollout order (per environment): 1) create the flag in the WorkOS dashboard
 log), in BOTH environments and in the same change that adds the slug to the
 registry, 2) target the organizations that should have it (dashboard, or
 `workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). `task
-fe:provision:flags` lists every registry slug missing from an environment
+workspace:provision:flags` lists every registry slug missing from an environment
 (read-only, `WORKOS_API_KEY` of that environment). Tokens minted before a change carry the old claim — users pick it up at their
 next sign-in. ✅ All four flags exist in Staging AND Production
 (2026-07-13): `runtime-model-config` and `web-search` enabled for ALL
@@ -565,12 +556,12 @@ cycle-6 UI flags exist in Staging AND Production (2026-07-14):
 organizations in both; **`chat-confidence-chip` is enabled in Staging but
 intentionally OFF in Production** until the live confidence-marker
 smoke test passes (the answering LLM must emit the `[CONFIDENCE:…]` control
-marker reliably; see FB-6 / backlog.md RUNTIME-SMOKE) — flip it on in
+marker reliably; see FB-6 / docs/audit/overnight-run-backlog.md RUNTIME-SMOKE) — flip it on in
 Production once that check is green. The `image-upload` flag (FB-15a) exists in
 Staging AND Production (2026-07-14); enabled for all orgs in Staging,
 **intentionally OFF in Production** pending a live image-ingestion smoke test
 (a real PNG/JPG must round-trip through the VLM caption → summary/tags →
-retrieval, and the deployment must have `AIQ_VLM_*` configured) — flip it on in
+retrieval, and the deployment must have `VLM_*` configured) — flip it on in
 Production once that check is green. The `research-in-chat-history` flag (FB-10)
 exists in Staging AND Production (2026-07-14); enabled for all orgs in Staging,
 **intentionally OFF in Production** pending a review of the merged navigation
@@ -585,12 +576,12 @@ free-text check has been smoke-tested against a configured LLM.
 
 #### Flags are always enforced (since 2026-10)
 
-`GRID_ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
+`ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
 then deleted, together with every env fallback that only mattered while it was
-off (`GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED`,
-`GRID_MAIL_IMPORT_ENABLED`, `GRID_IFC_MODELS_ENABLED`,
-`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`,
-`GRID_MEMORY_REFLECTION_ENABLED`, `GRID_STAGE_FOLLOW_UPS_ENABLED`). With it on,
+off (`SKILLS_ENABLED`, `COLLABORATION_ENABLED`,
+`MAIL_IMPORT_ENABLED`, `IFC_MODELS_ENABLED`,
+`AGENT_AUTHORED_DOCUMENTS_ENABLED`, `PROJECT_KNOWLEDGE_PAGE_ENABLED`,
+`MEMORY_REFLECTION_ENABLED`, `STAGE_FOLLOW_UPS_ENABLED`). With it on,
 every one of those was dead config in both stacks, and compose and local dev,
 which ran it off, rehearsed a different code path from the one that shipped.
 WorkOS is the control plane for features: per organization, per flag, no
@@ -598,7 +589,7 @@ redeploy.
 
 **A registry flag absent from WorkOS is off for everybody.** The registry is
 TypeScript and the flags are remote state, so `task verify` cannot see across
-the gap. `task fe:provision:flags` can: it lists the environment's flags
+the gap. `task workspace:provision:flags` can: it lists the environment's flags
 read-only, fails on any registry slug missing there, and reports (without
 failing) flags no code reads. The weekly **WorkOS drift** workflow runs it
 against Staging; Production has no key in CI, so run it there by hand with the
@@ -734,21 +725,21 @@ Three things follow, and each has cost somebody an afternoon:
 
 1. **Dashboard** (still manual — the SDK cannot create resource types): create
    the resource types from §0 — `project` (parent `organization`), then
-   `skill` and `folder` (each parent `project`). Descriptions are capped at 150
+   `folder` (parent `project`). Descriptions are capped at 150
    characters.
 2. **Script**: `WORKOS_API_KEY=<key> npm run provision:workos-env -- --apply`
-   from `frontends/ui` creates organization **GRID Platform** with external id
+   from `apps/workspace` creates organization **GRID Platform** with external id
    `grid-platform` (the app resolves it by external id, so the name may differ
    but the external id may not). Was dashboard-only before.
 3. **Script**: `WORKOS_API_KEY=<key> npm run provision:authz -- --apply`.
-   This creates every permission from §1/§1a/§1b/§1c/§2 and every role from §2a,
+   This creates every permission from §1/§1a/§1b/§2 and every role from §2a,
    including the two platform-org roles, and is idempotent. Nothing to do if
    the environment is the one a stack deploys against: the
    `grid-app-authz-catalog` Job runs it on the next rollout.
 4. **Script**: re-run both without `--apply` and confirm
    "WorkOS matches the catalog." / "WorkOS matches the desired environment."
 5. **Script**: re-run `provision:workos-env --apply` with
-   `GRID_PLATFORM_OWNER_EMAIL=<owner email>` set — it seats the user in GRID
+   `PLATFORM_OWNER_EMAIL=<owner email>` set — it seats the user in GRID
    Platform (the account itself must already exist; the script reports a
    missing one as MANUAL) and assigns `org-platform-owner`. The membership +
    role pair used to be a dashboard/API action.
@@ -764,13 +755,13 @@ Three things follow, and each has cost somebody an afternoon:
    cluster deploys against — the `grid-app-audit-schemas` Job reconciles them
    on the next rollout. Otherwise run it by hand:
    `WORKOS_API_KEY=<prod key> npm run provision:audit-schemas -- --apply`
-   (from `frontends/ui`), then re-run without `--apply` to confirm it reports
+   (from `apps/workspace`), then re-run without `--apply` to confirm it reports
    "WorkOS matches the audit registry."
 8. Feature flags (§6): CREATION stays a dashboard step —
    `provision:workos-env` lists every registry flag missing from WorkOS as
    MANUAL rather than attempting it. Create them, target the intended orgs
    (`WORKOS_FLAG_TARGETS_JSON` + `--apply` reconciles targeting, ADDITIVELY).
-   `task fe:provision:flags` then confirms every registry slug exists.
+   `task workspace:provision:flags` then confirms every registry slug exists.
 9. BYOK (ADR-0022): WorkOS Vault needs no per-environment setup — objects
    are created lazily under each org's key context. Enterprise tenants
    wanting customer-managed KEKs (Vault BYOK: AWS KMS / Azure Key Vault /
@@ -781,7 +772,7 @@ Still manual in every environment, summarized by every `provision:workos-env`
 run: resource types, AuthKit's *Allow sign-ups* toggle, the
 `multipleRolesEnabled` role setting, flag creation, and Vault CMK via support.
 
-Bootstrap alternative: set `GRID_PLATFORM_OWNER_EMAILS=<owner email>` until
+Bootstrap alternative: set `PLATFORM_OWNER_EMAILS=<owner email>` until
 steps 3–5 are done, then clear it.
 
 ## Rolling out folder roles (ADR-0097)
@@ -811,7 +802,7 @@ environment:
    - `grid-app-folder-grants` carries the role grants over
      (`migrate:folder-grants --apply`). It waits on the frontend rollout, the
      migrations and the catalog Job. Compose runs both scripts in
-     `grid-workos-authz`, once the frontend is healthy.
+     `workos-authz`, once the frontend is healthy.
 
 For every folder with its own list, every active member of the organization who
 holds a role the list names gets the folder role for the best level those roles
@@ -823,12 +814,12 @@ not yet registered in WorkOS and never removes a folder role, and saving a list
 in the new dialog deletes that folder's old grant rows, so a list someone
 changed is never carried over again and every later deploy's run is a no-op.
 
-By hand, for an environment no stack deploys against, from `frontends/ui`:
+By hand, for an environment no stack deploys against, from `apps/workspace`:
 
 ```bash
-WORKOS_API_KEY=sk_… GRID_APP_MIGRATION_DATABASE_URL=postgres://… \
+WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
   bun run migrate:folder-grants             # the plan, changes nothing
-WORKOS_API_KEY=sk_… GRID_APP_MIGRATION_DATABASE_URL=postgres://… \
+WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
   bun run migrate:folder-grants -- --apply  # register the folders, assign the roles
 ```
 
@@ -850,7 +841,7 @@ someone takes them off the list.
 
 `project_folder_grants` stays until the carry-over has run in every
 environment; the migration that drops it also deletes the
-`grid-app-folder-grants` Job and the second half of `grid-workos-authz`.
+`grid-app-folder-grants` Job and the second half of `workos-authz`.
 
 ## How the app consumes this
 
@@ -868,11 +859,11 @@ environment; the migration that drops it also deletes the
   `org-platform-owner`/`org-platform-support` (cached lookup) or the break-glass
   allowlist.
 - **Per-resource**: `lib/authz/resource-check.ts` is the single FGA round-trip
-  for both the project and skill tiers, and fails closed.
+  for the project tier, and fails closed.
 - **Folders** (ADR-0097): `lib/authz/folder-roles.ts` holds every WorkOS call of
   the folder tier. A person's levels in a project are two
   `listResourcesForMembership` calls (`folder:read`, `folder:write`) scoped to
-  the project, cached for `GRID_AUTHZ_CACHE_TTL_MS` like every FGA answer, and
+  the project, cached for `AUTHZ_CACHE_TTL_MS` like every FGA answer, and
   never made for a project with no folder of its own (one indexed probe). A
   lookup that fails clears nothing and is not cached. Changing a list registers
   the folder, then removes the folder roles it no longer wants before assigning
@@ -895,10 +886,10 @@ environment; the migration that drops it also deletes the
 |---|---|---|
 | Who can create an ACCOUNT | **WorkOS (native)** | AuthKit → `allowSignUp` off = invite-only accounts; or enable the **waitlist** (approve/deny each entry). Auth methods (password/Google/GitHub/Microsoft/Apple), email verification, MFA, password policy are all native settings. |
 | Joining an existing org | **WorkOS (native)** | Invitations (users-table widget) and **domain auto-join** (verify the org's email domain; users signing up with that domain land in the org via JIT provisioning instead of the onboarding screen). |
-| Who can create an ORGANIZATION | **App-side** (`GRID_DISABLE_SELF_SERVE_ORGS`) | WorkOS has no org-creation gate — orgs are created by our API. `true` = only the platform team creates orgs; onboarding shows the invite-only notice up front. |
+| Who can create an ORGANIZATION | **App-side** (`DISABLE_SELF_SERVE_ORGS`) | WorkOS has no org-creation gate — orgs are created by our API. `true` = only the platform team creates orgs; onboarding shows the invite-only notice up front. |
 | Platform tier / cross-org access | **App-side on WorkOS primitives** | The GRID Platform org + org-scoped role (this runbook); resolution logic in `lib/authz/platform.ts`. |
 
 Decided posture (see §4): invite-only everything — `allowSignUp` off,
-`GRID_DISABLE_SELF_SERVE_ORGS=true`. Verified-domain auto-join stays
+`DISABLE_SELF_SERVE_ORGS=true`. Verified-domain auto-join stays
 available for known customer domains; the waitlist remains an option if
 public interest should queue rather than bounce.

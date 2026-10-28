@@ -64,8 +64,8 @@ task. The scoped files are cheap and precise. Sort by reach, not by importance.
 
 A rule that reaches one directory costs every session something when it sits at
 the root. Move it down. This is why the UI's authorization and card obligations
-live in `frontends/ui/AGENTS.md` and the pytest path trap lives in
-`src/aiq_agent/AGENTS.md` and `tests/AGENTS.md`, rather than all of them at the
+live in `apps/workspace/AGENTS.md` and the pytest path trap lives in
+`packages/agent/src/aiq_agent/AGENTS.md` and `tests/AGENTS.md`, rather than all of them at the
 root where they started.
 
 ## Writing them
@@ -91,7 +91,7 @@ installed by `task agents:setup`. The three levers that matter most here:
 - **A rule lives in exactly one file.** "Add an environment variable" reaches
   every scope, so it is a root obligation and appears in no service guide. A
   copy in a second guide is one more place to forget when the rule changes.
-- **Every obligation names something checkable.** "Run `pytest sources -q` and
+- **Every obligation names something checkable.** "Run `task be:test:sources` and
   paste the output" is an obligation; "know that no CI job runs it" is a
   feeling. The third column exists to answer *what fails you*, and "Nothing.
   That is the problem" is a legitimate and useful answer.

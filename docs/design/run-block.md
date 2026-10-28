@@ -2,9 +2,9 @@
 
 **Status:** Implemented (2026-09). ADR-0062 decides the model; this is the
 design of what the reader sees of it.
-**Related:** `frontends/ui/src/features/runs/components/RunBlock.tsx`,
+**Related:** `apps/workspace/ui/features/runs/components/RunBlock.tsx`,
 `.../RunBlockLine.tsx`, `.../RunBlockMessage.tsx`, `lib/choreography.ts`,
-`frontends/ui/src/components/ui/stage-track.tsx`; evidence at `/dev/run-block`,
+`apps/workspace/ui/components/ui/stage-track.tsx`; evidence at `/dev/run-block`,
 `?variant=transition`, `?variant=motion`.
 
 ## What it replaces, and why
@@ -38,8 +38,9 @@ does this stand".
   bordered boxes read as three cards rather than as one history).
 - **The phase acts** are `dt`/`dd` rows at the version history's own weight: the
   same kind of fact („eingereicht von X am Y") in another vocabulary.
-- **The reviewer's words** are quoted with a `border-l-2`, the adjunct a version
-  row already renders under itself.
+- **The reviewer's words** are quoted with the `Quote` atom (indented, italic,
+  no side stripe, the owner's preference since 2026-10-27), the adjunct a version row already renders
+  under itself.
 - **The document chips** stay the „Belegt durch" chips (`SourceSignalChip` +
   `AuthorityTag`), painted by the shelf the ledger stated: provenance is the one
   thing the design language spends colour on, and which documents a run read is
@@ -221,7 +222,7 @@ card it was opened from — kind chip, status chip, goal, review reason, error �
 which made the bigger, more deliberate surface say strictly LESS about the run
 than the row that opened it, and put a run's state on the Aufträge tab four
 times. A surface that shows what another surface shows composes the same atoms
-or reuses the organism (`frontends/ui/AGENTS.md`); it does not assemble a
+or reuses the organism (`apps/workspace/AGENTS.md`); it does not assemble a
 lookalike out of `SheetTitle` and `SectionLabel`.
 
 The drawer keeps those paragraphs for exactly one case: a run from before run

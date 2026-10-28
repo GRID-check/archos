@@ -119,35 +119,44 @@ either is missing.
 
 ## Alerts
 
-Five alerts in PostHog, one per domain, on the
+One alert in PostHog, **Platform health (prod)**, on the insight
+[`tqqimEor`](https://eu.posthog.com/project/269895/insights/tqqimEor) on the
 [Platform health (prod)](https://eu.posthog.com/project/269895/dashboard/1040252)
-dashboard. Each watches a SQL insight over `posthog.metrics` that returns one
-row per rule: `rule` names it and what breaks it, `breach` counts the
-breaches. The alert fires when any row is above 0 (`any_row`, upper bound 0)
-and its notification carries the `rule` text, so it says which pod, queue or
-node. Five, because the free plan allows five insight alerts in total; one per
-domain puts every rule behind them. They check hourly (the free plan's
-fastest), production only, and email their subscriber.
+dashboard. The insight is a SQL query over `posthog.metrics` that evaluates
+one row per rule and folds them into a single row: `rule` lists every rule
+that fired, each prefixed by its area and naming what breaks it, and `breach`
+counts them. The alert fires when `breach` is above 0, and its notification
+carries the `rule` text, so it says which pod, queue or node. One row because
+PostHog's scheduled check errored on every run of the multi-row version
+([`deploy/posthog/README.md`](../../deploy/posthog/README.md#alerts)). It checks hourly (the free plan's fastest),
+production only, emails its subscriber and posts to `#alerts-prod`.
 
-| Alert (insight) | Rules |
+It used to be five alerts, one per area. The plan allows five insight alerts
+in total, and support and costs need two of them
+([`deploy/posthog/README.md`](../../deploy/posthog/README.md#alerts)), so the
+five areas are now rows of one query. The per-area insights below stay on the
+dashboard for reading; their SQL is what the merged query wraps, so a
+threshold changes in both.
+
+| Area (prefix, per-area insight) | Rules |
 |---|---|
 | Workloads ([`EHKZOYDv`](https://eu.posthog.com/project/269895/insights/EHKZOYDv)) | A container restarted 3+ times in an hour; a pod Pending or Failed for 15 min; a Deployment, StatefulSet or DaemonSet below its desired count for 15 min; a node not Ready or under memory, disk or PID pressure; a PVC over 85% full; a container above 90% of its memory limit for 15 min |
-| Background work ([`cc8ZCJlX`](https://eu.posthog.com/project/269895/insights/cc8ZCJlX)) | A queue's oldest job waiting 30+ min for 15 min; any job moved to dead; any KEDA ScaledObject error (a trigger it cannot read); an HPA pinned at its maximum for 30 min |
-| Data stores ([`66kuIQ3u`](https://eu.posthog.com/project/269895/insights/66kuIQ3u)) | A Postgres exporter reporting down; a replica 60+ s behind for 15 min; PgBouncer clients waiting for 15 min; a Qdrant peer down for 15 min; the rate-limit or Langfuse Dragonfly over 90% of its memory (the cache evicts by design); the Langfuse queue evicting anything (lost traces) |
-| Application ([`Z7X5CRIF`](https://eu.posthog.com/project/269895/insights/Z7X5CRIF)) | The BFF answering 5%+ with 5xx over an hour of 200+ requests; a Node event loop's p99 delay above 0.5 s for 15 min; 30+ provider 429s in an hour |
-| Telemetry heartbeat ([`CFVybMF0`](https://eu.posthog.com/project/269895/insights/CFVybMF0)) | `grid-ui`, `grid-skill-scheduler` or `grid-purger` silent for 20 min; cluster state silent for 20 min; a node the cluster lists whose agent is silent |
+| Hintergrundjobs ([`cc8ZCJlX`](https://eu.posthog.com/project/269895/insights/cc8ZCJlX)) | A queue's oldest job waiting 30+ min for 15 min; any job moved to dead; any KEDA ScaledObject error (a trigger it cannot read); an HPA pinned at its maximum for 30 min |
+| Datenbanken ([`66kuIQ3u`](https://eu.posthog.com/project/269895/insights/66kuIQ3u)) | A Postgres exporter reporting down; a replica 60+ s behind for 15 min; PgBouncer clients waiting for 15 min; a Qdrant peer down for 15 min; the rate-limit or Langfuse Dragonfly over 90% of its memory (the cache evicts by design); the Langfuse queue evicting anything (lost traces) |
+| Anwendung ([`Z7X5CRIF`](https://eu.posthog.com/project/269895/insights/Z7X5CRIF)) | The BFF answering 5%+ with 5xx over an hour of 200+ requests; a Node event loop's p99 delay above 0.5 s for 15 min; 30+ provider 429s in an hour |
+| Telemetrie ([`CFVybMF0`](https://eu.posthog.com/project/269895/insights/CFVybMF0)) | No metric labelled `prod` from `grid-ui`, `grid-skill-scheduler` or `grid-purger` in 20 min; one of them silent for 20 min after it had sent; cluster state silent for 20 min; a node the cluster lists whose agent is silent |
 
-The heartbeat is the one that reads silence as a failure. The others read a
+Telemetrie is the area that reads silence as a failure. The others read a
 missing metric as healthy, so without it an exporter that died would look like
-a quiet night. It watches the Node tiers, which report their runtime every 30 s,
-not the Python ones, which may export nothing while idle.
+a quiet night. Its first rule was added on 2026-10-27: the other heartbeat
+rules only notice a service that sent and then stopped, so a production that
+never sent anything (metrics export not yet deployed there) looked healthy for
+a week. It watches the Node tiers, which report their runtime every 30 s, not
+the Python ones, which may export nothing while idle.
 
-**They are created disabled.** No metric has arrived yet, and an alert over no
-data proves nothing. Once metrics flow (Metrics enabled in the project, and a
-deploy), for each one: open its insight and check every rule row returns,
-then enable it. A rule that names a metric the cluster never sends returns
-`breach = 0` forever, so look for the rows, not only the zeros. The SQL is
-the insight itself; change a threshold there, and the rules here with it.
+A rule that names a metric the cluster never sends returns `breach = 0`
+forever, so once production sends metrics, open the insight and look for the
+rows, not only the zeros.
 
 ## Known gaps
 

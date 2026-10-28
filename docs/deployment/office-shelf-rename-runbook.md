@@ -28,12 +28,12 @@ Safe order, one step per release train. The code accepts either slug the whole
 time, so no step can lock anybody out.
 
 1. **Deploy.** The authz-catalog Job (`grid-app-authz-catalog`, compose service
-   `grid-workos-authz`) creates `org:office_shelf:manage` and gives the Admin role
+   `workos-authz`) creates `org:office_shelf:manage` and gives the Admin role
    both slugs. The Knowledge Manager role holds both. The old slug stays in the
    catalog, marked `deprecated`.
 2. **Re-grant custom roles that hold the old slug.** Custom roles an office built
    itself are not in the catalog, so the Job does not touch them. From
-   `frontends/ui`:
+   `apps/workspace`:
 
    ```bash
    WORKOS_API_KEY=sk_... bun run regrant:office-shelf             # lists the roles, writes nothing

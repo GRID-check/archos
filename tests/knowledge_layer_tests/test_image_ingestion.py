@@ -23,10 +23,11 @@ from knowledge_layer.llamaindex.adapter import _build_image_caption_document
 from knowledge_layer.llamaindex.adapter import _looks_like_image
 from knowledge_layer.llamaindex.adapter import _read_image_as_jpeg
 from knowledge_layer.llamaindex.adapter import _strip_visual_marker
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from PIL import ExifTags
 from PIL import Image
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
 
 
 def _patch_vlm_credential(monkeypatch, api_key: str):
@@ -399,6 +400,26 @@ class TestRunIngestionImageBranch:
         assert docs[0].summary == "An image of a floor plan."
         assert docs[0].tags == ["Foto", "Grundriss"]
 
+    def test_a_photo_keeps_the_capture_its_camera_wrote(self, tmp_path, monkeypatch, ingestor, summary_db):
+        """Regression: the per-file reset after the type branch wiped the EXIF facts the image branch read."""
+        from aiq_agent.knowledge import get_available_documents
+
+        _patch_vlm_credential(monkeypatch, "vlm-key")
+        monkeypatch.setattr(adapter, "_analyze_image_with_vlm", lambda *a, **k: ("image", "Baustellenfoto."))
+        exif = Image.Exif()
+        exif.get_ifd(ExifTags.IFD.Exif)[ExifTags.Base.DateTimeOriginal] = "2026:09:14 10:32:05"
+        exif[ExifTags.Base.Model] = "Canon EOS R5"
+        img = tmp_path / "baustelle.jpg"
+        Image.new("RGB", (64, 48), "gray").save(img, "JPEG", exif=exif)
+
+        job_id = ingestor.submit_job([str(img)], "coll_capture", config={"original_filenames": ["baustelle.jpg"]})
+        assert _wait_terminal(ingestor, job_id).is_success
+
+        capture = get_available_documents("coll_capture")[0].capture
+        assert capture is not None
+        assert capture["captured_at"].startswith("2026-09-14T10:32:05")
+        assert "Canon EOS R5" in capture["camera"]
+
     def test_watermark_caption_scrubbed_before_becoming_fallback_summary(
         self, tmp_path, monkeypatch, ingestor, summary_db
     ):
@@ -495,7 +516,7 @@ class TestRunIngestionImageBranch:
         assert not status.is_success
         detail = status.file_details[0]
         assert detail.status.value == "failed"
-        assert detail.error_message == "vlm_not_configured: image ingestion requires AIQ_VLM_API_KEY"
+        assert detail.error_message == "vlm_not_configured: image ingestion requires VLM_API_KEY"
 
     def test_summary_fail_but_tags_succeed_persists_fallback_summary(self, tmp_path, monkeypatch, ingestor, summary_db):
         """Fix 1: when the summary LLM call fails but tag classification

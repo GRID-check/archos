@@ -37,7 +37,7 @@ dargestellt.“ Measured in the code on 2026-10-22:
   it: what was looked for, and where.
 
 The turn is also really sequential, in a narrower way than it feels
-(`docs/architecture/turn-latency-measured-2026-09.md`): calls inside a round
+(`docs/audit/turn-latency-measured-2026-09.md`): calls inside a round
 already run concurrently (`ToolNode` gathers them, `parallel_tool_calls=True`),
 but the model usually issues one query per round, and each round costs a
 reasoning call of about 5.7 s. The search description says „Prefer one precise
@@ -128,6 +128,7 @@ contract is the chips. Option 3 breaks ADR-0068 and every rename of a phrase.
 | A list-only round is never „Kein Treffer“; an error is drawn | the trace tells the truth | shipped |
 | Description fan-out and literal prefetch in round 0 | the work is as parallel as it looks | shipped; the prefetch is marked (`RetrievalStep.prefetch`) and draws no row |
 | „Grundlagen · Entwurf“ replaces the findings card; uncited sources fold into one card; one warning in the header | the reader sees what the answer stands on | shipped |
+| The filesystem verbs (`ls`, `glob`, `grep`, `read_file`, ADR-0133) name a place, say when a search was incomplete, and link only when they returned a card | file search and folder opening read the way an architect speaks | shipped (see the amendment of 2026-10-27) |
 
 ### Amendment, 2026-10-22: the value test
 
@@ -159,6 +160,85 @@ answer by, and added what lets them check and reuse it:
   that call; three or more calls of a kind fold to „×N“; a step of more than
   five rows shows the worst three and „+N weitere“.
 
+### Amendment, 2026-10-27: the filesystem verbs
+
+ADR-0133 moved Piloti's reading of the office's documents to `ls`, `glob`,
+`grep` and `read_file`, and slice 6 retired `read_passage`, `list_files` and the
+literal `knowledge_search` from the chat, so every file call of a turn is now
+one of these rows. An audit of every outcome (2026-10-27, the `/dev/derivation`
+variants `fs` and `fs-edges`) found that their rows showed the raw path
+(„Öffnet project › 03 Einreichung“, „Sucht wörtlich in : „Fluchtweg““,
+„Liest /project/…/README.md“), and that a `grep` which could not search
+everything looked complete with hits and failed without them. Decided:
+
+- **A row names a place, never a path.** `ActionStep` gains `mount`
+  (`project | office | chat | law | estate`, the vocabulary of `ToolStep.mount`;
+  `estate` is every place the person may see) and `target` is then the folder
+  inside it (`estate_paths.action_place`). The words are the frontend's:
+  „Öffnet 03 Einreichung“, „Durchsucht alle Ablagen wörtlich nach „…““, „Sucht
+  im Projekt nach PDF-Dateien“ (a `glob` is a `list` row with its pattern as
+  `query`). A folder outside the project is named under its place, with the
+  article the sentence needs („Durchsucht die Büroablage › Vorlagen“, „in der
+  Büroablage › Vorlagen“, „im Chat › Pläne“: the place's short name with an
+  article from one small map, then the breadcrumb; a place's root keeps its own
+  phrase, „die Dateien dieses Chats“), and without an article inside quotes
+  („der Ordner „Büroablage › Vorlagen““). A path that names no place gives
+  the row no `target` at all („Öffnet einen Ordner · fehlgeschlagen“), never
+  the model's `drafts › .. › project`.
+- **Simple patterns read as words.** A glob of one type or one word reads
+  „PDF-Dateien“, „Dateien mit „Brandschutz“ im Namen“, „PDF-Dateien mit „Plan“
+  im Namen“; a regex of plain words or'ed reads „wörtlich nach „EI 90“ oder
+  „REI 90““. „Wörtlich“ holds because the store compiles a person's regex
+  case-insensitively (`compile_user_regex`); it does not fold umlauts as the
+  literal search does, so words with „ä/ö/ü/ß“ or their spelled-out forms
+  („ae/oe/ue/ss“) read „nach „Tür“ oder „Tuer““ without it. Any other pattern is quoted as written („Dateien „EP-0?_*.pdf““,
+  „nach dem Muster „EI\s?90““), and „Offen“ calls a pattern search „die Suche …
+  nach dem Muster“, never „die wörtliche Suche“.
+- **An incomplete search says so.** `ActionStep.incomplete` is set by a `grep`
+  with any gap (a place that did not answer, the regex deadline, the passage
+  cap). With no hit it is `empty`, not `error`, because most of the scope was
+  searched. It has its own shape (a dashed ring) and a second line saying what
+  it means („nicht alles durchsucht – es kann weitere Treffer geben“, „… – das
+  ist kein Nein“); the count beside it stays a count („3 Treffer in 1 Datei“),
+  with the word „unvollständig“ only where there is none. It never folds into a
+  sum, and „Offen“ says „… nicht alles durchsuchen konnte“. Only a `grep` that
+  searched nothing at all is `error`.
+- **A miss is „nicht gefunden“; an empty folder is „leer“.** A folder or file
+  that does not resolve is `empty` with `missing` (also new on `ActionStep`) and
+  the name the model asked for; a restricted one gives the byte-identical row,
+  so the row confirms nothing (ADR-0088). A folder that is there and holds
+  nothing (a new project, a chat without uploads) is `ok` with its zeros and
+  reads „Öffnet das Projekt · leer“: it was found, and „Offen“ owes nothing for
+  it. „Nicht gefunden“ is said only for `missing`. This replaces „a read that
+  falls through to unknown document is an error row“ below for the estate's
+  `read_file`; `read_passage` keeps its old rule while it lives.
+- **One thing, one count, one noun.** A folder counts everything it holds, its
+  subfolders' files too, whether `ls` lists it flat, as a tree or as its folder
+  card, and not the 40 (`ls`) or 100 (`glob`) its text had room for. Every count
+  of a filesystem row counts files („12 Dateien, 2 Ordner“, „14 Treffer in 3
+  Dateien“, „kein Treffer in 41 Dateien“); a search outside the filesystem
+  keeps „Dokumenten“. `ls /` counts places and files („3 Ablagen, 41 Dateien“),
+  exactly the set a `grep` everywhere searches, so the two numbers agree when
+  nothing failed; an incomplete grep counts only the places that answered. A
+  zero beside a count is dropped. A read says the pages it served (a read
+  without `pages` opens page 1 and says so), named as its card names the
+  document („Liest Baubeschreibung, S. 4–6“), and a folder card (`README.md`)
+  is a `list` row of its folder.
+- **A row links only when its call returned a card.** A listing, a name search
+  and a `files_with_matches` grep are indexes: their rows are no buttons, where
+  a tap used to set every card back and light nothing.
+- **Drafts and skills draw no row**, as agent-filesystem §6 says; a skill read
+  no longer wears the „Entwurf“ chip, and a draft `grep`/`glob` does.
+- The listing verb is „Öffnet“ / „Geöffnet: …“, its step kind „Ordner öffnen“.
+  („Listet“ was tried and is not German for what a person does with a folder.)
+- **Rows stored before `mount`** are read back as the wire sends them now
+  (`legacyPlace` in `message-provenance.ts`): a listing's or search's path as
+  its place, a read's path as its file name, a folder card's `…/README.md` as
+  the listing of its folder. Delete `legacyPlace` and its spec once no stored
+  conversation holds an `action` step written before this amendment shipped:
+  after the conversation retention window has passed since that deploy, or
+  sooner by a migration that rewrites those steps.
+
 ### Consequences
 
 - One more step kind on the wire: `wire_v2.py`, the generated schema and Zod
@@ -186,7 +266,13 @@ answer by, and added what lets them check and reuse it:
   file only.
 - Not yet rows: `workspace__search` and `workspace__describe` (the door's
   reads, beside `workspace__call`, which has one), the `canvas` group, and
-  `file_draft`. They keep their `tool` step and chips.
+  `file_draft`. They keep their `tool` step and chips. By design no rows: the
+  filesystem verbs on `/drafts/` and `/skills/`, a repeat the fetch guard
+  withholds, a call past the round's width cap (it runs next round, with its
+  row) and a call to a switched-off source; none of them ran.
+- Still open for the filesystem rows: a listing row opens nothing (the Files
+  pane has no deep link a row could name yet), and a `grep` row does not say
+  which places a gap was in, only that there was one (the model's text does).
 
 ### Confirmation
 

@@ -1,13 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import {
-  GridConfig,
-  appPullPolicy,
-  assertHpaTargetIsProportional,
-  assertMemoryFitsLimit,
-  frontendImage,
-  toResourceRequirements,
-} from "../config";
+import { GridConfig } from '../config'
+import { appPullPolicy, frontendImage } from '../config/images'
+import { assertHpaTargetIsProportional, assertMemoryFitsLimit, toResourceRequirements } from '../config/resources'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
@@ -84,7 +79,7 @@ export function installFrontend(
             imagePullSecrets: w.imagePullSecrets,
             // Keep serving after SIGTERM: preStop covers EndpointSlice
             // propagation at the gateway, then server.js drains in-flight
-            // requests and WebSockets (GRID_SHUTDOWN_DRAIN_MS).
+            // requests and WebSockets (SHUTDOWN_DRAIN_MS).
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
             // The frontend image runs as non-root UID 1001; make it explicit so
             // the pod is Pod-Security "restricted"-ready.

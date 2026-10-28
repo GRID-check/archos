@@ -1,0 +1,72 @@
+import type { en } from '../en'
+
+/** intakeQuestionsStep: step 4, Rückfragen: one question at a time, only what changes the classification. */
+export const intakeQuestionsStep: typeof en.intakeQuestionsStep = {
+  heading: 'Rückfragen',
+  subtitle: 'Nur, was die Einstufung ändert',
+  groups: {
+    missing: 'Fehlt in den Unterlagen',
+    location: 'Unterlagen zum Standort',
+    contradiction: 'Widerspruch',
+  },
+  list: {
+    done: 'erledigt',
+    current: 'jetzt gefragt',
+    open: 'offen',
+  },
+  progress: '{done} von {total} erledigt',
+  readingNote: '{productName} liest die Unterlagen noch. Was Sie schon wissen, können Sie jetzt beantworten.',
+  closingNote: 'Ein abgeschlossenes Projekt: {productName} fragt nur das Wichtigste.',
+  card: {
+    position: 'Frage {index} von {total}',
+    submit: 'Übernehmen und weiter',
+    submitting: 'Wird übernommen …',
+    unknown: 'Weiß ich nicht',
+    unknownBusy: 'Wird vermerkt …',
+    unknownAria: '{label}: weiß ich nicht',
+    later: 'Später entscheiden',
+    laterAria: '{label}: später entscheiden',
+  },
+  why: {
+    decisive: 'entscheidet die Gebäudeklasse',
+    register: 'bestimmt, was der Standort verlangt',
+    location: 'verlangt der Standort in {place}',
+    locationUnknown: 'verlangt der Standort',
+    contradiction: 'die Unterlagen nennen verschiedene Werte',
+  },
+  or: 'oder',
+  handIn: {
+    where: 'Steht meist in:',
+    wherePhone: 'Steht meist in: {where}',
+    drop: 'Hier ablegen, {productName} liest die Antwort selbst heraus.',
+    pick: 'Datei wählen',
+    pickAria: 'Datei wählen für: {label}',
+  },
+  request: {
+    sources: 'Grundlage: {sources}',
+    unknownAria: '{label}: weiß ich nicht',
+    documentOnly: 'Legen Sie das Dokument unten ab, {productName} liest die Werte daraus.',
+  },
+  contradiction: {
+    title: '{label}: {values}?',
+    description: 'Die Unterlagen nennen verschiedene Werte. Wählen Sie den, der gilt.',
+    choose: 'Geltender Wert',
+    current: 'im Steckbrief',
+    found: 'auch gefunden',
+  },
+  value: {
+    unknown: 'nicht bekannt',
+    handedIn: 'Datei abgelegt',
+  },
+  doneTitle: 'Alle Rückfragen erledigt',
+  done: 'Im Steckbrief bestätigen Sie, was {productName} gefunden hat.',
+  nothingTitle: 'Keine Rückfragen',
+  nothing: 'Die Unterlagen nennen alles, was die Einstufung entscheidet.',
+  waitingTitle: 'Noch keine Rückfragen',
+  waiting: '{productName} liest die Unterlagen noch. Was dabei offen bleibt, fragt {productName} hier.',
+  more: 'Weitere Angaben',
+  moreHint: 'Freiwillig: Nichts davon ändert die Einstufung.',
+  moreClose: 'Schließen',
+  rest: 'Rest später, zum Steckbrief',
+  next: 'Weiter zum Steckbrief',
+}

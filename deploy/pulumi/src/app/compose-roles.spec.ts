@@ -27,7 +27,7 @@ function env(service: Service): Record<string, string> {
   return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, String(value)]));
 }
 
-const roleOf = (file: string, name: string) => env(compose(file).services[name]).GRID_ROLE;
+const roleOf = (file: string, name: string) => env(compose(file).services[name]).PROCESS_ROLE;
 
 /**
  * The environment a container actually gets: the YAML merge key
@@ -52,18 +52,18 @@ function effectiveEnv(file: string, name: string): Record<string, string> {
  * uploads a file. Both are read here as source, like the Python they configure.
  */
 describe.each(COMPOSE_FILES)("%s", (file) => {
-  it("runs one service per role of the image, each under its own GRID_ROLE", () => {
-    expect(roleOf(file, "aiq-agent")).toBe("chat");
-    expect(roleOf(file, "aiq-api")).toBe("api");
+  it("runs one service per role of the image, each under its own PROCESS_ROLE", () => {
+    expect(roleOf(file, "chat")).toBe("chat");
+    expect(roleOf(file, "api")).toBe("api");
     expect(roleOf(file, "agent-worker")).toBe("worker");
     expect(roleOf(file, "ingest-worker")).toBe("ingest-worker");
   });
 
   it("names exactly the roles the entrypoint accepts", () => {
     const roles = Object.values(compose(file).services)
-      .map((service) => env(service).GRID_ROLE)
+      .map((service) => env(service).PROCESS_ROLE)
       .filter((role): role is string => role !== undefined);
-    const accepted = read("deploy", "entrypoint.py").match(/^ROLES = \((.*)\)$/m)?.[1];
+    const accepted = read("apps", "backend", "entrypoint.py").match(/^ROLES = \((.*)\)$/m)?.[1];
 
     expect(accepted).toBeDefined();
     expect(new Set(roles)).toEqual(new Set([...accepted!.matchAll(/"([a-z-]+)"/g)].map((m) => m[1])));
@@ -72,8 +72,8 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
   it("gives the frontend the api service for HTTP and the chat service for the socket", () => {
     const frontend = env(compose(file).services.frontend);
 
-    expect(frontend.BACKEND_URL).toContain("http://aiq-api:8000");
-    expect(frontend.BACKEND_CHAT_URL).toContain("http://aiq-agent:8000");
+    expect(frontend.BACKEND_URL).toContain("http://api:8000");
+    expect(frontend.BACKEND_CHAT_URL).toContain("http://chat:8000");
   });
 
   it("points every other HTTP consumer of the backend at the api service", () => {
@@ -83,24 +83,24 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
       .filter(([, url]) => url !== undefined);
 
     expect(consumers.map(([name]) => name)).toEqual(expect.arrayContaining(["housekeeping", "purger"]));
-    for (const [name, url] of consumers) expect(url, name).toContain("http://aiq-api:8000");
+    for (const [name, url] of consumers) expect(url, name).toContain("http://api:8000");
   });
 
   it("starts the services that call the api role only after it is up", () => {
     const services = compose(file).services;
     for (const name of ["frontend", "housekeeping", "purger"]) {
       const dependsOn = services[name].depends_on ?? {};
-      expect(Object.keys(dependsOn), name).toContain("aiq-api");
+      expect(Object.keys(dependsOn), name).toContain("api");
     }
   });
 
   it("holds the shared Qdrant ahead of every backend role and points each at it", () => {
     const services = compose(file).services;
-    for (const name of ["aiq-agent", "aiq-api", "agent-worker", "ingest-worker"]) {
+    for (const name of ["chat", "api", "agent-worker", "ingest-worker"]) {
       expect(Object.keys(services[name].depends_on ?? {}), name).toContain("qdrant");
       const vars = effectiveEnv(file, name);
-      expect(vars.AIQ_QDRANT_URL, name).toContain("http://qdrant:6333");
-      expect(vars.AIQ_QDRANT_API_KEY, name).toBeDefined();
+      expect(vars.QDRANT_URL, name).toContain("http://qdrant:6333");
+      expect(vars.QDRANT_API_KEY, name).toBeDefined();
     }
   });
 
@@ -111,7 +111,7 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     expect(Object.keys(services).filter((name) => /chroma/i.test(name))).toEqual([]);
     for (const name of Object.keys(services)) {
       const retired = Object.keys(effectiveEnv(file, name)).filter(
-        (k) => k.startsWith("AIQ_CHROMA") || k === "AIQ_VECTOR_BACKEND",
+        (k) => k.startsWith("CHROMA") || k === "VECTOR_BACKEND",
       );
       expect(retired, name).toEqual([]);
     }
@@ -139,37 +139,40 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
 describe("the retired role and claim switch", () => {
   const files = [
     ...COMPOSE_FILES.map((f) => join("deploy", "compose", f)),
-    join("deploy", "entrypoint.py"),
+    join("apps", "backend", "entrypoint.py"),
     join("deploy", "pulumi", "src", "app", "config.ts"),
     join("deploy", "pulumi", "src", "app", "api.ts"),
     join("deploy", "pulumi", "src", "app", "backend.ts"),
   ];
 
-  it.each(files)("%s has no GRID_ROLE=web and no GRID_INGEST_QUEUE_CLAIM", (file) => {
+  it.each(files)("%s has no PROCESS_ROLE=web and no INGEST_QUEUE_CLAIM", (file) => {
     const source = read(file);
 
-    expect(source).not.toMatch(/GRID_ROLE[=:"' ]+web\b/);
-    expect(source).not.toContain("GRID_INGEST_QUEUE_CLAIM");
+    expect(source).not.toMatch(/PROCESS_ROLE[=:"' ]+web\b/);
+    expect(source).not.toContain("INGEST_QUEUE_CLAIM");
   });
 
   it("is no longer read anywhere under the Python image sources", () => {
-    const python = readdirSync(join(repoRoot, "frontends", "aiq_api", "src", "aiq_api"), { recursive: true })
+    const python = readdirSync(join(repoRoot, "apps", "backend", "src", "aiq_api"), { recursive: true })
       .filter((f): f is string => typeof f === "string" && f.endsWith(".py"))
-      .map((f) => read("frontends", "aiq_api", "src", "aiq_api", f))
+      .map((f) => read("apps", "backend", "src", "aiq_api", f))
       .join("\n");
 
-    expect(python).not.toContain("GRID_INGEST_QUEUE_CLAIM");
+    expect(python).not.toContain("INGEST_QUEUE_CLAIM");
   });
 });
 
 /** Research runs on the database queue alone: no execution switch, scheduler address or worker-pool knob survives. */
 describe("the research queue is the only execution path", () => {
-  const retired = /GRID_JOB_EXECUTION|NAT_DASK_SCHEDULER_ADDRESS|NAT_USE_DASK_THREADS|DASK_|GRID_MAX_ACTIVE_JOBS(?!_)/;
+  const retired = /JOB_EXECUTION|NAT_DASK_SCHEDULER_ADDRESS|NAT_USE_DASK_THREADS|DASK_|MAX_ACTIVE_JOBS(?!_)/;
   const files = [
     ...COMPOSE_FILES.map((f) => join("deploy", "compose", f)),
     join("deploy", ".env.example"),
-    join("deploy", "entrypoint.py"),
+    join("apps", "backend", "entrypoint.py"),
     join("deploy", "pulumi", "src", "config.ts"),
+    ...readdirSync(join(repoRoot, "deploy", "pulumi", "src", "config"))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => join("deploy", "pulumi", "src", "config", f)),
     join("deploy", "pulumi", "src", "app", "config.ts"),
     join("deploy", "pulumi", "src", "app", "api.ts"),
     join("deploy", "pulumi", "src", "app", "backend.ts"),
@@ -180,7 +183,7 @@ describe("the research queue is the only execution path", () => {
   });
 
   it("the Python sources read none of them either", () => {
-    const python = [join("frontends", "aiq_api", "src", "aiq_api"), join("src", "aiq_agent")]
+    const python = [join("apps", "backend", "src", "aiq_api"), join("packages", "agent", "src", "aiq_agent")]
       .flatMap((dir) =>
         readdirSync(join(repoRoot, dir), { recursive: true })
           .filter((f): f is string => typeof f === "string" && f.endsWith(".py"))

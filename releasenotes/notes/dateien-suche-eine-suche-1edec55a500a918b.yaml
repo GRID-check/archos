@@ -1,0 +1,7 @@
+---
+improvements:
+  - >
+    Searching a project's documents or the Archiv now also finds a document by
+    its name and by what it is, not only by what it says. Each result shows the
+    matching passage and its page in ranked order, without a relevance
+    percentage.

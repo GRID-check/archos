@@ -5,11 +5,11 @@ write a failed document's ``error_message`` as ``reason: text``
 (``vlm_not_configured: …``). Two things read the reason, in two languages:
 
 * the UI maps it to a sentence in the reader's language with
-  ``INGEST_FAILURE_PREFIXES`` in ``frontends/ui/src/features/documents/lib/ingest-failure.ts``;
+  ``INGEST_FAILURE_PREFIXES`` in ``apps/workspace/ui/features/documents/lib/ingest-failure.ts``;
 * the backend maps it to a failure category (``PREFIX_CATEGORIES`` in
   ``aiq_agent/knowledge/ingest_failures.py``), which decides whether reading
   the file again is worth anything, and the BFF holds the categories and the
-  reader version in ``frontends/ui/src/lib/documents/retry-policy.ts``.
+  reader version in ``apps/workspace/bff/documents/retry-policy.ts``.
 
 There is no shared schema, and an unmapped reason does not break: it shows the
 generic "could not read" sentence and is retried as ``unknown``, so the drift is
@@ -35,15 +35,15 @@ from aiq_agent.knowledge.ingest_failures import classify_failure
 from aiq_agent.knowledge.ingest_status_store import INTERRUPTED_MESSAGE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TS_MAPPER = REPO_ROOT / "frontends" / "ui" / "src" / "features" / "documents" / "lib" / "ingest-failure.ts"
-TS_RETRY_POLICY = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "documents" / "retry-policy.ts"
+TS_MAPPER = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "documents" / "lib" / "ingest-failure.ts"
+TS_RETRY_POLICY = REPO_ROOT / "apps" / "workspace" / "bff" / "documents" / "retry-policy.ts"
 BACKEND_ROOTS = (
-    REPO_ROOT / "sources" / "knowledge_layer" / "src",
-    REPO_ROOT / "src" / "aiq_agent" / "knowledge",
+    REPO_ROOT / "packages" / "knowledge-layer" / "src",
+    REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "knowledge",
     # The ingest worker settles a job whose queued payload it cannot read
     # (`unreadable_job:`, `jobs/ingest_dispatch.py`). It was outside the scan,
     # and its reason reached the UI unmapped.
-    REPO_ROOT / "frontends" / "aiq_api" / "src",
+    REPO_ROOT / "apps" / "backend" / "src",
 )
 
 #: A reason-prefixed literal where a failure is written: an ``error=`` /
@@ -154,7 +154,7 @@ def test_the_bff_compares_against_the_reader_the_backend_stamps():
         ("unreadable_job: the queued ingestion job could not be read; retry to index this file", "transient", True),
         (SCAN_NEEDS_VLM, "configuration", True),
         (SCREENING_UNAVAILABLE, "configuration", True),
-        ("vlm_not_configured: image ingestion requires AIQ_VLM_API_KEY", "configuration", True),
+        ("vlm_not_configured: image ingestion requires VLM_API_KEY", "configuration", True),
         ("pdf_pages_unreadable: 3 of 4 pages could not be read", "deterministic", False),
         ('quarantined:{"reasons":[],"checked":"full"}', "quarantined", False),
     ],

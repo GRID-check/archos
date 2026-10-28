@@ -1,0 +1,146 @@
+// @disk-inputs: server.js
+/**
+ * @vitest-environment node
+ */
+/**
+ * The WebSocket proxy strips what only it may set (`server.js`).
+ *
+ * Each context header was written only when the scope response had the field,
+ * so a client's own `x-grid-model-overrides`, `x-grid-budget` or
+ * `x-grid-disabled-sources` reached the backend whenever the scope left that
+ * field empty. These cases pin the strip itself and that `server.js` runs it
+ * before it writes a single context header.
+ */
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+import { findOversizedWsHeader, stripClientContextHeaders, withoutSessionCookies, WS_HEADER_LINE_MAX_BYTES } from './ws-upgrade-headers.js'
+
+describe('stripClientContextHeaders', () => {
+  it('removes every x-grid-* header a client sent', () => {
+    const headers: Record<string, string> = {
+      'x-grid-model-overrides': 'eyJkZWVwX3Jlc2VhcmNoIjoieC9ncm9rIn0', // pragma: allowlist secret (base64 JSON fixture, not a credential)
+      'x-grid-budget': 'eyJyZW1haW5pbmdPcmdVc2QiOjk5OTk5fQ',
+      'x-grid-disabled-sources': 'W10',
+      'x-grid-request-context': 'forged',
+      'x-grid-request-context-sig': 'forged',
+      'x-grid-internal-token': 'guess',
+      'x-grid-some-future-field': 'x',
+    }
+
+    const removed = stripClientContextHeaders(headers)
+
+    expect(headers).toEqual({})
+    expect(removed).toHaveLength(7)
+  })
+
+  it('removes the same headers under their names without the product name', () => {
+    const headers: Record<string, string> = {
+      'x-model-overrides': 'forged',
+      'x-budget': 'forged',
+      'x-disabled-sources': 'forged',
+      'x-organization-id': 'org_someone_else',
+      'x-request-context': 'forged',
+      'x-request-context-sig': 'forged',
+    }
+
+    expect(stripClientContextHeaders(headers)).toHaveLength(6)
+    expect(headers).toEqual({})
+  })
+
+  it('removes a client bearer and the service-token header', () => {
+    const headers: Record<string, string> = {
+      authorization: 'Bearer someone-elses-token',
+      'x-internal-token': 'guess',
+    }
+
+    stripClientContextHeaders(headers)
+
+    expect(headers).toEqual({})
+  })
+
+  it('keeps what the proxy and the backend need from the client', () => {
+    const headers: Record<string, string> = {
+      cookie: 'wos-session=abc',
+      host: 'app.example',
+      origin: 'https://app.example',
+      'sec-websocket-key': 'k',
+      'sec-websocket-version': '13',
+      'x-forwarded-for': '203.0.113.7',
+      // Not the prefix: a header that merely contains the letters survives.
+      'x-gridlock': 'y',
+    }
+    const before = { ...headers }
+
+    expect(stripClientContextHeaders(headers)).toEqual([])
+    expect(headers).toEqual(before)
+  })
+})
+
+describe('server.js strips before it writes', () => {
+  const source = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
+
+  it('requires the strip', () => {
+    expect(source).toMatch(/require\('\.\/bff\/proxy\/ws-upgrade-headers\.js'\)/)
+  })
+
+  describe('WebSocket per-header encoded line budget', () => {
+    it('counts the header name, separators and CRLF', () => {
+      const value = 'a'.repeat(WS_HEADER_LINE_MAX_BYTES - Buffer.byteLength('x: \r\n'))
+      expect(findOversizedWsHeader({ x: value })).toBeNull()
+      expect(findOversizedWsHeader({ x: value + 'a' })).toEqual({ name: 'x', bytes: 8193 })
+    })
+
+    it('counts UTF-8 bytes and encoded bytes rather than characters', () => {
+      expect(findOversizedWsHeader({ x: 'ä'.repeat(4100) })?.bytes).toBe(8205)
+      const profile = 'ä'.repeat(3101)
+      expect(Buffer.byteLength(profile)).toBeGreaterThan(6200)
+      expect(findOversizedWsHeader({
+        'x-grid-project-context': Buffer.from(profile).toString('base64url'),
+      })?.name).toBe('x-grid-project-context')
+    })
+
+    it('checks each array header line and the combined cookie line', () => {
+      expect(findOversizedWsHeader({ x: ['a'.repeat(5000), 'b'.repeat(5000)] })).toBeNull()
+      expect(findOversizedWsHeader({ cookie: ['a'.repeat(5000), 'b'.repeat(5000)] })?.name).toBe('cookie')
+    })
+  })
+
+  it('runs it on the upgrade before the first context header is set', () => {
+    const strip = source.indexOf('stripClientContextHeaders(req.headers)')
+    // The context headers are written in one place: `turnContextHeaders`
+    // (`lib/turns/turn-headers.js`), assigned onto the upgrade request.
+    const firstWrite = source.indexOf('turnContextHeaders(result.data')
+    expect(strip, 'the upgrade handler no longer strips client headers').toBeGreaterThan(-1)
+    expect(firstWrite).toBeGreaterThan(-1)
+    expect(strip).toBeLessThan(firstWrite)
+  })
+})
+
+describe('withoutSessionCookies', () => {
+  it('drops the AuthKit session, whole or in chunks, and keeps every other cookie', () => {
+    expect(withoutSessionCookies('wos-session.0=a; idToken=t; wos-session.1=b; wos-session=z; ph_x=1')).toBe(
+      'idToken=t; ph_x=1',
+    )
+  })
+
+  it('keeps a cookie that only starts with the session name', () => {
+    expect(withoutSessionCookies('wos-session-other=1; wos-session.x=2')).toBe('wos-session-other=1; wos-session.x=2')
+  })
+
+  it('sends no Cookie line when the session was all there was', () => {
+    expect(withoutSessionCookies('wos-session.0=a; wos-session.1=b')).toBeUndefined()
+    expect(withoutSessionCookies(undefined)).toBeUndefined()
+  })
+
+  it('keeps a chat socket under the line limit however large the session grows', () => {
+    const chunks = Array.from({ length: 4 }, (_, index) => `wos-session.${index}=${'s'.repeat(3800)}`).join('; ')
+    const cookie = withoutSessionCookies(`${chunks}; idToken=t`)
+
+    expect(findOversizedWsHeader({ cookie })).toBeNull()
+  })
+
+  it('is what server.js forwards to the backend', () => {
+    const server = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
+    expect(server).toMatch(/const cookie = withoutSessionCookies\(req\.headers\.cookie\)/)
+  })
+})

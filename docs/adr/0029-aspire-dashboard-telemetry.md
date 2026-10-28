@@ -1,10 +1,10 @@
+---
+status: superseded by ADR-0100
+---
+
 # ADR-0029: Aspire Standalone Dashboard as Live Telemetry Pane
 
 Date: 2026-07-27
-
-## Status
-
-Superseded by ADR-0100
 
 ## Context
 
@@ -34,7 +34,7 @@ tool, not a log archive.
 Deploy `mcr.microsoft.com/dotnet/aspire-dashboard` as a standard Kubernetes
 Deployment via the existing Pulumi stack
 (`deploy/pulumi/src/platform/observability.ts`). Design spec:
-`docs/superpowers/specs/2026-07-27-aspire-otel-dashboard-design.md`.
+`docs/specs/2026-07-27-aspire-otel-dashboard-design.md` at `56ee3329`.
 
 Key decisions within the approach:
 
@@ -56,7 +56,7 @@ Key decisions within the approach:
   by the SecurityPolicy API). Nothing sensitive appears as a plain env value on
   a pod spec.
 - **Scope:** traces from all three app tiers — Next.js BFF (`grid-ui`),
-  aiq-agent (`grid-aiq-agent`), and agent-worker (`grid-agent-worker`). The
+  aiq-agent (`backend-chat`), and agent-worker (`grid-agent-worker`). The
   collector carries traces+logs+metrics pipelines so future signal adoption
   is app-only work. Metrics/log instrumentation, purger/scheduler, and the
   `server.js` WS proxy are follow-ups.
@@ -94,7 +94,7 @@ metrics** are all wired now.
   the `https-otel` listener, and the producers' OTLP env (with a `preview`
   warning naming what is missing) rather than shipping a dashboard nobody can
   log into. Result when enabled: end-to-end traces `grid-ui` →
-  `grid-aiq-agent`. Known gap: the custom `server.js` WS proxy is not
+  `backend-chat`. Known gap: the custom `server.js` WS proxy is not
   auto-instrumented (follow-up).
 - Endpoint asymmetry (intentional): the frontend gets the BASE URL
   (`http://otel-collector:4318`, JS exporter appends `/v1/traces` per spec);
@@ -243,7 +243,7 @@ dashboard quickstart and cost real debugging time if missed:
   URI (`https://<otelDomain>/oauth2/callback`, registered in the WorkOS
   dashboard — Envoy's callback path; see Amendment 2).
 - Chat tier and worker tier appear as distinct resources
-  (`grid-aiq-agent` / `grid-agent-worker`).
+  (`backend-chat` / `grid-agent-worker`).
 - The dashboard is a cheap, self-contained Deployment with no external
   dependencies.
 
@@ -346,7 +346,7 @@ Two follow-ups landed together once traces were flowing:
    the wire savings never justified the breakage.
 2. **Logs are now emitted by every tier** (the collector's logs pipeline was
    wired from day one; this is the "app-only" signal adoption):
-   - Python tiers (`grid-aiq-agent`, `grid-agent-worker`): a NAT
+   - Python tiers (`backend-chat`, `grid-agent-worker`): a NAT
      `register_logging_method` (`_type: otelcollector_logs`,
      `src/aiq_agent/observability/otlp_logging_method.py`) yields a stdlib
      `LoggingHandler` onto an OTLP log exporter — NAT attaches it to the root
@@ -445,7 +445,7 @@ a token or a cost.)*
 
 ## References
 
-- Design spec: `docs/superpowers/specs/2026-07-27-aspire-otel-dashboard-design.md`
+- Design spec: `docs/specs/2026-07-27-aspire-otel-dashboard-design.md` at `56ee3329`
 - Dashboard standalone: https://aspire.dev/dashboard/standalone/
 - Dashboard configuration: https://aspire.dev/dashboard/configuration/
 - ADR-0016: Platform owner model
