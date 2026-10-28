@@ -57,7 +57,7 @@ class _Sequence:
 @pytest.fixture(autouse=True)
 def _configured(monkeypatch):
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "a-real-secret-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "a-real-secret-token")
     _Sequence.answers = []
     _Sequence.calls = []
 
@@ -121,7 +121,7 @@ class TestTheThreadTurnIsRetried:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("missing", "organization_id"),
-        [("FRONTEND_INTERNAL_URL", "org_1"), ("GRID_INTERNAL_API_TOKEN", "org_1"), (None, None)],
+        [("FRONTEND_INTERNAL_URL", "org_1"), ("INTERNAL_API_TOKEN", "org_1"), (None, None)],
     )
     async def test_an_unconfigured_write_is_not_attempted(self, monkeypatch, missing, organization_id) -> None:
         """No base URL, no service token, or no organization to scope by: no doomed POST, and no raise."""

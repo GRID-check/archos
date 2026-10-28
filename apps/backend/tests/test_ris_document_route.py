@@ -51,7 +51,7 @@ def _no_cached_documents(monkeypatch):
 
 @pytest.fixture
 def client(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     app = FastAPI()
     router = APIRouter()
     add_ris_routes(router)

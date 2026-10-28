@@ -6,8 +6,8 @@ import type { IngestWorkerConfig, ProviderLimitsConfig } from "./workers";
 /**
  * Vision calls the ingest tier can have in flight at its ceiling: replicas, times
  * the jobs one replica runs at once, times the files' own parallelism
- * (`GRID_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
- * slot of the fleet pool (`GRID_VLM_FLEET_CONCURRENCY`).
+ * (`VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
+ * slot of the fleet pool (`VLM_FLEET_CONCURRENCY`).
  */
 export function vlmPeakCalls(cfg: { ingestWorker: IngestWorkerConfig; providerLimits: ProviderLimitsConfig }): number {
   return cfg.ingestWorker.maxReplicas * cfg.ingestWorker.concurrency * cfg.providerLimits.vlmBatchWorkers;
@@ -18,7 +18,7 @@ export function vlmPeakCalls(cfg: { ingestWorker: IngestWorkerConfig; providerLi
  * wait for a slot, which is what the pool is for, so some overshoot is a queue
  * that keeps the pool busy between files; a lot of it is replicas that only hold
  * memory while they wait, and a wait long enough to meet the vision client's
- * timeout (`GRID_VLM_TIMEOUT_SECONDS`) is a retry for nothing.
+ * timeout (`VLM_TIMEOUT_SECONDS`) is a retry for nothing.
  */
 export const VLM_OVERSUBSCRIPTION = 2;
 

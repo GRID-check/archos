@@ -15,8 +15,8 @@
  *
  * ## Desired state comes from the environment
  *
- *   GRID_PLATFORM_ORG_EXTERNAL_ID   platform org external id (default grid-platform)
- *   GRID_PLATFORM_OWNER_EMAIL       owner to seat in the platform org (unset = skip)
+ *   PLATFORM_ORG_EXTERNAL_ID   platform org external id (default grid-platform)
+ *   PLATFORM_OWNER_EMAIL       owner to seat in the platform org (unset = skip)
  *   WORKOS_DESIRED_REDIRECT_URIS    desired AuthKit redirect URIs (comma-separated)
  *   WORKOS_DESIRED_CORS_ORIGINS     desired AuthKit CORS origins (comma-separated)
  *   WORKOS_CONNECT_APP_NAME         observability Connect app name (default GRID Observability)
@@ -49,7 +49,7 @@ import { NotFoundException, WorkOS } from '@workos-inc/node'
 import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags'
 import { diffSets, parseFlagTargets, planFlagCheck, splitList } from './provision-workos-env-plan'
 
-const PLATFORM_ORG_EXTERNAL_ID = process.env.GRID_PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
+const PLATFORM_ORG_EXTERNAL_ID = process.env.PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
 const PLATFORM_ROLE_SLUG = 'org-platform-owner'
 
 const WORKOS_API_BASE = 'https://api.workos.com'
@@ -159,9 +159,9 @@ async function reconcilePlatformOrg(): Promise<string | null> {
 
 async function reconcileOwner(platformOrgId: string | null): Promise<void> {
   console.log('\nPlatform owner')
-  const email = process.env.GRID_PLATFORM_OWNER_EMAIL
+  const email = process.env.PLATFORM_OWNER_EMAIL
   if (!email || !email.trim()) {
-    note(`skipped  GRID_PLATFORM_OWNER_EMAIL is unset`)
+    note(`skipped  PLATFORM_OWNER_EMAIL is unset`)
     return
   }
   if (!platformOrgId) {

@@ -75,7 +75,7 @@ def capture_asgi():
 
 @pytest.fixture(autouse=True)
 def _clear_internal_token(monkeypatch):
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
 
 
 class TestPathMatching:
@@ -189,7 +189,7 @@ class TestDenyByDefault:
 
     @pytest.mark.asyncio
     async def test_jwt_with_valid_envelope_reaches_chat_completions(self, monkeypatch, capture_asgi):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope(
@@ -245,7 +245,7 @@ class TestExemptions:
 
     @pytest.mark.asyncio
     async def test_valid_internal_token_call_exempt_even_with_jwt_type(self, monkeypatch, capture_asgi):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "internal-secret")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-secret")
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope(
@@ -260,7 +260,7 @@ class TestExemptions:
 
     @pytest.mark.asyncio
     async def test_grid_internal_token_header_name_also_exempts(self, monkeypatch, capture_asgi):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "internal-secret")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-secret")
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope(
@@ -275,7 +275,7 @@ class TestExemptions:
 
     @pytest.mark.asyncio
     async def test_wrong_internal_token_does_not_exempt(self, monkeypatch, capture_asgi):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "internal-secret")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-secret")
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
@@ -318,7 +318,7 @@ class TestHttpEnforcement:
 
     @pytest.mark.asyncio
     async def test_authenticated_jwt_with_valid_envelope_allowed(self, monkeypatch, capture_asgi):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
 
@@ -334,7 +334,7 @@ class TestHttpEnforcement:
 
     @pytest.mark.asyncio
     async def test_authenticated_jwt_with_tampered_envelope_rejected(self, monkeypatch, capture_asgi):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
@@ -357,9 +357,9 @@ class TestHttpEnforcement:
 
     @pytest.mark.asyncio
     async def test_dev_mode_no_secret_still_requires_envelope_presence(self, capture_asgi):
-        # GRID_INTERNAL_API_TOKEN unset (autouse fixture clears it): signature
+        # INTERNAL_API_TOKEN unset (autouse fixture clears it): signature
         # verification is skipped, but presence is still enforced.
-        assert not os.environ.get("GRID_INTERNAL_API_TOKEN")
+        assert not os.environ.get("INTERNAL_API_TOKEN")
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
@@ -375,7 +375,7 @@ class TestHttpEnforcement:
 
     @pytest.mark.asyncio
     async def test_dev_mode_no_secret_accepts_unsigned_envelope(self, capture_asgi):
-        assert not os.environ.get("GRID_INTERNAL_API_TOKEN")
+        assert not os.environ.get("INTERNAL_API_TOKEN")
         app, calls = capture_asgi
         mw = GridContextEnvelopeMiddleware(app, require_auth=True)
 
@@ -422,7 +422,7 @@ class TestWebSocketEnforcement:
         from unittest.mock import AsyncMock as AM
         from unittest.mock import MagicMock
 
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
         app, calls = capture_asgi
         mock_v = MagicMock()
         mock_v.can_handle.return_value = True

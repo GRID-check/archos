@@ -1,12 +1,12 @@
 /**
  * Stop an ask (ADR-0124): `POST` → the ask as `AskView`, `canceled` once its
- * turn stopped. 409 when it had already ended. Behind `piloti-ask-cancel` and
+ * turn stopped. 409 when it had already ended. Behind `agent-ask-cancel` and
  * the A2A door's `CancelTask`. Thin handler; the rules live in
- * `@/lib/piloti-asks/service`.
+ * `@/lib/agent-asks/service`.
  */
 
 import { apiRoute } from '@/lib/api/handler'
-import { cancelAsk } from '@/lib/piloti-asks/service'
+import { cancelAsk } from '@/lib/agent-asks/service'
 
 export const dynamic = 'force-dynamic'
 

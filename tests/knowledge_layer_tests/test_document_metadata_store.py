@@ -907,7 +907,7 @@ class TestReSummarisingKeepsTheHumanColumns:
     rename, the platform owner's reclassification, and (once folders travelled)
     the user's filing. Postgres, on its `ON CONFLICT DO UPDATE` branch, kept all
     three. Same store, same call, two different outcomes, and the SQLite one is
-    what the default `GRID_SUMMARY_DB` uses.
+    what the default `SUMMARY_DB` uses.
     """
 
     @pytest.fixture

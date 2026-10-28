@@ -454,7 +454,7 @@ describe('the host the slices run in', () => {
     const spawnServer = vi.fn()
     const health = { close: vi.fn() }
     const serveHealth = vi.fn().mockResolvedValue(health)
-    const config = readConfig({ GRID_BFF_JOBS_MODE: 'inprocess', PORT: '4000' })
+    const config = readConfig({ BFF_JOBS_MODE: 'inprocess', PORT: '4000' })
 
     const proc = new EventEmitter()
     const host = await startWorkHost(config, {
@@ -480,7 +480,7 @@ describe('the host the slices run in', () => {
   })
 
   it('in process: needs no internal token, because nothing is asked over HTTP', async () => {
-    const config = readConfig({ GRID_BFF_JOBS_MODE: 'inprocess' })
+    const config = readConfig({ BFF_JOBS_MODE: 'inprocess' })
 
     await expect(
       startWorkHost(config, {
@@ -496,7 +496,7 @@ describe('the host the slices run in', () => {
     const server = fakeServer()
     const spawnServer = vi.fn().mockReturnValue(server)
     const importBundle = vi.fn()
-    const config = readConfig({ GRID_INTERNAL_API_TOKEN: 't' })
+    const config = readConfig({ INTERNAL_API_TOKEN: 't' })
 
     const host = await startWorkHost(config, {
       spawnServer,
@@ -515,7 +515,7 @@ describe('the host the slices run in', () => {
   it('by default: reports a BFF that dies, and gives up on one that never answers', async () => {
     const server = fakeServer()
     const onServerExit = vi.fn()
-    const config = readConfig({ GRID_INTERNAL_API_TOKEN: 't' })
+    const config = readConfig({ INTERNAL_API_TOKEN: 't' })
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const host = await startWorkHost(config, { spawnServer: () => server, waitForServer: async () => false, onServerExit })
@@ -528,12 +528,12 @@ describe('the host the slices run in', () => {
 
   it('by default: refuses to start without the internal token', async () => {
     await expect(startWorkHost(readConfig({}), { spawnServer: vi.fn(), onServerExit: vi.fn() })).rejects.toThrow(
-      /GRID_INTERNAL_API_TOKEN/
+      /INTERNAL_API_TOKEN/
     )
   })
 
   it('refuses a mode it does not know, rather than guessing one', () => {
-    expect(() => readConfig({ GRID_BFF_JOBS_MODE: 'in-process' })).toThrow(/GRID_BFF_JOBS_MODE/)
+    expect(() => readConfig({ BFF_JOBS_MODE: 'in-process' })).toThrow(/BFF_JOBS_MODE/)
   })
 })
 
@@ -557,9 +557,9 @@ describe('configuration', () => {
   it('reads the knobs and ignores nonsense', () => {
     const config = readConfig({
       PORT: '4000',
-      GRID_BFF_JOBS_CONCURRENCY: '5',
-      GRID_BFF_JOBS_MAX_PER_ORG: '2',
-      GRID_BFF_JOBS_DRAIN_SECONDS: 'soon',
+      BFF_JOBS_CONCURRENCY: '5',
+      BFF_JOBS_MAX_PER_ORG: '2',
+      BFF_JOBS_DRAIN_SECONDS: 'soon',
     })
 
     expect(config.url).toBe('http://127.0.0.1:4000')
@@ -569,15 +569,15 @@ describe('configuration', () => {
   })
 
   it('reads the retry backoff (0 retries at once) and the dead-row retention, and never retains for less than a day', () => {
-    const runner = readConfig({ GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS: '0', GRID_BFF_JOBS_DEAD_RETENTION_DAYS: '0' }).runner
+    const runner = readConfig({ BFF_JOBS_RETRY_BACKOFF_SECONDS: '0', BFF_JOBS_DEAD_RETENTION_DAYS: '0' }).runner
 
     expect(runner.retryBackoffSeconds).toBe(0)
     expect(runner.deadRetentionSeconds).toBe(14 * 86_400)
-    expect(readConfig({ GRID_BFF_JOBS_DEAD_RETENTION_DAYS: '3' }).runner.deadRetentionSeconds).toBe(3 * 86_400)
+    expect(readConfig({ BFF_JOBS_DEAD_RETENTION_DAYS: '3' }).runner.deadRetentionSeconds).toBe(3 * 86_400)
   })
 
   it('never lets the stale window shrink below a few heartbeats', () => {
-    expect(readConfig({ GRID_BFF_JOBS_STALE_SECONDS: '5' }).runner.staleSeconds).toBe(60)
+    expect(readConfig({ BFF_JOBS_STALE_SECONDS: '5' }).runner.staleSeconds).toBe(60)
   })
 
   it('waits for the BFF to answer its health route', async () => {

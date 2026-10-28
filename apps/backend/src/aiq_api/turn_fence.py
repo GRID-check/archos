@@ -1,6 +1,6 @@
 """The running turn's own clock on its conversation marker (ADR-0080, "the owner fences itself").
 
-A turn that runs while ``GRID_CHAT_AFFINITY`` is off holds ``conv:<id>:running``
+A turn that runs while ``CHAT_AFFINITY`` is off holds ``conv:<id>:running``
 in Dragonfly, with a TTL it renews. Once that TTL runs out, a newer question on
 another replica may take the marker and start writing the same LangGraph
 thread. The turn must therefore be silent before that, and it cannot ask: the
@@ -59,7 +59,7 @@ def validate_running_ttl(ttl: float) -> float:
     margin = fence_margin()
     if margin >= ttl:
         raise ValueError(
-            f"GRID_CHAT_RUNNING_TTL_SECONDS={ttl:g} is not above the fence margin of {margin:g}s "
+            f"CHAT_RUNNING_TTL_SECONDS={ttl:g} is not above the fence margin of {margin:g}s "
             f"(a guarded write may take {GUARDED_WRITE_TIMEOUT_SECONDS:g}s): a turn would be fenced as it starts"
         )
     return ttl

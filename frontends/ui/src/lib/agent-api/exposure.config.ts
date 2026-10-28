@@ -346,9 +346,9 @@ export const EXPOSURE = {
   'feedback-thread-get': OFFERED,
   'feedback-thread-reply': OFFERED,
   'passage-similar-search': OFFERED,
-  'piloti-ask-cancel': ASK,
-  'piloti-ask-create': ASK,
-  'piloti-ask-get': ASK,
+  'agent-ask-cancel': ASK,
+  'agent-ask-create': ASK,
+  'agent-ask-get': ASK,
 
   // collaboration
   'assignment-add': OFFERED,
@@ -385,7 +385,7 @@ export const EXPOSURE = {
     withheld: { category: 'ui-state', reason: 'the unread markers the document viewer draws; screen state' },
   },
   'mention-request-release': OFFERED,
-  'piloti-change-undo': DECISION,
+  'agent-change-undo': DECISION,
   'proposal-apply': DECISION,
   'proposal-dismiss': DECISION,
   'proposal-get': OFFERED,

@@ -241,7 +241,7 @@ type NextConfigFunction = (
  * and the runtime have neither, and get `nextConfig` exactly as written. With
  * both, the package turns browser maps on, the PostHog CLI injects chunk ids
  * into the shipped JavaScript, uploads the maps for release `grid-ui` at the
- * commit being built (the `GRID_GIT_SHA` the container reports) and deletes
+ * commit being built (the `GIT_SHA` the container reports) and deletes
  * them. The Dockerfile then deletes any map left over and fails the build if
  * one survives: Next serves `.next/static` to anyone, and a map carries the
  * original source.
@@ -256,9 +256,9 @@ export const posthogSourcemapConfig = (
   const personalApiKey = env.POSTHOG_CLI_API_KEY?.trim()
   const projectId = env.POSTHOG_PROJECT_ID?.trim()
   if (!personalApiKey || !projectId) return null
-  const releaseVersion = env.GRID_GIT_SHA?.trim()
+  const releaseVersion = env.GIT_SHA?.trim()
   if (!releaseVersion) {
-    throw new Error('GRID_GIT_SHA is empty; a PostHog release needs the commit it was built from')
+    throw new Error('GIT_SHA is empty; a PostHog release needs the commit it was built from')
   }
   return {
     personalApiKey,

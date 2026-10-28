@@ -107,7 +107,7 @@ function versionExistsInOrg1(): void {
 describe('GET /api/internal/document-versions/[versionId]/content', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
   })
 
@@ -119,7 +119,7 @@ describe('GET /api/internal/document-versions/[versionId]/content', () => {
     })
 
     it('fails closed when the token is unconfigured', async () => {
-      delete process.env.GRID_INTERNAL_API_TOKEN
+      delete process.env.INTERNAL_API_TOKEN
       expect((await GET(request(), params)).status).toBe(503)
     })
   })

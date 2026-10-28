@@ -94,7 +94,7 @@ async function folderIdsWith(
 /**
  * The level a membership holds on each folder of `projectId` that has its own
  * list, by the folder roles assigned to it there: two WorkOS calls, cached for
- * `GRID_AUTHZ_CACHE_TTL_MS` like every other FGA answer, under the project's
+ * `AUTHZ_CACHE_TTL_MS` like every other FGA answer, under the project's
  * current generation, which every change of a list in the project replaces.
  * Fails closed: a lookup that did not complete holds nothing, and is not cached.
  */

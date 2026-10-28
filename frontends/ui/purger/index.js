@@ -8,10 +8,10 @@
  * docs/adr/0011-deletion-pipeline.md (the design was never committed).
  *
  * Environment:
- *   GRID_APP_DATABASE_URL   - `app` Postgres DSN
+ *   APP_DATABASE_URL   - `app` Postgres DSN
  *   BACKEND_URL             - aiq-api base URL (Python-side purge endpoint)
  *   FRONTEND_INTERNAL_URL   - BFF base URL (chat erasure retries, folder purges; default http://frontend:3000)
- *   GRID_INTERNAL_API_TOKEN - shared token for the internal endpoint
+ *   INTERNAL_API_TOKEN - shared token for the internal endpoint
  *   SEAWEED_ENDPOINT / SEAWEED_ACCESS_KEY / SEAWEED_SECRET_KEY / SEAWEED_BUCKET
  *   WORKOS_API_KEY          - WorkOS API key (FGA resource cleanup)
  *   LANGFUSE_HOST / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY
@@ -199,7 +199,7 @@ function main() {
     // A chat's erasure runs in the BFF; the purger only retries it
     // (`purge-conversation.js`).
     frontendUrl: (process.env.FRONTEND_INTERNAL_URL || 'http://frontend:3000').replace(/\/$/, ''),
-    internalToken: process.env.GRID_INTERNAL_API_TOKEN || '',
+    internalToken: process.env.INTERNAL_API_TOKEN || '',
     // The deployment's shared bucket. Every OTHER bucket a purge has to sweep is
     // read from the document rows themselves (ADR-0043) rather than derived from
     // the organization id — see the note in `purge-project.js` step 2. That is

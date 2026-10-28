@@ -176,7 +176,7 @@ def merge_results(results, query: str, top_k: int, backend_name: str, max_per_do
     does not exist yet) and raised exceptions are treated as empty contributions
     and skipped — EXCEPT an embedding-fingerprint mismatch (see
     ``_EMBEDDING_MISMATCH_MARKER``), which is a configuration fault, not a miss:
-    a wrong ``GRID_EMBED_MODEL``/``GRID_EMBED_BASE_URL`` silently drops the whole
+    a wrong ``EMBED_MODEL``/``EMBED_BASE_URL`` silently drops the whole
     base corpus while the surviving layers still answer. A mismatch therefore
     rides along on the merged result instead of being skipped quietly: no
     surviving channel means ``success=False`` with the mismatch detail (an

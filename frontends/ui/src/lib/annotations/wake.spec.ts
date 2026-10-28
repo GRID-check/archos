@@ -69,11 +69,11 @@ describe('what wakes Piloti', () => {
 describe('the caps', () => {
   it('default to six wakes per mark an hour and fifty per person a day, and read the environment', () => {
     expect(wakeLimits({})).toEqual({ perMarkHour: 6, perPersonDay: 50 })
-    expect(wakeLimits({ GRID_WAKE_MAX_PER_MARK_HOUR: '2', GRID_WAKE_MAX_PER_PERSON_DAY: '10' })).toEqual({
+    expect(wakeLimits({ WAKE_MAX_PER_MARK_HOUR: '2', WAKE_MAX_PER_PERSON_DAY: '10' })).toEqual({
       perMarkHour: 2,
       perPersonDay: 10,
     })
-    expect(wakeLimits({ GRID_WAKE_MAX_PER_MARK_HOUR: 'viele' }).perMarkHour).toBe(6)
+    expect(wakeLimits({ WAKE_MAX_PER_MARK_HOUR: 'viele' }).perMarkHour).toBe(6)
   })
 })
 

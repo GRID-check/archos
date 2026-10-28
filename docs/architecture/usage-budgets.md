@@ -32,7 +32,7 @@ Budgets view read-only from Platform → Übersicht (`/app/platform/organization
 aggregates and each organization's limits as an hourly snapshot:
 [`org-spend-in-posthog.md`](../observability/org-spend-in-posthog.md).
 
-There is no currency conversion anywhere. The old `GRID_BUDGET_EUR_PER_USD`
+There is no currency conversion anywhere. The old `BUDGET_EUR_PER_USD`
 rate is gone: a hand-set rate was neither the bank's nor OpenRouter's, and a
 figure nobody is charged is not worth showing. What a credit costs a tenant in
 euros is the contract's business.
@@ -113,7 +113,7 @@ fixtures**, not against the live API:
   the exact JSON batch POSTed to the ledger endpoint.
 - `frontends/ui/src/app/api/internal/usage/route.spec.ts` accepts exactly
   that batch shape into the ledger.
-- **Live-Postgres integration tests** (opt-in via `GRID_TEST_DATABASE_URL`,
+- **Live-Postgres integration tests** (opt-in via `TEST_DATABASE_URL`,
   auto-skipped in CI): `src/lib/budgets/service.integration.spec.ts` and
   `src/lib/model-config/service.integration.spec.ts` apply migrations
   0012/0013 to a real Postgres 16 and exercise the actual queries — ledger
@@ -379,6 +379,6 @@ same limits; this is not a separate platform-only commercial ceiling.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GRID_INTERNAL_API_TOKEN` | dev token | guards `/api/internal/usage` (both services) |
+| `INTERNAL_API_TOKEN` | dev token | guards `/api/internal/usage` (both services) |
 | `OPENROUTER_API_KEY` | — | frontend: catalog listing (model config); backend: LLM calls |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | catalog override for tests/self-hosting |

@@ -152,7 +152,7 @@ status without a link, because there is no thread to open. The same links appear
 on the chat history sheet, which lists every research run in the project.
 
 Schedules are validated server-side: 5-field cron, per-job IANA timezone, and a
-minimum cadence of `GRID_SKILL_MIN_INTERVAL_MINUTES` (default 15 minutes). Any
+minimum cadence of `SKILL_MIN_INTERVAL_MINUTES` (default 15 minutes). Any
 job may be scheduled — an attached skill can no longer veto it, because whether
 something should run on a timer is a property of the job. Every run — scheduled
 or manual — is subject to the async-job admission caps; rejected occurrences

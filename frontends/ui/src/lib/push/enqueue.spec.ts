@@ -34,9 +34,9 @@ function row(overrides: Partial<InboxItem> = {}): InboxItem {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', keys.publicKey)
-  vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', keys.privateKey)
-  vi.stubEnv('GRID_WEB_PUSH_SUBJECT', 'mailto:ops@example.org')
+  vi.stubEnv('WEB_PUSH_VAPID_PUBLIC_KEY', keys.publicKey)
+  vi.stubEnv('WEB_PUSH_VAPID_PRIVATE_KEY', keys.privateKey)
+  vi.stubEnv('WEB_PUSH_SUBJECT', 'mailto:ops@example.org')
   vi.mocked(userIdsWithSubscription).mockResolvedValue(new Set(['u1']))
 })
 
@@ -64,9 +64,9 @@ describe('queueing a push at the inbox write path', () => {
   })
 
   it('queues nothing in a deployment without keys, and does not even look for devices', async () => {
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_SUBJECT', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PUBLIC_KEY', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PRIVATE_KEY', '')
+    vi.stubEnv('WEB_PUSH_SUBJECT', '')
     expect(await enqueueInboxPushes([row()], NOW)).toBe(0)
     expect(userIdsWithSubscription).not.toHaveBeenCalled()
   })

@@ -33,7 +33,7 @@ def client() -> TestClient:
 
 
 def test_returns_llm_defaults_without_token_in_dev(client, monkeypatch):
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     response = client.get("/v1/config/llm-defaults")
     assert response.status_code == 200
     llms = response.json()["llms"]
@@ -50,7 +50,7 @@ def test_reports_the_base_url_each_llm_targets(client, monkeypatch):
     """The BFF refuses to seed a platform default unless the deployment actually
     targets the platform catalog's provider, so the endpoint each LLM talks to is
     part of the contract — not just the model id."""
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     base_urls = client.get("/v1/config/llm-defaults").json()["baseUrls"]
 
     assert base_urls["chat_llm"] == "https://openrouter.ai/api/v1"
@@ -58,16 +58,16 @@ def test_reports_the_base_url_each_llm_targets(client, monkeypatch):
     # An LLM config without a base_url reports None rather than being omitted:
     # "unknown endpoint" must be distinguishable from "no such LLM".
     assert base_urls["weird_llm"] is None
-    # The ingestion VLM has its own credential plane (GRID_VLM_BASE_URL) and is
+    # The ingestion VLM has its own credential plane (VLM_BASE_URL) and is
     # routinely a different provider from the `llms:` block.
     assert isinstance(base_urls["vlm"], str) and base_urls["vlm"]
 
 
 def test_vlm_default_reflects_env(monkeypatch):
-    """The synthetic `vlm` default mirrors GRID_VLM_MODEL (resolved at
+    """The synthetic `vlm` default mirrors VLM_MODEL (resolved at
     route-registration time)."""
-    monkeypatch.setenv("GRID_VLM_MODEL", "vendor/vision-x")
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.setenv("VLM_MODEL", "vendor/vision-x")
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     app = FastAPI()
     router = APIRouter()
     add_config_info_routes(router, {})
@@ -78,7 +78,7 @@ def test_vlm_default_reflects_env(monkeypatch):
 
 
 def test_requires_matching_token_when_configured(client, monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "secret-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "secret-token")
 
     assert client.get("/v1/config/llm-defaults").status_code == 403
     assert client.get("/v1/config/llm-defaults", headers={"x-grid-internal-token": "wrong"}).status_code == 403
@@ -91,7 +91,7 @@ def test_requires_matching_token_when_configured(client, monkeypatch):
 def test_reports_the_reasoning_effort_each_llm_ships_with(client, monkeypatch):
     """The platform owner can override the thinking level per agent group, so the
     admin surface must be able to name what clearing that override returns to."""
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     efforts = client.get("/v1/config/llm-defaults").json()["reasoningEfforts"]
 
     assert efforts["chat_llm"] == "none"

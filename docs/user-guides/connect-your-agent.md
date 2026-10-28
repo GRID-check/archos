@@ -136,12 +136,12 @@ answers as you, with your rights, and may file a document while it answers
   you type, paid from your and your organization's AI budget. Without the
   switch the agent is told „Asking Piloti from another agent is not enabled for
   this organization“.
-- **How the agent asks.** Over MCP it calls `piloti-ask-create` with the
+- **How the agent asks.** Over MCP it calls `agent-ask-create` with the
   question and, if it is about one project, the project's id. Without the
   project Piloti answers for the office as a whole and does not read any
   project's files, so name it whenever the question is about one. Piloti answers within
   about 40 seconds; a longer answer comes back as „working“ and the agent reads
-  it a little later with `piloti-ask-get`. To follow up, the agent passes the
+  it a little later with `agent-ask-get`. To follow up, the agent passes the
   conversation of the first question.
 - **You can read along.** Every question your agent asks lands in a private
   conversation of yours in Piloti, with Piloti's answer, like one you typed.
@@ -206,6 +206,6 @@ Piloti filed. Agent access (`agent-mcp`) and `piloti-ask` must both be on.
 | **503** | The external sign-in is not set up on this installation | Tell whoever operates Piloti |
 | **403** „Asking Piloti from another agent is not enabled for this organization“ | Agent access is on, asking Piloti is not | Ask an administrator to switch on `piloti-ask` |
 | An ask ends „rejected“ with „budget“ | Your, the project's or the organization's AI budget is spent | An administrator raises it under Organization → Usage & budgets |
-| An ask ends „rejected“: „Piloti is still answering in this conversation“ | The agent asked again in a conversation where Piloti had not finished | Wait for the first answer (`piloti-ask-get`), then ask again, or ask in a new conversation by leaving out `conversationId`. An ask never interrupts a running answer |
+| An ask ends „rejected“: „Piloti is still answering in this conversation“ | The agent asked again in a conversation where Piloti had not finished | Wait for the first answer (`agent-ask-get`), then ask again, or ask in a new conversation by leaving out `conversationId`. An ask never interrupts a running answer |
 | A proposal arrives as text, not as a card | Your assistant does not render MCP Apps, or it showed the text first | Ask it to show the proposal with `proposal-get`, or decide it in Piloti |
 | The profile shows no address | Agent access is off for your organization, or the installation is not set up | Read the notice in the section |

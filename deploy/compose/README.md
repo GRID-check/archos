@@ -58,17 +58,17 @@ Choose one database configuration in `deploy/.env`:
 **PostgreSQL (recommended):**
 - Set `NAT_JOB_STORE_DB_URL` to
   `postgresql+asyncpg://agent:aiq_dev@postgres:5432/jobs`.
-- Set `GRID_CHECKPOINT_DB` to
+- Set `CHECKPOINT_DB` to
   `postgresql://agent:aiq_dev@postgres:5432/checkpoints`.
-- Set `GRID_SUMMARY_DB` to
+- Set `SUMMARY_DB` to
   `postgresql+psycopg://agent:aiq_dev@postgres:5432/jobs`.
 
 **SQLite (dev environment):**
 - Set `NAT_JOB_STORE_DB_URL` to
   `sqlite+aiosqlite:///./data/jobs.db`.
-- Set `GRID_CHECKPOINT_DB` to
+- Set `CHECKPOINT_DB` to
   `/app/data/checkpoints.db`.
-- Set `GRID_SUMMARY_DB` to `sqlite+aiosqlite:///./summaries.db` (the base corpus table lives there too).
+- Set `SUMMARY_DB` to `sqlite+aiosqlite:///./summaries.db` (the base corpus table lives there too).
 - You can keep the `postgres` service running or remove the `depends_on` block
   for `chat` if you want a SQLite-only setup.
 

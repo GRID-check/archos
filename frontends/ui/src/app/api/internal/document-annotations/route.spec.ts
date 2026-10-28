@@ -158,7 +158,7 @@ const PROPOSAL = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   // Flags come from WorkOS (the session's claim), as wherever people sign in.
   vi.stubEnv('REQUIRE_AUTH', 'true')
   SESSION.featureFlags = ['piloti-acts']
@@ -184,7 +184,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  delete process.env.GRID_INTERNAL_API_TOKEN
+  delete process.env.INTERNAL_API_TOKEN
   vi.unstubAllEnvs()
 })
 

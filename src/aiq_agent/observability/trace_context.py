@@ -33,9 +33,9 @@ OBSERVATION_LEVEL_ATTRIBUTE = "langfuse.observation.level"
 OBSERVATION_STATUS_MESSAGE_ATTRIBUTE = "langfuse.observation.status_message"
 
 #: Where the environment and the commit come from. Both are already set on every
-#: backend pod: ``APP_ENV`` by Pulumi, ``GRID_GIT_SHA`` baked into the image.
+#: backend pod: ``APP_ENV`` by Pulumi, ``GIT_SHA`` baked into the image.
 ENVIRONMENT_ENV = "APP_ENV"
-RELEASE_ENV = "GRID_GIT_SHA"
+RELEASE_ENV = "GIT_SHA"
 
 #: Langfuse rejects an environment that does not match this, and one that
 #: starts with ``langfuse`` (reserved). Anything else is coerced, not dropped:

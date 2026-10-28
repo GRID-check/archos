@@ -61,7 +61,7 @@ version); `lib/analytics/request-error.ts` builds it with our configuration:
   `$http_method`, `nextjs_route_path` (the pattern,
   `/api/projects/[projectId]/files`), `nextjs_route_type`, `nextjs_router_kind`,
   `nextjs_render_source`, `nextjs_error_digest`. Ours, from `beforeCapture`:
-  `source`, `release` (`GRID_GIT_SHA`), `service`.
+  `source`, `release` (`GIT_SHA`), `service`.
 - The person is the visitor's: the package reads the PostHog cookie the browser
   writes (`localStorage+cookie` persistence) for the distinct id, the session id
   and the device id, so a server error sits on the same person and replay as

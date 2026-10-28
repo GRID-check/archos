@@ -11,7 +11,7 @@
  * filename)` lookup never resolves one at all. It runs under
  * `task db:test:rls`, through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/documents/quarantine-listing.integration.spec.ts
  */
 
@@ -27,7 +27,7 @@ import {
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_quarantine_${Date.now()}`
 const UPLOADER = 'user_q_uploader'
 const OTHER_UPLOADER = 'user_q_other'
@@ -79,7 +79,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   const names = (rows: ReadonlyArray<{ filename: string }>): string[] => rows.map((row) => row.filename).sort()
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     db = (await import('@/lib/db')).getDb()

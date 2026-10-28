@@ -51,7 +51,7 @@ field, so approve, publish, reject and archive have no machine path at all.
 request-context envelope at the start of the turn, from a real session
 (`lib/request-context.ts`, ADR-0054 §4). `GridRequestContext` keeps the raw
 header and signature exactly as they arrived, and the tool forwards those two
-strings unchanged beside `GRID_INTERNAL_API_TOKEN`. The BFF verifies them with
+strings unchanged beside `INTERNAL_API_TOKEN`. The BFF verifies them with
 the same secret, reads the acting user out of the verified payload, and builds
 that person's pinned session — so every permission check, every `created_by` and
 every audit actor is the human who asked.
@@ -188,7 +188,7 @@ served to other agents through the same server
 four tools, `workspace__search`, `workspace__describe`, `workspace__call` and
 `workspace__report_missing`: the meta-tools an external agent gets from
 `POST /api/mcp` in `discovery` mode. Each call is one stateless JSON-RPC
-`tools/call` that echoes the turn's envelope beside `GRID_INTERNAL_API_TOKEN`
+`tools/call` that echoes the turn's envelope beside `INTERNAL_API_TOKEN`
 (echo, never sign, as above). A write comes back as a proposal the person
 accepts; this tier applies nothing.
 

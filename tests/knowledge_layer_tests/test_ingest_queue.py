@@ -1,7 +1,7 @@
 """The durable ingest queue: claimed fairly across organisations, and never lost.
 
 Runs on SQLite, which ranks in Python what Postgres ranks in the claim query,
-and on Postgres too when ``GRID_TEST_POSTGRES_URL`` names a database this suite
+and on Postgres too when ``TEST_POSTGRES_URL`` names a database this suite
 may clear (``postgresql://postgres@127.0.0.1:55432/postgres``): the order is
 the contract both implement, and production runs the Postgres one.
 """
@@ -26,19 +26,19 @@ from aiq_agent.knowledge.schema import JobState
 CLAIM = {"stale_seconds": 180, "max_attempts": 3}
 
 
-_POSTGRES = os.environ.get("GRID_TEST_POSTGRES_URL")
+_POSTGRES = os.environ.get("TEST_POSTGRES_URL")
 
 
 def test_the_postgres_branch_ran_where_it_is_required():
     """CI's ``task be:test:postgres`` sets the guard: there a missing database fails instead of skipping green."""
-    if os.environ.get("GRID_TEST_POSTGRES_REQUIRED"):
-        assert _POSTGRES, "GRID_TEST_POSTGRES_URL is unset while GRID_TEST_POSTGRES_REQUIRED is set"
+    if os.environ.get("TEST_POSTGRES_REQUIRED"):
+        assert _POSTGRES, "TEST_POSTGRES_URL is unset while TEST_POSTGRES_REQUIRED is set"
 
 
 @pytest.fixture(
     params=[
         "sqlite",
-        pytest.param("postgres", marks=pytest.mark.skipif(not _POSTGRES, reason="GRID_TEST_POSTGRES_URL not set")),
+        pytest.param("postgres", marks=pytest.mark.skipif(not _POSTGRES, reason="TEST_POSTGRES_URL not set")),
     ]
 )
 def db(request, tmp_path, monkeypatch):
@@ -50,7 +50,7 @@ def db(request, tmp_path, monkeypatch):
         # Another suite in this process may have created them already: the flags say "exists".
         ingest_queue._initialized.discard(url)
         ingest_status_store._initialized.discard(url)
-    monkeypatch.setenv("GRID_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
     yield url
     ingest_queue._initialized.discard(url)
     ingest_status_store._initialized.discard(url)

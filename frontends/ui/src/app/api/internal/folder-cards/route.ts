@@ -13,7 +13,7 @@
  * on every read (ADR-0088). `GET` also returns every living folder of the
  * collection with its description, so the builder has it before a first card.
  *
- * Service-to-service only: `GRID_INTERNAL_API_TOKEN` via `internalApiRoute`. The
+ * Service-to-service only: `INTERNAL_API_TOKEN` via `internalApiRoute`. The
  * organization is the caller's to state (the builder works for the organization
  * whose documents it read), and every query runs in that tenant scope.
  *

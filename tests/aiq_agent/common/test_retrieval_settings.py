@@ -12,7 +12,7 @@ from aiq_agent.common.retrieval_settings import sanitize_retrieval_settings
 @pytest.fixture(autouse=True)
 def _clean_cache(monkeypatch):
     reset_retrieval_settings_cache()
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
     yield
     reset_retrieval_settings_cache()
@@ -73,40 +73,40 @@ class TestResolution:
         assert get_retrieval_setting("knowledge.top_k", 8) == 8
 
     def test_admin_value_wins(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"settings": {"knowledge.top_k": 20}})
         assert get_retrieval_setting("knowledge.top_k", 8) == 20
 
     def test_unset_key_uses_fallback(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"settings": {"web.max_results": 7}})
         assert get_retrieval_setting("knowledge.top_k", 8) == 8
         assert get_retrieval_setting("web.max_results", 5) == 7
 
     def test_http_error_fails_open(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, error=httpx.ConnectError("down"))
         assert get_retrieval_setting("knowledge.top_k", 8) == 8
 
     def test_malformed_payload_fails_open(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, ["not", "a", "dict"])
         assert get_retrieval_setting("knowledge.top_k", 8) == 8
 
     def test_out_of_bounds_row_never_reaches_caller(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"settings": {"knowledge.top_k": 9999}})
         assert get_retrieval_setting("knowledge.top_k", 8) == 8
 
     def test_cache_avoids_repeat_fetch(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"settings": {"knowledge.top_k": 20}})
         assert get_retrieval_setting("knowledge.top_k", 8) == 20
         assert get_retrieval_setting("knowledge.top_k", 8) == 20
         assert calls["n"] == 1
 
     def test_negative_result_cached_briefly(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"settings": {}})
         assert get_retrieval_setting("knowledge.top_k", 8) == 8
         assert get_retrieval_setting("knowledge.top_k", 8) == 8
@@ -118,7 +118,7 @@ class TestResolution:
         assert calls["n"] == 0
 
     def test_reset_cache_refetches(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"settings": {"knowledge.top_k": 20}})
         assert get_retrieval_setting("knowledge.top_k", 8) == 20
         reset_retrieval_settings_cache()
@@ -126,7 +126,7 @@ class TestResolution:
         assert calls["n"] == 2
 
     def test_frontend_internal_url_respected(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff:3000/")
         seen = {}
 

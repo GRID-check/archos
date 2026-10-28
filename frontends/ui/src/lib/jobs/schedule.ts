@@ -13,9 +13,9 @@ import { BadRequestError } from '@/lib/api/errors'
 
 export const DEFAULT_MIN_INTERVAL_MINUTES = 15
 
-/** Minimum cadence accepted at save time (GRID_SKILL_MIN_INTERVAL_MINUTES). */
+/** Minimum cadence accepted at save time (SKILL_MIN_INTERVAL_MINUTES). */
 export function minIntervalMinutesFromEnv(): number {
-  const raw = Number.parseInt(process.env.GRID_SKILL_MIN_INTERVAL_MINUTES ?? '', 10)
+  const raw = Number.parseInt(process.env.SKILL_MIN_INTERVAL_MINUTES ?? '', 10)
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_MIN_INTERVAL_MINUTES
 }
 

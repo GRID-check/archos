@@ -83,7 +83,7 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
         return _Response(result("ok"))
 
     monkeypatch.setattr(bff_http._opener, "open", _open)
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test/")
     return requests
 

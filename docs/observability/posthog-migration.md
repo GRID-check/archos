@@ -165,8 +165,8 @@ date.
    Either stop writing free text into the score and keep it in Postgres, or add
    PostHog person and event deletion to the erasure pipeline.
 6. **Replay link needs two flags.** The browser's session id only reaches the
-   trace with `GRID_WIRE_V2_ADDITIVE_FIELDS` on, its default (the hello withholds
-   `accepts` when it is set off) and `GRID_TRACE_IDENTITY_ATTRIBUTES` on.
+   trace with `WIRE_V2_ADDITIVE_FIELDS` on, its default (the hello withholds
+   `accepts` when it is set off) and `TRACE_IDENTITY_ATTRIBUTES` on.
 7. **Support replies.** The BFF opens a PostHog Support ticket for every
    feedback report, in the reporter's widget session (ADR-0118), so a reply
    reaches the member only through PostHog's own widget, which adds its own

@@ -52,8 +52,8 @@ OLD_PAYLOAD = {
 def db_url(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path}/jobs.db"
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", url)
-    monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
-    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.setenv("WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
+    monkeypatch.delenv("DEEP_CHECKPOINT_DB", raising=False)
     queue.ensure_research_queue_table(url)
     yield url
     queue._queues.pop(url, None)
@@ -90,7 +90,7 @@ async def test_queued_payload_with_scheduler_address_replays_without_it(db_url, 
 
 
 async def test_encrypted_old_payload_is_filtered_after_decryption(db_url, replayed, monkeypatch):
-    monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setenv("JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
 
     await _claim_and_run(db_url, dict(OLD_PAYLOAD))
 

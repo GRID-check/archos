@@ -124,7 +124,7 @@ def _envelope(bff, conversation: str) -> SignedEnvelope:
 def _file(bff, conversation: str, monkeypatch, **fields) -> dict:
     """What the agent's own proposals client gets from the fixture BFF."""
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", bff.url)
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     payload_ = {
         "operation": "move",
         "operations": [{"document": "Schreiben_MA37_Baubeginn.pdf", "target_folder": "Behörde"}],
@@ -195,7 +195,7 @@ class TestTheFixtureRecordsProposedMarks:
 
     def _post(self, bff, conversation: str, monkeypatch, payload: dict) -> dict:
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", bff.url)
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
         return canvas_client.post_canvas(payload, _envelope(bff, conversation))
 
     def test_a_proposal_is_numbered_back_and_read_from_the_log_for_its_conversation(self, bff, monkeypatch):

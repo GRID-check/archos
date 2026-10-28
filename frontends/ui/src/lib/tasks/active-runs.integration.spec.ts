@@ -5,7 +5,7 @@
  * the turn's WORKSPACE block tells Piloti, against a REAL Postgres through the
  * restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/tasks/active-runs.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -25,7 +25,7 @@ const STAMP = Date.now()
 const ORG = `org_runs_${STAMP}`
 const OTHER_ORG = `${ORG}_other`
 const USER = `user_runs_${STAMP}`
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe.skipIf(!url)('countActiveRunsInProject against Postgres', () => {
   let db: ReturnType<typeof import('@/lib/db').getDb>
@@ -59,7 +59,7 @@ describe.skipIf(!url)('countActiveRunsInProject against Postgres', () => {
     )
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')

@@ -14,7 +14,7 @@ loop of its own, and this calls its `/v1/maintenance/housekeeping/*` routes on
 the cadences Kubernetes runs as CronJobs. One of them is the base-corpus sync
 (`base-corpus`, every ten minutes), which queues an ingest job for each uploaded OIB PDF that is
 not indexed yet (the `ingest-worker` service claims and runs it); the backend does no sync at boot. `bff-jobs` (ADR-0079) is the frontend image
-running `workers/jobs/index.js`: the BFF (or, with `GRID_BFF_JOBS_MODE=inprocess`,
+running `workers/jobs/index.js`: the BFF (or, with `BFF_JOBS_MODE=inprocess`,
 the services bundled into `dist-jobs/slice.mjs` and no server) plus the claim loop that runs the jobs
 in `bff_job_queue` (project reindex, failed-ingestion rescan, IFC extraction,
 Office rendition through `gotenberg`, research-report filing), with no
@@ -46,7 +46,7 @@ docker compose --env-file ../.env -f docker-compose.yaml up -d
 
 ### chat (the `chat` role)
 
-The Python backend running NAT + FastAPI as `GRID_ROLE=chat`: the chat WebSocket
+The Python backend running NAT + FastAPI as `PROCESS_ROLE=chat`: the chat WebSocket
 and the answers running on it, the only way a turn runs (NAT's HTTP turn routes,
 `/generate`, `/chat`, `/v1/chat/completions` and the rest, are not mounted). It
 serves no other route but `/health` and NAT's few that run no turn. The frontend's gateway
@@ -70,20 +70,20 @@ Every other HTTP route is [`api`](#api-the-api-role)'s.
 |----------|---------|
 | `APP_ENV` | `production` |
 | `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
-| `GRID_CHECKPOINT_DB` | `postgresql://agent:aiq_dev@pgbouncer:5432/checkpoints` (pooled) |
-| `GRID_SUMMARY_DB` | `postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
-| `GRID_LISTEN_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: SSE LISTEN/NOTIFY) |
-| `GRID_LOCK_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: session advisory locks) |
-| `GRID_ROLE` | `chat` |
-| `GRID_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
-| `GRID_QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
+| `CHECKPOINT_DB` | `postgresql://agent:aiq_dev@pgbouncer:5432/checkpoints` (pooled) |
+| `SUMMARY_DB` | `postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `LISTEN_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: SSE LISTEN/NOTIFY) |
+| `LOCK_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: session advisory locks) |
+| `PROCESS_ROLE` | `chat` |
+| `QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
+| `QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
 | `CONFIG_FILE` | `/app/configs/config_oib_openrouter.yml` |
 | `HOST` | `0.0.0.0` |
 | `PORT` | `8000` |
 
 The environment is written once, on this service, as a YAML anchor
 (`&backend-environment`); `api`, `agent-worker` and `ingest-worker` alias it
-and set their own `GRID_ROLE`, so the four cannot drift.
+and set their own `PROCESS_ROLE`, so the four cannot drift.
 
 **Volumes**:
 
@@ -109,7 +109,7 @@ the shared `qdrant` service.
 
 ### api (the `api` role)
 
-The same image as `chat`, started as `GRID_ROLE=api`: the Knowledge API
+The same image as `chat`, started as `PROCESS_ROLE=api`: the Knowledge API
 (collections, documents, search, ingest enqueue), the Async Job API with its SSE
 streams, the LLM utilities (titles, summaries, consistency check, feedback digest,
 lesson distillation, skill review, note embeddings), admin, the housekeeping
@@ -122,23 +122,23 @@ role serves which route.
 |----------|-------|
 | Container name | (auto-generated) |
 | Ports | `${PORT:-8000}:8000` (the API and `/docs`) |
-| Environment | `chat`'s, with `GRID_ROLE=api` |
+| Environment | `chat`'s, with `PROCESS_ROLE=api` |
 | Healthcheck | the same `/health` probe as `chat` |
 | Depends on | `seaweedfs`, `postgres`, `pgbouncer`, `qdrant` (healthy) |
 
 ### agent-worker
 
-The same image as `GRID_ROLE=worker` (ADR-0021): claims research jobs from
+The same image as `PROCESS_ROLE=worker` (ADR-0021): claims research jobs from
 Postgres (`FOR UPDATE SKIP LOCKED`) and runs them against the shared Qdrant. No
 web port. Healthy while `/tmp/research-worker.alive` is fresh; `stop_grace_period`
 is 660 s, the 600 s drain budget plus the time to give claims back.
 
 ### ingest-worker
 
-The same image as `GRID_ROLE=ingest-worker` (ADR-0076): `POST /v1/ingest`, served
+The same image as `PROCESS_ROLE=ingest-worker` (ADR-0076): `POST /v1/ingest`, served
 by `api`, only puts a job in the durable ingest queue, and this is the one
 process that claims it, fairly across organizations. With it stopped, uploads sit
-pending. `GRID_INGEST_MAX_WORKERS` (default 2) is the jobs it runs at once. No web
+pending. `INGEST_MAX_WORKERS` (default 2) is the jobs it runs at once. No web
 port. Healthy while `/tmp/ingest-worker.alive` is fresh.
 
 ### qdrant
@@ -242,7 +242,7 @@ initialises a **fresh** data directory, so an upgraded stack would otherwise
 never get them.
 
 It is the only long-running-image container that holds
-`GRID_APP_MIGRATION_DATABASE_URL` (the schema owner). Keeping that credential
+`APP_MIGRATION_DATABASE_URL` (the schema owner). Keeping that credential
 out of the container that serves requests is the point: row-level security does
 not apply to a table's owner, so a bug that reached it would have a full bypass
 inside the very process the boundary is meant to constrain. `frontend`,
@@ -323,7 +323,7 @@ The Next.js UI application.
 | `REQUIRE_AUTH` | `${REQUIRE_AUTH:-false}` |
 | `BACKEND_URL` | `${BACKEND_URL:-http://api:8000}` (the api role: every HTTP call) |
 | `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://chat:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
-| `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `migrate`, straight to `postgres`. |
+| `APP_DATABASE_URL` | `${APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `APP_MIGRATION_DATABASE_URL`, set only on `migrate`, straight to `postgres`. |
 | `WORKOS_CLIENT_ID` | `${WORKOS_CLIENT_ID}` |
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}` |
@@ -471,8 +471,8 @@ image writes its userlist), `POOL_MODE=transaction`, `AUTH_TYPE=scram-sha-256`,
 `IGNORE_STARTUP_PARAMETERS=extra_float_digits,options`. Passwords are written
 into URLs, so they cannot contain `:`, `@` or `/`.
 
-**Routing**: the pooled DSNs above and every `GRID_APP_DATABASE_URL` go through
-it. `GRID_LISTEN_DB_URL`, `GRID_LOCK_DB_URL`, `GRID_APP_MIGRATION_DATABASE_URL` and
+**Routing**: the pooled DSNs above and every `APP_DATABASE_URL` go through
+it. `LISTEN_DB_URL`, `LOCK_DB_URL`, `APP_MIGRATION_DATABASE_URL` and
 Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 **Healthcheck**: `pg_isready -h 127.0.0.1 -p 5432` — interval 5s, timeout 3s, retries 5.

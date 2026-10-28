@@ -3,7 +3,7 @@
  * @vitest-environment node
  *
  * Every Postgres integration spec runs somewhere. A `*.integration.spec.ts` that
- * reads `GRID_TEST_DATABASE_URL` skips itself everywhere except under
+ * reads `TEST_DATABASE_URL` skips itself everywhere except under
  * `task db:test:rls` (`scripts/rls-test-db.sh`), which names each file it runs.
  * A spec missing from that list is green in every gate and proves nothing:
  * `folder-cards/repository.integration.spec.ts` sat outside it while its review
@@ -50,7 +50,7 @@ describe('the Postgres integration suite', () => {
   const script = readFileSync(SCRIPT, 'utf8')
   const byATask = new Set(specsRunByATask())
   const needingPostgres = integrationSpecs(join(UI, 'src')).filter((path) =>
-    readFileSync(join(UI, path), 'utf8').includes('GRID_TEST_DATABASE_URL'),
+    readFileSync(join(UI, path), 'utf8').includes('TEST_DATABASE_URL'),
   )
 
   it('runs every spec that needs Postgres', () => {

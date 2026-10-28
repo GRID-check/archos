@@ -108,7 +108,7 @@ tasks:
       # chromadb is not a dependency of this repo (ADR-0115): the exporter's own
       # PEP 723 pin decides the environment, and pytest's testpaths never reach
       # deploy/, so no other task imports chromadb. The end-to-end test runs the
-      # importer in .venv and needs GRID_QDRANT_TEST_URL (skipped locally without it).
+      # importer in .venv and needs QDRANT_TEST_URL (skipped locally without it).
       - uvx --python 3.12 --with-requirements deploy/migration/chroma_export.py --with pytest pytest deploy/migration/tests -q -p no:cacheprovider
 
   prompts:pull:
@@ -169,7 +169,7 @@ tasks:
     cmds:
       # The recording is the only part of that harness that needs a model and a
       # key. It is committed so `be:eval:overview` and CI stay offline; re-run
-      # this when GRID_EMBED_MODEL, data/oib or the golden questions change.
+      # this when EMBED_MODEL, data/oib or the golden questions change.
       - '{{.PY}} -m oib_retrieval.record_vector'
 
   be:eval:qdrant-parity:
@@ -182,7 +182,7 @@ tasks:
       # retriever. Chroma is gone (ADR-0115): its numbers from the gate run are the
       # fixed reference (qdrant_parity/baseline.py). `-- --embedder hashed` runs it
       # keyless as a wiring check only; `-- --variants all` adds the ranking sweep;
-      # `-- --qdrant-url URL` points at another server (default $GRID_QDRANT_TEST_URL
+      # `-- --qdrant-url URL` points at another server (default $QDRANT_TEST_URL
       # or localhost:6333). Only uniquely named parity_* collections are touched.
       - '{{.PY}} -m oib_retrieval.qdrant_parity.runner {{.CLI_ARGS}}'
 
@@ -267,7 +267,7 @@ tasks:
       - '{{.PY}} scripts/turn_census/suite.py {{.CLI_ARGS}}'
 
   be:eval:loop:
-    desc: 'Agentic-loop shape eval — rounds, locator use, checkpoint source, truncation (NEEDS a running backend with the corpus; set GRID_LOOP_EVAL_URL to its chat role)'
+    desc: 'Agentic-loop shape eval — rounds, locator use, checkpoint source, truncation (NEEDS a running backend with the corpus; set LOOP_EVAL_URL to its chat role)'
     cmds:
       # Sibling of be:eval:retrieval and unrunnable in CI for the same reason:
       # the corpus is operator-provided and gitignored, and every question here
@@ -275,9 +275,9 @@ tasks:
       # whether the right passage came back — that is be:eval:retrieval's job.
       #
       # Two runs and a diff:
-      #   GRID_LOOP_EVAL_URL=… task be:eval:loop -- --out /tmp/before.csv
+      #   LOOP_EVAL_URL=… task be:eval:loop -- --out /tmp/before.csv
       #   …change the loop, redeploy…
-      #   GRID_LOOP_EVAL_URL=… task be:eval:loop -- --out /tmp/after.csv
+      #   LOOP_EVAL_URL=… task be:eval:loop -- --out /tmp/after.csv
       #   task be:eval:loop -- --compare /tmp/before.csv /tmp/after.csv
       # The compare mode needs no backend at all. Without a URL the run exits 2
       # saying so rather than writing an empty CSV somebody later compares.

@@ -197,7 +197,7 @@ def _research_model_name() -> str:
     """Piloti's model as the OIB config would boot it.
 
     Read from ``research_llm.model_name`` rather than hard-coded here, so the
-    eval follows the boot floor when it moves (``${GRID_DEFAULT_MODEL:-…}``
+    eval follows the boot floor when it moves (``${DEFAULT_MODEL:-…}``
     resolved the way the config loader resolves it). The live default an actual
     user gets is admin-set (ADR-0014); the boot floor is what a model-free
     process runs on, and the closest thing to a fixed reference this eval has.

@@ -47,7 +47,7 @@ type HousekeepingSweep = {
 function internalSweepScript(label: string, timeoutMs: number): string {
   return [
     "const url = process.env.SWEEP_URL;",
-    "const token = process.env.GRID_INTERNAL_API_TOKEN;",
+    "const token = process.env.INTERNAL_API_TOKEN;",
     // A ceiling: anything near it is a fault, and hanging forever would block
     // the next tick under concurrencyPolicy: Forbid.
     `const signal = AbortSignal.timeout(${timeoutMs});`,
@@ -146,7 +146,7 @@ function internalSweepCronJob(
                       // The token never reaches the command line — an `-H`
                       // argument would show up in `kubectl describe pod` and
                       // in every process listing in the container.
-                      sref("GRID_INTERNAL_API_TOKEN"),
+                      sref("INTERNAL_API_TOKEN"),
                     ],
                   },
                 ],

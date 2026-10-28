@@ -5,7 +5,7 @@ thread pool), but its status must be readable from ANY replica — otherwise a
 ``GET /v1/documents/{job_id}/status`` poll routed elsewhere 404s. This persists
 each ``IngestionJobStatus`` (a Pydantic model → JSON) to Postgres so every
 replica serves the same answer. It reuses the DocumentMetadataStore engine cache and the
-summaries database (``GRID_SUMMARY_DB``, falling back to ``NAT_JOB_STORE_DB_URL``).
+summaries database (``SUMMARY_DB``, falling back to ``NAT_JOB_STORE_DB_URL``).
 
 Best-effort / fail-open: with no DB configured (local dev) every write is a
 no-op and every read comes back empty. The adapter keeps the jobs of its own
@@ -139,7 +139,7 @@ _BACKFILL_COLLECTION_NAME = {
 
 
 def _db_url() -> str | None:
-    url = os.environ.get("GRID_SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
+    url = os.environ.get("SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
     return url or None
 
 

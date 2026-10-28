@@ -66,7 +66,7 @@ describe('links on door answers', () => {
 
   it('links an ask to its conversation, and leaves the documents it filed alone', () => {
     const view = { id: 'ask-1', conversationId: 's_9', projectId: 'p1', state: 'completed', documents: [{ id: 'd1' }] }
-    expect(link('piloti-ask-create', view)).toEqual({ ...view, url: `${ORIGIN}/app/projects/p1/chat?session=s_9` })
+    expect(link('agent-ask-create', view)).toEqual({ ...view, url: `${ORIGIN}/app/projects/p1/chat?session=s_9` })
     expect(link('conversation-list', { conversations: [{ id: 's_2', projectId: null }], nextCursor: null })).toMatchObject({
       conversations: [{ url: `${ORIGIN}/app/chat?session=s_2` }],
     })

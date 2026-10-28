@@ -42,7 +42,7 @@ const sentRequest = (): HeadlessCancelRequest => vi.mocked(cancelHeadlessTurn).m
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', SECRET)
+  vi.stubEnv('INTERNAL_API_TOKEN', SECRET)
   vi.mocked(findWake).mockResolvedValue(wake('started'))
   vi.mocked(cancelHeadlessTurn).mockResolvedValue({ kind: 'sent' })
 })
@@ -108,9 +108,9 @@ describe('runPilotiWakeStop', () => {
   })
 
   it('throws, sending nothing, when it cannot sign the envelope', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
 
-    await expect(runPilotiWakeStop('org_1', PAYLOAD, NOT_LAST)).rejects.toThrow(/GRID_INTERNAL_API_TOKEN/)
+    await expect(runPilotiWakeStop('org_1', PAYLOAD, NOT_LAST)).rejects.toThrow(/INTERNAL_API_TOKEN/)
     expect(cancelHeadlessTurn).not.toHaveBeenCalled()
   })
 })

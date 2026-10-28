@@ -22,7 +22,7 @@ describe('resourceAttributes', () => {
   it('names the tier, the build and the process', () => {
     // The process keeps bff-jobs' claim loop and its server.js child, one pod
     // and one service name, from merging into one series.
-    const env = { OTEL_SERVICE_NAME: 'grid-bff-jobs', GRID_GIT_SHA: ' abc123 ', HOSTNAME: 'bff-jobs-7f9c-x2' }
+    const env = { OTEL_SERVICE_NAME: 'grid-bff-jobs', GIT_SHA: ' abc123 ', HOSTNAME: 'bff-jobs-7f9c-x2' }
     expect(resourceAttributes(env, 42)).toEqual({
       'service.name': 'grid-bff-jobs',
       'service.version': 'abc123',
@@ -32,7 +32,7 @@ describe('resourceAttributes', () => {
   })
 
   it('leaves blank values out and falls back to grid-ui', () => {
-    expect(resourceAttributes({ OTEL_SERVICE_NAME: ' ', GRID_GIT_SHA: '', HOSTNAME: '' }, 42)).toEqual({
+    expect(resourceAttributes({ OTEL_SERVICE_NAME: ' ', GIT_SHA: '', HOSTNAME: '' }, 42)).toEqual({
       'service.name': 'grid-ui',
       'process.pid': 42,
     })

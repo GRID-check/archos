@@ -2,7 +2,7 @@
  * What a SERVICE TOKEN is allowed to reach in the BIM domain, in one place.
  *
  * The agent's routes under `app/api/internal/bim/*` carry
- * `GRID_INTERNAL_API_TOKEN` and no session, so none of the machinery that keeps
+ * `INTERNAL_API_TOKEN` and no session, so none of the machinery that keeps
  * a model inside its tenant and its project on the user-facing routes applies
  * to them: there is no `AuthorizedSession` to read feature flags off, and no
  * `requireProjectAccess` to call. Each internal route therefore has to

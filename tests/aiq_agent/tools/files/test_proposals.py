@@ -117,7 +117,7 @@ def turn(monkeypatch):
     monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (HEADER, SIGNATURE))
     monkeypatch.setattr(pc, "get_conversation_id_from_context", lambda: CONVERSATION)
     monkeypatch.setattr(pc, "get_user_message_id_from_context", lambda: USER_MESSAGE)
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test")
     set_turn_documents(INVENTORY)
     yield
@@ -535,7 +535,7 @@ class TestEveryFailureIsANoticeAndAFailure:
         assert "could not be created" in result
 
     async def test_a_missing_service_token_is_a_failure(self, monkeypatch, registry, transport):
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+        monkeypatch.delenv("INTERNAL_API_TOKEN")
         fake = transport()
         result = await _propose("move", document="Brandschutzkonzept.pdf", target_folder="Einreichung")
 

@@ -3,7 +3,7 @@
  *
  * „Ausmisten" against a REAL Postgres (ADR-0092), through the restricted role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/cleanup.integration.spec.ts
  *
  * What the database must show: a confirmed document lands in a subfolder of its
@@ -55,7 +55,7 @@ vi.mock('@/lib/authz/folder-roles', () => ({
   ),
 }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_cleanup_${STAMP}`
 const USER = 'user_gf'
@@ -128,7 +128,7 @@ describe.skipIf(!url)('Ausmisten against Postgres', () => {
     ).then(one)
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })))
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()

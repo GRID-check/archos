@@ -2,7 +2,7 @@
 
 The corpus is a real table and a fake bucket (``tests/object_corpus_fakes``); the ingest queue and the
 ingest status store are the real ones, in the same database (SQLite, or Postgres when
-``GRID_TEST_CORPUS_DB`` is set). The vector store is a fake ingestor that can only PREPARE a job: it
+``TEST_CORPUS_DB`` is set). The vector store is a fake ingestor that can only PREPARE a job: it
 raises on anything that would ingest in this process. The ingest worker is played by
 :func:`run_worker`, which claims what is queued, runs its download for real, and writes the outcome the
 way the ingestor does.
@@ -47,8 +47,8 @@ def _sha(data: bytes) -> str:
 @pytest.fixture
 def bucket(monkeypatch, tmp_path) -> FakeBucket:
     monkeypatch.setattr(oib_sync, "COLLECTION_NAME", "test_collection")
-    monkeypatch.delenv("GRID_INGEST_QUEUE", raising=False)
-    monkeypatch.delenv("GRID_JOB_PAYLOAD_KEK", raising=False)
+    monkeypatch.delenv("INGEST_QUEUE", raising=False)
+    monkeypatch.delenv("JOB_PAYLOAD_KEK", raising=False)
     return install(monkeypatch, tmp_path)
 
 
@@ -263,12 +263,12 @@ class TestSync:
         run_worker()
         _sync()
         ingestor.collection = None  # the new Qdrant, still empty
-        monkeypatch.setenv("GRID_VECTOR_IMPORT_PENDING", "true")
+        monkeypatch.setenv("VECTOR_IMPORT_PENDING", "true")
 
         assert _sync().enqueued == 0
         assert _row("a.pdf").ingested_sha256 == _sha(b"a")
 
-        monkeypatch.delenv("GRID_VECTOR_IMPORT_PENDING")
+        monkeypatch.delenv("VECTOR_IMPORT_PENDING")
         assert _sync().enqueued == 1  # without it, an empty store is a reset as before
 
     def test_a_vector_store_that_cannot_be_probed_does_not_discard_what_the_table_knows(self, ingestor, monkeypatch):
@@ -307,7 +307,7 @@ class TestSync:
 
 class TestNoInProcessFallback:
     def test_with_the_queue_switched_off_the_cycle_errors_and_leaves_nothing_pending(self, ingestor, monkeypatch):
-        monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+        monkeypatch.setenv("INGEST_QUEUE", "off")
         row = corpus_store.put("a.pdf", b"a")
 
         with pytest.raises(ingest_dispatch.QueueUnavailable, match="ingest queue is off"):
@@ -341,10 +341,10 @@ class TestNoInProcessFallback:
 
     def test_the_cycle_comes_back_after_the_queue_does(self, ingestor, monkeypatch):
         corpus_store.put("a.pdf", b"a")
-        monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+        monkeypatch.setenv("INGEST_QUEUE", "off")
         with pytest.raises(ingest_dispatch.QueueUnavailable):
             _sync()
-        monkeypatch.delenv("GRID_INGEST_QUEUE")
+        monkeypatch.delenv("INGEST_QUEUE")
 
         assert _sync().enqueued == 1
 
@@ -403,10 +403,10 @@ class TestUpload:
         assert ingestor.prepared == []
 
     def test_a_queue_that_is_down_leaves_the_file_stored_for_the_next_cycle(self, ingestor, monkeypatch):
-        monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+        monkeypatch.setenv("INGEST_QUEUE", "off")
         with pytest.raises(ingest_dispatch.QueueUnavailable):
             oib_sync.store_and_request("plan.pdf", b"%PDF plan", enqueue=ENQUEUE)
-        monkeypatch.delenv("GRID_INGEST_QUEUE")
+        monkeypatch.delenv("INGEST_QUEUE")
 
         assert corpus_store.get_file("plan.pdf") is not None
         assert _sync().enqueued == 1

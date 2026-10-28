@@ -400,7 +400,7 @@ describe('runStorageAlertSweep', () => {
   })
 
   it('honours the configured threshold for the whole sweep', async () => {
-    vi.stubEnv('GRID_STORAGE_ALERT_THRESHOLD_PERCENT', '50')
+    vi.stubEnv('STORAGE_ALERT_THRESHOLD_PERCENT', '50')
     vi.mocked(aggregateStorageUsageByOrganization).mockResolvedValue(
       new Map([['org_mid', { bytes: gb(60), documents: 5 }]]),
     )

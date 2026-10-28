@@ -8,7 +8,7 @@ corpus is a dozen synthetic chunks with hashed vectors, so the numbers are wirin
 what is asserted is that the store holds every chunk and that the exact mode and
 the phrase channel behave as the report claims.
 
-Same server contract as ``test_qdrant_store.py``: ``GRID_QDRANT_TEST_URL``, skipped
+Same server contract as ``test_qdrant_store.py``: ``QDRANT_TEST_URL``, skipped
 locally without it, failed on CI.
 """
 
@@ -26,12 +26,12 @@ HARD_CASES = REPO / "evals" / "oib-retrieval" / "fixtures" / "qdrant_lexical_har
 
 
 def _server_url() -> str:
-    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("QDRANT_TEST_URL", "").strip()
     if url:
         return url
     if os.environ.get("CI"):
-        pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-    pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+        pytest.fail("QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+    pytest.skip("QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
 
 
 @pytest.fixture(scope="module")

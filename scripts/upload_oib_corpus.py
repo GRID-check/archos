@@ -6,10 +6,10 @@ the way the admin UI does: ``POST /v1/admin/oib/documents``. Each upload stores
 the file and queues its ingestion; this script does not wait for ingestion,
 watch ``/v1/oib/status`` for that.
 
-    GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
+    ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
     uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
 
-``GRID_ADMIN_TOKEN`` is the backend's own setting; a backend without one accepts
+``ADMIN_TOKEN`` is the backend's own setting; a backend without one accepts
 the request unauthenticated (local dev), and the header is then omitted.
 """
 
@@ -40,7 +40,7 @@ def _upload(client: httpx.Client, url: str, pdf: Path, headers: dict[str, str]) 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("directory", type=Path, help="Directory holding the PDFs (searched recursively).")
-    parser.add_argument("--url", default=os.environ.get("GRID_BACKEND_URL", "http://localhost:8000"))
+    parser.add_argument("--url", default=os.environ.get("BACKEND_URL", "http://localhost:8000"))
     args = parser.parse_args(argv)
 
     pdfs = sorted(p for p in args.directory.rglob("*.pdf") if p.is_file())
@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"No PDF files found in {args.directory}", file=sys.stderr)
         return 1
 
-    token = os.environ.get("GRID_ADMIN_TOKEN", "")
+    token = os.environ.get("ADMIN_TOKEN", "")
     headers = {"X-Admin-Token": token} if token else {}
     failures = 0
     with httpx.Client(timeout=_TIMEOUT_SECONDS) as client:

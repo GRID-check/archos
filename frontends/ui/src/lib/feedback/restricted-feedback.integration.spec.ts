@@ -6,7 +6,7 @@
  * database's one rule of each vote (ADR-0093, ADR-0087, ADR-0088), against a
  * REAL Postgres through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/feedback/restricted-feedback.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -89,18 +89,18 @@ const PROFILED_TITLE = `Honorare Zimmerer ${STAMP}`
 const OPEN_PROFILED_CHAT = `s_rfb_profiled_open_${STAMP}`
 const OPEN_PROFILED_TITLE = `Brüstungshöhen ${STAMP}`
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe('the restricted-feedback suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 
 describe.skipIf(!url)('answer feedback from a restricted conversation, against Postgres', () => {
   async function db() {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const { getDb } = await import('@/lib/db')
     return getDb()
   }

@@ -12,7 +12,7 @@
  *   - which report filings are still `queued` after the window (migration 0105,
  *     its CHECK and its partial index).
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/documents/stuck-processing.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -25,7 +25,7 @@ import { internalRead } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_stuck_${STAMP}`
 const OTHER_ORG = `org_stuck_other_${STAMP}`
@@ -90,7 +90,7 @@ describe.skipIf(!url)('background-work sweeps against live Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     context = await import('@/lib/db/tenant-context')
     documents = await import('./repository')
     tasks = await import('@/lib/tasks/repository')

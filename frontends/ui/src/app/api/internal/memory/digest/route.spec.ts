@@ -73,34 +73,34 @@ describe('GET /api/internal/memory/digest', () => {
   })
 
   it('returns 403 for a wrong token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const response = await GET(makeRequest(`?projectId=${PROJECT_ID}`, 'nope'))
     expect(response.status).toBe(403)
     expect(buildProjectMemoryDigest).not.toHaveBeenCalled()
   })
 
   it('returns 403 when the token header is missing', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const response = await GET(makeRequest(`?projectId=${PROJECT_ID}`))
     expect(response.status).toBe(403)
   })
 
   it('refuses the well-known dev default token outside dev environments (503)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
     vi.stubEnv('NODE_ENV', 'production')
     const response = await GET(makeRequest(`?projectId=${PROJECT_ID}`, DEV_DEFAULT_TOKEN))
     expect(response.status).toBe(503)
   })
 
   it('returns 400 when neither projectId nor organizationId is provided', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const response = await GET(makeRequest('', REAL_TOKEN))
     expect(response.status).toBe(400)
     expect(buildProjectMemoryDigest).not.toHaveBeenCalled()
   })
 
   it('returns the digest for a valid token (200)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(buildProjectMemoryDigest).mockResolvedValue(
       'PROJECT_MEMORY v1\n- [decision | high | user_confirmed] "x"'
     )
@@ -120,7 +120,7 @@ describe('GET /api/internal/memory/digest', () => {
   })
 
   it('returns digest:null (200) when there is no active memory', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(buildProjectMemoryDigest).mockResolvedValue(null)
 
     const response = await GET(makeRequest(`?organizationId=${ORG_ID}`, REAL_TOKEN))
@@ -136,7 +136,7 @@ describe('GET /api/internal/memory/digest', () => {
   })
 
   it('returns 500 when the digest builder throws', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(resolveProjectOrganization).mockResolvedValue(ORG_ID)
     vi.mocked(buildProjectMemoryDigest).mockRejectedValue(new Error('db down'))
 
@@ -152,7 +152,7 @@ describe('GET /api/internal/memory/digest', () => {
    */
   describe('a request that names only a project', () => {
     it('resolves the tenant from the project row and reads the digest inside it', async () => {
-      vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+      vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
       vi.mocked(resolveProjectOrganization).mockResolvedValue(ORG_ID)
       vi.mocked(buildProjectMemoryDigest).mockResolvedValue('PROJECT_MEMORY v1')
 
@@ -170,7 +170,7 @@ describe('GET /api/internal/memory/digest', () => {
     })
 
     it('reads nothing at all when the project does not exist', async () => {
-      vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+      vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
       vi.mocked(resolveProjectOrganization).mockResolvedValue(null)
 
       const response = await GET(makeRequest(`?projectId=${PROJECT_ID}`, REAL_TOKEN))
@@ -181,7 +181,7 @@ describe('GET /api/internal/memory/digest', () => {
     })
 
     it('does not consult the project row when the caller already named the tenant', async () => {
-      vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+      vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
       vi.mocked(buildProjectMemoryDigest).mockResolvedValue(null)
 
       await GET(makeRequest(`?projectId=${PROJECT_ID}&organizationId=${ORG_ID}`, REAL_TOKEN))
@@ -193,7 +193,7 @@ describe('GET /api/internal/memory/digest', () => {
 
 describe('the decisions the project made about earlier proposals', () => {
   it('ride the digest, after the memory', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(resolveProjectOrganization).mockResolvedValue(ORG_ID)
     vi.mocked(buildProjectMemoryDigest).mockResolvedValue('PROJECT_MEMORY v1\n- [decision | high | user_confirmed] "x"')
     vi.mocked(buildProposalDecisionsBlock).mockResolvedValueOnce('PROPOSAL_DECISIONS v1\n- [abgelehnt | Profil | 2026-09-01] "y"')
@@ -211,7 +211,7 @@ describe('the decisions the project made about earlier proposals', () => {
 
 describe('what a person decided about the drafts this conversation filed', () => {
   it('rides the same digest, scoped to the conversation the caller names', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(resolveProjectOrganization).mockResolvedValue(ORG_ID)
     vi.mocked(buildProjectMemoryDigest).mockResolvedValue(null)
     vi.mocked(buildProposalDecisionsBlock).mockResolvedValue(null)
@@ -231,7 +231,7 @@ describe('what a person decided about the drafts this conversation filed', () =>
   it('is not asked for at all when the caller has no conversation', async () => {
     // The WS handshake and a background run: the digest and the proposal
     // decisions are exactly what they were before this block existed.
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(resolveProjectOrganization).mockResolvedValue(ORG_ID)
     vi.mocked(buildProjectMemoryDigest).mockResolvedValue(null)
     vi.mocked(buildProposalDecisionsBlock).mockResolvedValue(null)
@@ -241,7 +241,7 @@ describe('what a person decided about the drafts this conversation filed', () =>
   })
 
   it('costs the turn nothing when the scan breaks', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(resolveProjectOrganization).mockResolvedValue(ORG_ID)
     vi.mocked(buildProjectMemoryDigest).mockResolvedValue('PROJECT_MEMORY v1\n- x')
     vi.mocked(buildProposalDecisionsBlock).mockResolvedValue(null)
@@ -265,7 +265,7 @@ describe('restricted memory in the per-turn digest', () => {
   const options = () => vi.mocked(buildProjectMemoryDigest).mock.calls[0][2] ?? {}
 
   it("serves an interactive turn the notes its asker may read, admitting each note's folders for the conversation", async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(buildProjectMemoryDigest).mockImplementation(async (_project, _org, opts) => {
       const admitted = await opts?.admitRestricted?.(['folder-secret'])
       return admitted?.has('folder-secret') ? 'PROJECT_MEMORY v1\n- [restricted | decision] "Honorar"' : null
@@ -297,7 +297,7 @@ describe('restricted memory in the per-turn digest', () => {
   })
 
   it('serves a turn without restricted scope only notes every member may read now, and records nothing', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     let admitted: ReadonlySet<string> | undefined
     vi.mocked(buildProjectMemoryDigest).mockImplementation(async (_project, _org, opts) => {
       admitted = await opts?.admitRestricted?.(['folder-open', 'folder-secret'])
@@ -316,7 +316,7 @@ describe('restricted memory in the per-turn digest', () => {
   })
 
   it('serves nothing restricted to an organization-only digest', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(buildProjectMemoryDigest).mockResolvedValue(null)
 
     await GET(makeRequest(`?organizationId=${ORG_ID}&restrictedCollections=${DRAWABLE}`, REAL_TOKEN))

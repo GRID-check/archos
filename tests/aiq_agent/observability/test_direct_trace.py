@@ -35,7 +35,7 @@ _RESPONSE = {
 def fresh_provider(monkeypatch):
     monkeypatch.delenv(direct_trace.ENDPOINT_ENV, raising=False)
     monkeypatch.setenv("APP_ENV", "staging")
-    monkeypatch.setenv("GRID_GIT_SHA", "abc123")
+    monkeypatch.setenv("GIT_SHA", "abc123")
     direct_trace.reset_tracer_provider()
     yield
     direct_trace.reset_tracer_provider()
@@ -44,7 +44,7 @@ def fresh_provider(monkeypatch):
 @pytest.fixture
 def exporter():
     memory = InMemorySpanExporter()
-    direct_trace.install_tracer_provider(None, env={"GRID_GIT_SHA": "abc123"}, exporter=memory)
+    direct_trace.install_tracer_provider(None, env={"GIT_SHA": "abc123"}, exporter=memory)
     return memory
 
 

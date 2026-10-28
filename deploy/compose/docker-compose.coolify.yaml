@@ -34,7 +34,7 @@
 #   SERVICE_PASSWORD_GRIDRUNTIME -> login for app_rw, the least-privilege
 #     role the app connects as under row-level security (ADR-0041). The
 #     frontend container synchronises the role's password from its own
-#     GRID_APP_DATABASE_URL at startup, so nothing else needs to know it.
+#     APP_DATABASE_URL at startup, so nothing else needs to know it.
 # =============================================================================
 
 services:
@@ -55,7 +55,7 @@ services:
     environment:
       # The chat role: the chat WebSocket and the answers running on it
       # (ADR-0082). The services below extend this one and set their own role.
-      - GRID_ROLE=chat
+      - PROCESS_ROLE=chat
       - APP_ENV=${APP_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       # PostHog for the Python roles (fail-open: both empty means no events leave
@@ -74,34 +74,34 @@ services:
       # The OIB corpus is embedded on first boot into the persistent Qdrant
       # volume with this model; keep it stable across redeploys so stored vectors
       # and query embeddings always use the same model.
-      - GRID_EMBED_MODEL=${GRID_EMBED_MODEL:-${AIQ_EMBED_MODEL:-openai/text-embedding-3-large}}
-      - GRID_EMBED_BASE_URL=${GRID_EMBED_BASE_URL:-${AIQ_EMBED_BASE_URL:-https://openrouter.ai/api/v1}}
-      # GRID_EMBED_API_KEY is the embeddings key override (now read by the adapter
+      - EMBED_MODEL=${EMBED_MODEL:-${GRID_EMBED_MODEL:-${AIQ_EMBED_MODEL:-openai/text-embedding-3-large}}}
+      - EMBED_BASE_URL=${EMBED_BASE_URL:-${GRID_EMBED_BASE_URL:-${AIQ_EMBED_BASE_URL:-https://openrouter.ai/api/v1}}}
+      # EMBED_API_KEY is the embeddings key override (now read by the adapter
       # via the shared resolver). An explicitly set value wins; otherwise the
       # OpenRouter key is used even if provider inference is ever disabled.
-      - GRID_EMBED_API_KEY=${GRID_EMBED_API_KEY:-${AIQ_EMBED_API_KEY:-${OPENROUTER_API_KEY}}}
-      - GRID_VLM_MODEL=${GRID_VLM_MODEL:-${AIQ_VLM_MODEL:-openai/gpt-6-luna}}
-      - GRID_VLM_BASE_URL=${GRID_VLM_BASE_URL:-${AIQ_VLM_BASE_URL:-https://openrouter.ai/api/v1}}
+      - EMBED_API_KEY=${EMBED_API_KEY:-${GRID_EMBED_API_KEY:-${AIQ_EMBED_API_KEY:-${OPENROUTER_API_KEY}}}}
+      - VLM_MODEL=${VLM_MODEL:-${GRID_VLM_MODEL:-${AIQ_VLM_MODEL:-openai/gpt-6-luna}}}
+      - VLM_BASE_URL=${VLM_BASE_URL:-${GRID_VLM_BASE_URL:-${AIQ_VLM_BASE_URL:-https://openrouter.ai/api/v1}}}
       # ── Databases (single Postgres, three logical DBs; see init-db.sql) ──
       # Same split as Kubernetes (ADR-0083): the first three go through the
       # transaction pooler (`pgbouncer`); what needs ONE server connection across
       # statements goes straight to `postgres`.
       - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
-      - GRID_CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
+      - CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
       # A research job's deep checkpoint: resume on another worker instead of starting over.
-      - GRID_DEEP_CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
-      - GRID_SUMMARY_DB=postgresql+psycopg://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
+      - DEEP_CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
+      - SUMMARY_DB=postgresql+psycopg://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      - GRID_LISTEN_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
+      - LISTEN_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper): held by a session, so never through the pooler.
-      - GRID_LOCK_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
+      - LOCK_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # ── Shared cache (Dragonfly, ADR-0020) ──
       - REDIS_URL=redis://dragonfly:6379/0
       # Stateless chat tier via the Dragonfly pub/sub conversation bus (ADR-0028).
       # On by default; fails open to local delivery. Set to 0 to opt out.
-      - GRID_CONVERSATION_BUS=${GRID_CONVERSATION_BUS:-1}
+      - CONVERSATION_BUS=${CONVERSATION_BUS:-${GRID_CONVERSATION_BUS:-1}}
       # ── Deep-research execution (ADR-0021), mirroring the Kubernetes topology ──
       # Research jobs are claimed (FOR UPDATE SKIP LOCKED) by the dedicated `agent-worker`
       # service below, so the token-heavy research workload scales and crashes
@@ -109,10 +109,10 @@ services:
       # Encrypts DB-claimed job payloads at rest (AES-256-GCM). Empty = plaintext
       # (a one-time warning is logged); acceptable on a single trusted node. Set a
       # base64 32-byte key to encrypt: `openssl rand -base64 32`.
-      - GRID_JOB_PAYLOAD_KEK=${GRID_JOB_PAYLOAD_KEK:-}
+      - JOB_PAYLOAD_KEK=${JOB_PAYLOAD_KEK:-${GRID_JOB_PAYLOAD_KEK:-}}
       # ── Single-writer memory bridge to the frontend BFF ──
       - FRONTEND_INTERNAL_URL=http://frontend:3000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       # Object storage for `look` (ADR-0039). Without these the
       # tool fails its credential guard and every project/Archiv image silently
       # degrades to a text-only block — no error anyone would look at.
@@ -131,15 +131,15 @@ services:
       # over HTTP (the `qdrant` service below), so the vector store is not
       # pinned to a single container's disk: the chat and api roles read what the
       # ingest worker writes. There is no embedded fallback: the backend keeps no
-      # volume (ADR-0082). Keep GRID_EMBED_MODEL stable so stored + query vectors
+      # volume (ADR-0082). Keep EMBED_MODEL stable so stored + query vectors
       # match. A stack that ran Chroma moves its vectors over once: see the
       # Chroma migration in docs/deployment/qdrant-runbook.md.
-      - GRID_QDRANT_URL=http://qdrant:6333
-      - GRID_QDRANT_API_KEY=${SERVICE_PASSWORD_QDRANT}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=${SERVICE_PASSWORD_QDRANT}
       # `true` only while an old store is imported into this Qdrant: the
       # base-corpus sync then does not take the empty corpus collection for a
       # reset (docs/deployment/qdrant-runbook.md, "On Coolify").
-      - GRID_VECTOR_IMPORT_PENDING=${GRID_VECTOR_IMPORT_PENDING:-${AIQ_VECTOR_IMPORT_PENDING:-}}
+      - VECTOR_IMPORT_PENDING=${VECTOR_IMPORT_PENDING:-${GRID_VECTOR_IMPORT_PENDING:-${AIQ_VECTOR_IMPORT_PENDING:-}}}
       - COLLECTION_NAME=${COLLECTION_NAME:-oib_knowledge}
       - CONFIG_FILE=${BACKEND_CONFIG:-/app/configs/config_oib_openrouter.yml}
       # Allow the browser-facing frontend origin through the API's CORS filter.
@@ -147,7 +147,7 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       # ── Ingestion / document extraction (match deploy/.env) ──
-      # Tables, images and charts are extracted by default (GRID_EXTRACT_*, on
+      # Tables, images and charts are extracted by default (EXTRACT_*, on
       # unless set to false), so no flag is set here.
       # ── Misc runtime tuning (match deploy/.env) ──
       - PYTHONWARNINGS=${PYTHONWARNINGS:-ignore}
@@ -156,10 +156,10 @@ services:
       # Required: gates POST /v1/admin/oib/sync (KB re-ingestion). An empty value
       # makes routes/oib.py fail OPEN, so the deploy fails fast if it is unset
       # (matches the :? pattern used for OPENROUTER_API_KEY / TAVILY_API_KEY).
-      - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-${GRID_ADMIN_TOKEN:?set ADMIN_TOKEN}}
       # Default ON for this production compose; kept consistent with the frontend.
       # REQUIRE_AUTH gates the token check only for EXTERNAL requests (Host in
-      # GRID_EXTERNAL_HOSTNAMES). It also turns on job access control (owner, or the
+      # EXTERNAL_HOSTNAMES). It also turns on job access control (owner, or the
       # project/conversation the BFF signed; ADR-0084) and the signed-envelope
       # rule for WorkOS callers, for every request. In-cluster BFF calls carry the
       # user's token and envelope, or the internal token, so they keep working.
@@ -172,13 +172,13 @@ services:
       # the container and this line only matters for a locally built or
       # hand-tagged image. It appears in the `[boot]` log line and on the health
       # endpoints, and it is what makes a pilot report nameable.
-      - GRID_GIT_SHA=${GRID_GIT_SHA:-}
+      - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # Defense-in-depth: hostnames the backend treats as external. Bare domain,
       # comma-separated, no scheme/port — matched against the request Host header
       # (see auth/middleware.py::_load_external_hostnames). If port 8000 is ever
       # exposed under this FQDN, those requests hit the path allowlist + auth
       # instead of being trusted as internal.
-      - GRID_EXTERNAL_HOSTNAMES=${SERVICE_FQDN_FRONTEND}
+      - EXTERNAL_HOSTNAMES=${SERVICE_FQDN_FRONTEND}
     expose:
       - "8000"
     # No volumes: the base corpus lives in SeaweedFS and a table (ADR-0082), and
@@ -250,8 +250,8 @@ services:
   # ── Deep-research worker tier (ADR-0021), the docker-compose mirror of the
   #    Kubernetes Deployment in deploy/pulumi/src/app/agent-worker.ts ──
   # Same backend image and env as chat (via `extends`, so the two can never
-  # drift — critically, they share GRID_EMBED_MODEL, so ingest- and query-side
-  # vectors always match), but launched with GRID_ROLE=worker: the entrypoint
+  # drift — critically, they share EMBED_MODEL, so ingest- and query-side
+  # vectors always match), but launched with PROCESS_ROLE=worker: the entrypoint
   # then execs `python -m aiq_api.jobs.worker` instead of the web server. Workers
   # claim jobs from Postgres (FOR UPDATE SKIP LOCKED) and read/write the shared
   # Qdrant — no web port.
@@ -259,10 +259,10 @@ services:
     extends:
       service: chat
     environment:
-      # GRID_ROLE flips entrypoint.py to the worker module (no uvicorn).
-      - GRID_ROLE=worker
+      # PROCESS_ROLE flips entrypoint.py to the worker module (no uvicorn).
+      - PROCESS_ROLE=worker
       # Concurrent research jobs claimed per worker process (K8s: agentWorker.concurrency).
-      - GRID_RESEARCH_WORKERS=${GRID_RESEARCH_WORKERS:-1}
+      - RESEARCH_WORKERS=${RESEARCH_WORKERS:-${GRID_RESEARCH_WORKERS:-1}}
     # extends does NOT carry depends_on — declare the worker's own start ordering.
     depends_on:
       postgres:
@@ -299,13 +299,13 @@ services:
   # Every HTTP route of the backend but the chat socket: knowledge, jobs and their
   # SSE streams, the LLM utilities, admin, housekeeping. It is what BACKEND_URL
   # names. Same image and env as chat (via `extends`, so the two cannot
-  # drift) and GRID_ROLE=api. Like chat it has no `ports:`: Coolify would
+  # drift) and PROCESS_ROLE=api. Like chat it has no `ports:`: Coolify would
   # publish it on the host.
   api:
     extends:
       service: chat
     environment:
-      - GRID_ROLE=api
+      - PROCESS_ROLE=api
     # extends does NOT carry depends_on — declare the role's own start ordering.
     depends_on:
       seaweedfs:
@@ -332,11 +332,11 @@ services:
     extends:
       service: chat
     environment:
-      - GRID_ROLE=ingest-worker
+      - PROCESS_ROLE=ingest-worker
       # Ingestion jobs this process runs at once (K8s: ingestWorker.concurrency).
-      - GRID_INGEST_MAX_WORKERS=${GRID_INGEST_MAX_WORKERS:-${AIQ_INGEST_MAX_WORKERS:-2}}
-      - GRID_INGEST_WORKER_DRAIN_SECONDS=${GRID_INGEST_WORKER_DRAIN_SECONDS:-600}
-      - GRID_WORKER_LIVENESS_FILE=/tmp/ingest-worker.alive
+      - INGEST_MAX_WORKERS=${INGEST_MAX_WORKERS:-${GRID_INGEST_MAX_WORKERS:-${AIQ_INGEST_MAX_WORKERS:-2}}}
+      - INGEST_WORKER_DRAIN_SECONDS=${INGEST_WORKER_DRAIN_SECONDS:-${GRID_INGEST_WORKER_DRAIN_SECONDS:-600}}
+      - WORKER_LIVENESS_FILE=/tmp/ingest-worker.alive
     # The drain budget and the time to give back what is still running; docker's
     # default 10 s would kill it first.
     stop_grace_period: 660s
@@ -492,10 +492,10 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/app
+      - APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/app
       # Read only so `ensure-rls-roles` can keep app_rw's login in step
       # with the credential the app actually uses.
-      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
+      - APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -574,18 +574,18 @@ services:
       # Least-privilege runtime role: DML only, subject to row-level security
       # (ADR-0041). The container's CMD synchronises this role's login from
       # this very URL before starting, so there is one source of truth.
-      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
-      # No GRID_APP_MIGRATION_DATABASE_URL here, deliberately: the owner
+      - APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
+      # No APP_MIGRATION_DATABASE_URL here, deliberately: the owner
       # credential belongs to `migrate` above and nowhere else.
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       # S1 security default: agent org-wide memory writes are OFF unless explicitly
       # enabled here (see app/api/internal/memory/route.ts). Leave false in production.
-      - GRID_ALLOW_AGENT_ORG_MEMORY=${GRID_ALLOW_AGENT_ORG_MEMORY:-false}
+      - ALLOW_AGENT_ORG_MEMORY=${ALLOW_AGENT_ORG_MEMORY:-${GRID_ALLOW_AGENT_ORG_MEMORY:-false}}
       # Admin token for the backend's /v1/admin/oib/* endpoints (must match the
       # chat value). Powers the platform-owner base-knowledge management UI.
-      - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-${GRID_ADMIN_TOKEN:?set ADMIN_TOKEN}}
       # Corpus tarball (/api/internal/oib-corpus). No caller since the answer-suite CI workflow was removed. Unset = disabled.
-      - GRID_CORPUS_EXPORT_TOKEN=${GRID_CORPUS_EXPORT_TOKEN:-}
+      - CORPUS_EXPORT_TOKEN=${CORPUS_EXPORT_TOKEN:-${GRID_CORPUS_EXPORT_TOKEN:-}}
       # WorkOS AuthKit — only consumed when REQUIRE_AUTH=true. Safe to leave the
       # keys empty for an unauthenticated preview.
       - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID:-}
@@ -601,9 +601,9 @@ services:
       - NEXT_PUBLIC_POSTHOG_PROXY=${NEXT_PUBLIC_POSTHOG_PROXY:-true}
       - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-}
       # BYOK LLM credentials (ADR-0022): secret backend for tenant API keys.
-      - GRID_BYOK_SECRET_BACKEND=${GRID_BYOK_SECRET_BACKEND:-}
-      - GRID_BYOK_LOCAL_KEK=${GRID_BYOK_LOCAL_KEK:-}
-      - GRID_BYOK_ALLOW_PRIVATE_BASE_URLS=${GRID_BYOK_ALLOW_PRIVATE_BASE_URLS:-false}
+      - BYOK_SECRET_BACKEND=${BYOK_SECRET_BACKEND:-${GRID_BYOK_SECRET_BACKEND:-}}
+      - BYOK_LOCAL_KEK=${BYOK_LOCAL_KEK:-${GRID_BYOK_LOCAL_KEK:-}}
+      - BYOK_ALLOW_PRIVATE_BASE_URLS=${BYOK_ALLOW_PRIVATE_BASE_URLS:-${GRID_BYOK_ALLOW_PRIVATE_BASE_URLS:-false}}
       # Must match the code default in frontends/ui/src/shared/config/file-upload.ts:
       # an override here that lists fewer types silently narrows what users can upload.
       - FILE_UPLOAD_ACCEPTED_TYPES=${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}
@@ -636,18 +636,18 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY}
       # Platform tier (ADR-0016): break-glass owner bootstrap, platform-org
       # external id override, and the self-serve org creation gate.
-      - GRID_PLATFORM_OWNER_EMAILS=${GRID_PLATFORM_OWNER_EMAILS:-}
-      - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
-      - GRID_DISABLE_SELF_SERVE_ORGS=${GRID_DISABLE_SELF_SERVE_ORGS:-false}
+      - PLATFORM_OWNER_EMAILS=${PLATFORM_OWNER_EMAILS:-${GRID_PLATFORM_OWNER_EMAILS:-}}
+      - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
+      - DISABLE_SELF_SERVE_ORGS=${DISABLE_SELF_SERVE_ORGS:-${GRID_DISABLE_SELF_SERVE_ORGS:-false}}
       # ── Shared cache (Dragonfly, ADR-0020) ──
       - REDIS_URL=redis://dragonfly:6379/0
-      - GRID_WS_UPGRADE_RATE_LIMIT=${GRID_WS_UPGRADE_RATE_LIMIT:-30}
+      - WS_UPGRADE_RATE_LIMIT=${WS_UPGRADE_RATE_LIMIT:-${GRID_WS_UPGRADE_RATE_LIMIT:-30}}
       # The commit this deployment is running. Stamped into the image as a
       # build arg by CI's image build, so it is normally already set inside
       # the container and this line only matters for a locally built or
       # hand-tagged image. It appears in the `[boot]` log line and on the health
       # endpoints, and it is what makes a pilot report nameable.
-      - GRID_GIT_SHA=${GRID_GIT_SHA:-}
+      - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # Features are WorkOS flags per organization, with no env switches
       # (frontends/ui/src/lib/authz/feature-flags.ts). With REQUIRE_AUTH=true
       # this stack reads them from its WorkOS environment, exactly as
@@ -656,8 +656,8 @@ services:
       # entitlement (deep research, tasks, skills, collaboration, the mail
       # import, BYOK, model configuration) is off.
       # ── Agent Skills (ADR-0046): save-time cron validation ──
-      - GRID_SKILL_MIN_INTERVAL_MINUTES=${GRID_SKILL_MIN_INTERVAL_MINUTES:-15}
-      - GRID_MAIL_IMPORT_MAX_BYTES=${GRID_MAIL_IMPORT_MAX_BYTES:-}
+      - SKILL_MIN_INTERVAL_MINUTES=${SKILL_MIN_INTERVAL_MINUTES:-${GRID_SKILL_MIN_INTERVAL_MINUTES:-15}}
+      - MAIL_IMPORT_MAX_BYTES=${MAIL_IMPORT_MAX_BYTES:-${GRID_MAIL_IMPORT_MAX_BYTES:-}}
       # Extraction bounds. BIM_MAX_IFC_BYTES is also the UPLOAD ceiling for a
       # .ifc — the two must not disagree. Defaults: 250 MB / 200 000 rows.
       - BIM_MAX_IFC_BYTES=${BIM_MAX_IFC_BYTES:-}
@@ -720,13 +720,13 @@ services:
       service: frontend
     command: ["node", "workers/jobs/index.js"]
     environment:
-      - GRID_BFF_JOBS_CONCURRENCY=${GRID_BFF_JOBS_CONCURRENCY:-2}
-      - GRID_BFF_JOBS_DRAIN_SECONDS=${GRID_BFF_JOBS_DRAIN_SECONDS:-30}
-      - GRID_BFF_JOBS_MAX_PER_ORG=${GRID_BFF_JOBS_MAX_PER_ORG:-0}
+      - BFF_JOBS_CONCURRENCY=${BFF_JOBS_CONCURRENCY:-${GRID_BFF_JOBS_CONCURRENCY:-2}}
+      - BFF_JOBS_DRAIN_SECONDS=${BFF_JOBS_DRAIN_SECONDS:-${GRID_BFF_JOBS_DRAIN_SECONDS:-30}}
+      - BFF_JOBS_MAX_PER_ORG=${BFF_JOBS_MAX_PER_ORG:-${GRID_BFF_JOBS_MAX_PER_ORG:-0}}
       # `inprocess` runs the slices without spawning the BFF (ADR-0079 amendment 1).
-      - GRID_BFF_JOBS_MODE=${GRID_BFF_JOBS_MODE:-http}
+      - BFF_JOBS_MODE=${BFF_JOBS_MODE:-${GRID_BFF_JOBS_MODE:-http}}
       # The runner stops the BFF only after it has drained.
-      - GRID_SHUTDOWN_DRAIN_MS=5000
+      - SHUTDOWN_DRAIN_MS=5000
     # The runner gives claims back for up to the drain budget; docker's default
     # 10 s would kill it first.
     stop_grace_period: 60s
@@ -772,9 +772,9 @@ services:
         node dist-scripts/migrate-folder-grants-to-workos.mjs --apply
     environment:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
-      - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
+      - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/app
+      - APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/app
     depends_on:
       frontend:
         condition: service_healthy
@@ -787,12 +787,12 @@ services:
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
       # it steps up to app_platform per transaction.
-      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
+      - APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
       - BACKEND_URL=http://api:8000
       # A chat erasure the delete request could not finish is retried through
       # the BFF, which owns its steps.
       - FRONTEND_INTERNAL_URL=http://frontend:3000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       - SEAWEED_ENDPOINT=http://seaweedfs:8333
       - SEAWEED_ACCESS_KEY=${SEAWEED_ACCESS_KEY:-seaweedadmin}
       - SEAWEED_SECRET_KEY=${SERVICE_PASSWORD_SEAWEEDFS}
@@ -835,12 +835,12 @@ services:
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
       # it steps up to app_platform per transaction.
-      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
+      - APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
       - FRONTEND_INTERNAL_URL=http://frontend:3000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
-      - GRID_SKILL_SCHEDULER_POLL_MS=${GRID_SKILL_SCHEDULER_POLL_MS:-30000}
-      - GRID_SKILL_SCHEDULER_BATCH=${GRID_SKILL_SCHEDULER_BATCH:-20}
-      - GRID_SKILL_RUNS_RETENTION_DAYS=${GRID_SKILL_RUNS_RETENTION_DAYS:-90}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - SKILL_SCHEDULER_POLL_MS=${SKILL_SCHEDULER_POLL_MS:-${GRID_SKILL_SCHEDULER_POLL_MS:-30000}}
+      - SKILL_SCHEDULER_BATCH=${SKILL_SCHEDULER_BATCH:-${GRID_SKILL_SCHEDULER_BATCH:-20}}
+      - SKILL_RUNS_RETENTION_DAYS=${SKILL_RUNS_RETENTION_DAYS:-${GRID_SKILL_RUNS_RETENTION_DAYS:-90}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -862,7 +862,7 @@ services:
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
       - BACKEND_URL=http://api:8000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
     depends_on:
       api:
         condition: service_healthy

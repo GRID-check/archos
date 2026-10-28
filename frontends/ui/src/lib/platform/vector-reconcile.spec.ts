@@ -110,7 +110,7 @@ function summaryCall() {
 describe('reconcileOrphanedVectors', () => {
   beforeEach(() => {
     // The summary sweep is service-token guarded; without a token nothing is sent.
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockReset()
     // Every scripted response below is chunk work; the summary half runs last
@@ -311,7 +311,7 @@ describe('reconcileOrphanedVectors', () => {
   })
 
   it('sends the internal token the maintenance route is guarded by', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'real-secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'real-secret')
     stubRows([{ collectionName: 'proj_a', filename: 'a.pdf', authoredBy: 'user' }])
     fetchMock.mockResolvedValueOnce(listResponse(['a.pdf']))
 
@@ -382,7 +382,7 @@ describe('reconcileOrphanedVectors: the document facts half', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockReset()
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'real-secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'real-secret')
   })
   afterEach(() => {
     vi.unstubAllGlobals()

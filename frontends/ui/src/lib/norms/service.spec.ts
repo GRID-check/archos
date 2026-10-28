@@ -71,7 +71,7 @@ describe('norm registry service', () => {
     recordAuditEvent.mockResolvedValue(undefined)
     getPlatformOrganizationId.mockReset()
     getPlatformOrganizationId.mockResolvedValue('org_platform')
-    vi.stubEnv('GRID_ADMIN_TOKEN', 'admin-secret')
+    vi.stubEnv('ADMIN_TOKEN', 'admin-secret')
   })
 
   afterEach(() => {

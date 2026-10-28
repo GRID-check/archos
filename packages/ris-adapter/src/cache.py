@@ -49,12 +49,12 @@ _SECONDS_PER_DAY = 24 * 60 * 60
 
 
 def ris_cache_ttl_seconds() -> int:
-    """RIS cache TTL in seconds from ``GRID_RIS_CACHE_TTL_DAYS`` (default 7).
+    """RIS cache TTL in seconds from ``RIS_CACHE_TTL_DAYS`` (default 7).
 
     Non-positive/invalid values fall back to the default, mirroring the other
     ``GRID_*`` knobs. A literal ``${...}`` placeholder counts as unset.
     """
-    raw = os.environ.get("GRID_RIS_CACHE_TTL_DAYS", "").strip()
+    raw = os.environ.get("RIS_CACHE_TTL_DAYS", "").strip()
     if raw.startswith("${"):
         raw = ""
     try:

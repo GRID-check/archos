@@ -61,10 +61,10 @@ describe('toolCallBatch', () => {
   })
 
   it('names an A2A door call for its door, which has no mode', () => {
-    const a2a: ToolCallRecord = { ...call, operation: 'piloti-ask-create', domain: 'conversations', door: 'a2a', mode: null, decision: 'run' }
+    const a2a: ToolCallRecord = { ...call, operation: 'agent-ask-create', domain: 'conversations', door: 'a2a', mode: null, decision: 'run' }
     const [trace, observation] = toolCallBatch(a2a, ids).batch
     expect(trace?.body).toMatchObject({ tags: expect.arrayContaining(['door:a2a']) })
-    expect(observation?.body).toMatchObject({ name: 'a2a.piloti-ask-create', metadata: { door: 'a2a', mode: null } })
+    expect(observation?.body).toMatchObject({ name: 'a2a.agent-ask-create', metadata: { door: 'a2a', mode: null } })
   })
 
   it('names nobody unless identity attributes are on, and never carries the agent’s own text', () => {
@@ -73,13 +73,13 @@ describe('toolCallBatch', () => {
     expect(text).not.toContain('user_1')
     expect(unknown.batch[1]).toMatchObject({ body: { name: 'mcp.unknown', level: 'WARNING', statusMessage: 'HTTP 404' } })
 
-    vi.stubEnv('GRID_TRACE_IDENTITY_ATTRIBUTES', 'true')
+    vi.stubEnv('TRACE_IDENTITY_ATTRIBUTES', 'true')
     expect(toolCallBatch(call, ids).batch[0]).toMatchObject({ body: { userId: 'user_1', tags: expect.arrayContaining(['org:org_1']) } })
   })
 
   it('files the trace under the deployment’s environment and release', () => {
     vi.stubEnv('APP_ENV', 'Staging EU')
-    vi.stubEnv('GRID_GIT_SHA', 'abc123')
+    vi.stubEnv('GIT_SHA', 'abc123')
     expect(toolCallBatch(call, ids).batch[0]).toMatchObject({ body: { environment: 'staging-eu', release: 'abc123' } })
   })
 })

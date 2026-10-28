@@ -123,17 +123,17 @@ beforeEach(() => {
   STORE.prefs = {}
   STORE.next = 0
   as('user_1')
-  vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', keys.publicKey)
-  vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', keys.privateKey)
-  vi.stubEnv('GRID_WEB_PUSH_SUBJECT', 'mailto:ops@example.org')
+  vi.stubEnv('WEB_PUSH_VAPID_PUBLIC_KEY', keys.publicKey)
+  vi.stubEnv('WEB_PUSH_VAPID_PRIVATE_KEY', keys.privateKey)
+  vi.stubEnv('WEB_PUSH_SUBJECT', 'mailto:ops@example.org')
 })
 
 describe('GET /config', () => {
   it('hands out the public key, and says the feature is off without keys', async () => {
     expect(await client.config()).toEqual({ enabled: true, publicKey: keys.publicKey })
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_SUBJECT', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PUBLIC_KEY', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PRIVATE_KEY', '')
+    vi.stubEnv('WEB_PUSH_SUBJECT', '')
     expect(await client.config()).toEqual({ enabled: false, publicKey: null })
   })
 })
@@ -192,9 +192,9 @@ describe('devices', () => {
   })
 
   it('answers like a missing route when the deployment has no keys', async () => {
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_SUBJECT', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PUBLIC_KEY', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PRIVATE_KEY', '')
+    vi.stubEnv('WEB_PUSH_SUBJECT', '')
     await expect(client.registerDevice(sub('a'))).rejects.toMatchObject({ status: 404 })
   })
 

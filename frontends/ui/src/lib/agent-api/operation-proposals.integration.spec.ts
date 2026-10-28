@@ -4,7 +4,7 @@
  * Piloti's writes through the MCP surface, filed as proposals against a REAL
  * Postgres through the restricted runtime role (ADR-0122, ADR-0105):
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/agent-api/operation-proposals.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -70,12 +70,12 @@ vi.mock('@/lib/proposals/attention', () => ({
   onProposalDecided: vi.fn(async () => undefined),
 }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe('the operation-proposal suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 
@@ -114,7 +114,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     )
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     proposeOperation = (await import('./operation-proposals')).proposeOperation

@@ -4,7 +4,7 @@ Strict separation of concerns: the ``app`` database has exactly ONE
 writer, the Next.js BFF. The backend never opens a connection to it. The
 ``remember`` tool posts findings to the internal endpoint
 ``POST /api/internal/memory`` over the compose network, authenticated with a
-shared service token (``GRID_INTERNAL_API_TOKEN`` set on both services).
+shared service token (``INTERNAL_API_TOKEN`` set on both services).
 
 See docs/architecture/project-memory-design.md.
 """
@@ -45,7 +45,7 @@ class OrgMemoryDisabledError(ProjectMemoryError):
     """The frontend refused an agent organization-scoped write on purpose.
 
     Raised when ``POST /api/internal/memory`` returns 403 with the
-    ``ORG_MEMORY_DISABLED`` code — i.e. ``GRID_ALLOW_AGENT_ORG_MEMORY`` is not
+    ``ORG_MEMORY_DISABLED`` code — i.e. ``ALLOW_AGENT_ORG_MEMORY`` is not
     enabled on the frontend service (audit finding S1 default-deny). This is a
     deployment-policy denial, NOT a service-token mismatch, so callers surface
     it to the user distinctly instead of retrying.
@@ -375,7 +375,7 @@ def _raise_named_refusal(exc: bff_http.BffRefusedError) -> None:
         # an agent's service token may not write org-wide memory, so the
         # caller routes the user to the confirmation-card path instead.
         # Logged at INFO (the caller logs the handled outcome); set
-        # GRID_ALLOW_AGENT_ORG_MEMORY=true on the frontend to let agents
+        # ALLOW_AGENT_ORG_MEMORY=true on the frontend to let agents
         # write org-wide directly.
         logger.info(
             "Internal memory endpoint declined an agent organization-scoped write "
@@ -386,7 +386,7 @@ def _raise_named_refusal(exc: bff_http.BffRefusedError) -> None:
         ) from exc
     elif exc.status == 403:
         logger.error(
-            "Internal memory endpoint rejected the service token (403) — GRID_INTERNAL_API_TOKEN "
+            "Internal memory endpoint rejected the service token (403) — INTERNAL_API_TOKEN "
             "mismatch between the aiq-agent and frontend services (the same value must be set on both)."
         )
     elif exc.status == 409 and exc.code == "CROSS_PROJECT_MEMORY":
@@ -396,7 +396,7 @@ def _raise_named_refusal(exc: bff_http.BffRefusedError) -> None:
         ) from exc
     elif exc.status == 503:
         logger.error(
-            "Internal memory endpoint disabled (503) — GRID_INTERNAL_API_TOKEN "
+            "Internal memory endpoint disabled (503) — INTERNAL_API_TOKEN "
             "is unset, or is the dev default in a non-dev environment "
             "(set APP_ENV=development on the frontend or configure a real token)."
         )
@@ -418,19 +418,19 @@ def check_internal_api() -> bool:
         bff_http.send("GET", "/api/internal/health", timeout=_REQUEST_TIMEOUT_SECONDS)
     except bff_http.BffNotConfiguredError:
         logger.error(
-            "Cannot verify the internal API: GRID_INTERNAL_API_TOKEN is not configured on the "
+            "Cannot verify the internal API: INTERNAL_API_TOKEN is not configured on the "
             "aiq-agent service. The `remember` tool will not be able to write memory."
         )
         return False
     except bff_http.BffRefusedError as exc:
         if exc.status == 403:
             logger.error(
-                "Internal API rejected the service token (403) — GRID_INTERNAL_API_TOKEN mismatch "
+                "Internal API rejected the service token (403) — INTERNAL_API_TOKEN mismatch "
                 "between the aiq-agent and frontend services (the same value must be set on both)."
             )
         elif exc.status == 503:
             logger.error(
-                "Internal API disabled (503) — GRID_INTERNAL_API_TOKEN is unset on the frontend, "
+                "Internal API disabled (503) — INTERNAL_API_TOKEN is unset on the frontend, "
                 "or is the well-known dev default in a non-dev environment (set APP_ENV=development "
                 "on the frontend or configure a real token)."
             )

@@ -35,20 +35,20 @@ afterEach(() => {
 
 describe('POST /api/internal/turns/outcome', () => {
   it('rejects a missing or wrong token before touching anything', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     expect((await POST(makeRequest(valid))).status).toBe(403)
     expect((await POST(makeRequest(valid, 'wrong'))).status).toBe(403)
     expect(recordTurnOutcome).not.toHaveBeenCalled()
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     expect((await POST(makeRequest(valid, REAL_TOKEN))).status).not.toBe(200)
     expect(recordTurnOutcome).not.toHaveBeenCalled()
   })
 
   it('records the outcome and answers whether it settled a wake', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(recordTurnOutcome).mockResolvedValue({ settled: true })
     const response = await POST(makeRequest({ ...valid, outcome: 'refused', reason: 'Budget erschöpft.' }, REAL_TOKEN))
     expect(response.status).toBe(200)
@@ -57,7 +57,7 @@ describe('POST /api/internal/turns/outcome', () => {
   })
 
   it('is a 200 with settled false for an unknown turn', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(recordTurnOutcome).mockResolvedValue({ settled: false })
     const response = await POST(makeRequest(valid, REAL_TOKEN))
     expect(response.status).toBe(200)
@@ -65,7 +65,7 @@ describe('POST /api/internal/turns/outcome', () => {
   })
 
   it('rejects a body outside the contract', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     for (const body of [
       { ...valid, turnId: 'not-a-uuid' },
       { ...valid, outcome: 'done' },

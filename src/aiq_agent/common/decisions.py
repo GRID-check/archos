@@ -63,40 +63,40 @@ from aiq_agent.common.openrouter import limited_async_http_client
 
 logger = logging.getLogger(__name__)
 
-# @environment_variable GRID_DECISIONS_ENABLED
+# @environment_variable DECISIONS_ENABLED
 # @category Agent
 # @type bool
 # @default true
 # @required false
 # Whether the decision model (Jev, ADR-0064) is consulted at all. `false`
 # runs every turn exactly as it ran before the decisions existed.
-ENABLED_ENV = "GRID_DECISIONS_ENABLED"
+ENABLED_ENV = "DECISIONS_ENABLED"
 
-# @environment_variable GRID_DECISIONS_MODEL
+# @environment_variable DECISIONS_MODEL
 # @category Agent
 # @type str
 # @default typesafe/jev-1.13
 # @required false
 # The decision model id on OpenRouter's Decisions endpoint.
-MODEL_ENV = "GRID_DECISIONS_MODEL"
+MODEL_ENV = "DECISIONS_MODEL"
 
-# @environment_variable GRID_DECISIONS_URL
+# @environment_variable DECISIONS_URL
 # @category Agent
 # @type str
 # @default https://openrouter.ai/api/alpha/decisions
 # @required false
 # The Decisions endpoint. Only needed to point at a mock or a proxy; the
 # default is derived from the resolved OpenRouter base URL.
-URL_ENV = "GRID_DECISIONS_URL"
+URL_ENV = "DECISIONS_URL"
 
-# @environment_variable GRID_DECISIONS_API_KEY
+# @environment_variable DECISIONS_API_KEY
 # @category Agent
 # @type str
 # @default (OPENROUTER_API_KEY)
 # @required false
 # A dedicated key for the Decisions endpoint. Falls back to OPENROUTER_API_KEY
 # through the shared credential resolver, BYOK first.
-DEDICATED_ENV = "GRID_DECISIONS_API_KEY"  # pragma: allowlist secret
+DEDICATED_ENV = "DECISIONS_API_KEY"  # pragma: allowlist secret
 
 DEFAULT_MODEL = "typesafe/jev-1.13"
 DEFAULT_PATH = "/api/alpha/decisions"

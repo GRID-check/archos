@@ -99,7 +99,7 @@ def _carried(headers: dict[str, str]) -> dict[str, str]:
 
 @pytest.fixture(autouse=True)
 def _configured(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
 
 
@@ -193,7 +193,7 @@ class TestCapture:
         assert capture_request_envelope(Headers(headers), user_id=user_id, organization_id=organization_id) is None
 
     def test_without_the_shared_secret_nothing_is_carried(self, monkeypatch):
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+        monkeypatch.delenv("INTERNAL_API_TOKEN")
         assert capture_request_envelope(Headers(_sign()), user_id="user-1") is None
 
 
@@ -219,9 +219,9 @@ def _skill_body(**overrides: Any) -> dict[str, Any]:
 def db_url(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path}/jobs.db"
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", url)
-    monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
-    monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
-    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.setenv("WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
+    monkeypatch.setenv("JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.delenv("DEEP_CHECKPOINT_DB", raising=False)
     EventStore._tables_initialized.clear()
     job_access._job_access_schema_initialized.clear()
     queue.ensure_research_queue_table(url)
@@ -460,7 +460,7 @@ class TestRenewal:
 
     async def test_a_carried_envelope_that_no_longer_verifies_is_dropped(self, bff, monkeypatch):
         sent = _sign()
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "a-rotated-secret")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "a-rotated-secret")
         assert await envelope_headers_for_run(_carried(sent), run_id="run-1", job_id="job-1") == {}
 
     @pytest.mark.parametrize("value", [None, {}, {"header": "", "signature": "x"}, "header", ["a", "b"]])

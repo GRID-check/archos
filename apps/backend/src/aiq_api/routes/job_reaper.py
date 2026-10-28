@@ -109,7 +109,7 @@ async def reap_stale_jobs_once(job_store, db_url: str) -> list[str]:
 
     # Only one replica runs the cycle (advisory lock), so N web replicas don't
     # redundantly re-detect and re-mark the same ghosts. A session lock, so it is
-    # taken on the direct GRID_LOCK_DB_URL connection, never on db_url (ADR-0083).
+    # taken on the direct LOCK_DB_URL connection, never on db_url (ADR-0083).
     async with leader_lock_async(_PG_REAPER_LOCK_ID) as is_leader:
         if not is_leader:
             return []
@@ -202,9 +202,9 @@ _PG_REAPER_LOCK_ID = PG_ADVISORY_LOCK_ID + 1
 
 
 def checkpoint_retention_seconds() -> int:
-    return _int_env("GRID_CHAT_CHECKPOINT_RETENTION_SECONDS", 1209600)  # 14d
+    return _int_env("CHAT_CHECKPOINT_RETENTION_SECONDS", 1209600)  # 14d
 
 
 def job_info_delete_grace_seconds() -> int:
     """How long an expired, terminal job's rows are kept before the event cleanup deletes them."""
-    return _int_env("GRID_JOB_INFO_DELETE_GRACE_SECONDS", 604800)  # 7d
+    return _int_env("JOB_INFO_DELETE_GRACE_SECONDS", 604800)  # 7d

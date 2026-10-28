@@ -146,7 +146,7 @@ class TestTheDoorsStayShut:
         cards.assert_not_called()
 
     def test_the_memory_client_names_the_bffs_refusal(self, monkeypatch) -> None:
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
         refusal = urllib.error.HTTPError(
             "http://frontend/api/internal/memory",
             409,

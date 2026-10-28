@@ -71,7 +71,7 @@ class Server:
 def server(monkeypatch: pytest.MonkeyPatch) -> Server:
     fake = Server()
     monkeypatch.setattr(bff_http._opener, "open", fake.open)
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test/")
     bind(monkeypatch, turn_of("anna"))
     return fake

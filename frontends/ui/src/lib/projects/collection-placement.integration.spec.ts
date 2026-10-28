@@ -4,7 +4,7 @@
  * Moving documents into the collection their folder puts them in (ADR-0087),
  * against a REAL Postgres through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/collection-placement.integration.spec.ts
  *
  * The backend is mocked; the rows and the job queue are not. What is proven:
@@ -38,7 +38,7 @@ vi.mock('@/lib/documents/collection-file-ref', async (importOriginal) => ({
 // The backend's job status: by default every in-flight job is still running.
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn(async (rows: unknown[]) => rows) }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_placement_${Date.now()}`
 const USER = 'user_placement'
 const COLLECTION = `proj_placement_${Date.now()}`
@@ -135,7 +135,7 @@ describe.skipIf(!url)('collection placement against Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     placement = await import('./collection-placement')

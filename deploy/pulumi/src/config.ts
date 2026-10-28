@@ -173,7 +173,7 @@ export interface GridConfig {
 
   /**
    * The self-hosted address search (ADR-0120, `data/geocoder.ts`): Photon over
-   * the Austrian OSM extract. The frontend gets `GRID_GEOCODER_URL` exactly
+   * the Austrian OSM extract. The frontend gets `GEOCODER_URL` exactly
    * when this is on; off, the project dialog's address stays a plain text field.
    */
   geocoder: GeocoderConfig;
@@ -195,13 +195,13 @@ export interface GridConfig {
   seaweedfs: SeaweedfsConfig;
 
   /**
-   * The chat tier (`aiq-agent`, `GRID_ROLE=chat`): CPU/memory here, replicas and
+   * The chat tier (`aiq-agent`, `PROCESS_ROLE=chat`): CPU/memory here, replicas and
    * their scaling below, and the admission knobs that bound concurrent work.
    */
   backend: BackendConfig;
 
   /**
-   * The api tier (ADR-0082 step B): `GRID_ROLE=api`, every backend HTTP route
+   * The api tier (ADR-0082 step B): `PROCESS_ROLE=api`, every backend HTTP route
    * except the chat socket (knowledge, jobs and SSE, LLM utilities, admin,
    * housekeeping). A Deployment of the backend image behind the `aiq-api`
    * Service, which is what `BACKEND_URL` names. HPA-owned, like the frontend:
@@ -305,7 +305,7 @@ export interface GridConfig {
     enabled: boolean;
     /**
      * Share of the quota at which the first warning goes out, as a percentage.
-     * Reaches the frontend as `GRID_STORAGE_ALERT_THRESHOLD_PERCENT`. Escalation
+     * Reaches the frontend as `STORAGE_ALERT_THRESHOLD_PERCENT`. Escalation
      * to 90% and 100% is automatic and not configurable — "you have run out" is
      * a different message from "you are nearly out", and a computed step can
      * straddle 100%.

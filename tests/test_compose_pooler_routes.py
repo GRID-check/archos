@@ -18,8 +18,8 @@ import yaml
 COMPOSE_DIR = Path(__file__).resolve().parents[1] / "deploy" / "compose"
 FILES = ["docker-compose.yaml", "docker-compose.coolify.yaml"]
 
-POOLED = ("NAT_JOB_STORE_DB_URL", "GRID_CHECKPOINT_DB", "GRID_SUMMARY_DB")
-DIRECT = ("GRID_LISTEN_DB_URL", "GRID_LOCK_DB_URL")
+POOLED = ("NAT_JOB_STORE_DB_URL", "CHECKPOINT_DB", "SUMMARY_DB")
+DIRECT = ("LISTEN_DB_URL", "LOCK_DB_URL")
 
 
 def _services(name: str) -> dict:
@@ -89,10 +89,10 @@ def test_the_bff_pools_its_runtime_role_and_migrates_directly(name):
     services = _services(name)
     for service in services:
         env = _environment(services, service)
-        if "GRID_APP_DATABASE_URL" in env:
-            assert _host(env["GRID_APP_DATABASE_URL"]) == "pgbouncer", f"{name}: {service}"
-        if "GRID_APP_MIGRATION_DATABASE_URL" in env:
-            assert _host(env["GRID_APP_MIGRATION_DATABASE_URL"]) == "postgres", f"{name}: {service}"
+        if "APP_DATABASE_URL" in env:
+            assert _host(env["APP_DATABASE_URL"]) == "pgbouncer", f"{name}: {service}"
+        if "APP_MIGRATION_DATABASE_URL" in env:
+            assert _host(env["APP_MIGRATION_DATABASE_URL"]) == "postgres", f"{name}: {service}"
 
 
 @pytest.mark.parametrize("name", FILES)

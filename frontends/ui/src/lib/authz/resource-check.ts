@@ -33,7 +33,7 @@ export interface ResourceCheckInput {
  * Short-TTL cache of WorkOS FGA answers: `authorization.check` results and
  * effective permission sets ({@link effectiveResourcePermissions}).
  *
- * `GRID_AUTHZ_CACHE_TTL_MS` (default `30000`; `0` switches it OFF) caches the
+ * `AUTHZ_CACHE_TTL_MS` (default `30000`; `0` switches it OFF) caches the
  * answer for (organizationMembershipId, resourceType, resourceId[, permission]). On by default since 2026-09: the websocket-scope route and every
  * project save paid up to three WorkOS round-trips per request for a grant
  * that changes a few times a year.
@@ -58,7 +58,7 @@ export interface ResourceCheckInput {
 export const DEFAULT_AUTHZ_CACHE_TTL_MS = 30_000
 
 export function authzCacheTtlMs(): number {
-  const raw = process.env.GRID_AUTHZ_CACHE_TTL_MS
+  const raw = process.env.AUTHZ_CACHE_TTL_MS
   if (raw === undefined || raw === '') return DEFAULT_AUTHZ_CACHE_TTL_MS
   const parsed = Number(raw)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0

@@ -280,7 +280,7 @@ def _post_profiler_spans(payload: dict[str, Any]) -> None:
     try:
         bff_http.send("POST", "/api/internal/agent-profiler-spans", timeout=_REQUEST_TIMEOUT_SECONDS, body=payload)
     except bff_http.BffNotConfiguredError:
-        logger.warning("GRID_INTERNAL_API_TOKEN not configured — dropping %d profiler spans", len(payload["spans"]))
+        logger.warning("INTERNAL_API_TOKEN not configured — dropping %d profiler spans", len(payload["spans"]))
     except bff_http.BffRefusedError as error:
         logger.warning("Internal profiler endpoint rejected batch: HTTP %s", error.status)
     except Exception:

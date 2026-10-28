@@ -101,7 +101,7 @@ and drops it when a test changed more than its points; a test of how a
 collection comes to be asks for `fresh_qdrant_store`. A test asserts what OUR
 code sends and gets back, not what Qdrant does on its own: a check that only a
 Qdrant upgrade could fail is not one of ours. A run without
-`GRID_QDRANT_TEST_URL` skips them; `qdrant` (the release binary) on port 6333 is
+`QDRANT_TEST_URL` skips them; `qdrant` (the release binary) on port 6333 is
 enough to run them locally.
 
 This suite went uncovered for a long time. CI now runs it in the Backend suites

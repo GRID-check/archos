@@ -41,7 +41,7 @@ describe('queueRevisionNotice', () => {
   })
 
   it('reads the debounce from the deployment', async () => {
-    vi.stubEnv('GRID_REVISION_NOTICE_DELAY_SECONDS', '0')
+    vi.stubEnv('REVISION_NOTICE_DELAY_SECONDS', '0')
 
     await queueRevisionNotice(request, NOW)
 

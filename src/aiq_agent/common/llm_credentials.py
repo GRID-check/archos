@@ -5,7 +5,7 @@ in WorkOS Vault (or the local encrypted store) behind the BFF; this module
 pulls it **just in time** from the internal endpoint::
 
     GET {FRONTEND_INTERNAL_URL}/api/internal/llm-credential?organizationId=…
-    x-grid-internal-token: {GRID_INTERNAL_API_TOKEN}
+    x-grid-internal-token: {INTERNAL_API_TOKEN}
 
 Design constraints (why pull, not push): the plaintext key must never ride
 WebSocket-upgrade headers, the research job payload (persisted in the job store), or
@@ -77,7 +77,7 @@ def _internal_base_url() -> str:
 
 def _fetch_credential(organization_id: str) -> OrgLLMCredential | None:
     """One HTTP round-trip to the BFF's internal resolution endpoint."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         # No internal-token trust channel — BYOK cannot be resolved securely.
         return None

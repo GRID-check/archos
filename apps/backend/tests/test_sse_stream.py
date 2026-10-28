@@ -22,7 +22,7 @@ from aiq_api.jobs.connection_manager import reset_connection_manager
 from aiq_api.jobs.event_store import EventStore
 from aiq_api.routes import job_event_stream
 
-#: The direct (non-pooled) DSN LISTEN connects to: `GRID_LISTEN_DB_URL` in a deployment.
+#: The direct (non-pooled) DSN LISTEN connects to: `LISTEN_DB_URL` in a deployment.
 DIRECT_DSN = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
 
 
@@ -68,7 +68,7 @@ async def test_notification_gap_recovered_by_range_fetch_and_terminal_drain(db_u
     fake_conn = FakeListenConnection()
     fake_asyncpg = types.SimpleNamespace(connect=AsyncMock(return_value=fake_conn))
     monkeypatch.setitem(sys.modules, "asyncpg", fake_asyncpg)
-    monkeypatch.setenv("GRID_LISTEN_DB_URL", DIRECT_DSN)
+    monkeypatch.setenv("LISTEN_DB_URL", DIRECT_DSN)
 
     job_id = "sse-job"
     store = EventStore(db_url, job_id)
@@ -124,7 +124,7 @@ async def test_listen_connects_to_the_direct_dsn_never_the_job_store_url(db_url,
 
     connect = AsyncMock(return_value=FakeListenConnection())
     monkeypatch.setitem(sys.modules, "asyncpg", types.SimpleNamespace(connect=connect))
-    monkeypatch.setenv("GRID_LISTEN_DB_URL", DIRECT_DSN)
+    monkeypatch.setenv("LISTEN_DB_URL", DIRECT_DSN)
     job_store = SimpleNamespace(get_job=AsyncMock(return_value=SimpleNamespace(status="running", error=None)))
 
     # `db_url` stands for the job-store URL, which is the pooled one in a deployment.
@@ -137,7 +137,7 @@ async def test_listen_connects_to_the_direct_dsn_never_the_job_store_url(db_url,
 
 @pytest.mark.asyncio
 async def test_the_stream_never_listens_on_the_job_store_url(db_url, monkeypatch):
-    """No `GRID_LISTEN_DB_URL`, no LISTEN: there is no default to the pooled URL.
+    """No `LISTEN_DB_URL`, no LISTEN: there is no default to the pooled URL.
 
     `require_direct_dsns` refuses to boot the web tier without it (see
     `test_direct_dsn_startup.py`), so this is the assertion behind that check and
@@ -146,10 +146,10 @@ async def test_the_stream_never_listens_on_the_job_store_url(db_url, monkeypatch
 
     connect = AsyncMock()
     monkeypatch.setitem(sys.modules, "asyncpg", types.SimpleNamespace(connect=connect))
-    monkeypatch.delenv("GRID_LISTEN_DB_URL", raising=False)
+    monkeypatch.delenv("LISTEN_DB_URL", raising=False)
 
     gen = job_event_stream._sse_generator_postgres(MagicMock(), "sse-job", db_url, 0)
-    with pytest.raises(KeyError, match="GRID_LISTEN_DB_URL"):
+    with pytest.raises(KeyError, match="LISTEN_DB_URL"):
         await gen.__anext__()
 
     connect.assert_not_awaited()

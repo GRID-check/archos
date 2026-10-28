@@ -66,7 +66,7 @@ really about SQL. The script (`scripts/rls-test-db.sh`) runs a fixed list of
 suites, and the memory service's "one fact, one live row" consolidation suite.
 A new database-backed spec has to be added to that list, or it only ever runs
 on a developer's machine. Each of those files also carries a
-`GRID_RLS_SUITE_REQUIRED` guard so the CI job fails if the database goes
+`RLS_SUITE_REQUIRED` guard so the CI job fails if the database goes
 missing instead of skipping green.
 
 The per-migration sections at the end of that script prove a backfill, a data
@@ -90,19 +90,19 @@ Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
 SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
-`database_url` and `agent_db` fixtures in their `conftest.py`. Without `GRID_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+`database_url` and `agent_db` fixtures in their `conftest.py`. Without `TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
-scratch database in it. Each file carries an `GRID_TEST_POSTGRES_REQUIRED` guard,
+scratch database in it. Each file carries an `TEST_POSTGRES_REQUIRED` guard,
 set in CI, that fails instead of skipping. A new suite with a Postgres parameter
 joins the task's list.
 
 **The base-corpus tests run on SQLite by default, and the Postgres paths need
-`GRID_TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
+`TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
 `test_oib_status.py` and `apps/backend/tests/test_oib_documents_routes.py`
 keep the corpus table, the ingest queue and the ingest status store in a throwaway SQLite file and the object store in memory.
 The Postgres upsert, the conditional update that records an ingested hash and the
 advisory locks behind `keyed_lock` (SQLite has none) are only exercised when you
-point `GRID_TEST_CORPUS_DB` at a scratch database, for example
+point `TEST_CORPUS_DB` at a scratch database, for example
 `postgresql://postgres@127.0.0.1:5432/corpus_test`. Prefer the IP to `localhost`: in
 the sandbox this was written in, `localhost` resolved to another host under the
 `apps/backend` suite and the first test hung on the connect. The table is emptied before each test, so never
@@ -112,7 +112,7 @@ aim it at a database that holds a real corpus.
 `tests/test_ddl_concurrency.py` starts 8 processes at once against freshly created
 databases and runs every `_ensure_table` / `_ensure_schema` site, because
 `CREATE TABLE IF NOT EXISTS` races on the `pg_type` catalog and SQLite cannot show
-it. It is skipped unless `GRID_TEST_PG_URL` names a server (for example
+it. It is skipped unless `TEST_PG_URL` names a server (for example
 `postgresql://postgres@127.0.0.1:5432/postgres`) it may create and drop databases on.
 A new site that runs DDL at runtime joins `SITES` in `tests/ddl_race_worker.py`.
 
@@ -209,7 +209,7 @@ Selected without the key, it skips itself. Locally:
 OPENROUTER_API_KEY=… task be:eval:turn-shapes
 ```
 
-`GRID_DEFAULT_MODEL` moves the model under test, the same way it moves the
+`DEFAULT_MODEL` moves the model under test, the same way it moves the
 config's boot floor. In CI,
 [`turn-shapes-live.yml`](../../.github/workflows/turn-shapes-live.yml) runs
 it weekly and on `workflow_dispatch`, never on a pull request, and fails
@@ -302,7 +302,7 @@ live in [`tests/fixtures/derivation/loop_eval_questions.yaml`](../../tests/fixtu
 — every expected Punkt in it is read off the committed structural index rather
 than remembered — and [`scripts/loop_eval.py`](../../scripts/loop_eval.py) runs
 them, writes a CSV, and diffs two CSVs with `--compare`. Each question is one
-turn over the chat socket of the `chat` role at `GRID_LOOP_EVAL_URL` (wire v2,
+turn over the chat socket of the `chat` role at `LOOP_EVAL_URL` (wire v2,
 `REQUIRE_AUTH=false`), the only way a turn runs; the columns are read off the
 turn's own steps and its terminal `RUN_FINISHED`. **It cannot run in
 CI**, for the same reason `be:eval:retrieval` no longer does: it needs a
@@ -497,7 +497,7 @@ its passage; this asks what the reader waited for and what they got.
 - **No stack needed:** `--ingest --corpus data/oib` takes the base corpus
   from that directory's PDFs instead of the object store, so the suite runs
   on a machine with no BFF and no SeaweedFS. The table, the ingest queue and
-  the ingestion itself are the real ones (a SQLite `GRID_SUMMARY_DB` holds
+  the ingestion itself are the real ones (a SQLite `SUMMARY_DB` holds
   them); only the bytes come from the directory. Unchanged files are not
   ingested again on the next run.
 
@@ -614,7 +614,7 @@ the case to `tests/fixtures/derivation/loop_eval_questions.yaml` with a
 
 It needs `OPENROUTER_API_KEY` (or `OPENROUTER_KEY`) and the corpus
 (uploaded with `scripts/upload_oib_corpus.py`, or `-- --corpus data/oib`)
-ingested into the Qdrant at `GRID_QDRANT_URL` (`-- --ingest` queues the corpus's
+ingested into the Qdrant at `QDRANT_URL` (`-- --ingest` queues the corpus's
 ingest jobs and runs them in the suite's own process first; the 39 OIB PDFs took
 about ten minutes on 4 CPUs on 2026-10-13). Every run costs model calls: the core set
 at two runs is twelve turns, about four minutes three at a time, and a turn
@@ -631,7 +631,7 @@ September 2026 measurements it grew out of are in
 Measure a committed, clean tree, where the document inventory is. Each
 question starts a fresh process from the working tree, so editing code
 mid-run measures two codebases (the report marks the commit `-dirty`). And
-`GRID_SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
+`SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
 reads an empty inventory and runs every turn ~7 s slower without family
 overviews; the suite refuses to start on an empty one.
 
@@ -752,8 +752,8 @@ Paste `compare.md` into the PR. How to read it (`scripts/turn_census/compare.py`
 
 The project has to exist where the tools read it. The suite seeds it itself
 (`scripts/turn_census/fixture_files.py`: each file cut by the ingest job's own
-chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `GRID_QDRANT_URL`, the
-documents into the metadata store at `GRID_SUMMARY_DB`, which must be a database URL).
+chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `QDRANT_URL`, the
+documents into the metadata store at `SUMMARY_DB`, which must be a database URL).
 The cut matters: a section chunk repeats its heading breadcrumb and overlaps its
 neighbour, and the `pf-count-*` rows ask for counts that are wrong when either is
 counted. Seeding is idempotent and embeds only what changed; a file cut another way
@@ -888,7 +888,7 @@ and `light` modes that replayed it, are gone with the v2 cut.
 | What happens in the milliseconds before the first model call? | `scripts/turn_census/startup_probe.py` | key, corpus and document inventory | several questions in one process; the first turn is cold |
 | Does Qdrant retrieval still clear gates G1b, G2 and G6, beside the numbers the Chroma path recorded? | `task be:eval:qdrant-parity` (`-- --variants all` adds the ranking sweep) | `data/oib`, a Qdrant 1.19 server, the embeddings key | about 15 minutes on 4 CPUs; the corpus embedding (~$0.12) is cached after the first run. [The gate report](../audit/qdrant-gates-2026-10.md) |
 | Does the Erfassungs-Agent set a project up right from its documents? | `task be:eval:intake` | key and bun | about a cent and two minutes per run of the boot model |
-| What shape did the turn take (rounds, locator, checkpoint)? | `task be:eval:loop` | a running backend at `GRID_LOOP_EVAL_URL` with the corpus | real model calls per question; `--compare` needs no backend |
+| What shape did the turn take (rounds, locator, checkpoint)? | `task be:eval:loop` | a running backend at `LOOP_EVAL_URL` with the corpus | real model calls per question; `--compare` needs no backend |
 | Does the layout shift while an answer streams? | `/dev/stream-replay?fixture=varianten` (or `oib2`), `&speed=N`, `&ending=recorded` for the recording's own terminal (the retired whole-answer rewrite on `oib2`) | the UI dev server | free: the fixtures are recorded frames in `frontends/ui/src/app/dev/_fixtures/stream-frames.ts`, replayed as v2 events through `foldTurnEvent`. `window.__replay` holds `shifts` (each source flagged `edge` when it entered or left the viewport), `anchorTops` and `done` for a headless capture. The answer alone: no Herleitung, no thread scroller |
 | What does a whole turn cost the page as it arrives over the socket (step frames included), and what does the reader see move until 2.5 s after the settle? | `/dev/stream-socket`, `node scripts/measure-stream-socket.mjs` (`--reader scroll`, `--animations`, and `--scenario`, `--error`, `--drop`, `--reload`, `--switch`, `--toggle`, `--stop` for the [other lifecycles](#every-lifecycle-of-a-turn)) | the UI dev server with the WorkOS placeholders | free: a scripted v2 server behind a stubbed `WebSocket`. [The socket-level streaming harness](#the-socket-level-streaming-harness) |
 

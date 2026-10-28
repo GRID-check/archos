@@ -26,7 +26,7 @@ const OTEL_AGENT_POD = { podSelector: { matchLabels: { "app.kubernetes.io/name":
 export const LANGFUSE_BACKEND_CALLERS = [...CHAT_TIERS, ...API_TIERS, "agent-worker"] as const;
 
 /**
- * The pods that get `GRID_QDRANT_URL` (every role built from `backendEnv`), the
+ * The pods that get `QDRANT_URL` (every role built from `backendEnv`), the
  * snapshot CronJob, the one-shot Chroma migration's importer, and the
  * operator's throwaway `qdrant-ops` pod (the runbook's restore and shard
  * moves, run from inside the namespace): the named callers of Qdrant's client
@@ -482,7 +482,7 @@ export function installNetworkPolicies(
   //     Every address a person types in the project dialog reaches it, so it
   //     is withheld from rule 2: the frontend BFF (`/api/geocode`) is its one
   //     caller. The bff-jobs pool inherits the frontend's environment but
-  //     not `GRID_GEOCODER_URL` (`BFF_JOBS_WITHHELD`), so it is not named.
+  //     not `GEOCODER_URL` (`BFF_JOBS_WITHHELD`), so it is not named.
   //
   //     Egress is the init container's: the jar from GitHub and the index
   //     from download1.graphhopper.com, both over HTTPS. Photon itself dials

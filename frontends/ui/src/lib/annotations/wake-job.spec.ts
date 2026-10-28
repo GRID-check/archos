@@ -112,7 +112,7 @@ const NOT_LAST = { last: false }
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('REQUIRE_AUTH', 'true')
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', SECRET)
+  vi.stubEnv('INTERNAL_API_TOKEN', SECRET)
   vi.mocked(findWake).mockResolvedValue(WAKE)
   vi.mocked(settleWake).mockResolvedValue(true)
   vi.mocked(countWakes).mockResolvedValue(0)

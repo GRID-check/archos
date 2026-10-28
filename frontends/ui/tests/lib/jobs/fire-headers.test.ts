@@ -91,7 +91,7 @@ async function capturedFireHeaders(
   })
   vi.stubGlobal('fetch', fetchSpy)
 
-  const headers = buildGridRequestContextWireHeaders(input, process.env.GRID_INTERNAL_API_TOKEN)
+  const headers = buildGridRequestContextWireHeaders(input, process.env.INTERNAL_API_TOKEN)
   await submitJob(PAYLOAD, headers)
 
   expect(fetchSpy).toHaveBeenCalledTimes(1)
@@ -100,11 +100,11 @@ async function capturedFireHeaders(
 
 describe('the headers the BFF puts on a job fire', () => {
   beforeEach(() => {
-    process.env.GRID_INTERNAL_API_TOKEN = INTERNAL_TOKEN
+    process.env.INTERNAL_API_TOKEN = INTERNAL_TOKEN
   })
   afterEach(() => {
     vi.unstubAllGlobals()
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
   })
 
   it('sends every header the shared fixture names', async () => {
@@ -168,14 +168,14 @@ describe('the headers the BFF puts on a job fire', () => {
   })
 
   it('refuses to fire at all rather than sending an unauthenticated submit', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
 
     // Without the token the request must not be made: an unauthenticated fire
     // would 403 at the guard and be recorded as a backend failure, which points
     // the next investigation at the backend rather than at the missing secret.
-    await expect(submitJob(PAYLOAD, {})).rejects.toThrow(/GRID_INTERNAL_API_TOKEN/)
+    await expect(submitJob(PAYLOAD, {})).rejects.toThrow(/INTERNAL_API_TOKEN/)
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
@@ -192,7 +192,7 @@ describe('the fire path in lib/jobs/background-run.ts', () => {
 
   it('builds its headers with the shared wire builder', () => {
     expect(fire).toContain('buildGridRequestContextWireHeaders(')
-    expect(fire).toContain('process.env.GRID_INTERNAL_API_TOKEN')
+    expect(fire).toContain('process.env.INTERNAL_API_TOKEN')
   })
 
   it('hands those headers, and not a second object, to submitJob', () => {

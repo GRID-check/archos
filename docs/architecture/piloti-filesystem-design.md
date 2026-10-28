@@ -565,7 +565,7 @@ idea makes, and the same one the skills substrate already makes with
 
 Per §0.1 this does **not** mean deleting `available_documents`. The two coexist;
 the cap stays where it is. If the digest turns out to be better, it wins on a
-measurement, and `GRID_AVAILABLE_DOCUMENTS_MAX` goes to zero on purpose rather
+measurement, and `AVAILABLE_DOCUMENTS_MAX` goes to zero on purpose rather
 than by assumption.
 
 ### Where scale does cost something
@@ -685,10 +685,10 @@ set actually is.
 
 **Let the agent write as the user.** **[CORRECTED — the premise was false.]**
 This section claimed the agent holds a *narrower* principal than the user. It
-does not. It holds the shared `GRID_INTERNAL_API_TOKEN`, and the internal memory
+does not. It holds the shared `INTERNAL_API_TOKEN`, and the internal memory
 route says so itself: *"this service-token endpoint cannot verify the human's
 org role"* (`app/api/internal/memory/route.ts`). The org-memory denial is one
-env flag (`GRID_ALLOW_AGENT_ORG_MEMORY`) on one endpoint, not a principal;
+env flag (`ALLOW_AGENT_ORG_MEMORY`) on one endpoint, not a principal;
 project-scoped writes resolve through `withOptionalTenant(undefined)` →
 `withPlatformAccess`. The agent's principal is **wider**.
 

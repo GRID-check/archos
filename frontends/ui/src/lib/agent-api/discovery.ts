@@ -626,7 +626,7 @@ export function nothingMatched(ctx: McpCallContext): string {
 const CONTENT_READERS = [
   { name: 'knowledge-search', what: 'quotable passages from the project, the office and the building-law corpus' },
   { name: 'law-lookup', what: 'a provision of Austrian law' },
-  { name: 'piloti-ask-create', what: 'Piloti answers it with sources' },
+  { name: 'agent-ask-create', what: 'Piloti answers it with sources' },
 ] as const
 
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {

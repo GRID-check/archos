@@ -23,64 +23,64 @@ class TestIsVerbose:
 
     def test_verbose_env_true_overrides_config_false(self):
         """Test that env var 'true' overrides config False."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "true"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "true"}):
             assert is_verbose(config_verbose=False) is True
 
     def test_verbose_env_1_overrides_config_false(self):
         """Test that env var '1' overrides config False."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "1"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "1"}):
             assert is_verbose(config_verbose=False) is True
 
     def test_verbose_env_yes_overrides_config_false(self):
         """Test that env var 'yes' overrides config False."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "yes"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "yes"}):
             assert is_verbose(config_verbose=False) is True
 
     def test_verbose_env_false_overrides_config_true(self):
         """Test that env var 'false' overrides config True."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "false"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "false"}):
             assert is_verbose(config_verbose=True) is False
 
     def test_verbose_env_0_overrides_config_true(self):
         """Test that env var '0' overrides config True."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "0"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "0"}):
             assert is_verbose(config_verbose=True) is False
 
     def test_verbose_env_no_overrides_config_true(self):
         """Test that env var 'no' overrides config True."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "no"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "no"}):
             assert is_verbose(config_verbose=True) is False
 
     def test_verbose_env_empty_uses_config_true(self):
         """Test that empty env var falls back to config."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": ""}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": ""}):
             assert is_verbose(config_verbose=True) is True
 
     def test_verbose_env_empty_uses_config_false(self):
         """Test that empty env var falls back to config False."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": ""}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": ""}):
             assert is_verbose(config_verbose=False) is False
 
     def test_verbose_env_unset_uses_config_true(self):
         """Test that unset env var falls back to config True."""
         with patch.dict(os.environ, clear=True):
-            os.environ.pop("GRID_VERBOSE", None)
+            os.environ.pop("AGENT_VERBOSE", None)
             assert is_verbose(config_verbose=True) is True
 
     def test_verbose_env_unset_uses_config_false(self):
         """Test that unset env var falls back to config False."""
         with patch.dict(os.environ, clear=True):
-            os.environ.pop("GRID_VERBOSE", None)
+            os.environ.pop("AGENT_VERBOSE", None)
             assert is_verbose(config_verbose=False) is False
 
     def test_verbose_env_uppercase_true(self):
         """Test that uppercase 'TRUE' is recognized."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "TRUE"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "TRUE"}):
             assert is_verbose(config_verbose=False) is True
 
     def test_verbose_env_random_value_uses_config(self):
         """Test that random env value falls back to config."""
-        with patch.dict(os.environ, {"GRID_VERBOSE": "maybe"}):
+        with patch.dict(os.environ, {"AGENT_VERBOSE": "maybe"}):
             assert is_verbose(config_verbose=True) is True
             assert is_verbose(config_verbose=False) is False
 
@@ -263,8 +263,8 @@ class TestGetCheckpointer:
     @pytest.mark.asyncio
     async def test_postgres_pool_default_sizing(self, monkeypatch):
         """Pool defaults to min_size=1, max_size=10 (raised from the old hard-coded 3)."""
-        monkeypatch.delenv("GRID_CHECKPOINT_POOL_MIN_SIZE", raising=False)
-        monkeypatch.delenv("GRID_CHECKPOINT_POOL_MAX_SIZE", raising=False)
+        monkeypatch.delenv("CHECKPOINT_POOL_MIN_SIZE", raising=False)
+        monkeypatch.delenv("CHECKPOINT_POOL_MAX_SIZE", raising=False)
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
         with (
@@ -279,8 +279,8 @@ class TestGetCheckpointer:
     @pytest.mark.asyncio
     async def test_postgres_pool_sizing_env_override(self, monkeypatch):
         """Env vars override pool sizing; max is floored to min."""
-        monkeypatch.setenv("GRID_CHECKPOINT_POOL_MIN_SIZE", "4")
-        monkeypatch.setenv("GRID_CHECKPOINT_POOL_MAX_SIZE", "2")  # < min -> floored to min
+        monkeypatch.setenv("CHECKPOINT_POOL_MIN_SIZE", "4")
+        monkeypatch.setenv("CHECKPOINT_POOL_MAX_SIZE", "2")  # < min -> floored to min
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
         with (

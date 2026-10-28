@@ -24,8 +24,8 @@ from aiq_agent.knowledge.leader_lock import keyed_lock_async
 
 @pytest.fixture(autouse=True)
 def _no_database(monkeypatch):
-    monkeypatch.delenv("GRID_LOCK_DB_URL", raising=False)
-    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("LOCK_DB_URL", raising=False)
+    monkeypatch.delenv("SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
 
 
@@ -71,7 +71,7 @@ def test_the_lock_is_released_when_the_body_raises():
 def test_an_unreachable_database_raises_and_the_body_does_not_run(monkeypatch, caplog):
     # Port 9 (discard) is closed: the lock cannot be taken, so the document is NOT
     # replaced unguarded across replicas; the attempt fails and is retried.
-    monkeypatch.setenv("GRID_LOCK_DB_URL", "postgresql://nobody@127.0.0.1:9/none?connect_timeout=1")
+    monkeypatch.setenv("LOCK_DB_URL", "postgresql://nobody@127.0.0.1:9/none?connect_timeout=1")
     ran = []
     with caplog.at_level("WARNING"), pytest.raises(Exception):  # noqa: B017, PT011 - the driver's own error
         with keyed_lock("reingest:proj:y.pdf"):
@@ -81,7 +81,7 @@ def test_an_unreachable_database_raises_and_the_body_does_not_run(monkeypatch, c
 
 
 def test_a_failed_acquisition_releases_the_process_lock_and_closes_the_session(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", "postgresql://grid@db/grid")
+    monkeypatch.setenv("LOCK_DB_URL", "postgresql://grid@db/grid")
     conn = MagicMock()
     conn.execute.side_effect = RuntimeError("connection lost")
     engine = MagicMock()
@@ -93,14 +93,14 @@ def test_a_failed_acquisition_releases_the_process_lock_and_closes_the_session(m
 
     conn.close.assert_called_once()
     # The same key is takeable again at once, here with no Postgres: nothing is left held.
-    monkeypatch.delenv("GRID_LOCK_DB_URL")
+    monkeypatch.delenv("LOCK_DB_URL")
     with keyed_lock("reingest:proj:z.pdf"):
         pass
 
 
 def test_on_postgres_the_key_is_an_advisory_lock_held_on_its_own_session(monkeypatch):
     """Taken before the body, released and the session closed after it, even on a raise."""
-    monkeypatch.setenv("GRID_LOCK_DB_URL", "postgresql://grid@db/grid")
+    monkeypatch.setenv("LOCK_DB_URL", "postgresql://grid@db/grid")
     conn = MagicMock()
     engine = MagicMock()
     engine.connect.return_value = conn

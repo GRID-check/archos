@@ -31,7 +31,7 @@ export async function requireProjectAccess(
 1. **Tenancy**: The project's `organizationId` is read from PostgreSQL. If the project does not exist, belongs to another organization, or is soft-deleted (unless `includeDeleted`), the function throws `"Not found"`. This runs for everyone, admins included.
 2. **Closed project** (ADR-0090): a closed project keeps only the permissions it still allows; a request that asked only for writes is refused with a named reason.
 3. **Org admin bypass**: a session whose token carries `org:projects:administer` returns `"project-admin"`. The permission decides, never the role name.
-4. **Effective permissions**: one WorkOS call, `authorization.listEffectivePermissionsByExternalId`, with the session's `organizationMembershipId`, `resourceTypeSlug: "project"` and the project id as `externalId`. It counts roles assigned on the project and on its ancestors. Cached for `GRID_AUTHZ_CACHE_TTL_MS` (`effectiveResourcePermissions` in `lib/authz/resource-check.ts`); a failed lookup holds nothing and is not cached.
+4. **Effective permissions**: one WorkOS call, `authorization.listEffectivePermissionsByExternalId`, with the session's `organizationMembershipId`, `resourceTypeSlug: "project"` and the project id as `externalId`. It counts roles assigned on the project and on its ancestors. Cached for `AUTHZ_CACHE_TTL_MS` (`effectiveResourcePermissions` in `lib/authz/resource-check.ts`); a failed lookup holds nothing and is not cached.
 5. **Access and role**: holding any one requested permission grants access. The role is read from the same set:
    - `project:manage` → `"project-admin"`
    - any of `project:edit`, `project:documents:write`, `project:memory:write` → `"project-editor"`

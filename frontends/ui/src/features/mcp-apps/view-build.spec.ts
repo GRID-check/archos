@@ -55,7 +55,7 @@ describe('the proposal card document', () => {
 
   it('carries no deployment secret or origin: it is the same document for every office', () => {
     expect(html).not.toMatch(/process\.env\.[A-Z]/)
-    expect(html).not.toMatch(/GRID_INTERNAL_API_TOKEN|WORKOS_API_KEY|sk_(live|test)_/)
+    expect(html).not.toMatch(/INTERNAL_API_TOKEN|WORKOS_API_KEY|sk_(live|test)_/)
     expect(html).not.toMatch(/https:\/\/app\.piloti\.at/)
   })
 

@@ -90,7 +90,7 @@ export async function submitBackgroundRun(run: BackgroundRunSubmission): Promise
   // for a fresh one, signed from the same `runRequestContextInput`.
   const contextHeaders = buildGridRequestContextWireHeaders(
     runRequestContextInput(subject, context, conversationId, Date.now()),
-    process.env.GRID_INTERNAL_API_TOKEN,
+    process.env.INTERNAL_API_TOKEN,
   )
   warnIfRunEnvelopeLarge(contextHeaders, run.runId ?? run.jobId ?? subject.projectId)
 

@@ -6,7 +6,7 @@ posts to an explicit endpoint as-is (ADR-0029). Logs and metrics are its
 siblings on the same collector.
 
 The resource names the tier (``service.name``), the build (``service.version``,
-the commit both Dockerfiles stamp as ``GRID_GIT_SHA``) and the process
+the commit both Dockerfiles stamp as ``GIT_SHA``) and the process
 (``service.instance.id``, the pod; ``process.pid``). The process matters most to
 metrics: a cumulative counter from two replicas under one identity reads as one
 series jumping between their totals.
@@ -45,7 +45,7 @@ def resource_attributes(env: Mapping[str, str], pid: int | None = None) -> dict[
         "service.name": env.get(SERVICE_NAME_ENV, "").strip() or DEFAULT_SERVICE_NAME,
         "process.pid": os.getpid() if pid is None else pid,
     }
-    sha = env.get("GRID_GIT_SHA", "").strip()
+    sha = env.get("GIT_SHA", "").strip()
     if sha:
         attributes["service.version"] = sha
     instance = env.get("HOSTNAME", "").strip()

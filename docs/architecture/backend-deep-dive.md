@@ -200,7 +200,7 @@ is now the single builder: `buildGridRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
 header (base64url JSON of the same fields, plus the structured `federal_state`
 fact — §6b) and `X-Grid-Request-Context-Sig` (hex HMAC-SHA256 of the raw
-JSON, keyed on `GRID_INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
+JSON, keyed on `INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
 this **dual-write transition**. Authenticated WebSocket handshakes instead
 carry compact claims with `contextTransport: "bff"` and omit project context,
 memory and office instructions from both the individual headers and the
@@ -246,7 +246,7 @@ routes (`/chat`, `/generate`, `/v1/chat/completions`, `/v1/workflow`, ...) are
 not mounted at all: a turn runs on the chat socket alone (`AIQAPIConfig`,
 ADR-0068), and deny by default is what closes a route a later NAT adds. Always exempt:
 anonymous mode and internal-token-authenticated service calls. Dev fail-open note:
-when `GRID_INTERNAL_API_TOKEN` is unset, signature verification is skipped
+when `INTERNAL_API_TOKEN` is unset, signature verification is skipped
 but envelope *presence* is still required for authenticated requests.
 
 ### 2b-bis. Ingest-only turns: how a message reaches the graph WITHOUT a turn
@@ -332,9 +332,9 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   it when the turn ends, a dead owner's expires on its TTL, and a turn that
   cannot get it in time is refused, never run beside the stale one. With the
   bus down the claim fails open to the local registry, and so does the marker
-  while `GRID_CHAT_AFFINITY` is on; with it off the question is refused.
+  while `CHAT_AFFINITY` is on; with it off the question is refused.
 - **The owner fences itself** (`aiq_api/turn_fence.py`, `aiq_agent/common/write_fence.py`;
-  only with `GRID_CHAT_AFFINITY` off). The marker's TTL can run out under a
+  only with `CHAT_AFFINITY` off). The marker's TTL can run out under a
   turn that is still running (a renewal task starved or late, Dragonfly
   unreachable from this replica), and a newer turn on another replica may then
   take it. So the turn keeps a deadline of its own: the start of its last
@@ -348,12 +348,12 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   it ends with a `cancelled` terminal. A tool's own side effects are stopped by
   that cancel, not by the fence.
 - **Every turn ends.** `run_turn`'s `finally` guarantees one terminal whatever
-  escaped; the turn has a deadline (`GRID_CHAT_TURN_DEADLINE_SECONDS`) on its
+  escaped; the turn has a deadline (`CHAT_TURN_DEADLINE_SECONDS`) on its
   own clock, which stops while it waits on a person; a Stop waits at most
   `workflow_stream.PRODUCER_TEARDOWN_SECONDS` for the workflow's teardown. The
   chat's NAT session manager runs with `max_concurrency=0`: NAT's semaphore
   queued a turn after `RUN_STARTED` behind turns waiting on HITL answers, and
-  ADR-0040's admission (`GRID_MAX_ACTIVE_TURNS`) is the gate that refuses at
+  ADR-0040's admission (`MAX_ACTIVE_TURNS`) is the gate that refuses at
   once instead.
 - **The bus fails fast and its loops are supervised.** Bus commands a turn
   waits on are bounded (`BUS_CALL_TIMEOUT_S`), and a failure marks the bus down
@@ -715,7 +715,7 @@ this.
 request's header-based scope (or the base + session collection fallback when
 no scope header is present). Identity is `(collection, file_name)` — the same
 filename on the Büroablage and in a project is two documents (ADR-0047). The
-cap (`GRID_AVAILABLE_DOCUMENTS_MAX`) keeps user-shelf files (archiv / project
+cap (`AVAILABLE_DOCUMENTS_MAX`) keeps user-shelf files (archiv / project
 / session) first so the OIB corpus cannot evict them; a previous
 sort-then-slice let ~40 OIB filenames eat the window and made "welche Dateien
 hast du in der Büroablage" answer from Basiswissen. The prompt block is grouped
@@ -847,32 +847,32 @@ document summary:
    XObjects), gated on `extract_images`/`extract_charts` (both on by default).
    Returns raw image bytes — **no VLM call yet**. Pages rendered whole in step 4
    are skipped, so each page is analysed once, and at most
-   `GRID_MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
+   `MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
    counted on the file's job status as `images_over_cap`. A single raster over
-   `GRID_MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
+   `MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
    decoded — pypdfium2 cannot downscale an embedded image on decode, so a
    20000x20000 px raster would be a ~1.6 GiB transient allocation — and counted
    as `images_over_pixel_budget`, with its page, index and pixel size logged. Identical rasters (a logo re-embedded on every
    page, a reused plan) are content-hash deduped (SHA-256 of the re-encoded
    JPEG) so each unique image is captioned and indexed exactly once.
 4. **Rendered visual/vector pages** — `processing.render_visual_pages_no_vlm`,
-   gated on `GRID_RENDER_VISUAL_PAGES` (default on) **and** a resolvable VLM key.
+   gated on `RENDER_VISUAL_PAGES` (default on) **and** a resolvable VLM key.
    This is the track that captures **vector CAD/architectural drawings** (plans,
    sections, elevations, perspectives): they are thousands of vector *path*
    objects with almost no text and **no embedded raster image**, so tracks 1
    and 3 both miss them entirely. The whole page is composited into one bitmap
-   (`page.render`, scaled so the long edge ≈ `GRID_PAGE_RENDER_MAX_DIM` px,
+   (`page.render`, scaled so the long edge ≈ `PAGE_RENDER_MAX_DIM` px,
    default 2048) — **no VLM call yet**. A page is routed here only when the
    page triage (`page_triage.classify_page`) calls it a drawing: its
-   watermark-stripped text is below `GRID_VISUAL_PAGE_MIN_TEXT_CHARS` (200)
-   **and** it has ≥ `GRID_VISUAL_PAGE_MIN_PATHS` (300) vector paths — so ordinary
+   watermark-stripped text is below `VISUAL_PAGE_MIN_TEXT_CHARS` (200)
+   **and** it has ≥ `VISUAL_PAGE_MIN_PATHS` (300) vector paths — so ordinary
    text PDFs (the bulk OIB corpus) skip rendering at near-zero cost — and at
-   most `GRID_MAX_RENDERED_PAGES` (20) pages are rendered per document, the rest
+   most `MAX_RENDERED_PAGES` (20) pages are rendered per document, the rest
    counted as `drawing_pages_over_cap`. Scanned pages (text-low, a raster over
    half the page) and garbled text layers (`(cid:n)`, mojibake) are not
    drawings: before track 1 builds its Documents they are rendered and
    transcribed by the same vision endpoint (`transcription.route_pdf_pages`,
-   capped by `GRID_MAX_OCR_PAGES`), and the transcription is indexed as the
+   capped by `MAX_OCR_PAGES`), and the transcription is indexed as the
    page's text. See [`visual-ingestion.md`](visual-ingestion.md#scans-and-garbled-text-layers). The
    renderer receives track 1's already watermark-stripped page texts
    (`page_texts=…`), so the PDF's text layer is read once per library and the
@@ -883,7 +883,7 @@ document summary:
 
 All image bytes (from track 3) and rendered page bitmaps (from track 4) are
 passed to `processing.enrich_vlm_batch`, which runs every VLM caption call in a
-single `ThreadPoolExecutor` (`GRID_VLM_BATCH_WORKERS`, default 4) per file, with
+single `ThreadPoolExecutor` (`VLM_BATCH_WORKERS`, default 4) per file, with
 **content-hash caching** via the shared Dragonfly/Redis store (ADR-0020). The
 cache key is `vlm:caption:{model}:{prompt_type}:{sha256(image_bytes)}` with a
 30-day TTL — the model is part of the identity, so a model switch (deployment-
@@ -893,7 +893,7 @@ re-captions its new/modified pages. **Failure placeholders are never cached** �
 a failed analysis (`processing.is_failed_caption`) is returned to the caller but
 not stored, so the re-ingest that recovers the file actually reaches the VLM
 again instead of replaying a transient provider error for the 30-day TTL. Both VLM call sites construct their OpenAI
-client with an explicit timeout (`GRID_VLM_TIMEOUT_SECONDS`, default 180s) and a
+client with an explicit timeout (`VLM_TIMEOUT_SECONDS`, default 180s) and a
 single retry — previously SDK defaults (≈600s × 2 retries) let one hung
 provider park an ingest worker for ~20 minutes. A response clipped at
 `max_tokens` (`finish_reason == "length"`) is retried **once** with a doubled
@@ -995,7 +995,7 @@ admins select the model in the model-config picker (`ingest_vlm` group, gated to
 vision-capable models); see `docs/architecture/org-model-configuration.md`.
 
 **Embedding throughput.** Chunks are embedded by `NVIDIAEmbedding` in batches of
-`GRID_EMBED_BATCH_SIZE` (default 64) per HTTP call instead of the llama-index
+`EMBED_BATCH_SIZE` (default 64) per HTTP call instead of the llama-index
 default of 10 — a 500-chunk document went from ~50 serialized embedding
 round-trips on the ingest worker to ~8. The knob applies to both the ingestor
 and the retriever's embedding client. (Embedding calls remain synchronous on
@@ -1218,7 +1218,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    a citation the UI peeks the cited project/Büro file itself
    (`useCitationPeek`) so the two tools are not a pair.
 
-2. **Hybrid lexical + vector retrieval (RRF)** — gated on `GRID_HYBRID_RETRIEVAL`
+2. **Hybrid lexical + vector retrieval (RRF)** — gated on `HYBRID_RETRIEVAL`
    (default on, config key `hybrid_search` in the knowledge layer YAML block).
    When enabled, `LlamaIndexRetriever` adds lexical channels to the dense one
    in the same Qdrant query: German BM25 over the chunk text, and per selective
@@ -1231,13 +1231,13 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    model did not weight) without an embedding re-index.
 
 3. **Reranker** — a cross-encoder first, the LLM judge as its fallback.
-   `reranker_provider` (config field, env default `GRID_RERANKER_PROVIDER`; the
+   `reranker_provider` (config field, env default `RERANKER_PROVIDER`; the
    reference config sets `openrouter`, model `cohere/rerank-v3.5`) names
    OpenRouter's reranking endpoint (`knowledge_layer/cross_encoder.py`; a
    self-hosted reranker speaking the same shape fits through
-   `GRID_RERANKER_BASE_URL`) that scores each
+   `RERANKER_BASE_URL`) that scores each
    (query, passage) pair over the full chunk in ~100ms, bounded by
-   `GRID_RERANKER_TIMEOUT_SECONDS` (10s). A key that does not resolve, or any
+   `RERANKER_TIMEOUT_SECONDS` (10s). A key that does not resolve, or any
    provider error, falls back to the judge: `rerank_llm` (an LLM alias from the
    config's `llms:` block; the reference config gives it a dedicated
    `rerank_llm` entry) rescores the merged+filtered pool once
@@ -1303,7 +1303,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    *cited* ones per turn and emits an info-severity event when retrieval
    surfaced documents the answer did not use (`retrieved` / `cited` / `uncited`
    counts + the first 10 uncited labels). This closes the retrieval-quality loop
-   on the existing `GRID_CITATION_EVENTS_ENABLED` dashboard surface (frontend:
+   on the existing `CITATION_EVENTS_ENABLED` dashboard surface (frontend:
    `CITATION_PRECISION_KIND` in `lib/db/schema/citation-events.ts`; the defect
    queries and glossary in `lib/citations/{service,repository}.ts` exclude the
    new kind so "precision" is shown as its own diagnostic, not a citation
@@ -1311,10 +1311,10 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
 
 5. **Multimodal answer-time page/image viewing** — the NAT tool `look`
    (`tools/look/`, ADR-0128; renderer `knowledge_layer/view_image.py`, gated on
-   `GRID_VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
+   `VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
    knowledge image to the VLM **as an image block during a research turn** —
    not just at ingestion. Three source shapes: **PDF pages** are re-rendered on
-   demand with pypdfium2 (long edge `GRID_PAGE_RENDER_MAX_DIM`, default 2048) —
+   demand with pypdfium2 (long edge `PAGE_RENDER_MAX_DIM`, default 2048) —
    base-corpus PDFs from this replica's cache of the corpus, which
    `corpus_store.ensure_local` fills from SeaweedFS on demand (the
    `oib_corpus_files` table says what a base-corpus file is), project/Archiv
@@ -1392,7 +1392,7 @@ Country expansion touches data, not architecture: a new
 Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
 
 - **Data** — `configs/norms/<country>/registry.yml` (env override
-  `GRID_NORMS_DIR`; `at` ships 24 entries): per entry `id`, `title`, `short`,
+  `NORMS_DIR`; `at` ships 24 entries): per entry `id`, `title`, `short`,
   `rank` (bundesgesetz | landesgesetz | verordnung — RIS-backed law lanes —
   plus behoerdliche_info for non-RIS practice guidance with a plain
   `source_url`, e.g. the MA-37 Merkblätter, and norm_extern for
@@ -1786,7 +1786,7 @@ the point the re-injection would otherwise be skipped.
 
 **Durable checkpointing (backlog T3-8, 2026-07-16, `5bea711`)**: optional
 LangGraph checkpointing for the deep-research graph, configured via
-`deep_research_agent.checkpoint_db` (env `GRID_DEEP_CHECKPOINT_DB`; unset by
+`deep_research_agent.checkpoint_db` (env `DEEP_CHECKPOINT_DB`; unset by
 default) — see §9's "Async deep-research jobs are not restart-safe" bullet
 for the full mechanism and its manual-resubmit resume contract. A run's rows
 (`thread_id == job_id`) are purged when it ends, by the runner's `finally`
@@ -1951,7 +1951,7 @@ The agent can now persist curated findings across turns. Full design:
   The backend `remember` tool never touches the DB — it POSTs to the internal
   BFF endpoint `POST /api/internal/memory`
   (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the
-  shared service token `GRID_INTERNAL_API_TOKEN` (`x-grid-internal-token`
+  shared service token `INTERNAL_API_TOKEN` (`x-grid-internal-token`
   header; the route fails closed with 503 when the token is unconfigured).
   Backend client: `src/aiq_agent/knowledge/project_memory.py`, over
   `src/aiq_agent/common/bff_http.py`, the one client every agent-side call to
@@ -2020,7 +2020,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   next LLM call once exhausted (sync path returns a friendly chat response);
   the BFF refuses the WS upgrade outright when already over. A separate,
   per-run **completion-token** ceiling (backlog T4-4, 2026-07-16) —
-  `GRID_MAX_RUN_COMPLETION_TOKENS`, default `0` = disabled — bounds one job's
+  `MAX_RUN_COMPLETION_TOKENS`, default `0` = disabled — bounds one job's
   total output tokens across every LLM call including concurrent researcher
   workers (`BudgetGuardCallback`, `src/aiq_agent/common/budget_guard.py`),
   independent of the USD budget ledger.
@@ -2063,7 +2063,7 @@ The set per run = builtin (`src/aiq_agent/skills/builtin/`, discovered
 deterministically, validated strictly) + org rows from the BFF internal
 `GET /api/internal/skills/resolve` (org shadows builtin by name), resolved
 fail-open and cached in the shared cache
-(`GRID_SKILLS_CACHE_TTL_SECONDS`, default 60). `shallow_research_agent`
+(`SKILLS_CACHE_TTL_SECONDS`, default 60). `shallow_research_agent`
 config gate: `skills_enabled` (default true) + `skill_allowlist` (empty =
 all). The catalog and the skill `read_file` are there on every turn; whether a
 greeting reads a skill is the model's call (ADR-0052). Piloti renders the
@@ -2228,7 +2228,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   an optional `checkpointer` (per-thread execution state, an independent axis
   from `store`) passed through to `create_deep_agent`. When
   `deep_research_agent.checkpoint_db` is configured (env
-  `GRID_DEEP_CHECKPOINT_DB`; unset by default, opt-in since jobs run in
+  `DEEP_CHECKPOINT_DB`; unset by default, opt-in since jobs run in
   ephemeral research worker processes — the reference config sets it to
   `./deep_research_checkpoints.db`), `DeepResearcherAgent.run()` wires
   `configurable.thread_id = job_id` and `durability="async"` (LangGraph's

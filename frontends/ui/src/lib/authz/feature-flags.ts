@@ -14,7 +14,7 @@
  * A flag is ON for a session exactly when WorkOS says so. Anything short of a
  * yes is a no: a token minted before the claim existed, a slug missing from
  * WorkOS, a failed lookup, a caller with no organization. There used to be
- * four semantics here — fail-open while `GRID_ENFORCE_FEATURE_FLAGS` was off,
+ * four semantics here — fail-open while `ENFORCE_FEATURE_FLAGS` was off,
  * an env opt-in that defaulted off, an env opt-out that defaulted on, and
  * fail-closed under enforcement — chosen per flag, and production ran the last
  * one while every other environment rehearsed one of the first three. Both
@@ -250,9 +250,9 @@ export const FEATURE_FLAGS = {
   platformAgentMcp: 'platform-agent-mcp',
   /**
    * Agents consult Piloti (ADR-0124): an agent acting for a person asks Piloti
-   * a question (`piloti-ask-create` on the agent door, `SendMessage` on the
+   * a question (`agent-ask-create` on the agent door, `SendMessage` on the
    * A2A door) and Piloti answers in a turn run as that person, on their
-   * budget. Read from the person's session on `POST /api/piloti-asks`.
+   * budget. Read from the person's session on `POST /api/agent-asks`.
    *
    * An entitlement, off until an operator targets the organization: every ask
    * is a model turn nobody typed, paid from the organization's budget. With it

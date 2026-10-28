@@ -39,7 +39,7 @@ class _Client:
 @pytest.fixture(autouse=True)
 def _configured(monkeypatch):
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "a-real-secret-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "a-real-secret-token")
     _Client.calls = []
     _Client.status_code = 200
 
@@ -70,7 +70,7 @@ async def test_a_run_the_bff_does_not_know_is_not_an_error() -> None:
 async def test_skips_without_a_tenant_or_a_token(monkeypatch) -> None:
     with mock.patch("aiq_api.jobs.outcome_notify.httpx.AsyncClient", _Client):
         assert await notify_job_outcome(job_id="job-3", usage_context={}, status="success") is False
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+        monkeypatch.delenv("INTERNAL_API_TOKEN")
         assert await notify_job_outcome(job_id="job-3", usage_context=USAGE, status="success") is False
     assert _Client.calls == []
 

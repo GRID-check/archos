@@ -459,7 +459,7 @@ export async function readableFolderIdsFor(
  * Each is the session's clearance there ({@link clearanceOf}: for a session
  * that does not see everything, a tenancy probe, and for a closed project a
  * WorkOS FGA check too) and one transaction for its tree, so this many hold at
- * most this many pool connections (of `GRID_DB_POOL_MAX`, 10 by default). The
+ * most this many pool connections (of `DB_POOL_MAX`, 10 by default). The
  * round trips are as many as one at a time made; a long list waits about a
  * quarter as long for them, and every other request keeps most of the pool.
  */

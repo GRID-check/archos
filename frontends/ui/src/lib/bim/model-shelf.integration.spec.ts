@@ -21,7 +21,7 @@
  * against the real migration chain, through the restricted runtime role, like
  * the rest of the BIM SQL suite (ADR-0041, `task db:test:rls`).
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/bim/model-shelf.integration.spec.ts
  */
 
@@ -31,15 +31,15 @@ import { REVIEWER_READER } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_shelf_${Date.now()}`
 
 describe('the model-shelf suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
+    if (!process.env.RLS_SUITE_REQUIRED) return
     expect(
       url,
-      'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set, so the ' +
+      'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set, so the ' +
         'model-shelf suite skipped and nothing verified the SQL. Check `task db:test:rls`.'
     ).toBeTruthy()
   })
@@ -60,7 +60,7 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
   let OTHER_PROJECT: string
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const { getDb, closeDb: close } = await import('@/lib/db')
     const { withPlatformAccess } = await import('@/lib/db/tenant-context')
     const repository = await import('./repository')

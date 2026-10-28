@@ -1,6 +1,6 @@
 """The role this web process plays: ``chat`` or ``api`` (ADR-0082 step B).
 
-One image, one process type per job. ``GRID_ROLE`` is the whole switch and has
+One image, one process type per job. ``PROCESS_ROLE`` is the whole switch and has
 no default: a process that cannot say what it is must not guess, because a
 guess mounts a route set that no Deployment's Service, probe or scaler was
 written for. The same variable names the two worker tiers
@@ -20,7 +20,7 @@ from enum import StrEnum
 
 
 class WebRole(StrEnum):
-    """What a web process serves. The values are what ``GRID_ROLE`` holds."""
+    """What a web process serves. The values are what ``PROCESS_ROLE`` holds."""
 
     #: The chat socket and the answers running on it; scales on active turns (ADR-0080).
     CHAT = "chat"
@@ -28,10 +28,10 @@ class WebRole(StrEnum):
     API = "api"
 
 
-ROLE_ENV = "GRID_ROLE"
+ROLE_ENV = "PROCESS_ROLE"
 
 
-# @environment_variable GRID_ROLE
+# @environment_variable PROCESS_ROLE
 # @category Deployment
 # @type string
 # @default none
@@ -41,7 +41,7 @@ ROLE_ENV = "GRID_ROLE"
 # (ingestion). Unset or anything else stops the process at start. `web` no
 # longer exists.
 def web_role(env: Mapping[str, str] | None = None) -> WebRole:
-    """The web role ``GRID_ROLE`` names; raises ``ValueError`` when it is unset or not one."""
+    """The web role ``PROCESS_ROLE`` names; raises ``ValueError`` when it is unset or not one."""
     raw = (os.environ if env is None else env).get(ROLE_ENV, "").strip().lower()
     try:
         return WebRole(raw)

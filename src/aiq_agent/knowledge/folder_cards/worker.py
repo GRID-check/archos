@@ -56,7 +56,7 @@ from aiq_agent.knowledge.folder_cards.inputs import input_hash
 
 logger = logging.getLogger(__name__)
 
-MONTHLY_TOKENS_ENV = "GRID_FOLDER_CARDS_MONTHLY_TOKENS"
+MONTHLY_TOKENS_ENV = "FOLDER_CARDS_MONTHLY_TOKENS"
 #: About 400 folder builds of 5k tokens a month, a few dollars on a mid-tier summary model.
 DEFAULT_MONTHLY_TOKENS = 2_000_000
 CLAIM_LIMIT = 20

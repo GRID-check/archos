@@ -112,7 +112,7 @@ class TestLoadTurnContext:
     async def test_a_failed_digest_fetch_keeps_the_header_digest_and_still_captures_the_stage_facts(self, stubs):
         """The old code wrapped the digest AND the stage facts in one try:
         one failure dropped both. The facts are the stages' only input."""
-        stubs["digest"] = RuntimeError("GRID_INTERNAL_API_TOKEN is not configured")
+        stubs["digest"] = RuntimeError("INTERNAL_API_TOKEN is not configured")
         request = _request(project_id="p1", organization_id="org", project_memory="FROZEN", federal_state="vienna")
 
         context = await load_turn_context(request, conversation_id="c1", query_text="q", resolve_stages=True)

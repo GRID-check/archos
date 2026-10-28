@@ -125,7 +125,7 @@ const turnRequest = (): HeadlessTurnRequest => vi.mocked(runHeadlessTurn).mock.c
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   process.env.REQUIRE_AUTH = 'true'
   row = askRow()
   vi.mocked(insertAsk).mockImplementation(async (values) => {
@@ -161,7 +161,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  delete process.env.GRID_INTERNAL_API_TOKEN
+  delete process.env.INTERNAL_API_TOKEN
   delete process.env.REQUIRE_AUTH
 })
 
@@ -281,7 +281,7 @@ describe('askPiloti', () => {
   it('names the busy thread and the way out in the reason the agent reads', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
     const view = await askPiloti(SESSION, { question: 'Und danach?', waitSeconds: 0 })
-    expect(view.reason).toMatch(/never interrupts a running turn.*piloti-ask-get.*conversationId/)
+    expect(view.reason).toMatch(/never interrupts a running turn.*agent-ask-get.*conversationId/)
   })
 
   it('leaves the turn’s start to the chat path’s own time bound', async () => {
@@ -523,9 +523,9 @@ describe('getAsk and cancelAsk', () => {
     expect(endAsk).not.toHaveBeenCalled()
   })
 
-  it('reads the longest an ask stays open from GRID_PILOTI_ASK_MAX_SECONDS', () => {
-    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: '600' })).toBe(600)
-    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: 'x' })).toBe(DEFAULT_ASK_MAX_SECONDS)
+  it('reads the longest an ask stays open from AGENT_ASK_MAX_SECONDS', () => {
+    expect(askMaxSeconds({ AGENT_ASK_MAX_SECONDS: '600' })).toBe(600)
+    expect(askMaxSeconds({ AGENT_ASK_MAX_SECONDS: 'x' })).toBe(DEFAULT_ASK_MAX_SECONDS)
     expect(askMaxSeconds({})).toBe(DEFAULT_ASK_MAX_SECONDS)
   })
 })

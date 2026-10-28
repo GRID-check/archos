@@ -114,7 +114,7 @@ class TestTheMessageAnAgentSeesWhenAQueryIsRefused:
 class TestWhichErrorTheCallerGets:
     @pytest.fixture(autouse=True)
     def _token(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
 
     def _raise(self, monkeypatch, error: Exception) -> None:
         def opener(_request, timeout=None):  # noqa: ANN001, ARG001
@@ -138,6 +138,6 @@ class TestWhichErrorTheCallerGets:
             run_bim_query(organization_id="org", project_id="p", query={"op": "overview"})
 
     def test_a_missing_service_token_never_reaches_the_network(self, monkeypatch):
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         with pytest.raises(BimQueryUnavailableError):
             run_bim_query(organization_id="org", project_id="p", query={"op": "overview"})

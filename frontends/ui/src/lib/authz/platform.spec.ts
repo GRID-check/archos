@@ -81,7 +81,7 @@ describe('platform tier', () => {
     vi.clearAllMocks()
     _clearPlatformCaches()
     setCacheStore(new TestStore())
-    delete process.env.GRID_PLATFORM_OWNER_EMAILS
+    delete process.env.PLATFORM_OWNER_EMAILS
     getOrganizationByExternalId.mockResolvedValue({ id: PLATFORM_ORG })
     listOrganizationMemberships.mockResolvedValue({ data: [] })
     // What WorkOS says the two platform-org roles hold, as the catalog provisions them.
@@ -253,7 +253,7 @@ describe('platform tier', () => {
 
   describe('break-glass', () => {
     it('works without any provisioning, and grants every platform permission', async () => {
-      process.env.GRID_PLATFORM_OWNER_EMAILS = 'owner@grid.com, second@grid.com'
+      process.env.PLATFORM_OWNER_EMAILS = 'owner@grid.com, second@grid.com'
       getOrganizationByExternalId.mockRejectedValue(new Error('not found'))
       expect(await isPlatformStaff(session({ email: 'Owner@grid.com' }))).toBe(true)
       // Total by design: it exists to recover an unprovisioned environment, and
@@ -268,7 +268,7 @@ describe('platform tier', () => {
     })
 
     it('is audited (throttled) into the platform org when it exists', async () => {
-      process.env.GRID_PLATFORM_OWNER_EMAILS = 'owner@grid.com'
+      process.env.PLATFORM_OWNER_EMAILS = 'owner@grid.com'
       expect(await isPlatformStaff(session({ email: 'owner@grid.com' }))).toBe(true)
       expect(await isPlatformStaff(session({ email: 'owner@grid.com' }))).toBe(true)
       expect(recordAuditEvent).toHaveBeenCalledTimes(1) // throttled per actor
@@ -281,7 +281,7 @@ describe('platform tier', () => {
     })
 
     it('still grants (log-only) when the platform org is missing', async () => {
-      process.env.GRID_PLATFORM_OWNER_EMAILS = 'owner@grid.com'
+      process.env.PLATFORM_OWNER_EMAILS = 'owner@grid.com'
       getOrganizationByExternalId.mockRejectedValue(new Error('not found'))
       expect(await isPlatformStaff(session({ email: 'owner@grid.com' }))).toBe(true)
       expect(recordAuditEvent).not.toHaveBeenCalled()

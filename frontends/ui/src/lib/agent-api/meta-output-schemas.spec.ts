@@ -97,7 +97,7 @@ describe('output schemas of the meta-tools', () => {
       expect(result?.isError).toBeFalsy()
       expect(result?.structuredContent).toMatchObject({ name, sensitivity: null })
     }
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     const { result } = await call('report-missing-operation', { description: 'Plot a drawing.' })
     expect(result?.structuredContent).toEqual({ status: 'recorded' })
   })

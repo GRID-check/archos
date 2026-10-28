@@ -24,7 +24,7 @@ from aiq_agent.turn.context_client import TurnContextError
 @pytest.fixture
 def request_context(monkeypatch) -> GridRequestContext:
     token = "test-context-token"  # noqa: S105 - local fixture only
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", token)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", token)
     raw = json.dumps(
         {
             "organizationId": "org_1",
@@ -187,7 +187,7 @@ def test_missing_field_is_not_a_successful_empty_context(request_context, opener
 
 
 def test_missing_token_fails_before_network(request_context, opener, monkeypatch):
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+    monkeypatch.delenv("INTERNAL_API_TOKEN")
     with pytest.raises(TurnContextError, match="not configured"):
         client.fetch_turn_context(request_context)
     opener.open.assert_not_called()

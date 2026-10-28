@@ -88,9 +88,9 @@ function senderReturning(outcomes: Record<string, PushSendOutcome>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', keys.publicKey)
-  vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', keys.privateKey)
-  vi.stubEnv('GRID_WEB_PUSH_SUBJECT', 'mailto:ops@example.org')
+  vi.stubEnv('WEB_PUSH_VAPID_PUBLIC_KEY', keys.publicKey)
+  vi.stubEnv('WEB_PUSH_VAPID_PRIVATE_KEY', keys.privateKey)
+  vi.stubEnv('WEB_PUSH_SUBJECT', 'mailto:ops@example.org')
   vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue({ userId: 'u1', organizationId: ORG } as AuthorizedSession)
   vi.mocked(findInboxItemForRecipient).mockResolvedValue(row())
   vi.mocked(findUserPreferences).mockResolvedValue(null)
@@ -161,9 +161,9 @@ describe('it decides again, at the moment it sends', () => {
   })
 
   it('does nothing in a deployment without keys', async () => {
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', '')
-    vi.stubEnv('GRID_WEB_PUSH_SUBJECT', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PUBLIC_KEY', '')
+    vi.stubEnv('WEB_PUSH_VAPID_PRIVATE_KEY', '')
+    vi.stubEnv('WEB_PUSH_SUBJECT', '')
     const { sender, send } = senderReturning({})
     expect(await runInboxPush(ORG, payload, first, sender)).toEqual({ sent: false, reason: 'off' })
     expect(send).not.toHaveBeenCalled()

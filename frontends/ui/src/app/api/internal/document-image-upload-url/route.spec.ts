@@ -30,7 +30,7 @@ const validBody = { documentId: DOC_ID, collection: 'proj_1', imageIndex: 3 }
 describe('POST /api/internal/document-image-upload-url', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
   })
 
@@ -41,7 +41,7 @@ describe('POST /api/internal/document-image-upload-url', () => {
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await POST(request(validBody))).status).toBe(503)
   })
 

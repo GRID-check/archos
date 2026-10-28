@@ -90,7 +90,7 @@ describe('captureServer', () => {
 
   test('every event carries the deployed commit and the service as super properties', () => {
     enable()
-    vi.stubEnv('GRID_GIT_SHA', 'abc1234')
+    vi.stubEnv('GIT_SHA', 'abc1234')
     vi.stubEnv('OTEL_SERVICE_NAME', 'grid-scheduler')
     vi.stubEnv('WORKOS_REDIRECT_URI', '')
     vi.stubEnv('NEXT_PUBLIC_WORKOS_REDIRECT_URI', '')
@@ -104,7 +104,7 @@ describe('captureServer', () => {
 
   test('names the deployment by its app host, so staging and production stay apart', () => {
     enable()
-    vi.stubEnv('GRID_GIT_SHA', 'abc1234')
+    vi.stubEnv('GIT_SHA', 'abc1234')
     vi.stubEnv('OTEL_SERVICE_NAME', 'grid-ui')
     vi.stubEnv('WORKOS_REDIRECT_URI', 'https://app.dev.piloti.at/api/auth/callback')
 

@@ -52,9 +52,9 @@ const names = (source: string, pattern: RegExp): Set<string> =>
  * either never scales or claims nothing. Both sides are read here as source.
  */
 describe("the ingest-worker tier", () => {
-  it("emits only GRID_INGEST_ names the worker reads", () => {
-    const readByPython = names(pythonSources, /"(GRID_INGEST_[A-Z_]+)"/g);
-    const emitted = names(configSource, /name: "(GRID_INGEST_[A-Z_]+)"/g);
+  it("emits only INGEST_ names the worker reads", () => {
+    const readByPython = names(pythonSources, /"(INGEST_[A-Z_]+)"/g);
+    const emitted = names(configSource, /name: "(INGEST_[A-Z_]+)"/g);
     expect(emitted.size).toBeGreaterThan(1);
     expect([...emitted].filter((n) => !readByPython.has(n))).toEqual([]);
   });
@@ -101,7 +101,7 @@ describe("the ingest-worker tier", () => {
 
   it("runs the role the entrypoint knows", () => {
     expect(read("apps", "backend", "entrypoint.py")).toContain('role == "ingest-worker"');
-    expect(configSource).toContain('{ name: "GRID_ROLE", value: "ingest-worker" }');
+    expect(configSource).toContain('{ name: "PROCESS_ROLE", value: "ingest-worker" }');
   });
 
   it("states the raster pixel budget the Python module defaults to", async () => {
@@ -111,12 +111,12 @@ describe("the ingest-worker tier", () => {
     // tests' `cfg.providerLimits`.
     const cfg = await load();
     const python = read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py").match(
-      /MAX_IMAGE_PIXELS = env_int\("GRID_MAX_IMAGE_PIXELS", ([\d_]+)/,
+      /MAX_IMAGE_PIXELS = env_int\("MAX_IMAGE_PIXELS", ([\d_]+)/,
     )?.[1];
     expect(python).toBeDefined();
     expect(cfg.ingestWorker.maxImagePixels).toBe(Number(python!.replace(/_/g, "")));
     expect(configSource).toContain(
-      '{ name: "GRID_MAX_IMAGE_PIXELS", value: String(w.cfg.ingestWorker.maxImagePixels) }',
+      '{ name: "MAX_IMAGE_PIXELS", value: String(w.cfg.ingestWorker.maxImagePixels) }',
     );
   });
 });

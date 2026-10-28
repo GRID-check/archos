@@ -10,10 +10,10 @@
  *
  *   task fe:search:latency
  *
- * which is `GRID_SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only <this file>`.
- * Optional: GRID_SEARCH_LATENCY_RUNS (default 40), GRID_SEARCH_LATENCY_SCALE
- * (1 = 20,000 documents in the measured office), GRID_SEARCH_LATENCY_KEEP=1 to
- * leave the seed for EXPLAIN, GRID_TEST_OWNER_DATABASE_URL to ANALYZE after the
+ * which is `SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only <this file>`.
+ * Optional: SEARCH_LATENCY_RUNS (default 40), SEARCH_LATENCY_SCALE
+ * (1 = 20,000 documents in the measured office), SEARCH_LATENCY_KEEP=1 to
+ * leave the seed for EXPLAIN, TEST_OWNER_DATABASE_URL to ANALYZE after the
  * seed (the runtime role may not; without it the planner waits for autovacuum).
  *
  * The office: three organizations; the measured one has 120 projects, 20,000
@@ -33,10 +33,10 @@ import type { ReachedProject, SearchReach } from './reach'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
-const enabled = Boolean(url) && process.env.GRID_SEARCH_LATENCY === '1'
-const RUNS = Number(process.env.GRID_SEARCH_LATENCY_RUNS ?? 40)
-const SCALE = Number(process.env.GRID_SEARCH_LATENCY_SCALE ?? 1)
+const url = process.env.TEST_DATABASE_URL
+const enabled = Boolean(url) && process.env.SEARCH_LATENCY === '1'
+const RUNS = Number(process.env.SEARCH_LATENCY_RUNS ?? 40)
+const SCALE = Number(process.env.SEARCH_LATENCY_SCALE ?? 1)
 const STAMP = Date.now()
 const ORGS = [
   { id: `org_latency_${STAMP}`, projects: 120, documents: Math.round(20_000 * SCALE) },
@@ -226,7 +226,7 @@ describe.skipIf(!enabled)('search latency over a seeded office', () => {
   const results: Array<{ name: string; p50: number; p95: number; max: number; rows: number }> = []
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     repo = await import('./document-repository')
@@ -312,7 +312,7 @@ describe.skipIf(!enabled)('search latency over a seeded office', () => {
         }
       }
     }
-    const owner = process.env.GRID_TEST_OWNER_DATABASE_URL
+    const owner = process.env.TEST_OWNER_DATABASE_URL
     if (owner) {
       const client = postgres(owner, { max: 1, onnotice: () => {} })
       await client`ANALYZE documents, document_search_facets, projects, project_folders`
@@ -323,7 +323,7 @@ describe.skipIf(!enabled)('search latency over a seeded office', () => {
 
   afterAll(async () => {
     if (!db) return
-    if (process.env.GRID_SEARCH_LATENCY_KEEP !== '1') {
+    if (process.env.SEARCH_LATENCY_KEEP !== '1') {
       const { withPlatformAccess } = await import('@/lib/db/tenant-context')
       await withPlatformAccess('test teardown', async () => {
         for (const org of ORGS) {
@@ -423,8 +423,8 @@ describe.skipIf(!enabled)('search latency over a seeded office', () => {
 
   it('office-wide completions, one keystroke each', async () => {
     const { suggestValues } = await import('./suggest-repository')
-    // GRID_SUGGEST_EXPLAIN=1 prints the plan of a party completion: how the `raw` fence was found (suggest-repository.ts).
-    if (process.env.GRID_SUGGEST_EXPLAIN === '1') {
+    // SUGGEST_EXPLAIN=1 prints the plan of a party completion: how the `raw` fence was found (suggest-repository.ts).
+    if (process.env.SUGGEST_EXPLAIN === '1') {
       const { suggestStatement } = await import('./suggest-repository')
       const { getDb } = await import('@/lib/db')
       const { withTenant } = await import('@/lib/db/tenant-context')

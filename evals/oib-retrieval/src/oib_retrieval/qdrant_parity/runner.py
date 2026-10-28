@@ -3,7 +3,7 @@
     .venv/bin/python -m oib_retrieval.qdrant_parity.runner --out /tmp/qdrant-parity
 
 Needs: the corpus in ``data/oib`` (operator-provided), a Qdrant 1.19 server
-(``--qdrant-url``, default ``$GRID_QDRANT_TEST_URL`` or ``http://localhost:6333``), and
+(``--qdrant-url``, default ``$QDRANT_TEST_URL`` or ``http://localhost:6333``), and
 for ``--embedder production`` (the default) an OpenRouter key.
 
 Chroma left the stack in one change (ADR-0115). Where a gate once compared against
@@ -644,7 +644,7 @@ def load_inputs(embedder_name: str, cache_dir: Path) -> Inputs:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--embedder", choices=("production", "hashed"), default="production")
-    parser.add_argument("--qdrant-url", default=os.environ.get("GRID_QDRANT_TEST_URL") or "http://localhost:6333")
+    parser.add_argument("--qdrant-url", default=os.environ.get("QDRANT_TEST_URL") or "http://localhost:6333")
     parser.add_argument("--rounds", type=int, default=5, help="timed passes over every question (G2)")
     parser.add_argument("--out", type=Path, default=corpus.package_root() / "results" / "qdrant_parity")
     parser.add_argument("--no-dimension", action="store_true", help="skip G6")

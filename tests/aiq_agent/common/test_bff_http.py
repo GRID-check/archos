@@ -85,7 +85,7 @@ class _Server:
 def bff(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Server]:
     server = _Server()
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", server.url)
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     yield server
     server.close()
 
@@ -115,10 +115,10 @@ class TestTheCredential:
     @pytest.mark.parametrize("token", [None, ""])
     def test_no_token_sends_nothing(self, bff: _Server, monkeypatch: pytest.MonkeyPatch, token: str | None) -> None:
         if token is None:
-            monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+            monkeypatch.delenv("INTERNAL_API_TOKEN")
         else:
-            monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", token)
-        with pytest.raises(bff_http.BffNotConfiguredError, match="GRID_INTERNAL_API_TOKEN is not configured"):
+            monkeypatch.setenv("INTERNAL_API_TOKEN", token)
+        with pytest.raises(bff_http.BffNotConfiguredError, match="INTERNAL_API_TOKEN is not configured"):
             bff_http.get_json("/api/internal/x", timeout=2)
         assert bff.requests == []
 
@@ -182,7 +182,7 @@ class TestWhatItRefuses:
         secret.parent.mkdir(parents=True)
         secret.write_text('{"secret": true}')
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", f"file://{tmp_path}")
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
         with pytest.raises(bff_http.BffUnreachableError):
             bff_http.get_json("/api/internal/x", timeout=2)
 
@@ -215,7 +215,7 @@ class TestWhatItRefuses:
         url = server.url
         server.close()
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", url)
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
         with pytest.raises(bff_http.BffUnreachableError):
             bff_http.get_json("/api/internal/x", timeout=2)
 
@@ -289,6 +289,6 @@ class TestTheLedgersGoThroughTheSeam:
         route: str,  # noqa: ARG002
         payload: dict,
     ) -> None:
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+        monkeypatch.delenv("INTERNAL_API_TOKEN")
         post(payload)
         assert bff.requests == []

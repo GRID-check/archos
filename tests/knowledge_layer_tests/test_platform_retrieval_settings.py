@@ -37,7 +37,7 @@ def harness(monkeypatch):
     )
     monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
     monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     # The resolver's TTL cache is process-global; start every case cold so an
     # entry from another module cannot decide this test's counts.
     reset_retrieval_settings_cache()

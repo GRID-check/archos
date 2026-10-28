@@ -81,12 +81,12 @@ PSQL="$PGBIN/psql -h $WORKDIR -p $PORT -U postgres"
 # `--exec <command…>`: the same throwaway cluster, without the migration chain or
 # the suites below, for the Python suites whose Postgres branch would otherwise
 # skip (`task be:test:postgres`). They create and drop their own tables, so they
-# get an empty scratch database as the superuser, in GRID_TEST_POSTGRES_URL.
+# get an empty scratch database as the superuser, in TEST_POSTGRES_URL.
 if [ "${1:-}" = "--exec" ]; then
   shift
   $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE aiq_queues;"
   echo "==> running: $*"
-  GRID_TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
+  TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
   exit 0
 fi
 
@@ -147,8 +147,8 @@ if [ "${1:-}" = "--only" ]; then
   shift
   rename_rls_roles
   echo "==> running $* as app_rw"
-  GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
-  GRID_TEST_OWNER_DATABASE_URL="postgres://app_owner@127.0.0.1:$PORT/grid_app" \
+  TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+  TEST_OWNER_DATABASE_URL="postgres://app_owner@127.0.0.1:$PORT/grid_app" \
     npx vitest run "$@"
   exit 0
 fi
@@ -163,7 +163,7 @@ fi
 echo "==> renaming the row-level-security roles as the deploy does, after the migrations"
 rename_rls_roles
 echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers and workspace search suites as app_rw"
-GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
     src/lib/bim/query.integration.spec.ts \
@@ -201,7 +201,7 @@ GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid
     src/lib/project-intake/repository.integration.spec.ts \
     src/lib/changes/repository.integration.spec.ts \
     src/lib/push/repository.integration.spec.ts \
-    src/lib/piloti-asks/repository.integration.spec.ts \
+    src/lib/agent-asks/repository.integration.spec.ts \
     src/lib/inbox/repository.integration.spec.ts \
     src/lib/project-experience/readable-files.integration.spec.ts \
     src/lib/projects/memory-evidence.integration.spec.ts \
@@ -232,7 +232,7 @@ $PSQL -d grid_app -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/nul
 # in parallel they claim each other's seeded jobs. One file at a time. The
 # scheduler's due-scan is the same shape over task_definitions, every tenant's.
 echo "==> running the job-queue and scheduler-claim suites one file at a time as app_rw"
-GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \
@@ -244,12 +244,12 @@ GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid
 # migrated to just before it, seeded with the old shapes, checked row by row,
 # then taken down. Those claims read nothing but frontends/ui/drizzle/ and this
 # script, and they are ~60% of this script's time. CI's Plan sets
-# GRID_RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
+# RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
 # .github/filters.yml); unset, as locally, they run.
 echo "==> the old role names again, for the migrations replayed below"
 restore_rls_role_names
 
-if [ "${GRID_RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
+if [ "${RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
   echo "==> per-migration backfill and down checks skipped: no migration and not this script changed"
   exit 0
 fi

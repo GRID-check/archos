@@ -62,7 +62,7 @@ def test_a_failure_is_not_kept(monkeypatch):
 
 
 def test_the_environment_switch_is_gone(monkeypatch):
-    monkeypatch.setenv("GRID_FOLDER_CARDS", "on")
+    monkeypatch.setenv("FOLDER_CARDS", "on")
     monkeypatch.setattr(gate, "_fetch", lambda organization_id: False)
 
     assert gate.enabled_for("org_1") is False

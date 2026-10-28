@@ -81,7 +81,7 @@ describe('requireProjectAccess', () => {
     vi.clearAllMocks()
     store = new TestStore()
     setCacheStore(store)
-    delete process.env.GRID_AUTHZ_CACHE_TTL_MS
+    delete process.env.AUTHZ_CACHE_TTL_MS
     // Everything but manage → derived role project-editor.
     holds(...ALL_PROJECT.filter((slug) => slug !== 'project:manage'))
     findProjectTenancy.mockResolvedValue({ organizationId: 'org_1', deletedAt: null })
@@ -172,9 +172,9 @@ describe('requireProjectAccess', () => {
     })
   })
 
-  describe('cache disabled (GRID_AUTHZ_CACHE_TTL_MS=0)', () => {
+  describe('cache disabled (AUTHZ_CACHE_TTL_MS=0)', () => {
     beforeEach(() => {
-      process.env.GRID_AUTHZ_CACHE_TTL_MS = '0'
+      process.env.AUTHZ_CACHE_TTL_MS = '0'
     })
 
     it('never consults the cache and asks on every request', async () => {

@@ -91,7 +91,7 @@ def _payload(**overrides: Any) -> dict[str, Any]:
 
 @pytest.fixture
 def fake_function(monkeypatch: pytest.MonkeyPatch) -> _FakeFunction:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     monkeypatch.setenv("APP_ENV", "production")
     function = _FakeFunction()
     builder = _FakeBuilder({"knowledge_search": function, "write_file": _FakeFunction()})

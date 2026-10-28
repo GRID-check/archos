@@ -4,7 +4,7 @@
  * Piloti's workspace reads in a conversation, against a REAL Postgres through
  * the restricted runtime role (ADR-0093, ADR-0094, ADR-0122):
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/agent-api/read-gate.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -78,12 +78,12 @@ vi.mock('@/lib/documents/semantic-search', async (importOriginal) => ({
 vi.mock('@/lib/cross-project/decisions-repository', () => ({ searchProjectDecisions: vi.fn(async () => []) }))
 vi.mock('@/lib/permits/repository', () => ({ searchPermitRequirements: vi.fn(async () => []) }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe('the read-gate suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 
@@ -159,7 +159,7 @@ describe.skipIf(!url)('Piloti’s workspace reads against Postgres', () => {
     )
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     gate = await import('./read-gate')

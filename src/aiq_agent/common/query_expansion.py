@@ -53,7 +53,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 #: The admin-editable glossary, beside the norm registry it mirrors in shape.
-VOCABULARY_PATH = Path(os.environ.get("GRID_VOCABULARY_PATH", "configs/norms/at/vocabulary.yml"))
+VOCABULARY_PATH = Path(os.environ.get("VOCABULARY_PATH", "configs/norms/at/vocabulary.yml"))
 
 #: Function words that mark a query as English. Chosen to be absent from German:
 #: "die"/"was" would fire on both, "the"/"which" cannot.

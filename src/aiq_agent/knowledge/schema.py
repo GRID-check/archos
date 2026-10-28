@@ -396,13 +396,13 @@ class FileProgress(BaseModel):
         default_factory=dict,
         description=(
             "Extraction counts for this file that the chunk count does not show, e.g. "
-            "`images_over_cap`: embedded images left unanalysed by GRID_MAX_IMAGES_PER_DOCUMENT; "
+            "`images_over_cap`: embedded images left unanalysed by MAX_IMAGES_PER_DOCUMENT; "
             "`images_over_pixel_budget`: embedded images refused before decoding by "
-            "GRID_MAX_IMAGE_PIXELS; "
+            "MAX_IMAGE_PIXELS; "
             "`pages_transcribed`, `pages_transcription_failed`, `pages_over_ocr_cap`, "
             "`pages_not_transcribed_no_vlm`: scanned or garbled PDF pages and what became of them; "
-            "`drawing_pages_over_cap`: drawing pages past GRID_MAX_RENDERED_PAGES; "
-            "`pages_read_without_layout`: PDF pages over GRID_PDF_PAGE_MAX_OBJECTS, whose text was "
+            "`drawing_pages_over_cap`: drawing pages past MAX_RENDERED_PAGES; "
+            "`pages_read_without_layout`: PDF pages over PDF_PAGE_MAX_OBJECTS, whose text was "
             "read without tables or line styles."
         ),
     )

@@ -35,14 +35,14 @@ exercise decorative.
 
 USAGE
 -----
-`GRID_LOOP_EVAL_URL` is the backend's chat role (`GRID_ROLE=chat`, ADR-0082), the
+`LOOP_EVAL_URL` is the backend's chat role (`PROCESS_ROLE=chat`, ADR-0082), the
 one that serves the chat socket. Each question is one turn on its own
 conversation over that socket (wire v2, ADR-0068), as the UI asks it: a turn has
 no other way in. The backend runs without its BFF, so `REQUIRE_AUTH=false`.
 
-    GRID_LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out before.csv
+    LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out before.csv
     # …change the loop, redeploy…
-    GRID_LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out after.csv
+    LOOP_EVAL_URL=http://localhost:8001 python scripts/loop_eval.py --out after.csv
     python scripts/loop_eval.py --compare before.csv after.csv
 
 `task be:eval:loop` is the same thing with the paths defaulted.
@@ -71,7 +71,7 @@ DEFAULT_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval
 #: Environment variable naming the backend to measure. Deliberately its own name
 #: rather than reusing a deployment variable: pointing this at production by
 #: inheriting a URL from the environment is exactly the accident to avoid.
-BASE_URL_ENV = "GRID_LOOP_EVAL_URL"
+BASE_URL_ENV = "LOOP_EVAL_URL"
 
 #: How long one question may take. A research turn with two rounds and a
 #: reranker is tens of seconds; the deep-research escalation path is minutes and

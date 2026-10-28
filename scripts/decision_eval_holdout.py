@@ -22,7 +22,7 @@ they are not targets.
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); a few cents. Exit 0
+OPENROUTER_API_KEY (or DECISIONS_API_KEY); a few cents. Exit 0
 when every floor holds.
 
 THE LAST RUN

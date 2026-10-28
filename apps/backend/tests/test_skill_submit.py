@@ -86,7 +86,7 @@ def client(submit_mock):
 
 @pytest.fixture
 def prod_token(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", _TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", _TOKEN)
     monkeypatch.setenv("APP_ENV", "production")
 
 
@@ -109,14 +109,14 @@ def test_wrong_token_forbidden(client, prod_token):
 
 
 def test_dev_default_token_in_prod_disabled(client, monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
     monkeypatch.setenv("APP_ENV", "production")
     resp = _post(client, _valid_body(), token=_DEV_DEFAULT_TOKEN)
     assert resp.status_code == 503
 
 
 def test_unset_token_forbidden(client, monkeypatch):
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     resp = _post(client, _valid_body(), token="anything")
     assert resp.status_code == 403
 

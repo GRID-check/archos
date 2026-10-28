@@ -872,13 +872,13 @@ The authorization model above is now PERMISSION-driven. Full decision record:
   organizations — WorkOS itself enforces the exclusivity. Resolution
   (`lib/authz/platform.ts`): JWT claims when the platform org is active, a
   cached membership lookup cross-org, or the break-glass
-  `GRID_PLATFORM_OWNER_EMAILS` allowlist (bootstrap only). WorkOS cannot
+  `PLATFORM_OWNER_EMAILS` allowlist (bootstrap only). WorkOS cannot
   model a resource type above its Organization root (API-verified), which is
   why the tier is an organization, not an FGA type.
 - **Platform surface**: `/app/platform` + `GET /api/platform/overview`
   (cross-org directory + ledger spend), platform-org widget tokens via
   `/api/widgets/token?org=platform` (users-table scope only).
-- **Sign-up policy**: `GRID_DISABLE_SELF_SERVE_ORGS=true` turns the platform
+- **Sign-up policy**: `DISABLE_SELF_SERVE_ORGS=true` turns the platform
   invite-only at the org-creation layer; account-level sign-up control
   (allowSignUp, waitlist, domain auto-join) is native WorkOS configuration —
   see the provisioning runbook.

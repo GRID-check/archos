@@ -11,7 +11,7 @@
  * says, so the unit specs pin the statements and this suite runs the races.
  * It runs under `task db:test:rls`, through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/documents/document-versions.integration.spec.ts
  */
 
@@ -21,16 +21,16 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_versions_${Date.now()}`
 const USER = 'user_versions'
 
 describe('the document-versions suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
+    if (!process.env.RLS_SUITE_REQUIRED) return
     expect(
       url,
-      'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set, so the ' +
+      'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set, so the ' +
         'document-versions suite skipped and nothing raced the version table. ' +
         'Check `task db:test:rls`.',
     ).toBeTruthy()
@@ -99,7 +99,7 @@ describe.skipIf(!url)('document versions under concurrency', () => {
     )
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     db = (await import('@/lib/db')).getDb()

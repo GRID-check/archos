@@ -10,13 +10,13 @@ that accepted it, and ingestion scales apart from the web tiers.
 
 The queue is used when the ingestor can run a job elsewhere, a database is
 configured, every file is a deferred object-store download (a local path exists
-only on the replica that wrote it) and ``GRID_INGEST_QUEUE`` is not ``off``.
+only on the replica that wrote it) and ``INGEST_QUEUE`` is not ``off``.
 Otherwise, and whenever storing the job fails, the job runs in this process's
 own fair pool, which is what every job did before.
 
 The payload carries presigned URLs, bearer credentials to a tenant's objects,
 so it is encrypted like the research queue's (``payload_crypto``,
-``GRID_JOB_PAYLOAD_KEK``), and every URL passes the SSRF gates again when a
+``JOB_PAYLOAD_KEK``), and every URL passes the SSRF gates again when a
 worker reads it back.
 
 A claimed job is held until it is done, and given back, not lost, when its
@@ -24,8 +24,8 @@ worker cannot finish it:
 
 * A drain that runs out of time releases what the process still holds
   (``release_held``), costing the jobs no attempt.
-* A job past ``GRID_INGEST_MAX_JOB_SECONDS``, or silent for
-  ``GRID_INGEST_PROGRESS_TIMEOUT_SECONDS``, stops being heartbeat, so its claim
+* A job past ``INGEST_MAX_JOB_SECONDS``, or silent for
+  ``INGEST_PROGRESS_TIMEOUT_SECONDS``, stops being heartbeat, so its claim
   goes stale and another worker takes it (up to the attempt limit, then dead).
 * A person may stop one (:func:`cancel`). Its queue row goes ``cancelled``,
   which no worker claims again and no depth counts; a running worker's next
@@ -82,7 +82,7 @@ def _int_env(name: str, default: int) -> int:
     return lease_policy.int_env(name, default, floor=0)
 
 
-# @environment_variable GRID_INGEST_QUEUE
+# @environment_variable INGEST_QUEUE
 # @category Knowledge Layer
 # @type bool
 # @default on
@@ -91,26 +91,26 @@ def _int_env(name: str, default: int) -> int:
 # for any worker to claim. `off` runs every job in the accepting process, as
 # before the queue existed.
 def queue_enabled() -> bool:
-    return _flag("GRID_INGEST_QUEUE", True) and ingest_queue.db_url() is not None
+    return _flag("INGEST_QUEUE", True) and ingest_queue.db_url() is not None
 
 
 def _per_org_cap() -> int:
-    """``GRID_INGEST_MAX_PER_ORG`` (documented with ``per_org_cap_from_env``): the fleet-wide cap."""
+    """``INGEST_MAX_PER_ORG`` (documented with ``per_org_cap_from_env``): the fleet-wide cap."""
     return per_org_cap_from_env()
 
 
-# @environment_variable GRID_INGEST_CLAIM_STALE_SECONDS
+# @environment_variable INGEST_CLAIM_STALE_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 180
 # @required false
 # A claimed ingestion job whose worker has not beaten for this long is claimed
-# again, up to `GRID_INGEST_CLAIM_MAX_ATTEMPTS` times.
+# again, up to `INGEST_CLAIM_MAX_ATTEMPTS` times.
 def _stale_seconds() -> int:
-    return max(30, _int_env("GRID_INGEST_CLAIM_STALE_SECONDS", 180))
+    return max(30, _int_env("INGEST_CLAIM_STALE_SECONDS", 180))
 
 
-# @environment_variable GRID_INGEST_CLAIM_MAX_ATTEMPTS
+# @environment_variable INGEST_CLAIM_MAX_ATTEMPTS
 # @category Knowledge Layer
 # @type int
 # @default 3
@@ -118,23 +118,23 @@ def _stale_seconds() -> int:
 # Claims of one ingestion job before it is given up as interrupted: a file that
 # kills its worker every time must not take a worker down forever.
 def _max_attempts() -> int:
-    return max(1, _int_env("GRID_INGEST_CLAIM_MAX_ATTEMPTS", lease_policy.MAX_ATTEMPTS))
+    return max(1, _int_env("INGEST_CLAIM_MAX_ATTEMPTS", lease_policy.MAX_ATTEMPTS))
 
 
-# @environment_variable GRID_INGEST_MAX_JOB_SECONDS
+# @environment_variable INGEST_MAX_JOB_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 7200
 # @required false
 # The longest one claimed ingestion job may run. Past it the worker stops
 # heartbeating and stops the job at its next check, and the claim goes stale and
-# is claimed again (up to `GRID_INGEST_CLAIM_MAX_ATTEMPTS`, then the job is dead).
+# is claimed again (up to `INGEST_CLAIM_MAX_ATTEMPTS`, then the job is dead).
 # 0 for no limit.
 def _max_job_seconds() -> int:
-    return _int_env("GRID_INGEST_MAX_JOB_SECONDS", 7200)
+    return _int_env("INGEST_MAX_JOB_SECONDS", 7200)
 
 
-# @environment_variable GRID_INGEST_PROGRESS_TIMEOUT_SECONDS
+# @environment_variable INGEST_PROGRESS_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 900
@@ -144,10 +144,10 @@ def _max_job_seconds() -> int:
 # stale and another worker claims it. It resumes beating if the job moves again
 # before then. 0 for no check. Must exceed the slowest single file.
 def _progress_timeout_seconds() -> int:
-    return _int_env("GRID_INGEST_PROGRESS_TIMEOUT_SECONDS", 900)
+    return _int_env("INGEST_PROGRESS_TIMEOUT_SECONDS", 900)
 
 
-# @environment_variable GRID_INGEST_DEAD_RETENTION_DAYS
+# @environment_variable INGEST_DEAD_RETENTION_DAYS
 # @category Knowledge Layer
 # @type int
 # @default 14
@@ -155,7 +155,7 @@ def _progress_timeout_seconds() -> int:
 # How long a dead ingestion queue row (a job that failed every claim, or whose
 # payload could not be read) is kept as a trace before it is deleted.
 def _dead_retention_seconds() -> int:
-    days = max(1, _int_env("GRID_INGEST_DEAD_RETENTION_DAYS", lease_policy.DEAD_RETENTION_DAYS))
+    days = max(1, _int_env("INGEST_DEAD_RETENTION_DAYS", lease_policy.DEAD_RETENTION_DAYS))
     return days * lease_policy.SECONDS_PER_DAY
 
 
@@ -272,7 +272,7 @@ def enqueue_only(prepared: PreparedIngestJob) -> bool:
     if prepared.status.status != JobState.PENDING:
         raise QueueUnavailable(f"ingestion job {prepared.job_id} was not accepted: {prepared.status.error_message}")
     if not queue_enabled():
-        raise QueueUnavailable("the ingest queue is off or has no database (GRID_INGEST_QUEUE, GRID_SUMMARY_DB)")
+        raise QueueUnavailable("the ingest queue is off or has no database (INGEST_QUEUE, SUMMARY_DB)")
     if not durable(prepared):
         raise QueueUnavailable(f"ingestion job {prepared.job_id} cannot run in another process")
     try:

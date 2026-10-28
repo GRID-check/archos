@@ -2,7 +2,7 @@
 
 Deletes the Python-side resources of a purged project: the collection's
 chunks in Qdrant (+ its summaries), jobs rows, and LangGraph checkpoints.
-Guarded by GRID_INTERNAL_API_TOKEN; never exposed to end users.
+Guarded by INTERNAL_API_TOKEN; never exposed to end users.
 All operations are idempotent — re-running on already-deleted data is a no-op.
 
 Also reconciles the summaries table against the vector store
@@ -46,7 +46,7 @@ class PurgeProjectResourcesRequest(BaseModel):
 
 
 def _jobs_dsn() -> str | None:
-    dsn = os.environ.get("GRID_SUMMARY_DB")
+    dsn = os.environ.get("SUMMARY_DB")
     return dsn.replace("+psycopg", "") if dsn else None
 
 
@@ -83,7 +83,7 @@ async def _purge_jobs(collection_name: str) -> int:
 
 
 async def _purge_checkpoints(conversation_ids: list[str]) -> None:
-    dsn = os.environ.get("GRID_CHECKPOINT_DB")
+    dsn = os.environ.get("CHECKPOINT_DB")
     if not dsn or not conversation_ids:
         return
     async with await psycopg.AsyncConnection.connect(dsn) as conn:

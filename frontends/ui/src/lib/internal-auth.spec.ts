@@ -31,13 +31,13 @@ afterEach(() => {
 
 describe('internalServiceHeaders', () => {
   it('carries the token to an internal destination', () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'secret')
     expect(internalServiceHeaders('http://aiq-api:8000')).toEqual({ 'x-internal-token': 'secret' })
     expect(internalServiceHeaders('https://backend.example.com')).toEqual({ [INTERNAL_TOKEN_HEADER]: 'secret' })
   })
 
   it.each([undefined, ''])('refuses with a 503 when the token is %j, so nothing is sent', (token) => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', token)
+    vi.stubEnv('INTERNAL_API_TOKEN', token)
     let thrown: unknown
     try {
       internalServiceHeaders('http://aiq-api:8000')
@@ -50,7 +50,7 @@ describe('internalServiceHeaders', () => {
   })
 
   it('refuses to carry the token over plain HTTP to a public host', () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'secret')
     expect(() => internalServiceHeaders('http://backend.example.com')).toThrow(
       expect.objectContaining({ status: 503, reason: 'unsafe_destination' })
     )

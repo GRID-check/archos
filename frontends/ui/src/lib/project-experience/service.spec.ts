@@ -132,7 +132,7 @@ describe('extractProjectExperience', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // The extractor is service-token guarded; without a token nothing is sent.
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     vi.mocked(requireProjectAccess).mockResolvedValue(undefined as never)

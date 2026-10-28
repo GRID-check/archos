@@ -68,7 +68,7 @@ folding both surfaces in one change would make the loop-eval delta unreadable.
 Live `ris_search` is keyword-blind: it guesses one of ~40 OGD-RIS application
 silos and fires a full-text query. The norm registry (ADR-0025) removes the
 guesswork for the core building-law corpus: `configs/norms/<country>/registry.yml`
-(env override `GRID_NORMS_DIR`; superseded at runtime by the admin-managed
+(env override `NORMS_DIR`; superseded at runtime by the admin-managed
 store, which seeds itself from this YAML) is a **flat catalog** of verified RIS
 pointers — application, document number, citation URL,
 entire-consolidated-law URL — plus curated prose legal notes (`binding_note`,
@@ -125,7 +125,7 @@ uv run --no-project --with httpx --with pydantic --with beautifulsoup4 \
    stored in the agent's fail-open Dragonfly/Redis cache
    (`aiq_agent.common.cache`, ADR-0020), keyed by the document URL and
    `DOC_TEXT_VERSION` (bump it with any change to what `html_to_text` keeps),
-   for `GRID_RIS_CACHE_TTL_DAYS` (default 7). URLs OGD-RIS states on its
+   for `RIS_CACHE_TTL_DAYS` (default 7). URLs OGD-RIS states on its
    `ogd.ris.bka.gv.at` host are rewritten to `www.ris.bka.gv.at` first. A repeat of the same fetch — later in
    the conversation, on another replica, after a restart — is served without the
    HTTP download. It is cache-only: on a miss, a cache error, or when the agent
@@ -206,7 +206,7 @@ functions:
 - API errors (`OgdSearchResult.Error`) are surfaced verbatim to the agent so it
   can correct its query (e.g. wildcard rules, invalid page numbers).
 - Fetched documents and searches are cached in the shared Dragonfly/Redis cache
-  (`GRID_RIS_CACHE_TTL_DAYS`, default 7 days) to avoid re-fetching across turns,
+  (`RIS_CACHE_TTL_DAYS`, default 7 days) to avoid re-fetching across turns,
   replicas, and restarts, with a small per-process in-memory cache on top; HTTP
   requests reuse one connection pool and retry transient failures (5xx/transport)
   with exponential backoff. Structured OGD-RIS validation errors are never

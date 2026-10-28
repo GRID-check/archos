@@ -48,9 +48,9 @@
  * - Never throws into boot: every failure logs and leaves the table empty, which
  *   is exactly the pre-existing behaviour (fall through to the YAML).
  * - Skips `ingest_vlm` unless the ingestion VLM is itself on the platform
- *   provider. That group has its own credential plane (`GRID_VLM_BASE_URL`) whose
+ *   provider. That group has its own credential plane (`VLM_BASE_URL`) whose
  *   shipped default routes to OpenRouter; seeding it would make an operator's
- *   `GRID_VLM_MODEL` dead config and break captioning against that endpoint.
+ *   `VLM_MODEL` dead config and break captioning against that endpoint.
  */
 
 import 'server-only'
@@ -132,7 +132,7 @@ export async function bootstrapPlatformModelDefaults(): Promise<string[]> {
   // A process with no database configured is not a broken deployment — it is
   // local dev, the screenshot harness, or a build step. Reporting that as a
   // failure on every boot trains people to ignore the log line that matters.
-  if (!process.env.GRID_APP_DATABASE_URL) {
+  if (!process.env.APP_DATABASE_URL) {
     console.debug('[Model Config] Skipping default bootstrap: no application database configured')
     return []
   }

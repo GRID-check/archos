@@ -44,14 +44,14 @@ afterEach(() => {
 
 describe('GET /api/geocode', () => {
   it('answers { enabled: false, results: [] } with 200 when no geocoder is configured', async () => {
-    vi.stubEnv('GRID_GEOCODER_URL', '')
+    vi.stubEnv('GEOCODER_URL', '')
     const provider = stubProvider(PHOTON_MOEDLING)
     expect(await client.search('Mödling')).toEqual({ enabled: false, results: [] })
     expect(provider).not.toHaveBeenCalled()
   })
 
   it('returns the provider’s Austrian hits as typed results', async () => {
-    vi.stubEnv('GRID_GEOCODER_URL', 'https://photon.test')
+    vi.stubEnv('GEOCODER_URL', 'https://photon.test')
     const provider = stubProvider(PHOTON_MARIAHILFER)
     const response = await client.search('Mariahilfer Straße 10 Wien', 2)
     expect(response.enabled).toBe(true)
@@ -64,7 +64,7 @@ describe('GET /api/geocode', () => {
   })
 
   it('trims the query and defaults the limit', async () => {
-    vi.stubEnv('GRID_GEOCODER_URL', 'https://photon.test')
+    vi.stubEnv('GEOCODER_URL', 'https://photon.test')
     const provider = stubProvider(PHOTON_MOEDLING)
     await client.search('  Mödling  ')
     const url = (provider.mock.calls[0] as unknown as [URL])[0]
@@ -73,14 +73,14 @@ describe('GET /api/geocode', () => {
   })
 
   it('never returns a hit outside Austria', async () => {
-    vi.stubEnv('GRID_GEOCODER_URL', 'https://photon.test')
+    vi.stubEnv('GEOCODER_URL', 'https://photon.test')
     stubProvider(PHOTON_MARIENPLATZ_MUENCHEN)
     expect(await client.search('Marienplatz 1 München')).toEqual({ enabled: true, results: [] })
   })
 
   it('answers 200 with no results when the provider is down', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    vi.stubEnv('GRID_GEOCODER_URL', 'https://photon.test')
+    vi.stubEnv('GEOCODER_URL', 'https://photon.test')
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 502 })))
     expect(await client.search('Mödling')).toEqual({ enabled: true, results: [] })
   })
@@ -93,7 +93,7 @@ describe('GET /api/geocode', () => {
     ['limit 9', 'Mödling', 9],
     ['limit 1.5', 'Mödling', 1.5],
   ])('answers 400 for a bad query: %s', async (_name, q, limit) => {
-    vi.stubEnv('GRID_GEOCODER_URL', 'https://photon.test')
+    vi.stubEnv('GEOCODER_URL', 'https://photon.test')
     const provider = stubProvider(PHOTON_MOEDLING)
     const error = await client.search(q, limit).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(GeocodingRequestError)

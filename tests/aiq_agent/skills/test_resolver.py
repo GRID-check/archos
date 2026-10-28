@@ -26,7 +26,7 @@ def _reset_cache():
 
 @pytest.fixture
 def resolver(monkeypatch: pytest.MonkeyPatch) -> SkillResolver:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     resolver = SkillResolver(agent="researcher")
     resolver._builtin_by_name = {s.name: s for s in BUILTIN}
     return resolver
@@ -167,7 +167,7 @@ def test_fetch_failure_fails_open_to_builtins(resolver: SkillResolver) -> None:
 
 
 def test_missing_token_fails_open(resolver: SkillResolver, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
+    monkeypatch.delenv("INTERNAL_API_TOKEN")
     assert {s.name for s in resolver.resolve("org-1")} == {"calc", "report"}
 
 
@@ -194,11 +194,11 @@ def test_cache_tty_default_is_60(resolver: SkillResolver, monkeypatch: pytest.Mo
     from aiq_agent.skills.resolver import _cache_ttl_seconds
 
     assert _cache_ttl_seconds() == 60.0
-    monkeypatch.setenv("GRID_SKILLS_CACHE_TTL_SECONDS", "120")
+    monkeypatch.setenv("SKILLS_CACHE_TTL_SECONDS", "120")
     assert _cache_ttl_seconds() == 120.0
-    monkeypatch.setenv("GRID_SKILLS_CACHE_TTL_SECONDS", "0")
+    monkeypatch.setenv("SKILLS_CACHE_TTL_SECONDS", "0")
     assert _cache_ttl_seconds() == 60.0
-    monkeypatch.setenv("GRID_SKILLS_CACHE_TTL_SECONDS", "junk")
+    monkeypatch.setenv("SKILLS_CACHE_TTL_SECONDS", "junk")
     assert _cache_ttl_seconds() == 60.0
 
 
@@ -235,7 +235,7 @@ def _capture_fetch_query(agent: str | None, monkeypatch: pytest.MonkeyPatch) -> 
         captured["__token_header"] = next(iter(headers))
         return _FakeResponse({"skills": []})
 
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
     import httpx
 
@@ -328,7 +328,7 @@ CURATED = Skill(
 
 @pytest.fixture
 def catalog_resolver(monkeypatch: pytest.MonkeyPatch) -> SkillResolver:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     resolver = SkillResolver(agent="researcher")
     resolver._builtin_by_name = {s.name: s for s in (*BUILTIN, CURATED)}
     return resolver
@@ -368,7 +368,7 @@ def test_machinery_survives_a_failed_fetch(catalog_resolver: SkillResolver) -> N
 
 def test_unrecognised_catalog_value_reads_as_machinery(monkeypatch: pytest.MonkeyPatch) -> None:
     """The closed default: a typo must not expose an internal instruction as an offer."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     resolver = SkillResolver(agent="researcher")
     typo = Skill(
         name="typo",
@@ -391,7 +391,7 @@ def test_served_skills_leave_the_builtin_FILES_where_they_are(monkeypatch: pytes
     would put the research skills — the ones whose instructions call
     ``execute`` — in front of the WRITER, which cannot run them.
     """
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     with mock.patch.object(
         SkillResolver,
         "_fetch_org_skills",
@@ -410,7 +410,7 @@ def test_served_skills_leave_the_builtin_FILES_where_they_are(monkeypatch: pytes
 
 def test_served_skills_still_honour_grid_agents(monkeypatch: pytest.MonkeyPatch) -> None:
     """One gate, read the same way for both agents."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     with mock.patch.object(
         SkillResolver,
         "_fetch_org_skills",
@@ -421,7 +421,7 @@ def test_served_skills_still_honour_grid_agents(monkeypatch: pytest.MonkeyPatch)
 
 def test_served_skills_never_raise_without_a_token(monkeypatch: pytest.MonkeyPatch) -> None:
     """No token is the deployment's business; it must not be the run's failure."""
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     assert resolve_served_skills("deep_researcher", "org-1") == ()
 
 

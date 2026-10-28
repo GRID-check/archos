@@ -35,14 +35,14 @@ _THUMBNAIL = "http://seaweedfs.test/bucket/doc/thumb.png?X-Amz-Signature=secret-
 def object_store(monkeypatch):
     monkeypatch.setenv("SEAWEED_ENDPOINT", "http://seaweedfs.test")
     monkeypatch.setenv("SEAWEED_PUBLIC_ENDPOINT", "http://seaweedfs.test")
-    monkeypatch.delenv("GRID_JOB_PAYLOAD_KEK", raising=False)
-    monkeypatch.delenv("GRID_INGEST_QUEUE", raising=False)
+    monkeypatch.delenv("JOB_PAYLOAD_KEK", raising=False)
+    monkeypatch.delenv("INGEST_QUEUE", raising=False)
 
 
 @pytest.fixture
 def db(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path}/jobs.db"
-    monkeypatch.setenv("GRID_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
     yield url
     ingest_queue._initialized.discard(url)
     ingest_status_store._initialized.discard(url)
@@ -104,7 +104,7 @@ def test_the_payload_round_trips_with_its_downloads():
 
 
 def test_the_stored_payload_is_encrypted_when_a_key_is_set(monkeypatch):
-    monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setenv("JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
 
     stored = ingest_dispatch.encode(_prepared())
 
@@ -158,7 +158,7 @@ def test_a_job_with_a_local_file_runs_where_the_file_is(db, tmp_path):
 
 
 def test_without_a_database_the_job_runs_here(monkeypatch):
-    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     ingestor = FakeIngestor()
 
@@ -168,7 +168,7 @@ def test_without_a_database_the_job_runs_here(monkeypatch):
 
 
 def test_the_queue_can_be_switched_off(db, monkeypatch):
-    monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+    monkeypatch.setenv("INGEST_QUEUE", "off")
     ingestor = FakeIngestor()
 
     ingest_dispatch.dispatch(ingestor, _prepared())
@@ -305,7 +305,7 @@ async def test_the_ingest_worker_claims_until_told_to_stop_then_drains(db, monke
         workflow_builder.WorkflowBuilder, "from_config", staticmethod(lambda config: fake_build(config))
     )
     monkeypatch.setattr(factory, "get_active_ingestor", lambda: ingestor)
-    monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
+    monkeypatch.setenv("WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
 
     stop = asyncio.Event()
     task = asyncio.create_task(ingest_worker.run(stop))
@@ -491,8 +491,8 @@ async def test_the_ingest_worker_gives_back_what_it_still_runs_when_the_drain_en
         workflow_builder.WorkflowBuilder, "from_config", staticmethod(lambda config: fake_build(config))
     )
     monkeypatch.setattr(factory, "get_active_ingestor", lambda: ingestor)
-    monkeypatch.setenv("GRID_INGEST_WORKER_DRAIN_SECONDS", "1")
-    monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
+    monkeypatch.setenv("INGEST_WORKER_DRAIN_SECONDS", "1")
+    monkeypatch.setenv("WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
     ingest_dispatch.dispatch(FakeIngestor(), _prepared("job-1"))
 
     stop = asyncio.Event()
@@ -624,9 +624,9 @@ def test_a_finished_job_is_forgotten_and_its_duration_recorded(db, monkeypatch):
 
 
 def test_the_dead_retention_is_in_days_and_never_zero(monkeypatch):
-    monkeypatch.setenv("GRID_INGEST_DEAD_RETENTION_DAYS", "0")
+    monkeypatch.setenv("INGEST_DEAD_RETENTION_DAYS", "0")
     assert ingest_dispatch._dead_retention_seconds() == 86400
-    monkeypatch.setenv("GRID_INGEST_DEAD_RETENTION_DAYS", "3")
+    monkeypatch.setenv("INGEST_DEAD_RETENTION_DAYS", "3")
     assert ingest_dispatch._dead_retention_seconds() == 3 * 86400
 
 
@@ -696,14 +696,14 @@ def test_enqueue_only_stores_one_job_for_one_id(db):
 
 
 def test_enqueue_only_never_falls_back_to_running_the_job_here(db, monkeypatch):
-    monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+    monkeypatch.setenv("INGEST_QUEUE", "off")
 
     with pytest.raises(ingest_dispatch.QueueUnavailable, match="ingest queue is off"):
         ingest_dispatch.enqueue_only(_corpus_job())
 
 
 def test_enqueue_only_without_a_database_raises(monkeypatch):
-    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
 
     with pytest.raises(ingest_dispatch.QueueUnavailable):
@@ -767,11 +767,11 @@ def test_a_cancel_reports_finished_when_the_queue_holds_no_live_row(db):
 
 
 def test_cancel_is_unavailable_when_the_queue_is_off_or_has_no_database(db, monkeypatch):
-    monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+    monkeypatch.setenv("INGEST_QUEUE", "off")
     assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_UNAVAILABLE
 
-    monkeypatch.delenv("GRID_INGEST_QUEUE", raising=False)
-    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("INGEST_QUEUE", raising=False)
+    monkeypatch.delenv("SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_UNAVAILABLE
 

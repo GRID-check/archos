@@ -3,7 +3,7 @@
  */
 /**
  * Opt-in integration test: real model-config version lifecycle against a real
- * Postgres with migration 0012 applied. Skipped unless GRID_TEST_DATABASE_URL
+ * Postgres with migration 0012 applied. Skipped unless TEST_DATABASE_URL
  * is set (CI has no database).
  */
 
@@ -11,11 +11,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe.skipIf(!url)('model-config service against live Postgres', () => {
   beforeAll(() => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
   })
 
   afterAll(async () => {

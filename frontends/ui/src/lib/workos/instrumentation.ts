@@ -17,12 +17,12 @@ const DEFAULT_SLOW_CALL_THRESHOLD_MS = 2000
 
 /**
  * Threshold above which a WorkOS call is logged as slow, in ms.
- * `GRID_AUTHZ_SLOW_CALL_MS` tunes it; `0` disables the warning entirely.
+ * `AUTHZ_SLOW_CALL_MS` tunes it; `0` disables the warning entirely.
  * Read per-call so operators can retune (and tests can flip it) without a
  * process restart.
  */
 function slowCallThresholdMs(): number {
-  const raw = process.env.GRID_AUTHZ_SLOW_CALL_MS
+  const raw = process.env.AUTHZ_SLOW_CALL_MS
   if (raw === undefined || raw === '') return DEFAULT_SLOW_CALL_THRESHOLD_MS
   const parsed = Number(raw)
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_SLOW_CALL_THRESHOLD_MS

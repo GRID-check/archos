@@ -4,7 +4,7 @@
  * Restricted project memory (ADR-0087, ADR-0088, migration 0113) against a REAL Postgres
  * with the full migration chain applied, through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/memory-restricted.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
@@ -43,15 +43,15 @@ vi.mock('@/lib/knowledge/embeddings', async (importOriginal) => {
 
 import { embedNote } from '@/lib/knowledge/embeddings'
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const ORG = `org_memory_restricted_${Date.now()}`
 const USER = `user_${ORG}`
 
 describe('the restricted memory suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 
@@ -148,7 +148,7 @@ describe.skipIf(!url)('restricted project memory against live Postgres', () => {
     )
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

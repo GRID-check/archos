@@ -246,10 +246,10 @@ async def _sse_generator_postgres(
     # LISTEN/NOTIFY needs a persistent session, which the transaction pooler in
     # front of `db_url` does not give (ADR-0083): the LISTEN lands on a server
     # connection the client does not keep, and no notification ever arrives. So
-    # there is no default to `db_url`; GRID_LISTEN_DB_URL is the direct DSN, and
+    # there is no default to `db_url`; LISTEN_DB_URL is the direct DSN, and
     # `require_direct_dsns` (called when the web process starts) already refused
     # to boot without it, so this is an assertion and not a runtime path.
-    asyncpg_url = _asyncpg_url(os.environ["GRID_LISTEN_DB_URL"])
+    asyncpg_url = _asyncpg_url(os.environ["LISTEN_DB_URL"])
     channel = f"job_events_{job_id.replace('-', '_')}"
     logger.info(f"SSE pub-sub stream starting for job_id={job_id}, channel={channel}")
     conn = None

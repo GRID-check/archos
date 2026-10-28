@@ -14,7 +14,7 @@ the operator console. The decision is ADR-0126; the mechanics are in
    reads the flag.
 
 No environment variable is needed. The door's URL is the origin of
-`GRID_MCP_RESOURCE_URL` (or of `WORKOS_REDIRECT_URI`) plus `/api/platform/mcp`;
+`MCP_RESOURCE_URL` (or of `WORKOS_REDIRECT_URI`) plus `/api/platform/mcp`;
 check it at `https://<app-host>/.well-known/oauth-protected-resource/api/platform/mcp`,
 which answers 200 with that `resource`, or 503 while `WORKOS_AUTHKIT_DOMAIN` is unset.
 
@@ -49,7 +49,7 @@ deletes) are marked destructive, so the client asks before each one.
 | 403 "takes tokens of the GRID Platform organization only" | The sign-in picked an office. Sign in again in GRID Platform |
 | 403 "not enabled" | `platform-agent-mcp` is off for the GRID Platform organization |
 | 403 "no platform permission" | The person holds no platform role |
-| 503 | WorkOS did not answer, or the platform organization is not provisioned. Retry; then check `GRID_PLATFORM_ORG_EXTERNAL_ID` |
+| 503 | WorkOS did not answer, or the platform organization is not provisioned. Retry; then check `PLATFORM_ORG_EXTERNAL_ID` |
 | 429 | The person's agent budget (`mcp-request`), shared with their office door |
 
 Every call is in PostHog (`agent_operation_called`, `door: platform`) and in

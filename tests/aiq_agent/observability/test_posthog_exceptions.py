@@ -38,7 +38,7 @@ class _Clock:
 def _posthog_env(monkeypatch):
     monkeypatch.setenv("POSTHOG_HOST", "https://eu.i.posthog.com")
     monkeypatch.setenv("POSTHOG_PROJECT_TOKEN", "phc_test")  # pragma: allowlist secret
-    for name in ("GRID_GIT_SHA", "APP_ENV", "OTEL_SERVICE_NAME"):
+    for name in ("GIT_SHA", "APP_ENV", "OTEL_SERVICE_NAME"):
         monkeypatch.delenv(name, raising=False)
     posthog_client.reset_for_tests()
     yield
@@ -80,7 +80,7 @@ def _fail(log: logging.Logger, message: str = "step failed", error: Exception | 
 
 
 def test_a_logged_exception_is_captured_with_its_context(sent, log, monkeypatch):
-    monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
+    monkeypatch.setenv("GIT_SHA", "abc1234")
     monkeypatch.setenv("APP_ENV", "Staging")
     monkeypatch.setenv("OTEL_SERVICE_NAME", "grid-agent-worker")
     trace_id = uuid.uuid4().int

@@ -316,7 +316,7 @@ The agent reads the same facts the UI does, through the knowledge layer.
 | `list_files(revisions_of=…)` | The whole chain of one document, newest first, with Index and date, upload date and what changed against the one before. The chain follows a confirmed link in both directions, the same title-block number and the name series, transitively | `browse_revisions.py`, `render_revisions`, `_chain_members`, `_chain_order` |
 | `list_files(revisions_of=…, compare_to=…)` | What changed between two Fassungen of the chain: the Plankopf, pages aligned by their text, values that moved in printed lines, and quantities and dimension strings from the drawing analysis. No model call; the stored change line rides along when its basis is exactly that older file | `browse_compare.py`, `resolve_compare`, `compare_revisions`; `src/aiq_agent/knowledge/revision_diff.py` |
 | `knowledge_search` | Leaves confirmed older Fassungen out of the ranking on the user shelves, so an older state cannot outrank its replacement on similarity. Says „Ältere Fassungen ausgeblendet: …“. `file_name=…` bypasses the exclusion, and when the named file is an older Fassung the result carries the same line `read_passage` gives („Ältere Fassung: … ist durch … ersetzt“, the end of the chain). The base corpus is untouched | `packages/knowledge-layer/src/register.py`, `_superseded_files`, `_named_older_revision_notice`; `document_metadata_store.get_superseded_files` |
-| `read_passage` | Reading an older Fassung is allowed, because „Index B“ and „die alte Fassung“ ask for it. A one-line notice names the current one and tells the answer to say it read the older state | `packages/knowledge-layer/src/read_passage.py`, `_current_revision`, `_older_revision_notice` |
+| `read_passage` | Reading an older Fassung is allowed, because „Index B“ and „die alte Fassung“ ask for it. A one-line notice names the current one and tells the answer to say it read the older state | `packages/knowledge-layer/src/read_passage_revisions.py`, `_current_revision`, `_older_revision_notice` |
 | Inventory | A row suffix carries only the confirmed link, never a suggestion | `src/aiq_agent/knowledge/inventory.py` |
 
 A citation of an older Fassung says so. The citation peek shows „Ältere Fassung –
@@ -386,7 +386,7 @@ is proposed as marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.
 
 1. **Queued.** `notifyNewRevision` queues a `revision_notice` job right after it
    claims the announcement of a cross-name Fassung, so once per Fassung; the
-   job id is uuid5 of the pair, and it waits `GRID_REVISION_NOTICE_DELAY_SECONDS`
+   job id is uuid5 of the pair, and it waits `REVISION_NOTICE_DELAY_SECONDS`
    (120 s). A same-name version is not noticed: its older bytes left the index
    when it was published.
 2. **As the person who made it.** The job runs as the announcement's actor (the
@@ -397,7 +397,7 @@ is proposed as marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.
 3. **Which pages.** `POST /v1/collections/{c}/revision-pages` reads the changed
    pages of the newer Fassung from the index (`revision_diff.changed_pages`), no
    model call. Nothing changed: silence. A scan with nothing read: the first
-   pages. At most `GRID_REVISION_NOTICE_MAX_PAGES` (3).
+   pages. At most `REVISION_NOTICE_MAX_PAGES` (3).
 4. **What changed.** `compareRevisionPage` with `purpose: notice`, the compare a
    click runs, queued as `bulk` and traced with `purpose` in its metadata; the
    route returns the generation's `trace_id`.

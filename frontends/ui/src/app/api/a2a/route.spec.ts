@@ -26,7 +26,7 @@ vi.mock('@/lib/limits/enforce', async (original) => ({
   ...(await original<typeof import('@/lib/limits/enforce')>()),
   enforceLimit: vi.fn(async () => undefined),
 }))
-vi.mock('@/lib/piloti-asks/service', () => ({ askPiloti: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
+vi.mock('@/lib/agent-asks/service', () => ({ askPiloti: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
 vi.mock('@/lib/agent-api/telemetry', async (original) => ({
   ...(await original<typeof import('@/lib/agent-api/telemetry')>()),
   recordOperationCalled: vi.fn(),
@@ -38,8 +38,8 @@ import { actingReaderIsAgent } from '@/lib/agent-api/acting-session'
 import { resolvePrincipal, type AgentPrincipal } from '@/lib/agent-api/principal'
 import { recordOperationCalled } from '@/lib/agent-api/telemetry'
 import { enforceLimit, MCP_REQUEST_LIMIT, memberSubject } from '@/lib/limits'
-import type { AskView } from '@/lib/piloti-asks/ask-wire'
-import { askPiloti, cancelAsk, getAsk } from '@/lib/piloti-asks/service'
+import type { AskView } from '@/lib/agent-asks/ask-wire'
+import { askPiloti, cancelAsk, getAsk } from '@/lib/agent-asks/service'
 import { GET, POST } from './route'
 
 const URL_ = 'https://app.piloti.test/api/a2a'
@@ -112,7 +112,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(askPiloti).mockReset()
   process.env.WORKOS_AUTHKIT_DOMAIN = 'auth.piloti.test'
-  process.env.GRID_MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
+  process.env.MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
   vi.mocked(resolvePrincipal).mockResolvedValue(PERSON)
   vi.mocked(askPiloti).mockResolvedValue(view())
   vi.mocked(getAsk).mockResolvedValue(view())
@@ -236,7 +236,7 @@ describe('A2A 1.0', () => {
     expect(recordOperationCalled).toHaveBeenCalledTimes(1)
     expect(recordOperationCalled).toHaveBeenCalledWith(
       expect.objectContaining({ principal: PERSON, mode: null, door: 'a2a' }),
-      expect.objectContaining({ operation: 'piloti-ask-create', domain: 'conversations', decision: 'run', status: 202 }),
+      expect.objectContaining({ operation: 'agent-ask-create', domain: 'conversations', decision: 'run', status: 202 }),
     )
   })
 

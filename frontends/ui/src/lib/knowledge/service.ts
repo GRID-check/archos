@@ -144,10 +144,10 @@ export async function getKnowledgeBaseStatus(): Promise<KnowledgeBaseStatus> {
 /**
  * Admin-token header for the backend's `/v1/admin/oib/*` endpoints. The token
  * is optional in dev (the backend fails open when its own token is unset);
- * production deployments must set GRID_ADMIN_TOKEN on both services.
+ * production deployments must set ADMIN_TOKEN on both services.
  */
 function adminHeaders(): Record<string, string> {
-  const token = process.env.GRID_ADMIN_TOKEN
+  const token = process.env.ADMIN_TOKEN
   return token ? { 'X-Admin-Token': token } : {}
 }
 

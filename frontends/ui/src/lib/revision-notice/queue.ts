@@ -9,7 +9,7 @@
  *
  * Gated per organization (`piloti-notices`, read from WorkOS for the
  * organization, since nobody's session is at hand) and held for
- * `GRID_REVISION_NOTICE_DELAY_SECONDS`, so a burst of re-reads and relinks has
+ * `REVISION_NOTICE_DELAY_SECONDS`, so a burst of re-reads and relinks has
  * settled before a model looks. The job's id is the pair's, so a second
  * enqueue while one waits is no second job. Never throws: the announcement it
  * rides on must not fail because of it.

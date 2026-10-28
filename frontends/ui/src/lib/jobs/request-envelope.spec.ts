@@ -49,12 +49,12 @@ function signed(jobScope: AuthorizedJobScope) {
 describe('signJobRequestContext', () => {
   let previous: string | undefined
   beforeEach(() => {
-    previous = process.env.GRID_INTERNAL_API_TOKEN
-    process.env.GRID_INTERNAL_API_TOKEN = SECRET
+    previous = process.env.INTERNAL_API_TOKEN
+    process.env.INTERNAL_API_TOKEN = SECRET
   })
   afterEach(() => {
-    if (previous === undefined) delete process.env.GRID_INTERNAL_API_TOKEN
-    else process.env.GRID_INTERNAL_API_TOKEN = previous
+    if (previous === undefined) delete process.env.INTERNAL_API_TOKEN
+    else process.env.INTERNAL_API_TOKEN = previous
   })
 
   it('signs the project and its collection for a member', () => {

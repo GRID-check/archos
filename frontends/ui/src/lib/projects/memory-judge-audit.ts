@@ -45,7 +45,7 @@ type JudgedItem = Pick<
 
 /**
  * An organization-wide finding this deployment refused to store
- * (`GRID_ALLOW_AGENT_ORG_MEMORY` unset, the default). The judge's "none" still
+ * (`ALLOW_AGENT_ORG_MEMORY` unset, the default). The judge's "none" still
  * decided something: the finding stayed open, so the agent offered it to the
  * user as a card that writes it open, organization-wide or to the project.
  */

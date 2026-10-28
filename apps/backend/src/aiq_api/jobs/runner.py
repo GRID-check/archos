@@ -769,13 +769,13 @@ def _purge_deep_checkpoint(job_id: str) -> None:
     """Best-effort deletion of a finished deep run's durable checkpoint rows.
 
     The deep-research checkpointer keys ``thread_id == job_id`` in
-    ``GRID_DEEP_CHECKPOINT_DB`` and writes the full growing state every step, but
+    ``DEEP_CHECKPOINT_DB`` and writes the full growing state every step, but
     nothing prunes ``checkpoints``/``checkpoint_blobs``/``checkpoint_writes`` — so
     they grow (superlinearly per run) forever. Once a run is terminal the
     checkpoint is dead weight (resume is manual-resubmit, never auto-read), so
     drop it. Never raises.
     """
-    dsn = os.environ.get("GRID_DEEP_CHECKPOINT_DB")
+    dsn = os.environ.get("DEEP_CHECKPOINT_DB")
     if not dsn:
         return
     try:
@@ -800,7 +800,7 @@ def _purge_deep_checkpoint(job_id: str) -> None:
 async def _purge_deep_checkpoint_unless_reclaimed(db_url: str, job_id: str, claim_owner: str | None) -> bool:
     """Purge the run's deep checkpoint at its end, unless the job was reclaimed.
 
-    The rows (``GRID_DEEP_CHECKPOINT_DB``, ``thread_id == job_id``) are keyed by
+    The rows (``DEEP_CHECKPOINT_DB``, ``thread_id == job_id``) are keyed by
     job, not by worker, so after a reclaim they are the NEW owner's resume
     point. A stalled loser reaching its ``finally`` deleted them from under it,
     and the winner resumed from nothing. ``worker.py`` already skipped its own
@@ -938,7 +938,7 @@ def _run_user_info(user_info: dict | None, envelope_headers: dict[str, str] | No
     from aiq_agent.project_context import GridRequestContext
     from aiq_agent.turn.context import user_info_for
 
-    request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("GRID_INTERNAL_API_TOKEN"))
+    request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("INTERNAL_API_TOKEN"))
     return user_info_for(request)
 
 

@@ -592,7 +592,7 @@ def _post_usage_events(payload: dict[str, Any]) -> None:
     try:
         bff_http.send("POST", "/api/internal/usage", timeout=_REQUEST_TIMEOUT_SECONDS, body=payload)
     except bff_http.BffNotConfiguredError:
-        logger.warning("GRID_INTERNAL_API_TOKEN not configured — dropping %d usage events", len(payload["events"]))
+        logger.warning("INTERNAL_API_TOKEN not configured — dropping %d usage events", len(payload["events"]))
     except bff_http.BffRefusedError as error:
         logger.warning("Internal usage endpoint rejected batch: HTTP %s", error.status)
     except Exception:

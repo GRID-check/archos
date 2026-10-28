@@ -313,13 +313,13 @@ primitive gives them one.
 `x-grid-feature-memory-reflection` and read fail-closed on the agent side
 (`project_context.py:265-271`, field at `:295`, parse at `:332`).
 
-- With `GRID_ENFORCE_FEATURE_FLAGS=true`: the per-org WorkOS `memory-reflection`
+- With `ENFORCE_FEATURE_FLAGS=true`: the per-org WorkOS `memory-reflection`
   flag, fail-closed.
-- Otherwise: `GRID_MEMORY_REFLECTION_ENABLED`, **default ON**
+- Otherwise: `MEMORY_REFLECTION_ENABLED`, **default ON**
   (`feature-flags.ts:86`).
 
 *(Superseded: the gate is the per-org flag alone now, read per turn, with no
-`GRID_ENFORCE_FEATURE_FLAGS` and no `GRID_MEMORY_REFLECTION_ENABLED`; see §7.8.)*
+`ENFORCE_FEATURE_FLAGS` and no `MEMORY_REFLECTION_ENABLED`; see §7.8.)*
 
 Two things to note. First, **the kill switch takes effect at the next socket
 handshake, not the next turn** — a long-lived tab keeps the old decision.
@@ -1166,8 +1166,8 @@ Per stage, config-driven, no deploy:
    (`lib/workos/feature-flags.ts`), fail-closed. Every stage flag is a
    **rollout** in the registry (`FLAG_KINDS`), so a deployment where nobody
    signs in runs every stage. There is no env fallback: the
-   `StageSpec.env_default` field and the `GRID_MEMORY_REFLECTION_ENABLED` /
-   `GRID_STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
+   `StageSpec.env_default` field and the `MEMORY_REFLECTION_ENABLED` /
+   `STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
    enforcement became unconditional. A new stage ships with its flag created
    OFF in WorkOS.
 2. **Capability bit:** a stage whose `AgentGroup` resolves no LLM is a no-op, as
@@ -1252,14 +1252,14 @@ The existing reflection policy is right and is promoted to the primitive
 (`reflection.py:376-381, 432-438`): **beyond the cap, stages are dropped, not
 queued.**
 
-- One shared, per-event-loop semaphore for all stages — `GRID_STAGE_MAX_CONCURRENCY`,
-  default 4. **[as built]** it and `GRID_STAGE_MAX_PENDING` replace
+- One shared, per-event-loop semaphore for all stages — `STAGE_MAX_CONCURRENCY`,
+  default 4. **[as built]** it and `STAGE_MAX_PENDING` replace
   `MEMORY_REFLECTION_MAX_CONCURRENCY` / `MEMORY_REFLECTION_MAX_PENDING`, which
   the primitive supersedes; `deploy/.env.example` and
   `docs/deployment/environment-variables.md` move with them. Loop-keyed via `WeakKeyDictionary` exactly as `_loop_semaphore`
   does (`reflection.py:385-395`), because chat and research workers run different
   loops.
-- `GRID_STAGE_MAX_PENDING`, default 16, counted **across all stages**. At the cap
+- `STAGE_MAX_PENDING`, default 16, counted **across all stages**. At the cap
   the stage is not scheduled and records `outcome:"skipped", reason:"pending_cap"`
   — so load-shedding is a number on the dashboard, not a silent absence.
 - **Shared and not per-stage on purpose.** The resource under pressure is the

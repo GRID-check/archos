@@ -190,12 +190,12 @@ describe("the agent-worker tier", () => {
   });
 
   it("hands the worker the same drain budget it derives the grace period from", () => {
-    const drain = env.find((e) => e.name === "GRID_RESEARCH_WORKER_DRAIN_SECONDS");
+    const drain = env.find((e) => e.name === "RESEARCH_WORKER_DRAIN_SECONDS");
 
     expect(drain?.value).toBe(String(drainSeconds));
     // A name the Python worker does not read would leave it on its default.
     expect(read("apps", "backend", "src", "aiq_api", "jobs", "worker.py")).toContain(
-      '"GRID_RESEARCH_WORKER_DRAIN_SECONDS"',
+      '"RESEARCH_WORKER_DRAIN_SECONDS"',
     );
   });
 
@@ -203,7 +203,7 @@ describe("the agent-worker tier", () => {
     const names = new Set([...env, ...backendEnvVars].map((e) => e.name));
     const queue = read("apps", "backend", "src", "aiq_api", "jobs", "queue.py");
 
-    for (const name of ["GRID_MAX_ACTIVE_JOBS_PER_ORG", "GRID_MAX_QUEUED_JOBS_PER_ORG"]) {
+    for (const name of ["MAX_ACTIVE_JOBS_PER_ORG", "MAX_QUEUED_JOBS_PER_ORG"]) {
       expect(names.has(name), name).toBe(true);
       expect(queue).toContain(`"${name}"`);
     }

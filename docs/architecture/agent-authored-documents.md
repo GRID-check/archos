@@ -41,7 +41,7 @@ Two failure modes make the naive fix worse than the gap:
    behaviour of a write-capable agent over its own RAG corpus, not a rare
    prompt going wrong.
 2. **Writing it from the backend.** The agent's principal is **wider** than the
-   user's, not narrower: it holds the shared `GRID_INTERNAL_API_TOKEN`, and the
+   user's, not narrower: it holds the shared `INTERNAL_API_TOKEN`, and the
    internal memory route says so in its own comment — *"this service-token
    endpoint cannot verify the human's org role"*
    (`app/api/internal/memory/route.ts`). A project-scoped write through
@@ -539,7 +539,7 @@ rather than a duplicate. The permission is the tenant's, per project and per
 role, withheld on a custom role. Withdrawing it fleet-wide would mean editing the
 built-in project roles in the catalog, which `provision:authz --check` then fails
 in CI — so the operator's kill switch has to be the `agent-authored-documents`
-flag (`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, default ON), checked at the same
+flag (`AGENT_AUTHORED_DOCUMENTS_ENABLED`, default ON), checked at the same
 seam so every producer rides one switch rather than one each.
 
 ### 6. The filed report is a PDF

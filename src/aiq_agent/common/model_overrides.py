@@ -211,7 +211,7 @@ def reset_overrides_cache() -> None:
 
 
 class _NoTrustChannel(RuntimeError):
-    """No ``GRID_INTERNAL_API_TOKEN``: the org's configuration cannot be asked for."""
+    """No ``INTERNAL_API_TOKEN``: the org's configuration cannot be asked for."""
 
 
 _no_trust_channel_logged = False
@@ -223,7 +223,7 @@ def _log_no_trust_channel_once() -> None:
         return
     _no_trust_channel_logged = True
     logger.error(
-        "GRID_INTERNAL_API_TOKEN is not set: organization model settings cannot be read. "
+        "INTERNAL_API_TOKEN is not set: organization model settings cannot be read. "
         "Every organization runs on the YAML models with ZDR routing pinned until it is."
     )
 
@@ -236,7 +236,7 @@ def _fetch_org_config(organization_id: str) -> tuple[dict[str, str], bool]:
     BFF-side) plus its Zero-Data-Retention policy (whether every OpenRouter
     request must pin to a ZDR endpoint).
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         # Not an answer about the org: we never asked. The caller falls back to
         # the YAML models with ZDR pinned and writes nothing to L2, so an

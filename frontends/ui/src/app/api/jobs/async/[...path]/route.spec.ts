@@ -65,7 +65,7 @@ import { fileCommissionedReport } from '@/lib/documents/commissioned-report'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 
 const originalRequireAuth = process.env.REQUIRE_AUTH
-const originalInternalToken = process.env.GRID_INTERNAL_API_TOKEN
+const originalInternalToken = process.env.INTERNAL_API_TOKEN
 
 const getRequest = (url: string, headers: Record<string, string> = {}): Request =>
   new Request(url, { method: 'GET', headers })
@@ -308,14 +308,14 @@ describe('/api/jobs/async/[...path] proxy — signed X-Request-Context envelope'
       process.env.REQUIRE_AUTH = originalRequireAuth
     }
     if (originalInternalToken === undefined) {
-      delete process.env.GRID_INTERNAL_API_TOKEN
+      delete process.env.INTERNAL_API_TOKEN
     } else {
-      process.env.GRID_INTERNAL_API_TOKEN = originalInternalToken
+      process.env.INTERNAL_API_TOKEN = originalInternalToken
     }
   })
 
   it('attaches an unsigned envelope carrying org/user/project/scope when no internal token is configured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
 
     const res = await POST(
       postRequest('https://grid.example/api/jobs/async/submit', { agent_type: 'deep_research' }),
@@ -350,8 +350,8 @@ describe('/api/jobs/async/[...path] proxy — signed X-Request-Context envelope'
     })
   })
 
-  it('signs the envelope when GRID_INTERNAL_API_TOKEN is configured', async () => {
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-secret'
+  it('signs the envelope when INTERNAL_API_TOKEN is configured', async () => {
+    process.env.INTERNAL_API_TOKEN = 'test-secret'
 
     const res = await POST(
       postRequest('https://grid.example/api/jobs/async/submit', { agent_type: 'deep_research' }),
@@ -600,7 +600,7 @@ describe('/api/jobs/async/[...path] proxy — every method carries the signed en
 
   beforeEach(() => {
     process.env.REQUIRE_AUTH = 'true'
-    process.env.GRID_INTERNAL_API_TOKEN = SECRET
+    process.env.INTERNAL_API_TOKEN = SECRET
     vi.mocked(requireAuthorizedSession).mockResolvedValue(session)
     vi.mocked(buildCollectionScopeFromRequest).mockResolvedValue({
       headerValue: 'scope',
@@ -629,8 +629,8 @@ describe('/api/jobs/async/[...path] proxy — every method carries the signed en
     vi.restoreAllMocks()
     if (originalRequireAuth === undefined) delete process.env.REQUIRE_AUTH
     else process.env.REQUIRE_AUTH = originalRequireAuth
-    if (originalInternalToken === undefined) delete process.env.GRID_INTERNAL_API_TOKEN
-    else process.env.GRID_INTERNAL_API_TOKEN = originalInternalToken
+    if (originalInternalToken === undefined) delete process.env.INTERNAL_API_TOKEN
+    else process.env.INTERNAL_API_TOKEN = originalInternalToken
   })
 
   it.each([

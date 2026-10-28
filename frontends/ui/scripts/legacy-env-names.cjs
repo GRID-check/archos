@@ -24,8 +24,8 @@ const RENAMED = {
   PILOTI_ASK_MAX_SECONDS: 'AGENT_ASK_MAX_SECONDS',
 }
 
-/** Off until the deployments move to the new names, as `WARN` in `apps/backend/entrypoint.py`. */
-const WARN = false
+/** Every reader reads the new names, so an old one is worth a warning (as `WARN` in `apps/backend/entrypoint.py`). */
+const WARN = true
 
 /** The name `legacy` is read as now, or null when it carries no old prefix. */
 function currentName(legacy) {

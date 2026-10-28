@@ -133,7 +133,7 @@ def test_what_nothing_recognises_stays_retryable():
 
 def test_a_reason_prefix_beats_the_exception():
     """The adapter's deliberate reason is the more specific statement."""
-    verdict = classify_failure("vlm_not_configured: image ingestion requires GRID_VLM_API_KEY", TimeoutError())
+    verdict = classify_failure("vlm_not_configured: image ingestion requires VLM_API_KEY", TimeoutError())
     assert verdict.category == "configuration"
 
 

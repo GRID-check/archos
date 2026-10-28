@@ -10,13 +10,13 @@ from collections.abc import Callable
 
 from .env import env_int
 
-# @environment_variable GRID_QUERY_EMBED_CACHE_SIZE
+# @environment_variable QUERY_EMBED_CACHE_SIZE
 # @category Knowledge Layer
 # @type int
 # @default 512
 # @required false
 # Maximum cached query embeddings per retriever (LRU).
-EMBED_CACHE_MAX = env_int("GRID_QUERY_EMBED_CACHE_SIZE", 512, minimum=0)
+EMBED_CACHE_MAX = env_int("QUERY_EMBED_CACHE_SIZE", 512, minimum=0)
 
 
 class _InflightEmbedding:

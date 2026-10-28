@@ -23,7 +23,7 @@ import { deployedSha } from '@/lib/boot'
 export const dynamic = 'force-dynamic'
 
 export const GET = publicApiRoute(
-  // `sha` is the deployed commit (`GRID_GIT_SHA`, stamped into the image at
+  // `sha` is the deployed commit (`GIT_SHA`, stamped into the image at
   // build time), or `unknown`. It is here rather than only in the boot log
   // because a pilot report arrives days later, by which time the log line has
   // rotated: this answers "what is that deployment running" over HTTP, from

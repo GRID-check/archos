@@ -4,7 +4,7 @@
  * Read/write folder access against a REAL Postgres (ADR-0088, migrations 0111
  * and 0128), through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/authz/folder-access.integration.spec.ts
  *
  * The unit specs prove the rule and that every read path passes the hidden
@@ -23,7 +23,7 @@ import type { FolderClearance } from './folder-access-rule'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_folders_${Date.now()}`
 const OTHER_ORG = `${ORG}_other`
 const USER = 'user_folders'
@@ -78,7 +78,7 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     access = await import('./folder-access')
@@ -336,7 +336,7 @@ describe.skipIf(!url)('IFC models and restricted folders against Postgres', () =
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     accessRepo = await import('./folder-access-repository')

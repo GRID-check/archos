@@ -16,7 +16,7 @@ from knowledge_layer.llamaindex import document_presence
 @pytest.fixture()
 def configured(monkeypatch):
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000/")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "secret")
 
 
 class _Response:
@@ -82,7 +82,7 @@ def test_an_unreachable_bff_is_unknown(configured, monkeypatch):
     assert document_presence.document_still_exists("d1", "proj_1") is None
 
 
-@pytest.mark.parametrize("missing", ["FRONTEND_INTERNAL_URL", "GRID_INTERNAL_API_TOKEN"])
+@pytest.mark.parametrize("missing", ["FRONTEND_INTERNAL_URL", "INTERNAL_API_TOKEN"])
 def test_an_unconfigured_transport_asks_nothing(configured, monkeypatch, missing):
     monkeypatch.delenv(missing)
     calls = _answer(monkeypatch, _Response(200, {"exists": False}))

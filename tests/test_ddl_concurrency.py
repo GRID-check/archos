@@ -15,7 +15,7 @@ a database nothing has touched, and asks each of them whether it came back clean
 AND whether it marked the database as ensured (the stores that fail open would
 otherwise hide the lost race in a log line). It needs a real server:
 
-    GRID_TEST_PG_URL=postgresql://postgres@127.0.0.1:5432/postgres
+    TEST_PG_URL=postgresql://postgres@127.0.0.1:5432/postgres
 
 names a database on it that this suite may create databases from. It makes and
 drops its own, and touches nothing else. Prefer the IP to ``localhost``.
@@ -35,9 +35,9 @@ from sqlalchemy.engine import make_url
 from tests.ddl_race_worker import SITES
 from tests.ddl_race_worker import worker as ensure_in_child
 
-_SERVER = os.environ.get("GRID_TEST_PG_URL")
+_SERVER = os.environ.get("TEST_PG_URL")
 
-pytestmark = pytest.mark.skipif(not _SERVER, reason="GRID_TEST_PG_URL not set")
+pytestmark = pytest.mark.skipif(not _SERVER, reason="TEST_PG_URL not set")
 
 #: Processes that create the schema at once. A boot is four roles, and replicas.
 PROCESSES = 8
@@ -73,8 +73,8 @@ def outcomes():
 
     # The LangGraph sites take a session lock on the direct DSN (`keyed_lock`). An advisory lock is
     # per database, so one fixed database serves them all: the creators still exclude each other.
-    previous_lock_url = os.environ.get("GRID_LOCK_DB_URL")
-    os.environ["GRID_LOCK_DB_URL"] = _SERVER
+    previous_lock_url = os.environ.get("LOCK_DB_URL")
+    os.environ["LOCK_DB_URL"] = _SERVER
     context = multiprocessing.get_context("spawn")
     barrier, results = context.Barrier(PROCESSES), context.Queue()
     processes = [context.Process(target=ensure_in_child, args=(i, barrier, tasks, results)) for i in range(PROCESSES)]
@@ -97,9 +97,9 @@ def outcomes():
                 conn.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
         admin.dispose()
         if previous_lock_url is None:
-            os.environ.pop("GRID_LOCK_DB_URL", None)
+            os.environ.pop("LOCK_DB_URL", None)
         else:
-            os.environ["GRID_LOCK_DB_URL"] = previous_lock_url
+            os.environ["LOCK_DB_URL"] = previous_lock_url
 
 
 def _tables(url: str) -> set[str]:

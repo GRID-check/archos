@@ -474,7 +474,7 @@ class TurnResult(_Model):
     #: level the asker stated instead, or None when they stated none: its graph
     #: state is gone by then, and a stated level is the one the answering call
     #: runs at, so the two differ only for a turn that stated none.
-    #: Withheld from the frame only while ``GRID_WIRE_V2_ADDITIVE_FIELDS`` is
+    #: Withheld from the frame only while ``WIRE_V2_ADDITIVE_FIELDS`` is
     #: set ``off``, the rollback (``aiq_api.chat_socket.STAGED_SERVER_FIELDS``);
     #: the row keeps it.
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
@@ -905,7 +905,7 @@ ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = (
 
 
 class HelloValue(_Model):
-    build: str = Field(min_length=1, description="The deployed commit (GRID_GIT_SHA), or 'unknown', as /health has it.")
+    build: str = Field(min_length=1, description="The deployed commit (GIT_SHA), or 'unknown', as /health has it.")
     accepts: list[str] = Field(
         default_factory=list,
         description=(

@@ -35,8 +35,8 @@ export async function runPilotiWakeStop(
   // Ended already (answered, stopped, failed): nothing runs. A deleted mark took its wakes with it, and its turn may run.
   if (wake && wake.status !== 'started') return
 
-  const secret = process.env.GRID_INTERNAL_API_TOKEN
-  if (!secret) throw new Error('GRID_INTERNAL_API_TOKEN is not set: a stop cannot sign its socket')
+  const secret = process.env.INTERNAL_API_TOKEN
+  if (!secret) throw new Error('INTERNAL_API_TOKEN is not set: a stop cannot sign its socket')
   const conversationId = documentThreadConversationId(payload.documentId, payload.actorUserId)
   const outcome = await cancelHeadlessTurn({
     url: chatSocketUrl(conversationId),

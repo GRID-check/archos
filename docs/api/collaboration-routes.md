@@ -137,7 +137,7 @@ folder role on it and are not an organization admin (ADR-0097). The UI shows
 them disabled with „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat
 stammt“ and never names the folder. At most 200 people are evaluated, a bounded
 number at a time, each against their folder roles (cached for
-`GRID_AUTHZ_CACHE_TTL_MS`) and the membership roles behind the admin bypass
+`AUTHZ_CACHE_TTL_MS`) and the membership roles behind the admin bypass
 (cached for 60 s); anyone beyond that, or whose lookup fails, is reported as
 lacking access. Absent for a document.
 

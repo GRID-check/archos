@@ -16,8 +16,8 @@ const postgres = require('postgres')
  * @returns {import('postgres').Sql}
  */
 function createSql(env = process.env) {
-  const url = env.GRID_APP_DATABASE_URL
-  if (!url) throw new Error('GRID_APP_DATABASE_URL is not defined')
+  const url = env.APP_DATABASE_URL
+  if (!url) throw new Error('APP_DATABASE_URL is not defined')
   return postgres(url, { prepare: false })
 }
 

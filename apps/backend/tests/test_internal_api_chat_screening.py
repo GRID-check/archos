@@ -44,7 +44,7 @@ def bff(monkeypatch) -> _Requests:
         return real_client(*args, transport=httpx.MockTransport(reply), **kwargs)
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "service-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "service-token")
     monkeypatch.setattr(internal_api.httpx, "AsyncClient", client)
     return requests
 

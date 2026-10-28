@@ -119,7 +119,7 @@ class TestTheWireContract:
 
 class TestTransport:
     async def test_echoes_the_envelope_and_the_token(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
         seen = {}
 
         def opened(request, timeout):
@@ -143,7 +143,7 @@ class TestTransport:
         assert tree.shelf == "project"
 
     async def test_a_404_is_not_found_with_the_bff_s_sentence(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
 
         def refused(request, timeout):
             body = io.BytesIO(json.dumps({"error": "No folder with that path.", "code": "NOT_FOUND"}).encode())
@@ -158,13 +158,13 @@ class TestTransport:
         assert caught.value.code == "NOT_FOUND"
 
     async def test_refuses_to_send_without_the_token(self, monkeypatch):
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
 
-        with pytest.raises(client.EstateTreeError, match="GRID_INTERNAL_API_TOKEN"):
+        with pytest.raises(client.EstateTreeError, match="INTERNAL_API_TOKEN"):
             await client.read_estate_tree("session", ENVELOPE)
 
     async def test_an_unreachable_bff_is_an_error_not_an_empty_tree(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
 
         def down(request, timeout):
             raise urllib.error.URLError("connection refused")

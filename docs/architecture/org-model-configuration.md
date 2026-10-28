@@ -32,7 +32,7 @@ Resolution is **per agent group**, so the layers mix: an org that pinned only
 | Workflow YAML | `configs/*.yml` → `llms:` → `model_name` | a commit + redeploy | boot floor only |
 
 For an LLM an agent group covers, the YAML is not where the fleet's model is
-decided — its `model_name` values are `${GRID_DEFAULT_MODEL:-…}` floors for a
+decided — its `model_name` values are `${DEFAULT_MODEL:-…}` floors for a
 process with no BFF to ask (local `nat run`, a detached worker, an unreachable
 frontend). What the YAML solely owns everywhere is the plumbing an override may
 never touch: `base_url`, `api_key`, `temperature`, `max_tokens`, timeouts and
@@ -91,8 +91,8 @@ replicas cannot race, and never throws into boot — every failure path leaves t
 table empty, which is the pre-existing working state.
 
 `ingest_vlm` is normally skipped by rule 1: the ingestion VLM has its own
-credential plane (`GRID_VLM_BASE_URL`) whose shipped default routes to NVIDIA, so
-seeding it would make an operator's `GRID_VLM_MODEL` dead config and fail every
+credential plane (`VLM_BASE_URL`) whose shipped default routes to NVIDIA, so
+seeding it would make an operator's `VLM_MODEL` dead config and fail every
 caption call against that endpoint. It is bootstrapped only where the VLM itself
 runs on the platform provider.
 
@@ -212,7 +212,7 @@ dials above carry it for the models an org chooses (`RequestLLMContext.apply`,
 model the platform fixes (embeddings, reranker, decision model, `summary_llm`,
 `rerank_llm`, `card_repair_llm`) is pinned on every request whatever the org's
 setting. The ZDR bit fails CLOSED: a BFF error or a missing
-`GRID_INTERNAL_API_TOKEN` pins it, while the model overrides in the same lookup
+`INTERNAL_API_TOKEN` pins it, while the model overrides in the same lookup
 still fail open to the YAML models.
 
 ## Agent groups
@@ -254,10 +254,10 @@ section). Two things differ from a chat group:
   the picker and the save-path `validateModelForGroup` to models whose
   `architecture.input_modalities` includes `image` — a text-only model would
   produce empty captions. Self-skips on BYOK catalogs with no modality metadata.
-- **Workflow default.** The VLM is env-configured (`GRID_VLM_MODEL`), not a
+- **Workflow default.** The VLM is env-configured (`VLM_MODEL`), not a
   `llms:` entry, so `/v1/config/llm-defaults` reports its resolved default under
   a synthetic `vlm` key and the group's `configLlmRefs: ['vlm']` maps to it.
-- **Separate credential plane.** `GRID_VLM_BASE_URL` is independent of the `llms:`
+- **Separate credential plane.** `VLM_BASE_URL` is independent of the `llms:`
   block and the shipped default routes to NVIDIA while the chat models route to
   OpenRouter. An override here replaces the model id only, so a model id from a
   different provider's catalog fails every caption call — which is why the
@@ -466,7 +466,7 @@ them up:
 |---|---|---|
 | Interactive WS chat | `server.js` resolves the org's **effective** overrides at WS upgrade (`GET /api/auth/websocket-scope` → `getEffectiveModelOverrides`: platform defaults with the org's own choices layered over them) and forwards `x-grid-model-overrides`. When the turn kicks off an async deep-research job, that job is submitted **in-process** by `piloti/conversation_register.py`, which captures the map from the live WS request context (`get_model_overrides_from_context()`) rather than re-resolving it. | Yes |
 | Scheduled / manual job runs (ADR-0046) | `fireJob()` (`frontends/ui/src/lib/jobs/service.ts`) resolves the org's **effective** overrides (`getEffectiveModelOverrides`) and passes them explicitly as `model_overrides` in the `POST /v1/internal/skills/submit` payload. | Yes |
-| Generic REST async-job proxy: `POST /api/jobs/async/submit` → backend `POST /v1/jobs/async/submit` | **Fixed 2026-07-16** (`0bdfb72`, `a78f5d4`). `frontends/ui/src/app/api/jobs/async/[...path]/route.ts` now resolves the caller's effective overrides (`getEffectiveModelOverrides`) and forwards them — via the shared `GridRequestContext` builder, so both the legacy `x-grid-model-overrides` header and the signed `X-Grid-Request-Context` envelope carry them. Belt-and-suspenders on the backend: `get_model_overrides_from_context()` (`common/model_overrides.py`) reads the header/envelope first; when neither is present it falls back to a **just-in-time resolution of the effective selection** — `resolve_org_model_overrides()` calls the BFF's internal `GET /api/internal/model-overrides` endpoint, which itself returns the merged platform-plus-org map (the org's own choices win per group) (`GRID_INTERNAL_API_TOKEN`-guarded), cached in two tiers — a 10 s in-process memo and the shared cache key `modelconfig:{org}` (ADR-0020, 60 s), which the BFF deletes on a config save or rollback, a ZDR toggle, and a platform-defaults save (`lib/model-config/backend-key.ts`), so a save reaches every backend replica within ~10 s — and fail-open to `{}` (YAML defaults) on any error while the ZDR bit resolved in the same lookup fails closed (pinned, ADR-0074), with errors negative-cached for 1 s in-process only, never written to the shared tier — mirroring the BYOK credential-resolution pattern. | **Yes**, via header-first-then-org-resolution precedence. See also `docs/api/bff-routes.md` and `docs/api/python-endpoints.md`. |
+| Generic REST async-job proxy: `POST /api/jobs/async/submit` → backend `POST /v1/jobs/async/submit` | **Fixed 2026-07-16** (`0bdfb72`, `a78f5d4`). `frontends/ui/src/app/api/jobs/async/[...path]/route.ts` now resolves the caller's effective overrides (`getEffectiveModelOverrides`) and forwards them — via the shared `GridRequestContext` builder, so both the legacy `x-grid-model-overrides` header and the signed `X-Grid-Request-Context` envelope carry them. Belt-and-suspenders on the backend: `get_model_overrides_from_context()` (`common/model_overrides.py`) reads the header/envelope first; when neither is present it falls back to a **just-in-time resolution of the effective selection** — `resolve_org_model_overrides()` calls the BFF's internal `GET /api/internal/model-overrides` endpoint, which itself returns the merged platform-plus-org map (the org's own choices win per group) (`INTERNAL_API_TOKEN`-guarded), cached in two tiers — a 10 s in-process memo and the shared cache key `modelconfig:{org}` (ADR-0020, 60 s), which the BFF deletes on a config save or rollback, a ZDR toggle, and a platform-defaults save (`lib/model-config/backend-key.ts`), so a save reaches every backend replica within ~10 s — and fail-open to `{}` (YAML defaults) on any error while the ZDR bit resolved in the same lookup fails closed (pinned, ADR-0074), with errors negative-cached for 1 s in-process only, never written to the shared tier — mirroring the BYOK credential-resolution pattern. | **Yes**, via header-first-then-org-resolution precedence. See also `docs/api/bff-routes.md` and `docs/api/python-endpoints.md`. |
 
 The JIT fallback (`resolve_org_model_overrides` / `/api/internal/model-overrides`)
 also covers any future endpoint the BFF doesn't front, or a turn where the
@@ -485,7 +485,7 @@ invalidation path is intact:
 - **Backend tiers** (`src/aiq_agent/common/model_overrides.py`): L1 10 s
   in-process memo, L2 60 s shared entry, both write-invalidated by the BFF
   delete. Errors are negative-cached for 1 s in L1 only; empty successes
-  (`{}, False` — also what a missing `GRID_INTERNAL_API_TOKEN` resolves to)
+  (`{}, False` — also what a missing `INTERNAL_API_TOKEN` resolves to)
   stay L1-only so "no configuration" can never shadow a concurrent save in L2.
   Residual race: a fetch that started before the save can complete after the
   delete and re-populate L2 with the pre-save record (stale up to L2 60 s);
@@ -537,7 +537,7 @@ invalidation: confirm `REDIS_URL` on both sides, then look for
 | Header missing/malformed at runtime | JIT org-side resolution, then the YAML models (fail-open) |
 | `platform_model_defaults` unreadable | the org's own overrides still apply; everything else falls to the YAML models |
 | Platform default not ZDR-capable | refused at save (every org is ZDR unless it opted out); a saved default that later loses its ZDR endpoint is flagged on the platform page |
-| ZDR setting unreadable at runtime (BFF down, no `GRID_INTERNAL_API_TOKEN`) | the request is pinned anyway (fail closed); a model without a ZDR endpoint is refused while it lasts |
+| ZDR setting unreadable at runtime (BFF down, no `INTERNAL_API_TOKEN`) | the request is pinned anyway (fail closed); a model without a ZDR endpoint is refused while it lasts |
 | Model has no ZDR endpoint for a ZDR org | OpenRouter refuses (404 "No endpoints found matching your data policy"); chat answers `ZDR_MODEL_REFUSED_MESSAGE`, a job fails with it, and the org model card lists the affected groups |
 | Overridden model rejected upstream by OpenRouter | LLM error surfaces in chat; admin rolls back the version |
 | Version rollback race (two admins) | last write wins on the pointer; both versions remain in history |
@@ -556,7 +556,7 @@ This environment cannot reach openrouter.ai (network policy), so:
   `frontends/ui/src/app/api/platform/model-defaults/route.spec.ts`. The
   replace-not-patch write semantics need a real database
   (`platform-defaults.integration.spec.ts`, opt-in via
-  `GRID_TEST_DATABASE_URL`).
+  `TEST_DATABASE_URL`).
 - Header parse/sanitize, `override_model` copy semantics, and provider
   derivation are covered by pytest
   (`tests/aiq_agent/common/test_model_overrides.py`).

@@ -15,9 +15,9 @@ export const POLL_SECONDS = 30
 /** How often it looks before it gives up: about 30 minutes, longer than any turn runs. */
 export const MAX_WAITS = 60
 
-/** `GRID_DOCUMENT_CHECK_DAILY_LIMIT`: checks one organization may start per day; 0 switches them off. */
+/** `DOCUMENT_CHECK_DAILY_LIMIT`: checks one organization may start per day; 0 switches them off. */
 export const DEFAULT_DAILY_LIMIT = 25
-/** `GRID_DOCUMENT_CHECK_MAX_BATCH`: a settle batch announcing more documents than this (a bulk import) is not checked. */
+/** `DOCUMENT_CHECK_MAX_BATCH`: a settle batch announcing more documents than this (a bulk import) is not checked. */
 export const DEFAULT_MAX_BATCH = 10
 
 function nonNegativeInt(raw: string | undefined, fallback: number): number {
@@ -26,10 +26,10 @@ function nonNegativeInt(raw: string | undefined, fallback: number): number {
 }
 
 export const documentCheckDailyLimit = (env: Record<string, string | undefined> = process.env): number =>
-  nonNegativeInt(env.GRID_DOCUMENT_CHECK_DAILY_LIMIT, DEFAULT_DAILY_LIMIT)
+  nonNegativeInt(env.DOCUMENT_CHECK_DAILY_LIMIT, DEFAULT_DAILY_LIMIT)
 
 export const documentCheckMaxBatch = (env: Record<string, string | undefined> = process.env): number =>
-  nonNegativeInt(env.GRID_DOCUMENT_CHECK_MAX_BATCH, DEFAULT_MAX_BATCH)
+  nonNegativeInt(env.DOCUMENT_CHECK_MAX_BATCH, DEFAULT_MAX_BATCH)
 
 const hex = (value: string) => value.replace(/-/g, '_')
 

@@ -391,7 +391,7 @@ async function serveLegacyAsJson(request: Request, authInfo: AuthInfo | undefine
  * {@link serveLegacyAsJson}, which answers one JSON body.
  *
  * The modern handler answers `auto`: a call that sends no message before its
- * result (every call but a `piloti-ask-create` that carries a progress token)
+ * result (every call but a `agent-ask-create` that carries a progress token)
  * is one JSON body; that one call is upgraded to an SSE stream carrying its
  * `notifications/progress` and then the result. Nothing else here emits a
  * message before a result: the server declares no `logging`, and asking for

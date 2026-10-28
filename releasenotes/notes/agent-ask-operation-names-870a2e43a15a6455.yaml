@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    The agent door's ask and undo tools are now agent-ask-create, agent-ask-get,
+    agent-ask-cancel and agent-change-undo, and the ask routes live under
+    /api/agent-asks. The old piloti-ask names and paths keep working for one
+    release, so connected agents need no change yet.

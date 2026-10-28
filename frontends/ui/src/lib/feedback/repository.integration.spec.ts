@@ -7,7 +7,7 @@
  * join pairs with an answer, how a NULL groups, where a window starts. Those
  * are exactly the claims a mocked handle agrees with whatever the fixture says.
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/feedback/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -20,7 +20,7 @@ import { presetRange } from '@/lib/quality/scope'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const STAMP = Date.now()
 const ORG = `org_feedback_${STAMP}`
@@ -94,7 +94,7 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

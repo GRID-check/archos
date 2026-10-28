@@ -26,7 +26,7 @@ import { callOperation, OperationInputError, validateOperationInput } from '@/li
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
 import { isOnDoor } from '@/lib/agent-api/exposure'
-import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
+import { isAgentAskOperation } from '@/lib/agent-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
 /**
@@ -34,7 +34,7 @@ import type { OperationPayload, ProposedChangeResult } from './types'
  * Piloti's own door reaches arrives here as a proposal, so refusing an ask here
  * is what keeps a turn, a turn an ask started included, from starting another.
  */
-export const PILOTI_ASK_REFUSAL =
+export const AGENT_ASK_REFUSAL =
   'Piloti cannot ask Piloti: an ask is how another agent consults Piloti, and a turn may not start another.'
 
 /**
@@ -49,7 +49,7 @@ export const PILOTI_ASK_REFUSAL =
 export const PROPOSAL_DECISION_OPERATIONS: ReadonlySet<string> = new Set([
   'proposal-apply',
   'proposal-dismiss',
-  'piloti-change-undo',
+  'agent-change-undo',
 ])
 
 /** Why Piloti never files a decision on a proposal, nor an undo: the person makes those ({@link PROPOSAL_DECISION_OPERATIONS}). */
@@ -66,7 +66,7 @@ export const PROPOSAL_DECISION_REFUSAL =
  * since then is not run on a card the agent worded.
  */
 function unusableReason(op: AgentOperation | undefined, name: string): string | null {
-  if (isPilotiAskOperation(name)) return PILOTI_ASK_REFUSAL
+  if (isAgentAskOperation(name)) return AGENT_ASK_REFUSAL
   // Withheld or off the office door reads as unknown, here as on every door (`isOnDoor`). Hidden from
   // Piloti behind a native tool (`exposure.config.ts`) is still on the door: a card filed before applies.
   if (!op || !isOnDoor(op.name)) return `The operation ${name} no longer exists`

@@ -154,7 +154,7 @@ describe('the agent door handler', () => {
   it('lets call-operation reach an agent read tool whose own `query` is a string', async () => {
     // input.query used to be typed as an object, so the SDK refused knowledge-search before the handler ran:
     // "data/input/query must be object".
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     const call = {
       jsonrpc: '2.0',
       id: 2,

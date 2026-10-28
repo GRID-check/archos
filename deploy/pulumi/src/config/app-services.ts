@@ -62,7 +62,7 @@ export interface WebPushConfig {
 export interface SkillsConfig {
   /**
    * Floor on how often a job may be scheduled to fire, in minutes. Reaches
-   * the frontend as `GRID_SKILL_MIN_INTERVAL_MINUTES` and is enforced at
+   * the frontend as `SKILL_MIN_INTERVAL_MINUTES` and is enforced at
    * save time.
    */
   minIntervalMinutes: number;

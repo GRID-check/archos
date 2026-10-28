@@ -13,8 +13,8 @@ T0 = 1_800_000_000.0
 
 def test_the_postgres_branch_ran_where_it_is_required():
     """CI's ``task be:test:postgres`` sets the guard: there a missing database fails instead of skipping green."""
-    if os.environ.get("GRID_TEST_POSTGRES_REQUIRED"):
-        assert os.environ.get("GRID_TEST_POSTGRES_URL"), "GRID_TEST_POSTGRES_URL is unset while REQUIRED is set"
+    if os.environ.get("TEST_POSTGRES_REQUIRED"):
+        assert os.environ.get("TEST_POSTGRES_URL"), "TEST_POSTGRES_URL is unset while REQUIRED is set"
 
 
 @pytest.fixture

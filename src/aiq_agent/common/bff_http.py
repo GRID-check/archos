@@ -8,7 +8,7 @@ the four things each caller used to copy:
   ``FRONTEND_URL``, else ``http://frontend:3000``. Every deployment sets the
   first (compose and Pulumi); the second is a local-dev convenience older
   clients honoured, kept so nobody's ``.env`` stops working.
-* **The service credential.** ``GRID_INTERNAL_API_TOKEN`` in
+* **The service credential.** ``INTERNAL_API_TOKEN`` in
   :data:`INTERNAL_TOKEN_HEADER`. No token, no request: the call raises
   :class:`BffNotConfiguredError` before anything leaves the process, because an
   empty token is refused by the BFF anyway and a request without one only
@@ -58,7 +58,7 @@ FALLBACK_URL_ENV = "FRONTEND_URL"
 DEFAULT_BASE_URL = "http://frontend:3000"
 
 #: The shared service secret (the BFF signs request-context envelopes with it too).
-INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
+INTERNAL_TOKEN_ENV = "INTERNAL_API_TOKEN"
 INTERNAL_TOKEN_HEADER = "X-Internal-Token"
 REQUEST_CONTEXT_HEADER = "X-Request-Context"
 REQUEST_CONTEXT_SIGNATURE_HEADER = "X-Request-Context-Sig"

@@ -110,7 +110,7 @@ def test_the_platforms_key_is_always_pinned_and_an_own_key_follows_its_organizat
 
 @pytest.fixture
 def app(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     monkeypatch.delenv(route.MODEL_ENV, raising=False)
     monkeypatch.delenv(route.FALLBACK_MODEL_ENV, raising=False)
     application = FastAPI()

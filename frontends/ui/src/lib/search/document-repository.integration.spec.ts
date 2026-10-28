@@ -9,7 +9,7 @@
  * same set. A mocked drizzle handle cannot disagree with the fixture that
  * mocked it; this can.
  *
- *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/search/document-repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -25,7 +25,7 @@ import type { DocumentFilters, SearchSort } from './search-wire'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_search_${STAMP}`
 const ORG_B = `org_search_b_${STAMP}`
@@ -404,7 +404,7 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     repo = await import('./document-repository')

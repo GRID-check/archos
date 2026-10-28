@@ -5,7 +5,7 @@
  * The ask routes (ADR-0124) as thin adapters: the session, the body and query
  * schemas, the chat-turn budget, and the status that tells an agent whether to
  * poll (200 for an ask that ended, 202 for one still running). The rules are
- * the service's (`lib/piloti-asks/service.spec.ts`).
+ * the service's (`lib/agent-asks/service.spec.ts`).
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -29,14 +29,14 @@ vi.mock('@/lib/limits/enforce', async (original) => ({
   ...(await original<typeof import('@/lib/limits/enforce')>()),
   enforceLimit: vi.fn(async () => undefined),
 }))
-vi.mock('@/lib/piloti-asks/service', () => ({ askPiloti: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
+vi.mock('@/lib/agent-asks/service', () => ({ askPiloti: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
 
 import { UnauthorizedError } from '@/lib/api/errors'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { CHAT_TURN_LIMIT } from '@/lib/limits/catalog'
 import { enforceLimit } from '@/lib/limits/enforce'
-import type { AskView } from '@/lib/piloti-asks/ask-wire'
-import { askPiloti, cancelAsk, getAsk } from '@/lib/piloti-asks/service'
+import type { AskView } from '@/lib/agent-asks/ask-wire'
+import { askPiloti, cancelAsk, getAsk } from '@/lib/agent-asks/service'
 import { POST as cancel } from './[id]/cancel/route'
 import { GET as read } from './[id]/route'
 import { POST as ask } from './route'
@@ -60,7 +60,7 @@ const view = (over: Partial<AskView> = {}): AskView => ({
 })
 
 const post = (body: unknown) =>
-  new Request('http://piloti.test/api/piloti-asks', {
+  new Request('http://piloti.test/api/agent-asks', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
@@ -72,7 +72,7 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('POST /api/piloti-asks', () => {
+describe('POST /api/agent-asks', () => {
   it('answers 202 while Piloti works, so the agent polls', async () => {
     vi.mocked(askPiloti).mockResolvedValue(view())
     const response = await ask(post({ question: 'Welche Fluchtweglänge gilt?' }))
@@ -112,25 +112,25 @@ describe('POST /api/piloti-asks', () => {
   })
 })
 
-describe('GET /api/piloti-asks/[id]', () => {
+describe('GET /api/agent-asks/[id]', () => {
   it('reads the ask, waiting as long as asked', async () => {
     vi.mocked(getAsk).mockResolvedValue(view())
-    const response = await read(new Request(`http://piloti.test/api/piloti-asks/${ID}?waitSeconds=25`), params(ID))
+    const response = await read(new Request(`http://piloti.test/api/agent-asks/${ID}?waitSeconds=25`), params(ID))
     expect(response.status).toBe(200)
     expect(getAsk).toHaveBeenCalledWith(SESSION, ID, 25)
   })
 
   it('refuses a wait past the bound with 400', async () => {
-    const response = await read(new Request(`http://piloti.test/api/piloti-asks/${ID}?waitSeconds=41`), params(ID))
+    const response = await read(new Request(`http://piloti.test/api/agent-asks/${ID}?waitSeconds=41`), params(ID))
     expect(response.status).toBe(400)
     expect(getAsk).not.toHaveBeenCalled()
   })
 })
 
-describe('POST /api/piloti-asks/[id]/cancel', () => {
+describe('POST /api/agent-asks/[id]/cancel', () => {
   it('stops the ask', async () => {
     vi.mocked(cancelAsk).mockResolvedValue(view({ state: 'canceled', pollAfterSeconds: null }))
-    const response = await cancel(new Request(`http://piloti.test/api/piloti-asks/${ID}/cancel`, { method: 'POST' }), params(ID))
+    const response = await cancel(new Request(`http://piloti.test/api/agent-asks/${ID}/cancel`, { method: 'POST' }), params(ID))
     expect(response.status).toBe(200)
     expect(cancelAsk).toHaveBeenCalledWith(SESSION, ID)
   })

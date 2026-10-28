@@ -34,7 +34,7 @@ import os
 logger = logging.getLogger(__name__)
 
 _FRONTEND_INTERNAL_URL_ENV = "FRONTEND_INTERNAL_URL"
-_INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
+_INTERNAL_TOKEN_ENV = "INTERNAL_API_TOKEN"
 _EXISTS_PATH = "/api/internal/document-exists"
 _HTTP_TIMEOUT_SECONDS = 10.0
 

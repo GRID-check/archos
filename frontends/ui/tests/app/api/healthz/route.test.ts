@@ -12,11 +12,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { GET } from '@/app/api/healthz/route'
 
-const ORIGINAL = process.env.GRID_GIT_SHA
+const ORIGINAL = process.env.GIT_SHA
 
 afterEach(() => {
-  if (ORIGINAL === undefined) delete process.env.GRID_GIT_SHA
-  else process.env.GRID_GIT_SHA = ORIGINAL
+  if (ORIGINAL === undefined) delete process.env.GIT_SHA
+  else process.env.GIT_SHA = ORIGINAL
 })
 
 /** The route is a `publicApiRoute`, so it takes a Request and nothing else. */
@@ -29,7 +29,7 @@ describe('GET /api/healthz', () => {
   it('reports the deployed sha alongside the liveness status', async () => {
     // A real 40-hex commit, so the assertion is on the shape a deployment
     // actually carries.
-    process.env.GRID_GIT_SHA = '0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c' // pragma: allowlist secret
+    process.env.GIT_SHA = '0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c' // pragma: allowlist secret
 
     const response = await probe()
     expect(response.status).toBe(200)
@@ -42,13 +42,13 @@ describe('GET /api/healthz', () => {
   it('answers `unknown` for an image nothing stamped, never an empty field', async () => {
     // `sha=` in a health payload reads as a truncation; `unknown` reads as an
     // image that was not built by CI's image build, which is the fact.
-    delete process.env.GRID_GIT_SHA
+    delete process.env.GIT_SHA
 
     await expect((await probe()).json()).resolves.toMatchObject({ sha: 'unknown' })
   })
 
   it('stays a dependency-free probe: no store, and still 200 with nothing configured', async () => {
-    delete process.env.GRID_GIT_SHA
+    delete process.env.GIT_SHA
 
     const response = await probe()
     expect(response.status).toBe(200)
