@@ -753,23 +753,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
-    "to": "src/features/skills/components/SkillsUsedDisclosure.tsx",
-    "unresolvedTo": "@/features/skills/components/SkillsUsedDisclosure",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/chat/components/AnswerAnatomy.tsx",
     "to": "src/features/grid-cards/components/CalloutCard.tsx",
     "unresolvedTo": "@/features/grid-cards/components/CalloutCard",
@@ -6623,6 +6606,23 @@
     "from": "src/features/layout/components/chat-area/use-chat-area-controller.tsx",
     "to": "src/features/runs/lib/carry-forward.ts",
     "unresolvedTo": "@/features/runs/lib/carry-forward",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/agent-response/answer-details.tsx",
+    "to": "src/features/skills/components/SkillsUsedDisclosure.tsx",
+    "unresolvedTo": "@/features/skills/components/SkillsUsedDisclosure",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
