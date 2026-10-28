@@ -1502,15 +1502,15 @@ def _count(outcome: ActionOutcome, hits: int, targets: Sequence[PassageTarget]) 
 @register_function(config_type=ReadPassageConfig)
 async def read_passage(config: ReadPassageConfig, _builder: Builder):
     """Open a named passage of a named document, or its outline. Deterministic; no LLM."""
-    from .register import _resolve_base_collection
-    from .register import _resolve_scoped_collections
-    from .register import _restrict_scope_to_turn
+    from .search_scope import resolve_base_collection
+    from .search_scope import resolve_scoped_collections
+    from .search_scope import restrict_scope_to_turn
 
     search_config = _builder.get_function_config(config.knowledge_search)
 
     def _entries() -> list[Any]:
-        return _restrict_scope_to_turn(
-            _resolve_scoped_collections(search_config, _session_collection(), _resolve_base_collection(search_config))
+        return restrict_scope_to_turn(
+            resolve_scoped_collections(search_config, _session_collection(), resolve_base_collection(search_config))
         )
 
     async def _unknown(document: str) -> str:
@@ -1629,11 +1629,11 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
                 "(from the inventory or a previous hit). To find out WHICH document holds a "
                 "fact, call `knowledge_search` instead."
             )
-        # Every branch below renders through `register._format_results`, which
+        # Every branch below renders through `search_results.format_results`, which
         # is where lane hits are recorded — and it is the SAME renderer
         # `knowledge_search` uses, so the hit cannot say which tool fetched it
         # unless the tool says so here. The scope wraps the awaits rather than
-        # sitting inside them: `_format_results` runs in `asyncio.to_thread`,
+        # sitting inside them: `format_results` runs in `asyncio.to_thread`,
         # which copies the context at call time.
         with lane_tool_scope(READ_PASSAGE_TOOL):
             if clause is None and (str(pages_argument or "").strip() or (arguments.cursor or "").strip()):
@@ -1643,7 +1643,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             return await _open(document, clause, page, outcome)
 
     async def _open(document: str, clause: str | None, page: int | None, outcome: ActionOutcome) -> str:
-        from .register import _format_results
+        from .search_results import format_results
 
         targets, refusal = await _resolve_or_refuse(document)
         if refusal:
@@ -1667,7 +1667,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         merged = _passage_result(chunks[:_MAX_PASSAGE_CHUNKS], query)
         _count(outcome, len(merged.chunks), targets)
         formatted = await asyncio.to_thread(
-            _format_results,
+            format_results,
             merged,
             query,
             notice=_older_revision_notice(targets),
@@ -1678,7 +1678,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
 
     async def _open_range(document: str, pages_argument: Any, cursor_token: str | None, outcome: ActionOutcome) -> str:
         """Pages ``first``-``last`` of a document in reading order, or the rest of a read that stopped early."""
-        from .register import _format_results
+        from .search_results import format_results
 
         try:
             span = _parse_pages(pages_argument, document)
@@ -1737,7 +1737,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         merged = _passage_result(kept, label)
         _count(outcome, len(kept), targets)
         formatted = await asyncio.to_thread(
-            _format_results,
+            format_results,
             merged,
             label,
             notice=_older_revision_notice(targets),
@@ -1749,7 +1749,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
 
     async def _outline(document: str, outcome: ActionOutcome) -> str:
         """The same lookup at document granularity: scope passage plus Gliederung."""
-        from .register import _format_results
+        from .search_results import format_results
 
         targets, refusal = await _resolve_or_refuse(document)
         if refusal:
@@ -1769,7 +1769,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # returns, and a byte added afterwards costs this tool the structured
         # read on its most common call (ADR-0061).
         formatted = await asyncio.to_thread(
-            _format_results,
+            format_results,
             _passage_result(passages, query),
             query,
             notice=_older_revision_notice(targets),
@@ -1791,7 +1791,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         a second clause on ``page_label`` would exclude every store that fills
         it with something other than a page number.
         """
-        from .register import _format_results
+        from .search_results import format_results
 
         whole = await _fetch_all(targets, _whole_document_filters, query, _MAX_OUTLINE_CHUNKS)
         fetched = whole.chunks
@@ -1808,7 +1808,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # The line that replaces the Gliederung rides the same trailer, and for
         # the same reason: the hash is over the whole text.
         formatted = await asyncio.to_thread(
-            _format_results,
+            format_results,
             merged,
             query,
             notice=_older_revision_notice(targets),

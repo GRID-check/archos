@@ -59,9 +59,9 @@ changed, and they stayed green through every gate because nothing ran them.
 - `knowledge_search` has two answer shapes. A query that names a Richtlinie and
   nothing else returns the whole family: `norm_registry.family_query_number`
   detects it, `read_passage.family_overview` reads every member the corpus
-  holds, and `register.search` renders their scope passages ahead of the ranked
+  holds, and `ranked_search.RankedSearch` renders their scope passages ahead of the ranked
   hits with one `## Gliederung` per member as the block's trailer. It keeps at
-  most four ranked hits beside the overview (`_FAMILY_RANKED_HITS`), and the
+  most four ranked hits beside the overview (`family_branch.FAMILY_RANKED_HITS`), and the
   requery judge does not run on a query whose overview was built
   (recorded as `search_input["requery_skipped"] = "family"`); a family the
   corpus lacks is judged as usual.

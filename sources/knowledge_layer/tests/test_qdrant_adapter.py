@@ -513,7 +513,7 @@ def test_clearing_a_dokumentart_puts_the_chunks_own_back(retriever, metadata_sto
     set_document_doc_class("proj_a", "plan.pdf", None)
     set_document_doc_class("proj_a", "brief.pdf", None)
 
-    # What register._hit_doc_class falls back to once the stored class is gone.
+    # What hit_metadata.hit_doc_class falls back to once the stored class is gone.
     assert store.count("proj_a", {"doc_class": "einreichplan"}) == 1
     assert store.count("proj_a", {"doc_class": "bescheid"}) == 0
     assert store.count("proj_a", {"doc_class": "korrespondenz"}) == 0

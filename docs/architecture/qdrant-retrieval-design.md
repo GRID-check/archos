@@ -220,7 +220,7 @@ project status and facts are all edited by people in Postgres. They are
 
 This removes the 3× over-fetch and the `$in`/`$nin` file lists. Each filter
 becomes a pre-filter inside the vector search. The post-filters in
-`register.py` stay as a backstop over hits that already match, because a
+`hit_metadata.py` stay as a backstop over hits that already match, because a
 mirror can lag: a pre-filter may only narrow what the Postgres post-filter
 allows, never widen it. A stale fact can therefore cost recall but cannot
 show something wrong. The superseded exclusion is the one case where a stale

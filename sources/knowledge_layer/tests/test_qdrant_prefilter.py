@@ -15,6 +15,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.hit_metadata import _folder_matches
 from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
 from knowledge_layer.qdrant import prefilter
 from knowledge_layer.qdrant import schema
@@ -25,7 +26,6 @@ from knowledge_layer.qdrant.payload import build_payload
 from knowledge_layer.qdrant.payload import document_facts
 from knowledge_layer.qdrant.prefilter import Pushdown
 from knowledge_layer.register import KnowledgeRetrievalConfig
-from knowledge_layer.register import _folder_matches
 from knowledge_layer.register import knowledge_retrieval
 from knowledge_layer_testing.qdrant import vector as _vector
 
@@ -87,7 +87,7 @@ PATHS += ["Brandschutzkonzepte", "/Brandschutz/", "Statik", "Pläne/Brandschutz"
 @pytest.mark.parametrize("stored", PATHS)
 @pytest.mark.parametrize("requested", [path for path in PATHS if path])
 def test_the_folder_pre_filter_agrees_with_the_post_filter(stored, requested):
-    """``register._folder_matches`` is the oracle: the payload match must say the same, case and slashes included."""
+    """``hit_metadata._folder_matches`` is the oracle: the payload match must agree, case and slashes included."""
     key = prefilter.folder_key(requested)
     assert (key in prefilter.folder_ancestors(stored)) is _folder_matches(stored, requested)
 

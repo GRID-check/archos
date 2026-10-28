@@ -285,17 +285,17 @@ class TestGrepOnTheDrafts:
 
 class TestKnowledgeSearchPath:
     def test_a_path_compiles_to_shelf_folder_and_file(self) -> None:
-        from knowledge_layer.register import _path_scope
+        from knowledge_layer.knowledge_search import path_scope
 
-        assert _path_scope("/project/Gutachten/", None, None, None) == ("project", "Gutachten", None)
-        assert _path_scope("/office/", None, None, None) == ("office", None, None)
-        assert _path_scope("/law/oib/oib-rl_2.pdf.md", None, None, None) == ("base", None, "oib-rl_2.pdf")
-        assert _path_scope("/project/A/x.pdf.md", None, "B", None) == ("project", "B", "x.pdf")
-        assert _path_scope("/", "office", None, None) == ("office", None, None)
+        assert path_scope("/project/Gutachten/", None, None, None) == ("project", "Gutachten", None)
+        assert path_scope("/office/", None, None, None) == ("office", None, None)
+        assert path_scope("/law/oib/oib-rl_2.pdf.md", None, None, None) == ("base", None, "oib-rl_2.pdf")
+        assert path_scope("/project/A/x.pdf.md", None, "B", None) == ("project", "B", "x.pdf")
+        assert path_scope("/", "office", None, None) == ("office", None, None)
 
     @pytest.mark.parametrize("path", ["/drafts/a.md", "project/x", "/nowhere/"])
     def test_a_path_that_names_no_place_is_refused(self, path: str) -> None:
-        from knowledge_layer.register import _path_scope
+        from knowledge_layer.knowledge_search import path_scope
 
         with pytest.raises(ValueError):
-            _path_scope(path, None, None, None)
+            path_scope(path, None, None, None)
