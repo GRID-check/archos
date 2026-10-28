@@ -96,9 +96,9 @@ class TestEchoNeverSign:
         assert reply.ok and reply.body["mode"] == "active"
         (request,) = fake.requests
         assert request.full_url == "http://bff.test/api/internal/project-intake"
-        assert request.get_header("X-grid-internal-token") == TOKEN
-        assert request.get_header("X-grid-request-context") == HEADER
-        assert request.get_header("X-grid-request-context-sig") == SIGNATURE
+        assert request.get_header("X-internal-token") == TOKEN
+        assert request.get_header("X-request-context") == HEADER
+        assert request.get_header("X-request-context-sig") == SIGNATURE
 
     async def test_a_run_without_an_envelope_sends_nothing_and_says_so(self, unsigned_run, route):
         fake = route()

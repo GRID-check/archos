@@ -327,7 +327,7 @@ class TestEmission:
 
         def _urlopen(request: Any, timeout: float) -> _Response:  # noqa: ARG001
             captured["url"] = request.full_url
-            captured["token"] = request.headers.get("X-grid-internal-token")
+            captured["token"] = request.headers.get("X-internal-token")
             return _Response()
 
         with patch.object(bff_http._opener, "open", _urlopen):

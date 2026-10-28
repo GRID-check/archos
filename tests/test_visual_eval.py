@@ -386,7 +386,7 @@ class TestTheSuiteWiring:
                 {"collection": fixture_visual.COLLECTION, "filename": "EP-02_Schnitt_A-A.pdf"}
             )
             request = urllib.request.Request(
-                f"{bff.url}/api/internal/document-file?{query}", headers={"X-Grid-Internal-Token": "t0ken"}
+                f"{bff.url}/api/internal/document-file?{query}", headers={"X-Internal-Token": "t0ken"}
             )
             located = json.loads(urllib.request.urlopen(request).read())  # noqa: S310 - loopback
             assert located["storageBucket"] == fixture_visual.BUCKET

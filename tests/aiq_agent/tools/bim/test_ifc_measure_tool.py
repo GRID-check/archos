@@ -1351,7 +1351,7 @@ class TestTheSourceClientDrawsTheSameDistinction:
         assert sent["body"] == {"organizationId": "org-1", "projectId": "p-1", "modelName": "V3"}
         assert "modelId" not in sent["body"]
         # The service token is the whole authentication of this call.
-        assert sent["headers"]["X-grid-internal-token"] == "test-token"
+        assert sent["headers"]["X-internal-token"] == "test-token"
         # A `resolved: false` body is an ANSWER, returned rather than raised.
         assert result["reason"] == "no_models"
 

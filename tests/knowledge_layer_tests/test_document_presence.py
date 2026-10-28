@@ -51,7 +51,7 @@ def test_a_definite_answer_is_returned_as_it_came(configured, monkeypatch, exist
     assert document_presence.document_still_exists("d1", "proj_1", "org_1") is exists
     assert calls[0]["url"] == "http://frontend:3000/api/internal/document-exists"
     assert calls[0]["params"] == {"documentId": "d1", "collection": "proj_1", "organizationId": "org_1"}
-    assert calls[0]["headers"] == {"x-grid-internal-token": "secret"}
+    assert calls[0]["headers"] == {"x-internal-token": "secret"}
 
 
 def test_no_organization_is_not_sent(configured, monkeypatch):

@@ -71,7 +71,7 @@ class TestTransport:
         seen = {}
 
         def opened(request, timeout):
-            seen.update(url=request.full_url, token=request.headers["X-grid-internal-token"], method=request.method)
+            seen.update(url=request.full_url, token=request.headers["X-internal-token"], method=request.method)
             return _Reply(json.dumps({"cards": [{"folder_path": "A/B", "abstract": "x"}]}).encode())
 
         monkeypatch.setattr(bff_http._opener, "open", opened)

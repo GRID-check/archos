@@ -246,10 +246,10 @@ describe('gateway compact turn-context transport', () => {
     }
     const port = await startGateway()
     expect(await upgrade(port, 'session=large-profile')).toBe(101)
-    for (const name of ['x-grid-project-context', 'x-grid-project-memory', 'x-grid-org-instructions']) {
+    for (const name of ['x-project-context', 'x-project-memory', 'x-org-instructions']) {
       expect(backendHeaders).not.toHaveProperty(name)
     }
-    const header = backendHeaders['x-grid-request-context'] as string
+    const header = backendHeaders['x-request-context'] as string
     const payload = JSON.parse(Buffer.from(header, 'base64url').toString('utf8'))
     expect(payload).toMatchObject({
       organizationId: 'org_1', userId: 'user_1', projectId: 'proj_1',
@@ -260,7 +260,7 @@ describe('gateway compact turn-context transport', () => {
       expect(payload).not.toHaveProperty(field)
     }
     expect(verifyGridRequestContextEnvelope(
-      header, backendHeaders['x-grid-request-context-sig'] as string, SECRET,
+      header, backendHeaders['x-request-context-sig'] as string, SECRET,
     )).toMatchObject({ organizationId: 'org_1', userId: 'user_1' })
     expect(Buffer.byteLength(header)).toBeLessThan(1000)
   })
@@ -289,14 +289,14 @@ describe('gateway compact turn-context transport', () => {
     }
     const port = await startGateway({ GRID_INTERNAL_API_TOKEN: '' })
     expect(await upgrade(port, 'session=anonymous')).toBe(101)
-    const payload = JSON.parse(Buffer.from(backendHeaders['x-grid-request-context'] as string, 'base64url').toString('utf8'))
+    const payload = JSON.parse(Buffer.from(backendHeaders['x-request-context'] as string, 'base64url').toString('utf8'))
     expect(payload).not.toHaveProperty('contextTransport')
     expect(payload.projectContext).toBe('legacy profile')
     expect(payload.projectMemory).toBe('legacy memory')
     expect(payload.orgInstructions).toBe('legacy instructions')
-    expect(Buffer.from(backendHeaders['x-grid-project-context'] as string, 'base64url').toString('utf8')).toBe('legacy profile')
-    expect(Buffer.from(backendHeaders['x-grid-project-memory'] as string, 'base64url').toString('utf8')).toBe('legacy memory')
-    expect(Buffer.from(backendHeaders['x-grid-org-instructions'] as string, 'base64url').toString('utf8')).toBe('legacy instructions')
+    expect(Buffer.from(backendHeaders['x-project-context'] as string, 'base64url').toString('utf8')).toBe('legacy profile')
+    expect(Buffer.from(backendHeaders['x-project-memory'] as string, 'base64url').toString('utf8')).toBe('legacy memory')
+    expect(Buffer.from(backendHeaders['x-org-instructions'] as string, 'base64url').toString('utf8')).toBe('legacy instructions')
   })
 })
 

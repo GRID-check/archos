@@ -338,9 +338,9 @@ class TestTheRequest:
         await _propose("assign", document="Grundriss OG.pdf", member="Anna Berger")
 
         (request,) = fake.requests
-        assert request.get_header("X-grid-request-context") == HEADER
-        assert request.get_header("X-grid-request-context-sig") == SIGNATURE
-        assert request.get_header("X-grid-internal-token") == TOKEN
+        assert request.get_header("X-request-context") == HEADER
+        assert request.get_header("X-request-context-sig") == SIGNATURE
+        assert request.get_header("X-internal-token") == TOKEN
 
     async def test_a_turn_without_a_conversation_names_no_answer(self, monkeypatch, registry, transport):
         monkeypatch.setattr(pc, "get_conversation_id_from_context", lambda: None)
