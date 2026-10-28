@@ -14,7 +14,7 @@
 
 import type { FC, ReactNode } from 'react'
 import { I18nProvider } from '@/i18n'
-import { RevisionCompareCard } from '@/features/grid-cards/components/RevisionCompareCard'
+import { RevisionCompareCard } from '@/features/cards/components/RevisionCompareCard'
 import { a1SheetPdf } from '../_fixtures/a1-sheet'
 
 const OLDER_ID = 'dev-compare-older'

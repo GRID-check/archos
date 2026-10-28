@@ -54,7 +54,7 @@ import {
   FollowUpChips,
   usableFollowUps,
   type FollowUpAction,
-} from '@/features/grid-cards/components/FollowUpChips'
+} from '@/features/cards/components/FollowUpChips'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import type { StoredFollowUp } from '@/lib/conversations/message-stages'

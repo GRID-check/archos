@@ -10,7 +10,7 @@
 ## The doctrine, first, because it is the constraint everything else obeys
 
 This repository has fifteen **schematic cards**
-(`apps/workspace/ui/features/grid-cards/schematics/`) where the model emits
+(`apps/workspace/ui/features/cards/schematics/`) where the model emits
 **parameters only** and the renderer does every piece of geometry. `cards.md`
 states what that buys: *"a card cannot show a diagram that disagrees with its
 own numbers."* It exists because the card is what gets screenshotted into an

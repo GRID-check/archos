@@ -19,7 +19,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { motionDeliberateEntrance, motionInstant, motionQuickExit, useMotionToken } from '@/components/motion'
-import { CARD_PLACEHOLDER_HEIGHT, CardPlaceholder } from '@/features/grid-cards/components/CardPlaceholder'
+import { CARD_PLACEHOLDER_HEIGHT, CardPlaceholder } from '@/features/cards/components/CardPlaceholder'
 import { DrawnProvider } from '@/features/a2ui/catalog'
 import { cn } from '@/lib/utils'
 

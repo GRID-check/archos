@@ -4,7 +4,7 @@
  * ## The doctrine this module sits next to, and the line it must not cross
  *
  * This repository already renders fifteen technical diagrams
- * (`ui/features/grid-cards/schematics/`) and it renders them a very particular
+ * (`ui/features/cards/schematics/`) and it renders them a very particular
  * way: **the model emits parameters only and the renderer does every piece of
  * geometry**. `docs/architecture/cards.md` states the guarantee that buys —
  * *"a card cannot show a diagram that disagrees with its own numbers"* — and it

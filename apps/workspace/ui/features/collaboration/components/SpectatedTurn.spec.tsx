@@ -12,7 +12,7 @@ import { initialTurnView, type KeyedCard, type TurnView } from '@/features/chat/
 import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
 import { foldSpectatedEvent } from '../lib/spectator-frames'
 import { SpectatedTurn } from './SpectatedTurn'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 
 const LABEL = 'Piloti beantwortet die Frage von Anna Berger…'
 

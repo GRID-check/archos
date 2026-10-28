@@ -31,7 +31,7 @@
 import type { JSX } from 'react'
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
-import { TaskCreatedCard } from '@/features/grid-cards/components/TaskCreatedCard'
+import { TaskCreatedCard } from '@/features/cards/components/TaskCreatedCard'
 
 function Panel({
   title,

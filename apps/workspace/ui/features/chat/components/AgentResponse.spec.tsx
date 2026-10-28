@@ -7,12 +7,12 @@ import type { ChatStoreWithHydration } from '../store'
 import type { SourcePreviewChipProps } from './SourcePreview'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 import type { AnswerCard } from '@/shared/cards/schemas'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 import { useAnswerFileReferences } from '../hooks/use-answer-file-references'
-import { resetDecidedProposals } from '@/features/grid-cards/decided-proposals'
+import { resetDecidedProposals } from '@/features/cards/decided-proposals'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
-import { proposalBase, PROPOSAL_ID, decidedByAnna } from '@/features/grid-cards/components/proposal-test-kit'
+import { proposalBase, PROPOSAL_ID, decidedByAnna } from '@/features/cards/components/proposal-test-kit'
 
 /** A presentational card that draws its title, for placement tests. */
 const calculationCard = (title: string): AnswerCard => ({ ...CARD_PREVIEW_FIXTURES.calculation!, title } as AnswerCard)

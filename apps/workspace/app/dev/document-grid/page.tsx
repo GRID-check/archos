@@ -11,7 +11,7 @@
 
 import type { JSX } from 'react'
 import { notFound } from 'next/navigation'
-import { DocumentAnswerCard } from '@/features/grid-cards/components/DocumentAnswerCard'
+import { DocumentAnswerCard } from '@/features/cards/components/DocumentAnswerCard'
 
 function makeRow(id: string, filename: string, extra: Record<string, unknown> = {}) {
   return {

@@ -29,10 +29,10 @@
 
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
-import { FileOperationProposalCard } from '@/features/grid-cards/components/FileOperationProposalCard'
-import { MemoryProposalCard } from '@/features/grid-cards/components/MemoryProposalCard'
-import { OperationReceipt } from '@/features/grid-cards/components/ProposalReceipts'
-import { ProjectProfilePatchCard } from '@/features/grid-cards/components/ProjectProfilePatchCard'
+import { FileOperationProposalCard } from '@/features/cards/components/FileOperationProposalCard'
+import { MemoryProposalCard } from '@/features/cards/components/MemoryProposalCard'
+import { OperationReceipt } from '@/features/cards/components/ProposalReceipts'
+import { ProjectProfilePatchCard } from '@/features/cards/components/ProjectProfilePatchCard'
 import { DEMO, DEMO_PROJECT_ID, useFakeProposalClient } from '../_fixtures/fake-proposals'
 
 const MOVES = [

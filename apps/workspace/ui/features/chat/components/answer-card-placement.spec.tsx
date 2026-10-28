@@ -32,7 +32,7 @@ import { AgentResponse } from './AgentResponse'
 import { asStoreState, type DeepPartial, type StoreSelector } from '@/test-utils/store-fixtures'
 import type { ChatStoreWithHydration } from '../store'
 import type { AnswerCard } from '@/shared/cards/schemas'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 
 vi.mock('../store', () => ({
   useChatStore: vi.fn((selector?: StoreSelector<ChatStoreWithHydration>) => {

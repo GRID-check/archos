@@ -514,8 +514,8 @@
   {
     "type": "dependency",
     "from": "ui/features/a2ui/A2uiCard.tsx",
-    "to": "ui/features/grid-cards/components/CardPlaceholder.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/CardPlaceholder",
+    "to": "ui/features/cards/components/CardPlaceholder.tsx",
+    "unresolvedTo": "@/features/cards/components/CardPlaceholder",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -685,6 +685,624 @@
   },
   {
     "type": "dependency",
+    "from": "ui/features/cards/components/AnswerCards.tsx",
+    "to": "ui/features/bim/lib/card-highlights.ts",
+    "unresolvedTo": "@/features/bim/lib/card-highlights",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/AnswerCards.tsx",
+    "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
+    "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/CanvasActivityCard.tsx",
+    "to": "ui/features/documents/lib/open-review.ts",
+    "unresolvedTo": "@/features/documents/lib/open-review",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/document-surface.tsx",
+    "to": "ui/features/documents/components/project-file-workspace.tsx",
+    "unresolvedTo": "@/features/documents/components/project-file-workspace",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/document-surface.tsx",
+    "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
+    "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/document-surface.tsx",
+    "to": "ui/features/documents/lib/open-file-peek.ts",
+    "unresolvedTo": "@/features/documents/lib/open-file-peek",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentAnswerCard.tsx",
+    "to": "ui/features/documents/components/file-card.tsx",
+    "unresolvedTo": "@/features/documents/components/file-card",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentAnswerCard.tsx",
+    "to": "ui/features/documents/components/file-grid.tsx",
+    "unresolvedTo": "@/features/documents/components/file-grid",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentAnswerCard.tsx",
+    "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
+    "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentAnswerCard.tsx",
+    "to": "ui/features/search/lib/search-hrefs.ts",
+    "unresolvedTo": "@/features/search/lib/search-hrefs",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentDraftCard.tsx",
+    "to": "ui/features/documents/components/authorship-line.tsx",
+    "unresolvedTo": "@/features/documents/components/authorship-line",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentDraftCard.tsx",
+    "to": "ui/features/documents/lib/document-question.ts",
+    "unresolvedTo": "@/features/documents/lib/document-question",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentDraftCard.tsx",
+    "to": "ui/features/documents/lib/open-filed-document.ts",
+    "unresolvedTo": "@/features/documents/lib/open-filed-document",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/DocumentDraftPreviewDialog.tsx",
+    "to": "ui/features/documents/components/file-text-page.tsx",
+    "unresolvedTo": "@/features/documents/components/file-text-page",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcDataCards.tsx",
+    "to": "ui/features/bim/hooks/use-bim-model.ts",
+    "unresolvedTo": "@/features/bim/hooks/use-bim-model",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcDataCards.tsx",
+    "to": "ui/features/bim/lib/format-value.ts",
+    "unresolvedTo": "@/features/bim/lib/format-value",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcDataCards.tsx",
+    "to": "ui/features/bim/lib/model-index.ts",
+    "unresolvedTo": "@/features/bim/lib/model-index",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcDataCards.tsx",
+    "to": "ui/features/bim/lib/model-link.ts",
+    "unresolvedTo": "@/features/bim/lib/model-link",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcModelPickerCard.tsx",
+    "to": "ui/features/bim/hooks/use-bim-model.ts",
+    "unresolvedTo": "@/features/bim/hooks/use-bim-model",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcModelPickerCard.tsx",
+    "to": "ui/features/bim/lib/model-link.ts",
+    "unresolvedTo": "@/features/bim/lib/model-link",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcViewerCard.tsx",
+    "to": "ui/features/bim/components/ifc-model-viewer.tsx",
+    "unresolvedTo": "@/features/bim/components/ifc-model-viewer",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcViewerCard.tsx",
+    "to": "ui/features/bim/hooks/use-bim-model.ts",
+    "unresolvedTo": "@/features/bim/hooks/use-bim-model",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcViewerCard.tsx",
+    "to": "ui/features/bim/lib/model-index.ts",
+    "unresolvedTo": "@/features/bim/lib/model-index",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/IfcViewerCard.tsx",
+    "to": "ui/features/bim/lib/model-link.ts",
+    "unresolvedTo": "@/features/bim/lib/model-link",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/LookCard.tsx",
+    "to": "ui/features/knowledge/components/page-place-button.tsx",
+    "unresolvedTo": "@/features/knowledge/components/page-place-button",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/LookCard.tsx",
+    "to": "ui/features/knowledge/lib/page-place.ts",
+    "unresolvedTo": "@/features/knowledge/lib/page-place",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/ProjectProfilePatchCard.tsx",
+    "to": "ui/features/chat/hooks/use-project-facts.ts",
+    "unresolvedTo": "@/features/chat/hooks/use-project-facts",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/ProposalReceipts.tsx",
+    "to": "ui/features/chat/hooks/use-project-facts.ts",
+    "unresolvedTo": "@/features/chat/hooks/use-project-facts",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/RevisionCompareCard.tsx",
+    "to": "ui/features/documents/components/revision-compare/lib/tint.ts",
+    "unresolvedTo": "@/features/documents/components/revision-compare/lib/tint",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/RevisionCompareCard.tsx",
+    "to": "ui/features/knowledge/components/page-place-button.tsx",
+    "unresolvedTo": "@/features/knowledge/components/page-place-button",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/RevisionCompareCard.tsx",
+    "to": "ui/features/knowledge/lib/page-place.ts",
+    "unresolvedTo": "@/features/knowledge/lib/page-place",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/components/RevisionCompareCard.tsx",
+    "to": "ui/features/knowledge/lib/page-region.ts",
+    "unresolvedTo": "@/features/knowledge/lib/page-region",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/hooks/use-canvas-document.ts",
+    "to": "ui/features/documents/hooks/use-document-room.ts",
+    "unresolvedTo": "@/features/documents/hooks/use-document-room",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/schematics/kit.tsx",
+    "to": "ui/features/knowledge/components/pdf-viewer-dialog.tsx",
+    "unresolvedTo": "@/features/knowledge/components/pdf-viewer-dialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/schematics/kit.tsx",
+    "to": "ui/features/knowledge/lib/resolve-corpus-file.ts",
+    "unresolvedTo": "@/features/knowledge/lib/resolve-corpus-file",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/cards/schematics/kit.tsx",
+    "to": "ui/features/knowledge/lib/use-corpus-files.ts",
+    "unresolvedTo": "@/features/knowledge/lib/use-corpus-files",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "ui/features/chat/components/agent-response/answer-details.tsx",
     "to": "ui/features/skills/components/SkillsUsedDisclosure.tsx",
     "unresolvedTo": "@/features/skills/components/SkillsUsedDisclosure",
@@ -703,8 +1321,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/agent-response/use-agent-response-controller.tsx",
-    "to": "ui/features/grid-cards/components/AnswerCards.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/AnswerCards",
+    "to": "ui/features/cards/components/AnswerCards.tsx",
+    "unresolvedTo": "@/features/cards/components/AnswerCards",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -754,8 +1372,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/AgentPrompt.tsx",
-    "to": "ui/features/grid-cards/components/card-chrome.ts",
-    "unresolvedTo": "@/features/grid-cards/components/card-chrome",
+    "to": "ui/features/cards/components/card-chrome.ts",
+    "unresolvedTo": "@/features/cards/components/card-chrome",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -771,8 +1389,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/AnswerAnatomy.tsx",
-    "to": "ui/features/grid-cards/components/CalloutCard.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/CalloutCard",
+    "to": "ui/features/cards/components/CalloutCard.tsx",
+    "unresolvedTo": "@/features/cards/components/CalloutCard",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -788,8 +1406,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/AnswerAnatomy.tsx",
-    "to": "ui/features/grid-cards/components/KeyTakeawaysCard.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/KeyTakeawaysCard",
+    "to": "ui/features/cards/components/KeyTakeawaysCard.tsx",
+    "unresolvedTo": "@/features/cards/components/KeyTakeawaysCard",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -805,8 +1423,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/AnswerAnatomy.tsx",
-    "to": "ui/features/grid-cards/components/VerdictHeaderCard.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/VerdictHeaderCard",
+    "to": "ui/features/cards/components/VerdictHeaderCard.tsx",
+    "unresolvedTo": "@/features/cards/components/VerdictHeaderCard",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -822,8 +1440,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/AnswerAnatomy.tsx",
-    "to": "ui/features/grid-cards/components/WorkReportCard.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/WorkReportCard",
+    "to": "ui/features/cards/components/WorkReportCard.tsx",
+    "unresolvedTo": "@/features/cards/components/WorkReportCard",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -873,8 +1491,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/AnswerCitations.tsx",
-    "to": "ui/features/grid-cards/components/AskAboutChip.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/AskAboutChip",
+    "to": "ui/features/cards/components/AskAboutChip.tsx",
+    "unresolvedTo": "@/features/cards/components/AskAboutChip",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -907,8 +1525,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/CardSlotArrival.tsx",
-    "to": "ui/features/grid-cards/components/CardPlaceholder.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/CardPlaceholder",
+    "to": "ui/features/cards/components/CardPlaceholder.tsx",
+    "unresolvedTo": "@/features/cards/components/CardPlaceholder",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -1115,8 +1733,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/FollowUpsRail.tsx",
-    "to": "ui/features/grid-cards/components/FollowUpChips.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/FollowUpChips",
+    "to": "ui/features/cards/components/FollowUpChips.tsx",
+    "unresolvedTo": "@/features/cards/components/FollowUpChips",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -2211,8 +2829,25 @@
   {
     "type": "dependency",
     "from": "ui/features/documents/components/filing-suggestion.tsx",
-    "to": "ui/features/grid-cards/hooks/use-server-proposal.ts",
-    "unresolvedTo": "@/features/grid-cards/hooks/use-server-proposal",
+    "to": "ui/features/cards/hooks/use-server-proposal.ts",
+    "unresolvedTo": "@/features/cards/hooks/use-server-proposal",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "ui/features/documents/components/review/agent-answer-card.tsx",
+    "to": "ui/features/chat/lib/turn-events.ts",
+    "unresolvedTo": "@/features/chat/lib/turn-events",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -2281,23 +2916,6 @@
     "from": "ui/features/documents/components/review/mark-body.tsx",
     "to": "ui/features/collaboration/components/MentionText.tsx",
     "unresolvedTo": "@/features/collaboration/components/MentionText",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/documents/components/review/agent-answer-card.tsx",
-    "to": "ui/features/chat/lib/turn-events.ts",
-    "unresolvedTo": "@/features/chat/lib/turn-events",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -2665,624 +3283,6 @@
       "aliased-tsconfig-paths",
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/CanvasActivityCard.tsx",
-    "to": "ui/features/documents/lib/open-review.ts",
-    "unresolvedTo": "@/features/documents/lib/open-review",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/document-surface.tsx",
-    "to": "ui/features/documents/components/project-file-workspace.tsx",
-    "unresolvedTo": "@/features/documents/components/project-file-workspace",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/document-surface.tsx",
-    "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
-    "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/document-surface.tsx",
-    "to": "ui/features/documents/lib/open-file-peek.ts",
-    "unresolvedTo": "@/features/documents/lib/open-file-peek",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentDraftCard.tsx",
-    "to": "ui/features/documents/components/authorship-line.tsx",
-    "unresolvedTo": "@/features/documents/components/authorship-line",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentDraftCard.tsx",
-    "to": "ui/features/documents/lib/document-question.ts",
-    "unresolvedTo": "@/features/documents/lib/document-question",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentDraftCard.tsx",
-    "to": "ui/features/documents/lib/open-filed-document.ts",
-    "unresolvedTo": "@/features/documents/lib/open-filed-document",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentDraftPreviewDialog.tsx",
-    "to": "ui/features/documents/components/file-text-page.tsx",
-    "unresolvedTo": "@/features/documents/components/file-text-page",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
-    "to": "ui/features/documents/components/file-card.tsx",
-    "unresolvedTo": "@/features/documents/components/file-card",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
-    "to": "ui/features/documents/components/file-grid.tsx",
-    "unresolvedTo": "@/features/documents/components/file-grid",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
-    "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
-    "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
-    "to": "ui/features/search/lib/search-hrefs.ts",
-    "unresolvedTo": "@/features/search/lib/search-hrefs",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/AnswerCards.tsx",
-    "to": "ui/features/bim/lib/card-highlights.ts",
-    "unresolvedTo": "@/features/bim/lib/card-highlights",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/AnswerCards.tsx",
-    "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
-    "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcDataCards.tsx",
-    "to": "ui/features/bim/hooks/use-bim-model.ts",
-    "unresolvedTo": "@/features/bim/hooks/use-bim-model",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcDataCards.tsx",
-    "to": "ui/features/bim/lib/format-value.ts",
-    "unresolvedTo": "@/features/bim/lib/format-value",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcDataCards.tsx",
-    "to": "ui/features/bim/lib/model-index.ts",
-    "unresolvedTo": "@/features/bim/lib/model-index",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcDataCards.tsx",
-    "to": "ui/features/bim/lib/model-link.ts",
-    "unresolvedTo": "@/features/bim/lib/model-link",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcModelPickerCard.tsx",
-    "to": "ui/features/bim/hooks/use-bim-model.ts",
-    "unresolvedTo": "@/features/bim/hooks/use-bim-model",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcModelPickerCard.tsx",
-    "to": "ui/features/bim/lib/model-link.ts",
-    "unresolvedTo": "@/features/bim/lib/model-link",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcViewerCard.tsx",
-    "to": "ui/features/bim/components/ifc-model-viewer.tsx",
-    "unresolvedTo": "@/features/bim/components/ifc-model-viewer",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcViewerCard.tsx",
-    "to": "ui/features/bim/hooks/use-bim-model.ts",
-    "unresolvedTo": "@/features/bim/hooks/use-bim-model",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcViewerCard.tsx",
-    "to": "ui/features/bim/lib/model-index.ts",
-    "unresolvedTo": "@/features/bim/lib/model-index",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/IfcViewerCard.tsx",
-    "to": "ui/features/bim/lib/model-link.ts",
-    "unresolvedTo": "@/features/bim/lib/model-link",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/LookCard.tsx",
-    "to": "ui/features/knowledge/components/page-place-button.tsx",
-    "unresolvedTo": "@/features/knowledge/components/page-place-button",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/LookCard.tsx",
-    "to": "ui/features/knowledge/lib/page-place.ts",
-    "unresolvedTo": "@/features/knowledge/lib/page-place",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/ProjectProfilePatchCard.tsx",
-    "to": "ui/features/chat/hooks/use-project-facts.ts",
-    "unresolvedTo": "@/features/chat/hooks/use-project-facts",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/ProposalReceipts.tsx",
-    "to": "ui/features/chat/hooks/use-project-facts.ts",
-    "unresolvedTo": "@/features/chat/hooks/use-project-facts",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/RevisionCompareCard.tsx",
-    "to": "ui/features/documents/components/revision-compare/lib/tint.ts",
-    "unresolvedTo": "@/features/documents/components/revision-compare/lib/tint",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/RevisionCompareCard.tsx",
-    "to": "ui/features/knowledge/components/page-place-button.tsx",
-    "unresolvedTo": "@/features/knowledge/components/page-place-button",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/RevisionCompareCard.tsx",
-    "to": "ui/features/knowledge/lib/page-place.ts",
-    "unresolvedTo": "@/features/knowledge/lib/page-place",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/components/RevisionCompareCard.tsx",
-    "to": "ui/features/knowledge/lib/page-region.ts",
-    "unresolvedTo": "@/features/knowledge/lib/page-region",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/hooks/use-canvas-document.ts",
-    "to": "ui/features/documents/hooks/use-document-room.ts",
-    "unresolvedTo": "@/features/documents/hooks/use-document-room",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/schematics/kit.tsx",
-    "to": "ui/features/knowledge/components/pdf-viewer-dialog.tsx",
-    "unresolvedTo": "@/features/knowledge/components/pdf-viewer-dialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/schematics/kit.tsx",
-    "to": "ui/features/knowledge/lib/resolve-corpus-file.ts",
-    "unresolvedTo": "@/features/knowledge/lib/resolve-corpus-file",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "ui/features/grid-cards/schematics/kit.tsx",
-    "to": "ui/features/knowledge/lib/use-corpus-files.ts",
-    "unresolvedTo": "@/features/knowledge/lib/use-corpus-files",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
       "import"
     ],
     "rule": {
@@ -4490,8 +4490,8 @@
   {
     "type": "dependency",
     "from": "ui/features/mcp-apps/proposal-card/app-transport.ts",
-    "to": "ui/features/grid-cards/hooks/proposal-transport.ts",
-    "unresolvedTo": "@/features/grid-cards/hooks/proposal-transport",
+    "to": "ui/features/cards/hooks/proposal-transport.ts",
+    "unresolvedTo": "@/features/cards/hooks/proposal-transport",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -4508,8 +4508,8 @@
   {
     "type": "dependency",
     "from": "ui/features/mcp-apps/proposal-card/proposal-cards.tsx",
-    "to": "ui/features/grid-cards/components/ProposalReceipts.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/ProposalReceipts",
+    "to": "ui/features/cards/components/ProposalReceipts.tsx",
+    "unresolvedTo": "@/features/cards/components/ProposalReceipts",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -4525,8 +4525,8 @@
   {
     "type": "dependency",
     "from": "ui/features/mcp-apps/proposal-card/ProposalCardApp.tsx",
-    "to": "ui/features/grid-cards/hooks/proposal-transport.ts",
-    "unresolvedTo": "@/features/grid-cards/hooks/proposal-transport",
+    "to": "ui/features/cards/hooks/proposal-transport.ts",
+    "unresolvedTo": "@/features/cards/hooks/proposal-transport",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -6270,6 +6270,74 @@
   },
   {
     "type": "dependency",
+    "from": "bff/agent-asks/answer-evidence.ts",
+    "to": "ui/features/chat/lib/citations/build.ts",
+    "unresolvedTo": "@/features/chat/lib/citations/build",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "lib-imports-ui"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "bff/agent-asks/answer-evidence.ts",
+    "to": "ui/features/chat/lib/citations/deep-link.ts",
+    "unresolvedTo": "@/features/chat/lib/citations/deep-link",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "lib-imports-ui"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "bff/agent-asks/answer-evidence.ts",
+    "to": "ui/features/chat/lib/citations/model.ts",
+    "unresolvedTo": "@/features/chat/lib/citations/model",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "lib-imports-ui"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "bff/agent-asks/answer-evidence.ts",
+    "to": "ui/features/chat/lib/citations/persistence.ts",
+    "unresolvedTo": "@/features/chat/lib/citations/persistence",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "lib-imports-ui"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "bff/answer-export/citations.ts",
     "to": "ui/features/layout/lib/report-citations.ts",
     "unresolvedTo": "@/features/layout/lib/report-citations",
@@ -6340,8 +6408,8 @@
   {
     "type": "dependency",
     "from": "bff/conversations/conversation-wire.ts",
-    "to": "ui/features/grid-cards/card-decision.ts",
-    "unresolvedTo": "@/features/grid-cards/card-decision",
+    "to": "ui/features/cards/card-decision.ts",
+    "unresolvedTo": "@/features/cards/card-decision",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -6454,74 +6522,6 @@
       "aliased-tsconfig-paths",
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "lib-imports-ui"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "bff/agent-asks/answer-evidence.ts",
-    "to": "ui/features/chat/lib/citations/build.ts",
-    "unresolvedTo": "@/features/chat/lib/citations/build",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "lib-imports-ui"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "bff/agent-asks/answer-evidence.ts",
-    "to": "ui/features/chat/lib/citations/deep-link.ts",
-    "unresolvedTo": "@/features/chat/lib/citations/deep-link",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "lib-imports-ui"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "bff/agent-asks/answer-evidence.ts",
-    "to": "ui/features/chat/lib/citations/model.ts",
-    "unresolvedTo": "@/features/chat/lib/citations/model",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "lib-imports-ui"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "bff/agent-asks/answer-evidence.ts",
-    "to": "ui/features/chat/lib/citations/persistence.ts",
-    "unresolvedTo": "@/features/chat/lib/citations/persistence",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
       "import"
     ],
     "rule": {

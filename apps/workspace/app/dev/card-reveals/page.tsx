@@ -20,7 +20,7 @@
  */
 
 import { useEffect, type FC, type ReactNode } from 'react'
-import { CalculationCard } from '@/features/grid-cards/components/CalculationCard'
+import { CalculationCard } from '@/features/cards/components/CalculationCard'
 import { I18nProvider } from '@/i18n'
 import type { CalculationStepData } from '@/shared/cards/schemas'
 

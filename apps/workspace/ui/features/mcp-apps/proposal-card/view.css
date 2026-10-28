@@ -8,7 +8,7 @@
 @import '../../../../app/globals.css';
 
 @source '../../a2ui';
-@source '../../grid-cards/components';
+@source '../../cards/components';
 @source '../../../components/ui';
 @source '../../../components/motion';
 

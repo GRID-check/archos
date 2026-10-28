@@ -206,7 +206,7 @@ def retired_card_markdown(payload: object) -> str | None:
 # docs/adr/0030-interactive-card-decisions-persist-on-the-message.md).
 #
 # Adding a card type here is a contract with the frontend, not a label:
-#   - `apps/workspace/ui/features/grid-cards/card-decision.ts` must classify it
+#   - `apps/workspace/ui/features/cards/card-decision.ts` must classify it
 #     `'interactive'` in CARD_INTERACTIVITY (that map is exhaustive, so `tsc`
 #     fails until you do);
 #   - its renderer must drive its lifecycle from `useCardDecision`, never from
