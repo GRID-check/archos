@@ -708,11 +708,12 @@ NOT_ON_THE_SURFACE = {
 
 
 def _tool_surface_references() -> set[str]:
-    """Every ``<module>.<function>`` `tools.py` names, read from its own AST.
+    """Every ``<module>.<function>`` the ``tools`` modules name, read from their ASTs.
 
-    Text search would not do: `MEASURE_FN` and `RELATION_FN` hold BARE
-    references (``"extent": op.extent,``), so a `name(` pattern misses twenty
-    operators, and a bare `\\bname\\b` pattern matches German prose. The
+    The tool surface spans ``tools.py`` and its ``tools_*`` siblings, so every
+    one of them is read. Text search would not do: `MEASURE_FN` and `RELATION_FN`
+    hold BARE references (``"extent": op.extent,``), so a `name(` pattern misses
+    twenty operators, and a bare `\\bname\\b` pattern matches German prose. The
     aliases are read from the import statements rather than written out here,
     so renaming `env` back to `envelope_geometry` cannot silently empty this
     set and turn the test green.
@@ -722,20 +723,21 @@ def _tool_surface_references() -> set[str]:
 
     import ifc_spatial.tools as tools_module
 
-    tree = ast.parse(pathlib.Path(tools_module.__file__).read_text(encoding="utf-8"))
-    alias_of: dict[str, str] = {}
-    for node in ast.walk(tree):
-        # `from . import accessibility as acc`, wherever it sits — two of them
-        # are inside handlers, because their dependencies are optional.
-        if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module is None:
-            for alias in node.names:
-                alias_of[alias.asname or alias.name] = alias.name
     referenced = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            module = alias_of.get(node.value.id)
-            if module is not None:
-                referenced.add(f"{module}.{node.attr}")
+    for path in sorted(pathlib.Path(tools_module.__file__).parent.glob("tools*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        alias_of: dict[str, str] = {}
+        for node in ast.walk(tree):
+            # `from . import accessibility as acc`, wherever it sits — two of them
+            # are inside handlers, because their dependencies are optional.
+            if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module is None:
+                for alias in node.names:
+                    alias_of[alias.asname or alias.name] = alias.name
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+                module = alias_of.get(node.value.id)
+                if module is not None:
+                    referenced.add(f"{module}.{node.attr}")
     return referenced
 
 
