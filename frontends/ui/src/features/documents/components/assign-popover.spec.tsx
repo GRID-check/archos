@@ -10,7 +10,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { AssignPopover } from './assign-popover'
 
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   useChatStore: (selector: (state: { currentUserId: string }) => unknown) =>
     selector({ currentUserId: 'user_me' }),
 }))

@@ -100,6 +100,8 @@ export const search: typeof en.search = {
     /** Was Piloti über das Dokument las: Titel, Beteiligte, Ort, Plankopf, Verweise. Die Dateiansicht nennt es Zusammenfassung. */
     reading: 'Zusammenfassung',
     content: 'Inhalt',
+    /** Der Inhalt trifft die Frage dem Sinn nach, ohne ihre Wörter zu enthalten. */
+    meaning: 'Inhalt (sinngemäß)',
   },
   annotation: {
     on: 'zu {document}',

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { listProjectPeople } from './folder-access-client'
 
 function page(userIds: string[], nextCursor: string | null): Response {
-  const members = userIds.map((userId) => ({ userId, name: userId, email: null, role: 'project-viewer' }))
+  const members = userIds.map((userId) => ({ userId, name: userId, email: null, profilePictureUrl: null, role: 'project-viewer' }))
   return new Response(JSON.stringify({ members, nextCursor, viewerUserId: 'u_0' }), { status: 200 })
 }
 

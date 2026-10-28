@@ -174,7 +174,13 @@ export function filtersWhere(filters: DocumentFilters): SQL[] {
   return where
 }
 
-const tsQuery = (text: string): SQL => sql`websearch_to_tsquery('german', ${text})`
+/**
+ * The words as a query over `search_vector`, in both spellings the vector holds
+ * (migration 0188): as typed, and folded by `fold_german`, so
+ * „Flaechenwidmung“ and „Flächenwidmung“ find the same documents.
+ */
+const tsQuery = (text: string): SQL =>
+  sql`(websearch_to_tsquery('german', ${text}) || websearch_to_tsquery('german', fold_german(${text})))`
 
 /** The text predicate: the name, what the document is (the reading), or its content. */
 function textWhere(text: TextMatch): SQL {
@@ -534,19 +540,30 @@ export async function readReferenceSubject(
   return { planNumberKey: row.planNumberKey, documentType: row.documentType, referenceTokens: row.referenceTokens ?? [] }
 }
 
+/** One document a query's filters admit, as the content search's pre-filter names it. */
+export interface CandidateDocument {
+  id: string
+  /** Its file name when a person uploaded it: what a passage written before `grid_document_id` names it by; null otherwise. */
+  filename: string | null
+}
+
 /**
- * The ids of the documents a query's filters admit, without its text, at most
- * `max` (the content search's pre-filter: ADR-0136 item 5). A list one longer
- * than `max` means "too many to name", and the caller narrows by payload instead.
+ * The documents a query's filters admit, without its text, at most `max` (the
+ * content search's pre-filter: ADR-0136 item 5). A list one longer than `max`
+ * means "too many to name", and the caller narrows by payload instead.
  */
-export async function listCandidateDocumentIds(reach: SearchReach, query: DocumentQuery, max: number): Promise<string[]> {
+export async function listCandidateDocuments(reach: SearchReach, query: DocumentQuery, max: number): Promise<CandidateDocument[]> {
   const rows = await withTenant({ organizationId: reach.organizationId }, () =>
     getDb()
-      .select({ id: documents.id })
+      .select({
+        id: documents.id,
+        // Only a person's upload is indexed, and a hit joins by name only to one (`joinHitsToFiles`).
+        filename: sql<string | null>`CASE WHEN ${documents.authoredBy} = 'user' THEN ${documents.filename} END`,
+      })
       .from(documents)
       .leftJoin(f, eq(f.documentId, documents.id))
       .where(documentSearchWhere(reach, { ...query, text: null }))
       .limit(max + 1)
   )
-  return rows.map((row) => row.id)
+  return rows.map((row) => ({ id: row.id, filename: row.filename === null ? null : String(row.filename) }))
 }

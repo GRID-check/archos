@@ -36,8 +36,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from tests.knowledge_layer_tests import pdf_fixtures
+from knowledge_layer_testing import pdf_fixtures
 
 #: Small-but-kept rasters on the over-cap fixture, one below the icon filter too.
 _OVER_CAP_PAGES = 8

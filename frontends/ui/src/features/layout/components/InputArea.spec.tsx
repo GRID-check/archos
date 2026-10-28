@@ -121,11 +121,13 @@ vi.mock('@/features/chat', () => ({
     noteSendIntent: mockNoteSendIntent,
     pendingInteraction: null,
   })),
+  useIsCurrentSessionBusy: vi.fn(() => false),
+}))
+vi.mock('@/features/chat/store', () => ({
   useChatStore: Object.assign(
     vi.fn((selector: (s: ReturnType<typeof mockChatState>) => unknown) => selector(mockChatState())),
     { getState: () => mockChatState() },
   ),
-  useIsCurrentSessionBusy: vi.fn(() => false),
 }))
 
 // Mock the layout store

@@ -1,0 +1,9 @@
+---
+fixes:
+  - >
+    A follow-up question now builds on the earlier question and answer, also
+    after an answer that read long passages, in the chat and when another agent
+    asks Piloti.
+  - >
+    A question another agent puts to Piloti now always ends with an answer or a
+    reason, also when Piloti restarts while answering it.

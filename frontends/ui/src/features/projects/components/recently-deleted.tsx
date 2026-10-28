@@ -6,16 +6,13 @@ import { toast } from 'sonner'
 import { LoadError } from '@/components/ui/load-error'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
-
-interface DeletionEntry {
-  id: string
-  entityType: string
-  entityId: string
-  displayName: string
-  purgeAfter: string
-  status: 'pending' | 'failed'
-  lastError: string | null
-}
+import { ApiRequestError } from '@/adapters/api/api-error'
+import {
+  listDeletions,
+  ProjectRequestError,
+  restoreProject,
+  type DeletionEntry,
+} from '@/adapters/api/project-lifecycle-client'
 
 interface RecentlyDeletedProps {
   /**
@@ -52,21 +49,16 @@ export function RecentlyDeleted({ canManageCompliance = false }: RecentlyDeleted
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/deletions')
+      const rows = await listDeletions()
+      setError(false)
+      setEntries(rows.filter((row) => row.entityType === 'project'))
+    } catch (error) {
       // A non-admin genuinely has no panel — treat 403 as "nothing to show".
-      if (res.status === 403) {
+      if (error instanceof ApiRequestError && error.status === 403) {
         setError(false)
         setEntries([])
         return
       }
-      if (!res.ok) {
-        setError(true)
-        return
-      }
-      const rows: DeletionEntry[] = await res.json()
-      setError(false)
-      setEntries(rows.filter((row) => row.entityType === 'project'))
-    } catch {
       setError(true)
     }
   }, [])
@@ -81,18 +73,13 @@ export function RecentlyDeleted({ canManageCompliance = false }: RecentlyDeleted
   const handleRestore = async (entry: DeletionEntry) => {
     setRestoringId(entry.id)
     try {
-      const res = await fetch(`/api/projects/${entry.entityId}/restore`, {
-        method: 'POST',
-      })
-      if (res.ok) {
-        toast.success(t('recentlyDeleted.restoreSuccess', { name: entry.displayName }))
-        await refresh()
-      } else {
-        const data = await res.json().catch(() => null)
-        toast.error(data?.error ?? t('recentlyDeleted.restoreError'))
-      }
-    } catch {
-      toast.error(t('recentlyDeleted.restoreError'))
+      await restoreProject(entry.entityId)
+      toast.success(t('recentlyDeleted.restoreSuccess', { name: entry.displayName }))
+      await refresh()
+    } catch (error) {
+      // The server's sentence when it sent one, ours when it did not.
+      const serverMessage = error instanceof ProjectRequestError ? error.serverMessage : null
+      toast.error(serverMessage ?? t('recentlyDeleted.restoreError'))
     } finally {
       setRestoringId(null)
     }

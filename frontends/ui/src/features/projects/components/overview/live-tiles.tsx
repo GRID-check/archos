@@ -8,6 +8,7 @@
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 import { Brain, Pin, Users } from 'lucide-react'
+import { listProjectMembers, type ProjectMember } from '@/adapters/api/project-members-client'
 import { AvatarStack } from '@/components/ui/avatar-stack'
 import { BentoFigure, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Chip } from '@/components/ui/chip'
@@ -157,11 +158,23 @@ function MemoryBody({ notes }: { notes: readonly MemoryNote[] }): JSX.Element {
   )
 }
 
-interface RosterEntry {
-  userId: string
-  name: string
-  profilePictureUrl: string | null
-  role: string | null
+/** The project's role holders, read once on mount; ignored if the tile unmounts first. */
+function useRoster(projectId: string): Load<ProjectMember[]> {
+  const [load, setLoad] = useState<Load<ProjectMember[]>>({ state: 'loading' })
+  useEffect(() => {
+    let live = true
+    listProjectMembers(projectId)
+      .then((members) => {
+        if (live) setLoad({ state: 'ready', value: members.filter((member) => member.role) })
+      })
+      .catch(() => {
+        if (live) setLoad({ state: 'error' })
+      })
+    return () => {
+      live = false
+    }
+  }, [projectId])
+  return load
 }
 
 /** Who is assigned to the project: the faces and the count. */
@@ -175,12 +188,7 @@ export function MembersTile({
   span?: BentoSpan
 }): JSX.Element {
   const t = useTranslations('settings')
-  const load = useJson(`/api/projects/${encodeURIComponent(projectId)}/members?limit=200`, (body) =>
-    (((body as { members?: RosterEntry[] }).members ?? []) as RosterEntry[]).filter(
-      (member) => member.role
-    ),
-    'members'
-  )
+  const load = useRoster(projectId)
 
   return (
     <BentoTile

@@ -11,8 +11,10 @@ guesses rather than removing the guess. The shelf now travels as data, and the
 round-trip contract test (``tests/knowledge_layer_tests/test_citation_key_scope.py``
 plus ``tests/aiq_agent/knowledge/test_scoping.py``) drives that seam instead.
 
-Parsed rather than exported, because a generated file would be one more thing to
-keep in sync; a mismatch here is a two-line fix on whichever side is behind.
+The kinds and the shelves are generated into the UI from ``source_kinds.py``
+(``scripts/generate_vocabularies.py``) and need no check here. What is left is
+still parsed: the qualifier pairs, the lane→kind table, the agent-authored lane
+and the fail-open kind, which carry structure the generator does not emit yet.
 """
 
 from __future__ import annotations
@@ -26,7 +28,6 @@ from aiq_agent.common.source_kinds import _LANE_KIND_PREFIXES
 from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE
 from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 from aiq_agent.common.source_kinds import DEFAULT_SOURCE_KIND
-from aiq_agent.common.source_kinds import SOURCE_KINDS
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.common.source_kinds import shelf_for_qualifier
 
@@ -68,27 +69,12 @@ def test_the_legacy_qualifier_strings_resolve_to_the_same_shelf(mirror_source: s
 # The taxonomy itself
 # ---------------------------------------------------------------------------
 #
-# The two tests above guard the strings DERIVED from the source-kind model. The
-# model itself — the set of kinds, and the lane→kind table that assigns one to
-# every retrieval hit — was mirrored in the same file with nothing checking it,
-# even though ADR-0026 makes it the taxonomy that drives ALL rendering (chips,
-# Herleitung fan-out, report sources). Adding a fifth kind, or a lane family, on
-# one side alone would leave the other silently falling open to `web`: sources
-# keep rendering, in the wrong family, with no error anywhere.
-
-
-def test_the_source_kinds_match(mirror_source: str):
-    block = re.search(r"export type SourceKind =([^\n]*)", mirror_source)
-    assert block, "the SourceKind union was not found in the frontend mirror"
-    assert set(re.findall(r"'([^']+)'", block.group(1))) == set(SOURCE_KINDS)
-
-
-def test_the_narrowing_set_lists_every_kind(mirror_source: str):
-    """`asSourceKind` rejects anything absent from this set, so a kind missing
-    here is dropped off the wire even when the union above admits it."""
-    block = re.search(r"SOURCE_KINDS:\s*ReadonlySet<SourceKind>\s*=\s*new Set\(\[(.*?)\]\)", mirror_source, re.DOTALL)
-    assert block, "the SOURCE_KINDS narrowing set was not found in the frontend mirror"
-    assert set(re.findall(r"'([^']+)'", block.group(1))) == set(SOURCE_KINDS)
+# The test above guards the strings DERIVED from the source-kind model. The set
+# of kinds itself (and of shelves) is no longer mirrored: the UI's tuple is
+# generated from `SOURCE_KINDS` (`scripts/generate_vocabularies.py`), so there is
+# nothing to compare. The lane→kind table that assigns a kind to every retrieval
+# hit is still a mirror, and adding a lane family on one side alone would leave
+# the other silently falling open to `web`, so it is checked below.
 
 
 def test_the_lane_kind_prefixes_match(mirror_source: str):
