@@ -27,6 +27,7 @@ from aiq_api.jobs.access import job_exists
 from aiq_api.jobs.event_store import EventStore
 from aiq_api.jobs.submit import DuplicateJobIdError
 from aiq_api.jobs.submit import submit_agent_job
+from aiq_api.routes import job_handlers
 
 
 @pytest.fixture
@@ -254,7 +255,7 @@ async def submit_conflict_app(db_url, monkeypatch):
     from aiq_api.jobs import submit
 
     monkeypatch.setattr(
-        jobs_routes,
+        job_handlers,
         "require_verified_principal",
         lambda: Principal(type="jwt", sub="user-1", email="user@example.com"),
     )

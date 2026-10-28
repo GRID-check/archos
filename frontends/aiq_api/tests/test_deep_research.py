@@ -42,10 +42,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_api.routes.jobs import JobReportResponse
-from aiq_api.routes.jobs import JobStateResponse
-from aiq_api.routes.jobs import JobStatusResponse
-from aiq_api.routes.jobs import JobSubmitRequest
+from aiq_api.routes.job_models import JobReportResponse
+from aiq_api.routes.job_models import JobStateResponse
+from aiq_api.routes.job_models import JobStatusResponse
+from aiq_api.routes.job_models import JobSubmitRequest
 
 
 class TestJobSubmitRequest:
@@ -207,6 +207,12 @@ class TestJobReportResponse:
         assert resp.cards == cards
 
 
+def _registered(app: MagicMock, method: str) -> int:
+    """How many routes ``app`` was given for ``method``, by decorator or by ``add_api_route``."""
+    added = sum(1 for call in app.add_api_route.call_args_list if call.kwargs.get("methods") == [method])
+    return added + getattr(app, method.lower()).call_count
+
+
 class TestRegisterRoutes:
     """Tests for the register_routes function."""
 
@@ -226,8 +232,8 @@ class TestRegisterRoutes:
 
         await register_job_routes(mock_app, mock_builder, mock_worker)
 
-        assert mock_app.post.call_count >= 2
-        assert mock_app.get.call_count >= 6
+        assert _registered(mock_app, "POST") >= 2
+        assert _registered(mock_app, "GET") >= 6
 
     @pytest.mark.asyncio
     async def test_no_config_file_registers_no_job_routes(self, monkeypatch):
@@ -244,8 +250,8 @@ class TestRegisterRoutes:
 
         await register_job_routes(mock_app, mock_builder, mock_worker)
 
-        mock_app.post.assert_not_called()
-        assert mock_app.get.call_count == 2
+        assert _registered(mock_app, "POST") == 0
+        assert _registered(mock_app, "GET") == 2
 
 
 class TestArtifactHelpers:
@@ -253,7 +259,7 @@ class TestArtifactHelpers:
 
     def test_extract_event_metadata_with_data(self):
         """Test extracting metadata from event with data dict."""
-        from aiq_api.routes.jobs import _extract_event_metadata
+        from aiq_api.routes.job_artifacts import _extract_event_metadata
 
         event = {
             "type": "tool.start",
@@ -268,7 +274,7 @@ class TestArtifactHelpers:
 
     def test_extract_event_metadata_fallback_to_nested(self):
         """Test extracting metadata from nested data.metadata."""
-        from aiq_api.routes.jobs import _extract_event_metadata
+        from aiq_api.routes.job_artifacts import _extract_event_metadata
 
         event = {
             "type": "tool.start",
@@ -281,7 +287,7 @@ class TestArtifactHelpers:
 
     def test_extract_event_metadata_handles_non_dict(self):
         """Test extracting metadata handles non-dict data."""
-        from aiq_api.routes.jobs import _extract_event_metadata
+        from aiq_api.routes.job_artifacts import _extract_event_metadata
 
         event = {"type": "test", "data": "string_data"}
 
@@ -292,7 +298,7 @@ class TestArtifactHelpers:
 
     def test_process_tool_start(self):
         """Test processing tool.start event."""
-        from aiq_api.routes.jobs import _process_tool_start
+        from aiq_api.routes.job_artifacts import _process_tool_start
 
         # Shape produced by IntermediateStepEvent.to_sse_dict: id/name at the
         # top level, tool input directly under data.
@@ -309,7 +315,7 @@ class TestArtifactHelpers:
 
     def test_process_tool_end_updates_existing(self):
         """Test processing tool.end updates existing tool."""
-        from aiq_api.routes.jobs import _process_tool_end
+        from aiq_api.routes.job_artifacts import _process_tool_end
 
         # tool.end events carry their own id; the running entry is matched
         # by tool name, not by event id.
@@ -333,7 +339,7 @@ class TestArtifactHelpers:
 
     def test_process_tool_end_creates_new(self):
         """Test processing tool.end creates new entry if missing."""
-        from aiq_api.routes.jobs import _process_tool_end
+        from aiq_api.routes.job_artifacts import _process_tool_end
 
         event = {"type": "tool.end", "id": "tool-2", "name": "other", "timestamp": "2026-01-22T10:00:01"}
         data = {"output": "result"}
@@ -347,7 +353,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update(self):
         """Test processing artifact.update event."""
-        from aiq_api.routes.jobs import _process_artifact_update
+        from aiq_api.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "output.md", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "output", "content": "Report content", "extra": "value"}
@@ -365,7 +371,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update_skips_empty_content(self):
         """Test that empty content is skipped."""
-        from aiq_api.routes.jobs import _process_artifact_update
+        from aiq_api.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "empty.md", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "output", "content": None}
@@ -380,7 +386,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update_tracks_citation_source(self):
         """Test that citation_source events are tracked."""
-        from aiq_api.routes.jobs import _process_artifact_update
+        from aiq_api.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "https://example.com", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "citation_source", "content": "https://example.com", "url": "https://example.com"}
@@ -397,7 +403,7 @@ class TestArtifactHelpers:
 
     def test_process_artifact_update_tracks_citation_use(self):
         """Test that citation_use events are tracked."""
-        from aiq_api.routes.jobs import _process_artifact_update
+        from aiq_api.routes.job_artifacts import _process_artifact_update
 
         event = {"name": "https://example.com", "timestamp": "2026-01-22T10:00:00"}
         data = {"type": "citation_use", "content": "https://example.com", "url": "https://example.com"}

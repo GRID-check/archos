@@ -240,7 +240,7 @@ class TestTheInternalOutcomeRoute:
     async def test_a_finished_job_hands_back_everything_the_run_would_have_written(self, access_db_url) -> None:
         from aiq_agent.auth import Principal
         from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.jobs import internal_job_outcome
+        from aiq_api.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         store = _Store(_job("success", output={"report": "# Bericht", "cards": [{"type": "x"}]}))
@@ -258,7 +258,7 @@ class TestTheInternalOutcomeRoute:
     async def test_a_failed_job_carries_its_error_and_its_notice(self, access_db_url) -> None:
         from aiq_agent.auth import Principal
         from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.jobs import internal_job_outcome
+        from aiq_api.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         answer = await internal_job_outcome(_Store(_job("failure", error="boom")), access_db_url, "job-1", "org_1")
@@ -270,7 +270,7 @@ class TestTheInternalOutcomeRoute:
     async def test_a_running_job_has_no_message_yet(self, access_db_url) -> None:
         from aiq_agent.auth import Principal
         from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.jobs import internal_job_outcome
+        from aiq_api.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         answer = await internal_job_outcome(_Store(_job("running")), access_db_url, "job-1", "org_1")
@@ -280,7 +280,7 @@ class TestTheInternalOutcomeRoute:
     async def test_another_organizations_job_is_not_found(self, access_db_url) -> None:
         from aiq_agent.auth import Principal
         from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.jobs import internal_job_outcome
+        from aiq_api.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         with pytest.raises(HTTPException) as refused:
@@ -289,7 +289,7 @@ class TestTheInternalOutcomeRoute:
 
     @pytest.mark.asyncio
     async def test_an_unknown_job_is_not_found(self, access_db_url) -> None:
-        from aiq_api.routes.jobs import internal_job_outcome
+        from aiq_api.routes.job_handlers import internal_job_outcome
 
         with pytest.raises(HTTPException) as refused:
             await internal_job_outcome(_Store(None), access_db_url, "job-gone", "org_1")

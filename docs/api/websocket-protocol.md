@@ -545,7 +545,7 @@ question asked while the socket has given up opens a new one with a fresh ladder
 
 A run — a deep-research run, a task run — streams its own events from
 `job_events` rather than over the socket: `GET /v1/jobs/async/{jobId}/events`
-(`aiq_api.routes.jobs.stream_job_events`), replayable from `last_event_id`. That
+(`aiq_api.routes.job_handlers.JobRouteHandlers.stream_job_events`), replayable from `last_event_id`. That
 stream carries the `job.*` lifecycle events (`job.phase`, `job.heartbeat`,
 `job.degraded`, `job.error`, `job.cancelled`), the `artifact.update` events the
 agent callbacks emit, and one more:

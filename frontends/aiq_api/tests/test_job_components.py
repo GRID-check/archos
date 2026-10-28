@@ -954,7 +954,7 @@ class TestDataSourceModel:
 
     def test_data_source_basic_creation(self):
         """Test creating DataSource with required fields."""
-        from aiq_api.routes.jobs import DataSource
+        from aiq_api.routes.job_models import DataSource
 
         source = DataSource(id="web_search", name="Web Search")
 
@@ -964,7 +964,7 @@ class TestDataSourceModel:
 
     def test_data_source_with_description(self):
         """Test creating DataSource with description."""
-        from aiq_api.routes.jobs import DataSource
+        from aiq_api.routes.job_models import DataSource
 
         source = DataSource(
             id="confluence",
@@ -978,7 +978,7 @@ class TestDataSourceModel:
 
     def test_data_source_serialization(self):
         """Test DataSource serialization to dict."""
-        from aiq_api.routes.jobs import DataSource
+        from aiq_api.routes.job_models import DataSource
 
         source = DataSource(
             id="sharepoint",
