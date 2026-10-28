@@ -66,7 +66,7 @@ domain, because an ask is a conversation.
 2. The thread: a new private conversation of the person, in the project they
    name (`requireProjectAccess` with the chat permissions), or one an earlier ask
    of the same person started, never another conversation.
-3. A row in `piloti_asks` (migration 0179) and the question as the person's
+3. A row in `agent_asks` (migration 0179) and the question as the person's
    message in the thread, both under one id: the ask's id is the turn id and the
    A2A task id.
 4. `resolveTurnContext` for that session and thread, which refuses a spent
@@ -148,7 +148,7 @@ refused with their A2A errors.
 
 | A2A | Piloti |
 |---|---|
-| Task | the `piloti_asks` row; `Task.id` is the ask's id |
+| Task | the `agent_asks` row; `Task.id` is the ask's id |
 | `contextId` | the conversation the ask ran in; send it back to follow up. One the client made up, or one no ask of the person started, starts a new conversation, and the task carries its id |
 | `TaskState` | the ask's state, the same word |
 | Message (user) | the question, the person's message in the thread |

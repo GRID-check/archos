@@ -1,5 +1,5 @@
 /**
- * The change record's SQL, over `piloti_changes` (migration 0142, ADR-0109).
+ * The change record's SQL, over `agent_changes` (migration 0142, ADR-0109).
  * No authorization here; `./service` owns it. Every statement is keyed by the
  * organization as well as the id, and runs in its tenant scope.
  *

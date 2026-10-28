@@ -313,6 +313,25 @@ expand, switch, contract:
 the Gateway routes switching in step 2. Each deploy is applied by an operator.
 An agent runs `npm run preview`, never `npm run up`.
 
+Row 10d leaves temporary machinery behind, each piece with the step that
+removes it. Tick these off in order; none may reach production before the
+release that put it there has run there:
+
+- [ ] **Postgres superuser.** The rename Job `pg-rename-legacy-names` (#1335)
+  logs in as CNPG's superuser, so the Cluster carries
+  `enableSuperuserAccess: true`. Once production has run the rename, a contract
+  PR sets it back to `false` and deletes the Job and
+  `deploy/postgres/rename-legacy-names.sh` (and the Compose `postgres-rename`
+  service). Never in the same promotion as #1335.
+- [ ] **Table views.** 0189 leaves `piloti_wakes`, `piloti_changes` and
+  `piloti_asks` as views over the `agent_*` tables (#1338). The next release
+  drops them in a migration.
+- [ ] **Function wrappers.** 0189 keeps each `grid_` function's old name as a
+  wrapper (#1342). The next release drops every function whose comment starts
+  `Old name, kept for one release by migration 0189`.
+- [ ] **Browser keys.** `storage-rename-boot.ts` and the `grid-locale` cookie
+  read (#1358) are deleted the release after.
+
 ### Per-move checklist
 
 The generic gate comes first. After a move, `git grep -F <old path>` returns
