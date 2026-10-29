@@ -94,6 +94,11 @@ const OBJECT_READERS: Record<string, Disposition> = {
   'lib/documents/version-content.ts::readVersionContent': { logged: ['version'] },
   'lib/documents/version-content.ts::streamVersionFile': { logged: ['version'] },
   'lib/bim/model-service.ts::getModelSource': { logged: ['model'] },
+  'lib/diagrams/sketch-document.ts::readSketchDocument': { logged: ['preview'] },
+  'lib/diagrams/sketch-document.ts::readStoredText': {
+    exempt:
+      'a private helper; its callers are pinned in PINNED_HELPERS (the read records, the save checks the scene and hands nothing over).',
+  },
   'lib/documents/document-delivery.ts::getDocumentThumbnail': {
     servesPerson: true,
     exempt:
@@ -131,6 +136,15 @@ const OBJECT_READERS: Record<string, Disposition> = {
  * `callers` is every function in the same file that names the helper.
  */
 const PINNED_HELPERS: Record<string, { callers: readonly string[]; reason: string }> = {
+  'lib/diagrams/sketch-document.ts::readStoredText': {
+    callers: ['storedSceneOf'],
+    reason: 'storedSceneOf is the one reader of a sketch’s stored scene; see the next entry for who calls it.',
+  },
+  'lib/diagrams/sketch-document.ts::storedSceneOf': {
+    callers: ['readSketchDocument', 'saveSketchDocument'],
+    reason:
+      'readSketchDocument records the open (`preview`); saveSketchDocument reads the scene only to refuse a document that carries none, and returns the new version, never the old bytes.',
+  },
   'lib/documents/version-content.ts::readObjectText': {
     callers: ['fetchVersionText', 'readVersionForService'],
     reason:
@@ -151,6 +165,7 @@ const ROUTES: Record<string, RouteDisposition> = {
   'documents/[id]/file/route.ts': { via: 'streamDocumentFile' },
   // The same route serves a version's bytes (`?versionId=`) through streamVersionFile.
   'documents/[id]/text/route.ts': { via: 'getDocumentTextPreview' },
+  'documents/[id]/sketch/route.ts': { via: 'readSketchDocument' },
   'documents/[id]/versions/[versionId]/content/route.ts': { via: 'readVersionContent' },
   'documents/[id]/versions/diff/route.ts': { via: 'readVersionContent' },
   'bim/models/[modelId]/source/route.ts': { via: 'getModelSource' },

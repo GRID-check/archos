@@ -46,7 +46,7 @@ import { s3Client } from '@/lib/s3'
 import { discardObject } from '@/lib/storage/discard'
 import { assertWithinStorageQuota } from '@/lib/storage/service'
 
-export interface NewFassungInput {
+export interface NextVersionInput {
   session: AuthorizedSession
   /** The document, read by the caller through `getAccessibleDocument(…, 'write')`. */
   document: Document
@@ -113,7 +113,7 @@ async function announce(session: AuthorizedSession, document: Document, version:
 }
 
 /** Store the bytes under their own key and publish them as the document's next Fassung. */
-export async function publishNewFassung(input: NewFassungInput): Promise<DocumentVersion> {
+export async function publishNextVersion(input: NextVersionInput): Promise<DocumentVersion> {
   const { session, document, bytes, contentType } = input
   await assertWithinStorageQuota(session.organizationId, bytes.byteLength)
   const expected = await recordFiledBytes(document, input.expected)

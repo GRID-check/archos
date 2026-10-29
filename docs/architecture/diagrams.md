@@ -578,7 +578,7 @@ document, never a new pair.
 - **The marking stays honest.** The SVG goes through `acceptDiagram` as filing
   does, with the two-author line (`diagrams.markingEdited`); the machine half
   stays `AIHumanReviewed=false`, because editing is not a Freigabe.
-- **The Fassung** (`bff/diagrams/sketch-fassung.ts`) is written by
+- **The Fassung** (`bff/diagrams/sketch-version.ts`) is written by
   `insertPublishedVersion`, the repository write every published version goes
   through, with the `baseVersionId` as its expectation: under the per-document
   lock the published pointer must still be that version, or the save is a 409

@@ -13,7 +13,7 @@
  *      (`markingEdited`), because a person changed what Piloti drew; the
  *      machine half stays `AIGenerated=true; AIHumanReviewed=false`, because
  *      editing is not a Freigabe (ADR-0141).
- *   3. The bytes become the document's next Fassung (`sketch-fassung.ts`),
+ *   3. The bytes become the document's next Fassung (`sketch-version.ts`),
  *      refused with 409 when `baseVersionId` is no longer the current one.
  *   4. The PDF companion, the `diagram_pdf` row filed under the same reference,
  *      is drawn again from the new SVG and becomes its next Fassung too. When it
@@ -40,7 +40,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { s3Client } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from './diagram-sources'
-import { publishNewFassung } from './sketch-fassung'
+import { publishNextVersion } from './sketch-version'
 import { outlineSketch } from './sketch-outline'
 import { checkSketchScene, parseStoredSketchScene, serializeSketchScene, type SketchScene } from './sketch-scene'
 import type { SaveSketchBody, SavedSketch, SketchDocumentView } from './sketch-wire'
@@ -141,7 +141,7 @@ export async function saveSketchDocument(input: SaveSketchInput): Promise<SavedS
   const provenance = generatedDocumentMarking('diagram_svg', document.authoredByRef)
   if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch SVG lost its AI marking')
 
-  const version = await publishNewFassung({
+  const version = await publishNextVersion({
     session,
     document,
     bytes,
@@ -177,7 +177,7 @@ async function redrawCompanionPdf(
       createdAt: new Date(),
     })
     if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch PDF does not carry its AI marking')
-    const version = await publishNewFassung({
+    const version = await publishNextVersion({
       session,
       document: pdfDocument,
       bytes,
