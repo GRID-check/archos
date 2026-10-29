@@ -73,17 +73,32 @@ tasks:
     cmds:
       - task: website:install
       - task: website:check
+      - task: website:test
       - task: website:build
+      # The brand rules' own tests, then the rules once more over the fresh build:
+      # the AI-tag rule reads the built pages.
+      - node --test scripts/check_brand_rules.test.mjs
+      - bun scripts/check_brand_rules.mjs --require-build
+      - task: website:a11y
+
+  website:test:
+    desc: The website's unit tests (runtime specs and src/**/*.test.ts)
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run test
+
+  website:a11y:
+    desc: axe-core WCAG 2.2 AA over every built page, DE and EN (needs a build and Playwright's Chromium)
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bunx playwright install chromium
+      - bun run check:a11y
 
   website:capture:
     desc: Screenshot every website route at four widths (agent-browser; flags after --)
     dir: '{{.WEBSITE}}'
     cmds:
       - bun run capture {{.CLI_ARGS}}
-      # The brand rules' own tests, then the rules once more over the fresh build:
-      # the AI-tag rule reads the built pages.
-      - node --test scripts/check_brand_rules.test.mjs
-      - bun scripts/check_brand_rules.mjs --require-build
 
   # ── riso art (apps/site/art/riso — procedural prints for the site) ──────
   # The raw commands are `node art/riso/<script>.mjs` in apps/site; every

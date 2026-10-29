@@ -4,7 +4,7 @@
  * rules (contrast, names, labels, landmarks, target size, ...) on every page in
  * the sitemap plus the 404 page, German and English, at a desktop and a phone
  * width, and with the open states a visitor can reach (the mobile menu, a sent
- * form). Exits 1 on any violation.
+ * form, the consent note). Exits 1 on any violation.
  *
  * axe cannot judge text set on a photo (it reports "needs review"). For those
  * elements (`PHOTO_TEXT`) this script measures it itself: it hides the text,
@@ -149,6 +149,14 @@ try {
       if (width < 768 && (await page.locator('.ui-mnav summary').count())) {
         await page.locator('.ui-mnav summary').click()
         findings.push(...(await audit(page, `${route} @${width} menu open`)))
+      }
+      // The consent note and its footer link only appear with analytics on, which this
+      // server has off: show them by hand on the home pages.
+      if (route === '/' || route === '/en/') {
+        await page.evaluate(() => {
+          for (const el of document.querySelectorAll('[data-consent-note], [data-consent-open]')) el.hidden = false
+        })
+        findings.push(...(await audit(page, `${route} @${width} consent note`)))
       }
       const form = page.locator('[data-mail-form] form')
       if (width >= 768 && (await form.count())) {
