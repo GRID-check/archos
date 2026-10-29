@@ -9,27 +9,32 @@
  * A hit is drawn by the result list's own row components (`HitRow`) inside a
  * cmdk option (`ResultRowFrameProvider`), so the palette and the search page
  * show one hit with the same parts. In the palette the row is compact: the
- * name, one line of where and what, and the passage only on the row the
- * arrows are on, so a glance takes in every kind's hits and the way to all of
- * them stays in view.
+ * name, one line of where and what, and the passage on one line under it, on
+ * every row that has one, so the rows hold still while the arrows walk them.
  */
 
-import type { JSX, ReactNode } from 'react'
+import type { JSX } from 'react'
 import { createContext, useContext } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Bookmark, History, Search, Users } from 'lucide-react'
 
 import { CommandGroup, CommandItem } from '@/components/ui/command'
+import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { useTranslations } from '@/i18n'
 import { searchCopy } from '@/i18n/namespaces/search'
+import { cn } from '@/lib/utils'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SEARCH_KINDS, type SearchHit, type SearchResponse, type SearchScopeQuery } from '@/lib/search/search-wire'
 import { PALETTE_HITS_PER_KIND } from '../hooks/use-palette-search'
 import { hitHref } from '../lib/search-hrefs'
 import {
+  PALETTE_GROUP_CLASS,
   PALETTE_HIT_CLASS,
   PALETTE_STALE_CLASS,
   PaletteAside,
+  PaletteEmpty,
+  PaletteGroupHeading,
+  PaletteHitsSkeleton,
   PaletteGlyph,
   PaletteLabel,
   PaletteStatusLine,
@@ -64,6 +69,11 @@ function PaletteHitFrame({ href, testId, className, children }: ResultRowFramePr
   const open = useContext(OpenContext)
   return (
     <CommandItem
+      // Mounted with the answer, not a render later once cmdk has scored it:
+      // the server already decided it matches (`paletteFilter` ranks it first
+      // regardless), and a row cmdk drew one commit late landed the panel's new
+      // height after the glide (`useHeightGlide`) had measured, so it jumped.
+      forceMount
       value={hitValue(href)}
       onSelect={() => open(href)}
       className={`${className} ${PALETTE_HIT_CLASS}`}
@@ -95,18 +105,16 @@ export interface PaletteSearchResultsProps {
   perKind?: number
   /** The scope the palette searched in; a row leaves out the shelf it already says. */
   scope?: SearchScopeQuery
-  /** The keys that open the search page from anywhere in the list, shown on its row. */
-  allShortcut?: ReactNode
   itemClassName?: string
 }
 
 /**
- * „Alle Treffer für …“ stays in view at the foot of the list while hits run
- * past it, on the palette's own surface, so the way to every hit is never a
- * scroll away. Once the list scrolls on to the commands it goes with them.
+ * How long a search runs before the palette says it is still searching: the
+ * field's progress line and the quieter hits both wait for it, so one wait is
+ * one change on screen. The debounce and an ordinary answer fit inside it, so
+ * typing never dims the hits on every key.
  */
-// `-bottom-1` covers the list's own 4px padding, so no hit shows beneath it.
-const PINNED_GROUP_CLASS = 'sticky -bottom-1 z-10 border-t border-border/70 bg-popover'
+export const PALETTE_LATE_ANSWER_MS = 300
 
 /** What was typed, answered: three hits of each kind, then the way to all of them. */
 export function PaletteSearchResults({
@@ -120,7 +128,6 @@ export function PaletteSearchResults({
   allHref,
   perKind = PALETTE_HITS_PER_KIND,
   scope = {},
-  allShortcut,
   itemClassName,
 }: PaletteSearchResultsProps): JSX.Element {
   const t = useTranslations(searchCopy)
@@ -128,7 +135,20 @@ export function PaletteSearchResults({
   const stale = answered !== words
   const shown = paletteHits(response, perKind)
   const anyHits = shown.length > 0
-  const status = failed ? t('error') : loading || stale ? t('loading') : response && !anyHits ? t('palette.noHits') : null
+  const busy = !failed && (loading || stale)
+  const late = useDelayedFlag(busy && anyHits, PALETTE_LATE_ANSWER_MS)
+  const tCount = (kind: (typeof SEARCH_KINDS)[number]): string | null => {
+    const section = response?.sections[kind]
+    if (!section) return null
+    return section.totalIsLowerBound ? t('totalAtLeast', { count: section.total }) : String(section.total)
+  }
+  // What the search is doing. Searching is said by the field's own progress
+  // line (`CommandInput busy`) and here only to a screen reader: a „Sucht…“
+  // that came and went at the row's end on every key was the panel's flicker.
+  // An answer that found nothing, or failed, is shown.
+  const status = failed ? t('error') : busy ? t('loading') : response && !anyHits ? t('palette.noHits') : null
+  const firstAnswer = busy && response === null
+  const empty = !busy && (failed || (response !== null && !anyHits))
   const select = onPick
     ? (href: string): void => {
         const hit = shown.find((entry) => hitHref(entry) === href)
@@ -143,7 +163,17 @@ export function PaletteSearchResults({
           const hits = response?.sections[kind]?.hits.slice(0, perKind) ?? []
           if (hits.length === 0) return null
           return (
-            <CommandGroup key={kind} heading={t(`kinds.${kind}`)} forceMount className={stale ? PALETTE_STALE_CLASS : undefined} data-testid={`palette-group-${kind}`}>
+            <CommandGroup
+              key={kind}
+              heading={<PaletteGroupHeading count={tCount(kind)}>{t(`kinds.${kind}`)}</PaletteGroupHeading>}
+              forceMount
+              // No entrance of its own: the hits take the placeholder's place at
+              // full strength while the card's height glides, and a fade from
+              // nothing in the same frame read as the panel blinking blank.
+              className={cn(PALETTE_GROUP_CLASS, late && PALETTE_STALE_CLASS)}
+              aria-busy={late || undefined}
+              data-testid={`palette-group-${kind}`}
+            >
               {hits.map((hit) => (
                 <HitRow key={`${hit.kind}:${hit.id}`} hit={hit} text={answered} />
               ))}
@@ -152,6 +182,7 @@ export function PaletteSearchResults({
         })}
       </ResultRowFrameProvider>
       </HitScopeProvider>
+      {firstAnswer ? <PaletteHitsSkeleton /> : null}
       {allHref === null ? (
         status ? (
           <PaletteStatusLine busy={loading && !failed} testId="palette-search-status">
@@ -159,18 +190,26 @@ export function PaletteSearchResults({
           </PaletteStatusLine>
         ) : null
       ) : (
-        <CommandGroup forceMount className={anyHits ? PINNED_GROUP_CLASS : undefined}>
-          <CommandItem forceMount value={PALETTE_ALL_RESULTS_VALUE} onSelect={() => onOpen(allHref)} className={itemClassName} data-testid="palette-workspace-search">
-            <PaletteGlyph icon={Search} />
-            <PaletteLabel>{t('palette.allResults', { text: words })}</PaletteLabel>
-            {status ? (
-              <PaletteAside busy={loading && !failed} testId="palette-search-status">
-                {status}
-              </PaletteAside>
-            ) : null}
-            {allShortcut ? <span className={status ? 'flex shrink-0' : 'ml-auto flex shrink-0'}>{allShortcut}</span> : null}
-          </CommandItem>
-        </CommandGroup>
+        <>
+          {empty ? (
+            <PaletteEmpty
+              title={failed ? t('error') : t('palette.noHitsFor', { text: words })}
+              hint={failed ? undefined : t(scope.scope === 'project' ? 'palette.hint.project' : 'palette.hint.office')}
+              testId="palette-search-status"
+            />
+          ) : (
+            <span className="sr-only" aria-live="polite" data-testid="palette-search-status">
+              {status}
+            </span>
+          )}
+          <CommandGroup forceMount>
+            <CommandItem forceMount value={PALETTE_ALL_RESULTS_VALUE} onSelect={() => onOpen(allHref)} className={itemClassName} data-testid="palette-workspace-search">
+              <PaletteGlyph icon={Search} />
+              {/* Nothing here is no promise of nothing there: the page searches with filters, and further than three of a kind. */}
+              <PaletteLabel>{empty ? t('palette.continueInSearch') : t('palette.allResults', { text: words })}</PaletteLabel>
+            </CommandItem>
+          </CommandGroup>
+        </>
       )}
     </OpenContext.Provider>
   )

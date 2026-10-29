@@ -8,6 +8,7 @@ export { SearchWorkspaceView, type SearchWorkspaceViewProps } from './components
 export { ShelfSearchBack } from './components/shelf-search-toggle'
 export {
   PALETTE_ALL_RESULTS_VALUE,
+  PALETTE_LATE_ANSWER_MS,
   PaletteSearchResults,
   PaletteSearchStart,
   paletteFilter,

@@ -176,9 +176,9 @@ function useWhere(): (shelf: 'project' | 'office_shelf', projectId: string | nul
   return (shelf, projectId, projectName, folderName = null) => {
     const said = shelf === 'office_shelf' ? scope.scope === 'office_shelf' : scope.scope === 'project' && scope.projectId === projectId
     const mark = said ? null : shelf === 'office_shelf' ? (
-      <ShelfMark key="shelf" shelf="office_shelf" label={tWhere('officeShelf')} wrap={wrap} />
+      <ShelfMark key="shelf" shelf="office_shelf" label={tWhere('officeShelf')} wrap={wrap} quiet={!wrap} />
     ) : projectName ? (
-      <ShelfMark key="shelf" shelf="project" label={projectName} wrap={wrap} />
+      <ShelfMark key="shelf" shelf="project" label={projectName} wrap={wrap} quiet={!wrap} />
     ) : null
     const folder = folderName ? (
       <WherePart key="folder" label={tWhere('folder')}>
@@ -203,11 +203,20 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
   // the name. What is left is a match on what Piloti read about the document.
   const shown = hit.passage !== null || title.some((segment) => segment.match)
   const matchedOn = text.trim() && !shown ? hit.matchedOn : []
+  // What a Fassung changed is the page's detail: in the palette a fourth line
+  // on one row broke the rhythm every other row keeps.
+  const compact = useCompactRow()
   return (
     <ResultRow
       href={documentHitHref(hit, from)}
       icon={FileText}
-      title={<MatchedText segments={title} />}
+      title={
+        <>
+          <MatchedText segments={title} />
+          {/* Two Fassungen of one plan share a name; in the palette the index stands beside it, where the eye compares them. */}
+          {compact && hit.planIndex ? <span className="ml-1.5 font-normal text-muted-foreground">{t('document.index', { index: hit.planIndex })}</span> : null}
+        </>
+      }
       active={active}
       id={id}
       testId={`search-hit-document-${hit.id}`}
@@ -215,10 +224,12 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
         <MetaLine
           lead={where(hit.shelf, hit.projectId, hit.projectName, hit.folderName)}
           parts={[
-            type ? <MetaPart key="type">{type}</MetaPart> : null,
+            // The palette's one line keeps where, which plan and when; what
+            // kind of document and its scale are the page's columns.
+            type && !compact ? <MetaPart key="type">{type}</MetaPart> : null,
             hit.planNumber ? <MetaPart key="number" code>{hit.planNumber}</MetaPart> : null,
-            hit.planIndex ? <MetaPart key="index">{t('document.index', { index: hit.planIndex })}</MetaPart> : null,
-            hit.scale ? <MetaPart key="scale" code>{hit.scale}</MetaPart> : null,
+            hit.planIndex && !compact ? <MetaPart key="index">{t('document.index', { index: hit.planIndex })}</MetaPart> : null,
+            hit.scale && !compact ? <MetaPart key="scale" code>{hit.scale}</MetaPart> : null,
             day ? <MetaPart key="day">{day}</MetaPart> : null,
           ]}
         />
@@ -234,7 +245,7 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
       ) : matchedOn.length > 0 ? (
         <MatchHint label={t('matchedOn.label')} parts={matchedOn.map((reason) => t(`matchedOn.${reason}`))} />
       ) : null}
-      {hit.changedFacts.length > 0 ? (
+      {hit.changedFacts.length > 0 && !compact ? (
         <MatchHint
           label={t('document.changed')}
           testId="search-changed-facts"

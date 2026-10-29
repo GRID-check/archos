@@ -319,6 +319,8 @@ export const search: typeof en.search = {
     allResults: 'Alle Treffer für „{text}“',
     open: 'Suche öffnen',
     noHits: 'Nichts gefunden',
+    noHitsFor: 'Nichts gefunden für „{text}“',
+    continueInSearch: 'In der Suche weitersuchen',
     recent: 'Zuletzt gesucht',
     hint: {
       office:

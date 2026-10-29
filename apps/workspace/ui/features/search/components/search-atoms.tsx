@@ -40,7 +40,7 @@ import { useTranslations } from '@/i18n'
 import { searchCopy } from '@/i18n/namespaces/search'
 import { keepUnitsTogether } from '@/lib/text/keep-units'
 import type { TextSegment } from '@/lib/text/term-segments'
-import { sourceTint } from '@/lib/ui/source-tint'
+import { sourceBase, sourceTint } from '@/lib/ui/source-tint'
 import { cn } from '@/lib/utils'
 import { fitColumns, minimumRem, type ColumnFit } from '../lib/register-fit'
 
@@ -415,8 +415,7 @@ const ACTIVE_ROW = 'aria-selected:bg-accent/60 aria-selected:shadow-[inset_2px_0
 
 /**
  * Whether the row stands in the ⌘K palette (a frame is provided) rather than
- * the result list: there it is compact, one line of name and one of what it
- * is, and what matched shows on the row the arrows are on.
+ * the result list: there it is compact, every part held to one line.
  */
 export function useCompactRow(): boolean {
   return useContext(ResultRowFrameContext) !== null
@@ -425,9 +424,11 @@ export function useCompactRow(): boolean {
 /**
  * One hit, at most three lines: its name in the strong weight (the focal
  * point, with any state such as „Ersetzt“ beside it), one muted line of where
- * it lives and what it is, and what matched under it. In the palette the
- * third line shows only on the row the arrows are on, so a glance takes in
- * twice the hits.
+ * it lives and what it is, and what matched under it. In the palette each of
+ * the three is one line, and the third is on every row that has one, never
+ * only on the row the arrows are on: a passage that opened under the selection
+ * pushed every row below it down by a line on each arrow press, so the list
+ * moved under the reader's eye as they walked it.
  */
 export function ResultRow({
   href,
@@ -471,7 +472,7 @@ export function ResultRow({
       </ItemMedia>
       <ItemContent className="flex min-w-0 flex-col gap-0.5">
         <span className="flex min-w-0 items-start gap-2">
-          <span className={cn('min-w-0 flex-1 text-sm font-semibold tracking-tight text-foreground', compact ? 'truncate' : 'max-sm:line-clamp-2 sm:truncate')}>{title}</span>
+          <span className={cn('min-w-0 flex-1 text-sm tracking-tight text-foreground', compact ? 'truncate font-medium' : 'font-semibold max-sm:line-clamp-2 sm:truncate')}>{title}</span>
           {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
         </span>
         {meta ? (
@@ -485,7 +486,7 @@ export function ResultRow({
             {meta}
           </span>
         ) : null}
-        {children ? compact ? <span className="hidden min-w-0 flex-col in-data-[selected=true]:flex">{children}</span> : children : null}
+        {children ? compact ? <span className="flex min-w-0 flex-col">{children}</span> : children : null}
       </ItemContent>
     </>
   )
@@ -556,8 +557,31 @@ export function MetaLine({
  * name to its title; in a result row's where line it wraps, so a long project
  * name is read whole without a pointer.
  */
-export function ShelfMark({ shelf, label, wrap = false }: { shelf: 'project' | 'office_shelf'; label: string; wrap?: boolean }): JSX.Element {
+export function ShelfMark({
+  shelf,
+  label,
+  wrap = false,
+  quiet = false,
+}: {
+  shelf: 'project' | 'office_shelf'
+  label: string
+  wrap?: boolean
+  /**
+   * The signal on the icon alone, the name in the meta line's ink: the ⌘K
+   * palette, where the same project stands on most rows, and a tinted pill on
+   * each was the loudest thing in the panel, louder than the names searched for.
+   */
+  quiet?: boolean
+}): JSX.Element {
   const Icon = shelf === 'office_shelf' ? Archive : FolderKanban
+  if (quiet) {
+    return (
+      <span className="inline-flex min-w-0 max-w-48 items-center gap-1 md:max-w-64" title={label}>
+        <Icon className="size-3 shrink-0" style={{ color: sourceBase(shelf === 'office_shelf' ? 'office' : 'project') }} aria-hidden />
+        <span className="truncate">{label}</span>
+      </span>
+    )
+  }
   return (
     <span
       className={cn(
@@ -625,6 +649,30 @@ export function HitBadge({ children, tone = 'muted' }: { children: ReactNode; to
  * runs on without a gap.
  */
 export function PassageQuote({ segments, page }: { segments: readonly TextSegment[]; page?: string }): JSX.Element {
+  // The palette's row holds the passage to one quiet line under the meta line,
+  // the page first in the same tabular figures, no rule and no chip: three
+  // stacked boxes per hit were most of what made the list read as busy.
+  const compact = useCompactRow()
+  if (compact) {
+    return (
+      <span className="flex min-w-0 items-baseline gap-1.5 text-xs leading-5 text-muted-foreground" data-testid="search-passage">
+        {page ? <span className="shrink-0 font-medium tabular-nums text-foreground/70">{page}</span> : null}
+        <span className="min-w-0 truncate">
+          „
+          {segments.map((segment, index) =>
+            segment.match ? (
+              <MatchMark key={index} testId="search-passage-match">
+                {segment.text}
+              </MatchMark>
+            ) : (
+              <span key={index}>{keepUnitsTogether(segment.text)}</span>
+            )
+          )}
+          “
+        </span>
+      </span>
+    )
+  }
   return (
     <p className="mt-1 flex min-w-0 items-baseline gap-2 border-l-2 border-border pl-2.5 text-sm leading-relaxed text-foreground/80" data-testid="search-passage">
       {page ? (
@@ -651,8 +699,14 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
 
 /** A matched word: set apart by weight on a faint ink wash exactly as wide as the match. */
 function MatchMark({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
+  // In the palette by weight and ink alone: the wash vanished on the selected
+  // row's own tint, which is the row the reader is looking at.
+  const compact = useCompactRow()
   return (
-    <mark className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid={testId}>
+    <mark
+      className={cn('font-semibold text-foreground', compact ? 'bg-transparent' : 'rounded-[2px] bg-foreground/[0.08] [box-decoration-break:clone]')}
+      data-testid={testId}
+    >
       {children}
     </mark>
   )
@@ -677,11 +731,23 @@ export function MatchedText({ segments }: { segments: readonly TextSegment[] }):
 
 /** A plain excerpt (an annotation's body, a folder's description). */
 export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="mt-0.5 line-clamp-2 text-pretty text-sm text-foreground/75">{children}</p>
+  const compact = useCompactRow()
+  return <p className={cn('text-foreground/75', compact ? 'truncate text-xs leading-5 text-muted-foreground' : 'mt-0.5 line-clamp-2 text-pretty text-sm')}>{children}</p>
 }
 
 /** A quiet line under a hit: what the words were found in, when the row shows nothing that matched („Gefunden in Zusammenfassung“), what a Fassung changed. Present, never loud. */
 export function MatchHint({ label, parts, testId = 'search-matched-on' }: { label: string; parts: readonly string[]; testId?: string }): JSX.Element {
+  // In the palette it takes the passage's form, the label where the page
+  // number stands, so a third line reads the same on every row.
+  const compact = useCompactRow()
+  if (compact) {
+    return (
+      <span className="flex min-w-0 items-baseline gap-1.5 text-xs leading-5 text-muted-foreground" data-testid={testId}>
+        <span className="shrink-0">{label}</span>
+        <span className="min-w-0 truncate font-medium text-foreground/70">{parts.join(' · ')}</span>
+      </span>
+    )
+  }
   return (
     <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid={testId}>
       {label} {parts.join(' · ')}
@@ -1112,8 +1178,79 @@ export function SearchInset({ children }: { children: ReactNode }): JSX.Element 
  */
 export const PALETTE_HIT_CLASS = 'py-2 [&_svg.size-3]:size-3! pointer-coarse:min-h-11'
 
-/** Hits of an earlier question while the next answer is on its way: quieter, as the page's `ResultsBody` dims them. */
-export const PALETTE_STALE_CLASS = 'opacity-60 transition-opacity duration-quick motion-reduce:transition-none'
+/**
+ * A hit group's rows and heading ease their opacity both ways, so a stale
+ * answer quiets and the fresh one lifts as a fade rather than a blink.
+ */
+export const PALETTE_GROUP_CLASS =
+  '[&_[cmdk-group-heading]]:transition-opacity [&_[cmdk-item]]:transition-[background-color,color,opacity] [&_[cmdk-group-heading]]:duration-quick [&_[cmdk-item]]:duration-quick motion-reduce:[&_[cmdk-group-heading]]:transition-none motion-reduce:[&_[cmdk-item]]:transition-none'
+
+/**
+ * Hits of an earlier question while a late answer is still on its way:
+ * quieter, as the page's `ResultsBody` dims them, except the row the arrows are
+ * on, which stays at full strength: it is still what Enter opens, and a dimmed
+ * selection read as the whole list switched off.
+ */
+export const PALETTE_STALE_CLASS = '[&_[cmdk-group-heading]]:opacity-60 [&_[cmdk-item]:not([data-selected=true])]:opacity-60'
+
+/**
+ * What the palette says when the answer is empty or failed, in the space the
+ * hits would take: what was asked, and under it what the search reads, so
+ * the reader can tell a word that is nowhere from a place it does not look.
+ * Not an option: the way on is the row under it.
+ */
+export function PaletteEmpty({ title, hint, testId }: { title: ReactNode; hint?: ReactNode; testId?: string }): JSX.Element {
+  return (
+    <div className="flex flex-col gap-1 px-3 pt-4 pb-3" aria-live="polite">
+      <p className="text-sm font-medium text-foreground" data-testid={testId}>
+        {title}
+      </p>
+      {hint ? <p className="text-pretty text-xs leading-5 text-muted-foreground">{hint}</p> : null}
+    </div>
+  )
+}
+
+/** A hit group's heading: the kind, and at the end how many there are in all, the hits shown being the first few. */
+export function PaletteGroupHeading({ children, count }: { children: ReactNode; count: string | null }): JSX.Element {
+  return (
+    <span className="flex items-baseline justify-between gap-3">
+      <span>{children}</span>
+      {count ? <span className="tabular-nums text-muted-foreground/80">{count}</span> : null}
+    </span>
+  )
+}
+
+/**
+ * The palette's hits before the first answer for what is typed: three rows in
+ * the hit's own geometry (glyph, name, meta line), so the panel takes the
+ * results' shape at the keystroke instead of collapsing to one row and
+ * springing open when the answer lands. It fades in on `--motion-base`, so an
+ * answer that comes back within a few frames replaces a nearly invisible
+ * placeholder rather than flashing one.
+ */
+export function PaletteHitsSkeleton(): JSX.Element {
+  // Two kinds, three hits and one: about the answer a search in an office
+  // usually gets, so the height the answer glides to is a short way off.
+  const groups = [3, 1]
+  return (
+    <div className="animate-in fade-in-0 duration-base flex flex-col motion-reduce:animate-none" data-testid="palette-skeleton" aria-hidden>
+      {groups.map((rows, group) => (
+        <div key={group} className="flex flex-col p-1">
+          <Skeleton className="mx-2 mt-1.5 mb-2.5 h-3 w-20" />
+          {Array.from({ length: rows }, (_, index) => (
+            <div key={index} className="flex items-start gap-3 px-2 py-2">
+              <Skeleton className="mt-0.5 size-4" />
+              <div className="flex flex-1 flex-col gap-2 pt-0.5">
+                <Skeleton className={cn('h-3.5', ['w-1/2', 'w-2/5', 'w-1/3'][(index + group) % 3])} />
+                <Skeleton className={cn('h-3', ['w-3/4', 'w-3/5', 'w-2/3'][(index + group) % 3])} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /** A palette row's glyph, in the muted ink the palette's commands use; `top` holds it on the first line of a two-line row. */
 export function PaletteGlyph({ icon: Icon, top = false }: { icon: LucideIcon; top?: boolean }): JSX.Element {

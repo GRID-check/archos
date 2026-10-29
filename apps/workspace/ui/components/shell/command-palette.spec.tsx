@@ -131,8 +131,8 @@ describe('CommandPalette: the workspace search', () => {
     server.use(http.post('*/api/search', () => HttpResponse.json({ ...SEARCH_FIXTURE_RESPONSE, sections: {} })))
     render(palette())
     await userEvent.type(field(), 'xyz')
-    await waitFor(() => expect(screen.getByTestId('palette-search-status')).toHaveTextContent('Nichts gefunden'))
-    expect(screen.getByTestId('palette-workspace-search')).toHaveTextContent('Alle Treffer für „xyz“')
+    await waitFor(() => expect(screen.getByTestId('palette-search-status')).toHaveTextContent('Nichts gefunden für „xyz“'))
+    expect(screen.getByTestId('palette-workspace-search')).toHaveTextContent('In der Suche weitersuchen')
   })
 
   it('before anything is typed: what the search reaches, the recent searches and the saved ones, and the commands', async () => {

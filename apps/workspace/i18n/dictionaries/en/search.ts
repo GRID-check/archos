@@ -311,6 +311,8 @@ export const search = {
     allResults: 'All results for “{text}”',
     open: 'Open search',
     noHits: 'Nothing found',
+    noHitsFor: 'Nothing found for “{text}”',
+    continueInSearch: 'Continue in search',
     recent: 'Recent searches',
     hint: {
       office:

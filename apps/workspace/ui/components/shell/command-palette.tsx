@@ -29,9 +29,11 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 import { DialogClose } from '@/components/ui/dialog'
+import { useHeightGlide } from '@/components/motion/height-glide'
 import { useLayoutStore } from '@/features/layout/store'
 import {
   PALETTE_ALL_RESULTS_VALUE,
+  PALETTE_LATE_ANSWER_MS,
   PaletteSearchResults,
   PaletteSearchStart,
   captureSavedSearchRun,
@@ -44,7 +46,9 @@ import {
   usePaletteShortcuts,
 } from '@/features/search'
 import { SEARCH_KINDS } from '@/lib/search/search-wire'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { useTranslations } from '@/i18n'
 import { commonCopy } from '@/i18n/namespaces/common'
 import { navCopy } from '@/i18n/namespaces/nav'
@@ -209,6 +213,30 @@ export function CommandPalette({
   // touch tablet past `md` drops it as well as a phone does.
   const finePointer = useMediaQuery('(pointer: fine)')
 
+  // The field's progress line, once a search has run long enough to be worth
+  // saying: the debounce and a quick answer stay under it.
+  // Before the first answer the placeholder rows say it already, so the line
+  // is for a newer question over hits that stand.
+  const searching = useDelayedFlag(
+    words !== '' && !search.failed && search.response !== null && (search.loading || search.answered !== words),
+    PALETTE_LATE_ANSWER_MS
+  )
+
+  // On a desktop the card's height follows its content: the commands give way
+  // to the hits, the placeholder rows to the answer, one answer to the next.
+  // Landed in one frame, the card's bottom edge jumped by a hundred pixels on
+  // each; glided (`useHeightGlide`, a swap in the frame the reader is looking
+  // at), the change reads as the list answering. Keyed by the answer, so the
+  // commands the filter drops per key still land at once. On a phone the list
+  // fills the screen above the keyboard and has no height of its own to glide.
+  const desktop = !useIsMobile()
+  // The list mounts a render after the dialog (Radix portals in a layout
+  // effect) and again on each open, so the glide gets a ref per element: one
+  // made once and read too early never saw the list, and never glided.
+  const [listElement, setListElement] = React.useState<HTMLDivElement | null>(null)
+  const listRef = React.useMemo(() => ({ current: listElement }), [listElement])
+  useHeightGlide(listRef, desktop && open ? (words ? `search:${search.answered}:${search.response === null}` : 'start') : 'still')
+
   // Lazy project list — fetched once, the first time the palette opens.
   const [projects, setProjects] = React.useState<PaletteProject[] | null>(null)
   React.useEffect(() => {
@@ -259,12 +287,24 @@ export function CommandPalette({
         open: t('hints.open'),
         close: t('hints.close'),
       }}
+      // Every hit for what is typed, from whichever row the arrows are on: said
+      // once, in the footer where the other keys are, rather than as a second
+      // footer pinned over the hits.
+      hintsTrailing={
+        words ? (
+          <>
+            <ShortcutKeys segments={[{ kind: 'chord', caps: [MOD, '↵'] }]} />
+            {t('hints.all')}
+          </>
+        ) : null
+      }
     >
       <div className="flex shrink-0 items-center md:contents max-md:border-b max-md:[&_[data-slot=command-input-wrapper]]:border-b-0 max-md:[&_[data-slot=command-input-wrapper]]:flex-1 max-md:[&_[data-slot=command-input-wrapper]]:h-14 max-md:[&_[data-slot=command-input-wrapper]]:bg-transparent!">
         <CommandInput
           value={query}
           onValueChange={setQuery}
           onKeyDown={onFieldKeyDown}
+          busy={searching}
           placeholder={t('placeholder')}
           // The wrapper's wash is this field's focus signal (and on a phone,
           // the keyboard is); the global `:focus-visible` outline is unlayered
@@ -280,7 +320,7 @@ export function CommandPalette({
           {tCommon('actions.cancel')}
         </DialogClose>
       </div>
-      <CommandList className="min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain">
+      <CommandList ref={setListElement} className="md:scroll-fade-bottom min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain">
         {/* No „Keine Ergebnisse“: a search row always answers, with the way
             to every hit for what was typed. */}
         {words ? (
@@ -293,13 +333,6 @@ export function CommandPalette({
             onOpen={openSearchHref}
             allHref={allHref ?? searchPageHref(words, projectId)}
             scope={scope}
-            allShortcut={
-              finePointer ? (
-                <CommandShortcut className="ml-0 shrink-0 tracking-normal">
-                  <ShortcutKeys segments={[{ kind: 'chord', caps: [MOD, '↵'] }]} />
-                </CommandShortcut>
-              ) : null
-            }
             itemClassName={PALETTE_ITEM_CLASS}
           />
         ) : (
