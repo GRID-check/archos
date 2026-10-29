@@ -19,8 +19,8 @@ from agent.citations.session import reset_session_registry
 from agent.citations.session import set_session_registry
 from agent.common import LLMProvider
 from agent.common import LLMRole
-from agent.common.brand import PRODUCT_NAME
 from agent.common.answer_envelope import render_envelope_response_format
+from agent.common.brand import PRODUCT_NAME
 from agent.common.data_source_registry import populate_from_config
 from agent.common.data_source_registry import reset_registry
 from agent.common.retrieval_rounds import assistant_checkpoint
