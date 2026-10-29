@@ -28,8 +28,12 @@
   --ds-space-32: 128px;
   --ds-space-40: 160px;
   --ds-radius-none: 0;
-  --ds-radius-md: 4px;
-  --ds-radius-lg: 8px;
+  --ds-radius-sm: 4px;
+  --ds-radius-md: 6px;
+  --ds-radius-lg: 10px;
+  --ds-radius-xl: 14px;
+  --ds-radius-bubble: 18px;
+  --ds-radius-full: 9999px;
   --ds-stroke-hairline: 1px;
   --ds-stroke-strong: 2px;
   --ds-glass-blur: 20px;

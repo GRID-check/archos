@@ -46,7 +46,7 @@ const Switch = React.forwardRef<
       // Off is a hollow track: the input fill inside the strongest hairline,
       // so the switch reads as a control in both themes. On a muted fill the
       // paper thumb vanished in the light theme and the charcoal one in dark.
-      'peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input data-[state=unchecked]:border-strong inline-flex h-6 w-10 shrink-0 items-center rounded-control border border-transparent transition-[color,background-color,border-color,opacity,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out outline-none disabled:cursor-not-allowed disabled:opacity-50 touch-target active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100',
+      'peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input data-[state=unchecked]:border-strong inline-flex h-6 w-10 shrink-0 items-center rounded-full border border-transparent transition-[color,background-color,border-color,opacity,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out outline-none disabled:cursor-not-allowed disabled:opacity-50 touch-target active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100',
       FOCUS_RING,
       className
     )}

@@ -47,8 +47,12 @@
   --space-32: 128px;
   --space-40: 160px;
   --radius-none: 0;
-  --radius-md: 4px;
-  --radius-lg: 8px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-bubble: 18px;
+  --radius-full: 9999px;
   --stroke-hairline: 1px;
   --stroke-strong: 2px;
   --glass-blur: 20px;

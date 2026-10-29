@@ -2,8 +2,8 @@
 
 /**
  * Fixture sections for the atoms preview: surfaces (cards, quotes, menus,
- * popovers, tooltips, dialogs, sheets). Surfaces are square (0); the only
- * radii on this page are the 4px controls inside them.
+ * popovers, tooltips, dialogs, sheets). Surfaces take 10px, floating layers
+ * 14px, the controls inside them 6px.
  */
 
 import type { JSX } from 'react'
@@ -30,7 +30,7 @@ import { Section } from './section'
 export function SurfacesSection(): JSX.Element {
   return (
     <>
-      <Section title="Cards" description="Cards and raised cards are surfaces: square, hairline-separated.">
+      <Section title="Cards" description="Cards and raised cards are surfaces: 10px, hairline-separated.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader>
@@ -100,7 +100,7 @@ export function SurfacesSection(): JSX.Element {
         </div>
       </Section>
 
-      <Section title="Dialog and sheet" description="Open these to see the overlay surfaces. Both are square.">
+      <Section title="Dialog and sheet" description="Open these to see the overlays: the dialog takes 14px; a sheet runs to the screen edge.">
         <div className="flex flex-wrap gap-3">
           <Dialog>
             <DialogTrigger asChild>

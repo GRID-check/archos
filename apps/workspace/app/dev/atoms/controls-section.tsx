@@ -2,7 +2,7 @@
 
 /**
  * Fixture sections for the atoms preview: the controls. Every control on this
- * page should show the 4px control radius; nothing here sets its own radius.
+ * page should show the 6px control radius; nothing here sets its own radius.
  */
 
 import type { JSX } from 'react'
@@ -27,7 +27,7 @@ export function ControlsSection(): JSX.Element {
   const [checked, setChecked] = useState(true)
   return (
     <>
-      <Section title="Buttons" description="Every variant and size. Controls: 4px.">
+      <Section title="Buttons" description="Every variant and size. Controls: 6px.">
         <div className="flex flex-wrap items-center gap-3">
           <Button>Default</Button>
           <Button variant="secondary">Secondary</Button>
@@ -106,7 +106,7 @@ export function ControlsSection(): JSX.Element {
         </div>
       </Section>
 
-      <Section title="Toggles and segmented controls" description="Toggle groups are one control with a 4px tray.">
+      <Section title="Toggles and segmented controls" description="Toggle groups are one control with a 6px tray.">
         <div className="flex flex-wrap items-center gap-4">
           <Toggle aria-label="Fett" variant="outline" defaultPressed>
             <Bold aria-hidden />

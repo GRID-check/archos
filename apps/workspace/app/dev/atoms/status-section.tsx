@@ -2,8 +2,8 @@
 
 /**
  * Fixture sections for the atoms preview: badges and chips, alerts, progress,
- * skeletons, the stepper and list items. Chips and badges are controls (4px);
- * the count pill is a numeric chip (4px); avatars and status dots stay round.
+ * skeletons, the stepper and list items. Chips, badges and the count pill are
+ * pills (rounded-full), keys are inline (4px); avatars and status dots are round.
  */
 
 import type { JSX } from 'react'
@@ -34,7 +34,7 @@ export function StatusSection(): JSX.Element {
   const [step, setStep] = useState(1)
   return (
     <>
-      <Section title="Badges, chips and counts" description="Status labels are controls: 4px. Only the avatar and dots are round.">
+      <Section title="Badges, chips and counts" description="Chips, badges and counts are pills; keys are inline (4px).">
         <div className="flex flex-wrap items-center gap-2">
           <Badge>Default</Badge>
           <Badge variant="secondary">Secondary</Badge>
@@ -72,7 +72,7 @@ export function StatusSection(): JSX.Element {
         </div>
       </Section>
 
-      <Section title="Alerts" description="Alerts are surfaces: square.">
+      <Section title="Alerts" description="Alerts are surfaces: 10px.">
         <Alert>
           <Info aria-hidden />
           <AlertTitle>Hinweis</AlertTitle>

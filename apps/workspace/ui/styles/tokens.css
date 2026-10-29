@@ -542,20 +542,22 @@
   --color-signal-error: var(--signal-error);
   --color-signal-error-tint: var(--signal-error-tint);
 
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: var(--ds-radius-md); /* controls: the corporate design's one control radius (radius-md) */
-  /* Semantic radii (brand rule, packages/brand/README.md "Layout and shape"). Controls:
-     buttons, icon buttons, inputs, textareas, selects, toggles, checkboxes, tabs,
-     segmented controls, menu and list items, badges, chips. 4px, one value. */
-  --radius-control: var(--ds-radius-md);
-  /* Surfaces: cards, panels, sheets, dialogs, popovers, menu containers, tooltips,
-     toasts, tables, code blocks. The brand's app surface radius (radius-lg, 8px): soft,
-     separated by hairlines and whitespace, never lifted by a shadow. */
-  --radius-surface: var(--ds-radius-lg);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  /* Radius follows size and shape: the brand's ladder (packages/brand/README.md
+     "Layout and shape", tokens.json radius-*). Pick the semantic step for the job;
+     the same kind of element always takes the same step. */
+  --radius-inline: var(--ds-radius-sm); /* 4px: kbd, checkbox, a tag inside a field */
+  --radius-control: var(--ds-radius-md); /* 6px: buttons, inputs, selects, tabs, toggles, menu and list items */
+  --radius-surface: var(--ds-radius-lg); /* 10px: cards, panels, list containers, toasts, tables, code blocks */
+  --radius-overlay: var(--ds-radius-xl); /* 14px: dialogs, popovers, menus, sheets, the command palette */
+  --radius-bubble: var(--ds-radius-bubble); /* 18px: chat messages and the composer */
+  /* rounded-full stays Tailwind's: chips, badges, counts, avatars, dots, switches. */
+  /* Tailwind's own steps, for code not yet on a semantic name; mapped onto the ladder. */
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
+  --radius-2xl: var(--ds-radius-bubble);
+  --radius-3xl: var(--ds-radius-bubble);
 
   /* Bare `shadow` (Tailwind v3's name for today's `shadow-sm`) resolved to
      Tailwind's own deprecated `--shadow`, a cold black drop shadow on no
