@@ -1,6 +1,6 @@
 /**
  * The body of `POST /api/projects/[id]/diagrams`, kept out of the route file so
- * the route and the MCP catalog (`lib/agent-api/catalog/bim.ts`) parse against
+ * the route and the MCP catalog (`bff/agent-api/catalog/bim.ts`) parse against
  * one schema.
  */
 

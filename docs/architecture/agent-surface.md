@@ -179,7 +179,7 @@ read, with the audience read once per MCP request):
   which folder its content came from, so a read of a whole project records
   every folder of it that restricts someone and the requester may read: over on
   purpose. A read listed in `AUDIENCE_READS` (`read-gate.ts`) says what its
-  answer is: one document's content (`document-get`, `document-text-get`),
+  answer is: one document's content (`document-get`, `document-text-get`, `document-sketch-get`),
   which records the restricted folders on that document's path, the folder a
   lookup's passage of it records; or a project's facts (`project-get`,
   `project-profile-get`), which records no folder. In a solo conversation the

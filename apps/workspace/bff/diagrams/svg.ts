@@ -285,7 +285,7 @@ const ELEMENT_GEOMETRY: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  * and never accepted from a client — see {@link withDiagramSource}.
  */
 const METADATA_ELEMENT = 'metadata'
-const METADATA_KIND_ATTRIBUTE = 'data-grid-diagram-source'
+export const METADATA_KIND_ATTRIBUTE = 'data-grid-diagram-source'
 
 /**
  * The two elements that carry the AI marking — see {@link withDiagramMarking}.

@@ -55,7 +55,7 @@
  *
  * **`excalidraw` is declared and, in this vertical, has no client renderer.**
  * That is a measured decision and not an oversight; see
- * `ui/features/diagrams/diagram-renderers.ts`, which is the one place the
+ * `ui/features/diagrams/render-diagram.ts` (`DIAGRAM_RENDERERS`), the one place the
  * kind-to-renderer map lives and the one place the reason is written down. The
  * server never renders — it validates and files — so it is indifferent to which
  * kinds a client can produce, and declaring the kind now is what makes adding

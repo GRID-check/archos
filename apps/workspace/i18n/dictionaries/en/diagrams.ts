@@ -111,6 +111,17 @@ export const diagrams = {
     /** Beside a sketch Piloti drew, where the reader is: the doctrine in one line. */
     notToScale: 'Sketch — not to scale, no dimensions.',
     fallback: 'This sketch could not be drawn. Ask {productName} to draw it again.',
+    /** A filed sketch reopened from Files (ADR-0148): each save is a new Fassung of the same document. */
+    reviseDescription: 'Each save becomes a new version of this document; earlier versions stay in its history.',
+    opening: 'Opening the sketch…',
+    openFailed: 'The sketch could not be opened.',
+    saveVersion: 'Save as new version',
+    savingVersion: 'Saving…',
+    savedVersion: 'Saved as version {number}',
+    saveFailed: 'Could not be saved',
+    /** 409: someone saved a newer version since this one was opened. */
+    staleVersion: 'A newer version exists now. Open the sketch again to continue from it.',
+    sceneRejected: 'The sketch holds something that is not saved here: an image, embedded content or too many elements.',
   },
   rejected: {
     empty: 'The diagram was empty.',

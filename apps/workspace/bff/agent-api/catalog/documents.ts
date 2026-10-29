@@ -11,6 +11,7 @@ import {
   updateTagsSchema,
 } from '@/lib/documents/document-wire'
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
+import { saveSketchSchema } from '@/lib/diagrams/sketch-wire'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
 import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
@@ -196,6 +197,38 @@ export const documentsOperations = [
     path: '/api/documents/[id]/text',
     params: documentParams,
     load: () => import('@/app/api/documents/[id]/text/route'),
+  },
+  {
+    name: 'document-sketch-get',
+    domain: 'documents',
+    summary: 'Read a sketch’s scene and outline',
+    description:
+      'A sketch document (an SVG filed from an Excalidraw drawing) read as structure: `outline` lists its `texts` (with the ' +
+      'shape or arrow each labels), `shapes` with their labels, `connections` (arrow from-label → to-label, with the ' +
+      'arrow’s own label) and `frames` with their children, each with the element id. `scene` is the whole Excalidraw ' +
+      'scene and `versionId` the version read; send both back to document-sketch-update. Any other document answers 415. ' +
+      'A sketch claims no dimension.',
+    method: 'GET',
+    path: '/api/documents/[id]/sketch',
+    params: documentParams,
+    readOnly: true,
+    load: () => import('@/app/api/documents/[id]/sketch/route'),
+  },
+  {
+    name: 'document-sketch-update',
+    domain: 'documents',
+    summary: 'Save a changed sketch as a new version',
+    description:
+      'Writes a new version of the same sketch document from the whole changed `scene`, its picture as `svg` (Excalidraw’s ' +
+      'exportToSvg) and `baseVersionId`, the `versionId` document-sketch-get returned. The PDF filed beside the sketch is ' +
+      'drawn again as its next version. A newer version answers 409 with `currentVersionId`: read again and redo the ' +
+      'change. The files then say a person edited the drawing. Only a sketch filed into the project; needs ' +
+      'project:documents:write and project:edit. Returns `{ documentId, versionId, versionNumber, pdf }`.',
+    method: 'PUT',
+    path: '/api/documents/[id]/sketch',
+    params: documentParams,
+    body: saveSketchSchema,
+    load: () => import('@/app/api/documents/[id]/sketch/route'),
   },
   {
     name: 'document-visual-details-get',

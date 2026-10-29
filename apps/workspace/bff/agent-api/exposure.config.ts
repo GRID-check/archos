@@ -212,15 +212,14 @@ export const EXPOSURE = {
   'workspace-search-export': OFFERED,
   'document-status': OFFERED,
   'document-summary-get': OFFERED,
+  'document-sketch-get': OFFERED,
+  'document-sketch-update': OFFERED,
   'document-tags-update': OFFERED,
   'document-text-get': OFFERED,
   'document-thumbnail-get': {
     external: false,
     piloti: false,
-    withheld: {
-      category: 'ui-state',
-      reason: 'a link to the file grid’s thumbnail image, which an agent cannot look at; document-look shows a page',
-    },
+    withheld: { category: 'ui-state', reason: 'a link to the file grid’s thumbnail image, which an agent cannot look at; document-look shows a page' },
   },
   'document-unarchive': OFFERED,
   'document-upload': OFFERED,

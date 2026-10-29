@@ -1,31 +1,23 @@
 """The checks every answer already passes through, as Langfuse scores (ADR-0089).
 
-The answer pipeline grades every turn before the reader sees it: citation
-verification drops what it cannot verify, the quote check finds wording no
-passage holds and patches it, the dialect pass repairs blocks, a card that
-misses its schema is repaired or dropped, and the overconfidence guard caps the
-surfaced confidence. All of that was recorded somewhere (the citation-events
-ledger, a wire status, a trace metadata blob) and none of it was a *score*, so
-Langfuse could not chart it over time, put it next to the user's vote, compare
-it across prompt versions or feed it to an annotation queue.
-
-This module turns those runtime checks into scores on the turn's trace:
+The answer pipeline grades every turn before the reader sees it (citation
+verification, the quote check, the dialect pass, card repair, the
+overconfidence guard). All of that was recorded somewhere and none of it was a
+*score*, so Langfuse could not chart it, set it beside the user's vote, compare
+it across prompt versions or feed it to an annotation queue. This module turns
+those runtime checks into scores on the turn's trace:
 
 * :data:`SCORE_DEFINITIONS` is the one list of score names Grid writes, with
-  their type and range. ``scripts/langfuse_provision.py`` creates a Langfuse
-  score config from each, and ``docs/observability/langfuse.md`` documents them,
-  so a name cannot exist in one place and not the others
+  their type and range; ``scripts/langfuse_provision.py`` makes a score config
+  of each and ``docs/observability/langfuse.md`` documents them
   (``packages/agent/tests/observability/test_langfuse_scores.py`` holds them together).
 * The ``*_scores`` builders are pure: a check's outcome in, scores out.
-* :func:`emit_scores` posts them to ``POST /api/public/scores`` on a small
-  bounded pool, the way ``common.citation_events`` posts its batches: never
-  raises, never waits, drops past a backlog ceiling rather than growing.
-
-Each score's id is derived from (trace, writer, name[, item]), so a retried or
-repeated post upserts rather than double-counts.
-
-Availability is capability: without ``LANGFUSE_HOST`` and the key pair (the
-deployment injects them where the Langfuse tier exists) every call is a no-op.
+* :func:`emit_scores` posts them to ``POST /api/public/scores`` on a bounded pool
+  (as ``common.citation_events`` does): never raises, never waits, drops past a
+  backlog ceiling. A score's id is derived from (trace, writer, name[, item]),
+  so a repeated post upserts. Availability is capability: without
+  ``LANGFUSE_HOST`` and the key pair (injected where the Langfuse tier exists)
+  every call is a no-op.
 """
 
 from __future__ import annotations
@@ -98,6 +90,14 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "often the drawing was a starting point rather than the result.",
         writer="bff",
         categories=("as_drawn", "edited"),
+    ),
+    ScoreDefinition(
+        "sketch-revised",
+        "NUMERIC",
+        "A filed sketch saved again as a new Fassung (ADR-0148): the Fassung number reached, upserted once per "
+        "sketch on the trace of the turn that drew it.",
+        writer="bff",
+        min_value=2,
     ),
     ScoreDefinition(
         "revision-notice",
