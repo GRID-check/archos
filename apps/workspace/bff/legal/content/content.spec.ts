@@ -54,6 +54,13 @@ describe.each([
     expect(flatten(content.privacy)).toMatch(/E-Mail-Adresse und Ihr Name werden nicht|email address and name are not sent/)
   })
 
+  // These pages are public (/legal/*). A value nobody has verified is a TODO(owner)
+  // in a source comment, never a bracketed placeholder a visitor reads.
+  it.each(legalSlugs)('%s renders no bracketed placeholder', (slug) => {
+    const doc = content[slug]
+    expect(`${doc.title}\n${doc.intro ?? ''}\n${flatten(doc)}`).not.toMatch(/\[[^\]]*\]/)
+  })
+
   it('has been revised since the PostHog switch', () => {
     expect(content.privacy.updated >= '2026-10-10').toBe(true)
     expect(content.subprocessors.updated >= '2026-10-10').toBe(true)

@@ -2,8 +2,11 @@
  * Rechtsdokumente — Deutsch (maßgebliche Sprachfassung für den
  * österreichischen Markt). Strukturelles Gegenstück zu `./en.ts`.
  *
- * Betreiberangaben sind bewusste Platzhalter in [KLAMMERN] — sie MÜSSEN vor
- * dem Produktivbetrieb vervollständigt werden. Diese Texte entstanden im
+ * Betreiberangaben kommen aus packages/brand/identity.json. Die Gesellschaft ist
+ * in Gründung: Firmenbuchnummer, Firmenbuchgericht und UID gibt es noch nicht,
+ * und der Text sagt das so wie das Impressum der Website
+ * (apps/website/src/i18n/pages/imprint.ts). Kein Wert steht in eckigen Klammern;
+ * was nicht belegt ist, ist ein TODO(owner) im Kommentar. Diese Texte entstanden im
  * Rahmen des Compliance-Reviews 2026-07 (docs/compliance/) und sind
  * Vorlagen, keine Rechtsberatung: vor Verwendung anwaltlich prüfen lassen.
  */
@@ -21,7 +24,7 @@ const EMAIL = identity.email
 export const de: LegalContent = {
   imprint: {
     title: 'Impressum',
-    updated: '2026-07-10',
+    updated: '2026-10-29',
     intro:
       'Offenlegung gemäß §5 E-Commerce-Gesetz (ECG), §25 Mediengesetz und §63 Gewerbeordnung.',
     sections: [
@@ -30,14 +33,17 @@ export const de: LegalContent = {
         paragraphs: [
           `${OPERATOR}, ${ADDRESS}.`,
           `Kontakt: ${EMAIL}`,
-          'Firmenbuchnummer: [FN-Nummer], Firmenbuchgericht: [Gericht]. UID: [ATU-Nummer].',
-          'Unternehmensgegenstand: [z. B. IT-Dienstleistungen / Software as a Service]. Aufsichtsbehörde gemäß ECG: [zuständige Bezirksverwaltungsbehörde]. Anwendbare gewerberechtliche Vorschriften: Gewerbeordnung 1994, abrufbar unter ris.bka.gv.at.',
+          // Wortlaut wie im Impressum der Website (apps/website/src/i18n/pages/imprint.ts).
+          'Rechtsform: Flexible Kapitalgesellschaft (FlexCo), in Gründung. Firmenbuch: Noch nicht eingetragen. Firmenbuchnummer, Firmenbuchgericht und UID-Nummer ergänzen wir nach der Eintragung.',
+          // TODO(owner): die Aufsichtsbehörde gemäß ECG nach Eintragung und Gewerbeanmeldung nennen.
+          'Unternehmensgegenstand: Entwicklung und Betrieb von Software für Architektur- und Planungsbüros. Die Aufsichtsbehörde gemäß ECG ergänzen wir nach der Eintragung. Anwendbare gewerberechtliche Vorschriften: Gewerbeordnung 1994, abrufbar unter ris.bka.gv.at.',
         ],
       },
       {
         heading: 'Zweck des Dienstes',
         paragraphs: [
-          PRODUCT_NAME + ' (vormals Piloti) ist ein KI-gestütztes Recherchewerkzeug, das Baufachleute dabei unterstützt, Informationen aus den österreichischen OIB-Richtlinien und den im Rechtsinformationssystem des Bundes (RIS) veröffentlichten Rechtsquellen zu finden und zu überprüfen. ' + PRODUCT_NAME + ' erbringt keine Rechtsberatung; siehe Nutzungsbedingungen und KI-Transparenzhinweis.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          PRODUCT_NAME + ' (vormals Piloti) ist der Workspace für Architektur- und Planungsbüros. Projektwissen, Unterlagen und Modelle liegen an einem Ort, und ' + PRODUCT_NAME + ' übernimmt dort mit Unterstützung von KI die regelgeleitete Arbeit. Baurecht ist eine dieser Fähigkeiten: ' + PRODUCT_NAME + ' findet Stellen in den österreichischen OIB-Richtlinien und den im Rechtsinformationssystem des Bundes (RIS) veröffentlichten Rechtsquellen und zitiert sie zur Überprüfung. ' + PRODUCT_NAME + ' erbringt keine Rechtsberatung; siehe Nutzungsbedingungen und KI-Transparenzhinweis.',
         ],
       },
       {
@@ -49,7 +55,7 @@ export const de: LegalContent = {
       {
         heading: 'Haftung für Inhalte',
         paragraphs: [
-          'Die von diesem Dienst erzeugten Antworten werden von einem KI-System generiert und können fehlerhaft oder unvollständig sein. Sie ersetzen weder die Prüfung der anwendbaren Vorschriften noch fachliche Beratung. Maßgeblich sind in jedem Fall die zitierten Primärquellen (OIB-Richtlinien, RIS).',
+          'Die von diesem Dienst erzeugten Antworten werden von einem KI-System generiert und können fehlerhaft oder unvollständig sein. Sie ersetzen weder die Prüfung der anwendbaren Vorschriften noch fachliche Beratung. Maßgeblich sind in jedem Fall die zitierten Primärquellen (etwa Projektunterlagen, OIB-Richtlinien, RIS).',
         ],
       },
     ],
@@ -145,14 +151,15 @@ export const de: LegalContent = {
 
   terms: {
     title: 'Nutzungsbedingungen',
-    updated: '2026-07-10',
+    updated: '2026-10-29',
     intro:
       'Diese Bedingungen regeln die Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti). Vorlage — vor Produktivbetrieb anwaltlich prüfen und vervollständigen.',
     sections: [
       {
         heading: '1. Leistungsumfang',
         paragraphs: [
-          PRODUCT_NAME + ' ist ein KI-gestützter Rechercheassistent für österreichisches Baurecht (OIB-Richtlinien und RIS-Rechtsquellen). ' + PRODUCT_NAME + ' ruft Vorschrifteninhalte und von Ihrer Organisation bereitgestellte Projektdokumente ab, fasst sie zusammen und zitiert sie.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          PRODUCT_NAME + ' ist der Workspace für Architektur- und Planungsbüros, in dem eine Organisation ihre Projekte, Unterlagen und Modelle führt; ' + PRODUCT_NAME + ' unterstützt die Arbeit darin mit KI. Zum Leistungsumfang gehört die Recherche im österreichischen Baurecht (OIB-Richtlinien und RIS-Rechtsquellen). ' + PRODUCT_NAME + ' ruft Vorschrifteninhalte und von Ihrer Organisation bereitgestellte Projektdokumente ab, fasst sie zusammen und zitiert sie.',
         ],
       },
       {
@@ -185,7 +192,8 @@ export const de: LegalContent = {
       {
         heading: '6. Verfügbarkeit und Support',
         paragraphs: [
-          'Der Dienst wird ohne zugesichertes Service-Level bereitgestellt, sofern nicht schriftlich anderes vereinbart ist. Geplante Wartungen und Abhängigkeiten von externen Anbietern (Identität, KI-Modelle, Websuche) können die Verfügbarkeit beeinträchtigen. [Vereinbarte SLA-/Support-Regelungen einfügen, falls zutreffend.]',
+          'Der Dienst wird ohne zugesichertes Service-Level bereitgestellt, sofern nicht schriftlich anderes vereinbart ist. Geplante Wartungen und Abhängigkeiten von externen Anbietern (Identität, KI-Modelle, Websuche) können die Verfügbarkeit beeinträchtigen.',
+          // TODO(owner): vereinbarte SLA- und Support-Regelungen ergänzen, falls zutreffend.
         ],
       },
       {
@@ -197,13 +205,15 @@ export const de: LegalContent = {
       {
         heading: '8. Haftung',
         paragraphs: [
-          'Die Haftung für leichte Fahrlässigkeit ist im gesetzlich zulässigen Umfang ausgeschlossen; zwingende Haftung (z. B. für Personenschäden, nach dem Produkthaftungsgesetz) bleibt unberührt. Der Betreiber haftet nicht für Entscheidungen, die entgegen Punkt 2 im Vertrauen auf KI-generierte Ausgaben getroffen wurden. [Haftungsbeschränkungsklausel anwaltlich vervollständigen.]',
+          'Die Haftung für leichte Fahrlässigkeit ist im gesetzlich zulässigen Umfang ausgeschlossen; zwingende Haftung (z. B. für Personenschäden, nach dem Produkthaftungsgesetz) bleibt unberührt. Der Betreiber haftet nicht für Entscheidungen, die entgegen Punkt 2 im Vertrauen auf KI-generierte Ausgaben getroffen wurden.',
+          // TODO(owner): die Haftungsbeschränkungsklausel anwaltlich vervollständigen.
         ],
       },
       {
         heading: '9. Schlussbestimmungen',
         paragraphs: [
-          'Es gilt österreichisches Recht unter Ausschluss der Verweisungsnormen und des UN-Kaufrechts. Gerichtsstand: [zuständiges Gericht]; für Verbraucher gelten zwingende Verbrauchergerichtsstände. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Rest wirksam.',
+          // TODO(owner): einen Gerichtsstand vereinbaren und nennen; bis dahin gilt der gesetzliche.
+          'Es gilt österreichisches Recht unter Ausschluss der Verweisungsnormen und des UN-Kaufrechts. Für Verbraucher gelten zwingende Verbrauchergerichtsstände. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Rest wirksam.',
         ],
       },
     ],
@@ -211,26 +221,28 @@ export const de: LegalContent = {
 
   'ai-transparency': {
     title: 'KI-Transparenzhinweis',
-    updated: '2026-07-10',
+    updated: '2026-10-29',
     intro:
       'Information gemäß Art. 50 der Verordnung (EU) 2024/1689 (KI-Verordnung) über das KI-System, mit dem Sie bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) interagieren.',
     sections: [
       {
         heading: 'Sie interagieren mit einem KI-System',
         paragraphs: [
-          PRODUCT_NAME + ' beantwortet Ihre Fragen mit großen Sprachmodellen (LLMs). Chat-Antworten, Rechercheberichte und Rechtsgrundlagen-Karten sind KI-generierte Inhalte. ' + PRODUCT_NAME + ' kennzeichnet die zitierten Quellen, sodass jede Aussage anhand der zugrunde liegenden OIB-Richtlinie oder RIS-Fundstelle überprüft werden kann.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          PRODUCT_NAME + ' beantwortet Ihre Fragen und arbeitet in Ihren Projekten mit großen Sprachmodellen (LLMs). Chat-Antworten, Rechercheberichte und Rechtsgrundlagen-Karten sind KI-generierte Inhalte. ' + PRODUCT_NAME + ' kennzeichnet die zitierten Quellen, sodass jede Aussage anhand der zugrunde liegenden Quelle überprüft werden kann, etwa eines Projektdokuments, einer OIB-Richtlinie oder einer RIS-Fundstelle.',
         ],
       },
       {
         heading: 'Was das System tut',
         paragraphs: [
-          PRODUCT_NAME + ' ruft Passagen aus den OIB-Richtlinien, österreichischen Rechtsquellen (RIS) und Ihren Projektdokumenten ab, führt optional Web-Recherchen durch und erstellt mit KI-Modellen eine Antwort mit Zitaten. Eine asynchrone Memory-Funktion kann aus Interaktionen Notizen auf Projekt- und Organisationsebene ableiten, um künftige Antworten zu verbessern; organisationsweite Memory-Einträge durch die KI sind standardmäßig deaktiviert.',
+          PRODUCT_NAME + ' ruft Passagen aus Ihren Projektdokumenten, den OIB-Richtlinien und österreichischen Rechtsquellen (RIS) ab, führt optional Web-Recherchen durch und erstellt mit KI-Modellen eine Antwort mit Zitaten. Eine asynchrone Memory-Funktion kann aus Interaktionen Notizen auf Projekt- und Organisationsebene ableiten, um künftige Antworten zu verbessern; organisationsweite Memory-Einträge durch die KI sind standardmäßig deaktiviert.',
         ],
       },
       {
         heading: 'Grenzen und menschliche Aufsicht',
         paragraphs: [
-          'KI-generierte Antworten können falsch, unvollständig oder veraltet sein, auch wenn sie überzeugend klingen. ' + PRODUCT_NAME + ' ist ein Recherchewerkzeug und als KI-Anwendung mit begrenztem Risiko eingestuft: Es trifft keine Entscheidungen über Gebäude, Genehmigungen oder Personen — die fachliche Prüfung jeder Antwort anhand der zitierten Primärquelle ist Teil der bestimmungsgemäßen Verwendung. Verwenden Sie ' + PRODUCT_NAME + '-Ausgaben nicht als alleinige Grundlage sicherheitsrelevanter Planungsentscheidungen.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          'KI-generierte Antworten können falsch, unvollständig oder veraltet sein, auch wenn sie überzeugend klingen. ' + PRODUCT_NAME + ' ist als KI-Anwendung mit begrenztem Risiko eingestuft: Es trifft keine Entscheidungen über Gebäude, Genehmigungen oder Personen — die fachliche Prüfung jeder Antwort anhand der zitierten Primärquelle ist Teil der bestimmungsgemäßen Verwendung. Verwenden Sie ' + PRODUCT_NAME + '-Ausgaben nicht als alleinige Grundlage sicherheitsrelevanter Planungsentscheidungen.',
         ],
       },
       {
@@ -258,7 +270,7 @@ export const de: LegalContent = {
 
   subprocessors: {
     title: 'Externe Dienste & Subunternehmer',
-    updated: '2026-10-10',
+    updated: '2026-10-29',
     intro:
       'Alle externen Dienste, die bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) Daten verarbeiten können, sowie die vom Betreiber selbst betriebene Infrastruktur. Diese Seite setzt die in der Datenschutzerklärung genannte Transparenzzusage um.',
     sections: [
@@ -338,10 +350,11 @@ export const de: LegalContent = {
               'Optional (nur falls konfiguriert)',
             ],
             [
-              'Hosting-Anbieter',
+              // Anbieter und Ort wie auf der Website (apps/website/src/i18n/pages/security.ts) und in docs/deployment/kubernetes.md.
+              'IPAX (Hosting-Anbieter)',
               'Betrieb der Anwendung, Datenbanken und des Objektspeichers',
               'Alle Anwendungsdaten',
-              '[Ergänzen: Anbieter & Region]',
+              'Österreich (Wien)',
               'Ja',
             ],
           ],
