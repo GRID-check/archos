@@ -4,6 +4,8 @@
  */
 const de = {
   title: 'Datensicherheit',
+  description:
+    'Wie {name} die Daten Ihres Büros schützt: Hosting in Wien, Zero Data Retention bei den Sprachmodellen, kein Training mit Ihren Daten, Zugriff nach Rollen.',
   hero: {
     title: 'Ihre Daten bleiben Ihre.',
     text: 'Pläne, Verträge und Bürowissen sind vertraulich. {name} ist so gebaut, dass Ihr Büro jederzeit die Kontrolle behält.',
@@ -26,7 +28,7 @@ const de = {
     },
     {
       title: 'Hosting in Wien',
-      text: 'Ihre Projektdaten liegen in einem Rechenzentrum von IPAX in Wien. Österreichischer Betreiber, europäisches Recht.',
+      text: 'Workspace und Projektdaten liegen in einem Rechenzentrum von IPAX in Wien. Österreichischer Betreiber, europäisches Recht.',
     },
     {
       title: 'Sie bestimmen, was {name} sieht',
@@ -42,6 +44,10 @@ const de = {
     {
       q: 'Was bedeutet Zero Data Retention genau?',
       a: 'Wenn Sie eine Frage stellen, sucht {name} die passenden Stellen in Ihren Unterlagen heraus und schickt nur diese Ausschnitte zusammen mit der Frage an ein Sprachmodell. Der Anbieter des Modells verarbeitet die Anfrage ausschließlich, um die Antwort zu erzeugen. Danach bleibt bei ihm nichts zurück: keine Kopie der Anfrage, keine Antwort, keine Nutzung für Training. Ihre vollständigen Unterlagen verlassen dabei nie das Rechenzentrum in Wien.',
+    },
+    {
+      q: 'Werden Daten außerhalb der EU verarbeitet?',
+      a: 'Workspace und Projektdaten liegen in Wien. Außerhalb der EU verarbeitet werden können die Anmeldung über WorkOS (USA) und die Anfragen an die Sprachmodelle, die über OpenRouter (USA) an die Modellanbieter gehen. Für diese Anfragen gilt Zero Data Retention, und kein Modell wird mit Ihren Daten trainiert.',
     },
     {
       q: 'Können andere Büros unsere Unterlagen sehen?',
@@ -68,6 +74,8 @@ const de = {
 
 const en: typeof de = {
   title: 'Data security',
+  description:
+    'How {name} protects your office’s data: hosting in Vienna, Zero Data Retention with the language models, no training on your data, access by role.',
   hero: {
     title: 'Your data stays yours.',
     text: 'Plans, contracts and office knowledge are confidential. {name} is built so that your office keeps control at all times.',
@@ -90,7 +98,7 @@ const en: typeof de = {
     },
     {
       title: 'Hosting in Vienna',
-      text: 'Your project data is stored in a data centre of IPAX in Vienna. Austrian operator, European law.',
+      text: 'The workspace and your project data are hosted in a data centre of IPAX in Vienna. Austrian operator, European law.',
     },
     {
       title: 'You decide what {name} sees',
@@ -106,6 +114,10 @@ const en: typeof de = {
     {
       q: 'What exactly does Zero Data Retention mean?',
       a: 'When you ask a question, {name} finds the relevant passages in your documents and sends only these excerpts to a language model, together with the question. The provider of the model processes the request solely to generate the answer. Afterwards nothing remains with it: no copy of the request, no answer, no use for training. Your complete documents never leave the data centre in Vienna.',
+    },
+    {
+      q: 'Is any data processed outside the EU?',
+      a: 'The workspace and your project data are hosted in Vienna. Sign-in through WorkOS (USA) and the requests to the language models, which reach the model providers through OpenRouter (USA), may be processed outside the EU. Zero Data Retention applies to these requests, and no model is trained on your data.',
     },
     {
       q: 'Can other offices see our documents?',

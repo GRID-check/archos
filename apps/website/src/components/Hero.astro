@@ -2,7 +2,7 @@
 interface Props {
   /** display-xl, left over eight columns */
   title: string;
-  /** Lead in ink, right-aligned, bottom-aligned with the title */
+  /** Lead in ink, right-aligned, bottom-aligned with the title. A `\n` is a deliberate line break */
   text?: string;
   /** Wide image below (an <img> in the `media` slot), hero-ratio, gutter-wide. Sub pages: none */
   as?: 'h1' | 'h2';
@@ -11,13 +11,21 @@ interface Props {
 
 const { title, text, as: Title = 'h1', class: className } = Astro.props;
 const hasMedia = Astro.slots.has('media');
+const textLines = text?.split('\n') ?? [];
+const multiline = textLines.length > 1;
 ---
 
 <section class={className}>
   <div class="ui-container">
     <div class:list={['ui-hero', !hasMedia && 'ui-hero-plain']}>
       <Title class="ui-hero-title display-xl">{title}</Title>
-      {text && <p class="ui-hero-text lead">{text}</p>}
+      {
+        text && (
+          <p class:list={['ui-hero-text', 'lead', multiline && 'site-hero-text-lines']}>
+            {textLines.map((line, i) => (i === 0 ? line : [<br />, line]))}
+          </p>
+        )
+      }
     </div>
   </div>
   {hasMedia && (

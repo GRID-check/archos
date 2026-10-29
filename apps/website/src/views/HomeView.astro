@@ -14,7 +14,7 @@ import Video from '../components/Video.astro';
 import { navigation } from '../i18n/nav';
 import copy from '../i18n/pages/home';
 import type { Locale } from '../i18n/paths';
-import identity, { withName } from '../lib/identity';
+import { withName } from '../lib/identity';
 
 // Markup and structure only. Text comes from src/i18n/pages/home.ts, in both locales.
 interface Props {
@@ -66,7 +66,7 @@ const pilotOffices = [
 const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: galleryImages[i] }));
 ---
 
-<BaseLayout locale={locale} description={identity.claim}>
+<BaseLayout locale={locale} title={c.meta.title} brandFirst description={c.meta.description}>
   <Hero title={c.hero.title} text={c.hero.text}>
     <img
       slot="media"
@@ -81,7 +81,7 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
   </Hero>
 
   <section class="ui-container ui-section">
-    <SectionIntro title={c.workload.title} lead={c.workload.lead} text={c.workload.text} />
+    <SectionIntro layout="split" title={c.workload.title} lead={c.workload.lead} text={c.workload.text} />
   </section>
 
   <Gallery locale={locale} items={galleryItems} label={c.gallery.label} id="funktionen" />
@@ -89,10 +89,16 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
   <section class="ui-container ui-section">
     <SectionIntro size="display" align="center" title={c.knowledge.title} text={c.knowledge.text} />
     <div style="margin-top: var(--space-16);">
-      <Video locale={locale} sources={knowledgeVideo.sources} poster={knowledgeVideo.poster} label={c.knowledge.videoLabel} />
+      <Video locale={locale} name="knowledge" sources={knowledgeVideo.sources} poster={knowledgeVideo.poster} label={c.knowledge.videoLabel} />
     </div>
     <div style="margin-top: var(--space-16);">
-      <SectionIntro title={c.knowledge.intelligence.title} text={c.knowledge.intelligence.text} />
+      <SectionIntro
+        layout="split"
+        size="subheading"
+        as="h3"
+        title={c.knowledge.intelligence.title}
+        text={c.knowledge.intelligence.text}
+      />
     </div>
   </section>
 
@@ -127,6 +133,7 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
 
   <section class="ui-container ui-section">
     <Quote
+      class="home-quote"
       quote={c.quote.text}
       name={c.quote.name}
       role={c.quote.role}
@@ -140,14 +147,18 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
   </section>
 
   <section class="ui-container ui-section">
-    <SectionIntro size="heading" title={c.founders.title} />
-    <p class="small" style="margin: var(--space-4) 0 0; max-width: 560px; color: var(--ink-muted);">{c.founders.caption}</p>
-    <div style="margin-top: var(--space-8);">
-      <TeamRow members={c.founders.people} />
-    </div>
-    <div style="margin-top: var(--space-8);">
-      <p class="lead" style="margin: 0 0 var(--space-8);">{c.founders.lead}</p>
-      <Button href={nav.demo.href} variant="secondary" size="lg">{nav.demo.label}</Button>
+    <div class="site-split">
+      <div>
+        <SectionIntro size="heading" title={c.founders.title} />
+        <div style="margin-top: var(--space-8);">
+          <TeamRow members={c.founders.people} />
+        </div>
+        <p class="small" style="margin: var(--space-4) 0 0; color: var(--ink-muted);">{c.founders.caption}</p>
+      </div>
+      <div class="home-founders-action">
+        <p class="lead" style="margin: 0;">{c.founders.lead}</p>
+        <Button href={nav.demo.href} variant="secondary" size="lg" cta="founders" ctaLabel="demo">{nav.demo.label}</Button>
+      </div>
     </div>
   </section>
 </BaseLayout>
