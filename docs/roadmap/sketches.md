@@ -98,6 +98,10 @@ features it makes better.
 | S5 | **Links into the workspace.** `customData` with `documentId`, `page`, `ifcGlobalId`, `taskId` kept through the fence, the editor and the file; `onLinkOpen` routes inside the app | 5 | the BIM viewer's model links, the document viewer, Aufgaben | links opened per week; links still resolving after a model revision |
 | S6 | **Underlays.** A PDF page or a BIM view as a locked image base, which needs `<image>` in the SVG validator with a same-origin document href only | 6 | the PDF viewer, the BIM viewer, schematic cards, the Einreichung | sketches with a base; validator refuses every other href |
 
+A BIM view as base (S6, scene step 6) reuses the model viewpoint an Anmerkung on a
+model anchors to: camera, cut, GlobalIds and snapshot, exported as a BCF topic. It is
+slice F5 of [`model-collaboration.md`](model-collaboration.md); build it after F1 there.
+
 Search over the scene's texts (scene step 7) and the office's symbol library (step 8)
 have no slice yet. Both wait for S1's structured read.
 

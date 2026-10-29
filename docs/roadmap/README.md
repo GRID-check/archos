@@ -19,6 +19,7 @@ Status is read from each doc's header. A **dated review** is a record of what wa
 | [ifc-review-findings.md](ifc-review-findings.md) | live, open findings | IFC/BIM review findings that are not fixed yet, each with its file and failure. |
 | [ifc-viewer-capabilities.md](ifc-viewer-capabilities.md) | live, audit | What the ifc-lite packages offer against what the viewer uses, read from their type declarations. |
 | [ifc-viewer-card-spec.md](ifc-viewer-card-spec.md) | superseded by ADR-0045 (2026-08-08) | The viewer card design that was considered and where it went wrong. |
+| [model-collaboration.md](model-collaboration.md) | live, proposed 2026-10-29, handover | Anmerkungen on IFC models: a model viewpoint as the third anchor beside a page region and Skizze elements, one lifecycle for all three, BCF 3.0 mapped at the edge, slices F1–F5. |
 | [office-experience.md](office-experience.md) | live, product direction 2026-10-07; replaces [cross-project-rag-vision.md](cross-project-rag-vision.md) | The office as Piloti's memory: the horizons, the access model, and the open questions for the product owner. |
 | [oib-geometry-coverage.md](oib-geometry-coverage.md) | live, reference (verified 2026-08-13) | What each OIB-Richtlinie needs from the building model, and which operators an agent can call. |
 | [agent-writes-artifacts-and-approval.md](agent-writes-artifacts-and-approval.md) | live, design of record 2026-09-10 | How Piloti writes documents: the working directory, the document lifecycle, and the publish step with approval. |
