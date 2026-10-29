@@ -85,3 +85,5 @@ Posts are MDX in `src/content/blog/<locale>/<slug>.mdx` (schema in
 names its twin in the other locale for the language switch and hreflang. Drafts
 build only with `PUBLIC_INCLUDE_DRAFTS=1`. Until `apps/site` is deleted at the
 cutover, its copies of these posts are stale: write new posts here.
+
+Screenshots of every route for a PR: `bun run capture` (see [visual screenshots](../../docs/ux/visual-screenshots.md#website-targets)).
