@@ -56,7 +56,10 @@ export default defineConfig({
         // next/cache.js?"), and every spec that transitively reaches authkit
         // then fails to LOAD rather than to assert. Vite is fine with the
         // specifier, which is why the app build never saw this.
-        inline: [/@nvidia/, /@workos-inc\/authkit-nextjs/],
+        // `@excalidraw/excalidraw` the same way: its build imports
+        // `roughjs/bin/rough` without an extension. Only specs that import it
+        // load it (`sketch-sync.spec.ts`, for the real merge).
+        inline: [/@nvidia/, /@workos-inc\/authkit-nextjs/, /@excalidraw\/excalidraw/],
       },
     },
     coverage: {

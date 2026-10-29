@@ -590,6 +590,54 @@ subject: a sketch claims no dimension, and says so.
 - **Observable.** `sketch-drawn` per fence and trace metadata `answer_dialect.sketches`
   (`docs/observability/langfuse.md`).
 
+## Two people on one Skizze
+
+A Skizze is a document (ADR-0148), so its editor joins the room every document
+has, `doc:<id>` (ADR-0110 and its amendment of 2026-10-29). What the canvas adds
+to the room's vocabulary is in `lib/diagrams/sketch-room-types.ts`:
+
+| Field up | Event down | Who | Lane, budget |
+|---|---|---|---|
+| `scene` (pointer in scene coordinates, `pointer`/`laser`, button) | `scene.pointer` | anyone who reads | motion, `ROOM_LIMIT`, 80 ms |
+| `sceneSelection` (element ids) | `scene.selection` | anyone who reads | motion, `ROOM_LIMIT`, 150 ms |
+| `delta` (changed elements, `seq`, optional `full` part) | `scene.delta` | a writer | `sketch-edit`, `SKETCH_EDIT_LIMIT` |
+| `hash` (the scene's `hashElementsVersion`) | `scene.hash` | anyone who reads | `ROOM_LIMIT` |
+| `want` (send me the whole scene) | `scene.want` | anyone who reads | `ROOM_LIMIT` |
+| `saved` (a Fassung was written) | `scene.saved` | a writer | `sketch-edit` |
+
+How the canvases converge (`features/diagrams/sketch/sketch-sync.ts`):
+
+- Every Excalidraw element carries a `version` each edit bumps and a random
+  `versionNonce`. `reconcileElements` keeps the higher version per element,
+  the lower nonce on a tie: Excalidraw's own collaboration merge, commutative
+  and idempotent, so no CRDT.
+- After an edit the canvas sends the elements whose version passed what the
+  server last took from it, tombstones included, at most every 100 ms, one post
+  at a time, in parts of at most 400 elements and 64 KB. An element is marked
+  sent only when the post answered 2xx; a refusal keeps it for the retry. One
+  element over 64 KB on its own (a long freehand line) does not travel live
+  and reaches the others with the next save.
+- An element taken from a peer counts as sent, so the canvas's `onChange`
+  after applying it does not send it back; the canvas's own events coming back
+  from the room are dropped by `peerId`.
+- Repair: a gap in a peer's `seq`, or two hash beacons in a row from one peer
+  that differ from this scene (hashed over the elements still drawn), asks for
+  the whole scene. A writer answers after 150 to 500 ms unless it hears another
+  answer first; the asker merges the answer and sends back what it holds newer
+  or the answerer lacks. Beacons go out every 5 s while others are here and
+  only after a second without drawing.
+- The pure modules take Excalidraw's helpers as arguments, so
+  `sketch-canvas.tsx` stays the only importer of `@excalidraw/excalidraw` and
+  the chat bundle keeps its size (`sketch-isolation.spec.ts`).
+  `sketch-sync.spec.ts` imports the real `reconcileElements`,
+  `hashElementsVersion` and `restoreElements` and converges two and three
+  seeded replicas through drops, reorders and refusals.
+
+The Fassung stays the truth: a save writes one, every peer moves its base to
+it on `saved`, and a canvas that joins late or lost the room opens the latest
+Fassung and asks for what was drawn since. A delta is a hint towards the same
+scene, never a record.
+
 ## Known limits
 
 - **`journey`, `block-beta` and `sankey-beta` do not draw.** Mermaid emits
