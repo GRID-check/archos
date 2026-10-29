@@ -25,7 +25,7 @@ MAX_POINT_LABEL = 80
 MAX_HIGHLIGHT_LABEL = 120
 _EDGE_SLACK = 0.02
 
-_KIND_LABELS = {"person": "Person", "piloti": "Piloti"}
+_KIND_LABELS = {"person": "Person", "piloti": "Agent"}
 
 
 def _share(value: object, name: str) -> float:
@@ -134,7 +134,7 @@ def render_room(body: dict[str, Any]) -> str:
     if not peers:
         lines.append("Nobody has it open right now.")
     lines.append(
-        f"Annotations: {marks.get('open', 0)} open, {marks.get('proposed', 0)} proposals from Piloti that nobody "
+        f"Annotations: {marks.get('open', 0)} open, {marks.get('proposed', 0)} proposals from you that nobody "
         "has taken over yet. Details with `marks`."
     )
     return "\n".join(lines)

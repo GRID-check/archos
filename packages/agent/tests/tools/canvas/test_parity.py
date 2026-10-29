@@ -100,7 +100,7 @@ class TestAnUpdate:
         result = await run_update(ANNOTATION, NOTE, status="resolved", assignee="Anna Berger")
 
         assert "no. 4" in result and "open → resolved" in result and "– → Anna Berger" in result
-        assert "reply from Piloti" in result
+        assert "your reply" in result
         [card] = registry.snapshot()
         assert card["document"] == {"id": DOCUMENT, "name": NAME}
         assert card["items"] == [
