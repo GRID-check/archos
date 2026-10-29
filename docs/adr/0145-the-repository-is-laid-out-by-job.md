@@ -8,6 +8,9 @@ informed: everyone working in this repo
 
 # The repository is laid out by job: apps, packages, contracts, evals, and no brand names
 
+> **Partly superseded by [ADR-0148](0148-the-product-name-is-copy-and-identifiers-carry-no-brand.md)** (2026-10-29):
+> rule 5 now also bars the current name from identifiers, the name is copy read from `packages/brand/identity.json`, and ADR-0148 holds the neutral-name map and the history rule.
+
 ## Context and Problem Statement
 
 A new colleague or agent should understand this repository from `ls`. Today the
