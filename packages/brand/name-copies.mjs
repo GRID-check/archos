@@ -12,7 +12,6 @@
 export const MARK_COPIES = [
   'apps/workspace/app/icon.svg',
   'apps/website/public/favicon.svg',
-  'apps/site/public/favicon.svg',
 ]
 
 /** `{ path, pattern }`: the pattern's two groups stay, the name goes between them. */

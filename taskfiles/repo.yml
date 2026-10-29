@@ -105,10 +105,10 @@ tasks:
 
   # ── repo-wide ───────────────────────────────────────────────────────────────
 
-  # ── release notes (releasenotes/ -> piloti.at/changelog) ────────────────────
+  # ── release notes (releasenotes/ -> the website's /changelog/) ──────────────
   #
   # Every user-visible change ships a note; the notes are published to the
-  # marketing site automatically on merge. The full rules are in
+  # website automatically on merge. The full rules are in
   # docs/contributing/release-notes.md, the mandate is in AGENTS.md.
 
   release:note:
@@ -143,7 +143,7 @@ tasks:
       - '{{.RENO}} report .'
 
   release:changelog:
-    desc: Regenerate apps/site/src/data/changelog.json from the notes
+    desc: Regenerate apps/website/src/data/changelog.json from the notes
     # Normally you never run this: the release-notes workflow does it on merge to
     # develop and commits the result. Run it locally to preview the page, or to
     # resolve a conflict in the generated file (regenerate, do not hand-merge).

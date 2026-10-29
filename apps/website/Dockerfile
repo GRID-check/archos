@@ -11,8 +11,10 @@
 # The Astro client-dir path is baked into dist/server/entry.mjs at build time,
 # so the site is built inside this image's WORKDIR layout.
 #
-# Build-time arg: PUBLIC_SITE_URL, the canonical URL for sitemap and Open
-# Graph. Unset, astro.config.mjs derives it from the brand identity's domain.
+# Build-time arg: PUBLIC_SITE_URL, the address the site is served from, for
+# canonical URLs, sitemap, hreflang and Open Graph. CI passes the prod stack's
+# baseDomain (ci/image_inputs.py build-args web, part of the image's hash).
+# Unset, src/lib/site-url.mjs falls back to the brand identity's domain.
 # =============================================================================
 
 FROM node:22-slim AS base

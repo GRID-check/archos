@@ -17,7 +17,8 @@ import { searchCopy } from '@/i18n/namespaces/search'
 import type { SearchHit } from '@/lib/search/search-wire'
 import type { PaletteSearch } from '../hooks/use-palette-search'
 import { PaletteSearchResults, paletteHits, paletteHitValue } from './palette-search'
-import { COMPOSER_COMMAND_CLASS, ComposerPickerFrame, PaletteStatusLine } from './search-atoms'
+import { PaletteStatusLine } from './palette-atoms'
+import { COMPOSER_COMMAND_CLASS, ComposerPickerFrame } from './search-atoms'
 
 /** Hits the composer shows: one kind, so more of it than the palette's three. */
 export const COMPOSER_PICKER_HITS = 6

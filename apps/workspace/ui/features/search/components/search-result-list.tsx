@@ -176,9 +176,9 @@ function useWhere(): (shelf: 'project' | 'office_shelf', projectId: string | nul
   return (shelf, projectId, projectName, folderName = null) => {
     const said = shelf === 'office_shelf' ? scope.scope === 'office_shelf' : scope.scope === 'project' && scope.projectId === projectId
     const mark = said ? null : shelf === 'office_shelf' ? (
-      <ShelfMark key="shelf" shelf="office_shelf" label={tWhere('officeShelf')} wrap={wrap} />
+      <ShelfMark key="shelf" shelf="office_shelf" label={tWhere('officeShelf')} wrap={wrap} quiet={!wrap} />
     ) : projectName ? (
-      <ShelfMark key="shelf" shelf="project" label={projectName} wrap={wrap} />
+      <ShelfMark key="shelf" shelf="project" label={projectName} wrap={wrap} quiet={!wrap} />
     ) : null
     const folder = folderName ? (
       <WherePart key="folder" label={tWhere('folder')}>
@@ -203,11 +203,20 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
   // the name. What is left is a match on what Piloti read about the document.
   const shown = hit.passage !== null || title.some((segment) => segment.match)
   const matchedOn = text.trim() && !shown ? hit.matchedOn : []
+  // What a Fassung changed is the page's detail: in the palette a fourth line
+  // on one row broke the rhythm every other row keeps.
+  const compact = useCompactRow()
   return (
     <ResultRow
       href={documentHitHref(hit, from)}
       icon={FileText}
-      title={<MatchedText segments={title} />}
+      title={
+        <>
+          <MatchedText segments={title} />
+          {/* Two Fassungen of one plan share a name; in the palette the index stands beside it, where the eye compares them. */}
+          {compact && hit.planIndex ? <span className="ml-1.5 font-normal text-muted-foreground">{t('document.index', { index: hit.planIndex })}</span> : null}
+        </>
+      }
       active={active}
       id={id}
       testId={`search-hit-document-${hit.id}`}
@@ -215,18 +224,21 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
         <MetaLine
           lead={where(hit.shelf, hit.projectId, hit.projectName, hit.folderName)}
           parts={[
-            type ? <MetaPart key="type">{type}</MetaPart> : null,
+            // The palette's one line keeps where, which plan and when; what
+            // kind of document and its scale are the page's columns.
+            type && !compact ? <MetaPart key="type">{type}</MetaPart> : null,
             hit.planNumber ? <MetaPart key="number" code>{hit.planNumber}</MetaPart> : null,
-            hit.planIndex ? <MetaPart key="index">{t('document.index', { index: hit.planIndex })}</MetaPart> : null,
-            hit.scale ? <MetaPart key="scale" code>{hit.scale}</MetaPart> : null,
+            hit.planIndex && !compact ? <MetaPart key="index">{t('document.index', { index: hit.planIndex })}</MetaPart> : null,
+            hit.scale && !compact ? <MetaPart key="scale" code>{hit.scale}</MetaPart> : null,
             day ? <MetaPart key="day">{day}</MetaPart> : null,
           ]}
         />
       }
-      aside={hit.superseded ? <SupersededMark /> : null}
+      aside={hit.superseded ? <SupersededMark quiet={compact} /> : null}
       actions={menus ? <DocumentHitMenu hit={hit} /> : undefined}
     >
-      {hit.passage ? (
+      {/* The palette shows a passage only where the name did not match: there it is why the row is here; under a name that matched it was a third line saying it twice. */}
+      {hit.passage && !(compact && title.some((segment) => segment.match)) ? (
         <PassageQuote
           segments={termSegments(hit.passage.text, text)}
           page={hit.passage.page !== null ? t('passage.page', { page: hit.passage.page }) : undefined}
@@ -234,7 +246,7 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
       ) : matchedOn.length > 0 ? (
         <MatchHint label={t('matchedOn.label')} parts={matchedOn.map((reason) => t(`matchedOn.${reason}`))} />
       ) : null}
-      {hit.changedFacts.length > 0 ? (
+      {hit.changedFacts.length > 0 && !compact ? (
         <MatchHint
           label={t('document.changed')}
           testId="search-changed-facts"
@@ -256,22 +268,38 @@ function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolea
   const kind = (ANNOTATION_KINDS as readonly string[]).includes(hit.annotationKind) ? t(`annotation.kinds.${hit.annotationKind}`) : hit.annotationKind
   const from = useSearchReturn()
   const status = (ANNOTATION_STATUSES as readonly string[]).includes(hit.status) ? t(`annotation.statuses.${hit.status}`) : hit.status
+  const on = t('annotation.on', { document: hit.documentName })
+  // In the palette the finding is the name, and the document it is on goes to
+  // the meta line: one line of what was said reads as the hit, „zu EP-03…“
+  // over grey body text read as the row being about the plan.
+  const compact = useCompactRow()
   return (
     <ResultRow
       href={annotationHitHref(hit, from)}
       icon={MessageSquareWarning}
-      title={t('annotation.on', { document: hit.documentName })}
+      // The finding at the reading weight: a whole sentence at the names' weight outshouted the documents around it.
+      title={compact && hit.excerpt ? <span className="font-normal text-foreground/85">{hit.excerpt}</span> : on}
       active={active}
       id={id}
       testId={`search-hit-annotation-${hit.id}`}
-      meta={<MetaLine lead={where(hit.shelf, hit.projectId, hit.projectName)} parts={[<MetaPart key="kind">{kind}</MetaPart>, <MetaPart key="status">{status}</MetaPart>]} />}
+      meta={
+        <MetaLine
+          lead={where(hit.shelf, hit.projectId, hit.projectName)}
+          parts={[
+            compact && hit.excerpt ? <MetaPart key="on">{on}</MetaPart> : null,
+            <MetaPart key="kind">{kind}</MetaPart>,
+            <MetaPart key="status">{status}</MetaPart>,
+          ]}
+        />
+      }
     >
-      <Excerpt>{hit.excerpt}</Excerpt>
+      {compact && hit.excerpt ? null : <Excerpt>{hit.excerpt}</Excerpt>}
     </ResultRow>
   )
 }
 
 function FolderRow({ hit, active, id }: { hit: FolderHit; active: boolean; id?: string }): JSX.Element {
+  const compact = useCompactRow()
   const where = useWhere()(hit.shelf, hit.projectId, hit.projectName)
   return (
     <ResultRow
@@ -283,7 +311,8 @@ function FolderRow({ hit, active, id }: { hit: FolderHit; active: boolean; id?: 
       meta={where.length > 0 ? <MetaLine lead={where} parts={[]} /> : undefined}
       testId={`search-hit-folder-${hit.id}`}
     >
-      {hit.excerpt ? <Excerpt>{hit.excerpt}</Excerpt> : null}
+      {/* A folder's description is the page's; in the palette its name and place say which folder. */}
+      {hit.excerpt && !compact ? <Excerpt>{hit.excerpt}</Excerpt> : null}
     </ResultRow>
   )
 }

@@ -107,7 +107,7 @@ anywhere else, and never pass it a session a request supplied: that is a way pas
 every route's `authz`. [`agent-surface.md`](../../docs/architecture/agent-surface.md#the-acting-session).
 
 **The product's name is copy, never a name in code.** `PRODUCT_NAME` in
-`bff/brand.ts` reads it from `shared/brand/identity.json`, the synced copy of
+`bff/brand.ts` reads it from `apps/workspace/shared/brand/identity.json`, the synced copy of
 `packages/brand/identity.json` (ADR-0148): a dictionary string says `{productName}`
 and the registry fills it in (`withProductName`, beside it; `i18n/product-name.spec.ts`
 fails a string that spells the name), and code reads the constant. No name in

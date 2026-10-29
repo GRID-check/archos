@@ -144,7 +144,7 @@ bun_install() {
 # Bun is the toolchain, never the runtime (ADR-0103) — see `workspace:install`.
 # Do not add `--bun`.
 bun_install ui apps/workspace
-bun_install site apps/site
+bun_install website apps/website
 
 # Two Node programs, each with its own lockfile. Installing only the policy pack
 # leaves `task verify` failing at `infra:types`.

@@ -1,0 +1,52 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import copy from '../i18n/pages/changelog';
+import type { Locale } from '../i18n/paths';
+import { withName } from '../lib/identity';
+import { getReleases, releaseAnchor, releaseTitle, sectionTitle } from '../lib/changelog';
+
+// Markup and structure only. The frame's text comes from src/i18n/pages/changelog.ts; the notes are
+// product data from src/data/changelog.json, written by scripts/release_notes.py (never by hand).
+// Each week is one row of the design system's two-column layout (ui-rows: heading left), its
+// sections folded as in the FAQ (ui-faq), so a week with seventy notes stays one screen.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+const releases = getReleases();
+---
+
+<BaseLayout locale={locale} title={c.meta.title} description={c.meta.description}>
+  <Hero title={c.hero.title} text={c.hero.text} />
+  <section class="ui-container ui-section page-main">
+    <p class="small">{c.formerName}</p>
+    {releases.length === 0 && <p class="body">{c.empty}</p>}
+    {
+      releases.map((release, r) => (
+        <article id={releaseAnchor(release)} class="ui-rows">
+          <h2 class="heading-2">
+            {release.date ? (
+              <time datetime={release.date}>{releaseTitle(release, locale, c.unreleased)}</time>
+            ) : (
+              releaseTitle(release, locale, c.unreleased)
+            )}
+          </h2>
+          <div class="ui-faq body">
+            {release.summary && <p class="lead">{release.summary[locale]}</p>}
+            {release.sections.map((section, s) => (
+              <details open={r === 0 && s === 0}>
+                <summary>{`${sectionTitle(section.key, locale)} (${section.notes.length})`}</summary>
+                {section.notes.map((note) => (
+                  <p>{note[locale]}</p>
+                ))}
+              </details>
+            ))}
+          </div>
+        </article>
+      ))
+    }
+  </section>
+</BaseLayout>

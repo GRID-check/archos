@@ -136,6 +136,7 @@ HISTORY_PATHS = re.compile(
             r"^scripts/check_brand_(names|prose)\.py$|^tests/test_check_brand_(names|prose)\.py$",  # these checks
             r"^tests/\.test_durations$|^\.github/filters\.yml$",  # test timings and CI filters: paths, not prose
             r"^apps/website/redirects\.mjs$",  # old public addresses, kept in the spelling they were published under
+            r"^apps/website/src/data/changelog\.json$",  # generated from releasenotes/, linted there
         )
     )
 )

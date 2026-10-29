@@ -5,7 +5,7 @@
  * placeholder.
  *
  * TODO(owner): set the company's LinkedIn page URL. No URL for it exists in the
- * repository (searched apps/site, docs, packages/brand). Better still, add it to
+ * repository (searched the retired site, docs, packages/brand). Better still, add it to
  * packages/brand/identity.json so the app can read it too, and read it from there.
  */
 export const linkedinUrl = null as string | null;

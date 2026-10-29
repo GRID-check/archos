@@ -60,3 +60,13 @@ test('an AI-generated image needs the AI tag in its own frame', () => {
   assert.equal(aiTagFindings(missing).length, 1)
   assert.deepEqual(aiTagFindings('<div><img src="/media/product-model-check.webp"></div>'), [])
 })
+
+test('retracted claims stay out (ported from the retired site)', () => {
+  for (const text of ['Firmenbuchnummer [Platzhalter]', 'Ihre Daten sind jederzeit exportierbar.', 'Antwort am selben Werktag.', 'Das gesamte Wissen Ihres Büros.', 'Spart Stunden Suche.', '{name} ist die KI-Wissensplattform für Büros.', '{name} kennt Ihre Projekte.', 'Der Korpus enthält die OIB-Richtlinien 2023.']) {
+    assert.ok(copyFindings(text, 'de').length > 0, text)
+  }
+  for (const text of ['Every statement can be traced to its source.', 'The AI platform for offices.', '{name} understands your projects.']) {
+    assert.ok(copyFindings(text, 'en').length > 0, text)
+  }
+  assert.deepEqual(copyFindings('Jede Antwort nennt ihre Quellen.', 'de'), [])
+})

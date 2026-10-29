@@ -85,7 +85,9 @@ describe('CommandPalette: the workspace search', () => {
     const concept = screen.getByTestId(`palette-search-hit-document-${CONCEPT}`)
     expect(concept).toHaveTextContent('Brandschutzkonzept Wohnhaus Seestadt J7')
     expect(concept).toHaveTextContent('S. 7')
-    expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7')
+    // Every hit lives in one project: it is named once above them, not on each row.
+    expect(screen.getByTestId('palette-scope-line')).toHaveTextContent('In Wohnhaus Seestadt Baufeld J7')
+    expect(concept).not.toHaveTextContent('Wohnhaus Seestadt Baufeld J7')
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
     expect(screen.getByTestId('palette-group-annotation')).toBeInTheDocument()
     expect(screen.getByTestId('palette-group-conversation')).toBeInTheDocument()
@@ -97,6 +99,71 @@ describe('CommandPalette: the workspace search', () => {
     const lastHit = options.findLastIndex((option) => option.dataset.testid?.startsWith('palette-search-hit-'))
     expect(options.indexOf(all)).toBe(lastHit + 1)
     expect(options[0]).toBe(concept)
+  })
+
+  it('holds an Enter pressed before the first answer, then opens the best hit', async () => {
+    let answer: (() => void) | null = null
+    server.use(
+      http.post('*/api/search', async () => {
+        await new Promise<void>((resolve) => {
+          answer = resolve
+        })
+        return HttpResponse.json(SEARCH_FIXTURE_RESPONSE)
+      })
+    )
+    render(palette())
+    await userEvent.type(field(), 'Fluchtweg')
+    await userEvent.keyboard('{Enter}')
+    expect(push).not.toHaveBeenCalled()
+    await waitFor(() => expect(answer).not.toBeNull())
+    answer!()
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1))
+    expect(push.mock.calls[0][0]).not.toMatch(/^\/app\/search/)
+  })
+
+  it('lets an arrow key take back a held Enter', async () => {
+    let answer: (() => void) | null = null
+    server.use(
+      http.post('*/api/search', async () => {
+        await new Promise<void>((resolve) => {
+          answer = resolve
+        })
+        return HttpResponse.json(SEARCH_FIXTURE_RESPONSE)
+      })
+    )
+    render(palette())
+    await userEvent.type(field(), 'Fluchtweg')
+    await userEvent.keyboard('{Enter}{ArrowDown}')
+    await waitFor(() => expect(answer).not.toBeNull())
+    answer!()
+    await screen.findByTestId('palette-group-document')
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it('holds an Enter on a refined question too, unless the reader moved to the row themselves', async () => {
+    let slow = false
+    let answer: (() => void) | null = null
+    server.use(
+      http.post('*/api/search', async () => {
+        if (slow) {
+          await new Promise<void>((resolve) => {
+            answer = resolve
+          })
+        }
+        return HttpResponse.json(SEARCH_FIXTURE_RESPONSE)
+      })
+    )
+    render(palette())
+    await userEvent.type(field(), 'Flucht')
+    await screen.findByTestId('palette-group-document')
+    slow = true
+    await userEvent.type(field(), 'weg')
+    await userEvent.keyboard('{Enter}')
+    // The best hit of the earlier answer is the palette's choice, not the reader's: nothing opens yet.
+    expect(push).not.toHaveBeenCalled()
+    await waitFor(() => expect(answer).not.toBeNull())
+    answer!()
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1))
   })
 
   it('opens the first hit on Enter, and remembers what was searched', async () => {
@@ -131,8 +198,33 @@ describe('CommandPalette: the workspace search', () => {
     server.use(http.post('*/api/search', () => HttpResponse.json({ ...SEARCH_FIXTURE_RESPONSE, sections: {} })))
     render(palette())
     await userEvent.type(field(), 'xyz')
-    await waitFor(() => expect(screen.getByTestId('palette-search-status')).toHaveTextContent('Nichts gefunden'))
-    expect(screen.getByTestId('palette-workspace-search')).toHaveTextContent('Alle Treffer für „xyz“')
+    await waitFor(() => expect(screen.getByTestId('palette-search-status')).toHaveTextContent('Nichts gefunden für „xyz“'))
+    expect(screen.getByTestId('palette-workspace-search')).toHaveTextContent('Suche mit Filtern öffnen')
+  })
+
+  it('says how many of each kind there are only where the rows show fewer', async () => {
+    render(palette())
+    await userEvent.type(field(), 'Fluchtweg')
+    const documents = await screen.findByTestId('palette-group-document')
+    expect(documents).toHaveTextContent('3 von 14')
+    expect(screen.getByTestId('palette-group-annotation')).not.toHaveTextContent('von')
+  })
+
+  it('offers to ask again when the search failed, and asks again on Enter', async () => {
+    let calls = 0
+    server.use(
+      http.post('*/api/search', () => {
+        calls += 1
+        return calls === 1 ? new HttpResponse(null, { status: 500 }) : HttpResponse.json(SEARCH_FIXTURE_RESPONSE)
+      })
+    )
+    render(palette())
+    await userEvent.type(field(), 'xyz')
+    const retry = await screen.findByTestId('palette-search-retry')
+    await waitFor(() => expect(retry).toHaveAttribute('aria-selected', 'true'))
+    await userEvent.keyboard('{Enter}')
+    await screen.findByTestId('palette-group-document')
+    expect(calls).toBe(2)
   })
 
   it('before anything is typed: what the search reaches, the recent searches and the saved ones, and the commands', async () => {

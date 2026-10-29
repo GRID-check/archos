@@ -29,8 +29,7 @@
 const FIRMS = { de: '/ki-fuer-architekturbueros/', en: '/en/ai-for-architecture-firms/' }
 const BUILDING_LAW = { de: '/baurecht/', en: '/en/building-law/' }
 const HOME = { de: '/', en: '/en/' }
-// The changelog page arrives with the cutover work (apps/site moves out); until
-// it is merged this target answers 404, and the tests name it as pending.
+// The changelog: product data rendered by src/views/ChangelogView.astro.
 const CHANGELOG = { de: '/changelog/', en: '/en/changelog/' }
 /** Fate: nothing relevant here any more. */
 const GONE = 'gone'
@@ -216,8 +215,8 @@ function aliasRows() {
 /** Every row, old address (no trailing slash) -> target path or GONE. */
 export const ROUTE_FATES = new Map([...PRIMARY, ...aliasRows()])
 
-/** Targets other work adds; `redirects.test.mjs` accepts them until they exist. */
-export const PENDING_TARGETS = new Set([CHANGELOG.de, CHANGELOG.en])
+/** Targets other work adds; the tests accept them until they exist. None are pending now. */
+export const PENDING_TARGETS = new Set()
 
 /** Astro's `redirects`: every 301 row, plus the login pages. Status 301 (Astro's default is 308). */
 export const redirects = {
