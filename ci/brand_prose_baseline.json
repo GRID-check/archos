@@ -148,7 +148,7 @@
   "apps/website/src/content/blog/en/welcome-to-piloti.mdx": 5,
   "apps/website/src/content/blog/en/working-on-a-document-together.mdx": 57,
   "apps/workspace/.env.example": 1,
-  "apps/workspace/AGENTS.md": 3,
+  "apps/workspace/AGENTS.md": 2,
   "apps/workspace/README.md": 4,
   "apps/workspace/app/.well-known/agent-card.json/route.ts": 1,
   "apps/workspace/app/.well-known/oauth-protected-resource/route.spec.ts": 2,

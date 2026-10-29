@@ -13,7 +13,7 @@ This is the public website, built from the shared design system. Read the root
 | Build a page or a block | Use only the components in `src/components/` and the tokens | The design system is the one source. A new visual needs a design-system change first. |
 | Add a value (colour, size, spacing) | Use a token from `tokens.css`. Never a literal | Spacing comes from the `--space-*` scale; no new colours or sizes in `site.css`. |
 | Write German copy | Follow the German copy rules in [`packages/brand/README.md`](../../packages/brand/README.md) | Sie-form, colon gendering, no exclamation marks, buttons start with a verb, no AI jargon. |
-| Name a file, a component or a class | English, brand-free, kebab-case files and PascalCase components | `ui-button`, `DuoCards`, never a product name. |
+| Name a file, a component or a class | Follow [`naming.md`](../../docs/contributing/naming.md#casing-and-form): English, brand-free, `PascalCase.astro` components, kebab-case everything else | `ui-button`, `DuoCards`, never a product name. |
 | Add an image | Put it in `public/media/` with an English kebab-case name, and add a row to the table in `README.md` | The table is how a reader finds out what a file shows. |
 | Add an AI-generated image | Mark it with the `AITag` component | The design system requires the mark. |
 | Write a component that scripts | Keep the script inline in the `.astro` file and keep state in attributes | No React, no framework runtime. |
