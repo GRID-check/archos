@@ -13,6 +13,7 @@ from `src/lib/identity.ts`, which reads `identity.json`.
 bun install        # first, and after a pull that moves bun.lock
 bun run dev        # http://localhost:4321
 bun run build      # static output in dist/
+bun run build && node dist/server/entry.mjs   # serve it: pages are static, /sign-in runs on the server
 bun run check      # astro check, then the brand copy check
 ```
 

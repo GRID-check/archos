@@ -14,7 +14,7 @@ const officeSizes = ['1–5 Mitarbeitende', '6–20 Mitarbeitende', '21–50 Mit
 const countries = ['Österreich', 'Deutschland', 'Schweiz', 'Anderes Land'];
 ---
 
-<BaseLayout bare title="Demo anfragen" description="Sehen Sie, wie Planungsbüros mit ARCHOS arbeiten.">
+<BaseLayout bare title="Demo anfragen" description={`Sehen Sie, wie Planungsbüros mit ${identity.name} arbeiten.`}>
   <SplitPage
     variant="form"
     image="/media/demo-panel-background.webp"
@@ -26,10 +26,10 @@ const countries = ['Österreich', 'Deutschland', 'Schweiz', 'Anderes Land'];
     ]}
   >
     <h1 class="display" style="margin: 0; max-width: var(--split-form); text-wrap: balance;">
-      Sehen Sie, wie Planungsbüros mit ARCHOS arbeiten.
+      Sehen Sie, wie Planungsbüros mit {identity.name} arbeiten.
     </h1>
     <p class="lead" style="margin: var(--space-8) 0 0; max-width: 480px; color: var(--ink);">
-      Wir zeigen Ihnen ARCHOS an einem echten Projekt und beantworten Ihre Fragen.
+      Wir zeigen Ihnen {identity.name} an einem echten Projekt und beantworten Ihre Fragen.
     </p>
     <div style="margin-top: var(--space-18);">
       <LogoRow
@@ -52,7 +52,7 @@ const countries = ['Österreich', 'Deutschland', 'Schweiz', 'Anderes Land'];
         <Select id="demo-office-size" name="office-size" label="Bürogröße *" options={officeSizes} required />
         <Select id="demo-country" name="country" label="Land *" options={countries} required />
         <Checkbox name="newsletter" class="ui-form-full">
-          Ja, ich möchte Neuigkeiten zu ARCHOS per E-Mail erhalten. Abmeldung jederzeit möglich.
+          Ja, ich möchte Neuigkeiten zu {identity.name} per E-Mail erhalten. Abmeldung jederzeit möglich.
         </Checkbox>
         <div class="ui-form-full">
           <Button type="submit" variant="primary" size="lg" class="ui-btn-block">Demo anfragen</Button>
