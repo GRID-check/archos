@@ -194,6 +194,7 @@ TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app"
     bff/similar-passages/service.integration.spec.ts \
     bff/permits/repository.integration.spec.ts \
     bff/annotations/repository.integration.spec.ts \
+    bff/annotations/sketch-carry.integration.spec.ts \
     bff/annotations/project-repository.integration.spec.ts \
     bff/proposals/repository.integration.spec.ts \
     bff/agent-api/operation-proposals.integration.spec.ts \
@@ -2506,3 +2507,43 @@ if [ "$RW191" != "app_platform" ]; then
 fi
 restore_rls_role_names
 echo "==> 0191 policy names, the role rename and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0192: a mark pinned to elements of a Skizze, its CHECKs, and the
+# DOWN.
+#
+# On a database of its own, migrated to 0191. A mark written before names no
+# element and was never lost; a region on page 1 takes elements; elements on a
+# point, on another page, an empty list, more than twenty, a null among them
+# and a loss without elements are refused; the down drops both columns and
+# leaves the mark; the up re-applies, twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0192 element anchors and their down migration on anchor_0192"
+migrate_until anchor_0192 0191_brand_free_policies
+sql_in anchor_0192 <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000192', 'org_0192', 'Skizze 0192', 'user_1', 'proj_0192');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000192', 'org_0192', 'user_1', 'Skizze.svg', 'k/0192/a', 'proj_0192', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000192');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, w, h, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000192', 'org_0192', 'd1d1d1d1-0000-4000-8000-000000000192', 1, 1, 'region', 0.1, 0.1, 0.2, 0.2, 'hint', 'Stiege', 'person', 'open', 'user_1'),
+       ('f2f2f2f2-0000-4000-8000-000000000192', 'org_0192', 'd1d1d1d1-0000-4000-8000-000000000192', 2, 1, 'point', 0.5, 0.5, null, null, 'hint', 'Tür', 'person', 'open', 'user_1');
+SQL
+apply_in anchor_0192 0192_annotation_element_anchor.sql
+check_in anchor_0192 "SELECT count(*) FROM document_annotations WHERE anchor_element_ids IS NULL AND anchor_lost_at IS NULL" "2" "a mark written before 0192 names no element and was never lost"
+sql_in anchor_0192 <<<"UPDATE document_annotations SET anchor_element_ids = '{stair,door}' WHERE number = 1"
+check_in anchor_0192 "SELECT array_to_string(anchor_element_ids, ',') FROM document_annotations WHERE number = 1" "stair,door" "a region on the sheet's page takes elements"
+refused_in anchor_0192 "UPDATE document_annotations SET anchor_element_ids = '{stair}' WHERE number = 2" "document_annotations_anchor_is_region_on_sheet" "a point was pinned to elements"
+refused_in anchor_0192 "UPDATE document_annotations SET page = 2 WHERE number = 1" "document_annotations_anchor_is_region_on_sheet" "a mark on elements left the sheet's one page"
+refused_in anchor_0192 "UPDATE document_annotations SET anchor_element_ids = '{}' WHERE number = 1" "document_annotations_anchor_elements_bounded" "a mark was pinned to no element"
+refused_in anchor_0192 "UPDATE document_annotations SET anchor_element_ids = (SELECT array_agg('e' || n) FROM generate_series(1, 21) AS n) WHERE number = 1" "document_annotations_anchor_elements_bounded" "a mark was pinned to twenty-one elements"
+refused_in anchor_0192 "UPDATE document_annotations SET anchor_element_ids = ARRAY['stair', NULL] WHERE number = 1" "document_annotations_anchor_elements_bounded" "a mark was pinned to a null element"
+refused_in anchor_0192 "UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 2" "document_annotations_anchor_lost_needs_anchor" "a mark pinned to nothing lost its elements"
+sql_in anchor_0192 <<<"UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 1"
+apply_in anchor_0192 0192_annotation_element_anchor.down.sql
+check_in anchor_0192 "SELECT count(*) FROM information_schema.columns WHERE table_name = 'document_annotations' AND column_name IN ('anchor_element_ids', 'anchor_lost_at')" "0" "down dropped both columns"
+check_in anchor_0192 "SELECT count(*) FROM document_annotations" "2" "down left the marks"
+apply_in anchor_0192 0192_annotation_element_anchor.sql
+apply_in anchor_0192 0192_annotation_element_anchor.sql
+check_in anchor_0192 "SELECT count(*) FROM document_annotations WHERE anchor_element_ids IS NULL" "2" "0192 re-applies, twice"
+echo "==> 0192 element anchors and down migration verified"

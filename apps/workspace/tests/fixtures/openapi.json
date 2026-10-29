@@ -9870,7 +9870,7 @@
       "post": {
         "operationId": "annotation-create",
         "summary": "Place an annotation on a document",
-        "description": "Sets an annotation at a place on the document (page position or text range) with a kind and a body. Returns it with its number. Colleagues in `mentions` are told.",
+        "description": "Sets an annotation at a place on the document (page position or text range) with a kind and a body. On a sketch send `elementIds` (from document-sketch-get) instead of a place; the box follows those elements. Returns it with its number. Colleagues in `mentions` are told.",
         "tags": [
           "review"
         ],
@@ -9938,6 +9938,16 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "elementIds": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
                   },
                   "kind": {
                     "type": "string",
@@ -10013,10 +10023,6 @@
                   }
                 },
                 "required": [
-                  "page",
-                  "shape",
-                  "x",
-                  "y",
                   "kind",
                   "body"
                 ],

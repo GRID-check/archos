@@ -41,6 +41,8 @@ export const diagrams: typeof en.diagrams = {
     'Von {productName} erstellt — KI-generiert, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
   sketch: {
     action: 'Als Skizze bearbeiten',
+    // Auf eine Auswahl von Elementen: eine Anmerkung, die an ihnen hängt und mit ihnen wandert.
+    annotate: 'Anmerkung',
     title: 'Skizze bearbeiten',
     description: 'Ausgangspunkt ist {productName}s Zeichnung. Eine Skizze ist nicht maßstäblich und behauptet keine Maße.',
     loading: 'Zeichenfläche wird geladen …',

@@ -95,6 +95,8 @@ export const diagrams = {
    */
   sketch: {
     action: 'Edit as sketch',
+    /** On a selection of elements: an annotation pinned to them, which moves with them. */
+    annotate: 'Annotate',
     title: 'Edit sketch',
     description: 'Starts from {productName}’s drawing. A sketch is not to scale and claims no dimensions.',
     loading: 'Loading the canvas…',

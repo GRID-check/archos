@@ -113,6 +113,15 @@ async def test_mark_validates_for_a_region_and_a_point(annotations, monkeypatch,
     assert "w" not in payload["proposals"][1] and "basis" not in payload["proposals"][1]
 
 
+async def test_a_mark_on_sketch_elements_validates(annotations, monkeypatch, calls, registry) -> None:
+    answering(monkeypatch, calls, PROPOSE_BODY)
+    await run_mark([{"element_ids": ["Kp3xQ9vR2mT7wY1zA4bC6"], "kind": "hint", "body": "Breite prüfen."}])
+
+    payload = calls[0][0]
+    _validator(annotations, "InternalAnnotationRequest").validate(payload)
+    assert "page" not in payload["proposals"][0]
+
+
 async def test_an_open_mark_validates(annotations, monkeypatch, calls, registry) -> None:
     answering(monkeypatch, calls, CREATE_BODY)
     await run_mark([PROPOSAL], open=True)

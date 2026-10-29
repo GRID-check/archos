@@ -50,6 +50,8 @@ def listed(**extra: Any) -> dict[str, Any]:
         "page": 2,
         "shape": "region",
         "box": [0.1, 0.2, 0.35, 0.4],
+        "elementIds": None,
+        "anchorLost": False,
         "kind": "defect",
         "status": "open",
         "authorKind": "person",
@@ -79,6 +81,7 @@ PROPOSE_BODY = {
             "y": 0.3,
             "w": 0.2,
             "h": 0.1,
+            "elementIds": None,
             "kind": "defect",
             "body": "Treppenlaufbreite 1,10 m statt 1,20 m.",
         }

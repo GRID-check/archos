@@ -45,6 +45,7 @@ import { outlineSketch } from './sketch-outline'
 import { checkSketchScene, parseStoredSketchScene, serializeSketchScene, type SketchScene } from './sketch-scene'
 import type { SaveSketchBody, SavedSketch, SketchDocumentView } from './sketch-wire'
 import { storedDiagramSource } from './stored-source'
+import { viewBoxOf } from '@/lib/annotations/sketch-anchor'
 import { acceptDiagram, censusSvg, type AcceptedDiagram } from './svg'
 import { renderDiagramPdf } from './svg-to-pdf'
 
@@ -73,13 +74,31 @@ async function readStoredText(document: Document): Promise<string> {
   }
 }
 
+/** A Skizze as its current bytes hold it: the scene, and the size of the sheet its SVG draws. */
+export interface PublishedSketch {
+  scene: SketchScene
+  /** Null for an SVG sized by `width` and `height` alone, which the editor never writes. */
+  viewBox: { width: number; height: number } | null
+}
+
+/**
+ * The scene and the sheet a document's current bytes carry, or null when they
+ * carry no scene this product can read: the document is no Skizze. Where a
+ * mark on a Skizze takes its box from (`lib/annotations/sketch-place.ts`).
+ */
+export async function publishedSketchOf(document: Document): Promise<PublishedSketch | null> {
+  if (document.contentType !== SVG || (document.fileSize ?? 0) > MAX_STORED_SKETCH_BYTES) return null
+  const text = await readStoredText(document)
+  const stored = storedDiagramSource(text)
+  const scene = stored?.kind === 'excalidraw' ? parseStoredSketchScene(stored.source) : null
+  return scene ? { scene, viewBox: viewBoxOf(text) } : null
+}
+
 /** The scene a document's current bytes carry, or a 415 when they carry none this product can read. */
 async function storedSceneOf(document: Document): Promise<SketchScene> {
-  if (document.contentType !== SVG || (document.fileSize ?? 0) > MAX_STORED_SKETCH_BYTES) throw notASketch()
-  const stored = storedDiagramSource(await readStoredText(document))
-  const scene = stored?.kind === 'excalidraw' ? parseStoredSketchScene(stored.source) : null
-  if (!scene) throw notASketch()
-  return scene
+  const sketch = await publishedSketchOf(document)
+  if (!sketch) throw notASketch()
+  return sketch.scene
 }
 
 function titleOf(document: Document): string {
@@ -119,12 +138,16 @@ export interface SaveSketchInput {
   request?: Request
 }
 
-function acceptSketch(body: SaveSketchBody, marking: string, ref: string): { accepted: AcceptedDiagram; source: string } {
+function acceptSketch(
+  body: SaveSketchBody,
+  marking: string,
+  ref: string
+): { accepted: AcceptedDiagram; source: string; scene: SketchScene } {
   const scene = checkSketchScene(body.scene)
   const source = serializeSketchScene(scene)
   const provenance = generatedDocumentMarking('diagram_svg', ref)
   const accepted = acceptDiagram({ svg: body.svg, source, sourceKind: 'excalidraw' }, { notice: marking, provenance })
-  return { accepted, source }
+  return { accepted, source, scene }
 }
 
 /** `PUT /api/documents/[id]/sketch`. */
@@ -136,7 +159,7 @@ export async function saveSketchDocument(input: SaveSketchInput): Promise<SavedS
   if (document.authoredByProducer !== 'diagram_svg' || !document.authoredByRef) {
     throw new BadRequestError('Only a sketch filed into the project is saved as a new version; upload a new file instead.')
   }
-  const { accepted } = acceptSketch(body, input.marking, document.authoredByRef)
+  const { accepted, scene } = acceptSketch(body, input.marking, document.authoredByRef)
   const bytes = new TextEncoder().encode(accepted.svg)
   const provenance = generatedDocumentMarking('diagram_svg', document.authoredByRef)
   if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch SVG lost its AI marking')
@@ -148,6 +171,8 @@ export async function saveSketchDocument(input: SaveSketchInput): Promise<SavedS
     contentType: SVG,
     expected: { publishedVersionId: body.baseVersionId },
     request: input.request,
+    // Its marks go on with it, placed on the sheet just accepted (`lib/annotations/sketch-carry.ts`).
+    sketch: { elements: scene.elements, viewBox: accepted.viewport },
   })
   const pdf = await redrawCompanionPdf(input, document, accepted)
   return { documentId: document.id, versionId: version.id, versionNumber: version.versionNumber, pdf, answerRef: document.authoredByRef }

@@ -633,7 +633,7 @@ type Translate = ReturnType<typeof useTranslations>
  */
 export function pinLabel(
   t: Translate,
-  annotation: Pick<AnnotationView, 'number' | 'kind' | 'status' | 'revisionNumber'>,
+  annotation: Pick<AnnotationView, 'number' | 'kind' | 'status' | 'revisionNumber' | 'anchorLost'>,
   agentLine: string | undefined,
   openBy: readonly RoomPeerState[] | undefined,
   { ghost = false, unread = false }: { ghost?: boolean; unread?: boolean } = {}
@@ -646,15 +646,14 @@ export function pinLabel(
         : annotation.status === 'dismissed'
           ? t('review.pinState.dismissed')
           : null
-  const earlier = !ghost
-    ? null
-    : annotation.revisionNumber
-      ? t('review.pinState.ghost', { number: annotation.revisionNumber })
-      : t('review.pinState.ghostUnnumbered')
+  const ghostNumber = annotation.revisionNumber
+  const earlier = !ghost ? null : t(ghostNumber ? 'review.pinState.ghost' : 'review.pinState.ghostUnnumbered', { number: ghostNumber ?? 0 })
   return [
     t('review.pinLabel', { number: annotation.number, kind: t(`annotations.kinds.${annotation.kind}`) }),
     earlier,
     state,
+    // A mark on a Skizze whose elements were all deleted keeps its last place (migration 0192).
+    annotation.anchorLost ? t('review.pinState.anchorLost') : null,
     unread ? t('review.pinState.unread') : null,
     agentLine,
     openBy && openBy.length > 0

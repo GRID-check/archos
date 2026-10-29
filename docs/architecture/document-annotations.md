@@ -64,6 +64,14 @@ Migration `0152_annotation_reply_edits.sql` adds when a reply was reworded
 |---|---|---|
 | `document_annotation_replies.edited_at` | when its author last changed its text, by the database's clock (`now()` in the edit's UPDATE); null for one never changed | never before `created_at` (`…_edited_after_created`) |
 
+Migration `0192_annotation_element_anchor.sql` adds what a mark on a Skizze is
+pinned to (below, „A mark on a Skizze“):
+
+| Where | Holds | CHECK |
+|---|---|---|
+| `document_annotations.anchor_element_ids` | the Excalidraw element ids the mark is about; its box is derived from them | one to twenty, none null (`…_anchor_elements_bounded`); only on a region on page 1 (`…_anchor_is_region_on_sheet`) |
+| `document_annotations.anchor_lost_at` | when a save deleted the last of its elements; it keeps its last box | only on a mark that names elements (`…_anchor_lost_needs_anchor`) |
+
 Migration `0142_piloti_changes.sql` adds the change record: every change Piloti
 applied to a mark or a thread, with the turn that made it. The chat card reads
 it, and undo runs from it (below, „In the chat“). Each change is also one
@@ -492,7 +500,10 @@ A mark that still holds goes on with the new Fassung: „Auf aktuelle Fassung
 übernehmen“ in its card's first line, for whoever may edit an open mark
 (`carryToCurrent`, `lib/annotations/service.ts`). It keeps its place on the
 page: a position never changes under someone who read it, so a mark that no
-longer fits is resolved and set again instead.
+longer fits is resolved and set again instead. The one amendment is a mark on
+a Skizze (next section): its referent is the elements it names, not a place on
+the sheet, so it goes on with every save by itself and its box moves with its
+elements. What its reader read was „this stair“, and that still holds.
 
 - **Under the same name** the mark moves in place: `version_id` becomes the
   published version's, compared and swapped against the Fassung the mark was
@@ -593,6 +604,52 @@ A carry is a person's edit of a mark, content activity like every other, so it
 is not in the admin audit trail
 ([`workos-provisioning.md`](../deployment/workos-provisioning.md#5-audit-logs-native-workos-product));
 the room hears it, and a carried mark names its source on the mark itself.
+
+### A mark on a Skizze
+
+A Skizze (ADR-0148) is one sheet, and every save is a Fassung. A mark there
+names the **elements** it is about, not a place: `elementIds` in the create
+request (the person's selection in the editor, or the ids Piloti reads with
+`document-sketch-get`), and the server derives the box from the published
+scene (`lib/annotations/sketch-place.ts`, `sketch-anchor.ts`): the union of the
+elements' bounds, turned by their angle, a line by its points, as a share of
+the exported sheet, whose padding is read off the stored SVG's `viewBox`. The
+rules are the service's and each is a refusal an agent can act on: on a
+Skizze a box is refused (422) and elements are asked for; on anything else
+elements are refused (400); an element drawn since the last save is not in
+the published scene (422, „save first“), so the editor saves before it sets
+the draft. The mark lands on page 1 as a region (the CHECK).
+
+**It goes on with every save.** In the transaction that publishes the
+Skizze's next Fassung (the `afterPublish` hook of `insertPublishedVersion`,
+`lib/documents/version-repository.ts`, passed by `lib/diagrams/sketch-version.ts`
+for the SVG only, never for an upload), `moveSketchMarks`
+(`lib/annotations/sketch-carry.ts`) moves every open and proposed mark pinned
+to elements onto the new Fassung, compared and swapped on the Fassung it was
+on and its status, its box drawn again from the elements still in the new
+scene. A mark whose elements are all gone keeps its last box and says so
+(`anchor_lost_at`; the view's `anchorLost`, the pin's „Element gelöscht“); an
+element that comes back clears it. Resolved and dismissed marks stay on the
+Fassung they were closed on. So an anchored mark is never a ghost, and the
+manual carry is not offered for it (`carryTarget` is null). The save announces
+no new revision (`sketch-version.ts`); the room hears `annotations.changed`
+for the marks that moved, and an open review reads them again.
+
+**Where it is shown.** The Files preview draws the marks over the Skizze's
+sheet with the review's own layer, as a PDF page's (`SheetWithMarks`,
+`file-preview-pane-document.tsx`), and its review is the sketch editor, not
+the Prüfansicht: a pin, „Prüfansicht öffnen“ or a link with `?review=1&mark=`
+opens the editor at that mark (`reviewRequest`, the preview's action slot,
+`features/documents/preview-actions.tsx`). In the editor the pins sit over the
+live canvas (`features/diagrams/sketch/sketch-pins.tsx`): the layer is laid
+where the sheet stands at the canvas's scroll and zoom, and each pinned mark
+is placed from where its elements are now, so a pin follows its element while
+it is dragged, before any save. „Anmerkung“ on a selection opens the review's
+draft card for those elements; the thread is the review's own card.
+
+Known gaps: an undo of Piloti's delete of an anchored mark sets it again with
+its box and is refused on a Skizze; the companion PDF carries no marks (they
+belong on the SVG).
 
 ### Mentioning a colleague
 
@@ -705,8 +762,9 @@ What a tab sends is bounded per person and per document (`lib/realtime/send.ts`)
 from budgets in `lib/limits/rules.js`, one per send lane of the channel
 (`upstream.lanes`). Motion, the pointer and the scroll, spends `ROOM_LIMIT`; a
 claim, presence and the selected mark, spends `ROOM_CLAIM_LIMIT`; a Skizze's
-edits spend `SKETCH_EDIT_LIMIT` and need write access to the document
-(`docs/architecture/diagrams.md`, "Two people on one Skizze"). A burst of motion can therefore never refuse the presence
+edits spend `SKETCH_EDIT_LIMIT` and need write access to the document, and its
+requests for the whole scene spend `SKETCH_WANT_LIMIT`; a message spends every
+lane it touches (`docs/architecture/diagrams.md`, "Two people on one Skizze"). A burst of motion can therefore never refuse the presence
 refresh that keeps a person in everyone's roster. When the server refuses motion
 (429), the tab pauses its pointer and scroll for that document for the
 `Retry-After` and keeps its claims going (`features/realtime/connection.ts`).

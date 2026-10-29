@@ -230,7 +230,8 @@ export const reviewOperations = [
     summary: 'Place an annotation on a document',
     description:
       'Sets an annotation at a place on the document (page position or text range) with a kind and a body. ' +
-      'Returns it with its number. Colleagues in `mentions` are told.',
+      'On a sketch send `elementIds` (from document-sketch-get) instead of a place; the box follows those ' +
+      'elements. Returns it with its number. Colleagues in `mentions` are told.',
     method: 'POST',
     path: '/api/documents/[id]/annotations',
     params: documentParams,
@@ -240,6 +241,11 @@ export const reviewOperations = [
         params: { id: '5b1e7c2a-9d4f-4c3b-8a6e-2f1d0c9b8a7e' },
         // A region in page shares (origin top left); a point has x and y only.
         body: { page: 2, shape: 'region', x: 0.42, y: 0.31, w: 0.18, h: 0.12, kind: 'question', body: 'Is this door 90 cm clear?' },
+      },
+      {
+        params: { id: '7c2d9e1f-3a4b-4c5d-8e6f-1a2b3c4d5e6f' },
+        // On a sketch: the elements it is about, never a box.
+        body: { elementIds: ['Kp3xQ9vR2mT7wY1zA4bC6'], kind: 'hint', body: 'Stair width to be confirmed.' },
       },
     ],
     load: () => import('@/app/api/documents/[id]/annotations/route'),

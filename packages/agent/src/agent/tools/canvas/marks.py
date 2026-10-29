@@ -30,6 +30,12 @@ Only where the office allows it: with the organization switch ``piloti-acts``
 off (the default) the BFF refuses ``create``, ``update`` and ``delete``, and
 Piloti proposes the mark or leaves the change to the person (``calls.py``).
 
+On a sketch (a Skizze, ADR-0148) a mark names the elements it is about
+(``element_ids``, the ids ``document-sketch-get`` lists) instead of a place:
+the BFF derives the box from them and keeps the mark on them from one saved
+version to the next (migration 0192). It refuses a box on a sketch, and
+elements anywhere else.
+
 A reply lands at once, marked as Piloti's: it changes no state. All of these
 are read by everyone who opens the document, so all pass the restricted-folder
 rule first (``policy.py``).
@@ -55,6 +61,7 @@ from .cards import excerpt
 MAX_BODY = 2000
 MAX_BASIS = 300
 MAX_PROPOSALS_PER_CALL = 20
+MAX_ANCHOR_ELEMENTS = 20
 
 #: A region that pokes past the page edge by less than this is clamped onto it:
 #: an estimate read off a rendered page lands a hair outside often enough.
@@ -75,12 +82,13 @@ class AnnotationProposal(BaseModel):
     # No per-field descriptions: the tool description explains each once, and
     # this schema rides on every model call of every chat turn.
 
-    page: int
+    page: int | None = None
     shape: Shape = "region"
-    x: float
-    y: float
+    x: float | None = None
+    y: float | None = None
     w: float | None = None
     h: float | None = None
+    element_ids: list[str] | None = None
     kind: Kind
     body: str
     basis: str | None = None
@@ -130,6 +138,9 @@ def _share(value: object) -> str:
 
 
 def _place(item: dict[str, Any]) -> str:
+    if isinstance(item.get("elementIds"), list) and item["elementIds"]:
+        lost = "; all its elements were deleted, it keeps its last place" if item.get("anchorLost") else ""
+        return "on sketch elements " + ", ".join(str(element) for element in item["elementIds"]) + lost
     box = item.get("box") if isinstance(item.get("box"), list) and len(item["box"]) == 4 else [None] * 4
     if item.get("shape") == "point":
         return f"point x {_share(box[0])}, y {_share(box[1])}"
@@ -212,36 +223,47 @@ def render_list(body: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _region_size(proposal: AnnotationProposal, index: int) -> tuple[float, float]:
+def _region_size(proposal: AnnotationProposal, x: float, y: float, index: int) -> tuple[float, float]:
     """A region's width and height, clamped onto the page when it pokes past an edge by a hair."""
     w, h = proposal.w or 0.0, proposal.h or 0.0
     if w <= 0 or h <= 0:
         raise Refused(f"Error: Proposal {index}: a region needs `w` and `h` greater than 0.")
-    if proposal.x + w > 1 + _EDGE_SLACK or proposal.y + h > 1 + _EDGE_SLACK:
+    if x + w > 1 + _EDGE_SLACK or y + h > 1 + _EDGE_SLACK:
         raise Refused(f"Error: Proposal {index}: the region extends beyond the page (x+w and y+h at most 1).")
-    return min(w, 1 - proposal.x), min(h, 1 - proposal.y)
+    return min(w, 1 - x), min(h, 1 - y)
+
+
+def _box_place(proposal: AnnotationProposal, index: int) -> dict[str, Any]:
+    """A place on a page of a PDF: a point, or a region on it."""
+    page, x, y = proposal.page, proposal.x, proposal.y
+    if page is None or x is None or y is None:
+        raise Refused(f"Error: Proposal {index}: give `page`, `x` and `y`, or on a sketch `element_ids`.")
+    if page < 1:
+        raise Refused(f"Error: Proposal {index}: `page` counts from 1.")
+    if not (0 <= x <= 1 and 0 <= y <= 1):
+        raise Refused(f"Error: Proposal {index}: `x` and `y` are shares of the page between 0 and 1, not pixels.")
+    place: dict[str, Any] = {"page": page, "shape": proposal.shape, "x": round(x, 4), "y": round(y, 4)}
+    if proposal.shape == "region":
+        w, h = _region_size(proposal, x, y, index)
+        place["w"], place["h"] = round(w, 4), round(h, 4)
+    return place
+
+
+def _element_place(element_ids: list[str], index: int) -> dict[str, Any]:
+    """A place on a sketch: the elements the mark is about; the BFF derives the box."""
+    ids = list(dict.fromkeys(_text(element) for element in element_ids if _text(element)))
+    if not ids or len(ids) > MAX_ANCHOR_ELEMENTS:
+        raise Refused(f"Error: Proposal {index}: `element_ids` names 1 to {MAX_ANCHOR_ELEMENTS} sketch elements.")
+    return {"elementIds": ids}
 
 
 def _proposal_payload(proposal: AnnotationProposal, index: int) -> dict[str, Any]:
     """One ``AnnotationProposal`` body, or a refusal naming what is wrong with it."""
-    if proposal.page < 1:
-        raise Refused(f"Error: Proposal {index}: `page` counts from 1.")
-    if not (0 <= proposal.x <= 1 and 0 <= proposal.y <= 1):
-        raise Refused(f"Error: Proposal {index}: `x` and `y` are shares of the page between 0 and 1, not pixels.")
     body = _text(proposal.body)
     if not body or len(body) > MAX_BODY:
         raise Refused(f"Error: Proposal {index}: `body` must have 1 to {MAX_BODY} characters.")
-    payload: dict[str, Any] = {
-        "page": proposal.page,
-        "shape": proposal.shape,
-        "x": round(proposal.x, 4),
-        "y": round(proposal.y, 4),
-        "kind": proposal.kind,
-        "body": body,
-    }
-    if proposal.shape == "region":
-        w, h = _region_size(proposal, index)
-        payload["w"], payload["h"] = round(w, 4), round(h, 4)
+    place = _element_place(proposal.element_ids, index) if proposal.element_ids else _box_place(proposal, index)
+    payload: dict[str, Any] = {**place, "kind": proposal.kind, "body": body}
     if basis := _text(proposal.basis):
         payload["basis"] = basis[:MAX_BASIS]
     return payload
@@ -299,7 +321,7 @@ def render_created(body: dict[str, Any]) -> str:
 
 
 def _box(item: dict[str, Any]) -> dict[str, Any]:
-    """A proposed mark's place, as the activity card carries it: a point has no size."""
+    """A proposed mark's place, as the activity card carries it: a point has no size; a sketch's box is the BFF's."""
     if item.get("shape") == "point":
         return {"shape": "point", "x": item.get("x"), "y": item.get("y")}
     return {"shape": "region", "x": item.get("x"), "y": item.get("y"), "w": item.get("w"), "h": item.get("h")}

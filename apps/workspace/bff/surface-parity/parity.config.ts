@@ -105,6 +105,12 @@ export const SURFACE_CAPABILITIES = {
     canvas: { component: `${REVIEW}/composer.tsx` },
     chat: { card: 'canvas_activity', component: ACTIVITY_CARD },
   },
+  markSketchElements: {
+    summary: 'Pin a mark to elements of a sketch, so it follows them from one saved version to the next',
+    tool: 'canvas__mark',
+    canvas: { component: 'features/diagrams/sketch/sketch-pins.tsx' },
+    chat: { card: 'canvas_activity', component: ACTIVITY_CARD },
+  },
   updateMark: {
     summary: 'Change a mark: status, assignee, due date, kind, text',
     tool: 'canvas__update',

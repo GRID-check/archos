@@ -192,6 +192,7 @@ const setMark = (annotation: AnnotationView) => ({
   y: annotation.y,
   w: annotation.w,
   h: annotation.h,
+  elementIds: annotation.elementIds ?? null,
   kind: annotation.kind,
   body: annotation.body,
 })

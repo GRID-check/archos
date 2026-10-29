@@ -1756,6 +1756,8 @@ export const files: typeof en.files = {
       ghostUnnumbered: 'aus einer früheren Fassung',
       // Der Verlauf hat Neues, das die lesende Person noch nicht geöffnet hat (der Punkt am Pin).
       unread: 'ungelesen',
+      // Auf einer Skizze: jedes Element, an dem die Anmerkung hing, wurde gelöscht; sie bleibt an ihrer letzten Stelle.
+      anchorLost: 'Element gelöscht',
     },
     pinOpenBy: 'offen bei {names}',
     draftCard: 'Neue Anmerkung',

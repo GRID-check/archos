@@ -527,15 +527,16 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
    * scroller boxed inside a padded box.
    */
   const pdfInWell = canPreview && Boolean(previewUrl) && shownType === 'application/pdf'
+  // A Skizze Piloti filed: its one sheet carries marks pinned to its elements, and its review is the sketch editor.
+  const sketchInWell = canPreview && Boolean(previewUrl) && shownType === 'image/svg+xml' && file.authoredBy === 'agent'
   const wellHostsViewer = peeking && (isModel || pdfInWell)
   /**
-   * The document's Anmerkungen and its room: who else has it open, their
-   * pointers, and Piloti's proposals landing. Only where the well IS the PDF
-   * viewer (a mark needs a page under it), and never for a held upload, which
-   * nobody but its reviewers reads. One instance for the inline preview and
-   * the focused review, so the tab is in the room once.
+   * The document's Anmerkungen and its room: who else has it open, their pointers, and Piloti's
+   * proposals landing. Only where the well IS the PDF viewer or a Skizze's sheet (a mark needs a page
+   * under it), and never for a held upload, which nobody but its reviewers reads. One instance for
+   * the inline preview and the focused review (or the sketch editor), so the tab is in the room once.
    */
-  const reviewEnabled = pdfInWell && showMetadataPanel && !isHeld
+  const reviewEnabled = (pdfInWell || sketchInWell) && showMetadataPanel && !isHeld
   // Where the document stands among its Fassungen under other names, as the
   // reader may see them: the review says it, and lists the open marks of the
   // documents this one replaces to carry them on.
@@ -586,10 +587,8 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
   }, [reviewEnabled, review.load, review.counts, marksForYou, shownMarks, onMarksChanged, file.id])
   const [reviewOpen, setReviewOpen] = useState(false)
   /**
-   * The inline viewer steps aside while the review is open, as it does for the
-   * enlarged dialog: the review is the document full screen, and a second
-   * viewer under it rasterised the same pages and redrew the same marks and
-   * pointers for nobody to see.
+   * The inline viewer steps aside while the review is open, as it does for the enlarged dialog: the review is
+   * the document full screen, and a second viewer under it redrew the same pages, marks and pointers for nobody.
    */
   const inlineViewer = showInlinePdf && !reviewOpen
   /**
@@ -652,7 +651,7 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
   const linkedLocus = readDocumentLocus(searchParams, file.id)
   /** This page's address names this pane's document: Dateien's `doc`, or the chat's peek. Elsewhere the pane writes no address. */
   const addressed = reviewLink.documentId === file.id || (reviewLink.documentId === null && inChat)
-  const urlOpen = reviewLink.open && addressed && pdfInWell
+  const urlOpen = reviewLink.open && addressed && (pdfInWell || sketchInWell)
   /** This pane pushed the entry the review is on, so closing goes Back to the one before. */
   const pushedReview = useRef(false)
   const urlWasOpen = useRef(false)
@@ -1059,6 +1058,7 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
     showInlinePdf,
     showMetadataPanel,
     showModels,
+    sketchInWell,
     showPage,
     showReview,
     shownFinding,

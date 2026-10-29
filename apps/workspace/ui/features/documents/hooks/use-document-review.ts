@@ -42,7 +42,6 @@ export type ReviewFilter = 'open' | 'closed'
 
 /** A burst of hints naming more marks than this reads the list once instead of each mark on its own. */
 export const HINT_READ_ONE_BY_ONE = 8
-
 /** How long a mark must stay open before opening it counts as reading its news: J/K past it does not. */
 export const MARK_NEWS_SETTLE_MS = 400
 
@@ -112,7 +111,6 @@ export interface CarriedGroup {
 
 /** How many replaced documents a review lists the open marks of: the direct predecessors, a few at most. */
 export const CARRY_GROUPS_MAX = 3
-
 /** How many carries „Alle übernehmen" has in flight at once: quick for thirty marks, gentle on the server. */
 export const CARRY_AT_ONCE = 4
 
@@ -124,6 +122,8 @@ export interface ReviewDraft {
   y: number
   w: number | null
   h: number | null
+  /** On a Skizze: the elements it is about; the box is drawn until the server derives its own (`lib/annotations/sketch-place.ts`). */
+  elementIds?: string[]
 }
 
 /**

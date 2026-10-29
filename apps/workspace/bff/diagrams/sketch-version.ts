@@ -26,6 +26,14 @@
  * authored and published by whoever filed it, at the time it was filed, and the
  * new bytes as Fassung 2. Without that, the pointer move would orphan the filed
  * object and the timeline would start at the edit.
+ *
+ * ## The marks go on with it
+ *
+ * A Skizze's open and proposed marks name the elements they are about, and the
+ * save carries them onto the new Fassung in its own transaction, their boxes
+ * drawn again from the new scene (`lib/annotations/sketch-carry.ts`, through
+ * the `afterPublish` hook of {@link insertPublishedVersion}). The room is told
+ * once it committed, so an open review reads them again; nobody else is.
  */
 
 import 'server-only'
@@ -42,6 +50,8 @@ import type { PublishedVersionExpectation } from '@/lib/documents/published-guar
 import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import type { Document } from '@/lib/db/schema/documents'
 import { publishToUsers } from '@/lib/events/bus'
+import { moveSketchMarks, type MovedSketchMarks, type NextSketch } from '@/lib/annotations/sketch-carry'
+import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { s3Client } from '@/lib/s3'
 import { discardObject } from '@/lib/storage/discard'
 import { assertWithinStorageQuota } from '@/lib/storage/service'
@@ -55,12 +65,32 @@ export interface NextVersionInput {
   /** The Fassung the caller's change starts from; a newer one is a 409. */
   expected: PublishedVersionExpectation
   request?: Request
+  /** A Skizze's new scene: its marks go on with the Fassung, placed on it again. Absent for its PDF. */
+  sketch?: NextSketch
+}
+
+type AfterPublish = NonNullable<Parameters<typeof insertPublishedVersion>[2]>
+
+/** The hook that carries a Skizze's marks onto the Fassung being published, collecting what moved. */
+function carryMarks(document: Document, sketch: NextSketch | null, into: MovedSketchMarks): AfterPublish {
+  return async (tx, { version, superseded }) => {
+    const moved = await moveSketchMarks(tx, {
+      organizationId: document.organizationId,
+      documentId: document.id,
+      fromVersionIds: superseded.map((row) => row.id),
+      toVersionId: version.id,
+      sketch,
+    })
+    into.moved.push(...moved.moved)
+    into.lost.push(...moved.lost)
+  }
 }
 
 /** Record the filed bytes as Fassung 1 when the document has no version yet; the expectation it leaves. */
 async function recordFiledBytes(
   document: Document,
   expected: PublishedVersionExpectation,
+  afterPublish?: AfterPublish,
 ): Promise<PublishedVersionExpectation> {
   if (document.publishedVersionId !== null || !document.storageKey) return expected
   const existing = await listDocumentVersions(document.id, document.organizationId)
@@ -82,11 +112,18 @@ async function recordFiledBytes(
       publishedAt: document.createdAt,
     },
     expected,
+    afterPublish,
   )
   return { publishedVersionId: version.id }
 }
 
-async function announce(session: AuthorizedSession, document: Document, version: DocumentVersion, request?: Request) {
+async function announce(
+  session: AuthorizedSession,
+  document: Document,
+  version: DocumentVersion,
+  marks: MovedSketchMarks,
+  request?: Request,
+) {
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
@@ -110,13 +147,23 @@ async function announce(session: AuthorizedSession, document: Document, version:
     state: version.state,
   })
   publishShelfChanged(session.organizationId, documentShelf(document))
+  if (marks.moved.length === 0) return
+  void publishToDocumentRoom(document.id, {
+    kind: 'annotations.changed',
+    annotationIds: marks.moved,
+    change: 'updated',
+    actor: { peerId: null, userId: session.userId, name: session.name ?? session.email, kind: 'person' },
+  })
 }
 
 /** Store the bytes under their own key and publish them as the document's next Fassung. */
 export async function publishNextVersion(input: NextVersionInput): Promise<DocumentVersion> {
   const { session, document, bytes, contentType } = input
   await assertWithinStorageQuota(session.organizationId, bytes.byteLength)
-  const expected = await recordFiledBytes(document, input.expected)
+  const marks: MovedSketchMarks = { moved: [], lost: [] }
+  // The filed bytes recorded as Fassung 1 are the same drawing: its marks keep their boxes.
+  const carry = (sketch: NextSketch | null) => (input.sketch ? carryMarks(document, sketch, marks) : undefined)
+  const expected = await recordFiledBytes(document, input.expected, carry(null))
 
   const storageBucket = await resolveVersionBucket(session.organizationId)
   // The number in the key is a hint (`versionWriteKey`); the write id keeps two writers apart.
@@ -143,12 +190,13 @@ export async function publishNextVersion(input: NextVersionInput): Promise<Docum
         publishedAt: new Date(),
       },
       expected,
+      carry(input.sketch ?? null),
     ))
   } catch (error) {
     // Refused (a newer Fassung, the document gone): nothing names these bytes.
     await discardObject(storageBucket, storageKey)
     throw error
   }
-  await announce(session, document, version, input.request)
+  await announce(session, document, version, marks, input.request)
   return version
 }

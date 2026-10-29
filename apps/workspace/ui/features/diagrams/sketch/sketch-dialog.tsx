@@ -37,7 +37,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSketch } from '@/adapters/api/diagrams-client'
 import type { WireElement } from '@/lib/diagrams/sketch-room-types'
 import type { RealtimePeer } from '@/lib/realtime/types'
-import type { RoomTransport } from '@/features/documents'
+import type { DocumentReview, ReviewDraft, RoomTransport } from '@/features/documents'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useLocale, useTranslations } from '@/i18n'
@@ -83,6 +83,8 @@ export interface SketchDialogProps {
     onSaved?: () => void
     /** The room's transport: the tab's live connection by default, a stand-in in the `/dev` preview. */
     roomTransport?: RoomTransport
+    /** The document's review (the preview's): its Anmerkungen are drawn over the canvas on their elements. */
+    review?: DocumentReview | null
   } | null
 }
 
@@ -181,6 +183,20 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
     },
     [dirty, filed, onOpenChange, revision, room]
   )
+  // A mark on a selection: its elements must be in the saved Fassung, so unsaved work is saved first.
+  const dirtyRef = useRef(false)
+  const onDirtyChange = useCallback((next: boolean) => {
+    dirtyRef.current = next
+    setDirty(next)
+  }, [])
+  const { save: saveRevision } = revised
+  const annotate = useCallback(
+    async (draft: ReviewDraft) => {
+      if (dirtyRef.current) await saveRevision()
+      if (!dirtyRef.current) revision?.review?.setDraft(draft)
+    },
+    [saveRevision, revision]
+  )
   const onReady = useCallback((ready: SketchCanvasHandle) => {
     handle.current = ready
   }, [])
@@ -209,9 +225,14 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
               theme={theme}
               langCode={locale === 'de' ? 'de-DE' : 'en'}
               onReady={onReady}
-              onDirtyChange={setDirty}
+              onDirtyChange={onDirtyChange}
               readOnly={filed}
               collab={revision ? room.collab : null}
+              pins={
+                revision?.review
+                  ? { review: revision.review, canAnnotate: canWrite && revision.review.canAnnotate, onAnnotate: annotate, canPickAssignee: true }
+                  : null
+              }
             />
           ) : null}
         </div>

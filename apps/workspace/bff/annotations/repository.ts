@@ -110,10 +110,7 @@ async function listReplies(organizationId: string, annotationIds: readonly strin
 }
 
 export async function withThreads(organizationId: string, rows: SelectedRow[]): Promise<AnnotationRecord[]> {
-  const threads = await listReplies(
-    organizationId,
-    rows.map(({ row }) => row.id)
-  )
+  const threads = await listReplies(organizationId, rows.map(({ row }) => row.id))
   return rows.map(({ row, revisionNumber, ...links }) => ({
     ...row,
     revisionNumber: revisionNumber === null ? null : Number(revisionNumber),
@@ -244,6 +241,8 @@ export interface NewAnnotationValues {
   y: number
   w: number | null
   h: number | null
+  /** On a Skizze, the elements its box was derived from (migration 0192, `./sketch-place.ts`). */
+  anchorElementIds?: string[] | null
   kind: AnnotationKind
   body: string
   /** Whom `body` mentions, as the service kept them (`./mentions.ts`); none when absent. */

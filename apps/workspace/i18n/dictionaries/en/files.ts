@@ -1793,6 +1793,7 @@ export const files = {
       ghost: 'from revision {number}',
       ghostUnnumbered: 'from an earlier revision',
       unread: 'unread',
+      anchorLost: 'element deleted',
     },
     pinOpenBy: 'open for {names}',
     draftCard: 'New annotation',

@@ -2,6 +2,7 @@
 
 import { FileTextPage } from './file-text-page'
 import Image from 'next/image'
+import type { ReactNode } from 'react'
 
 import { Download, RotateCcw, Sparkles, X } from 'lucide-react'
 
@@ -27,8 +28,19 @@ import { PEEK_SUMMARY_CLAMP_LINES, PageMock, PeekPanel, PeekStage } from './file
 import { IfcFilePreview } from './file-preview-pane-lazy'
 import type { FilePreviewController } from './use-file-preview-controller'
 
+/** The picture with its marks drawn over it, in a box exactly its size; without marks, the picture alone. */
+function SheetWithMarks({ on, overlay, children }: { on: boolean; overlay: ReactNode; children: ReactNode }) {
+  if (!on) return <>{children}</>
+  return (
+    <div className="relative h-fit max-h-full w-fit max-w-full" data-testid="sketch-sheet">
+      {children}
+      {overlay}
+    </div>
+  )
+}
+
 export function FilePreviewDocumentPanel({ controller }: { controller: FilePreviewController }) {
-  const { actions, annotateLead, canPreview, file, findSimilar, handlePdfFailed, inlineViewer, isLoading, isModel, isOfficeRendition, isTextual, kind, linkedLocus, loadPreview, openReview, pdfInWell, peeking, previewFailed, previewGone, previewImageUrl, previewText, previewUrl, projectId, reader, review, setPreviewFailed, setPreviewImageUrl, setPreviewUrl, showModels, shownFinding, shownPage, shownType, sideways, t, viewerTarget, wellHostsViewer, wellRef } = controller
+  const { actions, annotateLead, canPreview, file, findSimilar, handlePdfFailed, inlineViewer, isLoading, isModel, isOfficeRendition, isTextual, kind, linkedLocus, loadPreview, openReview, pdfInWell, peeking, previewFailed, previewGone, previewImageUrl, previewText, previewUrl, projectId, reader, review, setPreviewFailed, setPreviewImageUrl, setPreviewUrl, showModels, shownFinding, sketchInWell, shownPage, shownType, sideways, t, viewerTarget, wellHostsViewer, wellRef } = controller
   return (
     <>
           {/* Left: live preview, or a decorative page mock while loading / when
@@ -173,6 +185,15 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                   // a `fill` child would collapse the column to nothing. Hence 0/0
                   // for the ratio next/image cannot know, plus an explicit `w-auto`
                   // so the browser sizes to the image and not to the width="0".
+                  //
+                  // A Skizze's sheet carries its Anmerkungen on its one page, as a PDF page does: the
+                  // pins over the picture, a click opening them in the sketch editor (`openReview`).
+                  <SheetWithMarks on={sketchInWell} overlay={
+                    <>
+                      <ReviewPageLayer page={1} review={review} focused={false} onOpenMark={openReview} />
+                      <InlineMarkPeek page={1} review={review} onOpenMark={openReview} />
+                    </>
+                  }>
                   <Image
                     src={previewImageUrl ?? previewUrl}
                     alt={actions.name}
@@ -199,6 +220,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                       peeking ? 'shadow-md' : 'shadow-lg'
                     )}
                   />
+                  </SheetWithMarks>
                 )
               ) : (
                 <PageMock

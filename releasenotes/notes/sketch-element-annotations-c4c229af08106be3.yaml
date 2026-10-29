@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Annotations on a sketch now sit on its elements: select a stair or a
+    door, choose "Annotate", and the annotation follows that element when it
+    is moved and stays open on every newly saved version. If the element is
+    deleted, the annotation keeps its last place and says so.

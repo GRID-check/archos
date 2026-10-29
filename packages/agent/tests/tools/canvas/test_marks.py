@@ -111,6 +111,9 @@ class TestRefusals:
             ({"x": 0.9, "w": 0.5}, "beyond the page"),
             ({"body": "   "}, "`body`"),
             ({"kind": "remark"}, "invalid"),
+            ({"page": None}, "on a sketch `element_ids`"),
+            ({"element_ids": [" "]}, "`element_ids` names 1 to 20"),
+            ({"element_ids": [f"el-{n}" for n in range(21)]}, "`element_ids` names 1 to 20"),
         ],
     )
     async def test_a_bad_proposal_is_refused_before_anything_is_sent(self, monkeypatch, calls, change, expected):
@@ -177,6 +180,14 @@ class TestWhatItSays:
         answering(monkeypatch, calls, {**LIST_BODY, "annotations": [{**mark, "onCurrentFassung": False}]})
 
         assert "earlier Fassung" in await run_marks()
+
+    async def test_a_mark_on_a_sketch_names_its_elements_and_a_lost_one_says_so(self, monkeypatch, calls) -> None:
+        pinned = listed(elementIds=["stair", "door"], anchorLost=True)
+        answering(monkeypatch, calls, {**LIST_BODY, "annotations": [pinned]})
+
+        result = await run_marks()
+
+        assert "on sketch elements stair, door" in result and "elements were deleted" in result
 
     async def test_an_empty_document_says_so(self, monkeypatch, calls) -> None:
         answering(monkeypatch, calls, {**LIST_BODY, "annotations": []})
@@ -290,3 +301,13 @@ class TestObservability:
         await run_marks()
 
         assert spans[0][2] == {"refused": "no_document_subject"}
+
+
+class TestOnASketch:
+    async def test_a_proposal_on_a_sketch_sends_its_elements_and_no_box(self, monkeypatch, calls, registry) -> None:
+        answering(monkeypatch, calls, PROPOSE_BODY)
+
+        await run_mark([{"element_ids": ["stair", "stair", "door"], "kind": "hint", "body": "Breite prüfen."}])
+
+        proposal = calls[0][0]["proposals"][0]
+        assert proposal == {"elementIds": ["stair", "door"], "kind": "hint", "body": "Breite prüfen."}

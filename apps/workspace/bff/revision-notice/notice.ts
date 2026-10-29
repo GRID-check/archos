@@ -15,7 +15,7 @@
  */
 
 import { v5 as uuidv5 } from 'uuid'
-import { MAX_ANNOTATION_BASIS, MAX_ANNOTATION_BODY, MAX_PROPOSALS_PER_CALL, type AnnotationProposal } from '@/lib/annotations/types'
+import { MAX_ANNOTATION_BASIS, MAX_ANNOTATION_BODY, MAX_PROPOSALS_PER_CALL, type AnnotationBoxProposal } from '@/lib/annotations/types'
 import type { CompareRegion, RevisionVisualChanges } from '@/lib/documents/revision-compare-types'
 
 /** Pages one notice may look at, unless the deployment says otherwise: one vision call each. */
@@ -118,7 +118,7 @@ export interface ExistingMark {
   authorKind: string
 }
 
-const samePlace = (mark: ExistingMark, proposal: AnnotationProposal): boolean =>
+const samePlace = (mark: ExistingMark, proposal: AnnotationBoxProposal): boolean =>
   mark.authorKind === 'piloti' &&
   mark.page === proposal.page &&
   mark.body.trim() === proposal.body.trim() &&
@@ -133,7 +133,7 @@ const samePlace = (mark: ExistingMark, proposal: AnnotationProposal): boolean =>
  * does not propose again, so its inbox row and its score count them. Pure.
  */
 export function alreadyProposed<T extends ExistingMark>(
-  found: readonly AnnotationProposal[],
+  found: readonly AnnotationBoxProposal[],
   existing: readonly T[],
 ): T[] {
   const marks: T[] = []
@@ -154,11 +154,11 @@ export function proposalsFrom(
   comparisons: readonly PageComparison[],
   olderName: string,
   existing: readonly ExistingMark[] = [],
-): AnnotationProposal[] {
-  const proposals: AnnotationProposal[] = []
+): AnnotationBoxProposal[] {
+  const proposals: AnnotationBoxProposal[] = []
   for (const { page, changes } of [...comparisons].sort((a, b) => a.page - b.page)) {
     changes.regions.forEach((region, index) => {
-      const proposal: AnnotationProposal = {
+      const proposal: AnnotationBoxProposal = {
         page,
         shape: 'region',
         x: region.x,
@@ -188,7 +188,7 @@ export function noticeMessage(input: {
   olderName: string
   compared: readonly number[]
   skipped: readonly number[]
-  proposals: readonly AnnotationProposal[]
+  proposals: readonly AnnotationBoxProposal[]
 }): string {
   const { proposals } = input
   const count = proposals.length === 1 ? 'Eine Stelle ist' : `${proposals.length} Stellen sind`
@@ -208,7 +208,7 @@ export function noticeMessage(input: {
 }
 
 /** The first change, as the inbox row's excerpt. Pure. */
-export function noticeExcerpt(proposals: readonly AnnotationProposal[]): string | null {
+export function noticeExcerpt(proposals: readonly AnnotationBoxProposal[]): string | null {
   const first = proposals[0]
   return first ? clip(`S. ${first.page}: ${first.body}`, 200) : null
 }

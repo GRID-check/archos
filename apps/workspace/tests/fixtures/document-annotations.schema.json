@@ -92,6 +92,16 @@
                       }
                     ]
                   },
+                  "elementIds": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
                   "kind": {
                     "type": "string",
                     "enum": [
@@ -119,10 +129,6 @@
                   }
                 },
                 "required": [
-                  "page",
-                  "shape",
-                  "x",
-                  "y",
                   "kind",
                   "body"
                 ],
@@ -203,6 +209,16 @@
                       }
                     ]
                   },
+                  "elementIds": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
                   "kind": {
                     "type": "string",
                     "enum": [
@@ -230,10 +246,6 @@
                   }
                 },
                 "required": [
-                  "page",
-                  "shape",
-                  "x",
-                  "y",
                   "kind",
                   "body"
                 ],
@@ -623,6 +635,22 @@
                 "minItems": 4,
                 "maxItems": 4
               },
+              "elementIds": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "anchorLost": {
+                "type": "boolean"
+              },
               "kind": {
                 "type": "string",
                 "enum": [
@@ -716,6 +744,8 @@
               "page",
               "shape",
               "box",
+              "elementIds",
+              "anchorLost",
               "kind",
               "status",
               "authorKind",
@@ -785,6 +815,19 @@
                   "null"
                 ]
               },
+              "elementIds": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "kind": {
                 "type": "string",
                 "enum": [
@@ -806,6 +849,7 @@
               "y",
               "w",
               "h",
+              "elementIds",
               "kind",
               "body"
             ]
@@ -866,6 +910,19 @@
                   "null"
                 ]
               },
+              "elementIds": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "kind": {
                 "type": "string",
                 "enum": [
@@ -887,6 +944,7 @@
               "y",
               "w",
               "h",
+              "elementIds",
               "kind",
               "body"
             ]

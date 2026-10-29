@@ -134,11 +134,14 @@ export async function insertDocumentVersion(
  * published version at all.
  *
  * The previous version's BYTES ARE NOT TOUCHED. A superseded version is
- * history; objects go when the document is deleted.
+ * history; objects go when the document is deleted. `afterPublish` runs last,
+ * in the same transaction: what must move with the Fassung or not at all (a
+ * Skizze's marks, `lib/annotations/sketch-carry.ts`).
  */
 export async function insertPublishedVersion(
   values: NewDocumentVersionValues,
   expected?: PublishedVersionExpectation,
+  afterPublish?: (tx: DbTransaction, published: { version: DocumentVersion; superseded: DocumentVersion[] }) => Promise<void>,
 ): Promise<{ version: DocumentVersion; superseded: DocumentVersion[] }> {
   const db = getDb()
   return db.transaction(async (tx) => {
@@ -176,13 +179,8 @@ export async function insertPublishedVersion(
         contentHash: version.contentHash,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(documents.id, values.documentId),
-          eq(documents.organizationId, values.organizationId),
-        ),
-      )
-
+      .where(and(eq(documents.id, values.documentId), eq(documents.organizationId, values.organizationId)))
+    await afterPublish?.(tx, { version, superseded })
     return { version, superseded }
   }).catch((error: unknown) => {
     // A document deleted before this insert is refused by the version's

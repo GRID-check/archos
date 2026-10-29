@@ -52,6 +52,7 @@ import { fileableSketchSvg } from './sketch-svg'
 import { opensForbiddenDialog } from './sketch-guards'
 import type { SketchHelpers } from './sketch-sync'
 import type { SketchCanvasBridge, SketchCollab } from './use-sketch-room'
+import { SketchPins, type SketchPinsProps, type SketchViewApi } from './sketch-pins'
 
 type ExcalidrawApi = Parameters<NonNullable<React.ComponentProps<typeof Excalidraw>['excalidrawAPI']>>[0]
 
@@ -89,6 +90,8 @@ export interface SketchCanvasProps {
    * canvas is in view mode.
    */
   collab?: SketchCollab | null
+  /** A reopened Skizze's Anmerkungen, drawn over the canvas where their elements are (`sketch-pins.tsx`). */
+  pins?: Omit<SketchPinsProps, 'api'> | null
 }
 
 type SceneElement = ReturnType<ExcalidrawApi['getSceneElementsIncludingDeleted']>[number]
@@ -125,6 +128,7 @@ export default function SketchCanvas({
   onDirtyChange,
   readOnly = false,
   collab = null,
+  pins = null,
 }: SketchCanvasProps) {
   const apiRef = useRef<ExcalidrawApi | null>(null)
   const [api, setApi] = useState<ExcalidrawApi | null>(null)
@@ -186,7 +190,7 @@ export default function SketchCanvas({
   return (
     // The library sidebar's trigger opens a browser for libraries.excalidraw.com;
     // there is no prop for it in 0.18, so it is hidden here.
-    <div className="h-full w-full [&_.default-sidebar-trigger]:hidden!" data-testid="sketch-canvas">
+    <div className="relative h-full w-full [&_.default-sidebar-trigger]:hidden!" data-testid="sketch-canvas">
       <Excalidraw
         excalidrawAPI={(ready) => {
           apiRef.current = ready
@@ -253,6 +257,7 @@ export default function SketchCanvas({
           <MainMenu.DefaultItems.Help />
         </MainMenu>
       </Excalidraw>
+      {pins ? <SketchPins api={api as unknown as SketchViewApi | null} {...pins} /> : null}
     </div>
   )
 }

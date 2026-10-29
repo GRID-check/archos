@@ -16,14 +16,12 @@
 
 import { z } from 'zod'
 import { MAX_MENTIONS_PER_MESSAGE } from '@/lib/limits/catalog'
+import { boxPlaced, placed, ANNOTATION_SHAPES } from './place'
+export { ANNOTATION_SHAPES, MAX_ANCHOR_ELEMENTS, placeProblem, type AnnotationShape } from './place'
 
 /** Hinweis, Rückfrage, Mangel. */
 export const ANNOTATION_KINDS = ['hint', 'question', 'defect'] as const
 export type AnnotationKind = (typeof ANNOTATION_KINDS)[number]
-
-/** A point on the page, or a region of it. */
-export const ANNOTATION_SHAPES = ['point', 'region'] as const
-export type AnnotationShape = (typeof ANNOTATION_SHAPES)[number]
 
 /** Who set it. Piloti's marks are proposals until a person takes one over. */
 export const ANNOTATION_AUTHORS = ['person', 'piloti'] as const
@@ -85,45 +83,11 @@ const calendarDay = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)), 'not a calendar day')
 
-/** A share of the page, top-left origin: the `PageRegion` frame. */
-const unit = z.number().finite().min(0).max(1)
-
 const text = (max: number) =>
   z
     .string()
     .transform((value) => value.trim())
     .pipe(z.string().min(1).max(max))
-
-/** The place fields every mark carries: a page, and a point or a region on it. */
-const placeFields = {
-  page: z.number().int().min(1).max(100_000),
-  shape: z.enum(ANNOTATION_SHAPES),
-  x: unit,
-  y: unit,
-  w: unit.nullable().optional(),
-  h: unit.nullable().optional(),
-}
-
-type PlaceInput = {
-  shape: AnnotationShape
-  x: number
-  y: number
-  w?: number | null
-  h?: number | null
-}
-
-/** A point has no size; a region has one and stays on its page (the CHECK `…_region_on_page`). */
-export function placeProblem(place: PlaceInput): string | null {
-  if (place.shape === 'point') return place.w != null || place.h != null ? 'a point has no size' : null
-  if (!place.w || !place.h) return 'a region needs a size'
-  if (place.x + place.w > 1.000001 || place.y + place.h > 1.000001) return 'a region stays on its page'
-  return null
-}
-
-const checkPlace = (value: PlaceInput, context: z.RefinementCtx) => {
-  const problem = placeProblem(value)
-  if (problem) context.addIssue({ code: 'custom', message: problem })
-}
 
 /**
  * Someone a mark's text or a reply mentions: who was picked in the composer's
@@ -151,10 +115,8 @@ const content = {
   dueOn: calendarDay.nullable().optional(),
 }
 
-export const createAnnotationRequestSchema = z
-  .object({ ...placeFields, ...content, mentions: markMentionsSchema.optional() })
-  .strict()
-  .superRefine(checkPlace)
+/** A box on a page, or the elements of a Skizze it is about (`./place.ts`): never both. */
+export const createAnnotationRequestSchema = placed({ ...content, mentions: markMentionsSchema.optional() })
 export type CreateAnnotationRequest = z.input<typeof createAnnotationRequestSchema>
 
 /**
@@ -162,7 +124,10 @@ export type CreateAnnotationRequest = z.input<typeof createAnnotationRequestSche
  * date or a basis. `status` moves it: a person takes a proposal over (`open`)
  * or dismisses it, resolves an open one, or opens a closed one again. Moving
  * the mark is not offered: a mark set in the wrong place is deleted and set
- * again, so a position never changes under someone who read it.
+ * again, so a position never changes under someone who read it. The one
+ * exception is a mark pinned to elements of a Skizze: its referent is the
+ * elements, and a save of the Skizze moves its box with them
+ * (`./sketch-carry.ts`).
  */
 export const updateAnnotationRequestSchema = z
   .object({
@@ -323,6 +288,10 @@ export const annotationViewSchema = z.object({
   y: z.number(),
   w: z.number().nullable(),
   h: z.number().nullable(),
+  /** On a Skizze: the elements it is about, its box derived from them (migration 0192); null elsewhere. Absent from a server that predates it. */
+  elementIds: z.array(z.string()).nullable().optional(),
+  /** None of its elements is in the Skizze any more: it keeps its last box. Absent from a server that predates it. */
+  anchorLost: z.boolean().optional(),
   kind: z.enum(ANNOTATION_KINDS),
   body: z.string(),
   /** Whom its text mentions, as the server kept them; absent from a server that predates mentions. */
@@ -560,16 +529,12 @@ export function annotationBox(annotation: Pick<AnnotationView, 'x' | 'y' | 'w' |
  * Born a proposal (`propose`), or open when the asker asked for exactly this
  * mark (`create`).
  */
-export const annotationProposalSchema = z
-  .object({
-    ...placeFields,
-    kind: content.kind,
-    body: content.body,
-    basis: content.basis,
-  })
-  .strict()
-  .superRefine(checkPlace)
+const proposalContent = { kind: content.kind, body: content.body, basis: content.basis }
+export const annotationProposalSchema = placed(proposalContent)
 export type AnnotationProposal = z.input<typeof annotationProposalSchema>
+/** A proposal on a box of a page: what a revision notice proposes on a PDF. */
+export const annotationBoxProposalSchema = boxPlaced(proposalContent)
+export type AnnotationBoxProposal = z.input<typeof annotationBoxProposalSchema>
 
 /** A pointer's label is a few words; a highlight's one line. */
 export const MAX_POINT_LABEL = 80
@@ -691,6 +656,9 @@ export const internalAnnotationSchema = z.object({
   page: z.number().int(),
   shape: z.enum(ANNOTATION_SHAPES),
   box: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  /** On a sketch: the element ids it is pinned to, and whether all of them were deleted; null and false elsewhere. */
+  elementIds: z.array(z.string()).nullable(),
+  anchorLost: z.boolean(),
   kind: z.enum(ANNOTATION_KINDS),
   status: z.enum(ANNOTATION_STATUSES),
   authorKind: z.enum(ANNOTATION_AUTHORS),
@@ -727,6 +695,7 @@ const internalSetMarkSchema = z.object({
   y: z.number(),
   w: z.number().nullable(),
   h: z.number().nullable(),
+  elementIds: z.array(z.string()).nullable(),
   kind: z.enum(ANNOTATION_KINDS),
   body: z.string(),
 })

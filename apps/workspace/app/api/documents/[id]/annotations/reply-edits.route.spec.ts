@@ -190,6 +190,8 @@ const MARK: AnnotationRecord = {
   delegatedBy: null,
   delegatedAt: null,
   carriedFromId: null,
+  anchorElementIds: null,
+  anchorLostAt: null,
   revisionNumber: 2,
   replies: [replyRow()],
 }

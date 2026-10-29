@@ -33,6 +33,7 @@ import { emitInboxItems } from '@/lib/inbox/service'
 import { recordRevisionNoticeScore } from '@/lib/langfuse/revision-notice-score'
 import { noticeRevision, runRevisionNotice } from './job'
 import { revisionNoticeId, revisionNoticeMessageId } from './notice'
+import type { AnnotationBoxProposal } from '@/lib/annotations/types'
 
 const ORG = 'org-1'
 const NEWER_ID = '00000000-0000-4000-8000-00000000000b'
@@ -215,7 +216,7 @@ describe('noticeRevision', () => {
   it('on a retry after the marks were written, proposes nothing again and still writes the message', async () => {
     await noticeRevision(ORG, payload)
     const proposed = vi.mocked(runAgentAnnotationRequest).mock.calls[0][2]
-    const written = proposed.op === 'propose' ? proposed.proposals : []
+    const written = (proposed.op === 'propose' ? proposed.proposals : []) as AnnotationBoxProposal[]
     vi.mocked(runAgentAnnotationRequest).mockClear()
     vi.mocked(insertMessages).mockClear()
     vi.mocked(listDocumentAnnotations).mockResolvedValue(
@@ -233,7 +234,7 @@ describe('noticeRevision', () => {
   it('on a retry after the marks were written, still tells the person and scores the marks it wrote', async () => {
     await noticeRevision(ORG, payload)
     const proposed = vi.mocked(runAgentAnnotationRequest).mock.calls[0][2]
-    const written = proposed.op === 'propose' ? proposed.proposals : []
+    const written = (proposed.op === 'propose' ? proposed.proposals : []) as AnnotationBoxProposal[]
     vi.mocked(runAgentAnnotationRequest).mockClear()
     vi.mocked(emitInboxItems).mockClear()
     vi.mocked(recordRevisionNoticeScore).mockClear()

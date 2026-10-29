@@ -75,6 +75,7 @@ import { documentDisplayName } from '@/lib/documents/display-name'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { replacingDocumentOf } from './carry'
+import { sketchOfDocument, toMark } from './sketch-place'
 import {
   AlreadyCarriedError,
   AnnotationLimitReachedError,
@@ -91,7 +92,6 @@ import {
   type AnnotationChanges,
   type AnnotationRecord,
   type CarryLink,
-  type NewAnnotationValues,
 } from './repository'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
@@ -266,6 +266,8 @@ function toView(
     y: record.y,
     w: record.w,
     h: record.h,
+    elementIds: record.anchorElementIds ?? null,
+    anchorLost: record.anchorLostAt != null,
     kind: record.kind,
     body: record.body,
     mentions: record.mentions,
@@ -372,7 +374,8 @@ async function carryWayOf(
  * place, one already on the current Fassung.
  */
 function carryTargetOf(record: AnnotationRecord, doc: Document, way: CarryWay | null): CarryTargetView | null {
-  if (!way || record.status !== 'open') return null
+  // A mark on elements of a Skizze goes on with every save by itself (`./sketch-carry.ts`).
+  if (!way || record.status !== 'open' || record.anchorElementIds) return null
   if (way.across) return record.delegatedBy ? null : way.to
   return (record.versionId ?? null) === (doc.publishedVersionId ?? null) ? null : way.to
 }
@@ -510,34 +513,6 @@ const limitReached = (error: unknown): never => {
   throw error
 }
 
-const toMark = (input: {
-  page: number
-  shape: NewAnnotationValues['shape']
-  x: number
-  y: number
-  w?: number | null
-  h?: number | null
-  kind: NewAnnotationValues['kind']
-  body: string
-  mentions?: MarkMention[]
-  basis?: string | null
-  assigneeUserId?: string | null
-  dueOn?: string | null
-}): NewAnnotationValues => ({
-  page: input.page,
-  shape: input.shape,
-  x: input.x,
-  y: input.y,
-  w: input.shape === 'region' ? (input.w ?? null) : null,
-  h: input.shape === 'region' ? (input.h ?? null) : null,
-  kind: input.kind,
-  body: input.body,
-  mentions: input.mentions ?? [],
-  basis: input.basis ?? null,
-  assigneeUserId: input.assigneeUserId ?? null,
-  dueOn: input.dueOn ?? null,
-})
-
 /** Every Anmerkung on a document this session may read, live ones first. */
 export async function listAnnotations(session: AuthorizedSession, documentId: string): Promise<AnnotationListResponse> {
   const doc = await getAccessibleDocument(session, documentId, 'read')
@@ -589,13 +564,14 @@ export async function createAnnotation(
   if (parsed.assigneeUserId) await requireAssignable(session, doc, parsed.assigneeUserId)
   const mentions = await keepMentions(session, doc, parsed.body, parsed.mentions ?? [], { piloti: false })
   const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId), false)
+  const sketch = await sketchOfDocument(doc, [parsed])
   const [row] = await insertDocumentAnnotations({
     organizationId: session.organizationId,
     documentId: doc.id,
     versionId: doc.publishedVersionId ?? null,
     authorKind: 'person',
     createdBy: session.userId,
-    marks: [toMark({ ...parsed, mentions })],
+    marks: [toMark({ ...parsed, mentions }, sketch)],
   }).catch(limitReached)
   announce(session, doc.id, [row.id], 'created', { ...actor, kind: 'person' })
   markEvent(session, 'annotation_created', doc.id, { author_kind: 'person', kind: row.kind, status: row.status })
@@ -641,6 +617,7 @@ async function insertAgentMarks(
   }
   const parsed = proposals.map((proposal) => annotationProposalSchema.parse(proposal))
   const doc = await requireWritableDocument(session, documentId)
+  const sketch = await sketchOfDocument(doc, parsed)
   const rows = await insertDocumentAnnotations({
     organizationId: session.organizationId,
     documentId: doc.id,
@@ -648,7 +625,7 @@ async function insertAgentMarks(
     authorKind: 'piloti',
     createdBy: session.userId,
     acceptedBy,
-    marks: parsed.map(toMark),
+    marks: parsed.map((mark) => toMark(mark, sketch)),
   }).catch(limitReached)
   const ids = rows.map((row) => row.id)
   announce(session, doc.id, ids, 'created', AGENT)
@@ -1656,6 +1633,8 @@ export async function listAnnotationsForAgent(
       page: annotation.page,
       shape: annotation.shape,
       box: annotationBox(annotation),
+      elementIds: annotation.elementIds ?? null,
+      anchorLost: annotation.anchorLost ?? false,
       kind: annotation.kind,
       status: annotation.status,
       authorKind: annotation.authorKind,

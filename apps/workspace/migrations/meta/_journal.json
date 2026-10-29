@@ -1345,6 +1345,13 @@
       "when": 1792760000000,
       "tag": "0191_brand_free_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1792770000000,
+      "tag": "0192_annotation_element_anchor",
+      "breakpoints": true
     }
   ]
 }

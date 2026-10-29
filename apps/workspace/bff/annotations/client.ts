@@ -108,12 +108,25 @@ export function getAnnotation(
   return request(run, annotationPath(documentId, annotationId), { method: 'GET' }, one)
 }
 
+/**
+ * A mark on elements of a Skizze goes without a box: the server derives it from
+ * the elements (`./sketch-place.ts`), and a box beside them is refused. A draft
+ * on the canvas carries both, the box to draw it with until it is saved.
+ */
+function placeOnWire(input: CreateAnnotationRequest): CreateAnnotationRequest {
+  if (!('elementIds' in input) || !input.elementIds) return input
+  const { page: _page, shape: _shape, x: _x, y: _y, w: _w, h: _h, ...rest } = input as typeof input & Partial<ReviewBox>
+  return rest
+}
+
+type ReviewBox = { page: number; shape: string; x: number; y: number; w: number | null; h: number | null }
+
 export function createAnnotation(
   documentId: string,
   input: CreateAnnotationRequest,
   { peerId, run = defaultFetch }: WriteOptions = {}
 ): Promise<AnnotationView> {
-  return request(run, annotationsPath(documentId), json('POST', input, peerId), one)
+  return request(run, annotationsPath(documentId), json('POST', placeOnWire(input), peerId), one)
 }
 
 export function updateAnnotation(

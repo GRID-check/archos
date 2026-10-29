@@ -21,3 +21,7 @@ export {
   type RoomPeerState,
   type RoomTransport,
 } from './hooks/use-document-room'
+// The review's own pieces, for a Skizze's marks drawn over its live canvas (`features/diagrams/sketch/sketch-pins.tsx`).
+export type { DocumentReview, ReviewDraft } from './hooks/use-document-review'
+export { ReviewPageLayer } from './components/review/review-page-layer'
+export { DraftCard, ThreadCard } from './components/review/thread-card'

@@ -26,7 +26,14 @@ export function mayBeFiledSketch(contentType: string | null, authoredBy: string 
   return contentType === 'image/svg+xml' && authoredBy === 'agent'
 }
 
-export function SketchReviseAction({ documentId, contentType, authoredBy, onChanged }: PreviewDocumentActionProps) {
+export function SketchReviseAction({
+  documentId,
+  contentType,
+  authoredBy,
+  onChanged,
+  review = null,
+  reviewRequest = null,
+}: PreviewDocumentActionProps) {
   const t = useTranslations(diagramsCopy)
   const [sketch, setSketch] = useState<SketchForEditing | null>(null)
   const [open, setOpen] = useState(false)
@@ -42,11 +49,28 @@ export function SketchReviseAction({ documentId, contentType, authoredBy, onChan
   }, [candidate, documentId, reads])
 
   const onSaved = useCallback(() => onChanged(), [onChanged])
-  const onOpenChange = useCallback((next: boolean) => {
-    setOpen(next)
-    // The next opening starts from the Fassung just saved, never from the one read before it.
-    if (!next) setReads((count) => count + 1)
-  }, [])
+  // A Skizze's review is its editor: a pin or a link (`?review=1&mark=`) opens it, at that mark.
+  const requested = reviewRequest?.open ?? false
+  const requestedMark = reviewRequest?.annotationId ?? null
+  const selectMark = review?.select
+  const hasSketch = sketch !== null
+  useEffect(() => {
+    if (requested && hasSketch) setOpen(true)
+  }, [requested, hasSketch])
+  useEffect(() => {
+    if (open && requestedMark) selectMark?.(requestedMark)
+  }, [open, requestedMark, selectMark])
+  const closeRequest = reviewRequest?.onOpenChange
+  const onOpenChange = useCallback(
+    (next: boolean) => {
+      setOpen(next)
+      // The next opening starts from the Fassung just saved, never from the one read before it.
+      if (next) return
+      setReads((count) => count + 1)
+      if (requested) closeRequest?.(false)
+    },
+    [requested, closeRequest]
+  )
 
   if (!sketch) return null
   return (
@@ -73,6 +97,7 @@ export function SketchReviseAction({ documentId, contentType, authoredBy, onChan
           scene: sketch.scene,
           canWrite: sketch.canWrite,
           onSaved,
+          review,
         }}
       />
     </>

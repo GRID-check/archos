@@ -95,6 +95,24 @@
     "step": null
    }
   },
+  "markSketchElements": {
+   "summary": "Pin a mark to elements of a sketch, so it follows them from one saved version to the next",
+   "tool": "canvas__mark",
+   "annotationOp": null,
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/diagrams/sketch/sketch-pins.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/cards/components/CanvasActivityCard.tsx",
+    "card": "canvas_activity",
+    "step": null
+   }
+  },
   "updateMark": {
    "summary": "Change a mark: status, assignee, due date, kind, text",
    "tool": "canvas__update",

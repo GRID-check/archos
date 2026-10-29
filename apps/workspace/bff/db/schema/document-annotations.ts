@@ -16,6 +16,7 @@ import {
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { MAX_MENTIONS_PER_MESSAGE } from '@/lib/limits/catalog'
+import { MAX_ANCHOR_ELEMENTS } from '@/lib/annotations/place'
 import {
   ANNOTATION_AUTHORS,
   ANNOTATION_KINDS,
@@ -102,6 +103,15 @@ export const documentAnnotations = pgTable(
      * is gone.
      */
     carriedFromId: uuid('carried_from_id'),
+    /**
+     * On a Skizze: the Excalidraw element ids the mark is about (migration
+     * 0192). Its box is derived from them on the server, and drawn again from
+     * them when the Skizze is saved as its next Fassung
+     * (`lib/annotations/sketch-carry.ts`).
+     */
+    anchorElementIds: text('anchor_element_ids').array(),
+    /** When the last of its elements was deleted by a save; it keeps its last box (migration 0192). */
+    anchorLostAt: timestamp('anchor_lost_at', { withTimezone: true }),
   },
   (table) => ({
     documentFk: foreignKey({
@@ -176,6 +186,18 @@ export const documentAnnotations = pgTable(
       sql`${table.delegatedBy} IS NULL OR ${table.status} = 'open'`
     ),
     mentionsBounded: check('document_annotations_mentions_bounded', mentionsBounded(table.mentions)),
+    anchorElementsBounded: check(
+      'document_annotations_anchor_elements_bounded',
+      sql`${table.anchorElementIds} IS NULL OR (cardinality(${table.anchorElementIds}) BETWEEN 1 AND ${sql.raw(String(MAX_ANCHOR_ELEMENTS))} AND array_position(${table.anchorElementIds}, NULL) IS NULL)`
+    ),
+    anchorIsRegionOnSheet: check(
+      'document_annotations_anchor_is_region_on_sheet',
+      sql`${table.anchorElementIds} IS NULL OR (${table.page} = 1 AND ${table.shape} = 'region')`
+    ),
+    anchorLostNeedsAnchor: check(
+      'document_annotations_anchor_lost_needs_anchor',
+      sql`${table.anchorLostAt} IS NULL OR ${table.anchorElementIds} IS NOT NULL`
+    ),
   })
 )
 

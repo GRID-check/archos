@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { MAX_PROPOSALS_PER_CALL, annotationProposalSchema } from '@/lib/annotations/types'
+import { MAX_PROPOSALS_PER_CALL, annotationBoxProposalSchema } from '@/lib/annotations/types'
 import {
   DEFAULT_MAX_PAGES,
   markBasis,
@@ -76,7 +76,7 @@ describe('proposalsFrom', () => {
     )
     expect(proposal.basis).toContain('Bildvergleich mit „Grundriss EG Index B“, S. 2')
     expect(proposal.basis).toContain('nicht geprüft')
-    expect(annotationProposalSchema.safeParse(proposal).success).toBe(true)
+    expect(annotationBoxProposalSchema.safeParse(proposal).success).toBe(true)
   })
 
   it('uses the box’s label alone when the sentences do not pair with the boxes', () => {
