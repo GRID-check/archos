@@ -139,7 +139,9 @@ def test_the_website_is_built_for_the_domain_prod_serves(mod, repo):
     assert all(mod.build_args(image) == {} for image in mod.IMAGES if image.name != "web")
 
     before = mod.hashes("HEAD", week=WEEK)
-    write(repo, {"deploy/pulumi/Pulumi.prod.yaml": "config:\n  proj:baseDomain: live.example.org\n  proj:replicas: 3\n"})
+    write(
+        repo, {"deploy/pulumi/Pulumi.prod.yaml": "config:\n  proj:baseDomain: live.example.org\n  proj:replicas: 3\n"}
+    )
     assert mod.hashes("HEAD", week=WEEK) == before, "another prod key does not rebuild the website"
 
     write(repo, {"deploy/pulumi/Pulumi.prod.yaml": "config:\n  proj:baseDomain: moved.example.org\n"})

@@ -17,6 +17,7 @@ import type {
   Suggestion,
   SuggestionGroup,
 } from '@/lib/project-intake/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const FIXTURE_PROJECT_ID = '00000000-0000-4000-8000-0000000000a1'
 
@@ -183,7 +184,7 @@ export const OPEN_PHASE: Need = {
     { token: 'einreichplanung', label: 'Einreichplanung' },
     { token: 'ausfuehrungsplanung', label: 'Ausführungsplanung' },
   ],
-  why: 'Steuert die Erwartung an die Antwortgüte: in frühen Phasen bietet Piloti Schätzwerte an.',
+  why: 'Steuert die Erwartung an die Antwortgüte: in frühen Phasen bietet ' + PRODUCT_NAME + ' Schätzwerte an.',
   foundIn: ['Plankopf', 'Baubeschreibung'],
   decisive: false,
   state: 'open',

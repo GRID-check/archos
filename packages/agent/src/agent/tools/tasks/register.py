@@ -55,6 +55,7 @@ from typing import get_args
 from agent import project_context
 from agent.cards.workspace_cards import TaskKind
 from agent.common.bff_http import SignedEnvelope
+from agent.common.brand import PRODUCT_NAME
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -159,7 +160,7 @@ async def _post(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, 
 #: thing the model gets wrong — „ich habe den Einreichcheck gemacht" about work
 #: that has been QUEUED — because that sentence is the reason the tool exists.
 _QUEUED = (
-    "The task is created and running; it is NOT done. Say in one sentence that Piloti is "
+    "The task is created and running; it is NOT done. Say in one sentence that you are "
     "taking care of it and will get back — do not claim the result is already available."
 )
 
@@ -173,9 +174,9 @@ _SCHEDULED = (
 )
 
 _CREATE_TASK_DESCRIPTION = (
-    "Creates a task that Piloti carries out on its own after this conversation, and reports back "
+    "Creates a task that you carry out on your own after this conversation, reporting back "
     "when it is done. Call it when the user asks for work that takes longer than this "
-    "answer („mach den Einreichcheck bis Freitag“, „@Piloti prüf das“, „schreib mir bis Montag den "
+    "answer („mach den Einreichcheck bis Freitag“, „@" + PRODUCT_NAME + " prüf das“, „schreib mir bis Montag den "
     "Aktenvermerk“) — not for a question that can be answered now. "
     "`kind` is one of " + _KIND_LIST + ": `compliance_check` is the norm check of a document "
     "against the OIB guidelines, `submission_check` checks the completeness of the "

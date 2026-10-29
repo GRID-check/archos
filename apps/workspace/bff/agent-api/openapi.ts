@@ -20,6 +20,7 @@ import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
 import { isExposedTo } from './exposure'
 import { MCP_PATH } from './mcp-config'
 import { type AgentOperation, annotationsOf, pathParams } from './operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export type OpenApiDocument = Record<string, unknown>
 
@@ -255,13 +256,13 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     jsonSchemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     info: {
-      title: 'Piloti workspace API',
+      title: PRODUCT_NAME + ' workspace API',
       version: '1',
       description:
-        'Piloti is the workspace for architects: a planning office runs its projects, documents and ' +
-        'processes in it, and Piloti, the agent, works in that office as a colleague. This document ' +
+        PRODUCT_NAME + ' is the workspace for architects: a planning office runs its projects, documents and ' +
+        'processes in it, and ' + PRODUCT_NAME + ', the agent, works in that office as a colleague. This document ' +
         'describes what an agent or a script can do there, acting as a signed-in person: every ' +
-        'operation is a route the Piloti app itself calls, under the same permissions. These paths ' +
+        'operation is a route the ' + PRODUCT_NAME + ' app itself calls, under the same permissions. These paths ' +
         'accept the app\u2019s signed-in session; an agent calls every operation as an MCP tool at ' +
         `${MCP_PATH}, by the same name as its operationId, with an OAuth token.`,
     },
@@ -276,7 +277,7 @@ export function buildOpenApiDocument(
           in: 'cookie',
           name: SESSION_COOKIE,
           description:
-            'The Piloti app\u2019s signed-in session (WorkOS AuthKit), as a browser holds it. A session too large for one ' +
+            'The ' + PRODUCT_NAME + ' app\u2019s signed-in session (WorkOS AuthKit), as a browser holds it. A session too large for one ' +
             `cookie is split into ${SESSION_COOKIE}.0, ${SESSION_COOKIE}.1 and so on; send every one. A bearer token is not accepted ` +
             `here: an agent holds an OAuth token for the MCP server at ${MCP_PATH} and calls the operations there.`,
         },

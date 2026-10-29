@@ -11,6 +11,7 @@ import pytest
 
 from agent.citations.entries import SourceEntry
 from agent.citations.wire import source_entry_to_wire
+from agent.common.brand import PRODUCT_NAME
 from agent.common.source_kinds import AGENT_AUTHORED_LANE
 from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 from agent.common.source_kinds import DEFAULT_SOURCE_KIND
@@ -77,7 +78,7 @@ class TestAgentAuthoredLane:
     def test_the_label_names_no_approver(self):
         """The approver is appended by whoever renders the line, from the
         provenance data — the taxonomy is not a sentence with a hole in it."""
-        assert AGENT_AUTHORED_LANE_LABEL == "Piloti-Dokument"
+        assert AGENT_AUTHORED_LANE_LABEL == f"{PRODUCT_NAME}-Dokument"
         assert "{" not in AGENT_AUTHORED_LANE_LABEL
 
 

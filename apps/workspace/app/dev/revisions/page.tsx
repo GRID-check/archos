@@ -37,6 +37,7 @@ import type { FileItem } from '@/features/documents/file-types'
 import { EMPTY_REVISION_LINKS } from '@/lib/documents/revision-links'
 import type { DocumentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import type { DocumentVersionListResponse, DocumentVersionState, DocumentVersionView } from '@/lib/documents/lifecycle-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const ANNA = 'user_anna'
 const MARKUS = 'user_markus'
@@ -180,7 +181,7 @@ const BLOCKS: readonly Block[] = [
   {
     id: 'plain',
     title: 'Eine Datei, einmal hochgeladen',
-    note: 'Kein Statuswort, kein Freigabe-Balken: Niemand hat sie freigegeben, sie ist einfach hochgeladen. Piloti antwortet aus ihr.',
+    note: 'Kein Statuswort, kein Freigabe-Balken: Niemand hat sie freigegeben, sie ist einfach hochgeladen. ' + PRODUCT_NAME + ' antwortet aus ihr.',
     render: () => (
       <DocumentRevisions
         file={file('doc_plain', 'Aktenvermerk_Fluchtwege.pdf')}
@@ -242,7 +243,7 @@ const BLOCKS: readonly Block[] = [
   {
     id: 'review',
     title: 'In Prüfung, Fassung 1 bleibt veröffentlicht',
-    note: 'Der Kopf spricht über die neueste Fassung und sagt in einem Satz, dass Piloti weiter aus Fassung 1 antwortet. Die Runde ging an Sabine Gruber.',
+    note: 'Der Kopf spricht über die neueste Fassung und sagt in einem Satz, dass ' + PRODUCT_NAME + ' weiter aus Fassung 1 antwortet. Die Runde ging an Sabine Gruber.',
     render: () => (
       <DocumentRevisions
         file={file('doc_review', 'Brandschutzkonzept.md', { contentType: 'text/markdown', authoredBy: 'agent', versionCount: 2 })}
@@ -320,7 +321,7 @@ const BLOCKS: readonly Block[] = [
   },
   {
     id: 'suggestion',
-    title: 'Piloti schlägt eine Verknüpfung vor',
+    title: PRODUCT_NAME + ' schlägt eine Verknüpfung vor',
     note: 'Öffnet sich von selbst, mit der einen Frage. Nichts ändert sich für Antworten, bis jemand bestätigt.',
     render: () => (
       <DocumentRevisions

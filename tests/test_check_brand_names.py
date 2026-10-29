@@ -64,7 +64,7 @@ def test_a_brand_word_in_a_name_is_a_hit(checker, token, hits):
 
 @pytest.mark.parametrize(
     "token",
-    ["Piloti", "Grid", "grid", "grid-cols-2", "inline-grid", "gridTemplateColumns", "FileGrid", "document_grid",
+    ["Piloti", "Grid", "ARCHOS", "Archos", "grid", "grid-cols-2", "inline-grid", "gridTemplateColumns", "FileGrid", "document_grid",
      "subgrid", "app.piloti.at"],
 )  # fmt: skip
 def test_prose_css_the_layout_noun_and_host_names_are_not(checker, token):

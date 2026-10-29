@@ -42,6 +42,7 @@ import {
 import { auditAppliedChanges, auditUndoneChange } from './audit'
 import { planUndo, type UndoPlan } from './undo'
 import type { ChangeState, AgentChangeObject, AgentChangeOp, AgentChangeView, UndoRefusal } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // ---------------------------------------------------------------------------
 // Recording
@@ -233,7 +234,7 @@ export async function listTurnChanges(
 // ---------------------------------------------------------------------------
 
 const REFUSAL_MESSAGES: Record<UndoRefusal, string> = {
-  'moved-on': 'This is no longer as Piloti left it, so undoing it would undo somebody else’s change.',
+  'moved-on': 'This is no longer as ' + PRODUCT_NAME + ' left it, so undoing it would undo somebody else’s change.',
   'already-undone': 'Somebody undid this already.',
 }
 

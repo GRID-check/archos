@@ -40,6 +40,7 @@ import { allowedOriginHostnames } from '@/lib/agent-api/mcp-config'
 import { errorResponse } from '@/lib/api/handler'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,7 +70,7 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
   }
 
   const version = protocolVersionOf(request)
-  if (!version) return jsonRpcErrorResponse(VERSION_NOT_SUPPORTED, 'Piloti speaks A2A 1.0 and 0.3.')
+  if (!version) return jsonRpcErrorResponse(VERSION_NOT_SUPPORTED, PRODUCT_NAME + ' speaks A2A 1.0 and 0.3.')
 
   let body: string
   try {

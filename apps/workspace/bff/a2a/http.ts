@@ -5,10 +5,11 @@
  */
 
 import { A2A_VERSION_HEADER, formatSSEEvent, SSE_HEADERS } from '@a2a-js/sdk'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Why Piloti's own door is refused at `/api/a2a`, in words its model can relay (the recursion lock). */
 export const AGENT_DOOR_REFUSAL =
-  'Piloti cannot ask Piloti: the A2A door is for other agents, and a turn may not start another.'
+  PRODUCT_NAME + ' cannot ask ' + PRODUCT_NAME + ': the A2A door is for other agents, and a turn may not start another.'
 
 /** JSON-RPC error codes the route answers itself (A2A specification 5.4, JSON-RPC 2.0). */
 export const PARSE_ERROR = -32700

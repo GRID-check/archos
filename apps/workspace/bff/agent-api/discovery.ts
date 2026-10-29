@@ -59,6 +59,7 @@ import {
 import type { AgentPrincipal } from './principal'
 import { readGateFor, sharedConversationReadRefusal } from './read-gate'
 import { type McpCallContext, recordOperationCalled, recordOperationMissing } from './telemetry'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * Longest text a result carries; beyond it the call must be narrowed. The one
@@ -165,7 +166,7 @@ function binaryResult(opName: string, file: BinaryBody): CallToolResult {
             `The file (${label}${mimeType}, ${sizeText(file.bytes)}) is over the ${sizeText(MAX_INLINE_BYTES)} ` +
             'limit for sending a file in a tool result, so it was not sent. ' +
             'For a document, read its text in pages with the passage reader (named by its file name), or call document-download for a ' +
-            'time-limited link the person can open. Otherwise ask the person to download it in Piloti.',
+            'time-limited link the person can open. Otherwise ask the person to download it in ' + PRODUCT_NAME + '.',
         },
       ],
     }
@@ -587,7 +588,7 @@ function searchInput(principal: AgentPrincipal) {
  */
 export const SENSITIVE_MATCH_NOTE =
   'An operation that changes who may do what, a credential or a security control matches this request, and it ' +
-  'is not offered to you: none of the operations listed does that. Tell the person to make that change in Piloti themselves.'
+  'is not offered to you: none of the operations listed does that. Tell the person to make that change in ' + PRODUCT_NAME + ' themselves.'
 
 function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: string | undefined, best: number): boolean {
   const score = scorerFor(ctx, query)
@@ -626,7 +627,7 @@ export function nothingMatched(ctx: McpCallContext): string {
 const CONTENT_READERS = [
   { name: 'knowledge-search', what: 'quotable passages from the project, the office and the building-law corpus' },
   { name: 'law-lookup', what: 'a provision of Austrian law' },
-  { name: 'agent-ask-create', what: 'Piloti answers it with sources' },
+  { name: 'agent-ask-create', what: PRODUCT_NAME + ' answers it with sources' },
 ] as const
 
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
@@ -784,14 +785,14 @@ export type MetaToolName = 'search-operations' | 'describe-operation' | 'call-op
 const SEARCH_SCOPE: Readonly<Record<AgentDoor, { area: string; example: string; operation: string }>> = {
   office: {
     area:
-      'the Piloti workspace (projects, members, documents and their versions, review, the inbox, tasks, building-law ' +
+      'the ' + PRODUCT_NAME + ' workspace (projects, members, documents and their versions, review, the inbox, tasks, building-law ' +
       'knowledge, BIM models)',
     example: 'add project member',
     operation: 'project-list',
   },
   platform: {
     area:
-      'the Piloti platform console (organizations and their limits, fleet-wide models, reasoning, retrieval and pricing, ' +
+      'the ' + PRODUCT_NAME + ' platform console (organizations and their limits, fleet-wide models, reasoning, retrieval and pricing, ' +
       'the base knowledge corpus, platform skills, lessons, feedback and quality views, maintenance)',
     example: 'set default models',
     operation: 'platform-overview-get',
@@ -883,7 +884,7 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor' | 'door'>):
       description:
         'Count a gap: the person wants something done in the workspace and search-operations found no operation for it with ' +
         'two different phrasings. Also for friction with an operation you did find: set category to tool_description, ' +
-        'input_schema, error_message or result_shape when one was confusing. The Piloti team sees that a report was made ' +
+        'input_schema, error_message or result_shape when one was confusing. The ' + PRODUCT_NAME + ' team sees that a report was made ' +
         'and its category, never your words, so describe the goal or the confusion without names or document contents. ' +
         'For a gap, then tell the person it cannot be done here yet.',
       inputSchema: {

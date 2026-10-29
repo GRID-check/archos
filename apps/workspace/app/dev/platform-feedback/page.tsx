@@ -44,6 +44,7 @@ import {
   type ProductFeedbackTicketView,
   type SupportTicketStatus,
 } from '@/lib/product-feedback/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const now = Date.now()
 const ago = (minutes: number): string => new Date(now - minutes * 60_000).toISOString()
@@ -138,7 +139,7 @@ const SEED: ProductFeedbackReportView[] = [
     ticket: ticket('1e4a3f5b-4a7d-4fab-8c6e-5d9a1b3f7e44', 37, 'open', { assignee: YOU, lastActivity: 60 * 20 }),
     posthogPersonUrl: person('u4'),
     message:
-      'Kann ich eigene Normen (z. B. ÖNORM B 1600) hochladen, damit Piloti sie berücksichtigt?',
+      'Kann ich eigene Normen (z. B. ÖNORM B 1600) hochladen, damit ' + PRODUCT_NAME + ' sie berücksichtigt?',
     pagePath: '/app/office-shelf',
     context: CONTEXT,
     allowContact: true,

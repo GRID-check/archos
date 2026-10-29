@@ -1,3 +1,4 @@
+<!-- history: 2026-10-28 -->
 # The public site: who it is for, what it ranks for, what it still lacks
 
 How the public website (`apps/website`) is meant to convert and be found. **Current plan,

@@ -89,6 +89,7 @@ import {
 import { CONVERSATION_PAGE_MAX, MESSAGE_PAGE_MAX } from './conversation-wire'
 import { parseMessageIncludes, toMessageView, type MessageListResponse } from './message-view'
 import { resolvePeople } from '@/lib/sharing/directory'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * Bound the naming call so an unreachable backend rejects promptly instead of
@@ -1189,7 +1190,7 @@ export async function createConversationMessages(
       await requireProjectAccess(session, access.container.projectId, CHAT_PERMISSIONS)
     } catch {
       throw new ForbiddenError(
-        'You do not have permission to ask Piloti in this project.'
+        'You do not have permission to ask ' + PRODUCT_NAME + ' in this project.'
       )
     }
   }

@@ -21,6 +21,8 @@ ALLOWED = (
     "apps/agent-host/entrypoint.py",
     "tests/test_entrypoint_roles.py",
     "tests/test_no_legacy_env_names.py",
+    # The prose check's test plants identifiers to show it leaves them to the identifier check.
+    "tests/test_check_brand_prose.py",
     "apps/workspace/scripts/legacy-env-names.cjs",
     "apps/workspace/scripts/legacy-env-names.spec.mjs",
     "deploy/compose/docker-compose.yaml",
@@ -29,8 +31,6 @@ ALLOWED = (
     "docs/adr/0145-the-repository-is-laid-out-by-job.md",
     "docs/adr/0079-background-work-runs-on-one-claim-substrate.md",
     "releasenotes/notes/",
-    # Its own fixtures prove identifiers are not its business (a GRID_/AIQ_ name among them).
-    "tests/test_check_brand_prose.py",
 )
 
 OLD_NAME = re.compile(r"\bAIQ_")
@@ -45,10 +45,10 @@ PROSE = (".md", ".mdx")
 GRID_ALLOWED = (
     "scripts/check_brand_names.py",
     "tests/test_check_brand_names.py",
+    "tests/test_check_brand_prose.py",
     "tests/.test_durations",
     "apps/workspace/migrations/",
     "apps/website/src/data/",
-    "tests/test_check_brand_prose.py",
 )
 
 

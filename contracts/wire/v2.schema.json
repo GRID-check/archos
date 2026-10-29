@@ -2556,7 +2556,7 @@
             }
           ],
           "default": null,
-          "description": "A box drawn on the canvas while Piloti works: what the note is about."
+          "description": "A box drawn on the canvas while the agent works: what the note is about."
         },
         "steer_id": {
           "description": "Idempotency key and ack correlation.",
@@ -3424,7 +3424,7 @@
             }
           ],
           "default": null,
-          "description": "Which part of Piloti's filesystem a file tool reached (ADR-0133): a mount, or `estate` for a call over every mount the person may see. Absent on every other tool, and on a file tool of a turn stored before the field existed, which only ever reached the drafts.",
+          "description": "Which part of the agent's filesystem a file tool reached (ADR-0133): a mount, or `estate` for a call over every mount the person may see. Absent on every other tool, and on a file tool of a turn stored before the field existed, which only ever reached the drafts.",
           "title": "Mount"
         },
         "scope": {
@@ -3855,7 +3855,7 @@
     },
     "TurnTrigger": {
       "additionalProperties": false,
-      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF, never by a browser: the person whose act is the event holds\nthe socket (their pinned session), and the turn answers where the event\nhappened. For a wake, ``event_id`` is the reply (or assignment) id the job\nwas enqueued for and ``annotation_id`` the Anmerkung it happened on.\n``agent_consult`` is a question another agent asked on the person's behalf\n(ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.\n``new_document`` is a document that just finished indexing, which Piloti\nchecks against the project's other documents unasked (ADR-0130):\n``event_id`` is the check's id, and there is no Anmerkung.",
+      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF, never by a browser: the person whose act is the event holds\nthe socket (their pinned session), and the turn answers where the event\nhappened. For a wake, ``event_id`` is the reply (or assignment) id the job\nwas enqueued for and ``annotation_id`` the Anmerkung it happened on.\n``agent_consult`` is a question another agent asked on the person's behalf\n(ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.\n``new_document`` is a document that just finished indexing, which the agent\nchecks against the project's other documents unasked (ADR-0130):\n``event_id`` is the check's id, and there is no Anmerkung.",
       "properties": {
         "annotation_id": {
           "anyOf": [
@@ -4111,7 +4111,7 @@
             }
           ],
           "default": null,
-          "description": "Post the answer as Piloti's reply in the thread of focus_region.annotation_id, readable by everyone who can read the document. Ignored without an annotation_id. Sent only to a server whose hello accepts 'user_message.reply_in_thread'.",
+          "description": "Post the answer as the agent's reply in the thread of focus_region.annotation_id, readable by everyone who can read the document. Ignored without an annotation_id. Sent only to a server whose hello accepts 'user_message.reply_in_thread'.",
           "title": "Reply In Thread"
         },
         "source_preset": {
@@ -4599,5 +4599,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Generated from packages/agent/src/agent/common/wire_v2.py by scripts/generate_wire_schema.py. Do not edit by hand; packages/agent/tests/common/test_wire_v2.py fails when it is stale.",
-  "title": "Piloti chat wire v2"
+  "title": "Chat wire v2"
 }

@@ -1,16 +1,16 @@
-# Piloti
+# ARCHOS
 
-**The workspace for architects.** A planning office runs its work in Piloti:
-its projects, its processes and the whole organization. Piloti, the agent, is a
+**The workspace for architects.** A planning office runs its work in ARCHOS:
+its projects, its processes and the whole organization. ARCHOS, the agent, is a
 colleague in that office. It reads the project's documents, the office's own
 files and the building model, and it takes part in the work from intake to the
 last report. Every claim it makes points to a passage you can open.
 
 Building law (the OIB-Richtlinien, Austrian laws via RIS, and the office's own
-norms) is one of the things Piloti knows well. It is not the frame.
+norms) is one of the things ARCHOS knows well. It is not the frame.
 
 **Read [`VISION.md`](VISION.md) first.** It says what the product is, and the
-other documents describe Piloti the same way.
+other documents describe ARCHOS the same way.
 
 ## The three parts
 
@@ -59,7 +59,7 @@ Without them, set `REQUIRE_AUTH=false` for a local run.
 
 ### Models
 
-Piloti works with any OpenAI-compatible API: OpenRouter, a self-hosted vLLM or
+ARCHOS works with any OpenAI-compatible API: OpenRouter, a self-hosted vLLM or
 Ollama server, Azure OpenAI, NVIDIA NIM. The reference config is
 [`configs/config_oib_openrouter.yml`](configs/config_oib_openrouter.yml). The
 live default model is set by an admin in the platform, not in the YAML.

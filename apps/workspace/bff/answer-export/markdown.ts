@@ -23,6 +23,7 @@ import { marked, type Token, type Tokens } from 'marked'
 import type { DocBlock, DocRun, HeadingLevel } from './blocks'
 import { DIAGRAM_SOURCE_KINDS } from '@/lib/diagrams/diagram-sources'
 import { REFUSED_SKETCH_FENCE_LANGUAGE } from '@/lib/diagrams/sketch-fence'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Inline tokens carried on a block token, when it has any. */
 type InlineHost = { tokens?: Token[]; text?: string; raw?: string }
@@ -227,7 +228,7 @@ const isSketchFence = (lang: string | undefined): boolean =>
  */
 export const diagramLabel = (lang: string | undefined): string =>
   isSketchFence(lang)
-    ? 'Skizze — in dieser Datei nicht dargestellt. Die Antwort in Piloti zeigt sie als Zeichnung.'
+    ? 'Skizze — in dieser Datei nicht dargestellt. Die Antwort in ' + PRODUCT_NAME + ' zeigt sie als Zeichnung.'
     : `Diagramm (${(lang ?? '').trim().toLowerCase()}) — hier als Quelltext, im Original als Zeichnung.`
 
 /**

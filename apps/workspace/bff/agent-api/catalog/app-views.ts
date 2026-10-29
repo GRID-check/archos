@@ -17,6 +17,7 @@
 
 import { z } from 'zod'
 import type { OperationName } from './index'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The proposal card's resource: one HTML document, the same for every person and every proposal. */
 export const PROPOSAL_CARD_URI = 'ui://piloti/proposal-card'
@@ -37,9 +38,9 @@ export const APP_VIEWS = [
   {
     uri: PROPOSAL_CARD_URI,
     name: 'proposal-card',
-    title: 'Piloti proposal',
+    title: PRODUCT_NAME + ' proposal',
     description:
-      'Piloti’s card for one proposed change, drawn from the proposal-get result: what it would do, and Apply and Discard for the person.',
+      PRODUCT_NAME + '’s card for one proposed change, drawn from the proposal-get result: what it would do, and Apply and Discard for the person.',
     file: 'proposal-card.html',
     drawsResultOf: ['proposal-get'],
   },

@@ -20,12 +20,13 @@ import type { OperationInput } from './dispatch'
 import type { AgentOperation } from './operation'
 import { proposalReachRefusal } from './conversation-audience'
 import { requireTargetsReadable, targetsOf, TooManyTargetsError } from './operation-targets'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Why a sensitive operation is never proposed, in words the model relays. */
 export function sensitiveProposalRefusal(op: Pick<AgentOperation, 'name'>): string {
   return (
-    `Piloti cannot propose ${op.name}: it changes who may do what, touches the organization's secrets, ` +
-    'or turns a security or compliance control down or off, so the person does it in Piloti themselves.'
+    `${PRODUCT_NAME} cannot propose ${op.name}: it changes who may do what, touches the organization's secrets, ` +
+    'or turns a security or compliance control down or off, so the person does it in ' + PRODUCT_NAME + ' themselves.'
   )
 }
 
@@ -41,7 +42,7 @@ export const MAX_PROPOSED_INPUT_CHARS = 20_000
 export function oversizedProposalRefusal(op: Pick<AgentOperation, 'name'>, length: number): string {
   return (
     `The input for ${op.name} is ${length} characters; a proposal the person reads in full on its card holds at most ` +
-    `${MAX_PROPOSED_INPUT_CHARS}. Split the change into smaller calls, or let the person make it in Piloti themselves.`
+    `${MAX_PROPOSED_INPUT_CHARS}. Split the change into smaller calls, or let the person make it in ${PRODUCT_NAME} themselves.`
   )
 }
 

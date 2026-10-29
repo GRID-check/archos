@@ -2,6 +2,7 @@
 
 import { FOUND_IN } from '../intake-options'
 import type { ProjectIntakeStage } from '../intake-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const PLOT_STAGE: ProjectIntakeStage = {
   id: 'B',
@@ -90,7 +91,7 @@ export const PLOT_STAGE: ProjectIntakeStage = {
       type: 'document_role',
       role: 'development_plan',
       conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
-      why: 'Der Plan ist die Quelle für Bauklasse, Bebauungsweise, Dichte und Fluchtlinien — Piloti kann sich dann darauf beziehen.',
+      why: 'Der Plan ist die Quelle für Bauklasse, Bebauungsweise, Dichte und Fluchtlinien — ' + PRODUCT_NAME + ' kann sich dann darauf beziehen.',
     },
     {
       id: 'B3_hoehe',

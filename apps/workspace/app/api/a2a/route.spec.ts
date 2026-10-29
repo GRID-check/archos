@@ -41,6 +41,7 @@ import { enforceLimit, MCP_REQUEST_LIMIT, memberSubject } from '@/lib/limits'
 import type { AskView } from '@/lib/agent-asks/ask-wire'
 import { askAgent, cancelAsk, getAsk } from '@/lib/agent-asks/service'
 import { GET, POST } from './route'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const URL_ = 'https://app.piloti.test/api/a2a'
 const ID = '22222222-2222-4222-8222-222222222222'
@@ -142,7 +143,7 @@ describe('who is turned away', () => {
     vi.mocked(resolvePrincipal).mockResolvedValue({ ...PERSON, actor: 'piloti', clientId: null })
     const response = await POST(rpc('SendMessage', { message: userMessage('Hallo?') }, V1))
     expect(response.status).toBe(403)
-    expect((await response.json()).error).toMatch(/Piloti cannot ask Piloti/)
+    expect((await response.json()).error).toContain(`${PRODUCT_NAME} cannot ask ${PRODUCT_NAME}`)
     expect(askAgent).not.toHaveBeenCalled()
   })
 

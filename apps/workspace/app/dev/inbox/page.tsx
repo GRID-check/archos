@@ -38,6 +38,7 @@ import { I18nProvider } from '@/i18n'
 import { InboxBadge, InboxList } from '@/features/collaboration/components'
 import type { InboxItemView } from '@/lib/inbox/types'
 import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // Relative to now, so „vor 4 Minuten“ reads as it would in the product rather
 // than every row claiming months.
@@ -267,7 +268,7 @@ const ITEMS: InboxItemView[] = [
     resourceType: 'conversation',
     resourceId: 'c5c',
     anchorId: null,
-    actorName: 'Piloti',
+    actorName: PRODUCT_NAME,
     actorUserId: null,
     count: 1,
     href: '/app/projects/p1/chat?session=c5c',

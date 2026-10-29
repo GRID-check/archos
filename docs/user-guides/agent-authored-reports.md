@@ -1,4 +1,4 @@
-# Reports Piloti Writes
+# Reports ARCHOS Writes
 
 A deep-research run used to end as a long chat message. The report existed as a
 file for a few minutes inside the run and was then thrown away with it — so the
@@ -24,7 +24,7 @@ a twenty-minute run is only ever answered yes, so it would be a receipt rather
 than a decision.
 
 It matters more than it looks, because a deep-research run does not always begin
-because you asked for one. Piloti escalates a question to deep research by
+because you asked for one. ARCHOS escalates a question to deep research by
 itself when a short answer would not hold, and when it does the Herleitung of
 that turn says so ("Eskaliert zur Tiefenrecherche: …"). In that case nobody
 ordered a report — so the block is the whole of what you were told, and it is
@@ -43,7 +43,7 @@ opens the filed document in the project's Dateien.
 
 A chat that is not inside a project never files anything, and a filing can fail
 inside one — a full storage quota, an organization that has not given your role
-the right to let Piloti file (a separate right from your own right to upload
+the right to let ARCHOS file (a separate right from your own right to upload
 files — your administrator can withhold one and keep the other), or a report too
 long to render. From where you are sitting these are the same fact: the
 document is not there, and the block does not claim one. The difference between
@@ -61,7 +61,7 @@ getting it.
 
 The report is a normal file in the **Berichte** folder, with three marks on it.
 
-**A byline: „Von Piloti erstellt“.** A quiet line under the file name, on the
+**A byline: „Von ARCHOS erstellt“.** A quiet line under the file name, on the
 card and in the preview. It says who *wrote* it. It is deliberately not a face
 and never appears in the assignment row, because a face on a file means
 something else entirely — see below.
@@ -72,7 +72,7 @@ wrong, which nothing did. The bytes are here and indexing was deliberately
 skipped, and *Abgelegt* is the word for exactly that.
 
 **„Unvergeben“ in the footer.** Nobody is responsible for this report yet, and
-that is the correct state, not a gap someone forgot to fill. Piloti cannot carry
+that is the correct state, not a gap someone forgot to fill. ARCHOS cannot carry
 professional responsibility for a document; only a person can. Until somebody
 clicks **Zuweisen** (or **Mir zuweisen**), the report is a draft nobody has put
 their name to.
@@ -83,7 +83,7 @@ Two filters find these files, and they combine:
   unclaimed files before an Einreichung. A generated report shows up there like
   any other unassigned file, which is the point: it joins a ritual that already
   exists instead of needing a new one.
-- **Von Piloti** — everything Piloti has written for this project, regardless of
+- **Von ARCHOS** — everything ARCHOS has written for this project, regardless of
   which folder it sits in. Moving or renaming *Berichte* later would not break
   it, because this filter never asked about the folder.
 
@@ -103,7 +103,7 @@ the second of those.
 ## Fassungen und Freigabe
 
 Every file in a project now has its **Fassungen** and a **Freigabestatus**
-(approval status), and Piloti's reports walk the same states your own uploads do. There is one
+(approval status), and ARCHOS's reports walk the same states your own uploads do. There is one
 vocabulary, not two: a reviewer does not have to know who wrote a file in order
 to know what state it is in.
 
@@ -111,11 +111,11 @@ to know what state it is in.
 
 | Badge | What it means |
 |---|---|
-| **Entwurf** | Written, not yet handed to anybody. This is where a report Piloti files starts. |
+| **Entwurf** | Written, not yet handed to anybody. This is where a report ARCHOS files starts. |
 | **In Prüfung** | Submitted. Whoever was asked has an entry in their Postfach. |
 | **Änderungen angefordert** | Sent back, with the reason written on the Fassung. |
-| **Veröffentlicht** | Piloti answers from this Fassung. A Fassung that went through review gets here when a person approves it. |
-| **Freigegeben** | Only on a Fassung approved before approving also published: asserted, but Piloti does not answer from it until somebody publishes it. |
+| **Veröffentlicht** | ARCHOS answers from this Fassung. A Fassung that went through review gets here when a person approves it. |
+| **Freigegeben** | Only on a Fassung approved before approving also published: asserted, but ARCHOS does not answer from it until somebody publishes it. |
 | **Ersetzt** | A newer Fassung was published. The bytes stay and can still be opened. |
 | **Abgelehnt** | Refused, with a reason. |
 | **Stillgelegt** | The file has left the file list and the knowledge base. Nothing is deleted. |
@@ -126,17 +126,17 @@ where something came from — and an editorial state is not provenance.
 **You will not see a badge on most of your files, and that is correct.** A file
 you upload is *published* the moment it lands: you put it there, and that is the
 assertion. The badge appears when there is something to know — the file has more
-than one Fassung, or Piloti wrote it. On the file's own page you always see the
+than one Fassung, or ARCHOS wrote it. On the file's own page you always see the
 state, because there the state is what you came for.
 
 ### What you can do, and when
 
 Open a file and the section **Fassungen und Freigabe** sits in the right-hand
-column, under Piloti's reading of the document. Its header says where the
+column, under ARCHOS's reading of the document. Its header says where the
 newest Fassung stands, who acts next („Nächster Schritt: Freigabe durch Sabine
-Gruber“) and which Fassung Piloti answers from. The steps below sit **under the
+Gruber“) and which Fassung ARCHOS answers from. The steps below sit **under the
 header**, and the section opens by itself when a decision is yours. **Freigeben**
-and **Änderungen anfordern** are in view; **Piloti überarbeiten lassen** and
+and **Änderungen anfordern** are in view; **ARCHOS überarbeiten lassen** and
 **Ablehnen** are behind the ⋯ beside them. It offers exactly the steps the
 current state allows and that your role permits — nothing greyed out that could
 never be pressed:
@@ -144,20 +144,20 @@ never be pressed:
 - **Zur Freigabe einreichen** on an Entwurf, or on one that came back for
   changes. Whoever is asked gets a Postfach entry naming the file.
 - **Freigeben** on a Fassung in Prüfung. It asserts the content **and** makes
-  the Fassung the one Piloti answers from, in one step: „freigegeben“ means
+  the Fassung the one ARCHOS answers from, in one step: „freigegeben“ means
   usable. **Not** available to the person who submitted it: an assertion nobody
   but the author has read is not one.
 - **Änderungen anfordern** and **Ablehnen**, both of which ask you to type why.
   The reason stays on the Fassung, so „was ist noch offen“ is answered by
   reading the file rather than by remembering a conversation.
-- **Piloti überarbeiten lassen**, behind the ⋯ beside Änderungen anfordern, with the same
-  reason required. Piloti drafts the next Fassung from your comment and submits
+- **ARCHOS überarbeiten lassen**, behind the ⋯ beside Änderungen anfordern, with the same
+  reason required. ARCHOS drafts the next Fassung from your comment and submits
   it, so the file comes back to your Postfach instead of to a colleague's desk.
-  Not for a file in a folder that not everyone in the project may read: Piloti
+  Not for a file in a folder that not everyone in the project may read: ARCHOS
   would have to quote it into an Auftrag the whole project sees. The button then
   says why and changes nothing; Änderungen anfordern still works.
 - **Veröffentlichen**, only on a Fassung approved before approving also
-  published it. It makes that Fassung the one Piloti answers from.
+  published it. It makes that Fassung the one ARCHOS answers from.
 - **Stilllegen**, which takes the file out of the file list and the knowledge
   base. The bytes and every Fassung stay; it is not a delete.
 
@@ -181,13 +181,13 @@ with an answer.
 added lines are marked with a `+` and a solid rule, removed ones with a `−` and
 a dashed one, long unchanged stretches fold into a counted gap, and both
 Fassungen's line numbers run down the left so you can see an insert push them
-apart. No red and no green — color in Piloti means where something came from,
+apart. No red and no green — color in ARCHOS means where something came from,
 never what happened to it.
 
 ### Finding what is waiting
 
 The filter menu in Dateien has **Freigabe ausstehend** beside *Unvergeben* and
-*Von Piloti*, and the three combine: everything Piloti wrote, that nobody has
+*Von ARCHOS*, and the three combine: everything ARCHOS wrote, that nobody has
 taken on, that is waiting for a decision, is one query.
 
 ---
@@ -197,7 +197,7 @@ taken on, that is waiting for a decision, is one query.
 **Besprechen** steht auf jeder Datei — unter Dateien, auf der
 Berichtskarte im Chat und auf der Freigabe-Aufforderung im Posteingang — und
 öffnet ein Gespräch, das genau um dieses Dokument geht. Es funktioniert auch bei
-einem Entwurf, den noch niemand veröffentlicht hat: Piloti liest die Fassung
+einem Entwurf, den noch niemand veröffentlicht hat: ARCHOS liest die Fassung
 dann direkt und beantwortet Fragen wie „warum steht in Abschnitt 3 GK 4?“ aus
 dem Text selbst. Aus dem Gespräch heraus lässt sich derselbe Entwurf auch
 ändern und wieder ablegen — es entsteht eine neue Fassung desselben Dokuments,
@@ -210,20 +210,20 @@ kein zweites.
 **Besprechen** works on a generated report at every stage. While nobody has
 published it, the button carries a note saying what the conversation cannot do:
 
-> Von Piloti erstellt — nicht in der Wissensbasis
+> Von ARCHOS erstellt — nicht in der Wissensbasis
 
-Piloti reads the report itself when you discuss it, but it does not *retrieve*
+ARCHOS reads the report itself when you discuss it, but it does not *retrieve*
 it: a report nobody published has no searchable passages anywhere.
 
 That changes in one way only. When a colleague approves the report and publishes
-it, that Fassung is read into the knowledge base, and the note disappears. Piloti
+it, that Fassung is read into the knowledge base, and the note disappears. ARCHOS
 then finds it like any other document, and cites it under its own label,
-**Piloti-Dokument**, with who wrote it and who approved it. It never wears the
+**ARCHOS-Dokument**, with who wrote it and who approved it. It never wears the
 *Projektwissen* badge of a document a person uploaded, and a verdict in an
 answer may not rest on it alone.
 
 The reason is worth knowing, because it protects you. If an unapproved report
-were searchable, Piloti could retrieve its own earlier draft and cite it back to
+were searchable, ARCHOS could retrieve its own earlier draft and cite it back to
 you as evidence, looking like a source. A claim it made on Tuesday would come
 back on Friday as if somebody had checked it. Only a report a person approved
 and published is searchable, and even then you can see whose words it is.
@@ -241,14 +241,14 @@ matters most, because the chat window stays inside your office and the document
 does not.
 
 - **On page one, in the document itself:** a block headed
-  **„KI-generiert — nicht geprüft“**, saying that Piloti wrote it, that no human
+  **„KI-generiert — nicht geprüft“**, saying that ARCHOS wrote it, that no human
   has reviewed it, and that it is a draft rather than a Nachweis. It is printed
   content, not screen chrome — it survives printing, forwarding, and being
   attached to an e-mail.
 - **In the file's properties:** `AIGenerated`, `AIGenerator`,
   `AIHumanReviewed` and the run id. A records system can detect the document as
   machine-written without anyone reading it. In the filed **PDF** they sit in
-  the document's `Keywords` field, with „Piloti“ as the *Creator* and the
+  the document's `Keywords` field, with „ARCHOS“ as the *Creator* and the
   headline repeated as the *Subject* — the three fields a viewer's
   document-properties panel shows. A PDF has no place for named custom
   properties the way a Word file does, so the marking uses the closest fields
@@ -259,10 +259,10 @@ it, the properties are for the system that files it.
 
 ### Was auf jeder Datei steht
 
-Every file Piloti produces — the filed report and a document a chat turn wrote —
+Every file ARCHOS produces — the filed report and a document a chat turn wrote —
 also carries a short block of the product's own words, inside the bytes rather
 than around them. One line at the top names what made the file and for which
-office („Erstellt mit Piloti für …“); two sentences say that Piloti drafted it
+office („Erstellt mit ARCHOS für …“); two sentences say that ARCHOS drafted it
 and that responsibility for its content belongs to the person who gives it
 Freigabe, and to nobody before that; one line at the foot of every page repeats
 „Entwurf, nicht freigegeben“ so a single sheet pulled out of a folder still says
@@ -272,7 +272,7 @@ who is answerable for it. Nothing has to be switched on, and there is nothing to
 configure — an office that later wants its own wording gets it without the
 documents changing shape.
 
-**A filed drawing is marked too.** When Piloti draws a Verfahren and you file it,
+**A filed drawing is marked too.** When ARCHOS draws a Verfahren and you file it,
 the project gets two files and both say what they are. The **PDF** prints the
 line under the drawing and carries the same `AIGenerated` properties in its
 document properties. The **SVG** carries the line as the picture's own name — the
@@ -281,7 +281,7 @@ same properties in its description. Neither is added by the app around the file;
 both are inside it, so they survive being downloaded, mailed on and opened in
 something that has never heard of this product.
 
-Nothing Piloti writes can be filed without that marking: the service that files
+Nothing ARCHOS writes can be filed without that marking: the service that files
 it checks the finished bytes and refuses them if the statement is missing. A
 document that could not say who wrote it is not filed at all.
 

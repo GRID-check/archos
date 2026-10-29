@@ -46,6 +46,7 @@ import {
   isDelegatableTaskKind,
   TASK_GOAL_MAX_CHARS,
 } from './delegation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session = {
   userId: 'user_asker',
@@ -276,7 +277,7 @@ describe('delegateTask', () => {
       expect(submitAgentRun).not.toHaveBeenCalled()
       expect(run?.status).toBe('failed')
       expect(run?.error).toContain('zu lang')
-      expect(run?.error).toContain('Mit Piloti besprechen')
+      expect(run?.error).toContain(`Mit ${PRODUCT_NAME} besprechen`)
       // Nothing of the document is stored on a plan no run will read.
       expect(insertedDefinition.plan.prompt).not.toContain('Absatz.')
     })

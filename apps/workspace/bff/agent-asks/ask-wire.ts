@@ -13,6 +13,7 @@
 
 import { z } from 'zod'
 import { conversationIdSchema } from '@/lib/session-documents/conversation-id'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const ASK_STATES = ['submitted', 'working', 'completed', 'canceled', 'failed', 'rejected'] as const
 export type AskState = (typeof ASK_STATES)[number]
@@ -63,17 +64,17 @@ export const createAskSchema = z
       .trim()
       .min(1)
       .max(MAX_QUESTION_CHARS)
-      .describe('The question or request for Piloti, in the words the person would use, German or English.'),
+      .describe('The question or request for ' + PRODUCT_NAME + ', in the words the person would use, German or English.'),
     projectId: z
       .string()
       .guid()
       .optional()
-      .describe('The project Piloti should answer in, from project-list. Omit for the office as a whole.'),
+      .describe('The project ' + PRODUCT_NAME + ' should answer in, from project-list. Omit for the office as a whole.'),
     conversationId: conversationIdSchema
       .optional()
       .describe(
         'Continue an earlier ask: its conversationId, from agent-ask-create or agent-ask-get. ' +
-          'Piloti then sees the earlier questions and answers. Omit to start a new conversation.',
+          PRODUCT_NAME + ' then sees the earlier questions and answers. Omit to start a new conversation.',
       ),
     waitSeconds: z
       .number()
