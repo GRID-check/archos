@@ -317,7 +317,7 @@ export const search = {
     retry: 'Try again',
     retryHint: 'A second try is usually enough; otherwise check the connection.',
     ofTotal: '{shown} of {total}',
-    allIn: 'All results from {project}',
+    allIn: 'In {project}',
     recent: 'Recent searches',
     hint: {
       office:

@@ -86,7 +86,7 @@ describe('CommandPalette: the workspace search', () => {
     expect(concept).toHaveTextContent('Brandschutzkonzept Wohnhaus Seestadt J7')
     expect(concept).toHaveTextContent('S. 7')
     // Every hit lives in one project: it is named once above them, not on each row.
-    expect(screen.getByTestId('palette-scope-line')).toHaveTextContent('Alle Treffer aus Wohnhaus Seestadt Baufeld J7')
+    expect(screen.getByTestId('palette-scope-line')).toHaveTextContent('In Wohnhaus Seestadt Baufeld J7')
     expect(concept).not.toHaveTextContent('Wohnhaus Seestadt Baufeld J7')
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
     expect(screen.getByTestId('palette-group-annotation')).toBeInTheDocument()

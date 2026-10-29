@@ -606,9 +606,12 @@ export function ShelfMark({
  * not see the icon.
  */
 export function WherePart({ children, label }: { children: ReactNode; label: string }): JSX.Element {
+  // The palette's meta line is one line of plain words: the folder stands
+  // first in it, which already says where, and a glyph per part crowded it.
+  const compact = useCompactRow()
   return (
     <span className="inline-flex min-w-0 items-center gap-1 text-foreground/75">
-      <Folder className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+      {compact ? null : <Folder className="size-3 shrink-0 text-muted-foreground" aria-hidden />}
       <span className="min-w-0 [overflow-wrap:anywhere]">
         <span className="sr-only">{label} </span>
         {children}
@@ -628,7 +631,8 @@ export function SupersededMark({ className, quiet = false }: { className?: strin
   // icon was the loudest mark in a panel whose rows are otherwise text.
   if (quiet) {
     return (
-      <span className={cn('inline-flex items-center gap-1 text-xs text-muted-foreground', className)} title={tDocument('supersededHint')} data-testid="superseded-mark">
+      // `h-5`: the title's own line box, so the word sits on the title's line rather than above it.
+      <span className={cn('inline-flex h-5 items-center gap-1 text-xs text-muted-foreground', className)} title={tDocument('supersededHint')} data-testid="superseded-mark">
         <History className="size-3" aria-hidden />
         {tDocument('superseded')}
       </span>
@@ -1238,20 +1242,20 @@ export function PaletteEmpty({ title, hint, testId }: { title: ReactNode; hint?:
 }
 
 /**
- * „Alle Treffer aus Wohnhaus Seestadt“: where every hit below lives, said once above
- * them, so the rows leave the project out instead of repeating it five times.
+ * „In Wohnhaus Seestadt“: where every hit below lives, said once above them,
+ * so the rows leave the project out instead of repeating it five times. A
+ * caption, no glyph: with one it read as a row to open.
  */
 export function PaletteScopeLine({ project, dimmed = false }: { project: string; dimmed?: boolean }): JSX.Element {
   const t = useTranslations(searchCopy)
   return (
     <p
       className={cn(
-        'flex min-w-0 items-center gap-1.5 px-3 pt-2.5 pb-0.5 text-xs text-muted-foreground transition-opacity duration-quick motion-reduce:transition-none',
+        'flex min-w-0 items-center gap-1.5 px-3 pt-2.5 pb-0.5 text-xs text-muted-foreground',
         dimmed && 'opacity-70'
       )}
       data-testid="palette-scope-line"
     >
-      <FolderKanban className="size-3 shrink-0" aria-hidden />
       <span className="truncate">{t('palette.allIn', { project })}</span>
     </p>
   )
@@ -1292,6 +1296,8 @@ export function PaletteHitsSkeleton(): JSX.Element {
               <div className="flex flex-1 flex-col gap-2 pt-0.5">
                 <Skeleton className={cn('h-3.5', ['w-1/2', 'w-2/5', 'w-1/3'][(index + group) % 3])} />
                 <Skeleton className={cn('h-3', ['w-3/4', 'w-3/5', 'w-2/3'][(index + group) % 3])} />
+                {/* A document found by what it says has a third line, its passage. */}
+                {group === 0 && index < 2 ? <Skeleton className={cn('h-3', ['w-2/3', 'w-1/2'][index])} /> : null}
               </div>
             </div>
           ))}

@@ -325,7 +325,7 @@ export const search: typeof en.search = {
     retry: 'Erneut versuchen',
     retryHint: 'Meist reicht ein zweiter Versuch; sonst die Verbindung prüfen.',
     ofTotal: '{shown} von {total}',
-    allIn: 'Alle Treffer aus {project}',
+    allIn: 'In {project}',
     recent: 'Zuletzt gesucht',
     hint: {
       office:

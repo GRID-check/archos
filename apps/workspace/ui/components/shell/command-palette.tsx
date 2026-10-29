@@ -176,8 +176,17 @@ export function CommandPalette({
   // The row the arrows are on. When hits arrive for what is typed, the first
   // one takes the selection from the „Alle Treffer“ row cmdk put it on, so
   // Enter opens the best hit; a row the reader moved to themselves is kept,
-  // and so is a hit they arrowed to that the newer answer still holds.
+  // and so is a hit they arrowed to that the newer answer still holds. A hit
+  // the palette chose for an earlier answer is not kept: after a refine it may
+  // be second now, and Enter would open it over the new best.
   const [selected, setSelected] = React.useState('')
+  // Whether the row the arrows are on is one the reader moved to since they
+  // last typed. A row the palette chose for an earlier answer (its best hit,
+  // „Alle Treffer“) is no choice of theirs, so an Enter on it waits too.
+  const movedByReader = React.useRef(false)
+  React.useEffect(() => {
+    movedByReader.current = false
+  }, [words])
   const answerHits = React.useMemo(
     () => (search.answered === words && search.response ? paletteHits(search.response).map(paletteHitValue) : []),
     [search.answered, search.response, words],
@@ -186,7 +195,11 @@ export function CommandPalette({
   React.useEffect(() => {
     if (!firstHit) return
     setSelected((current) =>
-      current === '' || current === PALETTE_ALL_RESULTS_VALUE || (isPaletteHitValue(current) && !answerHits.includes(current)) ? firstHit : current,
+      current === '' ||
+      current === PALETTE_ALL_RESULTS_VALUE ||
+      (isPaletteHitValue(current) && !(movedByReader.current && answerHits.includes(current)))
+        ? firstHit
+        : current,
     )
   }, [firstHit, answerHits])
   // A failed answer puts the arrows on „Erneut versuchen“, so Enter asks again.
@@ -216,13 +229,6 @@ export function CommandPalette({
   // had got to, so the same keys went to two places depending on its speed.
   const awaitingAnswer = words !== '' && !search.failed && (search.loading || search.answered !== words)
   const [heldEnter, setHeldEnter] = React.useState<string | null>(null)
-  // Whether the row the arrows are on is one the reader moved to since they
-  // last typed. A row the palette chose for an earlier answer (its best hit,
-  // „Alle Treffer“) is no choice of theirs, so an Enter on it waits too.
-  const movedByReader = React.useRef(false)
-  React.useEffect(() => {
-    movedByReader.current = false
-  }, [words])
   React.useEffect(() => {
     if (heldEnter === null) return
     if (heldEnter !== words || search.failed) {
@@ -296,7 +302,9 @@ export function CommandPalette({
     // so the placeholder grows into the held height rather than leaving it
     // empty under „Alle Treffer“.
     const sizer = listElement.firstElementChild
-    if (!(sizer instanceof HTMLElement)) return
+    // Mid-glide the list's height is pinned to a frame of the glide, which is
+    // no measure of what it shows; the next render after it settles is.
+    if (!(sizer instanceof HTMLElement) || listElement.style.height !== '') return
     // Never taller than the list shows: a floor measured while the commands
     // overflowed it pushed „Alle Treffer“ below the fold under the placeholder.
     const { paddingTop, paddingBottom } = getComputedStyle(listElement)
@@ -314,11 +322,12 @@ export function CommandPalette({
     measure()
     return () => observer.disconnect()
   }, [listElement])
-  // Keyed by the answer alone: a keystroke swaps the commands for the
-  // placeholder in two commits (cmdk filters its rows a render after ours), so
-  // a glide keyed by the keystroke measured the unfiltered list, grew toward it
-  // and then dropped back. That step is small and lands; the answer glides.
-  useHeightGlide(listRef, desktop && open ? search.answered : null)
+  // Keyed by the answer and by `loading`, never by the keystroke: cmdk filters
+  // its rows a render after ours, so a glide keyed by the keystroke measured
+  // the unfiltered list, grew toward it and dropped back. `loading` turns on in
+  // the render where the commands are filtered and the placeholder arrives, so
+  // the first key glides too; later keys while it stays on land at once.
+  useHeightGlide(listRef, desktop && open ? `${search.answered}|${search.loading}` : null)
 
   // Lazy project list — fetched once, the first time the palette opens.
   const [projects, setProjects] = React.useState<PaletteProject[] | null>(null)
