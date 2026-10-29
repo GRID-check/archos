@@ -16,6 +16,8 @@ This is the public website, built from the shared design system. Read the root
 | Name a file, a component or a class | Follow [`naming.md`](../../docs/contributing/naming.md#casing-and-form): English, brand-free, `PascalCase.astro` components, kebab-case everything else | `ui-button`, `DuoCards`, never a product name. |
 | Add an image | Put it in `public/media/` with an English kebab-case name, and add a row to the table in `README.md` | The table is how a reader finds out what a file shows. |
 | Add an AI-generated image | Mark it with the `AITag` component | The design system requires the mark. |
+| Pair a blog post with its translation | Set `translationSlug` to the other locale's slug, and open both pages to check the language switch | Nothing yet: a slug that names no post breaks the switch and hreflang without an error |
+| Edit a legal page (`/datenschutz`, `/impressum`, the English twins) | Leave no bracketed placeholder (`[14 Tagen]`, `[EU]`); a value nobody verified is marked `TODO(owner):` and listed in the pull request | Nothing yet: `check_brand_rules.mjs` does not look for brackets |
 | Write a component that scripts | Keep the script inline in the `.astro` file and keep state in attributes | No React, no framework runtime. |
 
 ## Layout
