@@ -293,7 +293,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
               data-testid="file-peek-summary"
               className="scroll-fade-bottom max-h-[38%] shrink-0 overflow-y-auto overscroll-contain px-4 pt-3.5 pb-4"
             >
-              <SectionLabel as="p" icon={Sparkles} className="font-semibold tracking-[0.05em]">
+              <SectionLabel as="p" icon={Sparkles} className="font-medium tracking-[0.05em]">
                 {t('preview.indexed.title')}
               </SectionLabel>
               <ClampedText

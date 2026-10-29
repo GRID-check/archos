@@ -100,7 +100,7 @@ export function IfcFileFacts({ documentId, projectId, className }: IfcFileFactsP
 
   return (
     <section className={cn('space-y-3', className)} aria-label={t('facts.title')}>
-      <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground">
         <Boxes className="size-3.5 shrink-0" aria-hidden />
         {t('facts.title')}
       </p>

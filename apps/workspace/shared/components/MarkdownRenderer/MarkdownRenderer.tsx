@@ -679,7 +679,7 @@ function MarkdownTable({ children, node }: React.ComponentPropsWithoutRef<'table
           <span className="sr-only">{t('markdown.statusTally')}: </span>
           {tally.map(([word, count]) => (
             <Chip key={word} size="sm" variant={outcomeTone(word) ?? 'muted'}>
-              <span className="font-semibold tabular-nums">{count}</span> {outcomeLabel(word, 'tally')}
+              <span className="font-medium tabular-nums">{count}</span> {outcomeLabel(word, 'tally')}
             </Chip>
           ))}
         </p>
@@ -935,7 +935,7 @@ const MARKDOWN_COMPONENTS = {
   input: MarkdownTaskMark,
   a: MarkdownLink,
   strong: ({ children }: React.ComponentPropsWithoutRef<'strong'>) => (
-    <strong className="text-foreground font-semibold">{children}</strong>
+    <strong className="text-foreground font-medium">{children}</strong>
   ),
   em: ({ children }: React.ComponentPropsWithoutRef<'em'>) => (
     <em className="text-foreground italic">{children}</em>

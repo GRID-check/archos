@@ -178,7 +178,7 @@ export function BentoFigure({
 }): JSX.Element {
   return (
     <div className={cn('min-w-0', className)}>
-      <p className="text-3xl font-semibold tabular-nums tracking-tight">{value}</p>
+      <p className="text-3xl font-medium tabular-nums tracking-tight">{value}</p>
       {caption ? <p className="text-muted-foreground mt-1 text-sm">{caption}</p> : null}
     </div>
   )

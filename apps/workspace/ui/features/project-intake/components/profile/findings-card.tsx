@@ -67,7 +67,7 @@ export function FindingsCard({
       <Collapsible open={open} onOpenChange={setOpen}>
         <header className="flex flex-col gap-1 px-4 pb-1.5 pt-4 md:flex-row md:items-start md:justify-between md:gap-6 md:px-[18px]">
           <div className="min-w-0">
-            <h2 id="profile-findings-heading" className="text-base font-semibold">
+            <h2 id="profile-findings-heading" className="text-base font-medium">
               {t('findings.heading')}
             </h2>
             <p className="text-muted-foreground mt-0.5 text-[13px]">

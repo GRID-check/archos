@@ -71,7 +71,7 @@ export function ViewerSection({
   return (
     <section aria-label={label} className={cn('shrink-0 border-b border-border last:border-b-0', className)} {...rest}>
       <ViewerSectionHeader className="justify-between">
-        <h3 className="text-xs font-semibold tracking-wide text-muted-foreground">{label}</h3>
+        <h3 className="text-xs font-medium tracking-wide text-muted-foreground">{label}</h3>
         {action}
       </ViewerSectionHeader>
       <ViewerSectionBody className={bodyClassName}>{children}</ViewerSectionBody>
@@ -119,7 +119,7 @@ export function ViewerPanel({
     >
       <ViewerSectionHeader className="items-start border-b border-border">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-foreground pointer-coarse:line-clamp-2 pointer-coarse:break-words pointer-coarse:whitespace-normal" title={title}>
+          <h2 className="truncate text-sm font-medium text-foreground pointer-coarse:line-clamp-2 pointer-coarse:break-words pointer-coarse:whitespace-normal" title={title}>
             {title}
           </h2>
           {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>}
@@ -178,7 +178,7 @@ export function ViewerFieldGroup({ label, children }: { label: string; children:
         QTO_WALLBASEQUANTITIES, which is louder than anything under it and
         shreds the only casing that made the name readable.
       */}
-      <h3 className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide">{label}</h3>
+      <h3 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide">{label}</h3>
       <dl>{children}</dl>
     </div>
   )

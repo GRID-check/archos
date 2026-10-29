@@ -235,7 +235,7 @@ export function PageSheet({
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <DialogPrimitive.Title
                         data-slot="page-sheet-title"
-                        className="text-foreground truncate text-lg font-semibold tracking-[-0.01em]"
+                        className="text-foreground truncate text-lg font-medium tracking-[-0.01em]"
                       >
                         {title}
                       </DialogPrimitive.Title>

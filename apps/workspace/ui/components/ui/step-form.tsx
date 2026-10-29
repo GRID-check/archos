@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 export function StepHeading({ title, hint }: { title: string; hint: string }): JSX.Element {
   return (
     <div className="mb-4">
-      <h2 className="text-foreground text-lg font-semibold tracking-[-0.01em]">{title}</h2>
+      <h2 className="text-foreground text-lg font-medium tracking-[-0.01em]">{title}</h2>
       <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{hint}</p>
     </div>
   )

@@ -138,7 +138,7 @@ export function DocumentFindingsList({
               aria-label={open ? t('findings.hide') : t('findings.show')}
             >
               <span className="flex items-center gap-2">
-                <SectionLabel icon={FileSearch} className="font-semibold tracking-[0.05em]">
+                <SectionLabel icon={FileSearch} className="font-medium tracking-[0.05em]">
                   {t('findings.title')}
                 </SectionLabel>
                 <CountPill count={findings.length} aria-label={t('findings.count', { count: findings.length })} />

@@ -1,0 +1,97 @@
+/* =============================================================================
+   The data palette: the ONE place the app's chart and meter colours are typed.
+
+   DOCUMENTED EXCEPTION to the brand's "no signal colours" rule
+   (packages/brand README, Colour): a categorical chart needs hues that tell
+   eight series apart, and the brand has none to give. Everything that draws a
+   chart, a meter or a timetable reads these variables, and nothing else in the
+   app may hold a data hex (the ratchet is `tests/brand-literals.spec.ts`).
+   Diagram colours are the other half of the exception and are READ off the
+   product's own tokens, not typed (`ui/features/diagrams/diagram-palette.ts`).
+
+   Three scopes alias the one palette so a chart says what its colours mean:
+     .spend-viz    money by model (`--spend-series-N`, `--spend-other`, the meter)
+     .usage-viz    counts and durations (`--chart-series-N`, `--chart-series-other`)
+     .storage-viz  quota meter (`--storage-meter*`)
+   The slot ORDER is the colour-blind-safety mechanism, not a preference: it is
+   the order the dataviz validator was run against. Never reorder, never cycle;
+   a 9th entity folds into "other". The dark column is SELECTED for the dark
+   surface (same eight hues, re-stepped and re-validated), never an automatic
+   flip of light.
+
+   Re-validate after ANY change, against this app's real surfaces (`--card`,
+   the brand's `--ds-surface-raised`), not the validator's defaults:
+
+     node <dataviz-skill>/scripts/validate_palette.js \
+       "#2a78d6,#eb6834,#1baf7a,#eda100,#e87ba4,#008300,#4a3aa7,#e34948" --mode light
+     node <dataviz-skill>/scripts/validate_palette.js \
+       "#3987e5,#d95926,#199e70,#c98500,#d55181,#008300,#9085e9,#e66767" --mode dark
+
+   Light mode carries a contrast WARN: aqua, yellow and magenta sit below 3:1 on
+   a near-white surface. That is not dismissable: every consumer ships relief (a
+   visible label or an always-open table), so no value is reachable by colour
+   alone. The two meter states are STATUS colours, deliberately outside the
+   categorical slots so a meter can never impersonate a series; the over-limit
+   step always ships beside its icon and sentence.
+   ============================================================================= */
+:root {
+  --data-series-1: #2a78d6; /* blue */
+  --data-series-2: #eb6834; /* orange */
+  --data-series-3: #1baf7a; /* aqua */
+  --data-series-4: #eda100; /* yellow */
+  --data-series-5: #e87ba4; /* magenta */
+  --data-series-6: #008300; /* green */
+  --data-series-7: #4a3aa7; /* violet */
+  --data-series-8: #e34948; /* red */
+  --data-series-other: #767672; /* the folded tail, neutral on purpose */
+  --data-meter: #2a78d6; /* under the limit */
+  --data-meter-over: #d03b3b; /* at or over the limit */
+}
+
+.dark {
+  --data-series-1: #3987e5;
+  --data-series-2: #d95926;
+  --data-series-3: #199e70;
+  --data-series-4: #c98500;
+  --data-series-5: #d55181;
+  --data-series-6: #008300;
+  --data-series-7: #9085e9;
+  --data-series-8: #e66767;
+  --data-series-other: #8f8e89;
+  --data-meter: #3987e5;
+  --data-meter-over: #d03b3b;
+}
+
+.spend-viz {
+  --spend-series-1: var(--data-series-1);
+  --spend-series-2: var(--data-series-2);
+  --spend-series-3: var(--data-series-3);
+  --spend-series-4: var(--data-series-4);
+  --spend-series-5: var(--data-series-5);
+  --spend-series-6: var(--data-series-6);
+  --spend-series-7: var(--data-series-7);
+  --spend-series-8: var(--data-series-8);
+  --spend-other: var(--data-series-other);
+  --spend-meter: var(--data-meter);
+  --spend-meter-over: var(--data-meter-over);
+}
+
+.usage-viz {
+  --chart-series-1: var(--data-series-1);
+  --chart-series-2: var(--data-series-2);
+  --chart-series-3: var(--data-series-3);
+  --chart-series-4: var(--data-series-4);
+  --chart-series-5: var(--data-series-5);
+  --chart-series-6: var(--data-series-6);
+  --chart-series-7: var(--data-series-7);
+  --chart-series-8: var(--data-series-8);
+  --chart-series-other: var(--data-series-other);
+}
+
+/* Storage (ADR-0042) asks the same question as the spend meter, am I about to
+   be cut off, so it takes the same STATUS pair. Its own scope on purpose: the
+   series slots are for money by model and mean nothing here. */
+.storage-viz {
+  --storage-meter: var(--data-meter);
+  --storage-meter-over: var(--data-meter-over);
+}

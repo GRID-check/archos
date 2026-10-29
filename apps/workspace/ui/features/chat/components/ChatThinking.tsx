@@ -551,7 +551,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
         data-testid="derivation-no-research"
         className="bg-muted w-full rounded-surface px-4 py-3 shadow-xs"
       >
-        <p className="text-foreground flex min-h-6 items-center gap-2 text-sm font-semibold">
+        <p className="text-foreground flex min-h-6 items-center gap-2 text-sm font-medium">
           <CircleMinus aria-hidden className="text-muted-foreground size-5 shrink-0" />
           {t('thinking.noResearch')}
         </p>
@@ -593,7 +593,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
       >
         <CheckCircle2 aria-hidden className="text-success size-5" />
         <p className="text-sm leading-5 [overflow-wrap:anywhere]">
-          <span className="text-foreground font-semibold">{head}</span>
+          <span className="text-foreground font-medium">{head}</span>
           {(detail.length > 0 || citedPart) && (
             <span className="text-muted-foreground block text-[13px] leading-[19px]">
               {detail.join(JOIN)}
@@ -667,7 +667,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                     key={labelKey}
                     data-derivation-label
                     className={cn(
-                      'block truncate text-sm font-semibold',
+                      'block truncate text-sm font-medium',
                       shimmer ? undefined : 'text-foreground'
                     )}
                     {...roll}

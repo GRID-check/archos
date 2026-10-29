@@ -147,7 +147,7 @@ export function IfcRoomSchedule({
   return (
     <section aria-labelledby="bim-schedule-heading" className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="bim-schedule-heading" className="flex items-center gap-2 text-sm font-semibold">
+        <h2 id="bim-schedule-heading" className="flex items-center gap-2 text-sm font-medium">
           <Table2 className="size-4 text-muted-foreground" aria-hidden="true" />
           {t('schedule.title')}
         </h2>
@@ -231,7 +231,7 @@ export function IfcRoomSchedule({
                       <th
                         scope="rowgroup"
                         colSpan={3}
-                        className="px-2 py-1 text-left text-xs font-semibold"
+                        className="px-2 py-1 text-left text-xs font-medium"
                       >
                         {storey.storeyName}
                         {storey.roomsWithoutArea > 0 && (
@@ -319,7 +319,7 @@ export function IfcRoomSchedule({
                 )
               })}
               <tfoot className="border-t-2">
-                <tr className="text-sm font-semibold">
+                <tr className="text-sm font-medium">
                   <td className="px-2 py-1.5">{t('schedule.total')}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">
                     {format(schedule.totals.netFloorArea)}
@@ -404,7 +404,7 @@ export function IfcQuantityTakeoff({
 
   return (
     <section aria-labelledby="bim-takeoff-heading" className="space-y-2">
-      <h2 id="bim-takeoff-heading" className="flex items-center gap-2 text-sm font-semibold">
+      <h2 id="bim-takeoff-heading" className="flex items-center gap-2 text-sm font-medium">
         <Ruler className="size-4 text-muted-foreground" aria-hidden="true" />
         {t('takeoff.title')}
       </h2>
@@ -559,7 +559,7 @@ export function IfcProfileSuggestions({
 
   return (
     <section aria-labelledby="bim-profile-heading" className="space-y-2">
-      <h2 id="bim-profile-heading" className="flex items-center gap-2 text-sm font-semibold">
+      <h2 id="bim-profile-heading" className="flex items-center gap-2 text-sm font-medium">
         <Sparkles className="size-4 text-muted-foreground" aria-hidden="true" />
         {t('profile.title')}
       </h2>

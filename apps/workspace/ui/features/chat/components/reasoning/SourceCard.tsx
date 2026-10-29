@@ -294,7 +294,7 @@ export const SourceCard: FC<{
             {numbers.length > 0 && (
               <span
                 data-source-card-markers=""
-                className="text-foreground relative z-10 ml-auto text-[15px] font-semibold tabular-nums"
+                className="text-foreground relative z-10 ml-auto text-[15px] font-medium tabular-nums"
                 onClick={(event) => event.stopPropagation()}
               >
                 <CitationMarkers numbers={numbers} />

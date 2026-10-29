@@ -171,7 +171,7 @@ export function IfcCompliancePanel({
   return (
     <section aria-labelledby="bim-compliance-heading" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="bim-compliance-heading" className="flex items-center gap-2 text-sm font-semibold">
+        <h2 id="bim-compliance-heading" className="flex items-center gap-2 text-sm font-medium">
           <ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />
           {t('compliance.title')}
         </h2>

@@ -471,7 +471,7 @@ export function ResultRow({
       </ItemMedia>
       <ItemContent className="flex min-w-0 flex-col gap-0.5">
         <span className="flex min-w-0 items-start gap-2">
-          <span className={cn('min-w-0 flex-1 text-sm font-semibold tracking-tight text-foreground', compact ? 'truncate' : 'max-sm:line-clamp-2 sm:truncate')}>{title}</span>
+          <span className={cn('min-w-0 flex-1 text-sm font-medium tracking-tight text-foreground', compact ? 'truncate' : 'max-sm:line-clamp-2 sm:truncate')}>{title}</span>
           {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
         </span>
         {meta ? (
@@ -652,7 +652,7 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
 /** A matched word: set apart by weight on a faint ink wash exactly as wide as the match. */
 function MatchMark({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
   return (
-    <mark className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid={testId}>
+    <mark className="rounded-[2px] bg-foreground/[0.08] font-medium text-foreground [box-decoration-break:clone]" data-testid={testId}>
       {children}
     </mark>
   )
@@ -1010,7 +1010,7 @@ export function RegisterStackRow({
       >
         {code ? <span className="min-w-0 truncate font-mono text-xs text-foreground/80">{code}</span> : null}
         <span className="flex min-w-0 items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium tracking-tight text-foreground">{title}</span>
           {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
         </span>
         {meta && meta.some(Boolean) ? (

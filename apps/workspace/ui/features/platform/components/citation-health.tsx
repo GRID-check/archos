@@ -77,7 +77,6 @@ import {
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { CitationDefectChart } from '@/components/charts/citation-defect-chart'
-import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
 import { platformCopy } from '@/i18n/namespaces/platform'
@@ -334,7 +333,6 @@ function RankedBars({
   const max = Math.max(...rows.map((row) => row.value), 1)
   return (
     <ul className="usage-viz flex flex-col gap-3">
-      <SeriesPaletteStyle />
       {rows.map((row) => (
         <li key={row.key} className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3 text-sm">

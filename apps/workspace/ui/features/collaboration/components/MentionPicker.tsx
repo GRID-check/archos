@@ -251,7 +251,7 @@ function HighlightedName({ name, query }: { name: string; query: string }): JSX.
   return (
     <>
       {name.slice(0, from)}
-      <mark className="bg-transparent font-semibold text-foreground">{name.slice(from, to)}</mark>
+      <mark className="bg-transparent font-medium text-foreground">{name.slice(from, to)}</mark>
       {name.slice(to)}
     </>
   )

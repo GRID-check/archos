@@ -364,7 +364,7 @@ export function IfcScheduleCard({
               {storeys.map((entry) => (
                 <tbody key={entry.storeyName}>
                   <tr className="border-t">
-                    <th scope="rowgroup" colSpan={3} className="pt-2 text-left text-xs font-semibold">
+                    <th scope="rowgroup" colSpan={3} className="pt-2 text-left text-xs font-medium">
                       {entry.storeyName}
                     </th>
                   </tr>
@@ -407,7 +407,7 @@ export function IfcScheduleCard({
               */}
               {!storey && (
                 <tfoot>
-                  <tr className="border-t-2 font-semibold">
+                  <tr className="border-t-2 font-medium">
                     <td className="py-1 pr-2">{t('schedule.total')}</td>
                     <td className="py-1 pr-2 text-right tabular-nums">
                       {number(schedule.totals.netFloorArea)} {schedule.units.area}
@@ -527,7 +527,7 @@ export function IfcElementCard({
             // between them: "Feuerwiderstand" and "REI 90" were read out as an
             // unlabelled pair, which is the whole content of the card.
             <div key={setName} className="space-y-0.5">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">{setName}</p>
+              <p className="text-xs font-medium uppercase text-muted-foreground">{setName}</p>
               <dl className="space-y-0.5">
                 {Object.entries(properties).map(([name, value]) => (
                   <div key={name} className="flex justify-between gap-3">

@@ -667,7 +667,7 @@ function PlanCount({
     <div className={cn('flex items-center gap-2.5 rounded-surface border p-2.5', count === 0 && 'opacity-55')} data-testid={testId}>
       <StatCardIcon icon={icon} tone={tone} size="sm" />
       <div className="min-w-0">
-        <p className="text-sm font-semibold tabular-nums text-foreground">{count}</p>
+        <p className="text-sm font-medium tabular-nums text-foreground">{count}</p>
         <p className="text-xs leading-snug text-muted-foreground">{label}</p>
         {secondary && <p className="text-[11px] leading-snug text-muted-foreground/80">{secondary}</p>}
       </div>

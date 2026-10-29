@@ -34,7 +34,7 @@ import type { JSX } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarOff, ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react'
 
-import { SeriesPaletteStyle, SERIES_SLOT_COUNT } from '@/components/charts/palette'
+import { SERIES_SLOT_COUNT } from '@/components/charts/palette'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -152,10 +152,8 @@ export function ScheduleTimetable({
   const expanding = loading || timetable === null
 
   return (
-    // `usage-viz` is what resolves `--chart-series-N`; the style element
-    // beside it is what defines them for both themes.
+    // `usage-viz` is what resolves `--chart-series-N` (ui/styles/data-palette.css).
     <section className="usage-viz" aria-label={t('timetable.title')} data-testid="schedule-timetable">
-      <SeriesPaletteStyle />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1">

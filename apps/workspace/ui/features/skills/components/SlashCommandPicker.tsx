@@ -116,7 +116,7 @@ function HighlightedName({ name, query }: { name: string; query: string }): JSX.
   return (
     <>
       {name.slice(0, at)}
-      <mark className="bg-transparent font-semibold text-foreground">
+      <mark className="bg-transparent font-medium text-foreground">
         {name.slice(at, at + needle.length)}
       </mark>
       {name.slice(at + needle.length)}

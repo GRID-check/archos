@@ -42,7 +42,7 @@ export function InspectorSection({
   return (
     <section aria-label={label} className={cn('flex flex-col gap-2', className)} {...props}>
       <div className="flex min-h-5 items-center justify-between gap-2 px-3">
-        <SectionLabel as="p" icon={icon} className="font-semibold tracking-[0.05em]">
+        <SectionLabel as="p" icon={icon} className="font-medium tracking-[0.05em]">
           {label}
         </SectionLabel>
         {action}

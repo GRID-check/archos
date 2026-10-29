@@ -114,7 +114,7 @@ export function EmptyState({
           className="mb-4 animate-in zoom-in-95 duration-base ease-entrance motion-reduce:animate-none"
         />
       )}
-      <p className="text-balance text-sm font-semibold tracking-tight text-foreground">{title}</p>
+      <p className="text-balance text-sm font-medium tracking-tight text-foreground">{title}</p>
       {description && (
         <p className="mt-1.5 max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">{description}</p>
       )}

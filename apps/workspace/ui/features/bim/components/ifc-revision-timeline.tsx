@@ -115,7 +115,7 @@ export function IfcRevisionTimeline({
 
   return (
     <section aria-labelledby="bim-timeline-heading" className="space-y-2">
-      <h2 id="bim-timeline-heading" className="flex items-center gap-2 text-sm font-semibold">
+      <h2 id="bim-timeline-heading" className="flex items-center gap-2 text-sm font-medium">
         <GitBranch className="size-4 text-muted-foreground" aria-hidden="true" />
         {t('timeline.title')}
       </h2>

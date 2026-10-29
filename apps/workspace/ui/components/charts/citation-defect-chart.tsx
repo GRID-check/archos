@@ -21,7 +21,6 @@
 import { type FC } from 'react'
 import { useColumnSelection } from '@/components/charts/use-column-selection'
 import { SectionLabel } from '@/components/ui/section-label'
-import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { useLocale } from '@/i18n'
 
 export interface CitationDefectPoint {
@@ -99,7 +98,6 @@ export const CitationDefectChart: FC<CitationDefectChartProps> = ({
     // only resolve under `.usage-viz`, and a legend outside it drew its
     // swatches in no colour at all, leaving the labels to stand alone.
     <div className="usage-viz">
-      <SeriesPaletteStyle />
       {/* The selected day. Turns observed, then how many of them carried a
           finding: the stack counts findings, and without both lines a
           3-segment column reads as three bad turns. */}

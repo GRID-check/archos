@@ -155,7 +155,7 @@ export const MessageAuthor: FC<MessageAuthorProps> = ({
       )}
 
       <span className="flex items-baseline gap-1.5" aria-hidden="true">
-        <span className="text-xs font-semibold leading-none text-foreground">
+        <span className="text-xs font-medium leading-none text-foreground">
           {displayName}
         </span>
         {timestamp && (

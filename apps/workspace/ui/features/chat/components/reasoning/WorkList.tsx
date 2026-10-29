@@ -123,7 +123,7 @@ const ResultWord: FC<{ parts: WorkParts }> = ({ parts }) => {
       className={cn(
         'tabular-nums',
         strong || parts.tone === 'running' ? 'text-foreground' : 'text-muted-foreground',
-        strong && 'font-semibold'
+        strong && 'font-medium'
       )}
     >
       {parts.tone === 'running' && (
