@@ -164,12 +164,12 @@ describe('a fence the model forgot to tag', () => {
     const { container } = render(<MarkdownRenderer content={'```\necho eins\necho zwei\n```'} />)
     expect(screen.queryByTestId('mermaid-diagram')).toBeNull()
     // CodeBlock, not the inline <code> styling.
-    expect(container.querySelector('code.rounded-md.bg-muted')).toBeNull()
+    expect(container.querySelector('code.rounded-inline.bg-muted')).toBeNull()
     expect(screen.getByText(/echo eins/)).toBeInTheDocument()
   })
 
   it('still renders inline code inline', () => {
     const { container } = render(<MarkdownRenderer content={'Der Befehl `task setup` reicht.'} />)
-    expect(container.querySelector('code.rounded-md.bg-muted')).toHaveTextContent('task setup')
+    expect(container.querySelector('code.rounded-inline.bg-muted')).toHaveTextContent('task setup')
   })
 })

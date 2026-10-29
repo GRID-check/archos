@@ -20,7 +20,7 @@ export function SemanticMatch({ snippet, page }: { snippet: string; page: number
 
   return (
     <div
-      className="mt-2 space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-2"
+      className="mt-2 space-y-1.5 rounded-surface border border-primary/20 bg-primary/5 px-2.5 py-2"
       data-testid="semantic-match"
     >
       {snippet !== '' && (

@@ -281,7 +281,7 @@ function PeerSelection({
       {tag && (
         <span
           className={cn(
-            'pointer-events-none absolute z-20 rounded-full px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-white shadow-sm',
+            'pointer-events-none absolute z-20 rounded-full px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-background shadow-sm',
             region
               ? above
                 ? '-translate-x-full -translate-y-[calc(100%+4px)]'
@@ -494,7 +494,7 @@ const PageCompany = memo(function PageCompany({
                 data-testid="review-peer-draft-tag"
                 data-place={draftTagPlace(state.draft, firstName(state.peer.name), size)}
                 className={cn(
-                  'absolute px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-white',
+                  'absolute px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-background shadow-sm',
                   DRAFT_TAG_CLASSES[draftTagPlace(state.draft, firstName(state.peer.name), size)]
                 )}
                 style={{ backgroundColor: identityInk(state.peer.userId) }}

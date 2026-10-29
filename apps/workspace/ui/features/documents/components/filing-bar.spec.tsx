@@ -110,7 +110,7 @@ function renderView(listed: ListedProposal[], { view = 'grid', minFiles }: { vie
 
 /** The ids of the tiles outlined right now. */
 const litCards = () =>
-  FILES.filter((entry) => screen.getByTestId(`card-${entry.id}`).closest('[class*="rounded-xl"]')?.className.includes('outline-strong')).map(
+  FILES.filter((entry) => screen.getByTestId(`card-${entry.id}`).closest('[class*="rounded-surface"]')?.className.includes('outline-strong')).map(
     (entry) => entry.id
   )
 

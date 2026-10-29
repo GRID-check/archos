@@ -132,7 +132,7 @@ export function DocumentTagsEditor({
         {tags.map((tag) => (
           <span
             key={tag}
-            className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
+            className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-control px-2 py-0.5 text-xs font-medium"
           >
             {tag}
             {!readOnly && (
@@ -141,7 +141,7 @@ export function DocumentTagsEditor({
                 onClick={() => removeTag(tag)}
                 disabled={isSaving}
                 aria-label={t('preview.removeTag', { tag })}
-                className="duration-snap hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target -mr-0.5 rounded-sm p-0.5 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 motion-reduce:transition-none"
+                className="duration-snap hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target -mr-0.5 rounded-control p-0.5 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 motion-reduce:transition-none"
               >
                 <X className="size-3" aria-hidden />
               </button>
@@ -199,7 +199,7 @@ export function DocumentTagsEditor({
               // `h-6` is 24px, a little over half the touch floor, on a control
               // that has to be hit precisely because a mis-tap lands on a tag
               // chip that removes itself.
-              className="border-input text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-36 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-28 rounded-md border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
+              className="border-input text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-36 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-28 rounded-control border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
             />
           </span>
         )}
@@ -225,7 +225,7 @@ export function DocumentTagsEditor({
               // interaction, and at `py-0.5` each was a 20px chip in a wrapped row
               // of them. Grown rather than overhung — they are neighbours in a
               // flex-wrap row, so catchments would land on each other.
-              className="border-border text-muted-foreground duration-snap hover:bg-muted hover:text-foreground focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3.5 inline-flex items-center rounded-md border bg-transparent px-2 py-0.5 text-xs font-medium transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 motion-reduce:transition-none"
+              className="border-border text-muted-foreground duration-snap hover:bg-muted hover:text-foreground focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3.5 inline-flex items-center rounded-control border bg-transparent px-2 py-0.5 text-xs font-medium transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 motion-reduce:transition-none"
             >
               {tag}
             </button>

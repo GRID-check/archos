@@ -69,7 +69,7 @@ interface FollowUpChipsProps {
  * chip fills the composer should not have to learn it twice.
  */
 const CHIP = cn(
-  'group inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md border px-[13px] py-1',
+  'group inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-control border px-[13px] py-1',
   // On a phone a chip is given a floor of 12rem and the row wraps, so each
   // question gets a line of its own: „Wie wird das Hauptgeschoß…" is still a
   // usable offer where „Wie…" is not, and the question WRAPS there instead of
@@ -77,7 +77,7 @@ const CHIP = cn(
   // reader decides on). On desktop the chips size to their content and cut at
   // one line, because four of them fit across 636px and a set the eye takes in
   // at once is the whole affordance.
-  'max-sm:min-w-[12rem] bg-card text-foreground/85 shadow-xs card-caption font-medium',
+  'max-sm:min-w-[12rem] border border-border bg-card text-foreground/85 shadow-xs card-caption font-medium',
   'transition-colors duration-quick ease-out motion-reduce:transition-none',
   'hover:bg-accent hover:text-foreground',
   'focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-2',

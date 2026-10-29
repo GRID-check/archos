@@ -515,7 +515,7 @@ describe('a citation still being settled (ADR-0066)', () => {
     const box = (el: Element) =>
       el.className
         .split(/\s+/)
-        .filter((c) => /^(inline-flex|items-center|rounded-sm|px-|relative|-top-|text-\[|font-|leading-|tabular-|pointer-coarse:)/.test(c))
+        .filter((c) => /^(inline-flex|items-center|rounded-(sm|control)|px-|relative|-top-|text-\[|font-|leading-|tabular-|pointer-coarse:)/.test(c))
         .sort()
     expect(box(pending as Element)).toEqual(box(live))
   })

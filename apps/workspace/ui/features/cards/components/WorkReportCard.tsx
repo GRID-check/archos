@@ -55,7 +55,7 @@ export const WorkReportCard: FC<WorkReportCardProps> = (props) => {
   )
   if (sections.length === 0) return null
   return (
-    <section className="flex flex-col gap-3 rounded-lg bg-muted/40 px-4 py-3" aria-label={t('cards.workReport.eyebrow')}>
+    <section className="flex flex-col gap-3 rounded-surface bg-muted/40 px-4 py-3" aria-label={t('cards.workReport.eyebrow')}>
       <SectionLabel as="h3">{t('cards.workReport.eyebrow')}</SectionLabel>
       {sections.map(({ section, items }) => (
         <div key={section} className="flex flex-col gap-1" data-testid={`work-report-${section}`}>

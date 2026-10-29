@@ -27,7 +27,7 @@ const chipButtonClasses = cn(
   // what tells two chips of one Richtlinie apart, and they sit at the END of a
   // title that a single truncated line cut off.
   'inline-flex h-6 max-w-full shrink-0 cursor-pointer items-center gap-1 truncate whitespace-nowrap pointer-coarse:h-auto pointer-coarse:min-h-11 pointer-coarse:whitespace-normal pointer-coarse:py-1.5 pointer-coarse:text-left',
-  'rounded-md border px-2.5 text-xs font-medium outline-none',
+  'rounded-control border px-2.5 text-xs font-medium outline-none',
   '[&>svg]:size-3 [&>svg]:shrink-0 hover:brightness-95 dark:hover:brightness-125 aria-busy:cursor-progress',
   PRESSABLE,
   FOCUS_RING
@@ -67,7 +67,7 @@ export type CitationDetail = 'full' | 'name-only'
  * became real.
  */
 const cardButtonClasses = cn(
-  'flex w-full cursor-pointer gap-3 rounded-lg border bg-card p-3 text-left outline-none hover:bg-accent',
+  'flex w-full cursor-pointer gap-3 rounded-surface border bg-card p-3 text-left outline-none hover:bg-accent',
   'aria-busy:cursor-progress',
   PRESSABLE,
   FOCUS_RING
@@ -82,7 +82,7 @@ export const faceClasses = (variant: CitationVariant): string =>
  * scale on a box with no handler behind it read as a broken button, which is
  * exactly what the Herleitung's source chips looked like before resolution.
  */
-export const inertCardClasses = 'flex w-full gap-3 rounded-lg border bg-card p-3 text-left'
+export const inertCardClasses = 'flex w-full gap-3 rounded-surface border bg-card p-3 text-left'
 
 /**
  * The card keeps the calm neutral card surface a long list needs and carries
@@ -210,7 +210,7 @@ export const CitationFace: FC<CitationFaceProps> = ({
     <>
       {full && index && (
         <span
-          className="bg-muted text-muted-foreground mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border px-1 font-mono text-xs tabular-nums"
+          className="bg-muted text-muted-foreground mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border px-1 font-mono text-xs tabular-nums"
           aria-hidden="true"
         >
           {index}

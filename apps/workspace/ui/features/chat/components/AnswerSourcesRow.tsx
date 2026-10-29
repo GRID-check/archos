@@ -203,7 +203,7 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
         role="note"
         aria-label={t('answerSources.gapAria')}
       >
-        <span className="border-source-auto/40 bg-source-auto-tint text-source-auto-text inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium">
+        <span className="border-source-auto/40 bg-source-auto-tint text-source-auto-text inline-flex items-center gap-1.5 rounded-control border px-2 py-0.5 text-xs font-medium">
           <Globe className="size-3 shrink-0" aria-hidden="true" />
           {t('answerSources.gapLabel')}
         </span>
@@ -258,7 +258,7 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
                 // `rounded-md`, matching the chip button inside: the highlight is
                 // drawn on this wrapper, so a pill radius here traced a capsule
                 // around a rounded rectangle.
-                'inline-flex max-w-full scroll-mt-6 rounded-md',
+                'inline-flex max-w-full scroll-mt-6 rounded-control',
                 isFocused && 'animate-citation-pulse motion-reduce:animate-none'
               )}
               style={
@@ -293,7 +293,7 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
           onClick={() => setExpanded((open) => !open)}
           aria-expanded={expanded}
           data-testid="answer-sources-more"
-          className="rounded-xs text-muted-foreground duration-quick hover:text-foreground focus-visible:ring-ring/60 cursor-pointer text-xs leading-relaxed underline decoration-dotted underline-offset-2 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-2"
+          className="rounded-control text-muted-foreground duration-quick hover:text-foreground focus-visible:ring-ring/60 cursor-pointer text-xs leading-relaxed underline decoration-dotted underline-offset-2 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-2"
         >
           {expanded ? t('answerSources.less') : t('answerSources.more', { count: hidden })}
         </button>

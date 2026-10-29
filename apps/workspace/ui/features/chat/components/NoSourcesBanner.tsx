@@ -88,7 +88,7 @@ export const NoSourcesBanner: FC<NoSourcesBannerProps> = ({ isAuthenticated = fa
               type="button"
               onClick={handleDismiss}
               aria-label={t('actions.dismiss')}
-              className="text-muted-foreground hover:text-foreground duration-quick absolute right-3 top-3 rounded-xs transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+              className="text-muted-foreground hover:text-foreground duration-quick absolute right-3 top-3 rounded-control transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
             >
               <X className="size-4" aria-hidden="true" />
             </button>

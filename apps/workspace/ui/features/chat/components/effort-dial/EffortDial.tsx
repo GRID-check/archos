@@ -216,7 +216,7 @@ export const EffortDial: FC<EffortDialProps> = ({
           size="sm"
           data-testid="effort-dial-trigger"
           className={cn(
-            'text-muted-foreground h-8 gap-1 rounded-lg px-2.5 text-xs font-semibold',
+            'text-muted-foreground h-8 gap-1 rounded-control px-2.5 text-xs font-semibold',
             isMaximum && 'text-warning hover:text-warning',
             hidden && 'invisible',
             className
@@ -362,26 +362,9 @@ function revealTo(share: number): string {
   return `inset(0 calc(${1 - share} * (100% - ${THUMB}px) + ${THUMB / 2}px) 0 0 round 8px)`
 }
 
-/**
- * The thumb as a raised key: lit from above (a lighter top, a one-pixel
- * highlight on its upper edge) and casting a short shadow onto the recessed
- * track. Mixed toward white and black rather than toward the theme, so the
- * light falls the same way on the dark thumb of the light theme and the light
- * thumb of the dark one.
- */
+/** The thumb: a flat ink key on the track, the one thing on the dial that is not a dot. */
 const THUMB_FACE: CSSProperties = {
-  backgroundImage:
-    'linear-gradient(to bottom, color-mix(in oklch, var(--foreground), white 14%), color-mix(in oklch, var(--foreground), black 6%))',
-  boxShadow: [
-    'inset 0 1px 0 color-mix(in oklch, white 22%, transparent)',
-    '0 1px 1px color-mix(in oklch, black 18%, transparent)',
-    '0 3px 8px -2px color-mix(in oklch, black 30%, transparent)',
-  ].join(', '),
-}
-
-/** The track sits a little below the popover surface, so the thumb has something to stand on. */
-const TRACK_RECESS: CSSProperties = {
-  boxShadow: 'inset 0 1px 2px color-mix(in oklch, black 8%, transparent)',
+  backgroundColor: 'var(--foreground)',
 }
 
 /**
@@ -440,8 +423,7 @@ const EffortSlider: FC<EffortSliderProps> = ({ label, index, valueText, onChoose
 
   return (
     <div
-      className="bg-muted pointer-coarse:h-11 group relative mt-2 h-10 overflow-hidden rounded-xl"
-      style={TRACK_RECESS}
+      className="bg-muted pointer-coarse:h-11 group relative mt-2 h-10 overflow-hidden rounded-surface"
     >
       <div className="pointer-events-none absolute inset-y-0" style={RAIL} aria-hidden="true">
         {CHAT_EFFORTS.map((level, stop) => (
@@ -455,7 +437,7 @@ const EffortSlider: FC<EffortSliderProps> = ({ label, index, valueText, onChoose
         data-testid="effort-dial-fill"
         data-share={share}
       >
-        <span className="bg-foreground/5 absolute inset-0 rounded-lg" />
+        <span className="bg-foreground/5 absolute inset-0 rounded-control" />
         <span className="absolute inset-0" style={RAMP_DOTS} />
       </motion.div>
       <motion.div
@@ -467,7 +449,7 @@ const EffortSlider: FC<EffortSliderProps> = ({ label, index, valueText, onChoose
       >
         <span
           className={cn(
-            'absolute inset-y-0 left-0 flex w-7 items-center justify-center gap-[3px] rounded-lg',
+            'absolute inset-y-0 left-0 flex w-7 items-center justify-center gap-[3px] rounded-control',
             'duration-quick transition-transform ease-out motion-reduce:transition-none',
             'group-has-[input:active]:scale-[0.94]',
             'group-has-[input:focus-visible]:ring-ring/60 group-has-[input:focus-visible]:ring-offset-muted group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-offset-2'

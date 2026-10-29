@@ -134,7 +134,7 @@ const BindingStatusChip: FC<{ status?: string }> = ({ status }) => {
  * box per control, in a row that wraps, gives every target its own ground.
  */
 export const PEEK_ACTION_CLASSES = cn(
-  'inline-flex items-center gap-1 rounded-sm text-xs font-medium outline-none hover:underline pointer-coarse:min-h-11',
+  'inline-flex items-center gap-1 rounded-control text-xs font-medium outline-none hover:underline pointer-coarse:min-h-11',
   PRESSABLE,
   FOCUS_RING
 )
@@ -384,7 +384,7 @@ export const CitationPeek: FC<CitationPeekProps> = ({
       {/* Does this actually bind me? The highest-value fact for a legal source. */}
       {doc.bindingNote && (
         <div
-          className="rounded-md px-2.5 py-1.5"
+          className="rounded-control px-2.5 py-1.5"
           style={{
             backgroundColor: `var(--source-${tint}-tint, var(--muted))`,
           }}
@@ -402,7 +402,7 @@ export const CitationPeek: FC<CitationPeekProps> = ({
       {/* The words themselves — the whole point of checking a citation. */}
       {snippet && (
         <div
-          className="rounded-lg border px-3 py-2"
+          className="rounded-surface border px-3 py-2"
           style={{
             backgroundColor: `var(--source-${tint}-tint, var(--muted))`,
             borderColor: `color-mix(in oklch, var(--source-${tint}, var(--foreground)) 25%, transparent)`,

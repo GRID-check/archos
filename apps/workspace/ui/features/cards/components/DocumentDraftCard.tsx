@@ -114,7 +114,7 @@ interface DocumentDraftCardProps {
  * is the design language's Fitts floor for a control that behaves like a link.
  */
 const ACTION = cn(
-  'inline-flex min-h-11 items-center rounded-sm font-medium text-primary',
+  'inline-flex min-h-11 items-center rounded-control font-medium text-primary',
   'transition-colors duration-quick ease-out motion-reduce:transition-none',
   'hover:text-primary/80 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-2',
   // `aria-disabled`, never `disabled`: Chrome blurs a focused button the

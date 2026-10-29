@@ -151,9 +151,9 @@ export function CursorChat({
       ref={bubble}
       data-testid="cursor-chat"
       className={cn(
-        'pointer-events-auto fixed z-50 w-60 px-3 py-2 text-white shadow-lg',
+        'pointer-events-auto fixed z-50 w-60 px-3 py-2 text-background shadow-lg',
         // Beside a pointer, its corner points at the tip; on its own, a plain bubble.
-        at ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl'
+        at ? 'rounded-surface rounded-tl-sm' : 'rounded-surface'
       )}
       style={{ backgroundColor: ink, left: place.left, top: place.top }}
     >
@@ -165,9 +165,9 @@ export function CursorChat({
         value={text}
         placeholder={t('review.chatPlaceholder')}
         // Solid white throughout (translucent white on a mid ink fails 4.5:1): what is typed is bolder than the placeholder.
-        className="w-full rounded-md border-0 bg-transparent px-1 text-sm leading-5 font-semibold text-white shadow-none placeholder:font-normal placeholder:text-white pointer-coarse:text-base"
+        className="w-full rounded-control border-0 bg-transparent px-1 text-sm leading-5 font-semibold text-background placeholder:font-normal placeholder:text-background pointer-coarse:text-base shadow-none"
         // The app's focus outline stays (WCAG 2.4.11), in white on the bubble's colour, hugging the words.
-        style={{ outlineColor: 'rgb(255 255 255 / 0.75)', outlineOffset: 1 }}
+        style={{ outlineColor: 'color-mix(in oklch, var(--background) 75%, transparent)', outlineOffset: 1 }}
         onChange={(event) => {
           setText(event.target.value)
           onChat(event.target.value || null)
@@ -184,7 +184,7 @@ export function CursorChat({
         }}
         onBlur={() => finish(true)}
       />
-      <p className="mt-0.5 text-[10px] leading-3 text-white">{t('review.chatHint')}</p>
+      <p className="mt-0.5 text-[10px] leading-3 text-background">{t('review.chatHint')}</p>
     </div>
   )
 }

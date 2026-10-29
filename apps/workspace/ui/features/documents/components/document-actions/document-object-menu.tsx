@@ -81,7 +81,7 @@ export function DocumentObjectMenu({
     type: 'button' as const,
     variant: 'ghost' as const,
     size: 'icon' as const,
-    className: 'size-8 shrink-0 bg-background/80 shadow-2xs backdrop-blur-sm',
+    className: 'size-8 shrink-0 border border-border bg-background shadow-2xs',
     'aria-label': t('actions.label', { name }),
     'aria-haspopup': 'menu' as const,
     title: t('actions.menuLabel'),

@@ -115,7 +115,7 @@ export const AnswerDetails = memo(function AnswerDetails({
       <div className="flex min-h-6 flex-wrap items-center gap-2">
         {before}
         <CollapsibleTrigger
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 touch-target duration-quick flex items-center gap-1.5 self-start rounded-md text-xs leading-relaxed transition-colors ease-out focus-visible:ring-2 focus-visible:outline-none pointer-coarse:self-center"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 touch-target duration-quick flex items-center gap-1.5 self-start rounded-control text-xs leading-relaxed transition-colors ease-out focus-visible:ring-2 focus-visible:outline-none pointer-coarse:self-center"
           aria-label={t(
             needsAttention ? 'answerDetails.triggerAriaAttention' : 'answerDetails.triggerAria'
           )}

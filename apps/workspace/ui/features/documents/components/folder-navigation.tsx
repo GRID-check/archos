@@ -151,7 +151,7 @@ export function FolderBreadcrumbRow({
       // child, so it used to scroll with the cards, and the moment the list
       // overflowed the short screen under the fixed header a swipe left it
       // half-hidden under the controls. Pinned, it is whole or gone, never cut.
-      className="flex shrink-0 items-center justify-between gap-2 border-b bg-card/50 px-4 py-2.5 backdrop-blur-sm phone:sticky phone:top-0 phone:z-10 phone:bg-background phone:py-1.5"
+      className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-2.5 phone:sticky phone:top-0 phone:z-10 phone:bg-background phone:py-1.5"
       data-testid="folder-breadcrumb-row"
     >
       <div className="flex min-w-0 items-center gap-2">
@@ -310,7 +310,7 @@ function NewFolderControl({
             placeholder={t('folders.namePlaceholder')}
             aria-label={t('folders.newFolderName')}
             aria-busy={isCreating}
-            className="h-8 rounded-md pl-8 pr-8"
+            className="h-8 rounded-control pl-8 pr-8"
           />
           {isCreating && (
             <InputGroupAddon align="end">
@@ -427,7 +427,7 @@ function CrumbDropTarget({
   })
   return (
     <span
-      className={cn('inline-flex rounded-md transition-colors', dropRing(drop))}
+      className={cn('inline-flex rounded-control transition-colors', dropRing(drop))}
       data-drop-over={drop.isOver ? '' : undefined}
       data-testid={`crumb-drop-${folderId ?? 'root'}`}
       {...drop.dropProps}
@@ -501,7 +501,7 @@ function FolderNameEditor({
         }}
         aria-label={t('folders.renameLabel', { name: folder.name })}
         aria-busy={isRenaming}
-        className="h-8 rounded-md pl-8 pr-8 text-sm"
+        className="h-8 rounded-control pl-8 pr-8 text-sm"
         data-testid={`folder-rename-input-${folder.id}`}
       />
       {isRenaming && (
@@ -530,7 +530,7 @@ function FolderActionsMenu({
           type="button"
           aria-label={t('folders.actionsFor', { name: folder.name })}
           title={t('folders.actions')}
-          className="hover:bg-accent focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-sm transition-opacity duration-snap ease-out focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 pointer-coarse:size-11 pointer-coarse:opacity-100 motion-reduce:transition-none md:opacity-0 md:group-hover:opacity-100 data-[state=open]:opacity-100"
+          className="hover:bg-accent focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-full transition-opacity duration-snap ease-out focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 pointer-coarse:size-11 pointer-coarse:opacity-100 motion-reduce:transition-none md:opacity-0 md:group-hover:opacity-100 data-[state=open]:opacity-100"
           data-testid={`folder-actions-${folder.id}`}
         >
           <MoreHorizontal className="size-3.5" aria-hidden />
@@ -567,7 +567,7 @@ export const FOLDER_ROWS_ON_PHONE = 'phone:[&>*:has([data-folder-tile])]:col-spa
  * name on a phone, where the tile is a row (see {@link FolderCard}).
  */
 const FOLDER_WELL =
-  'flex h-[124px] items-center justify-center bg-muted/30 phone:size-10 phone:h-10 phone:shrink-0 phone:rounded-lg phone:border-0'
+  'flex h-[124px] items-center justify-center bg-muted/30 phone:size-10 phone:h-10 phone:shrink-0 phone:rounded-control phone:border-0'
 
 /**
  * A folder as a grid tile — visually DISTINCT from {@link FileCard}.
@@ -859,11 +859,11 @@ export function FolderRow({
         type="button"
         onClick={() => onOpen(folder.id)}
         aria-label={openLabel}
-        className="focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-2.5 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 pointer-coarse:min-h-11"
+        className="focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-2.5 rounded-control text-left focus-visible:outline-none focus-visible:ring-2 pointer-coarse:min-h-11"
       >
         {/* One glyph, for the reason the card's comment gives. The row's own
             background change is the hover feedback, and a finger gets it too. */}
-        <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
+        <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-full">
           <Folder className="text-muted-foreground size-3.5" aria-hidden />
         </span>
         <FileName text={folder.name} className="text-foreground shrink font-medium" />
@@ -949,7 +949,7 @@ export function FolderCardSkeleton(): JSX.Element {
 export function FolderRowSkeleton(): JSX.Element {
   return (
     <Item className="w-full gap-2 px-3 py-2" data-testid="folder-row-skeleton">
-      <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
+      <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-full">
         <Folder className="text-muted-foreground/40 size-3.5" aria-hidden />
       </span>
       <Skeleton className="h-3.5 w-40" />
@@ -972,11 +972,11 @@ export function FolderBreadcrumbRowSkeleton(): JSX.Element {
   const t = useTranslations(filesCopy)
   return (
     <div
-      className="flex shrink-0 items-center justify-between gap-2 border-b bg-card/50 px-4 py-2.5 backdrop-blur-sm"
+      className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-2.5"
       data-testid="folder-breadcrumb-skeleton"
     >
       <span className="text-sm font-medium text-muted-foreground">{t('folders.allFiles')}</span>
-      <Skeleton className="h-8 w-28 rounded-md" />
+      <Skeleton className="h-8 w-28 rounded-surface" />
     </div>
   )
 }

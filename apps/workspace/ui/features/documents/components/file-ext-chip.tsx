@@ -32,10 +32,10 @@ export function FileExtChip({
     <span
       data-testid="file-ext-chip"
       className={cn(
-        'flex shrink-0 items-center justify-center font-bold uppercase leading-none tracking-tight',
-        size === 'md' && 'size-9 rounded-lg text-xs',
-        size === 'sm' && 'size-8 rounded-md text-[10px]',
-        size === 'xs' && 'size-6 rounded-sm text-[8.5px]',
+        'flex shrink-0 items-center justify-center font-medium uppercase leading-none tracking-tight',
+        size === 'md' && 'size-9 rounded-control text-xs',
+        size === 'sm' && 'size-8 rounded-control text-[10px]',
+        size === 'xs' && 'size-6 rounded-full text-[8.5px]',
         ext.length > 4 && size !== 'xs' && 'text-[9px]',
         className,
       )}

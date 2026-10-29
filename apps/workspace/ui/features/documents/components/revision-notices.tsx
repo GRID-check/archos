@@ -26,7 +26,7 @@ export function SuggestionNotice({
 }): JSX.Element {
   const t = useTranslations(filesCopy)
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-dashed px-3 py-2.5" data-testid="revision-suggestion">
+    <div className="flex flex-col gap-2 rounded-control border border-dashed px-3 py-2.5" data-testid="revision-suggestion">
       <p className="text-foreground text-[13px] leading-snug">{t('preview.revision.suggestion', { name: suggestion.of.filename })}</p>
       <p className="text-muted-foreground text-xs leading-relaxed">
         {t(BASIS_KEY[suggestion.basis])}

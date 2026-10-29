@@ -81,7 +81,7 @@ export const BranchOptions: FC<BranchOptionsProps> = ({
             aria-disabled={!interactive || undefined}
             aria-pressed={isSelected}
             className={cn(
-              'flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-left',
+              'flex items-start gap-2.5 rounded-control border px-3.5 py-3 text-left',
               'transition-[border-color,box-shadow,opacity] duration-quick ease-out motion-reduce:transition-none',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
               isSelected ? 'border-primary shadow-sm' : 'shadow-xs',

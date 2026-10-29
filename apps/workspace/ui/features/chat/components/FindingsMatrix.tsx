@@ -126,7 +126,7 @@ const FindingRow: FC<{
       <tr
         className={cn(
           'border-border/60 border-t align-top',
-          '@max-[30rem]/matrix:flex @max-[30rem]/matrix:flex-col @max-[30rem]/matrix:gap-1.5 @max-[30rem]/matrix:rounded-xl @max-[30rem]/matrix:border @max-[30rem]/matrix:p-3',
+          '@max-[30rem]/matrix:flex @max-[30rem]/matrix:flex-col @max-[30rem]/matrix:gap-1.5 @max-[30rem]/matrix:rounded-surface @max-[30rem]/matrix:border @max-[30rem]/matrix:p-3',
           expandable && 'hover:bg-muted/40 cursor-pointer'
         )}
         onClick={expandable ? () => setOpen((value) => !value) : undefined}
@@ -142,7 +142,7 @@ const FindingRow: FC<{
               <button
                 type="button"
                 aria-expanded={open}
-                className="focus-visible:ring-ring/60 flex min-h-0 w-full items-start gap-1.5 rounded-xs text-left focus-visible:outline-none focus-visible:ring-2 pointer-coarse:min-h-11 pointer-coarse:items-center"
+                className="focus-visible:ring-ring/60 flex min-h-0 w-full items-start gap-1.5 rounded-control text-left focus-visible:outline-none focus-visible:ring-2 pointer-coarse:min-h-11 pointer-coarse:items-center"
               >
                 <ChevronDown
                   className={cn(
@@ -205,7 +205,7 @@ const FindingRow: FC<{
                   event.stopPropagation()
                   void onCommission?.(finding).then((ok) => setCommissioned(ok))
                 }}
-                className="rounded-xs text-brand focus-visible:ring-ring/60 underline decoration-dotted underline-offset-2 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-2"
+                className="rounded-control text-brand focus-visible:ring-ring/60 underline decoration-dotted underline-offset-2 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-2"
               >
                 {t('findings.clarify')}
               </button>
@@ -219,7 +219,7 @@ const FindingRow: FC<{
         </td>
       </tr>
       {open && finding.comment && (
-        <tr className={cn('bg-muted/30', '@max-[30rem]/matrix:block @max-[30rem]/matrix:-mt-1 @max-[30rem]/matrix:rounded-xl')} data-testid="finding-detail">
+        <tr className={cn('bg-muted/30', '@max-[30rem]/matrix:block @max-[30rem]/matrix:-mt-1 @max-[30rem]/matrix:rounded-surface')} data-testid="finding-detail">
           <td colSpan={4} className={cn('text-muted-foreground px-3 py-2 text-sm', '@max-[30rem]/matrix:block')}>
             {finding.comment}
           </td>

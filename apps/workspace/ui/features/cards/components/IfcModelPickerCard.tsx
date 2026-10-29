@@ -57,9 +57,9 @@ export function IfcModelPickerCard({
   // "genuinely none".
   if (models === null && isLoading) {
     return (
-      <section className="rounded-lg border bg-card p-5" aria-label={title}>
+      <section className="rounded-surface border bg-card p-5" aria-label={title}>
         <PickerHeader title={title} />
-        <div className="flex items-center justify-center rounded-lg border border-dashed p-6">
+        <div className="flex items-center justify-center rounded-control border border-dashed p-6">
           <Spinner size="sm" />
         </div>
       </section>
@@ -70,7 +70,7 @@ export function IfcModelPickerCard({
   // "Could not look" is not "the project has no models", so say which it is.
   if (error !== null) {
     return (
-      <section className="rounded-lg border bg-card p-5" aria-label={title}>
+      <section className="rounded-surface border bg-card p-5" aria-label={title}>
         <PickerHeader title={title} />
         <EmptyState title={t('modelPicker.failed')} />
       </section>
@@ -83,7 +83,7 @@ export function IfcModelPickerCard({
   if (!projectId || ready.length === 0) return null
 
   return (
-    <section className="rounded-lg border bg-card p-5" aria-label={title}>
+    <section className="rounded-surface border bg-card p-5" aria-label={title}>
       <PickerHeader title={title} />
       <ul className="grid gap-2 sm:grid-cols-2">
         {ready.map((model) => {
@@ -93,7 +93,7 @@ export function IfcModelPickerCard({
               <Link
                 href={buildModelHref(projectId, { model: model.filename })}
                 aria-label={t('modelPicker.openAria', { name: label })}
-                className="group flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:border-primary/60 hover:bg-accent"
+                className="group flex items-center gap-3 rounded-control border bg-background p-3 transition-colors hover:border-primary/60 hover:bg-accent"
               >
                 <Boxes className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 flex-1">
@@ -122,7 +122,7 @@ function PickerHeader({ title }: { title: string }): JSX.Element {
   return (
     <header className="mb-3 flex items-center gap-2">
       <Boxes className="size-4 text-muted-foreground" aria-hidden="true" />
-      <h3 className="text-sm font-semibold">{title}</h3>
+      <h3 className="text-sm font-medium">{title}</h3>
     </header>
   )
 }

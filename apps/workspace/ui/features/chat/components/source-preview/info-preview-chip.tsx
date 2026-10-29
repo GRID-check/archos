@@ -123,7 +123,7 @@ export const InfoPreviewChip: FC<{
         {meta && <p className="text-muted-foreground text-xs">{meta}</p>}
         {bindingNote && (
           <div
-            className="rounded-md px-2.5 py-1.5"
+            className="rounded-control px-2.5 py-1.5"
             style={{
                 backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
             }}

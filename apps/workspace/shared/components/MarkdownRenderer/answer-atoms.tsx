@@ -108,7 +108,7 @@ export const ListCase: FC<{ active: boolean; muted: boolean; id?: string; compac
     className={cn(
       compact ? 'text-sm' : 'text-base',
       muted ? 'text-muted-foreground' : 'text-foreground',
-      active && '-ml-2 rounded-md bg-success-subtle py-0.5 pl-2'
+      active && '-ml-2 rounded-control bg-success-subtle py-0.5 pl-2'
     )}
   >
     {children}
@@ -235,7 +235,7 @@ export const PRINT_OPEN_CONTENT = 'data-[state=closed]:hidden print:data-[state=
 /** The row a step or a `details` block opens from. */
 export const disclosureRowClass = ({ current, open }: { current: boolean; open: boolean }): string =>
   cn(
-    'flex w-full min-w-0 items-start gap-2 rounded-md px-2 py-1.5 text-left touch-target',
+    'flex w-full min-w-0 items-start gap-2 rounded-control px-2 py-1.5 text-left touch-target',
     'transition-colors duration-quick ease-out motion-reduce:transition-none',
     'focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-2',
     current ? 'bg-success-subtle' : open ? 'bg-muted/60' : 'hover:bg-muted/50'
@@ -245,7 +245,7 @@ export const disclosureRowClass = ({ current, open }: { current: boolean; open: 
 export const DisclosurePanel: FC<{ current?: boolean; children: ReactNode }> = ({ current, children }) => (
   <div
     className={cn(
-      'mt-1.5 flex flex-col gap-2 rounded-md px-3 py-2.5 text-sm [&>*:last-child]:mb-0',
+      'mt-1.5 flex flex-col gap-2 rounded-surface px-3 py-2.5 text-sm [&>*:last-child]:mb-0',
       current ? 'border border-success' : 'border border-dashed bg-muted/30'
     )}
   >
@@ -336,7 +336,7 @@ export const FigureTile: FC<{
 }> = ({ tone, value, label, limit, verdict }) => {
   const t = useTranslations(commonCopy)
   return (
-    <div data-testid="figure-tile" data-tone={tone} className="flex min-w-0 flex-col gap-1 rounded-lg bg-muted/40 px-3.5 py-3">
+    <div data-testid="figure-tile" data-tone={tone} className="flex min-w-0 flex-col gap-1 rounded-surface bg-muted/40 px-3.5 py-3">
       <span className={cn('card-figure-24 break-words', FIGURE_INK[tone])}>{value}</span>
       <span className="card-caption flex items-baseline gap-1.5 text-default">
         {tone !== 'none' && <span aria-hidden="true" className={cn('size-2.5 shrink-0 translate-y-px rounded-[3px]', FIGURE_SWATCH[tone])} />}
@@ -371,7 +371,7 @@ export const EnergyClassChip: FC<{ rating: string }> = ({ rating }) => {
       title={t('markdown.energyClass', { rating })}
       data-testid="energy-class"
       data-class={rating}
-      className="mx-0.5 inline-flex h-5 min-w-7 items-center justify-center rounded-sm px-1.5 align-[1px] text-[12px] font-semibold no-underline"
+      className="mx-0.5 inline-flex h-5 min-w-7 items-center justify-center rounded-full px-1.5 align-[1px] text-[12px] font-semibold no-underline"
       style={{
         backgroundColor: `var(--energy-band-${band})`,
         color: band === ENERGY_CLASSES.length ? 'var(--energy-band-paper)' : 'var(--energy-band-ink)',
@@ -450,7 +450,7 @@ export const CompareStackFrame: FC<{ children: ReactNode }> = ({ children }) => 
 export const CompareVariantCard: FC<{ recommended: boolean; children: ReactNode }> = ({ recommended, children }) => (
   <section
     data-recommended={recommended ? 'true' : undefined}
-    className={cn('flex flex-col gap-1.5 rounded-lg px-3.5 py-3', recommended ? 'bg-card shadow-xs ring-1 ring-border' : 'bg-muted/40')}
+    className={cn('flex flex-col gap-1.5 rounded-surface px-3.5 py-3', recommended ? 'bg-card shadow-xs ring-1 ring-border' : 'bg-muted/40')}
   >
     {children}
   </section>
@@ -591,7 +591,7 @@ export const ProjectValueChip: FC<{
   onFill?: () => void
 }> = ({ state, children, label, reason, onFill }) => {
   const t = useTranslations(commonCopy)
-  const base = 'mx-0.5 inline-flex h-[1.375rem] max-w-full items-center gap-1 rounded-md border px-1.5 align-[1px] text-[0.8125rem] font-medium leading-none tabular-nums'
+  const base = 'mx-0.5 inline-flex h-[1.375rem] max-w-full items-center gap-1 rounded-control border px-1.5 align-[1px] text-[0.8125rem] font-medium leading-none tabular-nums'
   if (state === 'missing') {
     const body = (
       <>
@@ -777,7 +777,7 @@ export const PrefillButton: FC<{ label: string; title: string; onClick: () => vo
     aria-label={ariaLabel}
     onClick={onClick}
     className={cn(
-      'inline-flex h-6 shrink-0 items-center gap-1 rounded-md border bg-card px-2 text-[11px] font-medium text-muted-foreground shadow-xs',
+      'inline-flex h-6 shrink-0 items-center gap-1 rounded-control border bg-card px-2 text-[11px] font-medium text-muted-foreground shadow-xs',
       'transition-colors duration-quick ease-out motion-reduce:transition-none hover:bg-accent hover:text-foreground',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:h-11 pointer-coarse:px-3 print:hidden'
     )}
@@ -809,7 +809,7 @@ export const NotFoundPane: FC<{ label: string; pane: string; children: ReactNode
   <section
     data-pane={pane}
     className={cn(
-      'flex min-w-0 flex-col gap-1.5 rounded-lg px-3.5 py-3 text-sm [&_figure]:my-0 [&_p:last-child]:mb-0',
+      'flex min-w-0 flex-col gap-1.5 rounded-surface px-3.5 py-3 text-sm [&_figure]:my-0 [&_p:last-child]:mb-0',
       pane === 'rule' ? 'bg-card ring-1 ring-border' : 'bg-muted/40'
     )}
   >

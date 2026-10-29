@@ -60,7 +60,7 @@ const copyText = async (text: string, onDone: () => void, failedMessage: string)
  * and overhangs that overlap hand a tap to whichever sibling paints last.
  */
 export const COPY_ACTION_CLASSES = cn(
-  'inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium outline-none',
+  'inline-flex shrink-0 items-center gap-1 rounded-control px-1.5 py-0.5 text-xs font-medium outline-none',
   'text-muted-foreground hover:text-foreground pointer-coarse:min-h-11',
   PRESSABLE,
   FOCUS_RING

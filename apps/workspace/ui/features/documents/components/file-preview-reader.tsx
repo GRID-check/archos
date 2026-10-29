@@ -206,7 +206,7 @@ export function ReaderHeader({
       className="bg-card flex shrink-0 items-center gap-2 border-b pt-[max(0.375rem,env(safe-area-inset-top))] pr-[max(0.25rem,env(safe-area-inset-right))] pb-1.5 pl-[max(1rem,env(safe-area-inset-left))]"
     >
       <div className="min-w-0 flex-1 py-1">
-        <h3 className="text-foreground flex text-[15px] font-semibold leading-tight tracking-[-0.01em]" title={title}>
+        <h3 className="text-foreground flex text-[15px] font-medium leading-tight tracking-[-0.01em]" title={title}>
           <MiddleTruncate text={name} />
         </h3>
         <div className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">

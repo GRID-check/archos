@@ -141,7 +141,7 @@ export const CalloutCard: FC<CalloutCardProps> = ({ kind, text, title, detail, f
                 And it shares a baseline with the title instead of sitting on a row
                 of its own: that quirk is this card's identity and stays
                 (answer-card-charter.md §B1 — do not "fix" it). */}
-            <span className={cn('card-eyebrow rounded-sm px-1.5 py-0.5', tone.wash, tone.ink)}>{tone.label(t)}</span>
+            <span className={cn('card-eyebrow rounded-surface px-1.5 py-0.5', tone.wash, tone.ink)}>{tone.label(t)}</span>
             {title && <p className="card-title text-foreground">{title}</p>}
           </div>
 

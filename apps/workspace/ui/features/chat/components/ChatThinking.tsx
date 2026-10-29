@@ -549,7 +549,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     return (
       <div
         data-testid="derivation-no-research"
-        className="bg-muted w-full rounded-2xl px-4 py-3 shadow-xs"
+        className="bg-muted w-full rounded-surface px-4 py-3 shadow-xs"
       >
         <p className="text-foreground flex min-h-6 items-center gap-2 text-sm font-semibold">
           <CircleMinus aria-hidden className="text-muted-foreground size-5 shrink-0" />
@@ -589,7 +589,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     return citationScope(
       <div
         data-testid="derivation-single"
-        className="bg-muted grid w-full grid-cols-[20px_minmax(0,1fr)] gap-x-2 rounded-2xl px-4 py-3 shadow-xs"
+        className="bg-muted grid w-full grid-cols-[20px_minmax(0,1fr)] gap-x-2 rounded-surface px-4 py-3 shadow-xs"
       >
         <CheckCircle2 aria-hidden className="text-success size-5" />
         <p className="text-sm leading-5 [overflow-wrap:anywhere]">
@@ -612,7 +612,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     // `@container`: the header answers to the panel's width, not the
     // viewport's: the panel sits in a chat column, beside a canvas or a
     // sidebar, and is a phone's width there on any screen.
-    <div className="@container w-full rounded-2xl bg-muted shadow-xs">
+    <div className="@container w-full rounded-surface bg-muted shadow-xs">
       <Collapsible open={open || opening} onOpenChange={handleOpenChange}>
         <CollapsibleTrigger asChild>
           {/* The trigger's name is the PHASE and the panel (`sr-only` below),
@@ -624,7 +624,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
             type="button"
             data-derivation-trigger
             className={cn(
-              'group relative flex min-h-12 w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-left outline-none transition-colors duration-snap ease-out motion-reduce:transition-none',
+              'group relative flex min-h-12 w-full cursor-pointer items-center justify-between rounded-control px-4 py-3 text-left outline-none transition-colors duration-snap ease-out motion-reduce:transition-none',
               // Inset: the trigger is the panel's full width, and an offset
               // ring would sit outside the panel's own rounded edge.
               FOCUS_RING_INSET
@@ -794,7 +794,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                         {executedSteps.map((s) => (
                           <span
                             key={s.key}
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-control bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground"
                           >
                             {s.running && (
                               <span

@@ -89,7 +89,7 @@ export function FileDropOverlay({
           animate={{ opacity: 1, transition: enter }}
           exit={{ opacity: 0, transition: exit }}
           className={cn(
-            'pointer-events-none absolute inset-2 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-center',
+            'pointer-events-none absolute inset-2 z-50 flex flex-col items-center justify-center gap-2 rounded-control border-2 border-dashed text-center',
             negative ? 'border-destructive bg-destructive/5' : 'border-ring bg-primary/5 backdrop-blur-sm'
           )}
           data-testid={testId}

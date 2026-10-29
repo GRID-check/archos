@@ -70,7 +70,7 @@ export function FilePreviewDetailsPanel({ controller }: { controller: FilePrevie
                   : peeking
                   ? // The details view of the peek: the whole column, scrolling
                     // on its own, on the same sunken ground the stage uses.
-                    'scroll-fade-bottom bg-surface-sunken border-base mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-lg border p-4'
+                    'scroll-fade-bottom bg-surface-sunken border-base mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-surface border p-4'
                   : 'scroll-fade-bottom bg-surface-sunken @2xl:w-[280px] @2xl:shrink-0 @2xl:min-h-0 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:border-l @2xl:border-t-0 @2xl:pb-4 flex w-full flex-col border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'
               }
             >

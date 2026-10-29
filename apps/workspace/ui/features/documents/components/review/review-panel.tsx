@@ -175,7 +175,7 @@ function EarlierBar({ review, onCheckFixed }: { review: DocumentReview; onCheckF
   const marks = review.annotations.filter((annotation) => !annotation.onCurrentRevision && annotation.carryTarget)
   if (marks.length === 0) return null
   return (
-    <div className="bg-muted/40 mx-0.5 mb-2 space-y-1 rounded-xl px-2.5 py-2" data-testid="review-earlier-bar">
+    <div className="bg-muted/40 mx-0.5 mb-2 space-y-1 rounded-surface px-2.5 py-2" data-testid="review-earlier-bar">
       <div className="flex items-center gap-2">
         <History className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
         <span className="text-foreground min-w-0 flex-1 text-xs font-medium">{t('review.earlierOpen', { count: marks.length })}</span>
@@ -237,12 +237,12 @@ function CarriedFrom({
     <section
       data-testid="review-carried-group"
       aria-label={t('review.carriedGroup', { name: group.from.filename })}
-      className="mx-0.5 mb-2 rounded-xl border"
+      className="mx-0.5 mb-2 rounded-surface border"
     >
       <div className="space-y-1 px-2.5 pt-2 pb-1">
         <div className="flex items-center gap-2">
           <History className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-          <h3 className="text-foreground min-w-0 flex-1 truncate text-xs font-semibold">
+          <h3 className="text-foreground min-w-0 flex-1 truncate text-xs font-medium">
             {t('review.carriedGroup', { name: group.from.filename })}
           </h3>
           {carryable.length > 1 && (
@@ -286,7 +286,7 @@ function CarriedFrom({
       )}
       <ul className="space-y-0.5 px-0.5 pb-1">
         {group.annotations.map((annotation) => (
-          <li key={annotation.id} className="flex gap-3 rounded-lg px-2.5 py-2" data-testid="review-carried-row">
+          <li key={annotation.id} className="flex gap-3 rounded-control px-2.5 py-2" data-testid="review-carried-row">
             <span className="pt-0.5">
               <CommentPin as="span" number={annotation.number} color={markInk(annotation)} />
             </span>
@@ -441,7 +441,7 @@ export function ReviewPanel({
     >
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         {/* Two buttons that say which is on, not a tab list: there is no tab panel, and Tab reaches each. */}
-        <div role="group" aria-label={t('review.filter')} className="bg-muted inline-flex rounded-lg p-0.5">
+        <div role="group" aria-label={t('review.filter')} className="bg-muted inline-flex rounded-control p-0.5">
           {FILTERS.map((option) => {
             const count = counts[option]
             return (
@@ -452,7 +452,7 @@ export function ReviewPanel({
                 data-testid={`review-filter-${option}`}
                 onClick={() => setFilter(option)}
                 className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors duration-quick ease-out pointer-coarse:h-10',
+                  'inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors duration-quick ease-out pointer-coarse:h-10',
                   filter === option ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -544,7 +544,7 @@ function ListedMarks({
       {proposals.length > 0 && (
         <section
           data-testid="review-proposals"
-          className="border-foreground/25 mx-0.5 mb-2 rounded-xl border border-dashed"
+          className="border-foreground/25 mx-0.5 mb-2 rounded-surface border border-dashed"
         >
           <div className="flex items-center gap-2 px-2.5 py-2">
             <button

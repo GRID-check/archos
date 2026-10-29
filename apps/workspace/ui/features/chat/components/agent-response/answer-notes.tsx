@@ -107,7 +107,7 @@ export const CitationsRemovedNote: FC<{
         <TooltipTrigger asChild>
           <button
             type="button"
-            className="focus-visible:ring-ring/60 cursor-help rounded-xs text-left focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-ring/60 cursor-help rounded-control text-left focus-visible:ring-2 focus-visible:outline-none"
             aria-label={label}
           >
             <span className="text-muted-foreground text-xs leading-relaxed underline decoration-dotted underline-offset-2">

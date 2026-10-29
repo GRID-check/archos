@@ -224,7 +224,7 @@ export const SourceCard: FC<{
           // rather than spill past a narrow column (design-language
           // §Typography); `break-word` is the last resort for a word the
           // dictionary does not know, never a mid-syllable cut by default.
-          'bg-card relative min-w-0 flex-1 rounded-lg border px-3 py-2.5 shadow-xs hyphens-auto [overflow-wrap:break-word] [hyphenate-limit-chars:10_4_4]',
+          'bg-card relative min-w-0 flex-1 rounded-surface border px-3 py-2.5 shadow-xs hyphens-auto [overflow-wrap:break-word] [hyphenate-limit-chars:10_4_4]',
           !used && !live && 'border-dashed',
           !used && !live && link !== 'receded' && UNCITED_DIM,
           link === 'selected' && 'border-foreground ring-foreground ring-1'
@@ -243,7 +243,7 @@ export const SourceCard: FC<{
               name: [named.title, edition].filter(Boolean).join(', '),
             })}
             data-source-card-toggle=""
-            className={cn('absolute inset-0 cursor-pointer rounded-lg outline-none', FOCUS_RING)}
+            className={cn('absolute inset-0 cursor-pointer rounded-control outline-none', FOCUS_RING)}
           />
         )}
 
@@ -263,7 +263,7 @@ export const SourceCard: FC<{
         {(location || allRepeat || numbers.length > 0) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px] leading-[19px]">
             {location && (
-              <span className="bg-muted text-foreground rounded-md px-1.5 tabular-nums">
+              <span className="bg-muted text-foreground rounded-control px-1.5 tabular-nums">
                 {loci ? (
                   <RoundLoci
                     loci={loci}
@@ -337,7 +337,7 @@ export const BareSourceCard: FC<{ name: string; loci?: RoundLocus[]; workspace?:
     <div role="listitem" data-source-card className="flex min-w-0 flex-col">
       <div
         className={cn(
-          'bg-card min-w-0 flex-1 rounded-lg border border-dashed px-3 py-2.5 shadow-xs',
+          'bg-card min-w-0 flex-1 rounded-surface border border-dashed px-3 py-2.5 shadow-xs',
           UNCITED_DIM
         )}
       >

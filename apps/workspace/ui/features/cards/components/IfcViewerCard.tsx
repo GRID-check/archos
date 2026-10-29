@@ -157,11 +157,11 @@ export function IfcViewerCard({
   )
 
   return (
-    <section className="rounded-xl border bg-card p-4" aria-label={title}>
+    <section className="rounded-surface border bg-card p-4" aria-label={title}>
       <header className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <Boxes className="size-4 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <h3 className="text-sm font-medium">{title}</h3>
         </div>
         {model && projectId && (
           <Button asChild size="sm" variant="ghost">
@@ -174,15 +174,15 @@ export function IfcViewerCard({
       </header>
 
       {modelsLoading && models === null ? (
-        <div className="flex items-center justify-center rounded-lg border border-dashed p-6">
+        <div className="flex items-center justify-center rounded-control border border-dashed p-6">
           <Spinner size="sm" />
         </div>
       ) : modelsError !== null ? (
-        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-surface border border-dashed p-6 text-center text-sm text-muted-foreground">
           {t('preview.loadFailed')}
         </p>
       ) : !model ? (
-        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-surface border border-dashed p-6 text-center text-sm text-muted-foreground">
           {/*
             "Not available in this project" would be false for an ambiguous
             name: the model is in the project twice over, which is exactly why
@@ -204,7 +204,7 @@ export function IfcViewerCard({
         // the renderer reads that as "isolate nothing" — so the card became a
         // blank grey box that reads as "this floor is empty". The sibling
         // Raumbuch card names the same situation.
-        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-surface border border-dashed p-6 text-center text-sm text-muted-foreground">
           {t('schedule.storeyEmpty', { storey: storey ?? '' })}
         </p>
       ) : source.error !== null ? (
@@ -214,7 +214,7 @@ export function IfcViewerCard({
         // at a progress bar that could never finish. The stage and the file
         // preview both refuse to do that and say why; the card was the one
         // surface still doing it.
-        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-surface border border-dashed p-6 text-center text-sm text-muted-foreground">
           {t('preview.sourceFailed')}
         </p>
       ) : (

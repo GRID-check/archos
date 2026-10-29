@@ -130,7 +130,7 @@ export const LocusRail: FC<{
                 onClick={() => onSelect(locus)}
                 aria-current={isActive ? 'true' : undefined}
                 className={cn(
-                  'duration-snap w-full rounded-lg border px-2.5 py-2 text-left transition-colors ease-out',
+                  'duration-snap w-full rounded-surface border px-2.5 py-2 text-left transition-colors ease-out',
                   'focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-2',
                   isActive ? 'border-transparent' : 'border-border bg-card hover:bg-accent'
                 )}
@@ -188,6 +188,6 @@ export const LocusRail: FC<{
 }
 
 const stepperClasses =
-  'inline-flex size-5 items-center justify-center rounded-md border border-border text-muted-foreground ' +
+  'inline-flex size-5 items-center justify-center rounded-full border border-border text-muted-foreground ' +
   'transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 ' +
   'focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40'

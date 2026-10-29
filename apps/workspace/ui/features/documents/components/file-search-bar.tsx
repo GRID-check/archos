@@ -157,7 +157,7 @@ export function FileSearchBar({ semanticActive, canSearch, runLabel, ...props }:
           surface: the list has to stay faintly visible scrolling under it.
           `shrink-0` on both bands says the same thing the chip row now says:
           chrome above a listing never absorbs the listing's overflow. */}
-      <div className="sticky top-0 z-10 shrink-0 border-b bg-background/95 px-4 py-2.5 backdrop-blur">
+      <div className="sticky top-0 z-10 shrink-0 border-b bg-background px-4 py-2.5">
         <FileSearchField
           {...props}
           runButton={canSearch ? { label: runLabel, isSearching: props.isSearching } : undefined}

@@ -119,7 +119,7 @@ type Copied = 'plain' | 'withSources' | null
  * that opens a share sheet is a confidently wrong target.
  */
 const actionButton = cn(
-  'inline-flex size-6 items-center justify-center rounded-md pointer-coarse:size-11',
+  'inline-flex size-6 items-center justify-center rounded-control pointer-coarse:size-11',
   // The shared press: its transition list carries the hover background too,
   // which this list used to leave out, so the fill snapped in under an
   // easing colour.

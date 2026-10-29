@@ -66,7 +66,7 @@ export function RootSortReview({
       </div>
       <p className="text-muted-foreground text-sm">{t('rootSort.review.hint')}</p>
       {nothing ? (
-        <p className="text-muted-foreground border-border rounded-lg border border-dashed px-4 py-8 text-center text-sm">
+        <p className="text-muted-foreground border-border rounded-surface border border-dashed px-4 py-8 text-center text-sm">
           {judgedNothing ? t('rootSort.review.allFailed') : t('rootSort.review.empty')}
         </p>
       ) : (

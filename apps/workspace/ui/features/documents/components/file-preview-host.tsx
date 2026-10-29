@@ -355,7 +355,7 @@ export function FilePreviewHost({
           !parked && !peeking && 'group z-40',
           !parked &&
             !peeking &&
-            'bg-popover text-popover-foreground fixed left-1/2 top-1/2 z-50 h-[85dvh] w-[min(960px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-lg',
+            'bg-popover text-popover-foreground fixed left-1/2 top-1/2 z-50 h-[85dvh] w-[min(960px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-overlay border shadow-lg',
           // On a phone, portrait or on its side, the document is the screen:
           // one presentation however it was opened (Dateien, the chat's file
           // pill, a citation), not a card with the page dimmed around it.
@@ -727,7 +727,7 @@ function PeekToolbar({
       <FileExtChip filename={file.filename} size="sm" fallback={<FileText className="size-3.5" />} />
       <div className="min-w-0 flex-1">
         <p
-          className="text-foreground truncate text-sm font-semibold leading-tight tracking-[-0.01em]"
+          className="text-foreground truncate text-sm font-medium leading-tight tracking-[-0.01em]"
           // The pane is 280px at its narrowest and a plan's filename is not.
           title={name}
         >
@@ -796,7 +796,7 @@ function PeekToolbar({
           // Inset, at the stage's margins and on the radius ladder's inner-panel
           // step, so it reads as a note ABOUT the document below it rather
           // than as a band across the pane.
-          'mx-3 mb-2.5 flex shrink-0 items-start gap-2 rounded-md border px-3 py-2 text-xs',
+          'mx-3 mb-2.5 flex shrink-0 items-start gap-2 rounded-control border px-3 py-2 text-xs',
           // TWO REGISTERS, because they are two different pieces of news.
           // "Still being read" is the ordinary state of a document somebody
           // just uploaded: it resolves itself, so it sits on the quiet ground
@@ -848,7 +848,7 @@ function PeekToolbar({
               // A real hit area, not a text run: this is the only way out of
               // the one state on this surface that does not resolve itself,
               // and it was six pixels tall plus its line-height.
-              'text-foreground hover:bg-accent flex h-7 shrink-0 items-center rounded-md px-2 font-medium underline-offset-2 hover:underline',
+              'text-foreground hover:bg-accent flex h-7 shrink-0 items-center rounded-full px-2 font-medium underline-offset-2 hover:underline',
               FOCUS_RING,
             )}
           >

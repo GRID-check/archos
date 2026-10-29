@@ -176,7 +176,7 @@ export function FolderBrief({
               id="folder-brief-title"
               title={t(open ? 'brief.collapse' : 'brief.expand')}
               className={cn(
-                'hover:text-foreground focus-visible:ring-ring flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset motion-reduce:transition-none pointer-coarse:min-h-11',
+                'hover:text-foreground focus-visible:ring-ring flex w-full min-w-0 items-center gap-2 rounded-control px-3 py-2 text-left text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset motion-reduce:transition-none pointer-coarse:min-h-11',
                 open ? 'text-foreground' : 'text-muted-foreground hover:bg-accent/60'
               )}
               data-testid="folder-brief-toggle"
@@ -280,7 +280,7 @@ function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect:
           key={state}
           type="button"
           onClick={() => onSelect({ kind: 'state', state })}
-          className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-control px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
           title={t('brief.showState', { state: t(`brief.slice.${state}`) })}
           data-testid={`folder-brief-state-${state}`}
         >
@@ -292,7 +292,7 @@ function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect:
         <button
           type="button"
           onClick={() => onSelect({ kind: 'state', state: 'unindexed' })}
-          className="text-muted-foreground/80 hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="text-muted-foreground/80 hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-control px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
           title={t('brief.showState', { state: t('brief.slice.unindexed') })}
           data-testid="folder-brief-state-unindexed"
         >
@@ -373,7 +373,7 @@ function AboutSection({ brief, onSelect }: { brief: FolderBriefData; onSelect: (
         <button
           type="button"
           onClick={() => onSelect({ kind: 'photos' })}
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 self-start rounded-sm text-left text-xs underline underline-offset-2 decoration-muted-foreground/40 transition-colors duration-quick ease-out hover:decoration-current focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 self-start rounded-control text-left text-xs underline underline-offset-2 decoration-muted-foreground/40 transition-colors duration-quick ease-out hover:decoration-current focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
           data-testid="folder-brief-photos"
         >
           <Camera className="size-3.5 shrink-0" aria-hidden />
@@ -654,7 +654,7 @@ function HotspotSection({
             <button
               type="button"
               onClick={() => onOpenFolder(folder.id)}
-              className="hover:bg-accent focus-visible:ring-ring touch-target group flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+              className="hover:bg-accent focus-visible:ring-ring touch-target group flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
               data-testid={`folder-brief-hotspot-${folder.id}`}
             >
               <CornerDownRight className="text-muted-foreground/60 size-3.5 shrink-0" aria-hidden />

@@ -48,7 +48,7 @@ export function FileTextPage({
       className={cn(
         // The same page the PDF iframe and the image get: a sheet on the well's
         // ground, on the elevation step the surrounding pane already uses.
-        'bg-background h-fit w-full max-w-[720px] overflow-hidden rounded-lg border',
+        'bg-background h-fit w-full max-w-[720px] overflow-hidden rounded-surface border',
         peeking ? 'shadow-sm' : 'shadow-lg',
         className
       )}

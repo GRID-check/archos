@@ -95,7 +95,7 @@ export const DocumentDraftPreviewDialog: FC<DocumentDraftPreviewDialogProps> = (
             </p>
           ) : failed || content === null ? (
             <div
-              className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/30 px-4 py-8 text-center"
+              className="flex flex-col items-center gap-3 rounded-control border border-dashed bg-muted/30 px-4 py-8 text-center"
               data-testid="document-draft-preview-error"
             >
               <p className="text-sm text-muted-foreground">{t('cards.documentDraft.previewError')}</p>
@@ -103,7 +103,7 @@ export const DocumentDraftPreviewDialog: FC<DocumentDraftPreviewDialogProps> = (
                 type="button"
                 onClick={onRetry}
                 data-testid="document-draft-preview-retry"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-control border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <RotateCcw className="size-3.5" aria-hidden />
                 {t('cards.documentDraft.previewRetry')}

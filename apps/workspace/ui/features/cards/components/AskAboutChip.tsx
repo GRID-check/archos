@@ -116,8 +116,8 @@ export const AskAboutChip: FC<AskAboutChipProps> = ({ subject, missing, classNam
       title={question}
       onClick={() => setComposerPrefill(question)}
       className={cn(
-        'group inline-flex h-6 max-w-full shrink-0 items-center gap-1 rounded-md border px-2',
-        'bg-card text-muted-foreground shadow-xs text-[11px] font-medium',
+        'group inline-flex h-6 max-w-full shrink-0 items-center gap-1 rounded-full border px-2',
+        'border border-border bg-card text-muted-foreground shadow-xs text-[11px] font-medium',
         'transition-colors duration-quick ease-out motion-reduce:transition-none',
         'hover:bg-accent hover:text-foreground',
         'focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-2',

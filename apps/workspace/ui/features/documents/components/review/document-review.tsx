@@ -462,7 +462,7 @@ function Elsewhere({
           aria-label={t('review.elsewhereJump', { name: state.peer.name, page: at })}
           title={t('review.elsewhereJump', { name: state.peer.name, page: at })}
           onClick={() => onJump(state)}
-          className="pointer-events-auto inline-flex items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-[11px] leading-4 font-medium text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          className="pointer-events-auto inline-flex items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-[11px] leading-4 font-medium text-background shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           style={{ backgroundColor: identityInk(state.peer.userId) }}
         >
           <Arrow className="size-3" aria-hidden />
@@ -509,7 +509,7 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span tabIndex={0} className="inline-flex rounded-md" data-testid="review-with-agent-busy">
+          <span tabIndex={0} className="inline-flex rounded-control" data-testid="review-with-agent-busy">
             {button}
           </span>
         </TooltipTrigger>
@@ -1197,7 +1197,7 @@ export function DocumentReviewMode({
               <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-1.5">
                 {followedState && (
                   <span
-                    className="rounded-full px-3 py-1 text-xs font-medium text-white shadow-md"
+                    className="rounded-full px-3 py-1 text-xs font-medium text-background shadow-md"
                     style={{ backgroundColor: identityInk(followedState.userId) }}
                     role="status"
                   >

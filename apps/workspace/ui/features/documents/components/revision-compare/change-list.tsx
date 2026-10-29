@@ -158,7 +158,7 @@ function PageGroup({
         <div className="space-y-2 px-2 pt-1" data-testid="compare-mark-loading">
           {[0, 1, 2].map((index) => (
             <div key={index} className="flex items-center gap-2">
-              <Skeleton className="size-5 rounded-sm" />
+              <Skeleton className="size-5 rounded-surface" />
               <Skeleton className="h-4 flex-1" />
             </div>
           ))}
@@ -199,7 +199,7 @@ function ChangeRowButton({
         onBlur={() => preview(null)}
         onClick={() => onShow(number)}
         className={cn(
-          'duration-quick flex w-full items-start gap-2 rounded-md p-2 text-left text-sm transition-colors ease-out hover:bg-accent pointer-coarse:min-h-11',
+          'duration-quick flex w-full items-start gap-2 rounded-control p-2 text-left text-sm transition-colors ease-out hover:bg-accent pointer-coarse:min-h-11',
           isActive && 'bg-accent',
         )}
       >

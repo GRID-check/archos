@@ -147,7 +147,7 @@ export const ViewerActionRow: FC<{ messageId: string }> = ({ messageId }) => {
   return (
     <section
       aria-label={t('viewerActions.region')}
-      className="flex flex-col gap-1.5 rounded-md bg-info-subtle px-2.5 py-2"
+      className="flex flex-col gap-1.5 rounded-control bg-info-subtle px-2.5 py-2"
       data-testid="viewer-action-row"
     >
       <ul className="flex flex-col gap-1">

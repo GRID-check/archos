@@ -341,7 +341,7 @@ export function Composer({
 
   return (
     <div className="relative">
-      <div className="bg-input-background focus-within:border-foreground/40 rounded-lg border px-2.5 py-1.5 transition-colors duration-quick ease-out">
+      <div className="bg-input-background focus-within:border-foreground/40 rounded-bubble border px-2.5 py-1.5 transition-colors duration-quick ease-out">
         <div className="flex items-end gap-1.5">
           <textarea
             ref={ref}

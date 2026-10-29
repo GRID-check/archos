@@ -38,8 +38,8 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
               column. The Maximize2 affordance in the header still opens the
               full-screen viewer for PDFs and images. */}
           {/* The ground under the document. A flat grey box read as "an iframe in
-              a panel"; a soft vertical gradient with the page raised off it on a
-              real shadow reads as a document ON something — which is what a
+              a panel"; a flat tone with the page set on it on a
+              hairline reads as a document ON something — which is what a
               drawing on a desk actually looks like, and the whole reason this
               column exists rather than a download link. */}
           <PeekPanel peeking={peeking} value="document">
@@ -52,7 +52,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                 // A PDF brings its own stage (the viewer's), so the well under it
                 // is no ground of its own: the document looks the same here as in
                 // every other place a PDF opens.
-                !peeking && !pdfInWell && 'from-muted/25 to-muted/60 bg-gradient-to-b',
+                !peeking && !pdfInWell && 'bg-muted/40',
                 wellHostsViewer || (reader && (isModel || pdfInWell))
                   ? cn(
                       'h-full min-h-0 flex-1 overflow-hidden',
@@ -192,7 +192,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                       setPreviewFailed(true)
                     }}
                     className={cn(
-                      'bg-background h-fit max-h-full w-auto max-w-full rounded-lg border object-contain',
+                      'bg-background h-fit max-h-full w-auto max-w-full rounded-surface border object-contain',
                       // The reader's well is the screen: the image fits it whole,
                       // on a phone on its side too (852px wide is past `@2xl`).
                       !reader && '@2xl:max-h-none',

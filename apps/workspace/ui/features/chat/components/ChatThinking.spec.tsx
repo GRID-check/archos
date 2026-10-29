@@ -563,7 +563,7 @@ describe('ChatThinking', () => {
       render(<ChatThinking steps={steps} />)
 
       const triggerText = screen.getByText('Trace')
-      const outerDiv = triggerText.closest('.rounded-2xl.shadow-xs')
+      const outerDiv = triggerText.closest('.rounded-surface shadow-xs')
       expect(outerDiv).toBeInTheDocument()
     })
   })

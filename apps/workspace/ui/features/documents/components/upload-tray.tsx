@@ -256,7 +256,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
           // second line separated by `gap-3` (12px), and a 10px overhang eats
           // most of that gap, so a tap aimed at "Retry all" lands on the summary
           // instead. A hit box has to stay inside its own flex line.
-          className="min-w-40 flex-1 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:min-h-11"
+          className="min-w-40 flex-1 rounded-control text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:min-h-11"
         >
           {/* Polite, not assertive: the phase changes two or three times per
               batch and each one is worth hearing, but the byte counter beneath
@@ -309,7 +309,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
           onClick={() => setIsExpanded((open) => !open)}
           aria-expanded={isExpanded}
           aria-label={isExpanded ? t('uploads.actions.collapse') : t('uploads.actions.expand')}
-          className="order-2 flex size-7 shrink-0 sm:order-3 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11"
+          className="order-2 flex size-7 shrink-0 sm:order-3 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11"
         >
           <ChevronDown
             className={cn(
@@ -769,7 +769,7 @@ function RowAction({
       aria-label={label}
       title={label}
       className={cn(
-        'flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11',
+        'flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11',
         className
       )}
     >
