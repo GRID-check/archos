@@ -15,7 +15,7 @@ const { items, title, open = 0, class: className } = Astro.props;
   title ? (
     <div class:list={['ui-rows', className]}>
       <h2 class="heading-1">{title}</h2>
-      <div class="ui-faq body">
+      <div class="ui-faq body" data-faq>
         {items.map((item, i) => (
           <details open={i === open}>
             <summary>{item.q}</summary>
@@ -25,7 +25,7 @@ const { items, title, open = 0, class: className } = Astro.props;
       </div>
     </div>
   ) : (
-    <div class:list={['ui-faq', 'body', className]}>
+    <div class:list={['ui-faq', 'body', className]} data-faq>
       {items.map((item, i) => (
         <details open={i === open}>
           <summary>{item.q}</summary>
