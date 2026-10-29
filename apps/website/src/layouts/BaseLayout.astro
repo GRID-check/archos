@@ -88,14 +88,6 @@ const structuredData = jsonLd(siteGraph(Astro.site ?? new URL(`https://${identit
     </main>
     {!bare && <Footer locale={locale} />}
     <script>
-      // The header's hairline marks that the page has scrolled beneath it.
-      const header = document.querySelector('.ui-header');
-      if (header) {
-        const mark = () => header.toggleAttribute('data-scrolled', scrollY > 0);
-        addEventListener('scroll', mark, { passive: true });
-        mark();
-      }
-
       // Blocks below the fold arrive once as they scroll into view (styles in
       // packages/brand/css/components.css, [data-reveal]). Anything on screen at
       // load is left alone, and reduced motion leaves the page as it is.
