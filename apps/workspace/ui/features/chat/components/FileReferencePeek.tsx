@@ -84,7 +84,7 @@ export const FileReferencePeek: FC<{
           </p>
         )}
         {writtenAs && writtenAs !== file.filename && writtenAs !== name && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground/80">
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {t('fileReference.writtenAs', { name: writtenAs })}
           </p>
         )}

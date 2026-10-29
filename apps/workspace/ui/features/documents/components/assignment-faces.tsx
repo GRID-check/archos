@@ -25,7 +25,7 @@ export function AssignmentFaces({
   if ((!assignees || assignees.length === 0) && faceOnly) {
     return (
       <span
-        className={cn('border-border text-muted-foreground/60 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed', className)}
+        className={cn('border-border text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed', className)}
         aria-hidden
       >
         <UserRound className="size-3.5" />
@@ -44,7 +44,7 @@ export function AssignmentFaces({
       >
         <span
           aria-hidden
-          className="border-border text-muted-foreground/60 hidden size-5 shrink-0 items-center justify-center rounded-full border border-dashed phone:flex"
+          className="border-border text-muted-foreground hidden size-5 shrink-0 items-center justify-center rounded-full border border-dashed phone:flex"
         >
           <UserRound className="size-3" />
         </span>

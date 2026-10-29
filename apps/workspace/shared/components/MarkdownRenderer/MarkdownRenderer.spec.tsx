@@ -213,7 +213,7 @@ Paragraph 2.`}
     test('renders bold text', () => {
       render(<MarkdownRenderer content="This is **bold** text." />)
 
-      expect(screen.getByText('bold')).toHaveClass('font-semibold')
+      expect(screen.getByText('bold')).toHaveClass('font-medium')
     })
 
     test('renders italic text', () => {

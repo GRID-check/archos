@@ -182,7 +182,7 @@ export function IfcModelCompare({
         // Programmatically focusable, not a Tab stop — see the request effect.
         tabIndex={-1}
         id="bim-compare-heading"
-        className="flex items-center gap-2 text-sm font-semibold focus-visible:outline-none"
+        className="flex items-center gap-2 text-sm font-medium focus-visible:outline-none"
       >
         <GitCompare className="size-4 text-muted-foreground" aria-hidden="true" />
         {t('compare.title')}

@@ -1,91 +1,129 @@
 # The public site: who it is for, what it ranks for, what it still lacks
 
-How piloti.at is meant to convert and be found. Written after an outside
-teardown (September 2026) rated the site 7.2/10: strong on positioning and
-trust, weak on proof, on the call to action and on search. This file keeps the
-plan and the gaps in one place, so the next change starts from them instead of
-from a blank page.
+How the public website (`apps/website`) is meant to convert and be found. **Current plan,
+2026-10-29**, written with the rebrand: the owner decided not to port the old site's content
+(D7), to keep SEO a priority with new pages aligned to the brand (D8), to leave the blog as it is
+(D13) and to keep every route brand-free (D14). The plan it replaces, written for the old site in
+September 2026, is summarised at the end and lives on in git history.
+
+The research behind it (search clusters, what ranks today, sources) is the SEO scout's plan of
+2026-10-29; the September audit [`seo-geo-audit-2026-09.md`](seo-geo-audit-2026-09.md) is kept
+for its landscape. How the pieces are built: [`apps/website/README.md`](../../apps/website/README.md#seo).
 
 ## Who reads the site, and what each needs to see
 
 | Reader | Arrives with | Needs to leave with | Where the site answers |
 |---|---|---|---|
-| Office principal (buyer) | "Is this worth my team's time, and is it safe?" | Less submission risk, knowledge that does not leave with people, a clear data answer | `/warum-piloti/` (audiences, what Piloti is not), FAQ |
-| Project lead (champion) | A real question on a real project | Proof that the answer is checkable and project-aware, and that work can be handed over | Homepage decision chain, then the week of work (`Handover.astro`, on the homepage and atop `/warum-piloti/`), the CTA |
-| Planner (user) | A search: "Gebäudeklasse …", "ChatGPT Baurecht" | A useful article, then a reason to try | Journal articles, each ending in a real-question invite |
-| Data or IT decider (gatekeeper) | "Where do our drawings go?" | The providers, named, and no training | Quellen section, FAQ, privacy policy |
-| Buyer comparing tools | "Reiner AI Alternative", "Rainer AI" | An honest side-by-side they can trust | `/vergleich/reiner-ai/` |
-
-## The turn the page has to make
-
-The first version read as a better reference book: sources, citations, what
-Piloti draws on. The founders' verdict was that it lacked the moment a reader
-thinks "this does my work". That moment is the handover: one sentence starts
-a submission check, and a report, open points, an approval and a weekly
-recheck follow. The homepage shows one answer (Nutzung), then a week of work
-(Arbeit). Keep that order: an answer earns trust, and handing over work is
-what a reference book cannot do.
+| Office principal (buyer) | "Is this worth my team's time, and is it safe?" | What the workspace takes over, what stays with the planners, a clear data answer | Home, `/ki-fuer-architekturbueros/`, `/datensicherheit/` |
+| Project lead (champion) | A task: a new plan revision, a building-law question | Proof that the work is done in the project and every answer is traceable | `/planstaende-vergleichen/`, `/baurecht/` |
+| Planner (user) | A search for the task ("Pläne vergleichen", "welche OIB-Richtlinie gilt") | A useful page, then a reason to try | The work pages, the journal |
+| Data or IT decider (gatekeeper) | "Where do our drawings go?" | Hosting, providers, no training, a data processing agreement | `/datensicherheit/`, the privacy policy |
 
 ## The conversion path
 
-One action: **send a real planning question from a current project.** Not
-"become a pilot office", which reads as a sales process. The mail is prefilled
-with the question, the state, the building type and the team size
-(`ui.ts` `cta.bodyPilot`). Every page ends in the same action (`EndInvite`).
-Being a pilot office is what follows a good answer, and the copy says so.
+One action: **request a demo on a real project** (`/demo/`). Every page ends in the same
+`CTABand`: "Demo anfragen" first, "Datensicherheit" second (the security page ends with
+contact instead). The form hands off to the visitor's mail program for now (D9); its funnel is
+measured in PostHog (`apps/website/README.md`, "Analytics").
 
-## Keyword map
+## Pages and the searches they meet
 
-One page per query cluster. A new article takes a cluster nobody owns yet.
+The header stays Plattform · Datensicherheit · Blog (design system). The product pages are in the
+footer's product column and linked from home and from each other.
 
-| Cluster (German first) | Page |
+| Cluster (German first) | Page | Status |
+|---|---|---|
+| KI im Architekturbüro, KI Architekturbüro Software, KI Planungsbüro, ChatGPT für Architekten | `/ki-fuer-architekturbueros/` · `/en/ai-for-architecture-firms/`, and the journal post it links to | live |
+| Pläne vergleichen, Planänderungen erkennen, Planstand vergleichen, Raumprogramm prüfen | `/planstaende-vergleichen/` · `/en/comparing-plan-revisions/` | live |
+| OIB-Richtlinien, Bauordnung, Gebäudeklasse vs. Bauklasse, Einreichung prüfen | `/baurecht/` · `/en/building-law/` (the old hub's address, kept) | live |
+| KI und Datenschutz im Büro | `/datensicherheit/` · `/en/security/` | live |
+| Wissensmanagement Architekturbüro, Projektwissen, Büroarchiv | `/projektwissen/` · `/en/project-knowledge/` | wave 2; home and the journal meanwhile |
+| IFC-Modell prüfen, IFC im Browser, Raumbuch | `/modelle-pruefen/` · `/en/model-checking/` | wave 2 |
+| What changed in the product | `/changelog/` · `/en/changelog/` | arrives with the cutover |
+
+How "KI" is used: in the slug, title, H1 and FAQ questions of the one page searchers reach with
+it. In body copy the product is the subject and KI an attribute; never "KI-Workspace", "Tool" or
+"Copilot". Competitors are described by category ("allgemeine Chat-Assistenten"), never by name.
+
+## Route fates
+
+Every address of the old site has one fate, in `apps/website/redirects.mjs`:
+
+| Old pages | Fate |
 |---|---|
-| KI für Architekten Österreich, KI Architekturbüro, KI Planungsbüro | `/warum-piloti/`, `/fuer/architekturbueros/`, `/blog/ki-im-architekturbuero/` |
-| ChatGPT Baurecht, ChatGPT Alternative Architekten | `/vergleich/chatgpt/`, `/blog/chatgpt-baurecht/`, the FAQ entry |
-| Reiner AI, Rainer AI, WEKA Bau AI, BauKI, Copilot, NotebookLM, Perplexity + "Alternative" | `/vergleich/<tool>/`, hub `/vergleich/` |
-| Bauordnung <Land>, Welche OIB-Richtlinie gilt in <Land> | `/baurecht/<land>/` |
-| Gebäudeklasse bestimmen, Einreichplan Checkliste, Bauen im Bestand, Bebauungsplan prüfen | `/anwendungen/<use-case>/` |
-| Was ist Gebäudeklasse 4, Fluchtniveau Definition, OIB-Richtlinien erklärt | `/glossar/<term>/` |
-| Wissensmanagement Architekturbüro, Projektwissen, Büroarchiv | `/anwendungen/bueroarchiv/`, `/blog/wissen-aus-alten-projekten/` |
-| How Piloti works, RAG for building law | `/blog/wie-piloti-funktioniert/` |
+| The comparison hub and its ten product comparisons | 301 to `/ki-fuer-architekturbueros/` (the one about searching the law yourself: `/baurecht/`) |
+| The audience hub, the architecture and the engineering offices | 301 to `/ki-fuer-architekturbueros/` |
+| The builders' audience page | **410**: not an audience of the product |
+| The old "why this product" page | 301 to `/ki-fuer-architekturbueros/` |
+| The use-case hub | 301 to home; eight building-law use cases to `/baurecht/`; office archive and file notes to home until `/projektwissen/` ships |
+| The nine state pages under `/baurecht/<land>/` and the ten glossary entries | 301 to `/baurecht/` |
+| The weekly "what's new" page | 301 to `/changelog/` |
+| The value calculator | **410**: its numbers were assumed, not measured |
+| The unlisted press page of the old brand art and its ZIP downloads | **410** |
+| `/llms-full.txt` | 301 to `/llms.txt` |
+| The four blog posts whose slug carried the old name | 301 to their new brand-free slugs |
+| The old `/de/<path>` and `/en/<German segment>/<path>` aliases | 301 straight to the final target of `<path>` |
+| Home, legal pages, blog, categories, other posts, `/baurecht/`, `/rss.xml`, `/llms.txt` | served at the same address |
 
-The search pages were data in the retired site (its `src/data/landing/`, in git history), one entry per
-page; the website's route table (`apps/website/redirects.mjs`) gives each old address its fate; the audit behind them, the landscape and the backlog:
-[`seo-geo-audit-2026-09.md`](seo-geo-audit-2026-09.md).
+Every 301 lands in one hop on a page that answers 200, held by `src/lib/route-fates.test.ts` and
+by `bun run check:routes` against the built server. On the domain cutover (D2) the old domain
+forwards host and path, and this table resolves from there: two hops at most.
 
-Next clusters, in order of intent: the long-tail questions in the audit's
-backlog. Write each as the answer first, the limits second, and "ask Piloti
-about your project" last. A post that states a regulatory value names its
-source and the edition, and is checked by someone in the office before it is
-published.
+**The changelog and the cutover (WP-CUTOVER, 2026-10-29).** `/changelog/` and `/en/changelog/` are
+pages of the website now: they render `apps/website/src/data/changelog.json`, which the
+release-notes workflow regenerates on every merge to `develop`, and the footer's product column
+links them. The retired site is deleted (its search pages are in git history). The domain move is
+staged, not done: [`domain-cutover.md`](../deployment/domain-cutover.md) has the order of
+operations; the former host's apex and `app.` answer 301 to the new ones, path kept, once the stack
+sets `formerBaseDomain`. Until then canonical URLs, the sitemap and hreflang use the host the site
+is served from (`PUBLIC_SITE_URL`, set at image build), not the domain in `identity.json`.
+
+Owner overrides worth a look: the Gebäudeklasse glossary entry was the old site's best ranking
+chance (recover it as a journal post when the blog reopens); the builders' page could 301 to home
+instead of 410; the comparison rankings that named other products will fade (accepted, the brand
+names no competitor).
+
+## Technical SEO, as built
+
+- **Metadata:** `<Seitenname> – <name>` titles (home: name first), descriptions in planning
+  language, self-referencing canonicals, hreflang `de`/`en`/`x-default` from the route table.
+- **Structured data:** `Organization` and `WebSite` everywhere; `BreadcrumbList` on every
+  indexed inner page; `FAQPage` wherever the FAQ renders, from the same items;
+  `SoftwareApplication` on home without price or rating; `BlogPosting` on each post from its
+  frontmatter. `bun run check:structured-data` parses every block in the build.
+- **Sitemap:** every page with its other-locale twin and a `lastmod` (post date, or the last
+  commit of the page's view and copy when the build has git).
+- **Feeds and answer engines:** RSS at the old `/rss.xml` and `/en/rss.xml`; a short `/llms.txt`
+  generated from identity and the page copy. Answer engines rank from the HTML and the JSON-LD;
+  llms.txt only spares them guesswork.
+- **Social previews:** one share card for every page (generated per-page cards are open below).
 
 ## Rules the copy keeps
 
-- Every page argues for Piloti. Its strengths lead; a competitor's use case
-  and Piloti's boundaries come later and briefly, in one „Gut zu wissen“
-  block, never as a headline. The founders' call after the first version
-  listed weaknesses too prominently.
-- A competitor is described only as its own site describes it, with the month
-  it was read, never false and never mocking: a buyer reads both sites side by
-  side.
-- Nothing about what Piloti's corpus holds or which OIB edition it has. That
-  is not verified on the site's side; `scripts/lint-claims.mjs` refuses it.
-- No number that was not measured. The ≈ 30 s answer time is measured; the
-  changelog count on the homepage is counted at build time
-  (`shippedTotals()` in `src/lib/changelog.ts`). Everything else waits for the pilots.
-- `scripts/lint-claims.mjs` holds the retracted phrases, and
-  `scripts/lint-typography.mjs` now reads every file in `src/i18n/`.
+- Belegpflicht: every product claim names its evidence in a comment in the page's copy file
+  (`VISION.md`, a release note, an owner decision). What cannot be verified is reworded to what can.
+- No edition or date of the legal corpus; no number that was not measured.
+- Sie, colon gendering, no exclamation marks, headings end with a full stop, the product's name
+  only as `{name}`: `scripts/check_brand_rules.mjs` holds what a machine can.
 
-## What the site still lacks, and who can close it
+## Open, and who can close it
 
-None of these can be written into the code. Each needs a person or a decision.
+| Gap | What closes it |
+|---|---|
+| Search Console and Bing for the new domain | Owner: verify the domain property, submit `/sitemap-index.xml`, run Change of Address from the old domain once the 301s are live (D2), watch the 404 report weekly for a month and add rows for anything missed |
+| `sameAs` in the Organization data | Owner: the LinkedIn company page and the founders' profiles (`src/lib/social.ts`) |
+| Wave 2 pages: `/projektwissen/`, `/modelle-pruefen/` | Copy and confirmations of the features they name (Outlook archive, Behörden-Gedächtnis, IFC versions); then their rows replace the home fallback in `redirects.mjs` |
+| Per-page social cards | A designed 1200 × 630 card per page (plan: General Sans title, wordmark, one motif per page) and fonts the renderer reads |
+| Product screenshots that still show the old name inside the interface (the plan revision image) | New captures from a demo organisation |
+| Measured pilot evidence, one case study | Per pilot: questions asked, time before and after; one office's permission |
 
-| Gap | Why it matters | What closes it |
-|---|---|---|
-| Measured pilot evidence | The teardown's biggest criticism: the site proves the product is built, not that it pays | Record per pilot: questions asked, research time before and after, answers used without correction. Publish once real |
-| One anonymised case study | Worth more than any section of copy | One pilot office's permission for question → documents → answer → outcome |
-| A Piloti mailbox | `mail@jonathanuhlemann.de` reads as a side project | Create `pilot@piloti.at`, then change `CONTACT_EMAILS` in `src/consts.ts` |
-| The real product on the homepage | The chat mock is labelled fictional, and a buyer wants the interface | Screenshots from a demo organisation with non-confidential documents |
-| The value calculator | Amortisation and value-per-euro read as claims, despite the disclaimer | Reframe to "what searching costs your office" until pilot data replaces the assumptions |
-| An EU-only processing option | US routing will stop some deals, and Reiner AI offers German servers | A product and provider decision, then the copy |
-| Search visibility | Visit analytics run on PostHog (cookie, no replay, no person profiles; off unless `PUBLIC_POSTHOG_*` is set). Search queries are not visible there | Verify piloti.at in Google Search Console and submit `/sitemap-index.xml`: server-side, no cookie, and it shows which queries find which page. Ask the chamber, trade press and nextroom-style directories for links |
+## The plan this replaces (September 2026, old site)
+
+The old site was rated 7.2/10 by an outside teardown: strong on positioning and trust, weak on
+proof and search. Its plan answered with breadth: a comparison page per competing product, a page
+per Austrian state, ten glossary entries, ten use cases, audience pages, a value calculator, and
+"send a real planning question" as the one action. The rebrand drops that breadth (D7): the
+comparisons named competitors, the state pages went stale with every edition, and the calculator
+claimed what was not measured. The search intent they served now lands on the three work pages
+through the route fates above. Kept from it: the readers and what each needs, measured claims only,
+and the open evidence gaps.

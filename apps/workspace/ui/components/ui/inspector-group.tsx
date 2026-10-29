@@ -42,7 +42,7 @@ export function InspectorSection({
   return (
     <section aria-label={label} className={cn('flex flex-col gap-2', className)} {...props}>
       <div className="flex min-h-5 items-center justify-between gap-2 px-3">
-        <SectionLabel as="p" icon={icon} className="font-semibold tracking-[0.05em]">
+        <SectionLabel as="p" icon={icon} className="font-medium tracking-[0.05em]">
           {label}
         </SectionLabel>
         {action}
@@ -93,7 +93,7 @@ export function InspectorRow({
           label however many lines the value wraps to. `aria-hidden`: the label
           beside it is already the accessible name. */}
       <span className="flex h-5 shrink-0 items-center self-start pt-2.5 [box-sizing:content-box]">
-        <Icon className="text-muted-foreground/70 size-3.5" aria-hidden />
+        <Icon className="text-muted-foreground size-3.5" aria-hidden />
       </span>
       <div
         data-slot="inspector-row-body"

@@ -128,7 +128,7 @@ export function DocumentTopicsEditor({
               placeholder={t('preview.reading.addTopic')}
               aria-label={t('preview.reading.addTopic')}
               // 16px on a coarse pointer, or iOS zooms the pane in on focus and never zooms back.
-              className="border-input text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-40 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-32 rounded-control border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
+              className="border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-40 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-32 rounded-control border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
             />
           </span>
         )}

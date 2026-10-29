@@ -151,7 +151,7 @@ function BrowserWrittenMemoryCard({
   return (
     <ProposalShell tone="pending">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-sm font-medium text-foreground">{title}</p>
         <Chip variant="muted" size="sm">
           {t(`memoryProposal.kind.${kind}`)}
         </Chip>

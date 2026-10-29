@@ -131,7 +131,7 @@ const ChipCount = React.forwardRef<HTMLSpanElement, CountPillProps>(({ className
   <CountPill
     ref={ref}
     data-slot="chip-count"
-    className={cn('bg-foreground/10 font-semibold text-inherit', className)}
+    className={cn('bg-foreground/10 font-medium text-inherit', className)}
     {...props}
   />
 ))

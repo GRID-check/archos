@@ -223,7 +223,7 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
             className={`duration-quick flex items-center gap-2 transition-opacity ease-out motion-reduce:transition-none ${isResponded ? 'opacity-75' : ''}`}
           >
             <MessageSquare className="text-muted-foreground size-5" />
-            <span className="text-muted-foreground text-sm font-semibold">
+            <span className="text-muted-foreground text-sm font-medium">
               {isResponded ? t('agentPrompt.receivedInput') : t('agentPrompt.needsInput')}
             </span>
           </div>

@@ -113,7 +113,7 @@ function UnstoredProposalCard({
     <ProposalShell tone="pending">
       <SectionLabel icon={FolderTree}>{t(`cards.fileOperationProposal.eyebrow.${operation}`)}</SectionLabel>
 
-      <p className="text-foreground text-sm font-semibold">{title}</p>
+      <p className="text-foreground text-sm font-medium">{title}</p>
 
       <OperationList operation={operation} items={operations} />
 

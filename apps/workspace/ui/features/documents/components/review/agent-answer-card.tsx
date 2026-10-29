@@ -100,7 +100,7 @@ export function AgentAnswerCard({
       <div className={cn('flex items-center gap-2 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
         <AgentGlyph working={working} />
         <span id={headerId} className="flex min-w-0 items-center gap-2">
-          <span className="text-foreground text-xs font-semibold">Piloti</span>
+          <span className="text-foreground text-xs font-medium">Piloti</span>
           {ask.region && (
             <span className="text-muted-foreground text-[11px]">{t('review.piloti.regionLabel', { page: ask.region.page })}</span>
           )}

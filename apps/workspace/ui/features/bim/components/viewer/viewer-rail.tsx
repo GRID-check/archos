@@ -79,7 +79,7 @@ export function ViewerRailSection({ label, action, children }: ViewerRailSection
           reference this design follows labels the same thing "Models" and
           "Layers", quietly.
         */}
-        <h3 className="text-muted-foreground text-xs font-semibold tracking-wide">{label}</h3>
+        <h3 className="text-muted-foreground text-xs font-medium tracking-wide">{label}</h3>
         {action}
       </ViewerSectionHeader>
       <div className="px-1.5 pb-2">{children}</div>

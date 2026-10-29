@@ -194,7 +194,7 @@ export const StepLine: FC<{
         <span
           className={cn(
             'min-w-0 flex-[1_1_9rem] text-left text-[15px] leading-[1.5]',
-            phase === 'current' ? 'font-semibold text-foreground' : 'text-default',
+            phase === 'current' ? 'font-medium text-foreground' : 'text-default',
             phase === 'done' && 'text-muted-foreground'
           )}
         >
@@ -510,7 +510,7 @@ export const tableClass = (variant: TableVariant): string =>
   )
 
 export const headerCellClass = ({ align, recommended }: { align: string; recommended: boolean }): string =>
-  cn('text-foreground px-3 py-2 text-sm font-semibold', align, recommended && 'bg-success-subtle')
+  cn('text-foreground px-3 py-2 text-sm font-medium', align, recommended && 'bg-success-subtle')
 
 export const dataCellClass = ({ align, recommended }: { align?: string; recommended: boolean }): string =>
   cn('text-foreground px-3 py-2 text-sm', align, recommended && 'bg-success-subtle')
@@ -742,7 +742,7 @@ export const ThresholdRuler: FC<{
             key={`${segment.from}-${segment.label}`}
             className={cn(
               'card-meta absolute truncate text-center',
-              segment.holds ? 'font-semibold text-success' : 'text-muted-foreground'
+              segment.holds ? 'font-medium text-success' : 'text-muted-foreground'
             )}
             style={{ left: `${segment.from}%`, width: `${Math.max(0, segment.to - segment.from)}%` }}
           >

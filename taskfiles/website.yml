@@ -38,9 +38,17 @@ tasks:
       # the AI-tag rule reads the built pages.
       - node --test scripts/check_brand_rules.test.mjs
       - bun scripts/check_brand_rules.mjs --require-build
+      - task: website:routes
       - task: website:a11y
       # The riso kit's fast gate (the app's vignettes against their source); it borrows this install's sharp.
       - task: art:check
+
+  website:routes:
+    desc: After a build, every old address answers its route fate (301 in one hop to a 200 page, or 410), and every page's JSON-LD holds
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run check:routes
+      - bun run check:structured-data
 
   website:test:
     desc: The website's unit tests (runtime specs and src/**/*.test.ts)

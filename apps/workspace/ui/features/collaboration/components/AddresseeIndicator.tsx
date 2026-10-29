@@ -181,7 +181,7 @@ export function AddresseeIndicator({
           onClick={onMentionSomeone}
           className={cn(
             'inline-flex shrink-0 items-center gap-1 rounded px-1 text-xs touch-target',
-            'text-muted-foreground/80 transition-colors duration-quick ease-out',
+            'text-muted-foreground transition-colors duration-quick ease-out',
             'underline decoration-dotted decoration-from-font underline-offset-[3px]',
             'hover:text-foreground hover:decoration-solid',
             'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',

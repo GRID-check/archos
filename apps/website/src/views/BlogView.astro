@@ -22,9 +22,12 @@ const cat = category ? CATEGORIES[locale][category] : undefined;
 const title = cat ? cat.label : c.title;
 const description = cat ? cat.descriptor : c.hero.text;
 const heroTitle = cat ? cat.label : c.hero.title;
+// A category page sits under the blog in the breadcrumbs; the feed covers both strands.
+const crumbs = cat ? [{ name: c.title, path: blogPath(locale) }] : [];
+const feed = locale === 'en' ? '/en/rss.xml' : '/rss.xml';
 ---
 
-<BaseLayout locale={locale} title={title} description={description}>
+<BaseLayout locale={locale} title={title} description={description} crumbs={crumbs} feed={feed}>
   <Hero title={heroTitle} text={description} />
 
   <section class="ui-container page-section">

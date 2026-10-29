@@ -29,7 +29,7 @@ const LegalPage = async ({ params }: LegalPageProps): Promise<ReactNode> => {
 
   return (
     <article>
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{doc.title}</h1>
+      <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">{doc.title}</h1>
       <p className="mt-2 text-xs text-muted-foreground">
         {t('updatedLabel')} {doc.updated}
       </p>

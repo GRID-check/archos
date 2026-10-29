@@ -157,7 +157,7 @@ export function AwaitingBanner({
             <AvatarStack people={pending.map((request) => request.person)} size="sm" />
             <p
               className={cn(
-                'min-w-0 text-sm font-semibold',
+                'min-w-0 text-sm font-medium',
                 awaitingMe ? 'text-warning' : 'text-foreground',
               )}
             >

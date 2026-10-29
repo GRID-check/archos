@@ -61,7 +61,7 @@ export function InvokedSkillChip({
         <span className="text-muted-foreground line-clamp-2 text-xs leading-snug">
           {description}
         </span>
-        <span className="text-muted-foreground/80 text-xs leading-snug">
+        <span className="text-muted-foreground text-xs leading-snug">
           {t('composer.invoked.hint')}
         </span>
       </span>

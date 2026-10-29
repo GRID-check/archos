@@ -683,7 +683,7 @@ export function FolderCard({
               own `whileHover`), the cursor changes, and the label reads as a
               folder because a folder is drawn in the well.
             */}
-            <Folder className="size-10 text-muted-foreground/60 phone:size-5" strokeWidth={1.4} aria-hidden />
+            <Folder className="size-10 text-muted-foreground phone:size-5" strokeWidth={1.4} aria-hidden />
           </FileTileMedia>
           <div className="px-3.5 pb-3 pt-[11px] phone:min-w-0 phone:flex-1 phone:p-0">
             {editing ? (
@@ -716,7 +716,7 @@ export function FolderCard({
         {/* On a phone the count sits at the row's right, clear of the ⋯ (44px
             on a coarse pointer), and the age stays in the detail view: the row
             has the width for the name or for the date, and the name wins. */}
-        <FileTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:mt-0 phone:w-auto phone:shrink-0 phone:py-0 phone:pl-0 phone:pr-14">
+        <FileTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground phone:mt-0 phone:w-auto phone:shrink-0 phone:py-0 phone:pl-0 phone:pr-14">
           <span className="min-w-0 truncate tabular-nums">
             {t('folders.items', { count: itemCount })}
             {lastModified && (

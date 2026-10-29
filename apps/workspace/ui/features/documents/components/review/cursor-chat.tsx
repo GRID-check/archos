@@ -165,7 +165,7 @@ export function CursorChat({
         value={text}
         placeholder={t('review.chatPlaceholder')}
         // Solid white throughout (translucent white on a mid ink fails 4.5:1): what is typed is bolder than the placeholder.
-        className="w-full rounded-control border-0 bg-transparent px-1 text-sm leading-5 font-semibold text-background placeholder:font-normal placeholder:text-background pointer-coarse:text-base shadow-none"
+        className="w-full rounded-control border-0 bg-transparent px-1 text-sm leading-5 font-medium text-background placeholder:font-normal placeholder:text-background pointer-coarse:text-base shadow-none"
         // The app's focus outline stays (WCAG 2.4.11), in white on the bubble's colour, hugging the words.
         style={{ outlineColor: 'color-mix(in oklch, var(--background) 75%, transparent)', outlineOffset: 1 }}
         onChange={(event) => {

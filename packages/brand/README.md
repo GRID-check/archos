@@ -172,6 +172,10 @@ The handover (design system 3.0) is the reference; these are the recorded differ
 | Video play button on a phone | 56px | 48px | Proportion on a 390px screen |
 | Demo logos | page class `demo-logos` | `ui-split-logos`, part of `SplitPage` | Component classes carry the `ui-` prefix |
 
+## Contrast of the line tokens
+
+Measured against WCAG 2.2 (1.4.11 asks 3:1 for the border of a UI component): `--line-strong` is #8a8784 on paper #fafaf9 at 3.42:1 and on the sunken surface at 3.17:1, and #75726e on the dark surface at 4.03:1. It passes, so field borders keep the design system's look and no token changed. `--line` (#e7e5e3) is a divider, not a component border.
+
 ## Logo file names
 
 The client logos were renamed from German to English when copied. The mapping:

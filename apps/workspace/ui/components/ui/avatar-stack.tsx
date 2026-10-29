@@ -85,7 +85,7 @@ export function PersonAvatar({ person, size = 'md', className }: PersonAvatarPro
     >
       {person.profilePictureUrl && <AvatarImage src={person.profilePictureUrl} alt="" />}
       <AvatarFallback
-        className="font-semibold"
+        className="font-medium"
         // Inline because the hue is derived at runtime — Tailwind can only emit
         // classes it saw at build time. Both values are `color-mix()` against
         // theme tokens, so dark mode is covered without a second palette.

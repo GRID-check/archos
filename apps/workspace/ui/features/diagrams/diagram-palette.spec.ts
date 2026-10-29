@@ -12,10 +12,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { diagramThemeVariables, resetDiagramPaletteCache } from './diagram-palette'
 
 const LIGHT = {
-  '--card': '#ffffff',
+  '--card': '#fafaf9',
   '--foreground': '#0f0e0d',
   '--muted-foreground': '#5e5b57',
-  '--muted': '#f2f2f0',
+  '--muted': '#f2f1f0',
   '--accent': '#ececea',
 }
 const DARK = {

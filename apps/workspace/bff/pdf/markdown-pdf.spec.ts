@@ -31,6 +31,8 @@ import {
 } from './markdown-pdf'
 import { PRODUCT_NAME } from '@/lib/brand'
 
+const WORDMARK = PRODUCT_NAME.toUpperCase()
+
 /**
  * The mermaid placeholder every call has to supply, and its own words rather
  * than the dictionary's.
@@ -162,7 +164,8 @@ describe('renderMarkdownPdf', () => {
         // The cover (lockup + title), then the running header, the page footer
         // and the body. No facts, no marking, no findings — which is what "the
         // caller supplied neither" means now that the chrome is always there.
-        `${PRODUCT_NAME} Brandschutz Straßenhäuser ${PRODUCT_NAME} Brandschutz Straßenhäuser ${PRODUCT_NAME} 2 / 2 ` +
+        // The lockup sets the name in capitals (the wordmark); the footer is the same lockup.
+        `${WORDMARK} Brandschutz Straßenhäuser ${WORDMARK} Brandschutz Straßenhäuser ${WORDMARK} 2 / 2 ` +
           'Die Fluchtwegbreite beträgt 1,20 m.'
       )
     )

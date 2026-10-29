@@ -430,7 +430,7 @@ export function DocumentKindThumbnail({
           data-testid="document-kind-thumbnail"
           data-state="failed"
           className={cn(
-            'absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted text-muted-foreground/70',
+            'absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted text-muted-foreground',
             className
           )}
         >

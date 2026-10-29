@@ -234,7 +234,7 @@ const flatten = (node: MapTreeNode, level: number, into: { node: MapTreeNode; le
 function MapOutline({ model }: { model: MapModel }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-foreground text-sm font-semibold">{model.root.label}</p>
+      <p className="text-foreground text-sm font-medium">{model.root.label}</p>
       <ul className="border-border flex flex-col gap-2.5 border-l pl-3">
         {model.root.children.map((part) => (
           <li key={part.id} className="flex flex-col gap-1">
@@ -440,7 +440,7 @@ export function ScheduleDiagram({ model }: { model: ScheduleModel }) {
       {model.sections.map((section) => (
         <div key={section.label} className="flex flex-col gap-1">
           {section.label ? (
-            <p className="text-muted-foreground border-border border-t pt-1.5 text-[11px] font-semibold tracking-wide uppercase pointer-coarse:text-xs">
+            <p className="text-muted-foreground border-border border-t pt-1.5 text-[11px] font-medium tracking-wide uppercase pointer-coarse:text-xs">
               {section.label}
             </p>
           ) : null}

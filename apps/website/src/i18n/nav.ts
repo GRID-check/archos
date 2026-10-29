@@ -21,7 +21,18 @@ export function navigation(locale: Locale) {
     login: { label: ui.login, href: '/sign-in', key: 'login' },
     demo: link('demo', ui.demo),
     footerColumns: [
-      { title: ui.footerProduct, links: [link('home', ui.navPlatform), link('changelog', ui.changelog)] },
+      // The header stays Plattform · Datensicherheit · Blog (design system); the product pages are listed here.
+      {
+        title: ui.footerProduct,
+        links: [
+          link('home', ui.navPlatform),
+          link('firms', ui.navFirms),
+          link('buildingLaw', ui.navBuildingLaw),
+          link('revisions', ui.navRevisions),
+          link('security', ui.navSecurity),
+          link('changelog', ui.changelog),
+        ],
+      },
       { title: ui.footerKnowledge, links: [link('blog', ui.navBlog)] },
       {
         title: ui.footerCompany,

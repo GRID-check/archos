@@ -268,7 +268,7 @@ export function DictationStrip({ state, locale, onToggle, className }: Dictation
         </span>
       </span>
       <AudioWave levels={state.levels} className="text-foreground/70 h-5" />
-      <span className="text-foreground shrink-0 text-xs font-semibold">
+      <span className="text-foreground shrink-0 text-xs font-medium">
         {tCapture('dictation.tapToInsert')}
       </span>
       {/* How much of the limit is spent: a recording that stops by itself at

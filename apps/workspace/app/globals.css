@@ -11,7 +11,21 @@
 /* The corporate design's tokens (--ds-*, from packages/brand via sync.mjs); tokens.css maps onto them. */
 @import '../shared/brand/tokens.vars.css';
 @import '../ui/styles/tokens.css';
+@import '../ui/styles/data-palette.css';
 @import 'tw-animate-css';
+
+/* The wordmark's face (packages/brand: the logo is the one element set in
+   Switzer Semibold). A browser fetches an @font-face file only when text in
+   that family is drawn, so the file costs nothing on a screen without the
+   wordmark. The family is reached through `--font-logo` (ui/styles/tokens.css)
+   and `Logo` (ui/components/brand/logo.tsx), never typed elsewhere. */
+@font-face {
+  font-family: 'Switzer';
+  src: url('../shared/brand/fonts/Switzer-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* KaTeX math typesetting (rehype-katex output in MarkdownRenderer). Kept
    UNLAYERED on purpose so its rules win over Tailwind preflight (layer(base)) —
@@ -708,7 +722,7 @@ body {
   .card-title {
     font-size: 14px;
     line-height: 1.35;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   /* Headline — 17px, and the ONE size above Title that is not a figure:
@@ -718,7 +732,7 @@ body {
   .card-headline {
     font-size: 17px;
     line-height: 1.3;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: -0.04em;
   }
 
@@ -732,7 +746,7 @@ body {
   .card-figure-20,
   .card-figure-24,
   .card-figure-30 {
-    font-weight: 600;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
   }
 
@@ -1211,85 +1225,7 @@ body {
   background-color: var(--background-color-accent-gray-hover);
 }
 
-/* ───────────────────────────────────────────────────────────────────────────
-   Chart color tokens — organization spend visualization (Agent D, dataviz).
-   ONE appended block; nothing above this line was touched.
-
-   These are the categorical slots the org "Usage & budgets" card paints its
-   per-model marks with, plus the two meter states. They live here rather than
-   in a component <style> tag so the light/dark pair is declared once, beside
-   the rest of the design tokens, and so the values are greppable.
-
-   The slot ORDER is the colorblind-safety mechanism, not a preference: it is
-   the documented order of the dataviz reference palette, and it is the order
-   the validator was run against. Never reorder, never cycle — a 9th model
-   folds into `--spend-other`.
-
-     node scripts/validate_palette.js "<the eight light hexes>" \
-       --mode light --surface "#ffffff"          → ALL CHECKS PASS
-     node scripts/validate_palette.js "<the eight dark hexes>"  \
-       --mode dark  --surface "#22211d"          → ALL CHECKS PASS
-
-   Surfaces are this app's real card surfaces (`--card`), not the validator's
-   generic defaults — contrast is only meaningful against the surface the chart
-   actually renders on. The dark column is SELECTED for the dark surface (same
-   eight hues, re-stepped and re-validated), never an automatic flip of light.
-   The dark surface hex tracks `--card` in tokens.css: when the dark ramp was
-   re-tuned it moved #232220 → #22211d, which lifts every dark series by roughly
-   +0.06:1 (lowest is green at 3.26:1), so the dark column still passes as-is.
-
-   Light mode carries a contrast WARN: aqua (2.82:1), yellow (2.17:1) and
-   magenta (2.69:1) sit below 3:1 on white. That is not dismissable — the card
-   discharges it by shipping the always-visible per-model table, so no value is
-   reachable only by matching a color.
-
-   The two meter states are STATUS colors, deliberately outside the categorical
-   slots so a meter can never impersonate a series. `--spend-meter-over` is the
-   critical step (4.80:1 on white, 3.31:1 on the dark card) and always ships
-   beside the over-limit icon + sentence. */
-.spend-viz {
-  --spend-series-1: #2a78d6; /* blue */
-  --spend-series-2: #eb6834; /* orange */
-  --spend-series-3: #1baf7a; /* aqua */
-  --spend-series-4: #eda100; /* yellow */
-  --spend-series-5: #e87ba4; /* magenta */
-  --spend-series-6: #008300; /* green */
-  --spend-series-7: #4a3aa7; /* violet */
-  --spend-series-8: #e34948; /* red */
-  --spend-other: #767672; /* the folded tail — neutral on purpose */
-  --spend-meter: #2a78d6; /* under the limit */
-  --spend-meter-over: #d03b3b; /* at or over the limit */
-}
-
-.dark .spend-viz {
-  --spend-series-1: #3987e5;
-  --spend-series-2: #d95926;
-  --spend-series-3: #199e70;
-  --spend-series-4: #c98500;
-  --spend-series-5: #d55181;
-  --spend-series-6: #008300;
-  --spend-series-7: #9085e9;
-  --spend-series-8: #e66767;
-  --spend-other: #8f8e89;
-  --spend-meter: #3987e5;
-  --spend-meter-over: #d03b3b;
-}
-
-/* Storage (ADR-0042) asks the same question as the spend meter — am I about to
-   be cut off — so it uses the same STATUS pair and the same values, in both
-   themes. Kept as its own scope rather than borrowing `.spend-viz`: the
-   series slots there are for money by model and mean nothing here, and a card
-   that opts into a palette it only half-uses invites someone to colour storage
-   by category later. If one pair changes, change both. */
-.storage-viz {
-  --storage-meter: #2a78d6; /* under the quota */
-  --storage-meter-over: #d03b3b; /* at or over the quota */
-}
-
-.dark .storage-viz {
-  --storage-meter: #3987e5;
-  --storage-meter-over: #d03b3b;
-}
+/* The chart and meter palette (spend, usage, storage) lives in ui/styles/data-palette.css. */
 
 /* Two sources behind one claim is written `[2][3]`, so two citation pills can
    land side by side. Their tint blocks would touch and read as one wide chip
@@ -1496,7 +1432,7 @@ body {
     font-size: 0.75rem;
   }
   table[data-stack] > tbody > tr > td:first-child {
-    font-weight: 600;
+    font-weight: 500;
     padding-bottom: 0.25rem;
   }
   table[data-stack] > tbody > tr > td:first-child::before {
@@ -1546,7 +1482,7 @@ table[data-stack="always"] > tbody > tr > td::before {
   font-weight: 500;
 }
 table[data-stack="always"] > tbody > tr > td:first-child {
-  font-weight: 600;
+  font-weight: 500;
 }
 table[data-stack="always"] > tbody > tr > td:first-child::before {
   display: none;

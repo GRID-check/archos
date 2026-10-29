@@ -114,7 +114,7 @@ export interface AnswerFeedbackProps {
  */
 const thumbBase = cn(
   'inline-flex size-6 items-center justify-center rounded-control pointer-coarse:size-11',
-  'text-muted-foreground/70',
+  'text-muted-foreground',
   PRESSABLE,
   'hover:bg-accent hover:text-foreground',
   FOCUS_RING
@@ -225,7 +225,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
         <span
           aria-hidden={verdict !== null || undefined}
           className={cn(
-            'text-muted-foreground/80 group-hover/feedback:text-muted-foreground col-start-1 row-start-1 text-xs',
+            'text-muted-foreground group-hover/feedback:text-muted-foreground col-start-1 row-start-1 text-xs',
             'duration-quick transition-[color,opacity] ease-out motion-reduce:transition-none',
             verdict !== null && 'opacity-0'
           )}

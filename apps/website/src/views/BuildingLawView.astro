@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import FeatureTiles from '../components/FeatureTiles.astro';
+import Hero from '../components/Hero.astro';
+import InfoList from '../components/InfoList.astro';
+import SectionIntro from '../components/SectionIntro.astro';
+import TextLink from '../components/TextLink.astro';
+import { navigation } from '../i18n/nav';
+import copy from '../i18n/pages/building-law';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+import { withName } from '../lib/identity';
+
+// Markup and structure only. Text comes from src/i18n/pages/building-law.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+const nav = navigation(locale);
+const ui = t(locale);
+const security = { label: ui.navSecurity, href: localePath('security', locale), key: 'security' };
+---
+
+<BaseLayout locale={locale} title={c.title} description={c.description} faq={c.faq}>
+  <Hero title={c.hero.title} text={c.hero.text} />
+
+  <section class="ui-container page-section">
+    <SectionIntro title={c.intro.title} text={c.intro.text}>
+      <TextLink href={localePath('revisions', locale)} arrow>{ui.navRevisions}</TextLink>
+    </SectionIntro>
+    <img
+      src="/media/product-search-derivation.webp"
+      width="2560"
+      height="1024"
+      loading="lazy"
+      decoding="async"
+      alt={c.intro.imageAlt}
+      style="display: block; width: 100%; height: auto; margin: var(--space-8) 0 var(--space-16); background: var(--surface-sunken);"
+    />
+    <FeatureTiles items={c.items} columns={3} />
+  </section>
+
+  <section class="ui-container page-section">
+    <InfoList title={c.coverage.title} items={c.coverage.items} />
+  </section>
+
+  <section class="ui-band">
+    <div class="ui-container ui-section">
+      <SectionIntro size="display" align="center" title={c.roles.title} text={c.roles.text} />
+    </div>
+  </section>
+
+  <section class="ui-container ui-section">
+    <FAQ title={c.faqTitle} items={c.faq} />
+  </section>
+
+  <section class="ui-container page-section">
+    <CTABand title={c.cta.title} text={c.cta.text} primary={nav.demo} secondary={security} area="building_law_cta" />
+  </section>
+</BaseLayout>

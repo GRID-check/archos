@@ -22,7 +22,7 @@ const nav = navigation(locale);
 const contact = { label: t(locale).kontakt, href: localePath('contact', locale), key: 'contact' };
 ---
 
-<BaseLayout locale={locale} title={c.title} description={c.description}>
+<BaseLayout locale={locale} title={c.title} description={c.description} faq={c.faq}>
   <Hero title={c.hero.title} text={c.hero.text} />
 
   <section class="ui-container page-section">

@@ -115,7 +115,7 @@ export function QuestionShell({
       </p>
       <h2
         id={`${testId}-title`}
-        className="mt-2 text-[22px] leading-[1.3] font-semibold tracking-tight break-words hyphens-auto md:mt-2.5"
+        className="mt-2 text-[22px] leading-[1.3] font-medium tracking-tight break-words hyphens-auto md:mt-2.5"
       >
         {title}
       </h2>

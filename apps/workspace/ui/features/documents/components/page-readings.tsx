@@ -190,7 +190,7 @@ function PageReading({
         >
           {heading}
           <ArrowUpRight
-            className="text-muted-foreground/60 group-hover/page:text-foreground size-3.5 shrink-0 transition-colors"
+            className="text-muted-foreground group-hover/page:text-foreground size-3.5 shrink-0 transition-colors"
             aria-hidden
           />
         </button>

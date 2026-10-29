@@ -138,14 +138,22 @@ are registered. Bookmarks and links in runbooks change from `langfuse.$OLD` to `
 - Keep the redirect for at least a year (Google carries signals while it sees the 301s;
   180 days is its minimum).
 
-### Website build
+### Website build: the site's own address
 
-`apps/website/astro.config.mjs` builds canonical URLs, the sitemap and hreflang from
-`PUBLIC_SITE_URL`, else `https://<identity domain>`. The `web` image is built without
-`PUBLIC_SITE_URL`, so **today's live pages already name `$NEW` as canonical while they are
-served from `$OLD`**. TODO(owner): until the switch, either build the image with
-`PUBLIC_SITE_URL=https://$OLD` or switch soon; a canonical that points at a host that does
-not serve the page is the one SEO risk of waiting.
+The website writes its address into every canonical URL, the sitemap, hreflang, the feeds and
+JSON-LD (`Astro.site`). That address is **one value, the prod stack's `baseDomain`**, not the
+brand's domain in `identity.json` (which is the brand's address in copy and e-mail):
+
+- CI builds the `web` image with `PUBLIC_SITE_URL=https://<prod baseDomain>`
+  (`ci/image_inputs.py build-args web`, passed by `.github/actions/build-image`). The value is
+  part of the image's input hash, so changing `baseDomain` in `Pulumi.prod.yaml` rebuilds the
+  website with its new address in the same merge; no separate flip.
+- A local `bun run build` reads the same key from `deploy/pulumi/Pulumi.prod.yaml`
+  (`apps/website/src/lib/site-url.mjs`). Only a build with neither falls back to the brand domain.
+
+So before the switch the live pages name `$OLD` as canonical, and after it `$NEW`. Check it in
+the switch PR's build: `python3 ci/image_inputs.py build-args web` prints the new address, and
+the image's input hash for `web` changes.
 
 ## Order of operations
 
@@ -174,13 +182,15 @@ not serve the page is the one SEO risk of waiting.
    new zone, two `https-former-*` listeners and their certificates, two `former-*-redirect`
    HTTPRoutes, new hostnames on every listener, and changed env on the frontend, web, api and
    Langfuse pods. **No `DnsRecord` delete may appear**; if one does, step 4 is incomplete.
-6. Merge. The deploy runs `pulumi up` (**live**). cert-manager issues the new certificates
-   over HTTP-01 within minutes; the former hosts keep their own.
+6. Merge. CI rebuilds the `web` image with `PUBLIC_SITE_URL=https://$NEW` (the new
+   `baseDomain` is part of its hash), and the deploy runs `pulumi up` (**live**). cert-manager
+   issues the new certificates over HTTP-01 within minutes; the former hosts keep their own.
 7. Check, from outside the cluster:
    ```bash
    curl -sI "https://$OLD/blog/?x=1"     | grep -iE '^(HTTP|location)'   # 301, location https://$NEW/blog/?x=1
    curl -sI "https://app.$OLD/projects"  | grep -iE '^(HTTP|location)'   # 301, location https://app.$NEW/projects
    curl -s  "https://$NEW/healthz"                                       # ok
+   curl -s  "https://$NEW/" | grep -o '<link rel="canonical"[^>]*>'        # names https://$NEW/
    curl -s  "https://app.$NEW/.well-known/oauth-protected-resource/api/mcp" | jq .resource   # "https://app.$NEW/api/mcp"
    ```
    Sign in on `https://app.$NEW` (AuthKit's session cookie is per host, so everyone signs in

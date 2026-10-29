@@ -55,7 +55,7 @@ export function RulesCard({ view }: { view: IntakeView }): JSX.Element | null {
       className="bg-card border-border min-w-0 rounded-[14px] border px-4 py-4 md:px-[22px] md:py-[18px]"
       data-testid="profile-rules"
     >
-      <h2 id="profile-rules-heading" className="text-sm font-semibold">
+      <h2 id="profile-rules-heading" className="text-sm font-medium">
         {t('rules.heading')}
       </h2>
       <ul className="mt-3 flex flex-wrap gap-2">

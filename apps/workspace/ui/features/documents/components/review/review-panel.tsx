@@ -124,7 +124,7 @@ function Pages({
       {pages.map((page) => (
         <section key={page} aria-label={t('review.page', { page })}>
           {headed && (
-            <h3 className="text-muted-foreground px-2.5 pt-3 pb-1 text-[11px] font-semibold tracking-[0.05em] uppercase">
+            <h3 className="text-muted-foreground px-2.5 pt-3 pb-1 text-[11px] font-medium tracking-[0.05em] uppercase">
               {t('review.page', { page })}
             </h3>
           )}
@@ -551,7 +551,7 @@ function ListedMarks({
               type="button"
               aria-expanded={proposalsOpen}
               onClick={() => setProposalsOpen((open) => !open)}
-              className="text-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold"
+              className="text-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-medium"
             >
               <Sparkles className="size-3.5" aria-hidden />
               {t('review.proposalsGroup', { count: proposals.length })}

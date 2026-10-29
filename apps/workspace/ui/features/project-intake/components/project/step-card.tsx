@@ -23,7 +23,7 @@ export function StepCard({
   return (
     <section aria-labelledby={id} className={cn('bg-card text-card-foreground min-w-0 rounded-[14px] border', className)} {...props}>
       <div className="flex min-h-[52px] items-center justify-between gap-3 px-4 py-2.5 sm:px-[18px]">
-        <h2 id={id} className="text-sm font-semibold">
+        <h2 id={id} className="text-sm font-medium">
           {title}
         </h2>
         {aside}
@@ -54,7 +54,7 @@ export function PersonDisc({ name, tone }: { name: string; tone: 'you' | 'member
     <Avatar aria-hidden className="size-8">
       <AvatarFallback
         className={cn(
-          'text-xs font-semibold',
+          'text-xs font-medium',
           tone === 'you' && 'bg-primary text-primary-foreground',
           tone === 'member' && 'bg-muted text-foreground',
           tone === 'external' && 'bg-card text-muted-foreground border-border border border-dashed',

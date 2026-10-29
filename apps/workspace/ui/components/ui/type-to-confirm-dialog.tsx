@@ -75,7 +75,7 @@ export const TypeToConfirmDialog: FC<TypeToConfirmDialogProps> = ({
           <Field>
             <FieldLabel htmlFor={inputId} className="font-normal">
               {labelBefore}
-              <span className="font-semibold">{confirmName}</span>
+              <span className="font-medium">{confirmName}</span>
               {labelAfter}
             </FieldLabel>
             <Input

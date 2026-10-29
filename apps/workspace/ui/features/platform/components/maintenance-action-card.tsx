@@ -278,7 +278,7 @@ export function MaintenanceActionCard<R>({
                               {measure.hint}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right align-top text-sm font-semibold tabular-nums">
+                          <TableCell className="text-right align-top text-sm font-medium tabular-nums">
                             {formatCount(measure.value)}
                           </TableCell>
                         </TableRow>
