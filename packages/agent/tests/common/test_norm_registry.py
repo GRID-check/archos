@@ -8,6 +8,7 @@ import yaml
 from pydantic import ValidationError
 
 from agent.common import norm_registry as nr
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -470,14 +471,14 @@ class TestLaneForAgentAuthoredHit:
     """
 
     def test_provenance_gives_the_document_its_own_lane(self):
-        assert nr.lane_for_hit(authored_by="agent") == ("office_piloti", "Piloti-Dokument")
+        assert nr.lane_for_hit(authored_by="agent") == ("office_piloti", AGENT_AUTHORED_LANE_LABEL)
 
     def test_it_beats_the_project_shelf(self):
         """The headline defect: on the project shelf it would wear the
         Projektwissen chip, and nothing would say Piloti wrote it."""
         assert nr.lane_for_hit(shelf="project", collection="proj_abc", authored_by="agent") == (
             "office_piloti",
-            "Piloti-Dokument",
+            AGENT_AUTHORED_LANE_LABEL,
         )
         # Same hit without the provenance — the shelf decides, exactly as before.
         assert nr.lane_for_hit(shelf="project", collection="proj_abc") == ("project", "Projektwissen")
@@ -487,7 +488,7 @@ class TestLaneForAgentAuthoredHit:
         label fallback is "Baurecht" — law blue for a document we wrote."""
         assert nr.lane_for_hit(doc_class="law", shelf="office_shelf", authored_by="agent") == (
             "office_piloti",
-            "Piloti-Dokument",
+            AGENT_AUTHORED_LANE_LABEL,
         )
 
     def test_the_lane_is_office_knowledge_not_law(self):
@@ -499,7 +500,7 @@ class TestLaneForAgentAuthoredHit:
     def test_the_knowledge_hit_classifier_agrees(self):
         assert nr.lane_for_knowledge_hit(shelf="project", authored_by="agent") == (
             "office_piloti",
-            "Piloti-Dokument",
+            AGENT_AUTHORED_LANE_LABEL,
         )
 
     def test_an_unmarked_hit_is_untouched(self):

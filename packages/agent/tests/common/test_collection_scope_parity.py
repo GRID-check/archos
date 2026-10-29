@@ -24,6 +24,7 @@ from pathlib import Path
 
 import pytest
 
+from agent.common.brand import PRODUCT_NAME
 from agent.common.source_kinds import _LANE_KIND_PREFIXES
 from agent.common.source_kinds import AGENT_AUTHORED_LANE
 from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
@@ -97,10 +98,10 @@ def test_the_agent_authored_lane_matches(mirror_source: str):
     depending on which surface they are looking at.
     """
     key = re.search(r"AGENT_AUTHORED_LANE = '([^']+)'", mirror_source)
-    label = re.search(r"AGENT_AUTHORED_LANE_LABEL = '([^']+)'", mirror_source)
+    label = re.search(r"AGENT_AUTHORED_LANE_LABEL = PRODUCT_NAME \+ '([^']+)'", mirror_source)
     assert key and label, "the agent-authored lane was not found in the frontend mirror"
     assert key.group(1) == AGENT_AUTHORED_LANE
-    assert label.group(1) == AGENT_AUTHORED_LANE_LABEL
+    assert PRODUCT_NAME + label.group(1) == AGENT_AUTHORED_LANE_LABEL
     # And the mirror's own lane→kind table places it in the office family
     # without a row of its own: the ``office`` prefix already covers it.
     assert AGENT_AUTHORED_LANE.startswith("office_")

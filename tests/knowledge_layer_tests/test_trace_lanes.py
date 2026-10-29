@@ -10,6 +10,7 @@ from knowledge_layer.trace_lanes import _trace_lanes_for_chunks
 
 from agent.common.wire_v2 import TraceLane
 from agent.common.wire_v2 import TraceLaneSource
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 
 
 @pytest.fixture(autouse=True)
@@ -196,7 +197,7 @@ def test_a_published_agent_document_gets_its_own_lane_inside_the_office_kind():
     )
     # The shelf says project. Without the provenance rule this lane would be
     # "project"/"Projektwissen" and nothing would say who wrote the document.
-    assert (lane.key, lane.label, lane.kind) == ("office_piloti", "Piloti-Dokument", "office")
+    assert (lane.key, lane.label, lane.kind) == ("office_piloti", AGENT_AUTHORED_LANE_LABEL, "office")
 
 
 def test_the_fan_out_carries_the_provenance_as_data_not_as_a_sentence():
@@ -219,10 +220,10 @@ def test_the_grounding_block_states_who_released_the_document_in_one_line():
         error_message=None,
     )
     text = format_results(result, "brandschutz")
-    assert "Herkunft: Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026" in text
+    assert f"Herkunft: {AGENT_AUTHORED_LANE_LABEL} · freigegeben von Maria Huber am 01.09.2026" in text
     # One line, and no sentence for the model to copy into an answer.
     assert "freigegeben" not in text.replace(
-        "Herkunft: Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026", ""
+        f"Herkunft: {AGENT_AUTHORED_LANE_LABEL} · freigegeben von Maria Huber am 01.09.2026", ""
     )
 
 
