@@ -3544,6 +3544,10 @@
     "de": "Der Arbeitsordner gehört zur Unterhaltung, und nichts darin wird abgelegt, durchsuchbar gemacht oder als Quelle zitiert. Ein Entwurf wird erst dann zu einem Projektdokument, wenn jemand ihn ins Projekt übernimmt."
   },
   {
+    "en": "The workspace now takes the shapes of its parts: chips and counts are round, messages sit in soft bubbles, and menus and dialogs float with gentle corners and faint shadows.",
+    "de": "Der Arbeitsbereich übernimmt jetzt die Formen seiner Bestandteile: Chips und Zähler sind rund, Nachrichten erscheinen in weichen Sprechblasen, und Menüs und Dialoge schweben mit sanft abgerundeten Ecken und dezenten Schatten."
+  },
+  {
     "en": "The „@“ list offers only people who can open the document, and if someone cannot, the reply box says they were not told.",
     "de": "Die „@“-Liste zeigt nur Personen an, die das Dokument öffnen können; kann jemand es nicht öffnen, weist das Antwortfeld darauf hin, dass die Person nicht informiert wurde."
   },
