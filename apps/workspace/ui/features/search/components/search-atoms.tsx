@@ -1214,12 +1214,11 @@ export const PALETTE_HIT_CLASS = 'py-2 [&_svg.size-3]:size-3! pointer-coarse:min
  * Hits of an earlier question while a late answer is still on its way:
  * quieter, as the page's `ResultsBody` dims them, except the row the arrows are
  * on, which stays at full strength: it is still what Enter opens, and a dimmed
- * selection read as the whole list switched off. The dim eases in; the fresh
- * answer stands at once. The ease lives in this class alone, so at rest the
- * arrows move the highlight in one frame: an eased selection trailed the keys.
+ * selection read as the whole list switched off. No ease, either way: the
+ * dim waits out the late-answer threshold, so it never flickers, and an eased
+ * row opacity trailed the arrows through a dimmed list by a beat on each key.
  */
-export const PALETTE_STALE_CLASS =
-  '[&_[cmdk-group-heading]]:opacity-70 [&_[cmdk-item]:not([data-selected=true])]:opacity-70 [&_[cmdk-group-heading]]:transition-opacity [&_[cmdk-item]]:transition-opacity [&_[cmdk-group-heading]]:duration-quick [&_[cmdk-item]]:duration-quick motion-reduce:[&_[cmdk-group-heading]]:transition-none motion-reduce:[&_[cmdk-item]]:transition-none'
+export const PALETTE_STALE_CLASS = '[&_[cmdk-group-heading]]:opacity-70 [&_[cmdk-item]:not([data-selected=true])]:opacity-70'
 
 /**
  * What the palette says when the answer is empty or failed, in the space the
@@ -1239,7 +1238,7 @@ export function PaletteEmpty({ title, hint, testId }: { title: ReactNode; hint?:
 }
 
 /**
- * „Alle in Wohnhaus Seestadt“: where every hit below lives, said once above
+ * „Alle Treffer aus Wohnhaus Seestadt“: where every hit below lives, said once above
  * them, so the rows leave the project out instead of repeating it five times.
  */
 export function PaletteScopeLine({ project, dimmed = false }: { project: string; dimmed?: boolean }): JSX.Element {
@@ -1252,7 +1251,7 @@ export function PaletteScopeLine({ project, dimmed = false }: { project: string;
       )}
       data-testid="palette-scope-line"
     >
-      <FolderKanban className="size-3 shrink-0" style={{ color: sourceBase('project') }} aria-hidden />
+      <FolderKanban className="size-3 shrink-0" aria-hidden />
       <span className="truncate">{t('palette.allIn', { project })}</span>
     </p>
   )
@@ -1272,18 +1271,20 @@ export function PaletteGroupHeading({ children, count }: { children: ReactNode; 
  * The palette's hits before the first answer for what is typed: three rows in
  * the hit's own geometry (glyph, name, meta line), so the panel takes the
  * results' shape at the keystroke instead of collapsing to one row and
- * springing open when the answer lands. It fades in on `--motion-base`, so an
- * answer that comes back within a few frames replaces a nearly invisible
- * placeholder rather than flashing one.
+ * springing open when the answer lands. It stands at once, as the hits that
+ * replace it do: faded in, it washed the card out for the quarter second after
+ * each first keystroke. While the list holds its height it fills it, its last
+ * rows clipped, so „Alle Treffer“ stays at the foot rather than mid-card.
  */
 export function PaletteHitsSkeleton(): JSX.Element {
   // Three kinds, three hits and one and one: about the answer a search in an
-  // office usually gets, so the height the answer glides to is a short way off.
+  // office usually gets, so the height the answer glides to is a short way
+  // off. Its last group stretches into a held height, never past it.
   const groups = [3, 1, 1]
   return (
-    <div className="animate-in fade-in-0 duration-base flex flex-col motion-reduce:animate-none" data-testid="palette-skeleton" aria-hidden>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-testid="palette-skeleton" aria-hidden>
       {groups.map((rows, group) => (
-        <div key={group} className="flex flex-col p-1">
+        <div key={group} className={cn('flex flex-col p-1', group === groups.length - 1 && 'flex-1')}>
           <Skeleton className="mx-2 mt-1.5 mb-2.5 h-3 w-20" />
           {Array.from({ length: rows }, (_, index) => (
             <div key={index} className="flex items-start gap-3 px-2 py-2">

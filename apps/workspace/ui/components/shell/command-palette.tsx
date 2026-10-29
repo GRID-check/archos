@@ -216,6 +216,13 @@ export function CommandPalette({
   // had got to, so the same keys went to two places depending on its speed.
   const awaitingAnswer = words !== '' && !search.failed && (search.loading || search.answered !== words)
   const [heldEnter, setHeldEnter] = React.useState<string | null>(null)
+  // Whether the row the arrows are on is one the reader moved to since they
+  // last typed. A row the palette chose for an earlier answer (its best hit,
+  // „Alle Treffer“) is no choice of theirs, so an Enter on it waits too.
+  const movedByReader = React.useRef(false)
+  React.useEffect(() => {
+    movedByReader.current = false
+  }, [words])
   React.useEffect(() => {
     if (heldEnter === null) return
     if (heldEnter !== words || search.failed) {
@@ -228,6 +235,7 @@ export function CommandPalette({
   }, [heldEnter, words, search.failed, awaitingAnswer, firstHit, openSearchHref, projectId])
   const onFieldKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') movedByReader.current = true
       if (event.key !== 'Enter') return
       const chord = event.metaKey || event.ctrlKey
       if (chord && allHref) {
@@ -236,7 +244,7 @@ export function CommandPalette({
         openSearchHref(allHref)
         return
       }
-      if (!chord && awaitingAnswer && selected === PALETTE_ALL_RESULTS_VALUE) {
+      if (!chord && awaitingAnswer && !movedByReader.current && (selected === PALETTE_ALL_RESULTS_VALUE || isPaletteHitValue(selected))) {
         event.preventDefault()
         setHeldEnter(words)
       }
@@ -281,11 +289,20 @@ export function CommandPalette({
     if (!listElement) return
     if (!awaitingFirst) {
       floor.current = 0
-      listElement.style.minHeight = ''
+      if (listElement.firstElementChild instanceof HTMLElement) listElement.firstElementChild.style.minHeight = ''
       return
     }
-    floor.current = Math.max(floor.current, listElement.offsetHeight)
-    listElement.style.minHeight = `${floor.current}px`
+    // On the list's sizer, which stacks its rows in a column while it waits,
+    // so the placeholder grows into the held height rather than leaving it
+    // empty under „Alle Treffer“.
+    const sizer = listElement.firstElementChild
+    if (!(sizer instanceof HTMLElement)) return
+    // Never taller than the list shows: a floor measured while the commands
+    // overflowed it pushed „Alle Treffer“ below the fold under the placeholder.
+    const { paddingTop, paddingBottom } = getComputedStyle(listElement)
+    const visible = listElement.clientHeight - parseFloat(paddingTop) - parseFloat(paddingBottom)
+    floor.current = Math.min(Math.max(floor.current, sizer.offsetHeight), visible)
+    sizer.style.minHeight = `${floor.current}px`
   })
   const [overflows, setOverflows] = React.useState(false)
   React.useLayoutEffect(() => {
@@ -370,7 +387,8 @@ export function CommandPalette({
           value={query}
           onValueChange={setQuery}
           onKeyDown={onFieldKeyDown}
-          busy={searching}
+          // A held Enter is said at once: the reader pressed a key and waits on it.
+          busy={searching || heldEnter !== null}
           placeholder={t('placeholder')}
           // The wrapper's wash is this field's focus signal (and on a phone,
           // the keyboard is); the global `:focus-visible` outline is unlayered
@@ -386,7 +404,7 @@ export function CommandPalette({
           {tCommon('actions.cancel')}
         </DialogClose>
       </div>
-      <CommandList ref={setListElement} className={cn(overflows && 'md:scroll-fade-bottom', 'min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain')}>
+      <CommandList ref={setListElement} className={cn(overflows && 'md:scroll-fade-bottom', awaitingFirst && '[&_[cmdk-list-sizer]]:flex [&_[cmdk-list-sizer]]:flex-col', 'min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain')}>
         {/* No „Keine Ergebnisse“: a search row always answers, with the way
             to every hit for what was typed. */}
         {words ? (

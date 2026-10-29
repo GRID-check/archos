@@ -22,6 +22,7 @@ import { CommandGroup, CommandItem } from '@/components/ui/command'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { useTranslations } from '@/i18n'
 import { searchCopy } from '@/i18n/namespaces/search'
+import { cn } from '@/lib/utils'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SEARCH_KINDS, type SearchHit, type SearchResponse, type SearchScopeQuery } from '@/lib/search/search-wire'
 import { PALETTE_HITS_PER_KIND } from '../hooks/use-palette-search'
@@ -210,7 +211,7 @@ export function PaletteSearchResults({
           {empty ? (
             <PaletteEmpty
               title={failed ? t('error') : t('palette.noHitsFor', { text: words })}
-              hint={failed ? (onRetry ? t('palette.retryHint') : undefined) : t(scope.scope === 'project' ? 'palette.hint.project' : 'palette.hint.office')}
+              hint={failed ? (onRetry ? t('palette.retryHint') : undefined) : t('palette.noHitsHint')}
               testId="palette-search-status"
             />
           ) : (
@@ -225,7 +226,16 @@ export function PaletteSearchResults({
                 <PaletteLabel>{t('palette.retry')}</PaletteLabel>
               </CommandItem>
             ) : null}
-            <CommandItem forceMount value={PALETTE_ALL_RESULTS_VALUE} onSelect={() => onOpen(allHref)} className={itemClassName} data-testid="palette-workspace-search">
+            <CommandItem
+              forceMount
+              value={PALETTE_ALL_RESULTS_VALUE}
+              onSelect={() => onOpen(allHref)}
+              // Under the placeholder no row is lit: an Enter now waits for the
+              // answer and opens its best hit, so the highlight appears once, on
+              // that hit, rather than standing here and jumping up to it.
+              className={cn(itemClassName, firstAnswer && 'data-[selected=true]:bg-transparent')}
+              data-testid="palette-workspace-search"
+            >
               <PaletteGlyph icon={Search} />
               {/* Nothing here is no promise of nothing there: the page searches with filters, and further than three of a kind. */}
               <PaletteLabel>{empty ? t('palette.continueInSearch') : t('palette.allResults', { text: words })}</PaletteLabel>

@@ -86,7 +86,7 @@ describe('CommandPalette: the workspace search', () => {
     expect(concept).toHaveTextContent('Brandschutzkonzept Wohnhaus Seestadt J7')
     expect(concept).toHaveTextContent('S. 7')
     // Every hit lives in one project: it is named once above them, not on each row.
-    expect(screen.getByTestId('palette-scope-line')).toHaveTextContent('Alle in Wohnhaus Seestadt Baufeld J7')
+    expect(screen.getByTestId('palette-scope-line')).toHaveTextContent('Alle Treffer aus Wohnhaus Seestadt Baufeld J7')
     expect(concept).not.toHaveTextContent('Wohnhaus Seestadt Baufeld J7')
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
     expect(screen.getByTestId('palette-group-annotation')).toBeInTheDocument()
@@ -119,6 +119,32 @@ describe('CommandPalette: the workspace search', () => {
     answer!()
     await waitFor(() => expect(push).toHaveBeenCalledTimes(1))
     expect(push.mock.calls[0][0]).not.toMatch(/^\/app\/search/)
+  })
+
+  it('holds an Enter on a refined question too, unless the reader moved to the row themselves', async () => {
+    let slow = false
+    let answer: (() => void) | null = null
+    server.use(
+      http.post('*/api/search', async () => {
+        if (slow) {
+          await new Promise<void>((resolve) => {
+            answer = resolve
+          })
+        }
+        return HttpResponse.json(SEARCH_FIXTURE_RESPONSE)
+      })
+    )
+    render(palette())
+    await userEvent.type(field(), 'Flucht')
+    await screen.findByTestId('palette-group-document')
+    slow = true
+    await userEvent.type(field(), 'weg')
+    await userEvent.keyboard('{Enter}')
+    // The best hit of the earlier answer is the palette's choice, not the reader's: nothing opens yet.
+    expect(push).not.toHaveBeenCalled()
+    await waitFor(() => expect(answer).not.toBeNull())
+    answer!()
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1))
   })
 
   it('opens the first hit on Enter, and remembers what was searched', async () => {
@@ -154,7 +180,7 @@ describe('CommandPalette: the workspace search', () => {
     render(palette())
     await userEvent.type(field(), 'xyz')
     await waitFor(() => expect(screen.getByTestId('palette-search-status')).toHaveTextContent('Nichts gefunden für „xyz“'))
-    expect(screen.getByTestId('palette-workspace-search')).toHaveTextContent('In der Suche weitersuchen')
+    expect(screen.getByTestId('palette-workspace-search')).toHaveTextContent('Suche mit Filtern öffnen')
   })
 
   it('says how many of each kind there are only where the rows show fewer', async () => {

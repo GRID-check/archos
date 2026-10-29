@@ -312,11 +312,12 @@ export const search = {
     open: 'Open search',
     noHits: 'Nothing found',
     noHitsFor: 'Nothing found for “{text}”',
-    continueInSearch: 'Continue in search',
+    continueInSearch: 'Open search with filters',
+    noHitsHint: 'Try another spelling or fewer words, or open the search with filters.',
     retry: 'Try again',
     retryHint: 'A second try is usually enough; otherwise check the connection.',
     ofTotal: '{shown} of {total}',
-    allIn: 'All in {project}',
+    allIn: 'All results from {project}',
     recent: 'Recent searches',
     hint: {
       office:

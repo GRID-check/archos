@@ -268,17 +268,31 @@ function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolea
   const kind = (ANNOTATION_KINDS as readonly string[]).includes(hit.annotationKind) ? t(`annotation.kinds.${hit.annotationKind}`) : hit.annotationKind
   const from = useSearchReturn()
   const status = (ANNOTATION_STATUSES as readonly string[]).includes(hit.status) ? t(`annotation.statuses.${hit.status}`) : hit.status
+  const on = t('annotation.on', { document: hit.documentName })
+  // In the palette the finding is the name, and the document it is on goes to
+  // the meta line: one line of what was said reads as the hit, „zu EP-03…“
+  // over grey body text read as the row being about the plan.
+  const compact = useCompactRow()
   return (
     <ResultRow
       href={annotationHitHref(hit, from)}
       icon={MessageSquareWarning}
-      title={t('annotation.on', { document: hit.documentName })}
+      title={compact && hit.excerpt ? hit.excerpt : on}
       active={active}
       id={id}
       testId={`search-hit-annotation-${hit.id}`}
-      meta={<MetaLine lead={where(hit.shelf, hit.projectId, hit.projectName)} parts={[<MetaPart key="kind">{kind}</MetaPart>, <MetaPart key="status">{status}</MetaPart>]} />}
+      meta={
+        <MetaLine
+          lead={where(hit.shelf, hit.projectId, hit.projectName)}
+          parts={[
+            compact && hit.excerpt ? <MetaPart key="on">{on}</MetaPart> : null,
+            <MetaPart key="kind">{kind}</MetaPart>,
+            <MetaPart key="status">{status}</MetaPart>,
+          ]}
+        />
+      }
     >
-      <Excerpt>{hit.excerpt}</Excerpt>
+      {compact && hit.excerpt ? null : <Excerpt>{hit.excerpt}</Excerpt>}
     </ResultRow>
   )
 }
