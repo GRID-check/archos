@@ -327,7 +327,7 @@ export function DocumentRoleField({
           {mine.map((binding) => (
             <li
               key={binding.id}
-              className="bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+              className="bg-muted/20 flex items-center gap-2 rounded-control border px-3 py-2 text-sm"
             >
               <CheckCircle2 className="text-primary size-4 shrink-0" aria-hidden />
               <FileText className="text-muted-foreground size-4 shrink-0" aria-hidden />
@@ -353,7 +353,7 @@ export function DocumentRoleField({
           {held.map((bind) => (
             <li
               key={`held-${bind.documentId}`}
-              className="bg-muted/20 flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm"
+              className="bg-muted/20 flex items-center gap-2 rounded-control border border-dashed px-3 py-2 text-sm"
             >
               <FileText className="text-muted-foreground size-4 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 truncate">{bind.filename}</span>
@@ -460,7 +460,7 @@ export function DocumentRoleField({
         data-testid="document-role-drop"
         data-dragging={isDragging || undefined}
         className={cn(
-          'rounded-lg border border-dashed px-3 py-2 text-center text-xs transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:hidden',
+          'rounded-control border border-dashed px-3 py-2 text-center text-xs transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:hidden',
           isDragging && refusal && 'border-destructive bg-destructive/5 text-destructive',
           isDragging && !refusal && 'border-primary bg-primary/5 text-foreground',
           !isDragging && 'text-muted-foreground'

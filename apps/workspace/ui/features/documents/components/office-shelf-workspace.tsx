@@ -139,7 +139,7 @@ export function OfficeShelfWorkspace({
               three sit in one row, as they always did. */}
           <div className="flex min-w-0 items-center gap-3 max-sm:flex-1 max-sm:basis-0">
             <span
-              className="shadow-2xs flex size-9 shrink-0 items-center justify-center rounded-xl"
+              className="shadow-2xs flex size-9 shrink-0 items-center justify-center rounded-control"
               style={OFFICE_TINT}
               aria-hidden
             >
@@ -147,7 +147,7 @@ export function OfficeShelfWorkspace({
             </span>
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
-                <h2 className="text-foreground truncate text-sm font-semibold tracking-tight">{t('title')}</h2>
+                <h2 className="text-foreground truncate text-sm font-medium tracking-tight">{t('title')}</h2>
                 <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center">
                   {count !== null && count > 0 && (
                     <CountPill data-testid="office-shelf-document-count" count={count} />

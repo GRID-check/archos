@@ -279,10 +279,10 @@ function SitePlanFill() {
 function DocumentFill() {
   return (
     <div className="absolute inset-0 flex flex-col gap-[6px] px-[18px] py-[15px]">
-      <div className="h-[6px] w-[52%] rounded-sm bg-current opacity-40" />
-      <div className="mb-[5px] h-[4px] w-[30%] rounded-sm bg-current opacity-20" />
+      <div className="h-[6px] w-[52%] rounded-full bg-current opacity-40" />
+      <div className="mb-[5px] h-[4px] w-[30%] rounded-control bg-current opacity-20" />
       {[100, 94, 97, 88, 96, 62].map((w, i) => (
-        <div key={i} className="h-[4px] rounded-sm bg-current opacity-20" style={{ width: `${w}%` }} />
+        <div key={i} className="h-[4px] rounded-control bg-current opacity-20" style={{ width: `${w}%` }} />
       ))}
     </div>
   )
@@ -294,16 +294,16 @@ function NoticeFill() {
     <div className="absolute inset-0 flex flex-col gap-[6px] px-[18px] py-[15px]">
       <div className="mb-[6px] flex items-start justify-between">
         <div className="flex flex-col gap-[4px]">
-          <div className="h-[5px] w-16 rounded-sm bg-current opacity-40" />
-          <div className="h-[4px] w-10 rounded-sm bg-current opacity-20" />
+          <div className="h-[5px] w-16 rounded-control bg-current opacity-40" />
+          <div className="h-[4px] w-10 rounded-control bg-current opacity-20" />
         </div>
         <div className="size-[18px] shrink-0 rounded-full border-[1.5px] border-current opacity-40" />
       </div>
       {[100, 92, 96, 70, 88, 54].map((w, i) => (
-        <div key={i} className="h-[4px] rounded-sm bg-current opacity-20" style={{ width: `${w}%` }} />
+        <div key={i} className="h-[4px] rounded-control bg-current opacity-20" style={{ width: `${w}%` }} />
       ))}
       <div className="absolute bottom-3 right-4 flex size-10 -rotate-12 items-center justify-center rounded-full border-[1.5px] border-current opacity-30">
-        <div className="h-[3px] w-5 rounded-sm bg-current" />
+        <div className="h-[3px] w-5 rounded-control bg-current" />
       </div>
     </div>
   )
@@ -360,13 +360,13 @@ function SheetFill() {
 function TextFill() {
   return (
     <div className="absolute inset-0 flex flex-col gap-[6px] px-[18px] py-[15px]">
-      <div className="h-[7px] w-[46%] rounded-sm bg-current opacity-45" />
-      <div className="h-[4px] w-full rounded-sm bg-current opacity-20" />
-      <div className="mb-[3px] h-[4px] w-[78%] rounded-sm bg-current opacity-20" />
+      <div className="h-[7px] w-[46%] rounded-full bg-current opacity-45" />
+      <div className="h-[4px] w-full rounded-control bg-current opacity-20" />
+      <div className="mb-[3px] h-[4px] w-[78%] rounded-control bg-current opacity-20" />
       {[86, 94, 62].map((w, i) => (
         <div key={i} className="flex items-center gap-[7px]">
           <span className="size-[4px] shrink-0 rounded-full bg-current opacity-35" />
-          <span className="h-[4px] rounded-sm bg-current opacity-20" style={{ width: `${w}%` }} />
+          <span className="h-[4px] rounded-control bg-current opacity-20" style={{ width: `${w}%` }} />
         </div>
       ))}
     </div>
@@ -453,7 +453,7 @@ export function DocumentKindThumbnail({
           data-testid="document-kind-thumbnail"
           data-state="placeholder"
           className={cn(
-            'absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-gradient-to-br from-muted/40 via-muted/60 to-muted text-muted-foreground',
+            'absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-muted/50 text-muted-foreground',
             className
           )}
         >
@@ -462,7 +462,7 @@ export function DocumentKindThumbnail({
             <span
               // The eyebrow ramp step (10.5px / uppercase / tracking-wider),
               // rendered as a tinted chip rather than a bare label.
-              className="inline-flex items-center rounded-sm px-2 py-[3px] text-[10.5px] font-bold uppercase leading-none tracking-wider"
+              className="inline-flex items-center rounded-control px-2 py-[3px] text-[10.5px] font-medium uppercase leading-none tracking-wider"
               style={OFFICE_TINT}
             >
               {formatLabel}

@@ -26,7 +26,7 @@ const Eyebrow: FC<{ children: React.ReactNode }> = ({ children }) => (
 )
 
 const FramingFlowNode: FC<NodeProps<Node<FramingData>>> = ({ data }) => (
-  <div className="bg-card w-[var(--banner-w)] max-w-full rounded-xl border px-4 py-3 text-left shadow-xs">
+  <div className="bg-card w-[var(--banner-w)] max-w-full rounded-surface border px-4 py-3 text-left shadow-xs">
     <Eyebrow>
       <span className="inline-flex items-center gap-1.5">{data.label}</span>
     </Eyebrow>
@@ -63,7 +63,7 @@ const FramingFlowNode: FC<NodeProps<Node<FramingData>>> = ({ data }) => (
  * than pointing at nothing.
  */
 const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
-  <div className="bg-card relative w-[var(--banner-w)] max-w-full rounded-xl border px-4 pt-3 pb-2 text-left shadow-xs">
+  <div className="bg-card relative w-[var(--banner-w)] max-w-full rounded-surface border px-4 pt-3 pb-2 text-left shadow-xs">
     {data.targets.map((h) => (
       <Handle
         key={h.id}
@@ -81,7 +81,7 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
         aria-label={data.toggleLabel}
         data-testid="reasoning-round-toggle"
         className={cn(
-          'absolute inset-0 z-10 cursor-pointer rounded-xl outline-none',
+          'absolute inset-0 z-10 cursor-pointer rounded-surface outline-none',
           // Inset: the banner spans the content width, and an offset ring is
           // clipped by the pane on both sides.
           FOCUS_RING_INSET
@@ -111,7 +111,7 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
         {data.actions.map((action) => (
           <li
             key={action}
-            className="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 text-[11px] leading-snug pointer-coarse:text-xs"
+            className="bg-muted text-muted-foreground rounded-control px-1.5 py-0.5 text-[11px] leading-snug pointer-coarse:text-xs"
           >
             {action}
           </li>
@@ -192,7 +192,7 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
         style={{ ...H, left: '50%', top: data.inTop }}
       />
       {data.grouped ? (
-        <div className="bg-muted rounded-xl border px-3 py-3">
+        <div className="bg-muted rounded-surface border px-3 py-3">
           <Eyebrow>{data.groupLabel}</Eyebrow>
           <div className="mt-2">{stack}</div>
         </div>
@@ -261,7 +261,7 @@ const UncitedFoldCard: FC<{
           onClick={onToggle}
           aria-expanded
           className={cn(
-            'text-muted-foreground duration-snap pointer-fine:hover:text-foreground inline-flex min-h-8 items-center gap-1 rounded-md px-1 text-left text-[13px] leading-[19px] transition-[color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none pointer-coarse:min-h-11',
+            'text-muted-foreground duration-snap pointer-fine:hover:text-foreground inline-flex min-h-8 items-center gap-1 rounded-control px-1 text-left text-[13px] leading-[19px] transition-[color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none pointer-coarse:min-h-11',
             FOCUS_RING
           )}
         >
@@ -291,7 +291,7 @@ const UncitedFoldCard: FC<{
         aria-expanded={false}
         aria-describedby={tabId}
         className={cn(
-          'bg-muted/40 duration-snap pointer-fine:hover:bg-muted flex min-h-11 w-full min-w-0 flex-col rounded-lg border border-dashed px-3 py-2.5 text-left transition-[background-color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none',
+          'bg-muted/40 duration-snap pointer-fine:hover:bg-muted flex min-h-11 w-full min-w-0 flex-col rounded-control border border-dashed px-3 py-2.5 text-left transition-[background-color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none',
           FOCUS_RING
         )}
       >
@@ -309,7 +309,7 @@ const UncitedFoldCard: FC<{
 const FindingsFlowNode: FC<NodeProps<Node<FindingsData>>> = ({ data }) => (
   <div
     className={cn(
-      'bg-card w-[var(--banner-w)] max-w-full rounded-xl border px-4 py-3 text-left shadow-xs',
+      'bg-card w-[var(--banner-w)] max-w-full rounded-surface border px-4 py-3 text-left shadow-xs',
       // Pending reads as in-flight rather than as an empty result: dashed
       // hairline, no fill — the same visual grammar the uncited fold uses.
       data.pending && 'border-dashed bg-transparent shadow-none'
@@ -344,7 +344,7 @@ const FindingsFlowNode: FC<NodeProps<Node<FindingsData>>> = ({ data }) => (
             data-testid={group.open ? 'basis-open' : 'basis-group'}
             className={cn(
               'col-span-full grid grid-cols-subgrid gap-y-0.5',
-              group.open && 'bg-muted -mx-3 mt-1 rounded-lg px-3 py-2.5'
+              group.open && 'bg-muted -mx-3 mt-1 rounded-surface px-3 py-2.5'
             )}
           >
             <dt

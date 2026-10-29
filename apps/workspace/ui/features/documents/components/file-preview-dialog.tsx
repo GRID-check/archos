@@ -120,7 +120,7 @@ export function FilePreviewDialog({
           // `sm:max-w-[960px]` MUST carry the `sm:` prefix: DialogContent's base
           // class ends in `sm:max-w-lg`, so a plain `max-w-*` loses to it at the
           // exact breakpoint where it matters (see pdf-viewer-dialog.tsx).
-          className="flex h-dvh max-h-dvh w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-[85dvh] sm:max-h-[85dvh] sm:max-w-[960px] sm:rounded-2xl phone:inset-0 phone:h-dvh phone:max-h-dvh phone:max-w-none phone:translate-x-0 phone:translate-y-0 phone:rounded-none phone:border-0"
+          className="flex h-dvh max-h-dvh w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-[85dvh] sm:max-h-[85dvh] sm:max-w-[960px] sm:rounded-overlay phone:inset-0 phone:h-dvh phone:max-h-dvh phone:max-w-none phone:translate-x-0 phone:translate-y-0 phone:rounded-none phone:border-0"
           // The pane lays the phone out itself (the full-screen reader, safe
           // areas included), on its side as well as upright: a sheet grafted
           // onto it would be a second header and a second close.

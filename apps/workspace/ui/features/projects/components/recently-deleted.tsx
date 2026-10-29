@@ -94,7 +94,7 @@ export function RecentlyDeleted({ canManageCompliance = false }: RecentlyDeleted
   if (error) {
     return (
       <section className="mt-8">
-        <h2 className="text-muted-foreground text-sm font-semibold">
+        <h2 className="text-muted-foreground text-sm font-medium">
           {t('recentlyDeleted.heading')}
         </h2>
         <LoadError className="mt-2" title={t('recentlyDeleted.loadError')} onRetry={refresh} />
@@ -106,12 +106,12 @@ export function RecentlyDeleted({ canManageCompliance = false }: RecentlyDeleted
 
   return (
     <section className="mt-8">
-      <h2 className="text-muted-foreground text-sm font-semibold">
+      <h2 className="text-muted-foreground text-sm font-medium">
         {t('recentlyDeleted.heading')}
       </h2>
       <ul className="mt-2 flex flex-col gap-2">
         {entries.map((entry) => (
-          <li key={entry.id} className="flex items-center justify-between rounded-lg border p-3">
+          <li key={entry.id} className="flex items-center justify-between rounded-control border p-3">
             <div>
               <p className="text-sm font-medium">{entry.displayName}</p>
               <p className="text-muted-foreground text-xs">

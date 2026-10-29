@@ -167,7 +167,7 @@ function PhoneTabItem({
             aria-hidden
             // The rail's active chip, at the size of one glyph: the same
             // material says the same thing on both shapes of the chrome.
-            className="border-border bg-card shadow-xs absolute inset-0 rounded-full border"
+            className="border-border bg-card absolute inset-0 rounded-full border shadow-xs"
             transition={springGlide}
           />
         )}
@@ -180,7 +180,7 @@ function PhoneTabItem({
         className={cn(
           'relative max-w-full truncate px-0.5 text-[11px] leading-none tracking-[0.005em]',
           '[@media(max-height:31rem)]:text-xs',
-          tab.active ? 'font-semibold' : 'font-medium'
+          tab.active ? 'font-medium' : 'font-medium'
         )}
       >
         {label}

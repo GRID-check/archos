@@ -276,7 +276,7 @@ export function QuestionHeader({ question, domId }: { question: ProjectIntakeQue
         // (design-language.md, "Emphasis without a stripe").
         <p
           id={whyId}
-          className="bg-muted text-muted-foreground max-w-prose rounded-md px-3 py-2 text-xs"
+          className="bg-muted text-muted-foreground max-w-prose rounded-control px-3 py-2 text-xs"
         >
           {question.why}
         </p>
@@ -365,7 +365,7 @@ export function Segmented({
     <div
       role="group"
       aria-label={ariaLabel}
-      className="border-border inline-flex w-fit flex-wrap self-start overflow-hidden rounded-lg border"
+      className="border-border inline-flex w-fit flex-wrap self-start overflow-hidden rounded-control border"
     >
       {options.map((opt, i) => {
         const active = value === opt.value

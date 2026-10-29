@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    The workspace now takes the shapes of its parts: chips and counts are round,
+    messages sit in soft bubbles, and menus and dialogs float with gentle corners
+    and faint shadows.

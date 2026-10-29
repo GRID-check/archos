@@ -123,7 +123,7 @@ export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href
         // the pill is now exactly its digits plus its padding, and with no
         // slack left to distribute there is nothing to justify.
         className={cn(
-          'inline-flex items-center rounded-sm px-[3px]',
+          'inline-flex items-center rounded-control px-[3px]',
           // em-relative, not a ramp step: the marker rides inside a running
           // sentence and has to track whatever size that sentence is set at.
           // The -0.15em lift is optical superscript alignment.
@@ -309,7 +309,7 @@ const PendingCitationMarker: FC<{ number: number }> = ({ number }) => {
       role="img"
       aria-label={t('citationPeek.pendingAria', { number })}
       className={cn(
-        'inline-flex items-center rounded-sm px-[3px]',
+        'inline-flex items-center rounded-control px-[3px]',
         'relative -top-[0.15em] text-[0.68em] font-semibold leading-[1.45] tabular-nums',
         // The live pill's touch sizing too: settling changes the colour and
         // nothing else, or the line re-wraps the moment the source arrives.

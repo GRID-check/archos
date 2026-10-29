@@ -90,7 +90,7 @@ export function ReviewSection({
   return (
     <section className="p-5 md:p-6">
       <div className="flex items-center justify-between gap-4">
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h3 className="text-sm font-medium">{title}</h3>
         {onEdit && (
           <button
             type="button"
@@ -156,7 +156,7 @@ export function ReviewStep({
 
   return (
     <div className="space-y-4">
-      <div className="divide-border bg-card shadow-xs divide-y overflow-hidden rounded-2xl border">
+      <div className="divide-border bg-card divide-y overflow-hidden rounded-surface border shadow-xs">
         {projectStages.map(({ stage, index }) => (
           <ReviewSection
             key={stage.id}
@@ -189,7 +189,7 @@ export function ReviewStep({
         }
         if (items.length === 0) return null
         return (
-          <div key={bw.id} className="bg-card shadow-xs overflow-hidden rounded-2xl border">
+          <div key={bw.id} className="bg-card overflow-hidden rounded-surface border shadow-xs">
             <ReviewSection
               title={bw.name}
               editLabel={t('intake.edit')}
@@ -200,7 +200,7 @@ export function ReviewStep({
         )
       })}
 
-      <div className="bg-muted/30 rounded-2xl border border-dashed p-5">
+      <div className="bg-muted/30 rounded-surface border border-dashed p-5">
         <div className="flex items-start gap-2">
           <Sparkles className="text-primary size-4 shrink-0 translate-y-0.5" aria-hidden />
           <div>
@@ -260,12 +260,12 @@ export function ConflictFindings({
   return (
     <section
       aria-label={t('intake.consistency.title')}
-      className="bg-card shadow-xs rounded-2xl border p-5"
+      className="bg-card rounded-surface border p-5 shadow-xs"
     >
       <div className="flex items-start gap-2">
         <AlertTriangle className="text-warning size-4 shrink-0 translate-y-0.5" aria-hidden />
         <div>
-          <h3 className="text-sm font-semibold">{t('intake.consistency.title')}</h3>
+          <h3 className="text-sm font-medium">{t('intake.consistency.title')}</h3>
           <p className="text-muted-foreground mt-0.5 text-sm">{t('intake.consistency.subtitle')}</p>
         </div>
       </div>
@@ -278,7 +278,7 @@ export function ConflictFindings({
             <li
               key={index}
               className={cn(
-                'rounded-xl border px-4 py-3 text-sm',
+                'rounded-surface border px-4 py-3 text-sm',
                 // `border-destructive` is a real theme colour (`--color-destructive`
                 // in the `@theme inline` block), so its slash form compiles.
                 // `border-warning` is a static `@utility` with no `--modifier()`,

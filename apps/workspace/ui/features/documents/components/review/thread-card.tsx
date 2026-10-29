@@ -323,7 +323,7 @@ function ResponsibilityRow({
 function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kind: AnnotationKind) => void }) {
   const t = useTranslations(filesCopy)
   return (
-    <div role="group" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-md p-0.5">
+    <div role="group" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-control p-0.5">
       {ANNOTATION_KINDS.map((kind) => {
         const Icon = KIND_ICONS[kind]
         const on = kind === value
@@ -423,7 +423,7 @@ export function ReviewCard({
       aria-label={labelledBy ? undefined : label}
       className={cn(
         'focus-visible:ring-ring/60 outline-none focus-visible:ring-2',
-        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none w-[20rem] rounded-xl border shadow-xl',
+        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none w-[20rem] rounded-overlay border shadow-xl',
         'flex max-h-(--card-max-height) flex-col',
         PLACEMENT_CLASSES[placement]
       )}

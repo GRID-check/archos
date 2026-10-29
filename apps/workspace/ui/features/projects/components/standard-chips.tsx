@@ -26,8 +26,8 @@ export function OibCodeChip({ code, className }: { code: string; className?: str
   return (
     <span
       className={cn(
-        'bg-muted inline-flex h-6 w-16 shrink-0 items-center justify-center rounded-md border',
-        'text-foreground font-mono text-xs font-medium tabular-nums tracking-tight',
+        'bg-muted inline-flex h-6 w-16 shrink-0 items-center justify-center rounded-control border',
+        'text-foreground font-mono text-xs font-medium tabular-nums',
         className
       )}
     >

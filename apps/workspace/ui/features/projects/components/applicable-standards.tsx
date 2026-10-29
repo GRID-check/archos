@@ -72,7 +72,7 @@ export function ApplicableStandards({
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-foreground text-sm font-semibold">
+        <h2 className="text-foreground text-sm font-medium">
           {t('applicableStandards.heading')}
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">{t('applicableStandards.description')}</p>

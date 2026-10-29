@@ -256,7 +256,7 @@ export function AssignPopover({
                 <Item
                   key={person.userId}
                   asChild
-                  className="w-full rounded-md px-2 py-1.5 transition-opacity duration-snap ease-out disabled:opacity-50 motion-reduce:transition-none"
+                  className="w-full rounded-control px-2 py-1.5 transition-opacity duration-snap ease-out disabled:opacity-50 motion-reduce:transition-none"
                 >
                   <button
                     type="button"

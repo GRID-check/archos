@@ -111,13 +111,13 @@ export function PhoneMoreSheet({
         closeLabel={t('tabBar.moreSheet.close')}
         data-slot="phone-more-sheet"
         className={cn(
-          'max-h-[85dvh] gap-0 overflow-hidden rounded-surface p-0 outline-none',
+          'max-h-[85dvh] gap-0 overflow-hidden rounded-overlay p-0 outline-none',
           'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]'
         )}
       >
         <div aria-hidden className="bg-border mx-auto mt-2 h-1 w-9 shrink-0 rounded-full" />
         <SheetHeader className="shrink-0 gap-0.5 px-4 pb-2 pt-3">
-          <SheetTitle className="text-base font-semibold tracking-tight">{t('tabBar.moreSheet.title')}</SheetTitle>
+          <SheetTitle className="text-base font-medium">{t('tabBar.moreSheet.title')}</SheetTitle>
           <SheetDescription className="sr-only">{t('tabBar.moreSheet.description')}</SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
@@ -230,7 +230,7 @@ function DestinationRow({
         className={ROW}
       >
         <Icon aria-hidden className="text-muted-foreground size-5 shrink-0" />
-        <span className={cn('min-w-0 flex-1', current && 'font-semibold')}>{label}</span>
+        <span className={cn('min-w-0 flex-1', current && 'font-medium')}>{label}</span>
         {current ? (
           <Check className="size-4 shrink-0" aria-hidden />
         ) : (

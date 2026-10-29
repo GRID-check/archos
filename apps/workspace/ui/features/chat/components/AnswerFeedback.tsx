@@ -113,7 +113,7 @@ export interface AnswerFeedbackProps {
  * and overlapping catchments hand a tap on one to the other.
  */
 const thumbBase = cn(
-  'inline-flex size-6 items-center justify-center rounded-md pointer-coarse:size-11',
+  'inline-flex size-6 items-center justify-center rounded-control pointer-coarse:size-11',
   'text-muted-foreground/70',
   PRESSABLE,
   'hover:bg-accent hover:text-foreground',
@@ -349,7 +349,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
                         // `pointer-coarse:text-base`, which this deliberately does NOT
                         // undo — a field this small still zooms iOS on focus, and a
                         // comment box is exactly where somebody is typing prose.
-                        className="min-h-14 resize-none rounded-lg py-2 text-xs"
+                        className="min-h-14 resize-none rounded-control py-2 text-xs"
                       />
                       <FieldLabel
                         htmlFor={expectedId}
@@ -363,7 +363,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
                         onChange={(event) => setExpected(event.target.value)}
                         placeholder={t('feedback.expectedPlaceholder')}
                         maxLength={2000}
-                        className="h-8 rounded-lg text-xs"
+                        className="h-8 rounded-control text-xs"
                       />
                       {/* Full ink when it will do something, 40% when it will not:
                   the difference is a contrast jump, not grey vs. grey. */}

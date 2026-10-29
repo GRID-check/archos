@@ -2,8 +2,8 @@
 
 /**
  * Dev preview of the workspace atoms (`ui/components/ui`), grouped by job, so
- * the radius rule reads at a glance: controls 4px, surfaces square, round only
- * where the thing is round (avatars, dots, radio and switch knobs). Fixture
+ * the brand's radius ladder reads at a glance: inline 4px, controls 6px, surfaces
+ * 10px, overlays 14px, round what is round (chips, badges, avatars, dots). Fixture
  * props only, no data. Not linked from anywhere; 404s outside development.
  */
 
@@ -28,7 +28,7 @@ export default function AtomsDevPage(): JSX.Element {
         <div>
           <h1 className="text-lg font-semibold">Atoms</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Every atom in ui/components/ui, grouped by job. Controls: 4px. Surfaces: square.
+            Every atom in ui/components/ui, grouped by job. Radius follows size: inline 4px, controls 6px, surfaces 10px, overlays 14px, pills for chips.
           </p>
         </div>
         <button

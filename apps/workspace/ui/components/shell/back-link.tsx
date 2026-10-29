@@ -161,7 +161,7 @@ export function BackControl({
     <>
       <span
         aria-hidden
-        className="bg-card border-border/80 shadow-2xs flex size-6 shrink-0 items-center justify-center rounded-full border"
+        className="bg-card border-border/80 flex size-6 shrink-0 items-center justify-center rounded-full border shadow-2xs"
       >
         <ArrowLeft className="size-3.5" />
       </span>

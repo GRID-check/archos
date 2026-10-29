@@ -57,7 +57,7 @@ export function RegionBoxes({ regions, size, activeRegion, dashed = false }: Reg
                 onBlur={() => preview(null)}
                 onClick={() => pin(pinned === number ? null : number)}
                 className={cn(
-                  'absolute z-[2] cursor-pointer rounded-sm border-2 border-[var(--compare-mark)] bg-[var(--compare-mark-fill)] shadow-[0_0_0_1px_var(--compare-paper)] outline-none',
+                  'absolute z-[2] cursor-pointer rounded-control border-2 border-[var(--compare-mark)] bg-[var(--compare-mark-fill)] shadow-[0_0_0_1px_var(--compare-paper)] outline-none',
                   'duration-quick transition-[opacity,background-color] ease-out',
                   'focus-visible:shadow-[0_0_0_1px_var(--compare-paper),0_0_0_3px_var(--compare-paper-ink)]',
                   dashed && 'border-dashed',

@@ -119,7 +119,7 @@ export function PageNav({ current, count, onPage }: { current: number; count: nu
               commit()
             }
           }}
-          className="h-8 w-11 rounded-md px-1 text-center tabular-nums"
+          className="h-8 w-11 rounded-control px-1 text-center tabular-nums"
         />
         <span aria-hidden>{t('compare.pageOfTotal', { m: count })}</span>
       </label>

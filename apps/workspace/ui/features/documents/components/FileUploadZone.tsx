@@ -198,7 +198,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
           }
         }}
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-control border-2 border-dashed px-6 py-10 text-center transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
           isDragging && isUnsupportedDrag && 'border-destructive bg-destructive/5',
           isDragging && !isUnsupportedDrag && 'border-ring bg-primary/5',
           !isDragging && 'border-border bg-muted hover:border-ring hover:bg-primary/5',
@@ -240,7 +240,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={row}
-            className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2 shadow-xs"
+            className="flex items-center gap-3 rounded-control border bg-card px-3 py-2 shadow-xs"
           >
             <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">

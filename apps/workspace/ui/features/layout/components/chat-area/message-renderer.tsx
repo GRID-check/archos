@@ -194,7 +194,7 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
                 : tFileStatus('fileSourceCard.statusAvailable')
       return (
         <div
-          className="bg-muted flex items-center gap-2 rounded-xl px-4 py-2 shadow-xs"
+          className="bg-muted flex items-center gap-2 rounded-bubble px-4 py-2  shadow-xs"
           role="status"
         >
           <FileText className="text-muted-foreground size-4" aria-hidden="true" />

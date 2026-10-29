@@ -62,7 +62,7 @@ export const UnreadDivider: FC<{ label: string }> = ({ label }) => (
  */
 export const TurnInFlightBanner: FC<{ label: string }> = ({ label }) => (
   <div
-    className="bg-card flex min-h-9 w-fit items-center gap-2 rounded-lg border px-3.5 py-2 shadow-xs"
+    className="bg-card flex min-h-9 w-fit items-center gap-2 rounded-surface border px-3.5 py-2  shadow-xs"
     role="status"
     data-testid="turn-in-flight"
   >
@@ -82,7 +82,7 @@ export const TypingIndicator: FC = () => {
   const elapsed = useElapsedSeconds(true)
   return (
     <div
-      className="animate-in fade-in-0 bg-muted duration-base flex min-h-9 w-fit items-center gap-2 rounded-2xl px-3.5 py-2.5 ease-out motion-reduce:animate-none"
+      className="animate-in fade-in-0 bg-muted duration-base flex min-h-9 w-fit items-center gap-2 rounded-bubble px-3.5 py-2.5 ease-out motion-reduce:animate-none"
       role="status"
       aria-label={label}
     >
@@ -133,20 +133,20 @@ export const MessageListSkeleton: FC = () => {
     >
       {/* user bubble (right) */}
       <div className="flex justify-end">
-        <Skeleton className="h-10 w-1/2 rounded-lg" />
+        <Skeleton className="h-10 w-1/2 rounded-control" />
       </div>
       {/* assistant answer card (left): a tab-width bar and a footer line around
           the body, mirroring the answer card's shape rather than a bare slab */}
       <div className="flex justify-start">
         <div className="flex w-4/5 flex-col gap-2">
-          <Skeleton className="h-4 w-20 rounded-lg" />
-          <Skeleton className="h-24 w-full rounded-lg" />
-          <Skeleton className="h-3 w-1/3 rounded-lg" />
+          <Skeleton className="h-4 w-20 rounded-control" />
+          <Skeleton className="h-24 w-full rounded-control" />
+          <Skeleton className="h-3 w-1/3 rounded-control" />
         </div>
       </div>
       {/* user bubble (right) */}
       <div className="flex justify-end">
-        <Skeleton className="h-10 w-1/3 rounded-lg" />
+        <Skeleton className="h-10 w-1/3 rounded-control" />
       </div>
     </div>
   )
@@ -204,10 +204,10 @@ export const WelcomeState: FC<WelcomeStateProps> = ({
         style={{ paddingBottom: `var(--welcome-offset, ${WELCOME_OFFSET_FALLBACK})` }}
       >
         <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-          <div className="bg-muted text-brand flex size-12 items-center justify-center rounded-xl border">
+          <div className="bg-muted text-brand flex size-12 items-center justify-center rounded-surface border">
             <Lock className="size-5" aria-hidden="true" />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight">{t('chatArea.loggedOutTitle')}</h1>
+          <h1 className="text-xl font-medium">{t('chatArea.loggedOutTitle')}</h1>
           <p className="text-muted-foreground text-sm">{t('chatArea.loggedOutBody')}</p>
           <Button onClick={onSignIn} aria-label={t('chatArea.signInSso')}>
             {t('chatArea.signInSso')}
@@ -239,7 +239,7 @@ export const WelcomeState: FC<WelcomeStateProps> = ({
           project-grounded starters live in their own plan (categorized,
           backend-driven) — until they land, the canvas stays quiet rather
           than showing static examples. */}
-      <h1 className="text-foreground text-center text-[23px] font-semibold tracking-tight">
+      <h1 className="text-foreground text-center text-[23px] font-medium">
         {heading}
       </h1>
 

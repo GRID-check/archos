@@ -169,7 +169,7 @@ function PickerRow({
         aria-current={here ? 'true' : undefined}
         data-testid={testId}
         className={cn(
-          'hover:bg-accent focus-visible:ring-ring duration-snap flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none motion-reduce:transition-none',
+          'hover:bg-accent focus-visible:ring-ring duration-snap flex min-h-11 w-full items-center gap-3 rounded-control px-2 py-2 text-left text-sm transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none motion-reduce:transition-none',
           here ? 'text-muted-foreground' : 'text-foreground disabled:opacity-50'
         )}
       >

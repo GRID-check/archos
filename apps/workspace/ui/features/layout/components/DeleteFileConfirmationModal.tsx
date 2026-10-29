@@ -48,7 +48,7 @@ export const DeleteFileConfirmationModal: FC<DeleteFileConfirmationModalProps> =
         <>
           {t('deleteModals.aboutToDelete')}{' '}
           {trimmedName ? (
-            <span className="font-semibold text-foreground">&ldquo;{trimmedName}&rdquo;</span>
+            <span className="font-medium text-foreground">&ldquo;{trimmedName}&rdquo;</span>
           ) : (
             t('deleteModals.file.thisFile')
           )}

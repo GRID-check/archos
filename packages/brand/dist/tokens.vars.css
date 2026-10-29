@@ -15,6 +15,9 @@
   --ds-markup: #c42b1c;
   --ds-markup-soft: #fbe9e6;
   --ds-focus-ring: 0 0 0 2px #fafaf9, 0 0 0 4px #0f0e0d;
+  --ds-shadow-raised: 0 1px 2px rgba(15, 14, 13, 0.04);
+  --ds-shadow-floating: 0 1px 2px rgba(15, 14, 13, 0.04), 0 6px 16px rgba(15, 14, 13, 0.06);
+  --ds-shadow-modal: 0 2px 4px rgba(15, 14, 13, 0.04), 0 16px 40px rgba(15, 14, 13, 0.08);
   --ds-space-1: 4px;
   --ds-space-2: 8px;
   --ds-space-3: 12px;
@@ -28,7 +31,12 @@
   --ds-space-32: 128px;
   --ds-space-40: 160px;
   --ds-radius-none: 0;
-  --ds-radius-md: 4px;
+  --ds-radius-sm: 4px;
+  --ds-radius-md: 6px;
+  --ds-radius-lg: 10px;
+  --ds-radius-xl: 14px;
+  --ds-radius-bubble: 18px;
+  --ds-radius-full: 9999px;
   --ds-stroke-hairline: 1px;
   --ds-stroke-strong: 2px;
   --ds-glass-blur: 20px;
@@ -68,4 +76,7 @@
   --ds-markup: #ff7a6b;
   --ds-markup-soft: #3a1511;
   --ds-focus-ring: 0 0 0 2px #0f0e0d, 0 0 0 4px #f5f4f2;
+  --ds-shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --ds-shadow-floating: 0 1px 2px rgba(0, 0, 0, 0.32), 0 8px 20px rgba(0, 0, 0, 0.36);
+  --ds-shadow-modal: 0 2px 4px rgba(0, 0, 0, 0.36), 0 20px 48px rgba(0, 0, 0, 0.44);
 }

@@ -80,7 +80,7 @@ export const ReadSourcesSection: FC<{ readSources?: CitationSource[] }> = ({ rea
             onClick={() => setExpanded((open) => !open)}
             aria-expanded={expanded}
             data-testid="read-sources-more"
-            className="text-muted-foreground duration-quick hover:text-foreground focus-visible:ring-ring/60 cursor-pointer rounded-xs text-xs leading-relaxed underline decoration-dotted underline-offset-2 transition-colors ease-out focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted-foreground duration-quick hover:text-foreground focus-visible:ring-ring/60 cursor-pointer rounded-control text-xs leading-relaxed underline decoration-dotted underline-offset-2 transition-colors ease-out focus-visible:ring-2 focus-visible:outline-none"
           >
             {expanded
               ? t('answerDetails.readSources.less')

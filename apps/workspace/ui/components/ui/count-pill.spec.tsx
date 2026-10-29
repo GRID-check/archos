@@ -18,7 +18,7 @@ describe('CountPill', () => {
     expect(pill).toHaveClass('bg-primary')
     expect(pill).toHaveClass('text-primary-foreground')
     // Same shape either way — the tone changes colour, never padding.
-    expect(pill).toHaveClass('rounded-control')
+    expect(pill).toHaveClass('rounded-full')
     expect(pill).toHaveClass('px-2')
   })
 

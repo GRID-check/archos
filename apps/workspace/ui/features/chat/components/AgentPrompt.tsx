@@ -217,7 +217,7 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
     // restored prompt rose again on every thread switch.
     <div className="flex w-full justify-start">
       <div className="flex max-w-[85%] flex-col">
-        <div className="bg-card flex flex-col gap-3 overflow-hidden break-words rounded-2xl rounded-bl-md p-4">
+        <div className="bg-card flex flex-col gap-3 overflow-hidden break-words rounded-surface rounded-bl-md p-4">
           {/* Agent icon and label */}
           <div
             className={`duration-quick flex items-center gap-2 transition-opacity ease-out motion-reduce:transition-none ${isResponded ? 'opacity-75' : ''}`}
@@ -356,7 +356,7 @@ const ResponseDisplay: FC<{ response?: string }> = ({ response }) => {
   if (!response) return null
 
   return (
-    <div className="bg-muted flex items-center gap-2 rounded-xl px-3 py-2">
+    <div className="bg-muted flex items-center gap-2 rounded-control px-3 py-2">
       <MessageSquare className="text-subtle size-4" />
       <span className="text-subtle text-sm">
         {t('agentPrompt.yourResponse')} <span className="text-primary">{response}</span>
@@ -417,7 +417,7 @@ const PlanRecord: FC<{
   const [open, setOpen] = useState(false)
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col gap-3">
-      <div className="bg-muted flex items-center gap-2 rounded-xl px-3 py-2" data-testid="plan-record">
+      <div className="bg-muted flex items-center gap-2 rounded-control px-3 py-2" data-testid="plan-record">
         <MessageSquare className="text-subtle size-4 shrink-0" aria-hidden />
         <span className="text-subtle min-w-0 flex-1 text-sm">{label}</span>
         <CollapsibleTrigger asChild>

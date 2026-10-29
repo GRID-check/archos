@@ -280,7 +280,7 @@ function HeroTile({
     >
       <div className="flex min-w-0 flex-col gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <p className="text-balance text-2xl font-semibold tracking-tight md:text-3xl">
+          <p className="text-balance text-2xl font-medium md:text-3xl">
             {data.name}
           </p>
           <ProjectStatusMark project={{ status, closedOutcome: data.lifecycle.closedOutcome }} />

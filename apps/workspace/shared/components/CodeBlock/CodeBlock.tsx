@@ -57,7 +57,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({
   }
 
   return (
-    <div className={`border-base my-3 overflow-hidden rounded-xl border bg-muted ${className}`}>
+    <div className={`border-base my-3 overflow-hidden rounded-surface border bg-muted ${className}`}>
       <div className="border-base flex items-center justify-between border-b px-3 py-1.5 pointer-coarse:py-0">
         <span className="text-subtle text-xs font-medium uppercase tracking-wide">
           {language || 'text'}

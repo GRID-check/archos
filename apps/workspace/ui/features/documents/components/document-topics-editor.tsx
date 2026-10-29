@@ -90,7 +90,7 @@ export function DocumentTopicsEditor({
         {topics.map((topic) => (
           <span
             key={topic}
-            className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
+            className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-control px-2 py-0.5 text-xs font-medium"
           >
             {topic}
             <button
@@ -98,7 +98,7 @@ export function DocumentTopicsEditor({
               onClick={() => void persist(topics.filter((existing) => existing !== topic), topics)}
               disabled={saving}
               aria-label={t('preview.removeTag', { tag: topic })}
-              className="hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target -mr-0.5 rounded-sm p-0.5 transition-colors duration-snap ease-out focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 motion-reduce:transition-none"
+              className="hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target -mr-0.5 rounded-control p-0.5 transition-colors duration-snap ease-out focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 motion-reduce:transition-none"
             >
               <X className="size-3" aria-hidden />
             </button>
@@ -128,7 +128,7 @@ export function DocumentTopicsEditor({
               placeholder={t('preview.reading.addTopic')}
               aria-label={t('preview.reading.addTopic')}
               // 16px on a coarse pointer, or iOS zooms the pane in on focus and never zooms back.
-              className="border-input text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-40 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-32 rounded-md border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
+              className="border-input text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-40 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-32 rounded-control border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
             />
           </span>
         )}

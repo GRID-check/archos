@@ -467,7 +467,7 @@ Below`}
 
       expect(screen.getByRole('heading', { level: 5 })).toHaveTextContent('Ebene 5')
       expect(screen.getByRole('heading', { level: 6 })).toHaveTextContent('Ebene 6')
-      expect(screen.getByRole('heading', { level: 5 }).className).toContain('font-semibold')
+      expect(screen.getByRole('heading', { level: 5 }).className).toContain('font-medium')
     })
   })
 

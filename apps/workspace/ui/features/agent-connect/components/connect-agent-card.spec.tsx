@@ -28,7 +28,7 @@ describe('ConnectAgentCard', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<ConnectAgentCard state={F.ready} guideHref={GUIDE} />)
 
-    const urlBlock = screen.getByText(URL_OK).closest('div.rounded-xl') as HTMLElement
+    const urlBlock = screen.getByText(URL_OK).closest('div.rounded-surface') as HTMLElement
     await userEvent.click(within(urlBlock).getByRole('button'))
 
     expect(writeText).toHaveBeenCalledWith(URL_OK)

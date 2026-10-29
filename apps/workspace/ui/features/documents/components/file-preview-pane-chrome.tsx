@@ -127,7 +127,7 @@ export function FilePreviewChrome({ controller }: { controller: FilePreviewContr
               for anyone who renamed it. */}
             <div className="min-w-0 flex-1">
               <h3
-                className="text-foreground truncate text-sm font-semibold leading-tight tracking-[-0.01em]"
+                className="text-foreground truncate text-sm font-medium leading-tight tracking-[-0.01em]"
                 title={actions.isRenamed ? `${actions.name}\n${file.filename}` : actions.name}
               >
                 {actions.name}

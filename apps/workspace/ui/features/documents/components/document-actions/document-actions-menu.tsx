@@ -285,7 +285,7 @@ export function DocumentActionsMenu({
               size="icon"
               className={cn(
                 'size-8 shrink-0',
-                surface === 'floating' && 'bg-background/80 shadow-2xs backdrop-blur-sm',
+                surface === 'floating' && 'border border-border bg-background shadow-2xs',
               )}
               aria-label={t('actions.label', { name })}
               title={t('actions.menuLabel')}

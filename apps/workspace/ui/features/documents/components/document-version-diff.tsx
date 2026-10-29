@@ -104,7 +104,7 @@ export function DocumentVersionDiff({ from, to, className }: DocumentVersionDiff
         </p>
       ) : (
         <ol
-          className="bg-card max-h-80 overflow-auto rounded-lg border py-1 font-mono text-[11px] leading-[1.6] pointer-coarse:text-[13px]"
+          className="bg-card max-h-80 overflow-auto rounded-surface border py-1 font-mono text-[11px] leading-[1.6] pointer-coarse:text-[13px]"
           data-testid="document-version-diff-rows"
         >
           {diff.rows.map((row, index) => (

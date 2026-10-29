@@ -50,7 +50,7 @@ Full text: the component sheets in `docs/components/`.
 - One light grey, `--surface-sunken` (#f2f1f0), marks bands. At most two bands per page, never next to each other.
 - Rough share: 75 % white, 12 % light grey, 10 % black or dark, 3 % dark grey.
 - No signal colours. `--markup` (red pen) appears only inside product screenshots.
-- No shadows and no gradients. The only blur is the glass header.
+- No shadows and no gradients on the website. The only blur is the glass header. The app uses three faint shadows from `tokens.json` (`shadow-raised` for what lies on a surface, `shadow-floating` for menus, popovers and toasts, `shadow-modal` for dialogs and sheets), read globally through the app's shadow utilities and never typed in a component.
 - Dark theme (`data-theme="dark"`) is for the footer and at most one dark card per page.
 
 **Buttons and actions**
@@ -70,7 +70,7 @@ Full text: the component sheets in `docs/components/`.
 **Layout and shape**
 
 - Two widths: content in a 1280px container with 32px margins; header and hero image full width with 64px margins. Mobile margins are 16px.
-- Radius 4px only for controls (buttons, play button, gallery controls). Images, cards, fields and sections are square.
+- Radius follows size and shape, one ladder in `tokens.json`. The website stays crisp: controls 4px (`radius-sm`), images, cards, fields and sections square. The app uses the whole ladder: small inline things `radius-sm` (4px), controls `radius-md` (6px), surfaces `radius-lg` (10px), floating layers (dialogs, popovers, menus, sheets) `radius-xl` (14px), chat messages and the composer `radius-bubble` (18px), and what is naturally round (chips, badges, counts, avatars, dots, switches) `radius-full`. The same kind of element always takes the same step; a radius inside another is the outer one minus the padding between them.
 - Lines only where they carry a function: field borders, underlines, FAQ and info list dividers.
 - Motion is quiet and architectural: things arrive and come to rest, nothing bounces. Tokens `--duration-*`, `--ease-settle`/`--ease-draft`, `--stagger-row`, `--travel-sm` (the vocabulary of `docs/ux/motion.md`); hover stays 200ms `ease-out`. What moves: a block below the fold arrives once on scroll (`data-reveal`, 8px, 480ms), the header's hairline fades in when the page passes beneath it, an FAQ answer opens by height, the mobile menu settles in. Nothing on screen at load moves; with `prefers-reduced-motion` none of it runs and the still page is complete.
 

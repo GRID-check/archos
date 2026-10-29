@@ -332,7 +332,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
           // is what the row is made of. It was capped at 64% and shared with a
           // hamburger the tab bar's "Mehr" now replaces; at 393px that left room
           // for eight characters.
-          'pointer-events-auto flex min-h-12 min-w-0 items-center gap-0.5 rounded-lg p-0.5 max-sm:flex-1 sm:min-h-8',
+          'pointer-events-auto flex min-h-12 min-w-0 items-center gap-0.5 rounded-surface p-0.5 max-sm:flex-1 sm:min-h-8',
           isChatStarted &&
             'border border-base bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50'
         )}
@@ -343,7 +343,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
           variant="ghost"
           size={isChatStarted ? 'icon' : 'default'}
           className={cn(
-            'shrink-0 rounded-md sm:size-7',
+            'shrink-0 rounded-control sm:size-7',
             // On a chat that has not started there is no title beside the icon,
             // and a lone glyph under the project pill is a mystery: it says what
             // it opens, on a phone, where there is no hover to say it. The default
@@ -401,7 +401,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                     // at the top of the thread, with the toolbar pinned over the
                     // conversation. The zoom is not undone on blur, so renaming a
                     // chat left the reader magnified inside their own answer.
-                    className="h-11 w-56 max-w-full rounded-md border bg-card px-2 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:text-base sm:h-7"
+                    className="h-11 w-56 max-w-full rounded-control border bg-card px-2 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:text-base sm:h-7"
                   />
                 ) : (
                   // Click-to-rename, kept as the SHORTCUT rather than as the only
@@ -417,7 +417,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                     disabled={!canRename}
                     aria-label={tChat('breadcrumb.renameAria')}
                     title={canRename ? tChat('breadcrumb.renameAria') : sessionTitle}
-                    className="flex min-h-9 min-w-0 max-w-[420px] flex-1 items-center rounded-md px-1 py-0.5 text-left text-sm font-medium leading-snug text-foreground transition-colors duration-quick ease-out motion-reduce:transition-none enabled:cursor-text enabled:hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:min-h-11 sm:flex-none"
+                    className="flex min-h-9 min-w-0 max-w-[420px] flex-1 items-center rounded-control px-1 py-0.5 text-left text-sm font-medium leading-snug text-foreground transition-colors duration-quick ease-out motion-reduce:transition-none enabled:cursor-text enabled:hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:min-h-11 sm:flex-none"
                   >
                     {/* Two lines on a phone, one on a pointer device. A name is the
                         first thing a reader checks in a thread; it is never cut to a
@@ -473,7 +473,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
           New-chat button sideways. Reduced motion is handled globally by
           <MotionConfig reducedMotion="user">. */}
       {isChatStarted && (
-      <div className="pointer-events-auto flex min-h-12 shrink-0 items-center gap-0.5 rounded-lg border border-base bg-card/60 p-0.5 backdrop-blur supports-[backdrop-filter]:bg-card/50 sm:min-h-8">
+      <div className="pointer-events-auto flex min-h-12 shrink-0 items-center gap-0.5 rounded-surface border border-base bg-card/60 p-0.5 backdrop-blur supports-[backdrop-filter]:bg-card/50 sm:min-h-8">
         {/* ── STATUS ────────────────────────────────────────────────────────────
             Who can reach this thread, stated ONCE, in whichever of the two forms is
             true of the audience (see `showFaces` / `showAccessChip` above), and
@@ -522,7 +522,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
           size="sm"
           // On a phone it is the first entry of the ⋯ menu: the right pill is one
           // 44px square, and the title keeps the rest of the row.
-          className="size-11 gap-1.5 rounded-md px-0 max-sm:hidden sm:h-7 sm:w-auto sm:px-2"
+          className="size-11 gap-1.5 rounded-control px-0 max-sm:hidden sm:h-7 sm:w-auto sm:px-2"
           onClick={handleNewSessionClick}
           disabled={!isAuthenticated || isNewSessionDisabled}
           aria-label={t('chatToolbar.createNewSession')}
@@ -560,7 +560,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                 // than the other and the row stops lining up.
                 size="sm"
                 className={cn(
-                  'size-11 rounded-md px-0 sm:size-7',
+                  'size-11 rounded-control px-0 sm:size-7',
                   // Nothing to disclose on a desktop (New chat is in the open there):
                   // the trigger is the phone's alone.
                   !(canRename || canShare) && 'sm:hidden'

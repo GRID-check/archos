@@ -27,7 +27,7 @@ const Command = React.forwardRef<
     ref={ref}
     data-slot="command"
     className={cn(
-      'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-surface',
+      'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-overlay',
       className
     )}
     {...props}
@@ -111,7 +111,7 @@ function CommandDialog({
       <DialogContent
         showCloseButton={false}
         instant={instant}
-        className={cn('top-[30%] translate-y-0 gap-0 overflow-hidden rounded-surface p-0', className)}
+        className={cn('top-[30%] translate-y-0 gap-0 overflow-hidden rounded-overlay p-0', className)}
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogDescription className="sr-only">{description}</DialogDescription>

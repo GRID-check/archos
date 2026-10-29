@@ -66,7 +66,7 @@ export function NewFolderDialog({ open, onOpenChange, onCreate }: NewFolderDialo
             placeholder={t('folders.namePlaceholder')}
             aria-label={t('folders.newFolderName')}
             aria-busy={isCreating}
-            className="h-8 rounded-md pl-8 pr-8"
+            className="h-8 rounded-control pl-8 pr-8"
             data-testid="listing-new-folder-input"
           />
           {isCreating && (

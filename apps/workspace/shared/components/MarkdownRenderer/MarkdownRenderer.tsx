@@ -392,7 +392,7 @@ function MarkdownCode({
   if (!isBlock) {
     return (
       <code
-        className="bg-muted text-foreground rounded-md px-1.5 py-0.5 font-mono text-[0.875em]"
+        className="bg-muted text-foreground rounded-inline px-1.5 py-0.5 font-mono text-[0.875em]"
         {...props}
       >
         {children}
@@ -427,7 +427,7 @@ function MarkdownH1({ children, node }: HeadingProps) {
   return (
     <h1
       id={id}
-      className="text-foreground mb-3 mt-8 block scroll-mt-4 text-xl font-semibold tracking-tight"
+      className="text-foreground mb-3 mt-8 block scroll-mt-4 text-xl font-medium tracking-tight"
     >
       {children}
     </h1>
@@ -444,7 +444,7 @@ function MarkdownH2({ children, node, id: givenId, className: givenClass }: Head
   return (
     <h2
       id={givenId ?? derived}
-      className={`mb-3 mt-8 block scroll-mt-4 text-lg font-semibold tracking-tight text-foreground hyphens-manual${givenClass ? ` ${givenClass}` : ''}`}
+      className={`mb-3 mt-8 block scroll-mt-4 text-lg font-medium tracking-tight text-foreground hyphens-manual${givenClass ? ` ${givenClass}` : ''}`}
     >
       {openOutline ? (
         // A long answer's way back to its section list, at every section: the
@@ -458,7 +458,7 @@ function MarkdownH2({ children, node, id: givenId, className: givenClass }: Head
             onClick={openOutline}
             data-testid="outline-heading-button"
             aria-label={t('markdown.outlineOpen')}
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 -my-2.5 hidden size-11 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2 pointer-coarse:inline-flex print:hidden"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 -my-2.5 hidden size-11 shrink-0 items-center justify-center rounded-control outline-none focus-visible:ring-2 pointer-coarse:inline-flex print:hidden"
           >
             <TableOfContents className="size-4" aria-hidden />
           </button>
@@ -475,7 +475,7 @@ function MarkdownH3({ children, node }: HeadingProps) {
   return (
     <h3
       id={id}
-      className="text-foreground mb-2 mt-6 block scroll-mt-4 text-base font-semibold tracking-tight hyphens-manual"
+      className="text-foreground mb-2 mt-6 block scroll-mt-4 text-base font-medium tracking-tight hyphens-manual"
     >
       {children}
     </h3>
@@ -485,7 +485,7 @@ function MarkdownH3({ children, node }: HeadingProps) {
 function MarkdownH4({ children, node }: HeadingProps) {
   const id = useHeadingId(node, children)
   return (
-    <h4 id={id} className="text-foreground mb-1 mt-3 block scroll-mt-4 text-sm font-semibold">
+    <h4 id={id} className="text-foreground mb-1 mt-3 block scroll-mt-4 text-sm font-medium">
       {children}
     </h4>
   )
@@ -498,7 +498,7 @@ function MarkdownH4({ children, node }: HeadingProps) {
 function MarkdownH5({ children, node }: HeadingProps) {
   const id = useHeadingId(node, children)
   return (
-    <h5 id={id} className="text-foreground mb-1 mt-3 block scroll-mt-4 text-sm font-semibold">
+    <h5 id={id} className="text-foreground mb-1 mt-3 block scroll-mt-4 text-sm font-medium">
       {children}
     </h5>
   )
@@ -507,7 +507,7 @@ function MarkdownH5({ children, node }: HeadingProps) {
 function MarkdownH6({ children, node }: HeadingProps) {
   const id = useHeadingId(node, children)
   return (
-    <h6 id={id} className="text-subtle mb-1 mt-3 block scroll-mt-4 text-sm font-semibold">
+    <h6 id={id} className="text-subtle mb-1 mt-3 block scroll-mt-4 text-sm font-medium">
       {children}
     </h6>
   )
@@ -690,7 +690,7 @@ function MarkdownTable({ children, node }: React.ComponentPropsWithoutRef<'table
           <Chip size="sm" variant="muted">0</Chip>
         </p>
       )}
-      <HorizontalScroll className="border-base rounded-xl border" aria-label={t('markdown.scrollTable')}>
+      <HorizontalScroll className="border-base rounded-control border" aria-label={t('markdown.scrollTable')}>
         <table
           data-stack={stack}
           data-labels={node?.properties?.dataLabels === 'above' ? 'above' : undefined}
@@ -988,7 +988,7 @@ const MARKDOWN_COMPONENTS = {
     typeof src === 'string' && isSameOriginPath(src) ? (
       // `next/image` needs a configured loader per host; these are the app's own paths.
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={alt ?? ''} loading="lazy" className="border-base my-3 h-auto max-w-full rounded-xl border" />
+      <img src={src} alt={alt ?? ''} loading="lazy" className="border-base my-3 h-auto max-w-full rounded-surface border" />
     ) : typeof src === 'string' && src ? (
       <a href={src} target="_blank" rel="noopener noreferrer nofollow" className="text-brand underline underline-offset-2 hover:opacity-80">
         {alt || src}

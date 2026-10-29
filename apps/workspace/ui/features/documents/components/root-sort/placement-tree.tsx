@@ -85,7 +85,7 @@ export function PlacementTreeView({
   )
 
   return (
-    <div className="border-border overflow-hidden rounded-lg border">
+    <div className="border-border overflow-hidden rounded-surface border">
       <ul
         aria-label={t('rootSort.review.treeLabel')}
         className="max-h-[min(60dvh,32rem)] overflow-y-auto"

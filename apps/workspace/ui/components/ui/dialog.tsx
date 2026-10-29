@@ -124,7 +124,7 @@ const SHEET_GEOMETRY =
   'phone:top-auto phone:bottom-0 phone:translate-y-0 phone:max-h-[calc(100dvh-max(1.5rem,env(safe-area-inset-top)+0.75rem))] max-sm:max-w-none'
 
 const SHEET_CHROME: ReadonlyArray<readonly [string, string]> = [
-  ['phone:rounded-surface', 'rounded-t-none'],
+  ['phone:rounded-overlay', 'rounded-t-none'],
   ['phone:border-b-0', 'border-b-0'],
   ['max-sm:border-x-0', 'border-x-0'],
 ]
@@ -336,7 +336,7 @@ const DialogContent = React.forwardRef<
             focusPanelUnderFinger(event)
           }}
           className={cn(
-            'bg-popover text-popover-foreground fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-1 gap-4 overflow-y-auto overscroll-contain rounded-surface border p-6 shadow-lg sm:max-w-lg',
+            'bg-popover text-popover-foreground fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-1 gap-4 overflow-y-auto overscroll-contain rounded-overlay border p-6 shadow-lg sm:max-w-lg',
             !instant && CARD_MOTION,
             phoneClasses,
             className
@@ -367,7 +367,7 @@ const DialogContent = React.forwardRef<
                   className="phone:flex absolute inset-x-14 top-0 hidden h-6 cursor-grab touch-none select-none justify-center pt-2 active:cursor-grabbing"
                   {...pull}
                 >
-                  <span className="bg-muted-foreground/25 h-1 w-9 rounded-none" />
+                  <span className="bg-muted-foreground/25 h-1 w-9 rounded-full" />
                 </div>
               )}
               {showCloseButton && (

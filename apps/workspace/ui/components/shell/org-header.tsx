@@ -89,7 +89,7 @@ export function OrgHeader({
           <Link
             href="/app/projects"
             aria-label={t('allProjects')}
-            className="text-foreground focus-visible:ring-ring/60 rounded-control text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
+            className="text-foreground focus-visible:ring-ring/60 rounded-control text-[19px] font-medium focus-visible:outline-none focus-visible:ring-2"
           >
             Piloti
           </Link>

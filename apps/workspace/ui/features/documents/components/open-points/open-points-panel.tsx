@@ -222,7 +222,7 @@ export function OpenPointsPanel({ projectId, currentUserId, initial, filing = nu
               <section
                 key={group.documentId}
                 aria-label={group.documentName}
-                className="rounded-xl border"
+                className="rounded-surface border"
                 data-testid="open-points-document"
               >
                 <div className="flex items-center gap-2 border-b px-3 py-2">

@@ -225,7 +225,7 @@ export const WorkRowView: FC<{
     </>
   )
   const lineClass = cn(
-    '-mx-2 grid w-[calc(100%+1rem)] gap-x-2.5 rounded-lg px-2 text-left text-[13px] leading-[19px]',
+    '-mx-2 grid w-[calc(100%+1rem)] gap-x-2.5 rounded-control px-2 text-left text-[13px] leading-[19px]',
     compact
       ? 'min-h-11 grid-cols-[16px_minmax(0,1fr)] items-start py-[7px]'
       : 'min-h-10 grid-cols-[16px_minmax(0,1fr)_auto] items-center py-2 pointer-coarse:min-h-11'
@@ -300,7 +300,7 @@ export const WorkRowView: FC<{
           <div
             aria-hidden
             data-testid="work-row-look-skeleton"
-            className="bg-muted max-w-full rounded-md"
+            className="bg-muted max-w-full rounded-control"
             style={{ width: STRIP_WIDTH, height: STRIP_MAX_HEIGHT }}
           />
         </div>
@@ -353,7 +353,7 @@ export const RoundCalls: FC<{
             aria-expanded={showMore}
             onClick={() => setShowMore((value) => !value)}
             className={cn(
-              'group text-muted-foreground pointer-fine:hover:text-foreground pointer-fine:hover:bg-muted/60 duration-snap -mx-2 flex min-h-10 w-[calc(100%+1rem)] items-center gap-2.5 rounded-lg px-2 text-left text-[13px] outline-none transition-[color,background-color,scale] ease-out active:scale-[0.985] motion-reduce:transition-none pointer-coarse:min-h-11',
+              'group text-muted-foreground pointer-fine:hover:text-foreground pointer-fine:hover:bg-muted/60 duration-snap -mx-2 flex min-h-10 w-[calc(100%+1rem)] items-center gap-2.5 rounded-control px-2 text-left text-[13px] outline-none transition-[color,background-color,scale] ease-out active:scale-[0.985] motion-reduce:transition-none pointer-coarse:min-h-11',
               FOCUS_RING
             )}
           >

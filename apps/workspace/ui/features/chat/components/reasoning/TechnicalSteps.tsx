@@ -51,7 +51,7 @@ export const TechnicalSteps: FC<{ steps: StoredThinkingStep[]; t: Translator }> 
     <CollapsibleTrigger asChild>
       <button
         type="button"
-        className="focus-visible:ring-ring/60 group flex min-h-11 w-full items-center justify-between rounded-lg py-1 text-left outline-none focus-visible:ring-2 pointer-fine:min-h-8"
+        className="focus-visible:ring-ring/60 group flex min-h-11 w-full items-center justify-between rounded-control py-1 text-left outline-none focus-visible:ring-2 pointer-fine:min-h-8"
       >
         <SectionLabel>{t('thinking.stepsHeading')}</SectionLabel>
         <span className="text-muted-foreground flex items-center gap-1 text-xs">

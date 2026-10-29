@@ -89,7 +89,7 @@ export function RouteDialog({
         className="flex max-h-[min(54rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 outline-none sm:max-w-2xl"
       >
         <DialogHeader className="border-b px-5 pt-5 pb-4 pr-14 text-left sm:px-6">
-          <DialogTitle className="text-lg font-semibold tracking-tight">{title}</DialogTitle>
+          <DialogTitle className="text-lg font-medium">{title}</DialogTitle>
           {description ? (
             <DialogDescription asChild>
               <div>{description}</div>

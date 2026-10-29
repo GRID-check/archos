@@ -84,7 +84,7 @@ import { MessageAuthor } from './MessageAuthor'
  * primitives; this is one of the bespoke controls it cannot see).
  */
 const COPY_BUTTON_CLASS = cn(
-  'absolute right-2 top-2 rounded-md bg-muted p-1.5 text-muted-foreground',
+  'absolute right-2 top-2 rounded-control bg-muted p-1.5 text-muted-foreground',
   // The reveal fades on --motion-quick and the press is the house one; the
   // hover's colour and fill ease with it instead of snapping under the fade.
   'opacity-0 transition-[opacity,color,background-color,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out group-hover:opacity-100 active:scale-[0.98] motion-reduce:active:scale-100',
@@ -202,7 +202,7 @@ export const UserMessage: FC<UserMessageProps> = ({
         {/* Three corners are the token radius; the 4px top-right is the
             bubble's tail-side notch — the one deliberate value, and what makes
             an input bubble identifiable at a glance. */}
-        <div className="group relative w-[400px] max-w-full rounded-lg rounded-tr-[4px] border border-input bg-card px-[14px] py-[11px] text-sm leading-[1.55] text-default shadow-xs pointer-coarse:pr-14">
+        <div className="group relative w-[400px] max-w-full rounded-bubble rounded-tr-[4px] border border-input bg-card px-[14px] py-[11px] text-sm leading-[1.55] text-default shadow-xs pointer-coarse:pr-14">
           {body}
           <button
             type="button"
@@ -271,7 +271,7 @@ export const UserMessage: FC<UserMessageProps> = ({
           // says who is speaking, the layout says "a person is asking Piloti".
           // Three corners are the token radius; the 4px top-right is the
           // bubble's tail-side notch — the one deliberate value.
-          'group relative w-[400px] max-w-full rounded-lg border border-input',
+          'group relative w-[400px] max-w-full rounded-bubble border border-input',
           'px-[14px] py-[11px] text-sm leading-[1.55] text-default shadow-xs',
           // The notch points at the header, on whichever side the bubble sits;
           // the other party of a two-party thread speaks on the muted surface.

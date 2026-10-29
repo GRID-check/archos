@@ -51,10 +51,10 @@ export function GridTileShell({ interactive = true, className, children, ...rest
   const shell = (
     <div
       className={cn(
-        'border-border bg-muted/50 shadow-xs relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border',
+        'border-border bg-muted/50 shadow-xs relative flex h-full min-w-0 flex-col overflow-hidden rounded-surface border',
         OFF_SCREEN_SKIP,
         'transition-shadow duration-quick ease-out motion-reduce:transition-none',
-        interactive && 'hover:shadow-md',
+        interactive && 'hover:bg-accent hover:shadow-md',
         className,
       )}
       {...rest}

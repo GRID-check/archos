@@ -14,7 +14,7 @@ export const CitedPassageBox: FC<{ snippet: string; signal: SourceTint }> = ({ s
     borderColor: `color-mix(in oklch, var(--source-${signal}, var(--foreground)) 25%, transparent)`,
   }
   return (
-    <div className="shrink-0 rounded-lg border px-3 py-2" style={style}>
+    <div className="shrink-0 rounded-surface border px-3 py-2" style={style}>
       <SectionLabel
         as="p"
         style={{ color: `var(--source-${signal}-text, var(--muted-foreground))` }}

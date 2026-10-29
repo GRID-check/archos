@@ -138,7 +138,7 @@ const TakeawayRow: FC<{ item: AnswerMetaTakeaway; index: number }> = ({ item, in
           // padding, not a min-height, keeps the text centred in it. A mouse
           // keeps the 8px rhythm. `items-start` in ROW holds the ordinal and the
           // chevron on the first line when a takeaway wraps.
-          'group pointer-coarse:py-3 rounded-md transition-colors duration-quick ease-out hover:bg-muted/50',
+          'group pointer-coarse:py-3 rounded-control transition-colors duration-quick ease-out hover:bg-muted/50',
           'focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-2',
         )}
       >
@@ -184,7 +184,7 @@ export const KeyTakeawaysCard: FC<KeyTakeawaysCardProps> = ({ title, items, flat
           glyph is the icon half of the hue + label + icon triple. The
           sage wash rides this pill alone, never the rows below: the marker
           marks the block's eyebrow, it never fills behind the running text. */}
-      <span className={cn('card-eyebrow inline-flex w-fit items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-success', SAGE_WASH)}>
+      <span className={cn('card-eyebrow inline-flex w-fit items-center gap-1.5 rounded-control px-1.5 py-0.5 text-success', SAGE_WASH)}>
         <CircleCheck className="size-3.5 shrink-0" aria-hidden />
         {t('cards.keyTakeaways.eyebrow')}
       </span>

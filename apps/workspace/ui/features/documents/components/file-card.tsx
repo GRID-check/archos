@@ -403,7 +403,7 @@ export const FileCard = memo(function FileCard({
                 // Capped at the well's width less its insets: on a phone's
                 // two-column grid „Wartet · 3 Dateien davor" ran into the
                 // card's edge; now its word ends in an ellipsis instead.
-                className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
+                className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] border-transparent bg-background px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs"
               />
             )}
           </FileTileMedia>
@@ -412,7 +412,7 @@ export const FileCard = memo(function FileCard({
             <div className="flex items-center gap-2">
               {source && sourceLabel && (
                 <span
-                  className="inline-flex shrink-0 items-center rounded-sm px-2 py-[3px] text-xs font-semibold leading-none tracking-[0.02em]"
+                  className="inline-flex shrink-0 items-center rounded-control px-2 py-[3px] text-xs font-semibold leading-none tracking-[0.02em]"
                   style={SOURCE_TINT[source]}
                 >
                   {sourceLabel}
@@ -421,7 +421,7 @@ export const FileCard = memo(function FileCard({
               <span className="flex-1" />
               {ext !== '' && (
                 <span
-                  className="inline-flex shrink-0 items-center rounded-sm px-1.5 py-[2.5px] text-[10.5px] font-bold uppercase leading-none tracking-wider"
+                  className="inline-flex shrink-0 items-center rounded-control px-1.5 py-[2.5px] text-[10.5px] font-medium uppercase leading-none tracking-wider"
                   style={extChipTint(ext)}
                 >
                   {ext}
@@ -487,8 +487,8 @@ export const FileCard = memo(function FileCard({
               // the badge beside the thumbnail already says "Processing" in
               // words, and a screen reader should hear that once, not twice.
               <div className="mt-[7px] space-y-[7px]" aria-hidden data-testid="file-card-summary-skeleton">
-                <Skeleton className="h-[7px] w-full rounded-sm" />
-                <Skeleton className="h-[7px] w-[58%] rounded-sm" />
+                <Skeleton className="h-[7px] w-full rounded-surface" />
+                <Skeleton className="h-[7px] w-[58%] rounded-surface" />
               </div>
             ) : (
               file.summary && (

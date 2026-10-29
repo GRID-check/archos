@@ -57,7 +57,7 @@ const SketchFigure = dynamic(
 function DiagramPlace() {
   return (
     <figure data-testid="mermaid-place" className="my-4" aria-busy="true">
-      <div className="bg-muted/40 rounded-xl p-3">
+      <div className="bg-muted/40 rounded-surface p-3">
         <DrawingSkeleton />
       </div>
     </figure>

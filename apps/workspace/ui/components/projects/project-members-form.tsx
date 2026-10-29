@@ -106,7 +106,7 @@ function MemberAvatar({ member, className }: { member: Member; className?: strin
   return (
     <Avatar className={className}>
       {member.profilePictureUrl && <AvatarImage src={member.profilePictureUrl} alt="" />}
-      <AvatarFallback className="text-xs font-semibold">
+      <AvatarFallback className="text-xs font-medium">
         {initials(member.name)}
       </AvatarFallback>
     </Avatar>
@@ -543,7 +543,7 @@ export function ProjectMembersForm({
       <Card>
         <CardContent className="flex flex-col gap-3">
           {[0, 1, 2].map((item) => (
-            <Skeleton key={item} className="h-[68px] rounded-lg" />
+            <Skeleton key={item} className="h-[68px] rounded-control" />
           ))}
         </CardContent>
       </Card>

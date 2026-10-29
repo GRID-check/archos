@@ -664,7 +664,7 @@ function PlanCount({
   testId: string
 }): JSX.Element {
   return (
-    <div className={cn('flex items-center gap-2.5 rounded-lg border p-2.5', count === 0 && 'opacity-55')} data-testid={testId}>
+    <div className={cn('flex items-center gap-2.5 rounded-surface border p-2.5', count === 0 && 'opacity-55')} data-testid={testId}>
       <StatCardIcon icon={icon} tone={tone} size="sm" />
       <div className="min-w-0">
         <p className="text-sm font-semibold tabular-nums text-foreground">{count}</p>
@@ -1001,7 +1001,7 @@ function PlanDetails({
   if (rows.length === 0) return null
 
   return (
-    <details className="rounded-lg border" data-testid="folder-upload-details">
+    <details className="rounded-surface border" data-testid="folder-upload-details">
       <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-foreground pointer-coarse:py-3">
         {t('folderUpload.showAll', { count: rows.length })}
       </summary>

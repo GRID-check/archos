@@ -28,7 +28,7 @@ export function ActivityPanel({ activity }: { activity: ProjectActivityView }): 
   return (
     <section
       aria-label={t('project.overview.activity.label')}
-      className="bg-muted/50 flex flex-col gap-4 rounded-lg p-4 md:p-5"
+      className="bg-muted/50 flex flex-col gap-4 rounded-surface p-4 md:p-5"
       data-testid="overview-activity"
     >
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
@@ -41,7 +41,7 @@ export function ActivityPanel({ activity }: { activity: ProjectActivityView }): 
             <dt className="text-muted-foreground text-xs">
               {t('project.overview.activity.thisMonth')}
             </dt>
-            <dd className="text-xl font-semibold tabular-nums tracking-tight">
+            <dd className="text-xl font-medium tabular-nums">
               {activity.questionsThisMonth.toLocaleString(locale)}
               <span className="text-muted-foreground ml-1.5 text-sm font-normal">
                 {t('project.overview.activity.questionsWord', {
@@ -54,7 +54,7 @@ export function ActivityPanel({ activity }: { activity: ProjectActivityView }): 
             <dt className="text-muted-foreground text-xs">
               {t('project.overview.activity.peopleLabel')}
             </dt>
-            <dd className="text-xl font-semibold tabular-nums tracking-tight">
+            <dd className="text-xl font-medium tabular-nums">
               {activity.peopleThisMonth.toLocaleString(locale)}
             </dd>
           </div>

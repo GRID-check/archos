@@ -227,7 +227,7 @@ export const SourcePreviewChip: FC<SourcePreviewChipProps> = ({
         // differed — one capsule, one rounded rectangle, for two things that
         // are the same kind of thing. The chip keeps its pill everywhere it is
         // used as a label; as a CITATION it wears the citation silhouette.
-        className={cn('max-w-56 rounded-md', className)}
+        className={cn('max-w-56 rounded-control', className)}
       >
         <CitationIndex index={index} />
         {doc.authority && <AuthorityTag>{doc.authority}</AuthorityTag>}

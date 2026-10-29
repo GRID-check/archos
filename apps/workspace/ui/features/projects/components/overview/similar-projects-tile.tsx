@@ -73,7 +73,7 @@ export function SimilarProjectsTile({
             <li key={project.id} className="flex min-w-0 flex-col gap-1.5">
               <Link
                 href={`/app/projects/${encodeURIComponent(project.id)}`}
-                className="hover:text-foreground min-w-0 truncate text-sm font-semibold tracking-tight underline-offset-4 hover:underline"
+                className="hover:text-foreground min-w-0 truncate text-sm font-medium underline-offset-4 hover:underline"
               >
                 {project.name}
               </Link>

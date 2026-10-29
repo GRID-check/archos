@@ -76,7 +76,7 @@ export function ProjectDeleteDialog({
       description={
         <p>
           {t('dangerZone.dialogDescriptionBefore')}
-          <span className="font-semibold">{projectName}</span>
+          <span className="font-medium">{projectName}</span>
           {t('dangerZone.dialogDescriptionAfter')}
         </p>
       }

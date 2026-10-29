@@ -135,11 +135,11 @@ Line 3`
         expect(container.querySelector('.bg-muted\\/45')).toBeNull()
       }
       // Same asymmetric corner on both, so neither reads as "the other side".
-      // `rounded-lg` + `rounded-tr-[4px]` is the same geometry the old
+      // `rounded-bubble` + `rounded-tr-[4px]` is the same geometry the old
       // `rounded-[12px_4px_12px_12px]` spelled out by hand — the base radius is
       // the token now, and only the deliberately tighter notch stays literal.
       for (const { container } of [colleague, mine]) {
-        expect(container.querySelector('.rounded-lg')).toBeInTheDocument()
+        expect(container.querySelector('.rounded-bubble')).toBeInTheDocument()
         expect(container.querySelector('.rounded-tr-\\[4px\\]')).toBeInTheDocument()
       }
     })

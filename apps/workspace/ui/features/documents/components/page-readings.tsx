@@ -160,7 +160,7 @@ function PageReading({
   const heading = (
     <>
       <span
-        className="bg-muted text-muted-foreground inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-medium tabular-nums"
+        className="bg-muted text-muted-foreground inline-flex h-5 shrink-0 items-center rounded-full px-1.5 text-[11px] font-medium tabular-nums"
         aria-label={t('preview.visualDetails.page', { page: detail.page })}
       >
         {t('preview.visualDetails.pageShort', { page: detail.page })}

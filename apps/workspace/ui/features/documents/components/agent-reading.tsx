@@ -84,7 +84,7 @@ export function AgentReading({
       {file.capture && <CaptureLine capture={file.capture} />}
 
       {correcting ? (
-        <div className="flex flex-col gap-2 rounded-md border border-dashed p-2.5" data-testid="agent-reading-editor">
+        <div className="flex flex-col gap-2 rounded-control border border-dashed p-2.5" data-testid="agent-reading-editor">
           <DocumentTagsEditor
             fileId={file.id}
             initialTags={tags}

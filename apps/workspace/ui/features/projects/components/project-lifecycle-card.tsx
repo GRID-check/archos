@@ -68,7 +68,7 @@ export function ProjectLifecycleCard({
     <RaisedCard aria-label={t('lifecycle.card.heading')} data-testid="project-lifecycle-card">
       <RaisedCardBody className="space-y-4 p-6">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-foreground text-sm font-semibold">{t('lifecycle.card.heading')}</h2>
+          <h2 className="text-foreground text-sm font-medium">{t('lifecycle.card.heading')}</h2>
           <ProjectStatusChip status={status} outcome={lifecycle.closedOutcome} size="sm" />
         </div>
 

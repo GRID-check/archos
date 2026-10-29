@@ -84,7 +84,7 @@ export const AnswerOutline: FC<{
         onClick={() => setOpen(true)}
         data-testid="outline-entry"
         className={cn(
-          'text-muted-foreground hover:text-foreground bg-muted/50 hidden min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium outline-none pointer-coarse:flex print:hidden',
+          'text-muted-foreground hover:text-foreground bg-muted/50 hidden min-h-11 w-full items-center gap-2 rounded-control px-3 text-left text-sm font-medium outline-none pointer-coarse:flex print:hidden',
           PRESSABLE,
           FOCUS_RING
         )}

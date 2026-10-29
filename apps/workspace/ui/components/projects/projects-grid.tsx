@@ -147,7 +147,7 @@ export function ProjectsGrid({
           beside a full-width field), so this is a grid of three: title, search,
           action, placed per breakpoint. The h1 is the ramp's page title. */}
       <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-x-2.5">
-        <h1 className="min-w-0 text-balance text-xl font-semibold tracking-tight">{t('list.heading')}</h1>
+        <h1 className="min-w-0 text-balance text-xl font-medium">{t('list.heading')}</h1>
         {hasProjects && (
           // The one search molecule: magnifier + input with the phone keyboard
           // already told what Enter does. It matches name, address, Gemeinde and

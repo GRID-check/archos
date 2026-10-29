@@ -168,7 +168,7 @@ export function RenameDocumentDialog({
               />
               {extension !== '' && (
                 <span
-                  className="shrink-0 rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground"
+                  className="shrink-0 rounded-inline bg-muted px-2 py-1 font-mono text-xs text-muted-foreground"
                   data-testid="rename-extension"
                 >
                   {extension}

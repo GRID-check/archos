@@ -317,7 +317,7 @@ export function DocumentRevisions({
 
   if (!showsRevisionsSection({ facts, versionCount: file.versionCount, hasViewer: viewer !== undefined })) return null
   if (viewer !== undefined && loading && listing === null) {
-    return <Skeleton className={cn('h-16 w-full rounded-lg', className)} />
+    return <Skeleton className={cn('h-16 w-full rounded-surface', className)} />
   }
 
   const newestRead = documentReadFamily(file.status)
