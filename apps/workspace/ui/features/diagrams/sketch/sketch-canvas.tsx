@@ -23,6 +23,9 @@
  *     project is the one way out, so the file lands where the office looks
  *     and carries its provenance. No collaboration (it needs a room server),
  *     no library browser (it opens libraries.excalidraw.com).
+ *   - **No AI and no mermaid import.** `aiEnabled={false}` takes the AI tools
+ *     out of the menus, and the `ttd` dialog, which the extra-tools menu still
+ *     opens for mermaid, is closed the moment it opens (`sketch-guards.ts`).
  *   - **Helvetica for new text** (`SKETCH_FONT_FAMILY`), the type the SVG and
  *     the PDF can show, so what is filed reads like what was drawn.
  */
@@ -40,6 +43,7 @@ import '@excalidraw/excalidraw/index.css'
 import { DIAGRAM_SOURCE_FACTS } from '@/lib/diagrams/diagram-sources'
 import { SKETCH_FONT_FAMILY, SKETCH_FONT_SIZE } from './sketch-from-model'
 import { fileableSketchSvg } from './sketch-svg'
+import { opensForbiddenDialog } from './sketch-guards'
 
 type ExcalidrawApi = Parameters<NonNullable<React.ComponentProps<typeof Excalidraw>['excalidrawAPI']>>[0]
 
@@ -50,8 +54,13 @@ export interface SketchCanvasHandle {
 }
 
 export interface SketchCanvasProps {
-  /** Excalidraw skeletons: a model laid out (`sketch-from-model.ts`) or a sketch fence (`lib/diagrams/sketch-fence.ts`). */
+  /** Excalidraw skeletons: a model laid out (`sketch-from-model.ts`) or a sketch fence (`bff/diagrams/sketch-fence.ts`). */
   initialElements: readonly object[]
+  /**
+   * A filed sketch's stored scene (`GET /api/documents/{id}/sketch`), opened as it was saved: its
+   * elements are whole Excalidraw elements, not skeletons, so their ids survive the round trip.
+   */
+  initialScene?: { elements: readonly object[]; appState?: Record<string, unknown> } | null
   theme: 'light' | 'dark'
   langCode: string
   /** Called once the canvas can be asked for its scene. */
@@ -59,9 +68,9 @@ export interface SketchCanvasProps {
   /** True once the person changed anything, false again only by reopening. */
   onDirtyChange: (dirty: boolean) => void
   /**
-   * Once filed, the canvas only shows. An edit after filing would be neither in
-   * the project nor guarded by the discard question; a second version starts
-   * again from the answer.
+   * Once filed or saved, the canvas only shows. An edit after that would be
+   * neither in the project nor guarded by the discard question; the next
+   * Fassung starts by opening the filed sketch again from Files.
    */
   readOnly?: boolean
 }
@@ -83,6 +92,7 @@ export class SketchTooLargeError extends Error {
 
 export default function SketchCanvas({
   initialElements,
+  initialScene = null,
   theme,
   langCode,
   onReady,
@@ -94,9 +104,12 @@ export default function SketchCanvas({
   const dirty = useRef(false)
 
   // The skeletons are bound and measured once, by Excalidraw itself.
+  // A stored scene is handed over whole; Excalidraw restores it on load.
   const elements = useMemo(
-    () => convertToExcalidrawElements(initialElements as unknown as Parameters<typeof convertToExcalidrawElements>[0]),
-    [initialElements]
+    () =>
+      (initialScene?.elements as ReturnType<typeof convertToExcalidrawElements> | undefined) ??
+      convertToExcalidrawElements(initialElements as unknown as Parameters<typeof convertToExcalidrawElements>[0]),
+    [initialElements, initialScene]
   )
 
   const prepare = useCallback(async () => {
@@ -133,6 +146,7 @@ export default function SketchCanvas({
         initialData={{
           elements,
           appState: {
+            ...initialScene?.appState,
             viewBackgroundColor: '#ffffff',
             currentItemFontFamily: SKETCH_FONT_FAMILY,
             currentItemFontSize: SKETCH_FONT_SIZE,
@@ -141,7 +155,8 @@ export default function SketchCanvas({
           },
           scrollToContent: true,
         }}
-        onChange={(sceneElements) => {
+        onChange={(sceneElements, appState) => {
+          if (opensForbiddenDialog(appState.openDialog)) apiRef.current?.updateScene({ appState: { openDialog: null } })
           const version = sceneVersion(sceneElements)
           // The first change is Excalidraw settling the initial scene (text
           // measured, arrows bound); that is the baseline, not an edit.
@@ -174,6 +189,7 @@ export default function SketchCanvas({
           tools: { image: false },
         }}
         validateEmbeddable={() => false}
+        aiEnabled={false}
       >
         <MainMenu>
           <MainMenu.DefaultItems.ClearCanvas />

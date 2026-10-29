@@ -82,7 +82,8 @@ Chosen option 4.
   graph out again, so the sketch would open in a different arrangement.
 * **Loaded on the click and never before.** Only `sketch-canvas.tsx` imports
   Excalidraw, and only `next/dynamic` reaches it (`sketch-isolation.spec.ts`).
-* **No traffic leaves the origin.** `window.EXCALIDRAW_ASSET_PATH` points at
+* **No traffic leaves the origin** (corrected by the amendment below: the AI
+  tools were left on). `window.EXCALIDRAW_ASSET_PATH` points at
   fonts staged into `public/excalidraw/` (`scripts/copy-excalidraw-assets.mjs`),
   because Excalidraw falls back to `esm.sh` for any font it cannot load.
   Images, embeds, its own load/save/export and the library browser are off.
@@ -135,3 +136,25 @@ Chosen option 4.
   declared and documented.
 * Nothing enforces that the fonts are staged in a deploy beyond `bun run build`
   calling the script; a missing copy shows only as requests to `esm.sh`.
+
+## Amendment (2026-10-29): the AI tools were on
+
+The claim "No traffic leaves the origin" held for fonts, images, embeds and the
+library, and left one switch unset. Excalidraw 0.18.1 defaults `aiEnabled` to
+true, so the extra-tools menu's "Generate" group, the command palette's "Text to
+diagram" and the frame's "convert to code" were offered, and the bundle carries
+`https://oss-ai.excalidraw.com` as its AI backend. Read in the 0.18.1 bundle, the
+package itself never calls that backend: text-to-diagram calls the host's
+`onTextSubmit`, which we never passed, so its dialog opened as the mermaid tab
+only. The leak was a reachable door to nothing rather than traffic, and the
+sentence above was true by accident.
+
+Now `sketch-canvas.tsx` passes `aiEnabled={false}`, and closes the `ttd` dialog
+the moment it opens, because the extra-tools menu still offers "Mermaid to
+Excalidraw" whatever `aiEnabled` says (`sketch-guards.ts`). A Skizze comes from
+Piloti's fence or from `sketchFromModel`, never from that dialog.
+`features/diagrams/sketch/sketch-guards.spec.ts` holds both.
+
+The "Bad" consequence that a filed sketch cannot be reopened is closed by
+[ADR-0148](0148-a-sketch-is-a-document.md): it reopens from Files and saves as a
+new Fassung of the same document.
