@@ -278,7 +278,7 @@ function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolea
       href={annotationHitHref(hit, from)}
       icon={MessageSquareWarning}
       // The finding at the reading weight: a whole sentence at the names' weight outshouted the documents around it.
-      title={compact && hit.excerpt ? <span className="font-normal">{hit.excerpt}</span> : on}
+      title={compact && hit.excerpt ? <span className="font-normal text-foreground/85">{hit.excerpt}</span> : on}
       active={active}
       id={id}
       testId={`search-hit-annotation-${hit.id}`}
