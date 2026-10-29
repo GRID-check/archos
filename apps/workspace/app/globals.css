@@ -1067,7 +1067,7 @@ body {
    the passage strengths above). Every hit carries a light wash; the one on
    screen a stronger one and an outline, so "3 of 12" has a place to point. */
 :root {
-  --paper-ink: oklch(0.244 0.006 271.2);
+  --paper-ink: oklch(0.165 0.003 67.6);
 }
 
 .pdf-search-hit {

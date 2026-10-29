@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [],
+    "paths": {
+      "react": ["../../../apps/workspace/node_modules/@types/react"],
+      "react/jsx-runtime": ["../../../apps/workspace/node_modules/@types/react/jsx-runtime"]
+    }
+  },
+  "include": ["./*.ts", "./*.tsx"]
+}

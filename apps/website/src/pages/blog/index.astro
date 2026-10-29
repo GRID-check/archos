@@ -1,0 +1,8 @@
+---
+import BlogView from '../../views/BlogView.astro';
+import { getBlogPosts } from '../../lib/posts';
+
+const posts = await getBlogPosts('de');
+---
+
+<BlogView locale="de" posts={posts} />

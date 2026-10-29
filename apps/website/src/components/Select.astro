@@ -1,0 +1,26 @@
+---
+interface Props {
+  /** Static HTML has no useId: the caller names the field, and the label points at it. */
+  id: string;
+  name: string;
+  label: string;
+  /** Plain option labels, e.g. ['1–5 Mitarbeitende', '6–20 Mitarbeitende'] */
+  options: string[];
+  /** First, empty option; default „Auswählen …“ */
+  placeholder?: string;
+  required?: boolean;
+  class?: string;
+}
+
+const { id, name, label, options, placeholder = 'Auswählen …', required, class: className } = Astro.props;
+---
+
+<div class:list={['ui-field', className]}>
+  <label class="ui-field-label small" for={id}>{label}</label>
+  <div class="ui-select">
+    <select id={id} name={name} class="ui-input" required={required}>
+      <option value="">{placeholder}</option>
+      {options.map((option) => <option>{option}</option>)}
+    </select>
+  </div>
+</div>

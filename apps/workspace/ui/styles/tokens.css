@@ -50,9 +50,9 @@
   color-scheme: light;
 
   /* ---- ink ramp (light) — #1f2023 → #b3b3af ---- */
-  --ink: oklch(0.244 0.006 271.2); /* #1f2023 — strongest ink, the action color */
-  --ink-hover: oklch(0.31 0.006 271.2); /* lifted ink for hover on ink surfaces */
-  --ink-active: oklch(0.2 0.006 271.2); /* pressed ink */
+  --ink: oklch(0.165 0.003 67.6); /* #0f0e0d — strongest ink, the action color (corporate design: ink) */
+  --ink-hover: oklch(0.294 0.006 78.2); /* #2e2c29 — lifted ink for hover on ink surfaces (ink-hover) */
+  --ink-active: oklch(0.13 0.003 67.6); /* pressed ink */
   --ink-border: oklch(0.234 0.007 258.4); /* #1c1e21 — alpha-hairline base (rgba(28,30,33,…)) */
 
   /* ---- legacy alias: the old accent name now resolves to the Baurecht/law
@@ -99,8 +99,8 @@
 
 
   /* ---- shadcn vars (light) — warm paper ---- */
-  --background: oklch(0.973 0.003 106.4); /* #f6f6f4 — warm paper app bg */
-  --foreground: var(--ink); /* #1f2023 */
+  --background: oklch(0.985 0.001 106.4); /* #fafaf9 — warm paper app bg (corporate design: surface) */
+  --foreground: var(--ink); /* #0f0e0d */
   --card: oklch(1 0 0); /* white cards on paper */
   --card-foreground: var(--ink);
   --popover: oklch(1 0 0);
@@ -110,7 +110,7 @@
   --secondary: oklch(0.961 0.003 106.4); /* #f2f2f0 — chip / quiet fill */
   --secondary-foreground: var(--ink);
   --muted: oklch(0.961 0.003 106.4); /* #f2f2f0 */
-  --muted-foreground: oklch(0.543 0.006 118); /* #6f706c — mid ink */
+  --muted-foreground: oklch(0.473 0.007 75.3); /* #5e5b57 — mid ink (ink-muted) */
   --accent: oklch(0.943 0.003 106.5); /* #ececea — inset / hover fill */
   --accent-foreground: var(--ink);
   --destructive: var(--signal-error); /* #c14a38 */
@@ -155,9 +155,9 @@
   --text-color-feedback-warning: var(--source-office-text); /* #96690e */
   --text-color-feedback-info: var(--source-law-text); /* #1c47ab */
 
-  --background-color-surface-base: oklch(0.973 0.003 106.4); /* #f6f6f4 */
+  --background-color-surface-base: oklch(0.985 0.001 106.4); /* #fafaf9 */
   --background-color-surface-raised: oklch(0.961 0.003 106.4); /* #f2f2f0 — chip */
-  --background-color-surface-sunken: oklch(0.958 0.003 106.4); /* #f1f1ef — sidebar / rails */
+  --background-color-surface-sunken: oklch(0.959 0.002 67.8); /* #f2f1f0 — sidebar / rails (surface-sunken) */
   --background-color-surface-overlay: oklch(1 0 0);
   --background-color-interaction-base: oklch(0.943 0.003 106.5); /* #ececea — inset */
   --background-color-interaction-primary-base: var(--ink);
@@ -185,10 +185,10 @@
   color-scheme: dark;
 
   /* ---- ink ramp (dark) — paper-white acts as "ink" on warm charcoal ---- */
-  --ink: oklch(0.958 0.004 91.4); /* #f2f1ee — warm paper white */
-  --ink-hover: oklch(0.9 0.004 91.4);
-  --ink-active: oklch(0.86 0.005 93);
-  --ink-border: oklch(0.958 0.004 91.4); /* hairlines are alpha paper on charcoal */
+  --ink: oklch(0.967 0.003 84.6); /* #f5f4f2 — warm paper white */
+  --ink-hover: oklch(0.883 0.005 78.3);
+  --ink-active: oklch(0.828 0.006 75.4);
+  --ink-border: oklch(0.967 0.003 84.6); /* hairlines are alpha paper on charcoal */
 
   /* ---- legacy alias: lifted law blue for dark surfaces ---- */
   --law-blue: oklch(0.711 0.125 266); /* lifted #2359d3 */
@@ -251,20 +251,20 @@
      and warmth is deliberately a touch stronger than the first pass (chroma
      ~0.006 vs ~0.004) so "warm charcoal" is actually perceptible instead of
      resolving to a neutral gray. ---- */
-  --background: oklch(0.199 0.006 86); /* #191816 — warm charcoal plane */
-  --foreground: oklch(0.958 0.004 91.4); /* #f2f1ee */
-  --card: oklch(0.247 0.007 86); /* #232120 — raised content plane */
-  --card-foreground: oklch(0.958 0.004 91.4);
-  --popover: oklch(0.279 0.007 87); /* floats above cards */
-  --popover-foreground: oklch(0.958 0.004 91.4);
+  --background: oklch(0.165 0.003 67.6); /* #0f0e0d — warm charcoal plane */
+  --foreground: oklch(0.967 0.003 84.6); /* #f5f4f2 */
+  --card: oklch(0.214 0.002 67.7); /* #1a1918 — raised content plane */
+  --card-foreground: oklch(0.967 0.003 84.6);
+  --popover: oklch(0.253 0.005 67.6); /* floats above cards */
+  --popover-foreground: oklch(0.967 0.003 84.6);
   --primary: var(--ink); /* paper-white action on ink */
-  --primary-foreground: oklch(0.199 0.006 86);
-  --secondary: oklch(0.294 0.007 88); /* chip / quiet fill */
-  --secondary-foreground: oklch(0.958 0.004 91.4);
-  --muted: oklch(0.294 0.007 88);
-  --muted-foreground: oklch(0.727 0.006 92); /* #a7a5a1 */
-  --accent: oklch(0.33 0.008 88); /* hover / inset fill */
-  --accent-foreground: oklch(0.958 0.004 91.4);
+  --primary-foreground: oklch(0.165 0.003 67.6);
+  --secondary: oklch(0.286 0.006 78.2); /* chip / quiet fill */
+  --secondary-foreground: oklch(0.967 0.003 84.6);
+  --muted: oklch(0.286 0.006 78.2);
+  --muted-foreground: oklch(0.716 0.008 80.7); /* #a6a39e */
+  --accent: oklch(0.315 0.007 67.6); /* hover / inset fill */
+  --accent-foreground: oklch(0.967 0.003 84.6);
   --destructive: var(--signal-error);
   --destructive-foreground: oklch(0.175 0.005 80);
   --border: color-mix(in oklch, var(--foreground) 12%, transparent); /* hairline */
@@ -274,7 +274,7 @@
      `color-mix(--input 30%, transparent)`, i.e. a mix of an ALREADY transparent
      token: 14% × 30% ≈ 4% paper alpha, so every input, textarea and select in
      dark mode rendered as an all-but-invisible wash instead of a field. */
-  --input-background: oklch(0.222 0.006 86);
+  --input-background: oklch(0.214 0.002 67.7);
   --ring: color-mix(in oklch, var(--foreground) 55%, transparent); /* paper-based focus ring */
   /* A real scrim. Previously `--background` at 92% — the app's own plane at
      near-full opacity, which (with the dialog's backdrop-blur) erased the page
@@ -308,23 +308,23 @@
     0 40px 88px oklch(0 0 0 / 56%);
 
   /* ---- legacy semantic vars (dark) — same ramp as the shadcn block above ---- */
-  --text-color-primary: oklch(0.958 0.004 91.4);
-  --text-color-secondary: oklch(0.851 0.006 93); /* warm mid paper */
-  --text-color-subtle: oklch(0.727 0.006 92); /* #a7a5a1 */
-  --text-color-base: oklch(0.909 0.005 91.4);
-  --text-color-placeholder: oklch(0.607 0.006 91.5); /* lifted: it sits on the darker input well */
-  --text-color-inverse: oklch(0.199 0.006 86);
-  --text-color-brand: oklch(0.958 0.004 91.4); /* active accent is paper, not blue */
+  --text-color-primary: oklch(0.967 0.003 84.6);
+  --text-color-secondary: oklch(0.868 0.006 75.4); /* warm mid paper */
+  --text-color-subtle: oklch(0.716 0.008 80.7); /* #a6a39e */
+  --text-color-base: oklch(0.926 0.005 78.3);
+  --text-color-placeholder: oklch(0.622 0.008 67.7); /* lifted: it sits on the darker input well */
+  --text-color-inverse: oklch(0.165 0.003 67.6);
+  --text-color-brand: oklch(0.967 0.003 84.6); /* active accent is paper, not blue */
   --text-color-feedback-success: var(--source-project);
   --text-color-feedback-danger: oklch(0.72 0.13 31.5);
   --text-color-feedback-warning: var(--source-office);
   --text-color-feedback-info: var(--source-law-text);
 
-  --background-color-surface-base: oklch(0.199 0.006 86);
-  --background-color-surface-raised: oklch(0.294 0.007 88);
-  --background-color-surface-sunken: oklch(0.168 0.005 84); /* sidebar sits below content */
-  --background-color-surface-overlay: oklch(0.279 0.007 87);
-  --background-color-interaction-base: oklch(0.33 0.008 88);
+  --background-color-surface-base: oklch(0.165 0.003 67.6);
+  --background-color-surface-raised: oklch(0.286 0.006 78.2);
+  --background-color-surface-sunken: oklch(0.141 0.003 69.4); /* sidebar sits below content */
+  --background-color-surface-overlay: oklch(0.253 0.005 67.6);
+  --background-color-interaction-base: oklch(0.315 0.007 67.6);
   --background-color-interaction-primary-base: var(--ink);
   --background-color-interaction-primary-hover: var(--ink-hover);
   --background-color-interaction-primary-selected: var(--ink-active);
@@ -537,7 +537,7 @@
   --color-signal-error-tint: var(--signal-error-tint);
 
   --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 4px);
+  --radius-md: 4px; /* controls: the corporate design's one control radius (radius-md) */
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
@@ -574,7 +574,7 @@
   --default-transition-duration: var(--motion-quick);
   --default-transition-timing-function: var(--ease-out);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 }
 

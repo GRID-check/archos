@@ -25,17 +25,17 @@
 /** Colours, each transcribed from the token named in its comment. */
 export const PDF_THEME = {
   /** `--ink` — the strongest ink; headings, and the cover band's ground. */
-  ink: '#1f2023',
+  ink: '#0f0e0d',
   /** `--text-color-base` — body copy, one step off ink so long prose stays soft. */
   body: '#2f3033',
   /** `--text-color-subtle` — meta lines, labels, the footer. */
-  subtle: '#6f706c',
+  subtle: '#5e5b57',
   /** `--text-color-inverse` — type on the ink band. */
   inverse: '#fafaf8',
   /** `--card` — the page ground. A document prints on white, not on app paper. */
   paper: '#ffffff',
   /** `--background` — the warm paper the app sits on; used for inset panels. */
-  panel: '#f6f6f4',
+  panel: '#fafaf9',
   /** `--secondary` / `--muted` — table header band, code ground. */
   surface: '#f2f2f0',
   /** `--accent` — the zebra step; one shade off `surface` so rows separate quietly. */

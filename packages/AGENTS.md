@@ -2,11 +2,13 @@
 
 Two families live here: the standalone IFC packages, outside every workspace,
 and the Python packages of the root uv workspace ([below](#the-python-packages-agent-knowledge-layer-ris-adapter-tavily-web-search)).
-`brand/` is neither: the Piloti mark (`mark.svg`) and the script that renders
-it into both apps (`build-brand-assets.mjs`, which borrows `apps/site`'s sharp).
-It has no suite here: the site's `npm run check` runs its `--check` form, so
-the site tier checks it, not the `packages` job. The frontend tier fires on it
-too, because the script writes the app's icons.
+`brand/` is neither: the shared corporate design. `tokens.json` is the source;
+`build-tokens.mjs` renders `dist/`, and `sync.mjs` writes committed copies into
+`apps/website` and `apps/workspace` (`--check` fails on drift). Brand strings live
+in `identity.json` only, the React components in `react/`, AuthKit's stylesheet in
+`authkit/authkit.css` (pasted into WorkOS branding per environment). `mark.svg` and
+`build-brand-assets.mjs` render the icons into both apps, borrowing `apps/site`'s
+sharp. Its README holds the design rules.
 
 ## The IFC packages
 

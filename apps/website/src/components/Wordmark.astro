@@ -1,0 +1,27 @@
+---
+import identity from '../lib/identity';
+
+interface Props {
+  /** 22px (Header) · 28px (Footer) · 48px, without ™ */
+  size?: 'sm' | 'md' | 'lg';
+  /** Renders a link, e.g. to the home page */
+  href?: string;
+  class?: string;
+  'aria-label'?: string;
+}
+
+const { size = 'md', href, class: className, 'aria-label': ariaLabel } = Astro.props;
+const classes = ['ui-wordmark', `ui-wordmark-${size}`, className];
+---
+
+{
+  href ? (
+    <a href={href} class:list={classes} aria-label={ariaLabel}>
+      {identity.name}
+    </a>
+  ) : (
+    <span class:list={classes} aria-label={ariaLabel}>
+      {identity.name}
+    </span>
+  )
+}

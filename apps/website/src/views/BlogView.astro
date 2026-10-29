@@ -1,0 +1,63 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import PostCard from '../components/PostCard.astro';
+import copy from '../i18n/pages/blog';
+import type { Locale } from '../i18n/paths';
+import { CATEGORIES, CATEGORY_IDS, blogPath, type Category } from '../lib/categories';
+import { formatDate, postPath, type BlogPost } from '../lib/posts';
+
+// Markup only. Text comes from src/i18n/pages/blog.ts and src/lib/categories.ts.
+interface Props {
+  locale: Locale;
+  /** The listing's posts, newest first, already filtered by the route. */
+  posts: BlogPost[];
+  /** Set on a category page; the index leaves it out. */
+  category?: Category;
+}
+
+const { locale, posts, category } = Astro.props;
+const c = copy[locale];
+const cat = category ? CATEGORIES[locale][category] : undefined;
+const title = cat ? cat.label : c.title;
+const description = cat ? cat.descriptor : c.hero.text;
+const heroTitle = cat ? cat.label : c.hero.title;
+---
+
+<BaseLayout locale={locale} title={title} description={description}>
+  <Hero title={heroTitle} text={description} />
+
+  <section class="ui-container page-section">
+    <nav aria-label={c.filterLabel}>
+      <ul class="ui-filter">
+        <li>
+          <a class="ui-nav-link" href={blogPath(locale)} aria-current={category ? undefined : 'page'}>
+            {c.filterAll}
+          </a>
+        </li>
+        {
+          CATEGORY_IDS.map((id) => (
+            <li>
+              <a class="ui-nav-link" href={blogPath(locale, id)} aria-current={category === id ? 'page' : undefined}>
+                {CATEGORIES[locale][id].label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <ul class="ui-posts">
+      {
+        posts.map((post) => (
+          <PostCard
+            title={post.data.title}
+            text={post.data.description}
+            date={formatDate(post.data.pubDate, locale)}
+            href={postPath(locale, post)}
+          />
+        ))
+      }
+    </ul>
+  </section>
+</BaseLayout>

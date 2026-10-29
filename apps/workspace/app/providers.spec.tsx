@@ -153,7 +153,7 @@ describe('Providers', () => {
       )
 
       expect(document.documentElement.classList.contains('dark')).toBe(true)
-      expect(meta.getAttribute('content')).toBe('#191816')
+      expect(meta.getAttribute('content')).toBe('#0f0e0d')
     })
 
     test('an explicit light choice removes a dark class the boot script set', () => {

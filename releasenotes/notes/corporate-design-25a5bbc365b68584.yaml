@@ -1,0 +1,6 @@
+---
+operators:
+  - >
+    The hosted sign-in page can now wear the new corporate design: paste the
+    built stylesheet into an environment's AuthKit branding with the two-column
+    layout. Staging carries it; Production keeps the current look until the rebrand.

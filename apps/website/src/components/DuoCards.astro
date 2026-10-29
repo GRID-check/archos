@@ -1,0 +1,60 @@
+---
+import AITag from './AITag.astro';
+import type { Locale } from '../i18n/paths';
+
+export interface DuoItem {
+  title: string;
+  text?: string;
+  /** default: first light, second dark */
+  theme?: 'light' | 'dark';
+  /** Photo filling the whole card; keeps its width while the card widens on hover */
+  photo?: string;
+  alt?: string;
+  /** Inline CSS for the photo (object-position, filter), as the reference sets it per card */
+  photoStyle?: string;
+  /** Text in on-ink over a light photo */
+  onPhoto?: boolean;
+  /** Shows the AI tag */
+  ai?: boolean;
+}
+
+// Without a photo, the card's visual goes in the slot `media-<index>`.
+interface Props {
+  locale: Locale;
+  /** Exactly two */
+  items: [DuoItem, DuoItem];
+  class?: string;
+}
+
+const { locale, items, class: className } = Astro.props;
+---
+
+<div data-reveal class:list={['ui-duo', className]}>
+  {
+    items.slice(0, 2).map((item, i) => {
+      const theme = item.theme || (i === 1 ? 'dark' : undefined);
+      const cardStyle = item.photo
+        ? `background: ${theme === 'dark' ? 'var(--surface-raised)' : 'var(--surface-sunken)'}`
+        : undefined;
+      return (
+        <div class:list={['ui-duo-card', item.photo && item.onPhoto && 'ui-duo-on-photo']} data-theme={theme} style={cardStyle}>
+          {item.photo && <img class="ui-duo-photo" src={item.photo} alt={item.alt || ''} style={item.photoStyle} loading="lazy" decoding="async" />}
+          {item.ai && <AITag locale={locale} ink={!item.onPhoto && theme !== 'dark'} />}
+          <div class="ui-duo-text">
+            <h3 class="ui-duo-title heading-1">{item.title}</h3>
+            {item.text && (
+              <p class="ui-duo-body body" style={item.photo ? 'color: inherit' : undefined}>
+                {item.text}
+              </p>
+            )}
+          </div>
+          {!item.photo && (
+            <div class="ui-duo-media" data-theme={theme === 'dark' ? 'light' : undefined}>
+              <slot name={`media-${i}`} />
+            </div>
+          )}
+        </div>
+      );
+    })
+  }
+</div>

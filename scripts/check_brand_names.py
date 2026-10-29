@@ -5,8 +5,8 @@
 Why this exists
 ---------------
 
-The product has been called AI-Q, then Grid, now Piloti, and Piloti is about to
-change too. Every rename so far was a code change across thousands of lines,
+The product has been called AI-Q, then Grid, then Piloti, now ARCHOS, and it is
+about to change again. Every rename so far was a code change across thousands of lines,
 because the name sat in identifiers, file names, environment variables, routes
 and resource names. The name belongs in user-facing copy, read from one place,
 so the next rename is a copy change.
@@ -19,7 +19,7 @@ and a baseline (`ci/brand_names_baseline.json`) holding the hits each file had
 when the check arrived.
 
 - A hit is a word of a token (a camelCase, snake_case, kebab-case or dotted
-  name) that is one of the brands: `aiq`, `piloti`, `grid` (``brand_words``).
+  name) that is one of the brands: `aiq`, `archos`, `piloti`, `grid` (``brand_words``).
 - A file's count is its hits in its own name plus, for a code or config file
   (``CONTENT_SUFFIXES``), its hits in the text. A directory is keyed `dir/`
   and counts the hits in its own name, so a new file in an old directory is
@@ -37,7 +37,9 @@ What is not a hit
   (`grid-cols-2`, `gridTemplateColumns`), and `grid` as the last word, the
   layout noun (`FileGrid`, `document_grid`, `stat-grid`).
 - The repository's own name and URLs (``REPOSITORY``), which only the
-  repository's owners rename.
+  repository's owners rename: `archos-at/archos` and the `archos-at` org
+  (`ghcr.io/archos-at/...`, `github.com/archos-at/...`). The image or repo
+  name after the org is not exempt, so an existing `grid-oib-*` hit stays.
 - The Kubernetes and Compose tier names `aiq-agent` and `aiq-api`
   (``PENDING_INFRA_NAMES``), until the deploy rename (ADR-0145 row 10c) moves
   them in its three operator-applied deploys.
@@ -66,7 +68,7 @@ from pathlib import Path
 from pathlib import PurePosixPath
 
 BASELINE = Path("ci/brand_names_baseline.json")
-BRANDS = ("aiq", "piloti", "grid")
+BRANDS = ("aiq", "archos", "piloti", "grid")
 PROSE = {"Piloti", "Grid"}
 CONTENT_SUFFIXES = (
     ".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".astro", ".css", ".html", ".hog",
@@ -97,6 +99,9 @@ EXCLUDED = re.compile(
             r"^deploy/pulumi/src/names\.ts$",
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
             r"^apps/workspace/bff/http/legacy-header-names\.|^apps/agent-host/src/agent_host/legacy_headers\.py$",
+            # The brand's one file, where the name is meant to live, and the copies a sync script writes from it
+            # (apps/*/**/identity.json). The product is renamed by editing that file, so it is not a code identifier.
+            r"^packages/brand/identity\.json$|^apps/[^/]+/(.*/)?identity\.json$",
             r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",
@@ -118,7 +123,10 @@ HOST = re.compile(r"\.(?:at|ai|app|com|de|dev|eu|io|net|org)$")  # a host name, 
 # counted: renaming them recreates resources and an operator applies it (ADR-0145
 # row 10c). Delete this set with that rename.
 PENDING_INFRA_NAMES = re.compile(r"(?<![A-Za-z0-9])(?:aiq-agent|aiq-api)(?![A-Za-z0-9])")
-REPOSITORY = re.compile(r"\bgrid-check/grid-oib-agent\b|\bgrid-oib-agent\b|\bgrid-check\b", re.IGNORECASE)
+REPOSITORY = re.compile(
+    r"\bgrid-check/grid-oib-agent\b|\bgrid-oib-agent\b|\bgrid-check\b|(?<![\w.-])archos-at(?:/archos(?![\w-]))?(?![\w-])",
+    re.IGNORECASE,
+)
 BRAND = re.compile("|".join(BRANDS), re.IGNORECASE)
 TOKEN_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
 WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+")

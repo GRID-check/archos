@@ -1,0 +1,119 @@
+---
+/**
+ * One question, two retrieval channels, one merged candidate list, and the
+ * per-document cap that keeps a long PDF from crowding out everything else.
+ */
+import FigureFrame from './FigureFrame.astro'
+
+interface Props {
+  labels: {
+    query: string
+    querySub: string
+    semantic: string
+    semanticSub: string
+    lexical: string
+    lexicalSub: string
+    merge: string
+    mergeSub: string
+    cap: string
+    capSub: string
+  }
+  kicker?: string
+  title?: string
+  caption?: string
+  alt: string
+}
+const { labels, kicker, title, caption, alt } = Astro.props
+---
+
+<FigureFrame kicker={kicker} title={title} caption={caption} alt={alt}>
+  <svg viewBox="0 0 960 440" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker
+        id="hyb-arrow"
+        viewBox="0 0 8 8"
+        refX="7"
+        refY="4"
+        markerWidth="7"
+        markerHeight="7"
+        orient="auto-start-reverse"
+      >
+        <path d="M0 0 L8 4 L0 8 z" fill="var(--ink)"></path>
+      </marker>
+    </defs>
+
+    <rect class="fp-stroke fp-fill--soft" x="30" y="152" width="250" height="72"></rect>
+    <text class="fp-label" x="46" y="182">{labels.query}</text>
+    <text class="fp-label--muted" x="46" y="202">{labels.querySub}</text>
+
+    {/* Branch to both channels. */}
+    <path class="fp-stroke" marker-end="url(#hyb-arrow)" d="M280 188 h40 v-84 h34" fill="none"
+    ></path>
+    <path class="fp-stroke" marker-end="url(#hyb-arrow)" d="M280 188 h40 v84 h34" fill="none"
+    ></path>
+
+    <rect class="fp-stroke fp-fill" x="360" y="68" width="260" height="72"></rect>
+    <text class="fp-label" x="376" y="98">{labels.semantic}</text>
+    <text class="fp-label--muted" x="376" y="118">{labels.semanticSub}</text>
+
+    <rect class="fp-stroke fp-fill" x="360" y="236" width="260" height="72"></rect>
+    <text class="fp-label" x="376" y="266">{labels.lexical}</text>
+    <text class="fp-label--muted" x="376" y="286">{labels.lexicalSub}</text>
+
+    {/* Merge. */}
+    <path class="fp-stroke" marker-end="url(#hyb-arrow)" d="M620 104 h40 v84 h34" fill="none"
+    ></path>
+    <path class="fp-stroke" marker-end="url(#hyb-arrow)" d="M620 272 h40 v-84 h34" fill="none"
+    ></path>
+
+    <rect class="fp-stroke fp-fill--tint" x="700" y="152" width="216" height="72"></rect>
+    <text class="fp-label" x="716" y="182">{labels.merge}</text>
+    <text class="fp-label--muted" x="716" y="202">{labels.mergeSub}</text>
+
+    <line
+      class="fp-stroke fp-dash"
+      marker-end="url(#hyb-arrow)"
+      x1="808"
+      y1="224"
+      x2="808"
+      y2="340"></line>
+    <rect class="fp-stroke fp-dash fp-fill" x="640" y="344" width="276" height="64"></rect>
+    <text class="fp-label" x="656" y="370">{labels.cap}</text>
+    <text class="fp-label--muted" x="656" y="390">{labels.capSub}</text>
+  </svg>
+
+  {/* Below xl: fork and merge as a vertical flow. */}
+  <div slot="mobile" class="fpm-flow">
+    <div class="fpm-box fpm-box--soft">
+      <span class="fpm-label">{labels.query}</span>
+      <span class="fpm-sub">{labels.querySub}</span>
+    </div>
+    <div class="fpm-row">
+      <div class="fpm-arrow" />
+      <div class="fpm-arrow" />
+    </div>
+    <div class="fpm-row">
+      <div class="fpm-box">
+        <span class="fpm-label">{labels.semantic}</span>
+        <span class="fpm-sub">{labels.semanticSub}</span>
+      </div>
+      <div class="fpm-box">
+        <span class="fpm-label">{labels.lexical}</span>
+        <span class="fpm-sub">{labels.lexicalSub}</span>
+      </div>
+    </div>
+    <div class="fpm-row">
+      <div class="fpm-arrow" />
+      <div class="fpm-arrow" />
+    </div>
+    <div class="fpm-box fpm-box--tint">
+      <span class="fpm-label">{labels.merge}</span>
+      <span class="fpm-sub">{labels.mergeSub}</span>
+    </div>
+    <div class="fpm-arrow fpm-arrow--dash" />
+    <div class="fpm-box fpm-box--dash">
+      <span class="fpm-label">{labels.cap}</span>
+      <span class="fpm-sub">{labels.capSub}</span>
+    </div>
+  </div>
+</FigureFrame>

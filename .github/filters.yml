@@ -226,6 +226,8 @@ workspace:
   # End of the files this tier's tests read.
 site:
   - 'apps/site/**'
+  # The greenfield website (built from packages/brand), verified in the same job.
+  - 'apps/website/**'
   # The brand master and the app's copy: the site's `npm run check` holds
   # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
   - 'packages/brand/**'
@@ -244,10 +246,10 @@ site:
   - '.github/actions/setup-task/**'
 infra:
   - 'deploy/**'
-  # deploy/pulumi/src/app/web.spec.ts reads the site's Dockerfile and the
+  # deploy/pulumi/src/app/web.spec.ts reads the website's Dockerfile and the
   # server its CMD starts.
-  - 'apps/site/Dockerfile'
-  - 'apps/site/runtime/server.mjs'
+  - 'apps/website/Dockerfile'
+  - 'apps/website/runtime/server.mjs'
   # deploy/pulumi/src/data/qdrant-alerts.spec.ts reads the runbook it links.
   - 'docs/deployment/qdrant-runbook.md'
   - 'Taskfile.yml'

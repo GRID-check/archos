@@ -768,6 +768,7 @@ jobs:
 
   site:
     name: Site (Astro check + build)
+    # Both public sites: apps/site until the cutover, apps/website after it.
     needs: changes
     if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
@@ -792,6 +793,7 @@ jobs:
           restore-keys: |
             astro-cache-${{ runner.os }}-
       - run: task site:verify
+      - run: task website:verify
 
   infra:
     name: Infra (Pulumi typecheck + manifest tests)

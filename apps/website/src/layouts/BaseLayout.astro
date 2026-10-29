@@ -1,0 +1,101 @@
+---
+import '../styles/brand/tokens.css';
+import '../styles/brand/components.css';
+import '../styles/site.css';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { alternateOf, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+import identity from '../lib/identity';
+
+interface Props {
+  /** The page's language: sets `<html lang>`, the shell's strings and the hreflang pair */
+  locale: Locale;
+  /** Page name. Omitted on the home page, where the title is the brand name alone. */
+  title?: string;
+  description: string;
+  /** Keeps the page out of search results */
+  noindex?: boolean;
+  /** Renders without header and footer (the split pages: Login, Demo) */
+  bare?: boolean;
+  /** The other locale's twin of this page, when its path is not the table's (a post's translation) */
+  alternatePath?: string;
+}
+
+const { locale, title, description, noindex = false, bare = false, alternatePath } = Astro.props;
+const ui = t(locale);
+const pageTitle = title ? `${title} – ${identity.name}` : identity.name;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+// hreflang: the page and its other-locale twin, German as x-default.
+const here = Astro.url.pathname;
+const there = alternatePath ?? alternateOf(here);
+const hrefFor = (target: Locale) => new URL(target === locale ? here : there, Astro.site);
+// Social previews: the share card is the one image every page shares; og:locale names the region.
+const ogLocale: Record<Locale, string> = { de: 'de_AT', en: 'en_GB' };
+const shareImage = new URL('/media/share-card.jpg', Astro.site);
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={shareImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content={ogLocale[locale]} />
+    <meta property="og:locale:alternate" content={ogLocale[locale === 'de' ? 'en' : 'de']} />
+    <meta property="og:site_name" content={identity.name} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="alternate" hreflang="de" href={hrefFor('de')} />
+    <link rel="alternate" hreflang="en" href={hrefFor('en')} />
+    <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Web analytics, configured per stack at request time; a comment when
+         PostHog is unset (src/pages/web-analytics.js.ts, runtime/web-analytics.mjs). -->
+    <script is:inline src="/web-analytics.js" defer></script>
+  </head>
+  <body>
+    <a class="site-skip" href="#main">{ui.skipLink}</a>
+    {!bare && <Header locale={locale} current={Astro.url.pathname} switchPath={alternatePath} />}
+    <main id="main">
+      <slot />
+    </main>
+    {!bare && <Footer locale={locale} />}
+    <script>
+      // The header's hairline marks that the page has scrolled beneath it.
+      const header = document.querySelector('.ui-header');
+      if (header) {
+        const mark = () => header.toggleAttribute('data-scrolled', scrollY > 0);
+        addEventListener('scroll', mark, { passive: true });
+        mark();
+      }
+
+      // Blocks below the fold arrive once as they scroll into view (styles in
+      // packages/brand/css/components.css, [data-reveal]). Anything on screen at
+      // load is left alone, and reduced motion leaves the page as it is.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+        const arrive = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.classList.remove('is-pending');
+            arrive.unobserve(entry.target);
+          }
+        }, { rootMargin: '0px 0px -10% 0px' });
+        for (const block of document.querySelectorAll('[data-reveal]')) {
+          if (block.getBoundingClientRect().top < innerHeight) continue;
+          block.classList.add('is-pending');
+          arrive.observe(block);
+        }
+      }
+    </script>
+  </body>
+</html>

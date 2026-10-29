@@ -27,11 +27,22 @@ import { tenantSlotRoute } from '@/lib/db/tenant-context'
  * exists — creating one is its whole job — so no session-based posture can
  * apply. AuthKit's middlewareAuth lets it through via
  * proxy.ts unauthenticatedPaths.
+ *
+ * `loginHint` carries the e-mail a person typed on the website's login form, so
+ * AuthKit opens with it filled in. Only a plausible address is passed on; anything
+ * else is dropped rather than echoed into the authorization URL.
  */
 
+const LOGIN_HINT = /^[^\s@]{1,64}@[^\s@]{1,255}$/
+
+const loginHintFrom = (value: string | null): string | undefined =>
+  value && LOGIN_HINT.test(value) ? value : undefined
+
 const signIn = async (request: NextRequest): Promise<Response> => {
-  const returnTo = safeReturnPathname(new URL(request.url).searchParams.get('returnPathname'))
-  const url = await getSignInUrl(returnTo ? { returnTo } : {})
+  const params = new URL(request.url).searchParams
+  const returnTo = safeReturnPathname(params.get('returnPathname'))
+  const loginHint = loginHintFrom(params.get('loginHint'))
+  const url = await getSignInUrl({ ...(returnTo && { returnTo }), ...(loginHint && { loginHint }) })
   return NextResponse.redirect(url)
 }
 

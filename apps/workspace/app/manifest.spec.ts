@@ -20,8 +20,11 @@ import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('next/font/google', () => {
   const font = (options: Record<string, unknown>) => ({ className: '', variable: String(options.variable), style: {} })
-  return { Geist: font, Geist_Mono: font }
+  return { Geist_Mono: font }
 })
+vi.mock('next/font/local', () => ({
+  default: (options: Record<string, unknown>) => ({ className: '', variable: String(options.variable), style: {} }),
+}))
 vi.mock('./providers', () => ({ Providers: () => null }))
 vi.mock('./chunk-reload-guard', () => ({ ChunkReloadGuard: () => null }))
 vi.mock('@/components/shell/navigation-trail', () => ({ NavigationTrail: () => null }))

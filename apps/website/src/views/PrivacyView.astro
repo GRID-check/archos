@@ -1,0 +1,52 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import InfoList, { type InfoSegment } from '../components/InfoList.astro';
+import copy from '../i18n/pages/privacy';
+import type { Locale } from '../i18n/paths';
+import identity, { withName } from '../lib/identity';
+import { format } from '../i18n/ui';
+
+// Markup and structure only. Text comes from src/i18n/pages/privacy.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+
+const links: Record<string, { text: string; href: string }> = {
+  email: { text: identity.email, href: `mailto:${identity.email}` },
+  dsb: { text: 'www.dsb.gv.at', href: 'https://www.dsb.gv.at' },
+};
+
+/** Fills the identity placeholders and turns `{email}` and `{dsb}` into inline links. */
+function rich(text: string): string | InfoSegment[] {
+  const filled = format(text, {
+    legalEntity: identity.legalEntity,
+    street: identity.street,
+    postalCode: identity.postalCode,
+    city: identity.city,
+  });
+  const parts = filled.split(/\{(email|dsb)\}/);
+  if (parts.length === 1) return filled;
+  return parts
+    .map((part, i) => (i % 2 === 1 ? links[part] : part))
+    .filter((part) => part !== '');
+}
+
+const rows = (section: { rows: { key: string; value: string }[] }) =>
+  section.rows.map((row) => ({ key: row.key, value: rich(row.value) }));
+---
+
+<BaseLayout locale={locale} title={c.meta.title} description={c.meta.description}>
+  <Hero title={c.hero.title} text={c.hero.text} />
+  <section class="ui-container ui-section">
+    {c.notice && <p class="small">{c.notice}</p>}
+    <InfoList title={c.responsible.title} items={rows(c.responsible)} />
+    <InfoList title={c.website.title} items={rows(c.website)} />
+    <InfoList title={c.software.title} items={rows(c.software)} />
+    <InfoList title={c.recipients.title} items={rows(c.recipients)} />
+    <InfoList title={c.rights.title} items={rows(c.rights)} />
+  </section>
+</BaseLayout>

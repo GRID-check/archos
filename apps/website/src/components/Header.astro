@@ -1,0 +1,118 @@
+---
+import { navigation, type NavLink } from '../i18n/nav';
+import { alternateOf, localePath, type Locale } from '../i18n/paths';
+import { localeCodes, t } from '../i18n/ui';
+import Button from './Button.astro';
+import Wordmark from './Wordmark.astro';
+
+interface Props {
+  locale: Locale;
+  /** Defaults to the locale's Plattform · Datensicherheit · Blog */
+  links?: NavLink[];
+  /** href of the active page; the language switch points to its other-locale twin */
+  current?: string;
+  /** The other-locale twin, when it is not the table's (a post's translation). Defaults to alternateOf(current) */
+  switchPath?: string;
+  /** Small secondary button, e.g. Login. null hides it */
+  login?: NavLink | null;
+  /** Small primary button, e.g. Demo anfragen: the page's one primary. null hides it */
+  cta?: NavLink | null;
+  homeHref?: string;
+  /** default true: stays on top with the glass background */
+  sticky?: boolean;
+  class?: string;
+}
+
+const { locale, current = Astro.url.pathname, switchPath, sticky = true, class: className } = Astro.props;
+const nav = navigation(locale);
+const ui = t(locale);
+const links = Astro.props.links ?? nav.mainNav;
+const login = Astro.props.login === undefined ? nav.login : Astro.props.login;
+const cta = Astro.props.cta === undefined ? nav.demo : Astro.props.cta;
+const homeHref = Astro.props.homeHref ?? localePath('home', locale);
+const otherLocale: Locale = locale === 'de' ? 'en' : 'de';
+const switchHref = switchPath ?? alternateOf(current);
+const hasMenu = links.length > 0 || Boolean(login);
+---
+
+<header class:list={['ui-header', !sticky && 'ui-header-static', className]}>
+  <div class="ui-wide ui-header-inner">
+    <Wordmark href={homeHref} size="sm" aria-label={ui.homeLabel} />
+    {
+      links.length ? (
+        <nav class="ui-nav" aria-label={ui.mainNavLabel}>
+          <ul>
+            {links.map((link) => (
+              <li>
+                <a class="ui-nav-link" href={link.href} aria-current={link.href === current ? 'page' : undefined}>
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : (
+        <span />
+      )
+    }
+    <div class="ui-header-actions">
+      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} aria-label={`${otherLocale.toUpperCase()} – ${ui.switchLanguage}`}>
+        {localeCodes[otherLocale]}
+      </a>
+      {login && (
+        <Button href={login.href} variant="secondary" size="sm">
+          {login.label}
+        </Button>
+      )}
+      {cta && (
+        <Button href={cta.href} variant="primary" size="sm">
+          {cta.label}
+        </Button>
+      )}
+      {
+        hasMenu && (
+          <details class="ui-mnav">
+            <summary class="ui-btn ui-btn-secondary ui-btn-sm" aria-label={ui.menu}>
+              <span class="ui-mnav-o">{ui.menu}</span>
+              <span class="ui-mnav-x">{ui.menuClose}</span>
+            </summary>
+            <nav class="ui-mnav-panel" aria-label={ui.menu}>
+              <ul>
+                {links.map((link) => (
+                  <li>
+                    <a href={link.href} aria-current={link.href === current ? 'page' : undefined}>
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <div class="ui-mnav-act">
+                {login && (
+                  <Button href={login.href} variant="secondary" size="lg">
+                    {login.label}
+                  </Button>
+                )}
+                {cta && (
+                  <Button href={cta.href} variant="primary" size="lg">
+                    {cta.label}
+                  </Button>
+                )}
+              </div>
+            </nav>
+          </details>
+        )
+      }
+    </div>
+  </div>
+</header>
+
+<script>
+  // Closes the mobile menu when a link in it is followed (ported from the reference site).
+  document.querySelectorAll<HTMLDetailsElement>('.ui-mnav').forEach((menu) => {
+    menu.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        menu.open = false;
+      });
+    });
+  });
+</script>

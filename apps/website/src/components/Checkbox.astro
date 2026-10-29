@@ -1,0 +1,16 @@
+---
+interface Props {
+  name: string;
+  value?: string;
+  required?: boolean;
+  class?: string;
+}
+
+// Never pre-checked: a consent box starts empty. The label is the default slot.
+const { name, value, required, class: className } = Astro.props;
+---
+
+<label class:list={['ui-check', 'small', className]}>
+  <input type="checkbox" name={name} value={value} required={required} />
+  <span><slot /></span>
+</label>

@@ -1,0 +1,67 @@
+---
+import { t } from '../i18n/ui';
+import type { Locale } from '../i18n/paths';
+
+interface Props {
+  locale: Locale;
+  sources: { src: string; type: string }[];
+  /** Poster frame with no text in the centre (the play button sits there) */
+  poster?: string;
+  label?: string;
+  /** CSS aspect-ratio; default 2 / 1 */
+  ratio?: string;
+  loop?: boolean;
+  class?: string;
+}
+
+const { locale, sources, poster, label, ratio, loop = true, class: className } = Astro.props;
+---
+
+<div data-reveal class:list={['ui-video', className]} style={ratio ? `aspect-ratio: ${ratio}` : undefined} data-video>
+  <video class="ui-video-media" muted loop={loop} playsinline preload="metadata" poster={poster} aria-label={label}>
+    {sources.map((source) => <source src={source.src} type={source.type} />)}
+  </video>
+  <button type="button" class="ui-video-play" aria-label={t(locale).playVideo} data-play>
+    <span aria-hidden="true" />
+  </button>
+  <div class="ui-video-bar" aria-hidden="true" data-bar>
+    <span data-fill />
+  </div>
+</div>
+
+<script>
+  // Muted poster video: play button while paused, tap toggles, progress line, click to seek.
+  function setupVideo(root: HTMLElement) {
+    const video = root.querySelector('video');
+    const play = root.querySelector<HTMLButtonElement>('[data-play]');
+    const bar = root.querySelector<HTMLElement>('[data-bar]');
+    const fill = root.querySelector<HTMLElement>('[data-fill]');
+    if (!video) return;
+
+    const start = () => void video.play().catch(() => undefined);
+    const syncButton = () => {
+      if (play) play.hidden = !video.paused;
+    };
+
+    video.addEventListener('play', syncButton);
+    video.addEventListener('pause', syncButton);
+    video.addEventListener('click', () => (video.paused ? start() : video.pause()));
+    play?.addEventListener('click', start);
+
+    video.addEventListener('timeupdate', () => {
+      if (fill && video.duration) fill.style.transform = `scaleX(${video.currentTime / video.duration})`;
+    });
+
+    bar?.addEventListener('click', (e) => {
+      if (!video.duration) return;
+      const rect = bar.getBoundingClientRect();
+      const fraction = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      video.currentTime = fraction * video.duration;
+      if (video.paused) start();
+    });
+
+    syncButton();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-video]').forEach(setupVideo);
+</script>

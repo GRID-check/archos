@@ -1,0 +1,71 @@
+---
+import { navigation, type NavLink } from '../i18n/nav';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+import identity from '../lib/identity';
+import Wordmark from './Wordmark.astro';
+
+interface FooterColumn {
+  title: string;
+  links: NavLink[];
+}
+
+interface Props {
+  locale: Locale;
+  /** Defaults to the locale's Produkt · Wissen columns */
+  columns?: FooterColumn[];
+  /** Defaults to the locale's Impressum · Datenschutz · Kontakt */
+  legal?: NavLink[];
+  /** Bottom-left text; default © name */
+  note?: string;
+  /** Under the wordmark; default identity tagline */
+  claim?: string;
+  theme?: 'dark' | 'light';
+  homeHref?: string;
+  class?: string;
+}
+
+const { locale, theme = 'dark', class: className } = Astro.props;
+const nav = navigation(locale);
+const ui = t(locale);
+const columns = Astro.props.columns ?? nav.footerColumns;
+const legal = Astro.props.legal ?? nav.legal;
+const note = Astro.props.note ?? ui.footerNote;
+const claim = Astro.props.claim;
+const homeHref = Astro.props.homeHref ?? localePath('home', locale);
+---
+
+<footer class:list={['ui-footer', className]} data-theme={theme}>
+  <div class="ui-container">
+    <div class="ui-footer-top" style={`--ui-cols: ${columns.length || 1}`}>
+      <div class="ui-footer-brand">
+        <Wordmark size="md" href={homeHref} />
+        <p class="ui-footer-claim body">{claim || identity.tagline}</p>
+      </div>
+      {
+        columns.map((column) => (
+          <div class="ui-footer-col small">
+            <h2>{column.title}</h2>
+            <ul>
+              {column.links.map((link) => (
+                <li>
+                  <a href={link.href}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+    <div class="ui-footer-funding small">
+      <p>{ui.footerFunding}</p>
+      <div class="ui-footer-funding-logo">
+        <img src="/media/funding-aws-gray.png" alt={ui.fundingLogoAlt} loading="lazy" decoding="async" />
+      </div>
+    </div>
+    <div class="ui-footer-bottom small">
+      <span>{note}</span>
+      {legal.map((link) => <a href={link.href}>{link.label}</a>)}
+    </div>
+  </div>
+</footer>

@@ -16,10 +16,10 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const SIGN_IN_URL = 'https://api.workos.com/user_management/authorize?client_id=test&screen_hint=sign-in'
-const getSignInUrl = vi.fn<(options?: { returnTo?: string }) => Promise<string>>()
+const getSignInUrl = vi.fn<(options?: { returnTo?: string; loginHint?: string }) => Promise<string>>()
 
 vi.mock('@workos-inc/authkit-nextjs', () => ({
-  getSignInUrl: (options?: { returnTo?: string }) => getSignInUrl(options),
+  getSignInUrl: (options?: { returnTo?: string; loginHint?: string }) => getSignInUrl(options),
 }))
 vi.mock('@/lib/db/tenant-context', () => ({ tenantSlotRoute: (handler: never) => handler }))
 
@@ -61,6 +61,22 @@ describe('GET /api/auth/signin', () => {
     getSignInUrl.mockResolvedValue(SIGN_IN_URL)
 
     await signIn(`https://app.dev.piloti.at/api/auth/signin?returnPathname=${encodeURIComponent('/api/v1/projects')}`)
+
+    expect(getSignInUrl).toHaveBeenCalledWith({})
+  })
+
+  test('passes the e-mail from the website login form on as loginHint', async () => {
+    getSignInUrl.mockResolvedValue(SIGN_IN_URL)
+
+    await signIn(`https://app.dev.piloti.at/api/auth/signin?loginHint=${encodeURIComponent('anna@buero.at')}`)
+
+    expect(getSignInUrl).toHaveBeenCalledWith({ loginHint: 'anna@buero.at' })
+  })
+
+  test('drops a loginHint that is not an e-mail address', async () => {
+    getSignInUrl.mockResolvedValue(SIGN_IN_URL)
+
+    await signIn(`https://app.dev.piloti.at/api/auth/signin?loginHint=${encodeURIComponent('not an address')}`)
 
     expect(getSignInUrl).toHaveBeenCalledWith({})
   })

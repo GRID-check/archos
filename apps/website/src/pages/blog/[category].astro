@@ -1,0 +1,16 @@
+---
+import BlogView from '../../views/BlogView.astro';
+import { CATEGORY_IDS, type Category } from '../../lib/categories';
+import { getBlogPosts } from '../../lib/posts';
+
+// /blog/<category>/. Shares its URL level with [slug].astro; getStaticPaths there
+// refuses a post slug that equals a category id, so the two never collide.
+export function getStaticPaths() {
+  return CATEGORY_IDS.map((category) => ({ params: { category } }));
+}
+
+const category = Astro.params.category as Category;
+const posts = await getBlogPosts('de', category);
+---
+
+<BlogView locale="de" posts={posts} category={category} />

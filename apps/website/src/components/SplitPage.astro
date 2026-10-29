@@ -1,0 +1,75 @@
+---
+import identity from '../lib/identity';
+import AITag from './AITag.astro';
+import Wordmark from './Wordmark.astro';
+import type { NavLink } from '../i18n/nav';
+import type { Locale } from '../i18n/paths';
+
+interface Props {
+  locale: Locale;
+  /** login: 5:7, photo right · form: 1:1, form card on a photo right */
+  variant?: 'login' | 'form';
+  /** Right side: photo URL (login: full bleed; form: behind the card) */
+  image?: string;
+  imageAlt?: string;
+  /** Shows the AI tag on the photo (login) */
+  ai?: boolean;
+  /** Bottom links; the first sits left (Zur Website) */
+  footer?: NavLink[];
+  note?: string;
+  homeHref?: string;
+  class?: string;
+}
+
+// Default slot: left column (title, text, form or logos). Named slots: `aside` (login: replaces the
+// photo; form: content of the white card) and `aside-note` (form: small note under the card).
+const {
+  locale,
+  variant,
+  image,
+  imageAlt = '',
+  ai = false,
+  footer = [],
+  note,
+  homeHref = '/',
+  class: className,
+} = Astro.props;
+const even = variant === 'form';
+const hasAsideNote = Astro.slots.has('aside-note');
+const mainWidth = even ? 'var(--split-form)' : 'var(--login-form)';
+---
+
+<div class:list={['ui-split', even && 'ui-split-even', className]}>
+  <div class="ui-split-side">
+    <div class="ui-split-top">
+      <Wordmark size="sm" href={homeHref} aria-label={`${identity.name} – Startseite`} />
+    </div>
+    <div class="ui-split-main" style={`max-width: ${mainWidth}`}>
+      <slot />
+    </div>
+    <div class="ui-split-foot small">
+      {footer.map((link) => <a href={link.href}>{link.label}</a>)}
+      <span>{note || `© ${new Date().getFullYear()} ${identity.name}`}</span>
+    </div>
+  </div>
+  {
+    even ? (
+      <div class="ui-split-aside ui-split-panel">
+        {image && <img src={image} alt="" />}
+        <div class="ui-split-card">
+          <slot name="aside" />
+        </div>
+        {hasAsideNote && (
+          <p class="ui-split-note small">
+            <slot name="aside-note" />
+          </p>
+        )}
+      </div>
+    ) : (
+      <div class="ui-split-aside">
+        {image ? <img src={image} alt={imageAlt} /> : <slot name="aside" />}
+        {ai && <AITag locale={locale} />}
+      </div>
+    )
+  }
+</div>

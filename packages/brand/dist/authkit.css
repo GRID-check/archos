@@ -1,0 +1,168 @@
+/* The page: form column left, photo right (SplitPage). AuthKit's TwoColumn
+   layout supplies both columns; the right one is the custom-HTML panel. */
+/* Only where AuthKit shows the panel (its md breakpoint, 1024px). Below it the
+   panel is hidden, and a forced second column squeezes the form into a third of
+   the screen. */
+@media (min-width: 1024px) {
+  :has(> .ak-Background) {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr) !important;
+  }
+  .ak-Background { --grid-template-columns: minmax(0, 400px) !important; }
+}
+/* Below it, one fluid column at both grid levels, stated rather than left to
+   AuthKit's defaults, so no engine can keep a second column or size the form
+   to its content. */
+@media (max-width: 1023px) {
+  :has(> .ak-Background) { grid-template-columns: minmax(0, 1fr) !important; }
+  .ak-Background { --grid-template-columns: minmax(0, 1fr) !important; grid-template-columns: minmax(0, 1fr) !important; }
+  .ak-Content { max-width: 400px !important; }
+}
+.ak-Background {
+  justify-content: start !important;
+  padding: 32px 64px !important;
+  background: light-dark(#fafaf9, #0f0e0d) !important;
+  @media (max-width: 767px) { padding: 32px 16px !important; }
+}
+[data-hak-custom-html] .panel-photo {
+  position: absolute;
+  inset: 0;
+  background: #0a0908 url('data:image/webp;base64,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') center / cover no-repeat;
+}
+
+.ak-Content {
+  width: 100% !important;
+}
+
+/* Heading left, display size, with the welcome line beneath. */
+.ak-Header {
+  text-align: left !important;
+  align-items: flex-start !important;
+  margin-bottom: 40px !important;
+  &::after {
+    content: 'Willkommen zurück.';
+    display: block;
+    margin-top: 12px;
+    font-size: 17px;
+    color: light-dark(#5e5b57, #a6a39e);
+  }
+  &:lang(en)::after { content: 'Welcome back.'; }
+}
+.ak-Heading {
+  font-size: 48px !important;
+  font-weight: 500 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.02em !important;
+  color: light-dark(#0f0e0d, #f5f4f2) !important;
+  @media (max-width: 767px) { font-size: 40px !important; }
+}
+
+/* Flat: no card, no shadow, no rounding. */
+.ak-Card {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  &::before, &::after { display: none !important; }
+}
+
+/* Providers first, then "oder", then e-mail — the order of the website's login. */
+.ak-Card form > div {
+  display: flex !important;
+  flex-direction: column !important;
+}
+.ak-AuthMethodsProviders { order: -2; }
+.ak-TextSeparator {
+  order: -1;
+  background: transparent !important;
+  margin: 24px 0 !important;
+  text-transform: none !important;
+  font-variant: normal !important;
+  font-size: 14px !important;
+  color: light-dark(#5e5b57, #a6a39e) !important;
+  & * { text-transform: none !important; background: transparent !important; }
+}
+
+/* Provider buttons: full width, stacked, labelled, secondary style. */
+.ak-AuthMethodsProvidersRow {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+.ak-AuthMethodButton { width: 100% !important; }
+/* No provider is named here: AuthKit renders exactly the methods enabled in the
+   environment, and the list grows or shrinks with them. */
+.ak-AuthButton {
+  height: 54px !important;
+  width: 100% !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border: 1px solid light-dark(#0f0e0d, #f5f4f2) !important;
+  color: light-dark(#0f0e0d, #f5f4f2) !important;
+  font-size: 16px !important;
+  text-decoration: none !important;
+  &:hover { background: light-dark(#f2f1f0, #1a1918) !important; }
+}
+/* The provider's own logo, AuthKit's icon, before the label. */
+.ak-AuthButton { gap: 10px !important; }
+.ak-AuthButtonIcon { display: inline-flex !important; width: 18px !important; height: 18px !important; flex: none !important; }
+.ak-AuthButtonLabel {
+  display: inline !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  clip: auto !important;
+  clip-path: none !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.ak-Label {
+  font-weight: 400 !important;
+  font-size: 14px !important;
+  color: light-dark(#0f0e0d, #f5f4f2) !important;
+}
+
+/* Square input, one grey hairline. */
+.ak-TextField {
+  border-radius: 0 !important;
+  box-shadow: inset 0 0 0 1px light-dark(#8a8784, #75726e) !important;
+  background: light-dark(#fafaf9, #1a1918) !important;
+  height: 46px !important;
+  & input {
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    background: transparent !important;
+    font-size: 16px !important;
+  }
+  &:focus-within {
+    box-shadow: inset 0 0 0 1px light-dark(#0f0e0d, #f5f4f2) !important;
+    outline: 2px solid light-dark(#0f0e0d, #f5f4f2) !important;
+    outline-offset: 2px !important;
+  }
+}
+
+.ak-PrimaryButton {
+  height: 54px !important;
+  margin-top: 16px !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  background: light-dark(#0f0e0d, #f5f4f2) !important;
+  color: light-dark(#fafaf9, #0f0e0d) !important;
+  font-size: 16px !important;
+  &:hover { background: light-dark(#2e2c29, #dad8d5) !important; }
+}
+
+a {
+  color: light-dark(#0f0e0d, #f5f4f2);
+  text-underline-offset: 2px;
+}
+
+/* The design system's focus ring: 2px gap in the page colour, then 2px ink. */
+:focus-visible {
+  outline: 2px solid light-dark(#0f0e0d, #f5f4f2) !important;
+  outline-offset: 2px !important;
+}

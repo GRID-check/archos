@@ -1,0 +1,46 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TextLink from '../components/TextLink.astro';
+import copy from '../i18n/pages/blog';
+import type { Locale } from '../i18n/paths';
+import { CATEGORIES, blogPath } from '../lib/categories';
+import { formatDate, type BlogPost } from '../lib/posts';
+
+// Markup only. The body is the post's MDX; its typography lives in src/styles/site.css.
+interface Props {
+  locale: Locale;
+  post: BlogPost;
+}
+
+const { locale, post } = Astro.props;
+const { Content } = await render(post);
+const { title, description, pubDate, category, translationSlug } = post.data;
+const c = copy[locale];
+const cat = CATEGORIES[locale][category];
+// The language switch and hreflang point at the post's translation. A post with
+// none falls back to the other locale's blog index, so the switch never 404s.
+const other: Locale = locale === 'de' ? 'en' : 'de';
+const alternatePath = translationSlug ? `${blogPath(other)}${translationSlug}/` : blogPath(other);
+---
+
+<BaseLayout locale={locale} title={title} description={description} alternatePath={alternatePath}>
+  <article class="ui-container post">
+    <header class="post-head">
+      <p class="post-meta small">
+        <a class="ui-link" href={blogPath(locale, category)}>{cat.label}</a>
+        <time datetime={pubDate.toISOString()}>{formatDate(pubDate, locale)}</time>
+      </p>
+      <h1 class="heading-1 post-title">{title}</h1>
+      <p class="lead post-lead">{description}</p>
+    </header>
+
+    <div class="post-body">
+      <Content />
+    </div>
+
+    <p class="post-back">
+      <TextLink href={blogPath(locale)}>{c.backToBlog}</TextLink>
+    </p>
+  </article>
+</BaseLayout>

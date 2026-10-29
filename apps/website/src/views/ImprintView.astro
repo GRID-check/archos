@@ -1,0 +1,60 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import InfoList from '../components/InfoList.astro';
+import copy from '../i18n/pages/imprint';
+import type { Locale } from '../i18n/paths';
+import identity, { withName } from '../lib/identity';
+import { format } from '../i18n/ui';
+
+// Markup and structure only. Text comes from src/i18n/pages/imprint.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+const fill = (text: string) => format(text, { ...identity });
+const mailto = `mailto:${identity.email}`;
+---
+
+<BaseLayout locale={locale} title={c.meta.title} description={c.meta.description}>
+  <Hero title={c.hero.title} text={c.hero.text} />
+  <section class="ui-container ui-section">
+    {c.notice && <p class="small">{c.notice}</p>}
+    <InfoList
+      title={c.company.title}
+      items={[
+        { key: c.company.company, value: identity.legalEntity },
+        { key: c.company.legalForm, value: c.company.legalFormValue },
+        { key: c.company.seat, value: identity.city },
+        { key: c.company.address, value: fill(c.company.addressValue) },
+        { key: c.company.register, value: c.company.registerValue },
+        { key: c.company.purpose, value: c.company.purposeValue },
+      ]}
+    />
+    <InfoList
+      title={c.contact.title}
+      items={[{ key: c.contact.email, value: identity.email, href: mailto }]}
+    />
+    <InfoList
+      title={c.management.title}
+      items={[{ key: c.management.label, value: c.management.value }]}
+    />
+    <InfoList
+      title={c.disclosure.title}
+      items={[
+        { key: c.disclosure.owner, value: fill(c.disclosure.ownerValue) },
+        { key: c.disclosure.direction, value: c.disclosure.directionValue },
+      ]}
+    />
+    <InfoList
+      title={c.notes.title}
+      items={[
+        { key: c.notes.content, value: c.notes.contentValue },
+        { key: c.notes.images, value: c.notes.imagesValue },
+        { key: c.notes.funding, value: c.notes.fundingValue },
+      ]}
+    />
+  </section>
+</BaseLayout>
