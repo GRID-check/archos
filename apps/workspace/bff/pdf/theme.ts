@@ -3,7 +3,7 @@
  *
  * ## Why the tokens are copied rather than read
  *
- * The brand's colours are CSS custom properties (`shared/brand/tokens.vars.css`,
+ * The brand neutrals (ink, surfaces, line) are CSS custom properties (`shared/brand/tokens.vars.css`,
  * the synced copy of packages/brand), and the app maps its own names onto them in
  * `ui/styles/tokens.css` with `oklch()` and `color-mix()`. react-pdf has
  * neither: `StyleSheet.create` resolves no variables and pdfkit understands no

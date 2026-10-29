@@ -22,7 +22,7 @@ function mix(a: string, b: string, amount: number): string {
 }
 
 describe('PDF_THEME', () => {
-  it('takes its colours from the brand tokens', () => {
+  it('takes its neutrals from the brand tokens', () => {
     expect(PDF_THEME.ink).toBe(token('ink'))
     expect(PDF_THEME.body).toBe(token('ink-hover'))
     expect(PDF_THEME.subtle).toBe(token('ink-muted'))

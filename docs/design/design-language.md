@@ -175,6 +175,7 @@ app's own choices, not defects). Inside that level the rules are the brand's:
 - **Body face** is General Sans (`--font-sans`). **Geist Mono** is the app's
   monospace for code, keycaps, identifiers and the skill editor
   (`--font-mono`); the brand has no mono, and the app keeps one on purpose.
+- **The brand has no colour of its own.** It is black and white: warm white `--ds-surface` (#fafaf9), black `--ds-ink` (#0f0e0d) and one light grey `--ds-surface-sunken` (#f2f1f0). The app's hues (provenance signals, status, the data palette, the energy scale) are functional and documented exceptions; add no new one.
 - **No pure white.** Surfaces are `--ds-surface` (paper), `--ds-surface-raised`
   (`--card`, `--popover`, overlays) and `--ds-surface-sunken`. Pure white stays
   only where something is a document's own paper (the PDF viewer page, a
@@ -185,7 +186,7 @@ app's own choices, not defects). Inside that level the rules are the brand's:
   `ui/styles/data-palette.css`, with the validator notes; a chart reads
   `--chart-series-N` / `--spend-series-N`. Diagram colours are read off the
   tokens (`diagram-palette.ts`). Nothing else carries a data hex.
-- **PDF exports:** colours are the brand tokens (`theme.spec.ts` holds them to
+- **PDF exports:** ink, paper and greys are the brand neutrals (`theme.spec.ts` holds them to
   `shared/brand/tokens.vars.css`); the wordmark is Switzer Semibold; the body
   stays Helvetica because the brand ships General Sans only as a variable
   WOFF2, which react-pdf embeds as blank glyphs. A static General Sans Medium
