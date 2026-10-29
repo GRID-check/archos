@@ -1,0 +1,88 @@
+---
+interface Props {
+  /** Static HTML has no useId: the caller names the field, and the label points at it. */
+  id: string;
+  name: string;
+  label: string;
+  type?: 'text' | 'email' | 'tel' | 'url' | 'password';
+  hint?: string;
+  /** Replaces the hint, sets aria-invalid */
+  error?: string;
+  /** Renders a <textarea> (Kontakt: Nachricht) */
+  multiline?: boolean;
+  placeholder?: string;
+  autocomplete?: string;
+  value?: string;
+  required?: boolean;
+  disabled?: boolean;
+  class?: string;
+}
+
+const {
+  id,
+  name,
+  label,
+  type = 'text',
+  hint,
+  error,
+  multiline = false,
+  placeholder,
+  autocomplete,
+  value,
+  required,
+  disabled,
+  class: className,
+} = Astro.props;
+const hintId = `${id}-hint`;
+const describedBy = error || hint ? hintId : undefined;
+const invalid = error ? 'true' : undefined;
+---
+
+<div class:list={['ui-field', className]}>
+  <label class="ui-field-label small" for={id}>{label}</label>
+  {
+    multiline ? (
+      <textarea
+        id={id}
+        name={name}
+        rows={6}
+        class="ui-input"
+        placeholder={placeholder}
+        autocomplete={autocomplete}
+        required={required}
+        disabled={disabled}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+      >
+        {value}
+      </textarea>
+    ) : (
+      <input
+        id={id}
+        name={name}
+        type={type}
+        class="ui-input"
+        value={value}
+        placeholder={placeholder}
+        autocomplete={autocomplete}
+        required={required}
+        disabled={disabled}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+      />
+    )
+  }
+  {
+    error ? (
+      <p id={hintId} class="ui-field-error small">
+        Fehler: {error}
+      </p>
+    ) : (
+      hint && (
+        <p id={hintId} class="ui-field-hint small">
+          {hint}
+        </p>
+      )
+    )
+  }
+</div>

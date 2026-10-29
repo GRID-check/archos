@@ -46,6 +46,28 @@ tasks:
       - bun install --frozen-lockfile
       - bun run build
 
+  # ── website (apps/website — greenfield Astro site on the design system) ──
+  # Replaces the site tier at cutover (corporate design plan, slice 5). Until
+  # then both run side by side.
+
+  website:install:
+    desc: Install the website dependencies
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun install --frozen-lockfile
+
+  website:check:
+    desc: Astro typecheck and the brand copy check for the website
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run check
+
+  website:build:
+    desc: Production build of the website
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run build
+
   # ── riso art (apps/site/art/riso — procedural prints for the site) ──────
   # The raw commands are `node art/riso/<script>.mjs` in apps/site; every
   # task below is one of them. The workflow and the series rules are in

@@ -1,0 +1,119 @@
+---
+export interface GalleryItem {
+  /** Topic in ink, e.g. "Suchen." */
+  title: string;
+  /** Continuation in ink-muted, same sentence */
+  text?: string;
+  /** Image filling the card */
+  image?: string;
+  alt?: string;
+}
+
+interface Props {
+  items: GalleryItem[];
+  /** Accessible name of the carousel */
+  label?: string;
+  id?: string;
+  class?: string;
+}
+
+const { items, label, id, class: className } = Astro.props;
+const n = items.length;
+---
+
+<section class:list={['ui-gallery', className]} id={id} aria-roledescription="Karussell" aria-label={label} data-gallery>
+  <div class="ui-gallery-track" data-track>
+    {
+      items.map((item, i) => (
+        <div
+          class="ui-gallery-card"
+          role="group"
+          aria-roledescription="Folie"
+          aria-label={`${i + 1} von ${n}`}
+          aria-hidden={i === 0 ? undefined : 'true'}
+        >
+          {item.image && (
+            <div class="ui-gallery-media">
+              <img src={item.image} alt={item.alt || ''} />
+            </div>
+          )}
+          <p class="ui-gallery-text heading-2">
+            {item.title}
+            {item.text && ' '}
+            {item.text && <span>{item.text}</span>}
+          </p>
+        </div>
+      ))
+    }
+  </div>
+  {
+    n > 1 && (
+      <div class="ui-gallery-ctl">
+        <button type="button" class="ui-gallery-btn" aria-label="Vorherige Folie" data-prev>
+          ←
+        </button>
+        <div class="ui-gallery-dots">
+          {items.map((_, i) => (
+            <button
+              type="button"
+              class="ui-gallery-dot"
+              aria-label={`Folie ${i + 1}`}
+              aria-current={i === 0 ? 'true' : 'false'}
+              data-dot
+            >
+              <span />
+            </button>
+          ))}
+        </div>
+        <button type="button" class="ui-gallery-btn" aria-label="Nächste Folie" data-next>
+          →
+        </button>
+      </div>
+    )
+  }
+</section>
+
+<script>
+  // Carousel: one card in view at a time, dots and arrows, swipe on touch (ported from the reference).
+  function setupGallery(root: HTMLElement) {
+    const track = root.querySelector<HTMLElement>('[data-track]');
+    if (!track) return;
+    const cards = Array.from(track.children).filter((c): c is HTMLElement => c instanceof HTMLElement);
+    const dots = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-dot]'));
+    const n = cards.length;
+    let cur = 0;
+    let touchStart: [number, number] | null = null;
+
+    const step = () => (cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : 0);
+
+    function show(i: number) {
+      cur = ((i % n) + n) % n;
+      track!.style.transform = `translateX(${-cur * step()}px)`;
+      cards.forEach((card, k) => {
+        if (k === cur) card.removeAttribute('aria-hidden');
+        else card.setAttribute('aria-hidden', 'true');
+      });
+      dots.forEach((dot, k) => dot.setAttribute('aria-current', String(k === cur)));
+    }
+
+    root.querySelector('[data-prev]')?.addEventListener('click', () => show(cur - 1));
+    root.querySelector('[data-next]')?.addEventListener('click', () => show(cur + 1));
+    dots.forEach((dot, k) => dot.addEventListener('click', () => show(k)));
+
+    track.addEventListener('touchstart', (e) => {
+      touchStart = [e.touches[0].clientX, e.touches[0].clientY];
+    }, { passive: true });
+    track.addEventListener('touchend', (e) => {
+      if (!touchStart) return;
+      const dx = e.changedTouches[0].clientX - touchStart[0];
+      const dy = e.changedTouches[0].clientY - touchStart[1];
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) show(cur + (dx < 0 ? 1 : -1));
+      touchStart = null;
+    });
+
+    window.addEventListener('resize', () => show(cur));
+    show(0);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach(setupGallery);
+</script>

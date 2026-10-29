@@ -1,0 +1,38 @@
+---
+import Button from './Button.astro';
+import type { NavLink } from '../lib/nav';
+
+interface Props {
+  title: string;
+  /** lead in ink */
+  text?: string;
+  primary?: NavLink;
+  secondary?: NavLink;
+  class?: string;
+}
+
+const { title, text, primary, secondary, class: className } = Astro.props;
+---
+
+<div class:list={['ui-cta', className]}>
+  <div>
+    <h2 class="ui-cta-title heading-1">{title}</h2>
+    {text && <p class="ui-cta-text lead">{text}</p>}
+  </div>
+  <div class="ui-cta-actions">
+    {
+      primary && (
+        <Button href={primary.href} variant="primary" size="lg">
+          {primary.label}
+        </Button>
+      )
+    }
+    {
+      secondary && (
+        <Button href={secondary.href} variant="secondary" size="lg">
+          {secondary.label}
+        </Button>
+      )
+    }
+  </div>
+</div>

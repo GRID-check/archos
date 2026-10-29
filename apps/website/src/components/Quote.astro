@@ -1,0 +1,46 @@
+---
+interface Props {
+  quote: string;
+  name: string;
+  role?: string;
+  office?: string;
+  /** Portrait (4:5) to the right, portrait-width wide */
+  portrait?: string;
+  portraitAlt?: string;
+  class?: string;
+}
+
+const { quote, name, role, office, portrait, portraitAlt = '', class: className } = Astro.props;
+const meta = [role, office].filter(Boolean).join(', ');
+---
+
+{
+  portrait ? (
+    <div class:list={['ui-quote-wrap', className]}>
+      <figure class="ui-quote">
+        <blockquote>
+          <p class="ui-quote-text heading-2">{quote}</p>
+        </blockquote>
+        <figcaption class="ui-quote-cite small">
+          <span class="ui-quote-name">{name}</span>
+          {meta && ` · ${meta}`}
+        </figcaption>
+      </figure>
+      <div class="ui-quote-portrait">
+        <img src={portrait} alt={portraitAlt} />
+      </div>
+    </div>
+  ) : (
+    <div class={className}>
+      <figure class="ui-quote">
+        <blockquote>
+          <p class="ui-quote-text heading-2">{quote}</p>
+        </blockquote>
+        <figcaption class="ui-quote-cite small">
+          <span class="ui-quote-name">{name}</span>
+          {meta && ` · ${meta}`}
+        </figcaption>
+      </figure>
+    </div>
+  )
+}

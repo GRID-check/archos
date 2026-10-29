@@ -1,0 +1,14 @@
+---
+interface Props {
+  href: string;
+  arrow?: boolean;
+  class?: string;
+}
+
+const { href, arrow = false, class: className } = Astro.props;
+---
+
+<a href={href} class:list={['ui-link', className]}>
+  <slot />
+  {arrow && ' →'}
+</a>

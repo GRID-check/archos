@@ -1,0 +1,22 @@
+---
+interface Props {
+  /** Grey SVGs (fill line-strong), height in px per logo to balance optical size */
+  logos: { src: string; alt: string; height?: number }[];
+  columns?: number;
+  label?: string;
+  class?: string;
+}
+
+const { logos, columns, label = 'Pilotbüros', class: className } = Astro.props;
+const cols = columns || logos.length || 4;
+---
+
+<div class:list={['ui-logos', className]} style={`--ui-cols: ${cols}`} aria-label={label}>
+  {
+    logos.map((logo) => (
+      <div class="ui-logo">
+        <img src={logo.src} alt={logo.alt} style={`height: ${logo.height || 48}px`} />
+      </div>
+    ))
+  }
+</div>

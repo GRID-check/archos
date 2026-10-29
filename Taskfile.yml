@@ -29,6 +29,7 @@ vars:
   # skill bytes. Bump deliberately and re-run `task agents:audit`.
   APM_VERSION: 0.28.0
   SITE: apps/site
+  WEBSITE: apps/website
   # go-task ships its own POSIX shell, so command SYNTAX is already portable and
   # nothing below needs an OS branch. These two are the exception, because they
   # are Python packaging facts rather than shell facts: a virtualenv puts its

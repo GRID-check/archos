@@ -1,0 +1,11 @@
+---
+interface Props {
+  /** ink instead of on-ink, for light images */
+  ink?: boolean;
+  class?: string;
+}
+
+const { ink = false, class: className } = Astro.props;
+---
+
+<span class:list={['ui-ai-tag', ink && 'ui-ai-tag-ink', className]} title="KI-generiertes Bild">AI</span>

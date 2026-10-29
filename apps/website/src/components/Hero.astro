@@ -1,0 +1,28 @@
+---
+interface Props {
+  /** display-xl, left over eight columns */
+  title: string;
+  /** Lead in ink, right-aligned, bottom-aligned with the title */
+  text?: string;
+  /** Wide image below (an <img> in the `media` slot), hero-ratio, gutter-wide. Sub pages: none */
+  as?: 'h1' | 'h2';
+  class?: string;
+}
+
+const { title, text, as: Title = 'h1', class: className } = Astro.props;
+const hasMedia = Astro.slots.has('media');
+---
+
+<section class={className}>
+  <div class="ui-container">
+    <div class:list={['ui-hero', !hasMedia && 'ui-hero-plain']}>
+      <Title class="ui-hero-title display-xl">{title}</Title>
+      {text && <p class="ui-hero-text lead">{text}</p>}
+    </div>
+  </div>
+  {hasMedia && (
+    <div class="ui-wide ui-hero-media">
+      <slot name="media" />
+    </div>
+  )}
+</section>

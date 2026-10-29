@@ -1,0 +1,37 @@
+---
+interface Props {
+  items: { q: string; a: string }[];
+  /** With a title: heading-1 left over four columns, list right */
+  title?: string;
+  /** Index opened at start; default 0 */
+  open?: number;
+  class?: string;
+}
+
+const { items, title, open = 0, class: className } = Astro.props;
+---
+
+{
+  title ? (
+    <div class:list={['ui-rows', className]}>
+      <h2 class="heading-1">{title}</h2>
+      <div class="ui-faq body">
+        {items.map((item, i) => (
+          <details open={i === open}>
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
+        ))}
+      </div>
+    </div>
+  ) : (
+    <div class:list={['ui-faq', 'body', className]}>
+      {items.map((item, i) => (
+        <details open={i === open}>
+          <summary>{item.q}</summary>
+          <p>{item.a}</p>
+        </details>
+      ))}
+    </div>
+  )
+}

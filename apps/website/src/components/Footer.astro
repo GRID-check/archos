@@ -1,0 +1,77 @@
+---
+import identity from '../lib/identity';
+import Wordmark from './Wordmark.astro';
+import { footerColumns, legalLinks, type NavLink } from '../lib/nav';
+
+interface FooterColumn {
+  title: string;
+  links: NavLink[];
+}
+
+interface Props {
+  columns?: FooterColumn[];
+  legal?: NavLink[];
+  /** Bottom-left text; default © name */
+  note?: string;
+  /** Under the wordmark; default identity tagline */
+  claim?: string;
+  /** Funding note above the legal row; its logo goes in the `funding-logo` slot */
+  funding?: string;
+  theme?: 'dark' | 'light';
+  homeHref?: string;
+  class?: string;
+}
+
+const {
+  columns = footerColumns,
+  legal = legalLinks,
+  note,
+  claim,
+  funding,
+  theme = 'dark',
+  homeHref = '/',
+  class: className,
+} = Astro.props;
+const hasFundingLogo = Astro.slots.has('funding-logo');
+---
+
+<footer class:list={['ui-footer', className]} data-theme={theme}>
+  <div class="ui-container">
+    <div class="ui-footer-top" style={`--ui-cols: ${columns.length || 1}`}>
+      <div class="ui-footer-brand">
+        <Wordmark size="md" href={homeHref} />
+        <p class="ui-footer-claim body">{claim || identity.tagline}</p>
+      </div>
+      {
+        columns.map((column) => (
+          <div class="ui-footer-col small">
+            <h2>{column.title}</h2>
+            <ul>
+              {column.links.map((link) => (
+                <li>
+                  <a href={link.href}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+    {
+      funding && (
+        <div class="ui-footer-funding small">
+          <p>{funding}</p>
+          {hasFundingLogo && (
+            <div class="ui-footer-funding-logo">
+              <slot name="funding-logo" />
+            </div>
+          )}
+        </div>
+      )
+    }
+    <div class="ui-footer-bottom small">
+      <span>{note || `© ${identity.name}`}</span>
+      {legal.map((link) => <a href={link.href}>{link.label}</a>)}
+    </div>
+  </div>
+</footer>

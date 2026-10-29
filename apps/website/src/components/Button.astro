@@ -1,0 +1,44 @@
+---
+interface Props {
+  /** secondary by default · primary (black fill) for the one main action of an area */
+  variant?: 'primary' | 'secondary' | 'text';
+  /** sm 30px, 13px/420 (header only) · md 40px · lg 46px (forms) */
+  size?: 'sm' | 'md' | 'lg';
+  /** Appends → */
+  arrow?: boolean;
+  /** Renders an <a> instead of a <button> */
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  id?: string;
+  disabled?: boolean;
+  class?: string;
+  'aria-label'?: string;
+}
+
+const {
+  variant = 'secondary',
+  size = 'md',
+  arrow = false,
+  href,
+  type = 'button',
+  id,
+  disabled,
+  class: className,
+  'aria-label': ariaLabel,
+} = Astro.props;
+const classes = ['ui-btn', `ui-btn-${variant}`, `ui-btn-${size}`, className];
+---
+
+{
+  href ? (
+    <a href={href} class:list={classes} id={id} aria-label={ariaLabel}>
+      <slot />
+      {arrow && <span class="ui-btn-arrow" aria-hidden="true">→</span>}
+    </a>
+  ) : (
+    <button type={type} class:list={classes} id={id} disabled={disabled} aria-label={ariaLabel}>
+      <slot />
+      {arrow && <span class="ui-btn-arrow" aria-hidden="true">→</span>}
+    </button>
+  )
+}

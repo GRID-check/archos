@@ -1,0 +1,42 @@
+---
+interface InfoItem {
+  key: string;
+  value: string;
+  /** Makes the value a link, e.g. a mailto: address */
+  href?: string;
+}
+
+interface Props {
+  items: InfoItem[];
+  /** With a title: heading-2 left, rows right (Impressum, Datenschutz) */
+  title?: string;
+  class?: string;
+}
+
+const { items, title, class: className } = Astro.props;
+---
+
+{
+  title ? (
+    <div class:list={['ui-rows', className]}>
+      <h2 class="heading-2">{title}</h2>
+      <ul class="ui-info body">
+        {items.map((item) => (
+          <li>
+            <p class="ui-info-k">{item.key}</p>
+            <p class="ui-info-v">{item.href ? <a class="ui-link" href={item.href}>{item.value}</a> : item.value}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : (
+    <ul class:list={['ui-info', 'body', className]}>
+      {items.map((item) => (
+        <li>
+          <p class="ui-info-k">{item.key}</p>
+          <p class="ui-info-v">{item.href ? <a class="ui-link" href={item.href}>{item.value}</a> : item.value}</p>
+        </li>
+      ))}
+    </ul>
+  )
+}

@@ -1,0 +1,43 @@
+---
+import '../styles/brand/tokens.css';
+import '../styles/brand/components.css';
+import '../styles/site.css';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import identity from '../lib/identity';
+
+interface Props {
+  /** Page name. Omitted on the home page, where the title is the brand name alone. */
+  title?: string;
+  description: string;
+  /** Keeps the page out of search results */
+  noindex?: boolean;
+  /** Renders without header and footer (the split pages: Login, Demo) */
+  bare?: boolean;
+}
+
+const { title, description, noindex = false, bare = false } = Astro.props;
+const pageTitle = title ? `${title} – ${identity.name}` : identity.name;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    {!bare && <a class="site-skip" href="#main">Zum Inhalt springen</a>}
+    {!bare && <Header current={Astro.url.pathname} />}
+    <main id="main">
+      <slot />
+    </main>
+    {!bare && <Footer />}
+  </body>
+</html>

@@ -1,0 +1,32 @@
+---
+interface Props {
+  title: string;
+  /** One statement sentence in ink (lead) */
+  lead?: string;
+  /** Grey explanation in body */
+  text?: string;
+  /** display (statement, may be centered) · heading = heading-1 */
+  size?: 'display' | 'heading';
+  align?: 'left' | 'center';
+  as?: 'h1' | 'h2' | 'h3';
+  class?: string;
+}
+
+// Buttons below go in the default slot.
+const { title, lead, text, size = 'heading', align = 'left', as: Title = 'h2', class: className } = Astro.props;
+const titleClass = size === 'display' ? 'display' : 'heading-1';
+const hasActions = Astro.slots.has('default');
+---
+
+<div class:list={['ui-intro', align === 'center' && 'ui-intro-center', className]}>
+  <Title class:list={['ui-intro-title', titleClass]}>{title}</Title>
+  {lead && <p class="ui-intro-lead lead">{lead}</p>}
+  {text && <p class="ui-intro-text body">{text}</p>}
+  {
+    hasActions && (
+      <div class="ui-intro-actions ui-row">
+        <slot />
+      </div>
+    )
+  }
+</div>
