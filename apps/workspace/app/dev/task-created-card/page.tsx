@@ -32,6 +32,7 @@ import type { JSX } from 'react'
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { TaskCreatedCard } from '@/features/cards/components/TaskCreatedCard'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function Panel({
   title,
@@ -104,7 +105,7 @@ export default function TaskCreatedCardPreview(): JSX.Element {
 
         <Panel
           title="Überarbeitung"
-          note="Die eine Art, die nicht aus einem Satz im Chat entsteht, sondern aus einer Freigabe: „Piloti überarbeiten lassen“ in der Dateiablage legt sie an. Der Auftrag benennt die Fassung, um die es geht."
+          note={"Die eine Art, die nicht aus einem Satz im Chat entsteht, sondern aus einer Freigabe: „" + PRODUCT_NAME + " überarbeiten lassen“ in der Dateiablage legt sie an. Der Auftrag benennt die Fassung, um die es geht."}
         >
           <TaskCreatedCard
             taskId="00000000-0000-4000-8000-0000000000f6"

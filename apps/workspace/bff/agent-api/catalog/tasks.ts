@@ -17,6 +17,7 @@ import {
 } from '@/lib/tasks/task-wire'
 import { reviewTaskSchema } from '@/lib/tasks/types'
 import type { AgentOperation } from '../operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const projectParams = z.object({ id: z.string().describe('The project id, from project-list.') })
 
@@ -34,7 +35,7 @@ export const tasksOperations = [
     domain: 'tasks',
     summary: 'List a project’s tasks',
     description:
-      'A project’s tasks, newest first: scheduled, one-shot or manual prompts Piloti runs, with schedule and ' +
+      'A project’s tasks, newest first: scheduled, one-shot or manual prompts ' + PRODUCT_NAME + ' runs, with schedule and ' +
       `next run. Answers \`{ tasks, nextCursor }\`, at most ${TASK_PAGE_MAX_LIMIT} a page; pass \`nextCursor\` as ` +
       '`cursor` for the next.',
     method: 'GET',

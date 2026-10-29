@@ -5,6 +5,7 @@ import { useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
 import type { AnnotationChange } from '@/lib/annotations/room-types'
 import type { DocumentReview } from '../../hooks/use-document-review'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** How long the announcer gathers what the others did before it says it, as one sentence per who and what. */
 export const ANNOUNCE_AFTER_MS = 3_000
@@ -46,7 +47,7 @@ export function announcementOf(
       .filter((number): number is number => number !== null)
       .sort((a, b) => a - b)
       .join(', ')
-    const name = actor.kind === 'piloti' ? 'Piloti' : actor.name
+    const name = actor.kind === 'piloti' ? PRODUCT_NAME : actor.name
     return t(`review.announce.${change}`, { name, count, numbers }).replace(/\s+$/, '').replace(/\s{2,}/g, ' ')
   })
   if (answered) lines.push(t('review.announce.agentAnswered'))

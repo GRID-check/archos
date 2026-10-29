@@ -55,6 +55,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from agent.common.brand import PRODUCT_NAME
+
 
 @dataclass(frozen=True)
 class SourceKind:
@@ -129,7 +131,7 @@ SOURCE_KINDS: dict[str, SourceKind] = {
 #: from the ``provenance`` payload), so the lane table stays a taxonomy rather
 #: than a sentence with a hole in it.
 AGENT_AUTHORED_LANE = "office_piloti"
-AGENT_AUTHORED_LANE_LABEL = "Piloti-Dokument"
+AGENT_AUTHORED_LANE_LABEL = f"{PRODUCT_NAME}-Dokument"
 
 #: The kind a model-derived measurement renders as. Named rather than spelled
 #: out at the call sites so the one place that decides "this is a measurement,

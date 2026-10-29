@@ -40,6 +40,7 @@ import {
   RUN_WAITING,
   runSequence,
 } from '../_fixtures/run-ledgers'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const PROJECT = 'proj-stadthaus'
 const TITLE = 'Brandschutzkonzept — Fluchtwege Haus A'
@@ -60,7 +61,7 @@ function Transition() {
   return (
     <div className="flex w-[680px] max-w-full flex-col gap-4" data-testid="run-block-transition">
       <UserMessage
-        content="@Piloti prüf die Fluchtwege in Haus A gegen OIB 2 und die Wiener Abweichungen, bis Freitag."
+        content={"@" + PRODUCT_NAME + " prüf die Fluchtwege in Haus A gegen OIB 2 und die Wiener Abweichungen, bis Freitag."}
         timestamp="2026-09-16T09:41:00.000Z"
       />
       <TaskCreatedCard
@@ -196,7 +197,7 @@ export default function RunBlockPreview(): JSX.Element {
 
             <Panel
               title="Wartet auf Sie"
-              note="Piloti hat eine Rückfrage. Der Block öffnet sich von selbst, die Zeile sagt, wo geantwortet wird, „Antworten“ ist die eine Aktion im Stand und „Abbrechen“ steht leise daneben. Die Uhr läuft weiter: gewartet wird auf die Person, nicht auf Piloti."
+              note={PRODUCT_NAME + " hat eine Rückfrage. Der Block öffnet sich von selbst, die Zeile sagt, wo geantwortet wird, „Antworten“ ist die eine Aktion im Stand und „Abbrechen“ steht leise daneben. Die Uhr läuft weiter: gewartet wird auf die Person, nicht auf " + PRODUCT_NAME + "."}
             >
               <RunBlock
                 ledger={RUN_WAITING}

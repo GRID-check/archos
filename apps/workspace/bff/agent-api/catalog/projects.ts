@@ -41,6 +41,7 @@ import {
 } from '@/lib/projects/project-wire'
 import { projectScreeningOverrideSchema } from '@/lib/upload-screening/project-policy'
 import type { AgentOperation } from '../operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const projectParams = z.object({ id: z.string().describe('The project id, from project-list.') })
 
@@ -121,7 +122,7 @@ export const projectsOperations = [
     summary: 'Create a project',
     description:
       'Creates a project in the organization and returns it with its id. Give a name; optionally the address (typed `address`), ' +
-      'a description, and `setup`: `piloti` (default) has Piloti read the documents afterwards, `self` leaves the profile to the intake wizard. ' +
+      'a description, and `setup`: `piloti` (default) has ' + PRODUCT_NAME + ' read the documents afterwards, `self` leaves the profile to the intake wizard. ' +
       'To add a past project as a reference, pass `closing` with the outcome and months. Call project-same-address-list first to avoid a duplicate. ' +
       'Next: upload documents, then project-intake-get to follow the reading.',
     method: 'POST',
@@ -251,7 +252,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'List a project’s memory items',
     description:
-      'The facts, decisions and notes Piloti keeps for the project, pinned first then newest, as `{ items, nextCursor }` (`limit` default 50; pass `nextCursor` as `cursor`). ' +
+      'The facts, decisions and notes ' + PRODUCT_NAME + ' keeps for the project, pinned first then newest, as `{ items, nextCursor }` (`limit` default 50; pass `nextCursor` as `cursor`). ' +
       'Pass `includeArchived: "true"` for archived ones, or `conversationId` for those noted in one conversation. Item ids feed project-memory-update and project-memory-delete.',
     method: 'GET',
     path: '/api/projects/[id]/memory',
@@ -367,7 +368,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Read a project’s intake review',
     description:
-      'The project setup from the documents as the person sees it: what Piloti read from the documents, the suggestions waiting for a decision, reading progress and what is still open. ' +
+      'The project setup from the documents as the person sees it: what ' + PRODUCT_NAME + ' read from the documents, the suggestions waiting for a decision, reading progress and what is still open. ' +
       'Answers `{ intake }`. Decide on suggestions with project-intake-decide; finish with project-intake-complete.',
     method: 'GET',
     path: '/api/projects/[id]/intake',
@@ -377,7 +378,7 @@ export const projectsOperations = [
   {
     name: 'project-intake-start',
     domain: 'projects',
-    summary: 'Start Piloti reading the documents',
+    summary: 'Start ' + PRODUCT_NAME + ' reading the documents',
     description:
       'Starts a reading of the project’s documents now. `scope: "new"` reads what is unread; `"all"` starts over. A reading already running queues the next. ' +
       'Needs project:memory:write or project:edit; 409 on a closed project. Answers `{ intake }`; poll project-intake-get.',
@@ -392,7 +393,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Decide on intake suggestions',
     description:
-      'Applies decisions on what Piloti read: `confirm` writes a suggestion (or the alternative at `alternativeIndex`), `dismiss` removes it, `answer` writes the person’s own value, ' +
+      'Applies decisions on what ' + PRODUCT_NAME + ' read: `confirm` writes a suggestion (or the alternative at `alternativeIndex`), `dismiss` removes it, `answer` writes the person’s own value, ' +
       '`unknown` records the key as not known. Keys come from project-intake-get. Answers one result per decision, in order, and the intake after them.',
     method: 'POST',
     path: '/api/projects/[id]/intake/decisions',
@@ -442,7 +443,7 @@ export const projectsOperations = [
     summary: 'Add a name to the project record’s people list (grants no access)',
     description:
       'Writes someone into the project record’s list of people, such as an external planner: name, optional function, company, start and end month. ' +
-      'It grants no access and adds nobody to the team: who may open the project is a project role, which the person may have to set in Piloti themselves. ' +
+      'It grants no access and adds nobody to the team: who may open the project is a project role, which the person may have to set in ' + PRODUCT_NAME + ' themselves. ' +
       'No e-mail or phone is kept. Pass `userId` (project-member-list) to describe a colleague of the office. Send all fields; null for unknown.',
     method: 'POST',
     path: '/api/projects/[id]/people',
@@ -506,9 +507,9 @@ export const projectsOperations = [
   {
     name: 'project-cleanup-propose',
     domain: 'projects',
-    summary: 'Have Piloti propose what to clear out',
+    summary: 'Have ' + PRODUCT_NAME + ' propose what to clear out',
     description:
-      'Before a project closes (clearing out): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. ' +
+      'Before a project closes (clearing out): ' + PRODUCT_NAME + ' proposes which documents the finished project no longer needs, among those the person may read and write. ' +
       'Starts a paid model call, so call it once. Nothing is removed; show the proposal, then send their choice with project-cleanup-confirm.',
     method: 'POST',
     path: '/api/projects/[id]/cleanup/proposal',

@@ -33,6 +33,7 @@ import type { TrackedFile } from '@/features/documents/types'
 import { FileReferencePeek } from '@/features/chat/components/FileReferencePeek'
 import { useLocale, useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __ingestionStatesShim?: boolean }
@@ -58,9 +59,9 @@ const HELD_VERDICT =
 const STATES: { status: string; note: string; queueAhead?: number; errorMessage?: string; name: string }[] = [
   { status: 'uploading', note: 'bytes still arriving', name: 'Wohnbau-Nord_Gesamtmodell.ifc' },
   { status: 'pending', note: 'in the office’s ingest queue', queueAhead: 3, name: 'Baubeschreibung_Einreichung.pdf' },
-  { status: 'processing', note: 'Piloti is reading it', name: 'Brandschutzkonzept_Wohnbau-Nord.pdf' },
+  { status: 'processing', note: PRODUCT_NAME + ' is reading it', name: 'Brandschutzkonzept_Wohnbau-Nord.pdf' },
   { status: 'cancelled', note: 'someone stopped the read', name: 'Wohnbau-Nord_Schnitt_A-A.pdf' },
-  { status: 'completed', note: 'Piloti can cite it', name: 'Energieausweis.pdf' },
+  { status: 'completed', note: PRODUCT_NAME + ' can cite it', name: 'Energieausweis.pdf' },
   {
     status: 'quarantined',
     note: 'held by the content check (ADR-0086)',

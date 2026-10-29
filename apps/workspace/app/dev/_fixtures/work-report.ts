@@ -7,6 +7,7 @@
  */
 
 import type { AnswerMetaWork } from '@/lib/conversations/message-answer-meta'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export interface WorkReportScenario {
   id: string
@@ -44,7 +45,7 @@ export const WORK_REPORT_SCENARIOS: readonly WorkReportScenario[] = [
   {
     id: 'blocked',
     title: 'Blockiert, mit Wer',
-    note: 'Was Piloti nicht konnte, und bei wem es liegt: „Wer: …“ hinter der Zeile.',
+    note: 'Was ' + PRODUCT_NAME + ' nicht konnte, und bei wem es liegt: „Wer: …“ hinter der Zeile.',
     work: {
       blocked: [
         { text: 'Brandschutzkonzept fehlt im Projekt', who: 'Fachplaner Brandschutz' },

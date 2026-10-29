@@ -8,7 +8,7 @@ On small screens (below the `md` breakpoint) the chat is mobile-first: the sessi
 
 Click **New chat** in the chat-history panel (left) or the quiet **New chat** button in the thread header to start a fresh conversation. On an empty thread the chat shows a time-of-day greeting (with your first name when available). Type your message in the composer at the bottom of the screen and press Enter. The first user message sets the conversation title (truncated to 50 characters).
 
-While Piloti answers, the composer stays open, so you can write the next question as you read (the placeholder says *Type your next question …*). Enter does nothing until the answer has settled: the button is **Stop** until then and turns back into **Send** when it is done. Esc stops the answer and keeps whatever you have typed. While a colleague's question is being answered in a shared chat, the composer stays locked.
+While ARCHOS answers, the composer stays open, so you can write the next question as you read (the placeholder says *Type your next question …*). Enter does nothing until the answer has settled: the button is **Stop** until then and turns back into **Send** when it is done. Esc stops the answer and keeps whatever you have typed. While a colleague's question is being answered in a shared chat, the composer stays locked.
 
 ## Thread header
 
@@ -45,10 +45,10 @@ The whole header is hidden on an empty chat that has not started yet, apart from
 
 The composer is a white card with the message field on top and a control row below, separated by a hairline:
 
-- **Asking about … bar**: when this turn is about a project file (**Besprechen**, a surfaced card, or a cited drawing), a bar at the top of the composer names that file and the file stays open as a peek. Sidebar **Frag Piloti** (`?new=1` alone) is an empty draft and closes the previous peek. **Besprechen** lands on `?new=1&doc=` — a new chat *about that file* — and must keep the peek. The **×** on the bar stops asking about the file. The next send searches that document, not the Büroablage.
+- **Asking about … bar**: when this turn is about a project file (**Besprechen**, a surfaced card, or a cited drawing), a bar at the top of the composer names that file and the file stays open as a peek. Sidebar **Frag ARCHOS** (`?new=1` alone) is an empty draft and closes the previous peek. **Besprechen** lands on `?new=1&doc=` — a new chat *about that file* — and must keep the peek. The **×** on the bar stops asking about the file. The next send searches that document, not the Büroablage.
 - **Datengrundlage chip**: shows how many data sources are currently enabled and opens the existing Data Sources panel.
 - **Scope chip**: shows the current project's name, on a phone too, where it truncates before anything else in the row gives way. Retrieval is always scoped to this project; the popover lists a disabled "All projects" option — cross-project search is not available yet.
-- **Deep Research pill**: an on/off *preference*. Piloti escalates to deep research automatically when a question calls for it; the pill records your intent and shows an honest hint — it does not force a deep-research run.
+- **Deep Research pill**: an on/off *preference*. ARCHOS escalates to deep research automatically when a question calls for it; the pill records your intent and shows an honest hint — it does not force a deep-research run.
 - **Attach / dictation / send**: with a mouse the paperclip opens the file picker. On a touch screen it opens a menu: **Foto aufnehmen** (the camera, directly), **Aus Mediathek** and **Datei auswählen**, and it says that what you add stays in this chat; for the project's files, upload under **Dateien**, whose upload menu offers the same two photo entries. Photos are accepted where the office has image upload switched on and a vision model is configured; otherwise the two entries stay visible, disabled, with the reason. A photo is named after the moment it was taken (`Foto 2026-10-15 14-32-05.jpg`), because a file uploaded under a name the chat or folder already holds replaces that file. The microphone sits beside Send; on a touch screen a recording shows a full-width bar with the time against the 45-second limit, and a tap anywhere on it inserts the text. A microphone this browser cannot use says why when you press it.
 
 On a phone the control row stays one line. The `@` list keeps the keyboard open when you pick a name.
@@ -90,7 +90,7 @@ in this field — `12/05`, `OIB-RL 2/3`, `und/oder` — and an invocation applie
 the whole message anyway, so it belongs at the front.
 
 Each entry shows a name and a one-line description and nothing more. That is
-exactly what Piloti itself is told about each skill: the full instructions are
+exactly what ARCHOS itself is told about each skill: the full instructions are
 loaded only when the skill is actually used. So a description that does not say
 *when* a skill applies is as unhelpful to the assistant as it looks to you —
 which is the signal to go and improve it on the **Skills** tab of the
@@ -101,7 +101,7 @@ text it is.
 
 **Which skills were used.** An answer that loaded skill instructions carries a
 quiet *Skills used* line underneath. Opening it names them and explains the
-mechanism: every skill contributes its name and description to Piloti's
+mechanism: every skill contributes its name and description to ARCHOS's
 catalogue on every turn, and only the ones listed there had their full
 instructions loaded for this answer.
 
@@ -111,19 +111,19 @@ When collaboration is enabled (ADR-0032…0036), a chat can have a named audienc
 
 **Sharing.** The **Share** entry in the **…** menu opens the sharing dialog for every participant, not only owners. It shows the audience as a rule or a list: a visibility choice (*Only me / Everyone in this project / Everyone in this organization*), then the people with access grouped by role (*Owners / Can contribute / Can view*), each row stating why they are there (for example "invited by {name}"). Owners can change roles, remove people, or take ownership — with a confirmation step, because ownership changes are audited. Invite search covers the whole organization; a colleague who is not in the project yet is listed as blocked with the reason, because sharing a chat never grants access to the project itself. Anyone can **Leave** the conversation — owners too, as long as another owner remains; the last owner is protected server-side. If the sharing settings fail to load, the dialog opens with a retry rather than the Share entry silently disappearing.
 
-**Mentions.** Typing `@` in the composer opens the person picker: Piloti (the agent) pinned first, then the people in this conversation, then colleagues elsewhere in the project who would need an invitation. Within each group, a name that starts with what you typed (any part of it: `@Le` finds Lena Fuchs and Anna Lehner) comes before a name that merely contains it, and someone found only by their e-mail address comes last; Enter takes the best match. ↑↓ choose, Enter inserts, Esc closes — and the picker works from the very first message of a chat. Below the composer an addressee line states truthfully who the next message goes to — *Goes to Piloti*, *Goes to {name}*, or *Goes to everyone in the chat* — and doubles as the discoverable way to mention someone.
+**Mentions.** Typing `@` in the composer opens the person picker: ARCHOS (the agent) pinned first, then the people in this conversation, then colleagues elsewhere in the project who would need an invitation. Within each group, a name that starts with what you typed (any part of it: `@Le` finds Lena Fuchs and Anna Lehner) comes before a name that merely contains it, and someone found only by their e-mail address comes last; Enter takes the best match. ↑↓ choose, Enter inserts, Esc closes — and the picker works from the very first message of a chat. Below the composer an addressee line states truthfully who the next message goes to — *Goes to ARCHOS*, *Goes to {name}*, or *Goes to everyone in the chat* — and doubles as the discoverable way to mention someone.
 
-**Waiting for a person.** A message that addresses a person by name hands the thread over to them: the agent deliberately stays silent until they answer, and a banner says who is being waited for — with, per person, the question they were asked and who asked it, so a thread waiting on two colleagues still shows both. The banner always offers an escape — **Continue without waiting**, **Ask Piloti instead** (pre-fills an agent mention), or **Ask {name} back** (re-mentions the asker) — and those offers really route as mentions, so the agent is asked rather than the text sitting in the chat. When the awaited person answers, a transient offer appears — "{name} replied — let Piloti carry on?" — which pre-fills the composer with an agent mention so Piloti actually picks the thread back up. In a thread with several people talking, a plain message is a remark for everyone, and the addressee line says so; an offer can switch the thread to *answer only when mentioned* mode.
+**Waiting for a person.** A message that addresses a person by name hands the thread over to them: the agent deliberately stays silent until they answer, and a banner says who is being waited for — with, per person, the question they were asked and who asked it, so a thread waiting on two colleagues still shows both. The banner always offers an escape — **Continue without waiting**, **Ask ARCHOS instead** (pre-fills an agent mention), or **Ask {name} back** (re-mentions the asker) — and those offers really route as mentions, so the agent is asked rather than the text sitting in the chat. When the awaited person answers, a transient offer appears — "{name} replied — let ARCHOS carry on?" — which pre-fills the composer with an agent mention so ARCHOS actually picks the thread back up. In a thread with several people talking, a plain message is a remark for everyone, and the addressee line says so; an offer can switch the thread to *answer only when mentioned* mode.
 
-**Watching a colleague's turn.** When somebody else in a shared chat asks Piloti a question, you do not wait at a spinner: the answer streams in as it is written and the *Herleitung* builds alongside it, the same reasoning chain the person who asked is looking at. If Piloti puts a question back to them, you are told that the chat is waiting on an answer — the question is theirs to answer, so no control appears for you. You see the asker's own answer as it is written: its title, its sources and its cards, in the same layout they get. Only the feedback, copy and card-decision controls are theirs, so those do not appear for you. Where live delivery is not available in your deployment, this falls back to a short "Piloti is answering {name}'s question" strip and the finished answer, exactly as before.
+**Watching a colleague's turn.** When somebody else in a shared chat asks ARCHOS a question, you do not wait at a spinner: the answer streams in as it is written and the *Herleitung* builds alongside it, the same reasoning chain the person who asked is looking at. If ARCHOS puts a question back to them, you are told that the chat is waiting on an answer — the question is theirs to answer, so no control appears for you. You see the asker's own answer as it is written: its title, its sources and its cards, in the same layout they get. Only the feedback, copy and card-decision controls are theirs, so those do not appear for you. Where live delivery is not available in your deployment, this falls back to a short "ARCHOS is answering {name}'s question" strip and the finished answer, exactly as before.
 
-**Who is writing.** While one or more colleagues are composing, their names and three dots appear at the foot of the chat — deliberately a different shape from Piloti's own status, so a pause is legible at a glance as a person thinking rather than the assistant working. It survives a pause mid-sentence on purpose, rather than blinking off the moment someone stops to think or to check a document; it disappears when they send, clear the box or switch chats, and otherwise after about 45 seconds without a keystroke. A closed tab or a dropped connection takes a few seconds longer, because nothing can announce that on the way out — the claim simply expires. Nothing about it is stored.
+**Who is writing.** While one or more colleagues are composing, their names and three dots appear at the foot of the chat — deliberately a different shape from ARCHOS's own status, so a pause is legible at a glance as a person thinking rather than the assistant working. It survives a pause mid-sentence on purpose, rather than blinking off the moment someone stops to think or to check a document; it disappears when they send, clear the box or switch chats, and otherwise after about 45 seconds without a keystroke. A closed tab or a dropped connection takes a few seconds longer, because nothing can announce that on the way out — the claim simply expires. Nothing about it is stored.
 
 **Read-only and revoked access.** Someone with view-only access reads along but cannot send; the composer says so instead of silently rejecting, and everything on the composer that would write to the shared chat goes with it — attachments, drag-and-drop, the shortcut chips and every route to the *Datengrundlage*. Opening a file that is already attached still works: reading along is the point. If access to a shared chat is revoked while it is open, a notice explains that what remains is a local copy that no longer updates. While a colleague's turn is running, the composer is locked with a hint rather than letting two people write into one thread at once.
 
-**The inbox.** The inbox (nav entry with a live count badge, and an "Inbox" pill on org-level pages) lists everything that needs a person: mention requests, answers, and shares. It also tells you when a document you follow has a newer Fassung (see below). Items deep-link into the right chat, highlight the message, and are marked read as you open them, whether from the row, from a notification on your device, or by opening the annotation they are about in the review; resolved items carry an *Answered* chip. Four filters answer four questions: *Needs me* (a request still waiting on you), *Unread*, *All*, and *Archived*, where an archived item can be restored. Each row's menu marks it read or unread again and archives it; older items load at the end of the list, and the list can be worked from the keyboard (J/K, Enter, E, U). A row about an annotation opens it with *Go to annotation*, and an annotation assigned to you, or Piloti's question, can be answered (and an assigned one resolved) right in the row. The badge count also rides on the chat's own navigation on phones. Someone who never opens the inbox is offered device notifications once, the first time something waits on them. The page lives above projects, so it has the same back control Organisation and Platform do: it returns you to the project you came from, not to a settings tab you clicked through on the way.
+**The inbox.** The inbox (nav entry with a live count badge, and an "Inbox" pill on org-level pages) lists everything that needs a person: mention requests, answers, and shares. It also tells you when a document you follow has a newer Fassung (see below). Items deep-link into the right chat, highlight the message, and are marked read as you open them, whether from the row, from a notification on your device, or by opening the annotation they are about in the review; resolved items carry an *Answered* chip. Four filters answer four questions: *Needs me* (a request still waiting on you), *Unread*, *All*, and *Archived*, where an archived item can be restored. Each row's menu marks it read or unread again and archives it; older items load at the end of the list, and the list can be worked from the keyboard (J/K, Enter, E, U). A row about an annotation opens it with *Go to annotation*, and an annotation assigned to you, or ARCHOS's question, can be answered (and an assigned one resolved) right in the row. The badge count also rides on the chat's own navigation on phones. Someone who never opens the inbox is offered device notifications once, the first time something waits on them. The page lives above projects, so it has the same back control Organisation and Platform do: it returns you to the project you came from, not to a settings tab you clicked through on the way.
 
-**A new Fassung of a document you follow.** When a newer Fassung appears, the people assigned to the older document and the person who uploaded it get an inbox item that says who did it: „Sabine Gruber hat eine neue Fassung von „Grundriss EG Index B“ hochgeladen“, with the first line of what changed below it when Piloti has written it. The item opens the newer document. When the newer Fassung has another name, **Fassungen vergleichen** opens it with the visual comparison against the one you follow already open; **Besprechen** asks Piloti about it. It appears when someone confirms „Ja, neuere Fassung“, when an upload is linked to the document it replaces while it is read, and when a new upload or a published Fassung replaces a document under the same name; for an upload, once it has been read and has passed the content check, because until then only its uploader may see it. The person who made the change is not told about their own change. Nobody is told who may not open the newer document, whether through the project or through a restricted folder, and a document held back by the content check tells nobody anything. „Verknüpfung lösen“ tells nobody. Whoever already has the item for that Fassung is not told twice, so reading it once is enough.
+**A new Fassung of a document you follow.** When a newer Fassung appears, the people assigned to the older document and the person who uploaded it get an inbox item that says who did it: „Sabine Gruber hat eine neue Fassung von „Grundriss EG Index B“ hochgeladen“, with the first line of what changed below it when ARCHOS has written it. The item opens the newer document. When the newer Fassung has another name, **Fassungen vergleichen** opens it with the visual comparison against the one you follow already open; **Besprechen** asks ARCHOS about it. It appears when someone confirms „Ja, neuere Fassung“, when an upload is linked to the document it replaces while it is read, and when a new upload or a published Fassung replaces a document under the same name; for an upload, once it has been read and has passed the content check, because until then only its uploader may see it. The person who made the change is not told about their own change. Nobody is told who may not open the newer document, whether through the project or through a restricted folder, and a document held back by the content check tells nobody anything. „Verknüpfung lösen“ tells nobody. Whoever already has the item for that Fassung is not told twice, so reading it once is enough.
 
 ## Chat history panel
 
@@ -131,7 +131,7 @@ The history panel slides in from the left edge and covers the navigation rail fo
 
 Its heading names the panel and its size (**Chat history · 12 chats**). Below that, two controls stay pinned while the list scrolls:
 
-- **New chat** — starts a fresh conversation. Disabled while Piloti is still answering, and the panel then says so rather than leaving you to discover it.
+- **New chat** — starts a fresh conversation. Disabled while ARCHOS is still answering, and the panel then says so rather than leaving you to discover it.
 - **Search chats** — filters by title, and by the "Untitled chat" placeholder for chats that never got one, so what you see is what you can search. A live **n of N chats** count sits under the field and a **✕** inside it restores the full list; a query that matches nothing gets an empty state that quotes the query and offers the way back. On desktop the field takes focus when the panel opens, so you can open the panel and type. The field is hidden entirely in a project with no chats.
 
 The list groups chats by day (Today, Yesterday, then the date) with sticky day headings. A row in **Today** carries a relative time ("4 minutes ago"); every other row carries the time of day ("14:32"), because its day is already on the heading above it. Each row shows a status icon, and the row's accessible name says the same thing in words:
@@ -161,7 +161,7 @@ keeps the answer so far, marked as stopped.
 
 A dropped connection reopens on its own (jittered backoff, the sign-in cookie
 refreshed first) and picks the running answer up where it left off; a reload
-does the same from the answer's start. After a Piloti update the page asks to
+does the same from the answer's start. After an ARCHOS update the page asks to
 be reloaded.
 
 ## Deep research vs simple chat
@@ -195,7 +195,7 @@ brief, and „Klären“ on a single finding commissions a run about that one po
 The thread's history row shows a run going or a report ready; stopping a run is
 done from its block, or from the run's row in the history.
 
-## Herleitung: what Piloti looked up, and what the answer stands on
+## Herleitung: what ARCHOS looked up, and what the answer stands on
 
 Above the answer sits the *Herleitung*. Folded, it is one line: how many steps
 the turn took, how many sources the answer cites, and at most one warning, the
@@ -203,8 +203,8 @@ worst there is — „1 Abruf fehlgeschlagen“ outranks „1 Punkt offen“. Op
 is the graph of how the turn got there: the question, each step with its calls,
 the sources each step returned, and a last card, „Grundlagen · Entwurf“.
 
-**A step says what Piloti set out to do, then shows each call as a row.** The
-sentence under „Schritt 1 · Suchen“ is Piloti's own, when it wrote one. Under it
+**A step says what ARCHOS set out to do, then shows each call as a row.** The
+sentence under „Schritt 1 · Suchen“ is ARCHOS's own, when it wrote one. Under it
 stands one row per call: the verb muted, then what it was done to, then what came
 back on the right — „Sucht wörtlich „Brandabschnitt“ im Projekt · 14 Treffer in
 3 Dokumenten“, „Liest Einreichplan EG.pdf, S. 2–3 · 2 Stellen“. A search that
@@ -220,7 +220,7 @@ fold into one row („Liest 7 Dokumente ×7“; searches carry no verb: „4 Suc
 im RIS ×4“); a step of more than five rows shows the worst three and „+N
 weitere“. No row carries a time: no one checks an answer by its seconds.
 
-**Rows over your documents name the folder, never a path.** When Piloti opens a
+**Rows over your documents name the folder, never a path.** When ARCHOS opens a
 folder, looks for files by name, searches the wording or reads a document, the
 row names the place as you do: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“,
 „Sucht im Projekt nach PDF-Dateien · 7 Dateien“, „Durchsucht 03 Einreichung
@@ -241,9 +241,9 @@ not there reads „nicht gefunden“; a folder you may not open reads exactly th
 same, so the Herleitung never confirms it exists. A folder that is there and
 holds nothing, such as a new project or a chat without uploads, reads „leer“.
 A listing or a search for file names returns no source card, so its row is no
-button. What Piloti writes into its drafts or reads from a skill draws no row.
+button. What ARCHOS writes into its drafts or reads from a skill draws no row.
 
-**The automatic first search has no row.** When Piloti searches before it
+**The automatic first search has no row.** When ARCHOS searches before it
 starts thinking (the prefetch), what it found joins the first step's sources
 like any other.
 
@@ -291,12 +291,12 @@ the person presses send, so the draft is written under their permissions and
 their audit actor, exactly as if they had typed it.
 
 The empty chat in a project says the same thing in one sentence, because
-otherwise the only people who find out that Piloti writes are the ones who
+otherwise the only people who find out that ARCHOS writes are the ones who
 happen to phrase a request as a commission.
 
 ## How an answer arrives
 
-Piloti writes the answer on screen while the model writes it. Nothing waits for
+ARCHOS writes the answer on screen while the model writes it. Nothing waits for
 the end.
 
 - **Text streams.** Each paragraph appears as it is written.
@@ -309,7 +309,7 @@ the end.
 - **The finished answer stays**, except that a corrected quotation takes the
   source's wording (see below). It is not otherwise replaced when the stream
   ends.
-- **Text written before a lookup can be withdrawn.** When Piloti starts writing
+- **Text written before a lookup can be withdrawn.** When ARCHOS starts writing
   and then decides to look something up, that first text goes and the answer
   continues from the lookup.
 - **Quotes are checked against the source.** A slightly misquoted passage is
@@ -323,9 +323,9 @@ the end.
   shares of one whole each become a diagram.
 - **A drawing can be reworked by hand.** Inside a project, a drawn process or
   outline offers „Als Skizze bearbeiten". It opens a drawing canvas
-  (Excalidraw) with Piloti's drawing as the starting point: move boxes, add
+  (Excalidraw) with ARCHOS's drawing as the starting point: move boxes, add
   steps, notes and freehand lines, then „Im Projekt ablegen" files your version
-  as an SVG and a PDF. Both files say „Von Piloti entworfen, von einer Person
+  as an SVG and a PDF. Both files say „Von ARCHOS entworfen, von einer Person
   bearbeitet" and „nicht maßstäblich, ohne Maßangabe". A sketch is never a
   measured drawing, whatever is drawn on it. Each save files a new document;
   a filed sketch cannot be reopened yet. Closing with unsaved changes asks
@@ -358,7 +358,7 @@ against the Bodenfläche (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). The card is headed
 - **Change an input and the card is recomputed**: the Rechenweg, the result and
   the verdict, as soon as you pause, leave the field or press Enter. The arrow
   keys step the value at once. Type a comma or a point, either works. Nothing is
-  sent to Piloti and no new answer is written.
+  sent to ARCHOS and no new answer is written.
 - **A changed value is marked „Ihre Annahme"** beside the field with the
   source's value, beside every verdict resting on it, and beside the verdict at
   the top of the card. **Zurücksetzen** restores every source value.
@@ -433,9 +433,9 @@ viewer you were looking at stays on screen while the conversation loads, and
 hands over to the peek when it arrives. It never blinks out and leaves you
 looking at the file grid mid-move.
 
-**What is in the peek.** The document, and under it what Piloti made of it —
+**What is in the peek.** The document, and under it what ARCHOS made of it —
 the indexed summary, clamped to a few lines with the rest one click away. That
-is the answer to "does Piloti understand this file, and as what", which is the
+is the answer to "does ARCHOS understand this file, and as what", which is the
 question worth asking before you ask it anything else; it used to live only in
 the enlarged view. A document with no summary yet shows only itself.
 
@@ -448,7 +448,7 @@ clears the composer's subject (with an undo, like every other ending here).
 **When the file is not ready.** The peek exists because that document is what
 your next question is about, so it says when it cannot be one: a document still
 being indexed (or one whose indexing failed) carries a line under its name
-saying that Piloti cannot cite it. It clears itself the moment indexing
+saying that ARCHOS cannot cite it. It clears itself the moment indexing
 finishes — the peek re-asks while the status can still change — so the strip is
 never stale. A failure will not clear itself, so that one carries **Details**,
 which opens the enlarged view where the ingestion error and its retry live.
@@ -463,22 +463,22 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 - **Im Büro nachsehen / Check your projects: has the office dealt with this before?** The viewer's header offers it for the cited passage, and a selection offers it next to the copy action (the Files preview offers it for a selection too). A panel beside the document answers in one line first, for example **In 3 Projekten und der Büroablage gefunden**, then lists the places: this project, your other projects you may read (closed ones marked *abgeschlossen*), and the Büroablage last. Each passage is shown as a quotation with the document, its Fassung and the page; the list is ordered by how close the passage is, and no score is shown. Click one and its document opens in the same viewer at that passage, marked; **Zurück zur Fundstelle** brings back the document you started from. The document you started from is never listed, nor a replaced Fassung, nor a file still held by the content check. A document still being checked offers no search until its check is done.
 - **The toolbar says which page you are on**, not how long the file is, and it follows you as you scroll — so a passage you have scrolled away from still has an address. **Zur Fundstelle / Go to passage** takes you back to the marked one.
 - **The cited passage is marked in the document itself.** When the citation carries passage text, the viewer finds that passage in the page's text layer, scrolls to it, and lights it up — a short pulse on arrival that settles into a highlighter mark in the source's own tint. A **Zur Fundstelle / Go to passage** button in the viewer toolbar brings you back to it after scrolling away or after jumping to another Fundstelle on the rail. Matching is deliberately conservative: it tolerates line-break hyphenation, ligatures, punctuation and German inflection, but when a page offers two passages that fit equally well it marks neither and simply opens at the page — a mark on the wrong sentence is worse than no mark. When the cited page does not hold the passage at all, the page either side is searched as well, because the page number counts sheets and a document with a cover page numbers itself differently; when those come up empty too, one more page out in each direction, for a title sheet plus a table of contents. Further than that is a different passage that happens to read alike, and is not looked at. Scanned pages with no text layer open at the page without a mark. Whenever the search comes up empty on every page it could have looked at, the viewer says so in the toolbar rather than leaving you to guess whether the passage is missing, the page is wrong, or the feature is broken.
-- **A citation of an older Fassung says so.** When the cited document is a Fassung a person has since replaced by a newer one (a link confirmed in Dateien, ADR-0099), the source's preview popover adds one muted line, **Ältere Fassung – aktuell: \<Name\>** (English: *Older revision. Current:*). The name is a button: it opens the current Fassung beside the conversation. The citation itself is unchanged, because an older Fassung is still read when you ask for it; the line only keeps you from relying on a replaced Fassung unawares. It names only a Fassung you may open yourself: a newer file held back by the content check or filed in a folder you cannot open is not named. A document nobody replaced, and a suggestion Piloti made that nobody confirmed, show no line.
-- **Ask for a document's history.** „Welche Fassungen gibt es vom EG-Grundriss?“ and „Was hat sich zwischen Index B und C geändert?“ are answered from the whole chain of Fassungen, newest first, with each one's Index and date (read from the file name and, where there is one, the Plankopf), upload date and the line saying what changed. Answers otherwise use the newest Fassung and name an older one only when you ask for it or Piloti compares; opening an older one by name says in the first line that it is the older and which one is current. The change lines are Piloti's summaries, not a comparison of the files: for a detail it reads both Fassungen.
+- **A citation of an older Fassung says so.** When the cited document is a Fassung a person has since replaced by a newer one (a link confirmed in Dateien, ADR-0099), the source's preview popover adds one muted line, **Ältere Fassung – aktuell: \<Name\>** (English: *Older revision. Current:*). The name is a button: it opens the current Fassung beside the conversation. The citation itself is unchanged, because an older Fassung is still read when you ask for it; the line only keeps you from relying on a replaced Fassung unawares. It names only a Fassung you may open yourself: a newer file held back by the content check or filed in a folder you cannot open is not named. A document nobody replaced, and a suggestion ARCHOS made that nobody confirmed, show no line.
+- **Ask for a document's history.** „Welche Fassungen gibt es vom EG-Grundriss?“ and „Was hat sich zwischen Index B und C geändert?“ are answered from the whole chain of Fassungen, newest first, with each one's Index and date (read from the file name and, where there is one, the Plankopf), upload date and the line saying what changed. Answers otherwise use the newest Fassung and name an older one only when you ask for it or ARCHOS compares; opening an older one by name says in the first line that it is the older and which one is current. The change lines are ARCHOS's summaries, not a comparison of the files: for a detail it reads both Fassungen.
 - **Anything unresolvable** (unknown document, non-previewable file type) shows a light popover with the source's origin, title, and passage instead — never a broken viewer. Chips with nothing beyond their label stay plain.
-- **Neben dem Chat öffnen / Open beside the chat.** The viewer dialog of a project or Büroablage document offers to open the same place in the peek beside the conversation instead: the page, with the passage or the box marked. It is the same move Piloti makes on its own (below), so it opens nothing you could not open from Dateien. It is offered only while there is room beside the chat; the platform corpus and a file attached to the chat have no peek and do not offer it.
+- **Neben dem Chat öffnen / Open beside the chat.** The viewer dialog of a project or Büroablage document offers to open the same place in the peek beside the conversation instead: the page, with the passage or the box marked. It is the same move ARCHOS makes on its own (below), so it opens nothing you could not open from Dateien. It is offered only while there is room beside the chat; the platform corpus and a file attached to the chat have no peek and do not offer it.
 
-## Piloti takes you to the place
+## ARCHOS takes you to the place
 
 When an answer rests on one place in a document, „Laut Baubeschreibung S. 4 …“,
-Piloti can take you there: once the answer has arrived, the document opens in
+ARCHOS can take you there: once the answer has arrived, the document opens in
 the peek beside the chat at that page, with the passage or the box marked
 (ADR-0144). Under the answer a short row says what it opened.
 **Zurücknehmen / Undo** puts the viewer back as it was; if nothing was open, it
 closes. If you have opened another document since, it leaves yours alone and
 says so.
 
-What Piloti may do is a short, fixed list: open a document at a page, mark a
+What ARCHOS may do is a short, fixed list: open a document at a page, mark a
 passage on a page, mark a box on a page, offer the comparison of two Fassungen,
 and offer a building model with one element selected. Nothing else moves, and
 at most one place opens on its own per answer.
@@ -487,7 +487,7 @@ at most one place opens on its own per answer.
   your page reads the document in your own session, the way Dateien does. If
   you may not see it, nothing moves and the row says only that the document is
   not available.
-- **Not before the answer.** Nothing moves while Piloti is still working. If the
+- **Not before the answer.** Nothing moves while ARCHOS is still working. If the
   answer fails or you stop it, nothing moves at all.
 - **Only your own screen, only while you are here.** It moves the viewer of the
   person who asked, in the tab they asked in. Someone watching a shared
@@ -501,10 +501,10 @@ at most one place opens on its own per answer.
   waits for a pause; if none comes, the row offers it instead.
 - **You can turn it off.** The switch **Automatisch öffnen / Open automatically**
   under the answer, and the same switch on your profile page (**Stellen im
-  Viewer / Places in the viewer**), decide whether Piloti opens places on its
+  Viewer / Places in the viewer**), decide whether ARCHOS opens places on its
   own; off, the row offers each one with **Anzeigen / Show**. The choice is kept
   in this browser. With reduced motion set in your system, it starts off.
-- **On a phone** there is no room beside the chat, so Piloti does not propose
+- **On a phone** there is no room beside the chat, so ARCHOS does not propose
   places there at all. A place offered on a wider screen that you show after
   the window became narrow opens over the chat instead.
 - **A file attached to the chat** never opens this way; cite it, or open it from
@@ -513,13 +513,13 @@ at most one place opens on its own per answer.
 Other agents connected to your office cannot do this: the agent door does not
 offer your screen to anyone.
 
-## What Piloti noted ("Piloti hat sich gemerkt")
+## What ARCHOS noted ("ARCHOS hat sich gemerkt")
 
-When an answer added something to the project's memory, its footer says so on the answer itself, on the row with the copy actions and **Details**, never inside them: a small chip, **Piloti hat sich gemerkt · 2** (*Piloti noted*). One tap or Enter opens the list of what this turn wrote, each note verbatim with its kind (Entscheidung, Vorgabe, Fakt …) and when it was written: *während der Antwort notiert* for a note you accepted while Piloti answered, *nach der Antwort ergänzt* for one Piloti added after the answer was finished. The chip counts only this answer's notes, not the conversation's, and an answer that noted nothing shows none.
+When an answer added something to the project's memory, its footer says so on the answer itself, on the row with the copy actions and **Details**, never inside them: a small chip, **ARCHOS hat sich gemerkt · 2** (*ARCHOS noted*). One tap or Enter opens the list of what this turn wrote, each note verbatim with its kind (Entscheidung, Vorgabe, Fakt …) and when it was written: *während der Antwort notiert* for a note you accepted while ARCHOS answered, *nach der Antwort ergänzt* for one ARCHOS added after the answer was finished. The chip counts only this answer's notes, not the conversation's, and an answer that noted nothing shows none.
 
 When a note **corrected** an earlier one, the chip reads **Gedächtnis aktualisiert** (*Memory updated*) with its own symbol. The list then shows the correction first, marked *Korrigiert*, with the note it replaced quoted and struck through (*Ersetzt: …*), because something you may have relied on is gone. You manage and delete notes in the project memory.
 
-The chip shows what an answer wrote, not what it read: Piloti does not yet report which remembered notes an answer drew on.
+The chip shows what an answer wrote, not what it read: ARCHOS does not yet report which remembered notes an answer drew on.
 
 ## Human-in-the-loop (HITL)
 
@@ -535,7 +535,7 @@ When the agent needs input — clarification, approval, or a choice — it sends
 
 The user responds through the chat UI; the response is sent back via the WebSocket's `sendInteractionResponse()` method. Pending interactions survive page refreshes through localStorage persistence and `pendingInteraction` state restoration.
 
-The answered prompt flips to "received" immediately (optimistic, before any server round-trip), and once the reply is on the wire a "Piloti antwortet …" cue appears at the bottom of the thread until the next thing streams in — a clarifying follow-up, the plan's answer, or the final response — so an answered prompt never sits there looking finished while the agent is still working on it.
+The answered prompt flips to "received" immediately (optimistic, before any server round-trip), and once the reply is on the wire a "ARCHOS antwortet …" cue appears at the bottom of the thread until the next thing streams in — a clarifying follow-up, the plan's answer, or the final response — so an answered prompt never sits there looking finished while the agent is still working on it.
 
 ## Data source toggles
 
@@ -548,7 +548,7 @@ Enabled data source IDs are tracked per conversation in `enabledDataSourceIds` a
 
 ## Searching other projects
 
-Piloti knows the office's finished projects and looks into them on its own
+ARCHOS knows the office's finished projects and looks into them on its own
 when your question calls for it: „Wie haben wir die Fluchttreppe beim letzten
 GK4-Holzbau gelöst?“, „Was hat die Behörde bei ähnlichen Projekten verlangt?“,
 or a question this project's own documents do not answer. You do not have to
@@ -561,7 +561,7 @@ project's brief. What it states from a brief (address, start, Bauweise) is
 cited as „Projektdaten · ‹Projekt›“, like any other source. While it searches, the status line says „in anderen
 Projekten“; once the answer is done, the Herleitung keeps an „Andere Projekte“
 step. The same list, with what each project shares with this one, is the
-project's [Ähnliche Projekte](projects.md#similar-projects) page. Piloti also finds what other projects **decided**: the decisions and
+project's [Ähnliche Projekte](projects.md#similar-projects) page. ARCHOS also finds what other projects **decided**: the decisions and
 constraints their project memory recorded while they ran („Stiegenhaus in
 Stahlbeton, weil das Gutachten nur so die Abweichung zuließ“). These often
 say why, which a document rarely does. They come first in the answer, cited
@@ -570,10 +570,10 @@ that project on its chip
 („Detail Traufe · Wohnbau Graz“), and opens the document in that project. Its
 preview labels it „Präzedenzfall“ rather than „Projektwissen“, with that project's
 status („laufend“ or „abgeschlossen“) and its Bundesland, and warns when the Land
-is not this project's. Piloti treats such a source as a precedent, not as a
+is not this project's. ARCHOS treats such a source as a precedent, not as a
 rule, and says when the regulations may have changed since.
 
-What it may look at is decided by Piloti's server, never by the model, and by
+What it may look at is decided by ARCHOS's server, never by the model, and by
 **everyone who reads the chat**, not just by you:
 
 - in a chat only you can see: every project you may chat in, and inside each,
@@ -582,10 +582,10 @@ What it may look at is decided by Piloti's server, never by the model, and by
 - in a chat shared with colleagues: the closed projects, and the running ones
   every one of them may open; no folder with its own access list;
 - in a chat the whole project can see: the closed projects;
-- never the project this chat belongs to (Piloti searches that one anyway);
-- one search covers up to forty projects; Piloti continues when it needs to.
+- never the project this chat belongs to (ARCHOS searches that one anyway);
+- one search covers up to forty projects; ARCHOS continues when it needs to.
 
-So everything Piloti shows in a chat is something everyone already in it may
+So everything ARCHOS shows in a chat is something everyone already in it may
 read.
 
 **Closed projects change nothing about your chat.** The whole office may read a

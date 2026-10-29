@@ -34,6 +34,7 @@ import { applyProposalRequestSchema, proposalListQueryShape } from '@/lib/propos
 import { listSessionDocumentsQuerySchema } from '@/lib/session-documents/session-documents-wire'
 import { updatePreferencesSchema } from '@/lib/user-preferences/preferences-wire'
 import type { AgentOperation } from '../operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const resourceParams = z.object({
   resourceType: z.enum(SHAREABLE_RESOURCE_TYPES).describe('The kind of shareable resource.'),
@@ -335,7 +336,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List who can be mentioned in a conversation',
     description:
-      'Who a message here may mention (people and Piloti). Use these `targetId` values in conversation-message-add, never typed names.',
+      'Who a message here may mention (people and ' + PRODUCT_NAME + '). Use these `targetId` values in conversation-message-add, never typed names.',
     method: 'GET',
     path: '/api/conversations/[id]/mention-candidates',
     params: conversationParams,
@@ -362,7 +363,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List open proposed changes on a shelf',
     description:
-      'Piloti’s open proposals (file operations, notes, profile changes) with the documents they name, newest first. Give ' +
+      PRODUCT_NAME + '’s open proposals (file operations, notes, profile changes) with the documents they name, newest first. Give ' +
       '`projectId` (from project-list) or `shelf`, and optionally `kind`. Page with `nextCursor`. Ids feed proposal-get; the person decides each.',
     method: 'GET',
     path: '/api/proposals',
@@ -410,9 +411,9 @@ export const collaborationOperations = [
   {
     name: 'agent-change-undo',
     domain: 'collaboration',
-    summary: 'Undo a change Piloti made',
+    summary: 'Undo a change ' + PRODUCT_NAME + ' made',
     description:
-      'Reverses one change Piloti applied (id from conversation-message-changes); 409 `moved-on` if the object changed since, or `already-undone`. Runs with the person’s rights.',
+      'Reverses one change ' + PRODUCT_NAME + ' applied (id from conversation-message-changes); 409 `moved-on` if the object changed since, or `already-undone`. Runs with the person’s rights.',
     method: 'POST',
     path: '/api/piloti-changes/[id]/undo',
     params: z.object({ id: z.string().describe('The change id (a UUID), from conversation-message-changes.') }),

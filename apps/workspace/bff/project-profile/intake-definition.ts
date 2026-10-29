@@ -30,6 +30,7 @@ import { TECHNOLOGY_STAGE } from './intake-stages/technology'
 import { PROCEDURE_STAGE } from './intake-stages/procedure'
 import { CONTEXT_STAGE } from './intake-stages/context'
 import type { ProjectIntakeDefinition } from './intake-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
   version: 5,
@@ -59,7 +60,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
       title: 'Projektgrundlagen',
       scope: 'project',
       description:
-        'Alles, was schon existiert. Piloti nutzt diese Unterlagen als Grundlage für jede Antwort zu diesem Projekt — und sagt Ihnen, was noch fehlt.',
+        'Alles, was schon existiert. ' + PRODUCT_NAME + ' nutzt diese Unterlagen als Grundlage für jede Antwort zu diesem Projekt — und sagt Ihnen, was noch fehlt.',
       questions: [],
     },
     {
@@ -67,7 +68,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
       title: 'Zusammenfassung',
       scope: 'project',
       description:
-        'Ihre Angaben im Überblick. Prüfen Sie alles, bevor das Projektprofil an Piloti übergeben wird.',
+        'Ihre Angaben im Überblick. Prüfen Sie alles, bevor das Projektprofil an ' + PRODUCT_NAME + ' übergeben wird.',
       questions: [],
     },
   ],

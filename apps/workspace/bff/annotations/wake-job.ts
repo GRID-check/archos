@@ -83,7 +83,7 @@ function questionOf(payload: AgentWakePayload, mark: AnnotationRecord): string |
 
 /** The line the thread keeps of the trigger: who, which mark, what they wrote. */
 function triggerLine(payload: AgentWakePayload, mark: AnnotationRecord, who: string, text: string): string {
-  if (payload.trigger === 'assigned') return `${who} hat Anmerkung ${mark.number} an Piloti delegiert: „${text}“`
+  if (payload.trigger === 'assigned') return `${who} hat Anmerkung ${mark.number} an ${PRODUCT_NAME} delegiert: „${text}“`
   return `${who} in Anmerkung ${mark.number}: „${text}“`
 }
 

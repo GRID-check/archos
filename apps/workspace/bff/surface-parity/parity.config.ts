@@ -23,6 +23,7 @@
  */
 
 import type { InternalAnnotationRequest } from '@/lib/annotations/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** A way of showing a capability. At least one field; `component` is a path under `src/`, the spec checks it exists. */
 export interface Rendering {
@@ -75,7 +76,7 @@ export const SURFACE_CAPABILITIES = {
     chat: { card: 'look', step: 'look', component: 'features/chat/components/reasoning/LookStepRow.tsx' },
   },
   point: {
-    summary: 'Move Piloti’s pointer to a place on a page for everyone in the document',
+    summary: 'Move ' + PRODUCT_NAME + '’s pointer to a place on a page for everyone in the document',
     tool: 'canvas__point',
     annotationOp: 'point',
     canvas: { component: `${REVIEW}/review-page-layer.tsx` },
@@ -133,7 +134,7 @@ export const SURFACE_CAPABILITIES = {
     summary: 'Reword or remove a reply',
     operations: ['annotation-reply-update', 'annotation-reply-delete'],
     canvas: { component: `${REVIEW}/thread-card.tsx` },
-    chat: { exempt: 'Piloti has no tool to edit a reply: its own reply is final and a person’s is theirs to change' },
+    chat: { exempt: PRODUCT_NAME + ' has no tool to edit a reply: its own reply is final and a person’s is theirs to change' },
   },
   readMarks: {
     summary: 'Read the marks of a document or a project',
@@ -157,10 +158,10 @@ export const SURFACE_CAPABILITIES = {
     chat: { exempt: 'Who is in a document has no meaning in a conversation; a read whose result is the answer' },
   },
   leave: {
-    summary: 'Piloti leaves the document’s room when its turn ends',
+    summary: PRODUCT_NAME + ' leaves the document’s room when its turn ends',
     annotationOp: 'leave',
     canvas: { component: `${REVIEW}/review-page-layer.tsx` },
-    chat: { exempt: 'The turn harness’s own clean-up, not a capability of the person or of Piloti' },
+    chat: { exempt: 'The turn harness’s own clean-up, not a capability of the person or of ' + PRODUCT_NAME },
   },
   compareRevisions: {
     summary: 'Compare two Fassungen of a document: what changed on a page, boxed',
@@ -170,12 +171,12 @@ export const SURFACE_CAPABILITIES = {
     chat: { card: 'revision_compare', component: 'features/cards/components/RevisionCompareCard.tsx' },
   },
   askAboutBox: {
-    summary: 'Draw a box on a page and ask about it; Piloti answers in context of that box',
+    summary: 'Draw a box on a page and ask about it; ' + PRODUCT_NAME + ' answers in context of that box',
     canvas: { component: 'features/documents/hooks/use-canvas-ask.ts' },
     chat: { component: 'features/chat/lib/canvas-bridge.ts' },
   },
   readSelectedRegion: {
-    summary: 'Piloti reads what the person selected or points at when the question says "here"',
+    summary: PRODUCT_NAME + ' reads what the person selected or points at when the question says "here"',
     tool: 'canvas__room',
     canvas: { component: `${REVIEW}/document-review.tsx` },
     // The review offers its selection to the chat's own turns (`registerCanvasFocusProvider`); the turn sends it as `focus_region`.

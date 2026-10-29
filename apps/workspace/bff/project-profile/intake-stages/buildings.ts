@@ -2,6 +2,7 @@
 
 import { FOUND_IN } from '../intake-options'
 import type { ProjectIntakeStage } from '../intake-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const BUILDINGS_STAGE: ProjectIntakeStage = {
   id: 'C',
@@ -299,7 +300,7 @@ export const BUILDINGS_STAGE: ProjectIntakeStage = {
       label: 'Gebäudeklasse',
       type: 'info_placeholder',
       derives: 'building_class',
-      hint: 'Die Gebäudeklasse folgt aus Fluchtniveau, Geschoßanzahl, Fläche und Nutzung — immer auf Basis der Zielgeometrie. Sie wird hier noch nicht automatisch gesetzt. Solange sie im Brief offen ist, fragt Piloti nach, bevor eine Anforderung zitiert wird, die an der Klasse hängt.',
+      hint: 'Die Gebäudeklasse folgt aus Fluchtniveau, Geschoßanzahl, Fläche und Nutzung — immer auf Basis der Zielgeometrie. Sie wird hier noch nicht automatisch gesetzt. Solange sie im Brief offen ist, fragt ' + PRODUCT_NAME + ' nach, bevor eine Anforderung zitiert wird, die an der Klasse hängt.',
       conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
     },
   ],

@@ -66,6 +66,8 @@ def _load_norm_registry_module():
             stub = types.ModuleType(package)
             stub.__path__ = []  # package marker: no real __init__ is executed
             sys.modules[package] = stub
+    # source_kinds reads the product's name (stdlib only, beside it), so it loads first.
+    _standalone_module("agent.common.brand", common_dir / "brand.py")
     # norm_registry imports source_kinds, which is stdlib-only; loaded the same
     # way, or the builder dies on import before it verifies anything.
     _standalone_module("agent.common.source_kinds", common_dir / "source_kinds.py")

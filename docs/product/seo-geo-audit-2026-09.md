@@ -1,3 +1,4 @@
+<!-- history: 2026-10-28 -->
 # SEO and GEO audit of piloti.at, September 2026
 
 What we found when we audited piloti.at for search (Google, Bing) and for

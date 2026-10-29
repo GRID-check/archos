@@ -53,6 +53,7 @@ import { type DoorResource, acceptedAudiences, authkitDomain, authkitIssuer, doo
 import { SENSITIVITIES, type Sensitivity } from './operation'
 import type { AgentDoor } from './exposure'
 import { hasHeader, readHeader } from '@/lib/http/legacy-header-names'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * Who acts, in the words of OAuth token exchange (RFC 8693): the SUBJECT is the
@@ -232,7 +233,7 @@ async function externalPrincipal(request: Request, deps: PrincipalDeps): Promise
   if (!organizationId) {
     return refuse(
       403,
-      'The token is not bound to an organization. Sign in to Piloti with an organization and authorize the client again.',
+      'The token is not bound to an organization. Sign in to ' + PRODUCT_NAME + ' with an organization and authorize the client again.',
     )
   }
 
@@ -278,7 +279,7 @@ async function platformPrincipal(auth: AuthInfo, userId: string, organizationId:
   if (organizationId !== platformOrganizationId) {
     return refuse(
       403,
-      'The platform door takes tokens of the GRID Platform organization only. Sign in to Piloti in that organization and authorize the client again.',
+      'The platform door takes tokens of the GRID Platform organization only. Sign in to ' + PRODUCT_NAME + ' in that organization and authorize the client again.',
     )
   }
   if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.platformAgentMcp, organizationId))) {
@@ -337,7 +338,7 @@ export async function resolvePrincipal(
   deps: PrincipalDeps = {},
 ): Promise<AgentPrincipal | AuthChallenge> {
   if (hasHeader(request.headers, INTERNAL_TOKEN_HEADER)) {
-    if (doorOf(request) === 'platform') return refuse(403, 'Piloti does not use the platform door.')
+    if (doorOf(request) === 'platform') return refuse(403, PRODUCT_NAME + ' does not use the platform door.')
     return agentPrincipal(request)
   }
   return externalPrincipal(request, deps)

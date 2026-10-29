@@ -96,19 +96,19 @@ const SENSITIVE = {
   piloti: false,
   reason:
     'its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under ' +
-    'the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs',
+    'the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs',
 } as const satisfies Exposure
 
 const DECISION = {
   external: true,
   piloti: false,
-  reason: 'the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them',
+  reason: 'the person decides a proposal, or undoes a change, on its own card; the agent never decides it for them',
 } as const satisfies Exposure
 
 const ASK = {
   external: true,
   piloti: false,
-  reason: 'how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)',
+  reason: 'how another agent consults the workspace’s agent; the agent never asks itself (ADR-0124, the recursion lock)',
 } as const satisfies Exposure
 
 /** A control on an MCP Apps card (ADR-0142): the person presses it, the model never sees it, Piloti never decides. */
@@ -117,17 +117,17 @@ const APP_ONLY = {
   piloti: false,
   app: true,
   reason:
-    'pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: ["app"]`, so ' +
+    'pressed by the person on the agent’s card inside their own assistant (an MCP App); listed with `visibility: ["app"]`, so ' +
     'the host keeps it from the model, and it runs the catalog operation it names through that operation’s route',
 } as const satisfies Exposure
 
-const NATIVE_READ = 'Piloti reads with this native tool itself; the door offers it to outside agents'
+const NATIVE_READ = 'The agent reads with this native tool itself; the door offers it to outside agents'
 const MEMORY =
-  'Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
-const TASK = 'Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms'
+  'The agent keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
+const TASK = 'The agent proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms'
 const SKILL_READ =
-  'Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents'
-const CANVAS ='Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
+  'The agent is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents'
+const CANVAS ='The agent marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
 
 /**
  * Every operation, in catalog order (domain, then name), then the read tools,
@@ -175,12 +175,12 @@ export const EXPOSURE = {
   'project-upload-screening-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'a project’s upload screening override; how Piloti treats uploads, set by a person' },
+    withheld: { category: 'product-config', reason: 'a project’s upload screening override; how the agent treats uploads, set by a person' },
   },
   'project-upload-screening-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'a project’s upload screening override; how Piloti treats uploads, set by a person' },
+    withheld: { category: 'product-config', reason: 'a project’s upload screening override; how the agent treats uploads, set by a person' },
   },
 
   // documents
@@ -327,7 +327,7 @@ export const EXPOSURE = {
   'conversation-message-usage': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'what one Piloti answer cost; billing, not office work' },
+    withheld: { category: 'product-config', reason: 'what one of the agent’s answers cost; billing, not office work' },
   },
   'conversation-read-mark': {
     external: false,
@@ -453,7 +453,7 @@ export const EXPOSURE = {
   'skill-curated-set-enabled': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'switches a platform-curated skill of Piloti’s on or off; product configuration' },
+    withheld: { category: 'product-config', reason: 'switches one of the agent’s platform-curated skills on or off; product configuration' },
   },
   'skill-delete': OFFERED,
   'skill-get': { external: true, piloti: false, reason: SKILL_READ },
@@ -492,7 +492,7 @@ export const EXPOSURE = {
   'bim-model-query': {
     external: true,
     piloti: 'native:ifc_query',
-    reason: 'Piloti counts and reads the model with its own `ifc_query`, which says what the export cannot answer',
+    reason: 'The agent counts and reads the model with its own `ifc_query`, which says what the export cannot answer',
   },
   'bim-model-source-get': OFFERED,
   'diagram-file': OFFERED,
@@ -506,33 +506,33 @@ export const EXPOSURE = {
   'organization-budget-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'spend limits on Piloti itself; a refused call says when one stops work' },
+    withheld: { category: 'product-config', reason: 'spend limits on the agent itself; a refused call says when one stops work' },
   },
   'organization-budget-remove': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'spend limits on Piloti itself; product configuration' },
+    withheld: { category: 'product-config', reason: 'spend limits on the agent itself; product configuration' },
   },
   'organization-budget-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'spend limits on Piloti itself; product configuration' },
+    withheld: { category: 'product-config', reason: 'spend limits on the agent itself; product configuration' },
   },
   'organization-deleted-folder-content-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'what Piloti keeps of a purged folder; a retention policy a person sets' },
+    withheld: { category: 'product-config', reason: 'what the agent keeps of a purged folder; a retention policy a person sets' },
   },
   'organization-deleted-folder-content-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'what Piloti keeps of a purged folder; a retention policy a person sets' },
+    withheld: { category: 'product-config', reason: 'what the agent keeps of a purged folder; a retention policy a person sets' },
   },
   'organization-download-log-list': OFFERED,
   'organization-download-log-retention-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'how long Piloti keeps the download log; a retention policy a person sets' },
+    withheld: { category: 'product-config', reason: 'how long the agent keeps the download log; a retention policy a person sets' },
   },
   'office-conventions-decide': OFFERED,
   'office-conventions-list': OFFERED,
@@ -540,37 +540,37 @@ export const EXPOSURE = {
   'organization-instructions-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the standing instructions shape every Piloti answer; they configure the product, and Piloti already reads them' },
+    withheld: { category: 'product-config', reason: 'the standing instructions shape every answer of the agent; they configure the product, and the agent already reads them' },
   },
   'organization-instructions-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the standing instructions shape every Piloti answer; configuring the product is a person’s act' },
+    withheld: { category: 'product-config', reason: 'the standing instructions shape every answer of the agent; configuring the product is a person’s act' },
   },
   'organization-llm-credential-create': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the LLM provider keys Piloti runs on; product configuration and a credential' },
+    withheld: { category: 'product-config', reason: 'the LLM provider keys the agent runs on; product configuration and a credential' },
   },
   'organization-llm-credential-list': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the LLM provider keys Piloti runs on; product configuration and a credential' },
+    withheld: { category: 'product-config', reason: 'the LLM provider keys the agent runs on; product configuration and a credential' },
   },
   'organization-llm-credential-revoke': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the LLM provider keys Piloti runs on; product configuration and a credential' },
+    withheld: { category: 'product-config', reason: 'the LLM provider keys the agent runs on; product configuration and a credential' },
   },
   'organization-llm-credential-verify': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the LLM provider keys Piloti runs on; product configuration and a credential' },
+    withheld: { category: 'product-config', reason: 'the LLM provider keys the agent runs on; product configuration and a credential' },
   },
   'organization-llm-provider-mode-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'whether Piloti runs on the platform’s or the office’s provider key; product configuration' },
+    withheld: { category: 'product-config', reason: 'whether the agent runs on the platform’s or the office’s provider key; product configuration' },
   },
   'organization-member-list': OFFERED,
   'organization-memory-create': { external: true, piloti: 'native:remember', reason: MEMORY },
@@ -580,22 +580,22 @@ export const EXPOSURE = {
   'organization-model-config-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'which models Piloti runs on; product configuration' },
+    withheld: { category: 'product-config', reason: 'which models the agent runs on; product configuration' },
   },
   'organization-model-config-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'which models Piloti runs on; product configuration' },
+    withheld: { category: 'product-config', reason: 'which models the agent runs on; product configuration' },
   },
   'organization-model-config-version-activate': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'which models Piloti runs on; product configuration' },
+    withheld: { category: 'product-config', reason: 'which models the agent runs on; product configuration' },
   },
   'organization-model-config-version-list': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the history of which models Piloti ran on; product configuration' },
+    withheld: { category: 'product-config', reason: 'the history of which models the agent ran on; product configuration' },
   },
   'organization-model-search': {
     external: false,
@@ -609,28 +609,28 @@ export const EXPOSURE = {
   'organization-settings-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'how Piloti works for the office (language, effort and other defaults); a person sets it in Settings' },
+    withheld: { category: 'product-config', reason: 'how the agent works for the office (language, effort and other defaults); a person sets it in Settings' },
   },
   'organization-settings-update': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'how Piloti works for the office (language, effort and other defaults); a person sets it in Settings' },
+    withheld: { category: 'product-config', reason: 'how the agent works for the office (language, effort and other defaults); a person sets it in Settings' },
   },
   'organization-storage-get': OFFERED,
   'organization-upload-screening-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the office’s upload screening policy; how Piloti treats uploads, set by a person' },
+    withheld: { category: 'product-config', reason: 'the office’s upload screening policy; how the agent treats uploads, set by a person' },
   },
   'organization-upload-screening-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'the office’s upload screening policy; how Piloti treats uploads, set by a person' },
+    withheld: { category: 'product-config', reason: 'the office’s upload screening policy; how the agent treats uploads, set by a person' },
   },
   'organization-usage-get': {
     external: false,
     piloti: false,
-    withheld: { category: 'product-config', reason: 'what the office spent on Piloti itself, by model and day; billing, not office work' },
+    withheld: { category: 'product-config', reason: 'what the office spent on the agent itself, by model and day; billing, not office work' },
   },
   'organization-usage-notice-get': {
     external: false,
@@ -640,7 +640,7 @@ export const EXPOSURE = {
   'organization-web-search-set': {
     external: false,
     piloti: false,
-    withheld: { category: 'external-service', reason: 'switches the web search provider Piloti answers with; a calling agent has its own web search' },
+    withheld: { category: 'external-service', reason: 'switches the web search provider the agent answers with; a calling agent has its own web search' },
   },
   'organization-zdr-set': {
     external: false,

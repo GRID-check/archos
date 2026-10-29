@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const support = { projects: z.number().int().nonnegative(), of: z.number().int().nonnegative() }
 const key = z.string().min(1).max(300)
@@ -34,8 +35,8 @@ export const decideConventionBodySchema = z.object({
   decision: z
     .enum([...CONVENTION_DECISIONS, 'undecided'])
     .describe(
-      '"confirmed" keeps the line for Piloti even when later counts fall below the threshold; "declined" means ' +
-        'Piloti never uses it again; "undecided" takes an earlier decision back.'
+      '"confirmed" keeps the line for ' + PRODUCT_NAME + ' even when later counts fall below the threshold; "declined" means ' +
+        PRODUCT_NAME + ' never uses it again; "undecided" takes an earlier decision back.'
     ),
 })
 export type DecideConventionBody = z.infer<typeof decideConventionBodySchema>

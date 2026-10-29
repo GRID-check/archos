@@ -45,10 +45,11 @@ import type { DraftMention } from '@/lib/mentions/mention-text'
 import { I18nProvider, useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const ANNA: DraftMention = { targetId: 'user_anna', display: 'Anna Berger' }
 const TOBIAS: DraftMention = { targetId: 'user_tobias', display: 'Tobias Kern' }
-const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: 'Piloti' }
+const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: PRODUCT_NAME }
 
 /**
  * The composer's chrome, reproduced. Only the action row matters for this preview,
@@ -193,7 +194,7 @@ function Previews(): JSX.Element {
 
       <section className="space-y-3">
         <Eyebrow>Person und Piloti erwähnt — beide werden adressiert</Eyebrow>
-        <MockComposer text="@Anna Berger @Piloti bitte gemeinsam prüfen.">
+        <MockComposer text={"@Anna Berger @" + PRODUCT_NAME + " bitte gemeinsam prüfen."}>
           <AddresseeIndicator mentions={[ANNA, AGENT]} awaitingHuman />
         </MockComposer>
       </section>

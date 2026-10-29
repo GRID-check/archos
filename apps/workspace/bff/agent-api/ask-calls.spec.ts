@@ -21,6 +21,7 @@ import { TASKS_EXTENSION } from './ask-calls'
 import { callOperation, validateOperationInput } from './dispatch'
 import { createAgentDoorHandler } from './mcp-server'
 import type { AgentPrincipal } from './principal'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session = {
   userId: 'user_1',
@@ -139,7 +140,7 @@ describe('progress while Piloti answers', () => {
     expect(type).toMatch(/^text\/event-stream/)
     const progress = messages.filter((message) => message.method === 'notifications/progress').map((message) => message.params)
     expect(progress.length).toBeGreaterThan(0)
-    expect(progress[0]).toMatchObject({ progressToken: 'p1', total: 40, message: 'Piloti is working on the answer.' })
+    expect(progress[0]).toMatchObject({ progressToken: 'p1', total: 40, message: `${PRODUCT_NAME} is working on the answer.` })
     const values = progress.map((params) => params?.progress as number)
     expect(values).toEqual([...values].sort((a, b) => a - b))
     expect(new Set(values).size).toBe(values.length)

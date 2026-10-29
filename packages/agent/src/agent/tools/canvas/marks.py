@@ -88,7 +88,7 @@ class AnnotationProposal(BaseModel):
 
 #: Every successful `propose` ends on this. It leads with the negative because that is what a model gets wrong.
 _PROPOSED = (
-    "These are PROPOSALS: NOTHING has been confirmed YET. They appear in the document as proposals from Piloti "
+    "These are PROPOSALS: NOTHING has been confirmed YET. They appear in the document as proposals from you "
     "until a person takes over or dismisses each one individually. Do not say the findings were entered or "
     "recorded; say you proposed them and where the person can review them in the document."
 )
@@ -139,7 +139,7 @@ def _place(item: dict[str, Any]) -> str:
 def _author(item: dict[str, Any]) -> str:
     name = _text(item.get("createdByName")) or "a person"
     if item.get("authorKind") == "piloti":
-        return f"Piloti, for {name}" if item.get("createdByName") else "Piloti"
+        return f"you, for {name}" if item.get("createdByName") else "you"
     return name
 
 
@@ -150,7 +150,7 @@ def _reply_lines(replies: list[Any]) -> list[str]:
     shown = usable[-MAX_LISTED_REPLIES:]
     lines = [f"  Replies ({len(usable)}{', the last ' + str(len(shown)) if len(shown) < len(usable) else ''}):"]
     for reply in shown:
-        who = "Piloti" if reply.get("authorKind") == "piloti" else _text(reply.get("createdByName")) or "person"
+        who = "you" if reply.get("authorKind") == "piloti" else _text(reply.get("createdByName")) or "person"
         lines.append(f"    - {who}: {_clipped(reply.get('body'), MAX_LISTED_REPLY)}")
     return lines
 
@@ -197,7 +197,7 @@ def render_list(body: dict[str, Any]) -> str:
     proposed = sum(1 for item in items if item.get("status") == "proposed")
     lines = [
         f"Annotations on {named}: {len(items)}, of which {live} open or proposed"
-        f" ({proposed} proposals from Piloti that nobody has taken over yet). Locations as shares of the page, "
+        f" ({proposed} proposals from you that nobody has taken over yet). Locations as shares of the page, "
         "origin top left."
     ]
     for item in items[:MAX_LISTED]:
@@ -373,7 +373,7 @@ def reply_body(body: str) -> str:
 
 def render_replied(body: dict[str, Any]) -> str:
     return (
-        f"Your reply is now in the thread of annotation no. {body.get('number')}, marked as a reply from Piloti "
+        f"Your reply is now in the thread of annotation no. {body.get('number')}, marked as your reply "
         f"({body.get('replies')} reply(ies) in the thread)."
     )
 
@@ -510,8 +510,8 @@ def render_updated(body: dict[str, Any]) -> str:
         for change in _field_changes(body.get("before") or {}, body.get("after") or {})
     )
     return (
-        f"Changed in the person's name: annotation no. {number}{_on(body)} ({moved}). Your `note` appears as a reply "
-        "from Piloti in the thread. Give the number and what you changed in your answer."
+        f"Changed in the person's name: annotation no. {number}{_on(body)} ({moved}). Your `note` appears as your reply "
+        "in the thread. Give the number and what you changed in your answer."
     )
 
 
