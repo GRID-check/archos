@@ -234,6 +234,8 @@ a.ui-wordmark:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .ui-rows > h2 { grid-column: 1 / span 4; margin: 0; }
 .ui-rows > .ui-faq, .ui-rows > .ui-info { grid-column: 6 / span 7; }
 @media (max-width: 1023px) { .ui-rows > h2, .ui-rows > .ui-faq, .ui-rows > .ui-info { grid-column: 1 / -1; } }
+/* On a phone every row is full width: twelve tracks with their gaps would overflow a 360px screen. */
+@media (max-width: 767px) { .ui-rows { column-gap: 0; } }
 
 /* FAQ: questions in ink, answers in ink-muted, hairlines between */
 .ui-faq details { border-top: var(--stroke-hairline) solid var(--line); }
