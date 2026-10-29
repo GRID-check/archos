@@ -57,7 +57,7 @@ function ResizableHandle({
           // Hover, keyboard focus and the drag itself all bring it up, and the
           // cursor already makes the same promise on approach.
           className={cn(
-            'z-10 flex h-4 w-3 items-center justify-center rounded-sm border border-border bg-background text-foreground',
+            'z-10 flex h-4 w-3 items-center justify-center rounded-control border border-border bg-background text-foreground',
             'opacity-0 transition-opacity duration-quick ease-out motion-reduce:transition-none',
             'group-hover/separator:opacity-100 group-focus-visible/separator:opacity-100',
             'group-active/separator:opacity-100 group-data-[separator=active]/separator:opacity-100',

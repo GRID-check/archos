@@ -36,7 +36,7 @@ const maskFor = ({ start, end }: Overflow): string | undefined => {
 
 /** A small paper disc, so the chevron reads over whatever text the fade is cutting. */
 const CUE_CLASS =
-  'pointer-events-none absolute top-1/2 size-6 -translate-y-1/2 rounded-full border border-border bg-card p-1 text-muted-foreground shadow-xs'
+  'pointer-events-none absolute top-1/2 size-6 -translate-y-1/2 rounded-control border border-border bg-card p-1 text-muted-foreground shadow-xs'
 
 export interface HorizontalScrollProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode

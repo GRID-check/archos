@@ -19,7 +19,7 @@ describe('Quote', () => {
         <Quote variant="paraphrase">Sinngemäß</Quote>
       </>,
     )
-    expect(screen.getByText('Wortlaut')).toHaveClass('rounded-lg', 'bg-muted/60', 'italic')
+    expect(screen.getByText('Wortlaut')).toHaveClass('rounded-surface', 'bg-muted/60', 'italic')
     expect(screen.getByText('Sinngemäß')).toHaveClass('border', 'border-dashed', 'not-italic')
   })
 

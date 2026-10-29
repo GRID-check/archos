@@ -65,7 +65,7 @@ describe('DialogContent on a phone', () => {
 
     expect(dialog).toHaveAttribute('data-mobile-presentation', 'sheet')
     expect(dialog.className).toContain('phone:bottom-0')
-    expect(dialog.className).toContain('phone:rounded-t-2xl')
+    expect(dialog.className).toContain('phone:rounded-surface')
     // The footer pins to the bottom edge, and the sheet clears the home indicator.
     expect(dialog.className).toContain('phone:pb-[max(1.5rem,env(safe-area-inset-bottom))]')
     expect(dialog.className).toContain('phone:[:where(&_[data-slot=dialog-footer])]:sticky')
@@ -79,7 +79,7 @@ describe('DialogContent on a phone', () => {
       .filter((token) => !/^(?:phone|max-sm):/.test(token))
 
     expect(desktop).toEqual(
-      expect.arrayContaining(['top-[50%]', 'left-[50%]', 'translate-y-[-50%]', 'rounded-xl', 'p-6', 'sm:max-w-lg'])
+      expect.arrayContaining(['top-[50%]', 'left-[50%]', 'translate-y-[-50%]', 'rounded-surface', 'p-6', 'sm:max-w-lg'])
     )
   })
 
@@ -122,7 +122,7 @@ describe('DialogContent on a phone', () => {
   it('lets a caller that rounds itself keep its corners', () => {
     const { content } = renderDialog({ className: 'max-sm:rounded-none' })
 
-    expect(content()!.className).not.toContain('phone:rounded-t-2xl')
+    expect(content()!.className).not.toContain('phone:rounded-surface')
   })
 
   it('draws no grabber on a dialog that hides its close', () => {

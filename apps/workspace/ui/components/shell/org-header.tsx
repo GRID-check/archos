@@ -89,7 +89,7 @@ export function OrgHeader({
           <Link
             href="/app/projects"
             aria-label={t('allProjects')}
-            className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
+            className="text-foreground focus-visible:ring-ring/60 rounded-control text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
           >
             Piloti
           </Link>
@@ -181,7 +181,7 @@ function OrgHeaderIconLink({
           aria-current={active ? 'page' : undefined}
           data-tour={tourAnchor}
           className={cn(
-            'focus-visible:ring-ring/60 relative hidden size-9 items-center justify-center rounded-lg transition-colors pointer-coarse:size-11 md:flex duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+            'focus-visible:ring-ring/60 relative hidden size-9 items-center justify-center rounded-control transition-colors pointer-coarse:size-11 md:flex duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
             active
               ? 'bg-accent text-foreground'
               : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -219,7 +219,7 @@ function OrgHeaderIconButton({
           aria-label={label}
           onClick={onClick}
           data-testid="org-header-feedback"
-          className="focus-visible:ring-ring/60 text-muted-foreground hover:bg-accent hover:text-foreground hidden size-9 pointer-coarse:size-11 md:flex items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="focus-visible:ring-ring/60 text-muted-foreground hover:bg-accent hover:text-foreground hidden size-9 pointer-coarse:size-11 md:flex items-center justify-center rounded-control transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
         >
           <Icon className="size-4" aria-hidden />
         </button>

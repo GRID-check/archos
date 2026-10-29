@@ -51,7 +51,7 @@ export function ToolbarIconButton({
       size="icon"
       className={cn(
         // Never squeezed: a pill too long for its stage scrolls, and every target keeps its 28px (WCAG 2.5.8).
-        'text-muted-foreground hover:text-foreground size-7 shrink-0 rounded-md [&_svg]:size-3.5 pointer-coarse:size-11',
+        'text-muted-foreground hover:text-foreground size-7 shrink-0 rounded-control [&_svg]:size-3.5 pointer-coarse:size-11',
         'aria-pressed:bg-accent aria-pressed:text-foreground contrast-more:text-foreground',
         className,
       )}
@@ -75,7 +75,7 @@ export function ToolbarTextButton({
       variant="ghost"
       size="sm"
       className={cn(
-        'text-muted-foreground hover:text-foreground h-7 shrink-0 rounded-md px-1.5 text-xs font-normal tabular-nums pointer-coarse:h-11',
+        'text-muted-foreground hover:text-foreground h-7 shrink-0 rounded-control px-1.5 text-xs font-normal tabular-nums pointer-coarse:h-11',
         'contrast-more:text-foreground',
         className,
       )}
@@ -138,7 +138,7 @@ export const ToolbarField = forwardRef<HTMLInputElement, ComponentProps<'input'>
       ref={ref}
       data-slot="toolbar-field"
       className={cn(
-        'border-input bg-input-background text-foreground placeholder:text-muted-foreground h-7 min-w-0 rounded-md border px-2 text-xs tabular-nums outline-none',
+        'border-input bg-input-background text-foreground placeholder:text-muted-foreground h-7 min-w-0 rounded-control border px-2 text-xs tabular-nums outline-none',
         'pointer-coarse:h-11 pointer-coarse:text-base',
         FIELD_FOCUS_RING,
         className,
@@ -159,7 +159,7 @@ export function FloatingNote({ className, ...props }: ComponentProps<'p'>): JSX.
     <p
       data-slot="floating-note"
       className={cn(
-        'border-base bg-popover/95 text-muted-foreground flex max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-md backdrop-blur-md',
+        'border-base bg-popover/95 text-muted-foreground flex max-w-full min-w-0 items-center gap-1.5 rounded-surface border px-2.5 py-1.5 text-xs shadow-md backdrop-blur-md',
         'contrast-more:bg-popover contrast-more:border-foreground/40 contrast-more:text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0',
         className,
       )}

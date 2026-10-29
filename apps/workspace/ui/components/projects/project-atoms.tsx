@@ -232,7 +232,7 @@ export function ProjectOverviewLink({
       href={`/app/projects/${project.id}/settings`}
       aria-label={t('card.overviewAria', { name: project.name })}
       className={cn(
-        'relative z-10 inline-flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground transition-colors duration-quick ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none motion-reduce:transition-none',
+        'relative z-10 inline-flex items-center justify-center gap-1.5 rounded-control text-muted-foreground transition-colors duration-quick ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none motion-reduce:transition-none',
         showLabel ? 'h-8 px-2.5 text-xs pointer-coarse:h-11 pointer-coarse:px-3' : 'size-8 pointer-coarse:size-11',
         FOCUS_RING,
         className,
@@ -260,7 +260,7 @@ export function ProjectInitialsTile({
     <span
       aria-hidden
       className={cn(
-        'grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-xs font-semibold tracking-wide text-muted-foreground transition-colors duration-quick ease-out group-hover:bg-accent group-hover:text-foreground motion-reduce:transition-none',
+        'grid size-9 shrink-0 place-items-center rounded-control bg-muted text-xs font-semibold tracking-wide text-muted-foreground transition-colors duration-quick ease-out group-hover:bg-accent group-hover:text-foreground motion-reduce:transition-none',
         className,
       )}
     >

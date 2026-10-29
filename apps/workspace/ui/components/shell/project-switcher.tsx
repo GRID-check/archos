@@ -63,7 +63,7 @@ export function ProjectStatusDot({ active }: { active?: boolean }) {
 }
 
 const TRIGGER_CLASS = cn(
-  'flex h-9 w-full items-center gap-2.5 rounded-[10px] border border-border bg-card px-3 text-left shadow-xs pointer-coarse:h-11',
+  'flex h-9 w-full items-center gap-2.5 rounded-control border border-border bg-card px-3 text-left shadow-xs pointer-coarse:h-11',
   'transition-[color,background-color,border-color,box-shadow,transform] duration-quick ease-out',
   'hover:bg-accent active:scale-[0.98] motion-reduce:transition-none',
   'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
@@ -170,7 +170,7 @@ export function ProjectSwitcher({ projects, activeProjectId, collapsed }: Projec
                 }}
                 // ≥44px touch target (a11y) via padding, with the icon kept
                 // small; negative margin keeps the row from growing.
-                className="-my-2 -mr-1.5 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out hover:bg-accent hover:text-foreground active:scale-[0.98] motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+                className="-my-2 -mr-1.5 flex size-11 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-[color,background-color,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out hover:bg-accent hover:text-foreground active:scale-[0.98] motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
               >
                 <Settings className="size-3.5" aria-hidden />
               </button>

@@ -105,7 +105,7 @@ function ItemList({
   return (
     <Comp
       data-slot="item-list"
-      className={cn('overflow-hidden rounded-lg border divide-y', className)}
+      className={cn('overflow-hidden rounded-surface border divide-y', className)}
       {...props}
     />
   )

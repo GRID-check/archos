@@ -141,7 +141,7 @@ function MultiSelect({
           className={cn(
             // The field's material: the same well, border and radius as `Input`,
             // growing in height when the chips wrap rather than scrolling them.
-            'border-input bg-input-background flex min-h-10 w-full min-w-0 flex-wrap items-center gap-1 rounded-lg border py-1 pr-1 pl-1.5 text-sm pointer-coarse:min-h-11',
+            'border-input bg-input-background flex min-h-10 w-full min-w-0 flex-wrap items-center gap-1 rounded-control border py-1 pr-1 pl-1.5 text-sm pointer-coarse:min-h-11',
             'transition-opacity duration-quick ease-out motion-reduce:transition-none',
             'has-[[data-slot=multi-select-trigger]:focus-visible]:border-ring has-[[data-slot=multi-select-trigger]:focus-visible]:ring-2 has-[[data-slot=multi-select-trigger]:focus-visible]:ring-ring/20',
             disabled && 'cursor-not-allowed opacity-50',
@@ -159,7 +159,7 @@ function MultiSelect({
                   onClick={() => remove(entry)}
                   aria-label={removeLabel(name)}
                   className={cn(
-                    'text-muted-foreground hover:bg-accent hover:text-foreground touch-target inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-none',
+                    'text-muted-foreground hover:bg-accent hover:text-foreground touch-target inline-flex size-4 shrink-0 items-center justify-center rounded-control outline-none',
                     FOCUS_RING
                   )}
                 >
@@ -189,7 +189,7 @@ function MultiSelect({
               className={cn(
                 // With chips in the well the trigger is just the chevron, so it
                 // may shrink to it rather than wrap onto a line of its own.
-                'text-muted-foreground flex min-h-7 flex-1 items-center justify-between gap-2 rounded-md px-1.5 text-left outline-none disabled:cursor-not-allowed',
+                'text-muted-foreground flex min-h-7 flex-1 items-center justify-between gap-2 rounded-control px-1.5 text-left outline-none disabled:cursor-not-allowed',
                 value.length === 0 ? 'min-w-16' : 'min-w-6 justify-end',
                 'pointer-coarse:min-h-9'
               )}
@@ -247,7 +247,7 @@ function MultiSelect({
                     <span
                       aria-hidden
                       className={cn(
-                        'border-input flex size-4 shrink-0 items-center justify-center rounded-sm border',
+                        'border-input flex size-4 shrink-0 items-center justify-center rounded-control border',
                         checked && 'border-primary bg-primary text-primary-foreground'
                       )}
                     >

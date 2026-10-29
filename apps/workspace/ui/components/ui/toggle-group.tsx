@@ -107,7 +107,7 @@ const ToggleGroup = React.forwardRef<
               // and a 15px bar under a 32px control is louder than the thing
               // it describes; the row still scrolls by drag, wheel and
               // keyboard, and focusing a segment scrolls it into view.
-              'w-fit max-w-full gap-0 overflow-x-auto rounded-lg border border-border bg-card p-0.5 shadow-2xs scrollbar-hide'
+              'w-fit max-w-full gap-0 overflow-x-auto rounded-control border border-border bg-card p-0.5 shadow-2xs scrollbar-hide'
             : 'flex-wrap gap-1.5',
           className
         )}

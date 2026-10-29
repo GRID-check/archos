@@ -479,10 +479,10 @@ function FolderZone({
   const input = useRef<HTMLInputElement>(null)
   return (
     <div
-      className="border-border bg-muted/40 flex items-center gap-3.5 rounded-xl border-[1.5px] border-dashed px-[18px] py-4 max-sm:px-4"
+      className="border-border bg-muted/40 flex items-center gap-3.5 rounded-surface border-[1.5px] border-dashed px-[18px] py-4 max-sm:px-4"
       data-testid={dropped ? 'create-project-dropped' : 'create-project-folder-zone'}
     >
-      <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-[10px]">
+      <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-control">
         <FolderUp className="size-5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">

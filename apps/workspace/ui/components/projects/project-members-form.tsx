@@ -297,7 +297,7 @@ function MemberSuggestField({
                   }}
                   onMouseEnter={() => setHighlight(index)}
                   className={cn(
-                    'duration-snap flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 transition-colors ease-out pointer-coarse:min-h-11 motion-reduce:transition-none',
+                    'duration-snap flex cursor-pointer items-center gap-3 rounded-control px-3 py-2 transition-colors ease-out pointer-coarse:min-h-11 motion-reduce:transition-none',
                     index === active && 'bg-accent'
                   )}
                 >

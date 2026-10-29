@@ -17,7 +17,7 @@ export function Listbox({ className, ...props }: React.ComponentProps<'ul'>): Re
     <ul
       role="listbox"
       data-slot="listbox"
-      className={cn('bg-popover text-popover-foreground border-border max-h-64 overflow-y-auto rounded-lg border p-1 shadow-xs', className)}
+      className={cn('bg-popover text-popover-foreground border-border max-h-64 overflow-y-auto rounded-surface border p-1 shadow-xs', className)}
       {...props}
     />
   )
@@ -46,7 +46,7 @@ export function ListboxOption({
       data-slot="listbox-option"
       data-active={active || undefined}
       className={cn(
-        'flex min-h-9 cursor-pointer flex-col justify-center rounded-md px-2.5 py-1.5 text-sm pointer-coarse:min-h-11',
+        'flex min-h-9 cursor-pointer flex-col justify-center rounded-control px-2.5 py-1.5 text-sm pointer-coarse:min-h-11',
         'data-[active]:bg-accent data-[active]:text-accent-foreground hover:bg-accent',
         className
       )}

@@ -10,7 +10,7 @@
  * callbacks, and the positioning library places it. Anything that wants a
  * second tour composes this card rather than restyling the library's default.
  *
- * It is a floating panel, so it takes the floating radius (`rounded-xl`) and
+ * It is a floating panel, so it takes the square surface radius (`rounded-surface`) and
  * the popover surface, the same material as a Popover or a Dialog. The primary
  * action is ink like every other primary action; progress is a row of quiet
  * dashes rather than a coloured bar, because nothing about "stop 3 of 5" is a
@@ -80,7 +80,7 @@ export function TourCard({
       aria-labelledby={titleId}
       aria-describedby={bodyId}
       className={cn(
-        'bg-popover text-popover-foreground w-[min(22rem,calc(100vw-2rem))] rounded-xl border p-5 shadow-lg',
+        'bg-popover text-popover-foreground w-[min(22rem,calc(100vw-2rem))] rounded-surface border p-5 shadow-lg',
         className,
       )}
     >
@@ -92,7 +92,7 @@ export function TourCard({
           type="button"
           onClick={onClose}
           aria-label={labels.close}
-          className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 touch-target -m-1.5 flex size-7 shrink-0 items-center justify-center rounded-md transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 touch-target -m-1.5 flex size-7 shrink-0 items-center justify-center rounded-control transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
         >
           <X className="size-3.5" aria-hidden />
         </button>
@@ -130,7 +130,7 @@ function TourProgress({ step, total }: { step: number; total: number }): JSX.Ele
         <span
           key={index}
           className={cn(
-            'h-1 rounded-full transition-colors duration-base ease-out motion-reduce:transition-none',
+            'h-1 rounded-none transition-colors duration-base ease-out motion-reduce:transition-none',
             index === step ? 'bg-foreground w-4' : 'w-1.5',
             index < step && 'bg-foreground/40',
             index > step && 'bg-foreground/15',

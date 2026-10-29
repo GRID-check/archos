@@ -56,7 +56,7 @@ function Toaster({ ...props }: ToasterProps) {
           // stripes are discouraged, design-language.md "Emphasis
           // without a stripe"): the tone is the icon, in its signal ink, and
           // the toast's own words.
-          toast: 'text-popover-foreground border-border rounded-xl border shadow-md',
+          toast: 'text-popover-foreground border-border rounded-surface border shadow-md',
           default: 'bg-popover',
           loading: 'bg-popover',
           success: 'bg-popover [&_[data-icon]]:text-success',

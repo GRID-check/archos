@@ -8,16 +8,14 @@ import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 
 const toggleVariants = cva(
-  // One radius for the whole scale (`rounded-md`, 8px): the `inverted` variant
-  // used to override the base with `rounded-lg`, so two toggles sitting in the
-  // same filter row rounded differently depending on which variant they were.
-  // 8px is also what nests correctly inside the segmented group's `rounded-lg`
-  // tray — an item as round as its container reads as a bulge.
+  // One radius for the whole scale (`rounded-control`, 4px): the `inverted`
+  // variant once overrode the base, so two toggles in the same filter row
+  // rounded differently depending on which variant they were.
   //
   // Press dip: `scale` (what v4's `active:scale-*` sets) joins the transition list at the snap duration while
   // colors stay at quick (the Button press split). Transform-only motion, so
   // no layout shift.
-  "inline-flex items-center justify-center gap-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,opacity,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 " +
+  "inline-flex items-center justify-center gap-1.5 rounded-control text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,opacity,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 " +
     FOCUS_RING,
   {
     variants: {

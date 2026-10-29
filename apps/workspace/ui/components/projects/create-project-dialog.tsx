@@ -70,7 +70,7 @@ export function CreateProjectDialog({
         fullScreenOnMobile
         // The mockup's 560px card: roomier padding and radius than the kit's
         // default dialog, the same on every screen that is not a phone.
-        className="sm:top-[84px] sm:max-h-[calc(100dvh-84px-1.5rem)] sm:max-w-[560px] sm:translate-y-0 sm:rounded-2xl sm:p-7"
+        className="sm:top-[84px] sm:max-h-[calc(100dvh-84px-1.5rem)] sm:max-w-[560px] sm:translate-y-0 sm:rounded-surface sm:p-7"
         // Radix puts focus on the first field when a dialog opens, which on a
         // touch device opens the keyboard over the form before anyone has read
         // it. The dialog itself takes the focus there instead (so a screen

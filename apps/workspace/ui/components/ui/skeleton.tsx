@@ -13,9 +13,9 @@ const Skeleton = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       // The band is a pseudo-element moved by transform (compositor only, no
       // repaint per frame); under reduced motion it stays out of sight and the
       // skeleton is a static block. Radius stays overridable via className
-      // (tailwind-merge resolves it against the `rounded-md` default).
+      // (tailwind-merge resolves it against the `rounded-control` default).
       className={cn(
-        'bg-secondary animate-skeleton-shimmer rounded-md motion-reduce:animate-none',
+        'bg-secondary animate-skeleton-shimmer rounded-control motion-reduce:animate-none',
         className
       )}
       {...props}

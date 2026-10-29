@@ -61,7 +61,7 @@ export function Advanced({
           // row whose content sits at its start, so the dip gathers toward the
           // chevron instead of pulling the label in from both ends.
           className={cn(
-            'text-muted-foreground hover:text-foreground flex w-full origin-left items-center gap-2 rounded-md text-sm outline-none',
+            'text-muted-foreground hover:text-foreground flex w-full origin-left items-center gap-2 rounded-control text-sm outline-none',
             PRESSABLE,
             FOCUS_RING
           )}

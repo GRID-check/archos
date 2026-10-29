@@ -143,7 +143,7 @@ export function ProjectSwitcherSheet({
           contentRef.current?.focus()
         }}
         className={cn(
-          'gap-0 overflow-hidden rounded-t-xl p-0 outline-none',
+          'gap-0 overflow-hidden rounded-surface p-0 outline-none',
           // Never taller than what the keyboard leaves, so the field and the
           // first matches stay in view while the reader types.
           'h-[min(85dvh,var(--visual-viewport-height,100dvh))] max-h-none',

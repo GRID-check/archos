@@ -30,7 +30,7 @@ export function ToneSwatch({ tone, className }: { tone: MeterTone; className?: s
     <span
       aria-hidden
       data-slot="tone-swatch"
-      className={cn('inline-block size-2.5 shrink-0 rounded-[3px] bg-current', TONE_INK[tone], className)}
+      className={cn('inline-block size-2.5 shrink-0 rounded-control bg-current', TONE_INK[tone], className)}
     />
   )
 }
@@ -96,7 +96,7 @@ export function SegmentMeter({ segments, label, className, ...props }: SegmentMe
       role="img"
       aria-label={label}
       data-slot="segment-meter"
-      className={cn('bg-muted relative isolate h-2 w-full overflow-hidden rounded-full', className)}
+      className={cn('bg-muted relative isolate h-2 w-full overflow-hidden rounded-none', className)}
       {...props}
     >
       {drawn.map((segment, index) => (
