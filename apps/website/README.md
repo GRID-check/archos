@@ -138,8 +138,9 @@ The table gives the source file and where it appears.
 
 The product screenshots (`product-*.webp`, 2560 px masters) are in `src/assets/media/`, not
 `public/media/`: views take them from `src/lib/media.ts` and render them with Astro's `<Image>`,
-which builds 640 to 2560 px variants with a `srcset` and `sizes`, so a phone loads about a
-tenth of the master. The built files have hashed names, so a replaced screenshot reaches every
+which builds 640 to 2560 px variants with a `srcset` and `sizes`, so a phone loads the variant
+its layout needs (the hero at 390 px: 57 KB instead of 181 KB; a gallery card stays 2560 px,
+because on a phone it shows its image 500 px high and 1250 px wide). The built files have hashed names, so a replaced screenshot reaches every
 visitor at once. Everything else is in `public/media/`.
 
 | File in `public/media/` | Reference file | Where it is used |
