@@ -12,6 +12,9 @@ rename drill.
 from __future__ import annotations
 
 import json
+
+# The packages require Python 3.14 (`requires-python`); the 3.7 back-port does not apply.
+# nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from importlib.resources import files
 
 

@@ -44,6 +44,16 @@ function lastCommitDate(files) {
   }
 }
 
+/** Each top-level `key: value` line of a frontmatter block, first occurrence wins, quotes dropped. */
+function frontmatterFields(head) {
+  const fields = new Map()
+  for (const line of head.split('\n')) {
+    const match = /^(\w+):\s*'?([^'\n]+)'?\s*$/.exec(line)
+    if (match && !fields.has(match[1])) fields.set(match[1], match[2])
+  }
+  return fields
+}
+
 /** The frontmatter fields the sitemap needs, read from each post's MDX file. */
 function posts() {
   const out = []
@@ -52,7 +62,8 @@ function posts() {
     if (!existsSync(dir)) continue
     for (const file of readdirSync(dir).filter((f) => f.endsWith('.mdx'))) {
       const head = /^---\n([\s\S]*?)\n---/.exec(readFileSync(`${dir}/${file}`, 'utf8'))?.[1] ?? ''
-      const field = (name) => new RegExp(`^${name}:\\s*'?([^'\\n]+)'?\\s*$`, 'm').exec(head)?.[1]
+      const fields = frontmatterFields(head)
+      const field = (name) => fields.get(name)
       // A draft is not built (outside preview builds), so nothing may pair with it.
       if (field('draft') === 'true' && process.env.PUBLIC_INCLUDE_DRAFTS !== '1') continue
       out.push({ locale, slug: file.replace(/\.mdx$/, ''), pubDate: field('pubDate'), translationSlug: field('translationSlug') })
