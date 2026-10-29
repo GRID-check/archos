@@ -9,19 +9,20 @@
  */
 
 import type { Translator } from '@/i18n/translate'
-import type { InboxItemType, InboxItemView } from '@/lib/inbox/types'
+import { INBOX_TYPE_PRESENTATION, type InboxItemView } from '@/lib/inbox/types'
 
-/** The short form per type, and whether it names who asked. */
-const REASONS: Partial<Record<InboxItemType, { key: string; actor: boolean }>> = {
-  'annotation.assigned_to_you': { key: 'assigned', actor: true },
-  'annotation.mentioned': { key: 'mentioned', actor: true },
-  'piloti.asks_you': { key: 'asks', actor: false },
-  'mention.requested': { key: 'input', actor: true },
-  'document.review_requested': { key: 'approval', actor: true },
+/** The short form per type (by its registry key), and whether it names who asked. */
+const REASONS: Record<string, { key: string; actor: boolean }> = {
+  annotationAssigned: { key: 'assigned', actor: true },
+  annotationMentioned: { key: 'mentioned', actor: true },
+  agentAsksYou: { key: 'asks', actor: false },
+  mentionRequested: { key: 'input', actor: true },
+  documentReviewRequested: { key: 'approval', actor: true },
 }
 
 export function inboxReason(item: InboxItemView, t: Translator): string | null {
-  const reason = REASONS[item.type]
+  const i18nKey = INBOX_TYPE_PRESENTATION[item.type]?.i18nKey
+  const reason = i18nKey ? REASONS[i18nKey] : undefined
   if (!reason) return null
   // A reminder of a date, or a request whose asker is gone, says it without a name.
   const who =

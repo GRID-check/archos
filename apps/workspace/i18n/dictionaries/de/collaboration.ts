@@ -223,6 +223,11 @@ export const collaboration: typeof en.collaboration = {
 
   inbox: {
     title: 'Postfach',
+    // Das Postfach neben der Seite: schließen, und der Weg zu allen Einträgen.
+    dock: {
+      close: 'Postfach schließen',
+      all: 'Alle Einträge',
+    },
     navLabel: 'Postfach',
     badgeAria:
       '{count, plural, one {# Eintrag braucht} other {# Einträge brauchen}} Ihre Aufmerksamkeit',
@@ -271,7 +276,6 @@ export const collaboration: typeof en.collaboration = {
       open: 'öffnen',
       archive: 'archivieren',
       read: 'gelesen/ungelesen',
-      reply: 'antworten',
     },
     // Was eine neue Fassung zu prüfen lässt, als Angabe in der Zeile unter dem Titel.
     openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}',
@@ -297,15 +301,6 @@ export const collaboration: typeof en.collaboration = {
       approval: '{actor} bittet um Ihre Freigabe',
       approvalNoActor: 'Wartet auf Ihre Freigabe',
       mark: 'Anmerkung {number}',
-    },
-    // Der gewählte Eintrag neben der Liste.
-    detail: {
-      empty: 'Wählen Sie einen Eintrag, um ihn hier zu lesen und zu beantworten.',
-      openDocument: 'Im Dokument öffnen',
-      open: 'Öffnen',
-      thread: 'Verlauf der Anmerkung',
-      threadLoading: 'Der Verlauf wird geladen.',
-      threadFailed: 'Der Verlauf konnte nicht geladen werden. Im Dokument finden Sie ihn.',
     },
     mark: {
       // Eine Rückfrage von Piloti, solange Ereignisse Piloti nicht wecken: Erst die Prüfansicht fragt Piloti mit der Antwort.

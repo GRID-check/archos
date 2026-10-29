@@ -1,7 +1,15 @@
 'use client'
 
 /**
- * „Für mich“ as a queue, with the selected entry beside it.
+ * „Für mich“ as a queue: what waits on the reader, gathered by document or
+ * chat and most urgent first, then what is new.
+ *
+ * A list, never a copy of what it lists (ADR-0153). Every entry is a link to
+ * its real place: the chat at the message, the review at the mark. Docked
+ * beside the page (`InboxDock`), following one replaces the page beside the
+ * list; on the Postfach page it leaves the page, and closing the review comes
+ * back to it (`returnHere`). Which entry is current is read from the address,
+ * so it is right however the reader got there.
  *
  * Two reads, because they answer two questions: what waits on the reader (the
  * open requests, `requests`, every one of them however old) and what is new
@@ -9,17 +17,14 @@
  * rows fell behind „Ältere laden“, and the queue's first promise is that what
  * waits on you is on top.
  *
- * Where the detail fits beside the list (from `lg`), a plain click selects an
- * entry and shows it there; elsewhere the entry is the link it always was. The
- * detail is shown or not by CSS, and the click asks whether it is displayed,
- * so no breakpoint is written twice.
- *
- * Keys, while focus is not in a field: j/k move, Enter opens the target, e
- * archives, u toggles read, r goes to the answer box.
+ * Keys, while focus is not in a field: j/k move between entries, Enter follows
+ * the focused one (the link's own), e archives it, u toggles it read. Where
+ * they listen is `keyScope`: the page or sheet the list is on, or only the
+ * list itself when it is docked beside a page that has keys of its own.
  */
 
-import type { JSX, MouseEvent } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { JSX, KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -35,25 +40,28 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { LoadError } from '@/components/ui/load-error'
 import { LoadMore } from '@/components/ui/load-more'
 import { Skeleton } from '@/components/ui/skeleton'
-import { withReviewBack } from '@/features/documents/lib/open-review'
+import { withReviewBack } from '@/features/documents/review-links'
 import { useInboxList } from '../hooks/use-inbox'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '../hooks/use-undoable-archive'
-import type { InboxMarkClient } from '../hooks/use-mark-answer'
-import { isOpenRequest, newsOf, queueOrder, waitingGroups } from '../lib/inbox-queue'
+import { isAtHref, isOpenRequest, newsOf, queueOrder, waitingGroups } from '../lib/inbox-queue'
 import { isPlainClick } from '../lib/plain-click'
-import { InboxDetail, type ReadMark } from './InboxDetail'
-import type { InboxReviewClient } from './InboxReviewDecision'
 import { InboxQueueList } from './InboxQueueList'
 
 export interface InboxQueueProps {
   enabled?: boolean
-  viewerId?: string | null
+  /**
+   * Whether following an entry should come back here when its review closes:
+   * true on the Postfach page, which the entry leaves; false docked, where the
+   * list never went away.
+   */
+  returnHere?: boolean
+  /** Where j/k/e/u listen: the page or sheet the list is on, or only the list itself. */
+  keyScope?: 'page' | 'self'
   /** Injected by the specs and the preview. */
   client?: InboxClient
-  markClient?: InboxMarkClient
-  reviewClient?: InboxReviewClient
-  readMark?: ReadMark
 }
+
+const QUEUE_KEYS = new Set(['j', 'k', 'e', 'u'])
 
 /** Whether a key press belongs to whatever has focus rather than to the queue. */
 function typingInto(target: EventTarget | null): boolean {
@@ -62,7 +70,7 @@ function typingInto(target: EventTarget | null): boolean {
   return target.closest('input, textarea, select, [role="textbox"], [role="menu"], [role="listbox"]') !== null
 }
 
-export function InboxQueue({ enabled = true, viewerId = null, client = inboxClient, markClient, reviewClient, readMark }: InboxQueueProps): JSX.Element {
+export function InboxQueue({ enabled = true, returnHere = true, keyScope = 'page', client = inboxClient }: InboxQueueProps): JSX.Element {
   const t = useTranslations(collaborationCopy)
   const waiting = useInboxList(enabled, 'requests', client)
   const fresh = useInboxList(enabled, 'unread', client)
@@ -82,126 +90,87 @@ export function InboxQueue({ enabled = true, viewerId = null, client = inboxClie
   const news = useMemo(() => newsOf(fresh.items).filter((item) => !archiveLater.pendingIds.has(item.id)), [fresh.items, archiveLater.pendingIds])
   const order = useMemo(() => queueOrder(groups, news), [groups, news])
 
-  // The entry beside the list. Held as the row itself, so it stays readable
-  // after the list re-reads without it (read news leaves; an answer resolves).
-  const [selected, setSelected] = useState<InboxItemView | null>(null)
-  const detailRef = useRef<HTMLDivElement>(null)
-  // Whether the detail is on screen (CSS decides, from `lg`): only then does the
-  // first entry stand selected before the reader picks one. A phone's list
-  // marks nothing it is not showing.
-  const [split, setSplit] = useState(false)
-  const queueEmpty = order.length === 0
-  useEffect(() => {
-    const pane = detailRef.current
-    if (!pane || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => setSplit(Boolean(pane.offsetParent)))
-    observer.observe(document.documentElement)
-    setSplit(Boolean(pane.offsetParent))
-    return () => observer.disconnect()
-    // Re-armed when the pane mounts: an empty queue draws none.
-  }, [queueEmpty])
-  const current = selected ? (order.find((item) => item.id === selected.id) ?? selected) : split ? (order[0] ?? null) : null
-
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const searchParams = useSearchParams()
-  const here = pathname ? `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}` : null
+  const here = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`
   const hrefOf = useCallback(
-    (item: InboxItemView) => (item.href && isMarkAnchored(item.type) ? withReviewBack(item.href, here) : item.href),
-    [here],
+    (item: InboxItemView) => (item.href && returnHere && isMarkAnchored(item.type) ? withReviewBack(item.href, here) : item.href),
+    [returnHere, here],
   )
+  // The entry whose place the reader is at: drawn as current, whoever took them there.
+  const currentId = order.find((item) => item.href !== null && isAtHref(item.href, pathname, searchParams))?.id ?? null
 
+  const ownerOf = useCallback((item: InboxItemView) => (isOpenRequest(item) ? waiting : fresh), [waiting, fresh])
   const markRead = useCallback(
     (item: InboxItemView) => {
-      if (item.state !== 'unread') return
-      void (isOpenRequest(item) ? waiting.markRead([item.id]) : fresh.markRead([item.id]))
+      if (item.state === 'unread') void ownerOf(item).markRead([item.id])
     },
-    [waiting, fresh],
+    [ownerOf],
   )
-
-  const detailShown = (): boolean => Boolean(detailRef.current?.offsetParent)
-
-  const select = useCallback(
-    (item: InboxItemView, { focus = false }: { focus?: boolean } = {}) => {
-      setSelected(item)
-      if (detailShown()) markRead(item)
-      if (focus) {
-        const entry = document.querySelector<HTMLElement>(`[data-testid="inbox-queue-entry"][data-item-id="${CSS.escape(item.id)}"]`)
-        entry?.focus({ preventScroll: true })
-        entry?.scrollIntoView?.({ block: 'nearest' })
-      }
-    },
-    [markRead],
-  )
-
-  const onEntryClick = (event: MouseEvent<HTMLAnchorElement>, item: InboxItemView): void => {
-    if (!isPlainClick(event)) return
-    if (detailShown()) {
-      event.preventDefault()
-      select(item)
-      return
-    }
-    // The link goes to the target: opening it is reading it.
-    markRead(item)
-  }
 
   const archive = useCallback(
     (itemId: string) => {
-      const index = order.findIndex((item) => item.id === itemId)
-      const next = order[index + 1] ?? order[index - 1] ?? null
       archiveLater.request(itemId)
-      setSelected(next)
       toast(t('inbox.archived'), {
         duration: ARCHIVE_UNDO_MS,
         action: { label: t('inbox.undo'), onClick: () => archiveLater.undo(itemId) },
       })
     },
-    [order, archiveLater, t],
+    [archiveLater, t],
   )
 
+  // ---- Keys: the entries are links, so moving is moving focus, and Enter is the link's ----
   const rootRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      const root = rootRef.current
-      if (!root || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || typingInto(event.target)) return
-      const scope = root.closest('[role="dialog"]') ?? document.body
-      if (event.target instanceof Node && event.target !== document.body && !scope.contains(event.target)) return
-      if (!['j', 'k', 'Enter', 'e', 'u', 'r'].includes(event.key) || order.length === 0) return
-      const index = current ? order.findIndex((item) => item.id === current.id) : -1
+  const onKey = useCallback(
+    (event: KeyboardEvent | ReactKeyboardEvent): void => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || typingInto(event.target)) return
+      if (!QUEUE_KEYS.has(event.key) || order.length === 0) return
+      const links = [...(rootRef.current?.querySelectorAll<HTMLElement>('[data-testid="inbox-queue-entry"]') ?? [])]
+      const at = links.findIndex((link) => link === document.activeElement)
       if (event.key === 'j' || event.key === 'k') {
         event.preventDefault()
         const step = event.key === 'j' ? 1 : -1
-        const next = order[Math.min(order.length - 1, Math.max(0, index < 0 ? 0 : index + step))]
-        select(next, { focus: true })
+        const next = links[at < 0 ? (step > 0 ? 0 : links.length - 1) : Math.min(links.length - 1, Math.max(0, at + step))]
+        next?.focus()
+        next?.scrollIntoView?.({ block: 'nearest' })
         return
       }
-      if (!current) return
-      // Enter on a focused control is that control's.
-      if (event.key === 'Enter' && event.target instanceof HTMLElement && event.target.closest('button, a') && !event.target.closest('[data-testid="inbox-queue-entry"]')) return
+      const item = at < 0 ? null : (order.find((entry) => entry.id === links[at].getAttribute('data-item-id')) ?? null)
+      if (!item) return
       event.preventDefault()
-      if (event.key === 'Enter') {
-        root.querySelector<HTMLAnchorElement>('[data-testid="inbox-detail-open"]')?.click()
+      if (event.key === 'e') {
+        // The keyboard stays in the list: the next entry takes the focus.
+        ;(links[at + 1] ?? links[at - 1])?.focus()
+        archive(item.id)
         return
       }
-      if (event.key === 'e') archive(current.id)
-      if (event.key === 'u') {
-        const owner = isOpenRequest(current) ? waiting : fresh
-        void (current.state === 'unread' ? owner.markRead([current.id]) : owner.markUnread([current.id]))
-      }
-      if (event.key === 'r') root.querySelector<HTMLElement>('[data-testid="inbox-detail-composer"] [contenteditable], [data-testid="inbox-detail-composer"] textarea')?.focus()
+      void (item.state === 'unread' ? ownerOf(item).markRead([item.id]) : ownerOf(item).markUnread([item.id]))
+    },
+    [order, archive, ownerOf],
+  )
+
+  // On a page or in a sheet, the keys are the list's wherever focus is not in a field.
+  useEffect(() => {
+    if (keyScope !== 'page') return
+    const listen = (event: KeyboardEvent): void => {
+      const root = rootRef.current
+      if (!root) return
+      const scope = root.closest('[role="dialog"]') ?? document.body
+      if (event.target instanceof Node && event.target !== document.body && !scope.contains(event.target)) return
+      onKey(event)
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [order, current, select, archive, waiting, fresh])
+    window.addEventListener('keydown', listen)
+    return () => window.removeEventListener('keydown', listen)
+  }, [keyScope, onKey])
 
   const loading = waiting.loading || fresh.loading
-  const failed = waiting.error && fresh.error
   const late = groups.flatMap((group) => group.items).filter((item) => item.variant === 'overdue').length
   const waitingCount = groups.reduce((sum, group) => sum + group.items.length, 0)
 
-  if (failed) {
+  if (waiting.error && fresh.error) {
     return <LoadError title={t('inbox.errors.loadFailed')} onRetry={() => (waiting.refresh(), fresh.refresh())} />
   }
-  // Nothing waits and nothing is new: the queue is done, and says so instead of drawing two empty panes.
+  // Nothing waits and nothing is new: the queue is done, and says so.
   if (!loading && order.length === 0 && !waiting.hasMore && !fresh.hasMore) {
     return (
       <div ref={rootRef} data-testid="inbox-queue">
@@ -211,7 +180,7 @@ export function InboxQueue({ enabled = true, viewerId = null, client = inboxClie
   }
 
   return (
-    <div ref={rootRef} className="space-y-3" data-testid="inbox-queue">
+    <div ref={rootRef} className="space-y-3" data-testid="inbox-queue" onKeyDown={keyScope === 'self' ? onKey : undefined}>
       {(waiting.mutationError || fresh.mutationError) && (
         <Alert variant="destructive">
           <AlertCircle />
@@ -229,66 +198,48 @@ export function InboxQueue({ enabled = true, viewerId = null, client = inboxClie
         </p>
       )}
 
-      <div className="lg:grid lg:h-[min(calc(100dvh-13rem),60rem)] lg:min-h-[28rem] lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:overflow-hidden lg:rounded-surface lg:border">
-        <div className="lg:overflow-y-auto lg:p-3">
-          {loading ? (
-            <div className="space-y-2" aria-busy="true" data-testid="inbox-queue-skeleton">
-              {[0, 1, 2].map((index) => (
-                <Skeleton key={index} className="h-20 w-full rounded-surface" />
-              ))}
-            </div>
-          ) : (
-            <InboxQueueList
-              groups={groups}
-              news={news}
-              shownId={current?.id ?? null}
-              hrefOf={hrefOf}
-              onEntryClick={onEntryClick}
-              onNewsRead={news.length > 0 ? () => void fresh.markAllRead() : undefined}
-              waitingMore={
-                <LoadMore
-                  hasMore={waiting.hasMore}
-                  loading={waiting.loadingMore}
-                  failed={waiting.loadMoreFailed}
-                  onLoadMore={waiting.loadMore}
-                  loadMoreLabel={t('inbox.loadMore')}
-                  loadingLabel={t('inbox.loadingMore')}
-                  failedLabel={t('inbox.loadMoreFailed')}
-                />
-              }
-              newsMore={
-                <LoadMore
-                  hasMore={fresh.hasMore}
-                  loading={fresh.loadingMore}
-                  failed={fresh.loadMoreFailed}
-                  onLoadMore={fresh.loadMore}
-                  loadMoreLabel={t('inbox.loadMore')}
-                  loadingLabel={t('inbox.loadingMore')}
-                  failedLabel={t('inbox.loadMoreFailed')}
-                />
-              }
-            />
-          )}
+      {loading ? (
+        <div className="space-y-2" aria-busy="true" data-testid="inbox-queue-skeleton">
+          {[0, 1, 2].map((index) => (
+            <Skeleton key={index} className="h-20 w-full rounded-surface" />
+          ))}
         </div>
-
-        {/* Shown from `lg` only: below it, an entry is its link. */}
-        <div ref={detailRef} className="hidden min-h-0 border-l bg-card lg:block">
-          {current ? (
-            <InboxDetail
-              key={current.id}
-              item={current}
-              viewerId={viewerId}
-              onOpen={markRead}
-              onArchive={archive}
-              markClient={markClient}
-              reviewClient={reviewClient}
-              readMark={readMark}
+      ) : (
+        <InboxQueueList
+          groups={groups}
+          news={news}
+          currentId={currentId}
+          hrefOf={hrefOf}
+          onFollow={(event, item) => {
+            // Following an entry is reading it; a background tab is not.
+            if (isPlainClick(event)) markRead(item)
+          }}
+          onArchive={archive}
+          onNewsRead={news.length > 0 ? () => void fresh.markAllRead() : undefined}
+          waitingMore={
+            <LoadMore
+              hasMore={waiting.hasMore}
+              loading={waiting.loadingMore}
+              failed={waiting.loadMoreFailed}
+              onLoadMore={waiting.loadMore}
+              loadMoreLabel={t('inbox.loadMore')}
+              loadingLabel={t('inbox.loadingMore')}
+              failedLabel={t('inbox.loadMoreFailed')}
             />
-          ) : (
-            !loading && <p className="p-6 text-sm text-muted-foreground">{t('inbox.detail.empty')}</p>
-          )}
-        </div>
-      </div>
+          }
+          newsMore={
+            <LoadMore
+              hasMore={fresh.hasMore}
+              loading={fresh.loadingMore}
+              failed={fresh.loadMoreFailed}
+              onLoadMore={fresh.loadMore}
+              loadMoreLabel={t('inbox.loadMore')}
+              loadingLabel={t('inbox.loadingMore')}
+              failedLabel={t('inbox.loadMoreFailed')}
+            />
+          }
+        />
+      )}
     </div>
   )
 }

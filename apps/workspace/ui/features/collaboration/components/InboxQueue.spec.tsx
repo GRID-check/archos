@@ -3,17 +3,18 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@/test-utils'
 
 import type { InboxItemView } from '@/lib/inbox/types'
-import type { AnnotationView } from '@/lib/annotations/types'
 
 const toastMock = vi.hoisted(() => vi.fn())
 vi.mock('sonner', () => ({ toast: toastMock }))
 
 vi.mock('../hooks/use-inbox', () => ({ useInboxList: vi.fn(), useInboxBadge: vi.fn() }))
 
+/** The address the queue is read at: the Postfach, or the page beside the dock. */
+const page = vi.hoisted(() => ({ pathname: '/app/inbox', search: '' }))
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
-  usePathname: () => '/app/inbox',
-  useSearchParams: () => new URLSearchParams(''),
+  usePathname: () => page.pathname,
+  useSearchParams: () => new URLSearchParams(page.search),
 }))
 
 vi.mock('next/link', () => ({
@@ -54,7 +55,7 @@ const row = (id: string, overrides: Partial<InboxItemView> = {}): InboxItemView 
   ...overrides,
 })
 
-function hook(items: InboxItemView[], overrides: Partial<UseInboxListResult> = {}): UseInboxListResult {
+function hook(items: InboxItemView[]): UseInboxListResult {
   return {
     items,
     pending: items.length,
@@ -75,13 +76,12 @@ function hook(items: InboxItemView[], overrides: Partial<UseInboxListResult> = {
     markAllRead: vi.fn(async () => {}),
     archive: vi.fn(async () => {}),
     unarchive: vi.fn(async () => true),
-    ...overrides,
   }
 }
 
-const late = row('late', { resourceId: 'doc-s', subject: 'Schnitt A-A', excerpt: 'Brüstung zu niedrig', variant: 'overdue', dueOn: '2026-10-15' })
+const late = row('late', { resourceId: 'doc-s', subject: 'Schnitt A-A', excerpt: 'Brüstung zu niedrig', variant: 'overdue', dueOn: '2026-10-15', href: '/app/projects/p2/files?doc=doc-s&review=1&mark=mark-late' })
 const fresh = row('fresh', { excerpt: 'Türbreite prüfen' })
-const news = row('news', { type: 'annotation.activity', actionable: false, excerpt: 'Passt so', answerIn: null })
+const news = row('news', { type: 'conversation.activity', resourceType: 'conversation', resourceId: 'c1', actionable: false, excerpt: 'Passt so', answerIn: null, anchorId: null, href: '/app/projects/p1/chat?session=c1' })
 
 let waiting: UseInboxListResult
 let unread: UseInboxListResult
@@ -93,30 +93,25 @@ function serve(waitingRows: InboxItemView[], unreadRows: InboxItemView[]): void 
   useInboxListMock.mockImplementation((_enabled, filter) => (filter === 'requests' ? waiting : unread))
 }
 
-const readMark = vi.fn(async (documentId: string, annotationId: string) => ({ id: annotationId, documentId, body: 'x', replies: [], mentions: [] }) as unknown as AnnotationView)
+const entries = (): HTMLElement[] => screen.getAllByTestId('inbox-queue-entry')
 
-/** Where the detail sits beside the list (from `lg`): the pane is displayed, so it has an offset parent. */
-function besideTheList(): void {
-  Object.defineProperty(HTMLElement.prototype, 'offsetParent', { configurable: true, get: () => document.body })
-}
-
-beforeEach(() => serve([fresh, late], [fresh, news]))
-afterEach(() => {
-  Reflect.deleteProperty(HTMLElement.prototype, 'offsetParent')
-  vi.clearAllMocks()
+beforeEach(() => {
+  page.pathname = '/app/inbox'
+  page.search = ''
+  serve([fresh, late], [fresh, news])
 })
+afterEach(() => vi.clearAllMocks())
 
 describe('InboxQueue — what waits on the reader, and the news', () => {
   test('reads the two questions it answers: the open requests and what is unread', () => {
-    render(<InboxQueue readMark={readMark} />)
+    render(<InboxQueue />)
     expect(useInboxListMock).toHaveBeenCalledWith(true, 'requests', expect.anything())
     expect(useInboxListMock).toHaveBeenCalledWith(true, 'unread', expect.anything())
   })
 
   test('puts the late document first, gathers by document, and keeps the news apart', () => {
-    render(<InboxQueue readMark={readMark} />)
+    render(<InboxQueue />)
     const groups = screen.getAllByTestId('inbox-queue-group')
-    expect(groups.map((group) => within(group).getAllByTestId('inbox-queue-entry').length)).toEqual([1, 1])
     expect(groups[0]).toHaveTextContent('Schnitt A-A')
     expect(within(groups[0]).getByTestId('inbox-queue-due')).toHaveTextContent('Overdue')
     // An unread request is waiting, not news.
@@ -126,55 +121,80 @@ describe('InboxQueue — what waits on the reader, and the news', () => {
 
   test('says it is done when nothing waits and nothing is new', () => {
     serve([], [])
-    render(<InboxQueue readMark={readMark} />)
+    render(<InboxQueue />)
     expect(screen.getByText('All caught up')).toBeInTheDocument()
-    expect(screen.queryByTestId('inbox-queue-group')).not.toBeInTheDocument()
   })
 
   test('marks the news read from its section', () => {
-    render(<InboxQueue readMark={readMark} />)
+    render(<InboxQueue />)
     fireEvent.click(screen.getByTestId('inbox-queue-news-read'))
     expect(unread.markAllRead).toHaveBeenCalled()
   })
 })
 
-describe('InboxQueue — an entry is its link, or a selection beside the list', () => {
-  test('without the detail on screen, an entry is a link, and following it reads it', () => {
-    render(<InboxQueue readMark={readMark} />)
-    const entry = screen.getAllByTestId('inbox-queue-entry')[0]
-    expect(entry).toHaveAttribute('href', expect.stringContaining('mark=mark-late'))
-    expect(entry).toHaveAttribute('href', expect.stringContaining('back='))
-    // Nothing stands selected on a list that shows no detail.
-    expect(entry).not.toHaveAttribute('aria-current')
-    expect(fireEvent.click(entry)).toBe(true)
+describe('InboxQueue — every entry is a link to its real place', () => {
+  test('following an entry reads it; a background tab does not', () => {
+    render(<InboxQueue />)
+    fireEvent.click(entries()[0], { metaKey: true })
+    expect(waiting.markRead).not.toHaveBeenCalled()
+    fireEvent.click(entries()[0])
     expect(waiting.markRead).toHaveBeenCalledWith(['late'])
   })
 
-  test('beside the list, a click shows the entry there instead of leaving, and reads it', () => {
-    besideTheList()
-    render(<InboxQueue readMark={readMark} />)
-    // The most urgent entry stands selected before the reader picks one, and is not read for it.
-    expect(screen.getByTestId('inbox-detail')).toHaveTextContent('Brüstung zu niedrig')
-    expect(waiting.markRead).not.toHaveBeenCalled()
-    const second = screen.getAllByTestId('inbox-queue-entry')[1]
-    expect(fireEvent.click(second)).toBe(false)
-    expect(screen.getByTestId('inbox-detail')).toHaveTextContent('Türbreite prüfen')
-    expect(second).toHaveAttribute('aria-current', 'true')
-    expect(waiting.markRead).toHaveBeenCalledWith(['fresh'])
+  test('on the Postfach page, a review it opens comes back here; docked, it does not leave', () => {
+    const { unmount } = render(<InboxQueue />)
+    expect(entries()[0]).toHaveAttribute('href', expect.stringContaining('back=%2Fapp%2Finbox'))
+    unmount()
+    render(<InboxQueue returnHere={false} />)
+    expect(entries()[0]).toHaveAttribute('href', '/app/projects/p2/files?doc=doc-s&review=1&mark=mark-late')
   })
 
-  test('j and k walk the queue, then the news; e archives with an undo', () => {
-    besideTheList()
-    render(<InboxQueue readMark={readMark} />)
-    fireEvent.keyDown(window, { key: 'j' })
-    expect(screen.getByTestId('inbox-detail')).toHaveTextContent('Türbreite prüfen')
-    fireEvent.keyDown(window, { key: 'j' })
-    expect(screen.getByTestId('inbox-detail')).toHaveTextContent('Passt so')
-    fireEvent.keyDown(window, { key: 'k' })
-    fireEvent.keyDown(window, { key: 'e' })
+  test('the entry whose place the reader is at is current, read from the address', () => {
+    page.pathname = '/app/projects/p1/chat'
+    page.search = 'session=c1'
+    render(<InboxQueue returnHere={false} />)
+    const current = entries().filter((entry) => entry.getAttribute('aria-current') === 'page')
+    expect(current).toHaveLength(1)
+    expect(current[0]).toHaveAttribute('data-item-id', 'news')
+  })
+
+  test('the archive control beside an entry puts it away with an undo', () => {
+    render(<InboxQueue />)
+    fireEvent.click(screen.getAllByTestId('inbox-queue-archive')[0])
     expect(toastMock).toHaveBeenCalledWith('Archived', expect.objectContaining({ action: expect.objectContaining({ label: 'Undo' }) }))
-    // Held for the undo window: the row is gone from the list, the server not told yet.
-    expect(screen.queryByText('Türbreite prüfen', { selector: 'span' })).not.toBeInTheDocument()
+    // Held for the undo window: gone from the list, the server not told yet.
+    expect(entries().map((entry) => entry.getAttribute('data-item-id'))).not.toContain('late')
     expect(waiting.archive).not.toHaveBeenCalled()
+  })
+})
+
+describe('InboxQueue — keys', () => {
+  test('j and k move the focus between entries; Enter is then the link’s own', () => {
+    render(<InboxQueue />)
+    fireEvent.keyDown(window, { key: 'j' })
+    expect(entries()[0]).toHaveFocus()
+    fireEvent.keyDown(window, { key: 'j' })
+    expect(entries()[1]).toHaveFocus()
+    fireEvent.keyDown(window, { key: 'k' })
+    expect(entries()[0]).toHaveFocus()
+  })
+
+  test('e archives the focused entry and hands the focus on; u toggles it read', () => {
+    render(<InboxQueue />)
+    fireEvent.keyDown(window, { key: 'j' })
+    fireEvent.keyDown(window, { key: 'u' })
+    expect(waiting.markRead).toHaveBeenCalledWith(['late'])
+    fireEvent.keyDown(window, { key: 'e' })
+    expect(toastMock).toHaveBeenCalled()
+    expect(entries()[0]).toHaveAttribute('data-item-id', 'fresh')
+  })
+
+  test('docked beside a page, the keys are the list’s only while the focus is in it', () => {
+    render(<InboxQueue keyScope="self" />)
+    fireEvent.keyDown(window, { key: 'j' })
+    expect(document.body).toHaveFocus()
+    entries()[0].focus()
+    fireEvent.keyDown(entries()[0], { key: 'j' })
+    expect(entries()[1]).toHaveFocus()
   })
 })

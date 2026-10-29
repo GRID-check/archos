@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { InboxItemView } from '@/lib/inbox/types'
-import { isOpenRequest, newsOf, queueOrder, urgencyOf, waitingGroups } from './inbox-queue'
+import { isAtHref, isOpenRequest, newsOf, queueOrder, urgencyOf, waitingGroups } from './inbox-queue'
 
 const TODAY = '2026-10-29'
 
@@ -94,5 +94,19 @@ describe('newsOf and queueOrder', () => {
     const waiting = row('waiting')
     expect(newsOf([waiting, news, read]).map((item) => item.id)).toEqual(['news'])
     expect(queueOrder(waitingGroups([waiting], TODAY), [news]).map((item) => item.id)).toEqual(['waiting', 'news'])
+  })
+})
+
+describe('isAtHref', () => {
+  const at = (search: string) => new URLSearchParams(search)
+  it('is the same path with every parameter the link names, whatever else the address says', () => {
+    const mark = '/app/projects/p1/files?doc=d1&review=1&mark=m4'
+    expect(isAtHref(mark, '/app/projects/p1/files', at('doc=d1&review=1&mark=m4&tool=point'))).toBe(true)
+    expect(isAtHref(mark, '/app/projects/p1/files', at('doc=d1&review=1&mark=m5'))).toBe(false)
+    expect(isAtHref(mark, '/app/projects/p2/files', at('doc=d1&review=1&mark=m4'))).toBe(false)
+  })
+
+  it('ignores where the link returns to and where it scrolls', () => {
+    expect(isAtHref('/app/projects/p1/chat?session=c1&back=%2Fapp%2Finbox#m-9', '/app/projects/p1/chat', at('session=c1'))).toBe(true)
   })
 })

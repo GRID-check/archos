@@ -334,6 +334,11 @@ export const collaboration = {
 
   inbox: {
     title: 'Inbox',
+    /** The inbox beside the page: close it, and the way to every entry. */
+    dock: {
+      close: 'Close the inbox',
+      all: 'All entries',
+    },
     /** Nav entry + the count badge. */
     navLabel: 'Inbox',
     badgeAria:
@@ -381,7 +386,6 @@ export const collaboration = {
       open: 'open',
       archive: 'archive',
       read: 'read/unread',
-      reply: 'reply',
     },
     /** What a new revision leaves to check, as a fact on the line under the title. */
     openMarks: '{count, plural, one {# open annotation} other {# open annotations}}',
@@ -407,15 +411,6 @@ export const collaboration = {
       approval: '{actor} asked for your approval',
       approvalNoActor: 'Waiting for your approval',
       mark: 'Annotation {number}',
-    },
-    /** The selected entry, beside the list. */
-    detail: {
-      empty: 'Select an entry to read and answer it here.',
-      openDocument: 'Open in document',
-      open: 'Open',
-      thread: 'Annotation thread',
-      threadLoading: 'Loading the thread.',
-      threadFailed: 'The thread could not be loaded. You will find it in the document.',
     },
     mark: {
       answerInReview: 'Answer in the review',

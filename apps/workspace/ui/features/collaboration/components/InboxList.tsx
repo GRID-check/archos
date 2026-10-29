@@ -317,11 +317,10 @@ export function InboxList({
   const emptyKey = filter
 
   return (
-    // The queue sets its detail beside the list, so it takes the width; a flat
-    // list keeps the reading measure.
+    // A reading measure: inbox rows are reading material, and a 1400px line of them is not.
     <div
       ref={rootRef}
-      className={cn('mx-auto w-full space-y-4', queued ? 'max-w-6xl' : 'max-w-3xl', className)}
+      className={cn('mx-auto w-full max-w-3xl space-y-4', className)}
       onFocus={trackFocus}
       onBlur={dropFocus}
     >
@@ -419,7 +418,7 @@ export function InboxList({
           skeleton→rows swap, on every filter change and after every archive. */}
       {/* Focusable from code only: where the focus goes when the last row leaves with it. */}
       {queued ? (
-        <InboxQueue enabled={enabled} viewerId={viewerId} />
+        <InboxQueue enabled={enabled} />
       ) : (
       <div ref={listRef} data-testid="inbox-list" tabIndex={-1} className="outline-none">
         {error ? (
@@ -511,7 +510,6 @@ export function InboxList({
         >
           <span className="inline-flex items-center gap-1"><KbdGroup><Kbd>j</Kbd><Kbd>k</Kbd></KbdGroup>{t('inbox.keys.move')}</span>
           <span className="inline-flex items-center gap-1"><Kbd>↵</Kbd>{t('inbox.keys.open')}</span>
-          {queued && <span className="inline-flex items-center gap-1"><Kbd>r</Kbd>{t('inbox.keys.reply')}</span>}
           <span className="inline-flex items-center gap-1"><Kbd>e</Kbd>{t('inbox.keys.archive')}</span>
           <span className="inline-flex items-center gap-1"><Kbd>u</Kbd>{t('inbox.keys.read')}</span>
         </p>

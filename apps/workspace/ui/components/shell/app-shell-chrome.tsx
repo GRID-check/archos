@@ -44,6 +44,18 @@ import { ProductTour } from '@/features/onboarding/components/product-tour'
 import { FeedbackProvider } from '@/features/product-feedback/components'
 import { useVisualViewport } from '@/hooks/use-visual-viewport'
 import { cn } from '@/lib/utils'
+import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
+import { DockedSplit } from '@/components/ui/docked-split'
+import { useMediaQuery } from '@/hooks/use-media-query'
+import { DOCK_LAYOUT_QUERY } from '@/hooks/use-is-mobile'
+import {
+  START_DOCK_WIDTH_MAX,
+  START_DOCK_WIDTH_MIN,
+  defaultStartDockWidth,
+  useStartDock,
+  type StartDockPanel,
+} from './start-dock'
 import { AppSidebar } from './app-sidebar'
 import { OrgHeader } from './org-header'
 import { projectIdFromPathname } from './org-sections'
@@ -84,13 +96,21 @@ export interface AppShellChromeProps {
   children: React.ReactNode
   /** The `@overlay` parallel slot — the Archiv/Postfach sheet, or null. */
   overlay: React.ReactNode
+  /**
+   * What may dock at the start edge beside the page, by panel (the Postfach).
+   * Handed down by the app layout so the shell never imports a feature; a
+   * panel the reader may not open is simply absent.
+   */
+  startDock?: Partial<Record<StartDockPanel, React.ReactNode>>
 }
 
 export function AppShellChrome({
   children,
   overlay,
+  startDock = {},
   ...chrome
 }: AppShellChromeProps): JSX.Element {
+  const t = useTranslations(navCopy)
   const pathname = usePathname() ?? ''
 
   // The last non-overlay pathname — the page the sheet covers. A ref written
@@ -113,6 +133,18 @@ export function AppShellChrome({
   // the home-indicator inset a surface at the bottom of `<main>` still has to
   // clear. Zero while the bar stands (the bar clears it) and while the
   // keyboard is up (it covers the indicator); the real inset otherwise.
+  // The panel docked beside the page: open in this tab, handed over by the
+  // layout, and with room for it. Below `lg` its list is a page of its own.
+  const dockedPanel = useStartDock((state) => state.panel)
+  const dockWidth = useStartDock((state) => state.width)
+  const setDockWidth = useStartDock((state) => state.setWidth)
+  const restoreDockWidth = useStartDock((state) => state.restoreWidth)
+  const closeDock = useStartDock((state) => state.close)
+  const restoreDock = useStartDock((state) => state.restore)
+  React.useEffect(() => restoreDock(), [restoreDock])
+  const dockFits = useMediaQuery(DOCK_LAYOUT_QUERY)
+  const dockContent = dockedPanel && dockFits ? (startDock[dockedPanel] ?? null) : null
+
   const keyboardUp = useKeyboardUp()
   const tabBarShown = !keyboardUp && !phoneTabBarHiddenOnRoute(solidPathRef.current)
 
@@ -164,7 +196,26 @@ export function AppShellChrome({
           canAccessInbox={chrome.canAccessInbox}
         />
       )}
-      {children}
+      {/* Always the same tree: the page is the split's first panel whether or
+          not anything is docked, so opening the Postfach never remounts it. */}
+      <DockedSplit
+        id="start-dock"
+        side="start"
+        open={dockContent !== null}
+        width={dockWidth}
+        minWidth={START_DOCK_WIDTH_MIN}
+        maxWidth={START_DOCK_WIDTH_MAX}
+        defaultWidth={defaultStartDockWidth}
+        onWidthChange={setDockWidth}
+        onDismiss={closeDock}
+        restoreWidth={restoreDockWidth}
+        resizeLabel={t('resizeDock')}
+        panel={dockContent}
+        panelClassName="border-border bg-surface-sunken border-r"
+        pageClassName="flex flex-col"
+      >
+        {children}
+      </DockedSplit>
       {tabBarShown && (
         <PhoneTabBar
           projectId={projectId}

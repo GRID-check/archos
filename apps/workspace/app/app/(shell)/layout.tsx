@@ -36,6 +36,7 @@
 import type { JSX } from 'react'
 import { type ReactNode } from 'react'
 import { AppShellChrome } from '@/components/shell/app-shell-chrome'
+import { InboxDock } from '@/features/collaboration/components'
 import { RouteFocus } from '@/shared/components/route-focus'
 import { MainScrollMemory } from '@/components/shell/main-scroll-memory'
 import { resolveShellChrome } from '@/lib/shell/chrome'
@@ -69,6 +70,8 @@ export default async function AppShellLayout({
       showModels={chrome.showModels}
       tours={chrome.tours}
       overlay={overlay}
+      // What may dock beside the page: the Postfach, for a reader who may open it.
+      startDock={{ inbox: chrome.navFlags.canAccessInbox ? <InboxDock /> : undefined }}
     >
       {/* `relative` is load-bearing for the docked chat panels: they position
           against this box, so "the inner edge of the rail" is true by

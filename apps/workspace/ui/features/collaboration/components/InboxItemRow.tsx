@@ -48,20 +48,12 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import {
   Archive,
   ArchiveRestore,
-  AtSign,
   CheckCircle2,
-  Clock,
-  HardDrive,
   Layers,
   Mail,
   MailOpen,
-  Megaphone,
   MessageSquare,
   MoreHorizontal,
-  ShieldAlert,
-  UserPlus,
-  type LucideIcon,
-  AlertTriangle,
   ArrowUpRight,
   Check,
   Reply,
@@ -77,13 +69,10 @@ import {
   isMarkAnchored,
   UNKNOWN_TYPE_PRESENTATION,
   type InboxItemView,
-  type InboxTypePresentation,
 } from '@/lib/inbox/types'
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { AttentionDot } from '@/components/ui/attention-dot'
 import { Quote } from '@/components/ui/quote'
-import { PersonAvatar } from '@/components/ui/avatar-stack'
-import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { Button } from '@/components/ui/button'
 import {
   Item,
@@ -103,32 +92,13 @@ import { withReviewBack } from '@/features/documents/lib/open-review'
 import { Composer } from '@/features/documents/components/review/composer'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
 import { MentionText } from './MentionText'
+import { InboxItemFace } from './InboxItemFace'
 import { MARK_CLIENT, useMarkAnswer, type InboxMarkClient } from '../hooks/use-mark-answer'
 import { InboxItemCaption } from './InboxItemCaption'
 import { inboxDue } from '../lib/inbox-due'
 import { InboxReviewDecision, type InboxReviewClient } from './InboxReviewDecision'
 import { isPlainClick } from '../lib/plain-click'
 import { UploadReportLines } from '@/features/uploads/components/upload-report'
-
-/**
- * The ONE place the registry's icon names become components. Keeping the map here
- * (rather than storing components in `lib/inbox/types.ts`) keeps the registry a
- * plain data module that the server half can import without pulling in React.
- * `piloti` is not a Lucide icon but Piloti's own glyph, drawn below.
- */
-const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon> =
-  {
-    'at-sign': AtSign,
-    'message-square': MessageSquare,
-    'user-plus': UserPlus,
-    'check-circle': CheckCircle2,
-    'hard-drive': HardDrive,
-    'alert-triangle': AlertTriangle,
-    clock: Clock,
-    layers: Layers,
-    megaphone: Megaphone,
-    'shield-alert': ShieldAlert,
-  }
 
 export type { InboxMarkClient }
 
@@ -187,7 +157,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     route, not just its own row. One unknown row must cost one unremarkable row.
   */
   const presentation = INBOX_TYPE_PRESENTATION[item.type] ?? UNKNOWN_TYPE_PRESENTATION
-  const Icon = presentation.icon === 'piloti' ? null : ICONS[presentation.icon]
 
   /*
     „Besprechen", for a row whose target is a DOCUMENT.
@@ -322,13 +291,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       : []),
   ]
 
-  // Who caused it, when a person did: their face, with the type's glyph in the
-  // corner. Piloti's rows keep Piloti's face; a system row keeps its glyph.
-  const actorFace =
-    presentation.icon !== 'piloti' && item.actorUserId && item.actorName
-      ? { userId: item.actorUserId, name: item.actorName }
-      : null
-
   /*
     Inline triage for a version waiting for a decision (ADR-0054): the three
     decisions on the row, so the reviewer answers here instead of navigating
@@ -427,15 +389,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             corners made a rainbow of small marks down the list; what a row
             asks and how urgent it is are said in words on its lines. */}
         <ItemMedia aria-hidden className={cn('mt-0.5 size-8', inert && 'opacity-60')}>
-          {actorFace ? (
-            <PersonAvatar person={actorFace} size="md" />
-          ) : Icon ? (
-            <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Icon className="size-4" />
-            </span>
-          ) : (
-            <AgentGlyph size="lg" tone="outline" />
-          )}
+          <InboxItemFace item={item} />
         </ItemMedia>
 
         <ItemContent className={cn(inert && 'opacity-90')}>

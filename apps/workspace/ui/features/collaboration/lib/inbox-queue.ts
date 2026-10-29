@@ -99,3 +99,20 @@ export function newsOf(items: readonly InboxItemView[]): InboxItemView[] {
 export function queueOrder(groups: readonly InboxQueueGroup[], news: readonly InboxItemView[]): InboxItemView[] {
   return [...groups.flatMap((group) => group.items), ...news]
 }
+
+/**
+ * Whether the reader is at an entry's place: the same path, and every
+ * parameter the entry's link names present in the address with the same value
+ * (the chat's `session`, the review's `doc` and `mark`). The address may say
+ * more (the review's tool, a page); `back` and the hash say where to return
+ * and where to scroll, not where the reader is.
+ */
+export function isAtHref(href: string, pathname: string, params: Pick<URLSearchParams, 'get'> | null): boolean {
+  const target = new URL(href, 'https://inbox.invalid')
+  if (target.pathname !== pathname) return false
+  for (const [key, value] of target.searchParams) {
+    if (key === 'back') continue
+    if (params?.get(key) !== value) return false
+  }
+  return true
+}

@@ -19,7 +19,7 @@ import { AnnotationRequestError, replyToAnnotation, updateAnnotation } from '@/l
 import type { MarkMention } from '@/lib/annotations/types'
 import type { InboxItemView } from '@/lib/inbox/types'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
-import type { ComposerSend } from '@/features/documents/components/review/composer'
+import type { ComposerSend } from '@/features/documents/review-links'
 import { useUndoableArchive } from './use-undoable-archive'
 
 /** The two writes an answer makes, through the annotations' own client. Injected by the specs. */

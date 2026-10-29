@@ -8,6 +8,7 @@ import { Archive, Bell, MessageSquarePlus, Search } from 'lucide-react'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
+import { useStartDockDoor, type StartDockDoor } from './start-dock'
 import { useFeedbackAvailable, useOpenFeedback } from '@/features/product-feedback/components'
 import { InboxBadge } from '@/features/collaboration/components'
 import { useTranslations } from '@/i18n'
@@ -74,6 +75,8 @@ export function OrgHeader({
   const t = useTranslations(navCopy)
   const tCollaboration = useTranslations(collaborationCopy)
   const { pending: inboxPending } = useInboxBadge(canAccessInbox)
+  // The bell opens the Postfach beside the page where it fits.
+  const inboxDoor = useStartDockDoor('inbox')
   const tFeedback = useTranslations(feedbackCopy)
   const openFeedback = useOpenFeedback()
   const feedbackAvailable = useFeedbackAvailable()
@@ -123,6 +126,7 @@ export function OrgHeader({
               tourAnchor={TOUR_ANCHORS.inbox}
               active={pathname === '/app/inbox' || pathname.startsWith('/app/inbox/')}
               badgeCount={inboxPending}
+              door={inboxDoor}
             />
           )}
           {feedbackAvailable && (
@@ -163,6 +167,7 @@ function OrgHeaderIconLink({
   active,
   badgeCount = 0,
   tourAnchor,
+  door,
 }: {
   href: string
   label: string
@@ -171,6 +176,8 @@ function OrgHeaderIconLink({
   badgeCount?: number
   /** Marks the link as a product-tour stop. */
   tourAnchor?: TourAnchor
+  /** A door to a panel docked beside the page (the Postfach). */
+  door?: StartDockDoor
 }): JSX.Element {
   return (
     <Tooltip>
@@ -179,10 +186,12 @@ function OrgHeaderIconLink({
           href={href}
           aria-label={label}
           aria-current={active ? 'page' : undefined}
+          aria-expanded={door?.open}
+          onClick={door?.onClick}
           data-tour={tourAnchor}
           className={cn(
             'focus-visible:ring-ring/60 relative hidden size-9 items-center justify-center rounded-control transition-colors pointer-coarse:size-11 md:flex duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
-            active
+            active || door?.open
               ? 'bg-accent text-foreground'
               : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           )}

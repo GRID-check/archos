@@ -43,7 +43,9 @@ vi.mock('./connection-presence-indicator', () => ({
 }))
 vi.mock('@/components/brand/logo', () => ({ Logo: () => <div /> }))
 
-vi.mock('@/hooks/use-is-mobile', () => ({
+// Only the hook is stood in for: the module's named queries stay real.
+vi.mock('@/hooks/use-is-mobile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-is-mobile')>()),
   useIsMobile: vi.fn(() => false),
 }))
 

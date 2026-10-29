@@ -33,40 +33,21 @@ export const VIEWER_ID = 'u-miriam'
 type MarkView = import('@/lib/annotations/types').AnnotationView
 type ReplyView = import('@/lib/annotations/types').AnnotationReplyView
 
-/** What a fixture mark's thread holds before the reader answers: who set it, and what was said since. */
-const SEEDS: Record<string, { body: string; by: [string, string]; replies: Array<{ by: [string, string] | 'piloti'; body: string; daysAgo: number }> }> = {
-  'mark-11': {
-    body: 'Fluchtwegbreite im Gang nachweisen.',
-    by: ['u-anna', 'Anna Weber'],
-    replies: [
-      { by: ['u-jakob', 'Jakob Huber'], body: 'Im Plan sind 1,15 m kotiert. Reicht das hier?', daysAgo: 1 },
-      { by: 'piloti', body: 'Ich habe die kotierte Breite gefunden. Soll ich sie gegen die Anforderung für den Fluchtweg prüfen?', daysAgo: 1 },
-    ],
-  },
-}
-
 const threads = new Map<string, MarkView>()
 const daysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString()
 
-/** One fixture mark with its thread, as `GET …/annotations/:id` answers it; kept, so an answer stays in it. */
-export function markThread(documentId: string, markId: string, excerpt = 'Anmerkung'): MarkView {
+/** One fixture mark as the reply route answers it; kept, so a second answer joins the first. */
+function markThread(documentId: string, markId: string): MarkView {
   const kept = threads.get(markId)
   if (kept) return kept
-  const seed = SEEDS[markId] ?? { body: excerpt, by: ['u-anna', 'Anna Weber'] as [string, string], replies: [] }
   const created = daysAgo(2)
   const mark: MarkView = {
     id: markId, documentId, number: Number(markId.replace(/\D/g, '')) || 1, page: 1, shape: 'point', x: 0.4, y: 0.4, w: null, h: null,
-    kind: 'question', body: seed.body, mentions: [], basis: null, authorKind: 'person',
+    kind: 'question', body: 'Anmerkung', mentions: [], basis: null, authorKind: 'person',
     status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, revisionNumber: 3,
-    onCurrentRevision: true, createdBy: seed.by[0], createdByName: seed.by[1], createdAt: created, updatedAt: created,
+    onCurrentRevision: true, createdBy: 'u-anna', createdByName: 'Anna Weber', createdAt: created, updatedAt: created,
     acceptedBy: null, acceptedByName: null, closedBy: null, closedByName: null, closedAt: null,
-    delegatedBy: null, delegatedByName: null, delegatedAt: null, canEdit: true, canDelete: false,
-    replies: seed.replies.map((reply, index): ReplyView => ({
-      id: `${markId}-r${index}`, annotationId: markId, authorKind: reply.by === 'piloti' ? 'piloti' : 'person', body: reply.body,
-      // Piloti answers in the name of whoever asked it.
-      createdBy: reply.by === 'piloti' ? seed.by[0] : reply.by[0], createdByName: reply.by === 'piloti' ? null : reply.by[1],
-      createdAt: daysAgo(reply.daysAgo), addressesPiloti: false, mentions: [], editedAt: null,
-    })),
+    delegatedBy: null, delegatedByName: null, delegatedAt: null, canEdit: true, canDelete: false, replies: [],
   }
   threads.set(markId, mark)
   return mark
