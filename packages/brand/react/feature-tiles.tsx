@@ -6,13 +6,13 @@ export interface FeatureItem {
   text?: ReactNode;
 }
 
-export interface FeatureGridProps {
+export interface FeatureTilesProps {
   items: FeatureItem[];
   columns?: 2 | 3 | 4;
   className?: string;
 }
 
-export function FeatureGrid({ items, columns, className }: FeatureGridProps) {
+export function FeatureTiles({ items, columns, className }: FeatureTilesProps) {
   const cols = columns || Math.min(items.length, 4) || 3;
   const style = { '--ui-cols': cols } as CSSProperties;
 

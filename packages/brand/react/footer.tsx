@@ -39,7 +39,7 @@ export function Footer({
         <div className="ui-footer-top" style={topStyle}>
           <div className="ui-footer-brand">
             <Wordmark size="md" href={homeHref || '/'} />
-            <p className="ui-footer-claim body">{claim || identity.claim}</p>
+            <p className="ui-footer-claim body">{claim || identity.tagline}</p>
           </div>
           {columns.map((column, i) => (
             <div key={i} className="ui-footer-col small">

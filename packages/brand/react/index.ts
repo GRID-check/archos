@@ -4,7 +4,7 @@ export * from './checkbox';
 export * from './cta-band';
 export * from './duo-cards';
 export * from './faq';
-export * from './feature-grid';
+export * from './feature-tiles';
 export * from './footer';
 export * from './gallery';
 export * from './header';

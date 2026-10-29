@@ -1,0 +1,177 @@
+/* generated from tokens.json by build-tokens.mjs — do not edit */
+:root, [data-theme="light"] {
+  --surface: #fafaf9;
+  --surface-raised: #fafaf9;
+  --surface-sunken: #f2f1f0;
+  --surface-glass: rgba(250, 250, 249, 0.72);
+  --line: #e7e5e3;
+  --line-strong: #8a8784;
+  --ink: #0f0e0d;
+  --ink-hover: #2e2c29;
+  --ink-muted: #5e5b57;
+  --ink-faint: #aba8a4;
+  --on-ink: var(--surface);
+  --link: var(--ink);
+  --markup: #c42b1c;
+  --markup-soft: #fbe9e6;
+  --focus-ring: 0 0 0 2px #fafaf9, 0 0 0 4px #0f0e0d;
+}
+[data-theme="dark"] {
+  --surface: #0f0e0d;
+  --surface-raised: #1a1918;
+  --surface-sunken: #0a0908;
+  --surface-glass: rgba(15, 14, 13, 0.72);
+  --line: #2c2a27;
+  --line-strong: #75726e;
+  --ink: #f5f4f2;
+  --ink-hover: #dad8d5;
+  --ink-muted: #a6a39e;
+  --ink-faint: #5a5754;
+  --on-ink: var(--surface);
+  --link: var(--ink);
+  --markup: #ff7a6b;
+  --markup-soft: #3a1511;
+  --focus-ring: 0 0 0 2px #0f0e0d, 0 0 0 4px #f5f4f2;
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-18: 72px;
+  --space-24: 96px;
+  --space-32: 128px;
+  --space-40: 160px;
+  --radius-none: 0;
+  --radius-md: 4px;
+  --stroke-hairline: 1px;
+  --stroke-strong: 2px;
+  --glass-blur: 20px;
+  --container-max: 1280px;
+  --measure: 680px;
+  --gutter: 32px;
+  --gutter-wide: 64px;
+  --gutter-mobile: 16px;
+  --header-height: 64px;
+  --portrait-width: 440px;
+  --hero-ratio: 1.754;
+  --split-form: 592px;
+  --split-card: 640px;
+  --login-form: 400px;
+  --font-sans: "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-logo: Switzer, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --text-display-xl: 500 72px/78px var(--font-sans);
+  --text-display: 500 64px/70px var(--font-sans);
+  --text-heading-1: 500 44px/50px var(--font-sans);
+  --text-heading-2: 500 32px/38px var(--font-sans);
+  --text-heading-3: 500 22px/28px var(--font-sans);
+  --text-lead: 500 20px/28px var(--font-sans);
+  --text-body: 500 16px/24px var(--font-sans);
+  --text-small: 500 14px/20px var(--font-sans);
+  --text-nav: 420 14px/20px var(--font-sans);
+  --text-button-sm: 420 13px/20px var(--font-sans);
+  --text-ai-tag: 500 11px/14px var(--font-sans);
+  --text-wordmark: 600 28px/28px var(--font-logo);
+}
+.display-xl {
+  font-family: var(--font-sans);
+  font-size: 72px;
+  line-height: 78px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.display {
+  font-family: var(--font-sans);
+  font-size: 64px;
+  line-height: 70px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.heading-1 {
+  font-family: var(--font-sans);
+  font-size: 44px;
+  line-height: 50px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.heading-2 {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+.heading-3 {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+.lead {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.small {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.nav {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 420;
+  letter-spacing: 0.01em;
+}
+.button-sm {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 420;
+  letter-spacing: 0.01em;
+}
+.ai-tag {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.wordmark {
+  font-family: var(--font-logo);
+  font-size: 28px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url("./fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Switzer";
+  src: url("./fonts/Switzer-Semibold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
