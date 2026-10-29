@@ -33,7 +33,7 @@ Or from the repo root: `task website:install`, `task website:check`, `task websi
   'none'`, HSTS (no `includeSubDomains`: that is the domain owner's call), `nosniff`, Referrer-Policy,
   COOP and a Permissions-Policy. JSON-LD is data and needs no allowance.
 - **`/healthz`** answers `ok` from the process itself; the Dockerfile's healthcheck uses it.
-  The Kubernetes probes in `deploy/pulumi` still hit `/` (a static page, so also cheap).
+  The Kubernetes readiness and liveness probes in `deploy/pulumi` (`src/app/web.ts`) use it too.
 - **Cache-Control** for static files (`runtime/cache-control.mjs`).
 
 Unknown addresses get `src/pages/404.astro`, rendered on request so `/en/...` answers in English,
