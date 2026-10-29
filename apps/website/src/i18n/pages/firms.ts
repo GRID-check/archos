@@ -141,8 +141,8 @@ const en: typeof de = {
   roles: {
     title: 'Who does what.',
     items: [
-      { key: 'Planners', value: 'Design, weigh, decide and sign. Design and stance stay with people.' },
-      { key: '{name}', value: 'Searches, compares and checks. Prepares what can be done by rules, and names the source.' },
+      { key: 'Planners', value: 'Design, weigh, decide and sign. Design and judgement stay with people.' },
+      { key: '{name}', value: 'Searches, compares and checks. Prepares what follows rules, and names the source.' },
       { key: 'Approval', value: 'What {name} suggests changes nothing in the project until a person confirms it.' },
       { key: 'Designs', value: '{name} does not generate designs. It takes over recurring tasks in the planning process.' },
     ],
@@ -154,7 +154,7 @@ const en: typeof de = {
     items: [
       {
         title: 'For the whole team',
-        text: 'One project, one state, for everyone involved. Not a conversation that sits with one person.',
+        text: 'One project, one shared picture, for everyone involved. Not a conversation that sits with one person.',
       },
       {
         title: 'Understands plans and models',
@@ -175,7 +175,7 @@ const en: typeof de = {
   faq: [
     {
       q: 'Does {name} generate designs?',
-      a: 'No. Design, stance and form stay with you. {name} takes over the rule-based work around planning: searching, comparing, checking and preparing.',
+      a: 'No. Design, judgement and form stay with you. {name} takes over the rule-based work around planning: searching, comparing, checking and preparing.',
     },
     {
       q: 'Which documents can {name} read?',

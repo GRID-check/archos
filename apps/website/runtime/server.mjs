@@ -71,6 +71,9 @@ const server = http.createServer((req, res) => {
     res.end(req.method === 'HEAD' ? undefined : 'ok\n')
     return
   }
+  // HEAD is GET without the body (RFC 9110). Astro answers a redirect to a HEAD with 308 where
+  // the GET gets 301; Node already knows the request was HEAD and sends no body either way.
+  if (req.method === 'HEAD') req.method = 'GET'
   setCacheControl(req, res)
   goneStatus(req, res)
   handler(req, res)

@@ -127,7 +127,7 @@ PNG, JPEG, GIF, WebP, SVG, MP4, MOV and WebM all work.
 
 ## Website targets
 
-`cd apps/website && bun run capture` builds the site, serves it, screenshots every route at 1440, 768, 390 and 360 px (full page) into `apps/website/.capture/` (gitignored), and stops. Flags: `--widths 1440,390`, `--only /en/`, `--out DIR`, `--base URL` (use a running server, skip the build). Cloud containers: `task website:capture` runs the same command; Chromium is taken from `AGENT_BROWSER_EXECUTABLE_PATH`, defaulting to `/opt/pw-browsers/chromium`. Attach the PNGs with `before-and-after`, never commit them.
+`cd apps/website && bun run capture` builds the site, serves it with the production server (`runtime/server.mjs`, headers and 410s as deployed), screenshots every route at 1440, 768, 390 and 360 px (full page, every lazy image loaded, no scrollbar, so a 390 shot is 390 px of layout) into `apps/website/.capture/` (gitignored), and stops. Flags: `--widths 1440,390`, `--only /en/`, `--out DIR`, `--base URL` (use a running server, skip the build). Cloud containers: `task website:capture` runs the same command; Chromium is taken from `AGENT_BROWSER_EXECUTABLE_PATH`, defaulting to `/opt/pw-browsers/chromium`. Attach the PNGs with `before-and-after`, never commit them.
 
 ## What is gone, and what replaced it
 

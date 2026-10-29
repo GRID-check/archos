@@ -31,7 +31,9 @@
  *   remembered by the SDK itself (`__ph_opt_in_out_<token>`); the consent note
  *   (`src/components/ConsentNote.astro`) only asks and calls the SDK.
  * - Session replay masks every input and every text (`session_recording`), and
- *   the project records only on its triggers (errors, rage clicks).
+ *   the project records only on its triggers (errors, rage clicks). It records no
+ *   console logs (`enable_recording_console_log: false`), although the project,
+ *   shared with the app, turns that on: the init option beats the project setting.
  * - `person_profiles: 'identified_only'`: a visitor never becomes a person
  *   profile. The landing site identifies nobody.
  * - Pageviews, page leaves, web vitals, autocaptured clicks and heatmaps: on
@@ -101,6 +103,7 @@ export function webAnalyticsInitOptions(config) {
     capture_performance: { web_vitals: true },
     enable_heatmaps: true,
     session_recording: { maskAllInputs: true, maskTextSelector: '*' },
+    enable_recording_console_log: false,
     disable_surveys: true,
     respect_dnt: true,
   }
