@@ -126,7 +126,7 @@ TaskKind = Literal["compliance_check", "submission_check", "document", "revision
 
 
 class TaskCreatedCard(CardModel):
-    """Work Piloti has taken on, as a row somebody can come back to.
+    """Work the agent has taken on, as a row somebody can come back to.
 
     System-emitted by ``create_task``. What it exists to prevent is the answer
     „ich mache den Einreichcheck bis Freitag“ with nothing behind it: the card is

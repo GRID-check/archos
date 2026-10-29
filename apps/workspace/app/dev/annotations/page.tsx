@@ -74,6 +74,7 @@ import type { RoomEvent, RoomPeer } from '@/lib/annotations/room-types'
 import type { RealtimeFrame } from '@/lib/realtime/types'
 import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
 import { assemblePdf, buildPdf, pdfString } from '../_fixtures/sample-pdf'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SHEET_WIDTH = 842
 const SHEET_HEIGHT = 595
@@ -473,7 +474,7 @@ const annaPeer = peer(ANNA, 'peer-anna-0001')
 const jakobPeer = peer(JAKOB, 'peer-jakob-001')
 const lenaPeer = peer(LENA, 'peer-lena-0001')
 /** Piloti in the room, as `publishAsAgent` names it: on behalf of the person who asked. */
-const agentPeer: RoomPeer = { peerId: 'agent-dev-conv', userId: ME.userId, name: 'Piloti', kind: 'piloti' }
+const agentPeer: RoomPeer = { peerId: 'agent-dev-conv', userId: ME.userId, name: PRODUCT_NAME, kind: 'piloti' }
 
 /** `?wakes=1`: the organization lets events wake Piloti, so the server answers an @Piloti reply. */
 const WAKES = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('wakes')
@@ -499,7 +500,7 @@ const wakeReply = (annotationId: string) => {
     kind: 'annotations.changed',
     annotationIds: [annotationId],
     change: 'replied',
-    actor: { peerId: null, userId: ME.userId, name: 'Piloti', kind: 'piloti' },
+    actor: { peerId: null, userId: ME.userId, name: PRODUCT_NAME, kind: 'piloti' },
   })
 }
 
@@ -513,7 +514,7 @@ const proposeFindings = () => {
     kind: 'annotations.changed',
     annotationIds: proposed.map((proposal) => proposal.id),
     change: 'created',
-    actor: { peerId: null, userId: ME.userId, name: 'Piloti', kind: 'piloti' },
+    actor: { peerId: null, userId: ME.userId, name: PRODUCT_NAME, kind: 'piloti' },
   })
 }
 
@@ -825,7 +826,7 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
             kind: 'annotations.changed',
             annotationIds: [thread.id],
             change: 'replied',
-            actor: { peerId: null, userId: ME.userId, name: 'Piloti', kind: 'piloti' },
+            actor: { peerId: null, userId: ME.userId, name: PRODUCT_NAME, kind: 'piloti' },
           })
         }
         finish(turn, text, thread ? [] : [OIB_RL_4])
@@ -932,7 +933,7 @@ const checkFixed = (turn: ScriptedTurn, question: string) => {
             kind: 'annotations.changed',
             annotationIds: checked.map((one) => one.id),
             change: 'replied',
-            actor: { peerId: null, userId: ME.userId, name: 'Piloti', kind: 'piloti' },
+            actor: { peerId: null, userId: ME.userId, name: PRODUCT_NAME, kind: 'piloti' },
           })
         }
         emit(turn, { type: 'STEP_FINISHED', step: replyStep })

@@ -73,6 +73,7 @@ import { VIEW_UI_META, declaresMcpApps, runAppTool } from './mcp-apps'
 import type { AgentPrincipal } from './principal'
 import { readGateFor } from './read-gate'
 import { recordOperationCalled } from './telemetry'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session = {
   userId: 'user_1',
@@ -392,7 +393,7 @@ describe('a model deciding a proposal itself', () => {
     } as ProposedChangeView)
     const apply = await callTool(outside, 'search', 'call-operation', { name: 'proposal-apply', input: { params: { id: PROPOSAL_ID } } }, ELICITS)
     expect(questionOf(apply)).toBe(
-      'An agent connected to Piloti wants to apply this Piloti proposal as you: an action, "Delete the document Grundriss EG.pdf" ' +
+      `An agent connected to ${PRODUCT_NAME} wants to apply this ${PRODUCT_NAME} proposal as you: an action, "Delete the document Grundriss EG.pdf" ` +
         '(document-delete), on document "Grundriss EG.pdf". In project "Wohnhaus Lindengasse". Nothing happens unless you confirm.',
     )
     expect(questionOf(apply)).not.toContain(PROPOSAL_ID)
@@ -403,10 +404,10 @@ describe('a model deciding a proposal itself', () => {
     vi.mocked(getProposal).mockRejectedValueOnce(new NotFoundError('Proposal not found'))
     const apply = await callTool(outside, 'search', 'call-operation', { name: 'proposal-apply', input: { params: { id: PROPOSAL_ID } } }, ELICITS)
     const question = questionOf(apply)
-    expect(question).toMatch(/^An agent connected to Piloti wants to make this change as you: Apply a proposed change/)
+    expect(question.startsWith(`An agent connected to ${PRODUCT_NAME} wants to make this change as you: Apply a proposed change`)).toBe(true)
     expect(question).toMatch(/Nothing changes unless you confirm\.$/)
     // Neither the proposal's summary, its kind nor a project: nothing the person may not read.
-    expect(question).not.toMatch(/this Piloti proposal|Rename the folder|In project|an action/)
+    expect(question).not.toMatch(new RegExp(`this ${PRODUCT_NAME} proposal|Rename the folder|In project|an action`))
     expect(callOperation).not.toHaveBeenCalled()
   })
 
@@ -420,7 +421,7 @@ describe('a model deciding a proposal itself', () => {
     } as unknown as ProposedChangeView)
     const dismiss = await callTool(outside, 'search', 'call-operation', { name: 'proposal-dismiss', input: { params: { id: PROPOSAL_ID } } }, ELICITS)
     expect(questionOf(dismiss)).toBe(
-      'An agent connected to Piloti wants to discard this Piloti proposal as you: a file move of one file: "Schnitt A-A.pdf". ' +
+      `An agent connected to ${PRODUCT_NAME} wants to discard this ${PRODUCT_NAME} proposal as you: a file move of one file: "Schnitt A-A.pdf". ` +
         'Discarding changes nothing in the workspace. Nothing happens unless you confirm.',
     )
   })

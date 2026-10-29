@@ -59,6 +59,7 @@ import { recordOperationCalled } from '@/lib/agent-api/telemetry'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { ASK_WAIT_SECONDS, isTerminalAskState, type AskView } from '@/lib/agent-asks/ask-wire'
 import { askInputOf, artifactsOf, taskOf } from './task-mapping'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The longest a blocking `SendMessage` holds its request before it answers the task still working. */
 export const BLOCKING_MAX_MS = 5 * 60_000
@@ -90,7 +91,7 @@ function routeMessage(result: OperationResult): string {
     const error = (body as { error: unknown }).error
     if (typeof error === 'string' && error.trim()) return error
   }
-  return `Piloti refused the request (${result.status}).`
+  return `${PRODUCT_NAME} refused the request (${result.status}).`
 }
 
 /** A route's refusal as the A2A error that names it; anything else is the SDK's internal error with the route's words. */
@@ -168,7 +169,7 @@ export class AgentA2ARequestHandler implements A2ARequestHandler {
   }
 
   async getAuthenticatedExtendedAgentCard(_params: GetExtendedAgentCardRequest): Promise<AgentCard> {
-    throw new ExtendedAgentCardNotConfiguredError('Piloti has one agent card, the public one.')
+    throw new ExtendedAgentCardNotConfiguredError(PRODUCT_NAME + ' has one agent card, the public one.')
   }
 
   /**
@@ -260,22 +261,22 @@ export class AgentA2ARequestHandler implements A2ARequestHandler {
   }
 
   async listTasks(_params: ListTasksRequest): Promise<ListTasksResponse> {
-    throw new UnsupportedOperationError('Piloti does not list tasks. Read one with GetTask.')
+    throw new UnsupportedOperationError(PRODUCT_NAME + ' does not list tasks. Read one with GetTask.')
   }
 
   async createTaskPushNotificationConfig(): Promise<TaskPushNotificationConfig> {
-    throw new PushNotificationNotSupportedError('Piloti sends no push notifications; stream or poll instead.')
+    throw new PushNotificationNotSupportedError(PRODUCT_NAME + ' sends no push notifications; stream or poll instead.')
   }
 
   async getTaskPushNotificationConfig(): Promise<TaskPushNotificationConfig> {
-    throw new PushNotificationNotSupportedError('Piloti sends no push notifications; stream or poll instead.')
+    throw new PushNotificationNotSupportedError(PRODUCT_NAME + ' sends no push notifications; stream or poll instead.')
   }
 
   async listTaskPushNotificationConfigs(): Promise<ListTaskPushNotificationConfigsResponse> {
-    throw new PushNotificationNotSupportedError('Piloti sends no push notifications; stream or poll instead.')
+    throw new PushNotificationNotSupportedError(PRODUCT_NAME + ' sends no push notifications; stream or poll instead.')
   }
 
   async deleteTaskPushNotificationConfig(): Promise<void> {
-    throw new PushNotificationNotSupportedError('Piloti sends no push notifications; stream or poll instead.')
+    throw new PushNotificationNotSupportedError(PRODUCT_NAME + ' sends no push notifications; stream or poll instead.')
   }
 }

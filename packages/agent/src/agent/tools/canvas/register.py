@@ -133,10 +133,10 @@ DESCRIPTIONS = {
         f"is marked twice. {_DOCUMENT}"
     ),
     "mark": (
-        "Sets `proposals` as PROPOSALS from Piloti; none of them counts until a person takes the proposal over in "
+        "Sets `proposals` as PROPOSALS from you; none of them counts until a person takes the proposal over in "
         "the document or dismisses it. Never say a defect has been entered. `open=true` "
         "only when the person asks for exactly this "
-        "annotation to be set (then it is open at once, in their name; if the office lets Piloti only propose, this is "
+        "annotation to be set (then it is open at once, in their name; if the office lets you only propose, this is "
         "refused, then retry without `open`); your own findings, even in a requested review, stay proposals. "
         "First look at the page with `look` and estimate the spot there. Per proposal: `page` (from 1); `shape` "
         "`region` (preferred: a tight frame "
@@ -152,19 +152,19 @@ DESCRIPTIONS = {
         "this annotation. Give only what changes: `status` `open` (take over, reopen), "
         "`resolved` or `dismissed` (dismiss a proposal); `assignee` (name); `due_on` (YYYY-MM-DD); `kind`; "
         "`body`; `-` clears `assignee`/`due_on`. `note` (required): one sentence on what you did, e.g. „Erledigt: "
-        "Lichte Breite im Schnitt B-B mit 1,25 m kotiert.“; it appears as a reply from Piloti in the thread. Give "
-        "the number in your answer. If the office lets Piloti only propose, this is "
+        "Lichte Breite im Schnitt B-B mit 1,25 m kotiert.“; it appears as your reply in the thread. Give "
+        "the number in your answer. If the office lets you only propose, this is "
         "refused: then the person changes it "
         "themselves. A request to check whether something is fixed asks for no change: then you answer with `reply`, "
         f"and the person resolves it. {_DOCUMENT}"
     ),
     "delete": (
         "Deletes the annotation `annotation` (number or id) with its thread, permanently. Only on explicit request, "
-        "and only annotations the person set themselves; if the office lets Piloti only propose, the person deletes "
+        "and only annotations the person set themselves; if the office lets you only propose, the person deletes "
         f"it themselves. {_DOCUMENT}"
     ),
     "reply": (
-        "Writes `body` as Piloti's reply into the thread of the annotation `annotation` (its id or number). "
+        "Writes `body` as your reply into the thread of the annotation `annotation` (its id or number). "
         "Everyone who opens the document reads it at once: short, understandable on its own, without source marks like "
         "[1], at most 2000 characters. Use it when you were asked in the thread or are asked to. "
         "If you are to check whether annotations from an earlier revision are fixed in the current one: one "

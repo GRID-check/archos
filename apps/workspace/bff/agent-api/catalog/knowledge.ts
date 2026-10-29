@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { geocodeQuerySchema } from '@/lib/geocoding/types'
 import { listNormsQuerySchema } from '@/lib/norms/norm-list-wire'
 import type { AgentOperation } from '../operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const knowledgeOperations = [
   {
@@ -23,7 +24,7 @@ export const knowledgeOperations = [
     domain: 'knowledge',
     summary: 'List the norm register',
     description:
-      'Austrian laws and authority guidance Piloti knows by number: `{ norms: [{ id, short, title, rank, federalState, topics, citationUrl, documentNumber, bindingNote }], nextCursor }`. ' +
+      'Austrian laws and authority guidance ' + PRODUCT_NAME + ' knows by number: `{ norms: [{ id, short, title, rank, federalState, topics, citationUrl, documentNumber, bindingNote }], nextCursor }`. ' +
       '`federalState` ("Wien" or "vienna") keeps that state’s norms plus federal ones; `topic` matches topics, title or short name. `bindingNote` (German) says how it becomes binding. ' +
       'Pass `documentNumber` as the `instrument` of the law lookup to read it.',
     method: 'GET',

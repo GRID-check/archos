@@ -32,7 +32,7 @@ class Refused(Exception):
 
 
 NO_ENVELOPE = (
-    "Error: This run has no signed session credential, so Piloti cannot read or write in any document. Do not retry."
+    "Error: This run has no signed session credential, so you cannot read or write in any document. Do not retry."
 )
 NO_DOCUMENT = (
     "Which document? This chat belongs to no document, and none is open. Name it in `document` "
@@ -65,11 +65,11 @@ ASSIGNEE_UNCLEAR = (
 #: The BFF's ``details.reason`` when the organization has Piloti propose only (``piloti-acts`` off).
 PILOTI_ACTS_OFF = "piloti-acts-off"
 PROPOSE_ONLY_MARK = (
-    "Not set: This office lets Piloti only propose annotations. Set them with `mark` without `open` as a "
+    "Not set: This office lets you only propose annotations. Set them with `mark` without `open` as a "
     "proposal and tell the person they can take it over in the document."
 )
 PROPOSE_ONLY_CHANGE = (
-    "Not changed: This office lets Piloti only propose annotations, not change or delete them. Tell the "
+    "Not changed: This office lets you only propose annotations, not change or delete them. Tell the "
     "person they can do this in the document themselves; do not retry."
 )
 UNREACHABLE = (

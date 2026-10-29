@@ -37,6 +37,7 @@ import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { DiagramFilingProvider } from '@/features/diagrams/diagram-filing-context'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const FLOW = `\`\`\`mermaid
 graph TD
@@ -78,7 +79,7 @@ export default function DiagramAnswerPreview() {
       >
         <Panel
           title="Gezeichnet, im Projekt ablegbar"
-          note="Der Ablauf, von Piloti selbst gezeichnet, darunter die Aktion, die daraus zwei Dateien im Projekt macht: ein SVG, das in „Dateien“ vorschaubar ist und den Quelltext mitträgt, und ein PDF, das an eine Einreichung geht. Erst die abgelegte Fassung trägt die Zeile „Schematisch — ohne Maßangabe.“"
+          note={"Der Ablauf, von " + PRODUCT_NAME + " selbst gezeichnet, darunter die Aktion, die daraus zwei Dateien im Projekt macht: ein SVG, das in „Dateien“ vorschaubar ist und den Quelltext mitträgt, und ein PDF, das an eine Einreichung geht. Erst die abgelegte Fassung trägt die Zeile „Schematisch — ohne Maßangabe.“"}
         >
           <DiagramFilingProvider target={{ projectId: 'proj-preview', answerId: 'msg-preview' }}>
             <MarkdownRenderer content={FLOW} />

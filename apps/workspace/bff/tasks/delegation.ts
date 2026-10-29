@@ -59,6 +59,7 @@ import type { Locale } from '@/i18n/config'
 import * as repository from './repository'
 import { submittedRunStatus } from './task-vocabulary'
 import { TASK_GOAL_MAX_CHARS } from './wire'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // Re-exported so a caller reaching for the bound has one place to look, while
 // the DECLARATION stays in the wire module the route parses with.
@@ -147,7 +148,7 @@ const TASK_ENGINES: Record<DelegatableTaskKind, TaskEngine> = {
         'Schreibe das beauftragte Dokument VOLLSTÄNDIG als deine Antwort, in Markdown,',
         'mit einer Überschrift (`# …`) am Anfang. Die Antwort IST das Dokument: keine',
         'Zusammenfassung davor, keine Rückfrage, kein „ich könnte".',
-        'Piloti legt es danach als ENTWURF im Projekt ab und legt es zur Freigabe vor —',
+        PRODUCT_NAME + ' legt es danach als ENTWURF im Projekt ab und legt es zur Freigabe vor —',
         'behaupte nicht, es sei freigegeben.',
         '',
         'Der Auftrag, wörtlich:',
@@ -171,7 +172,7 @@ const TASK_ENGINES: Record<DelegatableTaskKind, TaskEngine> = {
         'geschrieben hat, und gib das ÜBERARBEITETE DOKUMENT vollständig als deine',
         'Antwort aus, in Markdown, mit Überschrift. Die Antwort IST die neue Fassung:',
         'keine Liste der Änderungen, kein Kommentar davor.',
-        'Piloti macht daraus die nächste Version desselben Dokuments und legt sie wieder',
+        PRODUCT_NAME + ' macht daraus die nächste Version desselben Dokuments und legt sie wieder',
         'zur Freigabe vor.',
         '',
         'Der Auftrag, wörtlich:',
@@ -746,6 +747,6 @@ function tooLongToRevise(length: number, budget: number): string {
   return [
     `Das Dokument ist mit ${formatCount(length, 'de-AT')} Zeichen zu lang für einen Überarbeitungsauftrag`,
     `(höchstens ${formatCount(budget, 'de-AT')} Zeichen). Die zurückgegebene Fassung bleibt unverändert;`,
-    'über „Mit Piloti besprechen“ am Dokument lässt sie sich abschnittsweise überarbeiten.',
+    'über „Mit ' + PRODUCT_NAME + ' besprechen“ am Dokument lässt sie sich abschnittsweise überarbeiten.',
   ].join(' ')
 }

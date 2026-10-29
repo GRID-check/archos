@@ -35,6 +35,7 @@ import type { ProposalResponse } from '@/lib/proposals/types'
 import { appProposalTransport, proposalOfResult } from './app-transport'
 import { applyHostTheme } from './host-theme'
 import { cardOfProposal, renderProposalCard } from './proposal-cards'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const APP_INFO = { name: 'piloti-proposal-card', version: '1.0.0' } as const
 
@@ -44,7 +45,7 @@ type HostApp = Pick<App, 'callServerTool' | 'updateModelContext'>
 export function settledContext(response: ProposalResponse): string {
   const { proposal } = response
   const by = proposal.decidedByName ? ` by ${proposal.decidedByName}` : ''
-  return `Piloti proposal ${proposal.id} is ${proposal.status}${by}; it is no longer open; do not apply or dismiss it.`
+  return `${PRODUCT_NAME} proposal ${proposal.id} is ${proposal.status}${by}; it is no longer open; do not apply or dismiss it.`
 }
 
 /**

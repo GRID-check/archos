@@ -45,6 +45,7 @@ import { foldTurnEvent, initialTurnView, isSteerRead, stopTurnView, type TurnVie
 import { clampFocusRegion, type CanvasFocusRegion } from '@/features/chat/lib/canvas-bridge'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** How long a question may go unacknowledged before the socket is reopened (the chat's figure). */
 export const CANVAS_ACK_TIMEOUT_MS = 15_000
@@ -105,7 +106,7 @@ export function canvasDegradations(
 
 export class CanvasTurnError extends Error {
   constructor(readonly code: 'busy' | 'closed') {
-    super(code === 'busy' ? 'Piloti is still answering the previous question' : 'The canvas client is closed')
+    super(code === 'busy' ? PRODUCT_NAME + ' is still answering the previous question' : 'The canvas client is closed')
     this.name = 'CanvasTurnError'
   }
 }
@@ -259,7 +260,7 @@ export function createCanvasTurnClient(options: CanvasTurnClientOptions): Canvas
     pending.timer = null
     pending.misses += 1
     if (pending.misses >= ACK_MISSES_BEFORE_GIVING_UP) {
-      fail(pending.message.message_id, 'agent.no_response', 'Piloti did not answer')
+      fail(pending.message.message_id, 'agent.no_response', PRODUCT_NAME + ' did not answer')
       return
     }
     // An open socket that did not answer is reopened, and the question goes
@@ -337,7 +338,7 @@ export function createCanvasTurnClient(options: CanvasTurnClientOptions): Canvas
     socketOpen = status === 'open'
     if (status === 'open' && pending) sendPending()
     if (status === 'failed' || status === 'incompatible' || status === 'outdated') {
-      if (running) fail(running, `connection.${status}`, 'The connection to Piloti gave up')
+      if (running) fail(running, `connection.${status}`, 'The connection to ' + PRODUCT_NAME + ' gave up')
     }
   }
 
@@ -356,7 +357,7 @@ export function createCanvasTurnClient(options: CanvasTurnClientOptions): Canvas
           silentDrops.set(turnId, drops)
           if (drops < SILENT_DROPS_BEFORE_GIVING_UP) continue
           silentDrops.delete(turnId)
-          fail(turnId, 'agent.response_interrupted', 'Piloti went silent')
+          fail(turnId, 'agent.response_interrupted', PRODUCT_NAME + ' went silent')
         }
       },
     })

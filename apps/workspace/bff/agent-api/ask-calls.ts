@@ -40,6 +40,7 @@ import type { AgentOperation } from './operation'
 import { callDecision, findVisibleOperation } from './policy'
 import type { AgentPrincipal } from './principal'
 import type { McpCallContext } from './telemetry'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The extension's identifier (SEP-2663). */
 export const TASKS_EXTENSION = 'io.modelcontextprotocol/tasks'
@@ -102,9 +103,9 @@ function waitBudget(input: OperationInput): number {
 }
 
 const STATUS_TEXT: Readonly<Record<AskState, string>> = {
-  submitted: 'The question is recorded; Piloti has not started on it yet.',
-  working: 'Piloti is working on the answer.',
-  completed: 'Piloti answered.',
+  submitted: 'The question is recorded; ' + PRODUCT_NAME + ' has not started on it yet.',
+  working: PRODUCT_NAME + ' is working on the answer.',
+  completed: PRODUCT_NAME + ' answered.',
   canceled: 'The ask was canceled.',
   failed: 'The ask failed.',
   rejected: 'The ask was rejected.',

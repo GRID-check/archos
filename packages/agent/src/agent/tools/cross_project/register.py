@@ -519,7 +519,7 @@ def _decision_provenance(item: dict[str, Any]) -> str:
         return "confirmed by a person"
     if origin == "documents":
         return "inferred from the documents" + _evidence_cite(item.get("evidence"))
-    return "noted by Piloti"
+    return "noted by you"
 
 
 def _evidence_cite(evidence: Any) -> str:

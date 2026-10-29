@@ -78,6 +78,7 @@ import {
   markAskWorking,
   type AskEnd,
 } from './repository'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The hello entries a server must name before the question is sent: without `if_idle` it would supersede. */
 export const ASK_REQUIRES = ['user_message.trigger', 'user_message.if_idle'] as const
@@ -105,7 +106,7 @@ const clip = (text: string, max: number) => {
 
 function requireEnabled(session: AuthorizedSession): void {
   if (isAgentAskEnabled(session)) return
-  throw new ForbiddenError('Asking Piloti from another agent is not enabled for this organization (piloti-ask).', {
+  throw new ForbiddenError('Asking ' + PRODUCT_NAME + ' from another agent is not enabled for this organization (piloti-ask).', {
     reason: 'piloti-ask-off',
   })
 }
@@ -208,7 +209,7 @@ async function startTurn(
     throw error
   }
   const target = socketTarget(ask.conversationId)
-  if ('unavailable' in target) return { state: 'failed', reason: `Piloti could not be reached: ${target.unavailable}` }
+  if ('unavailable' in target) return { state: 'failed', reason: `${PRODUCT_NAME} could not be reached: ${target.unavailable}` }
   // A cancel that landed while the context was read ended the ask: its turn is not started.
   const now = await findAsk(ask.organizationId, ask.id)
   if (!now || isTerminalAskState(now.state)) return 'ended'
@@ -232,7 +233,7 @@ async function startTurn(
       return {
         state: 'rejected',
         reason:
-          'Piloti is still answering in this conversation, and an ask never interrupts a running turn. ' +
+          PRODUCT_NAME + ' is still answering in this conversation, and an ask never interrupts a running turn. ' +
           'Read the earlier ask with agent-ask-get until it ends, then ask again; ' +
           'or ask in a new conversation by leaving out conversationId.',
       }
@@ -241,7 +242,7 @@ async function startTurn(
     case 'rejected':
       return { state: 'failed', reason: `rejected: ${outcome.code}${outcome.message ? ` (${outcome.message})` : ''}` }
     case 'unavailable':
-      return { state: 'failed', reason: `Piloti could not be reached: ${outcome.reason}` }
+      return { state: 'failed', reason: `${PRODUCT_NAME} could not be reached: ${outcome.reason}` }
   }
 }
 
@@ -264,7 +265,7 @@ async function expireIfLost(row: AgentAskRow, now = Date.now()): Promise<AgentAs
   if (isTerminalAskState(row.state)) return row
   const maxSeconds = askMaxSeconds()
   if (now - new Date(row.createdAt).getTime() < maxSeconds * 1_000) return row
-  const reason = `Piloti did not report the end of its turn within ${Math.round(maxSeconds / 60)} minutes. Ask again.`
+  const reason = `${PRODUCT_NAME} did not report the end of its turn within ${Math.round(maxSeconds / 60)} minutes. Ask again.`
   return (
     (await endAsk(row.organizationId, row.id, { state: 'failed', reason })) ??
     (await findAsk(row.organizationId, row.id)) ??
@@ -387,7 +388,7 @@ export async function askAgent(
   } catch (error) {
     // Never a 500 that leaves the ask `submitted` with no id handed out.
     console.error('[piloti-ask] the turn could not be started:', error)
-    started = { state: 'failed', reason: 'Piloti could not start the turn.' }
+    started = { state: 'failed', reason: PRODUCT_NAME + ' could not start the turn.' }
   }
   if (started !== null && started !== 'ended') return endUnstarted(session, ask, thread, input.question, started)
   if (started === null && !(await markAskWorking(session.organizationId, id))) {

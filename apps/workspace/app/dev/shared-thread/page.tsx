@@ -55,6 +55,7 @@ import { AppConfigProvider, type AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { ChatArea } from '@/features/layout/components'
 import { useChatStore } from '@/features/chat/store'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const config: AppConfig = {
   authRequired: false,
@@ -124,12 +125,12 @@ const MESSAGE_ROWS = [
     role: 'user',
     authorUserId: TOBIAS,
     content:
-      'Dann zählt der Innenhof nicht als zweiter Rettungsweg. @Piloti wie wirkt sich das auf den Nachweis aus?',
+      'Dann zählt der Innenhof nicht als zweiter Rettungsweg. @' + PRODUCT_NAME + ' wie wirkt sich das auf den Nachweis aus?',
     // Structured mentions ride in the metadata and are rendered as chips; the
     // addressee ruling next to them is the SERVER's, stored at persist time (MN-2).
     metadata: {
       messageType: 'user',
-      mentions: [{ targetId: 'agent:piloti', display: 'Piloti' }],
+      mentions: [{ targetId: 'agent:piloti', display: PRODUCT_NAME }],
       addressees: { agent: true, users: [] },
     },
     createdAt: at(11),

@@ -51,6 +51,7 @@ import { offersAppViews } from './app-host'
 import { audienceOf, isAppToolFor, isOnDoor } from './exposure'
 import type { AgentOperation } from './operation'
 import type { McpCallContext } from './telemetry'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export { UI_EXTENSION, appHostOf, declaresMcpApps, offersAppViews } from './app-host'
 
@@ -102,7 +103,7 @@ export function viewMetaOf(ctx: Pick<McpCallContext, 'principal' | 'appHost'>, o
 
 /** The sentence a host that draws the view shows nothing of, and a model reads: how to get the card. */
 export const VIEW_TOOL_NOTE =
-  ' Called as its own tool, a host that renders MCP Apps shows the proposal as Piloti’s card, where the person applies or discards it.'
+  ' Called as its own tool, a host that renders MCP Apps shows the proposal as ' + PRODUCT_NAME + '’s card, where the person applies or discards it.'
 
 function registerViewResources(server: McpServer): void {
   for (const view of APP_VIEWS) {

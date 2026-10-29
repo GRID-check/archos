@@ -16,6 +16,7 @@ from agent_testing.intake import NEEDS
 from agent_testing.intake import NEEDS_BODY
 from agent_testing.intake import recorded_all
 from agent_testing.intake import validator
+from agent.common.brand import PRODUCT_NAME
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
@@ -333,7 +334,7 @@ class TestThePrompt:
 
         rendered = system_prompt()
         assert not FILE_AS_PLAN.search(rendered) and not OLD_FRAME.search(rendered)
-        assert "workspace" in rendered and "Piloti" in rendered
+        assert "workspace" in rendered and PRODUCT_NAME in rendered
 
     @pytest.mark.parametrize("phrase", ["Never guess", "Zielzustand", "newest Fassung", "Never compute it"])
     def test_the_rules_the_tools_cannot_carry_are_in_it(self, phrase):

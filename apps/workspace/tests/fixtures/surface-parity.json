@@ -22,7 +22,7 @@
    }
   },
   "point": {
-   "summary": "Move Piloti’s pointer to a place on a page for everyone in the document",
+   "summary": "Move ARCHOS’s pointer to a place on a page for everyone in the document",
    "tool": "canvas__point",
    "annotationOp": "point",
    "operations": [],
@@ -171,7 +171,7 @@
    },
    "chat": {
     "kind": "exempt",
-    "reason": "Piloti has no tool to edit a reply: its own reply is final and a person’s is theirs to change"
+    "reason": "ARCHOS has no tool to edit a reply: its own reply is final and a person’s is theirs to change"
    }
   },
   "readMarks": {
@@ -230,7 +230,7 @@
    }
   },
   "leave": {
-   "summary": "Piloti leaves the document’s room when its turn ends",
+   "summary": "ARCHOS leaves the document’s room when its turn ends",
    "tool": null,
    "annotationOp": "leave",
    "operations": [],
@@ -242,7 +242,7 @@
    },
    "chat": {
     "kind": "exempt",
-    "reason": "The turn harness’s own clean-up, not a capability of the person or of Piloti"
+    "reason": "The turn harness’s own clean-up, not a capability of the person or of ARCHOS"
    }
   },
   "compareRevisions": {
@@ -268,7 +268,7 @@
    }
   },
   "askAboutBox": {
-   "summary": "Draw a box on a page and ask about it; Piloti answers in context of that box",
+   "summary": "Draw a box on a page and ask about it; ARCHOS answers in context of that box",
    "tool": null,
    "annotationOp": null,
    "operations": [],
@@ -286,7 +286,7 @@
    }
   },
   "readSelectedRegion": {
-   "summary": "Piloti reads what the person selected or points at when the question says \"here\"",
+   "summary": "ARCHOS reads what the person selected or points at when the question says \"here\"",
    "tool": "canvas__room",
    "annotationOp": null,
    "operations": [],

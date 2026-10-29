@@ -23,6 +23,7 @@ import { Suspense, useEffect } from 'react'
 import { I18nProvider } from '@/i18n'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { DiagramFilingProvider } from '@/features/diagrams/diagram-filing-context'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const FLOW = `\`\`\`mermaid
 graph TD
@@ -100,7 +101,7 @@ export default function DiagramSketchPreview() {
       <div data-testid="diagram-sketch-preview" className="bg-background flex min-h-screen flex-col items-center gap-10 p-4 sm:p-10">
         <Panel
           title="Ablauf, als Skizze bearbeitbar"
-          note="„Als Skizze bearbeiten“ öffnet die Zeichenfläche erst auf Klick, mit Pilotis Zeichnung als Ausgangspunkt. Abgelegt wird über denselben Weg wie jedes Diagramm, mit dem Vermerk „Von Piloti entworfen, von einer Person bearbeitet“."
+          note={"„Als Skizze bearbeiten“ öffnet die Zeichenfläche erst auf Klick, mit " + PRODUCT_NAME + "s Zeichnung als Ausgangspunkt. Abgelegt wird über denselben Weg wie jedes Diagramm, mit dem Vermerk „Von " + PRODUCT_NAME + " entworfen, von einer Person bearbeitet“."}
         >
           <DiagramFilingProvider target={{ projectId: 'proj-preview', answerId: 'msg-preview' }}>
             <MarkdownRenderer content={FLOW} />

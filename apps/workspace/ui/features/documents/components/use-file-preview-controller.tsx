@@ -53,6 +53,7 @@ import { useCurrentProject } from '@/features/projects/lib/current-project'
 
 import { type PeekView } from './file-preview-peek'
 import { type ReaderAnnotate } from './file-preview-reader'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export interface FilePreviewPaneProps {
   file: FileItem
@@ -754,7 +755,7 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
   const { locale } = useLocale()
   // Who is here, read off the room by membership: a pointer moving does not re-render this pane.
   const company = useRoomCompany(review.room)
-  const presenceNames = [...company.people.map((person) => person.name), ...(company.piloti ? ['Piloti'] : [])]
+  const presenceNames = [...company.people.map((person) => person.name), ...(company.piloti ? [PRODUCT_NAME] : [])]
   const presenceSentence =
     presenceNames.length > 0
       ? t('annotations.peopleHere', {

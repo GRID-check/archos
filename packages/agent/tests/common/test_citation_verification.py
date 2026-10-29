@@ -22,6 +22,7 @@ from agent.citations.text_parsers import register_source_parser
 from agent.citations.verification import cited_document_entries
 from agent.citations.verification import verify_citations
 from agent.citations.wire import source_entry_to_wire
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 
 
 @pytest.fixture(autouse=True)
@@ -2075,13 +2076,13 @@ class TestAgentAuthoredProvenanceParsing:
         return entry
 
     def test_a_marked_hit_carries_its_author_and_takes_the_agent_lane(self):
-        entry = self._entry("Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026")
+        entry = self._entry(f"{AGENT_AUTHORED_LANE_LABEL} · freigegeben von Maria Huber am 01.09.2026")
         assert entry.authored_by == "agent"
         # And the lane beats the project shelf the same hit states.
-        assert source_lane(entry) == ("office_piloti", "Piloti-Dokument")
+        assert source_lane(entry) == ("office_piloti", AGENT_AUTHORED_LANE_LABEL)
 
     def test_the_bare_label_is_enough(self):
-        assert self._entry("Piloti-Dokument").authored_by == "agent"
+        assert self._entry(AGENT_AUTHORED_LANE_LABEL).authored_by == "agent"
 
     @pytest.mark.parametrize(
         "herkunft",
@@ -2104,7 +2105,7 @@ class TestAgentAuthoredProvenanceParsing:
             "Content Type: text\n"
             "Relevance Score: 0.80\n"
             "\n"
-            "Herkunft: Piloti-Dokument · freigegeben von Wer Auch Immer am 01.09.2026\n"
+            f"Herkunft: {AGENT_AUTHORED_LANE_LABEL} · freigegeben von Wer Auch Immer am 01.09.2026\n"
         )
         (entry,) = extract_sources_from_tool_result("knowledge_search", content)
         assert entry.authored_by is None

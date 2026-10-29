@@ -1,7 +1,7 @@
-# Piloti
+# ARCHOS
 
-Piloti is the workspace for architects: an Austrian planning office runs its
-work in it, every project and every process, and Piloti, the agent, is a
+ARCHOS is the workspace for architects: an Austrian planning office runs its
+work in it, every project and every process, and ARCHOS, the agent, is a
 colleague in that office who does part of the work, with a source for every
 claim. Building law is one of the things it knows, not the frame around it
 ([`VISION.md`](VISION.md)). This file is its domain language: what the words mean, in the product and
@@ -21,9 +21,11 @@ equivalents are in
 
 ## The office and its work
 
-**Piloti**:
-The product, and the colleague persona that works in it. The name users see.
-_Avoid_: GRID in anything a user reads; GRID is the repository's and the code's name.
+**ARCHOS**:
+The product, and the colleague persona that works in it. The name users see,
+read from `packages/brand/identity.json` wherever code shows it (ADR-0148).
+_Avoid_: a retired product name in anything a person or an agent reads, and any
+product name in an identifier.
 
 **Organization** (Büro):
 A planning office, and the boundary nothing crosses: its documents, memory,

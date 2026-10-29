@@ -12,11 +12,13 @@ rename drill.
 from __future__ import annotations
 
 import json
-from importlib.resources import files
+from pathlib import Path
 
 
 def _identity_name() -> str:
-    identity = json.loads(files(__package__).joinpath("identity.json").read_text(encoding="utf-8"))
+    # Beside this file, not through importlib.resources: a script that loads this module
+    # standalone under a stub package (scripts/build_ris_catalog.py) has no package to ask.
+    identity = json.loads(Path(__file__).with_name("identity.json").read_text(encoding="utf-8"))
     return str(identity["name"])
 
 

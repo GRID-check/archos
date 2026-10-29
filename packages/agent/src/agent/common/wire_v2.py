@@ -245,7 +245,7 @@ class ToolStep(_StepBase):
     mount: Literal["drafts", "skills", "project", "office", "chat", "law", "estate"] | None = Field(
         default=None,
         description=(
-            "Which part of Piloti's filesystem a file tool reached (ADR-0133): a mount, or `estate` for a call "
+            "Which part of the agent's filesystem a file tool reached (ADR-0133): a mount, or `estate` for a call "
             "over every mount the person may see. Absent on every other tool, and on a file tool of a turn "
             "stored before the field existed, which only ever reached the drafts."
         ),
@@ -585,7 +585,7 @@ class SubagentStartedBody(_Model):
 class SubagentFinishedBody(_Model):
     """The subagent invocation completed (AG-UI 1.0 ``SUBAGENT_FINISHED``; an absent ``outcome`` is success).
 
-    AG-UI's ``outcome: suspended`` is not modelled: no Piloti subagent pauses
+    AG-UI's ``outcome: suspended`` is not modelled: no subagent of the agent pauses
     yet. It arrives with pausing a run to ask the person (ADR-0140).
     """
 
@@ -879,7 +879,7 @@ class SteerAppliedBody(_CustomBody):
 
 
 class ViewerActionBody(_CustomBody):
-    """Piloti proposes to move the asker's document viewer (ADR-0144). Only the asker's live page runs it."""
+    """The agent proposes to move the asker's document viewer (ADR-0144). Only the asker's live page runs it."""
 
     name: Literal["viewer_action"] = "viewer_action"
     value: ViewerActionValue
@@ -1197,7 +1197,7 @@ class TurnTrigger(_Model):
     was enqueued for and ``annotation_id`` the Anmerkung it happened on.
     ``agent_consult`` is a question another agent asked on the person's behalf
     (ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.
-    ``new_document`` is a document that just finished indexing, which Piloti
+    ``new_document`` is a document that just finished indexing, which the agent
     checks against the project's other documents unasked (ADR-0130):
     ``event_id`` is the check's id, and there is no Anmerkung.
     """
@@ -1259,7 +1259,7 @@ class UserMessage(_ClientBase):
     reply_in_thread: bool | None = Field(
         default=None,
         description=(
-            "Post the answer as Piloti's reply in the thread of focus_region.annotation_id, readable by everyone "
+            "Post the answer as the agent's reply in the thread of focus_region.annotation_id, readable by everyone "
             "who can read the document. Ignored without an annotation_id. Sent only to a server whose hello "
             "accepts 'user_message.reply_in_thread'."
         ),
@@ -1359,7 +1359,7 @@ class Steer(_ClientBase):
     steer_id: str = Field(min_length=1, max_length=128, description="Idempotency key and ack correlation.")
     text: str = Field(min_length=1, max_length=MAX_STEER_CHARS)
     focus_region: FocusRegion | None = Field(
-        default=None, description="A box drawn on the canvas while Piloti works: what the note is about."
+        default=None, description="A box drawn on the canvas while the agent works: what the note is about."
     )
 
 
@@ -1416,7 +1416,7 @@ def wire_json_schema() -> dict[str, Any]:
     _consts_required(defs)
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "Piloti chat wire v2",
+        "title": "Chat wire v2",
         "description": (
             "Generated from packages/agent/src/agent/common/wire_v2.py by scripts/generate_wire_schema.py. "
             "Do not edit by hand; packages/agent/tests/common/test_wire_v2.py fails when it is stale."
