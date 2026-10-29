@@ -103,7 +103,6 @@
   --signal-error: oklch(0.567 0.157 31); /* #c14a38 — errors only */
   --signal-error-tint: oklch(0.941 0.02 32.5); /* #f9e7e3 */
 
-
   /* ---- shadcn vars (light) — warm paper ---- */
   --background: var(--ds-surface); /* #fafaf9 — warm paper app bg (corporate design: surface) */
   --foreground: var(--ink); /* #0f0e0d */
@@ -129,24 +128,15 @@
 
   --radius: 0.75rem; /* 12px — inside the dummy's 7–14px range */
 
-  /* ---- elevation (Apple-style layered depth: a tight contact shadow + a mid
-     lift + a soft ambient spread, all low-opacity so paper stays calm) ---- */
+  /* ---- elevation: the brand's app shadow scale (packages/brand tokens.json
+     shadow-raised / -floating / -modal), kept faint. Every shadow-* utility
+     reads these, so a retune is one edit in the brand package; never type a
+     shadow in a component. ---- */
   --shadow-hairline: 0 0 0 1px color-mix(in oklch, var(--ink-border) 6%, transparent);
-  --elevation-xs:
-    0 1px 1px color-mix(in oklch, var(--ink-border) 6%, transparent),
-    0 1px 3px color-mix(in oklch, var(--ink-border) 4%, transparent); /* raised chip/button */
-  --elevation-sm:
-    0 1px 1px color-mix(in oklch, var(--ink-border) 5%, transparent),
-    0 2px 5px color-mix(in oklch, var(--ink-border) 4%, transparent),
-    0 6px 16px color-mix(in oklch, var(--ink-border) 5%, transparent); /* card */
-  --elevation-md:
-    0 1px 2px color-mix(in oklch, var(--ink-border) 5%, transparent),
-    0 4px 10px color-mix(in oklch, var(--ink-border) 5%, transparent),
-    0 16px 40px color-mix(in oklch, var(--ink-border) 8%, transparent); /* popover */
-  --elevation-lg:
-    0 2px 4px color-mix(in oklch, var(--ink-border) 5%, transparent),
-    0 10px 24px color-mix(in oklch, var(--ink-border) 7%, transparent),
-    0 32px 80px color-mix(in oklch, var(--ink-border) 12%, transparent); /* modal */
+  --elevation-xs: var(--ds-shadow-raised); /* raised chip/button: the brand's app shadow scale (tokens.json shadow-*) */
+  --elevation-sm: var(--ds-shadow-raised); /* card: the brand's app shadow scale (tokens.json shadow-*) */
+  --elevation-md: var(--ds-shadow-floating); /* popover, menu, toast: the brand's app shadow scale (tokens.json shadow-*) */
+  --elevation-lg: var(--ds-shadow-modal); /* dialog, sheet: the brand's app shadow scale (tokens.json shadow-*) */
 
   /* ---- legacy semantic vars (light) — same palette, KUI names ---- */
   --text-color-primary: var(--ink); /* #1f2023 */
@@ -231,7 +221,6 @@
   --signal-error: oklch(0.672 0.144 31.6); /* lifted #c14a38 */
   --signal-error-tint: oklch(0.316 0.062 31.6);
 
-
   /* ---- shadcn vars (dark) — warm charcoal paper.
 
      ELEVATION IS CARRIED BY LIGHTNESS HERE, NOT BY SHADOW. This is the single
@@ -288,30 +277,9 @@
      sitting ON something. Near-black at 66% dims and keeps context. */
   --overlay: color-mix(in oklch, oklch(0.12 0.004 84) 66%, transparent);
 
-  /* ---- elevation (dark) — a lit top edge + an anchoring shadow.
-     The inset highlight is first so it composites over the surface fill; it is
-     what makes a raised plane read as raised once black-on-black shadows stop
-     contributing. --elevation-xs stays shadow-only: it dresses chips and
-     buttons, which are small enough that a top highlight reads as a seam. ---- */
+  /* ---- elevation (dark): nothing to repeat; the brand's --ds-shadow-* switch
+     under .dark on their own. ---- */
   --shadow-hairline: 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
-  --elevation-xs:
-    0 1px 2px oklch(0 0 0 / 44%),
-    0 1px 3px oklch(0 0 0 / 30%);
-  --elevation-sm:
-    inset 0 1px 0 color-mix(in oklch, var(--foreground) 7%, transparent),
-    0 1px 2px oklch(0 0 0 / 40%),
-    0 4px 10px oklch(0 0 0 / 34%),
-    0 12px 28px oklch(0 0 0 / 32%);
-  --elevation-md:
-    inset 0 1px 0 color-mix(in oklch, var(--foreground) 9%, transparent),
-    0 2px 4px oklch(0 0 0 / 44%),
-    0 8px 20px oklch(0 0 0 / 42%),
-    0 20px 48px oklch(0 0 0 / 44%);
-  --elevation-lg:
-    inset 0 1px 0 color-mix(in oklch, var(--foreground) 11%, transparent),
-    0 4px 8px oklch(0 0 0 / 46%),
-    0 16px 32px oklch(0 0 0 / 48%),
-    0 40px 88px oklch(0 0 0 / 56%);
 
   /* ---- legacy semantic vars (dark) — same ramp as the shadcn block above ---- */
   --text-color-primary: oklch(0.967 0.003 84.6);

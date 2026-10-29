@@ -15,6 +15,9 @@
   --markup: #c42b1c;
   --markup-soft: #fbe9e6;
   --focus-ring: 0 0 0 2px #fafaf9, 0 0 0 4px #0f0e0d;
+  --shadow-raised: 0 1px 2px rgba(15, 14, 13, 0.04);
+  --shadow-floating: 0 1px 2px rgba(15, 14, 13, 0.04), 0 6px 16px rgba(15, 14, 13, 0.06);
+  --shadow-modal: 0 2px 4px rgba(15, 14, 13, 0.04), 0 16px 40px rgba(15, 14, 13, 0.08);
 }
 [data-theme="dark"] {
   --surface: #0f0e0d;
@@ -32,6 +35,9 @@
   --markup: #ff7a6b;
   --markup-soft: #3a1511;
   --focus-ring: 0 0 0 2px #0f0e0d, 0 0 0 4px #f5f4f2;
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-floating: 0 1px 2px rgba(0, 0, 0, 0.32), 0 8px 20px rgba(0, 0, 0, 0.36);
+  --shadow-modal: 0 2px 4px rgba(0, 0, 0, 0.36), 0 20px 48px rgba(0, 0, 0, 0.44);
 }
 :root {
   --space-1: 4px;

@@ -34,7 +34,7 @@
 
 import type { JSX } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
-import { motion, springPress, usePrefersReducedMotion } from '@/components/motion'
+import { motion, motionQuick, springPress, usePrefersReducedMotion } from '@/components/motion'
 import { cn } from '@/lib/utils'
 
 export interface RaisedCardProps extends Omit<ComponentProps<'div'>, 'ref'> {
@@ -47,7 +47,7 @@ export interface RaisedCardProps extends Omit<ComponentProps<'div'>, 'ref'> {
   children: ReactNode
 }
 
-/** The outer tray. Clips the body's bottom radius and owns the hover colour step. */
+/** The outer tray. Clips the body's bottom radius and owns the hover shadow. */
 export function RaisedCard({
   interactive = false,
   className,
@@ -58,10 +58,9 @@ export function RaisedCard({
   const card = (
     <div
       className={cn(
-        'border-border bg-muted/50 relative flex h-full min-w-0 flex-col overflow-hidden rounded-surface border',
-        'transition-colors duration-quick ease-out motion-reduce:transition-none',
-        // The brand's hover is a colour step, never a lift or a shadow.
-        interactive && 'hover:border-foreground/25',
+        'border-border bg-muted/50 shadow-sm relative flex h-full min-w-0 flex-col overflow-hidden rounded-surface border',
+        'transition-shadow duration-quick ease-out motion-reduce:transition-none',
+        interactive && 'hover:shadow-md',
         className
       )}
       {...rest}
@@ -75,20 +74,41 @@ export function RaisedCard({
   // motion wearing one transition, so they live on two nested elements, each
   // with its own transition.
   //
-  // No lift: the brand's hover is a colour step (the tray's border). The tap is
-  // direct manipulation and must be
-  // REVERSIBLE mid-flight, which a tween cannot do; that is why `springPress`
-  // exists (the house press, 0.98, `components/ui/press.ts`). It is a full
-  // `transform` string so it runs on the compositor while a busy file grid
-  // decodes thumbnails. Under reduced motion it does not move.
+  // The 2px lift (outer) is ambient: it fires on every pointer crossing,
+  // dozens of times per screenful of a file grid, and its trajectory carries
+  // nothing the endpoint does not already say ("this is a target"). The design
+  // language's third veto — anything appearing more than ~5× per screenful is
+  // tween-only — lands squarely on it, so it is `motionQuick`, the same 180ms
+  // ease-out the card's own `transition-shadow` runs on. Sharing that number is
+  // the point: lift and shadow are one gesture.
+  //
+  // The tap (inner) is direct manipulation and must be REVERSIBLE mid-flight —
+  // release before the dip completes and the card has to come back from
+  // wherever it is, carrying its velocity. That is the one thing a tween
+  // cannot do (it restarts from zero velocity and stutters), and it is why
+  // `springPress` exists. ζ = 1.00, so the overshoot is 0px at any travel. The
+  // dip is the house press, 0.98 (`components/ui/press.ts`).
+  //
+  // Both are written as full `transform` strings, not motion's `y` / `scale`
+  // shorthands: those are CSS variables run from the main thread, and a file
+  // grid is exactly the page that is busy (thumbnails decoding) while a pointer
+  // crosses it. A string transform runs on the compositor. Under reduced
+  // motion neither moves; the shadow still answers the hover.
   return (
     <motion.div
-      className="h-full min-w-0"
-      style={{ transform: 'scale(1)' }}
-      whileTap={reduced ? undefined : { transform: 'scale(0.98)' }}
-      transition={springPress}
+      className="h-full min-w-0 will-change-transform"
+      style={{ transform: 'translateY(0px)' }}
+      whileHover={reduced ? undefined : { transform: 'translateY(-2px)' }}
+      transition={motionQuick}
     >
-      {card}
+      <motion.div
+        className="h-full min-w-0"
+        style={{ transform: 'scale(1)' }}
+        whileTap={reduced ? undefined : { transform: 'scale(0.98)' }}
+        transition={springPress}
+      >
+        {card}
+      </motion.div>
     </motion.div>
   )
 }
@@ -116,8 +136,9 @@ export function RaisedCardMedia({
  * The raised white block. Rounded at the bottom only — the top edge is flush
  * with the tray, which is what makes it read as laid in rather than floating.
  *
- * No shadow: the brand has none at rest, and the tray's border carries the
- * separation and the hover.
+ * No shadow of its own: the tray owns elevation (including the hover lift), so
+ * a shadow here only double-darkens the body's edge against the footer.
+ * box-shadow is paint-only, so dropping it cannot move layout.
  */
 export function RaisedCardBody({
   className,

@@ -167,7 +167,7 @@ function PhoneTabItem({
             aria-hidden
             // The rail's active chip, at the size of one glyph: the same
             // material says the same thing on both shapes of the chrome.
-            className="border-border bg-card absolute inset-0 rounded-full border"
+            className="border-border bg-card absolute inset-0 rounded-full border shadow-xs"
             transition={springGlide}
           />
         )}

@@ -185,7 +185,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea(props) {
                 className={cn(
                   PRESSABLE,
                   FOCUS_RING,
-                  'bg-card text-muted-foreground hover:text-foreground pointer-events-auto flex size-9 items-center justify-center rounded-control border outline-none pointer-coarse:size-11'
+                  'bg-card text-muted-foreground hover:text-foreground pointer-events-auto flex size-9 items-center justify-center rounded-control border outline-none pointer-coarse:size-11 shadow-md'
                 )}
               >
                 <ArrowDown className="size-4" aria-hidden="true" />

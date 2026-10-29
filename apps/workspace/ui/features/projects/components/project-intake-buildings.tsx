@@ -94,7 +94,7 @@ export function BuildingStage({
   return (
     <div className="space-y-4">
       {buildings.map((bw, index) => (
-        <div key={bw.id} className="bg-card overflow-hidden rounded-surface border">
+        <div key={bw.id} className="bg-card overflow-hidden rounded-surface border shadow-xs">
           <div className="bg-muted/40 flex items-center gap-3 border-b px-4 py-2.5">
             <Badge variant="default" className="font-mono">
               {buildingTag(bw.id)}

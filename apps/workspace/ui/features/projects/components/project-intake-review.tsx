@@ -156,7 +156,7 @@ export function ReviewStep({
 
   return (
     <div className="space-y-4">
-      <div className="divide-border bg-card divide-y overflow-hidden rounded-surface border">
+      <div className="divide-border bg-card divide-y overflow-hidden rounded-surface border shadow-xs">
         {projectStages.map(({ stage, index }) => (
           <ReviewSection
             key={stage.id}
@@ -189,7 +189,7 @@ export function ReviewStep({
         }
         if (items.length === 0) return null
         return (
-          <div key={bw.id} className="bg-card overflow-hidden rounded-surface border">
+          <div key={bw.id} className="bg-card overflow-hidden rounded-surface border shadow-xs">
             <ReviewSection
               title={bw.name}
               editLabel={t('intake.edit')}
@@ -260,7 +260,7 @@ export function ConflictFindings({
   return (
     <section
       aria-label={t('intake.consistency.title')}
-      className="bg-card rounded-surface border p-5"
+      className="bg-card rounded-surface border p-5 shadow-xs"
     >
       <div className="flex items-start gap-2">
         <AlertTriangle className="text-warning size-4 shrink-0 translate-y-0.5" aria-hidden />

@@ -572,7 +572,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                   as="ul"
                   aria-busy="true"
                   data-testid="deep-research-skeleton"
-                  className="border-border bg-card"
+                  className="border-border bg-card shadow-xs"
                 >
                   {Array.from({ length: 2 }).map((_, index) => (
                     <Item as="li" key={index} className="items-start py-3.5">
@@ -589,7 +589,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
               ) : deepResearchError ? (
                 // A failed fetch must never read as "no runs": one quiet line
                 // with the way to try again, beside the lists that still work.
-                <div className="border-border bg-card flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-surface border px-4 py-2.5 ">
+                <div className="border-border bg-card flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-surface border px-4 py-2.5  shadow-xs">
                   <p className="text-muted-foreground text-xs">
                     {t('sessionsPanel.researchLoadFailed')}
                   </p>
@@ -621,7 +621,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                   />
                 )
               ) : (
-                <ItemList as="ul" className="bg-card ">
+                <ItemList as="ul" className="bg-card  shadow-xs">
                   {filteredRuns.map((run) => {
                     const status = run.status
                     const href = runHref(run)
@@ -725,7 +725,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                 <SectionLabel className="bg-background sticky top-0 z-10 -mx-2 px-2 pb-1.5 pt-1">
                   {dateLabel}
                 </SectionLabel>
-                <ItemList as="ul" className="border-border bg-card">
+                <ItemList as="ul" className="border-border bg-card shadow-xs">
                   {/*Deleting a row removes it, so the list needs an exit —
                       which CSS cannot give it — and `layout` so the rows below
                       close the gap instead of jumping. The inbox's pattern,

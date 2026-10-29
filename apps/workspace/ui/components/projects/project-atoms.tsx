@@ -22,7 +22,7 @@
  * footer tab is the product's card, and it already has a primitive —
  * `components/ui/raised-card.tsx` (`RaisedCard` / `RaisedCardBody` /
  * `RaisedCardFooter`). This file holds what is specific to a PROJECT on that
- * shape. Adding a `rounded-b-[10px] bg-card ` of its own here would
+ * shape. Adding a `rounded-b-[10px] bg-card  shadow-xs` of its own here would
  * have been the fifth hand-rolled copy of that geometry, which is the exact
  * drift `raised-card.tsx` was written to stop.
  *

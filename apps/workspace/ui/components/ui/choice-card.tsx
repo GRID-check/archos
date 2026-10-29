@@ -51,7 +51,7 @@ const ChoiceCard = React.forwardRef<React.ElementRef<typeof RadioGroupPrimitive.
         'group/choice bg-card text-foreground flex min-h-[88px] flex-col items-start gap-1.5 rounded-control border p-3 text-left',
         'transition-[background-color,border-color,opacity,scale] duration-quick ease-out motion-reduce:transition-none',
         'hover:bg-accent active:scale-[0.98] active:duration-snap motion-reduce:active:scale-100',
-        'data-[state=checked]:border-primary data-[state=checked]:bg-primary/5',
+        'data-[state=checked]:border-primary data-[state=checked]:bg-primary/5 data-[state=checked]:shadow-sm',
         'disabled:cursor-not-allowed disabled:opacity-50',
         FOCUS_RING,
         className,

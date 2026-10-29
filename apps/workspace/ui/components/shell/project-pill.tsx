@@ -38,7 +38,7 @@ export function ProjectPill({
       aria-expanded={expanded}
       data-testid="project-pill"
       className={cn(
-        'border-border bg-card flex h-11 min-w-0 max-w-[min(100%,20rem)] items-center gap-2.5 rounded-control border pl-3 pr-2.5 text-left outline-none',
+        'border-border bg-card flex h-11 min-w-0 max-w-[min(100%,20rem)] items-center gap-2.5 rounded-control border pl-3 pr-2.5 text-left outline-none shadow-xs',
         PRESSABLE,
         FOCUS_RING,
         className

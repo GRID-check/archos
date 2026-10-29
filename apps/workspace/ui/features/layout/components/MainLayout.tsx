@@ -243,7 +243,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
               onClick={expandFile}
               // Floating over the transcript: the alpha is what `backdrop-blur`
               // blurs, and the `supports-` step is the no-blur fallback.
-              className="border-base bg-card/70 supports-[backdrop-filter]:bg-card/60 absolute left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] top-[var(--chat-toolbar-clear,calc(max(0.5rem,env(safe-area-inset-top))+3.5rem))] z-20 flex min-h-11 items-center gap-2 rounded-surface border px-3 py-1.5 text-left backdrop-blur"
+              className="border-base bg-card/70 supports-[backdrop-filter]:bg-card/60 absolute left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] top-[var(--chat-toolbar-clear,calc(max(0.5rem,env(safe-area-inset-top))+3.5rem))] z-20 flex min-h-11 items-center gap-2 rounded-surface border px-3 py-1.5 text-left backdrop-blur shadow-xs"
             >
               <span className="min-w-0 flex-1 truncate text-xs font-medium">
                 {documentDisplayName(peekedFile)}

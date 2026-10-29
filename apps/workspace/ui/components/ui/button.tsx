@@ -45,9 +45,9 @@ const buttonVariants = cva(
       variant: {
         // Default hover is the interaction token in BOTH themes — the old
         // `dark:hover:bg-primary/90` washed paper-white toward gray instead.
-        default: 'bg-primary text-primary-foreground hover:bg-interaction-primary-hover',
+        default: 'bg-primary text-primary-foreground shadow-xs hover:bg-interaction-primary-hover',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/40',
+          'bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/40',
         // Outline keeps its hairline and fills one step to card white, never
         // to accent (a filled-to-accent outline reads as secondary).
         outline:

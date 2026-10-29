@@ -339,7 +339,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
   return (
     <motion.div
       className={cn(
-        'group border-border flex items-start justify-between rounded-surface border bg-card p-3 transition-colors duration-quick ease-out',
+        'group border-border flex items-start justify-between rounded-surface border bg-card p-3 transition-colors duration-quick ease-out shadow-xs',
         status === 'error' && 'ring-1 ring-error/40'
       )}
       initial={{ opacity: 0, y: 8 }}
@@ -403,7 +403,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
  * a lone centered spinner.
  */
 export const FileSourceCardSkeleton: FC = () => (
-  <div className="border-border flex items-center gap-3 rounded-surface border bg-card p-3">
+  <div className="border-border flex items-center gap-3 rounded-surface border bg-card p-3 shadow-xs">
     <Skeleton className="size-8 shrink-0 rounded-control" />
     <div className="flex min-w-0 flex-1 flex-col gap-2">
       <Skeleton className="h-3.5 w-1/2" />

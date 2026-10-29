@@ -62,7 +62,7 @@ export const UnreadDivider: FC<{ label: string }> = ({ label }) => (
  */
 export const TurnInFlightBanner: FC<{ label: string }> = ({ label }) => (
   <div
-    className="bg-card flex min-h-9 w-fit items-center gap-2 rounded-surface border px-3.5 py-2 "
+    className="bg-card flex min-h-9 w-fit items-center gap-2 rounded-surface border px-3.5 py-2  shadow-xs"
     role="status"
     data-testid="turn-in-flight"
   >
