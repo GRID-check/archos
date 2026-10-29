@@ -70,14 +70,14 @@ const en: typeof de = {
     subject: 'Demo request: {office}',
     newsletterMail: { label: 'Newsletter', yes: 'yes', no: 'no' },
     sent: {
-      title: 'Your request is ready in your e-mail program.',
-      text: 'We have put your details into an e-mail to us. Send it from there, and we will get back to you to arrange a date.',
-      fallback: 'No e-mail program opened? Write to us directly at',
+      title: 'Your request is ready in your email program.',
+      text: 'We have put your details into an email to us. Send it from there, and we will get back to you to arrange a date.',
+      fallback: 'No email program opened? Write to us directly at',
       edit: 'Edit details',
     },
   },
   privacyNote: {
-    before: 'Sending opens your e-mail program with a prepared message to us. How we process your details is set out in our ',
+    before: 'Sending opens your email program with a prepared message to us. How we process your details is set out in our ',
     link: 'privacy policy',
     after: '.',
   },

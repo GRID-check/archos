@@ -46,14 +46,14 @@ const de = {
 const en: typeof de = {
   meta: {
     title: 'Contact',
-    description: 'Contact {name}: e-mail, address and message form.',
+    description: 'Contact {name}: email, address and message form.',
   },
   hero: {
     title: 'Contact.',
     text: 'Questions about {name}, a pilot project or working together? Write to us.',
   },
   info: {
-    email: 'E-Mail',
+    email: 'Email',
     address: 'Address',
     addressValue: '{street}, {postalCode} {city}, Austria',
     linkedin: 'LinkedIn',
@@ -62,21 +62,21 @@ const en: typeof de = {
   },
   form: {
     name: 'Name *',
-    email: 'E-Mail *',
+    email: 'Email *',
     emailPlaceholder: 'name@office.at',
     office: 'Office',
     officePlaceholder: 'Name of the planning firm',
     message: 'Message *',
     noteBefore:
-      'Required fields are marked with *. Sending opens your e-mail program with a prepared message to us. We use your details only to answer your enquiry. More on this in the',
+      'Required fields are marked with *. Sending opens your email program with a prepared message to us. We use your details only to answer your enquiry. More on this in the',
     noteLink: 'privacy policy',
     noteAfter: '.',
     submit: 'Send message',
     subject: 'Enquiry via the website: {office}',
     sent: {
-      title: 'Your message is ready in your e-mail program.',
-      text: 'We have put your details into an e-mail to us. Send it from there, and we will reply.',
-      fallback: 'No e-mail program opened? Write to us directly at',
+      title: 'Your message is ready in your email program.',
+      text: 'We have put your details into an email to us. Send it from there, and we will reply.',
+      fallback: 'No email program opened? Write to us directly at',
       edit: 'Edit details',
     },
   },
