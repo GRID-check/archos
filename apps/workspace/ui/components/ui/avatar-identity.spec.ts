@@ -1,4 +1,4 @@
-// @disk-inputs: ui/styles/tokens.css, shared/brand/tokens.vars.css
+// @disk-inputs: ui/styles/tokens.css, ../../packages/brand/dist/tokens.vars.css
 /**
  * @vitest-environment node
  */
@@ -53,13 +53,14 @@ const themeBlock = (css: string, theme: 'light' | 'dark'): string =>
 
 /**
  * `--background` as `styles/tokens.css` sets it, in the light theme (`:root`) or the dark one
- * (`.dark`), followed into the brand package's `--ds-*` vars when it names one.
+ * (`.dark`), followed into the brand package's `--ds-*` vars when it names one (its dist/ copy,
+ * which `sync.mjs --check` holds identical to the one the app imports).
  */
 function backgroundToken(theme: 'light' | 'dark'): string {
   const value = /--background:\s*([^;]+);/.exec(themeBlock(read('../../styles/tokens.css'), theme))?.[1].trim()
   const brand = value && /^var\(--(ds-[a-z-]+)\)$/.exec(value)?.[1]
   const resolved = brand
-    ? new RegExp(`--${brand}:\\s*(#[0-9a-f]{6});`).exec(themeBlock(read('../../../shared/brand/tokens.vars.css'), theme))?.[1]
+    ? new RegExp(`--${brand}:\\s*(#[0-9a-f]{6});`).exec(themeBlock(read('../../../../../packages/brand/dist/tokens.vars.css'), theme))?.[1]
     : value
   if (!resolved) throw new Error(`no --background for ${theme} in tokens.css`)
   return resolved

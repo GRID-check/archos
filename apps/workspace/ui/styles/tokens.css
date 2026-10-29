@@ -14,7 +14,7 @@
    that wants to stand out wants contrast, not chroma.
 
    The corporate design's colours and radii are not typed here: they come from
-   packages/brand as --ds-* (shared/brand/tokens.vars.css, imported first by
+   packages/brand as --ds-* (apps/workspace/shared/brand/tokens.vars.css, imported first by
    app/globals.css) and the vars below map onto them. A layer the brand has no
    token for (popover, chip and hover fills) is a color-mix of brand tokens.
    The hex in a comment is what the reference resolves to today, not a source.
