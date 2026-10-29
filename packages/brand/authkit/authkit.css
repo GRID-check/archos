@@ -12,8 +12,13 @@
 
 /* The page: form column left, photo right (SplitPage). AuthKit's TwoColumn
    layout supplies both columns; the right one is the custom-HTML panel. */
-:has(> .ak-Background) {
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr) !important;
+/* Only where AuthKit shows the panel (its md breakpoint, 1024px). Below it the
+   panel is hidden, and a forced second column squeezes the form into a third of
+   the screen. */
+@media (min-width: 1024px) {
+  :has(> .ak-Background) {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr) !important;
+  }
 }
 .ak-Background {
   --grid-template-columns: minmax(0, 400px) !important;
@@ -52,6 +57,7 @@
   line-height: 1.1 !important;
   letter-spacing: -0.02em !important;
   color: light-dark(#0f0e0d, #f5f4f2) !important;
+  @media (max-width: 767px) { font-size: 40px !important; }
 }
 
 /* Flat: no card, no shadow, no rounding. */
