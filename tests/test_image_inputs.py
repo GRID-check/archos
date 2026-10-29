@@ -112,8 +112,8 @@ def repo(mod, tmp_path, monkeypatch):
             "pyproject.toml": "[project]\n",
             "apps/workspace/deploy/Dockerfile": "FROM node\nCOPY . .\n",
             "apps/workspace/page.tsx": "export {}\n",
-            "apps/site/Dockerfile": "FROM node\nCOPY . .\n",
-            "apps/site/index.astro": "<p/>\n",
+            "apps/website/Dockerfile": "FROM node\nCOPY . .\n",
+            "apps/website/index.astro": "<p/>\n",
             "docs/readme.md": "hi\n",
         },
     )
@@ -166,11 +166,11 @@ def test_a_pull_request_builds_the_images_it_changes(mod, repo):
 def test_a_pull_request_that_moves_an_image_builds_it(mod, repo):
     # The base had the site somewhere else, so it has no Dockerfile at the path
     # the image names now: nothing to compare, so the image is built.
-    git(repo, "mv", "apps/site", "site-before-the-move")
+    git(repo, "mv", "apps/website", "site-before-the-move")
     git(repo, "commit", "-q", "-m", "the old layout")
     base = git(repo, "rev-parse", "HEAD")
     git(repo, "checkout", "-q", "-b", "move")
-    git(repo, "mv", "site-before-the-move", "apps/site")
+    git(repo, "mv", "site-before-the-move", "apps/website")
     git(repo, "commit", "-q", "-m", "the move")
 
     build, _ = mod.plan_pull_request(base, week=WEEK)
