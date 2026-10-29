@@ -27,7 +27,7 @@ function refusal(value: unknown): SceneRefusal | null {
 describe('checkSketchScene', () => {
   it('keeps a scene the editor wrote, every field as it came', () => {
     const value = scene([element({ seed: 7, version: 3, boundElements: [] }), element({ id: 'b', type: 'freedraw' })], {
-      appState: { gridSize: null },
+      appState: { zoom: { value: 1 } },
       files: {},
     })
     expect(checkSketchScene(value)).toBe(value)
