@@ -301,7 +301,7 @@ export function FilePreviewHost({
           // and the pane behind it did the same, so enlarging a document was
           // two hard cuts. `duration-quick`/`ease-out` is the vocabulary's
           // entry for an opacity change.
-          className="bg-overlay animate-in fade-in-0 fixed inset-0 z-50 backdrop-blur-sm duration-quick ease-out motion-reduce:animate-none"
+          className="bg-overlay animate-in fade-in-0 fixed inset-0 top-[var(--page-inset-top,0px)] left-[var(--page-inset-start,0px)] z-50 backdrop-blur-sm duration-quick ease-out motion-reduce:animate-none"
           onClick={mode === 'expanded' ? peek : close}
           aria-hidden
         />
@@ -354,7 +354,7 @@ export function FilePreviewHost({
           !parked && !peeking && 'group z-40',
           !parked &&
             !peeking &&
-            'bg-popover text-popover-foreground fixed left-1/2 top-1/2 z-50 h-[85dvh] w-[min(960px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-overlay border shadow-lg',
+            'bg-popover text-popover-foreground fixed left-[calc(50%+var(--page-inset-start,0px)/2)] top-[calc(50%+var(--page-inset-top,0px)/2)] z-50 h-[min(85dvh,calc(100dvh-var(--page-inset-top,0px)-2rem))] w-[min(960px,calc(100%-var(--page-inset-start,0px)-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-overlay border shadow-lg',
           // On a phone, portrait or on its side, the document is the screen:
           // one presentation however it was opened (Dateien, the chat's file
           // pill, a citation), not a card with the page dimmed around it.

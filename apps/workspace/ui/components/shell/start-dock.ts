@@ -129,3 +129,24 @@ export function useStartDockDoor(panel: StartDockPanel): StartDockDoor {
     },
   }
 }
+
+/**
+ * Whether a panel is docked beside the page right now: one is open and there
+ * is room for it. An overlay that belongs to the page (the file preview, the
+ * review) asks, because a docked panel is BESIDE the page, not behind it: the
+ * overlay covers the page from `--page-inset-start` and leaves the panel
+ * usable, so it must not lock the panel the way a modal locks what is behind.
+ */
+export function useStartDockShown(): boolean {
+  const fits = useMediaQuery(DOCK_LAYOUT_QUERY)
+  return useStartDock((state) => state.panel !== null) && fits
+}
+
+/**
+ * The CSS variables the shell sets, while a panel is docked, to where the page
+ * begins: its start edge (the panel's end) and its top (below a header band).
+ * Unset otherwise, so an overlay that reads them with a `0px` fallback covers
+ * the whole window as it always did.
+ */
+export const PAGE_INSET_START_VAR = '--page-inset-start'
+export const PAGE_INSET_TOP_VAR = '--page-inset-top'

@@ -50,6 +50,8 @@ import { DockedSplit } from '@/components/ui/docked-split'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { DOCK_LAYOUT_QUERY } from '@/hooks/use-is-mobile'
 import {
+  PAGE_INSET_START_VAR,
+  PAGE_INSET_TOP_VAR,
   START_DOCK_WIDTH_MAX,
   START_DOCK_WIDTH_MIN,
   defaultStartDockWidth,
@@ -145,6 +147,39 @@ export function AppShellChrome({
   const dockFits = useMediaQuery(DOCK_LAYOUT_QUERY)
   const dockContent = dockedPanel && dockFits ? (startDock[dockedPanel] ?? null) : null
 
+  // Where the page begins while a panel is docked: the panel's end edge and its
+  // top, published on the root so an overlay that belongs to the page (the
+  // file preview, the review, portalled to <body>) covers the page from there
+  // and leaves the panel, and the header band over both, in view. Unset
+  // otherwise, so every overlay keeps the whole window as it always did.
+  const dockFrameRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const frame = dockFrameRef.current
+    const root = document.documentElement
+    const clear = (): void => {
+      root.style.removeProperty(PAGE_INSET_START_VAR)
+      root.style.removeProperty(PAGE_INSET_TOP_VAR)
+    }
+    if (!dockContent || !frame) {
+      clear()
+      return
+    }
+    const publish = (): void => {
+      const box = frame.getBoundingClientRect()
+      root.style.setProperty(PAGE_INSET_START_VAR, `${Math.round(box.right)}px`)
+      root.style.setProperty(PAGE_INSET_TOP_VAR, `${Math.round(box.top)}px`)
+    }
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(frame)
+    window.addEventListener('resize', publish)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', publish)
+      clear()
+    }
+  }, [dockContent])
+
   const keyboardUp = useKeyboardUp()
   const tabBarShown = !keyboardUp && !phoneTabBarHiddenOnRoute(solidPathRef.current)
 
@@ -210,7 +245,11 @@ export function AppShellChrome({
         onDismiss={closeDock}
         restoreWidth={restoreDockWidth}
         resizeLabel={t('resizeDock')}
-        panel={dockContent}
+        panel={dockContent && (
+          <div ref={dockFrameRef} className="h-full min-h-0">
+            {dockContent}
+          </div>
+        )}
         panelClassName="border-border bg-surface-sunken border-r"
         pageClassName="flex flex-col"
       >
