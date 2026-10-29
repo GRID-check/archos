@@ -185,10 +185,10 @@
   color-scheme: dark;
 
   /* ---- ink ramp (dark) — paper-white acts as "ink" on warm charcoal ---- */
-  --ink: oklch(0.958 0.004 91.4); /* #f2f1ee — warm paper white */
-  --ink-hover: oklch(0.9 0.004 91.4);
-  --ink-active: oklch(0.86 0.005 93);
-  --ink-border: oklch(0.958 0.004 91.4); /* hairlines are alpha paper on charcoal */
+  --ink: oklch(0.967 0.003 84.6); /* #f5f4f2 — warm paper white */
+  --ink-hover: oklch(0.883 0.005 78.3);
+  --ink-active: oklch(0.828 0.006 75.4);
+  --ink-border: oklch(0.967 0.003 84.6); /* hairlines are alpha paper on charcoal */
 
   /* ---- legacy alias: lifted law blue for dark surfaces ---- */
   --law-blue: oklch(0.711 0.125 266); /* lifted #2359d3 */
@@ -251,20 +251,20 @@
      and warmth is deliberately a touch stronger than the first pass (chroma
      ~0.006 vs ~0.004) so "warm charcoal" is actually perceptible instead of
      resolving to a neutral gray. ---- */
-  --background: oklch(0.199 0.006 86); /* #191816 — warm charcoal plane */
-  --foreground: oklch(0.958 0.004 91.4); /* #f2f1ee */
-  --card: oklch(0.247 0.007 86); /* #232120 — raised content plane */
-  --card-foreground: oklch(0.958 0.004 91.4);
-  --popover: oklch(0.279 0.007 87); /* floats above cards */
-  --popover-foreground: oklch(0.958 0.004 91.4);
+  --background: oklch(0.165 0.003 67.6); /* #0f0e0d — warm charcoal plane */
+  --foreground: oklch(0.967 0.003 84.6); /* #f5f4f2 */
+  --card: oklch(0.214 0.002 67.7); /* #1a1918 — raised content plane */
+  --card-foreground: oklch(0.967 0.003 84.6);
+  --popover: oklch(0.253 0.005 67.6); /* floats above cards */
+  --popover-foreground: oklch(0.967 0.003 84.6);
   --primary: var(--ink); /* paper-white action on ink */
-  --primary-foreground: oklch(0.199 0.006 86);
-  --secondary: oklch(0.294 0.007 88); /* chip / quiet fill */
-  --secondary-foreground: oklch(0.958 0.004 91.4);
-  --muted: oklch(0.294 0.007 88);
-  --muted-foreground: oklch(0.727 0.006 92); /* #a7a5a1 */
-  --accent: oklch(0.33 0.008 88); /* hover / inset fill */
-  --accent-foreground: oklch(0.958 0.004 91.4);
+  --primary-foreground: oklch(0.165 0.003 67.6);
+  --secondary: oklch(0.286 0.006 78.2); /* chip / quiet fill */
+  --secondary-foreground: oklch(0.967 0.003 84.6);
+  --muted: oklch(0.286 0.006 78.2);
+  --muted-foreground: oklch(0.716 0.008 80.7); /* #a6a39e */
+  --accent: oklch(0.315 0.007 67.6); /* hover / inset fill */
+  --accent-foreground: oklch(0.967 0.003 84.6);
   --destructive: var(--signal-error);
   --destructive-foreground: oklch(0.175 0.005 80);
   --border: color-mix(in oklch, var(--foreground) 12%, transparent); /* hairline */
@@ -274,7 +274,7 @@
      `color-mix(--input 30%, transparent)`, i.e. a mix of an ALREADY transparent
      token: 14% × 30% ≈ 4% paper alpha, so every input, textarea and select in
      dark mode rendered as an all-but-invisible wash instead of a field. */
-  --input-background: oklch(0.222 0.006 86);
+  --input-background: oklch(0.214 0.002 67.7);
   --ring: color-mix(in oklch, var(--foreground) 55%, transparent); /* paper-based focus ring */
   /* A real scrim. Previously `--background` at 92% — the app's own plane at
      near-full opacity, which (with the dialog's backdrop-blur) erased the page
@@ -308,23 +308,23 @@
     0 40px 88px oklch(0 0 0 / 56%);
 
   /* ---- legacy semantic vars (dark) — same ramp as the shadcn block above ---- */
-  --text-color-primary: oklch(0.958 0.004 91.4);
-  --text-color-secondary: oklch(0.851 0.006 93); /* warm mid paper */
-  --text-color-subtle: oklch(0.727 0.006 92); /* #a7a5a1 */
-  --text-color-base: oklch(0.909 0.005 91.4);
-  --text-color-placeholder: oklch(0.607 0.006 91.5); /* lifted: it sits on the darker input well */
-  --text-color-inverse: oklch(0.199 0.006 86);
-  --text-color-brand: oklch(0.958 0.004 91.4); /* active accent is paper, not blue */
+  --text-color-primary: oklch(0.967 0.003 84.6);
+  --text-color-secondary: oklch(0.868 0.006 75.4); /* warm mid paper */
+  --text-color-subtle: oklch(0.716 0.008 80.7); /* #a6a39e */
+  --text-color-base: oklch(0.926 0.005 78.3);
+  --text-color-placeholder: oklch(0.622 0.008 67.7); /* lifted: it sits on the darker input well */
+  --text-color-inverse: oklch(0.165 0.003 67.6);
+  --text-color-brand: oklch(0.967 0.003 84.6); /* active accent is paper, not blue */
   --text-color-feedback-success: var(--source-project);
   --text-color-feedback-danger: oklch(0.72 0.13 31.5);
   --text-color-feedback-warning: var(--source-office);
   --text-color-feedback-info: var(--source-law-text);
 
-  --background-color-surface-base: oklch(0.199 0.006 86);
-  --background-color-surface-raised: oklch(0.294 0.007 88);
-  --background-color-surface-sunken: oklch(0.168 0.005 84); /* sidebar sits below content */
-  --background-color-surface-overlay: oklch(0.279 0.007 87);
-  --background-color-interaction-base: oklch(0.33 0.008 88);
+  --background-color-surface-base: oklch(0.165 0.003 67.6);
+  --background-color-surface-raised: oklch(0.286 0.006 78.2);
+  --background-color-surface-sunken: oklch(0.141 0.003 69.4); /* sidebar sits below content */
+  --background-color-surface-overlay: oklch(0.253 0.005 67.6);
+  --background-color-interaction-base: oklch(0.315 0.007 67.6);
   --background-color-interaction-primary-base: var(--ink);
   --background-color-interaction-primary-hover: var(--ink-hover);
   --background-color-interaction-primary-selected: var(--ink-active);
