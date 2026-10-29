@@ -156,6 +156,13 @@ is invisible because each one looks locally correct. German transliteration
 where its absence had been shipping `Beispielstraße` as the filename
 `Beispielstra-e`. All three now call `lib/text/latinize.ts`.
 
+A split moves a module's side-effect imports (a stylesheet, a polyfill) with
+the code that needs them. When `ReasoningFlow` was split into modules, no new
+module took `import '@xyflow/react/dist/style.css'`, and the Herleitung
+rendered as a staircase while every spec passed, because the specs mock React
+Flow. `tests/react-flow-stylesheet.spec.ts` now holds that one; for any other
+library with a stylesheet, check the import at each render site.
+
 Sharing is not merging. Keep the pieces that genuinely differ separate and say
 why: `latinize` splits into `transliterateGerman` and `foldDiacritics` precisely
 because Markdown anchors must not gain diacritic folding, since their ids are

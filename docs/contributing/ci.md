@@ -207,6 +207,13 @@ step is `continue-on-error`, so PostHog never blocks a deploy. Prod is not
 wired: its stack has no PostHog configured, so it would have nowhere to send
 the id.
 
+A check that guards the whole repository (a ratchet, a naming or brand
+check, a doc-path check) runs in **Repo checks**, never inside a suite a path
+filter selects. The brand-names check's test was first written into the
+backend's core suite, which a UI-only or docs-only pull request never reaches,
+so those got a green run that never asked it; it moved to `be:test:harness`,
+which Repo checks runs on every pull request.
+
 ## Quick merges one after another
 
 A branch has one concurrency group. A running push run is never cancelled; a
