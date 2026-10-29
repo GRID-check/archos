@@ -29,6 +29,8 @@ ALLOWED = (
     "docs/adr/0145-the-repository-is-laid-out-by-job.md",
     "docs/adr/0079-background-work-runs-on-one-claim-substrate.md",
     "releasenotes/notes/",
+    # The prose check's own cases: an old variable name is the identifier it must not count.
+    "tests/test_check_brand_prose.py",
 )
 
 OLD_NAME = re.compile(r"\bAIQ_")
