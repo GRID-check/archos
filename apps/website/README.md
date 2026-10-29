@@ -1,8 +1,9 @@
 # website
 
-The public website of the company, built with Astro as a static site, served in production by
-`runtime/server.mjs` (the web image, `Dockerfile`). `apps/site` is the old site, kept in the repo
-until its last dependants move (slice 5 of [the corporate design plan](../../docs/design/corporate-design-plan.md)).
+The public website of the company, built with Astro as a static site. It replaces `apps/site`
+(slice 5 of [the corporate design plan](../../docs/design/corporate-design-plan.md)): the `web`
+image builds this directory (`ci/image_inputs.py`), and `apps/site` stays in the tree only until
+its cutover deletes it.
 
 Every visual value comes from the shared design system in `packages/brand`. The brand strings come
 from `src/lib/identity.ts`, which reads `identity.json`.
@@ -146,10 +147,10 @@ The reference fonts (`.woff2`) are not here: the design system ships them in `sr
 
 ## Icons
 
-`public/favicon.svg` is `packages/brand/mark.svg` without its title, so it names no product.
-`favicon.ico`, `apple-touch-icon.png` and `icons/icon-{192,512}.png`, `icons/icon-maskable-512.png`
-are rendered from the same master with the recipe of `packages/brand/build-brand-assets.mjs`, which
-does not target this app yet. `src/pages/manifest.webmanifest.ts` names them, with the name from
+`public/favicon.svg` is a copy of `packages/brand/mark.svg`, its title filled from identity by
+`packages/brand/build-brand-assets.mjs`. `favicon.ico`, `apple-touch-icon.png` and
+`icons/icon-{192,512}.png`, `icons/icon-maskable-512.png` are rendered from the same master with that
+script's recipe; the script itself still writes its rasters to `apps/site` until the cutover points it here. `src/pages/manifest.webmanifest.ts` names them, with the name from
 identity and the colour from the tokens. Every page carries schema.org `Organization` and `WebSite`
 JSON-LD (`src/lib/structured-data.ts`), all from identity.
 

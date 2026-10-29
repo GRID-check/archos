@@ -125,6 +125,7 @@ import { createDocumentVersion, transitionDocumentVersion } from './lifecycle'
 import { findDocumentInOrg } from './repository'
 import { findOpenVersion } from './version-repository'
 import { fileResearchReport, splitReportTitle } from './research-report'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SESSION = { userId: 'user-1', organizationId: 'org-1' } as AuthorizedSession
 
@@ -272,9 +273,9 @@ describe('fileResearchReport', () => {
     expect(pdf.text).toContain(normalizePdfText('ein Mensch hat es nicht geprüft'))
 
     expect(pdf.info.Keywords).toBe(
-      'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false; AIRunId=run_7'
+      `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false; AIRunId=run_7`
     )
-    expect(pdf.info.Creator).toBe('Piloti')
+    expect(pdf.info.Creator).toBe(PRODUCT_NAME)
   })
 
   /**
@@ -295,14 +296,14 @@ describe('fileResearchReport', () => {
 
     // Real German, from `lib/documents/branding.ts` — not this spec's `t:<key>`
     // stub, and not a second copy written in the renderer.
-    expect(pdf.text).toContain(normalizePdfText('Erstellt mit Piloti für Musterbüro ZT GmbH'))
+    expect(pdf.text).toContain(normalizePdfText(`Erstellt mit ${PRODUCT_NAME} für Musterbüro ZT GmbH`))
     expect(pdf.text).toContain(normalizePdfText('Es ist ein Arbeitsstand und keine Freigabe'))
     expect(pdf.text).toContain(normalizePdfText('Entwurf, nicht freigegeben'))
 
     // The marking is still IN the bytes. The branding is added matter and must
     // never displace the one thing the filing seam refuses a document without.
     expect(pdf.info.Keywords).toBe(
-      'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false; AIRunId=run_7'
+      `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false; AIRunId=run_7`
     )
   })
 

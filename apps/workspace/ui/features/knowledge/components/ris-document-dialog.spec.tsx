@@ -12,6 +12,7 @@
 import { render, screen, waitFor } from '@/test-utils'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { RisDocumentDialog } from './ris-document-dialog'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const TEXT = [
   '§ 1 Geltungsbereich',
@@ -95,7 +96,7 @@ describe('RisDocumentDialog', () => {
     open()
 
     expect(
-      await screen.findByText(/cannot be shown in Piloti right now/)
+      await screen.findByText(new RegExp(String.raw`cannot be shown in ${PRODUCT_NAME} right now`))
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Open at RIS/ })).toHaveAttribute(
       'href',

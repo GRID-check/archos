@@ -46,20 +46,21 @@ import {
   renderAgentDocumentMarkdown,
 } from './agent-document'
 import { GENERATED_DOCUMENT_PRODUCER_REF_KINDS } from './generated'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session = { userId: 'user_1', organizationId: 'org_1', email: 'a@example.test' } as AuthorizedSession
 
 describe('renderAgentDocumentMarkdown', () => {
   const marking = aiProvenanceMarking({})
   const branding = {
-    productName: 'Piloti',
+    productName: PRODUCT_NAME,
     tagline: PLATFORM_DOCUMENT_BRANDING.copy.de.tagline,
-    headerLine: 'Erstellt mit Piloti für Musterbüro ZT GmbH',
-    footerLine: 'Piloti · Entwurf, nicht freigegeben',
-    prose: PLATFORM_DOCUMENT_BRANDING.copy.de.prose.replace('{product}', 'Piloti'),
+    headerLine: `Erstellt mit ${PRODUCT_NAME} für Musterbüro ZT GmbH`,
+    footerLine: `${PRODUCT_NAME} · Entwurf, nicht freigegeben`,
+    prose: PLATFORM_DOCUMENT_BRANDING.copy.de.prose.replace('{product}', PRODUCT_NAME),
     disclaimer: PLATFORM_DOCUMENT_BRANDING.copy.de.disclaimer,
     logo: null,
-    aiGeneratorName: 'Piloti',
+    aiGeneratorName: PRODUCT_NAME,
   }
 
   it('puts the marking IN the bytes, which is the only place Markdown has', () => {
@@ -119,8 +120,8 @@ describe('the filing seam resolves the branding once', () => {
       organizationName: 'Musterbüro ZT GmbH',
       locale: 'de',
     })
-    expect(branding.headerLine).toBe('Erstellt mit Piloti für Musterbüro ZT GmbH')
-    expect(branding.aiGeneratorName).toBe('Piloti')
+    expect(branding.headerLine).toBe(`Erstellt mit ${PRODUCT_NAME} für Musterbüro ZT GmbH`)
+    expect(branding.aiGeneratorName).toBe(PRODUCT_NAME)
   })
 })
 

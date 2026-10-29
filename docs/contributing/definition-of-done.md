@@ -73,6 +73,13 @@ looks again.
 If a test cannot be made to fail, either the fix is not doing what you think or
 the test is aimed at the wrong thing. Both are findings; say which.
 
+A lint or a check is held to the same bar, against the real offending text:
+paste it in as a fixture and watch the check fail first. The old site's claims
+lint matches `Platzhalter` and `placeholder]`; the placeholders a privacy page
+actually shipped, `[14 Tagen]` and `[EU]`, match neither, because the regex was
+written from the word someone expected rather than from the output it had to
+catch.
+
 ## An implementation nobody calls is not done
 
 Grep for a caller of every symbol you add, and test the join rather than only
@@ -100,6 +107,19 @@ pull requests, name the joining field up front and have both sides pin it.
 Update the docs your change makes wrong in the same change:
 [documentation.md](documentation.md) says which doc goes with which kind of
 change.
+
+A move, a rename or a deleted directory is done when nothing names the old
+path: `git grep -n '<old/path>'` over the whole tree, Markdown, `Taskfile.yml`,
+`taskfiles/`, `.github/` (dependabot included), `deploy/` and `scripts/`
+included. The link and path checks see only links and one index, so a
+backticked path, a workflow filter or a Pulumi comment keeps pointing at
+nothing while every check passes.
+
+A cause written into a comment, a gotcha or a doc is measured before it is
+written, by a revert-check or a reproduction. A cause nobody measured is
+written as a hypothesis and says so. A review of the first commit of a sign-in
+fix found three claims in its comment, gotcha and doc that were not true
+(5da892028).
 
 ## Have the claim checked by someone who did not make it
 

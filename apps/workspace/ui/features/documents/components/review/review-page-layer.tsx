@@ -35,6 +35,7 @@ import {
   type ShownHighlight,
 } from '../../hooks/use-document-room'
 import { useAgentByline } from './agent-attribution'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** A region smaller than this share of the page, in both directions, was a click: it becomes a point. */
 const MIN_REGION = 0.012
@@ -106,7 +107,7 @@ function AgentCursor({ state, idle }: { state: RoomPeerState; idle?: boolean }):
  */
 export function agentCursorLabel(state: Pick<RoomPeerState, 'label' | 'activity'>, reading: string): string {
   const doing = state.label || state.activity?.label || (state.activity?.state === 'reading' ? reading : null)
-  return doing ? `Piloti · ${doing}` : 'Piloti'
+  return doing ? `${PRODUCT_NAME} · ${doing}` : PRODUCT_NAME
 }
 
 /**

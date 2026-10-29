@@ -44,6 +44,7 @@ import type { AgentChangeView } from '@/lib/changes/types'
 import type { CardInteractions } from '../card-decision'
 import type { CanvasActivityItem } from '../lib/canvas-activity'
 import { CanvasActivityCard } from './CanvasActivityCard'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 let mockCardInteractions: CardInteractions | undefined
 const setCardDecision = vi.fn()
@@ -991,7 +992,7 @@ describe('CanvasActivityCard — the thread at a glance', () => {
 
     const glance = await screen.findByTestId('canvas-activity-thread')
     expect(glance).toHaveTextContent('2 replies')
-    expect(glance).toHaveTextContent('latest Piloti: “Die Breite beträgt 1,10 m und liegt damit unter dem…”')
+    expect(glance).toHaveTextContent(`latest ${PRODUCT_NAME}: “Die Breite beträgt 1,10 m und liegt damit unter dem…”`)
   })
 
   it('names a person by the directory name, and counts one reply in the singular', async () => {

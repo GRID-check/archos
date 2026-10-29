@@ -1,16 +1,20 @@
+import identity from '@/shared/brand/identity.json'
+
 /**
- * Single source of truth for the user-facing product brand.
+ * The user-facing product name, read from the brand's one file.
  *
- * The product ships user-facing as **Piloti**, and the name will change again.
- * Use this constant for every user-visible brand mention (wordmark, tab
- * titles, aria labels); the dictionaries say `{productName}` and get it from
- * here (`withProductName` below), and the agent's prompts carry the same string
- * (`agent.common.brand`, held equal by `tests/test_product_name_parity.py`).
+ * `packages/brand/identity.json` is the source; `node packages/brand/sync.mjs`
+ * copies it to `shared/brand/identity.json`, which this reads, so a rename is
+ * one edit there and nothing here (ADR-0148). Use this constant for every
+ * user-visible brand mention (wordmark, tab titles, aria labels); the
+ * dictionaries say `{productName}` and get it from here (`withProductName`
+ * below), and the agent's prompts read the same file (`agent.common.brand`).
+ * `tests/test_product_name_parity.py` holds them equal and runs the rename drill.
  * No internal identifier carries a product name at all
  * (env vars, headers, CSS variables, storage keys, DB identifiers): the
  * `brand-names` ratchet holds that (docs/contributing/code-conventions.md#no-brand-names).
  */
-export const PRODUCT_NAME = 'Piloti'
+export const PRODUCT_NAME: string = identity.name
 
 const PRODUCT_NAME_TOKEN = /\{productName\}/g
 
@@ -33,7 +37,7 @@ export function withProductName<T>(dictionary: T): T {
 }
 
 /**
- * The Piloti mark (the column) for every place that draws it inline: the app's
+ * The product's mark (the column) for every place that draws it inline: the app's
  * logo and the PDF exports. `path` is the master's, character for character
  * (`packages/brand/mark.svg`); `npm run check` in `apps/site` fails when
  * it drifts. `viewBox` crops the master's 32-unit tile to the column itself, so

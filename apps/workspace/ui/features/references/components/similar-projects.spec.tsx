@@ -5,6 +5,7 @@ import { fingerprintOf } from '@/lib/cross-project/fingerprint'
 import type { SimilarProject, SimilarProjectsPage } from '@/lib/references/types'
 
 import { SimilarProjects } from './similar-projects'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const WOHNHAUS: SimilarProject = {
   id: 'proj-mödling',
@@ -122,7 +123,7 @@ describe('SimilarProjects', () => {
     const others = screen.getByRole('region', { name: referencesCopy.messages.en.others.title })
     expect(within(others).getByRole('link', { name: 'Halle Wels' })).toBeInTheDocument()
     expect(within(others).queryByRole('link', { name: 'Wohnhaus Mödling' })).not.toBeInTheDocument()
-    expect(screen.getByText('… and 4 more closed projects, which Piloti also searches in chat.')).toBeInTheDocument()
+    expect(screen.getByText(`… and 4 more closed projects, which ${PRODUCT_NAME} also searches in chat.`)).toBeInTheDocument()
   })
 
   test('writes a period without an end as running, never as the one year it began in', () => {

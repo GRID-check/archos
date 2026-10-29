@@ -22,6 +22,7 @@ import type { InboxItemView } from '@/lib/inbox/types'
 import { pushFixture } from './fixtures'
 import { InboxPushOffer } from './inbox-push-offer'
 import { NotificationPrompt } from './notification-prompt'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function client(newest: Partial<InboxItemView> | null): InboxClient {
   return {
@@ -80,7 +81,7 @@ describe('InboxPushOffer', () => {
     badge.pending = 1
     render(<InboxPushOffer enabled client={client({ actorName: null, type: 'annotation.assigned_to_you' })} />)
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith('Someone needs you in Piloti. Do you want to be notified on this device?', expect.anything())
+      expect(toastMock).toHaveBeenCalledWith(`Someone needs you in ${PRODUCT_NAME}. Do you want to be notified on this device?`, expect.anything())
     )
   })
 
@@ -89,7 +90,7 @@ describe('InboxPushOffer', () => {
     badge.pending = 1
     render(<InboxPushOffer enabled client={client({ actorName: null, type: 'piloti.asks_you' })} />)
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith('Piloti has a question for you. Do you want to be notified on this device?', expect.anything())
+      expect(toastMock).toHaveBeenCalledWith(`${PRODUCT_NAME} has a question for you. Do you want to be notified on this device?`, expect.anything())
     )
   })
 
@@ -102,7 +103,7 @@ describe('InboxPushOffer', () => {
     )
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
-        'Piloti hat eine Rückfrage an Sie. Möchten Sie auf diesem Gerät benachrichtigt werden?',
+        `${PRODUCT_NAME} hat eine Rückfrage an Sie. Möchten Sie auf diesem Gerät benachrichtigt werden?`,
         expect.anything()
       )
     )
@@ -113,7 +114,7 @@ describe('InboxPushOffer', () => {
     render(<InboxPushOffer enabled client={client({ actorName: 'Anna Weber', type: 'annotation.assigned_to_you' })} />)
     await waitFor(() => expect(toastMock).toHaveBeenCalled())
     const [message, options] = toastMock.mock.calls[0] as [string, { cancel: { onClick: () => void } }]
-    expect(message).toBe('Anna Weber needs you in Piloti. Do you want to be notified on this device?')
+    expect(message).toBe(`Anna Weber needs you in ${PRODUCT_NAME}. Do you want to be notified on this device?`)
     act(() => options.cancel.onClick())
     expect(window.localStorage.getItem('push-prompt.dismissed')).toBe('1')
   })

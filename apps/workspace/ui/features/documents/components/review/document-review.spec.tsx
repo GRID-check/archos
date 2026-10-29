@@ -22,6 +22,7 @@ import type { RoomTransport } from '../../hooks/use-document-room'
 import { DocumentReviewMode, TOOLS_INTRO_KEY } from './document-review'
 import { REVIEW_TOASTER } from './review-toaster'
 import { useChatStore } from '@/features/chat/store'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // The real chat store, signed in as `user_me`: the review reads who is looking
 // from it, and `use-canvas-ask` subscribes to it.
@@ -685,7 +686,7 @@ describe('the list on a phone', () => {
     await screen.findAllByTestId('review-row')
     const button = screen.getByTestId('review-list-open')
     expect(button).toHaveTextContent(/^2$/)
-    expect(button).toHaveAccessibleName('Annotations: 2 open annotations and 1 proposal from Piloti')
+    expect(button).toHaveAccessibleName(`Annotations: 2 open annotations and 1 proposal from ${PRODUCT_NAME}`)
   })
 
   it('says when nothing is open', async () => {

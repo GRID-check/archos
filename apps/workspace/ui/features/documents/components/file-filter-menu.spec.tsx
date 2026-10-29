@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { FileFilterMenu } from './file-filter-menu'
 import { NO_FILE_FILTERS, type FileFilters } from '../lib/file-filters'
 import { DEFAULT_FILE_SORT, type FileSort } from '../lib/file-sort'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const renderMenu = (overrides: Partial<Parameters<typeof FileFilterMenu>[0]> = {}) => {
   const onFiltersChange = vi.fn<(next: FileFilters) => void>()
@@ -65,7 +66,7 @@ describe('the older revisions filter', () => {
     expect(within(alsoShow).getByLabelText('Older revisions')).toBeInTheDocument()
     // The narrowing filters keep their own section.
     const origin = screen.getByRole('group', { name: 'Origin and approval' })
-    expect(within(origin).getByLabelText('By Piloti')).toBeInTheDocument()
+    expect(within(origin).getByLabelText(`By ${PRODUCT_NAME}`)).toBeInTheDocument()
     expect(within(origin).getByLabelText('Awaiting approval')).toBeInTheDocument()
   })
 
@@ -99,7 +100,7 @@ describe('FileFilterMenu', () => {
     expect(screen.queryByRole('group', { name: 'Responsible' })).not.toBeInTheDocument()
     // The rest still renders: authorship and type exist whether or not a
     // project assigns work.
-    expect(await screen.findByLabelText('By Piloti')).toBeInTheDocument()
+    expect(await screen.findByLabelText(`By ${PRODUCT_NAME}`)).toBeInTheDocument()
   })
 
   test('toggles a kind without disturbing the other dimensions', async () => {

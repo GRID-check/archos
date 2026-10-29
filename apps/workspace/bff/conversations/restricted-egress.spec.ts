@@ -31,6 +31,7 @@ import {
   requireMayLeaveConversation,
   requirePlanDocumentsOpen,
 } from './restricted-egress'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const ORG = 'org_1'
 const PROJECT = '3f8b0d2e-0000-4000-8000-000000000001'
@@ -182,8 +183,8 @@ describe('folderRestrictsReading — whether a revision task may quote a draft',
   })
 
   it('says why, in the reader’s language', () => {
-    expect(confinementRefusal('revision', 'de').message).toContain('kann Piloti es nicht überarbeiten')
-    expect(confinementRefusal('revision', 'en').message).toContain('Piloti cannot revise it')
+    expect(confinementRefusal('revision', 'de').message).toContain(`kann ${PRODUCT_NAME} es nicht überarbeiten`)
+    expect(confinementRefusal('revision', 'en').message).toContain(`${PRODUCT_NAME} cannot revise it`)
     expect(confinementRefusal('revision', 'en').details).toEqual({ action: 'revision' })
   })
 })

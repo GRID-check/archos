@@ -2,6 +2,7 @@ import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { describe, test, expect } from 'vitest'
 import { ConfidenceChip } from './ConfidenceChip'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * ConfidenceChip surfaces the model's self-assessment and — when the backend
@@ -189,6 +190,6 @@ describe('ConfidenceChip for a checked answer (ADR-0139)', () => {
     expect(screen.getByTestId('confidence-check-unavailable')).toHaveTextContent('Evidence check unavailable')
     expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument()
     await user.hover(screen.getByRole('button'))
-    expect((await screen.findAllByText(/so Piloti shows no level/)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(new RegExp(String.raw`so ${PRODUCT_NAME} shows no level`))).length).toBeGreaterThan(0)
   })
 })

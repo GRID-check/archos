@@ -107,13 +107,11 @@ anywhere else, and never pass it a session a request supplied: that is a way pas
 every route's `authz`. [`agent-surface.md`](../../docs/architecture/agent-surface.md#the-acting-session).
 
 **The product's name is copy, never a name in code.** `PRODUCT_NAME` in
-`bff/brand.ts` is the single source: a dictionary string says `{productName}`
+`bff/brand.ts` reads it from `shared/brand/identity.json`, the synced copy of
+`packages/brand/identity.json` (ADR-0148): a dictionary string says `{productName}`
 and the registry fills it in (`withProductName`, beside it; `i18n/product-name.spec.ts`
-fails a string that spells the name), and code reads the constant. No identifier, env var,
-header, CSS variable or route carries a product name (`aiq`, `grid`, `piloti`):
-the old `GRID_*` variables and `x-grid-*` headers are being renamed, and the
-`brand-names` ratchet stops new ones
-([`code-conventions.md`](../../docs/contributing/code-conventions.md#no-brand-names)).
+fails a string that spells the name), and code reads the constant. No name in
+code carries a brand: [`naming.md`](../../docs/contributing/naming.md#no-brand-in-a-name).
 
 ## Reference
 

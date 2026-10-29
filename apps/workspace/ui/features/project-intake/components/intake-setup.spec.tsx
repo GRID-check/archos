@@ -7,6 +7,7 @@ import { render, screen, waitFor } from '@/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { INTAKE_WAITING } from '@/app/dev/_fixtures/project-intake'
 import { IntakeSetup } from './intake-setup'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('@/shared/context', () => ({
   useAppConfig: () => ({
@@ -62,7 +63,7 @@ describe('IntakeSetup', () => {
   it('says a project without an intake has none, and links its briefing', () => {
     render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={null} projectClosed={false} />)
 
-    expect(screen.getByTestId('intake-none')).toHaveTextContent('This project has no setup by Piloti')
+    expect(screen.getByTestId('intake-none')).toHaveTextContent(`This project has no setup by ${PRODUCT_NAME}`)
     expect(screen.getByRole('link', { name: 'Open the briefing' })).toHaveAttribute('href', '/app/projects/p1/intake')
   })
 

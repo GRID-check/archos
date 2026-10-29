@@ -21,6 +21,7 @@ import {
   isDiagramSourceKind,
 } from './diagram-sources'
 import { DIAGRAM_SVG_REJECTIONS } from './svg'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('the diagram source vocabulary', () => {
   it('starts with the two kinds a model can write', () => {
@@ -101,9 +102,9 @@ describe('every refusal can be read, in both locales', () => {
     // Behörde. Both halves are load-bearing: that a machine wrote it, and that
     // it is schematic, which is the doctrine the schematic cards protect by
     // computing their geometry and this one can only state.
-    expect(diagramsCopy.messages.de.marking).toContain('Von Piloti erstellt')
+    expect(diagramsCopy.messages.de.marking).toContain(`Von ${PRODUCT_NAME} erstellt`)
     expect(diagramsCopy.messages.de.marking).toContain('Schematisch')
-    expect(diagramsCopy.messages.en.marking).toContain('Created by Piloti')
+    expect(diagramsCopy.messages.en.marking).toContain(`Created by ${PRODUCT_NAME}`)
     expect(diagramsCopy.messages.en.marking).toContain('Schematic')
     expect(diagramsCopy.messages.de.schematicOnly).toBe('Schematisch — ohne Maßangabe.')
   })

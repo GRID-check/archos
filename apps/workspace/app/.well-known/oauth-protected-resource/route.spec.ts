@@ -12,6 +12,7 @@ import { GET as a2a } from './api/a2a/route'
 import { GET as pathInserted } from './api/mcp/route'
 import { GET as platform } from './api/platform/mcp/route'
 import { GET } from './route'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 beforeEach(() => {
   process.env.WORKOS_AUTHKIT_DOMAIN = 'auth.piloti.test'
@@ -28,7 +29,7 @@ describe('oauth-protected-resource', () => {
         resource: 'https://app.piloti.test/api/mcp',
         authorization_servers: ['https://auth.piloti.test'],
         scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
-        resource_name: 'Piloti',
+        resource_name: PRODUCT_NAME,
         bearer_methods_supported: ['header'],
       })
     })
@@ -41,7 +42,7 @@ describe('oauth-protected-resource', () => {
       resource: 'https://app.piloti.test/api/a2a',
       authorization_servers: ['https://auth.piloti.test'],
       scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
-      resource_name: 'Piloti',
+      resource_name: PRODUCT_NAME,
       bearer_methods_supported: ['header'],
     })
   })
@@ -53,7 +54,7 @@ describe('oauth-protected-resource', () => {
       resource: 'https://app.piloti.test/api/platform/mcp',
       authorization_servers: ['https://auth.piloti.test'],
       scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
-      resource_name: 'Piloti platform console',
+      resource_name: `${PRODUCT_NAME} platform console`,
       bearer_methods_supported: ['header'],
     })
   })

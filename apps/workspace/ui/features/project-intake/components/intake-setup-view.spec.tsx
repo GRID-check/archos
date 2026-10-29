@@ -21,6 +21,7 @@ import { defaultSetupStep, IntakeSetupView, type IntakeSetupViewProps } from './
 import { QUESTIONS_READY } from '@/app/dev/_fixtures/project-setup-questions'
 import type { SetupStepId, SetupStepProps } from './steps/types'
 import { StepFooter } from './setup-frame'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('@/shared/context', () => ({
   useAppConfig: () => ({
@@ -421,7 +422,7 @@ describe('IntakeSetupView', () => {
         at(`?step=${step}`)
         const { unmount } = setup(INTAKE_FAILED)
         const alert = screen.getByTestId('intake-failed')
-        expect(alert).toHaveTextContent('Piloti could not finish reading')
+        expect(alert).toHaveTextContent(`${PRODUCT_NAME} could not finish reading`)
         await userEvent.click(within(alert).getByRole('button', { name: 'Start reading again' }))
         unmount()
       }

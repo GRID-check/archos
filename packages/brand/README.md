@@ -16,9 +16,10 @@ or a brand string changes here and reaches every surface on the next sync.
 | `docs/components/` | One Markdown rules sheet per component, plus `ColorUsage.md`. |
 | `docs/brand-basis.md` | What the brand says and stands for (Markenbasis): positioning, mission, values, antonyms, tonality, Belegpflicht, image families, logo clear space and minimum size, and which source wins when the Markenbasis and the design system disagree. |
 | `build-tokens.mjs` | Builds `dist/tokens.css` (the website layer: shared tokens only) and `dist/tokens.vars.css` (the app layer: every token, app-scoped ones included, as variables prefixed `--ds-`, dark under `.dark` too) from `tokens.json`, and copies `css/` and `fonts/` into `dist/`. The workspace imports `tokens.vars.css` and maps its own names onto it rather than typing a value. |
-| `sync.mjs` | Copies each app the files of its layer (`TARGETS`) and deletes any it no longer receives. `--check` writes nothing and fails on a stale, missing or unexpected file. |
+| `sync.mjs` | Copies each app the files of its layer (`TARGETS`) and deletes any it no longer receives; copies `identity.json` alone into the agent's package (a `shared` target: nothing else there is touched); writes the product's name into the files listed in `name-copies.mjs`. `--check` writes nothing and fails on a stale, missing or unexpected file. |
+| `name-copies.mjs` | The files that must spell the product's name as a literal (the service worker's fallback title, the icons' SVG `<title>`). `sync.mjs` fills them from `identity.json`, so a rename is still one edit (ADR-0148). |
 | `dist/` | Built output, committed on purpose (see the root `.gitignore` negation). |
-| `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build. Unrelated to the tokens. |
+| `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build. Unrelated to the tokens. The master's `<title>` is the token `{productName}`; every copy gets the name from `identity.json`. |
 
 Apps receive copies, not imports: neither Docker build sees `packages/`.
 
@@ -26,6 +27,7 @@ Apps receive copies, not imports: neither Docker build sees `packages/`.
 |---|---|
 | `apps/website/src/styles/brand/` | `tokens.css`, `components.css`, `fonts/`, `identity.json` |
 | `apps/workspace/shared/brand/` | `tokens.vars.css`, `fonts/`, `identity.json` |
+| `packages/agent/src/agent/common/` | `identity.json` only: `agent.common.brand` reads the name from it |
 
 ## Two layers: website and app
 
@@ -74,7 +76,7 @@ Add a target by adding its directory to `TARGETS` in `sync.mjs`.
 
 ## Rules the package carries
 
-- **Brand strings are copy.** They come from `identity.json`, never typed into code, class names or tokens.
+- **Brand strings are copy.** They come from `identity.json`, never typed into code, class names or tokens. A rename edits `identity.json` and runs `sync.mjs`; `tests/test_product_name_parity.py` runs that drill on a scratch copy.
 - **Names are English and brand-free.** Class names, tokens, files and component names never carry the product name. `ui-button`, `ColorUsage`, `--ink`.
 - **Tokens are the only values.** No colour, size, space or radius outside the tokens. Spacing comes from the `--space-*` scale (4px base). Component-internal measures the handover fixes in px and the scale has no step for (20px row padding, 28px form gap, 40px card padding, 56px and 80px post gaps, 9px button padding) stay literal, as in the handover's own CSS; a value the scale has is written as its token.
 - **Edit a token, not a copy.** `dist/` and the app copies are generated; the header of `tokens.css` says so.

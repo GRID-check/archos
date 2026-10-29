@@ -31,6 +31,7 @@ import {
   rosterKey,
 } from './roster'
 import { sendToChannel } from './send'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SESSION = {
   userId: 'user_1',
@@ -40,7 +41,7 @@ const SESSION = {
 } as Partial<AuthorizedSession> as AuthorizedSession
 
 const AGENT = { conversationId: 'conv_42', onBehalfOf: 'user_1' }
-const AGENT_PEER = { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti', forName: 'Anna Berger' }
+const AGENT_PEER = { peerId: 'piloti-conv_42', userId: 'user_1', name: PRODUCT_NAME, kind: 'piloti', forName: 'Anna Berger' }
 const DIRECTORY = new Map([['user_1', { userId: 'user_1', email: 'a@example.test', name: 'Anna Berger', profilePictureUrl: null }]])
 
 beforeEach(async () => {
@@ -121,8 +122,8 @@ describe('a browser cannot be Piloti', () => {
 
     for (const forged of [
       { peerId: 'peer_abcdef12', kind: 'piloti' },
-      { peerId: 'peer_abcdef12', name: 'Piloti' },
-      { peerId: 'peer_abcdef12', cursor: { page: 1, x: 0.1, y: 0.1 }, label: 'Piloti' },
+      { peerId: 'peer_abcdef12', name: PRODUCT_NAME },
+      { peerId: 'peer_abcdef12', cursor: { page: 1, x: 0.1, y: 0.1 }, label: PRODUCT_NAME },
       { peerId: 'peer_abcdef12', highlight: { page: 1, x: 0, y: 0, w: 0.1, h: 0.1 } },
       { peerId: 'peer_abcdef12', presence: 'here', forName: 'Ben Huber' },
       { peerId: 'peer_abcdef12', peer: { kind: 'piloti', forName: 'Ben Huber' } },

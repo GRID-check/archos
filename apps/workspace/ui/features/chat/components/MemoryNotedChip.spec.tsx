@@ -15,6 +15,7 @@ import { describe, expect, test } from 'vitest'
 import { I18nProvider } from '@/i18n'
 import { MemoryNotedChip } from './MemoryNotedChip'
 import type { TurnMemoryItem } from '../lib/turn-memory'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const inTurn: TurnMemoryItem = {
   id: 'memory_proposal-0',
@@ -40,15 +41,15 @@ describe('MemoryNotedChip', () => {
 
   test('counts what this turn recorded', () => {
     render(<MemoryNotedChip items={[inTurn, afterwards]} />)
-    expect(screen.getByText('Piloti noted')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Piloti noted 2 items' })).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} noted`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: `${PRODUCT_NAME} noted 2 items` })).toBeInTheDocument()
   })
 
   test('labels the in-turn write and the post-answer one apart', async () => {
     const user = userEvent.setup()
     render(<MemoryNotedChip items={[inTurn, afterwards]} />)
 
-    await user.click(screen.getByRole('button', { name: 'Piloti noted 2 items' }))
+    await user.click(screen.getByRole('button', { name: `${PRODUCT_NAME} noted 2 items` }))
 
     expect(await screen.findByText('noted during the response')).toBeInTheDocument()
     expect(screen.getByText('added after the response')).toBeInTheDocument()
@@ -65,7 +66,7 @@ describe('MemoryNotedChip', () => {
     render(<MemoryNotedChip items={[inTurn, afterwards]} />)
 
     await user.tab()
-    expect(screen.getByRole('button', { name: 'Piloti noted 2 items' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: `${PRODUCT_NAME} noted 2 items` })).toHaveFocus()
     await user.keyboard('{Enter}')
 
     const dialog = await screen.findByRole('dialog', { name: 'Added to project memory' })
@@ -88,7 +89,7 @@ describe('MemoryNotedChip', () => {
       const chip = screen.getByTestId('memory-chip')
       expect(chip).toHaveTextContent('Memory updated')
       expect(chip).toHaveAttribute('data-state-kind', 'updated')
-      expect(chip).toHaveAccessibleName('Piloti updated its memory: 2 items, 1 of them corrected')
+      expect(chip).toHaveAccessibleName(`${PRODUCT_NAME} updated its memory: 2 items, 1 of them corrected`)
     })
 
     test('lists the correction first, with the note it retired struck through', async () => {

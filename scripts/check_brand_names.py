@@ -90,7 +90,7 @@ EXCLUDED = re.compile(
             r"\.mdx?$",  # prose, which follows the code it names
             r"^ci/[^/]*baseline[^/]*\.json$",  # ratchet baselines: they list paths, not names
             r"^\.github/filters\.yml$",  # CI path filters: they list paths, not names
-            r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
+            r"^scripts/check_brand_(names|prose)\.py$|^tests/test_check_brand_(names|prose)\.py$",  # these checks
             # The layout test names the old directories it forbids; the import test plants one in a fixture.
             r"^tests/test_(repo_layout|test_imports)\.py$",
             # The one-release fallback that reads the old, prefixed variable names, and its tests.
@@ -100,8 +100,9 @@ EXCLUDED = re.compile(
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
             r"^apps/workspace/bff/http/legacy-header-names\.|^apps/agent-host/src/agent_host/legacy_headers\.py$",
             # The brand's one file, where the name is meant to live, and the copies a sync script writes from it
-            # (apps/*/**/identity.json). The product is renamed by editing that file, so it is not a code identifier.
-            r"^packages/brand/identity\.json$|^apps/[^/]+/(.*/)?identity\.json$",
+            # (apps/*/**/identity.json, and the agent's beside agent.common.brand). The product is renamed by
+            # editing that file, so it is not a code identifier.
+            r"^packages/brand/identity\.json$|^apps/[^/]+/(.*/)?identity\.json$|^packages/agent/src/agent/common/identity\.json$",
             r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",

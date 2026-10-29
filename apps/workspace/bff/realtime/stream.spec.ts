@@ -26,6 +26,7 @@ import { publishAsAgent, publishToDocumentRoom } from './document-channel'
 import { __setHubTransportForTests, hubStats, publish } from './hub'
 import { channelKeysOf, openRealtimeStream } from './stream'
 import type { RealtimeFrame } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SESSION = {
   userId: 'user_1',
@@ -216,7 +217,7 @@ describe('openRealtimeStream', () => {
       ch: 'doc:doc_1',
       event: {
         kind: 'activity',
-        peer: { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti', forName: 'Anna Berger' },
+        peer: { peerId: 'piloti-conv_42', userId: 'user_1', name: PRODUCT_NAME, kind: 'piloti', forName: 'Anna Berger' },
         state: 'reading',
         box: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.1 },
         label: 'Fluchtweg prüfen',

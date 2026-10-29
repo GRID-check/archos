@@ -98,6 +98,7 @@ import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 
 import { POST as reply } from './[annotationId]/replies/route'
 import { DELETE as remove, PATCH as patch } from './[annotationId]/replies/[replyId]/route'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 type Handler = (request: Request, context?: { params?: Promise<Record<string, string>> }) => Promise<Response>
 
@@ -142,7 +143,7 @@ const DOC = {
 
 const ANNA: MarkMention = { targetId: 'user_anna', display: 'Anna Berger' }
 const BEN: MarkMention = { targetId: 'user_ben', display: 'Ben Gruber' }
-const AGENT: MarkMention = { targetId: 'agent:piloti', display: 'Piloti' }
+const AGENT: MarkMention = { targetId: 'agent:piloti', display: PRODUCT_NAME }
 
 const POSTED = new Date('2026-10-01T09:00:00Z')
 
@@ -295,24 +296,24 @@ describe('rewording one’s own reply', () => {
   })
 
   it('never wakes Piloti: an @Piloti added in an edit is not kept', async () => {
-    await editReply('doc_1', 'ann_1', 'rep_1', { body: '@Piloti @Anna Berger bitte prüfen', mentions: [AGENT, ANNA] }, { run })
+    await editReply('doc_1', 'ann_1', 'rep_1', { body: `@${PRODUCT_NAME} @Anna Berger bitte prüfen`, mentions: [AGENT, ANNA] }, { run })
 
     expect(updateAnnotationReply).toHaveBeenCalledWith('org_1', 'ann_1', 'rep_1', expect.any(String), {
-      body: '@Piloti @Anna Berger bitte prüfen',
+      body: `@${PRODUCT_NAME} @Anna Berger bitte prüfen`,
       mentions: [ANNA],
     })
     expect(insertAnnotationReply).not.toHaveBeenCalled()
   })
 
   it('keeps an @Piloti the reply already had, while Piloti has not taken it up', async () => {
-    withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true })])
+    withReplies([replyRow({ body: `@${PRODUCT_NAME} stimmt das?`, mentions: [AGENT], addressesAgent: true })])
     // A cap held its wake: Piloti never read it.
     vi.mocked(findWake).mockResolvedValue(wake('suppressed'))
 
-    await editReply('doc_1', 'ann_1', 'rep_1', { body: '@Piloti stimmt die Breite?', mentions: [AGENT] }, { run })
+    await editReply('doc_1', 'ann_1', 'rep_1', { body: `@${PRODUCT_NAME} stimmt die Breite?`, mentions: [AGENT] }, { run })
 
-    expect(updateAnnotationReply).toHaveBeenCalledWith('org_1', 'ann_1', 'rep_1', '@Piloti stimmt das?', {
-      body: '@Piloti stimmt die Breite?',
+    expect(updateAnnotationReply).toHaveBeenCalledWith('org_1', 'ann_1', 'rep_1', `@${PRODUCT_NAME} stimmt das?`, {
+      body: `@${PRODUCT_NAME} stimmt die Breite?`,
       mentions: [AGENT],
     })
   })
@@ -396,7 +397,7 @@ describe('who may change a reply, and when', () => {
 
   it('refuses a reply to Piloti that Piloti answered after', async () => {
     withReplies([
-      replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true }),
+      replyRow({ body: `@${PRODUCT_NAME} stimmt das?`, mentions: [AGENT], addressesAgent: true }),
       replyRow({ id: 'rep_2', authorKind: 'piloti', body: 'Ja.', mentions: [], createdAt: new Date('2026-10-01T09:01:00Z') }),
     ])
 
@@ -408,9 +409,9 @@ describe('who may change a reply, and when', () => {
   })
 
   it.each(['queued', 'started', 'answered', 'stopped'] as const)(
-    'refuses a reply to Piloti whose wake is %s',
+    `refuses a reply to ${PRODUCT_NAME} whose wake is %s`,
     async (status) => {
-      withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true })])
+      withReplies([replyRow({ body: `@${PRODUCT_NAME} stimmt das?`, mentions: [AGENT], addressesAgent: true })])
       vi.mocked(findWake).mockResolvedValue(wake(status))
 
       expect(await Promise.all(both())).toEqual([
@@ -433,9 +434,9 @@ describe('who may change a reply, and when', () => {
   })
 
   it.each(['suppressed', 'refused', 'failed'] as const)(
-    'lets its author change a reply to Piloti whose wake was %s: Piloti never answered it',
+    `lets its author change a reply to ${PRODUCT_NAME} whose wake was %s: ${PRODUCT_NAME} never answered it`,
     async (status) => {
-      withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true })])
+      withReplies([replyRow({ body: `@${PRODUCT_NAME} stimmt das?`, mentions: [AGENT], addressesAgent: true })])
       vi.mocked(findWake).mockResolvedValue(wake(status))
 
       await deleteReply('doc_1', 'ann_1', 'rep_1', { run })

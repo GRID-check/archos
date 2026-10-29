@@ -54,6 +54,7 @@ import { DoorEventBus, listeningAs } from './door/event-bus'
 import { META_TOOL_ICONS, serverIcons } from './icons'
 import { META_OUTPUT_SCHEMAS } from './meta-output-schemas'
 import { configuredAppOrigin } from '@/lib/app-origin'
+import { PRODUCT_NAME } from '@/lib/brand'
 import { ASK_CREATE, TASKS_EXTENSION, offersAskTasks, registerAskTasks, runAskCreate } from './ask-calls'
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server'
 import { UI_EXTENSION, VIEW_TOOL_NOTE, appHostOf, offersAppViews, registerAppViews, viewMetaOf } from './mcp-apps'
@@ -63,7 +64,7 @@ export const MODE_HEADER = 'x-piloti-mcp-mode'
 
 /** What the agent reads once, at connect time, on an office door. */
 export const MCP_INSTRUCTIONS = [
-  'Piloti is the workspace for architects: a planning office runs its projects and processes in it, and Piloti, the agent, is a colleague in that office.',
+  `${PRODUCT_NAME} is the workspace for architects: a planning office runs its projects and processes in it, and ${PRODUCT_NAME}, the agent, is a colleague in that office.`,
   'Through this server you act for the signed-in person, with exactly the rights they have: their projects, documents, folders, review, conversations, tasks, skills and knowledge.',
   'Read the resource piloti://guide once: how the workspace fits together and how ids flow; piloti://catalog lists every operation you may run, piloti://glossary the office\'s German words.',
   'Start with project-list to see which projects exist, then search-operations to find what you need and call-operation to run it (describe-operation shows an input you do not know).',
@@ -72,7 +73,7 @@ export const MCP_INSTRUCTIONS = [
 
 /** What the agent reads once, at connect time, on the platform door (ADR-0126). */
 export const PLATFORM_MCP_INSTRUCTIONS = [
-  'This is the Piloti platform console: GRID operates Piloti for every planning office here, and you act for a platform operator with exactly the platform permissions they hold.',
+  `This is the ${PRODUCT_NAME} platform console: the platform operator runs ${PRODUCT_NAME} for every planning office here, and you act for a platform operator with exactly the platform permissions they hold.`,
   'Settings, prices, models and the base knowledge corpus here apply to every organization at once; nothing of an office\'s own workspace is here.',
   'Start with platform-overview-get for the organizations, then search-operations to find what you need and call-operation to run it (describe-operation shows an input you do not know).',
   'Ask the person before every destructive operation: here one reaches every tenant. If nothing fits, say so and call report-missing-operation.',
@@ -80,8 +81,8 @@ export const PLATFORM_MCP_INSTRUCTIONS = [
 
 /** The server's name and instructions on each door. */
 const SERVER_IDENTITY: Readonly<Record<AgentDoor, { name: string; title: string; instructions: string }>> = {
-  office: { name: 'piloti', title: 'Piloti', instructions: MCP_INSTRUCTIONS },
-  platform: { name: 'piloti-platform', title: 'Piloti platform', instructions: PLATFORM_MCP_INSTRUCTIONS },
+  office: { name: 'workspace', title: PRODUCT_NAME, instructions: MCP_INSTRUCTIONS },
+  platform: { name: 'workspace-platform', title: `${PRODUCT_NAME} platform`, instructions: PLATFORM_MCP_INSTRUCTIONS },
 }
 
 /**

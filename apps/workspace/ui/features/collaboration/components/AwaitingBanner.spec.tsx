@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import type { AwaitingStateResponse, PendingMentionView } from '@/lib/mentions/types'
 import { AwaitingBanner } from './AwaitingBanner'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const person = (id: string, name: string) => ({
   userId: id,
@@ -41,7 +42,7 @@ describe('AwaitingBanner — the silence is explained (MN-8)', () => {
   test('names who is awaited, says why Piloti is quiet, and who asked, and since when', () => {
     render(<AwaitingBanner awaiting={state([request()])} onRelease={vi.fn()} />)
     expect(screen.getByText('Waiting for Anna Weber')).toBeInTheDocument()
-    expect(screen.getByText('Piloti is holding off until someone answers.')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} is holding off until someone answers.`)).toBeInTheDocument()
     expect(screen.getByText('Asked by Matthias Bigl')).toBeInTheDocument()
     expect(screen.getByText(/^since /)).toBeInTheDocument()
   })
@@ -285,13 +286,13 @@ describe('AwaitingBanner — always a way out (MN-9)', () => {
     render(
       <AwaitingBanner awaiting={state([request()])} onRelease={vi.fn()} onAskAgent={onAskAgent} />,
     )
-    await user.click(screen.getByRole('button', { name: 'Ask Piloti instead' }))
+    await user.click(screen.getByRole('button', { name: `Ask ${PRODUCT_NAME} instead` }))
     expect(onAskAgent).toHaveBeenCalledTimes(1)
   })
 
   test('hides the ask-Agent action when the host does not offer one', () => {
     render(<AwaitingBanner awaiting={state([request()])} onRelease={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'Ask Piloti instead' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: `Ask ${PRODUCT_NAME} instead` })).not.toBeInTheDocument()
   })
 
   test('a refused release says so instead of looking like a dead button', async () => {

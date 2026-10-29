@@ -11,6 +11,7 @@ holds the depth behind it.
 | [ci.md](ci.md) | What CI is for, how a run decides what to run, how images reach a deploy, and why each rule exists |
 | [definition-of-done.md](definition-of-done.md) | The bar a change clears before anyone calls it done: the baseline, what to show per kind of change, the revert-check, the closing checklist |
 | [testing-and-verification.md](testing-and-verification.md) | `task verify` as the merge gate, which task to run while iterating, and the traps the task list cannot tell you about |
+| [naming.md](naming.md) | How to name anything: the explain test, no brand in a name, English only, casing per family, one word per concept, renaming a stored or external name, terms under review |
 | [code-conventions.md](code-conventions.md) | House rules with a history: the `any` ban, coercing raw `sql<T>` results, where a shared helper belongs, the capability doctrine |
 | [release-notes.md](release-notes.md) | reno mechanics, what makes a note customer copy, publishing and the translation cache |
 | [gotchas.md](gotchas.md) | Known failures indexed by the symptom you arrive with. Read it before debugging a surprise |
@@ -18,6 +19,7 @@ holds the depth behind it.
 | [agent-skills.md](agent-skills.md) | When a procedure is a skill and when it is a document, how `.claude/` is generated, which skills are installed and why, what to know before trusting them |
 | [lifecycle-matrix.md](lifecycle-matrix.md) | The phase-by-edge matrix for very heavy surfaces (the streaming chat turn), when one is warranted and when not; instances in [`../design/lifecycles/`](../design/lifecycles/README.md) |
 | [correction-ratchet.md](correction-ratchet.md) | Closing the layer that allowed an error, instead of only fixing the output |
+| [ai-native-tooling.md](ai-native-tooling.md) | The rule that agents can act in every tool we choose: the checklist, the round-trip test, and how a tool's ADR records the check |
 | [headless-first.md](headless-first.md) | The rule for a new capability: route and operation in the same change, or an exemption with a reason; the checklist and what fails you |
 | [documentation.md](documentation.md) | Which doc to update for which kind of change, and why that is part of the change |
 | [lint-evaluation.md](lint-evaluation.md) | Why the UI lints with oxlint and not ESLint or Biome: timings, rule coverage, what was lost, and how the repo's own rules are kept honest |

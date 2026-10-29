@@ -29,6 +29,7 @@ from agent.citations.session import reset_session_registry
 from agent.citations.session import set_session_registry
 from agent.common import LLMProvider
 from agent.common import LLMRole
+from agent.common.brand import PRODUCT_NAME
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -738,7 +739,8 @@ class TestDeepResearcherAgent:
 
             kwargs = create.call_args.kwargs
             subagents = {subagent["name"]: subagent for subagent in kwargs["subagents"]}
-            assert "Piloti — a colleague in an Austrian architecture and planning office" in kwargs["system_prompt"]
+            colleague = f"{PRODUCT_NAME} — a colleague in an Austrian architecture and planning office"
+            assert colleague in kwargs["system_prompt"]
             assert "Grid OIB" not in kwargs["system_prompt"]
             assert "Austrian building regulations" in kwargs["system_prompt"]
             assert "planning office" in subagents["planner-agent"]["system_prompt"]

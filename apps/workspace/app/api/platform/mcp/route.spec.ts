@@ -266,7 +266,7 @@ describe('what it offers', () => {
       rpc(PLATFORM, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'spec', version: '1' } }, await bearer()),
     )
     const body = await messageOf<{ result: { instructions: string; serverInfo: { name: string } } }>(response)
-    expect(body.result.serverInfo.name).toBe('piloti-platform')
+    expect(body.result.serverInfo.name).toBe('workspace-platform')
     expect(body.result.instructions).toMatch(/platform console/)
   })
 

@@ -17,6 +17,7 @@ import {
   singleReadCitations,
   singleReadScene,
 } from '@/test-utils/work-list-scenes'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The copy as the English dictionary words it, so a retune of a phrase is not a broken spec. */
 const tEn = translatorFor(chatCopy, 'en')
@@ -363,7 +364,7 @@ describe('ChatThinking', () => {
       // Header chip + inline notice both show the reconnecting/checking copy …
       expect(header().getByText('Fetching the answer')).toBeInTheDocument()
       expect(
-        screen.getByText('Piloti is still working — the answer appears here as soon as it is ready …')
+        screen.getByText(`${PRODUCT_NAME} is still working — the answer appears here as soon as it is ready …`)
       ).toBeInTheDocument()
       // … and the "answer lost" copy must NOT appear while we are still checking.
       expect(screen.queryByText('Interrupted')).not.toBeInTheDocument()

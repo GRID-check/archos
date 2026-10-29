@@ -123,7 +123,7 @@ function fileNameFor(stem: string, createdAt: Date): string {
     .replace(/^-+|-+$/g, '')
     .toLowerCase()
     .slice(0, 60)
-  return `${slug || 'piloti'}-${day}.docx`
+  return `${slug || 'answer'}-${day}.docx`
 }
 
 /**

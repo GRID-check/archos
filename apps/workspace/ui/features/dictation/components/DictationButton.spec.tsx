@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { MAX_DICTATION_SECONDS } from '@/lib/dictation/contract'
 import { WAVE_BARS, waveHeight } from '../hooks/use-dictation'
 import { DictationButton } from './DictationButton'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 class FakeRecorder {
   static supported = ['audio/webm;codecs=opus', 'audio/webm']
@@ -201,7 +202,7 @@ describe('DictationButton', () => {
     const unavailable = await screen.findByTestId('dictation-unavailable')
     expect(unavailable.getAttribute('aria-disabled')).toBe('true')
     expect(unavailable.getAttribute('aria-label')).toMatch(
-      /records no audio format Piloti can transcribe/
+      new RegExp(`records no audio format ${PRODUCT_NAME} can transcribe`)
     )
   })
 
@@ -215,7 +216,7 @@ describe('DictationButton', () => {
     fireEvent.click(await screen.findByTestId('dictation-unavailable'))
 
     expect(onExplain).toHaveBeenCalledWith(
-      expect.stringMatching(/records no audio format Piloti can transcribe/)
+      expect.stringMatching(new RegExp(String.raw`records no audio format ${PRODUCT_NAME} can transcribe`))
     )
     expect(getUserMedia).not.toHaveBeenCalled()
   })

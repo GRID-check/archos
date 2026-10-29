@@ -33,6 +33,7 @@ vi.mock('next/link', () => ({
 
 import { useInboxList, type UseInboxListResult } from '../hooks/use-inbox'
 import { InboxList } from './InboxList'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const useInboxListMock = vi.mocked(useInboxList)
 
@@ -201,12 +202,12 @@ describe('InboxList — states', () => {
 
     expect(screen.getByText('Nothing needs you')).toBeInTheDocument()
     expect(
-      screen.getByText('When someone mentions you, assigns you an annotation or Piloti asks you something, it appears here.'),
+      screen.getByText(`When someone mentions you, assigns you an annotation or ${PRODUCT_NAME} asks you something, it appears here.`),
     ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'All' }))
     expect(screen.getByText('Your inbox is empty')).toBeInTheDocument()
-    expect(screen.getByText('News from your team and from Piloti appears here.')).toBeInTheDocument()
+    expect(screen.getByText(`News from your team and from ${PRODUCT_NAME} appears here.`)).toBeInTheDocument()
     expect(screen.queryByText('Nothing needs you')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'Archived' }))

@@ -16,7 +16,7 @@ follow-up. A change is not done until the docs it invalidates are correct.
 | A database schema or migration | `docs/database/` |
 | User-facing behaviour | the relevant `docs/user-guides/` page |
 | Setup, containers, or the run and verify flow | `README.md` and [`testing-and-verification.md`](testing-and-verification.md) |
-| A shareable-resource, inbox or mentions substrate leak you lifted or found | `docs/architecture/adding-a-shareable-resource-type.md`, §1 for paid debt and §3 for new leaks |
+| A leak in the sharing, inbox or mentions layer that you lifted or found | `docs/architecture/adding-a-shareable-resource-type.md`, §1 for paid debt and §3 for new leaks |
 | A rule an agent must act on in one service | that service's `AGENTS.md`, not the root one. See [agent-onboarding-files.md](agent-onboarding-files.md) |
 | Something a human had to tell an agent that the repo could have said | the file that agent would already have been reading, before the task continues. See [the ratchet](correction-ratchet.md#human-intervention-is-a-failure-signal) |
 | A way of working, or a quirk that cost you an hour | this directory. See [README.md](README.md) |
