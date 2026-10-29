@@ -94,6 +94,16 @@ for. Deviate only with the reason written in an ADR. Anything an agent reads
 (tool names, descriptions, errors, cards over the wire) is English, with one
 word per concept; German is for people, through i18n, and for domain data.
 
+**Agents can act in every tool we choose.** A tool we adopt (CMS, CRM,
+tracker, analytics, an infrastructure service) must let an agent read, create,
+edit, publish and query in it through a first-class surface: the vendor's
+official MCP server, or at least a complete, documented API with scoped tokens.
+Its configuration is code an agent can change by PR, and an agent's edits have a
+draft or review step and a revision history to roll back from. A tool that only
+a person in a browser can drive is a tool our agents cannot work in. Record the
+check in the tool's ADR; the checklist is in
+[`ai-native-tooling.md`](docs/contributing/ai-native-tooling.md).
+
 **Prompting advice is dated.** Advice on prompts, tool descriptions or context
 comes from the vendor's live sources of the last three months, each cited with
 its date; the consultant that gathers it runs on the strongest model. Say what
