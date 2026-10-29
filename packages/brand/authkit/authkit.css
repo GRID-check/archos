@@ -1,0 +1,74 @@
+/*
+ * AuthKit (WorkOS hosted sign-in) in the corporate design.
+ *
+ * Pasted into WorkOS as the global custom CSS of an environment's branding
+ * (Dashboard → Branding → AuthKit → Custom CSS, or the connector's
+ * updateAppBranding `customCssElements.authkitGlobal`). AuthKit cannot read
+ * tokens.css, so the values are the tokens' literals; keep them in step with
+ * tokens.json. AuthKit supports light-dark(), not prefers-color-scheme.
+ * Fonts: AuthKit only loads Google Fonts, so General Sans falls back to the
+ * system sans until the font is served from our own domain.
+ */
+
+.ak-Background {
+  background: light-dark(#fafaf9, #0f0e0d);
+}
+
+.ak-Heading {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: light-dark(#0f0e0d, #f5f4f2);
+}
+
+/* Flat: no card, no shadow. Surfaces separate by whitespace, never elevation. */
+[class*='ak-Card'] {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ak-PrimaryButton {
+  border-radius: 4px;
+  box-shadow: none;
+  background: light-dark(#0f0e0d, #f5f4f2);
+  color: light-dark(#fafaf9, #0f0e0d);
+  &:hover {
+    background: light-dark(#2e2c29, #dad8d5);
+  }
+}
+
+/* The provider buttons are secondary: hairline ink border, no fill. */
+.ak-AuthButton {
+  border-radius: 4px;
+  box-shadow: none;
+  background: transparent;
+  border: 1px solid light-dark(#0f0e0d, #f5f4f2);
+  color: light-dark(#0f0e0d, #f5f4f2);
+  &:hover {
+    background: light-dark(#f2f1f0, #0a0908);
+  }
+  /* Microsoft first, as on the website's login page. */
+  &[data-method='microsoft'] {
+    order: -1;
+  }
+}
+
+input {
+  border-radius: 0;
+  box-shadow: none;
+  background: light-dark(#fafaf9, #1a1918);
+  border: 1px solid light-dark(#8a8784, #75726e);
+}
+
+a {
+  color: light-dark(#0f0e0d, #f5f4f2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The design system's focus ring: 2px gap in the page colour, then 2px ink. */
+:focus-visible {
+  outline: 2px solid light-dark(#0f0e0d, #f5f4f2);
+  outline-offset: 2px;
+}

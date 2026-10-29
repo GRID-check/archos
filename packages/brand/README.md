@@ -105,3 +105,7 @@ The client logos were renamed from German to English when copied. The mapping:
 - The brand video (WebM and MP4 with poster) is too large for the package. It lives with `apps/website`.
 - Full-resolution photographs are kept outside the repository.
 - A vector logo file does not exist yet; the wordmark is text in Switzer.
+
+## AuthKit
+
+`authkit/authkit.css` is the hosted sign-in page in this design. WorkOS cannot read `tokens.css`, so it carries the literals; paste it into an environment's branding as global custom CSS (or set `customCssElements.authkitGlobal` through the WorkOS API). Staging has it; Production gets it at the rebrand. AuthKit loads only Google Fonts, so the type falls back to system sans there.
