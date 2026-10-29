@@ -343,7 +343,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--update", action="store_true", help="Lower and remove baseline entries; never raise one.")
-    mode.add_argument("--rebaseline", action="store_true", help="Re-key the baseline to the tree; never raise its total.")
+    mode.add_argument(
+        "--rebaseline", action="store_true", help="Re-key the baseline to the tree; never raise its total."
+    )
     mode.add_argument("--summary", action="store_true", help="Print the hits by directory and exit.")
     args = parser.parse_args(argv)
 
