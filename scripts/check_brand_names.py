@@ -30,9 +30,11 @@ when the check arrived.
 What is not a hit
 -----------------
 
-- The name as a word in prose: the bare token `Piloti` or `Grid` (a comment, a
-  docstring, a string a person reads). That copy is the brand's business, and
-  the place to centralise it is the `productName` constant, not this check.
+- The name as a word in prose: the bare token `Piloti`, `Grid` or `ARCHOS` (a
+  comment, a docstring, a string a person reads, a generated fixture that renders
+  `PRODUCT_NAME` into copy). That copy is the brand's business, and the place to
+  centralise it is the `PRODUCT_NAME` constant; `scripts/check_brand_prose.py`
+  counts it in text, this check does not.
 - `grid` the English word: a bare lowercase `grid`, CSS and Tailwind
   (`grid-cols-2`, `gridTemplateColumns`), and `grid` as the last word, the
   layout noun (`FileGrid`, `document_grid`, `stat-grid`).
@@ -69,7 +71,7 @@ from pathlib import PurePosixPath
 
 BASELINE = Path("ci/brand_names_baseline.json")
 BRANDS = ("aiq", "archos", "piloti", "grid")
-PROSE = {"Piloti", "Grid"}
+PROSE = {"Piloti", "Grid", "ARCHOS", "Archos"}
 CONTENT_SUFFIXES = (
     ".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".astro", ".css", ".html", ".hog",
     ".yaml", ".yml", ".json", ".toml", ".sh", ".sql", ".example",
