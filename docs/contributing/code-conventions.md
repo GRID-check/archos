@@ -55,10 +55,13 @@ the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
 
 ## No brand names
 
-No code or infrastructure name carries the product's name: no `aiq`, `grid`
-or `piloti` in an identifier, file or folder name, environment variable,
+No code or infrastructure name carries the product's name: no `aiq`, `grid`,
+`piloti` or `archos` in an identifier, file or folder name, environment variable,
 route, header, table, metric, event, resource or tool name. The product was
-AI-Q, then Grid, now Piloti, and the next name is coming; every earlier rename
+AI-Q, then Grid, then Piloti, now ARCHOS, and the next name is coming: the
+brand's strings live in `packages/brand/identity.json`, and its generated copies
+(`apps/*/**/identity.json`) are excluded from the check, so a rename edits that
+file and nothing else. Every earlier rename
 was a code change across thousands of lines. Name the thing for what it does:
 `MAX_ACTIVE_JOBS_PER_ORG`, not `MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
 `piloti_wakes`. The product's name is copy, read from one place:

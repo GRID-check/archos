@@ -1,6 +1,6 @@
 """The brand-name ratchet refuses a new brand in a name, and makes the baseline follow every cleanup.
 
-`scripts/check_brand_names.py` keeps `aiq`, `grid` and `piloti` out of new code
+`scripts/check_brand_names.py` keeps `aiq`, `archos`, `grid` and `piloti` out of new code
 and infrastructure identifiers, with `ci/brand_names_baseline.json` recording
 the hits when the check arrived. These run it on a scratch repository, so the
 real tree's baseline is not what they depend on.
@@ -54,6 +54,8 @@ def _add(repo: Path, path: str, text: str) -> None:
         ("aiq_agent", ["aiq"]),
         ("AIQAPIWorker", ["AIQAPI"]),
         ("piloti-ask", ["piloti"]),
+        ("ARCHOS_MAX_JOBS", ["ARCHOS"]),
+        ("archosWakes", ["archos"]),
     ],
 )
 def test_a_brand_word_in_a_name_is_a_hit(checker, token, hits):
@@ -72,6 +74,13 @@ def test_prose_css_the_layout_noun_and_host_names_are_not(checker, token):
 def test_urls_and_the_repository_name_are_not_counted(checker):
     text = "see https://github.com/GRID-check/grid-oib-agent/issues and grid-check/grid-oib-agent, not GRID_ROLE"
     assert checker.count_text(text) == 1
+
+
+def test_the_archos_repository_and_org_are_not_counted_but_an_image_name_under_them_is(checker):
+    text = "github.com/archos-at/archos ghcr.io/archos-at/archos:latest archos-at/archos"
+    assert checker.count_text(text) == 0
+    assert checker.count_text("ghcr.io/archos-at/grid-oib-backend:latest") == 1
+    assert checker.count_text("ARCHOS_MAX_JOBS") == 1
 
 
 def test_a_new_hit_fails_and_the_baseline_only_moves_down(checker, repo, capsys):
