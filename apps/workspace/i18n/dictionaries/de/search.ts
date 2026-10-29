@@ -319,6 +319,13 @@ export const search: typeof en.search = {
     allResults: 'Alle Treffer für „{text}“',
     open: 'Suche öffnen',
     noHits: 'Nichts gefunden',
+    noHitsFor: 'Nichts gefunden für „{text}“',
+    continueInSearch: 'Suche mit Filtern öffnen',
+    noHitsHint: 'Andere Schreibweise oder weniger Wörter versuchen, oder die Suche mit Filtern öffnen.',
+    retry: 'Erneut versuchen',
+    retryHint: 'Meist reicht ein zweiter Versuch; sonst die Verbindung prüfen.',
+    ofTotal: '{shown} von {total}',
+    allIn: 'In {project}',
     recent: 'Zuletzt gesucht',
     hint: {
       office:

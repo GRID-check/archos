@@ -61,18 +61,33 @@ export function useTransientFlag(durationMs: number = TRANSIENT_FLAG_MS): [boole
 /**
  * `active`, but only after it has held for `delayMs`; false again the moment
  * `active` is. For a busy indicator that should not flash on a fast answer.
+ *
+ * `minShownMs`: once shown, it stays at least that long. An answer landing
+ * just past the delay otherwise showed the state for a frame and took it back,
+ * the blip the delay exists to prevent, moved to the other end.
  */
-export function useDelayedFlag(active: boolean, delayMs: number = BUSY_REVEAL_DELAY_MS): boolean {
+export function useDelayedFlag(active: boolean, delayMs: number = BUSY_REVEAL_DELAY_MS, minShownMs: number = 0): boolean {
   const [shown, setShown] = useState(false)
+  const shownAt = useRef(0)
 
   useEffect(() => {
-    if (!active) return
-    const timer = window.setTimeout(() => setShown(true), delayMs)
-    return () => {
-      window.clearTimeout(timer)
-      setShown(false)
+    if (active) {
+      if (shown) return
+      const timer = window.setTimeout(() => {
+        shownAt.current = performance.now()
+        setShown(true)
+      }, delayMs)
+      return () => window.clearTimeout(timer)
     }
-  }, [active, delayMs])
+    if (!shown) return
+    const left = minShownMs - (performance.now() - shownAt.current)
+    if (left <= 0) {
+      setShown(false)
+      return
+    }
+    const timer = window.setTimeout(() => setShown(false), left)
+    return () => window.clearTimeout(timer)
+  }, [active, shown, delayMs, minShownMs])
 
-  return active && shown
+  return minShownMs > 0 ? shown : active && shown
 }
