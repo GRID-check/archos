@@ -5,6 +5,7 @@ import { AgentPrompt } from './AgentPrompt'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { useChatStore } from '../store'
 import { useLayoutStore } from '@/features/layout/store'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // Mock MarkdownRenderer
 vi.mock('@/shared/components/MarkdownRenderer', () => ({
@@ -42,7 +43,7 @@ describe('AgentPrompt', () => {
       />
     )
 
-    expect(screen.getByText('Piloti needs your input')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} needs your input`)).toBeInTheDocument()
   })
 
   test('shows "Piloti received your input" when responded', () => {
@@ -54,7 +55,7 @@ describe('AgentPrompt', () => {
       />
     )
 
-    expect(screen.getByText('Piloti received your input')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} received your input`)).toBeInTheDocument()
   })
 
   test('displays options for choice prompts', () => {
@@ -340,7 +341,7 @@ describe('AgentPrompt — a question addressed to somebody else', () => {
     )
 
     expect(screen.getByTestId('agent-prompt-awaiting-other')).toHaveTextContent(
-      'Piloti is waiting for Matthias Bigl'
+      `${PRODUCT_NAME} is waiting for Matthias Bigl`
     )
 
     // The options are still READABLE — a colleague should see what was asked — but
@@ -353,7 +354,7 @@ describe('AgentPrompt — a question addressed to somebody else', () => {
     render(<AgentPrompt content="Frage?" isAddressee={false} />)
 
     expect(screen.getByTestId('agent-prompt-awaiting-other')).toHaveTextContent(
-      'Piloti is waiting for another participant'
+      `${PRODUCT_NAME} is waiting for another participant`
     )
   })
 

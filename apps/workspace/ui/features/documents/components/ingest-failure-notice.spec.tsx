@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { render, screen } from '@/test-utils'
 import { IngestFailureNotice } from './ingest-failure-notice'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('IngestFailureNotice', () => {
   it('says the category sentence and hides the stored text until Details is opened', async () => {
@@ -24,7 +25,7 @@ describe('IngestFailureNotice', () => {
 
   it('says the generic sentence, with no Details, when there is no stored text', () => {
     render(<IngestFailureNotice errorMessage={null} />)
-    expect(screen.getByText("Piloti couldn't read this document, so search can't find it.")).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} couldn't read this document, so search can't find it.`)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Details' })).toBeNull()
   })
 })

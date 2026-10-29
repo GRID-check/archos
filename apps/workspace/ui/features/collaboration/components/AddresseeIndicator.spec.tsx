@@ -5,10 +5,11 @@ import { render, screen } from '@/test-utils'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import type { DraftMention } from '@/lib/mentions/mention-text'
 import { AddresseeIndicator } from './AddresseeIndicator'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const ANNA: DraftMention = { targetId: 'u-anna', display: 'Anna Weber' }
 const MARKUS: DraftMention = { targetId: 'u-markus', display: 'Markus Hofer' }
-const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: 'Piloti' }
+const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: PRODUCT_NAME }
 
 const line = () => screen.getByTestId('composer-addressee')
 
@@ -55,7 +56,7 @@ describe('AddresseeIndicator — the composer says where the message goes', () =
 
   test('tagging a person AND the agent names both, because both are addressed (MN-1)', () => {
     render(<AddresseeIndicator mentions={[ANNA, AGENT]} awaitingHuman={false} />)
-    expect(line()).toHaveTextContent('Goes to Anna Weber, Piloti')
+    expect(line()).toHaveTextContent(`Goes to Anna Weber, ${PRODUCT_NAME}`)
   })
 
   test('is a status region carrying the addressee in its accessible name', () => {
@@ -123,7 +124,7 @@ describe('AddresseeIndicator — teaching that @ exists', () => {
   test('steps aside when Piloti is explicitly tagged', () => {
     render(
       <AddresseeIndicator
-        mentions={[{ targetId: AGENT_MENTION_ID, display: 'Piloti' }]}
+        mentions={[{ targetId: AGENT_MENTION_ID, display: PRODUCT_NAME }]}
         awaitingHuman={false}
         onMentionSomeone={vi.fn()}
       />,

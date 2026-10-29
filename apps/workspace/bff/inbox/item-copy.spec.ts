@@ -3,6 +3,7 @@ import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { createTranslator } from '@/i18n/translate'
 import { inboxItemCopy } from './item-copy'
 import type { InboxItemView } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const dictionary = { collaboration: collaborationCopy.messages.de }
 const t = createTranslator(dictionary, 'collaboration')
@@ -97,19 +98,19 @@ describe('Piloti’s Rückfrage, by where it is answered', () => {
   // waits for an answer in the thread.
   it('says the answer goes in the review when the row leads there', () => {
     expect(inboxItemCopy(asks('review'), t, dictionary).body).toBe(
-      'Antworten Sie in der Prüfansicht. Von dort erreicht Ihre Antwort Piloti.',
+      `Antworten Sie in der Prüfansicht. Von dort erreicht Ihre Antwort ${PRODUCT_NAME}.`,
     )
     expect(inboxItemCopy(asks('review'), enT, enDictionary).body).toBe(
-      'Answer in the review. From there your answer reaches Piloti.',
+      `Answer in the review. From there your answer reaches ${PRODUCT_NAME}.`,
     )
   })
 
   it('keeps the thread for a row that answers in place', () => {
     expect(inboxItemCopy(asks('row'), t, dictionary).body).toBe(
-      'Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.',
+      `${PRODUCT_NAME} wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.`,
     )
     expect(inboxItemCopy(asks(null), enT, enDictionary).body).toBe(
-      'Piloti is waiting for your answer. Reply in the annotation’s thread.',
+      `${PRODUCT_NAME} is waiting for your answer. Reply in the annotation’s thread.`,
     )
   })
 })

@@ -15,6 +15,7 @@ import { AgentResponse } from './AgentResponse'
 import { resetSourcePreviewIndexCache } from './source-preview/source-preview-index'
 import type { CitationSource } from '../types'
 import { popoverMounts, resetPopoverMounts } from '@/test-utils/popover-mounts'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('@/components/ui/popover', async (importOriginal) =>
   (await import('@/test-utils/popover-mounts')).countPopoverMounts(await importOriginal())
@@ -158,7 +159,7 @@ describe('a citation marker under a finger', () => {
     await user.click(m)
 
     const sheet = await screen.findByRole('dialog')
-    const note = await within(sheet).findByText('No file for this source is available in Piloti.')
+    const note = await within(sheet).findByText(`No file for this source is available in ${PRODUCT_NAME}.`)
     expect(note.tagName).toBe('P')
     expect(within(sheet).queryByRole('button', { name: /Open at this passage/i })).toBeNull()
   })

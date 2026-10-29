@@ -33,6 +33,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { DocumentDraftCard } from './DocumentDraftCard'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const setCardDecision = vi.fn()
 
@@ -100,7 +101,7 @@ describe('DocumentDraftCard — the draft, before it is filed', () => {
 
   it('says who wrote it, in the Files feature’s own words', () => {
     render(<DocumentDraftCard {...DRAFT} />)
-    expect(screen.getByText('Created by Piloti')).toBeInTheDocument()
+    expect(screen.getByText(`Created by ${PRODUCT_NAME}`)).toBeInTheDocument()
   })
 
   it('does not claim the draft is in the project', () => {

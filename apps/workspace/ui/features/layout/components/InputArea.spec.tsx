@@ -230,7 +230,7 @@ vi.mock('@/features/documents', () => ({
 // features/collaboration/components/MentionPicker.spec.tsx.
 const AGENT_CANDIDATE = {
   targetId: 'agent:piloti',
-  person: { userId: 'agent:piloti', name: 'Piloti', email: null, profilePictureUrl: null },
+  person: { userId: 'agent:piloti', name: PRODUCT_NAME, email: null, profilePictureUrl: null },
   isAgent: true,
   isParticipant: true,
   needsInvite: false,
@@ -318,6 +318,7 @@ vi.mock('@/features/documents/components/file-preview-dialog', () => ({
 import { useWebSocketChat, useIsCurrentSessionBusy } from '@/features/chat'
 import { useFileUpload, useFileDragDrop } from '@/features/documents'
 import { useMentionCandidates } from '@/features/collaboration/hooks/use-sharing'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('InputArea', () => {
   beforeEach(() => {
@@ -400,7 +401,7 @@ describe('InputArea', () => {
     render(<InputArea isAuthenticated={true} />)
 
     expect(
-      screen.getByPlaceholderText('Ask Piloti about this project …')
+      screen.getByPlaceholderText(`Ask ${PRODUCT_NAME} about this project …`)
     ).toBeInTheDocument()
   })
 
@@ -584,7 +585,7 @@ describe('InputArea', () => {
     render(<InputArea isAuthenticated={true} connectionMode="websocket" />)
 
     // In response mode, placeholder changes to indicate responding to agent
-    expect(screen.getByPlaceholderText('Type your response to Piloti...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(`Type your response to ${PRODUCT_NAME}...`)).toBeInTheDocument()
   })
 
   test('calls respondToInteraction in response mode', async () => {
@@ -785,7 +786,7 @@ describe('InputArea', () => {
 
     expect(lastDropZone()).toMatchObject({
       disabled: false,
-      refusal: 'Piloti is answering. Attach files once the answer is complete.',
+      refusal: `${PRODUCT_NAME} is answering. Attach files once the answer is complete.`,
     })
   })
 
@@ -843,7 +844,7 @@ describe('InputArea', () => {
 
     // Input should be enabled in response mode (plan approval) despite isBusy=true
     expect(screen.getByRole('textbox')).not.toBeDisabled()
-    expect(screen.getByPlaceholderText('Type your response to Piloti...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(`Type your response to ${PRODUCT_NAME}...`)).toBeInTheDocument()
     // Send button should be the normal send button, not a research-in-progress popover
     expect(screen.getByRole('button', { name: /send response/i })).toBeInTheDocument()
   })
@@ -924,7 +925,7 @@ describe('InputArea', () => {
 
     // Input should be enabled for HITL response despite active deep research
     expect(screen.getByRole('textbox')).not.toBeDisabled()
-    expect(screen.getByPlaceholderText('Type your response to Piloti...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(`Type your response to ${PRODUCT_NAME}...`)).toBeInTheDocument()
     // Send button should be normal (not research-in-progress popover)
     const sendButton = screen.getByRole('button', { name: /send response/i })
     expect(sendButton).toBeInTheDocument()
@@ -1356,9 +1357,9 @@ describe('InputArea', () => {
           render(<InputArea isAuthenticated={true} connectionMode="sse" />)
 
           const input = screen.getByRole('textbox')
-          expect(input).toHaveAttribute('placeholder', 'Steer Piloti …')
+          expect(input).toHaveAttribute('placeholder', `Steer ${PRODUCT_NAME} …`)
           expect(input).toHaveAccessibleDescription(
-            'Enter adds to the running answer; Piloti reads it before its next step.'
+            `Enter adds to the running answer; ${PRODUCT_NAME} reads it before its next step.`
           )
           expect(screen.getByTestId('composer-steer-chip')).toHaveTextContent('steering')
           expect(screen.getByRole('button', { name: /stop response/i })).toBeInTheDocument()
@@ -1678,7 +1679,7 @@ describe('InputArea', () => {
    * and what the user is told before they send it.
    */
   describe('@-mentions', () => {
-    const composer = () => screen.getByPlaceholderText('Ask Piloti about this project …')
+    const composer = () => screen.getByPlaceholderText(`Ask ${PRODUCT_NAME} about this project …`)
     /** The candidates on screen. Read by target id: a highlighted name is split
         across elements, so a text query would be brittle. */
     const optionTargets = () =>
@@ -1693,7 +1694,7 @@ describe('InputArea', () => {
 
       expect(await screen.findByTestId('mention-picker')).toBeInTheDocument()
       expect(screen.getByText('Anna Weber')).toBeInTheDocument()
-      expect(screen.getByText('Piloti')).toBeInTheDocument()
+      expect(screen.getByText(PRODUCT_NAME)).toBeInTheDocument()
     })
 
     test('typing after the @ filters the candidates', async () => {
@@ -1841,7 +1842,7 @@ describe('InputArea', () => {
       await user.keyboard('{Enter}')
 
       expect(screen.getByTestId('composer-mention-hint')).toHaveTextContent(
-        'Piloti will stay quiet — Anna Weber is being asked.',
+        `${PRODUCT_NAME} will stay quiet — Anna Weber is being asked.`,
       )
     })
 
@@ -1850,11 +1851,11 @@ describe('InputArea', () => {
       render(<InputArea isAuthenticated={true} canCollaborate connectionMode="sse" />)
 
       await user.click(composer())
-      await user.keyboard('@pil')
+      await user.keyboard(`@${PRODUCT_NAME.slice(0, 3).toLowerCase()}`)
       await screen.findByTestId('mention-picker')
       await user.keyboard('{Enter}')
 
-      expect(composer()).toHaveValue('@Piloti ')
+      expect(composer()).toHaveValue(`@${PRODUCT_NAME} `)
       expect(screen.queryByTestId('composer-mention-hint')).not.toBeInTheDocument()
     })
 
@@ -2135,7 +2136,7 @@ describe('InputArea', () => {
    * from it, and that the default itself is quiet.
    */
   describe('addressee indicator', () => {
-    const composer = () => screen.getByPlaceholderText('Ask Piloti about this project …')
+    const composer = () => screen.getByPlaceholderText(`Ask ${PRODUCT_NAME} about this project …`)
     const addressee = () => screen.getByTestId('composer-addressee')
 
     test('says nothing about a plain message, which goes to Piloti', () => {
@@ -2179,7 +2180,7 @@ describe('InputArea', () => {
 
       expect(addressee()).toHaveTextContent('Goes to everyone in the chat')
       expect(screen.getByTestId('composer-agent-hint')).toHaveTextContent(
-        'Type @Piloti to ask Piloti',
+        `Type @${PRODUCT_NAME} to ask ${PRODUCT_NAME}`,
       )
     })
 
@@ -2192,7 +2193,7 @@ describe('InputArea', () => {
       render(<InputArea isAuthenticated canCollaborate connectionMode="sse" />)
 
       await user.click(composer())
-      await user.keyboard('@pil')
+      await user.keyboard(`@${PRODUCT_NAME.slice(0, 3).toLowerCase()}`)
       await screen.findByTestId('mention-picker')
       await user.keyboard('{Enter}')
 
@@ -2211,11 +2212,11 @@ describe('InputArea', () => {
       await user.keyboard('@anna')
       await screen.findByTestId('mention-picker')
       await user.keyboard('{Enter}')
-      await user.keyboard('@pil')
+      await user.keyboard(`@${PRODUCT_NAME.slice(0, 3).toLowerCase()}`)
       await screen.findByTestId('mention-picker')
       await user.keyboard('{Enter}')
 
-      expect(addressee()).toHaveTextContent('Goes to Anna Weber, Piloti')
+      expect(addressee()).toHaveTextContent(`Goes to Anna Weber, ${PRODUCT_NAME}`)
       expect(screen.queryByTestId('composer-mention-hint')).not.toBeInTheDocument()
     })
 
@@ -2247,7 +2248,7 @@ describe('InputArea', () => {
    * that makes that true.
    */
   describe('the send agrees with the addressee line', () => {
-    const composer = () => screen.getByPlaceholderText('Ask Piloti about this project …')
+    const composer = () => screen.getByPlaceholderText(`Ask ${PRODUCT_NAME} about this project …`)
 
     const send = async (text: string) => {
       const user = userEvent.setup()
@@ -2601,7 +2602,7 @@ describe('InputArea', () => {
    * what it waits for, and it goes when the file is readable.
    */
   describe('a message asked while its file is still being read', () => {
-    const composer = () => screen.getByPlaceholderText('Ask Piloti about this project …')
+    const composer = () => screen.getByPlaceholderText(`Ask ${PRODUCT_NAME} about this project …`)
 
     const withSessionFiles = (files: unknown[]) =>
       vi.mocked(useFileUpload).mockReturnValue({

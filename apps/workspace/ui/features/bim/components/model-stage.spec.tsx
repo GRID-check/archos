@@ -18,6 +18,7 @@ import userEvent from '@testing-library/user-event'
 import type { BimModelHeaderView } from '../hooks/use-bim-model'
 import { buildModelQuery, type BimModelView } from '../lib/model-link'
 import { ModelStage } from './model-stage'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const routerReplace = vi.fn()
 let searchParams = new URLSearchParams()
@@ -797,7 +798,7 @@ describe('ModelStage — selection', () => {
 
   it('turns the selection into a question that names the element', () => {
     render(<ModelStage projectId="p1" onClose={vi.fn()} />)
-    const ask = screen.getByRole('link', { name: /Ask Piloti about this/ })
+    const ask = screen.getByRole('link', { name: new RegExp(String.raw`Ask ${PRODUCT_NAME} about this`) })
     expect(ask.getAttribute('href')).toContain('/app/projects/p1/chat?ask=')
     // `+` is a space in a query string; decodeURIComponent does not undo it.
     const question = decodeURIComponent(ask.getAttribute('href') ?? '').replace(/\+/g, ' ')

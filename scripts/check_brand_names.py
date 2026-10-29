@@ -100,8 +100,9 @@ EXCLUDED = re.compile(
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
             r"^apps/workspace/bff/http/legacy-header-names\.|^apps/agent-host/src/agent_host/legacy_headers\.py$",
             # The brand's one file, where the name is meant to live, and the copies a sync script writes from it
-            # (apps/*/**/identity.json). The product is renamed by editing that file, so it is not a code identifier.
-            r"^packages/brand/identity\.json$|^apps/[^/]+/(.*/)?identity\.json$",
+            # (apps/*/**/identity.json, and the agent's beside agent.common.brand). The product is renamed by
+            # editing that file, so it is not a code identifier.
+            r"^packages/brand/identity\.json$|^apps/[^/]+/(.*/)?identity\.json$|^packages/agent/src/agent/common/identity\.json$",
             r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",

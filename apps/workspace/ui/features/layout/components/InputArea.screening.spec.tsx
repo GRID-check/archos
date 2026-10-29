@@ -27,6 +27,7 @@ import {
 } from '@/lib/upload-screening/policy'
 import type { DictationButtonProps } from '@/features/dictation'
 import { InputArea } from './InputArea'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), message: vi.fn() } }))
 
@@ -200,7 +201,7 @@ describe('the composer screens a message against the office’s „Sensible Date
     const notice = await screen.findByTestId('chat-screening-notice')
     expect(mockSendMessage).not.toHaveBeenCalled()
     // The transcription model has already heard the audio: "the model" would be untrue.
-    expect(notice).toHaveTextContent('Piloti does not send this to the answering model.')
+    expect(notice).toHaveTextContent(`${PRODUCT_NAME} does not send this to the answering model.`)
     await user.click(screen.getByRole('button', { name: 'Send masked' }))
     await waitFor(() =>
       expect(mockSendMessage).toHaveBeenCalledWith('Überweisung an [IBAN entfernt]')

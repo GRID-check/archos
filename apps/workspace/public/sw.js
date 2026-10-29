@@ -32,7 +32,7 @@
 'use strict'
 
 var INBOX_PATH = '/app/inbox'
-var GENERIC_TITLE = 'Piloti'
+var GENERIC_TITLE = 'ARCHOS'
 var ICON = '/icons/icon-192.png'
 var CONFIG_PATH = '/api/notifications/push/config'
 var DEVICES_PATH = '/api/notifications/push/devices'

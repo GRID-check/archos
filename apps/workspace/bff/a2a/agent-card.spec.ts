@@ -10,6 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { a2aEndpointUrl, agentCardResponse, buildAgentCard, A2A_SECURITY_SCHEME } from './agent-card'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const ENV = {
   WORKOS_AUTHKIT_DOMAIN: 'auth.piloti.test',
@@ -54,7 +55,7 @@ describe('buildAgentCard', () => {
   it('offers one skill, consult, and leads with the workspace for architects', () => {
     const card = buildAgentCard(ENV)
     expect(card?.skills.map((skill) => skill.id)).toEqual(['consult'])
-    expect(card?.description).toMatch(/^Piloti is the workspace for architects/)
+    expect(card?.description).toMatch(new RegExp(String.raw`^${PRODUCT_NAME} is the workspace for architects`))
   })
 })
 
@@ -80,7 +81,7 @@ describe('agentCardResponse', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('access-control-allow-origin')).toBe('*')
     const json = (await response.json()) as Record<string, unknown>
-    expect(json).toMatchObject({ name: 'Piloti', capabilities: { streaming: true } })
+    expect(json).toMatchObject({ name: PRODUCT_NAME, capabilities: { streaming: true } })
     expect(JSON.stringify(json.securitySchemes)).toContain('oauth2SecurityScheme')
   })
 

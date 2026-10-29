@@ -110,6 +110,7 @@ import {
   resolveGeneratedDocumentDestination,
 } from './generated'
 import type { GeneratedRenderContext } from './generated'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SESSION = {
   userId: 'user-1',
@@ -462,7 +463,7 @@ describe('fileGeneratedDocument', () => {
       // a run, so the marking names the run an auditor can look one up in.
       expect(render.mock.calls[0][0].marking).toBe(REPORT_MARKING)
       expect(REPORT_MARKING).toBe(
-        'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false; AIRunId=run_7',
+        `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false; AIRunId=run_7`,
       )
     })
 
@@ -473,10 +474,10 @@ describe('fileGeneratedDocument', () => {
       // a detector reads — an audit trail in appearance only, in the one place
       // that reaches a Behörde.
       expect(generatedDocumentMarking('diagram_svg', 'msg_42-1a2b3c4d')).toBe(
-        'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false',
+        `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false`,
       )
       expect(generatedDocumentMarking('diagram_pdf', 'msg_42-1a2b3c4d')).toBe(
-        'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false',
+        `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false`,
       )
     })
 
@@ -1319,7 +1320,7 @@ describe('generatedFilename', () => {
   })
 
   it('never emits an empty stem', () => {
-    expect(generatedFilename('   ***   ', 'application/pdf', day)).toBe('piloti-2026-08-20.pdf')
+    expect(generatedFilename('   ***   ', 'application/pdf', day)).toBe('document-2026-08-20.pdf')
   })
 })
 

@@ -21,6 +21,7 @@ import { blocksToMarkdown } from './export'
 import { buildProjectProtocol, groupByDocument, selectionLine } from './project-export'
 import { decodeProjectMarkCursor, dueRangeOf, encodeProjectMarkCursor } from './project-marks'
 import type { ProjectMarkView } from './project-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const t = translatorFor(filesCopy, 'de')
 
@@ -114,15 +115,15 @@ describe('the project Protokoll', () => {
     expect(protocol.title).toBe('Offene Punkte – Wohnhaus Lend')
     expect(protocol.facts).toContainEqual({
       label: 'Umfang',
-      value: 'Offene Anmerkungen und Vorschläge von Piloti · Zuständig: Anna Berger · Frist überfällig',
+      value: `Offene Anmerkungen und Vorschläge von ${PRODUCT_NAME} · Zuständig: Anna Berger · Frist überfällig`,
     })
     expect(protocol.facts).toContainEqual({ label: 'Dokumente', value: '2' })
 
     const text = blocksToMarkdown(protocol.body)
     expect(text.indexOf('## Grundriss EG.pdf')).toBeLessThan(text.indexOf('Nr. 2 · Seite 1 · Mangel · offen'))
     expect(text.indexOf('Nr. 2 ·')).toBeLessThan(text.indexOf('Nr. 4 ·'))
-    expect(text.indexOf('Nr. 4 ·')).toBeLessThan(text.indexOf('### Vorschläge von Piloti, nicht geprüft'))
-    expect(text.indexOf('### Vorschläge von Piloti')).toBeLessThan(text.indexOf('## Schnitt A-A.pdf'))
+    expect(text.indexOf('Nr. 4 ·')).toBeLessThan(text.indexOf(`### Vorschläge von ${PRODUCT_NAME}, nicht geprüft`))
+    expect(text.indexOf(`### Vorschläge von ${PRODUCT_NAME}`)).toBeLessThan(text.indexOf('## Schnitt A-A.pdf'))
     expect(text).toContain('**Zuständig:** Bernd Huber')
   })
 

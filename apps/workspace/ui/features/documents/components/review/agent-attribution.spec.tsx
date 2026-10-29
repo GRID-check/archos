@@ -20,11 +20,12 @@ import { agentForShort, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { ThreadCard } from './thread-card'
 import { fixedStore } from '@/features/realtime/use-channel'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const AGENT: RoomPeer = {
   peerId: 'piloti-conv_42',
   userId: 'user_anna',
-  name: 'Piloti',
+  name: PRODUCT_NAME,
   kind: 'piloti',
   forName: 'Anna Berger',
 }
@@ -96,34 +97,34 @@ describe('Piloti’s cursor on the canvas', () => {
   it('reads „Piloti · for Anna" when its pointer says nothing else', () => {
     renderLayer([agentState()])
     const tag = cursorTag()
-    expect(within(tag).getByText('Piloti')).toBeInTheDocument()
+    expect(within(tag).getByText(PRODUCT_NAME)).toBeInTheDocument()
     expect(within(tag).getByTestId('agent-cursor-for')).toHaveTextContent('· for Anna')
-    expect(tag.textContent?.replace(/\s+/g, ' ')).toMatch(/^Piloti ?· for Anna$/)
+    expect(tag.textContent?.replace(/\s+/g, ' ')).toMatch(new RegExp(String.raw`^${PRODUCT_NAME} ?· for Anna$`))
   })
 
   it('keeps „for Anna" beside its pointer label and what it is doing, outside the part that truncates', () => {
     renderLayer([agentState({ label: 'Treppe' })])
     // Its name always leads: a pointer saying „Treppe" is never taken for a colleague of that name.
-    expect(within(cursorTag()).getByText('Piloti · Treppe')).toHaveClass('truncate')
+    expect(within(cursorTag()).getByText(`${PRODUCT_NAME} · Treppe`)).toHaveClass('truncate')
     expect(within(cursorTag()).getByTestId('agent-cursor-for')).toHaveTextContent('· for Anna')
     expect(within(cursorTag()).getByTestId('agent-cursor-for')).not.toHaveClass('truncate')
   })
 
   it('says it while it works, too', () => {
     renderLayer([agentState({ activity: { state: 'reading', box: null, label: 'sieht sich Seite 2 an' } })])
-    expect(within(cursorTag()).getByText('Piloti · sieht sich Seite 2 an')).toBeInTheDocument()
+    expect(within(cursorTag()).getByText(`${PRODUCT_NAME} · sieht sich Seite 2 an`)).toBeInTheDocument()
     expect(within(cursorTag()).getByTestId('agent-cursor-for')).toHaveTextContent('· for Anna')
   })
 
   it('says which page it reads when the room only knows the box it reads', () => {
     renderLayer([agentState({ activity: { state: 'reading', box: { page: 2, x: 0, y: 0, w: 1, h: 1 }, label: null } })])
-    expect(within(cursorTag()).getByText('Piloti · reading page 2')).toBeInTheDocument()
+    expect(within(cursorTag()).getByText(`${PRODUCT_NAME} · reading page 2`)).toBeInTheDocument()
   })
 
   it('names nobody when the server could not', () => {
     const { forName: _, ...nameless } = AGENT
     renderLayer([agentState({ peer: nameless })])
-    expect(within(cursorTag()).getByText('Piloti')).toBeInTheDocument()
+    expect(within(cursorTag()).getByText(PRODUCT_NAME)).toBeInTheDocument()
     expect(screen.queryByTestId('agent-cursor-for')).not.toBeInTheDocument()
   })
 
@@ -228,8 +229,8 @@ describe('Piloti’s marks name the person they were set for', () => {
       </div>
     )
     const pin = screen.getByTestId('review-pin')
-    expect(pin).toHaveAttribute('title', 'Piloti · for Anna Berger')
-    expect(pin.getAttribute('aria-label')).toContain('Piloti · for Anna Berger')
+    expect(pin).toHaveAttribute('title', `${PRODUCT_NAME} · for Anna Berger`)
+    expect(pin.getAttribute('aria-label')).toContain(`${PRODUCT_NAME} · for Anna Berger`)
   })
 
   it('says it is a proposal on the pin, and a person’s mark has no such line', () => {
@@ -245,7 +246,7 @@ describe('Piloti’s marks name the person they were set for', () => {
       </div>
     )
     const [proposal, person] = screen.getAllByTestId('review-pin')
-    expect(proposal).toHaveAttribute('title', 'Proposal by Piloti · for Anna Berger')
+    expect(proposal).toHaveAttribute('title', `Proposal by ${PRODUCT_NAME} · for Anna Berger`)
     expect(person).not.toHaveAttribute('title')
   })
 
@@ -257,26 +258,26 @@ describe('Piloti’s marks name the person they were set for', () => {
         </div>
       </div>
     )
-    expect(screen.getByTestId('review-pin')).toHaveAttribute('title', 'Piloti')
+    expect(screen.getByTestId('review-pin')).toHaveAttribute('title', PRODUCT_NAME)
   })
 
   it('in the list row', () => {
     render(<ReviewPanel review={reviewOf([mark()])} onOpen={() => {}} />)
-    expect(screen.getByTestId('review-row')).toHaveTextContent('Piloti · for Anna Berger')
+    expect(screen.getByTestId('review-row')).toHaveTextContent(`${PRODUCT_NAME} · for Anna Berger`)
   })
 
   it('in the thread: the finding’s byline, and a proposal’s', () => {
     const { unmount } = renderThread(mark())
-    expect(screen.getByTestId('thread-byline')).toHaveTextContent('Piloti · for Anna Berger')
+    expect(screen.getByTestId('thread-byline')).toHaveTextContent(`${PRODUCT_NAME} · for Anna Berger`)
     unmount()
     renderThread(mark({ status: 'proposed', acceptedBy: null, acceptedByName: null }))
-    expect(screen.getByTestId('thread-byline')).toHaveTextContent('Proposal by Piloti · for Anna Berger')
+    expect(screen.getByTestId('thread-byline')).toHaveTextContent(`Proposal by ${PRODUCT_NAME} · for Anna Berger`)
     expect(screen.getByText('Proposal')).toBeInTheDocument()
   })
 
   it('falls back to plain „Piloti" for a mark nobody can be named for', () => {
     renderThread(mark({ createdByName: null }))
-    expect(screen.getByTestId('thread-byline').textContent).toBe('Piloti')
+    expect(screen.getByTestId('thread-byline').textContent).toBe(PRODUCT_NAME)
   })
 })
 
@@ -292,7 +293,7 @@ describe('Piloti’s replies in a thread', () => {
     )
     const bylines = screen.getAllByTestId('thread-byline')
     // The finding, then Piloti's reply; Ben's is no Piloti byline.
-    expect(bylines.map((node) => node.textContent)).toEqual(['Piloti · for Anna Berger', 'Piloti · for Anna Berger'])
+    expect(bylines.map((node) => node.textContent)).toEqual([`${PRODUCT_NAME} · for Anna Berger`, `${PRODUCT_NAME} · for Anna Berger`])
     expect(screen.getByText('Ben Huber')).toBeInTheDocument()
     expect(screen.queryByTestId('thread-woken')).toBeNull()
   })

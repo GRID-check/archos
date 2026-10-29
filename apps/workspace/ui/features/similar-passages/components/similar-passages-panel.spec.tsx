@@ -16,6 +16,7 @@ import { SimilarPassagesError } from '@/lib/similar-passages/client'
 import type { SimilarPassagesRequest, SimilarPassagesResponse } from '@/lib/similar-passages/types'
 import type { SimilarPassagesLoader } from '../lib/use-similar-passages'
 import { SimilarPassagesPanel } from './similar-passages-panel'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const REQUEST: SimilarPassagesRequest = {
   document: { kind: 'stored', documentId: 'doc-source' },
@@ -105,7 +106,7 @@ describe('SimilarPassagesPanel', () => {
     let resolve: (response: SimilarPassagesResponse) => void = () => {}
     renderPanel(() => new Promise((done) => (resolve = done)))
 
-    expect(screen.getByText('Piloti is checking your projects…')).toBeTruthy()
+    expect(screen.getByText(`${PRODUCT_NAME} is checking your projects…`)).toBeTruthy()
     resolve(RESPONSE)
 
     expect(await screen.findByTestId('similar-headline')).toHaveTextContent('Found in 2 projects and the Büroablage')

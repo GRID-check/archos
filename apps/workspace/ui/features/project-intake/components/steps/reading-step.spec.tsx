@@ -28,6 +28,7 @@ import type { IntakeView } from '@/lib/project-intake/types'
 import { SetupFooter, StepFooterProvider, useStepFooterChannel } from '../setup-frame'
 import { ReadingStep } from './reading-step'
 import type { SetupStepProps } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // The project's own upload, drawn hidden behind „Dokumente hinzufügen".
 vi.mock('@/shared/context', () => ({
@@ -90,7 +91,7 @@ describe('ReadingStep', () => {
     it('shows the documents as a bar and the milestones with the view’s own numbers', () => {
       setup(READING_RUNNING)
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Piloti is reading your documents' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1, name: `${PRODUCT_NAME} is reading your documents` })).toBeInTheDocument()
       expect(screen.getByRole('progressbar', { name: '9 of 23 documents read' })).toBeInTheDocument()
       expect(screen.getByTestId('reading-documents')).toHaveTextContent('9 of 23 read')
       const rows = within(screen.getByTestId('reading-milestones')).getAllByRole('listitem')
@@ -147,8 +148,8 @@ describe('ReadingStep', () => {
     it('says the person need not wait, and links the project chat', () => {
       setup(READING_RUNNING)
 
-      expect(screen.getByTestId('reading-band')).toHaveTextContent('You do not have to wait. Piloti lets you know when it is done.')
-      const chat = screen.getByRole('link', { name: 'Open the project chat and ask Piloti about the documents' })
+      expect(screen.getByTestId('reading-band')).toHaveTextContent(`You do not have to wait. ${PRODUCT_NAME} lets you know when it is done.`)
+      const chat = screen.getByRole('link', { name: `Open the project chat and ask ${PRODUCT_NAME} about the documents` })
       expect(chat).toHaveAttribute('href', `/app/projects/${READING_RUNNING.projectId}/chat`)
       expect(chat).toHaveTextContent('Ask in the chat now')
     })
@@ -204,7 +205,7 @@ describe('ReadingStep', () => {
     it('shows what the reading found once it is done, with the summary folded', async () => {
       setup(READING_READY)
 
-      expect(screen.getByRole('heading', { name: 'Piloti has read your documents' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: `${PRODUCT_NAME} has read your documents` })).toBeInTheDocument()
       expect(screen.getByTestId('reading-documents')).toHaveTextContent('23 of 23 read')
       expect(milestone('contradictions')).toHaveTextContent(/Contradictions \(needs you\)6$/)
       expect(milestone('contradictions')).toHaveAttribute('data-state', 'attention')
@@ -213,7 +214,7 @@ describe('ReadingStep', () => {
       expect(screen.getByTestId('reading-band')).not.toHaveTextContent('You do not have to wait')
 
       expect(screen.queryByText(/Die Geschoßanzahl ist widersprüchlich/)).toBeNull()
-      await userEvent.click(screen.getByRole('button', { name: 'What Piloti says about it' }))
+      await userEvent.click(screen.getByRole('button', { name: `What ${PRODUCT_NAME} says about it` }))
       expect(screen.getByTestId('reading-summary')).toHaveTextContent('Die Geschoßanzahl ist widersprüchlich')
     })
 
@@ -241,7 +242,7 @@ describe('ReadingStep', () => {
     it('keeps what a failed reading found, and offers another reading as the one action', async () => {
       setup(READING_FAILED)
 
-      expect(screen.getByRole('heading', { name: 'Piloti stopped reading' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: `${PRODUCT_NAME} stopped reading` })).toBeInTheDocument()
       expect(screen.getByTestId('reading-documents')).toHaveTextContent('9 of 23 read')
       expect(milestone('values')).toHaveAttribute('data-state', 'done')
       expect(screen.queryByTestId('reading-unread')).toBeNull()
@@ -257,7 +258,7 @@ describe('ReadingStep', () => {
 
     it('shows a finished setup without a way to add documents', () => {
       setup(READING_COMPLETED)
-      expect(screen.getByRole('heading', { name: 'Piloti has read your documents' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: `${PRODUCT_NAME} has read your documents` })).toBeInTheDocument()
       expect(milestone('gaps')).toHaveTextContent('none')
       expect(screen.queryByRole('button', { name: 'Add documents' })).toBeNull()
       expect(screen.getByTestId('reading-summary')).toBeInTheDocument()
@@ -273,11 +274,11 @@ describe('ReadingStep', () => {
       </I18nProvider>
     )
 
-    expect(screen.getByRole('heading', { name: 'Piloti liest Ihre Unterlagen' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: `${PRODUCT_NAME} liest Ihre Unterlagen` })).toBeInTheDocument()
     expect(screen.getByTestId('reading-documents')).toHaveTextContent('9 von 23 gelesen')
     expect(milestone('site')).toHaveTextContent('Standort ermittelt')
     expect(milestone('gaps')).toHaveTextContent(/^Lücken, die die Gebäudeklasse entscheiden \(noch nicht\)nach dem Lesen$/)
-    expect(screen.getByTestId('reading-band')).toHaveTextContent('Sie müssen nicht warten. Piloti meldet sich, wenn es fertig ist.')
+    expect(screen.getByTestId('reading-band')).toHaveTextContent(`Sie müssen nicht warten. ${PRODUCT_NAME} meldet sich, wenn es fertig ist.`)
     expect(screen.getByRole('link', { name: /Projekt-Chat/ })).toHaveTextContent('Schon jetzt im Chat fragen')
     expect(footer().getByRole('button', { name: 'Weiter zu den Rückfragen' })).toBeInTheDocument()
   })

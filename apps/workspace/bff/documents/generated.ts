@@ -401,7 +401,7 @@ export function generatedFilename(title: string, contentType: string, now: Date)
   const day = now.toISOString().slice(0, 10)
   const slug = fileSlug(title)
   const extension = EXTENSION_BY_CONTENT_TYPE[contentType.split(';')[0].trim()] ?? 'bin'
-  return `${slug || 'piloti'}-${day}.${extension}`
+  return `${slug || 'document'}-${day}.${extension}`
 }
 
 /**

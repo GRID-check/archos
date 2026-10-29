@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { pushFixture } from './fixtures'
 import { NotificationPromptView, promptIsDue } from './notification-prompt'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('when the inbox offers notifications', () => {
   test.each([
@@ -39,7 +40,7 @@ describe('NotificationPromptView', () => {
 
   test('says what it is for: someone needing the person, not every arrival', () => {
     render(<NotificationPromptView push={pushFixture()} dismissed={false} onDismiss={() => undefined} />)
-    expect(screen.getByText('Piloti tells you on this device when someone needs you.')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} tells you on this device when someone needs you.`)).toBeInTheDocument()
   })
 
   test('where the browser refused, leads to the page that says how to allow it', () => {

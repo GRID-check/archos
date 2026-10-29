@@ -15,14 +15,16 @@ or a brand string changes here and reaches every surface on the next sync.
 | `assets/logos/` | Client logos in grey (Pilotbüros, funding logo). The brand video is not here; it lives with the website. |
 | `docs/components/` | One Markdown rules sheet per component, plus `ColorUsage.md`. |
 | `build-tokens.mjs` | Builds `dist/tokens.css` and `dist/tokens.vars.css` from `tokens.json` and copies `css/` and `fonts/` into `dist/`. `tokens.vars.css` is the colours, shadows and scalars as variables only, prefixed `--ds-`, dark under `.dark` too: an app with token names of its own (the workspace) imports it and maps its names onto it rather than typing a value. |
-| `sync.mjs` | Copies `dist/` and `identity.json` into each app in `TARGETS`. `--check` writes nothing and fails on drift. |
+| `sync.mjs` | Copies `dist/` and `identity.json` into each app in `TARGETS`, `identity.json` alone into the agent's package (`IDENTITY_TARGETS`), and writes the product's name into the files listed in `name-copies.mjs`. `--check` writes nothing and fails on drift. |
+| `name-copies.mjs` | The files that must spell the product's name as a literal (the service worker's fallback title, the icons' SVG `<title>`). `sync.mjs` fills them from `identity.json`, so a rename is still one edit (ADR-0148). |
 | `dist/` | Built output, committed on purpose (see the root `.gitignore` negation). |
-| `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build. Unrelated to the tokens. |
+| `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build. Unrelated to the tokens. The master's `<title>` is the token `{productName}`; every copy gets the name from `identity.json`. |
 
 Apps receive copies, not imports: neither Docker build sees `packages/`.
 
 - `apps/website/src/styles/brand/`
 - `apps/workspace/shared/brand/`
+- `packages/agent/src/agent/common/` (`identity.json` only: `agent.common.brand` reads the name from it)
 
 ## Workflow
 
@@ -35,7 +37,7 @@ Add a target by adding its directory to `TARGETS` in `sync.mjs`.
 
 ## Rules the package carries
 
-- **Brand strings are copy.** They come from `identity.json`, never typed into code, class names or tokens.
+- **Brand strings are copy.** They come from `identity.json`, never typed into code, class names or tokens. A rename edits `identity.json` and runs `sync.mjs`; `tests/test_product_name_parity.py` runs that drill on a scratch copy.
 - **Names are English and brand-free.** Class names, tokens, files and component names never carry the product name. `ui-button`, `ColorUsage`, `--ink`.
 - **Tokens are the only values.** No colour, size, space or radius outside the tokens. Spacing comes only from the `--space-*` scale (4px base).
 - **Edit a token, not a copy.** `dist/` and the app copies are generated; the header of `tokens.css` says so.

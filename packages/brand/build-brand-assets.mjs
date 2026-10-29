@@ -5,7 +5,7 @@
  *   node packages/brand/build-brand-assets.mjs          write everything below
  *   node packages/brand/build-brand-assets.mjs --check  fail if an SVG copy drifted
  *
- * The master is `mark.svg` beside this file. Each app gets a committed copy,
+ * The master is `mark.svg` beside this file; its <title> is filled in from `identity.json`. Each app gets a committed copy,
  * because neither Docker build can see `packages/` (each builds from its own
  * directory). The site's `npm run check` runs the `--check` form, so an edited copy, or a
  * master edited without re-running this, fails CI instead of shipping two marks.
@@ -28,6 +28,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { MARK_COPIES, namedMark } from './name-copies.mjs'
 
 const brandRoot = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(brandRoot, '../..')
@@ -37,10 +38,7 @@ const MASTER = resolve(brandRoot, 'mark.svg')
 
 const INK = '#2a301f' // --color-accent-900, the tile
 
-const SVG_COPIES = [
-  resolve(siteRoot, 'public/favicon.svg'),
-  resolve(uiRoot, 'app/icon.svg'),
-]
+const SVG_COPIES = MARK_COPIES.map((path) => resolve(repoRoot, path))
 /**
  * Where the mark is drawn inline in `currentColor` (the site's lockup, the app's
  * logo and PDF exports). They hold the master's path data as a string, so the
@@ -51,7 +49,9 @@ const INLINE_COPIES = [
   resolve(uiRoot, 'bff/brand.ts'),
 ]
 
-const master = readFileSync(MASTER, 'utf8')
+// The master's <title> is the token `{productName}`; every copy and raster gets the name.
+const { name } = JSON.parse(readFileSync(resolve(brandRoot, 'identity.json'), 'utf8'))
+const master = namedMark(readFileSync(MASTER, 'utf8'), name)
 
 /** The mark's shapes without the rounded tile, for full-bleed renders. */
 const markGroup = master.match(/<g id="mark">[\s\S]*?<\/g>/)?.[0]

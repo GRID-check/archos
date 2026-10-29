@@ -19,6 +19,7 @@
 
 import { type OAuthMetadata, buildOAuthProtectedResourceMetadata } from '@modelcontextprotocol/server'
 import { configuredAppOrigin } from '@/lib/app-origin'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const MCP_PATH = '/api/mcp'
 export const A2A_PATH = '/api/a2a'
@@ -137,9 +138,9 @@ export function allowedOriginHostnames(env: Env = process.env): string[] {
 
 /** The name the metadata gives each resource (`resource_name`), shown by a client while it signs in. */
 const RESOURCE_NAMES: Readonly<Record<DoorResource, string>> = {
-  mcp: 'Piloti',
-  a2a: 'Piloti',
-  platform: 'Piloti platform console',
+  mcp: PRODUCT_NAME,
+  a2a: PRODUCT_NAME,
+  platform: `${PRODUCT_NAME} platform console`,
 }
 
 /** The RFC 9728 document for `door`, or `null` while no AuthKit domain or resource URL is set. */

@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { ProjectMembersForm } from './project-members-form'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
@@ -108,7 +109,7 @@ describe('ProjectMembersForm', () => {
     // access reference while the API refused its slug, so it could never be
     // picked here.
     expect(
-      within(listbox).getByText(/Can also ask Piloti in this project/i)
+      within(listbox).getByText(new RegExp(String.raw`Can also ask ${PRODUCT_NAME} in this project`, 'i'))
     ).toBeDefined()
     await user.keyboard('{Escape}')
 

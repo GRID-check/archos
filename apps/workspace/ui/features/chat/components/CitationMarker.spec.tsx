@@ -12,6 +12,7 @@ import { AgentResponse } from './AgentResponse'
 import { resetSourcePreviewIndexCache } from './source-preview/source-preview-index'
 import type { CitationSource } from '../types'
 import { popoverMounts, resetPopoverMounts } from '@/test-utils/popover-mounts'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // Real popover, counted: a read answer must not pay for peeks nobody opened.
 vi.mock('@/components/ui/popover', async (importOriginal) =>
@@ -369,7 +370,7 @@ describe('an inline citation marker', () => {
       const peek = await screen.findByRole('dialog')
 
       expect(
-        await within(peek).findByText('No file for this source is available in Piloti.', {}, { timeout: 5000 })
+        await within(peek).findByText(`No file for this source is available in ${PRODUCT_NAME}.`, {}, { timeout: 5000 })
       ).toBeInTheDocument()
       expect(peek.querySelector('[data-citation-open]')).toBeNull()
     })

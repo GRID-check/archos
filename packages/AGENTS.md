@@ -4,8 +4,9 @@ Two families live here: the standalone IFC packages, outside every workspace,
 and the Python packages of the root uv workspace ([below](#the-python-packages-agent-knowledge-layer-ris-adapter-tavily-web-search)).
 `brand/` is neither: the shared corporate design. `tokens.json` is the source;
 `build-tokens.mjs` renders `dist/`, and `sync.mjs` writes committed copies into
-`apps/website` and `apps/workspace` (`--check` fails on drift). Brand strings live
-in `identity.json` only, the React components in `react/`, AuthKit's stylesheet in
+`apps/website` and `apps/workspace`, `identity.json` into `agent/src/agent/common/`,
+and the product's name into the few literal copies `name-copies.mjs` lists (`--check`
+fails on drift). Brand strings live in `identity.json` only, the React components in `react/`, AuthKit's stylesheet in
 `authkit/authkit.css` (pasted into WorkOS branding per environment). `mark.svg` and
 `build-brand-assets.mjs` render the icons into both apps, borrowing `apps/site`'s
 sharp. Its README holds the design rules.

@@ -7,6 +7,7 @@ import { useLayoutStore } from '@/features/layout/store'
 import { useShellOverlays } from './shell-overlays'
 import { I18nProvider } from '@/i18n'
 import { AppSidebar, railActivePillId } from './app-sidebar'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // Isolate the nav-filtering logic from routing and the shell's sibling widgets.
 // The pathname is mutable because the rail now reads its own scope from it —
@@ -85,7 +86,7 @@ describe('the Inbox entry follows canAccessInbox, in both directions', () => {
 describe('AppSidebar - click-dummy IA (FB-9/FB-10)', () => {
   test('renders the core nav set: Ask Piloti, Files', () => {
     render(<AppSidebar {...baseProps} />)
-    expect(screen.getAllByText('Ask Piloti').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(`Ask ${PRODUCT_NAME}`).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Files').length).toBeGreaterThan(0)
   })
 
@@ -114,7 +115,7 @@ describe('AppSidebar - click-dummy IA (FB-9/FB-10)', () => {
     // Filter to actual nav links — on the chat route the mobile top bar also
     // renders "Ask Piloti" as a plain active-section label (not an anchor).
     const links = screen
-      .getAllByText('Ask Piloti')
+      .getAllByText(`Ask ${PRODUCT_NAME}`)
       .map((el) => el.closest('a'))
       .filter((link): link is HTMLAnchorElement => link !== null)
     expect(links.length).toBeGreaterThan(0)
@@ -130,7 +131,7 @@ describe('AppSidebar - Automation nav item', () => {
     render(<AppSidebar {...baseProps} />)
     expect(screen.queryByText('Automation')).not.toBeInTheDocument()
     // Sibling items remain.
-    expect(screen.getAllByText('Ask Piloti').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(`Ask ${PRODUCT_NAME}`).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Files').length).toBeGreaterThan(0)
   })
 
@@ -176,7 +177,7 @@ describe('AppSidebar - office shelf nav item (ADR-0024)', () => {
     // Ask Piloti · Files · Automation* · Archiv* · Suche · Inbox*,
     // per `project-sections.ts`. Automation is absent here because `showSkills`
     // is off.
-    expect(labels).toEqual(['Ask Piloti', 'Files', 'Office filing', 'Search', 'Inbox'])
+    expect(labels).toEqual([`Ask ${PRODUCT_NAME}`, 'Files', 'Office filing', 'Search', 'Inbox'])
   })
 })
 
@@ -186,14 +187,14 @@ describe('AppSidebar - collapsed icon rail', () => {
     render(<AppSidebar {...baseProps} />)
 
     const sections = screen.getByLabelText('Project sections')
-    expect(within(sections).getByText('Ask Piloti')).toBeVisible()
+    expect(within(sections).getByText(`Ask ${PRODUCT_NAME}`)).toBeVisible()
     expect(within(sections).getByText('Work')).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
 
     // Named for AT (sr-only), not painted in the 64px rail. Happy-dom treats
     // sr-only as visible, so we assert the class rather than toBeVisible.
-    expect(within(sections).getByText('Ask Piloti')).toHaveClass('sr-only')
+    expect(within(sections).getByText(`Ask ${PRODUCT_NAME}`)).toHaveClass('sr-only')
     expect(within(sections).getByText('Files')).toHaveClass('sr-only')
     expect(within(sections).queryByText('Work')).not.toBeInTheDocument()
   })
@@ -294,7 +295,7 @@ describe('AppSidebar - the phone top band', () => {
 describe('AppSidebar - active state', () => {
   test('marks the Chat item as the current page on the chat route', () => {
     render(<AppSidebar {...baseProps} />)
-    const chatLinks = screen.getAllByText('Ask Piloti').map((el) => el.closest('a'))
+    const chatLinks = screen.getAllByText(`Ask ${PRODUCT_NAME}`).map((el) => el.closest('a'))
     expect(chatLinks.some((link) => link?.getAttribute('aria-current') === 'page')).toBe(true)
     const settingsLinks = screen.getAllByText('Overview').map((el) => el.closest('a'))
     for (const link of settingsLinks) {
@@ -310,7 +311,7 @@ describe('AppSidebar - active state', () => {
     const pills = Array.from(container.querySelectorAll('[data-slot="rail-active-pill"]'))
     expect(pills).toHaveLength(1)
     expect(pills[0]!.closest('a')).toHaveAttribute('aria-current', 'page')
-    expect(pills[0]!.closest('a')).toHaveTextContent('Ask Piloti')
+    expect(pills[0]!.closest('a')).toHaveTextContent(`Ask ${PRODUCT_NAME}`)
   })
 
   test('keys the pill identity by rail width, so it never scales across a collapse', () => {
@@ -336,7 +337,7 @@ describe('AppSidebar - layout store mobile nav sync', () => {
     })
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getAllByText('Ask Piloti').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(`Ask ${PRODUCT_NAME}`).length).toBeGreaterThan(0)
   })
 })
 
