@@ -1,8 +1,9 @@
 # website
 
-The public website of the company, built with Astro as a static site. It replaces `apps/site` at
-cutover (slice 5 of [the corporate design plan](../../docs/design/corporate-design-plan.md)); until
-then both exist side by side and neither is deployed from here.
+The public website of the company, built with Astro as a static site. It replaces `apps/site`
+(slice 5 of [the corporate design plan](../../docs/design/corporate-design-plan.md)): the `web`
+image builds this directory (`ci/image_inputs.py`), and `apps/site` stays in the tree only until
+its cutover deletes it.
 
 Every visual value comes from the shared design system in `packages/brand`. The brand strings come
 from `src/lib/identity.ts`, which reads `identity.json`.

@@ -241,10 +241,10 @@ was never swept at all. Two deliberate exceptions: the `next dev` block at the t
 `apps/workspace/AGENTS.md`, which regenerates itself, and ADR titles quoted in
 `docs/adr/README.md`, which have to match the records they point at.
 
-Rule 26 bans some words this repo uses on purpose. "Ratchet" and "substrate
-debt" are defined terms here, each with a document behind it, and the
-`writing-for-agents` skill calls that a leading word rather than a metaphor to
-avoid. Keep them.
+Rule 26 bans some words as metaphors. The house decision for the two this repo
+used is in [`naming.md`](naming.md#house-words): keep "ratchet" for a check
+whose baseline only falls; say what "substrate" meant instead (the sharing
+layer, the shared code).
 
 **apm 0.28 resolves targets inconsistently, and names them inconsistently.**
 Autodetection in `install` and in the `audit` replay disagree, which reported

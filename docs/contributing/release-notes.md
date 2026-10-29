@@ -20,7 +20,11 @@ register.
   `no-release-note` label instead. The job reads the label when it runs, so
   a label added after the push needs only a re-run of the **Repo checks**
   job, not a new commit.
-- **Destination:** `https://piloti.at/changelog` (de) and `/en/changelog` (en).
+- **Destination:** the public changelog, `/changelog` (de) and `/en/changelog`
+  (en). Until the cutover moves it into `apps/website`, the pipeline writes
+  `apps/site/src/data/changelog.json`, which no deployed image serves: the `web`
+  image builds `apps/website` (`ci/image_inputs.py`). A published entry is in
+  that file and on no page until then.
 - **Reader:** the architect using Piloti. Not the reviewer of your diff, and not
   the people who run the platform.
 
@@ -224,8 +228,9 @@ linted and translated like a note. A week without an entry shows its notes only.
    authenticated as the `RELEASE_PAT` owner when that secret is set (falling
    back to `GITHUB_TOKEN`), because the branch ruleset requires changes to
    arrive via pull request.
-4. That commit rebuilds the web image, the staging deploy rolls it out, and the
-   note is on the site.
+4. Before the cutover that is the end: the file belongs to `apps/site`, which
+   no image builds. After it, the commit rebuilds the web image, the staging
+   deploy rolls it out, and the note is on the site.
 
 ### Translation
 

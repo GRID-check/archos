@@ -55,87 +55,11 @@ the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
 
 ## No brand names
 
-No code or infrastructure name carries a brand, neither a retired one nor the
-current one: no `aiq`, `grid`, `piloti` or `archos` in an identifier, file or <!-- brand-history -->
-folder name, environment variable, route, header, table, metric, event,
-resource, flag or tool name (ADR-0148). Name the thing for what it does: a
-reply job, not `piloti_wakes`; `MAX_ACTIVE_JOBS_PER_ORG`, not a prefixed one. <!-- brand-history -->
-The product has had four names, and every earlier rename was a code change
-across thousands of lines.
-
-**The name is copy, and it has one source: `packages/brand/identity.json`.**
-Code reads `PRODUCT_NAME` (`apps/workspace/bff/brand.ts` in the UI and the BFF,
-`agent.common.brand` in the agent); a dictionary string says `{productName}`
-and a prompt says `{{ product_name }}`. Both constants read `identity.json`,
-which `node packages/brand/sync.mjs` copies beside each reader (the two apps and
-`packages/agent/src/agent/common/`). The same run writes the name into the few
-files that must spell it as a literal because nothing can import there, the
-service worker's fallback title and the icons' SVG `<title>`
-(`packages/brand/name-copies.mjs`). So a rename is one edit to
-`identity.json` and one sync. `tests/test_product_name_parity.py` holds every
-copy to the source and runs the rename drill: it changes the name in a scratch
-copy, syncs once, and checks every surface follows.
-
-Comments and engineering docs use the role noun: the agent, the workspace, the
-app. The name is written out only in `identity.json` and the brand package, the
-first-impression documents (`VISION.md`, `README.md`, the user guides, the
-glossary), blog prose, release notes and ADRs.
-
-Two ratchets hold this, both in `task lint:repo` and CI's **Repo checks** job.
-Each records the hits every file had when it arrived, a file may not gain one,
-and a cleanup makes the check fail until `--update` lowers the entry; a move
-re-keys entries with `--rebaseline`, and its diff must show only the move (the
-prose check refuses a rebaseline that raises its total).
-
-- **Identifiers**: `scripts/check_brand_names.py`, the `brand-names` hook,
-  against `ci/brand_names_baseline.json`. A directory is its own key (`dir/`),
-  so a new file inside an old directory is fine and a new branded folder is
-  not. Not a hit: a brand as a bare word in prose, `grid` the English word (CSS
-  and Tailwind, `grid` as a layout noun at the end of a name, `FileGrid`), URLs,
-  host names and the repository's own name, and the Python package names
-  `agent` and `agent_host` until their scripted rename (ADR-0145 row 10a). Not
-  checked: ADRs, audits, release notes, migrations, the i18n dictionaries and
-  the site's content, published assets, lockfiles and Markdown (`EXCLUDED` in
-  the script). `identity.json` and its copies are excluded: they are where the
-  name is meant to live.
-- **Prose**: `scripts/check_brand_prose.py`, the `brand-prose` hook, against
-  `ci/brand_prose_baseline.json`, over every text file git tracks. It counts a
-  retired name as a word, in any file a person or an agent reads (copy,
-  prompts, docs, error text, MCP instructions), and the current name typed out
-  anywhere outside the places listed above, where it should have been
-  `{productName}` or `PRODUCT_NAME`. Bare `grid` never counts. History keeps
-  the names it was written under and is not counted: ADRs up to 0147, audits,
-  migrations, the release notes in `ci/brand_history_manifest.txt` with their
-  translations and past weekly summaries, a `docs/` file whose first line is
-  `<!-- history: YYYY-MM-DD -->` dated on or before the cutover, and a legacy
-  module whose header says `drop after release N`. A later record may quote an
-  old name in backticks on a line marked `<!-- brand-history -->`. The legal
-  notices (the app's `bff/legal/content/` and the website's privacy page) may
-  name the former name in one parenthesis, "(vormals …)" or "(formerly …)",
-  so a person who signed up under it sees the notice covers them (ADR-0148).
-  `--summary` prints the hits by directory. The target is an empty baseline.
-
-**Rename when you touch it.** The identifiers and texts in the two baselines
-are frozen, not swept (ADR-0148). A change that edits a file renames the
-branded names in it that it can rename safely, using ADR-0148's neutral-name
-map, and lowers the entries with `--update`. A name that is stored, or that an
-outside client calls, is not renamed in passing: it needs the expand, switch
-and contract steps below.
-
-The end state of the identifier ratchet is a baseline holding only the
-infra-pending names ADR-0148 lists (the old deploy tiers, the Pulumi names, the
-old domain). A CI assertion for that is switched on once the baseline is down
-to them; it would fail today.
-
-An externally visible name (an MCP tool an outside agent calls, a public
-route, an analytics event) is renamed with the old name kept as an alias for
-one release, never as a hard break.
-
-A name two deployed tiers exchange (the `x-grid-*` service headers between
-the BFF and the backend) moves by expand, switch, contract, because the tiers
-roll out side by side: first every receiver reads the new name beside the old
-(`lib/http/legacy-header-names.ts`, `agent_host.legacy_headers`), the next
-release the senders switch, the release after the old name goes.
+No code or infrastructure name carries a brand, and the product's name is copy
+read from `packages/brand/identity.json` (ADR-0148). The rule, its two
+ratchets, "rename when you touch it" and the steps for a stored or external
+name are in [`naming.md`](naming.md#no-brand-in-a-name), with every other
+naming rule.
 
 ## Python
 
@@ -231,6 +155,13 @@ is invisible because each one looks locally correct. German transliteration
 `norm-entry-editor.tsx`, and a third was being written into `lib/bim/bcf.ts`,
 where its absence had been shipping `Beispielstraße` as the filename
 `Beispielstra-e`. All three now call `lib/text/latinize.ts`.
+
+A split moves a module's side-effect imports (a stylesheet, a polyfill) with
+the code that needs them. When `ReasoningFlow` was split into modules, no new
+module took `import '@xyflow/react/dist/style.css'`, and the Herleitung
+rendered as a staircase while every spec passed, because the specs mock React
+Flow. `tests/react-flow-stylesheet.spec.ts` now holds that one; for any other
+library with a stylesheet, check the import at each render site.
 
 Sharing is not merging. Keep the pieces that genuinely differ separate and say
 why: `latinize` splits into `transliterateGerman` and `foldDiacritics` precisely

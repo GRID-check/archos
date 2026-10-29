@@ -44,11 +44,11 @@ TypeScript 6's view of the code.
   PR of a stack gets its gate before the one below it merges.
 - One logical change per branch.
 - One logical change per commit. When a feature trips over **correlated
-  substrate debt** (an extension point that is not actually generic), lift
+  debt in shared code** (an extension point that is not actually generic), lift
   that defect in its own commit *in the same change* — do not bolt the
-  feature onto the broken substrate and do not file the lift as later.
+  feature onto the broken shared code and do not file the lift as later.
   YAGNI does not cover known defects on your path. The rule:
-  [AGENTS.md](AGENTS.md) (“Correlated substrate debt…”) and
+  [AGENTS.md](AGENTS.md) (“Correlated debt in shared code…”) and
   [adding a shareable resource type](docs/architecture/adding-a-shareable-resource-type.md) §5.
 
 ## Release notes
