@@ -2,6 +2,8 @@
 interface FeatureItem {
   title: string;
   text?: string;
+  /** Optional: the title links to the page that explains the point (a work page). Set as a text link with "→", no icon. */
+  href?: string;
 }
 
 interface Props {
@@ -18,7 +20,9 @@ const cols = columns || Math.min(items.length, 4) || 3;
   {
     items.map((item, i) => (
       <li class="ui-feature" data-reveal style={`--ui-reveal-step: ${i % 4}`}>
-        <h3 class="ui-feature-title heading-3">{item.title}</h3>
+        <h3 class="ui-feature-title heading-3">
+          {item.href ? <a class="ui-link" href={item.href}>{item.title} →</a> : item.title}
+        </h3>
         {item.text && <p class="ui-feature-text body">{item.text}</p>}
       </li>
     ))

@@ -1,0 +1,16 @@
+---
+features:
+  - >
+    The website has three new pages, in German and English: what the
+    workspace takes over for architecture and planning firms, comparing plan
+    revisions, and searching building law. The footer lists them with the
+    other product pages.
+  - >
+    The blog has a feed again at its old addresses (/rss.xml and /en/rss.xml),
+    so existing subscriptions keep working.
+improvements:
+  - >
+    Links to the old website's pages lead to the page that answers the same
+    question today, in one step, including old German and English addresses
+    and renamed blog posts. The few pages that have no successor now say that
+    they were removed on purpose.

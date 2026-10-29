@@ -18,6 +18,8 @@ bun run build && node runtime/server.mjs     # serve it as production does: head
 bun run check      # astro check, the brand copies (sync --check), then the brand rules (scripts/check_brand_rules.mjs)
 bun run test       # runtime specs (node --test) and src/**/*.test.ts (bun test)
 bun run check:a11y # after a build: axe-core WCAG 2.2 AA on every page, DE and EN (needs Playwright's Chromium)
+bun run check:routes           # after a build: every old address answers its route fate (301 in one hop, or 410)
+bun run check:structured-data  # after a build: every JSON-LD block parses and carries its type's required fields
 ```
 
 Or from the repo root: `task website:install`, `task website:check`, `task website:build`, and
@@ -37,7 +39,8 @@ Or from the repo root: `task website:install`, `task website:check`, `task websi
 - **Cache-Control** for static files (`runtime/cache-control.mjs`).
 
 Unknown addresses get `src/pages/404.astro`, rendered on request so `/en/...` answers in English,
-with status 404 and `noindex`. Old public addresses and their new homes (301) are in `redirects.mjs`.
+with status 404 and `noindex`. Old public addresses and their fates (301, or 410 Gone) are in
+`redirects.mjs`; see [SEO](#seo). `runtime/gone.mjs` turns the 404 of a gone address into 410.
 
 ## Analytics
 
@@ -156,10 +159,50 @@ JSON-LD (`src/lib/structured-data.ts`), all from identity.
 
 ## Not done here
 
-- The redirect table for the old site's URLs and new SEO pages (route fates) come with the SEO work.
 - The changelog page comes with the cutover work.
 - There is no login page. Login goes to `/sign-in`, which hands over to the app; `/login` and `/en/login` redirect there.
 - The company's LinkedIn URL is not known yet (`src/lib/social.ts`, TODO(owner)); the footer, contact page, privacy row and JSON-LD show it once it is set.
+
+## SEO
+
+The plan, its search clusters and what is still open: [`docs/product/website-conversion-and-seo.md`](../../docs/product/website-conversion-and-seo.md).
+
+**Route fates.** Every address of the old site has one fate in `redirects.mjs` (owner decision D7):
+a 301 to the page that answers the same question today, in one hop to its final target, or 410
+when nothing here does. The table is written as data: `PAGES` (old top-level pages), `SECTIONS`
+(old sections and the fate of each detail slug), `RENAMED_POSTS` and `GONE_PREFIXES`; the `/de/*`
+and `/en/<German segment>/*` aliases of the old site are derived from them. Astro answers the 301s
+(`redirects` in `astro.config.mjs`). `src/pages/404.astro` asks `fateOf()` for anything no page
+claimed: an alias the table does not spell out still gets its 301, and a gone address gets the
+not-found view in its own words ("Diese Seite gibt es nicht mehr."), whose 404 `runtime/gone.mjs`
+turns into 410 (Astro can send neither 410 from `redirects` nor a status of its own from the
+error route). To change a fate, edit the row; `src/lib/route-fates.test.ts` fails a target that is
+not a page, a chain, or a live page redirected away, and `bun run check:routes` asks the built
+server for every row. A target other work adds (the changelog) is listed in `PENDING_TARGETS`
+until it exists. Old spellings are history, so the brand-name checks skip `redirects.mjs`; tests
+and scripts check those rows through the table and never spell them.
+
+**Adding a page to the sitemap and the structured data.** A page in `ROUTES` (`src/i18n/paths.ts`)
+is in the sitemap with its other-locale twin as the `xhtml:link` pair (`sitemap.mjs`). For its
+`lastmod`, add its view and copy file to `PAGE_SOURCES` in `sitemap.mjs` (the date of their last
+commit; the image build has no git, so there the page carries no date). Posts pair through
+`translationSlug` and are dated by `pubDate`. JSON-LD comes from `BaseLayout`: every page has
+`Organization` and `WebSite`; every indexed inner page gets a `BreadcrumbList` (Start › title;
+pass `crumbs` for the levels between); a page that renders `FAQ` passes the same items as `faq`
+and gets an `FAQPage`; anything else goes in `graph` (`SoftwareApplication` on home, `BlogPosting`
+on a post, built in `src/lib/structured-data.ts`). No `offers` or ratings: there is no public price
+and there are no public reviews. `bun run check:structured-data` holds all of it.
+
+**Feeds and llms.txt.** `/rss.xml` and `/en/rss.xml` (`src/lib/feed.ts`, `@astrojs/rss`) keep the
+old feed addresses; blog pages link them in `<head>`. `/llms.txt` is generated from identity, the
+product pages' own titles and descriptions and the newest posts (`src/pages/llms.txt.ts`, copy in
+`src/i18n/pages/llms.ts`).
+
+**Social previews.** Every page shares `share-card.jpg`, with its own title and description.
+Generated per-page cards (`astro-og-canvas`, or satori) were not adopted: each card needs a design
+pass (the plan asks for a motif per page) and the brand fonts in a format the renderer reads (the
+design system ships WOFF2 only), which no integration does simply. The plan's card spec stays in
+the SEO doc as an open item.
 
 ## Signed in
 

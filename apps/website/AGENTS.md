@@ -22,6 +22,8 @@ This is the public website, built from the shared design system. Read the root
 | Add a call to action, a form or a link worth measuring | Pass `cta`/`ctaLabel` to `Button` or `TextLink` (or `area` to `CTABand`), `id` to `MailForm`; let PostHog's autocapture do the rest. A custom `posthog.capture` only for what autocapture cannot see, named in English snake_case and added to README "Analytics" | Buy, don't build: the SDK records clicks, page views, scroll depth, UTMs and web vitals itself. No event may carry what a visitor typed. |
 | Put text on a photo | Add its selector to `PHOTO_TEXT` in `scripts/check-accessibility.mjs` | axe cannot measure text on images; that list is how the gate measures it (4.5:1 against every pixel). |
 | Change what the page stores, sends or shows to PostHog | Change `src/i18n/pages/privacy.ts` in the same commit | The privacy policy states exactly what `runtime/web-analytics.mjs` configures. |
+| Move, rename or remove a public address | Give the old address a fate in `redirects.mjs` (301 in one hop to the page that answers it now, or 410) and run `bun run build && bun run check:routes` | `src/lib/route-fates.test.ts` fails a target that is not a page or is itself redirected; nothing catches a forgotten old address but this row. README, "SEO" |
+| Add a page | Its row in `ROUTES` puts it in the sitemap with its twin; add its view and copy file to `PAGE_SOURCES` in `sitemap.mjs` for its date; pass its FAQ items to `BaseLayout` as `faq` | `bun run check:structured-data` fails an FAQ without `FAQPage` and an inner page without breadcrumbs |
 | Change a page | Run `bun run build && bun run check:a11y` | WCAG 2.2 AA is the bar (owner decision D21); the gate fails on any axe finding. |
 
 ## Layout

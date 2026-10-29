@@ -17,6 +17,9 @@ const de = {
   navPlatform: 'Plattform',
   navSecurity: 'Datensicherheit',
   navBlog: 'Blog',
+  navFirms: 'KI für Architekturbüros',
+  navBuildingLaw: 'Baurecht durchsuchen',
+  navRevisions: 'Planstände vergleichen',
   login: 'Login',
   openApp: 'App öffnen',
   demo: 'Demo anfragen',
@@ -43,6 +46,8 @@ const de = {
   galleryNext: 'Nächste Folie',
   playVideo: 'Video abspielen',
   aiImage: 'KI-generiertes Bild',
+  breadcrumbHome: 'Start',
+  rssTitle: '{name} Blog',
 };
 
 export type UiCopy = typeof de;
@@ -57,6 +62,9 @@ const en: UiCopy = {
   navPlatform: 'Platform',
   navSecurity: 'Data security',
   navBlog: 'Blog',
+  navFirms: 'AI for architecture firms',
+  navBuildingLaw: 'Searching building law',
+  navRevisions: 'Comparing plan revisions',
   login: 'Login',
   openApp: 'Open app',
   demo: 'Request a demo',
@@ -83,6 +91,8 @@ const en: UiCopy = {
   galleryNext: 'Next slide',
   playVideo: 'Play video',
   aiImage: 'AI-generated image',
+  breadcrumbHome: 'Home',
+  rssTitle: '{name} Blog',
 };
 
 const dictionaries: Record<Locale, UiCopy> = { de, en };

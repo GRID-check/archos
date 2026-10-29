@@ -1,11 +1,17 @@
 ---
 import NotFoundView from '../views/NotFoundView.astro';
 import { localeFromUrl } from '../i18n/paths';
+import { fateOf } from '../../redirects.mjs';
 
 // Rendered on request, so an unknown address under /en/ gets the English page and any
-// other the German one. The status stays 404 and the page is noindex.
+// other the German one. The page is noindex. An old address no page claimed has a fate
+// in redirects.mjs: 410 (gone on purpose: the same view in its own words), or a 301 for
+// an old alias (`/de/...`, `/en/<German segment>/...`) the table does not spell out.
 export const prerender = false;
-Astro.response.status = 404;
+const fate = fateOf(Astro.url.pathname);
+if (fate?.status === 301) return Astro.redirect(`${fate.location}${Astro.url.search}`, 301);
+const gone = fate?.status === 410;
+Astro.response.status = gone ? 410 : 404;
 ---
 
-<NotFoundView locale={localeFromUrl(Astro.url)} />
+<NotFoundView locale={localeFromUrl(Astro.url)} gone={gone} />

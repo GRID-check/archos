@@ -5,7 +5,9 @@ import TextLink from '../components/TextLink.astro';
 import copy from '../i18n/pages/blog';
 import type { Locale } from '../i18n/paths';
 import { CATEGORIES, blogPath } from '../lib/categories';
-import { formatDate, type BlogPost } from '../lib/posts';
+import { formatDate, postPath, type BlogPost } from '../lib/posts';
+import identity from '../lib/identity';
+import { blogPosting } from '../lib/structured-data';
 
 // Markup only. The body is the post's MDX; its typography lives in src/styles/site.css.
 interface Props {
@@ -22,9 +24,24 @@ const cat = CATEGORIES[locale][category];
 // none falls back to the other locale's blog index, so the switch never 404s.
 const other: Locale = locale === 'de' ? 'en' : 'de';
 const alternatePath = translationSlug ? `${blogPath(other)}${translationSlug}/` : blogPath(other);
+// Structured data from the frontmatter as it is (owner decision D13: no schema change).
+const site = Astro.site ?? new URL(`https://${identity.domain}`);
+const posting = blogPosting(site, {
+  headline: title,
+  description,
+  path: postPath(locale, post),
+  published: pubDate,
+  locale,
+  section: cat.label,
+});
+const crumbs = [
+  { name: c.title, path: blogPath(locale) },
+  { name: cat.label, path: blogPath(locale, category) },
+];
+const feed = locale === 'en' ? '/en/rss.xml' : '/rss.xml';
 ---
 
-<BaseLayout locale={locale} title={title} description={description} alternatePath={alternatePath}>
+<BaseLayout locale={locale} title={title} description={description} alternatePath={alternatePath} crumbs={crumbs} graph={[posting]} feed={feed}>
   <article class="ui-container post">
     <header class="post-head">
       <p class="post-meta small">
