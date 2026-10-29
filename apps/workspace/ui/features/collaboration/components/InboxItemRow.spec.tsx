@@ -365,12 +365,12 @@ describe('InboxItemRow — the operational storage alert (ADR-0042)', () => {
     expect(screen.getByText('Your organization is running out of storage')).toBeInTheDocument()
   })
 
-  test('is tinted as needing attention without being an actionable request', () => {
+  test('says what needs attention in words, not in a tint', () => {
     const { container } = render(<InboxItemRow item={storageAlert()} />)
-
-    // `tone: 'warning'` shares the request tint — something needs attention —
-    // but the row is not actionable, so it never sits in the "needs me" badge.
-    expect(container.querySelector('.bg-warning-subtle')).not.toBeNull()
+    // A warning's body is its news, and stays. No row wears a tinted well any
+    // more: the tints down the list were a rainbow that said less than a word.
+    expect(screen.getByText(/82%/)).toBeInTheDocument()
+    expect(container.querySelector('.bg-warning-subtle')).toBeNull()
   })
 })
 
@@ -410,9 +410,9 @@ describe('InboxItemRow — a version waiting for a decision (ADR-0054)', () => {
     }
   })
 
-  test('reads as an outstanding request while it is open', () => {
-    const { container } = render(<InboxItemRow item={reviewRequest()} />)
-    expect(container.querySelector('.bg-warning-subtle')).not.toBeNull()
+  test('reads as an outstanding request while it is open: its decisions are on the row', () => {
+    render(<InboxItemRow item={reviewRequest()} />)
+    expect(screen.getByTestId('inbox-review-actions')).toBeInTheDocument()
   })
 
   test('stops shouting once the decision has been taken', () => {
@@ -1476,10 +1476,11 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
 })
 
 describe('InboxItemRow — who and what at a glance', () => {
-  test('a row a person caused wears their face, with the type’s glyph in the corner', () => {
+  test('a row a person caused wears their face, and nothing in its corner', () => {
     render(<InboxItemRow item={item()} />)
     expect(screen.getByTestId('person-avatar')).toHaveTextContent('AW')
-    expect(screen.getByTestId('inbox-item-type-badge')).toBeInTheDocument()
+    // The title says what kind of row it is; a glyph badge on every face was clutter.
+    expect(screen.queryByTestId('inbox-item-type-badge')).not.toBeInTheDocument()
   })
 
   test('a system row keeps its glyph, and Piloti’s row keeps Piloti’s face, drawn as a line', () => {
@@ -1501,11 +1502,13 @@ describe('InboxItemRow — who and what at a glance', () => {
     expect(screen.queryByTestId('inbox-item-place')).not.toBeInTheDocument()
   })
 
-  test('says where and when on one line: the project, then the moment', () => {
+  test('says when at the title line’s end, and where on the line under it', () => {
     render(<InboxItemRow item={item({ projectId: 'p1', projectName: 'Wohnanlage Linzer Straße' })} />)
     const meta = screen.getByTestId('inbox-item-meta')
     expect(within(meta).getByTestId('inbox-item-project')).toHaveTextContent('Wohnanlage Linzer Straße')
-    expect(meta.querySelector('time')).toHaveAttribute('dateTime', '2026-07-29T09:00:00Z')
+    expect(within(meta).getByTestId('inbox-item-place')).toHaveTextContent('Atrium – Rauchabschnitte')
+    const link = screen.getByTestId('inbox-item-link')
+    expect(link.closest('div')?.querySelector('time')).toHaveAttribute('dateTime', '2026-07-29T09:00:00Z')
   })
 
   test('leaves the project out of a redacted row', () => {
@@ -1521,11 +1524,14 @@ describe('InboxItemRow — who and what at a glance', () => {
     expect(screen.getByTestId('inbox-item-link')).not.toHaveClass('dark:text-muted-foreground')
   })
 
-  test('the keyboard’s row is marked and ringed', () => {
+  test('the keyboard’s row is marked, on the hover ground, with the app’s outline drawn inside its edge', () => {
     render(<InboxItemRow item={item()} focused />)
     const row = screen.getByTestId('inbox-item')
     expect(row).toHaveAttribute('data-focused', 'true')
-    expect(row).toHaveClass('ring-2', 'ring-inset')
+    expect(row).toHaveClass('bg-muted')
+    // No ring of its own over the global focus outline: the two drew a double bar.
+    expect(row).not.toHaveClass('ring-2')
+    expect(row).toHaveAttribute('data-focus-inset')
   })
 
   test('a filing suggestion says it waits on the file under Dateien, not in a chat', () => {
@@ -1628,7 +1634,7 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
-  test('„Mit Piloti besprechen“ marks the row read, and is an icon with a name on a phone', () => {
+  test('„Mit Piloti besprechen“ marks the row read, and is an icon with its name kept for the ear and the tooltip', () => {
     const onOpen = vi.fn()
     render(
       <InboxItemRow
@@ -1637,8 +1643,8 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
       />,
     )
     const discuss = screen.getByTestId('discuss-document')
-    expect(discuss).toHaveAttribute('aria-label', 'Discuss with Piloti')
-    expect(discuss.querySelector('.max-sm\\:hidden')).not.toBeNull()
+    expect(discuss).toHaveAccessibleName('Discuss with Piloti')
+    expect(discuss).toHaveAttribute('title', 'Discuss with Piloti')
     fireEvent.click(discuss)
     expect(onOpen).toHaveBeenCalledTimes(1)
   })

@@ -595,7 +595,7 @@
   "apps/workspace/ui/features/chat/stores/chat-storage-rename.ts": 1,
   "apps/workspace/ui/features/chat/stores/messages-store.remote.spec.ts": 2,
   "apps/workspace/ui/features/chat/types.ts": 1,
-  "apps/workspace/ui/features/collaboration/components/InboxItemRow.spec.tsx": 22,
+  "apps/workspace/ui/features/collaboration/components/InboxItemRow.spec.tsx": 21,
   "apps/workspace/ui/features/collaboration/components/InboxItemRow.tsx": 10,
   "apps/workspace/ui/features/collaboration/lib/composer-routing.spec.ts": 5,
   "apps/workspace/ui/features/diagrams/diagram-palette.ts": 1,

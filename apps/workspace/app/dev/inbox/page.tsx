@@ -38,6 +38,7 @@ import { I18nProvider } from '@/i18n'
 import { InboxBadge, InboxList } from '@/features/collaboration/components'
 import type { InboxItemView } from '@/lib/inbox/types'
 import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
+import { MENTIONABLE, withProjects } from '../_fixtures/inbox-rows'
 
 // Relative to now, so „vor 4 Minuten“ reads as it would in the product rather
 // than every row claiming months.
@@ -694,21 +695,8 @@ const ITEMS: InboxItemView[] = [
   },
 ]
 
-/**
- * The project each row is about, as the server names it (`projectName`): the
- * Schnitt rows in a second project, so the preview shows that the line tells
- * two projects apart. Org, platform and redacted rows carry none.
- */
-const WITH_PROJECTS: InboxItemView[] = ITEMS.map((item) =>
-  item.href?.includes('/projects/p1') && item.state !== 'inert'
-    ? item.resourceId === 'd-schnitt'
-      ? { ...item, projectId: 'p2', projectName: 'Volksschule Am Hang' }
-      : { ...item, projectId: 'p1', projectName: 'Wohnanlage Linzer Straße' }
-    : item,
-)
-
 /** Newest first, as the server orders a page. */
-const NEWEST_FIRST = [...WITH_PROJECTS].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+const NEWEST_FIRST = [...withProjects(ITEMS)].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 
 const isOpenRequest = (item: InboxItemView) => item.actionable && item.state !== 'resolved' && item.state !== 'inert'
 
@@ -719,7 +707,6 @@ const PENDING = NEWEST_FIRST.filter((item) => isOpenRequest(item) || item.state 
 const BY_FILTER: Record<string, InboxItemView[]> = {
   pending: PENDING,
   requests: NEWEST_FIRST.filter(isOpenRequest),
-  unread: NEWEST_FIRST.filter((item) => item.state === 'unread'),
   all: NEWEST_FIRST,
   archived: [],
 }
@@ -735,13 +722,6 @@ const PAGE = 12
  */
 const isEmptyVariant = (): boolean =>
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('variant') === 'empty'
-
-/** Who may open the fixtures' documents: the rows the reply composer's „@" picker offers. */
-const MENTIONABLE = [
-  { userId: 'u-anna', name: 'Anna Weber', email: 'anna@buero.at', profilePictureUrl: null },
-  { userId: 'u-jakob', name: 'Jakob Huber', email: 'jakob@buero.at', profilePictureUrl: null },
-  { userId: 'u-markus', name: 'Markus Lehner', email: 'markus@buero.at', profilePictureUrl: null },
-]
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __inboxShim?: boolean }
@@ -761,7 +741,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (url.startsWith('/api/inbox')) {
         const counts = {
           requests: empty ? 0 : BY_FILTER.requests.length,
-          unread: empty ? 0 : BY_FILTER.unread.length,
+          unread: empty ? 0 : PENDING.filter((item) => item.state === 'unread').length,
         }
         if (empty) return Response.json({ items: [], pending: 0, counts, hasMore: false, nextCursor: null })
         const params = new URL(url, window.location.origin).searchParams

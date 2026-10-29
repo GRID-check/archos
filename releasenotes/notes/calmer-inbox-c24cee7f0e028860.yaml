@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    The inbox is calmer: each entry shows what happened, which project it belongs to and when, with overdue and soon-due annotations marked, and its actions appear when you point at it.
+  - >
+    "For me" now holds everything new or waiting on you, so the number on the inbox matches what you find inside; opening an entry moves it out, and "u" brings it back.
