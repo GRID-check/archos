@@ -16,7 +16,7 @@ export function FilingCard({ className, ...rest }: ComponentProps<'section'>): J
 export function FilingHead({ title, children }: { title: string; children?: ReactNode }): JSX.Element {
   return (
     <header>
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
       {children && <p className="text-muted-foreground mt-2 text-sm">{children}</p>}
     </header>
   )

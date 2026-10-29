@@ -86,7 +86,7 @@ export function LiveCursor({
             {icon}
             <span className="truncate">{label}</span>
           </span>
-          <span className="text-xs leading-4 font-semibold break-words whitespace-pre-wrap pointer-coarse:text-[11px]">{chat}</span>
+          <span className="text-xs leading-4 font-medium break-words whitespace-pre-wrap pointer-coarse:text-[11px]">{chat}</span>
         </span>
       ) : (
         <>

@@ -113,7 +113,7 @@ export function ScheduleCard({
                     style={{ backgroundColor: accent }}
                   />
                 )}
-                <h3 className="text-foreground min-w-0 truncate text-sm font-semibold">
+                <h3 className="text-foreground min-w-0 truncate text-sm font-medium">
                   {job.name}
                 </h3>
               </div>

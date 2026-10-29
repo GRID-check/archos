@@ -168,7 +168,7 @@ export const SkillsUsedDisclosure: FC<SkillsUsedDisclosureProps> = ({
 
           {/* The mechanism, stated once at the bottom: it is the same for every
               answer, so it belongs under the specifics rather than above them. */}
-          <p className="text-muted-foreground/80 text-xs leading-snug">
+          <p className="text-muted-foreground text-xs leading-snug">
             {t('composer.activated.explainer')}
           </p>
         </div>

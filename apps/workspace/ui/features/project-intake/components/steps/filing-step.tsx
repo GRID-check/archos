@@ -125,7 +125,7 @@ export function FilingStep({
       {choice && (
         <div className="px-[18px] py-4">
           <p className="text-muted-foreground text-xs">{t('summary.reads')}</p>
-          <p className="mt-0.5 text-[28px] font-semibold leading-tight tracking-tight tabular-nums">
+          <p className="mt-0.5 text-[28px] font-medium leading-tight tracking-tight tabular-nums">
             {t('summary.files', { count: choice.summary.files })}
           </p>
           <p className="text-muted-foreground mt-0.5 text-xs" data-testid="filing-summary">

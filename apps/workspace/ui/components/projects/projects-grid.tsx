@@ -68,7 +68,7 @@ interface ProjectsViewProps {
  * uppercase eyebrow, `CountPill` for the quiet number next to a heading. This
  * wrapper is only the arrangement of the two. It briefly hand-rolled both, at
  * nearly double the documented tracking and with the count dimmed to
- * `text-muted-foreground/70` — about 2.2:1 on paper, which is not a hierarchy
+ * `text-muted-foreground` — about 2.2:1 on paper, which is not a hierarchy
  * signal, it is an unreadable number. The pill's fill does that job at full
  * contrast instead.
  */

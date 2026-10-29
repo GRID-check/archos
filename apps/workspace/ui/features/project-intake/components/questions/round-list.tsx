@@ -55,7 +55,7 @@ export function RoundList({
     row.done ? t('list.done') : current ? t('list.current') : t('list.open')
   return (
     <aside aria-labelledby="questions-list-title" className="hidden w-[280px] shrink-0 md:block" data-testid="questions-list">
-      <h1 id="questions-list-title" className="ml-2.5 text-xl font-semibold tracking-tight">
+      <h1 id="questions-list-title" className="ml-2.5 text-xl font-medium tracking-tight">
         {t('heading')}
       </h1>
       <p className="text-muted-foreground ml-2.5 mt-1 text-[13px]">{t('subtitle')}</p>

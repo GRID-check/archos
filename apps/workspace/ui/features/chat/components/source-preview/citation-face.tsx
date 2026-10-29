@@ -232,7 +232,7 @@ export const CitationFace: FC<CitationFaceProps> = ({
             // OIB-Richtlinie 2.1, Ausgabe Mai 2023") and the distinguishing
             // part is usually at the END, so a single truncated line makes two
             // different Richtlinien read identically.
-            className="text-foreground line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug"
+            className="text-foreground line-clamp-2 min-w-0 flex-1 text-sm font-medium leading-snug"
             // Storage identity belongs on the tooltip, never in the reading
             // line — a user must not have to read `oib-rl_2_….pdf` to know
             // which document a card stands for.
@@ -248,7 +248,7 @@ export const CitationFace: FC<CitationFaceProps> = ({
           </span>
         )}
         {showLocator && (
-          <span className="text-muted-foreground/80 truncate break-all font-mono text-xs">
+          <span className="text-muted-foreground truncate break-all font-mono text-xs">
             {locator}
           </span>
         )}

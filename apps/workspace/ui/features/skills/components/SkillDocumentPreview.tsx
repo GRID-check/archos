@@ -65,7 +65,7 @@ export const SkillDocumentPreview: FC<SkillDocumentPreviewProps> = ({
         {/* Level 1 — the part that is always loaded. */}
         <div className="bg-muted border-b px-3 py-1.5">
           <SectionLabel as="p">{t('editor.preview.level1')}</SectionLabel>
-          <p className="text-muted-foreground/90 text-xs leading-snug">
+          <p className="text-muted-foreground text-xs leading-snug">
             {t('editor.preview.level1Hint')}
           </p>
         </div>
@@ -76,7 +76,7 @@ export const SkillDocumentPreview: FC<SkillDocumentPreviewProps> = ({
         {/* Level 2 — loaded only if the agent activates the skill. */}
         <div className="bg-muted border-y px-3 py-1.5">
           <SectionLabel as="p">{t('editor.preview.level2')}</SectionLabel>
-          <p className="text-muted-foreground/90 text-xs leading-snug">
+          <p className="text-muted-foreground text-xs leading-snug">
             {t('editor.preview.level2Hint')}
           </p>
         </div>

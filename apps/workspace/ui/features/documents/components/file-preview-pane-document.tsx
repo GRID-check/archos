@@ -47,8 +47,10 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
             <div
               ref={wellRef}
               data-testid="file-preview-well"
+              // The well scrolls on its own, so a keyboard user must be able to reach it (WCAG 2.1.1).
+              tabIndex={0}
               className={cn(
-                'flex min-w-0 justify-center',
+                'focus-visible:ring-ring/60 flex min-w-0 justify-center focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
                 // A PDF brings its own stage (the viewer's), so the well under it
                 // is no ground of its own: the document looks the same here as in
                 // every other place a PDF opens.
@@ -293,7 +295,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
               data-testid="file-peek-summary"
               className="scroll-fade-bottom max-h-[38%] shrink-0 overflow-y-auto overscroll-contain px-4 pt-3.5 pb-4"
             >
-              <SectionLabel as="p" icon={Sparkles} className="font-semibold tracking-[0.05em]">
+              <SectionLabel as="p" icon={Sparkles} className="font-medium tracking-[0.05em]">
                 {t('preview.indexed.title')}
               </SectionLabel>
               <ClampedText

@@ -193,7 +193,7 @@ function BottomSheet({
   const bar = (
     <span aria-hidden="true" className="bg-foreground/20 mx-auto mb-2 block h-1 w-9 rounded-full" />
   )
-  const titleClass = 'block text-sm font-semibold text-foreground line-clamp-2 break-words'
+  const titleClass = 'block text-sm font-medium text-foreground line-clamp-2 break-words'
   const subtitleNode = subtitle && (
     <span className="text-muted-foreground mt-0.5 line-clamp-2 block break-words text-xs">
       {subtitle}

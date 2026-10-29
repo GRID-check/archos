@@ -128,7 +128,7 @@ function Message({
         {/* The name gives way, the time never wraps: „2 hours ago" on two lines reads as two facts. */}
         <p className="flex min-w-0 items-baseline gap-1.5 text-xs">
           <span
-            className="text-foreground min-w-0 truncate font-semibold"
+            className="text-foreground min-w-0 truncate font-medium"
             data-testid={authorKind === 'piloti' ? 'thread-byline' : undefined}
             title={authorKind === 'piloti' ? byline(name, { proposal }) : (name ?? undefined)}
           >
@@ -183,7 +183,7 @@ const MetaChip = forwardRef<
         !set && 'border-dashed',
         set && 'bg-secondary text-foreground border-transparent',
         // Overdue is ink and weight, not gold: gold is the Büroablage's colour.
-        tone === 'urgent' && 'text-foreground border-foreground/50 border-solid font-semibold'
+        tone === 'urgent' && 'text-foreground border-foreground/50 border-solid font-medium'
       )}
     >
       <button
@@ -1082,7 +1082,7 @@ export function ThreadCard({
         <KindIcon className="text-muted-foreground size-3.5" aria-hidden />
         {/* What the card is about, which names it as a dialog: the kind, the number, its state. */}
         <span id={headerId} className="flex min-w-0 items-center gap-1.5">
-          <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>{' '}
+          <span className="text-foreground text-xs font-medium">{t(`annotations.kinds.${annotation.kind}`)}</span>{' '}
           <span className="text-muted-foreground font-mono text-[11px]">#{annotation.number}</span>
           {proposed && (
             <span className="text-muted-foreground border-foreground/50 ml-1 rounded-full border border-dashed px-1.5 text-[10px] font-medium">

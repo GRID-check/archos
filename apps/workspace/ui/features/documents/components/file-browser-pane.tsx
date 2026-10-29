@@ -1029,7 +1029,7 @@ export function FileBrowserPane({
                   promised recent uploads over a block of folders. A grid child
                   spanning the row, so it falls between the two. */}
               {currentFolderId === null && orderedFiles.length > 0 && (
-                <SectionLabel as="p" className="col-span-full mt-1 font-semibold tracking-[0.05em] first:mt-0">
+                <SectionLabel as="p" className="col-span-full mt-1 font-medium tracking-[0.05em] first:mt-0">
                   {t('browser.recentlyUploaded')}
                 </SectionLabel>
               )}

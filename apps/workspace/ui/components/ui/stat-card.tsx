@@ -115,7 +115,7 @@ export function StatCard({
         ) : null}
         <span className="min-w-0 truncate">{label}</span>
       </div>
-      <div className="mt-3 text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
+      <div className="mt-3 text-2xl font-medium tabular-nums tracking-tight">{value}</div>
       {hint && <div className="text-muted-foreground mt-1 text-pretty text-xs">{hint}</div>}
     </div>
   )

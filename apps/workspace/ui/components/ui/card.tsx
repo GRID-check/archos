@@ -62,7 +62,7 @@ const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
     <div
       ref={ref}
       data-slot="card-title"
-      className={cn('text-sm leading-none font-semibold', className)}
+      className={cn('text-sm leading-none font-medium', className)}
       {...props}
     />
   )

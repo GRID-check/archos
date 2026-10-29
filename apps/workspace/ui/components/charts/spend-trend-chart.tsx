@@ -18,7 +18,6 @@
  */
 
 import { type FC } from 'react'
-import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { useColumnSelection } from '@/components/charts/use-column-selection'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useLocale } from '@/i18n'
@@ -61,7 +60,6 @@ export const SpendTrendChart: FC<SpendTrendChartProps> = ({
 
   return (
     <div className="usage-viz">
-      <SeriesPaletteStyle />
       {/* The selected day. `aria-live` so a keyboard walk announces each one;
           the min-height keeps the plot from jumping when the text wraps. */}
       <p

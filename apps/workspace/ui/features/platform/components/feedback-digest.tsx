@@ -283,7 +283,7 @@ function DigestColumn({
       {items.length === 0 ? (
         <p className="text-muted-foreground text-sm">{emptyLabel}</p>
       ) : (
-        <ul className="marker:text-muted-foreground/60 flex list-disc flex-col gap-1.5 pl-5">
+        <ul className="marker:text-muted-foreground flex list-disc flex-col gap-1.5 pl-5">
           {items.map((item) => (
             <li key={item} className="text-muted-foreground text-sm leading-relaxed">
               {item}

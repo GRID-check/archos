@@ -91,7 +91,7 @@ export function RunBlockLine({
           „vor 1…" has lost the thing the time was there for. The tallies step
           aside on a phone, where the title needs the width more. */}
       <span className="flex min-w-0 flex-1 items-baseline overflow-hidden">
-        <span className="text-foreground shrink-0 font-semibold" data-testid="run-line-status">
+        <span className="text-foreground shrink-0 font-medium" data-testid="run-line-status">
           {statusWord}
         </span>
         {title && (

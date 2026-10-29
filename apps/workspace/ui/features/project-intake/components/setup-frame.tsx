@@ -146,7 +146,7 @@ export function SetupBar({ projectId, projectName, step, summaries, progress, on
       <div className="hidden h-16 items-center gap-7 px-8 md:flex">
         <div className="w-52 min-w-0 shrink-0">
           <p className="text-muted-foreground text-[11px] uppercase tracking-[0.06em]">{tShell('head.eyebrow')}</p>
-          {projectName && <p className="truncate text-[15px] font-semibold">{projectName}</p>}
+          {projectName && <p className="truncate text-[15px] font-medium">{projectName}</p>}
         </div>
         <StepRail step={step} summaries={summaries} onGoTo={onGoTo} />
         <Link
@@ -179,7 +179,7 @@ export function SetupBar({ projectId, projectName, step, summaries, progress, on
               <span className="text-muted-foreground text-[11px] uppercase tracking-[0.06em]">
                 {tShell('steps.progress', { current: index + 1, total })}
               </span>
-              <span className="flex items-center gap-1 text-[15px] font-semibold">
+              <span className="flex items-center gap-1 text-[15px] font-medium">
                 {tShell(`steps.${step}`)}
                 <ChevronDown className="text-muted-foreground size-3.5" aria-hidden />
               </span>
@@ -193,7 +193,7 @@ export function SetupBar({ projectId, projectName, step, summaries, progress, on
                   className="touch-target"
                 >
                   <span className="text-muted-foreground w-4 tabular-nums">{i + 1}</span>
-                  <span className={cn('flex-1', summary.id === step && 'font-semibold')}>
+                  <span className={cn('flex-1', summary.id === step && 'font-medium')}>
                     {tShell(`steps.${summary.id}`)}
                   </span>
                   {summary.note && <span className="text-muted-foreground text-xs">{summary.note}</span>}

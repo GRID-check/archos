@@ -89,7 +89,7 @@ function SimilarProjectCard({ projectId, project }: { projectId: string; project
     <RaisedCard interactive className="h-full">
       {/* The body takes the row's height: cards of one row differ a lot, and a short one would leave an empty tray. */}
       <RaisedCardBody className="grid flex-1 content-start gap-4">
-        <h3 className="min-w-0 truncate text-sm font-semibold tracking-tight text-foreground">
+        <h3 className="min-w-0 truncate text-sm font-medium tracking-tight text-foreground">
           <ReferenceProjectLink project={project} />
         </h3>
         <dl className="grid gap-1.5">
