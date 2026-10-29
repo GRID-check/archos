@@ -12,6 +12,7 @@
     "start": "node runtime/server.mjs",
     "test": "node --test runtime/*.test.mjs && bun test src",
     "check:a11y": "node scripts/check-accessibility.mjs",
+    "check:routes": "node scripts/check-route-fates.mjs",
     "check:structured-data": "node scripts/check-structured-data.mjs"
   },
   "dependencies": {

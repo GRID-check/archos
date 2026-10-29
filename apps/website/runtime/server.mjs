@@ -2,7 +2,9 @@
  * Production entry for the public site: the Astro node adapter's own handler,
  * behind steps that set the security headers on every response
  * (`security-headers.mjs`), answer the health probe at `/healthz`, and set
- * Cache-Control on static files (`cache-control.mjs`).
+ * Cache-Control on static files (`cache-control.mjs`), and answer 410 for an old
+ * address that is gone on purpose (`gone.mjs`, reading the route fates in
+ * `../redirects.mjs`).
  *
  * Why a wrapper and not an adapter option: `@astrojs/node` has no hook for the
  * headers of files it serves from `dist/client` (`staticHeaders` covers
@@ -22,6 +24,7 @@ import { fileURLToPath } from 'node:url'
 import { cacheControlFor } from './cache-control.mjs'
 import { HEALTH_PATH, securityHeaders } from './security-headers.mjs'
 import { analyticsOrigins, webAnalyticsConfig } from './web-analytics.mjs'
+import { goneStatus } from './gone.mjs'
 
 // The standalone entry starts its own server on import unless told not to.
 // Static imports are hoisted, so the flag has to be set before a dynamic one.
@@ -69,6 +72,7 @@ const server = http.createServer((req, res) => {
     return
   }
   setCacheControl(req, res)
+  goneStatus(req, res)
   handler(req, res)
 })
 server.listen(PORT, HOST, () => {

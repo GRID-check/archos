@@ -53,6 +53,8 @@ COPY --from=builder --chown=website:nodejs /app/dist ./dist
 COPY --from=prod-deps --chown=website:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=website:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=website:nodejs /app/runtime ./runtime
+# The route fates: runtime/gone.mjs reads the 410 rows at request time.
+COPY --from=builder --chown=website:nodejs /app/redirects.mjs ./redirects.mjs
 USER website
 EXPOSE 4321
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=5 \
