@@ -94,7 +94,7 @@ const RowBody: FC<{ index: number; text: string }> = ({ index, text }) => {
           'card-meta mt-1 font-mono',
           // Full ink on the first ordinal, 60% on the rest: the ordinals are a
           // scale and the first one is the top of it.
-          isFigure ? 'text-foreground' : 'text-muted-foreground/60',
+          isFigure ? 'text-foreground' : 'text-muted-foreground',
         )}
         aria-hidden="true"
       >

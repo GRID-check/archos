@@ -86,7 +86,7 @@ export function StatusSection(): JSX.Element {
       </Section>
 
       <Section title="Progress, meters, skeletons" description="Bars are not controls and not surfaces: no radius.">
-        <Progress value={62} className="max-w-md" />
+        <Progress value={62} aria-label="Fortschritt" className="max-w-md" />
         <SegmentMeter
           label="Befunde"
           segments={[

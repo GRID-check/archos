@@ -190,7 +190,7 @@ export const SourceBasisPicker: FC = () => {
               <SectionLabel as="h3">{t('sourceBasis.external')}</SectionLabel>
               {basis.external.length === 0 ? (
                 <div className="rounded-surface border border-dashed bg-muted p-6 text-center">
-                  <Layers className="mx-auto size-6 text-muted-foreground/60" aria-hidden="true" />
+                  <Layers className="mx-auto size-6 text-muted-foreground" aria-hidden="true" />
                   <p className="mt-2 text-sm font-medium">{t('sourceBasis.emptyTitle')}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t('sourceBasis.emptyBody')}</p>
                 </div>

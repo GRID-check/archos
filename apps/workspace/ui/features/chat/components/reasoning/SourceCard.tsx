@@ -84,7 +84,7 @@ const RoundLoci: FC<{ loci: RoundLocus[]; marked: boolean; repeatLabel: string }
           {i > 0 && ', '}
           {locus.detail}
           {marked && locus.repeat && (
-            <span className="text-muted-foreground/80 italic"> ({repeatLabel})</span>
+            <span className="text-muted-foreground italic"> ({repeatLabel})</span>
           )}
         </Fragment>
       ))}
@@ -357,7 +357,7 @@ export const BareSourceCard: FC<{ name: string; loci?: RoundLocus[]; workspace?:
             {/* No hit tally to stand in for: a bare slot has no card, so the
                 pill appears only when there is a repeat to declare. */}
             {allRepeat && (
-              <span className="bg-muted text-muted-foreground/80 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium italic">
+              <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium italic">
                 {t('thinking.node.roundDocRepeat')}
               </span>
             )}

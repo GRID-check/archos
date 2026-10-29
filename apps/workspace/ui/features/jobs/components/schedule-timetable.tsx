@@ -426,7 +426,7 @@ function WeekGrid({ timetable, locale, colorOf, nameOf, onSelect }: ShapeProps):
             style={{ top: `${gap.top}px`, height: `${BREAK_PX}px` }}
           >
             <span aria-hidden className="border-border flex-1 border-t border-dashed" />
-            <span className="text-muted-foreground/80 shrink-0 text-[10px] uppercase tracking-wide">
+            <span className="text-muted-foreground shrink-0 text-[10px] uppercase tracking-wide">
               {t('timetable.gap', { hours: Math.round(gap.minutes / 60) })}
             </span>
             <span aria-hidden className="border-border flex-1 border-t border-dashed" />
@@ -519,7 +519,7 @@ function Agenda({
               }).format(day.date)}
             </p>
             {day.blocks.length === 0 ? (
-              <p className="text-muted-foreground/70 mt-1 text-xs">{emptyDayLabel}</p>
+              <p className="text-muted-foreground mt-1 text-xs">{emptyDayLabel}</p>
             ) : (
               <ul className="mt-1.5 flex flex-col gap-1.5">
                 {day.blocks.map((block) => (

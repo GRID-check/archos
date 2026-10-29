@@ -248,7 +248,7 @@ export const CitationFace: FC<CitationFaceProps> = ({
           </span>
         )}
         {showLocator && (
-          <span className="text-muted-foreground/80 truncate break-all font-mono text-xs">
+          <span className="text-muted-foreground truncate break-all font-mono text-xs">
             {locator}
           </span>
         )}

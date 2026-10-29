@@ -76,7 +76,7 @@ export function Advanced({
           />
           {label}
           {summary && !open && (
-            <span className="text-muted-foreground/80 min-w-0 truncate text-xs">· {summary}</span>
+            <span className="text-muted-foreground min-w-0 truncate text-xs">· {summary}</span>
           )}
         </button>
       </CollapsibleTrigger>

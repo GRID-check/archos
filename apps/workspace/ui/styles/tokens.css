@@ -84,7 +84,7 @@
   --source-project-text: oklch(0.509 0.13 151.5); /* #0f7a3d */
   --source-office: oklch(0.674 0.127 79); /* #c08c28 — Büroablage, archive-box icon */
   --source-office-tint: oklch(0.951 0.033 88.1); /* #f8eed6 */
-  --source-office-text: oklch(0.554 0.111 77.9); /* #96690e */
+  --source-office-text: oklch(0.51 0.105 77.9); /* darkened a step so text on its tint clears AA (axe, /dev/settings) */
   --source-auto: oklch(0.609 0.006 106.6); /* #83837f — Automatisch / Lücke (knowledge gap) */
   --source-auto-tint: oklch(0.939 0.004 106.5); /* #ebebe8 */
   --source-auto-text: oklch(0.47 0.006 106.6); /* #5b5b57 */
@@ -98,6 +98,7 @@
   --source-model-text: oklch(0.474 0.086 202);
   --status-active: var(--source-project); /* "Aktiv" doubles the project green */
   --status-active-tint: var(--source-project-tint);
+  --status-active-text: var(--source-project-text);
   --status-done: var(--source-auto-text); /* "Abgeschlossen" — quiet warm gray */
   --status-done-tint: var(--source-auto-tint);
   --signal-error: oklch(0.567 0.157 31); /* #c14a38 — errors only */
@@ -216,6 +217,7 @@
   --source-model-text: oklch(0.851 0.069 203);
   --status-active: var(--source-project);
   --status-active-tint: var(--source-project-tint);
+  --status-active-text: var(--source-project-text);
   --status-done: var(--source-auto-text);
   --status-done-tint: var(--source-auto-tint);
   --signal-error: oklch(0.672 0.144 31.6); /* lifted #c14a38 */

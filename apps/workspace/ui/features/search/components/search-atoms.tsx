@@ -538,7 +538,7 @@ export function MetaLine({
         {items.map((item, index) => (
           <span key={index} data-meta-part className="relative inline-flex min-w-0 max-w-full items-center pl-3">
             {item.dot ? (
-              <span className="absolute left-0 w-3 text-center text-muted-foreground/60" aria-hidden>
+              <span className="absolute left-0 w-3 text-center text-muted-foreground" aria-hidden>
                 ·
               </span>
             ) : null}
@@ -683,7 +683,7 @@ export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
 /** A quiet line under a hit: what the words were found in, when the row shows nothing that matched („Gefunden in Zusammenfassung“), what a Fassung changed. Present, never loud. */
 export function MatchHint({ label, parts, testId = 'search-matched-on' }: { label: string; parts: readonly string[]; testId?: string }): JSX.Element {
   return (
-    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid={testId}>
+    <span className="mt-0.5 text-xs text-muted-foreground" data-testid={testId}>
       {label} {parts.join(' · ')}
     </span>
   )

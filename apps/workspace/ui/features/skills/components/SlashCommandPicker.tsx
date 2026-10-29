@@ -301,7 +301,7 @@ export const SlashCommandPicker = forwardRef<SlashCommandPickerHandle, SlashComm
           className="flex shrink-0 items-center gap-2 border-t bg-muted px-3 py-2 pointer-coarse:hidden"
           aria-label={t('composer.picker.keyboardHint')}
         >
-          <Slash className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />
+          <Slash className="size-3 shrink-0 text-muted-foreground" aria-hidden />
           <KbdGroup>
             <Kbd>↑</Kbd>
             <Kbd>↓</Kbd>

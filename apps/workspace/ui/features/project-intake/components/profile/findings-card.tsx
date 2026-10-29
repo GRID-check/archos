@@ -171,7 +171,7 @@ function FindingRow({ item, severalBuildings, ...decide }: Decide & { item: Sugg
     >
       <span className="text-muted-foreground col-span-2 min-w-0 truncate text-[13px] md:col-span-1" title={item.label}>
         {label}
-        {building && <span className="text-muted-foreground/80"> · {building}</span>}
+        {building && <span className="text-muted-foreground"> · {building}</span>}
       </span>
       <span className="min-w-0 truncate text-[15px] font-medium md:text-sm" title={item.display}>
         {item.display}

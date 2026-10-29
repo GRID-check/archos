@@ -93,7 +93,7 @@ export function InspectorRow({
           label however many lines the value wraps to. `aria-hidden`: the label
           beside it is already the accessible name. */}
       <span className="flex h-5 shrink-0 items-center self-start pt-2.5 [box-sizing:content-box]">
-        <Icon className="text-muted-foreground/70 size-3.5" aria-hidden />
+        <Icon className="text-muted-foreground size-3.5" aria-hidden />
       </span>
       <div
         data-slot="inspector-row-body"

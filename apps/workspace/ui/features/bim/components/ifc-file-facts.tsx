@@ -108,7 +108,7 @@ export function IfcFileFacts({ documentId, projectId, className }: IfcFileFactsP
         {rows.map((row) => (
           <div key={row.label} className="flex items-start justify-between gap-3">
             <span className="flex shrink-0 items-center gap-1.5 pt-px text-xs text-muted-foreground">
-              <row.icon className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden />
+              <row.icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
               {row.label}
             </span>
             <span className="min-w-0 text-right text-xs font-medium tabular-nums text-foreground">
@@ -117,7 +117,7 @@ export function IfcFileFacts({ documentId, projectId, className }: IfcFileFactsP
           </div>
         ))}
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground/80">{t('facts.caption')}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">{t('facts.caption')}</p>
     </section>
   )
 }

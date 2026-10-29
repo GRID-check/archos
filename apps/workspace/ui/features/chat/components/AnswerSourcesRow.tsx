@@ -288,6 +288,7 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
         )
       })}
       {(hidden > 0 || expanded) && documents.length > MAX_ANSWER_SOURCES && (
+        <span role="listitem" className="inline-flex items-center">
         <button
           type="button"
           onClick={() => setExpanded((open) => !open)}
@@ -297,10 +298,13 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
         >
           {expanded ? t('answerSources.less') : t('answerSources.more', { count: hidden })}
         </button>
+        </span>
       )}
       {/* Every source of this answer as a citation, in the format the user's
           own tooling reads. Quiet, at the end of the row. */}
-      <CopyCitationsMenu citations={refs} />
+      <span role="listitem" className="inline-flex items-center">
+        <CopyCitationsMenu citations={refs} />
+      </span>
     </div>
   )
 }

@@ -47,8 +47,10 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
             <div
               ref={wellRef}
               data-testid="file-preview-well"
+              // The well scrolls on its own, so a keyboard user must be able to reach it (WCAG 2.1.1).
+              tabIndex={0}
               className={cn(
-                'flex min-w-0 justify-center',
+                'focus-visible:ring-ring/60 flex min-w-0 justify-center focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
                 // A PDF brings its own stage (the viewer's), so the well under it
                 // is no ground of its own: the document looks the same here as in
                 // every other place a PDF opens.

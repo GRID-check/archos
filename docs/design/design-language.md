@@ -191,6 +191,21 @@ app's own choices, not defects). Inside that level the rules are the brand's:
   WOFF2, which react-pdf embeds as blank glyphs. A static General Sans Medium
   TTF or OTF from `packages/brand` is the one thing that unlocks it.
 
+### Accessibility gate (WCAG 2.2 AA, light and dark)
+
+`task workspace:a11y` runs axe-core with the WCAG 2.0, 2.1 and 2.2 A and AA rule
+sets over the `/dev` preview routes in `scripts/a11y-audit.mjs`, light and dark, at
+1440 and 390 pixels (start `bun run dev` first). It fails on any violation not in
+`scripts/a11y-baseline.json` and on a baseline entry that is gone, so the list only
+shrinks. `ui/components/brand/brand-surfaces.a11y.spec.tsx` holds the structural
+rules in the unit suite (jsdom cannot measure contrast). Contrast rules for what
+you write: text is 4.5:1 and large text 3:1; secondary text is
+`text-muted-foreground` at full strength, never `/60` to `/90` of it; text on a
+tint takes the `-text` token (`--source-*-text`, `--status-active-text`), never the
+signal colour itself. Disabled controls are exempt, as WCAG 1.4.3 says
+("inactive user interface components"); axe skips them. A scrollable region must be
+reachable by keyboard (`tabIndex={0}`).
+
 **Answer prose** (`MarkdownRenderer`). Paragraphs and lists hold a
 `max-w-[72ch]` measure. The body hyphenates (`hyphens-auto`, words of ten
 letters or more, four on each side, `[hyphenate-limit-chars:10_4_4]`) by the

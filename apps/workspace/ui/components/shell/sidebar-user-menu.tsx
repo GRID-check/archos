@@ -192,7 +192,7 @@ export function SidebarUserMenu({
 
                 `truncate` on both lines: neither may push the other. */}
             {organizationName && (
-              <span className="text-muted-foreground/70 truncate text-[9.5px] font-medium tracking-wide uppercase">
+              <span className="text-muted-foreground truncate text-[9.5px] font-medium tracking-wide uppercase">
                 {organizationName}
               </span>
             )}

@@ -123,7 +123,7 @@ const actionButton = cn(
   // The shared press: its transition list carries the hover background too,
   // which this list used to leave out, so the fill snapped in under an
   // easing colour.
-  'text-muted-foreground/70',
+  'text-muted-foreground',
   PRESSABLE,
   'hover:bg-accent hover:text-foreground',
   FOCUS_RING
