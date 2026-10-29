@@ -7,6 +7,8 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
 "agent.agents.deep_researcher" = ["skills/**/*"]
+# The brand's strings, copied here by `node packages/brand/sync.mjs`; `agent.common.brand` reads the name.
+"agent.common" = ["identity.json"]
 
 [project]
 name = "agent"

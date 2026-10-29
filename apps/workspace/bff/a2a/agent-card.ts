@@ -44,8 +44,8 @@ export function buildAgentCard(env: Env = process.env): AgentCard | null {
   return {
     name: PRODUCT_NAME,
     description:
-      'Piloti is the workspace for architects: a planning office runs its projects and processes in it, and ' +
-      'Piloti, the agent, is a colleague in that office. Ask it what you would ask a colleague who knows the ' +
+      `${PRODUCT_NAME} is the workspace for architects: a planning office runs its projects and processes in it, and ` +
+      `${PRODUCT_NAME}, the agent, is a colleague in that office. Ask it what you would ask a colleague who knows the ` +
       'office’s documents, the project’s files and building law; it answers as the person you act for, with ' +
       'their rights, and may file a document.',
     supportedInterfaces: duplicateInterfacesForLegacy(
@@ -87,14 +87,14 @@ export function buildAgentCard(env: Env = process.env): AgentCard | null {
     skills: [
       {
         id: 'consult',
-        name: 'Ask Piloti',
+        name: `Ask ${PRODUCT_NAME}`,
         description:
-          'A question or request for Piloti, in German or English. Piloti answers from the office’s documents, ' +
+          `A question or request for ${PRODUCT_NAME}, in German or English. ${PRODUCT_NAME} answers from the office’s documents, ` +
           'the project’s files and building law, as the signed-in person. To ask about a project, put its id in ' +
-          'the message metadata as "projectId" (project-list on the MCP door names the ids): without it Piloti ' +
+          `the message metadata as "projectId" (project-list on the MCP door names the ids): without it ${PRODUCT_NAME} ` +
           `answers for the office as a whole and reads no project's files. Send the task's contextId to follow up. A blocking ` +
           `call waits for the answer; with returnImmediately the task is "working" after at most ${ASK_WAIT_SECONDS} ` +
-          'seconds and GetTask reads it later. An answer is an artifact of text; a document Piloti filed is an ' +
+          `seconds and GetTask reads it later. An answer is an artifact of text; a document ${PRODUCT_NAME} filed is an ` +
           'artifact naming it.',
         tags: ['architecture', 'building law', 'project documents', 'planning office'],
         examples: [

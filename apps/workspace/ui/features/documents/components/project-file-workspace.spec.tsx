@@ -14,6 +14,7 @@ import type { DocumentWireRow } from '../lib/file-item'
 import { handOverDroppedFiles, takeDroppedFiles } from '../lib/dropped-file-handover'
 import { SUGGESTED_SCREENING_POLICY } from '@/lib/upload-screening/policy'
 import { projectScreeningBody } from '@/mocks/handlers/upload-screening'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function renderWorkspace(ui: ReactElement) {
   return render(
@@ -776,7 +777,7 @@ describe('ProjectFileWorkspace — a picked file the project already holds', () 
     renderWithCorpus()
 
     await userEvent.click(screen.getByTestId('file-filter-menu-trigger'))
-    await userEvent.click(await screen.findByLabelText('By Piloti'))
+    await userEvent.click(await screen.findByLabelText(`By ${PRODUCT_NAME}`))
     await waitFor(() => expect(searches.at(-1)).toContain('authoredBy=agent'))
     await userEvent.keyboard('{Escape}')
 
@@ -967,7 +968,7 @@ describe('ProjectFileWorkspace — server-seeded first paint', () => {
     expect(await findFileButton(/Einreichplan\.pdf/)).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /filter/i }))
-    await userEvent.click(await screen.findByLabelText('By Piloti'))
+    await userEvent.click(await screen.findByLabelText(`By ${PRODUCT_NAME}`))
 
     // The seed is spent by the mount, not by the component's lifetime: a filter
     // that only the server can apply must still reach it.
@@ -1854,7 +1855,7 @@ describe('ProjectFileWorkspace — the Von Piloti filter', () => {
     // header. The rule it tests is unchanged: the filter is a QUERY, not a
     // client-side pass over rows already fetched.
     await userEvent.click(screen.getByTestId('file-filter-menu-trigger'))
-    await userEvent.click(await screen.findByLabelText('By Piloti'))
+    await userEvent.click(await screen.findByLabelText(`By ${PRODUCT_NAME}`))
 
     await waitFor(() => expect(searches.at(-1)).toContain('authoredBy=agent'))
     expect(searches.at(-1)).toContain('projectId=proj-1')
@@ -1874,7 +1875,7 @@ describe('ProjectFileWorkspace — the Von Piloti filter', () => {
     await waitFor(() => expect(searches.length).toBeGreaterThan(0))
 
     await userEvent.click(screen.getByTestId('file-filter-menu-trigger'))
-    const check = await screen.findByLabelText('By Piloti')
+    const check = await screen.findByLabelText(`By ${PRODUCT_NAME}`)
     await userEvent.click(check)
     await waitFor(() => expect(searches.at(-1)).toContain('authoredBy=agent'))
     await userEvent.click(check)

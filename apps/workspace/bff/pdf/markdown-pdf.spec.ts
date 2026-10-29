@@ -29,6 +29,9 @@ import {
   PDF_MEDIA_TYPE,
   renderMarkdownPdf,
 } from './markdown-pdf'
+import { PRODUCT_NAME } from '@/lib/brand'
+
+const WORDMARK = PRODUCT_NAME.toUpperCase()
 
 /**
  * The mermaid placeholder every call has to supply, and its own words rather
@@ -99,7 +102,7 @@ describe('renderMarkdownPdf', () => {
     // default precisely so a change like that could not arrive unnoticed; it
     // arrived, deliberately, so the assertion follows it rather than the other
     // way round.
-    expect(pdf.info.Creator).toBe('Piloti')
+    expect(pdf.info.Creator).toBe(PRODUCT_NAME)
   })
 
   it('prints the notice the caller supplied, on the first page', async () => {
@@ -161,7 +164,8 @@ describe('renderMarkdownPdf', () => {
         // The cover (lockup + title), then the running header, the page footer
         // and the body. No facts, no marking, no findings — which is what "the
         // caller supplied neither" means now that the chrome is always there.
-        'PILOTI Brandschutz Straßenhäuser PILOTI Brandschutz Straßenhäuser PILOTI 2 / 2 ' +
+        // The lockup sets the name in capitals (the wordmark); the footer is the same lockup.
+        `${WORDMARK} Brandschutz Straßenhäuser ${WORDMARK} Brandschutz Straßenhäuser ${WORDMARK} 2 / 2 ` +
           'Die Fluchtwegbreite beträgt 1,20 m.'
       )
     )
@@ -198,7 +202,7 @@ describe('renderMarkdownPdf', () => {
       const pdf = await readPdf(bytes)
 
       expect(pdf.info.Keywords).toBe(
-        'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false; AIRunId=run_7'
+        `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false; AIRunId=run_7`
       )
       expect(pdf.info.Creator).toBe(AI_GENERATOR_NAME)
       expect(pdf.info.Title).toBe('Brandschutz Straßenhäuser')
@@ -217,7 +221,7 @@ describe('renderMarkdownPdf', () => {
       )
 
       expect(pdf.info.Keywords).toBe(
-        'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false'
+        `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false`
       )
     })
   })

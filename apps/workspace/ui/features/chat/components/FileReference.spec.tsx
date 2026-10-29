@@ -9,6 +9,7 @@ import type { FileItem } from '@/features/documents/components/project-file-work
 import type { StoredFile } from '@/features/documents/hooks/use-surfaced-documents'
 import { fileReferenceHref } from '../lib/file-references'
 import { FileReferenceLink, FileReferenceProvider } from './FileReference'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const viewport = { isMobile: false }
 vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => viewport.isMobile }))
@@ -203,7 +204,7 @@ describe('FileReferenceLink', () => {
     })
     await user.tab()
     expect(await screen.findByTestId('file-reference-peek')).toBeInTheDocument()
-    expect(screen.getByText(/Piloti zitiert sie nicht/)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(String.raw`${PRODUCT_NAME} zitiert sie nicht`))).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Neben der Antwort öffnen/ })).toBeInTheDocument()
   })
 
@@ -222,7 +223,7 @@ describe('FileReferenceLink', () => {
     expect(line).not.toHaveTextContent(/freigeb/i)
     expect(line.querySelector('[data-mark="held"]')).not.toBeNull()
     // It is neither a failure nor a file at rest, and it only opens.
-    expect(screen.queryByText(/Lesen fehlgeschlagen|Piloti zitiert sie nicht/)).not.toBeInTheDocument()
+    expect(screen.queryByText(new RegExp(String.raw`Lesen fehlgeschlagen|${PRODUCT_NAME} zitiert sie nicht`))).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Neben der Antwort öffnen/ })).toBeInTheDocument()
   })
 

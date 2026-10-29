@@ -9,6 +9,7 @@ import {
   MentionPicker,
   type MentionPickerHandle,
 } from './MentionPicker'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const person = (
   id: string,
@@ -25,7 +26,7 @@ const person = (
 
 const AGENT: MentionCandidate = {
   targetId: AGENT_MENTION_ID,
-  person: { userId: AGENT_MENTION_ID, name: 'Piloti', email: null, profilePictureUrl: null },
+  person: { userId: AGENT_MENTION_ID, name: PRODUCT_NAME, email: null, profilePictureUrl: null },
   isAgent: true,
   isParticipant: true,
   needsInvite: false,
@@ -58,7 +59,7 @@ const optionNames = (): string[] =>
 
 describe('filterMentionCandidates — order and grouping', () => {
   test('pins the assistant first, then participants, then everyone else', () => {
-    const groups = filterMentionCandidates(CANDIDATES, '', true, 'Piloti')
+    const groups = filterMentionCandidates(CANDIDATES, '', true, PRODUCT_NAME)
     expect(groups.visible.map((c) => c.targetId)).toEqual([
       AGENT_MENTION_ID,
       'u-anna',
@@ -73,14 +74,14 @@ describe('filterMentionCandidates — order and grouping', () => {
   test('filters on name and on email, case-insensitively', () => {
     // The address stays searchable: typing it is how one of two namesakes is
     // picked. It ranks below every name match ("ranking" below).
-    expect(filterMentionCandidates(CANDIDATES, 'hof', true, 'Piloti').visible).toEqual([MARKUS])
-    expect(filterMentionCandidates(CANDIDATES, 'U-SABINE@', true, 'Piloti').visible).toEqual([
+    expect(filterMentionCandidates(CANDIDATES, 'hof', true, PRODUCT_NAME).visible).toEqual([MARKUS])
+    expect(filterMentionCandidates(CANDIDATES, 'U-SABINE@', true, PRODUCT_NAME).visible).toEqual([
       SABINE,
     ])
   })
 
   test('a row the caller cannot invite stays visible but is not selectable (MN-5)', () => {
-    const groups = filterMentionCandidates(CANDIDATES, '', false, 'Piloti')
+    const groups = filterMentionCandidates(CANDIDATES, '', false, PRODUCT_NAME)
     expect(groups.visible).toContain(SABINE)
     expect(groups.selectable).not.toContain(SABINE)
   })
@@ -91,7 +92,7 @@ describe('MentionPicker — the rows', () => {
     renderPicker()
     const options = optionNames()
     expect(options).toHaveLength(4)
-    expect(options[0]).toContain('Piloti')
+    expect(options[0]).toContain(PRODUCT_NAME)
     expect(options[0]).toContain('Ask the assistant')
     expect(options[0]).toContain('Assistant')
   })
@@ -332,7 +333,7 @@ describe('ranking: names before e-mail addresses', () => {
   const READERS = [ANNA_LEHNER, JAKOB, LENA]
 
   test('a name match leads, and e-mail-only matches stay below it', () => {
-    const groups = filterMentionCandidates(READERS, 'Le', true, 'Piloti')
+    const groups = filterMentionCandidates(READERS, 'Le', true, PRODUCT_NAME)
     expect(groups.visible.map((c) => c.targetId)).toEqual(['u-lena', 'u-anna', 'u-jakob'])
     expect(groups.preselected).toBe(0)
   })
@@ -340,7 +341,7 @@ describe('ranking: names before e-mail addresses', () => {
   test('the start of a name part beats the query inside a name', () => {
     const JOHANN = person('u-johann', 'Johann Berger')
     const ANDREA = person('u-andrea', 'Maria Andrea Huber')
-    const groups = filterMentionCandidates([JOHANN, ANDREA], 'an', true, 'Piloti')
+    const groups = filterMentionCandidates([JOHANN, ANDREA], 'an', true, PRODUCT_NAME)
     expect(groups.visible).toEqual([ANDREA, JOHANN])
   })
 
@@ -378,7 +379,7 @@ describe('ranking: names before e-mail addresses', () => {
   })
 
   test('an address still finds its person when no name matches', () => {
-    expect(filterMentionCandidates(READERS, 'lechner', true, 'Piloti').visible).toEqual([JAKOB])
+    expect(filterMentionCandidates(READERS, 'lechner', true, PRODUCT_NAME).visible).toEqual([JAKOB])
   })
 
   test('a letter more puts the selection back on the best match, even when the same people match', () => {
@@ -399,7 +400,7 @@ describe('search folds diacritics', () => {
       [person('u-m', 'Sabine Müller')],
       'muller',
       true,
-      'Piloti',
+      PRODUCT_NAME,
     )
     expect(groups.visible).toHaveLength(1)
   })
@@ -409,7 +410,7 @@ describe('search folds diacritics', () => {
       [person('u-m', 'Sabine Müller')],
       'müller',
       true,
-      'Piloti',
+      PRODUCT_NAME,
     )
     expect(groups.visible).toHaveLength(1)
   })

@@ -13,6 +13,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { InboxItemRow, type InboxMarkClient } from './InboxItemRow'
 import { ARCHIVE_UNDO_MS } from '../hooks/use-undoable-archive'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Where the row is drawn: the Postfach, as the reader has it filtered. */
 const page = vi.hoisted(() => ({ pathname: '/', search: '' }))
@@ -321,7 +322,7 @@ describe('InboxItemRow — the operational storage alert (ADR-0042)', () => {
     expect(screen.getByText('Your organization is running out of storage')).toBeInTheDocument()
     expect(
       screen.getByText(
-        '82% of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs Piloti for you to raise the quota.',
+        `82% of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs ${PRODUCT_NAME} for you to raise the quota.`,
       ),
     ).toBeInTheDocument()
     // The deep link goes to Organization → Storage, which every member can read
@@ -865,7 +866,7 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
 
   test('a finished mark names the mark and the document, says it was for the reader, and what to do', () => {
     german(onMark())
-    expect(screen.getByText('Piloti hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet`)).toBeInTheDocument()
     expect(screen.getByText('Lesen Sie die Antwort im Verlauf der Anmerkung.')).toBeInTheDocument()
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Türbreite prüfen')
     expect(screen.getByTestId('inbox-item-link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
@@ -873,37 +874,37 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
 
   test('without a document name it still names the mark, never „Chat ohne Titel“', () => {
     german(onMark({ subject: null }))
-    expect(screen.getByText('Piloti hat Anmerkung 4 für Sie bearbeitet')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} hat Anmerkung 4 für Sie bearbeitet`)).toBeInTheDocument()
     expect(screen.queryByText(/Chat ohne Titel/)).not.toBeInTheDocument()
   })
 
   test.each([
     ['budget', /Das Nutzungsbudget ist aufgebraucht\..*Organisation → Nutzung & Budgets/],
-    ['busy', /Piloti kam nicht rechtzeitig dazu.*später noch einmal/],
-    ['access', /Piloti konnte sich nicht in Ihrem Namen anmelden\./],
+    ['busy', new RegExp(String.raw`${PRODUCT_NAME} kam nicht rechtzeitig dazu.*später noch einmal`)],
+    ['access', new RegExp(String.raw`${PRODUCT_NAME} konnte sich nicht in Ihrem Namen anmelden\.`)],
     ['error', /Die Bearbeitung brach ab, bevor eine Antwort da war\./],
   ] as const)('a failure says why (%s) and what the reader can do', (variant, body) => {
     german(onMark({ type: 'piloti.work_failed', variant }))
-    expect(screen.getByText('Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten`)).toBeInTheDocument()
     expect(screen.getByText(body)).toBeInTheDocument()
   })
 
   test('a failure stored before the reason was kept reads the general sentence', () => {
     german(onMark({ type: 'piloti.work_failed', variant: null }))
     expect(
-      screen.getByText('Öffnen Sie die Anmerkung: Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst.'),
+      screen.getByText(`Öffnen Sie die Anmerkung: Bitten Sie ${PRODUCT_NAME} noch einmal darum oder bearbeiten Sie sie selbst.`),
     ).toBeInTheDocument()
   })
 
   test('a variant the build has no words for reads the type’s general wording', () => {
     german(onMark({ type: 'piloti.work_failed', variant: 'quota_from_the_future' }))
-    expect(screen.getByText('Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten')).toBeInTheDocument()
-    expect(screen.getByText(/Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst/)).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten`)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(String.raw`Bitten Sie ${PRODUCT_NAME} noch einmal darum oder bearbeiten Sie sie selbst`))).toBeInTheDocument()
   })
 
   test('a delegation handed back says the mark is with the reader again', () => {
     german(onMark({ variant: 'assigned' }))
-    expect(screen.getByText('Piloti hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet`)).toBeInTheDocument()
     expect(screen.getByText('Die Anmerkung liegt wieder bei Ihnen.')).toBeInTheDocument()
   })
 
@@ -918,8 +919,8 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
 
   test('a Rückfrage asks the reader, with the question below', () => {
     german(onMark({ type: 'piloti.asks_you', actionable: true, excerpt: 'Ist die Brüstungshöhe hier 1,00 m?' }))
-    expect(screen.getByText('Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
-    expect(screen.getByText('Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG“`)).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.`)).toBeInTheDocument()
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Ist die Brüstungshöhe hier 1,00 m?')
   })
 
@@ -938,7 +939,7 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
         variant: 'rename',
       }),
     )
-    expect(screen.getByText('Piloti schlägt eine Umbenennung vor')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} schlägt eine Umbenennung vor`)).toBeInTheDocument()
     expect(
       screen.getByText('Der Vorschlag steht im Chat. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.'),
     ).toBeInTheDocument()
@@ -946,13 +947,13 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
 
   test('mirrors the meaning in English', () => {
     render(<InboxItemRow item={onMark({ type: 'piloti.work_failed', variant: 'budget' })} />)
-    expect(screen.getByText('Piloti could not work on annotation 4 in “Grundriss EG”')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} could not work on annotation 4 in “Grundriss EG”`)).toBeInTheDocument()
     expect(screen.getByText(/The usage budget is used up\./)).toBeInTheDocument()
   })
 
   test('a redacted row names neither the mark nor why', () => {
     german(onMark({ type: 'piloti.work_failed', href: null, subject: null, related: null, excerpt: null, variant: null }))
-    expect(screen.getByText('Piloti konnte eine Anmerkung nicht bearbeiten')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} konnte eine Anmerkung nicht bearbeiten`)).toBeInTheDocument()
     // Not „Dieser Chat …": the row points at a mark in a document.
     expect(screen.getByText('Das ist für Sie nicht mehr verfügbar.')).toBeInTheDocument()
   })
@@ -997,7 +998,7 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
 
   test('says Piloti did it for the colleague when Piloti assigned it', () => {
     german(onMark({ variant: 'piloti' }))
-    expect(screen.getByText('Piloti hat Ihnen für Anna Weber Anmerkung 4 in „Grundriss EG“ zugewiesen')).toBeInTheDocument()
+    expect(screen.getByText(`${PRODUCT_NAME} hat Ihnen für Anna Weber Anmerkung 4 in „Grundriss EG“ zugewiesen`)).toBeInTheDocument()
   })
 
   test('says by when the Zuständige is responsible, when the mark has a date', () => {
@@ -1010,7 +1011,7 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
   test.each([
     ['due', '2026-10-31', 'Anna Weber hat die Frist von Anmerkung 4 in „Grundriss EG“ auf 31. Okt. 2026 gesetzt'],
     ['due_cleared', null, 'Anna Weber hat die Frist von Anmerkung 4 in „Grundriss EG“ entfernt'],
-    ['due_piloti', '2026-10-31', 'Piloti hat für Anna Weber die Frist von Anmerkung 4 in „Grundriss EG“ auf 31. Okt. 2026 gesetzt'],
+    ['due_piloti', '2026-10-31', `${PRODUCT_NAME} hat für Anna Weber die Frist von Anmerkung 4 in „Grundriss EG“ auf 31. Okt. 2026 gesetzt`],
   ] as const)('tells the Zuständige the date moved (%s)', (variant, dueOn, title) => {
     german(onMark({ variant, dueOn }))
     expect(screen.getByText(title)).toBeInTheDocument()
@@ -1337,7 +1338,7 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     fireEvent.change(screen.getByLabelText('Your reply to annotation 4'), { target: { value: 'Ist bestellt.' } })
     fireEvent.click(screen.getByTestId('inbox-mark-reply-box-send'))
     await waitFor(() =>
-      expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Piloti reads it only once you ask it with @Piloti in the review.'),
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent(`${PRODUCT_NAME} reads it only once you ask it with @${PRODUCT_NAME} in the review.`),
     )
   })
 
@@ -1398,7 +1399,7 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
 
   test('offers @Piloti where events wake Piloti, and sends it as the reply’s flag', async () => {
     candidates()
-    const marks = client({ reply: vi.fn(async () => answered('queued', [{ targetId: 'agent:piloti', display: 'Piloti' }])) })
+    const marks = client({ reply: vi.fn(async () => answered('queued', [{ targetId: 'agent:piloti', display: PRODUCT_NAME }])) })
     render(<InboxItemRow item={markRow({ pilotiWakes: true })} markClient={marks} />)
     fireEvent.click(screen.getByTestId('inbox-mark-reply'))
     fireEvent.click(screen.getByTestId('inbox-mark-reply-box-mention'))
@@ -1406,9 +1407,9 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     await userEvent.type(box, 'stimmt das?{Enter}')
     await waitFor(() =>
       expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', {
-        body: '@Piloti stimmt das?',
+        body: `@${PRODUCT_NAME} stimmt das?`,
         addressesPiloti: true,
-        mentions: [{ targetId: 'agent:piloti', display: 'Piloti' }],
+        mentions: [{ targetId: 'agent:piloti', display: PRODUCT_NAME }],
       }),
     )
   })
@@ -1600,7 +1601,7 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
       />,
     )
     const discuss = screen.getByTestId('discuss-document')
-    expect(discuss).toHaveAttribute('aria-label', 'Discuss with Piloti')
+    expect(discuss).toHaveAttribute('aria-label', `Discuss with ${PRODUCT_NAME}`)
     expect(discuss.querySelector('.max-sm\\:hidden')).not.toBeNull()
     fireEvent.click(discuss)
     expect(onOpen).toHaveBeenCalledTimes(1)

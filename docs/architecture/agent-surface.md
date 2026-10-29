@@ -421,7 +421,7 @@ policy reads it: the principal's audience is `platform` there (`audienceOf`),
 so `canSee`, search, describe and call offer what the config marks `platform`
 and nothing else; an office operation named on the platform door is unknown,
 and the reverse. The server names itself
-`piloti-platform` and gives the console's own instructions
+`workspace-platform` and gives the console's own instructions
 (`PLATFORM_MCP_INSTRUCTIONS`).
 
 Fleet-wide writes carry `destructive: true` so the client asks the operator

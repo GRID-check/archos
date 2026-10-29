@@ -55,6 +55,7 @@ import { auditWakeEnded, auditWakeStarted, type AuditedWake } from './wake-audit
 import { delegationEventId } from './wake-ids'
 import { announceAgentWork } from './agent-work'
 import { findWake, handBackDelegation, settleWake } from './wake-repository'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The hello entries a server must name before a wake is sent: without `if_idle` it would supersede. */
 export const WAKE_REQUIRES = [
@@ -174,7 +175,7 @@ async function handBack(organizationId: string, payload: AgentWakePayload, doc: 
         kind: 'annotations.changed',
         annotationIds: [mark.id],
         change: 'updated',
-        actor: { peerId: null, userId: payload.actor.userId, name: 'Piloti', kind: 'piloti' },
+        actor: { peerId: null, userId: payload.actor.userId, name: PRODUCT_NAME, kind: 'piloti' },
       }).catch(() => undefined)
     }
     return handedBack

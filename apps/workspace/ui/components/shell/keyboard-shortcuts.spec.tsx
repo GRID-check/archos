@@ -6,6 +6,7 @@ import { projectIdFromPathname } from './command-palette'
 import { SHORTCUTS_PREFERENCE_KEY } from '@/hooks/use-shortcuts-preference'
 import { ShellSearchButton } from './shell-search-button'
 import { useShellOverlays } from './shell-overlays'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const push = vi.fn()
 let pathname = '/app/projects'
@@ -75,7 +76,7 @@ describe('KeyboardShortcuts', () => {
 
     expect(await screen.findByText('Current project')).toBeInTheDocument()
     // Click-dummy IA (spec §5): Chat/Files/Settings + Setup (intake).
-    for (const section of ['Ask Piloti', 'Files', 'Overview', 'Setup']) {
+    for (const section of [`Ask ${PRODUCT_NAME}`, 'Files', 'Overview', 'Setup']) {
       expect(screen.getByText(section)).toBeInTheDocument()
     }
     // Members/Research left the IA (FB-9/FB-10). "Overview" is listed above,
@@ -119,7 +120,7 @@ describe('KeyboardShortcuts', () => {
 
     await screen.findByText('Keyboard shortcuts')
     // Rows are derived from the shared IA, so they carry the rail's own labels.
-    for (const label of ['All projects', 'Organization', 'Ask Piloti', 'Files', 'Office filing', 'Overview']) {
+    for (const label of ['All projects', 'Organization', `Ask ${PRODUCT_NAME}`, 'Files', 'Office filing', 'Overview']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
     // Flag-gated sections stay out until their flag is on.

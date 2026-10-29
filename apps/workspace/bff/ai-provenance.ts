@@ -29,6 +29,8 @@
  * it.
  */
 
+import { PRODUCT_NAME } from '@/lib/brand'
+
 /**
  * The name a downstream detector matches on. Stable: it is an interface.
  *
@@ -37,7 +39,7 @@
  * an office searching its archive for machine-written documents searches for
  * the thing that wrote them.
  */
-export const AI_GENERATOR_NAME = 'Piloti'
+export const AI_GENERATOR_NAME = PRODUCT_NAME
 
 /**
  * The property names, spelled once.

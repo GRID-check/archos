@@ -36,6 +36,7 @@ vi.mock('./file-preview-pane', async () => {
 
 import { FilePreviewBridge, FilePreviewHost, METADATA_GRACE_POLLS, useFilePeekBesideChat } from './file-preview-host'
 import { onDocumentsChanged } from '@/lib/documents/document-changes'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const FILE: FileItem = {
   id: 'doc-1',
@@ -219,7 +220,7 @@ describe('FilePreviewHost', () => {
         </FilePreviewBridge>,
       )
 
-      expect(screen.getByRole('status')).toHaveTextContent(/Piloti cannot cite this file/i)
+      expect(screen.getByRole('status')).toHaveTextContent(new RegExp(String.raw`${PRODUCT_NAME} cannot cite this file`, 'i'))
       expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument()
     })
 

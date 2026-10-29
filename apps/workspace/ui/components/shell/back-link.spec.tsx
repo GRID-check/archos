@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { BackLink } from './back-link'
 import { writeTrail, type ReturnTrail } from '@/lib/navigation/return-trail'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const visits = (...paths: string[]): ReturnTrail => paths.map((path) => ({ path }))
 
@@ -115,7 +116,7 @@ describe('BackLink — how it navigates', () => {
     writeTrail(visits('/app/projects/p1/chat', '/app/organization', '/app/organization/models'))
     const user = userEvent.setup()
     renderBackLink()
-    await waitFor(() => expect(screen.getByTestId('back-link')).toHaveTextContent('Back to Ask Piloti'))
+    await waitFor(() => expect(screen.getByTestId('back-link')).toHaveTextContent(`Back to Ask ${PRODUCT_NAME}`))
 
     await user.click(screen.getByTestId('back-link'))
     expect(back).not.toHaveBeenCalled()

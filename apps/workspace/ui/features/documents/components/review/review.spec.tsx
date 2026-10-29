@@ -37,6 +37,7 @@ import { ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { DraftCard, ThreadCard } from './thread-card'
 import { useChatStore } from '@/features/chat/store'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // The real chat store, signed in as `user_me`: the review reads who is looking
 // from it, and `use-canvas-ask` subscribes to it.
@@ -770,18 +771,18 @@ describe('the review', () => {
     const thread = await screen.findByTestId('review-thread')
     const box = within(thread).getByTestId('thread-reply')
     // The chat's own picker, gesture for gesture: „@" opens it, a pick writes the name.
-    await userEvent.type(box, '@pil')
+    await userEvent.type(box, `@${PRODUCT_NAME.slice(0, 3).toLowerCase()}`)
     await userEvent.click(pickerOption(thread, 'agent:piloti'))
-    expect(box).toHaveValue('@Piloti ')
+    expect(box).toHaveValue(`@${PRODUCT_NAME} `)
     await userEvent.type(box, 'Stimmt die Breite?{Enter}')
 
     // The mention is what was picked, sent beside the text and never read out of it.
     await waitFor(() =>
       expect(replies).toEqual([
         {
-          body: '@Piloti Stimmt die Breite?',
+          body: `@${PRODUCT_NAME} Stimmt die Breite?`,
           addressesPiloti: true,
-          mentions: [{ targetId: 'agent:piloti', display: 'Piloti' }],
+          mentions: [{ targetId: 'agent:piloti', display: PRODUCT_NAME }],
         },
       ])
     )
@@ -790,7 +791,7 @@ describe('the review', () => {
       // The id a server wake of the same reply would use: the two can never both run.
       message_id: wakeTurnId('r1'),
       conversation_id: 's_thread_doc_1',
-      text: '@Piloti Stimmt die Breite?',
+      text: `@${PRODUCT_NAME} Stimmt die Breite?`,
       reply_in_thread: true,
       focus_region: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.25, annotation_id: 'ann_1' },
     })
@@ -847,7 +848,7 @@ describe('the review', () => {
     await userEvent.click(await screen.findByTestId('review-row'))
     const thread = await screen.findByTestId('review-thread')
     const box = within(thread).getByTestId('thread-reply')
-    await userEvent.type(box, '@pil')
+    await userEvent.type(box, `@${PRODUCT_NAME.slice(0, 3).toLowerCase()}`)
     await userEvent.click(pickerOption(thread, 'agent:piloti'))
     await userEvent.type(box, 'Stimmt die Breite?{Enter}')
 
@@ -874,7 +875,7 @@ describe('the review', () => {
         kind: 'annotations.changed',
         annotationIds: ['ann_1'],
         change: 'replied',
-        actor: { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' },
+        actor: { peerId: null, userId: 'user_me', name: PRODUCT_NAME, kind: 'piloti' },
       },
     })
     await waitFor(() => expect(screen.queryByTestId('thread-agent-work')).toBeNull())
@@ -930,11 +931,11 @@ describe('the review', () => {
     const thread = await screen.findByTestId('review-thread')
     expect(within(thread).queryByTestId('thread-delegate')).toBeNull()
     await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delegate to Piloti' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: `Delegate to ${PRODUCT_NAME}` }))
 
     await waitFor(() => expect(patches).toEqual([{ delegateToPiloti: true }]))
     expect(await within(screen.getByTestId('review-thread')).findByTestId('thread-delegate')).toHaveTextContent(
-      'Piloti is working on it · for Miriam Hofer'
+      `${PRODUCT_NAME} is working on it · for Miriam Hofer`
     )
   })
 
@@ -946,7 +947,7 @@ describe('the review', () => {
     const thread = await screen.findByTestId('review-thread')
     await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
     expect(await screen.findByRole('menuitem', { name: 'Copy link' }).catch(() => null)).toBeDefined()
-    expect(screen.queryByRole('menuitem', { name: 'Delegate to Piloti' })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: `Delegate to ${PRODUCT_NAME}` })).toBeNull()
   })
 
   it("draws Piloti's own pointer and what it points out, from the room", async () => {
@@ -955,7 +956,7 @@ describe('the review', () => {
     const room = scriptedRoom()
     render(<Harness transport={room.transport} />)
     await screen.findByTestId('review-empty')
-    const AGENT = { peerId: 'piloti_peer_01', userId: 'piloti', name: 'Piloti', kind: 'piloti' as const }
+    const AGENT = { peerId: 'piloti_peer_01', userId: 'piloti', name: PRODUCT_NAME, kind: 'piloti' as const }
 
     room.send({ kind: 'event', event: { kind: 'presence', peer: AGENT, state: 'here', ttlMs: 25_000 } })
     room.send({ kind: 'event', event: { kind: 'cursor', peer: AGENT, cursor: { page: 1, x: 0.4, y: 0.4 } } })
@@ -965,7 +966,7 @@ describe('the review', () => {
     })
 
     const sheet = screen.getByTestId('sheet')
-    expect(await within(sheet).findByText('Piloti · Liest die Stiege', { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
+    expect(await within(sheet).findByText(`${PRODUCT_NAME} · Liest die Stiege`, { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
     const highlight = await within(sheet).findByTestId('agent-highlight')
     expect(highlight.style.left).toBe('50%')
     restore()
@@ -1698,13 +1699,13 @@ describe('one’s own reply in the thread', () => {
 
     expect(
       await within(screen.getByTestId('review-thread')).findByText(
-        'Piloti has already taken this reply up. It stays as it is; write a new one.'
+        `${PRODUCT_NAME} has already taken this reply up. It stays as it is; write a new one.`
       )
     ).toBeInTheDocument()
   })
 
   it('offers no change of an @Piloti reply while this tab’s own ask of Piloti about it is thinking (wakes off)', async () => {
-    const asked = reply({ id: 'r1', body: '@Piloti Stimmt die Breite?', mentions: [], addressesPiloti: true })
+    const asked = reply({ id: 'r1', body: `@${PRODUCT_NAME} Stimmt die Breite?`, mentions: [], addressesPiloti: true })
     serve([view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })])
     serveConversation()
     server.use(
@@ -1721,7 +1722,7 @@ describe('one’s own reply in the thread', () => {
 
     const thread = await openThread()
     const box = within(thread).getByTestId('thread-reply')
-    await userEvent.type(box, '@pil')
+    await userEvent.type(box, `@${PRODUCT_NAME.slice(0, 3).toLowerCase()}`)
     await userEvent.click(pickerOption(thread, 'agent:piloti'))
     await userEvent.type(box, 'Stimmt die Breite?{Enter}')
     await waitFor(() => expect(piloti.questions()).toHaveLength(1))
@@ -1739,7 +1740,7 @@ describe('one’s own reply in the thread', () => {
   })
 
   it('offers no change of a colleague’s reply, of Piloti’s, on a closed mark, or of one Piloti answered', async () => {
-    const forAgent = reply({ body: '@Piloti stimmt das?', mentions: [], addressesPiloti: true })
+    const forAgent = reply({ body: `@${PRODUCT_NAME} stimmt das?`, mentions: [], addressesPiloti: true })
     const answer = reply({
       id: 'rep_2',
       authorKind: 'piloti',
@@ -2118,7 +2119,7 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
 
     const bar = await screen.findByTestId('review-earlier-bar')
-    await userEvent.click(within(bar).getByRole('button', { name: 'Have Piloti check what is fixed' }))
+    await userEvent.click(within(bar).getByRole('button', { name: `Have ${PRODUCT_NAME} check what is fixed` }))
 
     await waitFor(() => expect(piloti.questions()).toHaveLength(1))
     const question = piloti.questions()[0]
@@ -2129,13 +2130,13 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
     expect(question).toMatchObject({ focus_document_id: 'doc_1' })
     expect(question.focus_region ?? null).toBeNull()
     expect(question).not.toHaveProperty('reply_in_thread')
-    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent('Piloti is checking what is fixed …')
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent(`${PRODUCT_NAME} is checking what is fixed …`)
     expect(within(bar).getByTestId('review-check-fixed-earlier')).toBeDisabled()
 
     piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
     piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Erledigt.' } })
     await waitFor(() => expect(within(bar).getByTestId('review-check-fixed-earlier')).toBeEnabled())
-    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent('Have Piloti check what is fixed')
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent(`Have ${PRODUCT_NAME} check what is fixed`)
     // Closing a mark stays the person's: the check wrote nothing.
     expect(patched).toEqual([])
   })
@@ -2197,8 +2198,8 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
 
     const verdicts = await within(group).findAllByTestId('review-carried-verdict')
     expect(verdicts.map((line) => line.textContent)).toEqual([
-      'Piloti’s answer: In Grundriss Index C behoben: Brüstung jetzt mit 1,00 m kotiert.',
-      'Piloti’s answer: Weiterhin offen: Die Legende nennt keinen Lüftungsquerschnitt.',
+      `${PRODUCT_NAME}’s answer: In Grundriss Index C behoben: Brüstung jetzt mit 1,00 m kotiert.`,
+      `${PRODUCT_NAME}’s answer: Weiterhin offen: Die Legende nennt keinen Lüftungsquerschnitt.`,
     ])
 
     await userEvent.click(within(group).getByRole('button', { name: 'Resolve annotation 4 on “Grundriss Index B.pdf”' }))

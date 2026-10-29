@@ -7,6 +7,7 @@ import { RevisionCompare } from './revision-compare'
 import { useRevisionCompare } from './use-revision-compare'
 import { regionToPixels } from './lib/regions'
 import { NotComparableError, type CompareRegion, type PageSource, type SourceLoader } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * The comparison is asserted through what it decides: which mode is on, which
@@ -369,9 +370,9 @@ describe('RevisionCompare: Piloti marks the changes', () => {
 
   it('names the page it would mark', async () => {
     await open(setup(3, 3))
-    expect(mark()).toHaveTextContent('Compare page 1 with Piloti')
+    expect(mark()).toHaveTextContent(`Compare page 1 with ${PRODUCT_NAME}`)
     fireEvent.keyDown(screen.getByTestId('revision-compare'), { key: 'ArrowRight' })
-    expect(mark()).toHaveTextContent('Compare page 2 with Piloti')
+    expect(mark()).toHaveTextContent(`Compare page 2 with ${PRODUCT_NAME}`)
   })
 
   it('shows a busy button naming the page while Piloti is comparing, and skeleton rows', async () => {
@@ -380,7 +381,7 @@ describe('RevisionCompare: Piloti marks the changes', () => {
     fireEvent.click(mark())
     expect(mark()).toHaveAttribute('aria-disabled', 'true')
     expect(mark()).toHaveAttribute('aria-busy', 'true')
-    expect(mark()).toHaveTextContent('Piloti is comparing page 1')
+    expect(mark()).toHaveTextContent(`${PRODUCT_NAME} is comparing page 1`)
     expect(screen.getByTestId('compare-mark-loading')).toBeInTheDocument()
   })
 

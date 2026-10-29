@@ -57,6 +57,7 @@ import {
   type MayOpen,
 } from './attention'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const ref: MarkRef = {
   organizationId: 'org_1',
@@ -174,7 +175,7 @@ describe('onWakeEnded', () => {
   })
 
   it.each(['thread_mention', 'thread_reply'] as const)(
-    'tells who asked (%s) when Piloti could not answer',
+    `tells who asked (%s) when ${PRODUCT_NAME} could not answer`,
     async (trigger) => {
       await onWakeEnded({ ...wake, trigger, outcome: 'failed' })
 
@@ -419,7 +420,7 @@ describe('markParticipants', () => {
           authorKind: 'person',
           createdBy: 'user_replier',
           mentions: [
-            { targetId: 'agent:piloti', display: 'Piloti' },
+            { targetId: 'agent:piloti', display: PRODUCT_NAME },
             { targetId: 'user_asked', display: 'Anna' },
           ],
         },
@@ -859,7 +860,7 @@ describe('onMarksSet', () => {
     })
     expect(inboxItemCopy(row('created', 1), t, dictionary).title).toBe('Miriam hat Anmerkung 15 in „Grundriss EG“ gesetzt')
     expect(inboxItemCopy(row('created_piloti', 3), t, dictionary).title).toBe(
-      'Piloti hat für Miriam 3 Anmerkungen in „Grundriss EG“ gesetzt'
+      `${PRODUCT_NAME} hat für Miriam 3 Anmerkungen in „Grundriss EG“ gesetzt`
     )
   })
 
@@ -888,7 +889,7 @@ describe('onMarksSet', () => {
       expect(title).not.toMatch(/Jemand|für\s+(Anmerkung|\d|eine)|\{actor\}/)
     }
     expect(inboxItemCopy(row('created_piloti', 3, 'Grundriss EG'), t, dictionary).title).toBe(
-      'Piloti hat 3 Anmerkungen in „Grundriss EG“ gesetzt'
+      `${PRODUCT_NAME} hat 3 Anmerkungen in „Grundriss EG“ gesetzt`
     )
     expect(inboxItemCopy(row('created', 0, null), t, dictionary).title).toBe('Neue Anmerkungen')
   })

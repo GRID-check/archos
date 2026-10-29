@@ -9,6 +9,7 @@ import { DEFAULT_PUSH_PREFERENCES } from '@/lib/inbox/push-categories'
 import type { InboxItemView } from '@/lib/inbox/types'
 import { INBOX_TYPE_DEFINITIONS } from '@/lib/inbox/registry'
 import { buildFoldedPushMessage, buildPushMessage, pushTagFor } from './payload'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function item(overrides: Partial<InboxItemView> = {}): InboxItemView {
   return {
@@ -57,7 +58,7 @@ describe('what a notification says', () => {
 
   it('carries only a generic line when the lock-screen preview is off', () => {
     const message = buildPushMessage(item(), 'k', { ...DEFAULT_PUSH_PREFERENCES, showContent: false }, 'de')
-    expect(message?.title).toBe('Neue Nachricht in Piloti')
+    expect(message?.title).toBe(`Neue Nachricht in ${PRODUCT_NAME}`)
     expect(message?.body).toBeNull()
     const text = JSON.stringify(message)
     expect(text).not.toContain('Anna')
@@ -124,7 +125,7 @@ describe('one notification for a burst of rows (the fold)', () => {
     if (!fold) throw new Error('annotation.assigned_to_you folds')
     const items = [mark('a', 'due_soon'), mark('b', 'overdue')]
     expect(buildFoldedPushMessage(items, fold, { ...DEFAULT_PUSH_PREFERENCES, showContent: false }, 'de')).toMatchObject({
-      title: 'Neue Nachricht in Piloti',
+      title: `Neue Nachricht in ${PRODUCT_NAME}`,
       body: null,
     })
     expect(buildFoldedPushMessage([mark('a', 'due_soon')], fold, DEFAULT_PUSH_PREFERENCES, 'de')).toBeNull()

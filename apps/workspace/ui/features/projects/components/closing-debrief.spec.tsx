@@ -20,6 +20,7 @@ import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definiti
 import { buildIntakeProfile } from '@/lib/project-profile/intake-profile'
 import type { ProjectAssumption, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import { ClosingDebrief } from './closing-debrief'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 const refresh = vi.hoisted(() => vi.fn())
@@ -147,12 +148,12 @@ describe('ClosingDebrief', () => {
     render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     const noted = await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
-    expect(within(noted.closest('li') as HTMLElement).getByText('Noted by Piloti')).toBeInTheDocument()
+    expect(within(noted.closest('li') as HTMLElement).getByText(`Noted by ${PRODUCT_NAME}`)).toBeInTheDocument()
     const pinned = screen.getByText('Die Behörde verlangt die Fluchtwegbreite in jedem Grundriss.').closest('li') as HTMLElement
-    expect(within(pinned).queryByText('Noted by Piloti')).not.toBeInTheDocument()
+    expect(within(pinned).queryByText(`Noted by ${PRODUCT_NAME}`)).not.toBeInTheDocument()
     const grounded = screen.getByText('Fluchttreppe außen in Stahl statt eines zweiten Stiegenhauses.').closest('li') as HTMLElement
     expect(within(grounded).getByText('Drawn from the documents')).toBeInTheDocument()
-    expect(within(grounded).queryByText('Noted by Piloti')).not.toBeInTheDocument()
+    expect(within(grounded).queryByText(`Noted by ${PRODUCT_NAME}`)).not.toBeInTheDocument()
   })
 
   test('confirming a decision records a person’s confirmation, and shows it', async () => {
@@ -211,7 +212,7 @@ describe('ClosingDebrief', () => {
     const gets = memoryGets(fetchMock)
 
     await userEvent.click(screen.getByRole('button', { name: 'Read from the documents' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Piloti is reading the documents …')
+    expect(screen.getByRole('status')).toHaveTextContent(`${PRODUCT_NAME} is reading the documents …`)
     expect(screen.getByRole('button', { name: 'Read from the documents' })).toBeDisabled()
 
     answer(Response.json(EXTRACTED))
@@ -228,12 +229,12 @@ describe('ClosingDebrief', () => {
     render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Read from the documents' }))
-    expect(await screen.findByText('Piloti found nothing new in the documents.')).toBeInTheDocument()
+    expect(await screen.findByText(`${PRODUCT_NAME} found nothing new in the documents.`)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/projects/p1/experience', expect.objectContaining({ method: 'POST' }))
   })
 
   test.each([
-    ['backend_unavailable', 'Piloti could not read the documents just now. Please try again later.'],
+    ['backend_unavailable', `${PRODUCT_NAME} could not read the documents just now. Please try again later.`],
     ['no_documents', 'There are no readable documents in the open folders yet.'],
     ['no_model', 'The reading did not work. Please try again later.'],
     ['extraction_failed', 'The reading did not work. Please try again later.'],

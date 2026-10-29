@@ -6,6 +6,8 @@ and the Python packages of the root uv workspace ([below](#the-python-packages-a
 `build-tokens.mjs` renders `dist/`, and `sync.mjs` writes committed copies into
 `apps/website` and `apps/workspace`, each only its layer: a token with `"scope": "app"`
 reaches the workspace only (`--check` fails on drift and on a file a copy should not hold).
+It also writes `identity.json` into `agent/src/agent/common/` and the product's name into
+the few literal copies `name-copies.mjs` lists (ADR-0148).
 The brand rules a machine can hold run in `scripts/check_brand_rules.mjs`. Brand strings live
 in `identity.json` only, the React components in `react/`, AuthKit's stylesheet in
 `authkit/authkit.css` (pasted into WorkOS branding per environment). `mark.svg` and

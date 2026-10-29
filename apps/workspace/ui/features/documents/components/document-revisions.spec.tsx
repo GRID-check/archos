@@ -40,6 +40,7 @@ import type { FileItem } from '../file-types'
 import { requestRevisionLink } from '../lib/revision-request'
 import { NotComparableError } from './revision-compare/types'
 import { DocumentRevisions, type DocumentRevisionsProps } from './document-revisions'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const compareOpened = vi.hoisted(() => vi.fn())
 
@@ -236,7 +237,7 @@ describe('DocumentRevisions — the header says where the newest Fassung stands'
     expect(await screen.findByTestId('revision-header-label')).toHaveTextContent('Fassung 1')
     expect(screen.queryByTestId('document-lifecycle-state')).toBeNull()
     expect(screen.queryByTestId('document-lifecycle-track')).toBeNull()
-    expect(screen.getByTestId('revision-answer')).toHaveTextContent('Piloti antwortet aus dieser Fassung.')
+    expect(screen.getByTestId('revision-answer')).toHaveTextContent(`${PRODUCT_NAME} antwortet aus dieser Fassung.`)
     // Who and when, once, in words: never „Freigegeben" or „Veröffentlicht" for an upload.
     const act = screen.getByTestId('revision-header-act')
     expect(act).toHaveTextContent('Hochgeladen von Anna Berger · 01.09.2026')
@@ -273,7 +274,7 @@ describe('DocumentRevisions — the header says where the newest Fassung stands'
     const header = await screen.findByTestId('revision-header')
     expect(within(header).getByTestId('revision-header-label')).toHaveTextContent('Fassung 2')
     expect(within(header).getByTestId('document-lifecycle-state')).toHaveTextContent('In Prüfung')
-    expect(within(header).getByTestId('revision-answer')).toHaveTextContent('Piloti antwortet weiter aus Fassung 1.')
+    expect(within(header).getByTestId('revision-answer')).toHaveTextContent(`${PRODUCT_NAME} antwortet weiter aus Fassung 1.`)
     expect(header).not.toHaveTextContent('aktuell')
 
     const rows = screen.getAllByTestId('revision-timeline-row')
@@ -295,7 +296,7 @@ describe('DocumentRevisions — the header says where the newest Fassung stands'
     })
 
     const header = await screen.findByTestId('revision-header')
-    expect(within(header).getByTestId('revision-answer')).toHaveTextContent('Piloti antwortet weiter aus Fassung 1.')
+    expect(within(header).getByTestId('revision-answer')).toHaveTextContent(`${PRODUCT_NAME} antwortet weiter aus Fassung 1.`)
     const rows = screen.getAllByTestId('revision-timeline-row')
     expect(within(rows[0]).queryByTestId('revision-row-current')).toBeNull()
     expect(within(rows[1]).getByTestId('revision-row-current')).toHaveTextContent('aktuell')
@@ -308,14 +309,14 @@ describe('DocumentRevisions — the header says where the newest Fassung stands'
       client: clientOf([makeVersion(1, 'published', { approvedBy: 'user_author', publishedBy: 'user_author' })]),
     })
 
-    expect(await screen.findByTestId('revision-answer')).toHaveTextContent('Piloti antwortet daraus, sobald sie gelesen ist.')
+    expect(await screen.findByTestId('revision-answer')).toHaveTextContent(`${PRODUCT_NAME} antwortet daraus, sobald sie gelesen ist.`)
   })
 
   it('does not point at a published Fassung when there is none', async () => {
     renderSection({ viewer: viewOnly, client: clientOf([reviewed(1, 'in_review')]) })
 
     const answerLine = await screen.findByTestId('revision-answer')
-    expect(answerLine).toHaveTextContent('Piloti antwortet erst daraus, wenn sie freigegeben ist.')
+    expect(answerLine).toHaveTextContent(`${PRODUCT_NAME} antwortet erst daraus, wenn sie freigegeben ist.`)
     expect(answerLine).not.toHaveTextContent('Fassung 1')
   })
 
@@ -331,7 +332,7 @@ describe('DocumentRevisions — the header says where the newest Fassung stands'
 
     expect(await screen.findByTestId('document-lifecycle-state')).toHaveTextContent('Ersetzt')
     expect(screen.queryByTestId('document-lifecycle-track')).toBeNull()
-    expect(screen.getByTestId('revision-answer')).toHaveTextContent('Piloti antwortet aus der neueren Fassung 2')
+    expect(screen.getByTestId('revision-answer')).toHaveTextContent(`${PRODUCT_NAME} antwortet aus der neueren Fassung 2`)
 
     const rows = await screen.findAllByTestId('revision-timeline-row')
     expect(rows[0]).toHaveAttribute('data-kind', 'newer')
@@ -926,11 +927,11 @@ describe('DocumentRevisions — the decisions on the newest Fassung', () => {
     expect(await screen.findByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Änderungen anfordern' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Ablehnen' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Piloti überarbeiten lassen' })).toBeNull()
+    expect(screen.queryByRole('button', { name: `${PRODUCT_NAME} überarbeiten lassen` })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Veröffentlichen' })).toBeNull()
 
     await userEvent.click(screen.getByTestId('document-review-more'))
-    expect(await screen.findByRole('menuitem', { name: 'Piloti überarbeiten lassen' })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: `${PRODUCT_NAME} überarbeiten lassen` })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Ablehnen' })).toHaveAttribute('data-variant', 'destructive')
   })
 
@@ -962,7 +963,7 @@ describe('DocumentRevisions — the decisions on the newest Fassung', () => {
     renderSection({ viewer: reviewer, client: clientOf([reviewed(1, 'in_review')], { requestChanges }) })
 
     await userEvent.click(await screen.findByTestId('document-review-more'))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Piloti überarbeiten lassen' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: `${PRODUCT_NAME} überarbeiten lassen` }))
     expect(await screen.findByTestId('document-review-delegate-note')).toBeInTheDocument()
     expect(screen.getByTestId('document-review-comment-send')).toBeDisabled()
     await userEvent.type(screen.getByRole('textbox'), 'Bitte Tabelle 3 neu rechnen.')
@@ -1073,7 +1074,7 @@ describe('DocumentRevisions — the decisions on the newest Fassung', () => {
     renderSection({ viewer: reviewer, client: clientOf([reviewed(1, 'in_review')], { requestChanges }) })
 
     await userEvent.click(await screen.findByTestId('document-review-more'))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Piloti überarbeiten lassen' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: `${PRODUCT_NAME} überarbeiten lassen` }))
     await userEvent.type(await screen.findByRole('textbox'), 'Bitte Tabelle 3 neu rechnen.')
     await userEvent.click(screen.getByTestId('document-review-comment-send'))
 

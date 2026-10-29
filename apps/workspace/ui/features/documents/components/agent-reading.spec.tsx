@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { FileItem } from '../file-types'
 import { AgentReading } from './agent-reading'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * What Piloti made of a citable document: the facts line, the type and
@@ -73,7 +74,7 @@ describe('AgentReading', () => {
 
       expect(screen.queryByText('Text')).toBeNull()
       expect(screen.queryByText(/pages? read/)).toBeNull()
-      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
+      expect(screen.getByText(`${PRODUCT_NAME} did not recognize a document type.`)).toBeInTheDocument()
     })
 
     it('omits the page part when the count is zero', () => {
@@ -96,7 +97,7 @@ describe('AgentReading', () => {
     it('shows the chips as static text, with no remove affordance', () => {
       render(<AgentReading file={fileFixture({ tags: ['Grundriss', 'Brandschutz'] })} canManage />)
 
-      expect(screen.getByText('Piloti reads this as')).toBeInTheDocument()
+      expect(screen.getByText(`${PRODUCT_NAME} reads this as`)).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /remove tag/i })).toBeNull()
       expect(screen.queryByRole('textbox', { name: /add tag/i })).toBeNull()
     })
@@ -112,12 +113,12 @@ describe('AgentReading', () => {
 
       const editor = screen.getByTestId('agent-reading-editor')
       expect(within(editor).getByRole('textbox', { name: /add tag/i })).toBeInTheDocument()
-      expect(screen.getByText('Your choice stays, even when Piloti reads the file again.')).toBeInTheDocument()
+      expect(screen.getByText(`Your choice stays, even when ${PRODUCT_NAME} reads the file again.`)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Done' }))
 
       expect(screen.queryByTestId('agent-reading-editor')).toBeNull()
-      expect(screen.queryByText('Your choice stays, even when Piloti reads the file again.')).toBeNull()
+      expect(screen.queryByText(`Your choice stays, even when ${PRODUCT_NAME} reads the file again.`)).toBeNull()
       expect(screen.getByRole('button', { name: 'Correct' })).toBeInTheDocument()
     })
 
@@ -125,7 +126,7 @@ describe('AgentReading', () => {
       const user = userEvent.setup()
       render(<AgentReading file={fileFixture({ tags: [] })} canManage />)
 
-      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
+      expect(screen.getByText(`${PRODUCT_NAME} did not recognize a document type.`)).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Correct' })).toBeNull()
 
       await user.click(screen.getByRole('button', { name: 'Assign' }))
@@ -145,7 +146,7 @@ describe('AgentReading', () => {
     it('shows no Assign to a viewer who cannot manage an untagged document', () => {
       render(<AgentReading file={fileFixture({ tags: [] })} canManage={false} />)
 
-      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
+      expect(screen.getByText(`${PRODUCT_NAME} did not recognize a document type.`)).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Assign' })).toBeNull()
     })
 

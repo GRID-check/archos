@@ -18,6 +18,7 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it, vi } from 'vitest'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SW_PATH = join(process.cwd(), 'public', 'sw.js')
 const SOURCE = readFileSync(SW_PATH, 'utf8')
@@ -51,7 +52,7 @@ describe('the payload the server sends', () => {
   it('still shows something for a payload it cannot read (a browser demands a notification per push)', () => {
     for (const text of [null, '', 'not json', '[]', '"x"', '{"title":5}']) {
       const message = parse(text)
-      expect(message.title).toBe('Piloti')
+      expect(message.title).toBe(PRODUCT_NAME)
       expect(message.url).toBe('/app/inbox')
     }
   })
@@ -178,7 +179,7 @@ describe('the registered worker', () => {
     const { fire, shown } = boot()
     await fire('push', { data: null })
     expect(shown).toHaveLength(1)
-    expect(shown[0]?.title).toBe('Piloti')
+    expect(shown[0]?.title).toBe(PRODUCT_NAME)
   })
 
   it('takes an open tab to the item and focuses it', async () => {

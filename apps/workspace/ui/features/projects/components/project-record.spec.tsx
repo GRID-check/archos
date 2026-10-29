@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { ProjectPersonView, ProjectRecordView } from '@/lib/projects/project-record-types'
 import { ProjectRecord } from './project-record'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const refresh = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh, push: vi.fn(), replace: vi.fn() }) }))
@@ -179,7 +180,7 @@ describe('ProjectRecord', () => {
     render(<ProjectRecord projectId="p1" projectRecord={view({ startedOnIsDefault: true })} />)
     const dialog = await openEditor()
 
-    expect(within(dialog).getByText(/The month the project was created in Piloti/)).toBeInTheDocument()
+    expect(within(dialog).getByText(new RegExp(String.raw`The month the project was created in ${PRODUCT_NAME}`))).toBeInTheDocument()
     expect(within(dialog).getByTestId('project-record-end')).toHaveTextContent('Ongoing.')
     await user.click(within(dialog).getAllByRole('combobox', { name: 'Month' })[0])
     await user.click(await screen.findByRole('option', { name: 'January' }))

@@ -9,6 +9,8 @@
  * - Replace an AuthKit authorization redirect that would fail (no PKCE
  *   verifier cookie) with our own sign-in route; see
  *   {@link rerouteIncompleteSignIn}
+ * - Keep the website's `signed_in` cookie in step with the session; see
+ *   {@link signedInCookieFor}
  *
  * The Python backend receives the raw WorkOS access token from the v1 API
  * route proxy, which reads the session with withAuth() and forwards it as
@@ -18,6 +20,7 @@
 import { authkitMiddleware } from '@workos-inc/authkit-nextjs'
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { isAuthRequired } from '@/lib/auth/auth-required'
+import { SIGNED_IN_COOKIE_NAME, serializeSignedInCookie, signedInCookieScopeFromEnv } from '@/lib/auth/signed-in-cookie'
 
 const middleware = authkitMiddleware({
   debug: process.env.NODE_ENV === 'development',
@@ -85,7 +88,11 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
   const response = await middleware(request, event)
   if (!response) return response
   warnIfSessionIsDiscarded(request, response)
-  return rerouteIncompleteSignIn(request, response)
+  // Judged on AuthKit's own answer: the rerouted one no longer says "sign in".
+  const signedInCookie = signedInCookieFor(request, response)
+  const answer = rerouteIncompleteSignIn(request, response)
+  if (signedInCookie) answer.headers.append('set-cookie', signedInCookie)
+  return answer
 }
 
 /**
@@ -227,6 +234,44 @@ function rerouteIncompleteSignIn(request: NextRequest, response: Response): Resp
   for (const cookie of response.headers.getSetCookie()) rerouted.headers.append('set-cookie', cookie)
   rerouted.headers.set('cache-control', 'no-store')
   return rerouted
+}
+
+/**
+ * Does AuthKit's response expire the session the request carried? A refreshed
+ * session that needs fewer chunks expires the spare ones while it writes the
+ * first, so only a response that writes no session value at all counts.
+ */
+function clearsSession(response: Response): boolean {
+  let cleared = false
+  for (const cookie of response.headers.getSetCookie()) {
+    const [pair] = cookie.split(';', 1)
+    const separator = pair.indexOf('=')
+    if (separator < 0 || !isSessionCookie(pair.slice(0, separator).trim())) continue
+    if (pair.slice(separator + 1).trim() !== '') return false
+    cleared = true
+  }
+  return cleared
+}
+
+/**
+ * The website shows "Open app" instead of "Login" while this browser has a
+ * session here (`@/lib/auth/signed-in-cookie` says why a separate cookie). The
+ * answer is the session AuthKit just judged: the request carried one, AuthKit
+ * neither cleared it nor sent the request to sign in. The cookie is written
+ * only when that answer differs from what the browser already holds, so an
+ * ordinary request gets no extra `Set-Cookie`.
+ */
+function signedInCookieFor(request: NextRequest, response: Response): string | null {
+  if (!isAuthRequired()) return null
+  const scope = signedInCookieScopeFromEnv()
+  if (!scope) return null
+
+  const signedIn =
+    sessionCookies(request).length > 0 &&
+    !isAuthorizeRedirect(response.headers.get('location')) &&
+    !clearsSession(response)
+  const marked = request.cookies.get(SIGNED_IN_COOKIE_NAME)?.value === '1'
+  return signedIn === marked ? null : serializeSignedInCookie(scope, signedIn)
 }
 
 export const config = {

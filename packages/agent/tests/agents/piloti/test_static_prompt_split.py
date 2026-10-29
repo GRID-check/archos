@@ -48,7 +48,10 @@ FIXTURE = Path(__file__).parent / "fixtures" / "chat_prompt_rendered.txt"
 #: and `document_inventory` are pinned to placeholders on purpose: this test is
 #: about the TEMPLATE, and injecting the real envelope schema would make it fail
 #: whenever `cards/models.py` changes, which is somebody else's contract.
+#: `product_name` is pinned for the same reason: the name is copy from
+#: `packages/brand/identity.json`, and a rename is not a template change.
 PINNED = dict(
+    product_name="<<PRODUCT NAME>>",
     answer_envelope_schema="<<ENVELOPE SCHEMA>>",
     document_inventory="<<DOCUMENT INVENTORY>>",
     current_datetime="2026-01-02",

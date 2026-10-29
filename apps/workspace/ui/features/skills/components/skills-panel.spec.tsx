@@ -28,6 +28,7 @@ vi.mock('@/components/shell/project-section-frame', () => ({
 import * as client from '@/adapters/api/skills-client'
 import { SkillsPanel } from './skills-panel'
 import { SkillToolbox } from './skill-toolbox'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const listSkillsMock = vi.mocked(client.listSkills)
 const listSkillCategoriesMock = vi.mocked(client.listSkillCategories)
@@ -112,7 +113,7 @@ describe('SkillToolbox', () => {
     // The count that carries information is how many are ON, not how many exist.
     expect(screen.getByText('1 of 2 on')).toBeInTheDocument()
     // Featured, and only featured, names who maintains it.
-    expect(screen.getAllByText('Curated by Piloti')).toHaveLength(2)
+    expect(screen.getAllByText(`Curated by ${PRODUCT_NAME}`)).toHaveLength(2)
     // Nothing on a skill card says anything about time or output any more:
     // a skill does not know when it runs, and a job decides what a run makes.
     expect(screen.queryByText(/schedulable/i)).not.toBeInTheDocument()
@@ -139,7 +140,7 @@ describe('SkillToolbox', () => {
     render(<SkillToolbox canManage onEdit={noop} />)
 
     const toggle = await screen.findByRole('switch', {
-      name: /Use the Piloti skill .oib-fire-check./,
+      name: new RegExp(String.raw`Use the ${PRODUCT_NAME} skill .oib-fire-check.`),
     })
     expect(toggle).not.toBeChecked()
     fireEvent.click(toggle)
@@ -157,7 +158,7 @@ describe('SkillToolbox', () => {
     render(<SkillToolbox canManage onEdit={noop} />)
 
     const toggle = await screen.findByRole('switch', {
-      name: /Use the Piloti skill .oib-fire-check./,
+      name: new RegExp(String.raw`Use the ${PRODUCT_NAME} skill .oib-fire-check.`),
     })
     fireEvent.click(toggle)
     // Optimistic FIRST, so the assertion below is a real state change rather

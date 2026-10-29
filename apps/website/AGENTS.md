@@ -37,3 +37,5 @@ A view takes a `locale` prop and renders the page once for both locales. The two
 
 Converting a German-only page: move its copy to `src/i18n/pages/<key>.ts` with an English translation, move its markup to `src/views/<Page>View.astro`, write the two route files, and add its row to `ROUTES` if its path is new. The home page is the worked example (`src/i18n/pages/home.ts`, `src/views/HomeView.astro`).
 Until a page is converted its English twin does not exist, so the language switch and hreflang on a German page point at a 404.
+
+To capture a visual change for a PR, run `bun run capture` ([instructions](../../docs/ux/visual-screenshots.md#website-targets)).

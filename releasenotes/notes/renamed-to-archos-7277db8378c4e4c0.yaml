@@ -1,0 +1,11 @@
+---
+improvements:
+  - >
+    Piloti is now ARCHOS. The workspace and its agent introduce themselves
+    by the new name in the app, in notifications and in the documents they
+    write, and your projects, files and settings stay exactly as they were.
+deprecations:
+  - >
+    If you connected your own AI assistant to the workspace, that connection
+    keeps working under its old addresses for at least one more release. We
+    will publish the new connection names first, and only then retire the old.
