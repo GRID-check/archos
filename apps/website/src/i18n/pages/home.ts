@@ -99,13 +99,26 @@ const de = {
   },
   founders: {
     title: 'Das Planungsbüro der Zukunft entsteht heute.',
-    imageAlt: 'Das Gründerteam von {name}: zwei Männer sitzen vor einer hellen Wand',
     caption: 'Wir übersetzen KI-Fortschritt in Planungsfortschritt.',
-    label: 'Die Gründer:',
     people: [
-      { name: 'Ferdinand Rubenbauer', role: 'Strategie' },
-      { name: 'Matthias Bigl', role: 'Technologie' },
-      { name: 'Jonathan Uhlemann', role: 'Produkt' },
+      {
+        name: 'Jonathan Uhlemann',
+        role: 'Architektur und Produkt',
+        portrait: '/media/jonathan-uhlemann.webp',
+        portraitAlt: 'Portrait von Jonathan Uhlemann',
+      },
+      {
+        name: 'Matthias Bigl',
+        role: 'Software und KI',
+        portrait: '/media/matthias-bigl.webp',
+        portraitAlt: 'Portrait von Matthias Bigl',
+      },
+      {
+        name: 'Ferdinand Rubenbauer',
+        role: 'Business und Vertrieb',
+        portrait: '/media/ferdinand-rubenbauer.webp',
+        portraitAlt: 'Portrait von Ferdinand Rubenbauer',
+      },
     ],
     lead: 'Wir zeigen Ihnen {name} an einem echten Projekt und beantworten Ihre Fragen.',
   },
@@ -207,13 +220,26 @@ const en: typeof de = {
   },
   founders: {
     title: 'The planning firm of the future starts today.',
-    imageAlt: 'The founding team of {name}: two men sitting in front of a light wall',
     caption: 'We turn AI progress into progress in planning.',
-    label: 'The founders:',
     people: [
-      { name: 'Ferdinand Rubenbauer', role: 'Strategy' },
-      { name: 'Matthias Bigl', role: 'Technology' },
-      { name: 'Jonathan Uhlemann', role: 'Product' },
+      {
+        name: 'Jonathan Uhlemann',
+        role: 'Architecture and product',
+        portrait: '/media/jonathan-uhlemann.webp',
+        portraitAlt: 'Portrait of Jonathan Uhlemann',
+      },
+      {
+        name: 'Matthias Bigl',
+        role: 'Software and AI',
+        portrait: '/media/matthias-bigl.webp',
+        portraitAlt: 'Portrait of Matthias Bigl',
+      },
+      {
+        name: 'Ferdinand Rubenbauer',
+        role: 'Business and sales',
+        portrait: '/media/ferdinand-rubenbauer.webp',
+        portraitAlt: 'Portrait of Ferdinand Rubenbauer',
+      },
     ],
     lead: 'We will show you {name} on a real project and answer your questions.',
   },

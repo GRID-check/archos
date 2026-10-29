@@ -13,6 +13,12 @@
    2026-08 and withdrawn in 2026-09 (design doc §"Accent pop"). A control
    that wants to stand out wants contrast, not chroma.
 
+   The corporate design's colours and radii are not typed here: they come from
+   packages/brand as --ds-* (apps/workspace/shared/brand/tokens.vars.css, imported first by
+   app/globals.css) and the vars below map onto them. A layer the brand has no
+   token for (popover, chip and hover fills) is a color-mix of brand tokens.
+   The hex in a comment is what the reference resolves to today, not a source.
+
    Three var vocabularies are defined here:
 
    1. shadcn/ui vars (--background, --primary, ...) consumed by the vendored
@@ -50,9 +56,9 @@
   color-scheme: light;
 
   /* ---- ink ramp (light) — #1f2023 → #b3b3af ---- */
-  --ink: oklch(0.165 0.003 67.6); /* #0f0e0d — strongest ink, the action color (corporate design: ink) */
-  --ink-hover: oklch(0.294 0.006 78.2); /* #2e2c29 — lifted ink for hover on ink surfaces (ink-hover) */
-  --ink-active: oklch(0.13 0.003 67.6); /* pressed ink */
+  --ink: var(--ds-ink); /* #0f0e0d — strongest ink, the action color (corporate design: ink) */
+  --ink-hover: var(--ds-ink-hover); /* #2e2c29 — lifted ink for hover on ink surfaces (ink-hover) */
+  --ink-active: color-mix(in oklch, var(--ds-ink), black 20%); /* pressed ink */
   --ink-border: oklch(0.234 0.007 258.4); /* #1c1e21 — alpha-hairline base (rgba(28,30,33,…)) */
 
   /* ---- legacy alias: the old accent name now resolves to the Baurecht/law
@@ -99,19 +105,19 @@
 
 
   /* ---- shadcn vars (light) — warm paper ---- */
-  --background: oklch(0.985 0.001 106.4); /* #fafaf9 — warm paper app bg (corporate design: surface) */
+  --background: var(--ds-surface); /* #fafaf9 — warm paper app bg (corporate design: surface) */
   --foreground: var(--ink); /* #0f0e0d */
   --card: oklch(1 0 0); /* white cards on paper */
   --card-foreground: var(--ink);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--ink);
   --primary: var(--ink); /* near-black action — no accent color */
-  --primary-foreground: oklch(0.995 0 0);
-  --secondary: oklch(0.961 0.003 106.4); /* #f2f2f0 — chip / quiet fill */
+  --primary-foreground: var(--ds-on-ink);
+  --secondary: var(--ds-surface-sunken); /* #f2f2f0 — chip / quiet fill */
   --secondary-foreground: var(--ink);
-  --muted: oklch(0.961 0.003 106.4); /* #f2f2f0 */
-  --muted-foreground: oklch(0.473 0.007 75.3); /* #5e5b57 — mid ink (ink-muted) */
-  --accent: oklch(0.943 0.003 106.5); /* #ececea — inset / hover fill */
+  --muted: var(--ds-surface-sunken); /* #f2f2f0 */
+  --muted-foreground: var(--ds-ink-muted); /* #5e5b57 — mid ink (ink-muted) */
+  --accent: color-mix(in oklch, var(--ds-surface-sunken), var(--ds-ink) 2%); /* #ececea — inset / hover fill */
   --accent-foreground: var(--ink);
   --destructive: var(--signal-error); /* #c14a38 */
   --destructive-foreground: oklch(0.995 0 0);
@@ -157,7 +163,7 @@
 
   --background-color-surface-base: oklch(0.985 0.001 106.4); /* #fafaf9 */
   --background-color-surface-raised: oklch(0.961 0.003 106.4); /* #f2f2f0 — chip */
-  --background-color-surface-sunken: oklch(0.959 0.002 67.8); /* #f2f1f0 — sidebar / rails (surface-sunken) */
+  --background-color-surface-sunken: var(--ds-surface-sunken); /* #f2f1f0 — sidebar / rails (surface-sunken) */
   --background-color-surface-overlay: oklch(1 0 0);
   --background-color-interaction-base: oklch(0.943 0.003 106.5); /* #ececea — inset */
   --background-color-interaction-primary-base: var(--ink);
@@ -185,10 +191,10 @@
   color-scheme: dark;
 
   /* ---- ink ramp (dark) — paper-white acts as "ink" on warm charcoal ---- */
-  --ink: oklch(0.967 0.003 84.6); /* #f5f4f2 — warm paper white */
-  --ink-hover: oklch(0.883 0.005 78.3);
-  --ink-active: oklch(0.828 0.006 75.4);
-  --ink-border: oklch(0.967 0.003 84.6); /* hairlines are alpha paper on charcoal */
+  --ink: var(--ds-ink); /* #f5f4f2 — warm paper white */
+  --ink-hover: var(--ds-ink-hover);
+  --ink-active: color-mix(in oklch, var(--ds-ink), black 15%);
+  --ink-border: var(--ds-ink); /* hairlines are alpha paper on charcoal */
 
   /* ---- legacy alias: lifted law blue for dark surfaces ---- */
   --law-blue: oklch(0.711 0.125 266); /* lifted #2359d3 */
@@ -251,19 +257,19 @@
      and warmth is deliberately a touch stronger than the first pass (chroma
      ~0.006 vs ~0.004) so "warm charcoal" is actually perceptible instead of
      resolving to a neutral gray. ---- */
-  --background: oklch(0.165 0.003 67.6); /* #0f0e0d — warm charcoal plane */
-  --foreground: oklch(0.967 0.003 84.6); /* #f5f4f2 */
-  --card: oklch(0.214 0.002 67.7); /* #1a1918 — raised content plane */
+  --background: var(--ds-surface); /* #0f0e0d — warm charcoal plane */
+  --foreground: var(--ds-ink); /* #f5f4f2 */
+  --card: var(--ds-surface-raised); /* #1a1918 — raised content plane */
   --card-foreground: oklch(0.967 0.003 84.6);
-  --popover: oklch(0.253 0.005 67.6); /* floats above cards */
+  --popover: color-mix(in oklch, var(--ds-surface-raised), var(--ds-ink) 5%); /* floats above cards */
   --popover-foreground: oklch(0.967 0.003 84.6);
   --primary: var(--ink); /* paper-white action on ink */
-  --primary-foreground: oklch(0.165 0.003 67.6);
-  --secondary: oklch(0.286 0.006 78.2); /* chip / quiet fill */
+  --primary-foreground: var(--ds-on-ink);
+  --secondary: color-mix(in oklch, var(--ds-surface-raised), var(--ds-ink) 10%); /* chip / quiet fill */
   --secondary-foreground: oklch(0.967 0.003 84.6);
-  --muted: oklch(0.286 0.006 78.2);
-  --muted-foreground: oklch(0.716 0.008 80.7); /* #a6a39e */
-  --accent: oklch(0.315 0.007 67.6); /* hover / inset fill */
+  --muted: color-mix(in oklch, var(--ds-surface-raised), var(--ds-ink) 10%);
+  --muted-foreground: var(--ds-ink-muted); /* #a6a39e */
+  --accent: color-mix(in oklch, var(--ds-surface-raised), var(--ds-ink) 13%); /* hover / inset fill */
   --accent-foreground: oklch(0.967 0.003 84.6);
   --destructive: var(--signal-error);
   --destructive-foreground: oklch(0.175 0.005 80);
@@ -322,7 +328,7 @@
 
   --background-color-surface-base: oklch(0.165 0.003 67.6);
   --background-color-surface-raised: oklch(0.286 0.006 78.2);
-  --background-color-surface-sunken: oklch(0.141 0.003 69.4); /* sidebar sits below content */
+  --background-color-surface-sunken: var(--ds-surface-sunken); /* sidebar sits below content */
   --background-color-surface-overlay: oklch(0.253 0.005 67.6);
   --background-color-interaction-base: oklch(0.315 0.007 67.6);
   --background-color-interaction-primary-base: var(--ink);
@@ -537,7 +543,14 @@
   --color-signal-error-tint: var(--signal-error-tint);
 
   --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: 4px; /* controls: the corporate design's one control radius (radius-md) */
+  --radius-md: var(--ds-radius-md); /* controls: the corporate design's one control radius (radius-md) */
+  /* Semantic radii (brand rule, packages/brand/README.md "Layout and shape"). Controls:
+     buttons, icon buttons, inputs, textareas, selects, toggles, checkboxes, tabs,
+     segmented controls, menu and list items, badges, chips. 4px, one value. */
+  --radius-control: var(--ds-radius-md);
+  /* Surfaces: cards, panels, sheets, dialogs, popovers, menu containers, tooltips,
+     toasts, images, tables, code blocks. Square, separated by hairlines and whitespace. */
+  --radius-surface: var(--ds-radius-none);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);

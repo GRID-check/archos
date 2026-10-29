@@ -25,7 +25,7 @@ import { FOCUS_RING } from '@/components/ui/focus-ring'
 const chipVariants = cva(
   // `max-w-full`: a chip never outgrows its row. Its label only gives way when
   // it is wrapped in `ChipLabel`, which truncates; the count and icon stay whole.
-  'inline-flex items-center gap-1 rounded-md border font-medium w-fit max-w-full whitespace-nowrap shrink-0 ' +
+  'inline-flex items-center gap-1 rounded-control border font-medium w-fit max-w-full whitespace-nowrap shrink-0 ' +
     // background/border ride along so the interactive hover fills below
     // transition instead of snapping; `scale` keeps the press dip smooth (the
     // property Tailwind v4's `active:scale-*` sets, not `transform`).
@@ -120,7 +120,7 @@ Chip.displayName = 'Chip'
 /**
  * A count pill for the trailing edge of a Chip (e.g. "Piloti noted \u00b7 3").
  *
- * It IS {@link CountPill} — the design language's one rounded-full numeric pill
+ * It IS {@link CountPill} — the design language's one numeric pill
  * — not a second shape with its own padding and min-width, which is what this
  * used to be. The only thing it overrides is the fill: `CountPill`'s `bg-muted`
  * would vanish on a `muted` chip (the default), so the count rides on the chip's

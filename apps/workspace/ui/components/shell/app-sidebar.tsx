@@ -274,7 +274,7 @@ function AppSidebarFrame({
             <Link
               href={back.href}
               aria-label={t('backTo', { label: t(`sections.${back.sectionKey}`) })}
-              className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 flex size-11 shrink-0 items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+              className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 flex size-11 shrink-0 items-center justify-center rounded-control transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
             >
               <ChevronLeft className="size-5" aria-hidden />
             </Link>
@@ -511,7 +511,7 @@ function SidebarBrand({ iconRail }: { iconRail: boolean }) {
         href="/app/projects"
         aria-label={t('allProjects')}
         className={cn(
-          'focus-visible:ring-ring/60 rounded-md focus-visible:outline-none focus-visible:ring-2',
+          'focus-visible:ring-ring/60 rounded-control focus-visible:outline-none focus-visible:ring-2',
           iconRail
             ? 'flex h-7 items-center justify-center'
             : 'text-foreground text-[19px] font-semibold tracking-[-0.015em]'
@@ -525,7 +525,7 @@ function SidebarBrand({ iconRail }: { iconRail: boolean }) {
           onClick={toggleSidebar}
           aria-label={collapsed ? t('expandSidebar') : t('collapseSidebar')}
           className={cn(
-            'text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 flex items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2',
+            'text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 flex items-center justify-center rounded-control transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2',
             // Icon rail: exactly a nav tile (36px square), so it lands on the same
             // column and the same grid as the items below instead of reading as a
             // loose glyph floating in the header's dead space. It was `h-9 w-10` —
@@ -574,7 +574,7 @@ function RailNavItem({
         className={cn(
           // 36px under a mouse; 44px under a finger, grown rather than given a
           // catchment, because the rows sit 2px apart.
-          'h-9 gap-[11px] rounded-[10px] px-3 text-[13px] pointer-coarse:h-11',
+          'h-9 gap-[11px] rounded-control px-3 text-[13px] pointer-coarse:h-11',
           'group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center',
           // The active SURFACE now lives on the pill below, so every fill the
           // primitive would otherwise paint under it is turned off explicitly —
@@ -606,7 +606,7 @@ function RailNavItem({
               // already lets the icon-rail badge sit outside the tile. The li
               // and the anchor are the same box in both rail widths, so this
               // costs no geometry.
-              className="border-border bg-card shadow-xs absolute inset-0 rounded-[10px] border"
+              className="border-border bg-card shadow-xs absolute inset-0 rounded-control border"
               // `springGlide`, not `springDrawer`. This chip's travel is
               // whatever the reader's last two routes happen to be — 38px
               // between neighbours, 288px from the top of the column to Inbox

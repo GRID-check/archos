@@ -27,7 +27,7 @@ const Command = React.forwardRef<
     ref={ref}
     data-slot="command"
     className={cn(
-      'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-xl',
+      'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-surface',
       className
     )}
     {...props}
@@ -111,7 +111,7 @@ function CommandDialog({
       <DialogContent
         showCloseButton={false}
         instant={instant}
-        className={cn('top-[30%] translate-y-0 gap-0 overflow-hidden rounded-xl p-0', className)}
+        className={cn('top-[30%] translate-y-0 gap-0 overflow-hidden rounded-surface p-0', className)}
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogDescription className="sr-only">{description}</DialogDescription>
@@ -210,7 +210,7 @@ const CommandItem = React.forwardRef<
     ref={ref}
     data-slot="command-item"
     className={cn(
-      'data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+      'data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-control px-2 py-1.5 text-sm outline-none select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
       className
     )}
     {...props}

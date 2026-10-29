@@ -276,7 +276,7 @@ export function CommandPalette({
           autoCorrect="off"
           spellCheck={false}
         />
-        <DialogClose className="text-foreground hover:bg-accent focus-visible:ring-ring/60 mr-1 flex h-11 shrink-0 items-center rounded-lg px-3 text-[15px] font-medium outline-none transition-colors duration-quick ease-out focus-visible:ring-2 motion-reduce:transition-none md:hidden">
+        <DialogClose className="text-foreground hover:bg-accent focus-visible:ring-ring/60 mr-1 flex h-11 shrink-0 items-center rounded-control px-3 text-[15px] font-medium outline-none transition-colors duration-quick ease-out focus-visible:ring-2 motion-reduce:transition-none md:hidden">
           {tCommon('actions.cancel')}
         </DialogClose>
       </div>

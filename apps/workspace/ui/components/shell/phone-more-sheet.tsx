@@ -111,7 +111,7 @@ export function PhoneMoreSheet({
         closeLabel={t('tabBar.moreSheet.close')}
         data-slot="phone-more-sheet"
         className={cn(
-          'max-h-[85dvh] gap-0 overflow-hidden rounded-t-xl p-0 outline-none',
+          'max-h-[85dvh] gap-0 overflow-hidden rounded-surface p-0 outline-none',
           'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]'
         )}
       >

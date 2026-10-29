@@ -28,7 +28,7 @@ export function SuggestionPanel({ className, ...props }: HTMLAttributes<HTMLDivE
     <div
       role="group"
       data-slot="suggestion-panel"
-      className={cn('bg-card grid grid-cols-1 gap-0.5 rounded-xl border p-1.5', className)}
+      className={cn('bg-card grid grid-cols-1 gap-0.5 rounded-surface border p-1.5', className)}
       {...props}
     />
   )
@@ -62,7 +62,7 @@ export function SuggestionPanelLine({
       data-slot="suggestion-panel-line"
       data-active={active || undefined}
       className={cn(
-        'data-[active]:bg-accent flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg px-2 py-1.5 text-xs',
+        'data-[active]:bg-accent flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-control px-2 py-1.5 text-xs',
         'transition-colors duration-snap ease-out motion-reduce:transition-none',
         className
       )}

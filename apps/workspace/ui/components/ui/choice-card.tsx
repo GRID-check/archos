@@ -48,7 +48,7 @@ const ChoiceCard = React.forwardRef<React.ElementRef<typeof RadioGroupPrimitive.
       ref={ref}
       data-slot="choice-card"
       className={cn(
-        'group/choice bg-card text-foreground flex min-h-[88px] flex-col items-start gap-1.5 rounded-lg border p-3 text-left',
+        'group/choice bg-card text-foreground flex min-h-[88px] flex-col items-start gap-1.5 rounded-control border p-3 text-left',
         'transition-[background-color,border-color,opacity,scale] duration-quick ease-out motion-reduce:transition-none',
         'hover:bg-accent active:scale-[0.98] active:duration-snap motion-reduce:active:scale-100',
         'data-[state=checked]:border-primary data-[state=checked]:bg-primary/5 data-[state=checked]:shadow-sm',
@@ -61,7 +61,7 @@ const ChoiceCard = React.forwardRef<React.ElementRef<typeof RadioGroupPrimitive.
       <span
         aria-hidden
         className={cn(
-          'bg-muted text-muted-foreground flex size-7 items-center justify-center rounded-md transition-colors duration-quick',
+          'bg-muted text-muted-foreground flex size-7 items-center justify-center rounded-control transition-colors duration-quick',
           'group-data-[state=checked]/choice:bg-primary group-data-[state=checked]/choice:text-primary-foreground',
         )}
       >

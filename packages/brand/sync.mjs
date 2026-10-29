@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Copies the built brand files into each app, because neither app's Docker build sees
- * packages/. Each target gets tokens.css, components.css, fonts/ and identity.json.
+ * packages/. Each target gets tokens.css, tokens.vars.css, components.css, fonts/ and identity.json.
  *
  *   node packages/brand/sync.mjs          build dist/, then write every target
  *   node packages/brand/sync.mjs --check  write nothing; exit 1 listing each stale or missing file

@@ -126,7 +126,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
         {children}
         <SheetPrimitive.Close
           className={cn(
-            'absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors duration-quick ease-out hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none touch-target',
+            'absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-control text-muted-foreground outline-none transition-colors duration-quick ease-out hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none touch-target',
             CLOSE_SIDE_CLASSES[side],
             FOCUS_RING,
           )}

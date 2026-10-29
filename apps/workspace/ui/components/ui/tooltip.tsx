@@ -201,7 +201,7 @@ const TooltipContent = React.forwardRef<
       data-slot="tooltip-content"
       sideOffset={sideOffset}
       className={cn(
-        'bg-foreground text-background z-50 w-fit max-w-(--radix-tooltip-content-available-width) origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs font-medium text-balance shadow-xs',
+        'bg-foreground text-background z-50 w-fit max-w-(--radix-tooltip-content-available-width) origin-(--radix-tooltip-content-transform-origin) rounded-surface px-3 py-1.5 text-xs font-medium text-balance shadow-xs',
         TOOLTIP_MOTION,
         className
       )}

@@ -41,7 +41,7 @@ const rows = (section: { rows: { key: string; value: string }[] }) =>
 
 <BaseLayout locale={locale} title={c.meta.title} description={c.meta.description}>
   <Hero title={c.hero.title} text={c.hero.text} />
-  <section class="ui-container ui-section">
+  <section class="ui-container ui-section page-main">
     {c.notice && <p class="small">{c.notice}</p>}
     <InfoList title={c.responsible.title} items={rows(c.responsible)} />
     <InfoList title={c.website.title} items={rows(c.website)} />

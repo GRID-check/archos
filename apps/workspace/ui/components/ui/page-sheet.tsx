@@ -78,7 +78,7 @@ export const PAGE_SHEET_OVERLAY_CLASS = 'bg-overlay fixed inset-0 z-50 backdrop-
  * meant for the page behind.
  */
 export const PAGE_SHEET_PANEL_CLASS =
-  'bg-background fixed inset-x-0 bottom-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-xl outline-none md:inset-x-5 md:top-5 md:mx-auto [--shell-inset-bottom:env(safe-area-inset-bottom)]'
+  'bg-background fixed inset-x-0 bottom-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex flex-col overflow-hidden rounded-surface border border-b-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-xl outline-none md:inset-x-5 md:top-5 md:mx-auto [--shell-inset-bottom:env(safe-area-inset-bottom)]'
 
 /**
  * How wide the panel may grow from `md` up. One width: a page sheet is a whole
@@ -302,11 +302,11 @@ function PageSheetGrabber({
           if (pulledRef.current) event.preventDefault()
         }}
         className={cn(
-          'flex h-4 w-14 cursor-grab items-center justify-center rounded-full outline-none active:cursor-grabbing pointer-coarse:h-11 pointer-coarse:w-24',
+          'flex h-4 w-14 cursor-grab items-center justify-center rounded-control outline-none active:cursor-grabbing pointer-coarse:h-11 pointer-coarse:w-24',
           FOCUS_RING
         )}
       >
-        <span className="bg-muted-foreground/25 h-1 w-9 rounded-full" aria-hidden />
+        <span className="bg-muted-foreground/25 h-1 w-9 rounded-none" aria-hidden />
         <span className="sr-only">{label}</span>
       </DialogPrimitive.Close>
     </div>
@@ -332,7 +332,7 @@ export function PageSheetClose({ label }: { label: string }): JSX.Element {
     <DialogPrimitive.Close
       data-slot="page-sheet-close"
       className={cn(
-        'text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg outline-none transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:size-11',
+        'text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-control outline-none transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:size-11',
         FOCUS_RING,
       )}
     >

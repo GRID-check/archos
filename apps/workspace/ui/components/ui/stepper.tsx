@@ -99,7 +99,7 @@ export function Stepper({
                 <span
                   aria-hidden
                   className={cn(
-                    'h-px flex-1 rounded-full',
+                    'h-px flex-1 rounded-none',
                     index === 0 ? 'opacity-0' : done || active ? 'bg-primary' : 'bg-border',
                   )}
                 />
@@ -132,7 +132,7 @@ export function Stepper({
                 <span
                   aria-hidden
                   className={cn(
-                    'h-px flex-1 rounded-full',
+                    'h-px flex-1 rounded-none',
                     index === steps.length - 1 ? 'opacity-0' : done ? 'bg-primary' : 'bg-border',
                   )}
                 />

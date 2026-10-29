@@ -66,7 +66,7 @@ export function DataToolbar({
       // reads as the list's own state rather than a card laid over it.
       <div
         className={cn(
-          'bg-accent/40 flex flex-wrap items-center gap-2 rounded-md px-4 py-3',
+          'bg-accent/40 flex flex-wrap items-center gap-2 rounded-surface px-4 py-3',
           className
         )}
         data-testid="data-toolbar-selection"

@@ -60,7 +60,7 @@ export function InspectorGroup({
     <div
       data-slot="inspector-group"
       className={cn(
-        'bg-card border-border/70 shadow-2xs overflow-hidden rounded-lg border',
+        'bg-card border-border/70 shadow-2xs overflow-hidden rounded-surface border',
         // The first row's hairline would draw a second edge under the group's
         // own border, so it is the one separator that is never drawn.
         '[&>:first-child>[data-slot=inspector-row-body]]:border-t-0',

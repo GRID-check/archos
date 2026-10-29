@@ -45,7 +45,7 @@ export function EmptyStateDisc({
   return (
     <div
       className={cn(
-        'flex shrink-0 select-none items-center justify-center rounded-full shadow-sm',
+        'flex shrink-0 select-none items-center justify-center rounded-control shadow-sm',
         size === 'md' ? 'size-12' : 'size-9',
         EMPTY_STATE_DISC_TONES[tone],
         className
@@ -92,7 +92,7 @@ export function EmptyState({
     <div
       className={cn(
         'flex w-full min-w-0 flex-col items-center justify-center text-center',
-        variant === 'panel' ? 'rounded-lg border border-dashed bg-muted/25 px-6 py-12' : 'py-10',
+        variant === 'panel' ? 'rounded-surface border border-dashed bg-muted/25 px-6 py-12' : 'py-10',
         // Staged entrance, CSS-only (this stays server-safe): the panel fades
         // in, the disc lands a beat later. Transform/opacity only, and the
         // parent already reserves the space, so no layout shift. `fade-in-0`

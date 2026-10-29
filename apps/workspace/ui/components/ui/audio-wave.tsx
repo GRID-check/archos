@@ -21,7 +21,7 @@ export function AudioWave({ levels, className }: AudioWaveProps) {
       {levels.map((level, index) => (
         <span
           key={index}
-          className="h-full w-[2px] rounded-full bg-current transition-transform duration-snap ease-out motion-reduce:transition-none"
+          className="h-full w-[2px] rounded-none bg-current transition-transform duration-snap ease-out motion-reduce:transition-none"
           // Scaled, not resized: a transform is composited, a height re-runs layout every frame.
           style={{ transform: `scaleY(${Math.max(MIN_BAR, Math.min(1, level)).toFixed(2)})` }}
         />

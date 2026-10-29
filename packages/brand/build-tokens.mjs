@@ -7,6 +7,9 @@
  *
  * Output (dist/)
  *   tokens.css        CSS variables (light and dark theme), text classes, @font-face
+ *   tokens.vars.css   the same colours, shadows and scalars as variables only, each
+ *                     prefixed --ds-, dark under .dark too: for an app with its own
+ *                     token names (the workspace), which maps them onto these
  *   components.css    copied from css/components.css (class prefix ui-)
  *   fonts/            copied from fonts/
  *
@@ -28,21 +31,26 @@ const toVar = (value) => value.replace(/\{([a-z0-9-]+)\}/g, 'var(--$1)')
 const declarations = (pairs) => pairs.map(([name, value]) => `  --${name}: ${value};`).join('\n')
 
 /** Light is the base; dark repeats the tokens that differ, plus aliases (they follow the theme). */
-function themeBlocks(themed) {
+function themePairs(themed) {
   const light = themed.map((t) => [t.name, toVar(t.value.light)])
   const dark = themed
     .filter((t) => t.value.dark !== undefined || isAlias(t.value.light))
     .map((t) => [t.name, toVar(t.value.dark ?? t.value.light)])
+  return { light, dark }
+}
+
+function themeBlocks(themed) {
+  const { light, dark } = themePairs(themed)
   return [
     `:root, [data-theme="light"] {\n${declarations(light)}\n}`,
     `[data-theme="dark"] {\n${declarations(dark)}\n}`,
   ]
 }
 
+const SCALAR_GROUPS = ['spacing', 'radius', 'stroke', 'effect', 'layout', 'motion']
+
 function rootBlock(tokens) {
-  const scalars = ['spacing', 'radius', 'stroke', 'effect', 'layout', 'motion'].flatMap((group) =>
-    tokens[group].tokens.map((t) => [t.name, t.value]),
-  )
+  const scalars = SCALAR_GROUPS.flatMap((group) => tokens[group].tokens.map((t) => [t.name, t.value]))
   const families = Object.entries(tokens.type.families).map(([key, value]) => [`font-${key}`, value])
   const texts = tokens.type.groups.flatMap((group) =>
     group.styles.map((s) => [
@@ -81,6 +89,26 @@ function fontFaces(tokens) {
   })
 }
 
+/**
+ * Variables only, each name prefixed (--ds-ink), so an app with its own vocabulary can
+ * import it beside its own tokens without a clash and map its names onto these.
+ * Dark applies under .dark (the workspace's class) and [data-theme="dark"].
+ */
+export function renderVarsCss(tokens, prefix = 'ds') {
+  const named = (pairs) => pairs.map(([name, value]) => [`${prefix}-${name}`, value.replace(/var\(--/g, `var(--${prefix}-`)])
+  const themed = [...tokens.color.tokens, ...tokens.shadow.tokens].filter((t) => isThemed(t.value))
+  const { light, dark } = themePairs(themed)
+  const scalars = SCALAR_GROUPS.flatMap((group) => tokens[group].tokens.map((t) => [t.name, String(t.value)]))
+  return `${HEADER}
+:root {
+${declarations(named([...light, ...scalars]))}
+}
+.dark, [data-theme="dark"] {
+${declarations(named(dark))}
+}
+`
+}
+
 export function renderTokensCss(tokens) {
   const themed = [...tokens.color.tokens, ...tokens.shadow.tokens].filter((t) => isThemed(t.value))
   const blocks = [...themeBlocks(themed), rootBlock(tokens), ...textClasses(tokens), ...fontFaces(tokens)]
@@ -95,6 +123,7 @@ export function renderDist() {
   const tokens = JSON.parse(readFileSync(join(BRAND, 'tokens.json'), 'utf8'))
   const out = new Map()
   out.set('tokens.css', renderTokensCss(tokens))
+  out.set('tokens.vars.css', renderVarsCss(tokens))
   out.set('components.css', readFileSync(join(BRAND, 'css/components.css')))
   for (const file of readdirSync(join(BRAND, 'fonts')).sort()) {
     out.set(`fonts/${file}`, readFileSync(join(BRAND, 'fonts', file)))

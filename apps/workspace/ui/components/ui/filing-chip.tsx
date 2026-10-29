@@ -18,7 +18,7 @@ export function NewMark({ className, ...props }: HTMLAttributes<HTMLSpanElement>
     <span
       data-slot="new-mark"
       className={cn(
-        'border-strong text-muted-foreground inline-flex shrink-0 items-center rounded-sm border border-dashed px-1 text-[10px] font-medium leading-[14px] tracking-[0.02em] whitespace-nowrap',
+        'border-strong text-muted-foreground inline-flex shrink-0 items-center rounded-control border border-dashed px-1 text-[10px] font-medium leading-[14px] tracking-[0.02em] whitespace-nowrap',
         className
       )}
       {...props}
@@ -63,7 +63,7 @@ export const FilingChip = forwardRef<HTMLButtonElement, FilingChipProps>(functio
       aria-haspopup="dialog"
       data-slot="filing-chip"
       className={cn(
-        'border-strong bg-card text-foreground -my-1 inline-flex h-6 min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-full border border-dashed pl-[3px] pr-2 text-[11px] font-medium leading-none',
+        'border-strong bg-card text-foreground -my-1 inline-flex h-6 min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-control border border-dashed pl-[3px] pr-2 text-[11px] font-medium leading-none',
         'hover:bg-accent aria-expanded:bg-accent hover:border-solid aria-expanded:border-solid',
         PRESSABLE,
         'animate-in fade-in-0 motion-reduce:animate-none',

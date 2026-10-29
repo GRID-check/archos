@@ -13,7 +13,7 @@ function ButtonGroup({
       role="group"
       data-orientation={orientation}
       className={cn(
-        'inline-flex items-center rounded-lg border border-border bg-card p-0.5 shadow-2xs',
+        'inline-flex items-center rounded-control border border-border bg-card p-0.5 shadow-2xs',
         orientation === 'vertical' && 'flex-col',
         className,
       )}

@@ -12,6 +12,8 @@ export interface DuoItem {
   alt?: string;
   /** Inline CSS for the photo (object-position, filter), as the reference sets it per card */
   photoStyle?: string;
+  /** Second, masked layer over the photo (the reference's mirror layer), with its own inline style */
+  photoMaskStyle?: string;
   /** Text in on-ink over a light photo */
   onPhoto?: boolean;
   /** Shows the AI tag */
@@ -29,7 +31,9 @@ interface Props {
 const { locale, items, class: className } = Astro.props;
 ---
 
-<div data-reveal class:list={['ui-duo', className]}>
+<!-- The reveal sits on a wrapper: on the grid itself its transition would replace the widening's. -->
+<div data-reveal>
+<div class:list={['ui-duo', className]}>
   {
     items.slice(0, 2).map((item, i) => {
       const theme = item.theme || (i === 1 ? 'dark' : undefined);
@@ -39,7 +43,10 @@ const { locale, items, class: className } = Astro.props;
       return (
         <div class:list={['ui-duo-card', item.photo && item.onPhoto && 'ui-duo-on-photo']} data-theme={theme} style={cardStyle}>
           {item.photo && <img class="ui-duo-photo" src={item.photo} alt={item.alt || ''} style={item.photoStyle} loading="lazy" decoding="async" />}
-          {item.ai && <AITag locale={locale} ink={!item.onPhoto && theme !== 'dark'} />}
+          {item.photo && item.photoMaskStyle && (
+            <img class="ui-duo-photo" src={item.photo} alt="" aria-hidden="true" style={item.photoMaskStyle} loading="lazy" decoding="async" />
+          )}
+          {item.ai && <AITag locale={locale} ink={!item.onPhoto} />}
           <div class="ui-duo-text">
             <h3 class="ui-duo-title heading-1">{item.title}</h3>
             {item.text && (
@@ -57,4 +64,5 @@ const { locale, items, class: className } = Astro.props;
       );
     })
   }
+</div>
 </div>

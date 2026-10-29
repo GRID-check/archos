@@ -209,7 +209,7 @@ export function AddressField({
           // none has to be chosen. The reminder sits outside the listbox,
           // which may hold options only.
           <div
-            className="bg-popover text-popover-foreground border-border absolute inset-x-0 top-full z-20 mt-1.5 rounded-[10px] border p-1 shadow-lg"
+            className="bg-popover text-popover-foreground border-border absolute inset-x-0 top-full z-20 mt-1.5 rounded-surface border p-1 shadow-lg"
             data-testid="create-project-address-suggestions"
           >
             <Listbox

@@ -51,7 +51,7 @@ export function StatCardIcon({
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-lg',
+        'flex shrink-0 items-center justify-center rounded-control',
         size === 'md' ? 'size-9' : 'size-7',
         STAT_CARD_ICON_TONES[tone],
         className
@@ -92,7 +92,7 @@ export interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?: React.ReactNode
 }
 
-const STAT_CARD_CLASS = 'flex h-full min-h-28 flex-col rounded-lg border bg-card p-5 shadow-xs'
+const STAT_CARD_CLASS = 'flex h-full min-h-28 flex-col rounded-surface border bg-card p-5 shadow-xs'
 
 export function StatCard({
   label,
@@ -107,7 +107,7 @@ export function StatCard({
       <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-sm">
         {icon ? (
           <span
-            className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md [&_svg]:size-3.5"
+            className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-control [&_svg]:size-3.5"
             aria-hidden
           >
             {icon}

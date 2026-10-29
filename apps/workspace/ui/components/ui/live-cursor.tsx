@@ -78,7 +78,7 @@ export function LiveCursor({
       {!tag ? null : chat ? (
         <span
           data-slot="live-cursor-chat"
-          className="absolute top-[15px] left-[12px] flex w-max max-w-60 flex-col rounded-2xl rounded-tl-sm px-2.5 py-1.5 text-white shadow-md pointer-coarse:max-w-44 pointer-coarse:px-2 pointer-coarse:py-1"
+          className="absolute top-[15px] left-[12px] flex w-max max-w-60 flex-col rounded-surface px-2.5 py-1.5 text-white shadow-md pointer-coarse:max-w-44 pointer-coarse:px-2 pointer-coarse:py-1"
           style={{ backgroundColor: color }}
         >
           {/* Solid white, the name a size under the words: translucent white on their ink fails 4.5:1. */}
@@ -93,7 +93,7 @@ export function LiveCursor({
           <span
             data-slot="live-cursor-tag"
             className={cn(
-              'absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-full rounded-tl-sm px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md',
+              'absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-control px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md',
               'pointer-coarse:max-w-36 pointer-coarse:px-1.5 pointer-coarse:text-[10px]',
               'origin-top-left transition-[opacity,scale] duration-base ease-out motion-reduce:transition-none',
               idle && 'scale-90 opacity-0'

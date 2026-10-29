@@ -1,4 +1,4 @@
-// @disk-inputs: ui/styles/tokens.css
+// @disk-inputs: ui/styles/tokens.css, ../../packages/brand/dist/tokens.vars.css
 /**
  * @vitest-environment node
  */
@@ -31,20 +31,39 @@ function luminanceOf(oklch: string): number {
   return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
 }
 
-/** WCAG contrast between two `oklch()` colours, or of white text on one. */
+/** The relative luminance of a `#rrggbb` colour. */
+function luminanceOfHex(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16) / 255)
+  const linear = [r, g, b].map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+}
+
+const luminance = (colour: string): number => (colour.startsWith('#') ? luminanceOfHex(colour) : luminanceOf(colour))
+
+/** WCAG contrast between two colours (`oklch()` or `#rrggbb`), or of white text on one. */
 const contrast = (a: string, b: string): number => {
-  const [hi, lo] = [luminanceOf(a), luminanceOf(b)].sort((x, y) => y - x) as [number, number]
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number]
   return (hi + 0.05) / (lo + 0.05)
 }
 const whiteOn = (oklch: string): number => contrast('oklch(1 0 0)', oklch)
 
-/** `--background` as `styles/tokens.css` sets it, in the light theme (`:root`) or the dark one (`.dark`). */
+const read = (path: string): string => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
+const themeBlock = (css: string, theme: 'light' | 'dark'): string =>
+  theme === 'dark' ? css.slice(css.indexOf('.dark')) : css
+
+/**
+ * `--background` as `styles/tokens.css` sets it, in the light theme (`:root`) or the dark one
+ * (`.dark`), followed into the brand package's `--ds-*` vars when it names one (its dist/ copy,
+ * which `sync.mjs --check` holds identical to the one the app imports).
+ */
 function backgroundToken(theme: 'light' | 'dark'): string {
-  const css = readFileSync(fileURLToPath(new URL('../../styles/tokens.css', import.meta.url)), 'utf8')
-  const block = theme === 'dark' ? css.slice(css.indexOf('.dark {')) : css
-  const value = /--background:\s*(oklch\([^)]*\))/.exec(block)?.[1]
-  if (!value) throw new Error(`no --background for ${theme} in tokens.css`)
-  return value
+  const value = /--background:\s*([^;]+);/.exec(themeBlock(read('../../styles/tokens.css'), theme))?.[1].trim()
+  const brand = value && /^var\(--(ds-[a-z-]+)\)$/.exec(value)?.[1]
+  const resolved = brand
+    ? new RegExp(`--${brand}:\\s*(#[0-9a-f]{6});`).exec(themeBlock(read('../../../../../packages/brand/dist/tokens.vars.css'), theme))?.[1]
+    : value
+  if (!resolved) throw new Error(`no --background for ${theme} in tokens.css`)
+  return resolved
 }
 
 /** One user id per hue of the ring. */

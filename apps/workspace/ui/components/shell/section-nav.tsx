@@ -188,7 +188,7 @@ function SectionNavLink({
       className={cn(
         // `relative isolate` + pill `-z-10` is the app-sidebar rail pattern:
         // the active surface glides on `springGlide` below the ink.
-        'duration-quick focus-visible:ring-ring/60 relative isolate items-center rounded-md text-sm transition-colors ease-out focus-visible:outline-none focus-visible:ring-2',
+        'duration-quick focus-visible:ring-ring/60 relative isolate items-center rounded-control text-sm transition-colors ease-out focus-visible:outline-none focus-visible:ring-2',
         // The strip's entries sit 4px apart, so under a finger each grows to
         // 44px rather than borrowing a catchment from its neighbour.
         variant === 'strip'

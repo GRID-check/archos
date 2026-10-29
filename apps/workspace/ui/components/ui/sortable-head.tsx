@@ -34,7 +34,7 @@ export const SortableHead: FC<{
         className={cn(
           // A column header is text-height by design; `touch-target` makes it
           // tappable without turning the header row into a row of buttons.
-          'hover:text-foreground focus-visible:ring-ring/60 touch-target inline-flex items-center gap-1 text-balance rounded-sm uppercase focus-visible:outline-none focus-visible:ring-2',
+          'hover:text-foreground focus-visible:ring-ring/60 touch-target inline-flex items-center gap-1 text-balance rounded-control uppercase focus-visible:outline-none focus-visible:ring-2',
           active && 'text-foreground'
         )}
       >

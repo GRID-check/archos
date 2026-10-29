@@ -20,7 +20,7 @@
  * copy, hand-rolled inside a new "project atoms" module.
  *
  * The two-surface trick is the whole point and the easiest thing to get subtly
- * wrong: the inner block is rounded only at the BOTTOM (`rounded-b-lg`)
+ * wrong: the inner block is rounded only at the BOTTOM (`rounded-surface`)
  * and the outer container clips it, so the block reads as a sheet laid into a
  * tray rather than a box inside a box. The footer is not a bordered section —
  * it is the tray showing beneath the sheet, which is why it needs no divider.
@@ -58,7 +58,7 @@ export function RaisedCard({
   const card = (
     <div
       className={cn(
-        'border-border bg-muted/50 shadow-sm relative flex h-full min-w-0 flex-col overflow-hidden rounded-lg border',
+        'border-border bg-muted/50 shadow-sm relative flex h-full min-w-0 flex-col overflow-hidden rounded-surface border',
         'transition-shadow duration-quick ease-out motion-reduce:transition-none',
         interactive && 'hover:shadow-md',
         className
@@ -148,7 +148,7 @@ export function RaisedCardBody({
   return (
     <div
       className={cn(
-        'bg-card w-full overflow-hidden rounded-b-lg px-4 pb-3 pt-3.5',
+        'bg-card w-full overflow-hidden rounded-surface px-4 pb-3 pt-3.5',
         className
       )}
       {...rest}

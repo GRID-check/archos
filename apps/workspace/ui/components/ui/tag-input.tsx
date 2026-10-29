@@ -115,7 +115,7 @@ export function TagInput({
         if (event.target === event.currentTarget) inputRef.current?.focus()
       }}
       className={cn(
-        'flex min-h-10 w-full min-w-0 flex-wrap items-center gap-1.5 rounded-lg border px-2 py-1.5 text-sm',
+        'flex min-h-10 w-full min-w-0 flex-wrap items-center gap-1.5 rounded-control border px-2 py-1.5 text-sm',
         'transition-[color,opacity] duration-quick ease-out motion-reduce:transition-none',
         readOnly ? 'border-dashed bg-transparent' : 'border-input bg-input-background',
         !readOnly && FIELD_FOCUS_WITHIN_RING,
@@ -134,7 +134,7 @@ export function TagInput({
                     onClick={() => remove(index)}
                     aria-label={removeLabel(tag)}
                     className={cn(
-                      'touch-target inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground',
+                      'touch-target inline-flex size-4 shrink-0 items-center justify-center rounded-control text-muted-foreground hover:text-foreground',
                       FOCUS_RING
                     )}
                   >

@@ -150,7 +150,7 @@ function PhoneTabItem({
 }): JSX.Element {
   const Icon = tab.icon
   const className = cn(
-    'relative flex h-[3.25rem] w-full flex-col items-center justify-center gap-1 rounded-lg outline-none',
+    'relative flex h-[3.25rem] w-full flex-col items-center justify-center gap-1 rounded-control outline-none',
     // A phone on its side: icon beside label, one 44px row.
     '[@media(max-height:31rem)]:h-11 [@media(max-height:31rem)]:flex-row [@media(max-height:31rem)]:gap-2',
     PRESSABLE,

@@ -14,7 +14,7 @@ or a brand string changes here and reaches every surface on the next sync.
 | `fonts/` | The two WOFF2 files (General Sans variable, Switzer Semibold). |
 | `assets/logos/` | Client logos in grey (Pilotbüros, funding logo). The brand video is not here; it lives with the website. |
 | `docs/components/` | One Markdown rules sheet per component, plus `ColorUsage.md`. |
-| `build-tokens.mjs` | Builds `dist/tokens.css` from `tokens.json` and copies `css/` and `fonts/` into `dist/`. |
+| `build-tokens.mjs` | Builds `dist/tokens.css` and `dist/tokens.vars.css` from `tokens.json` and copies `css/` and `fonts/` into `dist/`. `tokens.vars.css` is the colours, shadows and scalars as variables only, prefixed `--ds-`, dark under `.dark` too: an app with token names of its own (the workspace) imports it and maps its names onto it rather than typing a value. |
 | `sync.mjs` | Copies `dist/` and `identity.json` into each app in `TARGETS`. `--check` writes nothing and fails on drift. |
 | `dist/` | Built output, committed on purpose (see the root `.gitignore` negation). |
 | `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build. Unrelated to the tokens. |
