@@ -614,7 +614,8 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     // sidebar, and is a phone's width there on any screen.
     <div className="@container w-full rounded-surface bg-muted shadow-xs">
       <Collapsible open={open || opening} onOpenChange={handleOpenChange}>
-        <CollapsibleTrigger asChild>
+        {/* No Radix panel exists here (the body is drawn outside a CollapsibleContent), so aria-controls would name nothing. */}
+        <CollapsibleTrigger asChild aria-controls={undefined}>
           {/* The trigger's name is the PHASE and the panel (`sr-only` below),
               not the visual line: the live activity phrase changes with every
               step, and a button whose name changes that often is re-read on
