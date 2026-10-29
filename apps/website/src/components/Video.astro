@@ -17,7 +17,7 @@ interface Props {
 const { locale, sources, poster, label, ratio, loop = true, class: className } = Astro.props;
 ---
 
-<div class:list={['ui-video', className]} style={ratio ? `aspect-ratio: ${ratio}` : undefined} data-video>
+<div data-reveal class:list={['ui-video', className]} style={ratio ? `aspect-ratio: ${ratio}` : undefined} data-video>
   <video class="ui-video-media" muted loop={loop} playsinline preload="metadata" poster={poster} aria-label={label}>
     {sources.map((source) => <source src={source.src} type={source.type} />)}
   </video>

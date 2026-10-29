@@ -18,7 +18,7 @@ const titleClass = size === 'display' ? 'display' : 'heading-1';
 const hasActions = Astro.slots.has('default');
 ---
 
-<div class:list={['ui-intro', align === 'center' && 'ui-intro-center', className]}>
+<div data-reveal class:list={['ui-intro', align === 'center' && 'ui-intro-center', className]}>
   <Title class:list={['ui-intro-title', titleClass]}>{title}</Title>
   {lead && <p class="ui-intro-lead lead">{lead}</p>}
   {text && <p class="ui-intro-text body">{text}</p>}

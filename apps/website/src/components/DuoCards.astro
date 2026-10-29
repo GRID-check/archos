@@ -29,7 +29,7 @@ interface Props {
 const { locale, items, class: className } = Astro.props;
 ---
 
-<div class:list={['ui-duo', className]}>
+<div data-reveal class:list={['ui-duo', className]}>
   {
     items.slice(0, 2).map((item, i) => {
       const theme = item.theme || (i === 1 ? 'dark' : undefined);

@@ -51,5 +51,32 @@ const hrefFor = (target: Locale) => new URL(target === locale ? here : there, As
       <slot />
     </main>
     {!bare && <Footer locale={locale} />}
+    <script>
+      // The header's hairline marks that the page has scrolled beneath it.
+      const header = document.querySelector('.ui-header');
+      if (header) {
+        const mark = () => header.toggleAttribute('data-scrolled', scrollY > 0);
+        addEventListener('scroll', mark, { passive: true });
+        mark();
+      }
+
+      // Blocks below the fold arrive once as they scroll into view (styles in
+      // packages/brand/css/components.css, [data-reveal]). Anything on screen at
+      // load is left alone, and reduced motion leaves the page as it is.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+        const arrive = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.classList.remove('is-pending');
+            arrive.unobserve(entry.target);
+          }
+        }, { rootMargin: '0px 0px -10% 0px' });
+        for (const block of document.querySelectorAll('[data-reveal]')) {
+          if (block.getBoundingClientRect().top < innerHeight) continue;
+          block.classList.add('is-pending');
+          arrive.observe(block);
+        }
+      }
+    </script>
   </body>
 </html>

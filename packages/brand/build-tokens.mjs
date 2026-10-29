@@ -40,7 +40,7 @@ function themeBlocks(themed) {
 }
 
 function rootBlock(tokens) {
-  const scalars = ['spacing', 'radius', 'stroke', 'effect', 'layout'].flatMap((group) =>
+  const scalars = ['spacing', 'radius', 'stroke', 'effect', 'layout', 'motion'].flatMap((group) =>
     tokens[group].tokens.map((t) => [t.name, t.value]),
   )
   const families = Object.entries(tokens.type.families).map(([key, value]) => [`font-${key}`, value])

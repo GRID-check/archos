@@ -14,7 +14,7 @@ interface Props {
 const { title, text, primary, secondary, class: className } = Astro.props;
 ---
 
-<div class:list={['ui-cta', className]}>
+<div data-reveal class:list={['ui-cta', className]}>
   <div>
     <h2 class="ui-cta-title heading-1">{title}</h2>
     {text && <p class="ui-cta-text lead">{text}</p>}

@@ -17,7 +17,7 @@ const { steps, current = 0, class: className } = Astro.props;
 <ol class:list={['ui-timeline', className]} style={`--ui-cols: ${steps.length || 3}`}>
   {
     steps.map((step, i) => (
-      <li class="ui-timeline-step" aria-current={i === current ? 'step' : undefined}>
+      <li class="ui-timeline-step" data-reveal style={`--ui-reveal-step: ${i % 4}`} aria-current={i === current ? 'step' : undefined}>
         <span class="ui-timeline-bar" aria-hidden="true" />
         <h3 class="ui-timeline-when heading-3">{step.when}</h3>
         {step.text && <p class="ui-timeline-text body">{step.text}</p>}

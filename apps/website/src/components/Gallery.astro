@@ -26,7 +26,7 @@ const n = items.length;
 const ui = t(locale);
 ---
 
-<section class:list={['ui-gallery', className]} id={id} aria-roledescription={ui.galleryCarousel} aria-label={label} data-gallery>
+<section data-reveal class:list={['ui-gallery', className]} id={id} aria-roledescription={ui.galleryCarousel} aria-label={label} data-gallery>
   <div class="ui-gallery-track" data-track>
     {
       items.map((item, i) => (

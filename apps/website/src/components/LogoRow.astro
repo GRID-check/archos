@@ -11,7 +11,7 @@ const { logos, columns, label = 'Pilotbüros', class: className } = Astro.props;
 const cols = columns || logos.length || 4;
 ---
 
-<div class:list={['ui-logos', className]} style={`--ui-cols: ${cols}`} aria-label={label}>
+<div data-reveal class:list={['ui-logos', className]} style={`--ui-cols: ${cols}`} aria-label={label}>
   {
     logos.map((logo) => (
       <div class="ui-logo">

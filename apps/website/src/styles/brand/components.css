@@ -321,3 +321,39 @@ textarea.ui-input { resize: vertical; min-height: 144px; }
 /* Galerie auf Tablet und Smartphone: Satz oben, Produkt-Ausschnitt unten verankert */
 @media (max-width: 1023px) { .ui-gallery-card { aspect-ratio: auto; min-height: 560px; } .ui-gallery-card .ui-gallery-media img { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 500px; object-fit: cover; object-position: left bottom; } }
 @media (max-width: 767px) { .ui-gallery-card { min-height: 480px; } .ui-gallery-card .ui-gallery-media img { height: 440px; } }
+
+/* The header shows a hairline once the page has scrolled beneath it
+   (data-scrolled is set by the page's script). */
+.ui-header[data-scrolled] { box-shadow: inset 0 calc(-1 * var(--stroke-hairline)) 0 var(--line); }
+
+/* Motion. Each movement tells the reader something; at rest nothing moves, and
+   with reduced motion none of it runs: the still page is the finished page. */
+@media (prefers-reduced-motion: no-preference) {
+  /* A block arrives as it scrolls into view, once. The script marks only blocks
+     below the fold as pending, so nothing on screen at load ever moves, and
+     without the script nothing is hidden. */
+  [data-reveal] {
+    transition: opacity var(--duration-slow) var(--ease-settle), transform var(--duration-slow) var(--ease-settle);
+    transition-delay: calc(var(--ui-reveal-step, 0) * var(--stagger-row));
+  }
+  [data-reveal].is-pending { opacity: 0; transform: translateY(var(--travel-sm)); }
+
+  /* The header's hairline fades in as the page passes beneath it. */
+  .ui-header { transition: box-shadow var(--duration-base) var(--ease-settle); }
+
+  /* An FAQ answer opens by its height instead of appearing at once. */
+  .ui-faq { interpolate-size: allow-keywords; }
+  .ui-faq details::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size var(--duration-base) var(--ease-draft), opacity var(--duration-base) var(--ease-draft), content-visibility var(--duration-base) allow-discrete;
+  }
+  .ui-faq details[open]::details-content { block-size: auto; opacity: 1; }
+
+  /* The mobile menu settles in from just above. */
+  .ui-mnav[open] .ui-mnav-panel {
+    transition: opacity var(--duration-quick) var(--ease-settle), transform var(--duration-quick) var(--ease-settle);
+    @starting-style { opacity: 0; transform: translateY(calc(-1 * var(--travel-sm))); }
+  }
+}

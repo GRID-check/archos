@@ -16,8 +16,8 @@ const cols = columns || Math.min(items.length, 4) || 3;
 
 <ol class:list={['ui-features', className]} style={`--ui-cols: ${cols}`}>
   {
-    items.map((item) => (
-      <li class="ui-feature">
+    items.map((item, i) => (
+      <li class="ui-feature" data-reveal style={`--ui-reveal-step: ${i % 4}`}>
         <h3 class="ui-feature-title heading-3">{item.title}</h3>
         {item.text && <p class="ui-feature-text body">{item.text}</p>}
       </li>
