@@ -702,9 +702,11 @@ The transport is the shared realtime channel layer; see ADR 0110 for why it is
 our own thin layer over Dragonfly rather than a library.
 
 What a tab sends is bounded per person and per document (`lib/realtime/send.ts`),
-from two budgets in `lib/limits/rules.js`. Motion, the pointer and the scroll,
-spends `ROOM_LIMIT`; a claim, presence and the selected mark, spends
-`ROOM_CLAIM_LIMIT`. A burst of motion can therefore never refuse the presence
+from budgets in `lib/limits/rules.js`, one per send lane of the channel
+(`upstream.lanes`). Motion, the pointer and the scroll, spends `ROOM_LIMIT`; a
+claim, presence and the selected mark, spends `ROOM_CLAIM_LIMIT`; a Skizze's
+edits spend `SKETCH_EDIT_LIMIT` and need write access to the document
+(`docs/architecture/diagrams.md`, "Two people on one Skizze"). A burst of motion can therefore never refuse the presence
 refresh that keeps a person in everyone's roster. When the server refuses motion
 (429), the tab pauses its pointer and scroll for that document for the
 `Retry-After` and keeps its claims going (`features/realtime/connection.ts`).

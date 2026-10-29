@@ -20,6 +20,14 @@
  *   browser `person` from its session, and the browser's vocabulary
  *   (`roomPostSchema`) has no activity, highlight, label or `forName` to send.
  *
+ * A Skizze's editor speaks in the same room (`lib/diagrams/sketch-room-types.ts`):
+ * its canvas pointer and selection are motion any reader may send, as are the
+ * scene's hash and a request for the whole scene, so a reader in view mode
+ * points and stays in step. Its edits (`delta`, `saved`) travel in a lane of
+ * their own, which asks for write access to the document and spends
+ * `SKETCH_EDIT_LIMIT`; a revoked writer can go on sending for at most
+ * {@link DOCUMENT_REAUTHORIZE_MS}, as a revoked reader can.
+ *
  * Every relayed claim and fact also lands in the server roster (`./roster`),
  * which {@link roomSnapshot} reads: who is here, on which page, scrolled where,
  * with which mark selected and which region half drawn.
@@ -28,7 +36,8 @@
 import 'server-only'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { ROOM_CLAIM_LIMIT, ROOM_LIMIT } from '@/lib/limits'
+import { ROOM_CLAIM_LIMIT, ROOM_LIMIT, SKETCH_EDIT_LIMIT } from '@/lib/limits'
+import { SKETCH_EDIT_FIELDS, sketchEventsOf } from '@/lib/diagrams/sketch-room-types'
 import {
   CURSOR_CHAT_MAX,
   HIGHLIGHT_TTL_MS,
@@ -60,12 +69,15 @@ export const documentChannelKey = (documentId: string) => `doc:${documentId}`
 /** The hub topic the room travels on. */
 export const documentRoomTopic = (documentId: string) => `rt:doc:${documentId}`
 
+/** The sketch's edits and repair: they keep nobody in the roster and say nothing Piloti's snapshot reads. */
+const NOT_RECORDED = new Set<string>(['scene.delta', 'scene.hash', 'scene.want', 'scene.saved'])
+
 /** Note what was said in a room in its server roster. */
 function observeRoom(documentId: string, organizationId: string, events: ReadonlyArray<{ kind: string }>): void {
   const key = rosterKey(organizationId, documentChannelKey(documentId))
   for (const raw of events) {
     const event = raw as RoomEvent
-    if (event.kind === 'annotations.changed') continue
+    if (event.kind === 'annotations.changed' || NOT_RECORDED.has(event.kind)) continue
     if (event.kind === 'presence') {
       if (event.state === 'gone') forgetRosterPeer(key, event.peer.peerId)
       else noteRosterPeer(key, event.peer, event.ttlMs)
@@ -98,8 +110,19 @@ export const documentChannel = defineChannel({
   upstream: {
     schema: roomPostSchema,
     limit: ROOM_LIMIT,
-    // Presence and the selected mark are claims: motion must never refuse them.
-    claims: { limit: ROOM_CLAIM_LIMIT, fields: ['selected'] },
+    lanes: [
+      // A sketch's edits: a writer's only, and never spent by anyone's motion.
+      {
+        name: 'sketch-edit',
+        fields: SKETCH_EDIT_FIELDS,
+        limit: SKETCH_EDIT_LIMIT,
+        authorize: async (session, { documentId }) => {
+          await getAccessibleDocument(session, documentId, 'write')
+        },
+      },
+      // Presence and the selected mark are claims: motion must never refuse them.
+      { name: 'claim', fields: ['selected'], presence: true, limit: ROOM_CLAIM_LIMIT },
+    ],
     handle: (post, peer) => {
       const events: RoomEvent[] = []
       if (post.cursor !== undefined) {
@@ -120,6 +143,7 @@ export const documentChannel = defineChannel({
           ...(post.selected !== undefined ? { selected: post.selected } : {}),
         })
       }
+      events.push(...sketchEventsOf(post, peer))
       return events
     },
   },

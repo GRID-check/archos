@@ -20,7 +20,9 @@ function scriptedLink() {
       onOpen()
       return () => undefined
     },
-    post: (msg, options) => posts.push({ msg: msg as UpstreamBase & Record<string, unknown>, options }),
+    post: (msg, options) => {
+      posts.push({ msg: msg as UpstreamBase & Record<string, unknown>, options })
+    },
   }
   return { link, posts }
 }
@@ -40,8 +42,12 @@ describe('useChannel', () => {
     const { link, posts } = scriptedLink()
     const { result, unmount } = renderHook(() => useChannel<Event>('doc:a', { enabled: true, link, parse }))
 
-    act(() => result.current.send({ cursor: 1 }, { throttleMs: 80, lane: 'cursor' }))
-    act(() => result.current.send({ selected: 'ann_1' }))
+    act(() => {
+      void result.current.send({ cursor: 1 }, { throttleMs: 80, lane: 'cursor' })
+    })
+    act(() => {
+      void result.current.send({ selected: 'ann_1' })
+    })
     expect(posts.map((post) => [Object.keys(post.msg).sort().join(','), post.options?.motion])).toEqual([
       ['cursor,peerId', true],
       ['peerId,selected', false],

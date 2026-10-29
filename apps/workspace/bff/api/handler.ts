@@ -73,6 +73,7 @@ import {
   UpstreamError,
 } from './errors'
 import { requestBodyLimitBytes } from '@/shared/config/request-body-limit'
+import { readBoundedText } from './bounded-body'
 import { REQUEST_ID_HEADER, resolveRequestId } from './request-id'
 import { databaseUnavailableCode } from '@/lib/db/errors'
 import { captureUpstreamError, upstreamContext } from '@/lib/analytics/upstream-error'
@@ -515,11 +516,15 @@ export function publicApiRoute<TParams = Record<string, string | string[]>>(
  */
 export async function parseJsonBody<TSchema extends ZodType>(
   request: Request,
-  schema: TSchema
+  schema: TSchema,
+  { maxBytes }: { maxBytes?: number } = {}
 ): Promise<output<TSchema>> {
-  const raw = await request.json().catch(() => {
-    throw new BadRequestError('Invalid JSON body')
-  })
+  const raw = await (maxBytes === undefined ? request.json() : readBoundedText(request, maxBytes).then(JSON.parse)).catch(
+    (error: unknown) => {
+      if (error instanceof PayloadTooLargeError) throw error
+      throw new BadRequestError('Invalid JSON body')
+    }
+  )
   try {
     return schema.parse(raw)
   } catch (error) {

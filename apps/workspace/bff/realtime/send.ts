@@ -6,10 +6,13 @@
  *
  * 1. The key names a channel that takes messages (400 otherwise).
  * 2. The session may send there: the channel's `authorizeSend` (or
- *    `authorize`), remembered for its `reauthorizeMs` (`./channel`).
- * 3. The channel's rate limit is spent, per member and channel (429 when
- *    gone): a claim (presence, the selected mark) from its own budget, the
- *    rest (motion) from the channel's, so motion never refuses a claim.
+ *    `authorize`), and the `authorize` of every guarded lane the message
+ *    touches (a sketch edit needs write access to the document), each
+ *    remembered for its `reauthorizeMs` (`./channel`).
+ * 3. The budget of the message's lane is spent, per member and channel (429
+ *    when gone): a claim (presence, the selected mark) from the claim lane's,
+ *    an edit from the edit lane's, the rest (motion) from the channel's, so
+ *    motion never refuses a claim or an edit.
  * 4. The message parses as the channel's upstream vocabulary (400).
  * 5. The peer is stamped from the session (`userId`, `name`, `kind`); the
  *    client contributes only its tab's `peerId`.
@@ -22,7 +25,7 @@ import { ZodError } from 'zod'
 import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { enforceLimit, memberSubject } from '@/lib/limits'
-import { authorizeSendCached, type AnyChannel } from './channel'
+import { authorizeSendCached, type AnyChannel, type SendLane } from './channel'
 import { publish } from './hub'
 import { CHANNELS, resolveChannel } from './registry'
 import { selfOf } from './stream'
@@ -38,9 +41,9 @@ export async function sendToChannel(
   if (!resolved || !upstream) throw new BadRequestError('This channel takes no messages.')
   const { channel, params } = resolved
 
-  await authorizeSendCached(session, channel, params, ch)
-  const rule = upstream.claims && carriesClaim(msg, upstream.claims.fields) ? upstream.claims.limit : upstream.limit
-  await enforceLimit(rule, `${memberSubject(session)}:${ch}`)
+  const touched = lanesTouched(msg, upstream.lanes)
+  await authorizeSendCached(session, channel, params, ch, Date.now(), touched)
+  await enforceLimit(touched[0]?.limit ?? upstream.limit, `${memberSubject(session)}:${ch}`)
 
   let post: UpstreamBase
   try {
@@ -65,12 +68,12 @@ export async function sendToChannel(
 }
 
 /**
- * Whether a message carries a claim: `presence`, or one of the channel's claim
- * `fields`. Read off the raw message, so the limit is still spent before the
- * message is parsed. Motion that rides along with a claim spends the claim
+ * The lanes a message touches, in the channel's order: the first is the lane it
+ * travels in. Read off the raw message, so the guard and the limit come before
+ * the message is parsed. Motion that rides along with a claim spends the claim
  * budget, which bounds it as well.
  */
-function carriesClaim(msg: unknown, fields: readonly string[] = []): boolean {
-  if (typeof msg !== 'object' || msg === null) return false
-  return 'presence' in msg || fields.some((field) => field in msg)
+function lanesTouched(msg: unknown, lanes: ReadonlyArray<SendLane> = []): SendLane[] {
+  if (typeof msg !== 'object' || msg === null) return []
+  return lanes.filter((lane) => (lane.presence && 'presence' in msg) || lane.fields.some((field) => field in msg))
 }

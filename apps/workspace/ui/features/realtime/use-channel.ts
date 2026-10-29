@@ -29,6 +29,7 @@ import {
   getRealtimeConnection,
   type ChannelPostOptions,
   type ChannelStatus,
+  type PostOutcome,
   type RealtimeConnection,
 } from './connection'
 import { createRoster, type PeerEvent, type RosterEntry } from './presence'
@@ -43,7 +44,8 @@ export type ChannelFrame =
 export interface ChannelLink<TUp extends UpstreamBase = UpstreamBase> {
   /** Open the channel. Returns the close. */
   connect(handlers: { onFrame: (frame: ChannelFrame) => void; onOpen: () => void; onDrop: () => void }): () => void
-  post(msg: TUp, options?: ChannelPostOptions): void
+  /** Send one message. A link that can tell resolves to what the server answered; see `RealtimeConnection.send`. */
+  post(msg: TUp, options?: ChannelPostOptions): Promise<PostOutcome | undefined> | void
 }
 
 /** The production link: the channel on the tab's shared connection. */
@@ -301,25 +303,31 @@ export function useChannel<E extends PeerEvent, S = undefined>(
     []
   )
 
-  /** Say something in the channel; the tab's `peerId` is added. */
+  /**
+   * Say something in the channel; the tab's `peerId` is added. An unthrottled
+   * message resolves to what the server answered, when the link can tell
+   * (`ChannelLink.post`); a throttled one, and one the channel cannot take
+   * (closed, disabled), to undefined.
+   */
   const send = useCallback(
-    (msg: Message, { throttleMs = 0, lane = 'default' }: SendOptions = {}) => {
-      if (!active || !link) return
-      const deliver = (value: Message) => {
+    (msg: Message, { throttleMs = 0, lane = 'default' }: SendOptions = {}): Promise<PostOutcome | undefined> => {
+      if (!active || !link) return Promise.resolve(undefined)
+      const deliver = (value: Message): Promise<PostOutcome | undefined> => {
         // A send that outlived the channel (a component's timer, a stale callback) says nothing.
-        if (openOn.current !== undefined && openOn.current !== link) return
-        link.post({ ...value, peerId } as UpstreamBase, { motion: throttleMs > 0 })
+        if (openOn.current !== undefined && openOn.current !== link) return Promise.resolve(undefined)
+        return Promise.resolve(link.post({ ...value, peerId } as UpstreamBase, { motion: throttleMs > 0 })).then(
+          (outcome) => outcome ?? undefined,
+          () => undefined
+        )
       }
-      if (throttleMs <= 0) {
-        deliver(msg)
-        return
-      }
+      if (throttleMs <= 0) return deliver(msg)
       let sender = lanes.current.get(lane)
       if (!sender) {
-        sender = throttle<Message>(throttleMs, deliver)
+        sender = throttle<Message>(throttleMs, (value) => void deliver(value))
         lanes.current.set(lane, sender)
       }
       sender.push(msg)
+      return Promise.resolve(undefined)
     },
     [active, link, peerId]
   )

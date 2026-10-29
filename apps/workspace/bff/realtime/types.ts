@@ -114,3 +114,10 @@ export function realtimeStreamPath(channels: readonly string[]): string {
 }
 
 export const REALTIME_SEND_PATH = '/api/realtime/send'
+
+/**
+ * The largest body `POST /api/realtime/send` reads: a sketch delta's 64 KB of
+ * elements (`lib/diagrams/sketch-room-types.ts`) and its envelope, escaped.
+ * Every other message is a few hundred bytes. Past it the answer is a 413.
+ */
+export const REALTIME_SEND_MAX_BYTES = 96 * 1024

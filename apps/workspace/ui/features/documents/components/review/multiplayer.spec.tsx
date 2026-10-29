@@ -47,6 +47,8 @@ const person = (peer: RoomPeer, overrides: Partial<RoomPeerState> = {}): RoomPee
   selected: null,
   activity: null,
   highlight: null,
+  scene: null,
+  sceneSelection: [],
   expiresAt: Date.now() + 25_000,
   ...overrides,
 })

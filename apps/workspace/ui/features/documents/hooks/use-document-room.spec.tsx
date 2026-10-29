@@ -27,7 +27,9 @@ function scriptedRoom() {
         deliver = null
       }
     },
-    post: (post) => posts.push(post),
+    post: (post) => {
+      posts.push(post)
+    },
   }
   return { transport, posts, send: (frame: RoomFrame) => act(() => deliver?.(frame)) }
 }
@@ -244,6 +246,8 @@ describe('createHighlightTracker', () => {
     selected: null,
     activity: null,
     highlight: { box, label: 'Breite', expiresAt: Date.now() + 60_000 },
+    scene: null,
+    sceneSelection: [],
   })
 
   it('shows a box Piloti points out once for the room, for its time, however often the room is read', () => {

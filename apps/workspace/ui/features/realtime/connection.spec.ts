@@ -236,6 +236,29 @@ describe('the realtime connection', () => {
     expect(post).toHaveBeenCalledTimes(1)
     connection.dispose()
   })
+
+  it('answers each send with what the server said, so an edit that was refused is not taken for delivered', async () => {
+    const answers = [{ status: 204, retryAfterMs: 0 }, { status: 403, retryAfterMs: 0 }, undefined]
+    const post = vi.fn(async () => answers.shift())
+    const connection = createRealtimeConnection({ createSource: (url) => new FakeSource(url), post })
+    const msg = { peerId: 'peer_abcdef12', delta: {} }
+    await expect(connection.send('doc:a', msg)).resolves.toEqual({ status: 204, retryAfterMs: 0 })
+    await expect(connection.send('doc:a', msg)).resolves.toEqual({ status: 403, retryAfterMs: 0 })
+    // Lost in transit: nothing was answered.
+    await expect(connection.send('doc:a', msg)).resolves.toBeUndefined()
+    post.mockRejectedValueOnce(new Error('offline'))
+    await expect(connection.send('doc:a', msg)).resolves.toBeUndefined()
+    connection.dispose()
+  })
+
+  it('answers held motion with nothing, and refused motion with its refusal', async () => {
+    const post = vi.fn(async () => ({ status: 429, retryAfterMs: 5_000 }))
+    const connection = createRealtimeConnection({ createSource: (url) => new FakeSource(url), post })
+    const cursor = { peerId: 'peer_abcdef12', cursor: { page: 1, x: 0.5, y: 0.5 } }
+    await expect(connection.send('doc:a', cursor, { motion: true })).resolves.toEqual({ status: 429, retryAfterMs: 5_000 })
+    await expect(connection.send('doc:a', cursor, { motion: true })).resolves.toBeUndefined()
+    connection.dispose()
+  })
 })
 
 describe('a page away', () => {

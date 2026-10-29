@@ -13,10 +13,10 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 
 import { z } from 'zod'
-import { BadRequestError, NotFoundError, TooManyRequestsError } from '@/lib/api/errors'
+import { BadRequestError, ForbiddenError, NotFoundError, TooManyRequestsError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { createInProcessStore, ROOM_CLAIM_LIMIT, ROOM_LIMIT, setLimitStore } from '@/lib/limits'
+import { createInProcessStore, ROOM_CLAIM_LIMIT, ROOM_LIMIT, setLimitStore, SKETCH_EDIT_LIMIT } from '@/lib/limits'
 import { __resetGrantsForTests, defineChannel, forgetSendGrant, type AnyChannel } from './channel'
 import { __setHubTransportForTests, subscribe } from './hub'
 import { CHANNELS } from './registry'
@@ -163,7 +163,7 @@ describe('sendToChannel, the limit', () => {
       upstream: {
         ...tight.upstream!,
         limit: { name: 'test-motion', limit: 2, windowMs: 60_000 },
-        claims: { limit: { name: 'test-claim', limit: 3, windowMs: 60_000 }, fields: ['selected'] },
+        lanes: [{ name: 'claim', limit: { name: 'test-claim', limit: 3, windowMs: 60_000 }, fields: ['selected'], presence: true }],
       },
     }) as AnyChannel
     const send = (msg: Record<string, unknown>) =>
@@ -179,8 +179,85 @@ describe('sendToChannel, the limit', () => {
     await expect(send({ presence: 'here' })).rejects.toBeInstanceOf(TooManyRequestsError)
   })
 
-  it('gives the document room’s presence and selection the claim budget', () => {
+  it('gives the document room’s presence and selection the claim budget, and a sketch’s edits their own', () => {
     expect(CHANNELS.doc.upstream?.limit).toBe(ROOM_LIMIT)
-    expect(CHANNELS.doc.upstream?.claims).toEqual({ limit: ROOM_CLAIM_LIMIT, fields: ['selected'] })
+    const lanes = CHANNELS.doc.upstream?.lanes?.map(({ name, fields, presence, limit }) => ({ name, fields, presence, limit }))
+    expect(lanes).toEqual([
+      { name: 'sketch-edit', fields: ['delta', 'saved'], presence: undefined, limit: SKETCH_EDIT_LIMIT },
+      { name: 'claim', fields: ['selected'], presence: true, limit: ROOM_CLAIM_LIMIT },
+    ])
+  })
+})
+
+describe('sendToChannel, a sketch in the document room', () => {
+  const element = { id: 'el_1', type: 'rectangle', version: 3, versionNonce: 7, isDeleted: false, index: 'a0', x: 10 }
+  const delta = { base: 'ver_1', seq: 1, elements: [element] }
+  const send = (msg: Record<string, unknown>, session = SESSION) =>
+    sendToChannel(session, { ch: 'doc:doc_1', msg: { peerId: 'peer_abcdef12', ...msg } })
+  /** A reader: may read the document, may not write it. */
+  const reader = () =>
+    vi.mocked(getAccessibleDocument).mockImplementation(async (_session, _id, intent) => {
+      if (intent === 'write') throw new ForbiddenError()
+      return {} as never
+    })
+
+  it('relays a writer’s delta with every field of its elements, and asks for write access once', async () => {
+    const room = listen('rt:doc:doc_1')
+    await send({ delta })
+    await send({ delta: { ...delta, seq: 2 } })
+    room.release()
+    expect(room.heard[0]).toEqual({ kind: 'scene.delta', peer: expect.objectContaining({ userId: 'user_1' }), ...delta })
+    expect(vi.mocked(getAccessibleDocument).mock.calls.map(([, , intent]) => intent)).toEqual(['read', 'write'])
+  })
+
+  it('refuses a reader’s delta and save, also behind a claim, and relays nothing', async () => {
+    reader()
+    const room = listen('rt:doc:doc_1')
+    await expect(send({ delta })).rejects.toBeInstanceOf(ForbiddenError)
+    await expect(send({ saved: { versionId: 'ver_2', sceneHash: 1 } })).rejects.toBeInstanceOf(ForbiddenError)
+    await expect(send({ selected: null, delta })).rejects.toBeInstanceOf(ForbiddenError)
+    room.release()
+    expect(room.heard).toEqual([])
+  })
+
+  it('lets a reader point, select, say its hash and ask for the scene', async () => {
+    reader()
+    const room = listen('rt:doc:doc_1')
+    await expect(send({ scene: { pointer: { x: 1, y: 2 }, tool: 'laser', button: 'down' } })).resolves.toBeNull()
+    await expect(send({ sceneSelection: ['el_1'] })).resolves.toBeNull()
+    await expect(send({ hash: { base: 'ver_1', sceneHash: 42, count: 3 } })).resolves.toBeNull()
+    await expect(send({ want: { requestId: 'req_abcdef12', base: 'ver_1' } })).resolves.toBeNull()
+    room.release()
+    expect(room.heard.map((event) => (event as { kind: string }).kind)).toEqual([
+      'scene.pointer',
+      'scene.selection',
+      'scene.hash',
+      'scene.want',
+    ])
+  })
+
+  it('keeps the edit grant apart from the channel’s, and forgets both together', async () => {
+    await send({ scene: { pointer: null, tool: 'pointer', button: 'up' } })
+    await send({ delta })
+    await send({ delta })
+    expect(getAccessibleDocument).toHaveBeenCalledTimes(2)
+    forgetSendGrant(SESSION, 'doc:doc_1')
+    await send({ delta })
+    expect(getAccessibleDocument).toHaveBeenCalledTimes(4)
+  })
+
+  it('spends the edit budget for edits, so motion past its limit never refuses an edit', async () => {
+    for (let i = 0; i < ROOM_LIMIT.limit; i++) await send({ hash: { base: null, sceneHash: i, count: 0 } })
+    await expect(send({ hash: { base: null, sceneHash: 0, count: 0 } })).rejects.toBeInstanceOf(TooManyRequestsError)
+    await expect(send({ delta })).resolves.toBeNull()
+  })
+
+  it('refuses an image, an element without its version, and a delta over its byte cap', async () => {
+    const image = { ...element, type: 'image' }
+    await expect(send({ delta: { ...delta, elements: [image] } })).rejects.toBeInstanceOf(BadRequestError)
+    const { version: _version, ...unversioned } = element
+    await expect(send({ delta: { ...delta, elements: [unversioned] } })).rejects.toBeInstanceOf(BadRequestError)
+    const heavy = { ...element, points: Array.from({ length: 6_000 }, (_, i) => [i, i]) }
+    await expect(send({ delta: { ...delta, elements: [heavy] } })).rejects.toBeInstanceOf(BadRequestError)
   })
 })

@@ -39,15 +39,19 @@ export interface ChannelDefinition<TParams = unknown, TUp extends UpstreamBase =
   /** What a browser may say, if anything. */
   readonly upstream?: {
     readonly schema: ZodType<TUp>
-    /** Spent once per message, per member and channel (`./send`). */
+    /** Spent once per message, per member and channel (`./send`), by a message no lane takes. */
     readonly limit: LimitRule
     /**
-     * A message that carries a claim (`presence`, or any of `fields`) spends
-     * this budget instead of `limit`, so a burst of motion can never refuse
-     * the claim that keeps a person in the channel. Without it, every message
-     * spends `limit`.
+     * Lanes a message may travel in instead, each with a budget of its own and,
+     * when it needs more than being in the channel, an authorization of its
+     * own (`./send`). A message is in the first lane one of whose `fields` it
+     * carries (`presence` counts for a lane with `presence: true`), and must
+     * pass every guarded lane it carries a field of, so a reader cannot slip
+     * an edit past the edit lane by adding a claim. A burst of motion
+     * therefore never refuses the claim that keeps a person in the channel,
+     * and a reader's pointer never spends a writer's edit budget.
      */
-    readonly claims?: { readonly limit: LimitRule; readonly fields?: readonly string[] }
+    readonly lanes?: ReadonlyArray<SendLane<TParams>>
     /** The ephemeral events a message becomes. Presence is handled before this, from `msg.presence`. */
     handle(msg: TUp, peer: RealtimePeer, params: TParams): Array<{ kind: string }>
   }
@@ -55,6 +59,20 @@ export interface ChannelDefinition<TParams = unknown, TUp extends UpstreamBase =
   readonly presence?: { readonly ttlMs: number; readonly refreshMs: number }
   /** Told of every event the send path published, for a side record (the server roster, `./roster`). Must not throw. */
   observe?(events: ReadonlyArray<{ kind: string }>, params: TParams, organizationId: string): void
+}
+
+/** A lane of a channel's upstream: which messages travel in it, what they spend, and who may send them. */
+export interface SendLane<TParams = unknown> {
+  /** Names the lane's send grant (`<key>#<name>`) and nothing else. */
+  readonly name: string
+  /** A message carrying any of these fields travels in this lane. */
+  readonly fields: readonly string[]
+  /** Whether a presence claim travels in this lane too. */
+  readonly presence?: boolean
+  /** Spent once per message in the lane, per member and channel. */
+  readonly limit: LimitRule
+  /** Throws when the session may not send in this lane, beyond being allowed in the channel. Cached like the channel's grant. */
+  authorize?(session: AuthorizedSession, params: TParams): Promise<void>
 }
 
 /** Declare a channel kind. Identity at runtime; the type keeps `parse`, `topics` and `upstream` agreeing on params. */
@@ -90,24 +108,41 @@ const MAX_GRANTS = 5_000
 
 const grantKey = (session: AuthorizedSession, key: string) => `${session.organizationId}:${session.userId}:${key}`
 
+async function grant(id: string, reauthorizeMs: number, now: number, check: () => Promise<void>): Promise<void> {
+  const until = grants.get(id)
+  if (until && until > now) return
+  await check()
+  if (grants.size >= MAX_GRANTS) grants.clear()
+  grants.set(id, now + reauthorizeMs)
+}
+
+/**
+ * Check that a session may send in a channel and, for each guarded lane the
+ * message travels in or touches, in that lane too: each grant remembered for
+ * the channel's `reauthorizeMs`, under the channel's key and under
+ * `<key>#<lane>` respectively.
+ */
 export async function authorizeSendCached(
   session: AuthorizedSession,
   channel: AnyChannel,
   params: unknown,
   key: string,
-  now = Date.now()
+  now = Date.now(),
+  lanes: ReadonlyArray<SendLane> = []
 ): Promise<void> {
   const id = grantKey(session, key)
-  const until = grants.get(id)
-  if (until && until > now) return
-  await (channel.authorizeSend ?? channel.authorize).call(channel, session, params)
-  if (grants.size >= MAX_GRANTS) grants.clear()
-  grants.set(id, now + channel.reauthorizeMs)
+  await grant(id, channel.reauthorizeMs, now, () => (channel.authorizeSend ?? channel.authorize).call(channel, session, params))
+  for (const lane of lanes) {
+    if (!lane.authorize) continue
+    await grant(`${id}#${lane.name}`, channel.reauthorizeMs, now, () => lane.authorize!.call(lane, session, params))
+  }
 }
 
-/** Forget a send grant: an open stream's re-check is never answered from it, and a refusal ends it. */
+/** Forget a send grant, the channel's and its lanes': an open stream's re-check is never answered from it, and a refusal ends it. */
 export function forgetSendGrant(session: AuthorizedSession, key: string): void {
-  grants.delete(grantKey(session, key))
+  const id = grantKey(session, key)
+  grants.delete(id)
+  for (const known of [...grants.keys()]) if (known.startsWith(`${id}#`)) grants.delete(known)
 }
 
 /** Clear the remembered grants: for tests. */

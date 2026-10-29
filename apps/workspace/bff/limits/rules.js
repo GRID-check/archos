@@ -93,6 +93,20 @@ const ROOM_LIMIT = { name: 'document-room', limit: 1500, windowMs: 60 * 1000 }
 const ROOM_CLAIM_LIMIT = { name: 'document-room-claim', limit: 600, windowMs: 60 * 1000 }
 
 /**
+ * The edits a writer sends into one sketch's room while drawing (`delta` and
+ * `saved` on `doc:<id>`, `lib/realtime/document-channel.ts`): element deltas
+ * at most every 100ms while the scene changes, a full scene in parts when a
+ * peer asks for it, and one `saved` per Fassung. Per member and channel, and a
+ * bucket of its own, so a reader's pointer never spends it and a writer's
+ * edits never refuse their own presence. Ten a second for a minute of
+ * continuous drawing is 600; the rest is room for a full-scene answer. A
+ * refused edit is not lost: the client keeps it unsent and the next delta or
+ * save carries it.
+ * @type {LimitRule}
+ */
+const SKETCH_EDIT_LIMIT = { name: 'sketch-edit', limit: 900, windowMs: 60 * 1000 }
+
+/**
  * Sending mentions (counted per mentioned person, not per message).
  * @type {LimitRule}
  */
@@ -384,6 +398,7 @@ module.exports = {
   TYPING_LIMIT,
   ROOM_LIMIT,
   ROOM_CLAIM_LIMIT,
+  SKETCH_EDIT_LIMIT,
   MENTION_LIMIT,
   WS_UPGRADE_LIMIT,
   CHAT_TURN_LIMIT,

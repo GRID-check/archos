@@ -191,3 +191,21 @@ describe('roomSnapshot', () => {
     expect(await roomSnapshot('doc_1', 'org_1')).toHaveLength(MAX_PEERS)
   })
 })
+
+describe('a sketch in the room’s snapshot', () => {
+  const say = (msg: Record<string, unknown>, peerId = 'peer_abcdef12') =>
+    sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId, ...msg } })
+
+  it('keeps a canvas pointer’s peer in the snapshot, and nobody for an edit, a hash, a request or a save', async () => {
+    await say({ scene: { pointer: { x: 4, y: 5 }, tool: 'pointer', button: 'up' } }, 'peer_pointing1')
+    await say({ sceneSelection: ['el_1'] }, 'peer_selecting')
+    const element = { id: 'el_1', type: 'ellipse', version: 2, versionNonce: 1, isDeleted: false, index: 'a0' }
+    await say({ delta: { base: 'ver_1', seq: 1, elements: [element] } }, 'peer_drawing01')
+    await say({ hash: { base: 'ver_1', sceneHash: 9, count: 1 } }, 'peer_hashing01')
+    await say({ want: { requestId: 'req_abcdef12', base: 'ver_1' } }, 'peer_wanting01')
+    await say({ saved: { versionId: 'ver_2', sceneHash: 9 } }, 'peer_saving001')
+
+    const snapshot = await roomSnapshot('doc_1', 'org_1')
+    expect(snapshot.map((peer) => peer.peerId).sort()).toEqual(['peer_pointing1', 'peer_selecting'])
+  })
+})

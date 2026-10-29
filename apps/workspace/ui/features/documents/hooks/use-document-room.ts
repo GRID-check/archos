@@ -19,8 +19,9 @@ import {
   type RoomTool,
   type RoomViewport,
 } from '@/lib/annotations/room-types'
-import type { ChannelPostOptions, ChannelStatus } from '@/features/realtime/connection'
+import type { ChannelPostOptions, ChannelStatus, PostOutcome } from '@/features/realtime/connection'
 import type { RosterEntry } from '@/features/realtime/presence'
+import type { ScenePointer } from '@/lib/diagrams/sketch-room-types'
 import {
   createSnapshotStore,
   realtimeLink,
@@ -29,6 +30,7 @@ import {
   useSnapshot,
   useStoreSelector,
   type ChannelLink,
+  type SendOptions,
   type SnapshotStore,
 } from '@/features/realtime/use-channel'
 
@@ -36,8 +38,12 @@ import {
 export interface RoomTransport {
   /** Open the stream. Returns the close. */
   connect(handlers: { onFrame: (frame: RoomFrame) => void; onOpen: () => void; onDrop: () => void }): () => void
-  /** `motion`: a pointer or a scroll, which the connection sheds while the server refuses it. */
-  post(post: RoomPost, options?: ChannelPostOptions): void
+  /**
+   * `motion`: a pointer or a scroll, which the connection sheds while the
+   * server refuses it. Resolves to the server's answer when the transport can
+   * tell; a sketch's edit reads it (`features/diagrams/sketch/sketch-sync.ts`).
+   */
+  post(post: RoomPost, options?: ChannelPostOptions): Promise<PostOutcome | undefined> | void
 }
 
 /** The live channel key of a document's room. */
@@ -103,6 +109,10 @@ export interface RoomPeerState {
   activity: RoomActivityState | null
   /** Piloti's latest highlight; null when none. Stale once past `expiresAt`. */
   highlight: RoomHighlightState | null
+  /** Their pointer on a Skizze's canvas, in scene coordinates; null when they are on no canvas. */
+  scene: ScenePointer | null
+  /** The canvas elements they have selected. */
+  sceneSelection: readonly string[]
   /** When their presence claim runs out, ms since the epoch. */
   expiresAt: number
 }
@@ -122,6 +132,8 @@ const NOBODY: PeerFields = {
   selected: null,
   activity: null,
   highlight: null,
+  scene: null,
+  sceneSelection: [],
 }
 
 /** While nobody else is here, the pointer and the view go up at most this often, and only when they moved on. */
@@ -151,6 +163,10 @@ export function reduceRoomPeer(state: PeerFields, event: RoomEvent): PeerFields 
       return { ...state, activity: { state: event.state, box: event.box ?? null, label: event.label ?? null } }
     case 'highlight':
       return { ...state, highlight: { box: event.box, label: event.label ?? null, expiresAt: Date.now() + event.ttlMs } }
+    case 'scene.pointer':
+      return { ...state, scene: { pointer: event.pointer, tool: event.tool, button: event.button } }
+    case 'scene.selection':
+      return { ...state, sceneSelection: event.selected }
     default:
       return state
   }
@@ -303,6 +319,7 @@ export function useDocumentRoom(
     }
   }, [transport, documentId])
   const listeners = useRef(new Set<(event: AnnotationsChanged) => void>())
+  const roomListeners = useRef(new Set<(event: RoomEvent) => void>())
   const pointer = useRef<{ cursor: RoomCursor | null; tool: RoomTool; draft: RoomDraft | null; chat: string | null }>({
     cursor: null,
     tool: 'select',
@@ -311,6 +328,7 @@ export function useDocumentRoom(
   })
 
   const onEvent = useCallback((event: RoomEvent) => {
+    for (const listener of [...roomListeners.current]) listener(event)
     if (event.kind !== 'annotations.changed') return
     for (const listener of [...listeners.current]) listener(event)
   }, [])
@@ -423,6 +441,20 @@ export function useDocumentRoom(
     }
   }, [])
 
+  /** Hear every event of the room, this tab's own excepted only where the server excepts it: a Skizze's edits. Returns the unsubscribe. */
+  const onRoomEvent = useCallback((listener: (event: RoomEvent) => void) => {
+    roomListeners.current.add(listener)
+    return () => {
+      roomListeners.current.delete(listener)
+    }
+  }, [])
+
+  /** Say anything of the room's vocabulary; resolves to the server's answer for an unthrottled message. */
+  const sendRaw = useCallback(
+    (msg: Omit<RoomPost, 'peerId'>, options?: SendOptions) => send(msg as Record<string, unknown>, options),
+    [send]
+  )
+
   const { peerId, status, self } = channel
   return useMemo(
     () => ({
@@ -439,8 +471,13 @@ export function useDocumentRoom(
       sendChat,
       sendSelection,
       onAnnotationsChanged,
+      /** Raw access for a canvas that speaks more of the vocabulary (a Skizze, `use-sketch-room.ts`). */
+      send: sendRaw,
+      onRoomEvent,
+      /** Whether a person besides this tab is here now, read without a render. */
+      company,
     }),
-    [peerId, status, self, peers, highlights, sendCursor, sendViewport, sendDraft, sendChat, sendSelection, onAnnotationsChanged]
+    [peerId, status, self, peers, highlights, sendCursor, sendViewport, sendDraft, sendChat, sendSelection, onAnnotationsChanged, sendRaw, onRoomEvent, company]
   )
 }
 

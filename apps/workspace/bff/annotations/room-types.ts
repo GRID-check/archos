@@ -12,13 +12,17 @@
  * NOTHING HERE IS STATE TO CONVERGE ON. Presence is a claim with a TTL, a cursor
  * is worthless a second later, and `annotations.changed` is a hint to re-read
  * through the API (the rule `/api/stream` keeps, spec RT-4). A viewer that lost
- * the stream still has every Anmerkung; it only loses the company.
+ * the stream still has every Anmerkung; it only loses the company. A Skizze's
+ * element deltas (`lib/diagrams/sketch-room-types.ts`) are the one exception in
+ * shape, not in kind: they converge two open canvases, but the record is the
+ * Fassung a save writes, and a canvas that lost the stream reopens from it.
  *
  * No `server-only`: the browser parses these.
  */
 
 import { z } from 'zod'
 import { realtimePeerSchema, realtimeSelfSchema, upstreamBaseSchema } from '@/lib/realtime/types'
+import { sketchEventSchemas, sketchPostFields } from '@/lib/diagrams/sketch-room-types'
 
 /** How long a presence claim holds without a refresh. */
 export const PRESENCE_TTL_MS = 25_000
@@ -78,6 +82,8 @@ export const roomPostSchema = upstreamBaseSchema
     chat: chatField,
     /** The mark this viewer has selected; `null` when none. Travels as a viewport event. */
     selected: selectedField,
+    /** A Skizze's canvas: its pointer, selection, edits and repair (`lib/diagrams/sketch-room-types.ts`). */
+    ...sketchPostFields,
   })
   .strict()
 export type RoomPost = z.infer<typeof roomPostSchema>
@@ -146,6 +152,7 @@ export const roomEventSchema = z.discriminatedUnion('kind', [
     change: z.enum(ANNOTATION_CHANGES),
     actor: roomPeerSchema.omit({ peerId: true }).extend({ peerId: z.string().nullable() }),
   }),
+  ...sketchEventSchemas,
 ])
 export type RoomEvent = z.infer<typeof roomEventSchema>
 

@@ -66,12 +66,17 @@ export interface RealtimeConnection {
   /** Join a channel. Returns the leave, which is idempotent. */
   join(ch: string, handlers: ChannelHandlers): () => void
   /**
-   * Say something in a channel. Fire and forget: a refusal is dropped, the
-   * next message is on its way. Motion refused with a 429 pauses the channel's
-   * motion for the `Retry-After`; the latest motion asked for meanwhile is sent
-   * once the pause ends, while the channel is still joined.
+   * Say something in a channel. Motion is fire and forget: a refusal is
+   * dropped, the next message is on its way; refused with a 429 it pauses the
+   * channel's motion for the `Retry-After`, and the latest motion asked for
+   * meanwhile is sent once the pause ends, while the channel is still joined.
+   *
+   * The answer is what the send path said (`status`), or undefined when
+   * nothing was answered: the post failed in transit, or motion was held. A
+   * caller whose message must not vanish (a sketch's edit) reads it and keeps
+   * what was refused for the next one.
    */
-  send(ch: string, msg: unknown, options?: ChannelPostOptions): void
+  send(ch: string, msg: unknown, options?: ChannelPostOptions): Promise<PostOutcome | undefined>
   /** The status of one channel now. */
   status(ch: string): ChannelStatus
   /** Close everything: for tests. */
@@ -262,7 +267,7 @@ export function createRealtimeConnection({
     },
   })
 
-  function send(ch: string, msg: unknown, { motion = false }: ChannelPostOptions = {}): void {
+  function send(ch: string, msg: unknown, { motion = false }: ChannelPostOptions = {}): Promise<PostOutcome | undefined> {
     const pausedUntil = motionPausedUntil.get(ch) ?? 0
     if (motion && pausedUntil > Date.now()) {
       heldMotion.set(ch, msg)
@@ -273,18 +278,23 @@ export function createRealtimeConnection({
             heldTimers.delete(ch)
             const held = heldMotion.get(ch)
             heldMotion.delete(ch)
-            if (held !== undefined && joined.has(ch)) send(ch, held, { motion: true })
+            if (held !== undefined && joined.has(ch)) void send(ch, held, { motion: true })
           }, pausedUntil - Date.now())
         )
       }
-      return
+      return Promise.resolve(undefined)
     }
-    const outcome = post(REALTIME_SEND_PATH, JSON.stringify({ ch, msg }), { keepalive: isGone(msg) })
-    if (!motion || !outcome) return
-    void outcome.then((result) => {
-      if (result?.status !== 429) return
-      const pause = Math.min(MAX_MOTION_PAUSE_MS, Math.max(MIN_MOTION_PAUSE_MS, result.retryAfterMs))
-      motionPausedUntil.set(ch, Date.now() + pause)
+    const outcome = Promise.resolve(post(REALTIME_SEND_PATH, JSON.stringify({ ch, msg }), { keepalive: isGone(msg) })).then(
+      (result) => result ?? undefined,
+      () => undefined
+    )
+    if (!motion) return outcome
+    return outcome.then((result) => {
+      if (result?.status === 429) {
+        const pause = Math.min(MAX_MOTION_PAUSE_MS, Math.max(MIN_MOTION_PAUSE_MS, result.retryAfterMs))
+        motionPausedUntil.set(ch, Date.now() + pause)
+      }
+      return result
     })
   }
 

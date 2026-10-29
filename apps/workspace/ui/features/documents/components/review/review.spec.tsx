@@ -102,7 +102,9 @@ function scriptedRoom() {
         deliver = null
       }
     },
-    post: (post) => posts.push(post),
+    post: (post) => {
+      posts.push(post)
+    },
   }
   return { transport, posts, send: (frame: RoomFrame) => act(() => deliver?.(frame)) }
 }

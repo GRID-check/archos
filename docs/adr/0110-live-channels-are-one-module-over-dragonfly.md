@@ -144,6 +144,7 @@ the server (`publishAsAgent`), as a peer the browser cannot impersonate.
 
 * Good, because it is the right answer for real co-editing of one structure.
 * Bad, because nothing here co-edits: Anmerkungen are rows written through the API. Revisit only for real co-editing.
+  (Since the 2026-10-29 amendment a Skizze is co-edited, without a CRDT; see there.)
 
 ### Socket.IO
 
@@ -175,3 +176,49 @@ Migration, in phases:
    `/api/conversations/:id/live` and its plumbing go.
 
 Not migrated in phase 1: `/api/stream` (phase 2, since done), typing and the conversation live route.
+
+## Amendment (2026-10-29): a Skizze is co-edited in its document room, without a CRDT
+
+Context: a Skizze is a document (ADR-0148), and two people with it open draw on
+the same scene (`docs/roadmap/sketches.md`, slice S2). This ADR said nothing
+here co-edits and named Yjs as the answer if anything ever did.
+
+Decision: the sketch editor joins the document's own `doc:<id>` channel, and
+element edits travel over it as deltas merged with Excalidraw's own
+`reconcileElements`, a last-writer-wins merge per element on `version` and
+`versionNonce`. That merge is commutative and idempotent, so canvases that
+heard the same elements show the same scene in any order; a hash beacon and a
+request for the whole scene repair what the lossy hub dropped
+(`features/diagrams/sketch/sketch-sync.ts`). **The Fassung stays the truth**:
+a save writes one (`PUT /api/documents/{id}/sketch`), a canvas that lost the
+room reopens from it, and a delta is a hint towards the same scene, never a
+record. Yjs is still not needed, because Excalidraw's elements already carry
+the version vector the merge reads, and nothing but whole elements is merged
+(no text CRDT inside a label).
+
+What changed in the module to carry it:
+
+* **Send lanes** (`ChannelDefinition.upstream.lanes`, replacing `claims`). A
+  lane names the fields that put a message in it, its own budget and,
+  optionally, an authorization beyond being in the channel, cached per lane
+  under `<key>#<lane>` for `reauthorizeMs`. A message passes every guarded
+  lane any of its fields touches, so a claim cannot carry an edit past the
+  edit lane. The document room has `sketch-edit` (`delta`, `saved`; write
+  access to the document; `SKETCH_EDIT_LIMIT`) and `claim` (presence,
+  `selected`; `ROOM_CLAIM_LIMIT`). A reader still points, selects, beacons and
+  asks for the scene, at read access and `ROOM_LIMIT`. A revoked writer can go
+  on sending for at most the 30 s re-check, as a revoked reader can.
+* **A send answers its caller.** `RealtimeConnection.send` and `useChannel`'s
+  `send` resolve to the server's status (or nothing when the post was lost or
+  motion was held), so an edit is marked delivered only once the server took
+  it, and a refusal is kept for the next try instead of vanishing.
+* **Deltas are not motion.** The motion lane keeps only the latest message
+  during a 429 pause; an edit cannot be dropped that way, so deltas are sent
+  unthrottled, one post at a time, at most every 100 ms by the sync itself.
+* **A body cap on `POST /api/realtime/send`**: `REALTIME_SEND_MAX_BYTES`
+  (96 KB, a 64 KB delta and its envelope), a 413 before or while reading.
+
+Consequences: the server roster records the canvas pointer and selection as a
+sign of life and nothing for deltas, hashes, requests or saves. Delivery is
+still at most once and unordered; what converges the canvases is the merge
+plus the repair, and what persists them is a save.
