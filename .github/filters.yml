@@ -226,6 +226,8 @@ workspace:
   # End of the files this tier's tests read.
 site:
   - 'apps/site/**'
+  # The greenfield website (built from packages/brand), verified in the same job.
+  - 'apps/website/**'
   # The brand master and the app's copy: the site's `npm run check` holds
   # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
   - 'packages/brand/**'

@@ -68,6 +68,13 @@ tasks:
     cmds:
       - bun run build
 
+  website:verify:
+    desc: Everything CI runs for the website
+    cmds:
+      - task: website:install
+      - task: website:check
+      - task: website:build
+
   # ── riso art (apps/site/art/riso — procedural prints for the site) ──────
   # The raw commands are `node art/riso/<script>.mjs` in apps/site; every
   # task below is one of them. The workflow and the series rules are in
