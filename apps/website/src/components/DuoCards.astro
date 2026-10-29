@@ -1,5 +1,6 @@
 ---
 import AITag from './AITag.astro';
+import type { Locale } from '../i18n/paths';
 
 export interface DuoItem {
   title: string;
@@ -19,12 +20,13 @@ export interface DuoItem {
 
 // Without a photo, the card's visual goes in the slot `media-<index>`.
 interface Props {
+  locale: Locale;
   /** Exactly two */
   items: [DuoItem, DuoItem];
   class?: string;
 }
 
-const { items, class: className } = Astro.props;
+const { locale, items, class: className } = Astro.props;
 ---
 
 <div class:list={['ui-duo', className]}>
@@ -37,7 +39,7 @@ const { items, class: className } = Astro.props;
       return (
         <div class:list={['ui-duo-card', item.photo && item.onPhoto && 'ui-duo-on-photo']} data-theme={theme} style={cardStyle}>
           {item.photo && <img class="ui-duo-photo" src={item.photo} alt={item.alt || ''} style={item.photoStyle} />}
-          {item.ai && <AITag ink={!item.onPhoto && theme !== 'dark'} />}
+          {item.ai && <AITag locale={locale} ink={!item.onPhoto && theme !== 'dark'} />}
           <div class="ui-duo-text">
             <h3 class="ui-duo-title heading-1">{item.title}</h3>
             {item.text && (

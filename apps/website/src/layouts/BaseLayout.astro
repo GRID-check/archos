@@ -4,9 +4,13 @@ import '../styles/brand/components.css';
 import '../styles/site.css';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import { alternateOf, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
 import identity from '../lib/identity';
 
 interface Props {
+  /** The page's language: sets `<html lang>`, the shell's strings and the hreflang pair */
+  locale: Locale;
   /** Page name. Omitted on the home page, where the title is the brand name alone. */
   title?: string;
   description: string;
@@ -16,13 +20,18 @@ interface Props {
   bare?: boolean;
 }
 
-const { title, description, noindex = false, bare = false } = Astro.props;
+const { locale, title, description, noindex = false, bare = false } = Astro.props;
+const ui = t(locale);
 const pageTitle = title ? `${title} – ${identity.name}` : identity.name;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+// hreflang: the page and its other-locale twin, German as x-default.
+const here = Astro.url.pathname;
+const there = alternateOf(here);
+const hrefFor = (target: Locale) => new URL(target === locale ? here : there, Astro.site);
 ---
 
 <!doctype html>
-<html lang="de">
+<html lang={locale}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -30,14 +39,17 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="de" href={hrefFor('de')} />
+    <link rel="alternate" hreflang="en" href={hrefFor('en')} />
+    <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
-    {!bare && <a class="site-skip" href="#main">Zum Inhalt springen</a>}
-    {!bare && <Header current={Astro.url.pathname} />}
+    {!bare && <a class="site-skip" href="#main">{ui.skipLink}</a>}
+    {!bare && <Header locale={locale} current={Astro.url.pathname} />}
     <main id="main">
       <slot />
     </main>
-    {!bare && <Footer />}
+    {!bare && <Footer locale={locale} />}
   </body>
 </html>

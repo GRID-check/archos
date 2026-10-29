@@ -5,7 +5,9 @@ import FAQ from '../components/FAQ.astro';
 import FeatureTiles from '../components/FeatureTiles.astro';
 import Hero from '../components/Hero.astro';
 import SectionIntro from '../components/SectionIntro.astro';
-import { demoLink } from '../lib/nav';
+import { navigation } from '../i18n/nav';
+
+const demoLink = navigation('de').demo;
 import {
   contactAction,
   securityCta,
@@ -17,7 +19,7 @@ import {
 } from '../data/security';
 ---
 
-<BaseLayout title="Datensicherheit" description={securityHero.text}>
+<BaseLayout locale="de" title="Datensicherheit" description={securityHero.text}>
   <Hero title={securityHero.title} text={securityHero.text} />
 
   <section class="ui-container page-section">

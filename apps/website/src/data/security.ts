@@ -1,5 +1,5 @@
 import identity from '../lib/identity';
-import type { NavLink } from '../lib/nav';
+import type { NavLink } from '../i18n/nav';
 
 const brand = identity.name;
 

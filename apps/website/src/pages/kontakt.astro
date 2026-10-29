@@ -6,10 +6,12 @@ import InfoList from '../components/InfoList.astro';
 import Input from '../components/Input.astro';
 import TextLink from '../components/TextLink.astro';
 import identity from '../lib/identity';
-import { demoLink } from '../lib/nav';
+import { navigation } from '../i18n/nav';
+
+const demoLink = navigation('de').demo;
 ---
 
-<BaseLayout title="Kontakt" description={`Kontakt zu ${identity.name}: E-Mail, Adresse und Nachrichtenformular.`}>
+<BaseLayout locale="de" title="Kontakt" description={`Kontakt zu ${identity.name}: E-Mail, Adresse und Nachrichtenformular.`}>
   <Hero
     title="Kontakt."
     text={`Fragen zu ${identity.name}, zu einem Pilotprojekt oder zur Zusammenarbeit? Schreiben Sie uns.`}

@@ -1,5 +1,9 @@
 ---
+import { t } from '../i18n/ui';
+import type { Locale } from '../i18n/paths';
+
 interface Props {
+  locale: Locale;
   sources: { src: string; type: string }[];
   /** Poster frame with no text in the centre (the play button sits there) */
   poster?: string;
@@ -10,14 +14,14 @@ interface Props {
   class?: string;
 }
 
-const { sources, poster, label, ratio, loop = true, class: className } = Astro.props;
+const { locale, sources, poster, label, ratio, loop = true, class: className } = Astro.props;
 ---
 
 <div class:list={['ui-video', className]} style={ratio ? `aspect-ratio: ${ratio}` : undefined} data-video>
   <video class="ui-video-media" muted loop={loop} playsinline preload="metadata" poster={poster} aria-label={label}>
     {sources.map((source) => <source src={source.src} type={source.type} />)}
   </video>
-  <button type="button" class="ui-video-play" aria-label="Video abspielen" data-play>
+  <button type="button" class="ui-video-play" aria-label={t(locale).playVideo} data-play>
     <span aria-hidden="true" />
   </button>
   <div class="ui-video-bar" aria-hidden="true" data-bar>

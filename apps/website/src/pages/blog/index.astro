@@ -6,7 +6,7 @@ import PostCard from '../../components/PostCard.astro';
 import { blogHero, moreLabel, postFilters, posts } from '../../data/posts';
 ---
 
-<BaseLayout title="Blog" description={blogHero.text}>
+<BaseLayout locale="de" title="Blog" description={blogHero.text}>
   <Hero title={blogHero.title} text={blogHero.text} />
 
   <section class="ui-container page-section">

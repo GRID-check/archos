@@ -1,11 +1,15 @@
 ---
+import { t } from '../i18n/ui';
+import type { Locale } from '../i18n/paths';
+
 interface Props {
+  locale: Locale;
   /** ink instead of on-ink, for light images */
   ink?: boolean;
   class?: string;
 }
 
-const { ink = false, class: className } = Astro.props;
+const { locale, ink = false, class: className } = Astro.props;
 ---
 
-<span class:list={['ui-ai-tag', ink && 'ui-ai-tag-ink', className]} title="KI-generiertes Bild">AI</span>
+<span class:list={['ui-ai-tag', ink && 'ui-ai-tag-ink', className]} title={t(locale).aiImage}>AI</span>

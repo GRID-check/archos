@@ -108,4 +108,4 @@ The client logos were renamed from German to English when copied. The mapping:
 
 ## AuthKit
 
-`authkit/authkit.css` is the hosted sign-in page in this design. WorkOS cannot read `tokens.css`, so it carries the literals; paste it into an environment's branding as global custom CSS (or set `customCssElements.authkitGlobal` through the WorkOS API). Staging has it; Production gets it at the rebrand. AuthKit loads only Google Fonts, so the type falls back to system sans there.
+`authkit/authkit.css` is the hosted sign-in page in this design. WorkOS cannot read `tokens.css`, so it carries the literals; paste it into an environment's branding as global custom CSS (or set `customCssElements.authkitGlobal` through the WorkOS API). Run `node packages/brand/authkit/build.mjs` and paste `dist/authkit.css`. It needs the TwoColumn sign-in layout with the content panel on the right and custom HTML `<div class="panel-photo"></div>`. Staging has it; Production gets it at the rebrand. AuthKit loads only Google Fonts, so the type falls back to system sans there.

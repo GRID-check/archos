@@ -25,8 +25,9 @@ Or from the repo root: `task website:install`, `task website:check`, `task websi
 |---|---|
 | `src/layouts/BaseLayout.astro` | `<head>`, skip link, header, `<main>`, footer. Every page uses it. |
 | `src/components/` | One Astro component per design-system component, ported from `packages/brand/react`. |
-| `src/lib/identity.ts` | Typed brand strings, read from `identity.json`. |
-| `src/lib/nav.ts` | Navigation and footer links. |
+| `src/lib/identity.ts` | Typed brand strings, read from `identity.json`; `withName` fills `{name}` in copy. |
+| `src/i18n/` | Languages: the route table (`paths.ts`), the shell strings (`ui.ts`), navigation (`nav.ts`) and page copy (`pages/`). See [Languages](AGENTS.md#languages). |
+| `src/views/` | Page markup, one view per page, rendered for both locales. |
 | `src/styles/brand/` | Committed copy of the design system (tokens, components, fonts, identity). Generated, never edited. |
 | `src/styles/site.css` | Page glue only: skip link, `[hidden]`, image sizing. Uses tokens. |
 | `public/media/` | Images, video and logos for the pages (table below). |
@@ -69,6 +70,6 @@ The favicon is `public/favicon.svg`.
 
 ## Not done here
 
-- The pages themselves. Only `src/pages/index.astro` exists, as a placeholder that renders the layout.
+- The pages themselves. Only the home page is converted (`src/views/HomeView.astro`, with thin route files in `src/pages/` and `src/pages/en/`). The other pages are still German-only and pass `locale="de"`.
 - Split pages (Login, Demo) have no header or footer. They need their own layout, not `BaseLayout`.
 - Deployment: Dockerfile, redirects and the removal of `apps/site` belong to slice 5.

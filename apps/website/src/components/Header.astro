@@ -1,17 +1,19 @@
 ---
-import identity from '../lib/identity';
+import { navigation, type NavLink } from '../i18n/nav';
+import { alternateOf, localePath, type Locale } from '../i18n/paths';
+import { localeCodes, t } from '../i18n/ui';
 import Button from './Button.astro';
 import Wordmark from './Wordmark.astro';
-import { demoLink, loginLink, mainNav, type NavLink } from '../lib/nav';
 
 interface Props {
-  /** Plattform · Datensicherheit · Blog */
+  locale: Locale;
+  /** Defaults to the locale's Plattform · Datensicherheit · Blog */
   links?: NavLink[];
-  /** href of the active page */
+  /** href of the active page; the language switch points to its other-locale twin */
   current?: string;
-  /** Small secondary button, e.g. Login */
+  /** Small secondary button, e.g. Login. null hides it */
   login?: NavLink | null;
-  /** Small primary button, e.g. Demo anfragen: the page's one primary */
+  /** Small primary button, e.g. Demo anfragen: the page's one primary. null hides it */
   cta?: NavLink | null;
   homeHref?: string;
   /** default true: stays on top with the glass background */
@@ -19,24 +21,24 @@ interface Props {
   class?: string;
 }
 
-const {
-  links = mainNav,
-  current,
-  login = loginLink,
-  cta = demoLink,
-  homeHref = '/',
-  sticky = true,
-  class: className,
-} = Astro.props;
+const { locale, current = Astro.url.pathname, sticky = true, class: className } = Astro.props;
+const nav = navigation(locale);
+const ui = t(locale);
+const links = Astro.props.links ?? nav.mainNav;
+const login = Astro.props.login === undefined ? nav.login : Astro.props.login;
+const cta = Astro.props.cta === undefined ? nav.demo : Astro.props.cta;
+const homeHref = Astro.props.homeHref ?? localePath('home', locale);
+const otherLocale: Locale = locale === 'de' ? 'en' : 'de';
+const switchHref = alternateOf(current);
 const hasMenu = links.length > 0 || Boolean(login);
 ---
 
 <header class:list={['ui-header', !sticky && 'ui-header-static', className]}>
   <div class="ui-wide ui-header-inner">
-    <Wordmark href={homeHref} size="sm" aria-label={`${identity.name} – Startseite`} />
+    <Wordmark href={homeHref} size="sm" aria-label={ui.homeLabel} />
     {
       links.length ? (
-        <nav class="ui-nav" aria-label="Hauptnavigation">
+        <nav class="ui-nav" aria-label={ui.mainNavLabel}>
           <ul>
             {links.map((link) => (
               <li>
@@ -52,6 +54,9 @@ const hasMenu = links.length > 0 || Boolean(login);
       )
     }
     <div class="ui-header-actions">
+      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} aria-label={ui.switchLanguage}>
+        {localeCodes[otherLocale]}
+      </a>
       {login && (
         <Button href={login.href} variant="secondary" size="sm">
           {login.label}
@@ -65,11 +70,11 @@ const hasMenu = links.length > 0 || Boolean(login);
       {
         hasMenu && (
           <details class="ui-mnav">
-            <summary class="ui-btn ui-btn-secondary ui-btn-sm" aria-label="Menü">
-              <span class="ui-mnav-o">Menü</span>
-              <span class="ui-mnav-x">Schließen</span>
+            <summary class="ui-btn ui-btn-secondary ui-btn-sm" aria-label={ui.menu}>
+              <span class="ui-mnav-o">{ui.menu}</span>
+              <span class="ui-mnav-x">{ui.menuClose}</span>
             </summary>
-            <nav class="ui-mnav-panel" aria-label="Menü">
+            <nav class="ui-mnav-panel" aria-label={ui.menu}>
               <ul>
                 {links.map((link) => (
                   <li>

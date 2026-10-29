@@ -1,7 +1,9 @@
 ---
+import { navigation, type NavLink } from '../i18n/nav';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
 import identity from '../lib/identity';
 import Wordmark from './Wordmark.astro';
-import { footerColumns, legalLinks, type NavLink } from '../lib/nav';
 
 interface FooterColumn {
   title: string;
@@ -9,30 +11,28 @@ interface FooterColumn {
 }
 
 interface Props {
+  locale: Locale;
+  /** Defaults to the locale's Produkt · Wissen columns */
   columns?: FooterColumn[];
+  /** Defaults to the locale's Impressum · Datenschutz · Kontakt */
   legal?: NavLink[];
   /** Bottom-left text; default © name */
   note?: string;
   /** Under the wordmark; default identity tagline */
   claim?: string;
-  /** Funding note above the legal row; its logo goes in the `funding-logo` slot */
-  funding?: string;
   theme?: 'dark' | 'light';
   homeHref?: string;
   class?: string;
 }
 
-const {
-  columns = footerColumns,
-  legal = legalLinks,
-  note,
-  claim,
-  funding,
-  theme = 'dark',
-  homeHref = '/',
-  class: className,
-} = Astro.props;
-const hasFundingLogo = Astro.slots.has('funding-logo');
+const { locale, theme = 'dark', class: className } = Astro.props;
+const nav = navigation(locale);
+const ui = t(locale);
+const columns = Astro.props.columns ?? nav.footerColumns;
+const legal = Astro.props.legal ?? nav.legal;
+const note = Astro.props.note ?? ui.footerNote;
+const claim = Astro.props.claim;
+const homeHref = Astro.props.homeHref ?? localePath('home', locale);
 ---
 
 <footer class:list={['ui-footer', className]} data-theme={theme}>
@@ -57,20 +57,14 @@ const hasFundingLogo = Astro.slots.has('funding-logo');
         ))
       }
     </div>
-    {
-      funding && (
-        <div class="ui-footer-funding small">
-          <p>{funding}</p>
-          {hasFundingLogo && (
-            <div class="ui-footer-funding-logo">
-              <slot name="funding-logo" />
-            </div>
-          )}
-        </div>
-      )
-    }
+    <div class="ui-footer-funding small">
+      <p>{ui.footerFunding}</p>
+      <div class="ui-footer-funding-logo">
+        <img src="/media/funding-aws-gray.png" alt={ui.fundingLogoAlt} />
+      </div>
+    </div>
     <div class="ui-footer-bottom small">
-      <span>{note || `© ${identity.name}`}</span>
+      <span>{note}</span>
       {legal.map((link) => <a href={link.href}>{link.label}</a>)}
     </div>
   </div>

@@ -4,12 +4,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Button from '../components/Button.astro';
 import Input from '../components/Input.astro';
 import SplitPage from '../components/SplitPage.astro';
-import { demoLink } from '../lib/nav';
+import { navigation } from '../i18n/nav';
+
+const demoLink = navigation('de').demo;
 // Sign-in happens in the app. /sign-in is a server endpoint that resolves the app host at runtime.
 ---
 
-<BaseLayout bare noindex title="Anmelden" description={`Anmelden bei ${identity.name}.`}>
+<BaseLayout locale="de" bare noindex title="Anmelden" description={`Anmelden bei ${identity.name}.`}>
   <SplitPage
+    locale="de"
     variant="login"
     image="/media/login-office-photo.webp"
     imageAlt="Leeres Planungsbüro im Abendlicht: Holztisch mit Planrollen und Laptop, Stuhl, Fensterlicht an der Wand"

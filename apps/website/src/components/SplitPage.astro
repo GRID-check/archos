@@ -2,9 +2,11 @@
 import identity from '../lib/identity';
 import AITag from './AITag.astro';
 import Wordmark from './Wordmark.astro';
-import type { NavLink } from '../lib/nav';
+import type { NavLink } from '../i18n/nav';
+import type { Locale } from '../i18n/paths';
 
 interface Props {
+  locale: Locale;
   /** login: 5:7, photo right · form: 1:1, form card on a photo right */
   variant?: 'login' | 'form';
   /** Right side: photo URL (login: full bleed; form: behind the card) */
@@ -22,6 +24,7 @@ interface Props {
 // Default slot: left column (title, text, form or logos). Named slots: `aside` (login: replaces the
 // photo; form: content of the white card) and `aside-note` (form: small note under the card).
 const {
+  locale,
   variant,
   image,
   imageAlt = '',
@@ -65,7 +68,7 @@ const mainWidth = even ? 'var(--split-form)' : 'var(--login-form)';
     ) : (
       <div class="ui-split-aside">
         {image ? <img src={image} alt={imageAlt} /> : <slot name="aside" />}
-        {ai && <AITag />}
+        {ai && <AITag locale={locale} />}
       </div>
     )
   }

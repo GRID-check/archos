@@ -1,4 +1,7 @@
 ---
+import { format, t } from '../i18n/ui';
+import type { Locale } from '../i18n/paths';
+
 export interface GalleryItem {
   /** Topic in ink, e.g. "Suchen." */
   title: string;
@@ -10,6 +13,7 @@ export interface GalleryItem {
 }
 
 interface Props {
+  locale: Locale;
   items: GalleryItem[];
   /** Accessible name of the carousel */
   label?: string;
@@ -17,19 +21,20 @@ interface Props {
   class?: string;
 }
 
-const { items, label, id, class: className } = Astro.props;
+const { locale, items, label, id, class: className } = Astro.props;
 const n = items.length;
+const ui = t(locale);
 ---
 
-<section class:list={['ui-gallery', className]} id={id} aria-roledescription="Karussell" aria-label={label} data-gallery>
+<section class:list={['ui-gallery', className]} id={id} aria-roledescription={ui.galleryCarousel} aria-label={label} data-gallery>
   <div class="ui-gallery-track" data-track>
     {
       items.map((item, i) => (
         <div
           class="ui-gallery-card"
           role="group"
-          aria-roledescription="Folie"
-          aria-label={`${i + 1} von ${n}`}
+          aria-roledescription={ui.gallerySlide}
+          aria-label={format(ui.galleryPosition, { index: i + 1, count: n })}
           aria-hidden={i === 0 ? undefined : 'true'}
         >
           {item.image && (
@@ -49,7 +54,7 @@ const n = items.length;
   {
     n > 1 && (
       <div class="ui-gallery-ctl">
-        <button type="button" class="ui-gallery-btn" aria-label="Vorherige Folie" data-prev>
+        <button type="button" class="ui-gallery-btn" aria-label={ui.galleryPrevious} data-prev>
           ←
         </button>
         <div class="ui-gallery-dots">
@@ -57,7 +62,7 @@ const n = items.length;
             <button
               type="button"
               class="ui-gallery-dot"
-              aria-label={`Folie ${i + 1}`}
+              aria-label={format(ui.galleryDot, { index: i + 1 })}
               aria-current={i === 0 ? 'true' : 'false'}
               data-dot
             >
@@ -65,7 +70,7 @@ const n = items.length;
             </button>
           ))}
         </div>
-        <button type="button" class="ui-gallery-btn" aria-label="Nächste Folie" data-next>
+        <button type="button" class="ui-gallery-btn" aria-label={ui.galleryNext} data-next>
           →
         </button>
       </div>

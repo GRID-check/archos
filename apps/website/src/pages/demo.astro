@@ -14,8 +14,9 @@ const officeSizes = ['1–5 Mitarbeitende', '6–20 Mitarbeitende', '21–50 Mit
 const countries = ['Österreich', 'Deutschland', 'Schweiz', 'Anderes Land'];
 ---
 
-<BaseLayout bare title="Demo anfragen" description={`Sehen Sie, wie Planungsbüros mit ${identity.name} arbeiten.`}>
+<BaseLayout locale="de" bare title="Demo anfragen" description={`Sehen Sie, wie Planungsbüros mit ${identity.name} arbeiten.`}>
   <SplitPage
+    locale="de"
     variant="form"
     image="/media/demo-panel-background.webp"
     footer={[
