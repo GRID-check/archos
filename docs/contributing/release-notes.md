@@ -230,7 +230,7 @@ linted and translated like a note. A week without an entry shows its notes only.
    arrive via pull request.
 4. That commit changes `apps/website`, so CI rebuilds the `web` image, the
    staging deploy rolls it out, and the note is on the site. (Until 2026-10-29
-   the file lived in the retired `apps/site`, which no image built: the bot's
+   the file lived in the retired public site, which no image built: the bot's
    commits from before then changed a file nothing served.)
 
 ### Translation

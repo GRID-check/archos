@@ -4,7 +4,7 @@ import identity from '@/shared/brand/identity.json'
  * The user-facing product name, read from the brand's one file.
  *
  * `packages/brand/identity.json` is the source; `node packages/brand/sync.mjs`
- * copies it to `shared/brand/identity.json`, which this reads, so a rename is
+ * copies it to `apps/workspace/shared/brand/identity.json`, which this reads, so a rename is
  * one edit there and nothing here (ADR-0148). Use this constant for every
  * user-visible brand mention (wordmark, tab titles, aria labels); the
  * dictionaries say `{productName}` and get it from here (`withProductName`

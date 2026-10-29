@@ -17,7 +17,7 @@ frontend:
   - changed-files:
       - any-glob-to-any-file:
           - "apps/workspace/**"
-          - "apps/site/**"
+          - "apps/website/**"
 
 ci:
   - changed-files:

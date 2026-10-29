@@ -66,9 +66,14 @@ backend:
   - '.github/actions/setup-python-env/**'
   - '.github/actions/setup-task/**'
   # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):
+  - 'apps/website/public/favicon.svg'
+  - 'apps/website/src/styles/brand/identity.json'
   - 'apps/workspace/app/api/internal/usage/route.ts'
+  - 'apps/workspace/app/icon.svg'
   - 'apps/workspace/bff/agent-api/backend-operations.ts'
   - 'apps/workspace/bff/agent-api/exposure.config.ts'
+  - 'apps/workspace/bff/agent-api/mcp-config.ts'
+  - 'apps/workspace/bff/agent-api/mcp-server.ts'
   - 'apps/workspace/bff/agent-asks/answer-text.ts'
   - 'apps/workspace/bff/analytics/posthog-server.ts'
   - 'apps/workspace/bff/analytics/posthog.ts'
@@ -83,6 +88,8 @@ backend:
   - 'apps/workspace/bff/documents/semantic-search.ts'
   - 'apps/workspace/bff/documents/tag-vocabulary.ts'
   - 'apps/workspace/bff/jobs/types.ts'
+  - 'apps/workspace/bff/legal/content/de.ts'
+  - 'apps/workspace/bff/legal/content/en.ts'
   - 'apps/workspace/bff/model-config/agent-groups.ts'
   - 'apps/workspace/bff/platform/vector-reconcile.ts'
   - 'apps/workspace/bff/project-profile/legacy-names.json'
@@ -97,7 +104,9 @@ backend:
   - 'apps/workspace/i18n/dictionaries/en/chat.ts'
   - 'apps/workspace/i18n/dictionaries/index.ts'
   - 'apps/workspace/i18n/index.ts'
+  - 'apps/workspace/public/sw.js'
   - 'apps/workspace/scripts/legacy-env-names.cjs'
+  - 'apps/workspace/shared/brand/identity.json'
   - 'apps/workspace/shared/cards/generated.ts'
   - 'apps/workspace/tests/fixtures/backend-tools.schema.json'
   - 'apps/workspace/tests/fixtures/cross-project.schema.json'
@@ -119,6 +128,7 @@ backend:
   - 'apps/workspace/tests/fixtures/workspace/rendered.json'
   - 'apps/workspace/tests/fixtures/workspace_mcp_requests.json'
   - 'apps/workspace/tests/fixtures/workspace_mcp_responses.json'
+  - 'apps/workspace/tsconfig.json'
   - 'apps/workspace/ui/features/a2ui/catalog.tsx'
   - 'apps/workspace/ui/features/cards/card-decision.ts'
   - 'apps/workspace/ui/features/cards/components/AnswerCards.tsx'
@@ -129,7 +139,9 @@ backend:
   - 'apps/workspace/workers/job-queue.js'
   - 'apps/workspace/workers/jobs/index.js'
   - 'apps/workspace/workers/jobs/runner.js'
+  - 'ci/brand_history_manifest.txt'
   - 'ci/brand_names_baseline.json'
+  - 'ci/brand_prose_baseline.json'
   - 'ci/english_names_baseline_py.json'
   - 'ci/size_baseline.json'
   - 'contracts/cards/schemas.json'
@@ -144,11 +156,14 @@ backend:
   - 'docs/audit/qdrant-gates-2026-10.md'
   - 'docs/observability/langfuse.md'
   - 'docs/technical-reference/answer-feedback-export.md'
+  - 'packages/brand/identity.json'
   - 'packages/ifc-spatial/test/fixtures/Ifc4_SampleHouse.ifc'
   - 'packages/ifc-spatial/test/fixtures/floor-slab-and-window.ifc'
   - 'packages/ifc-spatial/test/fixtures/house-with-rooms.ifc'
   - 'packages/ifc-spatial/test/fixtures/road-ifc4x3.ifc'
   - 'packages/ifc-spatial/test/fixtures/units-feet.ifc'
+  - 'releasenotes/summaries.yaml'
+  - 'releasenotes/translations/de.json'
   # End of the files this tier's tests read.
 # NOT here, though tests read them: `ci/**`, `releasenotes/**`, the other
 # workflows and this file. Their tests (`task be:test:harness`: the workflow,
@@ -225,11 +240,11 @@ workspace:
   - 'packages/ris-adapter/src/client.py'
   # End of the files this tier's tests read.
 site:
-  - 'apps/site/**'
-  # The greenfield website (built from packages/brand), verified in the same job.
+  # The public website (built from packages/brand).
   - 'apps/website/**'
-  # The brand master and the app's copy: the site's `npm run check` holds
-  # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
+  # The brand package: the website's `bun run check` holds the token and name copies
+  # (sync.mjs --check), the icon copies (build-brand-assets.mjs --check) and the
+  # email signatures to it, and art:check holds the app's riso art to its source.
   - 'packages/brand/**'
   # The brand rules the website's `bun run check` and `task website:verify` run.
   - 'scripts/check_brand_rules.mjs'
@@ -237,12 +252,12 @@ site:
   - 'apps/workspace/app/icon.svg'
   # The app's inline copy of the mark's path, held by the same --check.
   - 'apps/workspace/bff/brand.ts'
-  # The app's riso art: exported from apps/site/art/riso and held to its
-  # JOBS tables by the site's `npm run check` (art/riso/check.mjs).
+  # The app's riso art: exported from packages/brand/art/riso and held to its
+  # JOBS tables by art:check (in task website:verify).
   - 'apps/workspace/public/art/**'
   - 'apps/workspace/bff/art/**'
   - 'Taskfile.yml'
-  - 'taskfiles/site.yml'
+  - 'taskfiles/website.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'

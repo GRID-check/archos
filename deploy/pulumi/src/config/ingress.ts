@@ -9,7 +9,7 @@ export interface IngressConfig {
   appDomain: string;
   /** Public host for the S3 endpoint used to sign browser preview/download URLs. Derived: `s3.<baseDomain>` unless the `s3Domain` key overrides it. */
   s3Domain: string;
-  /** Public host for the landing site (apps/site). Derived: the `baseDomain` apex itself unless the `webDomain` key overrides it. */
+  /** Public host for the public website (apps/website). Derived: the `baseDomain` apex itself unless the `webDomain` key overrides it. */
   webDomain: string;
   /** Email for the Let's Encrypt ACME account. */
   letsEncryptEmail: string;

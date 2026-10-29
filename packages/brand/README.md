@@ -21,7 +21,7 @@ or a brand string changes here and reaches every surface on the next sync.
 | `dist/` | Built output, committed on purpose (see the root `.gitignore` negation). |
 | `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build (favicons and manifest icons for `apps/website` and `apps/workspace`, with the website's sharp). Unrelated to the tokens. The master's `<title>` is the token `{productName}`; every copy gets the name from `identity.json`. |
 | `email-signatures.mjs`, `signatures/` | The founders' email signatures, text only, generated from `identity.json` (`--check` runs in the website's `bun run check`). Paste the HTML into the mail client. |
-| `art/riso/` | The riso print kit (moved from the retired `apps/site`): its committed outputs are the app's empty-state vignettes; everything else exports to the gitignored `out/`. [`art/riso/README.md`](art/riso/README.md) |
+| `art/riso/` | The riso print kit (moved from the retired public site): its committed outputs are the app's empty-state vignettes; everything else exports to the gitignored `out/`. [`art/riso/README.md`](art/riso/README.md) |
 
 Apps receive copies, not imports: neither Docker build sees `packages/`.
 

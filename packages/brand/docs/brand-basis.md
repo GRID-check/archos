@@ -124,8 +124,8 @@ Workspace, Pläne, Modelle, Unterlagen, Wissen, suchen, vergleichen, prüfen, au
 - No certificate, partner or customer that does not exist (design system, Datensicherheit).
 - Until pilot numbers exist, the copy says what ARCHOS does, not how much it saves.
 
-Machines cannot judge a source. Review holds this rule; `apps/site/scripts/lint-claims.mjs`
-holds the retracted claims of the old site.
+Machines cannot judge a source. Review holds this rule; `RETRACTED_CLAIMS` in
+`scripts/check_brand_rules.mjs` holds the claims already retracted, on the website's copy.
 
 ## Imagery: four families
 

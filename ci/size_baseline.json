@@ -9,7 +9,6 @@
     "apps/agent-host/src/agent_host/jobs/runner.py": 1404,
     "apps/agent-host/src/agent_host/models/requests.py": 1031,
     "apps/agent-host/src/agent_host/routes/documents.py": 787,
-    "apps/site/src/scripts/landing.ts": 919,
     "apps/workspace/app/app/(shell)/platform/base-knowledge.tsx": 1112,
     "apps/workspace/app/app/(shell)/platform/models/platform-model-defaults.tsx": 633,
     "apps/workspace/app/app/(shell)/platform/platform-overview.tsx": 633,

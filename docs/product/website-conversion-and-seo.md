@@ -49,8 +49,8 @@ One page per query cluster. A new article takes a cluster nobody owns yet.
 | Wissensmanagement Architekturbüro, Projektwissen, Büroarchiv | `/anwendungen/bueroarchiv/`, `/blog/wissen-aus-alten-projekten/` |
 | How Piloti works, RAG for building law | `/blog/wie-piloti-funktioniert/` |
 
-The search pages are data (`apps/site/src/data/landing/`), one entry per
-page; the audit behind them, the landscape and the backlog:
+The search pages were data in the retired site (its `src/data/landing/`, in git history), one entry per
+page; the website's route table (`apps/website/redirects.mjs`) gives each old address its fate; the audit behind them, the landscape and the backlog:
 [`seo-geo-audit-2026-09.md`](seo-geo-audit-2026-09.md).
 
 Next clusters, in order of intent: the long-tail questions in the audit's

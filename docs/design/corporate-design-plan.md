@@ -18,8 +18,8 @@ No identifier anywhere carries the product's name.
 | 1 | **Design system package.** `tokens.json` is the source; `tokens.css`, `components.css` (class prefix `ui-`, not the brand), fonts and logos are built from it. `identity.json` holds every brand string (name, claim, legal entity, address, e-mail) | `packages/brand/` | this change |
 | 2 | **React components** typed in TSX, one file per component, no `window` global | `packages/brand/react/` | this change |
 | 3 | **Brand-name rule** extended to the new name, so internal naming stays brand-agnostic | `scripts/check_brand_names.py` | this change |
-| 4 | **Greenfield website** (Astro): Startseite, Datensicherheit, Blog, Kontakt, Impressum, Datenschutz, Demo (sign-in is AuthKit's hosted page in the same design, listing the methods WorkOS has enabled), built only from the package | `apps/website/` | this change, beside `apps/site` |
-| 5 | **Cutover**: Dockerfile and deploy for `apps/website`, blog posts and the changelog moved over, redirects for the old SEO URLs, then `apps/site` deleted | deploy, CI | next change |
+| 4 | **Greenfield website** (Astro): Startseite, Datensicherheit, Blog, Kontakt, Impressum, Datenschutz, Demo (sign-in is AuthKit's hosted page in the same design, listing the methods WorkOS has enabled), built only from the package | `apps/website/` | done; in production as the `web` image |
+| 5 | **Cutover**: Dockerfile and deploy for `apps/website`, blog posts and the changelog moved over, redirects for the old SEO URLs, then the old site deleted | deploy, CI | done 2026-10-29: the `web` image builds `apps/website`; the changelog renders at `/changelog/` from `apps/website/src/data/changelog.json`, which the release bot writes; old addresses have fates in `apps/website/redirects.mjs`; the old site deleted (the riso kit moved to `packages/brand/art/riso`, its claims rules into `scripts/check_brand_rules.mjs`); probes on `/healthz`. **Staged, not live** (owner decision D2): the domain move to the domain in `identity.json`, the domain-cutover runbook (next change) |
 | 6 | **Workspace adopts the design**: General Sans, and the palette (light and dark) and radii of `ui/styles/tokens.css` as references to the package's `--ds-*` vars (`apps/workspace/shared/brand/tokens.vars.css`), the layers the brand has no token for mixed from brand tokens; the product name read from `identity.json` at the rebrand | `apps/workspace` | palette, font and radii done |
 
 ## How sharing works
@@ -27,7 +27,7 @@ No identifier anywhere carries the product's name.
 Neither app's Docker build sees `packages/` (each builds from its own directory),
 so the repo's existing pattern holds: `packages/brand/sync.mjs` writes committed
 copies of the built files into each app, and `sync.mjs --check` fails CI when a copy
-drifts from the package. `build-brand-assets.mjs` already does this for the mark.
+drifts from the package. `build-brand-assets.mjs` does the same for the mark and its rasters.
 
 ## Rules the package carries
 

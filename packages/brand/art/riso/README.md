@@ -1,11 +1,11 @@
 # Riso art
 
 Procedural risograph prints: the picture language of the retired public site
-(`apps/site`, replaced by `apps/website` in 2026-10), and still the source of
+(replaced by `apps/website` in 2026-10), and still the source of
 the product app's empty-state vignettes and of decks, social posts and printed
 postcards.
 
-**Status (2026-10-29).** The kit moved here from `apps/site/art/riso` when that
+**Status (2026-10-29).** The kit moved here from the retired site's `art/riso` when that
 site was deleted. Its one committed consumer is the product app
 (`apps/workspace/public/art/`, manifest `apps/workspace/bff/art/art.json`);
 every format that used to go to the site (`plate`, `og`, `banner`, `cover`,

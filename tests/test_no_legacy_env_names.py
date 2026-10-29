@@ -29,6 +29,8 @@ ALLOWED = (
     "docs/adr/0145-the-repository-is-laid-out-by-job.md",
     "docs/adr/0079-background-work-runs-on-one-claim-substrate.md",
     "releasenotes/notes/",
+    # Its own fixtures prove identifiers are not its business (a GRID_/AIQ_ name among them).
+    "tests/test_check_brand_prose.py",
 )
 
 OLD_NAME = re.compile(r"\bAIQ_")
@@ -45,7 +47,8 @@ GRID_ALLOWED = (
     "tests/test_check_brand_names.py",
     "tests/.test_durations",
     "apps/workspace/migrations/",
-    "apps/site/src/data/",
+    "apps/website/src/data/",
+    "tests/test_check_brand_prose.py",
 )
 
 

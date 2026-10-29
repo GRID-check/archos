@@ -140,7 +140,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **Storage** | | |
 | **`storageClass`** | — | Provider class for every PVC: `premium` (3 replicas) / `standard` (2) / `single-replica` (1) |
 | **Ingress / TLS** | | |
-| **`baseDomain`** | — | Single source for every public host: `app.`/`s3.`/`otel.` subdomains derive from it, so a domain move is a one-key change. The **apex** itself is the landing site's host (apps/site) |
+| **`baseDomain`** | — | Single source for every public host: `app.`/`s3.`/`otel.` subdomains derive from it, so a domain move is a one-key change. The **apex** itself is the public website's host (apps/website) |
 | `appDomain` / `s3Domain` / `webDomain` | derived from `baseDomain` | Optional per-host overrides (e.g. an S3 endpoint on a different zone); `webDomain` defaults to the bare `baseDomain` |
 | **`letsEncryptEmail`** | — | ACME account email (placeholder rejected) |
 | `useStagingIssuer` | `true` | LE staging CA until DNS/TLS verified, then flip false |
@@ -288,7 +288,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `frontendRequestsCpu/Memory`, `frontendLimitsCpu/Memory` | 100m / 256Mi / 1 / 1Gi | Sizing |
 | `frontendMinReplicas` / `frontendMaxReplicas` | 2 / 6 | HPA bounds |
 | `frontendHpaCpuTargetPercent` | `70` | HPA target |
-| **Web (landing site, apps/site)** | | |
+| **Web (the public website, apps/website)** | | |
 | `webRequestsCpu/Memory`, `webLimitsCpu/Memory` | 50m / 128Mi / 250m / 256Mi | Sizing — static-first Astro site, near-idle CPU |
 | `webMinReplicas` / `webMaxReplicas` | 2 / 4 | HPA bounds |
 | `webHpaCpuTargetPercent` | `70` | HPA target |
