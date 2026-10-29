@@ -28,6 +28,7 @@ Node must already be on the PATH. Install lines:
 | Where a directory is headed, and the checklist for moving one | [ADR-0145](docs/adr/0145-the-repository-is-laid-out-by-job.md): the target layout and the move order |
 | What is Piloti, and what is it not | [`VISION.md`](VISION.md) |
 | What does this word mean | [`CONTEXT.md`](CONTEXT.md) for the domain, [`docs/glossary.md`](docs/glossary.md) for the code |
+| How do I name X (a file, identifier, route, env var, table, event, flag, tool) | [`docs/contributing/naming.md`](docs/contributing/naming.md) |
 | Set up, branch, commit, get a PR merged | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | What an agent can do in the workspace, and how to add it | [`docs/architecture/agent-surface.md`](docs/architecture/agent-surface.md) |
 | Everything written down, by the question you arrived with | [`docs/README.md`](docs/README.md) |
