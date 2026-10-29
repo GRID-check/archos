@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import FeatureTiles from '../components/FeatureTiles.astro';
+import Hero from '../components/Hero.astro';
+import SectionIntro from '../components/SectionIntro.astro';
+import { navigation } from '../i18n/nav';
+import copy from '../i18n/pages/security';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+import { withName } from '../lib/identity';
+
+// Markup and structure only. Text comes from src/i18n/pages/security.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+const nav = navigation(locale);
+const contact = { label: t(locale).kontakt, href: localePath('contact', locale) };
+---
+
+<BaseLayout locale={locale} title={c.title} description={c.hero.text}>
+  <Hero title={c.hero.title} text={c.hero.text} />
+
+  <section class="ui-container page-section">
+    <SectionIntro title={c.intro.title} as="h2" />
+    <FeatureTiles class="page-gap" items={c.items} columns={3} />
+  </section>
+
+  <section class="ui-container page-section">
+    <FAQ title={c.faqTitle} items={c.faq} />
+  </section>
+
+  <section class="ui-container page-section">
+    <CTABand title={c.cta.title} text={c.cta.text} primary={nav.demo} secondary={contact} />
+  </section>
+</BaseLayout>

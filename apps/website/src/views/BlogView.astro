@@ -1,0 +1,45 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Hero from '../components/Hero.astro';
+import PostCard from '../components/PostCard.astro';
+import copy from '../i18n/pages/blog';
+import type { Locale } from '../i18n/paths';
+import { withName } from '../lib/identity';
+
+// Markup and structure only. Text comes from src/i18n/pages/blog.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+---
+
+<BaseLayout locale={locale} title={c.title} description={c.hero.text}>
+  <Hero title={c.hero.title} text={c.hero.text} />
+
+  <section class="ui-container page-section">
+    <nav aria-label={c.filterLabel}>
+      <ul class="ui-filter">
+        {
+          c.filters.map((label, i) => (
+            <li>
+              <a class="ui-nav-link" href="#" aria-current={i === 0 ? 'page' : undefined}>
+                {label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <ul class="ui-posts">
+      {c.posts.map((title) => <PostCard title={title} href="#" />)}
+    </ul>
+
+    <div class="ui-center page-gap">
+      <Button variant="secondary" size="lg">{c.more}</Button>
+    </div>
+  </section>
+</BaseLayout>
