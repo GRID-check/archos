@@ -26,10 +26,9 @@ const EMPTY_STATE_DISC_TONES: Record<EmptyStateDiscTone, string> = {
 }
 
 /**
- * The raised icon disc shared by empty states and confirm dialogs — a disc
- * that catches the light (soft shadow) reads more considered than a flat
- * muted circle. `md` is the empty-state panel disc, `sm` the dialog disc;
- * both keep `shadow-sm`. Tones reuse the chip tint pairs.
+ * The icon disc shared by empty states and confirm dialogs, flat like every
+ * resting surface in the brand. `md` is the empty-state panel disc, `sm` the
+ * dialog disc. Tones reuse the chip tint pairs.
  */
 export function EmptyStateDisc({
   icon: Icon,
@@ -45,7 +44,7 @@ export function EmptyStateDisc({
   return (
     <div
       className={cn(
-        'flex shrink-0 select-none items-center justify-center rounded-control shadow-sm',
+        'flex shrink-0 select-none items-center justify-center rounded-control',
         size === 'md' ? 'size-12' : 'size-9',
         EMPTY_STATE_DISC_TONES[tone],
         className

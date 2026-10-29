@@ -50,7 +50,7 @@ Full text: the component sheets in `docs/components/`.
 - One light grey, `--surface-sunken` (#f2f1f0), marks bands. At most two bands per page, never next to each other.
 - Rough share: 75 % white, 12 % light grey, 10 % black or dark, 3 % dark grey.
 - No signal colours. `--markup` (red pen) appears only inside product screenshots.
-- No shadows and no gradients. The only blur is the glass header.
+- No shadows and no gradients. The only blur is the glass header. In the app, nothing at rest casts a shadow either (cards, buttons, keys, panels are separated by hairlines and fills); only what floats above the page (menus, popovers, dialogs, a floating toolbar, cursors, pins) keeps one soft shadow, so it reads as on top.
 - Dark theme (`data-theme="dark"`) is for the footer and at most one dark card per page.
 
 **Buttons and actions**
