@@ -1,6 +1,6 @@
 # Sensitive data, quarantine and folder access
 
-What an office can keep out of Piloti, what it can keep from some of its own
+What an office can keep out of ARCHOS, what it can keep from some of its own
 people, and how an uploader learns what became of an upload. The decisions
 behind this are ADR-0086 (screening and quarantine), ADR-0087 (restricted
 folders and their own search index), ADR-0088 (read and write per folder) and
@@ -22,7 +22,7 @@ permission decide what must not be uploaded:
   numbers, each validated by its check digit, so a reference number that merely
   looks like one does not match.
 
-An office that never saved a list works with Piloti's suggested one. The list
+An office that never saved a list works with ARCHOS's suggested one. The list
 can be switched off.
 
 ## What happens to an upload
@@ -36,7 +36,7 @@ can be switched off.
    path included, also for a file dropped into a chat, so a browser that skips
    the dialog is refused the same way; a file it stops is not stored, and the
    upload says „Nicht hochgeladen" for it just as for the browser's own stops.
-   Not even the name of a file the check stops is sent: Piloti checks which
+   Not even the name of a file the check stops is sent: ARCHOS checks which
    files the folder already holds only for the files that passed, or that you
    uploaded anyway. The list is read fresh for every upload, so a term saved a
    moment ago applies to the next one, and read again when you confirm the
@@ -44,10 +44,10 @@ can be switched off.
    are not created.
    When anything changes between what the dialog showed and what would be
    sent, nothing is sent; the dialog shows the new preview to confirm. If your
-   office's list cannot be loaded, nothing is uploaded and Piloti says so; try
+   office's list cannot be loaded, nothing is uploaded and ARCHOS says so; try
    again a moment later. The server refuses an upload the same way while it
    cannot read the list.
-2. **On Piloti's own server, before any language model sees the file**, its text
+2. **On ARCHOS's own server, before any language model sees the file**, its text
    is read locally and checked against the content terms and number checks. A
    match ends there: the file is stored, read by no model, and waits in
    quarantine. If the list cannot be read at that moment, or reaches the
@@ -63,7 +63,7 @@ can be switched off.
    by name only**. The summary says so, so nobody takes „nothing found" for
    „nothing there".
 
-What Piloti drops on its own: system files a folder carries along, such as
+What ARCHOS drops on its own: system files a folder carries along, such as
 `.DS_Store`, `Thumbs.db` and Office lock files (`~$Vertrag.docx`).
 
 ## Chat messages
@@ -71,31 +71,31 @@ What Piloti drops on its own: system files a folder carries along, such as
 The **content terms and number checks** apply to what people type into the chat
 as well; the file-name terms do not. When a message contains one, the composer
 does not send it. It says what it found, for example „Enthält eine IBAN
-(Sensible Daten). Piloti sendet sie nicht an das Antwortmodell.", and offers two
+(Sensible Daten). ARCHOS sendet sie nicht an das Antwortmodell.", and offers two
 choices:
 
-- **Maskiert senden** sends the message with each match replaced, so Piloti
+- **Maskiert senden** sends the message with each match replaced, so ARCHOS
   reads „Bitte überweise an [IBAN entfernt]". The placeholders are
   `[IBAN entfernt]`, `[SV-Nummer entfernt]`, `[Kartennummer entfernt]` and
   `[Begriff entfernt]`.
 - **Bearbeiten** sends nothing and leaves the text as you typed it.
 
-There is no way to send the message unmasked. An answer to a question Piloti
+There is no way to send the message unmasked. An answer to a question ARCHOS
 asked is checked the same way, and so is a plan you edit before approving it,
 and so are messages to colleagues in a shared chat. A message that reaches
-Piloti some other way is masked on the server without asking, and the stored
-chat keeps the masked text: your messages and your answers to Piloti's
-questions. In Piloti's own answers only numbers are masked (IBAN,
+ARCHOS some other way is masked on the server without asking, and the stored
+chat keeps the masked text: your messages and your answers to ARCHOS's
+questions. In ARCHOS's own answers only numbers are masked (IBAN,
 Sozialversicherungsnummer, Kartennummer); an answer that names a term from the
 list, such as „Es gibt keine Honorarvereinbarung", reads the same after a
 reload. The name of the file you ask
-about („Frage zu …") is masked the same way before Piloti reads it.
+about („Frage zu …") is masked the same way before ARCHOS reads it.
 
-The same list masks, without asking, what you write elsewhere that Piloti
+The same list masks, without asking, what you write elsewhere that ARCHOS
 later reads:
 
 - **notes** you add or edit in the Projektspeicher or the Organisationsgedächtnis,
-  and the notes Piloti keeps itself;
+  and the notes ARCHOS keeps itself;
 - the **comment on a thumbs-down**.
 
 Masking a term hides the word, not what stands around it: „Honorarvereinbarung
@@ -105,7 +105,7 @@ applies to an open chat once the page is reloaded.
 **Not checked** against the list, so keep sensitive data out of them yourself:
 
 - the standing instructions under **Organisation → Anweisungen**, and the
-  instructions of a **Skill**, which Piloti reads when it answers;
+  instructions of a **Skill**, which ARCHOS reads when it answers;
 - the **project profile** you fill in with the intake wizard;
 - the comment a reviewer writes when sending a draft back („Änderungen
   anfordern"), which the chat that wrote the draft reads;
@@ -114,7 +114,7 @@ applies to an open chat once the page is reloaded.
 - **voice input** (the microphone in the chat): the recording is transcribed by
   an external speech model before the check can see any text. The transcript
   is then checked when you send it, like typed text, so the answering model
-  does not see a match, but the speech model has heard it. On Piloti's own key
+  does not see a match, but the speech model has heard it. On ARCHOS's own key
   that model keeps no data; an office on its own key gets that provider's
   retention policy;
 - anything stored before the list applied to it: older chats, notes and
@@ -128,7 +128,7 @@ the project's admins and, for the Büroablage, its curators can:
 
 - **Look at it** („Ansehen"), which opens it in the project's Dateien or in the
   Büroablage, where it is filed. A chat attachment has no such view.
-- **Allow** it („Zulassen"). Piloti then reads it like any other upload. The
+- **Allow** it („Zulassen"). ARCHOS then reads it like any other upload. The
   decision applies to exactly these bytes: uploading a changed version screens
   it again.
 - **Delete** it („Löschen").
@@ -150,7 +150,7 @@ folder; without it the preview shows the findings only. The uploader sees
 Reviewers get an inbox notice when files wait for them. It names the latest
 file and what it was held back for (an IBAN, a term from the list), never the
 matched text; it reaches only people who may review that file. The
-audit log records both the quarantine, as Piloti's own decision, and the
+audit log records both the quarantine, as ARCHOS's own decision, and the
 decision to allow it, with the terms and checks that matched but never the
 matched text.
 
@@ -158,7 +158,7 @@ matched text.
 above. For everyone else in the project, or in the Büroablage, it is not there:
 it is missing from the file list, the search, the project overview and the
 model list, and its download, preview and thumbnail answer as if it did not
-exist. Piloti's assistant never reads it. Restoring a folder from the
+exist. ARCHOS's assistant never reads it. Restoring a folder from the
 Papierkorb, changing a folder's access or re-indexing the project leaves it in
 quarantine; only allowing it takes it out.
 
@@ -169,7 +169,7 @@ same holds when you upload a corrected file over an existing one, or publish a
 new version of a document from a draft: until the new content is checked,
 colleagues do not see the document at all, its earlier version included, and
 a link or a citation to it answers as if it did not exist for those minutes.
-If the corrected file is held back for its content, Piloti stops finding the
+If the corrected file is held back for its content, ARCHOS stops finding the
 earlier version too, until one of the people above allows or deletes it.
 
 **A file whose reading failed before the check** (an IFC model too large to
@@ -217,7 +217,7 @@ first, with who uploaded it and what became of its files; **Ältere Uploads
 laden** reads further back, to the first one. Each person opens
 the file-by-file summary of their own uploads only. If a folder of the project
 is closed to you, you see of each upload only the files that landed in folders
-you can open, exactly as the file list shows them. Files Piloti found
+you can open, exactly as the file list shows them. Files ARCHOS found
 unchanged, transfers that failed and files the name check did not upload belong
 to no folder, so they are not counted for you, and an upload with nothing in your
 folders is not listed. A folder in the Papierkorb is hidden from everyone, so
@@ -230,7 +230,7 @@ good when its time in the Papierkorb ran out closes nothing either.
 **Organisation → Personen & Zugriff → Eigene Rollen.** People who may manage
 people and roles create roles such as „Geschäftsführung" or „Buchhaltung",
 choose the permissions each carries, rename them and delete them. The roles
-live in WorkOS, where Piloti's own roles live; you assign them to people on the
+live in WorkOS, where ARCHOS's own roles live; you assign them to people on the
 **Personen** tab.
 
 - A role can only carry permissions its editor holds.
@@ -238,7 +238,7 @@ live in WorkOS, where Piloti's own roles live; you assign them to people on the
 - Roles do not decide who may open a folder with its own access list: that
   list names people (next section). Giving someone a role, taking it away,
   renaming or deleting it changes no folder's list.
-- Until your Piloti installation lets a person hold several roles, everyone
+- Until your ARCHOS installation lets a person hold several roles, everyone
   holds exactly one.
 
 ## Who may read and edit a folder
@@ -292,7 +292,7 @@ out:
 
 - it is not listed, and neither is anything in it or below it, including files
   uploaded there later;
-- Piloti's search and answers do not draw on it, because its documents are kept
+- ARCHOS's search and answers do not draw on it, because its documents are kept
   in their own search index that only the chats of people who may read it
   search;
 - its documents do not open from a link, the inbox or a share.
@@ -315,31 +315,31 @@ read folders you cannot see. Ask an organization admin to move such a folder.
 
 **Review rounds** are offered only to people who may edit the project and may
 read the folder the document is in, so nobody is asked to review something
-they cannot open. A change of a folder's access shows in Piloti's project
+they cannot open. A change of a folder's access shows in ARCHOS's project
 context (the list of documents with a role, such as the Bebauungsplan) right
 away, and the projects overview counts only the documents you may read.
 
 **Deleting a folder** puts it in the Papierkorb, with everything in it: see
 [Deleting folders: the Papierkorb](#deleting-folders-the-papierkorb). It keeps
-its access list, so what Piloti recorded from it, in a chat or in its memory,
+its access list, so what ARCHOS recorded from it, in a chat or in its memory,
 stays visible only to the people who could read it, until your organization
 decides otherwise.
 
 **A chat that draws on a folder not everyone may read is shared per person.**
 It can be shared with someone who may read every such folder it drew on, and
 with nobody else. It counts as drawing on a folder once content from it reached
-Piloti's answer: a search hit, an opened document, an image, a remembered note.
-Being able to search the folder is not enough, and until then Piloti does not
+ARCHOS's answer: a search hit, an opened document, an image, a remembered note.
+Being able to search the folder is not enough, and until then ARCHOS does not
 list the folder's files, suggest their names or say that one exists; it finds
 them by searching. If the chat is shared with someone who
-may not read the folder, Piloti stops searching that folder in the chat from
+may not read the folder, ARCHOS stops searching that folder in the chat from
 the next question on. A file name used in such a folder cannot be uploaded a
 second time elsewhere in the project.
 
 **Sharing such a chat shows only people who qualify.** In the share dialog,
 colleagues who may not read every folder the chat drew on appear greyed out
 with „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat stammt“, without
-naming the folder (you may not be allowed to read it either). Piloti still
+naming the folder (you may not be allowed to read it either). ARCHOS still
 refuses the invitation on its own check.
 
 **When access changes after sharing.** A chat whose folders someone may no
@@ -353,18 +353,18 @@ is deleted: when the person is put back on the list or the folder is opened agai
 the chat is whole again. Their inbox does not show the chat's title either.
 Anything they copied or downloaded earlier stays with them.
 
-Nothing from such a chat goes where the whole project reads it, so Piloti does
+Nothing from such a chat goes where the whole project reads it, so ARCHOS does
 not offer, and refuses with a message saying why:
 
 - a Tiefenrecherche or an Auftrag started from it (this stays so for now, even
   for a chat whose folders everyone may read again);
 - a change to the project context („Projektkontext aktualisieren");
 - filing a draft or a diagram from it into a folder that is not inside every
-  folder the chat drew on. Piloti files these into „Berichte", so they stay in
+  folder the chat drew on. ARCHOS files these into „Berichte", so they stay in
   the chat unless they are moved there by hand.
 
 The same holds for a file in such a folder, whichever chat it came from:
-**Piloti überarbeiten lassen** is refused with the reason, and Änderungen
+**ARCHOS überarbeiten lassen** is refused with the reason, and Änderungen
 anfordern opens no Auftrag for it, because an Auftrag quotes the file and the
 whole project sees it. The comment stays on the version for its author. An
 Auftrag opened for a file before its folder was restricted, or before the file
@@ -374,30 +374,30 @@ neither its title nor a link; when the file moves back or they are put on the
 folder's list, they see it again.
 
 Ratings of answers from such a chat (thumbs down, with what the answer should
-have said) are not shown to the people who run Piloti and are not used for the
-lessons Piloti learns across offices, also after the chat is deleted. This
+have said) are not shown to the people who run ARCHOS and are not used for the
+lessons ARCHOS learns across offices, also after the chat is deleted. This
 covers every answer in the chat, the ones from before it first drew on such a
-folder too, because a rating given afterwards can quote what was read. Piloti
+folder too, because a rating given afterwards can quote what was read. ARCHOS
 notes it on the answers and the ratings itself, the moment the folder's content
 enters the answer, so it holds even for an answer that was never saved; what
 the browser sends can only add to it. Once noted it stays: opening the folder
 to everyone later, or deleting the chat, does not bring the ratings back. The
 same holds for the chat of an Auftrag whose file moved into such a folder:
-from that moment its ratings stay hidden from the people who run Piloti, also
+from that moment its ratings stay hidden from the people who run ARCHOS, also
 after the file moves back or the chat is deleted, while the people in your
 office see the Auftrag again as described above. Only their number is counted. Lessons learned from such
 ratings before this rule were withdrawn, together with earlier wordings an
 edit had kept and the search data computed from them. The people who run
-Piloti also do not see the title of such a chat in their performance view.
+ARCHOS also do not see the title of such a chat in their performance view.
 
 Within your office, whether a chat drew on such a folder is decided against
 the folders' lists as they are now: when a folder is opened to everyone, the
 chats and notes that drew on it are no longer held back by it; when a list is
-narrowed, they are shown to fewer people. What the people who run Piloti may
+narrowed, they are shown to fewer people. What the people who run ARCHOS may
 see of the ratings stays as described above. The project context can still be changed by hand, in
 the project intake.
 
-**What Piloti remembers from such a chat is restricted too.** Piloti keeps
+**What ARCHOS remembers from such a chat is restricted too.** ARCHOS keeps
 notes from it in the project's memory as it does from any chat, but a note that
 draws on a folder not everyone may read is shown, under Projektspeicher, only to
 people who may read that folder now, with a lock that names it, and only their
@@ -408,14 +408,14 @@ instead.
 
 **Building models (IFC) stay in folders everyone may read.** A model's
 building data is kept per project, not per folder, so a list could not protect
-it. Piloti therefore refuses an IFC model in a folder not every member may
+it. ARCHOS therefore refuses an IFC model in a folder not every member may
 read: uploading one there, moving one there, moving a folder that holds one
 under such a folder, and giving a folder that holds one such a list all fail
 with a message saying why. A list with **Alle Projektmitglieder dürfen lesen**
 is fine. A model that was already in such a folder before this check existed is
 hidden from everyone who may not read that folder, in the model list, the
-viewer and the download, and Piloti's model questions do not reach it; its
-summary may still be found by Piloti's search, so move such a model to an open
+viewer and the download, and ARCHOS's model questions do not reach it; its
+summary may still be found by ARCHOS's search, so move such a model to an open
 folder.
 
 ## Deleting folders: the Papierkorb
@@ -423,14 +423,14 @@ folder.
 **Deleting a folder** (⋯ → Löschen) moves it to the project's **Papierkorb**
 together with its subfolders and their documents. From that moment it is
 absent for everyone, organization admins included: not listed, not searchable,
-not in Piloti's answers, not openable or downloadable from a link. Its
-documents are taken out of Piloti's search index at once.
+not in ARCHOS's answers, not openable or downloadable from a link. Its
+documents are taken out of ARCHOS's search index at once.
 
 This is a project's Files. A folder in the **Büroablage** has no Papierkorb:
 deleting it moves its documents and subfolders into the folder above.
 
 You may delete a folder when you may edit it and every folder inside it. If it
-holds a folder you may not read, or may only read, Piloti refuses with „Dieser
+holds a folder you may not read, or may only read, ARCHOS refuses with „Dieser
 Ordner enthält Inhalte, die Sie nicht löschen dürfen" and deletes nothing; it
 does not say which folder.
 
@@ -440,17 +440,17 @@ good. For 14 days (your operator may set up to 23) a folder can be
 **restored**, with its access list, its subfolders and its documents, by anyone
 who could edit it. Its documents are read into the search index again, which
 takes a few minutes for a large folder. If the folder it was in has been
-deleted meanwhile, it comes back at the top of the project, and Piloti says so.
+deleted meanwhile, it comes back at the top of the project, and ARCHOS says so.
 If a folder with the same name exists there now, rename that one first.
 
 After the 14 days the folder is **deleted for good**: its documents, every
 version and preview are erased. Project admins can do that at once with
 **Endgültig löschen**. What remains is an invisible record of the folder and its
-access list, so Piloti can still decide who may see what it said about it.
+access list, so ARCHOS can still decide who may see what it said about it.
 
 **A legal hold** on the folder, on a folder above it, on a document in it, on
 the project, on the person who uploaded a document in it, or on the whole
-organization stops the final deletion. Piloti answers that
+organization stops the final deletion. ARCHOS answers that
 a retention obligation applies and does not say which.
 
 ### What happens to chats, answers and notes from a deleted folder
@@ -473,8 +473,8 @@ deleted earlier. Answers, notes and filed reports drawn from such a folder show
 
 - A folder deleted for good cannot be undone, and neither can content removed with it.
 - A document someone **downloaded, exported or copied** before the deletion is
-  outside Piloti; deleting the folder does not reach it.
+  outside ARCHOS; deleting the folder does not reach it.
 - **Backups** keep deleted data until they rotate out (your contract states how
   long); a restore from a backup re-applies the deletions before use.
-- Piloti's **conversation memory** for a chat whose answers were removed keeps
+- ARCHOS's **conversation memory** for a chat whose answers were removed keeps
   the original answer until the chat has been idle for 14 days or is deleted.

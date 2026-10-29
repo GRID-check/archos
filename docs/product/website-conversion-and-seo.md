@@ -1,3 +1,4 @@
+<!-- history: 2026-10-28 -->
 # The public site: who it is for, what it ranks for, what it still lacks
 
 How piloti.at is meant to convert and be found. Written after an outside

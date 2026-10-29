@@ -1,6 +1,6 @@
 # The download log
 
-Who took which document out of Piloti, and who opened one in a folder the office
+Who took which document out of ARCHOS, and who opened one in a folder the office
 gave its own access list. This page says what is recorded and why, how long it
 is kept, who sees it, and what an office with a works council should settle
 before it relies on it. The decision behind it is ADR-0088 and its plan,
@@ -9,7 +9,7 @@ before it relies on it. The decision behind it is ADR-0088 and its plan,
 
 ## What is recorded
 
-One entry each time Piloti hands a document's bytes to a person:
+One entry each time ARCHOS hands a document's bytes to a person:
 
 | What the person did | Recorded | Shown in the log as |
 |---|---|---|
@@ -22,7 +22,7 @@ folder it was filed in at that moment, whether that folder had its own access
 list, the time, and which of the above it was. Names and email addresses are
 not copied into the log; the page looks them up when an admin reads it.
 
-Not recorded: thumbnails (they are not the file), what Piloti's agent reads
+Not recorded: thumbnails (they are not the file), what ARCHOS's agent reads
 while answering (that is use of a folder, which has its own record), the
 platform's shared knowledge base, exports of a chat answer, and the opening of
 documents in ordinary folders. That last one is a decision, not an oversight:
@@ -45,14 +45,14 @@ took a contract out, and to let an office say with a straight face that access
 to a restricted folder is not only limited but also traceable. It is not an
 activity report. The page shows a list of events, newest first, filtered by
 person, document and day. There is no total per person, no ranking and no chart,
-and nothing in Piloti evaluates how much anyone downloads.
+and nothing in ARCHOS evaluates how much anyone downloads.
 
 ## How long
 
 **12 months, then it is deleted.** An organization can shorten that, down to 30
 days: **Organisation → Übersicht → Aufbewahrung des Download-Protokolls**, whole
 days from 30 to 365. It cannot be made longer; a longer time would be a decision
-for a new ADR, not a setting. Piloti's scheduler deletes what is past its time
+for a new ADR, not a setting. ARCHOS's scheduler deletes what is past its time
 once a day, in small batches, so a shortened time takes effect at the next run.
 Rows cannot be changed, and only that daily purge can delete them.
 
@@ -93,7 +93,7 @@ Austria § 96 ArbVG (control measures that touch human dignity, in particular
 § 96 Abs. 1 Z 3), in Germany § 87 Abs. 1 Nr. 6 BetrVG (technical devices
 suitable for monitoring behaviour or performance). Whether yours does depends on
 the case and on your counsel's reading; this is a prompt to ask, not legal
-advice. What Piloti does to make an agreement easy to reach, and what to write
+advice. What ARCHOS does to make an agreement easy to reach, and what to write
 into it:
 
 - **Purpose limitation.** Security and accountability only (see above), written
