@@ -125,7 +125,7 @@ const en: typeof de = {
     },
   ],
   cta: {
-    title: 'Still questions about data security?',
+    title: 'Any questions about data security?',
     text: 'We are happy to go through them with you, including with your IT.',
   },
 };

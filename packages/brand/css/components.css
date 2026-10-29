@@ -9,6 +9,9 @@ body { margin: 0; font-family: var(--font-sans); font-weight: 500; font-size: 16
   .display { font-size: 44px; line-height: 46px; }
   .heading-1 { font-size: 34px; line-height: 38px; }
   .heading-2 { font-size: 26px; line-height: 32px; }
+  /* The hero title scales with the viewport, so its longest word
+     („Architekturbüros.“) still fits a 360px phone. */
+  .ui-hero-title.display-xl { font-size: min(40px, 10.4vw); line-height: 1.1; }
 }
 
 /* Layout: two widths and the section rhythm */
