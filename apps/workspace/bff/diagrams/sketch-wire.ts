@@ -37,6 +37,13 @@ export const saveSketchSchema = z.object({
 
 export type SaveSketchBody = z.infer<typeof saveSketchSchema>
 
+/**
+ * The saving editor's peer id in the document room, a header beside the body:
+ * the server tells the room of every save (`scene.saved`) stamped with it, so
+ * the saving tab hears no echo. Not part of the operation: an agent has no tab.
+ */
+export const ROOM_PEER_HEADER = 'x-room-peer-id'
+
 /** What `GET` answers. */
 export interface SketchDocumentView {
   documentId: string
@@ -56,4 +63,6 @@ export interface SavedSketch {
   versionNumber: number
   /** The PDF companion's new Fassung, or `null` when there is none or it could not be redrawn. */
   pdf: { documentId: string; versionId: string } | null
+  /** True when there is a PDF beside the sketch and it could not be drawn again: it still shows an earlier version. */
+  pdfStale: boolean
 }

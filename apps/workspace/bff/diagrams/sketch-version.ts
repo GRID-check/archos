@@ -111,10 +111,11 @@ async function recordFiledBytes(
       publishedBy: document.createdBy,
       publishedAt: document.createdAt,
     },
-    expected,
+    // A derived write (the PDF beside a Skizze) checks its source below; the filed bytes only need there to be none yet.
+    expected.of === undefined ? expected : { publishedVersionId: null },
     afterPublish,
   )
-  return { publishedVersionId: version.id }
+  return expected.of === undefined ? { publishedVersionId: version.id } : expected
 }
 
 async function announce(
@@ -197,6 +198,14 @@ export async function publishNextVersion(input: NextVersionInput): Promise<Docum
     await discardObject(storageBucket, storageKey)
     throw error
   }
-  await announce(session, document, version, marks, input.request)
+  // The Fassung is committed: an audit or hint that fails now must not answer the save as failed,
+  // or the editor's retry writes a second Fassung of the same scene.
+  await announce(session, document, version, marks, input.request).catch((error: unknown) =>
+    console.error('[diagrams] a Fassung was published and not announced', {
+      documentId: document.id,
+      versionId: version.id,
+      cause: error instanceof Error ? `${error.name}: ${error.message}` : 'unknown',
+    })
+  )
   return version
 }

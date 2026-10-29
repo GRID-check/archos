@@ -574,7 +574,26 @@ document, never a new pair.
   read: the fence's element types plus `freedraw`, no `image`, embed or
   `files`, at most 2 000 elements, coordinates within ±1 000 000, text up to
   5 000 characters, and the 512 KiB excalidraw source cap. Filing used to store
-  the scene unread.
+  the scene unread. What the fence drops is dropped here too: an element's
+  `link`, `customData` outside `SCENE_CUSTOM_DATA_KEYS` (empty for now; a slice
+  that ties elements to the workspace names its key there), and `appState`
+  outside the four keys Excalidraw's own export writes.
+- **A save is versioned against the scene it replaces**
+  (`bff/diagrams/sketch-revise.ts`), whoever wrote it: an element whose content
+  changed at the version it was read with gets the next version and a fresh
+  nonce, one without a version gets one, and an element the save left out is
+  kept as a tombstone (`isDeleted`, the next version) for one Fassung. So an
+  agent's edit through `document-sketch-update` wins the merge on every open
+  canvas, and a delete survives it; an editor's save changes nothing but the
+  tombstones. Tombstones that would push the scene over its caps are left out.
+- **The picture is trusted as an upload is.** `scene` and `svg` arrive
+  separately and nothing renders one from the other on the server: the
+  outline and the editor read the scene, the preview and the PDF show the SVG.
+  The writer is authorized to change the document, so a mismatch is the
+  writer's integrity, not an escalation; the SVG still goes through the
+  filing validator, and the operation's description tells an agent the two
+  must agree. No cheap check fits: an agent's hand-written SVG need not set
+  text the way `exportToSvg` does.
 - **The marking stays honest.** The SVG goes through `acceptDiagram` as filing
   does, with the two-author line (`diagrams.markingEdited`); the machine half
   stays `AIHumanReviewed=false`, because editing is not a Freigabe.
@@ -589,9 +608,19 @@ document, never a new pair.
   ingested. A sketch filed before it had Fassungen gets its filed bytes recorded
   as Fassung 1 first, so the history starts where Piloti drew it.
 - **The PDF companion follows.** The `diagram_pdf` row filed under the same
-  reference is drawn again from the new SVG and saved as its own next Fassung.
-  When there is none (or it cannot be drawn), the SVG's Fassung stands and the
-  answer says `pdf: null`, as in filing.
+  reference is drawn again from the new SVG and saved as its own next Fassung,
+  but only while that SVG Fassung is still current, checked under the PDF's
+  lock (`expected.of`): of two overlapping saves the later one's drawing lands
+  last, never the slower one's. When there is none, or a newer save took over,
+  the answer says `pdf: null`; when it could not be drawn, also `pdfStale:
+  true`, and the editor says the PDF shows an earlier version.
+- **A committed Fassung is answered as saved.** Its audit event and hints run
+  after the commit; one that fails is logged, not turned into a 500 the editor
+  would retry into a second Fassung.
+- **The room is told by the server.** After the commit the PUT publishes
+  `scene.saved` to `doc:<id>` with the stored scene's hash, stamped as the
+  saver and, when the editor sent it (`x-room-peer-id`), with its tab's peer id
+  so that tab hears no echo. An agent's save reaches open canvases this way.
 - **Only a filed sketch is saved this way** (`diagram_svg`). A person's own
   upload that carries a scene is read, never written: new bytes for it are an
   upload, with an upload's screening.
@@ -600,9 +629,13 @@ document, never a new pair.
   through the documents feature's slot `features/documents/preview-actions.tsx`,
   so documents imports nothing of diagrams). It opens the same lazy editor on
   the stored scene; „Als neue Fassung speichern" saves, and a 409 tells the
-  person a newer Fassung exists.
-- **Observable.** Each save scores `sketch-revised` (the Fassung number) on the
-  trace of the turn that drew the sketch.
+  person a newer Fassung exists. The preview asks with `?probe=1`, which the
+  download log does not record; the click reads again, logged, and opens the
+  latest Fassung. `canWrite` is what the PUT would take: write access and a
+  filed `diagram_svg`.
+- **Observable.** Each successful save scores `sketch-revised` (the Fassung
+  number), and every attempt `sketch-save` (`saved`, `pdf_stale`, `conflict`,
+  `refused`), on the trace of the turn that drew the sketch.
 
 `DIAGRAM_RENDERERS.excalidraw` stays `null`: reopening hands the stored scene to
 the editor, and the preview shows the stored SVG, so nothing renders a scene
@@ -655,8 +688,13 @@ to the room's vocabulary is in `lib/diagrams/sketch-room-types.ts`:
 | `sceneSelection` (element ids) | `scene.selection` | anyone who reads | motion, `ROOM_LIMIT`, 150 ms |
 | `delta` (changed elements, `seq`, optional `full` part) | `scene.delta` | a writer | `sketch-edit`, `SKETCH_EDIT_LIMIT` |
 | `hash` (the scene's `hashElementsVersion`) | `scene.hash` | anyone who reads | `ROOM_LIMIT` |
-| `want` (send me the whole scene) | `scene.want` | anyone who reads | `ROOM_LIMIT` |
-| `saved` (a Fassung was written) | `scene.saved` | a writer | `sketch-edit` |
+| `want` (send me the whole scene) | `scene.want` | anyone who reads | `sketch-want`, `SKETCH_WANT_LIMIT` (12 a minute) |
+| `saved` (a Fassung was written) | `scene.saved` | a writer, and the server after every PUT | `sketch-edit` |
+
+A message spends the budget of every lane it touches, so a `want` riding on a
+claim still spends the `want` budget. An element travels only if it is of a
+type a saved scene may hold (`SCENE_ELEMENT_TYPES`), and loses `link` and
+foreign `customData` on the wire as on the save.
 
 How the canvases converge (`features/diagrams/sketch/sketch-sync.ts`):
 
@@ -667,17 +705,21 @@ How the canvases converge (`features/diagrams/sketch/sketch-sync.ts`):
 - After an edit the canvas sends the elements whose version passed what the
   server last took from it, tombstones included, at most every 100 ms, one post
   at a time, in parts of at most 400 elements and 64 KB. An element is marked
-  sent only when the post answered 2xx; a refusal keeps it for the retry. One
-  element over 64 KB on its own (a long freehand line) does not travel live
-  and reaches the others with the next save.
+  sent only when the post answered 2xx; a lost post or a 429 keeps it for the
+  retry. A 400 or 413 is not retried: the part is split until the one element
+  the server refuses is alone, that one is set aside (the editor says so) and
+  the rest travels. A 403 stops the tab's edits. One element over 64 KB on its
+  own (a long freehand line) does not travel live and reaches the others with
+  the next save.
 - An element taken from a peer counts as sent, so the canvas's `onChange`
   after applying it does not send it back; the canvas's own events coming back
   from the room are dropped by `peerId`.
 - Repair: a gap in a peer's `seq`, or two hash beacons in a row from one peer
   that differ from this scene (hashed over the elements still drawn), asks for
   the whole scene. A writer answers after 150 to 500 ms unless it hears another
-  answer first; the asker merges the answer and sends back what it holds newer
-  or the answerer lacks. Beacons go out every 5 s while others are here and
+  answer first, and answers one person (by the user id the server stamped) at
+  most once every 5 s and six times a minute in all; the asker merges the
+  answer and sends back what it holds newer or the answerer lacks. Beacons go out every 5 s while others are here and
   only after a second without drawing.
 - The pure modules take Excalidraw's helpers as arguments, so
   `sketch-canvas.tsx` stays the only importer of `@excalidraw/excalidraw` and
@@ -686,10 +728,24 @@ How the canvases converge (`features/diagrams/sketch/sketch-sync.ts`):
   `hashElementsVersion` and `restoreElements` and converges two and three
   seeded replicas through drops, reorders and refusals.
 
-The Fassung stays the truth: a save writes one, every peer moves its base to
-it on `saved`, and a canvas that joins late or lost the room opens the latest
-Fassung and asks for what was drawn since. A delta is a hint towards the same
-scene, never a record.
+The Fassung stays the truth: a save writes one, and a canvas that joins late
+or lost the room opens the latest Fassung and asks for what was drawn since. A
+delta is a hint towards the same scene, never a record.
+
+- On `saved`, a peer moves its base to the new Fassung only when its scene
+  hashes to the saved one. Otherwise it keeps its base, so its own save is a
+  409 that merges first, and the editor reads the new Fassung and merges it at
+  once (`?probe=1`, not logged). A canvas that missed a delta can therefore
+  never save over the Fassung without it.
+- Merging a newer Fassung (after a 409, or on such a `saved`) deletes on this
+  canvas what that Fassung left out, when the base Fassung drew it and this
+  canvas has not changed it since, as a tombstone that travels on; an element
+  changed here since stays, as an edit beats a delete in Excalidraw's merge.
+  The server's tombstones (above) make the same delete explicit for one
+  Fassung. An element drawn and deleted between two saves whose tombstone a
+  canvas missed is repaired by the hash beacons, not by the merge.
+- A save reads its base before it takes the scene, so a merge that lands while
+  the picture is drawn makes the save stale rather than lossy.
 
 In the editor (`sketch-dialog.tsx`, `use-sketch-room.ts`):
 

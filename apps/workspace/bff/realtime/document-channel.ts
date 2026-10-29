@@ -25,7 +25,9 @@
  * scene's hash and a request for the whole scene, so a reader in view mode
  * points and stays in step. Its edits (`delta`, `saved`) travel in a lane of
  * their own, which asks for write access to the document and spends
- * `SKETCH_EDIT_LIMIT`; a revoked writer can go on sending for at most
+ * `SKETCH_EDIT_LIMIT`. A request for the whole scene (`want`) is any reader's,
+ * and spends a small budget of its own (`SKETCH_WANT_LIMIT`), since every
+ * writer answers it with the whole scene. A revoked writer can go on sending for at most
  * {@link DOCUMENT_REAUTHORIZE_MS}, as a revoked reader can.
  *
  * Every relayed claim and fact also lands in the server roster (`./roster`),
@@ -36,7 +38,7 @@
 import 'server-only'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { ROOM_CLAIM_LIMIT, ROOM_LIMIT, SKETCH_EDIT_LIMIT } from '@/lib/limits'
+import { ROOM_CLAIM_LIMIT, ROOM_LIMIT, SKETCH_EDIT_LIMIT, SKETCH_WANT_LIMIT } from '@/lib/limits'
 import { SKETCH_EDIT_FIELDS, sketchEventsOf } from '@/lib/diagrams/sketch-room-types'
 import {
   CURSOR_CHAT_MAX,
@@ -120,6 +122,8 @@ export const documentChannel = defineChannel({
           await getAccessibleDocument(session, documentId, 'write')
         },
       },
+      // Asking for the whole scene makes every writer answer with it: its own small budget, any reader's.
+      { name: 'sketch-want', fields: ['want'], limit: SKETCH_WANT_LIMIT },
       // Presence and the selected mark are claims: motion must never refuse them.
       { name: 'claim', fields: ['selected'], presence: true, limit: ROOM_CLAIM_LIMIT },
     ],

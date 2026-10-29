@@ -107,6 +107,18 @@ const ROOM_CLAIM_LIMIT = { name: 'document-room-claim', limit: 600, windowMs: 60
 const SKETCH_EDIT_LIMIT = { name: 'sketch-edit', limit: 900, windowMs: 60 * 1000 }
 
 /**
+ * Asking a sketch's room for its whole scene (`want` on `doc:<id>`): any
+ * reader may, and every writer in the room answers with the whole scene, so
+ * one ask costs each writer up to 64 parts of their {@link SKETCH_EDIT_LIMIT}.
+ * Per member and channel, and a bucket of its own so that a crafted client
+ * cannot ask past it by riding along with motion or a claim. An honest canvas
+ * asks at most once every five seconds (`WANT_COOLDOWN_MS`), twelve a minute;
+ * the writers' answers are rationed per asker as well (`sketch-sync.ts`).
+ * @type {LimitRule}
+ */
+const SKETCH_WANT_LIMIT = { name: 'sketch-want', limit: 12, windowMs: 60 * 1000 }
+
+/**
  * Sending mentions (counted per mentioned person, not per message).
  * @type {LimitRule}
  */
@@ -399,6 +411,7 @@ module.exports = {
   ROOM_LIMIT,
   ROOM_CLAIM_LIMIT,
   SKETCH_EDIT_LIMIT,
+  SKETCH_WANT_LIMIT,
   MENTION_LIMIT,
   WS_UPGRADE_LIMIT,
   CHAT_TURN_LIMIT,

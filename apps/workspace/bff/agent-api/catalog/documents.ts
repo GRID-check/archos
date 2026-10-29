@@ -222,8 +222,12 @@ export const documentsOperations = [
       'Writes a new version of the same sketch document from the whole changed `scene`, its picture as `svg` (Excalidraw’s ' +
       'exportToSvg) and `baseVersionId`, the `versionId` document-sketch-get returned. The PDF filed beside the sketch is ' +
       'drawn again as its next version. A newer version answers 409 with `currentVersionId`: read again and redo the ' +
-      'change. The files then say a person edited the drawing. Only a sketch filed into the project; needs ' +
-      'project:documents:write and project:edit. Returns `{ documentId, versionId, versionNumber, pdf }`.',
+      'change. Change elements in place and leave out the ones to remove: the server gives each changed element its next ' +
+      '`version`, keeps a removed one as deleted, and tells the people who have the sketch open, so their canvases take ' +
+      'your change. `svg` must draw the same scene: the preview and the PDF show the `svg`, the outline and the editor the ' +
+      '`scene`. The files then say a person edited the drawing. Only a sketch filed into the project; needs ' +
+      'project:documents:write and project:edit. Returns `{ documentId, versionId, versionNumber, pdf, pdfStale }`; ' +
+      '`pdfStale` is true when the PDF could not be drawn again and still shows an earlier version.',
     method: 'PUT',
     path: '/api/documents/[id]/sketch',
     params: documentParams,

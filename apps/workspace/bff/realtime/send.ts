@@ -9,10 +9,12 @@
  *    `authorize`), and the `authorize` of every guarded lane the message
  *    touches (a sketch edit needs write access to the document), each
  *    remembered for its `reauthorizeMs` (`./channel`).
- * 3. The budget of the message's lane is spent, per member and channel (429
- *    when gone): a claim (presence, the selected mark) from the claim lane's,
- *    an edit from the edit lane's, the rest (motion) from the channel's, so
- *    motion never refuses a claim or an edit.
+ * 3. The budget of every lane the message touches is spent, per member and
+ *    channel (429 when gone): a claim (presence, the selected mark) from the
+ *    claim lane's, an edit from the edit lane's, a request for a sketch's whole
+ *    scene from its own, and a message in no lane (motion) from the channel's,
+ *    so motion never refuses a claim or an edit, and no field rides past its
+ *    budget in another lane's message.
  * 4. The message parses as the channel's upstream vocabulary (400).
  * 5. The peer is stamped from the session (`userId`, `name`, `kind`); the
  *    client contributes only its tab's `peerId`.
@@ -43,7 +45,10 @@ export async function sendToChannel(
 
   const touched = lanesTouched(msg, upstream.lanes)
   await authorizeSendCached(session, channel, params, ch, Date.now(), touched)
-  await enforceLimit(touched[0]?.limit ?? upstream.limit, `${memberSubject(session)}:${ch}`)
+  // Every lane the message touches is spent, so a field cannot ride past its own budget in another lane's message.
+  const subject = `${memberSubject(session)}:${ch}`
+  if (touched.length === 0) await enforceLimit(upstream.limit, subject)
+  for (const lane of touched) await enforceLimit(lane.limit, subject)
 
   let post: UpstreamBase
   try {
@@ -68,10 +73,10 @@ export async function sendToChannel(
 }
 
 /**
- * The lanes a message touches, in the channel's order: the first is the lane it
- * travels in. Read off the raw message, so the guard and the limit come before
- * the message is parsed. Motion that rides along with a claim spends the claim
- * budget, which bounds it as well.
+ * The lanes a message touches, in the channel's order. Read off the raw
+ * message, so the guard and the limit come before the message is parsed.
+ * Motion that rides along with a claim spends the claim budget, which bounds
+ * it as well.
  */
 function lanesTouched(msg: unknown, lanes: ReadonlyArray<SendLane> = []): SendLane[] {
   if (typeof msg !== 'object' || msg === null) return []

@@ -164,7 +164,7 @@ describe('useSketchRoom', () => {
     await settle(50)
 
     await act(async () => {
-      await anna.result.current.announceSave('ver_2')
+      await anna.result.current.announceSave('ver_2', annaCanvas.state.elements as never)
     })
     expect(max.result.current.base()).toBe('ver_2')
     expect(max.result.current.peerSave).toMatchObject({ versionId: 'ver_2', matches: true, by: { name: 'Anna Berger' } })

@@ -50,7 +50,14 @@ vi.mock('@/lib/s3', () => ({
   },
 }))
 vi.mock('@/lib/storage/bucket', () => ({ resolveDocumentBucket: () => 'bucket' }))
-vi.mock('@/lib/download-log/service', () => ({ recordDocumentAccess: vi.fn() }))
+const recordDocumentAccess = vi.fn()
+vi.mock('@/lib/download-log/service', () => ({ recordDocumentAccess: (...a: unknown[]) => recordDocumentAccess(...a) }))
+const roomEvents: Array<{ documentId: string; event: Record<string, unknown> }> = []
+vi.mock('@/lib/realtime/document-channel', () => ({
+  publishToDocumentRoom: vi.fn(async (documentId: string, event: Record<string, unknown>) => {
+    roomEvents.push({ documentId, event })
+  }),
+}))
 vi.mock('@/lib/documents/repository', () => ({
   findDocumentAuthoredByRef: vi.fn(async (_ref: string, _org: string, _project: string, producer: string) =>
     producer === 'diagram_pdf' && documents.has('doc-pdf') ? { id: 'doc-pdf', filename: 'x.pdf', folderId: null } : null
@@ -61,8 +68,9 @@ vi.mock('@/lib/documents/generated', async () => {
   const { aiProvenanceMarking } = await import('@/lib/ai-provenance')
   return { generatedDocumentMarking: () => aiProvenanceMarking({}) }
 })
+const renderDiagramPdf = vi.fn(async (input: { provenance: string }) => new TextEncoder().encode(`%PDF ${input.provenance}`))
 vi.mock('@/lib/diagrams/svg-to-pdf', () => ({
-  renderDiagramPdf: vi.fn(async (input: { provenance: string }) => new TextEncoder().encode(`%PDF ${input.provenance}`)),
+  renderDiagramPdf: (...a: [{ provenance: string }]) => renderDiagramPdf(...a),
 }))
 vi.mock('@/lib/documents/version-content', () => ({
   newVersionWriteId: () => 'w1',
@@ -75,10 +83,11 @@ vi.mock('@/lib/documents/version-repository', async () => {
     listDocumentVersions: vi.fn(async (id: string) => versions.filter((v) => v.documentId === id)),
     nextVersionNumber: vi.fn(async (id: string) => versions.filter((v) => v.documentId === id).length + 1),
     insertPublishedVersion: vi.fn(
-      async (values: Record<string, unknown>, expected?: { publishedVersionId: string | null }) => {
+      async (values: Record<string, unknown>, expected?: { publishedVersionId: string | null; of?: string }) => {
         const row = documents.get(values.documentId as string)!
-        if (expected && expected.publishedVersionId !== row.publishedVersionId) {
-          throw new PublishedVersionMovedError(row.id as string, row.publishedVersionId as string | null)
+        const checked = documents.get(expected?.of ?? (values.documentId as string))!
+        if (expected && expected.publishedVersionId !== checked.publishedVersionId) {
+          throw new PublishedVersionMovedError(checked.id as string, checked.publishedVersionId as string | null)
         }
         const mine = versions.filter((v) => v.documentId === values.documentId)
         const superseded = mine.filter((v) => v.state === 'published')
@@ -99,11 +108,18 @@ vi.mock('@/lib/storage/service', () => ({ assertWithinStorageQuota: vi.fn() }))
 const discardObject = vi.fn()
 vi.mock('@/lib/storage/discard', () => ({ discardObject: (...a: unknown[]) => discardObject(...a) }))
 const recordSketchRevisedScore = vi.fn()
-vi.mock('@/lib/langfuse/sketch-score', () => ({ recordSketchRevisedScore: (...a: unknown[]) => recordSketchRevisedScore(...a) }))
+const recordSketchSaveScore = vi.fn()
+vi.mock('@/lib/langfuse/sketch-score', () => ({
+  recordSketchRevisedScore: (...a: unknown[]) => recordSketchRevisedScore(...a),
+  recordSketchSaveScore: (...a: unknown[]) => recordSketchSaveScore(...a),
+}))
 
 import { createInProcessStore, setLimitStore } from '@/lib/limits'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { acceptDiagram } from '@/lib/diagrams/svg'
+import { storedDiagramSource } from '@/lib/diagrams/stored-source'
+import { sceneHashOf } from '@/lib/diagrams/sketch-scene'
+import { ROOM_PEER_HEADER } from '@/lib/diagrams/sketch-wire'
 import { GET, PUT } from './route'
 
 const PICTURE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><rect width="40" height="20"/></svg>'
@@ -141,15 +157,21 @@ function fileSketch(id: string, producer: string, source: string, contentType = 
   })
 }
 
-const call = (method: 'GET' | 'PUT', id: string, body?: unknown) =>
+const call = (method: 'GET' | 'PUT', id: string, body?: unknown, { query = '', headers = {} }: { query?: string; headers?: Record<string, string> } = {}) =>
   (method === 'GET' ? GET : PUT)(
-    new NextRequest(`https://grid.test/api/documents/${id}/sketch`, {
+    new NextRequest(`https://grid.test/api/documents/${id}/sketch${query}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
     { params: Promise.resolve({ id }) }
   )
+
+/** The scene the latest Fassung of a document stores. */
+function storedScene(id: string): { elements: Array<Record<string, unknown>>; appState?: Record<string, unknown> } {
+  const key = documents.get(id)!.storageKey as string
+  return JSON.parse(storedDiagramSource(objects.get(key)!)!.source)
+}
 
 beforeEach(() => {
   setLimitStore(createInProcessStore())
@@ -159,6 +181,10 @@ beforeEach(() => {
   recordAuditEvent.mockReset()
   discardObject.mockReset()
   recordSketchRevisedScore.mockReset()
+  recordSketchSaveScore.mockReset()
+  recordDocumentAccess.mockReset()
+  roomEvents.length = 0
+  renderDiagramPdf.mockClear()
   fileSketch('doc-svg', 'diagram_svg', JSON.stringify(SCENE))
   documents.set('doc-pdf', { ...documents.get('doc-svg'), id: 'doc-pdf', contentType: 'application/pdf', storageKey: 'doc/doc-pdf/file', authoredByProducer: 'diagram_pdf' })
 })
@@ -204,6 +230,7 @@ describe('PUT /api/documents/[id]/sketch', () => {
       versionId: 'doc-svg-v2',
       versionNumber: 2,
       pdf: { documentId: 'doc-pdf', versionId: 'doc-pdf-v2' },
+      pdfStale: false,
     })
     // No new document: both rows are the ones that were filed, each with a history.
     expect([...documents.keys()]).toEqual(['doc-svg', 'doc-pdf'])
@@ -244,5 +271,119 @@ describe('PUT /api/documents/[id]/sketch', () => {
   it('refuses an SVG the filing validator refuses', async () => {
     const response = await call('PUT', 'doc-svg', { scene: edited, svg: '<svg><script/></svg>', baseVersionId: null })
     expect(response.status).toBe(400)
+  })
+
+  it('reads a chunked body only up to the cap: no declared length is no way past it', async () => {
+    const huge = new TextEncoder().encode(JSON.stringify({ scene: SCENE, svg: 'x'.repeat(4 * 1024 * 1024), baseVersionId: null }))
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let at = 0; at < huge.length; at += 64 * 1024) controller.enqueue(huge.slice(at, at + 64 * 1024))
+        controller.close()
+      },
+    })
+    const init = { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body, duplex: 'half' }
+    const request = new NextRequest('https://grid.test/api/documents/doc-svg/sketch', init as ConstructorParameters<typeof NextRequest>[1])
+    expect(request.headers.get('content-length')).toBeNull()
+    const response = await PUT(request, { params: Promise.resolve({ id: 'doc-svg' }) })
+    expect(response.status).toBe(413)
+    expect(versions).toHaveLength(0)
+  })
+
+  it('versions a save that kept the versions it read, and keeps what it left out as deleted, so open canvases merge it', async () => {
+    // As an agent writes it: the label changed at the version it read, and the lift is simply gone.
+    await call('PUT', 'doc-svg', {
+      scene: { ...SCENE, elements: [{ ...SCENE.elements[0], version: 3, versionNonce: 5 }, { ...SCENE.elements[1], version: 3, versionNonce: 6 }, { id: 'lift', type: 'diamond', x: 90, y: 0, version: 2, versionNonce: 7 }] },
+      svg: PICTURE,
+      baseVersionId: null,
+    })
+    const response = await call('PUT', 'doc-svg', {
+      scene: { ...SCENE, elements: [{ ...SCENE.elements[0], version: 3, versionNonce: 5 }, { ...SCENE.elements[1], text: 'Speis', version: 3, versionNonce: 6 }] },
+      svg: PICTURE,
+      baseVersionId: 'doc-svg-v2',
+    })
+    expect(response.status).toBe(200)
+    const byId = Object.fromEntries(storedScene('doc-svg').elements.map((element) => [element.id, element]))
+    expect(byId.room).toMatchObject({ version: 3, versionNonce: 5 })
+    expect(byId['room-label']).toMatchObject({ text: 'Speis', version: 4 })
+    expect(byId['room-label'].versionNonce).not.toBe(6)
+    expect(byId.lift).toMatchObject({ isDeleted: true, version: 3 })
+  })
+
+  it('tells the document room of the Fassung, stamped with the saving tab so it hears no echo', async () => {
+    await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null }, { headers: { [ROOM_PEER_HEADER]: 'peer_anna0001' } })
+    expect(roomEvents).toHaveLength(1)
+    const [{ documentId, event }] = roomEvents
+    expect(documentId).toBe('doc-svg')
+    expect(event).toMatchObject({ kind: 'scene.saved', versionId: 'doc-svg-v2', peer: { peerId: 'peer_anna0001', userId: 'user-1', kind: 'person' } })
+    expect(event.sceneHash).toBe(sceneHashOf(storedScene('doc-svg').elements))
+    // A save without a tab (an agent through MCP) is told under a peer of its own.
+    await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v2' })
+    expect((roomEvents[1].event.peer as { peerId: string }).peerId).toMatch(/^save_[0-9a-f]{12}$/)
+  })
+
+  it('drops an element link, customData outside the allow-list and appState Excalidraw does not export', async () => {
+    const planted = {
+      ...SCENE,
+      elements: [{ ...SCENE.elements[0], link: 'https://evil.example', customData: { tracker: 1 } }, SCENE.elements[1]],
+      appState: { viewBackgroundColor: '#fff', gridSize: 20, theme: 'dark', openDialog: { name: 'ttd' } },
+    }
+    expect((await call('PUT', 'doc-svg', { scene: planted, svg: PICTURE, baseVersionId: null })).status).toBe(200)
+    const scene = storedScene('doc-svg')
+    expect(scene.elements[0]).not.toHaveProperty('link')
+    expect(scene.elements[0]).not.toHaveProperty('customData')
+    expect(scene.appState).toEqual({ viewBackgroundColor: '#fff', gridSize: 20 })
+  })
+
+  it('draws no PDF from a drawing a newer save already replaced, and says when the PDF could not be drawn', async () => {
+    // A second save commits its SVG while this one renders the PDF.
+    renderDiagramPdf.mockImplementationOnce(async (input) => {
+      documents.get('doc-svg')!.publishedVersionId = 'doc-svg-newer'
+      return new TextEncoder().encode(`%PDF ${input.provenance}`)
+    })
+    const superseded = await (await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })).json()
+    expect(superseded).toMatchObject({ pdf: null, pdfStale: false })
+    // The filed PDF is recorded as Fassung 1, as on every first save; nothing was drawn over it.
+    expect(versions.filter((v) => v.documentId === 'doc-pdf').map((v) => v.storageKey)).toEqual(['doc/doc-pdf/file'])
+
+    documents.get('doc-svg')!.publishedVersionId = 'doc-svg-v2'
+    renderDiagramPdf.mockRejectedValueOnce(new Error('font missing'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const failed = await (await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v2' })).json()
+    expect(failed).toMatchObject({ pdf: null, pdfStale: true })
+    expect(recordSketchSaveScore).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: 'pdf_stale', metadata: expect.objectContaining({ pdf: 'failed' }) }))
+  })
+
+  it('answers a committed Fassung as saved even when its audit write fails', async () => {
+    recordAuditEvent.mockRejectedValueOnce(new Error('audit down'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    expect(response.status).toBe(200)
+    expect((await response.json()).versionNumber).toBe(2)
+  })
+
+  it('scores every attempt: saved, a conflict and a refusal', async () => {
+    await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v1' })
+    await call('PUT', 'doc-svg', { scene: { ...SCENE, elements: [{ id: 'img', type: 'image', x: 0, y: 0 }] }, svg: PICTURE, baseVersionId: 'doc-svg-v2' })
+    expect(recordSketchSaveScore.mock.calls.map(([input]) => [input.outcome, input.refusal])).toEqual([
+      ['saved', undefined],
+      ['conflict', undefined],
+      ['refused', 'unsupported-element'],
+    ])
+    expect(recordSketchSaveScore.mock.calls[0][0]).toMatchObject({ answerRef: 'msg_42-1a2b3c4d', documentId: 'doc-svg' })
+  })
+})
+
+describe('GET, what it promises and what it logs', () => {
+  it('promises no editing of a sketch the PUT would not take', async () => {
+    documents.get('doc-svg')!.authoredByProducer = 'upload'
+    expect((await (await call('GET', 'doc-svg')).json()).canWrite).toBe(false)
+  })
+
+  it('logs a read, but not the preview’s probe', async () => {
+    await call('GET', 'doc-svg', undefined, { query: '?probe=1' })
+    expect(recordDocumentAccess).not.toHaveBeenCalled()
+    await call('GET', 'doc-svg')
+    expect(recordDocumentAccess).toHaveBeenCalledTimes(1)
   })
 })

@@ -30,7 +30,7 @@ import {
 import type { RealtimePeer } from '@/lib/realtime/types'
 import { useDocumentRoom, type RoomTransport } from '@/features/documents'
 import { collaboratorsOf, type SketchCollaborator } from './sketch-collaborators'
-import { createSketchSync, sceneHashOf, type SketchElement, type SketchHelpers, type SketchSync } from './sketch-sync'
+import { createSketchSync, type SketchElement, type SketchHelpers, type SketchSync } from './sketch-sync'
 
 /** What the canvas hands the room once Excalidraw is ready. */
 export interface SketchCanvasBridge<E extends SketchElement = SketchElement, A = unknown> {
@@ -86,6 +86,7 @@ export function useSketchRoom({ documentId, canWrite, baseVersionId, transport, 
   const settings = useRef({ canWrite, baseVersionId, nameOf })
   settings.current = { canWrite, baseVersionId, nameOf }
   const [tooLarge, setTooLarge] = useState<readonly string[]>([])
+  const [refused, setRefused] = useState<readonly string[]>([])
   const [peerSave, setPeerSave] = useState<PeerSave | null>(null)
   const lastSelection = useRef('')
 
@@ -104,11 +105,17 @@ export function useSketchRoom({ documentId, canWrite, baseVersionId, transport, 
         apply: (elements) => bridge.apply(elements),
         post: async (post) => {
           const outcome = await send(post)
-          return outcome !== undefined && outcome.status >= 200 && outcome.status < 300
+          if (outcome === undefined) return false
+          if (outcome.status >= 200 && outcome.status < 300) return true
+          if (outcome.status === 403) return 'forbidden'
+          // A body the server will refuse however often it is sent; anything else (429, 5xx) is tried again.
+          if (outcome.status === 400 || outcome.status === 413) return 'refused'
+          return false
         },
         canWrite: () => settings.current.canWrite,
         others: () => company(),
         onTooLarge: (ids) => setTooLarge((before) => (before.join() === ids.join() ? before : ids)),
+        onRefused: (ids) => setRefused((before) => (before.join() === ids.join() ? before : ids)),
         onSaved: (saved) => setPeerSave(saved),
       })
       sync.current = created
@@ -162,13 +169,12 @@ export function useSketchRoom({ documentId, canWrite, baseVersionId, transport, 
     [canWrite, attach, changed, pointer, selection]
   )
 
-  /** This tab wrote a Fassung of the scene it shows now: tell the room. */
-  const announceSave = useCallback(async (versionId: string) => {
-    const bridge = bridgeRef.current
+  /** This tab wrote a Fassung of `elements`, the scene it sent: tell the room. */
+  const announceSave = useCallback(async (versionId: string, elements: readonly WireElement[]) => {
     const current = sync.current
-    if (!bridge || !current) return false
+    if (!current) return false
     setPeerSave(null)
-    return current.saved(versionId, sceneHashOf(bridge.helpers.hash, bridge.scene().elements))
+    return current.saved(versionId, elements)
   }, [])
 
   /** Merge a newer Fassung into the canvas and sit on it, after a save was refused as stale. */
@@ -189,6 +195,10 @@ export function useSketchRoom({ documentId, canWrite, baseVersionId, transport, 
     peers,
     /** Elements too large to travel live; they reach the others with the next save. */
     tooLarge,
+    /** Elements the server would not relay (a type or field it refuses); they reach the others with the next save, or are refused by it. */
+    refused,
+    /** This tab's id in the room, sent with its saves so the room's notice of one is no echo here. */
+    peerId,
     /** The last save another tab announced. */
     peerSave,
     announceSave,

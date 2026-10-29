@@ -28,12 +28,15 @@ function respond(status: number, body: unknown) {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('SketchReviseAction', () => {
-  it('offers „Als Skizze bearbeiten" on a filed sketch and opens the editor on its Fassung', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => respond(200, SKETCH)))
+  it('offers „Als Skizze bearbeiten" on a probe the download log skips, and opens on a logged read of the latest Fassung', async () => {
+    const answers = [SKETCH, { ...SKETCH, versionId: 'v2' }]
+    const fetch = vi.fn(async (_url: string) => respond(200, answers.shift()))
+    vi.stubGlobal('fetch', fetch)
     render(<SketchReviseAction documentId="doc-svg" contentType="image/svg+xml" authoredBy="agent" onChanged={() => {}} />)
     const button = await screen.findByTestId('sketch-revise')
     act(() => button.click())
-    expect(screen.getByTestId('sketch-dialog').textContent).toBe('v1')
+    expect(await screen.findByTestId('sketch-dialog')).toHaveTextContent('v2')
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/documents/doc-svg/sketch?probe=1', '/api/documents/doc-svg/sketch'])
   })
 
   it('offers nothing where the server says there is no scene', async () => {
@@ -64,7 +67,7 @@ describe('useSketchRevision', () => {
     const onSaved = vi.fn()
     const { result } = renderHook(() => useSketchRevision({ documentId: 'doc-svg', baseVersionId: 'v1' }, prepare, onSaved))
     await act(() => result.current.save())
-    expect(result.current.state).toEqual({ kind: 'saved', versionId: 'v2', versionNumber: 2 })
+    expect(result.current.state).toEqual({ kind: 'saved', versionId: 'v2', versionNumber: 2, pdfStale: false })
     expect(fetch.mock.calls[0][1]?.method).toBe('PUT')
     expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({
       scene: SKETCH.scene,
@@ -102,7 +105,29 @@ describe('useSketchRevision', () => {
     await act(() => result.current.save())
     expect(resolveStale).toHaveBeenCalledTimes(1)
     expect(fetch.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).baseVersionId)).toEqual(['v1', 'v3'])
-    expect(result.current.state).toEqual({ kind: 'saved', versionId: 'v4', versionNumber: 4 })
+    expect(result.current.state).toEqual({ kind: 'saved', versionId: 'v4', versionNumber: 4, pdfStale: false })
+  })
+
+  it('in a room: takes the base before the scene, so a merge while the picture is drawn makes the save stale, not lossy', async () => {
+    const fetch = vi.fn(async (_url: string, _init?: RequestInit) =>
+      respond(200, { documentId: 'doc-svg', versionId: 'v3', versionNumber: 3, pdf: null, pdfStale: true })
+    )
+    vi.stubGlobal('fetch', fetch)
+    let base = 'v1'
+    // A newer Fassung is merged in while the canvas draws its SVG.
+    const slowPrepare = async () => {
+      base = 'v2'
+      return prepare()
+    }
+    const onSaved = vi.fn()
+    const { result } = renderHook(() =>
+      useSketchRevision({ documentId: 'doc-svg', baseVersionId: () => base, peerId: () => 'peer_anna0001' }, slowPrepare, onSaved)
+    )
+    await act(() => result.current.save())
+    expect(JSON.parse(String(fetch.mock.calls[0][1]?.body)).baseVersionId).toBe('v1')
+    expect(new Headers(fetch.mock.calls[0][1]?.headers).get('x-room-peer-id')).toBe('peer_anna0001')
+    expect(result.current.state).toMatchObject({ kind: 'saved', pdfStale: true })
+    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ elements: SKETCH.scene.elements }))
   })
 
   it('in a room: a second 409 asks the person to save again, the newer Fassung merged', async () => {

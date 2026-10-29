@@ -15,17 +15,32 @@
  * - **deltas**: after an edit, the elements whose version passed what this tab
  *   last got delivered, tombstones included, at most every
  *   {@link DELTA_INTERVAL_MS}, in parts under the wire's caps, one post at a
- *   time. A refused or lost post is rolled back and retried, so an edit is
- *   never marked sent before the server took it. An element too large for any
- *   delta is reported (`onTooLarge`) and reaches the others with the next save.
+ *   time. A lost or rate-limited post is rolled back and retried, so an edit
+ *   is never marked sent before the server took it. A post the server refuses
+ *   for good (400, 413) is split until the one element it refuses is found,
+ *   which is set aside and reported (`onRefused`); a 403 stops this tab's
+ *   edits. An element too large for any delta is reported (`onTooLarge`).
+ *   Both reach the others with the next save.
  * - **no echo, no rebound**: this tab's own events are dropped, and an element
  *   taken from a peer counts as sent, so the canvas's `onChange` after
  *   applying it does not send it back.
  * - **repair**: a gap in a peer's `seq`, or two hash beacons in a row from one
  *   peer that differ from this scene, asks the room for its whole scene
  *   (`want`). Writers answer after a random pause, and one hearing another's
- *   answer first stays quiet. The asker merges the answer and sends back what
- *   it holds newer or the answerer lacks, so both end on the union.
+ *   answer first stays quiet; each answers one person at most once per
+ *   {@link WANT_COOLDOWN_MS}, and at most {@link ANSWERS_PER_MINUTE} times a
+ *   minute in all, whatever a crafted client asks. The asker merges the answer
+ *   and sends back what it holds newer or the answerer lacks, so both end on
+ *   the union.
+ * - **saves**: a peer's `saved` moves this canvas's base only when this scene
+ *   is the one saved. Otherwise the base stays, so a save from here is refused
+ *   as stale and merges first, and the caller is told (`onSaved`, `matches:
+ *   false`) to merge the new Fassung at once.
+ * - **deletes across a merge**: a Fassung leaves out what its saver deleted.
+ *   Merging one (`mergeFrom`), an element the base Fassung drew, the newer one
+ *   leaves out and this canvas has not changed since is deleted here too, as a
+ *   tombstone that travels; one changed here since stays, as an edit wins
+ *   over a delete in Excalidraw's own merge.
  *
  * Pure apart from the timers and the post it is given. The Excalidraw helpers
  * are injected, so this module never imports Excalidraw: `sketch-canvas.tsx`
@@ -76,14 +91,20 @@ export interface SketchSyncOptions<E extends SketchElement, A> {
   scene(): { elements: readonly E[]; appState: A }
   /** Put a merged scene on the canvas without an undo step (`captureUpdate: NEVER`). */
   apply(elements: readonly E[]): void
-  /** Say something in the room; resolves true only when the server took it. */
-  post(post: SketchPost): Promise<boolean>
+  /**
+   * Say something in the room: `true` when the server took it, `false` when it
+   * was lost or limited (try again), `'refused'` when the server refuses it for
+   * good (400, 413), `'forbidden'` when this tab may not send it (403).
+   */
+  post(post: SketchPost): Promise<SketchPostOutcome>
   /** Whether this tab may edit: a reader points and asks, but sends no edit. */
   canWrite(): boolean
   /** Whether anybody else is in the room: alone, nothing is beaconed. */
   others(): boolean
   /** Elements too large to travel live; they wait for the next save. */
   onTooLarge?(ids: readonly string[]): void
+  /** Elements the server refused to relay; they wait for the next save too. */
+  onRefused?(ids: readonly string[]): void
   /** A peer saved a Fassung; `matches` when this scene is the one saved. */
   onSaved?(saved: { versionId: string; matches: boolean; by: SketchRoomEvent['peer'] }): void
   timers?: SketchTimers
@@ -92,6 +113,8 @@ export interface SketchSyncOptions<E extends SketchElement, A> {
   newRequestId?(): string
   limits?: { maxBytes: number; maxElements: number }
 }
+
+export type SketchPostOutcome = boolean | 'refused' | 'forbidden'
 
 /** The fastest deltas go up while somebody draws: ten a second, inside `SKETCH_EDIT_LIMIT`. */
 export const DELTA_INTERVAL_MS = 100
@@ -104,8 +127,10 @@ export const RETRY_MS = 1_000
 export const RETRY_MAX_MS = 30_000
 /** A writer answers a request for the scene after a pause in this range, so one answers rather than all. */
 export const ANSWER_DELAY_MS: readonly [number, number] = [150, 500]
-/** After asking for the scene, ask again no sooner than this. */
+/** After asking for the scene, ask again no sooner than this; and answer one person no oftener. */
 export const WANT_COOLDOWN_MS = 5_000
+/** The most whole-scene answers one canvas gives in a minute, to anyone. */
+export const ANSWERS_PER_MINUTE = 6
 /** Mismatching beacons from one peer in a row before asking. */
 const MISMATCHES_TO_ASK = 2
 
@@ -145,6 +170,10 @@ export function chunkElements<E>(elements: readonly E[], limits: { maxBytes: num
 
 const visible = <E extends SketchElement>(elements: readonly E[]) => elements.filter((element) => !element.isDeleted)
 
+/** Per element still drawn, its version: what a Fassung held. */
+const drawnVersions = (elements: readonly { id: string; version: number; isDeleted: boolean }[]) =>
+  new Map(elements.filter((element) => !element.isDeleted).map((element) => [element.id, element.version] as const))
+
 /** The hash peers compare: over the elements still drawn, so a tombstone one side never saw is no difference. */
 export const sceneHashOf = <E extends SketchElement>(hash: (elements: readonly E[]) => number, elements: readonly E[]) =>
   hash(visible(elements))
@@ -158,6 +187,13 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
   const newRequestId = options.newRequestId ?? randomRequestId
 
   let base = options.base
+  /** Per element the base Fassung drew, its version there: what a newer Fassung leaving it out deleted. */
+  let baseVersions = new Map<string, number>()
+  /** A 403 on an edit: this tab's write access is gone, so it sends no more. */
+  let forbidden = false
+  /** When this tab last answered each person, and its answers of the last minute. */
+  const answeredPerson = new Map<string, number>()
+  const answerTimes: number[] = []
   /** Per element, the version the server last took from this tab, or this tab took from a peer. */
   const delivered = new Map<string, number>()
   let seq = 0
@@ -189,8 +225,12 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
   }
 
   /** Send what changed, one part at a time; on a refusal, keep the rest for the retry. */
+  const markDelivered = (elements: readonly E[]) => {
+    for (const element of elements) delivered.set(element.id, Math.max(delivered.get(element.id) ?? -1, element.version))
+  }
+
   async function flush(): Promise<void> {
-    if (stopped || !options.canWrite()) return
+    if (stopped || forbidden || !options.canWrite()) return
     if (sending) {
       again = true
       return
@@ -199,17 +239,37 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
     try {
       const { chunks, tooLarge } = chunkElements(pending(options.scene().elements), limits)
       if (tooLarge.length > 0) options.onTooLarge?.(tooLarge.map((element) => element.id))
-      for (const elements of chunks) {
+      const refused: string[] = []
+      const queue = [...chunks]
+      while (queue.length > 0) {
+        const elements = queue.shift()!
         const delta = { base, seq: seq + 1, elements: elements as unknown as WireElement[] }
-        if (!(await options.post({ delta }))) {
+        const outcome = await options.post({ delta })
+        if (outcome === 'forbidden') {
+          forbidden = true
+          return
+        }
+        if (outcome === 'refused') {
+          // Split until the element the server refuses is alone; it waits for the save, the rest travels.
+          if (elements.length > 1) {
+            const half = Math.ceil(elements.length / 2)
+            queue.unshift(elements.slice(0, half), elements.slice(half))
+            continue
+          }
+          markDelivered(elements)
+          refused.push(elements[0].id)
+          continue
+        }
+        if (!outcome) {
           schedule(retryMs)
           retryMs = Math.min(RETRY_MAX_MS, retryMs * 2)
           return
         }
         seq = delta.seq
         retryMs = RETRY_MS
-        for (const element of elements) delivered.set(element.id, Math.max(delivered.get(element.id) ?? -1, element.version))
+        markDelivered(elements)
       }
+      if (refused.length > 0) options.onRefused?.(refused)
     } finally {
       sending = false
     }
@@ -286,13 +346,25 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
     schedule(0)
   }
 
+  /** Whether this tab may answer the person now: once per cooldown each, and a few times a minute in all. */
+  function mayAnswer(userId: string): boolean {
+    const at = now()
+    while (answerTimes.length > 0 && at - answerTimes[0] >= 60_000) answerTimes.shift()
+    if (answerTimes.length >= ANSWERS_PER_MINUTE) return false
+    return at - (answeredPerson.get(userId) ?? Number.NEGATIVE_INFINITY) >= WANT_COOLDOWN_MS
+  }
+
   function onWant(event: Extract<SketchRoomEvent, { kind: 'scene.want' }>): void {
-    if (!options.canWrite() || answered.has(event.requestId) || owed.has(event.requestId)) return
+    if (!options.canWrite() || forbidden || answered.has(event.requestId) || owed.has(event.requestId)) return
+    // Keyed by the person the server stamped, never the tab id a client picks.
+    if (!mayAnswer(event.peer.userId)) return
     const [low, high] = ANSWER_DELAY_MS
     const handle = timers.set(() => {
       owed.delete(event.requestId)
-      if (answered.has(event.requestId) || stopped) return
+      if (answered.has(event.requestId) || stopped || !mayAnswer(event.peer.userId)) return
       answered.add(event.requestId)
+      answeredPerson.set(event.peer.userId, now())
+      answerTimes.push(now())
       void answer(event.requestId)
     }, low + random() * (high - low))
     owed.set(event.requestId, handle)
@@ -304,7 +376,7 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
     const parts = chunks.slice(0, SKETCH_FULL_MAX_PARTS)
     for (const [part, chunk] of parts.entries()) {
       const delta = { base, seq, full: { requestId, part, of: parts.length }, elements: chunk as unknown as WireElement[] }
-      if (!(await options.post({ delta }))) return
+      if ((await options.post({ delta })) !== true) return
     }
   }
 
@@ -334,14 +406,31 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
       case 'scene.hash':
         return onHash(event)
       case 'scene.saved': {
-        base = event.versionId
-        const matches = sceneHashOf(helpers.hash, options.scene().elements) === event.sceneHash
+        const { elements } = options.scene()
+        const matches = sceneHashOf(helpers.hash, elements) === event.sceneHash
+        // Only a scene that is the one saved sits on it; any other keeps its base, so its save merges first.
+        if (matches) {
+          base = event.versionId
+          baseVersions = drawnVersions(elements)
+        }
         options.onSaved?.({ versionId: event.versionId, matches, by: event.peer })
         return
       }
       default:
         return
     }
+  }
+
+  /** What a newer Fassung deleted: drawn in the base, left out of it, and not changed here since. */
+  function deletedSince(newer: readonly WireElement[]): WireElement[] {
+    const kept = new Set(newer.map((element) => element.id))
+    const tombstones: WireElement[] = []
+    for (const element of options.scene().elements) {
+      if (element.isDeleted || kept.has(element.id) || baseVersions.get(element.id) !== element.version) continue
+      const nonce = Math.floor(random() * 2 ** 31)
+      tombstones.push({ ...element, isDeleted: true, version: element.version + 1, versionNonce: nonce, updated: now() } as unknown as WireElement)
+    }
+    return tombstones
   }
 
   function beacon(): void {
@@ -358,7 +447,9 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
      * what was drawn since.
      */
     start(ask = false) {
-      for (const element of options.scene().elements) delivered.set(element.id, element.version)
+      const { elements } = options.scene()
+      for (const element of elements) delivered.set(element.id, element.version)
+      baseVersions = drawnVersions(elements)
       beaconTimer = timers.set(beacon, BEACON_INTERVAL_MS)
       if (ask) want()
     },
@@ -367,12 +458,13 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
     /** Ask the room for its whole scene. */
     want,
     /**
-     * This tab wrote a Fassung: tell the room, and make it the base. Returns
-     * whether the room heard it.
+     * This tab wrote a Fassung of `elements` (the scene it sent): tell the
+     * room, and make it the base. Returns whether the room heard it.
      */
-    saved(versionId: string, sceneHash: number) {
+    async saved(versionId: string, elements: readonly WireElement[]) {
       base = versionId
-      return options.post({ saved: { versionId, sceneHash } })
+      baseVersions = drawnVersions(elements)
+      return (await options.post({ saved: { versionId, sceneHash: sceneHashOf(helpers.hash, elements as unknown as E[]) } })) === true
     },
     /**
      * Merge elements from elsewhere into the canvas: a newer Fassung, after a
@@ -380,8 +472,12 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
      * what this tab holds newer is still unsent and goes out.
      */
     mergeFrom(elements: readonly WireElement[], versionId: string | null) {
+      const tombstones = deletedSince(elements)
       base = versionId
-      merge(elements)
+      merge([...elements, ...tombstones])
+      // A delete taken from the Fassung goes on to the peers that still draw the element.
+      for (const tombstone of tombstones) delivered.delete(tombstone.id)
+      baseVersions = drawnVersions(elements)
       schedule(0)
     },
     base: () => base,

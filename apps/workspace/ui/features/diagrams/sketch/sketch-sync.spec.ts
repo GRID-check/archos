@@ -10,6 +10,7 @@
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sketchEventsOf, type SketchPost, type SketchRoomEvent, type WireElement } from '@/lib/diagrams/sketch-room-types'
+import { sceneHashOf as serverSceneHashOf } from '@/lib/diagrams/sketch-scene'
 import {
   ANSWER_DELAY_MS,
   BEACON_INTERVAL_MS,
@@ -17,6 +18,7 @@ import {
   DELTA_INTERVAL_MS,
   RETRY_MS,
   sceneHashOf,
+  WANT_COOLDOWN_MS,
   type SketchElement,
   type SketchHelpers,
   type SketchSyncOptions,
@@ -68,7 +70,7 @@ interface Replica {
 
 /** A room: every post reaches every replica (its sender too, as the server's echo), unless the network drops it. */
 interface RoomOptions {
-  refuse?: (peerId: string, post: SketchPost) => boolean
+  refuse?: (peerId: string, post: SketchPost) => boolean | 'refused' | 'forbidden'
   deliver?: (from: string, to: string, run: () => void) => void
 }
 type ReplicaOptions = { canWrite?: boolean } & Partial<Omit<SketchSyncOptions<Element, object>, 'canWrite'>>
@@ -90,7 +92,9 @@ function room({ refuse = () => false, deliver = (_from, _to, run) => run() }: Ro
       },
       post: async (post) => {
         replica.posts.push(post)
-        if (refuse(peerId, post)) return false
+        const refusal = refuse(peerId, post)
+        if (refusal === true) return false
+        if (refusal) return refusal
         for (const event of sketchEventsOf(post, peerOf(peerId))) {
           for (const to of replicas) deliver(peerId, to.peerId, () => to.sync.receive(structuredClone(event) as SketchRoomEvent))
         }
@@ -263,9 +267,120 @@ describe('hearing the room', () => {
     const initial = restoreScene([skeleton('one')])
     const a = make('peer_a0000001', initial)
     const b = make('peer_b0000001', initial, { onSaved })
-    await a.sync.saved('ver_2', sceneHashOf(helpers.hash, a.elements))
+    await a.sync.saved('ver_2', a.elements as unknown as WireElement[])
     expect(b.sync.base()).toBe('ver_2')
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ versionId: 'ver_2', matches: true }))
+  })
+
+  it('keeps its base when a peer saved a scene that is not this one, so its own save is refused and merges first', async () => {
+    const onSaved = vi.fn()
+    const { make } = room({ deliver: (from, to, run) => (from === to ? run() : undefined) })
+    const initial = restoreScene([skeleton('one')])
+    const a = make('peer_a0000001', initial)
+    const b = make('peer_b0000001', initial, { onSaved })
+    // a drew `two`; b never heard it. a saves, and b hears only the save.
+    a.elements = restoreScene([...a.elements, skeleton('two', 100)])
+    b.sync.receive({ kind: 'scene.saved', peer: peerOf('peer_a0000001'), versionId: 'ver_2', sceneHash: sceneHashOf(helpers.hash, a.elements) })
+    expect(b.sync.base()).toBe('ver_1')
+    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ versionId: 'ver_2', matches: false }))
+  })
+})
+
+describe('a delete across a merge with a newer Fassung', () => {
+  it('deletes what the newer Fassung left out and this canvas did not change, and sends the delete on', async () => {
+    const { make } = room({ deliver: (from, to, run) => (from === to ? run() : undefined) })
+    const initial = restoreScene([skeleton('keep'), skeleton('gone', 100)])
+    const b = make('peer_b0000001', initial)
+    // a deleted `gone` and saved; b missed the tombstone, and its save came back 409 with this Fassung.
+    const newer = initial.filter((element) => element.id === 'keep') as unknown as WireElement[]
+    b.sync.mergeFrom(newer, 'ver_2')
+    expect(b.elements.find((element) => element.id === 'gone')).toMatchObject({ isDeleted: true })
+    expect(b.sync.base()).toBe('ver_2')
+    await vi.advanceTimersByTimeAsync(DELTA_INTERVAL_MS)
+    expect(deltas(b).flatMap((delta) => delta.elements.map((element) => [element.id, element.isDeleted]))).toEqual([['gone', true]])
+  })
+
+  it('keeps an element changed here since the base: an edit wins over a delete', () => {
+    const { make } = room()
+    const initial = restoreScene([skeleton('keep'), skeleton('edited', 100)])
+    const b = make('peer_b0000001', initial)
+    b.elements = b.elements.map((element) => (element.id === 'edited' ? edit(element, { x: 300 }) : element))
+    b.sync.mergeFrom(initial.filter((element) => element.id === 'keep') as unknown as WireElement[], 'ver_2')
+    expect(b.elements.find((element) => element.id === 'edited')).toMatchObject({ isDeleted: false, x: 300 })
+  })
+
+  it('keeps what nobody saved yet: an element not in the base is no delete', () => {
+    const { make } = room()
+    const initial = restoreScene([skeleton('keep')])
+    const b = make('peer_b0000001', initial)
+    b.elements = restoreScene([...b.elements, skeleton('new', 100)])
+    b.sync.mergeFrom(initial as unknown as WireElement[], 'ver_2')
+    expect(b.elements.find((element) => element.id === 'new')).toMatchObject({ isDeleted: false })
+  })
+})
+
+describe('a room that asks too much, and posts the server refuses', () => {
+  it('answers one person once per cooldown, however many fresh requests a crafted client sends', async () => {
+    const { make } = room()
+    const writer = make('peer_w0000001', restoreScene([skeleton('one')]), { random: () => 0 })
+    const want = (i: number, peerId = 'peer_r0000001'): SketchRoomEvent => ({
+      kind: 'scene.want',
+      peer: peerOf(peerId),
+      requestId: `req_${String(i).padStart(8, '0')}`,
+      base: 'ver_1',
+    })
+    // Within one cooldown: eight fresh requests, one every half second.
+    for (let i = 0; i < 8; i++) {
+      writer.sync.receive(want(i))
+      await vi.advanceTimersByTimeAsync(ANSWER_DELAY_MS[1])
+    }
+    const answers = () => writer.posts.filter((post) => post.delta?.full).length
+    expect(answers()).toBe(1)
+    // Another person is answered; the first again only after the cooldown.
+    writer.sync.receive(want(50, 'peer_x0000001'))
+    await vi.advanceTimersByTimeAsync(WANT_COOLDOWN_MS)
+    writer.sync.receive(want(51))
+    await vi.advanceTimersByTimeAsync(ANSWER_DELAY_MS[1] + 10)
+    expect(answers()).toBe(3)
+  })
+
+  it('sets aside the one element the server refuses for good, and sends the rest of its part', async () => {
+    const onRefused = vi.fn()
+    const carries = (post: SketchPost, id: string) => Boolean(post.delta?.elements.some((element) => element.id === id))
+    const { make } = room({ refuse: (_peer, post) => (carries(post, 'bad') ? 'refused' : false) })
+    const a = make('peer_a0000001', [], { onRefused })
+    a.elements = restoreScene(['el_0', 'el_1', 'bad', 'el_2', 'el_3'].map((id, i) => skeleton(id, i * 50)))
+    a.sync.changed()
+    await vi.advanceTimersByTimeAsync(DELTA_INTERVAL_MS)
+    const sent = deltas(a).filter((delta) => !delta.elements.some((element) => element.id === 'bad'))
+    expect(sent.flatMap((delta) => delta.elements.map((element) => element.id)).sort()).toEqual(['el_0', 'el_1', 'el_2', 'el_3'])
+    expect(onRefused).toHaveBeenCalledWith(['bad'])
+    expect(a.sync.unsent()).toBe(false)
+    // Nothing is retried after that.
+    const count = a.posts.length
+    await vi.advanceTimersByTimeAsync(RETRY_MS * 4)
+    expect(a.posts).toHaveLength(count)
+  })
+
+  it('stops sending edits once the server says this tab may not', async () => {
+    const { make } = room({ refuse: () => 'forbidden' })
+    const a = make('peer_a0000001', restoreScene([skeleton('one')]))
+    a.elements = [edit(a.elements[0], { x: 9 })]
+    a.sync.changed()
+    await vi.advanceTimersByTimeAsync(DELTA_INTERVAL_MS)
+    a.elements = [edit(a.elements[0], { x: 19 })]
+    a.sync.changed()
+    await vi.advanceTimersByTimeAsync(RETRY_MS * 8)
+    expect(deltas(a)).toHaveLength(1)
+  })
+})
+
+describe('the server’s scene hash', () => {
+  it('is Excalidraw’s hashElementsVersion over the elements still drawn', () => {
+    const elements = restoreScene([skeleton('a'), skeleton('b', 10), skeleton('c', 20)])
+    elements[1] = edit(elements[1], { isDeleted: true })
+    expect(serverSceneHashOf(elements)).toBe(sceneHashOf(helpers.hash, elements))
+    expect(serverSceneHashOf([])).toBe(lib.hashElementsVersion([]))
   })
 })
 

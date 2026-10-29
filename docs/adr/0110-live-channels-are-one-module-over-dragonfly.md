@@ -205,8 +205,10 @@ What changed in the module to carry it:
   lane any of its fields touches, so a claim cannot carry an edit past the
   edit lane. The document room has `sketch-edit` (`delta`, `saved`; write
   access to the document; `SKETCH_EDIT_LIMIT`) and `claim` (presence,
-  `selected`; `ROOM_CLAIM_LIMIT`). A reader still points, selects, beacons and
-  asks for the scene, at read access and `ROOM_LIMIT`. A revoked writer can go
+  `selected`; `ROOM_CLAIM_LIMIT`), and `sketch-want` (`want`, a request for the
+  whole scene that every writer answers; `SKETCH_WANT_LIMIT`, 12 a minute). A
+  message spends every lane it touches. A reader still points, selects and
+  beacons at read access and `ROOM_LIMIT`, and asks for the scene in its lane. A revoked writer can go
   on sending for at most the 30 s re-check, as a revoked reader can.
 * **A send answers its caller.** `RealtimeConnection.send` and `useChannel`'s
   `send` resolve to the server's status (or nothing when the post was lost or

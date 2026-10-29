@@ -129,6 +129,8 @@ export const diagrams = {
     peerSaved: '{name} saved a version. Your canvas shows exactly that version.',
     peerSavedDiffers: '{name} saved a version. What you drew since is not saved yet.',
     tooLargeLive: 'One element is too large to share live. The others see it as soon as you save.',
+    refusedLive: 'One element cannot be shared live. Saving checks it again.',
+    pdfStale: 'The PDF beside it could not be redrawn and still shows the previous version.',
     discardShared: '{names} is still here and keeps the changes. Close without saving?',
     saveAgain: 'Someone saved a newer version meanwhile. Your changes are merged into it; please save again.',
   },

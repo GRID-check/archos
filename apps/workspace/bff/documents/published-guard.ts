@@ -30,6 +30,13 @@ export class PublishedVersionMovedError extends ConflictError {
 /** What the writer read: the published version id, `null` for a document that had none yet. */
 export interface PublishedVersionExpectation {
   publishedVersionId: string | null
+  /**
+   * Another document of the same organization whose published version this
+   * is, when the write is derived from it: a Skizze's PDF is published only
+   * while the SVG Fassung it was drawn from is current. Checked under the lock
+   * of the document written, so of two such writes the later source's lands last.
+   */
+  of?: string
 }
 
 export async function assertPublishedVersionIs(
@@ -38,10 +45,11 @@ export async function assertPublishedVersionIs(
   organizationId: string,
   expected: PublishedVersionExpectation,
 ): Promise<void> {
+  const target = expected.of ?? documentId
   const [row] = await tx
     .select({ publishedVersionId: documents.publishedVersionId })
     .from(documents)
-    .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)))
+    .where(and(eq(documents.id, target), eq(documents.organizationId, organizationId)))
   const current = row?.publishedVersionId ?? null
-  if (current !== expected.publishedVersionId) throw new PublishedVersionMovedError(documentId, current)
+  if (current !== expected.publishedVersionId) throw new PublishedVersionMovedError(target, current)
 }

@@ -46,7 +46,7 @@ import { useDiagramFiling } from '../use-diagram-filing'
 import { useDiagramTheme } from '../use-diagram-theme'
 import { DiagramFilingControls } from '../components/diagram-filing-controls'
 import type { SketchCanvasHandle } from './sketch-canvas'
-import { useSketchRevision, type SketchRevisionState } from './use-sketch-revision'
+import { useSketchRevision, type SavedRevision, type SketchRevisionState } from './use-sketch-revision'
 import { useSketchRoom, type SketchRoom } from './use-sketch-room'
 
 /** While the canvas chunk loads, and in its place when it could not be loaded (offline, a stale deploy). */
@@ -91,7 +91,14 @@ export interface SketchDialogProps {
 /** The line beside the buttons after a save of a reopened sketch. */
 function RevisionStatus({ state }: { state: SketchRevisionState }) {
   const t = useTranslations(diagramsCopy)
-  if (state.kind === 'saved') return <span>{t('sketch.savedVersion', { number: String(state.versionNumber) })}</span>
+  if (state.kind === 'saved') {
+    return (
+      <span>
+        {t('sketch.savedVersion', { number: String(state.versionNumber) })}
+        {state.pdfStale ? <span data-testid="sketch-pdf-stale"> {t('sketch.pdfStale')}</span> : null}
+      </span>
+    )
+  }
   if (state.kind === 'stale') {
     return <span className="text-destructive">{t(state.merged ? 'sketch.saveAgain' : 'sketch.staleVersion')}</span>
   }
@@ -102,7 +109,7 @@ function RevisionStatus({ state }: { state: SketchRevisionState }) {
 /** What the room says beside the buttons: another's save, and an element too large to share live. */
 function RoomStatus({ room }: { room: SketchRoom }) {
   const t = useTranslations(diagramsCopy)
-  const { peerSave, tooLarge } = room
+  const { peerSave, tooLarge, refused } = room
   return (
     <>
       {peerSave ? (
@@ -111,6 +118,7 @@ function RoomStatus({ room }: { room: SketchRoom }) {
         </span>
       ) : null}
       {tooLarge.length > 0 ? <span> {t('sketch.tooLargeLive')}</span> : null}
+      {refused.length > 0 ? <span> {t('sketch.refusedLive')}</span> : null}
     </>
   )
 }
@@ -138,26 +146,33 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
   const roomRef = useRef(room)
   roomRef.current = room
   const baseOf = useCallback(() => roomRef.current.base(), [])
+  const peerOf = useCallback(() => roomRef.current.peerId, [])
   /** Someone saved first: their Fassung is merged into this canvas, and the save is tried once more on it. */
   const resolveStale = useCallback(async () => {
     if (!revision) return false
-    const latest = await getSketch(revision.documentId).catch(() => null)
+    // An open editor merging, not a person opening the document: not a read the download log records.
+    const latest = await getSketch(revision.documentId, undefined, { probe: true }).catch(() => null)
     if (!latest) return false
     roomRef.current.mergeFrom(latest.scene.elements as unknown as WireElement[], latest.versionId)
     return true
   }, [revision])
   const onRevisionSaved = useCallback(
-    (saved: { versionId: string }) => {
+    (saved: SavedRevision) => {
       handle.current?.markSaved()
-      void roomRef.current.announceSave(saved.versionId)
+      void roomRef.current.announceSave(saved.versionId, saved.elements as unknown as WireElement[])
       revision?.onSaved?.()
     },
     [revision]
   )
-  // Another writer saved what this canvas shows: nothing here is unsaved any more.
+  // Another writer saved what this canvas shows: nothing here is unsaved any more. Saved something
+  // else (an agent's change, a delta this canvas missed): its Fassung is merged in at once.
   const { peerSave } = room
+  const resolveStaleRef = useRef(resolveStale)
+  resolveStaleRef.current = resolveStale
   useEffect(() => {
-    if (peerSave?.matches) handle.current?.markSaved()
+    if (!peerSave) return
+    if (peerSave.matches) handle.current?.markSaved()
+    else void resolveStaleRef.current()
   }, [peerSave])
 
   const prepareSketch = useCallback(async () => {
@@ -166,7 +181,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
   }, [])
   const filing = useDiagramFiling({ source, fileSvg: null, prepareSketch, title })
   const revised = useSketchRevision(
-    revision ? { documentId: revision.documentId, baseVersionId: baseOf } : null,
+    revision ? { documentId: revision.documentId, baseVersionId: baseOf, peerId: peerOf } : null,
     prepareSketch,
     onRevisionSaved,
     resolveStale

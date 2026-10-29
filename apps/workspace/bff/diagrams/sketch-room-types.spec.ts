@@ -22,7 +22,7 @@ describe('the sketch vocabulary', () => {
   })
 
   it('refuses images, embeds, elements without a version, and deltas past either cap', () => {
-    for (const type of ['image', 'embeddable', 'iframe']) {
+    for (const type of ['image', 'embeddable', 'iframe', 'magicframe', 'anything']) {
       expect(post({ delta: { base: null, seq: 0, elements: [{ ...element, type }] } }).success).toBe(false)
     }
     const { versionNonce: _nonce, ...noNonce } = element
@@ -31,6 +31,13 @@ describe('the sketch vocabulary', () => {
     expect(post({ delta: { base: null, seq: 0, elements: many } }).success).toBe(false)
     const heavy = { ...element, text: 'x'.repeat(SKETCH_DELTA_MAX_BYTES) }
     expect(post({ delta: { base: null, seq: 0, elements: [heavy] } }).success).toBe(false)
+  })
+
+  it('drops on the wire what a save drops: a link and foreign customData', () => {
+    const parsed = post({ delta: { base: 'ver_1', seq: 1, elements: [{ ...element, link: 'https://x.example', customData: { a: 1 } }] } })
+    expect(parsed.success && parsed.data.delta?.elements[0]).toEqual(element)
+    const event = roomEventSchema.parse({ kind: 'scene.delta', peer: PEER, base: null, seq: 1, elements: [{ ...element, link: 'https://x.example' }] })
+    expect(event.kind === 'scene.delta' && event.elements[0]).toEqual(element)
   })
 
   it('refuses a full part past its last, and a selection longer than its cap', () => {

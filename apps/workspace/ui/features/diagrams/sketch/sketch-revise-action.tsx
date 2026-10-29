@@ -5,9 +5,11 @@
  *
  * Offered only where it works: an SVG Piloti filed whose bytes carry an
  * Excalidraw scene. That is asked of the server (`GET …/sketch`, 415 for a
- * mermaid diagram or any other SVG) when the preview shows such a file, and the
- * answer is the scene the editor opens with, so the click costs no second
- * request. The editor (`SketchDialog`) is the chat's, loaded on the click.
+ * mermaid diagram or any other SVG) when the preview shows such a file, as a
+ * probe (`?probe=1`) the download log does not record: the person only looked
+ * at the file. The click reads the sketch again, and that read is logged: it
+ * is the person opening the drawing, and it opens the latest Fassung. The
+ * editor (`SketchDialog`) is the chat's, loaded on the click.
  */
 
 import { PencilLine } from 'lucide-react'
@@ -38,25 +40,34 @@ export function SketchReviseAction({
   const [sketch, setSketch] = useState<SketchForEditing | null>(null)
   const [open, setOpen] = useState(false)
   const [reads, setReads] = useState(0)
+  const [opening, setOpening] = useState<'idle' | 'opening' | 'failed'>('idle')
   const candidate = mayBeFiledSketch(contentType, authoredBy)
 
   useEffect(() => {
     setSketch(null)
     if (!candidate) return
     const controller = new AbortController()
-    getSketch(documentId, controller.signal).then(setSketch, () => setSketch(null))
+    getSketch(documentId, controller.signal, { probe: true }).then(setSketch, () => setSketch(null))
     return () => controller.abort()
   }, [candidate, documentId, reads])
 
   const onSaved = useCallback(() => onChanged(), [onChanged])
+  const openEditor = useCallback(async () => {
+    setOpening('opening')
+    const read = await getSketch(documentId).catch(() => null)
+    if (!read) return setOpening('failed')
+    setSketch(read)
+    setOpening('idle')
+    setOpen(true)
+  }, [documentId])
   // A Skizze's review is its editor: a pin or a link (`?review=1&mark=`) opens it, at that mark.
   const requested = reviewRequest?.open ?? false
   const requestedMark = reviewRequest?.annotationId ?? null
   const selectMark = review?.select
-  const hasSketch = sketch !== null
   useEffect(() => {
-    if (requested && hasSketch) setOpen(true)
-  }, [requested, hasSketch])
+    if (!requested || !candidate) return
+    void openEditor()
+  }, [requested, candidate, openEditor])
   useEffect(() => {
     if (open && requestedMark) selectMark?.(requestedMark)
   }, [open, requestedMark, selectMark])
@@ -79,12 +90,18 @@ export function SketchReviseAction({
         type="button"
         variant="outline"
         className="w-full gap-1.5"
-        onClick={() => setOpen(true)}
+        onClick={() => void openEditor()}
+        disabled={opening === 'opening'}
         data-testid="sketch-revise"
       >
         <PencilLine className="size-3.5" aria-hidden />
-        {t('sketch.action')}
+        {t(opening === 'opening' ? 'sketch.opening' : 'sketch.action')}
       </Button>
+      {opening === 'failed' ? (
+        <p className="text-destructive text-xs" role="status">
+          {t('sketch.openFailed')}
+        </p>
+      ) : null}
       <SketchDialog
         open={open}
         onOpenChange={onOpenChange}

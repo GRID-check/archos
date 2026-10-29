@@ -14,13 +14,13 @@
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { BadRequestError, PayloadTooLargeError } from '@/lib/api/errors'
+import { BadRequestError } from '@/lib/api/errors'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { getLocale } from '@/i18n/server'
 import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from '@/lib/diagrams/diagram-sources'
 import { readSketchDocument, saveSketchDocument } from '@/lib/diagrams/sketch-document'
 import { SketchSceneError } from '@/lib/diagrams/sketch-scene'
-import { saveSketchSchema } from '@/lib/diagrams/sketch-wire'
+import { ROOM_PEER_HEADER, saveSketchSchema } from '@/lib/diagrams/sketch-wire'
 import { DiagramSvgError } from '@/lib/diagrams/svg'
 import { recordSketchRevisedScore } from '@/lib/langfuse/sketch-score'
 
@@ -29,25 +29,31 @@ type Params = { id: string }
 /** The SVG and scene caps, doubled for JSON escaping, plus room for the rest (as in filing). */
 const MAX_SKETCH_REQUEST_BYTES = 2 * (MAX_DIAGRAM_SVG_BYTES + MAX_DIAGRAM_SOURCE_BYTES) + 8 * 1024
 
-export const GET = apiRoute<Params>(async ({ session, params }) => readSketchDocument(session, params.id), {
-  authz: { enforcedBy: 'readSketchDocument -> getAccessibleDocument (project:view, folder visibility)' },
-})
+const PEER_ID = /^[A-Za-z0-9_-]{8,64}$/
+
+/** `?probe=1`: the Files preview asking whether to offer the editor, which is not a read the download log records. */
+export const GET = apiRoute<Params>(
+  async ({ session, params, request }) =>
+    readSketchDocument(session, params.id, { probe: new URL(request.url).searchParams.get('probe') === '1' }),
+  {
+    authz: { enforcedBy: 'readSketchDocument -> getAccessibleDocument (project:view, folder visibility)' },
+  }
+)
 
 export const PUT = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const declared = Number(request.headers.get('content-length'))
-    if (Number.isFinite(declared) && declared > MAX_SKETCH_REQUEST_BYTES) {
-      throw new PayloadTooLargeError(MAX_SKETCH_REQUEST_BYTES)
-    }
-    const body = await parseJsonBody(request, saveSketchSchema)
+    // Bounded whether or not the body declares its length: a chunked one is cut off at the cap too.
+    const body = await parseJsonBody(request, saveSketchSchema, { maxBytes: MAX_SKETCH_REQUEST_BYTES })
+    const peer = request.headers.get(ROOM_PEER_HEADER)
     const diagrams = diagramsCopy.messages[await getLocale()]
     try {
-      const { answerRef, ...saved } = await saveSketchDocument({
+      const { answerRef, pdfOutcome: _pdf, ...saved } = await saveSketchDocument({
         session,
         documentId: params.id,
         body,
         marking: diagrams.markingEdited,
         request,
+        peerId: peer && PEER_ID.test(peer) ? peer : null,
       })
       // Not awaited, and it never rejects (`recordSketchRevisedScore`).
       void recordSketchRevisedScore({

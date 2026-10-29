@@ -26,6 +26,7 @@
 
 import { z } from 'zod'
 import { realtimePeerSchema } from '@/lib/realtime/types'
+import { SCENE_ELEMENT_TYPES, withoutForeignFields } from './sketch-scene'
 
 /** The fastest a canvas sends its pointer, as the document room's pointer. */
 export const SCENE_POINTER_INTERVAL_MS = 80
@@ -44,8 +45,6 @@ export const SKETCH_DELTA_MAX_BYTES = 64 * 1024
 /** The most parts a full-scene answer is split into: 64 × 64 KB is past the scene's own 512 KiB cap. */
 export const SKETCH_FULL_MAX_PARTS = 64
 
-/** Element types that never travel: the SVG validator refuses them, and an embed is a third-party page. */
-export const SKETCH_REFUSED_TYPES = ['image', 'embeddable', 'iframe'] as const
 
 const coordinate = z.number().finite().min(-1e7).max(1e7)
 const elementId = z.string().min(1).max(64)
@@ -70,8 +69,11 @@ export const sceneSelectionSchema = z.array(elementId).max(SCENE_SELECTION_MAX)
 
 /**
  * One element as it travels: what the merge reads is named, the rest of
- * Excalidraw's element passes through untouched (and is restored on arrival,
- * `restoreElements`, so a malformed one is repaired rather than drawn).
+ * Excalidraw's element passes through (and is restored on arrival,
+ * `restoreElements`, so a malformed one is repaired rather than drawn). Only
+ * the types a saved scene may hold travel (`SCENE_ELEMENT_TYPES`), so what was
+ * drawn live can be saved, and the fields a saved scene drops (`link`, foreign
+ * `customData`, `withoutForeignFields`) are dropped here too.
  */
 export const wireElementSchema = z
   .object({
@@ -80,7 +82,7 @@ export const wireElementSchema = z
       .string()
       .min(1)
       .max(32)
-      .refine((type) => !(SKETCH_REFUSED_TYPES as readonly string[]).includes(type), 'this element type does not travel'),
+      .refine((type) => SCENE_ELEMENT_TYPES.has(type), 'this element type does not travel'),
     version: z.number().int().min(0),
     versionNonce: z.number().int(),
     isDeleted: z.boolean(),
@@ -88,6 +90,7 @@ export const wireElementSchema = z
     index: z.string().max(256).nullable(),
   })
   .passthrough()
+  .transform((element) => withoutForeignFields(element))
 export type WireElement = z.infer<typeof wireElementSchema>
 
 const byteLength = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length

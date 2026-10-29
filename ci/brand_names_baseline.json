@@ -847,7 +847,7 @@
   "packages/agent/src/agent/memory/reflection.py": 3,
   "packages/agent/src/agent/observability/boot_timing.py": 2,
   "packages/agent/src/agent/observability/direct_trace.py": 1,
-  "packages/agent/src/agent/observability/langfuse_scores.py": 3,
+  "packages/agent/src/agent/observability/score_definitions.py": 3,
   "packages/agent/src/agent/observability/otlp_logging_method.py": 3,
   "packages/agent/src/agent/observability/otlp_metrics.py": 3,
   "packages/agent/src/agent/project_context.py": 35,

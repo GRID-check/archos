@@ -14,7 +14,7 @@
 
 import { z } from 'zod'
 import type { fileDiagramSchema } from '@/lib/diagrams/diagram-wire'
-import type { saveSketchSchema } from '@/lib/diagrams/sketch-wire'
+import { ROOM_PEER_HEADER, type saveSketchSchema } from '@/lib/diagrams/sketch-wire'
 import { ApiRequestError } from './api-error'
 
 // ============================================================
@@ -124,9 +124,18 @@ const SketchViewSchema = z.object({
 /** What the editor needs of a filed sketch: its scene and the Fassung it was read from. */
 export type SketchForEditing = z.infer<typeof SketchViewSchema>
 
-/** `GET /api/documents/{id}/sketch`: the stored scene. Throws {@link SketchRequestError} (415: not a sketch). */
-export const getSketch = async (documentId: string, signal?: AbortSignal): Promise<SketchForEditing> => {
-  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch`, { signal })
+/**
+ * `GET /api/documents/{id}/sketch`: the stored scene. Throws {@link SketchRequestError} (415: not a sketch).
+ * `probe`: asking whether to offer the editor, or an open editor merging a newer Fassung, neither of which
+ * the download log records; opening the editor reads without it.
+ */
+export const getSketch = async (
+  documentId: string,
+  signal?: AbortSignal,
+  { probe = false }: { probe?: boolean } = {}
+): Promise<SketchForEditing> => {
+  const query = probe ? '?probe=1' : ''
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch${query}`, { signal })
   if (!response.ok) throw await sketchError(response)
   const parsed = SketchViewSchema.safeParse(await response.json())
   if (!parsed.success) throw new SketchRequestError(response.status, null, null)
@@ -136,18 +145,29 @@ export const getSketch = async (documentId: string, signal?: AbortSignal): Promi
 /** What a save sends: the route's own request body. */
 export type SketchSaveRequest = z.input<typeof saveSketchSchema>
 
-/** `PUT /api/documents/{id}/sketch`: the new Fassung's id and number. */
+/** What a save answers, as the editor reads it. */
+export interface SavedSketchVersion {
+  versionId: string
+  versionNumber: number
+  /** The PDF beside the sketch could not be drawn again: it still shows an earlier version. */
+  pdfStale: boolean
+}
+
+/** `PUT /api/documents/{id}/sketch`: the new Fassung's id and number. `peerId`: this tab in the document room. */
 export const saveSketch = async (
   documentId: string,
-  request: SketchSaveRequest
-): Promise<{ versionId: string; versionNumber: number }> => {
+  request: SketchSaveRequest,
+  { peerId }: { peerId?: string | null } = {}
+): Promise<SavedSketchVersion> => {
   const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch`, {
     method: 'PUT',
-    headers: jsonHeaders,
+    headers: { ...jsonHeaders, ...(peerId ? { [ROOM_PEER_HEADER]: peerId } : {}) },
     body: JSON.stringify(request),
   })
   if (!response.ok) throw await sketchError(response)
-  const parsed = z.object({ versionId: z.string().min(1), versionNumber: z.number() }).safeParse(await response.json())
+  const parsed = z
+    .object({ versionId: z.string().min(1), versionNumber: z.number(), pdfStale: z.boolean().default(false) })
+    .safeParse(await response.json())
   if (!parsed.success) throw new SketchRequestError(response.status, null, null)
   return parsed.data
 }

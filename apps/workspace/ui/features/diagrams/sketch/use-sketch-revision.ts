@@ -10,8 +10,10 @@
  * nothing is overwritten), refused (the server's own sentence) and failed.
  *
  * In a live room (`use-sketch-room.ts`) the base moves while the editor is
- * open: every peer's save makes it the newer Fassung, so the base is read at
- * the moment of saving. A save refused as stale is offered to `resolveStale`
+ * open: a peer's save of this very scene, or a newer Fassung merged in, makes
+ * it the newer Fassung. So the base is read as the save starts, BEFORE the
+ * scene is taken: a merge that lands while the picture is drawn then makes
+ * the save stale rather than write a scene without it over the Fassung. A save refused as stale is offered to `resolveStale`
  * (merge the newer Fassung into the canvas) and tried once more; a second
  * refusal is `stale` with `merged`, which asks the person to save again.
  */
@@ -24,7 +26,7 @@ import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 export type SketchRevisionState =
   | { kind: 'idle' }
   | { kind: 'saving' }
-  | { kind: 'saved'; versionId: string; versionNumber: number }
+  | { kind: 'saved'; versionId: string; versionNumber: number; pdfStale?: boolean }
   | { kind: 'stale'; merged?: boolean }
   | { kind: 'failed'; message: string }
 
@@ -32,10 +34,20 @@ export interface SketchRevisionTarget {
   documentId: string
   /** The Fassung the editor's changes sit on: what it opened, or, in a live room, what was saved since. */
   baseVersionId: string | null | (() => string | null)
+  /** This tab's id in the document room, sent with the save so the room's notice of it is no echo here. */
+  peerId?: () => string | null
+}
+
+/** A save that landed: the Fassung, and the elements of the scene it wrote. */
+export interface SavedRevision {
+  versionId: string
+  versionNumber: number
+  pdfStale: boolean
+  elements: readonly object[]
 }
 
 export interface SketchRevisionOptions {
-  onSaved?: (saved: { versionId: string; versionNumber: number }) => void
+  onSaved?: (saved: SavedRevision) => void
   /** A newer Fassung refused the save: merge it into the canvas, and say whether to try once more. */
   resolveStale?: () => Promise<boolean>
 }
@@ -58,9 +70,11 @@ export function useSketchRevision(
     if (!target) return
     setState({ kind: 'saving' })
     const attempt = async () => {
-      const { source, svg } = await prepareSketch()
       const base = typeof target.baseVersionId === 'function' ? target.baseVersionId() : target.baseVersionId
-      return saveSketch(target.documentId, { scene: JSON.parse(source), svg, baseVersionId: base })
+      const { source, svg } = await prepareSketch()
+      const scene = JSON.parse(source) as { type: 'excalidraw'; elements: object[] }
+      const saved = await saveSketch(target.documentId, { scene, svg, baseVersionId: base }, { peerId: target.peerId?.() })
+      return { ...saved, elements: scene.elements }
     }
     try {
       let saved
@@ -76,7 +90,7 @@ export function useSketchRevision(
           throw again
         }
       }
-      setState({ kind: 'saved', versionId: saved.versionId, versionNumber: saved.versionNumber })
+      setState({ kind: 'saved', versionId: saved.versionId, versionNumber: saved.versionNumber, pdfStale: saved.pdfStale })
       onSaved?.(saved)
     } catch (error) {
       if (error instanceof SketchRequestError && error.stale) return setState({ kind: 'stale' })

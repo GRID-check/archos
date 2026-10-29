@@ -25,12 +25,21 @@ function refusal(value: unknown): SceneRefusal | null {
 }
 
 describe('checkSketchScene', () => {
-  it('keeps a scene the editor wrote, every field as it came', () => {
+  it('keeps a scene the editor wrote, every field of its elements as it came', () => {
     const value = scene([element({ seed: 7, version: 3, boundElements: [] }), element({ id: 'b', type: 'freedraw' })], {
-      appState: { zoom: { value: 1 } },
+      appState: { viewBackgroundColor: '#ffffff' },
       files: {},
     })
-    expect(checkSketchScene(value)).toBe(value)
+    expect(checkSketchScene(value)).toEqual(value)
+  })
+
+  it('drops what the fence drops too: an element link, foreign customData, appState Excalidraw does not export', () => {
+    const value = scene([element({ link: 'https://anywhere.example', customData: { tracker: 'x' } })], {
+      appState: { gridSize: 20, zoom: { value: 1 }, openDialog: { name: 'ttd' } },
+    })
+    const kept = checkSketchScene(value)
+    expect(kept.elements[0]).toEqual(element())
+    expect(kept.appState).toEqual({ gridSize: 20 })
   })
 
   it.each([
@@ -55,7 +64,7 @@ describe('checkSketchScene', () => {
   it('refuses a scene above the excalidraw source cap when it is serialized', () => {
     const big = checkSketchScene(
       scene([element({ type: 'text', text: 'x'.repeat(4000) })], {
-        appState: { padding: 'y'.repeat(DIAGRAM_SOURCE_FACTS.excalidraw.maxSourceBytes) },
+        padding: 'y'.repeat(DIAGRAM_SOURCE_FACTS.excalidraw.maxSourceBytes),
       })
     )
     expect(() => serializeSketchScene(big)).toThrow(SketchSceneError)

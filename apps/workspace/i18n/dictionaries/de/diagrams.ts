@@ -70,6 +70,8 @@ export const diagrams: typeof en.diagrams = {
     peerSaved: '{name} hat eine Fassung gespeichert. Ihre Zeichenfläche zeigt genau diese.',
     peerSavedDiffers: '{name} hat eine Fassung gespeichert. Was Sie seitdem gezeichnet haben, ist noch nicht gespeichert.',
     tooLargeLive: 'Ein Element ist zu groß, um live geteilt zu werden. Die anderen sehen es, sobald Sie speichern.',
+    refusedLive: 'Ein Element kann nicht live geteilt werden. Beim Speichern wird es noch einmal geprüft.',
+    pdfStale: 'Die PDF daneben konnte nicht neu erstellt werden und zeigt noch die vorige Fassung.',
     discardShared: '{names} ist noch im Raum und behält die Änderungen. Schließen, ohne zu speichern?',
     saveAgain: 'Inzwischen hat jemand eine neuere Fassung gespeichert. Ihre Änderungen sind eingearbeitet; bitte erneut speichern.',
   },

@@ -44,10 +44,11 @@ export interface ChannelDefinition<TParams = unknown, TUp extends UpstreamBase =
     /**
      * Lanes a message may travel in instead, each with a budget of its own and,
      * when it needs more than being in the channel, an authorization of its
-     * own (`./send`). A message is in the first lane one of whose `fields` it
-     * carries (`presence` counts for a lane with `presence: true`), and must
-     * pass every guarded lane it carries a field of, so a reader cannot slip
-     * an edit past the edit lane by adding a claim. A burst of motion
+     * own (`./send`). A message is in every lane one of whose `fields` it
+     * carries (`presence` counts for a lane with `presence: true`), spends
+     * each one's budget and must pass each guarded one, so a reader cannot
+     * slip an edit past the edit lane, or a field past its budget, by adding
+     * a claim. A burst of motion
      * therefore never refuses the claim that keeps a person in the channel,
      * and a reader's pointer never spends a writer's edit budget.
      */

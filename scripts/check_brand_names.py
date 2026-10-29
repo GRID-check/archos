@@ -34,8 +34,10 @@ What is not a hit
   docstring, a string a person reads). That copy is the brand's business, and
   the place to centralise it is the `productName` constant, not this check.
 - `grid` the English word: a bare lowercase `grid`, CSS and Tailwind
-  (`grid-cols-2`, `gridTemplateColumns`), and `grid` as the last word, the
-  layout noun (`FileGrid`, `document_grid`, `stat-grid`).
+  (`grid-cols-2`, `gridTemplateColumns`), Excalidraw's own `appState` keys
+  (`gridSize`, `gridStep`, `gridModeEnabled`, a stored scene's vocabulary we
+  do not get to rename), and `grid` as the last word, the layout noun
+  (`FileGrid`, `document_grid`, `stat-grid`).
 - The repository's own name and URLs (``REPOSITORY``), which only the
   repository's owners rename: `archos-at/archos` and the `archos-at` org
   (`ghcr.io/archos-at/...`, `github.com/archos-at/...`). The image or repo
@@ -131,7 +133,7 @@ BRAND = re.compile("|".join(BRANDS), re.IGNORECASE)
 TOKEN_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
 WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+")
 CSS_GRID = re.compile(r"^(inline-)?grid(-(cols|rows|flow|area|template|column|row|auto|gap|start|end|span)\b.*)?$")
-CSS_GRID_PROPERTY = re.compile(r"^grid(Template|Column|Row|Area|Auto|Gap)")
+CSS_GRID_PROPERTY = re.compile(r"^grid(Template|Column|Row|Area|Auto|Gap|Size$|Step$|ModeEnabled$)")
 
 
 def _words(token: str) -> list[str]:

@@ -20,6 +20,7 @@ export const TYPING_LIMIT: LimitRule = rules.TYPING_LIMIT
 export const ROOM_LIMIT: LimitRule = rules.ROOM_LIMIT
 export const ROOM_CLAIM_LIMIT: LimitRule = rules.ROOM_CLAIM_LIMIT
 export const SKETCH_EDIT_LIMIT: LimitRule = rules.SKETCH_EDIT_LIMIT
+export const SKETCH_WANT_LIMIT: LimitRule = rules.SKETCH_WANT_LIMIT
 export const MENTION_LIMIT: LimitRule = rules.MENTION_LIMIT
 export const WS_UPGRADE_LIMIT: LimitRule = rules.WS_UPGRADE_LIMIT
 export const CHAT_TURN_LIMIT: LimitRule = rules.CHAT_TURN_LIMIT
@@ -48,6 +49,7 @@ export const LIMIT_CATALOG = {
   [ROOM_LIMIT.name]: ROOM_LIMIT,
   [ROOM_CLAIM_LIMIT.name]: ROOM_CLAIM_LIMIT,
   [SKETCH_EDIT_LIMIT.name]: SKETCH_EDIT_LIMIT,
+  [SKETCH_WANT_LIMIT.name]: SKETCH_WANT_LIMIT,
   [MENTION_LIMIT.name]: MENTION_LIMIT,
   [WS_UPGRADE_LIMIT.name]: WS_UPGRADE_LIMIT,
   [CHAT_TURN_LIMIT.name]: CHAT_TURN_LIMIT,

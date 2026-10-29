@@ -16,7 +16,7 @@ import { z } from 'zod'
 import { BadRequestError, ForbiddenError, NotFoundError, TooManyRequestsError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { createInProcessStore, ROOM_CLAIM_LIMIT, ROOM_LIMIT, setLimitStore, SKETCH_EDIT_LIMIT } from '@/lib/limits'
+import { createInProcessStore, ROOM_CLAIM_LIMIT, ROOM_LIMIT, setLimitStore, SKETCH_EDIT_LIMIT, SKETCH_WANT_LIMIT } from '@/lib/limits'
 import { __resetGrantsForTests, defineChannel, forgetSendGrant, type AnyChannel } from './channel'
 import { __setHubTransportForTests, subscribe } from './hub'
 import { CHANNELS } from './registry'
@@ -184,6 +184,7 @@ describe('sendToChannel, the limit', () => {
     const lanes = CHANNELS.doc.upstream?.lanes?.map(({ name, fields, presence, limit }) => ({ name, fields, presence, limit }))
     expect(lanes).toEqual([
       { name: 'sketch-edit', fields: ['delta', 'saved'], presence: undefined, limit: SKETCH_EDIT_LIMIT },
+      { name: 'sketch-want', fields: ['want'], presence: undefined, limit: SKETCH_WANT_LIMIT },
       { name: 'claim', fields: ['selected'], presence: true, limit: ROOM_CLAIM_LIMIT },
     ])
   })
@@ -250,6 +251,17 @@ describe('sendToChannel, a sketch in the document room', () => {
     for (let i = 0; i < ROOM_LIMIT.limit; i++) await send({ hash: { base: null, sceneHash: i, count: 0 } })
     await expect(send({ hash: { base: null, sceneHash: 0, count: 0 } })).rejects.toBeInstanceOf(TooManyRequestsError)
     await expect(send({ delta })).resolves.toBeNull()
+  })
+
+  it('bounds a reader’s requests for the whole scene by their own small budget, alone or riding on a claim', async () => {
+    reader()
+    const want = (i: number) => ({ want: { requestId: `req_${String(i).padStart(8, '0')}`, base: null } })
+    for (let i = 0; i < SKETCH_WANT_LIMIT.limit; i++) await send(i % 2 ? want(i) : { ...want(i), selected: null })
+    await expect(send({ ...want(99), selected: null })).rejects.toBeInstanceOf(TooManyRequestsError)
+    await expect(send(want(100))).rejects.toBeInstanceOf(TooManyRequestsError)
+    // The reader still points and stays present.
+    await expect(send({ scene: { pointer: null, tool: 'pointer', button: 'up' } })).resolves.toBeNull()
+    await expect(send({ presence: 'here' })).resolves.toBeNull()
   })
 
   it('refuses an image, an element without its version, and a delta over its byte cap', async () => {

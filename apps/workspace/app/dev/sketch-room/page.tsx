@@ -68,7 +68,7 @@ function useStandInRoute() {
     const path = `/api/documents/${DOCUMENT_ID}/sketch`
     window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-      if (!url.endsWith(path)) return original(input, init)
+      if (new URL(url, window.location.href).pathname !== path) return original(input, init)
       const current = readStoredRevision()
       const json = (status: number, body: unknown) =>
         new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
