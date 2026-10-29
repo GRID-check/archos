@@ -618,7 +618,7 @@ describe('AgentResponse', () => {
       render(<AgentResponse content="Cited answer" variant="inline" citations={citations} />)
 
       const row = screen.getByRole('list', { name: /sources this answer is backed by/i })
-      expect(row.className).toContain('border-t')
+      expect(row.parentElement?.className).toContain('border-t')
     })
   })
 

@@ -219,10 +219,11 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
     <div
       ref={rowRef}
       className={cn('flex min-h-6 flex-wrap items-center gap-1.5', withDivider && 'border-t pt-2')}
-      role="list"
-      aria-label={t('answerSources.ariaLabel')}
     >
       <SectionLabel>{t('answerSources.label')}</SectionLabel>
+      {/* The list holds only the sources; the fold button and the copy menu
+          beside it are not list items (axe aria-required-children). */}
+      <div role="list" aria-label={t('answerSources.ariaLabel')} className="contents">
       {display.map((doc) => {
         const numbers = citationNumbers(doc)
         // The chip the reader just asked about, from an inline [N] or a shared
@@ -287,8 +288,8 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
           </span>
         )
       })}
+      </div>
       {(hidden > 0 || expanded) && documents.length > MAX_ANSWER_SOURCES && (
-        <span role="listitem" className="inline-flex items-center">
         <button
           type="button"
           onClick={() => setExpanded((open) => !open)}
@@ -298,13 +299,10 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
         >
           {expanded ? t('answerSources.less') : t('answerSources.more', { count: hidden })}
         </button>
-        </span>
       )}
       {/* Every source of this answer as a citation, in the format the user's
           own tooling reads. Quiet, at the end of the row. */}
-      <span role="listitem" className="inline-flex items-center">
-        <CopyCitationsMenu citations={refs} />
-      </span>
+      <CopyCitationsMenu citations={refs} />
     </div>
   )
 }
