@@ -55,10 +55,9 @@ The table gives the source file and where it appears.
 | `knowledge-video-poster.webp` | `c9e9e60311.webp` | Home, poster of the video "Das Wissen Ihres Büros wird nutzbar." |
 | `knowledge-video.webm` | `28f2a93346.webm` | Same video, first source (WebM) |
 | `knowledge-video.mp4` | `8cde9d7ebc.mp4` | Same video, second source (MP4) |
-| `share-card.jpg` | none, cropped from `login-office-photo.webp` | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
+| `share-card.jpg` | none, cropped from the sign-in photo (`packages/brand/authkit/login-photo.webp` source) | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
 | `founders-photo.jpg` | `d06fb4a368.jpg` | Home, "Das Planungsbüro der Zukunft entsteht heute." (founding team) |
 | `team-conversation-photo.jpg` | `88395fbfb8.jpg` | Home, portrait beside the feld72 quote (grayscale) |
-| `login-office-photo.webp` | `2052fe5fbc.webp` | Login, side photo (empty office in evening light) |
 | `demo-panel-background.webp` | `99653e3df7.webp` | Demo, background of the form panel |
 | `pilot-office-gerner-gerner-plus.svg` | `f3402543bd.svg` | Pilot office logo row (home, demo) |
 | `pilot-office-zz-architecture.svg` | `3a9b73f14d.svg` | Pilot office logo row (home, demo) |
@@ -72,5 +71,6 @@ The favicon is `public/favicon.svg`.
 ## Not done here
 
 - The pages themselves. Only the home page is converted (`src/views/HomeView.astro`, with thin route files in `src/pages/` and `src/pages/en/`). The other pages are still German-only and pass `locale="de"`.
-- Split pages (Login, Demo) have no header or footer. They need their own layout, not `BaseLayout`.
+- The demo page is a split page: `BaseLayout` with `bare`, no header or footer.
+- There is no login page. Login goes to `/sign-in`, which hands over to AuthKit's hosted page; that page lists exactly the sign-in methods enabled in WorkOS, so the site keeps no list of its own. `/login` and `/en/login` redirect there.
 - Deployment: Dockerfile, redirects and the removal of `apps/site` belong to slice 5.

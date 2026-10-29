@@ -19,7 +19,6 @@ export const ROUTES = {
   contact: { de: '/kontakt/', en: '/en/contact/' },
   imprint: { de: '/impressum/', en: '/en/imprint/' },
   privacy: { de: '/datenschutz/', en: '/en/privacy/' },
-  login: { de: '/login/', en: '/en/login/' },
   demo: { de: '/demo/', en: '/en/demo/' },
 } as const satisfies Record<string, Record<Locale, string>>
 

@@ -21,5 +21,7 @@ export default defineConfig({
   // Output stays static; the Node adapter serves the endpoints that opt out of prerendering
   // (`export const prerender = false`, e.g. /sign-in). `astro build` writes dist/.
   adapter: node({ mode: 'standalone' }),
-  integrations: [sitemap({ filter: (page) => !/\/login\/?$/.test(page) })],
+  // The old login pages forward to AuthKit's sign-in, which lists the enabled methods itself.
+  redirects: { '/login': '/sign-in', '/en/login': '/sign-in' },
+  integrations: [sitemap()],
 })

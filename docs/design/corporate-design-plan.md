@@ -18,9 +18,9 @@ No identifier anywhere carries the product's name.
 | 1 | **Design system package.** `tokens.json` is the source; `tokens.css`, `components.css` (class prefix `ui-`, not the brand), fonts and logos are built from it. `identity.json` holds every brand string (name, claim, legal entity, address, e-mail) | `packages/brand/` | this change |
 | 2 | **React components** typed in TSX, one file per component, no `window` global | `packages/brand/react/` | this change |
 | 3 | **Brand-name rule** extended to the new name, so internal naming stays brand-agnostic | `scripts/check_brand_names.py` | this change |
-| 4 | **Greenfield website** (Astro): Startseite, Datensicherheit, Blog, Kontakt, Impressum, Datenschutz, Login, Demo, built only from the package | `apps/website/` | this change, beside `apps/site` |
+| 4 | **Greenfield website** (Astro): Startseite, Datensicherheit, Blog, Kontakt, Impressum, Datenschutz, Demo (sign-in is AuthKit's hosted page in the same design, listing the methods WorkOS has enabled), built only from the package | `apps/website/` | this change, beside `apps/site` |
 | 5 | **Cutover**: Dockerfile and deploy for `apps/website`, blog posts and the changelog moved over, redirects for the old SEO URLs, then `apps/site` deleted | deploy, CI | next change |
-| 6 | **Workspace adopts the tokens**: `apps/workspace` maps its Tailwind theme onto the shared tokens | `apps/workspace` | later |
+| 6 | **Workspace adopts the design**: light palette, General Sans and the 4px control radius in `ui/styles/tokens.css` (this change); mapping the whole theme onto the shared tokens, and the product name read from `identity.json` at the rebrand | `apps/workspace` | first part in this change |
 
 ## How sharing works
 

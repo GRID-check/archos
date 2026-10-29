@@ -13,7 +13,9 @@ export function navigation(locale: Locale) {
   const link = (route: RouteKey, label: string): NavLink => ({ label, href: localePath(route, locale) });
   return {
     mainNav: [link('home', ui.navPlatform), link('security', ui.navSecurity), link('blog', ui.navBlog)],
-    login: link('login', ui.login),
+    // Sign-in is AuthKit's hosted page: it shows exactly the methods switched on in WorkOS,
+    // so the site keeps no list of its own. /sign-in resolves the app host at runtime.
+    login: { label: ui.login, href: '/sign-in' },
     demo: link('demo', ui.demo),
     footerColumns: [
       { title: ui.footerProduct, links: [link('home', ui.navPlatform)] },

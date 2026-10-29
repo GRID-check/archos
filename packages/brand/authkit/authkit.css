@@ -102,9 +102,8 @@
   gap: 12px !important;
 }
 .ak-AuthMethodButton { width: 100% !important; }
-.ak-AuthMethodButton:has([data-method='microsoft']) { order: -1; }
-.ak-AuthMethodButton:has([data-method='github']),
-.ak-AuthMethodButton:has([data-method='apple']) { display: none !important; }
+/* No provider is named here: AuthKit renders exactly the methods enabled in the
+   environment, and the list grows or shrinks with them. */
 .ak-AuthButton {
   height: 54px !important;
   width: 100% !important;
@@ -118,7 +117,9 @@
   text-decoration: none !important;
   &:hover { background: light-dark(#f2f1f0, #1a1918) !important; }
 }
-.ak-AuthButtonIcon { display: none !important; }
+/* The provider's own logo, AuthKit's icon, before the label. */
+.ak-AuthButton { gap: 10px !important; }
+.ak-AuthButtonIcon { display: inline-flex !important; width: 18px !important; height: 18px !important; flex: none !important; }
 .ak-AuthButtonLabel {
   display: inline !important;
   position: static !important;
