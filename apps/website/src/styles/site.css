@@ -159,3 +159,10 @@ button.ui-nav-link {
     object-position: 50% center !important;
   }
 }
+
+/* The header's Login and its signed-in twin "App öffnen": one is shown, chosen before paint by
+   src/scripts/signed-in.js. Both have the same size class, so nothing shifts. */
+html[data-signed-in] .site-signed-out,
+html:not([data-signed-in]) .site-signed-in {
+  display: none;
+}

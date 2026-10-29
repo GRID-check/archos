@@ -115,7 +115,7 @@ export const en: LegalContent = {
       {
         heading: '7. Cookies',
         paragraphs: [
-          'Piloti uses strictly necessary cookies: an encrypted session cookie for sign-in (WorkOS AuthKit) and a cookie storing your language preference.',
+          'Piloti uses strictly necessary cookies: an encrypted session cookie for sign-in (WorkOS AuthKit), a cookie storing your language preference and, while you are signed in, the cookie ‘signed_in’. It holds only the value ‘1’, no identifier, applies to the whole domain and tells our website to offer the way into the application instead of “Login”; it is deleted when you sign out or the session ends.',
           'In addition, our product analytics (PostHog) stores a pseudonymous identifier, the session ID and a few settings in a cookie and in your browser’s local storage (keys ‘ph_…’, specifically ‘ph_<project token>_posthog’; the cookie expires after 365 days and is also shared with Piloti’s public website on the same domain). When a survey is shown to you, PostHog adds further local-storage entries for it (keys ‘seenSurvey_…’ and ‘lastSeenSurveyDate’). Likewise, PostHog remembers which notices and announcements you have already seen, closed or completed, so they do not appear again (keys ‘ph_product_tour_…’, ‘ph_last_seen_tour_date_…’ and ‘ph_active_product_tour’). This storage is not strictly necessary; it serves product improvement. We set no advertising or cross-site tracking cookies.',
           `You can switch product analytics off in your profile settings or object at any time at ${EMAIL}; it then captures nothing and the entries above are no longer updated.`,
         ],

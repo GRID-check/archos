@@ -34,6 +34,11 @@ const de = {
           'Für die Anmeldung setzen wir technisch notwendige Cookies. Rechtsgrundlage: § 165 Abs. 3 TKG 2021 und Art. 6 Abs. 1 lit. b DSGVO.',
       },
       {
+        key: 'Anmeldestatus',
+        value:
+          'Solange Sie in {name} angemeldet sind, setzt die Anwendung den Cookie „signed_in“ für die ganze Domain. Er enthält nur den Wert „1“, keine Kennung. Die Website wertet ihn nur in Ihrem Browser aus, um statt „Login“ die Schaltfläche „App öffnen“ zu zeigen; für die Reichweitenmessung wird er nicht verwendet. Bei der Abmeldung oder wenn die Sitzung abläuft, wird er gelöscht. Rechtsgrundlage: § 165 Abs. 3 TKG 2021.',
+      },
+      {
         key: 'Produktanalyse',
         value:
           'Mit PostHog werten wir aus, wie Website und Software genutzt werden, nur wenn Sie zustimmen. Rechtsgrundlage: Einwilligung, Art. 6 Abs. 1 lit. a DSGVO und § 165 Abs. 3 TKG 2021. Die Einwilligung können Sie jederzeit in den [Cookie-Einstellungen] widerrufen. Speicherort: [EU].',
@@ -144,6 +149,11 @@ const en: typeof de = {
         key: 'Necessary cookies',
         value:
           'To sign in, we set cookies that are technically necessary. Legal basis: § 165(3) TKG 2021 and Art. 6(1)(b) GDPR.',
+      },
+      {
+        key: 'Sign-in status',
+        value:
+          'While you are signed in to {name}, the application sets the cookie “signed_in” for the whole domain. It holds only the value “1”, no identifier. The website evaluates it only in your browser, to show the button “Open app” instead of “Login”; it is not used to measure reach. It is deleted when you sign out or the session ends. Legal basis: § 165(3) TKG 2021.',
       },
       {
         key: 'Product analytics',

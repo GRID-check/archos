@@ -13,7 +13,7 @@ interface Props {
   current?: string;
   /** The other-locale twin, when it is not the table's (a post's translation). Defaults to alternateOf(current) */
   switchPath?: string;
-  /** Small secondary button, e.g. Login. null hides it */
+  /** Small secondary button, e.g. Login. Shown as "App öffnen" to a visitor signed in to the app (README, "Signed in"). null hides it */
   login?: NavLink | null;
   /** Small primary button, e.g. Demo anfragen: the page's one primary. null hides it */
   cta?: NavLink | null;
@@ -60,8 +60,13 @@ const hasMenu = links.length > 0 || Boolean(login);
         {localeCodes[otherLocale]}
       </a>
       {login && (
-        <Button href={login.href} variant="secondary" size="sm">
+        <Button href={login.href} variant="secondary" size="sm" class="site-signed-out">
           {login.label}
+        </Button>
+      )}
+      {login && (
+        <Button href={login.href} variant="secondary" size="sm" class="site-signed-in">
+          {ui.openApp}
         </Button>
       )}
       {cta && (
@@ -88,8 +93,13 @@ const hasMenu = links.length > 0 || Boolean(login);
               </ul>
               <div class="ui-mnav-act">
                 {login && (
-                  <Button href={login.href} variant="secondary" size="lg">
+                  <Button href={login.href} variant="secondary" size="lg" class="site-signed-out">
                     {login.label}
+                  </Button>
+                )}
+                {login && (
+                  <Button href={login.href} variant="secondary" size="lg" class="site-signed-in">
+                    {ui.openApp}
                   </Button>
                 )}
                 {cta && (
