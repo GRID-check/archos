@@ -6,43 +6,43 @@
  *   node art/riso/export.mjs --work tafeln                    # one work
  *   node art/riso/export.mjs --work tafeln --only 0,3         # jobs by index (the page's ?t=)
  *   node art/riso/export.mjs --only tafeln/stuetzen/og        # jobs by art id (all densities)
- *   node art/riso/export.mjs --dest site                      # only site assets (or: app, out)
+ *   node art/riso/export.mjs --dest app                       # only app assets (or: out)
  *   node art/riso/export.mjs --variant page                   # only the on-page files (or: paper)
  *   node art/riso/export.mjs --manifest                       # only rewrite the manifests
  *   node art/riso/export.mjs --engine chromium                # override the engine setup chose
  *
- * Run from apps/site with its node_modules installed (sharp comes with
- * Astro), after `node art/riso/setup.mjs`.
+ * Run from packages/brand (paths below are relative to it) after
+ * `node art/riso/setup.mjs`, with apps/website's `bun install` done: sharp is
+ * borrowed from there (kit.mjs loadSharp).
  *
  * Per job: open the work in the kit's browser harness (tools/lib/browser.mjs,
  * which blocks every non-file request), seek the job, read the canvas backing
  * store as PNG, seek elsewhere and back and require identical bytes (the check
  * still.mjs makes), check the pixel size against the format, then encode:
  * .webp at quality 95 with sharp-YUV, or .png: palette-quantised for a committed
- * file (site, app), lossless for an `out` file and a separation. Nothing
+ * file (app), lossless for an `out` file and a separation. Nothing
  * is resized. Formats with `separations` also get one grayscale PNG per ink
  * (the page's ?sep=<ink> view) and a JSON sheet naming drums and order.
  * Formats with `onPage` also get `<file>-page.webp`: the same job baked with
  * ?paper=0 (the inks multiplied onto white, so the canvas holds the stack's
  * transmittance T), turned into ink alpha by pageFrom() below.
  *
- * site -> public/art/ (committed; the pre-commit hook refuses files > 1 MB)
- * app  -> ../../apps/workspace/public/art/ (the product app; committed, same limit)
+ * app  -> ../../apps/workspace/public/art/ (the product app; committed; the
+ *         pre-commit hook refuses files > 1 MB)
  * out  -> art/riso/out/<work>/ (gitignored; reproducible from the pin)
  * Always ends by rewriting the manifests from every work's JOBS table:
- * src/data/art.json for the site, ../../apps/workspace/bff/art/art.json for the app, each
- * src versioned with ?v=<sha256 of the file> so a re-export busts caches.
- * Then publishes the out and app files into public/downloads/ for the unlisted
- * image page (downloads.mjs).
+ * ../../apps/workspace/bff/art/art.json, each src versioned with
+ * ?v=<sha256 of the file> so a re-export busts caches.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import sharp from 'sharp';
 import {
-  DESTS, MAX_BYTES, OUT, args, destOf, evaluateWork, kitBrowser, manifestFrom, manifestText, requireKit, selectWorks,
+  DESTS, MAX_BYTES, OUT, args, destOf, evaluateWork, kitBrowser, loadSharp, manifestFrom, manifestText, requireKit,
+  selectWorks,
 } from './kit.mjs';
-import { publishDownloads } from './downloads.mjs';
+
+const sharp = await loadSharp();
 
 const a = args(process.argv.slice(2));
 const works = selectWorks(a.work);
@@ -193,6 +193,4 @@ try {
 }
 
 writeManifest();
-// out and app files the site shows on no page go to public/downloads/ (downloads.mjs)
-failures += (await publishDownloads()).failures;
 if (failures) { console.error(`${failures} committed file(s) over 1 MB`); process.exit(1); }

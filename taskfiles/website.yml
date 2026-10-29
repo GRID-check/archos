@@ -1,0 +1,98 @@
+# Website tier (apps/website: the public website) and the riso art kit
+# (packages/brand/art/riso, whose committed outputs are the app's vignettes).
+#
+# Included by the root Taskfile.yml with `flatten: true`: task names stay literal
+# (`website:check`). Shared vars (UI, WEBSITE, PY, ...) and env live in the root file.
+
+version: '3'
+
+tasks:
+  # ── website (apps/website — the public website, on the design system) ──
+
+  website:install:
+    desc: Install the website dependencies
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun install --frozen-lockfile
+
+  website:check:
+    desc: Astro typecheck, the brand copies and the brand rules (scripts/check_brand_rules.mjs) for the website
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run check
+
+  website:build:
+    desc: Production build of the website
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run build
+
+  website:verify:
+    desc: Everything CI runs for the website
+    cmds:
+      - task: website:install
+      - task: website:check
+      - task: website:test
+      - task: website:build
+      # The brand rules' own tests, then the rules once more over the fresh build:
+      # the AI-tag rule reads the built pages.
+      - node --test scripts/check_brand_rules.test.mjs
+      - bun scripts/check_brand_rules.mjs --require-build
+      - task: website:a11y
+      # The riso kit's fast gate (the app's vignettes against their source); it borrows this install's sharp.
+      - task: art:check
+
+  website:test:
+    desc: The website's unit tests (runtime specs and src/**/*.test.ts)
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run test
+
+  website:a11y:
+    desc: axe-core WCAG 2.2 AA over every built page, DE and EN (needs a build and Playwright's Chromium)
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bunx playwright install chromium
+      - bun run check:a11y
+
+  website:capture:
+    desc: Screenshot every website route at four widths (agent-browser; flags after --)
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run capture {{.CLI_ARGS}}
+
+  # ── riso art (packages/brand/art/riso — procedural prints) ──────────────
+  # The raw commands are `node art/riso/<script>.mjs` in packages/brand; every
+  # task below is one of them. They borrow apps/website's sharp, so run
+  # website:install first. The workflow and the series rules are in
+  # packages/brand/art/riso/README.md.
+
+  art:setup:
+    desc: Clone the pinned riso-windowseat kit into the user cache and find a browser (idempotent)
+    dir: packages/brand
+    cmds:
+      - node art/riso/setup.mjs {{.CLI_ARGS}}
+
+  art:new:
+    desc: 'Scaffold a riso work from the template: task art:new -- <work> [--title "Title"]'
+    dir: packages/brand
+    cmds:
+      - node art/riso/new.mjs {{.CLI_ARGS}}
+
+  art:export:
+    desc: 'Export riso works to public/art/ and art/riso/out/, then rewrite apps/workspace/bff/art/art.json: task art:export -- [--work w] [--only ids]'
+    dir: packages/brand
+    cmds:
+      - node art/riso/export.mjs {{.CLI_ARGS}}
+
+  art:verify:
+    desc: The kit's determinism check on every riso job, in both engines (minutes; not in art:check)
+    dir: packages/brand
+    cmds:
+      - node art/riso/verify.mjs {{.CLI_ARGS}}
+
+  art:check:
+    desc: The fast riso gate (the app's manifest, files, sizes, alt text, ids in its source)
+    dir: packages/brand
+    cmds:
+      - node art/riso/check.mjs

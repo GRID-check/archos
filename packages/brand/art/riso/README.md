@@ -1,7 +1,18 @@
 # Riso art
 
-Procedural risograph prints for Piloti: the site's picture language, and the
-source for decks, email, social posts and printed postcards. Each **work** is a
+Procedural risograph prints: the picture language of the retired public site
+(`apps/site`, replaced by `apps/website` in 2026-10), and still the source of
+the product app's empty-state vignettes and of decks, social posts and printed
+postcards.
+
+**Status (2026-10-29).** The kit moved here from `apps/site/art/riso` when that
+site was deleted. Its one committed consumer is the product app
+(`apps/workspace/public/art/`, manifest `apps/workspace/bff/art/art.json`);
+every format that used to go to the site (`plate`, `og`, `banner`, `cover`,
+`spot`, `release`, `email`) now exports to the gitignored `out/`. The new
+website follows design system 3.0 and shows no riso prints. The sections below
+on showing a print on a page, share cards and Tafeln files describe the retired
+site and stay as the record of what each plate was made for. Each **work** is a
 folder here with one Canvas 2D page (`index.html`) and its design record
 (`PRINT.md`). No libraries, fonts, images or network calls in any of it.
 
@@ -11,30 +22,29 @@ shows one.
 | Path | Holds |
 |---|---|
 | `tafeln/` | Plates I–VIII of the first series. Its `PRINT.md` states the series principle every work follows |
-| `collateral/` | The founders' kit off the site: email strip and signatures (`signatures/*.html`), a build-log square, deck slides and the thank-you postcard (still lifes on plate VI's tipped table). Its `PRINT.md` maps every piece, including the Tafeln plates reused for LinkedIn and social |
+| `collateral/` | The founders' kit off the site: email strip, a build-log square, deck slides and the thank-you postcard (still lifes on plate VI's tipped table). Its `PRINT.md` maps every piece, including the Tafeln plates reused for LinkedIn and social |
 | `lib/engine.js` | The print engine: screens, paper, starvation, the bake, the `window.__riso` contract, `Riso.run` |
 | `lib/piloti.js` | The series look: inks, paper, screen angles, registration, camera, sun, projection, props |
 | `lib/formats.js` | Every export slot by name, with pixel sizes, pitch, encoding and destination |
 | `kit.json` | The pinned riso-windowseat commit. The only place the version is written |
 | `setup.mjs`, `new.mjs`, `export.mjs`, `check.mjs`, `verify.mjs` | The commands below; `kit.mjs` is what they share |
-| `downloads.mjs` | Publishes every `out` and `app` file into `public/downloads/` with its manifest `src/data/downloads.json`, for the unlisted image page. `export.mjs` runs it |
 | `template/` | What `new.mjs` copies |
-| `out/` | Non-site exports. Gitignored |
+| `out/` | Every export that is not the app's. Gitignored |
 | `LICENSE-NOTICE.md` | The kit's MIT notice, which ships with the adapted engine |
 
 ## Commands
 
-From `apps/site`, with `bun install --frozen-lockfile` done (the exporter uses the site's sharp):
+From `packages/brand`, with `bun install --frozen-lockfile` done in `apps/website`
+(the scripts borrow its sharp, `kit.mjs` `loadSharp`; this folder has no install of its own):
 
 ```bash
 node art/riso/setup.mjs                         # task art:setup
 node art/riso/new.mjs karten --title "Karten"   # task art:new -- karten
 node art/riso/export.mjs                        # task art:export (all works)
-node art/riso/export.mjs --work tafeln --only 0,tafeln/stuetzen/og
+node art/riso/export.mjs --work vignetten --dest app
 node art/riso/export.mjs --variant page         # only the on-page files (or: paper)
-node art/riso/export.mjs --manifest             # rewrite src/data/art.json only
-node art/riso/downloads.mjs                     # re-publish out/ and app files to public/downloads/
-node art/riso/check.mjs                         # task art:check, also in npm run check
+node art/riso/export.mjs --manifest             # rewrite apps/workspace/bff/art/art.json only
+node art/riso/check.mjs                         # task art:check
 node art/riso/verify.mjs --work tafeln          # task art:verify (minutes)
 ```
 
@@ -48,7 +58,7 @@ string: `?only=<ink>` one plate in colour, `?sep=<ink>` the press separation,
 **Reuse before you draw.** A new picture is a week of someone's attention; a
 reused plate is free. In order:
 
-1. An art id in `src/data/art.json` already fits the slot: place it.
+1. An art id in `apps/workspace/bff/art/art.json` already fits the slot: place it.
 2. An existing plate fits in a format it has no job for yet: add the job (and,
    if needed, a composition for that format to its `draw`), then export.
 3. A new plate in an existing work, when it shares that work's subject.
@@ -91,14 +101,14 @@ saves.
 3. Inspect. Export with `--only`, then look at the whole frame at viewing size
    in every format, and at 1:1 crops of the 2x file at every junction, contact
    point and small detail and at the screen itself (crop with the sharp in
-   `apps/site/node_modules`; `?only=<ink>` shows one plate at a time). List
+   `apps/website/node_modules`; `?only=<ink>` shows one plate at a time). List
    what you looked at under "Inspected" in `PRINT.md`.
 4. Export the work. Site files over 1 MB fail the export, which is the commit
    hook's limit.
 5. `check.mjs` exits 0, and after any change to a drawing, the engine or
    `lib/`, `verify.mjs --work <work>` does too.
 6. Place it by id ([Showing a print](#showing-a-print)), run
-   `npm run check && npm run build`, and look at the page at 390 and 1440 px.
+   the app's check and build, and look at the view at 390 and 1440 px.
 7. Write what is still weak under "Remaining weaknesses". An empty list is not
    believed.
 
@@ -124,7 +134,7 @@ before drawing a new plate.
 1. Add it to `lib/formats.js`: `compose` (reuse one when the aspect matches),
    `sizes` with density and pitch (3.4 device px per 1x and 6.8 per 2x for a
    slot shown at native size, 5.0 for anything a platform rescales), `encode`,
-   `dest` (`site` only for files a page of this site shows) and `file`.
+   `dest` (`app` only for files the product app shows, else `out`) and `file`.
 2. Give each plate that should wear it a `FIT` framing, a drawing for the
    composition if the plate branches on it, and the compose in its `composes`.
    Below about 400 px wide, draw with `weight()` so lines stay above 1.25
@@ -177,14 +187,14 @@ export is one integer time of the page.
 
 | Format | Pixels | Pitch | Composition | Goes to |
 |---|---|---|---|---|
-| `plate` | 720², 1440², + on page | 3.4 / 6.8 | `sq` | site |
-| `og` | 1200×630 PNG | 5.0 | `og` | site |
-| `banner` | 800×300, 1600×600 | 3.4 / 6.8 | `wide` | site |
-| `cover` | 720×405, 1440×810, + on page | 3.4 / 6.8 | `cover` | site |
-| `spot` | 96², 192² | 3.4 / 6.8 | `spot` | site |
+| `plate` | 720², 1440², + on page | 3.4 / 6.8 | `sq` | `out` (was `site`) |
+| `og` | 1200×630 PNG | 5.0 | `og` | `out` (was `site`) |
+| `banner` | 800×300, 1600×600 | 3.4 / 6.8 | `wide` | `out` (was `site`) |
+| `cover` | 720×405, 1440×810, + on page | 3.4 / 6.8 | `cover` | `out` (was `site`) |
+| `spot` | 96², 192² | 3.4 / 6.8 | `spot` | `out` (was `site`) |
 | `empty` | 320², 640² | 3.4 / 6.8 | `empty` | app (apps/workspace) |
-| `release` | 64², 128², + on page | 2.4 / 4.8 | `stamp` | site |
-| `email` | 600×120, 1200×240 PNG | 3.4 / 6.8 | `strip` | site (mail clients load it from piloti.at) |
+| `release` | 64², 128², + on page | 2.4 / 4.8 | `stamp` | `out` (was `site`) |
+| `email` | 600×120, 1200×240 PNG | 3.4 / 6.8 | `strip` | `out` (was `site`; mail clients need it hosted) |
 | `social` | 1080² PNG | 5.0 | `sq` | out |
 | `linkedin` | 1584×396 PNG | 5.0 | `linkedin` | out |
 | `deck` | 1920×1080 PNG | 5.0 | `cover` | out |
@@ -211,29 +221,18 @@ elsewhere and back and requires identical bytes (the check `still.mjs`
 makes), checks the pixel size, and encodes: WebP at quality 95 with sharp-YUV
 (compared against the PNG at 2x zoom, it keeps the dot screen: mean absolute
 difference 1.6/255), or PNG for formats a scraper or a print shop reads. A
-committed PNG (`site`, `app`: the share cards, the email strip) is quantised
+committed PNG (`app`) is quantised
 to a 256-colour palette to stay under 1 MB; an `out` PNG and every separation
 are lossless (truecolour, or 8-bit grayscale).
 
-- `site` files go to `public/art/`, are committed, and are refused by the
-  pre-commit hook above 1 MB. Only a file a page of this site shows is `site`.
 - `app` files go to the product app, `apps/workspace/public/art/`, committed
-  under the same 1 MB limit, with their own manifest at
-  `apps/workspace/bff/art/art.json`. The app is a second consumer, not a
-  second source: the files are exported from a work here like every other,
-  and `check.mjs` holds both manifests, both folders (orphans) and both source
-  trees (ids, no `/art/` paths) to the JOBS tables. The app reads art through
-  `src/lib/art/` and `components/brand/riso-print.tsx`.
+  and refused by the pre-commit hook above 1 MB, with their manifest at
+  `apps/workspace/bff/art/art.json`. `check.mjs` holds the manifest, the
+  folder (orphans) and the app's source (ids, no `/art/` paths) to the JOBS
+  tables. The app reads art through `bff/art/` and
+  `ui/components/brand/riso-print.tsx`.
 - `out` files go to `art/riso/out/<work>/`, gitignored and reproducible from
   the pin. Upload them where they are used.
-- **Downloads.** Every export ends with `downloads.mjs`, which copies each
-  `out` and `app` file into `public/downloads/` (committed, so the unlisted
-  image page can hand them out: `apps/site/AGENTS.md`, "Unlisted pages")
-  and writes `src/data/downloads.json`. A PNG within 1 MB is copied as it is;
-  a larger one (the slides, the postcard composite) becomes JPEG q95 4:4:4,
-  which every slide tool, LinkedIn and print shop reads (mean error 0.6–1.9
-  of 255 against the PNG). Separations are never re-encoded. `check.mjs` fails
-  on a job without its download, an orphan there, or a stale manifest.
 - **Separations** (formats with `separations: true`) add one grayscale PNG per
   ink, `<stem>-sep-<n>-<ink>.png`, from the page's `?sep=<ink>` view: that
   ink's screened plate, black on white, no paper, no registration offset (the
@@ -256,11 +255,10 @@ are lossless (truecolour, or 8-bit grayscale).
 
 ## The manifest
 
-Every export ends by rewriting `src/data/art.json` (and, for `app` formats,
-`apps/workspace/bff/art/art.json`) from the JOBS tables of all works: one entry per art id (`<work>/<plate>/<format>`) with its CSS size,
+Every export ends by rewriting `apps/workspace/bff/art/art.json` from the JOBS tables of all works: one entry per art id (`<work>/<plate>/<format>`) with its CSS size,
 alt text and caption in `de` and `en`, and a file per density; an `onPage`
-format adds `page`, its on-page twins at the same densities. The site reads
-art only through it (`src/lib/art.ts`), so no page names a file.
+format adds `page`, its on-page twins at the same densities. The app reads
+art only through it (`bff/art/`), so no view names a file.
 
 Every `src` carries `?v=<first 8 hex of the file's sha256>`. `/art/` is served
 with a week's `max-age` (`runtime/cache-control.mjs`) under stable file names,
@@ -270,12 +268,12 @@ fails when a hash in the manifest no longer matches its file.
 
 ## Checks
 
-`check.mjs` (fast, no browser, in `npm run check`) fails on: a work without
+`check.mjs` (fast, no browser, `task art:check`) fails on: a work without
 `PRINT.md`; a missing `LICENSE-NOTICE.md`; a JOBS table that does not
-evaluate; a site file not exported; a manifest that differs from what the JOBS
+evaluate; an app file not exported; a manifest that differs from what the JOBS
 tables and the files give; a file missing, of other pixel size than declared
 or over 1 MB; alt text or a caption missing in a locale or still saying TODO;
-an orphan in `public/art/`; an unknown art id or any `/art/` path in `src/`;
+an orphan in the app's `public/art/`; an unknown art id or any `/art/` path in the app's source;
 an on-page file missing, without alpha, at other densities or sizes than its
 paper twin, or out of parity with it. Parity: multiplied onto the flat paper
 colour, the on-page file must land within 40 levels of the paper file on all

@@ -14,10 +14,10 @@
                 the bake: resampling a halftone screen makes moiré
      encode     'webp' (quality 95, sharp-YUV) or 'png' (256-colour palette when
                 committed, lossless for 'out' and separations)
-     dest       'site' -> apps/site/public/art/, committed, in src/data/art.json
-                'app'  -> apps/workspace/public/art/, committed, in the app's
+     dest       'app'  -> apps/workspace/public/art/, committed, in the app's
                           bff/art/art.json (the product app, Next.js)
-                'out'  -> art/riso/out/<work>/, gitignored, reproducible
+                'out'  -> art/riso/out/<work>/, gitignored, reproducible (the
+                          retired public site's formats export here now)
      file       name template: {base} {w} {h}
      numeral    false leaves the plate numeral off (tiny formats)
      separations  also write one grayscale PNG per ink for a riso print shop
@@ -34,32 +34,32 @@
 const FORMATS = {
   plate: {
     use: 'Section plate: 720 CSS px (or 360/240 at half/third) square',
-    compose: 'sq', encode: 'webp', dest: 'site', file: '{base}-{w}', onPage: true,
+    compose: 'sq', encode: 'webp', dest: 'out', file: '{base}-{w}', onPage: true,
     sizes: [{ density: 1, w: 720, h: 720, pitch: 3.4 }, { density: 2, w: 1440, h: 1440, pitch: 6.8 }],
   },
   og: {
     use: 'Open Graph / Twitter share card. Platforms scale it, so a coarser screen that survives reduction; PNG because not every scraper reads WebP',
-    compose: 'og', encode: 'png', dest: 'site', file: '{base}-og-{w}x{h}',
+    compose: 'og', encode: 'png', dest: 'out', file: '{base}-og-{w}x{h}',
     sizes: [{ density: 1, w: 1200, h: 630, pitch: 5.0 }],
   },
   banner: {
     use: 'Page or blog-category header, 800 CSS px wide',
-    compose: 'wide', encode: 'webp', dest: 'site', file: '{base}-banner-{w}x{h}',
+    compose: 'wide', encode: 'webp', dest: 'out', file: '{base}-banner-{w}x{h}',
     sizes: [{ density: 1, w: 800, h: 300, pitch: 3.4 }, { density: 2, w: 1600, h: 600, pitch: 6.8 }],
   },
   cover: {
     use: 'Blog post cover, 720 CSS px wide, 16:9',
-    compose: 'cover', encode: 'webp', dest: 'site', file: '{base}-cover-{w}x{h}', onPage: true,
+    compose: 'cover', encode: 'webp', dest: 'out', file: '{base}-cover-{w}x{h}', onPage: true,
     sizes: [{ density: 1, w: 720, h: 405, pitch: 3.4 }, { density: 2, w: 1440, h: 810, pitch: 6.8 }],
   },
   spot: {
     use: 'Spot illustration or icon, 96 CSS px square. Needs its own composition with heavy lines',
-    compose: 'spot', encode: 'webp', dest: 'site', file: '{base}-spot-{w}', numeral: false,
+    compose: 'spot', encode: 'webp', dest: 'out', file: '{base}-spot-{w}', numeral: false,
     sizes: [{ density: 1, w: 96, h: 96, pitch: 3.4 }, { density: 2, w: 192, h: 192, pitch: 6.8 }],
   },
   release: {
     use: 'Release stamp beside a changelog entry, 64 CSS px square. Its own composition: solid shapes, heavy lines, one screened field at most',
-    compose: 'stamp', encode: 'webp', dest: 'site', file: '{base}-{w}', numeral: false, onPage: true,
+    compose: 'stamp', encode: 'webp', dest: 'out', file: '{base}-{w}', numeral: false, onPage: true,
     sizes: [{ density: 1, w: 64, h: 64, pitch: 2.4 }, { density: 2, w: 128, h: 128, pitch: 4.8 }],
   },
   empty: {
@@ -68,8 +68,8 @@ const FORMATS = {
     sizes: [{ density: 1, w: 320, h: 320, pitch: 3.4 }, { density: 2, w: 640, h: 640, pitch: 6.8 }],
   },
   email: {
-    use: 'Email signature strip, 600 CSS px wide. A site asset because mail clients load it from https://piloti.at/art/; PNG because Outlook and older clients read no WebP',
-    compose: 'strip', encode: 'png', dest: 'site', file: '{base}-email-{w}x{h}', numeral: false,
+    use: 'Email signature strip, 600 CSS px wide. Mail clients load it from a public URL, so it must be hosted before use; PNG because Outlook and older clients read no WebP',
+    compose: 'strip', encode: 'png', dest: 'out', file: '{base}-email-{w}x{h}', numeral: false,
     sizes: [{ density: 1, w: 600, h: 120, pitch: 3.4 }, { density: 2, w: 1200, h: 240, pitch: 6.8 }],
   },
   social: {
