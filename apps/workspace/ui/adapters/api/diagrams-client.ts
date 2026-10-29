@@ -14,6 +14,7 @@
 
 import { z } from 'zod'
 import type { fileDiagramSchema } from '@/lib/diagrams/diagram-wire'
+import type { saveSketchSchema } from '@/lib/diagrams/sketch-wire'
 import { ApiRequestError } from './api-error'
 
 // ============================================================
@@ -81,4 +82,70 @@ export const fileDiagram = async (projectId: string, request: DiagramFilingReque
     svgDocumentId: parsed.data.svg.documentId,
     pdfFiled: FiledHalfSchema.safeParse(parsed.data.pdf).success,
   }
+}
+
+// ============================================================
+// A filed sketch, reopened (ADR-0148)
+// ============================================================
+
+/** A sketch request refused: `stale` when a newer Fassung exists (409 `stale_base_version`). */
+export class SketchRequestError extends ApiRequestError {
+  readonly serverMessage: string | null
+
+  constructor(status: number, serverMessage: string | null, reason: string | null) {
+    super(`The sketch request failed: ${status}`, status, reason)
+    this.name = 'SketchRequestError'
+    this.serverMessage = serverMessage
+  }
+
+  get stale(): boolean {
+    return this.status === 409 && this.reason === 'stale_base_version'
+  }
+}
+
+async function sketchError(response: Response): Promise<SketchRequestError> {
+  const body: unknown = await response.json().catch(() => null)
+  const envelope = z
+    .object({ error: z.string().optional(), details: z.object({ reason: z.string() }).partial().optional() })
+    .safeParse(body)
+  const data = envelope.success ? envelope.data : {}
+  return new SketchRequestError(response.status, data.error ?? null, data.details?.reason ?? null)
+}
+
+const SketchViewSchema = z.object({
+  documentId: z.string().min(1),
+  versionId: z.string().nullable(),
+  title: z.string(),
+  scene: z.looseObject({ type: z.literal('excalidraw'), elements: z.array(z.looseObject({})) }),
+})
+
+/** What the editor needs of a filed sketch: its scene and the Fassung it was read from. */
+export type SketchForEditing = z.infer<typeof SketchViewSchema>
+
+/** `GET /api/documents/{id}/sketch`: the stored scene. Throws {@link SketchRequestError} (415: not a sketch). */
+export const getSketch = async (documentId: string, signal?: AbortSignal): Promise<SketchForEditing> => {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch`, { signal })
+  if (!response.ok) throw await sketchError(response)
+  const parsed = SketchViewSchema.safeParse(await response.json())
+  if (!parsed.success) throw new SketchRequestError(response.status, null, null)
+  return parsed.data
+}
+
+/** What a save sends: the route's own request body. */
+export type SketchSaveRequest = z.input<typeof saveSketchSchema>
+
+/** `PUT /api/documents/{id}/sketch`: the new Fassung's id and number. */
+export const saveSketch = async (
+  documentId: string,
+  request: SketchSaveRequest
+): Promise<{ versionId: string; versionNumber: number }> => {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch`, {
+    method: 'PUT',
+    headers: jsonHeaders,
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) throw await sketchError(response)
+  const parsed = z.object({ versionId: z.string().min(1), versionNumber: z.number() }).safeParse(await response.json())
+  if (!parsed.success) throw new SketchRequestError(response.status, null, null)
+  return parsed.data
 }

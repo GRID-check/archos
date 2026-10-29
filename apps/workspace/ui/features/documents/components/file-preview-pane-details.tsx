@@ -25,6 +25,7 @@ import { DocumentRevisions } from './document-revisions'
 import { AssignPopover } from './assign-popover'
 
 import { DiscussDocumentButton } from './discuss-document-button'
+import { PreviewDocumentAction } from '../preview-actions'
 
 import { AnnotationsSummary } from './review/annotations-summary'
 
@@ -35,7 +36,7 @@ import { IfcFileFacts } from './file-preview-pane-lazy'
 import type { FilePreviewController } from './use-file-preview-controller'
 
 export function FilePreviewDetailsPanel({ controller }: { controller: FilePreviewController }) {
-  const { actions, assigneeNames, canCollaborate, canManage, details, detailsFailed, detailsLoading, detailsOpen, discussHint, file, handleReingest, hasOwnershipBlock, hasVisualContent, heldVerdict, inChat, indexedReady, isFailed, isHeld, isModel, onAssigneesChanged, onLifecycleChanged, onOpenDocument, onReingested, onRevisionChanged, onTagsUpdated, openMarks, openReview, pdfInWell, peeking, projectId, reader, responsibleNames, retryDetails, review, reviewEnabled, reviewViewer, revisionsShown, scope, setDetailsOpen, setShownFinding, setShownPage, showIndexedHeading, showInlinePdf, showMetadataPanel, showPage, shownFinding, shownType, t } = controller
+  const { actions, assigneeNames, canCollaborate, canManage, details, detailsFailed, detailsLoading, detailsOpen, discussHint, file, handleReingest, hasOwnershipBlock, hasVisualContent, heldVerdict, inChat, indexedReady, isFailed, isHeld, isModel, loadPreview, onAssigneesChanged, onLifecycleChanged, onOpenDocument, onReingested, onRevisionChanged, onTagsUpdated, openMarks, openReview, pdfInWell, peeking, projectId, reader, responsibleNames, retryDetails, review, reviewEnabled, reviewViewer, revisionsShown, scope, setDetailsOpen, setShownFinding, setShownPage, showIndexedHeading, showInlinePdf, showMetadataPanel, showPage, shownFinding, shownType, t } = controller
   return (
     <>
           {/* Right: indexed-metadata panel (FB-8; off only in the peek).
@@ -159,6 +160,14 @@ export function FilePreviewDetailsPanel({ controller }: { controller: FilePrevie
                 )}
                 {projectId && canCollaborate && isCitable(file) && (
                   <AskColleagueButton projectId={projectId} file={file} documentId={file.id} />
+                )}
+                {projectId && !reader && (
+                  <PreviewDocumentAction
+                    documentId={file.id}
+                    contentType={file.contentType}
+                    authoredBy={file.authoredBy ?? null}
+                    onChanged={loadPreview}
+                  />
                 )}
               </div>
               )}

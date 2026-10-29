@@ -408,8 +408,9 @@ const renderMermaid: DiagramRenderer = (request) => withMermaid(() => renderMerm
  * („Als Skizze bearbeiten", `sketch/`). That path draws its own SVG with
  * Excalidraw's `exportToSvg` at the moment of filing and posts scene and
  * picture together, so nothing renders an `.excalidraw` source from storage.
- * An entry here would be code with no caller; it belongs here on the day
- * something reopens a filed sketch.
+ * Reopening a filed sketch (ADR-0148) did not change that: the editor opens
+ * the stored scene itself and the Files preview shows the stored SVG, so an
+ * entry here would still be code with no caller.
  */
 export const DIAGRAM_RENDERERS: Readonly<Record<DiagramSourceKind, DiagramRenderer | null>> = {
   mermaid: renderMermaid,

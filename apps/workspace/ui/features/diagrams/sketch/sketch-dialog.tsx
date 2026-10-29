@@ -15,6 +15,11 @@
  * `sourceKind: 'excalidraw'` and `edited: true`, so the files say a person
  * edited them, and the turn's trace gets a `diagram-filed: edited` score.
  *
+ * A filed sketch reopened from Files (ADR-0148) opens here too, with its
+ * stored scene (`revision`), and „Als neue Fassung speichern" writes the next
+ * Fassung of that document (`useSketchRevision`, `PUT /api/documents/{id}/sketch`)
+ * instead of filing a new pair.
+ *
  * A close with unsaved changes asks once, in place. Excalidraw keeps no draft
  * of its own here (its local storage is the excalidraw.com app's, not the
  * component's), so a stray Escape would otherwise throw the work away.
@@ -30,6 +35,7 @@ import { useDiagramFiling } from '../use-diagram-filing'
 import { useDiagramTheme } from '../use-diagram-theme'
 import { DiagramFilingControls } from '../components/diagram-filing-controls'
 import type { SketchCanvasHandle } from './sketch-canvas'
+import { useSketchRevision, type SketchRevisionState } from './use-sketch-revision'
 
 /** While the canvas chunk loads, and in its place when it could not be loaded (offline, a stale deploy). */
 function CanvasLoading({ error }: { error?: Error | null }) {
@@ -55,9 +61,25 @@ export interface SketchDialogProps {
   elements: readonly object[]
   /** A title the fence states outside its source (a sketch fence's `title`). */
   title?: string | null
+  /** A filed sketch reopened from Files: its stored scene, saved as the next Fassung of `documentId`. */
+  revision?: {
+    documentId: string
+    baseVersionId: string | null
+    scene: { elements: readonly object[]; appState?: Record<string, unknown> }
+    onSaved?: () => void
+  } | null
 }
 
-export function SketchDialog({ open, onOpenChange, source, elements, title }: SketchDialogProps) {
+/** The line beside the buttons after a save of a reopened sketch. */
+function RevisionStatus({ state }: { state: SketchRevisionState }) {
+  const t = useTranslations(diagramsCopy)
+  if (state.kind === 'saved') return <span>{t('sketch.savedVersion', { number: String(state.versionNumber) })}</span>
+  if (state.kind === 'stale') return <span className="text-destructive">{t('sketch.staleVersion')}</span>
+  if (state.kind === 'failed') return <span className="text-destructive">{state.message}</span>
+  return null
+}
+
+export function SketchDialog({ open, onOpenChange, source, elements, title, revision = null }: SketchDialogProps) {
   const t = useTranslations(diagramsCopy)
   const { locale } = useLocale()
   const theme = useDiagramTheme()
@@ -70,7 +92,15 @@ export function SketchDialog({ open, onOpenChange, source, elements, title }: Sk
     return handle.current.prepare()
   }, [])
   const filing = useDiagramFiling({ source, fileSvg: null, prepareSketch, title })
-  const filed = filing.state.kind === 'filed' || filing.state.kind === 'partial'
+  const revised = useSketchRevision(
+    revision ? { documentId: revision.documentId, baseVersionId: revision.baseVersionId } : null,
+    prepareSketch,
+    revision?.onSaved
+  )
+  const filed = revision
+    ? revised.state.kind === 'saved' || revised.state.kind === 'stale'
+    : filing.state.kind === 'filed' || filing.state.kind === 'partial'
+  const saving = revision ? revised.state.kind === 'saving' : filing.state.kind === 'filing'
 
   const requestClose = useCallback(
     (next: boolean) => {
@@ -96,12 +126,15 @@ export function SketchDialog({ open, onOpenChange, source, elements, title }: Sk
       >
         <DialogHeader className="shrink-0 pr-8 text-left phone:pt-[max(0.75rem,env(safe-area-inset-top))] phone:pr-[calc(env(safe-area-inset-right)+3.75rem)] phone:pl-[max(1rem,env(safe-area-inset-left))]">
           <DialogTitle className="text-base">{t('sketch.title')}</DialogTitle>
-          <DialogDescription className="text-xs">{t('sketch.description')}</DialogDescription>
+          <DialogDescription className="text-xs">
+            {t(revision ? 'sketch.reviseDescription' : 'sketch.description')}
+          </DialogDescription>
         </DialogHeader>
         <div className="border-border min-h-0 flex-1 overflow-hidden rounded-lg border phone:rounded-none phone:border-x-0">
           {open ? (
             <SketchCanvas
               initialElements={elements}
+              initialScene={revision?.scene ?? null}
               theme={theme}
               langCode={locale === 'de' ? 'de-DE' : 'en'}
               onReady={onReady}
@@ -132,8 +165,9 @@ export function SketchDialog({ open, onOpenChange, source, elements, title }: Sk
           ) : (
             <>
               <span className="text-muted-foreground mr-auto text-xs" aria-live="polite">
-                {filed ? <DiagramFilingControls filing={filing} /> : null}
-                {filing.state.kind === 'failed' ? (
+                {revision ? <RevisionStatus state={revised.state} /> : null}
+                {!revision && filed ? <DiagramFilingControls filing={filing} /> : null}
+                {!revision && filing.state.kind === 'failed' ? (
                   <span className="text-destructive">{filing.state.message}</span>
                 ) : null}
               </span>
@@ -142,11 +176,13 @@ export function SketchDialog({ open, onOpenChange, source, elements, title }: Sk
               </Button>
               {filed ? null : (
                 <Button
-                  onClick={() => void filing.file()}
-                  disabled={!filing.target || filing.state.kind === 'filing'}
+                  onClick={() => void (revision ? revised.save() : filing.file())}
+                  disabled={(!revision && !filing.target) || saving}
                   data-testid="sketch-save"
                 >
-                  {filing.state.kind === 'filing' ? t('sketch.saving') : t('sketch.save')}
+                  {revision
+                    ? t(saving ? 'sketch.savingVersion' : 'sketch.saveVersion')
+                    : t(saving ? 'sketch.saving' : 'sketch.save')}
                 </Button>
               )}
             </>

@@ -4,7 +4,7 @@
  * Deliberately thin: it only mounts cross-cutting client affordances that
  * must exist on every /app page. Today that is the keyboard-shortcuts
  * feature (command palette, global hotkeys, cheatsheet), mounted for every
- * session with an organization. The per-user preference is enforced inside the
+ * session with an organization, and the Files preview's sketch action. The per-user preference is enforced inside the
  * client component itself. The same goes for the notification worker's
  * lifecycle (Web Push, ADR-0112) and the offer to turn notifications on.
  *
@@ -23,6 +23,7 @@ import { isAuthRequired } from '@/lib/auth/auth-required'
 import { PushLifecycle } from '@/features/notifications/components/push-lifecycle'
 import { InboxPushOffer } from '@/features/notifications/components/inbox-push-offer'
 import { getPushConfig } from '@/lib/push/service'
+import { SketchPreviewActions } from '@/features/diagrams/sketch-preview-actions'
 
 
 interface AppLayoutProps {
@@ -73,7 +74,8 @@ export default async function AppLayout({ children }: AppLayoutProps): Promise<J
 
     return (
       <>
-        {children}
+        {/* The Files preview's slot for „Als Skizze bearbeiten" (ADR-0148). */}
+        <SketchPreviewActions>{children}</SketchPreviewActions>
         {shortcuts}
         {notifications}
       </>
