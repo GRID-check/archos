@@ -235,6 +235,21 @@ button.ui-nav-link {
   outline: none;
 }
 
+/* Gallery dots: each dot is a 24px-wide target (WCAG 2.5.8 target size); the design system's
+   5px padding left 16px. Belongs in packages/brand components.css (.ui-gallery-dot); remove
+   here once it is there. */
+.ui-gallery-dot {
+  min-width: var(--space-6);
+  padding: 0 var(--space-1);
+}
+
+/* Demo: the note under the form card sits on the photo. In the muted ink it reached only
+   3.05:1 over the photo's lightest pixels at 1280px (measured), under the 4.5:1 of WCAG 1.4.3;
+   in full ink it reaches 7:1. Belongs in packages/brand components.css (.ui-split-note). */
+.ui-split-note {
+  color: var(--ink);
+}
+
 /* Not found: the two ways on. */
 .not-found-actions {
   margin-top: var(--space-8);
