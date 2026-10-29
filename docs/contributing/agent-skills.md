@@ -145,6 +145,82 @@ A skill carrying `disable-model-invocation: true` never triggers by itself. Ask
 for it by name. That is deliberate for `interrogate` and `blast-radius`, which
 spawn subagents.
 
+## Cloud sessions: what is installed and how
+
+A Claude Code cloud session starts from a container with the repository cloned
+and nothing else installed. Two pieces make `agent-browser`, `apm` and the
+pinned skills present in every session, with nobody installing anything by hand.
+
+**Paste this one line into claude.ai, environment settings, Setup script:**
+
+```bash
+bash archos/scripts/cloud-setup.sh
+```
+
+The script starts in the directory above the clone and finds the repository from
+its own location. `archos` is the clone's directory name; change it if the
+environment clones under another name. For a session that attaches several
+repositories, use `bash archos/scripts/cloud-setup.sh --with-skills` (see
+"Why two pieces" below).
+
+| Piece | Runs | Does |
+|---|---|---|
+| [`scripts/cloud-setup.sh`](../../scripts/cloud-setup.sh) | once per environment snapshot, as root, before Claude starts | Installs go-task and `agent-browser` (one `npm i -g`, pinned), installs `uv` if missing, warms the `apm` CLI cache, reports `gh`. Needs no secrets |
+| `.claude/hooks/session-start.sh` | every `startup` and `resume` session (matcher `startup\|resume`, timeout 540 s), only when `CLAUDE_CODE_REMOTE=true` | Mirrors `task setup`: venv, the four bun installs, `apm install --frozen` (28 skills into `.claude/skills` and `.agents/skills`), and, if missing, the pinned `agent-browser`. Each step records a hash of its lockfile and skips itself when it and its output are unchanged, so a warm start takes about a second |
+
+The pins live in one place: `APM_VERSION` and `AGENT_BROWSER_VERSION` in
+`Taskfile.yml`, the go-task version in `.github/actions/setup-task`. Both
+scripts and the Taskfile read them from there.
+
+### Why two pieces
+
+- **Snapshot.** If the Setup script finishes in about five minutes, the disk is
+  snapshotted and later sessions skip it. Over that, it runs every session and
+  can fail with a generic container error. So it holds only slow, global tools,
+  runs independent installs in parallel and sleeps never.
+- **Exit codes.** A non-zero exit stops the session from starting. Every step
+  of both scripts is therefore non-fatal where the tool is optional, and prints
+  a `WARNING` instead.
+- **Lockfiles.** The snapshot is rebuilt only when the script or the allowed
+  domains change, or after about a week. It never notices a changed `uv.lock`
+  or `bun.lock`, so project dependencies belong in the hook, which hashes them.
+- **Secrets and bun.** The script runs before the proxy that adds network
+  secrets, so it uses none, and bun has known trouble with that proxy, so it
+  installs with npm.
+- **Several repositories.** A session with more than one repository loads none
+  of their `.claude/settings.json`, so the hook never runs there. The
+  `--with-skills` flag publishes the apm skills from the setup line itself.
+  Dependencies for the other tiers still need `task setup`.
+
+### Chromium for `agent-browser`
+
+`agent-browser install` downloads Chrome for Testing from a host the cloud
+network policy blocks. The image ships Playwright's Chromium instead, so the
+hook appends `export AGENT_BROWSER_EXECUTABLE_PATH=/opt/pw-browsers/chromium` to
+`$CLAUDE_ENV_FILE`, the file Claude Code reads after a SessionStart hook to
+persist environment variables into every later Bash call. It does this only when
+that path exists and you have configured no Chrome of your own
+(`AGENT_BROWSER_EXECUTABLE_PATH` or `AGENT_BROWSER_PROVIDER`). If
+`CLAUDE_ENV_FILE` is unset, the hook prints the export line instead. Do not run
+`agent-browser install` in a cloud session.
+
+### Verify
+
+```bash
+agent-browser --version          # the AGENT_BROWSER_VERSION pin
+agent-browser doctor             # or: task agents:browser
+ls .claude/skills | wc -l        # 28
+```
+
+`task agents:setup` does the same on a developer machine (apm skills, then
+`agents:browser`). The hook is silent about a healthy warm start; its
+`[session-start]` lines show what it did.
+
+`apm install` reports `1 file(s) contain hidden characters`. It is the vendored
+`improve-animations` skill from `emilkowalski/skills` (`--verbose` names it). It
+is third-party content under a commit pin, `apm audit` treats it as info, and
+`task agents:audit` does not gate on it.
+
 ## Two things to know before trusting them
 
 **`interrogate` is weaker here than upstream.** It reads a reviewer list from

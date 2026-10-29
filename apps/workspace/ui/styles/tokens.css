@@ -513,17 +513,17 @@
   /* Radius follows size and shape: the brand's ladder (packages/brand/README.md
      "Layout and shape", tokens.json radius-*). Pick the semantic step for the job;
      the same kind of element always takes the same step. */
-  --radius-inline: var(--ds-radius-sm); /* 4px: kbd, checkbox, a tag inside a field */
-  --radius-control: var(--ds-radius-md); /* 6px: buttons, inputs, selects, tabs, toggles, menu and list items */
-  --radius-surface: var(--ds-radius-lg); /* 10px: cards, panels, list containers, toasts, tables, code blocks */
-  --radius-overlay: var(--ds-radius-xl); /* 14px: dialogs, popovers, menus, sheets, the command palette */
+  --radius-inline: var(--ds-radius-inline); /* 4px: kbd, checkbox, a tag inside a field */
+  --radius-control: var(--ds-radius-control); /* 6px: buttons, inputs, selects, tabs, toggles, menu and list items */
+  --radius-surface: var(--ds-radius-surface); /* 10px: cards, panels, list containers, toasts, tables, code blocks */
+  --radius-overlay: var(--ds-radius-overlay); /* 14px: dialogs, popovers, menus, sheets, the command palette */
   --radius-bubble: var(--ds-radius-bubble); /* 18px: chat messages and the composer */
   /* rounded-full stays Tailwind's: chips, badges, counts, avatars, dots, switches. */
   /* Tailwind's own steps, for code not yet on a semantic name; mapped onto the ladder. */
-  --radius-sm: var(--ds-radius-sm);
-  --radius-md: var(--ds-radius-md);
-  --radius-lg: var(--ds-radius-lg);
-  --radius-xl: var(--ds-radius-xl);
+  --radius-sm: var(--ds-radius-inline);
+  --radius-md: var(--ds-radius-control);
+  --radius-lg: var(--ds-radius-surface);
+  --radius-xl: var(--ds-radius-overlay);
   --radius-2xl: var(--ds-radius-bubble);
   --radius-3xl: var(--ds-radius-bubble);
 
