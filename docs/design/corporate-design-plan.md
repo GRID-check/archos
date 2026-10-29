@@ -20,7 +20,7 @@ No identifier anywhere carries the product's name.
 | 3 | **Brand-name rule** extended to the new name, so internal naming stays brand-agnostic | `scripts/check_brand_names.py` | this change |
 | 4 | **Greenfield website** (Astro): Startseite, Datensicherheit, Blog, Kontakt, Impressum, Datenschutz, Demo (sign-in is AuthKit's hosted page in the same design, listing the methods WorkOS has enabled), built only from the package | `apps/website/` | this change, beside `apps/site` |
 | 5 | **Cutover**: Dockerfile and deploy for `apps/website`, blog posts and the changelog moved over, redirects for the old SEO URLs, then `apps/site` deleted | deploy, CI | next change |
-| 6 | **Workspace adopts the design**: light palette, General Sans and the 4px control radius in `ui/styles/tokens.css` (this change); mapping the whole theme onto the shared tokens, and the product name read from `identity.json` at the rebrand | `apps/workspace` | first part in this change |
+| 6 | **Workspace adopts the design**: General Sans, and the palette (light and dark) and radii of `ui/styles/tokens.css` as references to the package's `--ds-*` vars (`shared/brand/tokens.vars.css`), the layers the brand has no token for mixed from brand tokens; the product name read from `identity.json` at the rebrand | `apps/workspace` | palette, font and radii done |
 
 ## How sharing works
 
