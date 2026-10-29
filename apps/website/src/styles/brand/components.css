@@ -80,7 +80,7 @@ a.ui-wordmark:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .ui-header-inner > .ui-wordmark { justify-self: start; }
 .ui-nav ul { display: flex; gap: var(--space-6); list-style: none; margin: 0; padding: 0; }
 .ui-nav-link, .ui-nav-link:hover { color: var(--ink); text-decoration: none; font-size: 14px; line-height: 20px; font-weight: 420; letter-spacing: 0.01em; text-underline-offset: 0.3em; text-decoration-thickness: var(--stroke-hairline); }
-.ui-nav-link:hover, .ui-nav-link[aria-current="page"] { text-decoration-line: underline; }
+.ui-nav-link:hover, .ui-nav-link[aria-current="page"], .ui-nav-link[aria-pressed="true"] { text-decoration-line: underline; }
 .ui-nav-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .ui-header-actions { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-2); }
 @media (max-width: 767px) { .ui-header-inner { grid-template-columns: 1fr auto; } .ui-nav { display: none; } }

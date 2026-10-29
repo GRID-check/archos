@@ -33,8 +33,8 @@ const galleryImages = [
 const knowledgeVideo = {
   poster: '/media/knowledge-video-poster.webp',
   sources: [
-    { src: '/media/knowledge-video.webm', type: 'video/webm' },
     { src: '/media/knowledge-video.mp4', type: 'video/mp4' },
+    { src: '/media/knowledge-video.webm', type: 'video/webm' },
   ],
 };
 const duo: [DuoItem, DuoItem] = [
@@ -68,6 +68,10 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
     <img
       slot="media"
       src={heroImage}
+      width="2560"
+      height="1460"
+      fetchpriority="high"
+      decoding="async"
       alt={c.hero.alt}
       style="display: block; width: 100%; height: auto; background: var(--surface-sunken);"
     />

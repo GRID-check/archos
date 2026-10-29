@@ -28,6 +28,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 const here = Astro.url.pathname;
 const there = alternateOf(here);
 const hrefFor = (target: Locale) => new URL(target === locale ? here : there, Astro.site);
+// Social previews: the share card is the one image every page shares; og:locale names the region.
+const ogLocale: Record<Locale, string> = { de: 'de_AT', en: 'en_GB' };
+const shareImage = new URL('/media/share-card.jpg', Astro.site);
 ---
 
 <!doctype html>
@@ -39,13 +42,24 @@ const hrefFor = (target: Locale) => new URL(target === locale ? here : there, As
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={shareImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content={ogLocale[locale]} />
+    <meta property="og:locale:alternate" content={ogLocale[locale === 'de' ? 'en' : 'de']} />
+    <meta property="og:site_name" content={identity.name} />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="alternate" hreflang="de" href={hrefFor('de')} />
     <link rel="alternate" hreflang="en" href={hrefFor('en')} />
     <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
-    {!bare && <a class="site-skip" href="#main">{ui.skipLink}</a>}
+    <a class="site-skip" href="#main">{ui.skipLink}</a>
     {!bare && <Header locale={locale} current={Astro.url.pathname} />}
     <main id="main">
       <slot />

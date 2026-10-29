@@ -10,14 +10,16 @@ interface Props {
   class?: string;
 }
 
-const { title, text, date, href = '#', image, imageAlt = '', class: className } = Astro.props;
+const { title, text, date, href, image, imageAlt = '', class: className } = Astro.props;
+// A card without a real URL is a plain block, not a link.
+const Tag = href ? 'a' : 'div';
 ---
 
 <li class:list={['ui-post', className]}>
-  <a href={href}>
-    <div class="ui-post-media">{image && <img src={image} alt={imageAlt} />}</div>
+  <Tag href={href}>
+    <div class="ui-post-media">{image && <img src={image} alt={imageAlt} loading="lazy" decoding="async" />}</div>
     <h3 class="ui-post-title heading-3">{title}</h3>
     {text && <p class="ui-post-text body">{text}</p>}
     {date && <p class="ui-post-date small">{date}</p>}
-  </a>
+  </Tag>
 </li>

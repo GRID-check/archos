@@ -39,7 +39,7 @@ const ui = t(locale);
         >
           {item.image && (
             <div class="ui-gallery-media">
-              <img src={item.image} alt={item.alt || ''} />
+              <img src={item.image} alt={item.alt || ''} loading="lazy" decoding="async" />
             </div>
           )}
           <p class="ui-gallery-text heading-2">

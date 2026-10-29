@@ -14,13 +14,13 @@ export const DEFAULT_LOCALE: Locale = 'de'
 
 export const ROUTES = {
   home: { de: '/', en: '/en/' },
-  security: { de: '/datensicherheit', en: '/en/security' },
-  blog: { de: '/blog', en: '/en/blog' },
-  contact: { de: '/kontakt', en: '/en/contact' },
-  imprint: { de: '/impressum', en: '/en/imprint' },
-  privacy: { de: '/datenschutz', en: '/en/privacy' },
-  login: { de: '/login', en: '/en/login' },
-  demo: { de: '/demo', en: '/en/demo' },
+  security: { de: '/datensicherheit/', en: '/en/security/' },
+  blog: { de: '/blog/', en: '/en/blog/' },
+  contact: { de: '/kontakt/', en: '/en/contact/' },
+  imprint: { de: '/impressum/', en: '/en/imprint/' },
+  privacy: { de: '/datenschutz/', en: '/en/privacy/' },
+  login: { de: '/login/', en: '/en/login/' },
+  demo: { de: '/demo/', en: '/en/demo/' },
 } as const satisfies Record<string, Record<Locale, string>>
 
 export type RouteKey = keyof typeof ROUTES

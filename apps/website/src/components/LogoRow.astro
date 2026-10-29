@@ -15,7 +15,7 @@ const cols = columns || logos.length || 4;
   {
     logos.map((logo) => (
       <div class="ui-logo">
-        <img src={logo.src} alt={logo.alt} style={`height: ${logo.height || 48}px`} />
+        <img src={logo.src} alt={logo.alt} style={`height: ${logo.height || 48}px`} loading="lazy" decoding="async" />
       </div>
     ))
   }

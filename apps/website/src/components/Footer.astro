@@ -60,7 +60,7 @@ const homeHref = Astro.props.homeHref ?? localePath('home', locale);
     <div class="ui-footer-funding small">
       <p>{ui.footerFunding}</p>
       <div class="ui-footer-funding-logo">
-        <img src="/media/funding-aws-gray.png" alt={ui.fundingLogoAlt} />
+        <img src="/media/funding-aws-gray.png" alt={ui.fundingLogoAlt} loading="lazy" decoding="async" />
       </div>
     </div>
     <div class="ui-footer-bottom small">

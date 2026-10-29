@@ -35,3 +35,12 @@ video {
 .page-gap {
   margin-top: var(--space-18);
 }
+
+/* A filter control is a button in the blog; it keeps the link look of .ui-nav-link. */
+button.ui-nav-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}

@@ -54,7 +54,7 @@ const hasMenu = links.length > 0 || Boolean(login);
       )
     }
     <div class="ui-header-actions">
-      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} aria-label={ui.switchLanguage}>
+      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} aria-label={`${otherLocale.toUpperCase()} – ${ui.switchLanguage}`}>
         {localeCodes[otherLocale]}
       </a>
       {login && (

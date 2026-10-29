@@ -25,9 +25,9 @@ const c = withName(copy[locale]);
         {
           c.filters.map((label, i) => (
             <li>
-              <a class="ui-nav-link" href="#" aria-current={i === 0 ? 'page' : undefined}>
+              <button type="button" class="ui-nav-link" aria-pressed={i === 0 ? 'true' : 'false'}>
                 {label}
-              </a>
+              </button>
             </li>
           ))
         }
@@ -35,7 +35,7 @@ const c = withName(copy[locale]);
     </nav>
 
     <ul class="ui-posts">
-      {c.posts.map((title) => <PostCard title={title} href="#" />)}
+      {c.posts.map((title) => <PostCard title={title} />)}
     </ul>
 
     <div class="ui-center page-gap">

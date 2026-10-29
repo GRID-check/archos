@@ -55,6 +55,7 @@ The table gives the source file and where it appears.
 | `knowledge-video-poster.webp` | `c9e9e60311.webp` | Home, poster of the video "Das Wissen Ihres Büros wird nutzbar." |
 | `knowledge-video.webm` | `28f2a93346.webm` | Same video, first source (WebM) |
 | `knowledge-video.mp4` | `8cde9d7ebc.mp4` | Same video, second source (MP4) |
+| `share-card.jpg` | none, cropped from `login-office-photo.webp` | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
 | `founders-photo.jpg` | `d06fb4a368.jpg` | Home, "Das Planungsbüro der Zukunft entsteht heute." (founding team) |
 | `team-conversation-photo.jpg` | `88395fbfb8.jpg` | Home, portrait beside the feld72 quote (grayscale) |
 | `login-office-photo.webp` | `2052fe5fbc.webp` | Login, side photo (empty office in evening light) |
