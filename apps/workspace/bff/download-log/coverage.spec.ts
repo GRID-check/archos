@@ -137,13 +137,14 @@ const OBJECT_READERS: Record<string, Disposition> = {
  */
 const PINNED_HELPERS: Record<string, { callers: readonly string[]; reason: string }> = {
   'lib/diagrams/sketch-document.ts::readStoredText': {
-    callers: ['storedSceneOf'],
-    reason: 'storedSceneOf is the one reader of a sketch’s stored scene; see the next entry for who calls it.',
+    callers: ['publishedSketchOf'],
+    reason:
+      'publishedSketchOf is the one reader of a sketch’s stored scene: storedSceneOf here (see the next entry), and lib/annotations/sketch-place.ts, which reads it on the server to place a mark’s box on its elements and hands no bytes to anyone.',
   },
   'lib/diagrams/sketch-document.ts::storedSceneOf': {
     callers: ['readSketchDocument', 'saveSketchDocument'],
     reason:
-      'readSketchDocument records the open (`preview`); saveSketchDocument reads the scene only to refuse a document that carries none, and returns the new version, never the old bytes.',
+      'readSketchDocument records the open (`preview`, not for the preview’s probe); saveSketchDocument reads the scene to refuse a document that carries none and to version the save against it, and returns the new version, never the old bytes.',
   },
   'lib/documents/version-content.ts::readObjectText': {
     callers: ['fetchVersionText', 'readVersionForService'],
