@@ -70,7 +70,7 @@ Full text: the component sheets in `docs/components/`.
 **Layout and shape**
 
 - Two widths: content in a 1280px container with 32px margins; header and hero image full width with 64px margins. Mobile margins are 16px.
-- Radius 4px only for controls (buttons, play button, gallery controls). Images, cards, fields and sections are square.
+- Radius 4px (`radius-md`) for controls (buttons, fields in the app, play button, gallery controls). On the website, images, cards, fields and sections are square. In the app, surfaces (cards, panels, dialogs, popovers, menus, sheets) take `radius-lg` (8px): a tool you work in all day reads softer than a page you scroll once. Never pills; round only what is round (avatars, dots, switch knobs).
 - Lines only where they carry a function: field borders, underlines, FAQ and info list dividers.
 - Motion is quiet and architectural: things arrive and come to rest, nothing bounces. Tokens `--duration-*`, `--ease-settle`/`--ease-draft`, `--stagger-row`, `--travel-sm` (the vocabulary of `docs/ux/motion.md`); hover stays 200ms `ease-out`. What moves: a block below the fold arrives once on scroll (`data-reveal`, 8px, 480ms), the header's hairline fades in when the page passes beneath it, an FAQ answer opens by height, the mobile menu settles in. Nothing on screen at load moves; with `prefers-reduced-motion` none of it runs and the still page is complete.
 

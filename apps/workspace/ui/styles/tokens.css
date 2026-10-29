@@ -549,8 +549,9 @@
      segmented controls, menu and list items, badges, chips. 4px, one value. */
   --radius-control: var(--ds-radius-md);
   /* Surfaces: cards, panels, sheets, dialogs, popovers, menu containers, tooltips,
-     toasts, images, tables, code blocks. Square, separated by hairlines and whitespace. */
-  --radius-surface: var(--ds-radius-none);
+     toasts, tables, code blocks. The brand's app surface radius (radius-lg, 8px): soft,
+     separated by hairlines and whitespace, never lifted by a shadow. */
+  --radius-surface: var(--ds-radius-lg);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
