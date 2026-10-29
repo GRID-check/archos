@@ -2,7 +2,7 @@
 
 Every change a customer can notice ships with a release note, in the same pull
 request that makes the change. The notes in the public sections are published
-to the changelog on the marketing site, automatically, in German and English.
+to the changelog on the website, automatically, in German and English.
 Security fixes and severe fixes are written down the same way and kept in the
 repository, but never published: the changelog is product news, not a bug
 register.
@@ -20,11 +20,10 @@ register.
   `no-release-note` label instead. The job reads the label when it runs, so
   a label added after the push needs only a re-run of the **Repo checks**
   job, not a new commit.
-- **Destination:** the public changelog, `/changelog` (de) and `/en/changelog`
-  (en). Until the cutover moves it into `apps/website`, the pipeline writes
-  `apps/site/src/data/changelog.json`, which no deployed image serves: the `web`
-  image builds `apps/website` (`ci/image_inputs.py`). A published entry is in
-  that file and on no page until then.
+- **Destination:** the public changelog on the website, `/changelog/` (de) and
+  `/en/changelog/` (en). The pipeline writes `apps/website/src/data/changelog.json`
+  (one file, every note in both languages); `apps/website/src/views/ChangelogView.astro`
+  renders it, and the `web` image builds `apps/website` (`ci/image_inputs.py`).
 - **Reader:** the architect using Piloti. Not the reviewer of your diff, and not
   the people who run the platform.
 
@@ -92,7 +91,8 @@ enforces every rule marked *lint*, and each failure says how to fix it.
    the mechanism goes in the PR description.
 4. **No internal names.** *(lint, in part)* No issue numbers, commit shas, file
    names, repository paths, module or component names, and no links other than
-   piloti.at. Name things the way the UI names them.
+   to the website (the domain in `packages/brand/identity.json`, or the former
+   piloti.at until the domain cutover). Name things the way the UI names them.
 5. **Plain text.** *(lint)* No reStructuredText, backticks or code fences.
 6. **Operators go under `operators`.** *(lint)* The Platform area, model
    defaults, deployment, migration or environment settings: nobody in an
@@ -223,14 +223,15 @@ linted and translated like a note. A week without an entry shows its notes only.
    `scripts/release_notes.py publish`: reno reads the notes **through git
    history**; each new English sentence is translated into German once and
    cached in `releasenotes/translations/de.json`.
-3. The regenerated `apps/site/src/data/changelog.json` is committed back to
+3. The regenerated `apps/website/src/data/changelog.json` is committed back to
    `develop`. Publishing runs on pushes to `develop` only, and the push is
    authenticated as the `RELEASE_PAT` owner when that secret is set (falling
    back to `GITHUB_TOKEN`), because the branch ruleset requires changes to
    arrive via pull request.
-4. Before the cutover that is the end: the file belongs to `apps/site`, which
-   no image builds. After it, the commit rebuilds the web image, the staging
-   deploy rolls it out, and the note is on the site.
+4. That commit changes `apps/website`, so CI rebuilds the `web` image, the
+   staging deploy rolls it out, and the note is on the site. (Until 2026-10-29
+   the file lived in the retired `apps/site`, which no image built: the bot's
+   commits from before then changed a file nothing served.)
 
 ### Translation
 
@@ -254,7 +255,7 @@ that exists.
 
 ### The generated file
 
-`apps/site/src/data/changelog.json` is generated. Do not edit it; if two
+`apps/website/src/data/changelog.json` is generated. Do not edit it; if two
 branches conflict in it, regenerate rather than hand-merge:
 
 ```bash

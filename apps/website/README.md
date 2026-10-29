@@ -39,6 +39,15 @@ Or from the repo root: `task website:install`, `task website:check`, `task websi
 Unknown addresses get `src/pages/404.astro`, rendered on request so `/en/...` answers in English,
 with status 404 and `noindex`. Old public addresses and their new homes (301) are in `redirects.mjs`.
 
+## Changelog
+
+`/changelog/` and `/en/changelog/` render `src/data/changelog.json`, product data written by
+`scripts/release_notes.py publish` from the reno notes and committed by the release-notes workflow on
+every merge to `develop` (`docs/contributing/release-notes.md`). Never edit the JSON; write a note.
+`src/lib/changelog.ts` reads it, `src/views/ChangelogView.astro` lays each week out as a `ui-rows`
+row with its sections folded like the FAQ. Notes from before the rename keep the name they shipped
+under, and the page says so.
+
 ## Analytics
 
 PostHog EU, through the official SDK and its built-ins. `/web-analytics.js` (`runtime/web-analytics.mjs`)

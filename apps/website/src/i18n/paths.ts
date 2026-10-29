@@ -20,6 +20,7 @@ export const ROUTES = {
   imprint: { de: '/impressum/', en: '/en/imprint/' },
   privacy: { de: '/datenschutz/', en: '/en/privacy/' },
   demo: { de: '/demo/', en: '/en/demo/' },
+  changelog: { de: '/changelog/', en: '/en/changelog/' },
 } as const satisfies Record<string, Record<Locale, string>>
 
 export type RouteKey = keyof typeof ROUTES

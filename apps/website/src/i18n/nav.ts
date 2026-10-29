@@ -21,7 +21,7 @@ export function navigation(locale: Locale) {
     login: { label: ui.login, href: '/sign-in', key: 'login' },
     demo: link('demo', ui.demo),
     footerColumns: [
-      { title: ui.footerProduct, links: [link('home', ui.navPlatform)] },
+      { title: ui.footerProduct, links: [link('home', ui.navPlatform), link('changelog', ui.changelog)] },
       { title: ui.footerKnowledge, links: [link('blog', ui.navBlog)] },
       {
         title: ui.footerCompany,

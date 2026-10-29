@@ -85,6 +85,7 @@ EXCLUDED = re.compile(
             r"^releasenotes/",  # what shipped, under the name it shipped with
             r"(^|/)migrations/|^apps/workspace/migrations/",  # Alembic and Drizzle history, written once
             r"(^|/)i18n/dictionaries/|^apps/site/src/(i18n|data)/",  # copy, where the name belongs
+            r"^apps/website/src/data/changelog\.json$",  # generated from releasenotes/, excluded above
             r"(^|/)public/",  # published assets: their URLs are public
             r"(^|/)(uv\.lock|bun\.lockb?|package-lock\.json|apm\.lock\.yaml)$",  # rendered from manifests
             r"\.mdx?$",  # prose, which follows the code it names

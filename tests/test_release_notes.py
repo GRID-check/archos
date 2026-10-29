@@ -79,6 +79,7 @@ def test_internal_and_markup_references_are_rejected(text, expected):
 
 def test_a_product_link_is_allowed():
     assert lint_entry("The full changelog now lives at https://piloti.at/changelog for everyone.") == []
+    assert lint_entry(f"The full changelog now lives at https://{rn.SITE_DOMAIN}/changelog for everyone.") == []
 
 
 def test_a_stub_is_rejected():
@@ -578,7 +579,7 @@ def test_the_artifact_is_serialised_deterministically():
 
 def test_the_committed_artifact_is_well_formed():
     """The file the website imports — every note bilingual, every section known."""
-    data = json.loads((REPO_ROOT / "apps" / "site" / "src" / "data" / "changelog.json").read_text("utf-8"))
+    data = json.loads((rn.CHANGELOG_FILE).read_text("utf-8"))
     public = {key for key, _ in rn.public_sections(SECTIONS)}
     assert set(data["sectionTitles"]) == public
     for release in data["releases"]:
@@ -590,7 +591,7 @@ def test_the_committed_artifact_is_well_formed():
                 assert not rn.looks_german(entry["en"]), entry["en"]
 
 
-CHANGELOG_JSON = REPO_ROOT / "apps" / "site" / "src" / "data" / "changelog.json"
+CHANGELOG_JSON = rn.CHANGELOG_FILE
 TRANSLATIONS_JSON = REPO_ROOT / "releasenotes" / "translations" / "de.json"
 
 
@@ -640,7 +641,7 @@ def test_tests_and_docs_do_not_need_a_note():
             "apps/workspace/app/page.spec.tsx",
             "docs/architecture/overview.md",
             "deploy/pulumi/src/index.ts",
-            "apps/site/src/pages/changelog.astro",
+            "apps/website/src/pages/changelog.astro",
         ]
     )
 
