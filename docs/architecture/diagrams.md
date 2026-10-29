@@ -87,7 +87,7 @@ file is inert.
 
 ## Trust: what the server does with client bytes
 
-`lib/diagrams/svg.ts` does two things, and neither is redundant:
+`bff/diagrams/svg.ts` does two things, and neither is redundant:
 
 1. **Refuses, by name.** `<script>`, `<foreignObject>`, `<style>`, `on*`
    handlers, any `href`/`url()` that is not a fragment, DOCTYPE and entity
@@ -456,14 +456,14 @@ transition touches is still drawn.
 5. **A new grammar**, not only a new view, also needs `DiagramGrammar` in
    `packages/agent/src/agent/cards/models.py`, the grammar list in the prompt
    (`chat_static.md` `<formatting>`), and a browser capture in
-   `lib/diagrams/__fixtures__/` that prints through `svg-to-pdf.spec.tsx`
+   `bff/diagrams/__fixtures__/` that prints through `svg-to-pdf.spec.tsx`
    (next section).
 
 ### Which grammars, and how that is decided
 
 `/dev/answer-blocks` draws one fence per grammar through the real renderer;
 `?grammars=all` adds the ones left out. A grammar is taught only when it draws
-there AND its browser capture in `lib/diagrams/__fixtures__/` prints through
+there AND its browser capture in `bff/diagrams/__fixtures__/` prints through
 `svg-to-pdf.spec.tsx`:
 
 | grammar | on screen | PDF | taught |
@@ -555,9 +555,62 @@ bearbeiten" (`features/diagrams/sketch/`):
 - Every filing, sketch or not, scores `diagram-filed` (`as_drawn | edited`) on
   the answer's trace; the browser sends `answerId` for that.
 
-`DIAGRAM_RENDERERS.excalidraw` stays `null`: nothing renders a stored scene
-yet. Reopening a filed sketch, and saving a new Fassung instead of a new pair
-of documents, is the next slice.
+### A filed sketch reopens, and saves as a new Fassung (ADR-0148)
+
+A Skizze is a document whose bytes are the SVG with its scene in `<metadata>`,
+so it reopens from Files and every save is the next Fassung of the same
+document, never a new pair.
+
+- **Headless first.** `GET /api/documents/{id}/sketch` (`document-sketch-get`)
+  answers the stored scene, the `versionId` it was read from and an `outline`
+  derived without a model call (`bff/diagrams/sketch-outline.ts`): texts with the
+  element each labels, shapes by label, connections from-label → to-label with
+  the arrow's label, frames with their children, each with its element id. 415
+  for a document without a scene. `PUT` (`document-sketch-update`) takes
+  `{ scene, svg, baseVersionId }`. The read comes from the stored bytes
+  (`bff/diagrams/stored-source.ts`), not from the SVG parser, which caps the
+  picture at 1 MiB while a stored sketch is picture plus scene.
+- **The scene is checked now** (`bff/diagrams/sketch-scene.ts`), on save and on
+  read: the fence's element types plus `freedraw`, no `image`, embed or
+  `files`, at most 2 000 elements, coordinates within ±1 000 000, text up to
+  5 000 characters, and the 512 KiB excalidraw source cap. Filing used to store
+  the scene unread.
+- **The marking stays honest.** The SVG goes through `acceptDiagram` as filing
+  does, with the two-author line (`diagrams.markingEdited`); the machine half
+  stays `AIHumanReviewed=false`, because editing is not a Freigabe.
+- **The Fassung** (`bff/diagrams/sketch-fassung.ts`) is written by
+  `insertPublishedVersion`, the repository write every published version goes
+  through, with the `baseVersionId` as its expectation: under the per-document
+  lock the published pointer must still be that version, or the save is a 409
+  with `currentVersionId` (`bff/documents/published-guard.ts`). It runs the
+  upload transition's audit event and event hint, but not its
+  `announceNewRevision`: a sketch is saved often and each save is a Fassung, so
+  announcing each in the inbox would flood it. The row stays `stored`, never
+  ingested. A sketch filed before it had Fassungen gets its filed bytes recorded
+  as Fassung 1 first, so the history starts where Piloti drew it.
+- **The PDF companion follows.** The `diagram_pdf` row filed under the same
+  reference is drawn again from the new SVG and saved as its own next Fassung.
+  When there is none (or it cannot be drawn), the SVG's Fassung stands and the
+  answer says `pdf: null`, as in filing.
+- **Only a filed sketch is saved this way** (`diagram_svg`). A person's own
+  upload that carries a scene is read, never written: new bytes for it are an
+  upload, with an upload's screening.
+- **In Files**, a machine-authored SVG whose `GET` answers a scene gets „Als
+  Skizze bearbeiten" in the preview's rail (`sketch/sketch-revise-action.tsx`,
+  through the documents feature's slot `features/documents/preview-actions.tsx`,
+  so documents imports nothing of diagrams). It opens the same lazy editor on
+  the stored scene; „Als neue Fassung speichern" saves, and a 409 tells the
+  person a newer Fassung exists.
+- **Observable.** Each save scores `sketch-revised` (the Fassung number) on the
+  trace of the turn that drew the sketch.
+
+`DIAGRAM_RENDERERS.excalidraw` stays `null`: reopening hands the stored scene to
+the editor, and the preview shows the stored SVG, so nothing renders a scene
+from its source.
+
+The editor offers no AI: `aiEnabled={false}`, and the `ttd` dialog (mermaid to
+Excalidraw) is closed when it opens (`sketch/sketch-guards.ts`, ADR-0141's
+amendment).
 
 **Since ADR-0146 the model writes Excalidraw too, as a sketch.** Mermaid has no
 grammar for what an architect mostly sketches (rooms by adjacency, a site, a
@@ -572,9 +625,9 @@ subject: a sketch claims no dimension, and says so.
   points at it.
 - **Checked twice.** `common/sketch_fence.py` runs in the dialect pass and
   retags a refused fence `excalidraw-refused` (one quiet line, never the
-  JSON; the Word export prints a label, never the scene); `lib/diagrams/sketch-fence.ts` applies the same rules in the browser
+  JSON; the Word export prints a label, never the scene); `bff/diagrams/sketch-fence.ts` applies the same rules in the browser
   and keeps an allow-list of fields, texts in Helvetica. Both run
-  `lib/diagrams/__fixtures__/sketch-fences.json`. Caps: 32 KiB, 150 elements,
+  `bff/diagrams/__fixtures__/sketch-fences.json`. Caps: 32 KiB, 150 elements,
   coordinates within ±10 000.
 - **Drawn as it streams.** `components/sketch-figure.tsx` draws every element
   that has arrived whole (`streamedSketchElements`), one Excalidraw render at a

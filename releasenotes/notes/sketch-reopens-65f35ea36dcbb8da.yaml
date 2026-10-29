@@ -1,0 +1,10 @@
+---
+features:
+  - >
+    A sketch filed into a project now opens again from Files with "Edit as
+    sketch", and saving it adds a new version of the same document, with its
+    PDF, instead of a second copy. Earlier versions stay in its history.
+fixes:
+  - >
+    The sketch editor no longer offers Excalidraw's AI drawing tools or its
+    Mermaid import, which were never part of how a sketch is made here.
