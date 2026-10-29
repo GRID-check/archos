@@ -13,8 +13,8 @@ import { diagramThemeVariables, resetDiagramPaletteCache } from './diagram-palet
 
 const LIGHT = {
   '--card': '#ffffff',
-  '--foreground': '#1f2023',
-  '--muted-foreground': '#6f706c',
+  '--foreground': '#0f0e0d',
+  '--muted-foreground': '#5e5b57',
   '--muted': '#f2f2f0',
   '--accent': '#ececea',
 }

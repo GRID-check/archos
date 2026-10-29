@@ -10,7 +10,8 @@
 
 import { type ReactNode } from 'react'
 import { type Metadata, type Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import { connection } from 'next/server'
 import { ChunkReloadGuard } from './chunk-reload-guard'
 import { STORAGE_RENAME_BOOT_SCRIPT } from './storage-rename-boot'
@@ -32,9 +33,11 @@ import { isAuthRequired } from '@/lib/auth/auth-required'
 import { postHogConfigFromEnv, type PostHogConfig, type PostHogIdentity } from '@/lib/analytics/posthog-config'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 
-const geistSans = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist-sans',
+/** The corporate design's face, served from the synced brand copy (packages/brand). */
+const bodySans = localFont({
+  src: '../shared/brand/fonts/GeneralSans-Variable.woff2',
+  weight: '200 700',
+  variable: '--font-body',
   display: 'swap',
 })
 
@@ -235,7 +238,7 @@ const RootLayout = async ({ children }: RootLayoutProps): Promise<ReactNode> => 
     <html
       lang={locale}
       id="style-root"
-      className={`${geistSans.variable} ${geistMono.variable} overscroll-none`}
+      className={`${bodySans.variable} ${geistMono.variable} overscroll-none`}
       suppressHydrationWarning
     >
       <head>

@@ -50,9 +50,9 @@
   color-scheme: light;
 
   /* ---- ink ramp (light) — #1f2023 → #b3b3af ---- */
-  --ink: oklch(0.244 0.006 271.2); /* #1f2023 — strongest ink, the action color */
-  --ink-hover: oklch(0.31 0.006 271.2); /* lifted ink for hover on ink surfaces */
-  --ink-active: oklch(0.2 0.006 271.2); /* pressed ink */
+  --ink: oklch(0.165 0.003 67.6); /* #0f0e0d — strongest ink, the action color (corporate design: ink) */
+  --ink-hover: oklch(0.294 0.006 78.2); /* #2e2c29 — lifted ink for hover on ink surfaces (ink-hover) */
+  --ink-active: oklch(0.13 0.003 67.6); /* pressed ink */
   --ink-border: oklch(0.234 0.007 258.4); /* #1c1e21 — alpha-hairline base (rgba(28,30,33,…)) */
 
   /* ---- legacy alias: the old accent name now resolves to the Baurecht/law
@@ -99,8 +99,8 @@
 
 
   /* ---- shadcn vars (light) — warm paper ---- */
-  --background: oklch(0.973 0.003 106.4); /* #f6f6f4 — warm paper app bg */
-  --foreground: var(--ink); /* #1f2023 */
+  --background: oklch(0.985 0.001 106.4); /* #fafaf9 — warm paper app bg (corporate design: surface) */
+  --foreground: var(--ink); /* #0f0e0d */
   --card: oklch(1 0 0); /* white cards on paper */
   --card-foreground: var(--ink);
   --popover: oklch(1 0 0);
@@ -110,7 +110,7 @@
   --secondary: oklch(0.961 0.003 106.4); /* #f2f2f0 — chip / quiet fill */
   --secondary-foreground: var(--ink);
   --muted: oklch(0.961 0.003 106.4); /* #f2f2f0 */
-  --muted-foreground: oklch(0.543 0.006 118); /* #6f706c — mid ink */
+  --muted-foreground: oklch(0.473 0.007 75.3); /* #5e5b57 — mid ink (ink-muted) */
   --accent: oklch(0.943 0.003 106.5); /* #ececea — inset / hover fill */
   --accent-foreground: var(--ink);
   --destructive: var(--signal-error); /* #c14a38 */
@@ -155,9 +155,9 @@
   --text-color-feedback-warning: var(--source-office-text); /* #96690e */
   --text-color-feedback-info: var(--source-law-text); /* #1c47ab */
 
-  --background-color-surface-base: oklch(0.973 0.003 106.4); /* #f6f6f4 */
+  --background-color-surface-base: oklch(0.985 0.001 106.4); /* #fafaf9 */
   --background-color-surface-raised: oklch(0.961 0.003 106.4); /* #f2f2f0 — chip */
-  --background-color-surface-sunken: oklch(0.958 0.003 106.4); /* #f1f1ef — sidebar / rails */
+  --background-color-surface-sunken: oklch(0.959 0.002 67.8); /* #f2f1f0 — sidebar / rails (surface-sunken) */
   --background-color-surface-overlay: oklch(1 0 0);
   --background-color-interaction-base: oklch(0.943 0.003 106.5); /* #ececea — inset */
   --background-color-interaction-primary-base: var(--ink);
@@ -537,7 +537,7 @@
   --color-signal-error-tint: var(--signal-error-tint);
 
   --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 4px);
+  --radius-md: 4px; /* controls: the corporate design's one control radius (radius-md) */
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
@@ -574,7 +574,7 @@
   --default-transition-duration: var(--motion-quick);
   --default-transition-timing-function: var(--ease-out);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 }
 

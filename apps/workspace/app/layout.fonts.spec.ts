@@ -18,8 +18,14 @@ vi.mock('next/font/google', () => {
     fontOptions.set(name, options)
     return { className: name, variable: String(options.variable), style: {} }
   }
-  return { Geist: font('Geist'), Geist_Mono: font('Geist_Mono') }
+  return { Geist_Mono: font('Geist_Mono') }
 })
+vi.mock('next/font/local', () => ({
+  default: (options: Record<string, unknown>) => {
+    fontOptions.set('GeneralSans', options)
+    return { className: 'GeneralSans', variable: String(options.variable), style: {} }
+  },
+}))
 vi.mock('./providers', () => ({ Providers: () => null }))
 vi.mock('./chunk-reload-guard', () => ({ ChunkReloadGuard: () => null }))
 vi.mock('@/components/shell/navigation-trail', () => ({ NavigationTrail: () => null }))
@@ -32,7 +38,7 @@ describe('root layout fonts', () => {
   test('preloads the body face and not the mono face', async () => {
     await import('./layout')
 
-    expect(fontOptions.get('Geist')?.preload).not.toBe(false)
+    expect(fontOptions.get('GeneralSans')?.preload).not.toBe(false)
     expect(fontOptions.get('Geist_Mono')?.preload).toBe(false)
   })
 })
