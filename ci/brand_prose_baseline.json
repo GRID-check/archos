@@ -1374,7 +1374,7 @@
   "docs/architecture/qdrant-retrieval-design.md": 3,
   "docs/architecture/rate-limiting-and-load-protection.md": 2,
   "docs/architecture/revisions.md": 18,
-  "docs/architecture/system-overview.md": 14,
+  "docs/architecture/system-overview.md": 13,
   "docs/architecture/usage-budgets.md": 3,
   "docs/architecture/visual-extraction-schema.md": 1,
   "docs/architecture/voice-dictation.md": 1,
