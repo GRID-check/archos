@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import vm from 'node:vm'
 import { test } from 'node:test'
 import {
+  analyticsOrigins,
   sdkUrl,
   webAnalyticsConfig,
   webAnalyticsInitOptions,
@@ -11,6 +12,23 @@ import {
 const ENV = {
   PUBLIC_POSTHOG_HOST: 'https://eu.i.posthog.com',
   PUBLIC_POSTHOG_PROJECT_TOKEN: 'phc_test',
+}
+
+/** Runs the loader in a sandbox and returns what it did. */
+function runLoader(body, extra = {}) {
+  const appended = []
+  const calls = []
+  const script = {}
+  const window = {
+    posthog: { init: (...args) => calls.push(args) },
+    ...extra,
+  }
+  const document = {
+    createElement: () => script,
+    head: { appendChild: (el) => appended.push(el) },
+  }
+  vm.runInNewContext(body, { window, document, ...extra })
+  return { appended, calls, script }
 }
 
 test('analytics is off unless both the host and the token are set', () => {
@@ -43,12 +61,30 @@ test('the init options match what the privacy policy says', () => {
   assert.equal(options.person_profiles, 'identified_only')
   assert.equal(options.disable_session_recording, true)
   assert.equal(options.disable_surveys, true)
-  // Pageviews, web vitals and heatmaps are measured; the cookie crosses subdomains.
+  // Pageviews, web vitals and heatmaps are measured.
   assert.equal(options.capture_pageview, 'history_change')
   assert.deepEqual(options.capture_performance, { web_vitals: true })
   assert.equal(options.enable_heatmaps, true)
-  assert.equal(options.cross_subdomain_cookie, true)
   assert.equal(options.respect_dnt, true)
+})
+
+test("nothing is stored on the visitor's device: cookieless, and no storage option that would undo it", () => {
+  const options = webAnalyticsInitOptions({ host: 'https://eu.i.posthog.com', token: 'phc_test' })
+  assert.equal(options.cookieless_mode, 'always')
+  assert.equal('persistence' in options, false)
+  assert.equal('cross_subdomain_cookie' in options, false)
+})
+
+test('the CSP origins are the ingestion host and the assets host, and none when off', () => {
+  assert.deepEqual(analyticsOrigins(null), { connect: [], script: [] })
+  assert.deepEqual(analyticsOrigins({ host: 'https://eu.i.posthog.com', token: 'phc_test' }), {
+    connect: ['https://eu.i.posthog.com', 'https://eu-assets.i.posthog.com'],
+    script: ['https://eu-assets.i.posthog.com'],
+  })
+  assert.deepEqual(analyticsOrigins({ host: 'https://t.example.test/ingest', token: 'phc_test' }), {
+    connect: ['https://t.example.test'],
+    script: ['https://t.example.test'],
+  })
 })
 
 test('the disabled script loads nothing', () => {
@@ -59,15 +95,7 @@ test('the disabled script loads nothing', () => {
 
 test('the enabled script is valid JavaScript that loads the SDK and then inits it', () => {
   const body = webAnalyticsScript({ host: 'https://eu.i.posthog.com', token: 'phc_test' })
-  const appended = []
-  const calls = []
-  const script = {}
-  const window = { posthog: { init: (...args) => calls.push(args) } }
-  const document = {
-    createElement: () => script,
-    head: { appendChild: (el) => appended.push(el) },
-  }
-  vm.runInNewContext(body, { window, document })
+  const { appended, calls, script } = runLoader(body)
   assert.equal(appended.length, 1)
   assert.equal(script.src, 'https://eu-assets.i.posthog.com/static/array.js')
   assert.equal(calls.length, 0, 'init waits for the SDK to load')
@@ -75,19 +103,14 @@ test('the enabled script is valid JavaScript that loads the SDK and then inits i
   assert.equal(calls.length, 1)
   assert.equal(calls[0][0], 'phc_test')
   assert.equal(calls[0][1].api_host, 'https://eu.i.posthog.com')
-  assert.equal(calls[0][1].disable_session_recording, true)
+  assert.equal(calls[0][1].cookieless_mode, 'always')
 })
 
 test('a token with script-breaking characters cannot escape the string', () => {
   const body = webAnalyticsScript({ host: 'https://eu.i.posthog.com', token: `x');alert(1);//` })
-  const calls = []
-  const script = {}
-  const window = { posthog: { init: (...args) => calls.push(args) }, alert: () => calls.push('alert') }
-  vm.runInNewContext(body, {
-    window,
-    alert: window.alert,
-    document: { createElement: () => script, head: { appendChild: () => {} } },
-  })
+  const alerts = []
+  const { calls, script } = runLoader(body, { alert: () => alerts.push('alert') })
   script.onload()
-  assert.deepEqual(calls.map((c) => (Array.isArray(c) ? c[0] : c)), [`x');alert(1);//`])
+  assert.deepEqual(calls.map((c) => c[0]), [`x');alert(1);//`])
+  assert.deepEqual(alerts, [])
 })

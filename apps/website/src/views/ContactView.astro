@@ -4,11 +4,13 @@ import Button from '../components/Button.astro';
 import Hero from '../components/Hero.astro';
 import InfoList from '../components/InfoList.astro';
 import Input from '../components/Input.astro';
+import MailForm from '../components/MailForm.astro';
 import TextLink from '../components/TextLink.astro';
 import { navigation } from '../i18n/nav';
 import copy from '../i18n/pages/contact';
 import { localePath, type Locale } from '../i18n/paths';
 import identity, { withName } from '../lib/identity';
+import { linkedinUrl } from '../lib/social';
 import { format } from '../i18n/ui';
 
 // Markup and structure only. Text comes from src/i18n/pages/contact.ts, in both locales.
@@ -40,14 +42,14 @@ const privacyHref = localePath('privacy', locale);
               key: c.info.address,
               value: [identity.legalEntity, { br: true }, fill(c.info.addressValue)],
             },
-            { key: c.info.linkedin, value: c.info.linkedinValue },
+            ...(linkedinUrl ? [{ key: c.info.linkedin, value: c.info.linkedinValue, href: linkedinUrl }] : []),
           ]}
         />
         <p class="small">
-          {c.info.demoLead} <TextLink href={nav.demo.href}>{nav.demo.label}</TextLink>
+          {c.info.demoLead} <TextLink href={nav.demo.href} cta="contact_info" ctaLabel="demo">{nav.demo.label}</TextLink>
         </p>
       </div>
-      <form action={mailto} method="post" enctype="text/plain" class="ui-form-grid">
+      <MailForm id="contact" to={identity.email} subject={c.form.subject} sent={c.form.sent}>
         <Input id="contact-name" name="name" label={c.form.name} autocomplete="name" required class="ui-form-full" />
         <Input
           id="contact-email"
@@ -74,7 +76,7 @@ const privacyHref = localePath('privacy', locale);
         <div class="ui-form-full">
           <Button type="submit" variant="primary" size="lg">{c.form.submit}</Button>
         </div>
-      </form>
+      </MailForm>
     </div>
   </section>
 </BaseLayout>

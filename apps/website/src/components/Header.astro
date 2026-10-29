@@ -56,16 +56,16 @@ const hasMenu = links.length > 0 || Boolean(login);
       )
     }
     <div class="ui-header-actions">
-      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} aria-label={`${otherLocale.toUpperCase()} – ${ui.switchLanguage}`}>
+      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} data-ph-capture-attribute-language-switch={`${locale}-${otherLocale}`} aria-label={`${otherLocale.toUpperCase()} – ${ui.switchLanguage}`}>
         {localeCodes[otherLocale]}
       </a>
       {login && (
-        <Button href={login.href} variant="secondary" size="sm">
+        <Button href={login.href} variant="secondary" size="sm" cta="header" ctaLabel="login">
           {login.label}
         </Button>
       )}
       {cta && (
-        <Button href={cta.href} variant="primary" size="sm">
+        <Button href={cta.href} variant="primary" size="sm" cta="header" ctaLabel="demo">
           {cta.label}
         </Button>
       )}
@@ -88,12 +88,12 @@ const hasMenu = links.length > 0 || Boolean(login);
               </ul>
               <div class="ui-mnav-act">
                 {login && (
-                  <Button href={login.href} variant="secondary" size="lg">
+                  <Button href={login.href} variant="secondary" size="lg" cta="mobile_menu" ctaLabel="login">
                     {login.label}
                   </Button>
                 )}
                 {cta && (
-                  <Button href={cta.href} variant="primary" size="lg">
+                  <Button href={cta.href} variant="primary" size="lg" cta="mobile_menu" ctaLabel="demo">
                     {cta.label}
                   </Button>
                 )}

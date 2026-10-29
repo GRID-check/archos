@@ -11,13 +11,15 @@ interface Props {
   /** CSS aspect-ratio; default 2 / 1 */
   ratio?: string;
   loop?: boolean;
+  /** Analytics: the video's name on the `video_played` event */
+  name?: string;
   class?: string;
 }
 
-const { locale, sources, poster, label, ratio, loop = true, class: className } = Astro.props;
+const { locale, sources, poster, label, ratio, loop = true, name = 'video', class: className } = Astro.props;
 ---
 
-<div data-reveal class:list={['ui-video', className]} style={ratio ? `aspect-ratio: ${ratio}` : undefined} data-video>
+<div data-reveal class:list={['ui-video', className]} style={ratio ? `aspect-ratio: ${ratio}` : undefined} data-video={name}>
   <video class="ui-video-media" muted loop={loop} playsinline preload="metadata" poster={poster} aria-label={label}>
     {sources.map((source) => <source src={source.src} type={source.type} />)}
   </video>
@@ -44,6 +46,15 @@ const { locale, sources, poster, label, ratio, loop = true, class: className } =
     };
 
     video.addEventListener('play', syncButton);
+    // Autocapture sees the click, not the playback: one event the first time it plays.
+    video.addEventListener(
+      'play',
+      () => {
+        const analytics = (window as { posthog?: { capture: (e: string, p: object) => void } }).posthog;
+        analytics?.capture('video_played', { video: root.dataset.video, locale: document.documentElement.lang });
+      },
+      { once: true },
+    );
     video.addEventListener('pause', syncButton);
     video.addEventListener('click', () => (video.paused ? start() : video.pause()));
     play?.addEventListener('click', start);

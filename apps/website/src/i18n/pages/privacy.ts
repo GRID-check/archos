@@ -2,6 +2,27 @@
  * Copy of the privacy policy, both locales. `{name}` is the brand name, filled by
  * `withName`. `{legalEntity}`, `{street}`, `{postalCode}`, `{city}` are filled from
  * identity, and `{email}` and `{dsb}` become links, all by the view. Text and labels only.
+ *
+ * The analytics rows describe exactly what `runtime/web-analytics.mjs` configures
+ * (cookieless PostHog, EU host, no replay, Do Not Track honoured) and what the
+ * PostHog project is set to (IP addresses discarded: `anonymize_ips`, read from
+ * the project settings on 2026-10-29). Change them together.
+ *
+ * A row with `when: 'linkedin'` is shown only while a LinkedIn URL is set
+ * (`src/lib/social.ts`).
+ *
+ * TODO(owner): three values could not be read from configuration and are worded
+ * without a number until legal review fills them in:
+ * 1. Server log retention ("Aufruf der Website"): deploy/ configures no access-log
+ *    retention for the website; confirm what the hosting provider and the cluster
+ *    keep, and for how long.
+ * 2. Analytics retention ("Reichweitenmessung"): the PostHog plan's data retention
+ *    is not readable without billing access. The app's own notice says 12 months
+ *    for its events; confirm and align both.
+ * 3. Enquiries ("Kontakt- und Demoanfragen"): no deletion period is defined
+ *    for the sales inbox.
+ * Also for legal review: legitimate interest as the basis for cookieless reach
+ * measurement.
  */
 const de = {
   meta: {
@@ -26,22 +47,22 @@ const de = {
       {
         key: 'Aufruf der Website',
         value:
-          'Beim Aufruf speichert unser Hosting-Anbieter technische Daten: IP-Adresse, Datum und Uhrzeit, aufgerufene Seite, Browser und Betriebssystem. Zweck: sicherer und stabiler Betrieb. Rechtsgrundlage: berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO. Löschung nach [14 Tagen].',
+          'Beim Aufruf werden technische Daten verarbeitet: IP-Adresse, Datum und Uhrzeit, aufgerufene Seite, Browser und Betriebssystem. Zweck: sicherer und stabiler Betrieb. Rechtsgrundlage: berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO. Wir speichern diese Daten nur so lange, wie es für diesen Zweck nötig ist.',
       },
       {
-        key: 'Notwendige Cookies',
+        key: 'Keine Cookies',
         value:
-          'Für die Anmeldung setzen wir technisch notwendige Cookies. Rechtsgrundlage: § 165 Abs. 3 TKG 2021 und Art. 6 Abs. 1 lit. b DSGVO.',
+          'Die Website setzt keine Cookies und legt nichts im Speicher Ihres Browsers ab. Deshalb fragen wir auch nicht nach einer Einwilligung.',
       },
       {
-        key: 'Produktanalyse',
+        key: 'Reichweitenmessung',
         value:
-          'Mit PostHog werten wir aus, wie Website und Software genutzt werden, nur wenn Sie zustimmen. Rechtsgrundlage: Einwilligung, Art. 6 Abs. 1 lit. a DSGVO und § 165 Abs. 3 TKG 2021. Die Einwilligung können Sie jederzeit in den [Cookie-Einstellungen] widerrufen. Speicherort: [EU].',
+          'Mit PostHog messen wir, wie die Website genutzt wird: aufgerufene Seiten, Verweildauer und Scrolltiefe, Klicks und ihre Position auf der Seite, abgeschickte Formulare und gestartete Videos, Ladezeiten und technische Fehler, die verweisende Seite und Kampagnenangaben in der Adresse, Gerätetyp und Browser. Was Sie in Formularfelder eingeben, erfassen wir nicht. Um Besuche zu zählen, bildet PostHog aus IP-Adresse, Browserangaben und einem täglich wechselnden Zufallswert eine Kennung. Die IP-Adresse selbst wird nicht gespeichert, und wir verknüpfen die Daten nicht mit Ihrer Person. Sendet Ihr Browser „Do Not Track“, messen wir nichts. Rechtsgrundlage: berechtigtes Interesse an einer verständlichen und gut funktionierenden Website, Art. 6 Abs. 1 lit. f DSGVO. Anbieter: PostHog, Inc., Speicherort: EU. Wir speichern die Daten nur so lange, wie wir sie für die Auswertung brauchen.',
       },
       {
         key: 'Kontakt- und Demoanfragen',
         value:
-          'Name, E-Mail-Adresse, Büro, Funktion, Bürogröße, Land und Nachricht verwenden wir, um Ihre Anfrage zu beantworten. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (vorvertragliche Maßnahmen) bzw. lit. f. Löschung, wenn die Anfrage erledigt ist, spätestens nach [24 Monaten], sofern kein Vertrag zustande kommt.',
+          'Die Formulare senden nichts an uns: Beim Absenden öffnet sich Ihr E-Mail-Programm mit einer vorbereiteten Nachricht, die Sie selbst abschicken. Was Sie uns so schreiben (Name, E-Mail-Adresse, Büro, Funktion, Bürogröße, Land, Nachricht), verwenden wir, um Ihre Anfrage zu beantworten. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (vorvertragliche Maßnahmen) bzw. lit. f. Kommt kein Vertrag zustande, löschen wir die Angaben, wenn die Anfrage erledigt ist und keine Aufbewahrungspflicht besteht.',
       },
       {
         key: 'Newsletter',
@@ -52,6 +73,7 @@ const de = {
         key: 'LinkedIn',
         value:
           'Wir verlinken auf unser LinkedIn-Profil. Daten werden erst übertragen, wenn Sie den Link anklicken. Dann gilt die Datenschutzerklärung von LinkedIn.',
+        when: 'linkedin' as const,
       },
     ],
   },
@@ -61,7 +83,12 @@ const de = {
       {
         key: 'Konto und Anmeldung',
         value:
-          'Für Konten verarbeiten wir Name, E-Mail-Adresse, Büro, Rolle und Anmeldezeitpunkte. Die Anmeldung läuft über einen spezialisierten Anmeldedienst. Rechtsgrundlage: Vertrag, Art. 6 Abs. 1 lit. b DSGVO. Löschung nach Vertragsende, soweit keine gesetzlichen Aufbewahrungspflichten bestehen.',
+          'Für Konten verarbeiten wir Name, E-Mail-Adresse, Büro, Rolle und Anmeldezeitpunkte. Die Anmeldung läuft über einen spezialisierten Anmeldedienst und setzt technisch notwendige Cookies. Rechtsgrundlage: Vertrag, Art. 6 Abs. 1 lit. b DSGVO, für die Cookies § 165 Abs. 3 TKG 2021. Löschung nach Vertragsende, soweit keine gesetzlichen Aufbewahrungspflichten bestehen.',
+      },
+      {
+        key: 'Produktanalyse in {name}',
+        value:
+          'In der Anwendung selbst setzen wir PostHog anders ein als auf dieser Website, mit Cookie und Sitzungsaufzeichnung. Was dort erfasst wird und wie Sie es abschalten, steht in den Datenschutzhinweisen in {name}.',
       },
       {
         key: 'Projektdaten der Büros',
@@ -138,22 +165,22 @@ const en: typeof de = {
       {
         key: 'Visiting the website',
         value:
-          'When the website is visited, our hosting provider stores technical data: IP address, date and time, page accessed, browser and operating system. Purpose: secure and stable operation. Legal basis: legitimate interest, Art. 6(1)(f) GDPR. Deletion after [14 days].',
+          'When the website is visited, technical data is processed: IP address, date and time, page accessed, browser and operating system. Purpose: secure and stable operation. Legal basis: legitimate interest, Art. 6(1)(f) GDPR. We keep this data only as long as this purpose requires.',
       },
       {
-        key: 'Necessary cookies',
+        key: 'No cookies',
         value:
-          'To sign in, we set cookies that are technically necessary. Legal basis: § 165(3) TKG 2021 and Art. 6(1)(b) GDPR.',
+          'The website sets no cookies and stores nothing in your browser’s storage. That is why we do not ask for consent.',
       },
       {
-        key: 'Product analytics',
+        key: 'Audience measurement',
         value:
-          'We use PostHog to analyse how the website and software are used, but only if you consent. Legal basis: consent, Art. 6(1)(a) GDPR and § 165(3) TKG 2021. You can withdraw your consent at any time in the [cookie settings]. Storage location: [EU].',
+          'We use PostHog to measure how the website is used: pages viewed, time on page and scroll depth, clicks and where on the page they land, forms sent and videos started, loading times and technical errors, the referring page and campaign details in the address, device type and browser. We do not record what you type into form fields. To count visits, PostHog derives an identifier from the IP address, browser details and a random value that changes every day. The IP address itself is not stored, and we do not link the data to you as a person. If your browser sends “Do Not Track”, we measure nothing. Legal basis: legitimate interest in a clear and well-functioning website, Art. 6(1)(f) GDPR. Provider: PostHog, Inc., storage location: EU. We keep the data only as long as we need it for the analysis.',
       },
       {
         key: 'Contact and demo requests',
         value:
-          'We use your name, e-mail address, office, function, office size, country and message to answer your enquiry. Legal basis: Art. 6(1)(b) GDPR (pre-contractual measures) or Art. 6(1)(f) GDPR. We delete the data once the enquiry has been dealt with, at the latest after [24 months], unless a contract comes into being.',
+          'The forms send nothing to us: sending opens your e-mail program with a prepared message that you send yourself. We use what you write to us this way (name, e-mail address, office, function, office size, country, message) to answer your enquiry. Legal basis: Art. 6(1)(b) GDPR (pre-contractual measures) or Art. 6(1)(f) GDPR. If no contract comes into being, we delete the details once the enquiry has been dealt with and no retention obligation applies.',
       },
       {
         key: 'Newsletter',
@@ -164,6 +191,7 @@ const en: typeof de = {
         key: 'LinkedIn',
         value:
           'We link to our LinkedIn profile. Data is transmitted only once you click the link. LinkedIn’s privacy policy then applies.',
+        when: 'linkedin' as const,
       },
     ],
   },
@@ -173,7 +201,12 @@ const en: typeof de = {
       {
         key: 'Account and sign-in',
         value:
-          'For accounts we process name, e-mail address, office, role and sign-in times. Sign-in runs through a specialised authentication service. Legal basis: contract, Art. 6(1)(b) GDPR. We delete the data after the end of the contract, unless statutory retention obligations apply.',
+          'For accounts we process name, e-mail address, office, role and sign-in times. Sign-in runs through a specialised authentication service and sets cookies that are technically necessary. Legal basis: contract, Art. 6(1)(b) GDPR, and § 165(3) TKG 2021 for the cookies. We delete the data after the end of the contract, unless statutory retention obligations apply.',
+      },
+      {
+        key: 'Product analytics in {name}',
+        value:
+          'Inside the application we use PostHog differently from this website, with a cookie and session recording. What is recorded there and how to switch it off is set out in the privacy notice in {name}.',
       },
       {
         key: 'Project data of the offices',

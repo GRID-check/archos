@@ -17,17 +17,29 @@
  * the route answers an empty script: no third-party request, nothing stored.
  *
  * What it asks PostHog for, and why (each line is a claim the privacy policy in
- * `src/i18n/ui.ts` makes, so change them together):
+ * `src/i18n/pages/privacy.ts` makes, so change them together):
  *
+ * - `cookieless_mode: 'always'`: nothing is written to the visitor's device: no
+ *   cookie, no localStorage, no sessionStorage. PostHog's ingestion counts
+ *   visitors and sessions from a hash of IP address, user agent and a daily
+ *   salt, so no consent is asked and no banner is shown. The PostHog project
+ *   must have cookieless tracking switched on (Settings > Project > Web
+ *   analytics), or ingestion discards every event (README, "Analytics").
+ *   The price: a returning visitor is a new visitor each day, and the anonymous
+ *   id does not travel to the app after sign-in (no landing-to-app stitching).
  * - `person_profiles: 'identified_only'`: a visitor never becomes a person
- *   profile. The landing site identifies nobody; the app does, after sign-in.
- * - `cross_subdomain_cookie: true`: the `ph_<token>_posthog` cookie is set for
- *   the registrable domain, so the anonymous id a visitor got here is the one
- *   the app (same project, same token) sees after the WorkOS redirect. That is
- *   the landing-to-signup stitching.
- * - Pageviews, page leaves, web vitals and heatmaps: on. Session replay and
- *   surveys: off, the landing site records no screens and shows no survey.
+ *   profile. The landing site identifies nobody.
+ * - Pageviews, page leaves, web vitals, autocaptured clicks and heatmaps: on.
+ *   None of them stores anything in the browser. Session replay and surveys:
+ *   off. Replay cannot run cookieless, and the landing site shows no survey.
  * - `respect_dnt`: a browser that sends Do Not Track is not measured.
+ *
+ * Everything else is the SDK's own: autocapture records clicks and form
+ * submits, and markup adds properties to them with `data-ph-capture-attribute-*`
+ * (a CTA's area, the language switch). Campaign parameters and the referrer
+ * ride on every pageview, and `$pageleave` carries the scroll depth. Two events
+ * are the site's: `form_submitted` (the mailto hand-off, `src/components/MailForm.astro`)
+ * and `video_played` (`src/components/Video.astro`). README, "Analytics".
  *
  * Run as plain Node (`node --test runtime/*.test.mjs`), so the decision is a
  * pure function with a spec instead of something a deploy discovers.
@@ -72,9 +84,8 @@ export function webAnalyticsInitOptions(config) {
   return {
     api_host: config.host,
     defaults: POSTHOG_DEFAULTS,
+    cookieless_mode: 'always',
     person_profiles: 'identified_only',
-    persistence: 'localStorage+cookie',
-    cross_subdomain_cookie: true,
     capture_pageview: 'history_change',
     capture_pageleave: true,
     capture_performance: { web_vitals: true },
@@ -83,6 +94,21 @@ export function webAnalyticsInitOptions(config) {
     disable_surveys: true,
     respect_dnt: true,
   }
+}
+
+/**
+ * The origins the browser talks to when analytics is on: the ingestion host
+ * and the host the SDK bundle comes from. The Content-Security-Policy
+ * (`security-headers.mjs`) allows exactly these.
+ *
+ * @param {WebAnalyticsConfig | null} config
+ * @returns {{ connect: string[], script: string[] }}
+ */
+export function analyticsOrigins(config) {
+  if (config === null) return { connect: [], script: [] }
+  const ingest = new URL(config.host).origin
+  const assets = new URL(sdkUrl(config.host)).origin
+  return { connect: [...new Set([ingest, assets])], script: [assets] }
 }
 
 /**
