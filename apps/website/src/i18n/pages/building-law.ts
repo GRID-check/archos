@@ -25,7 +25,7 @@ const de = {
     title: 'Das Projekt bestimmt, was gilt.',
     text: 'Welche Anforderung ein Projekt trifft, hängt am Bundesland, an der Gebäudeklasse und an der Nutzung. {name} kennt diese Angaben aus dem Projekt und sucht mit ihnen, statt allgemein zu antworten.',
     imageAlt:
-      '{name}-Herleitung: eine Frage zum Termin mit dem Küchenplaner, darunter zehn Quellen aus Fachwissen, Projektwissen und Büroablage',
+      'Frage an {name} im Grundriss: „Ist der Aufgang als Fluchtweg breit genug?“ {name} liest dafür Plan und Projektunterlagen, Quellen sind Grundrisse und Brandschutzkonzept',
   },
   items: [
     {
@@ -105,14 +105,14 @@ const en: typeof de = {
   },
   intro: {
     title: 'The project decides what applies.',
-    text: 'Which requirement a project meets depends on the state, the building class and the use. {name} knows these facts from the project and searches with them, instead of answering in general.',
+    text: 'Which requirements apply to a project depends on the state, the building class and the use. {name} knows these facts from the project and searches with them, instead of answering in general.',
     imageAlt:
-      '{name} derivation: one question about an appointment with the kitchen planner, below it ten sources from specialist knowledge, project knowledge and office files',
+      'A question to {name} on the floor plan: “Is the stair wide enough as an escape route?” {name} reads the plan and the project documents; the sources are the floor plans and the fire safety concept',
   },
   items: [
     {
       title: 'The passage, not just the answer',
-      text: 'Every statement names the section, the point of the guideline or the page. One click opens the passage in the original.',
+      text: 'Every statement names the section, the clause of the guideline or the page. One click opens the passage in the original.',
     },
     {
       title: 'The project as the frame',
@@ -128,7 +128,7 @@ const en: typeof de = {
     },
     {
       title: 'Your own standards too',
-      text: 'Standards your office has licensed, you upload yourself. {name} cites them like any other source.',
+      text: 'Upload the standards your office has licensed. {name} cites them like any other source.',
     },
     {
       title: 'From answer to file note',
