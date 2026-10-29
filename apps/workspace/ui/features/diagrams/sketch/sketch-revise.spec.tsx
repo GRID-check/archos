@@ -64,7 +64,7 @@ describe('useSketchRevision', () => {
     const onSaved = vi.fn()
     const { result } = renderHook(() => useSketchRevision({ documentId: 'doc-svg', baseVersionId: 'v1' }, prepare, onSaved))
     await act(() => result.current.save())
-    expect(result.current.state).toEqual({ kind: 'saved', versionNumber: 2 })
+    expect(result.current.state).toEqual({ kind: 'saved', versionId: 'v2', versionNumber: 2 })
     expect(fetch.mock.calls[0][1]?.method).toBe('PUT')
     expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({
       scene: SKETCH.scene,
@@ -82,5 +82,36 @@ describe('useSketchRevision', () => {
     const { result } = renderHook(() => useSketchRevision({ documentId: 'doc-svg', baseVersionId: 'v1' }, prepare))
     await act(() => result.current.save())
     expect(result.current.state).toEqual({ kind: 'stale' })
+  })
+
+  it('in a room: saves against the base it has then, and after a 409 merges the newer Fassung and tries once more', async () => {
+    const answers = [
+      respond(409, { error: 'A newer version', details: { reason: 'stale_base_version', currentVersionId: 'v3' } }),
+      respond(200, { documentId: 'doc-svg', versionId: 'v4', versionNumber: 4, pdf: null }),
+    ]
+    const fetch = vi.fn(async (_url: string, _init?: RequestInit) => answers.shift()!)
+    vi.stubGlobal('fetch', fetch)
+    let base = 'v1'
+    const resolveStale = vi.fn(async () => {
+      base = 'v3'
+      return true
+    })
+    const { result } = renderHook(() =>
+      useSketchRevision({ documentId: 'doc-svg', baseVersionId: () => base }, prepare, undefined, resolveStale)
+    )
+    await act(() => result.current.save())
+    expect(resolveStale).toHaveBeenCalledTimes(1)
+    expect(fetch.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).baseVersionId)).toEqual(['v1', 'v3'])
+    expect(result.current.state).toEqual({ kind: 'saved', versionId: 'v4', versionNumber: 4 })
+  })
+
+  it('in a room: a second 409 asks the person to save again, the newer Fassung merged', async () => {
+    const stale = () => respond(409, { error: 'A newer version', details: { reason: 'stale_base_version' } })
+    vi.stubGlobal('fetch', vi.fn(async () => stale()))
+    const { result } = renderHook(() =>
+      useSketchRevision({ documentId: 'doc-svg', baseVersionId: 'v1' }, prepare, undefined, async () => true)
+    )
+    await act(() => result.current.save())
+    expect(result.current.state).toEqual({ kind: 'stale', merged: true })
   })
 })

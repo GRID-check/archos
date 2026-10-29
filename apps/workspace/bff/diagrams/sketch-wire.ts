@@ -42,6 +42,8 @@ export interface SketchDocumentView {
   documentId: string
   /** The Fassung read, to send back as `baseVersionId`; `null` for a sketch filed before it had Fassungen. */
   versionId: string | null
+  /** Whether the reader may save a Fassung (and edit live): otherwise the editor only shows. */
+  canWrite: boolean
   title: string
   scene: SketchScene
   outline: SketchOutline

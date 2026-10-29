@@ -28,12 +28,14 @@ vi.mock('@/i18n/server', () => ({ getLocale: vi.fn().mockResolvedValue('de') }))
 const documents = new Map<string, Record<string, unknown>>()
 const objects = new Map<string, string>()
 const versions: Record<string, unknown>[] = []
-const getAccessibleDocument = vi.fn(async (_session: unknown, id: string) => {
+const getAccessibleDocument = vi.fn(async (_session: unknown, id: string, _intent?: string) => {
   const row = documents.get(id)
   if (!row) throw Object.assign(new Error('Not found'), { status: 404 })
   return row
 })
-vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: (...a: [unknown, string]) => getAccessibleDocument(...a) }))
+vi.mock('@/lib/documents/access', () => ({
+  getAccessibleDocument: (...a: [unknown, string, string?]) => getAccessibleDocument(...a),
+}))
 vi.mock('@/lib/s3', () => ({
   s3Client: {
     send: vi.fn(async (command: { constructor: { name: string }; input: { Key: string; Body?: Uint8Array } }) => {
@@ -168,6 +170,19 @@ describe('GET /api/documents/[id]/sketch', () => {
     const body = await response.json()
     expect(body).toMatchObject({ documentId: 'doc-svg', versionId: null, title: 'Raumprogramm', scene: { type: 'excalidraw' } })
     expect(body.outline.shapes).toEqual([{ id: 'room', type: 'rectangle', label: 'Küche' }])
+    expect(body.canWrite).toBe(true)
+  })
+
+  it('tells a reader who may not write that the editor only shows', async () => {
+    const { ForbiddenError } = await import('@/lib/api/errors')
+    const readOnly = async (_session: unknown, id: string, intent?: string) => {
+      if (intent === 'write') throw new ForbiddenError()
+      return documents.get(id) as Record<string, unknown>
+    }
+    getAccessibleDocument.mockImplementationOnce(readOnly).mockImplementationOnce(readOnly)
+    const response = await call('GET', 'doc-svg')
+    expect(response.status).toBe(200)
+    expect((await response.json()).canWrite).toBe(false)
   })
 
   it('answers 415 for a document without a scene', async () => {

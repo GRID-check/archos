@@ -379,7 +379,8 @@ export function createSketchSync<E extends SketchElement, A>(options: SketchSync
      * save was refused as stale. What the Fassung holds counts as everybody's;
      * what this tab holds newer is still unsent and goes out.
      */
-    mergeFrom(elements: readonly WireElement[]) {
+    mergeFrom(elements: readonly WireElement[], versionId: string | null) {
+      base = versionId
       merge(elements)
       schedule(0)
     },

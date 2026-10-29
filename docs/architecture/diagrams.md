@@ -691,6 +691,28 @@ it on `saved`, and a canvas that joins late or lost the room opens the latest
 Fassung and asks for what was drawn since. A delta is a hint towards the same
 scene, never a record.
 
+In the editor (`sketch-dialog.tsx`, `use-sketch-room.ts`):
+
+- A reopened Skizze joins the room when the dialog opens. `GET …/sketch`
+  answers `canWrite`; a reader's canvas is in view mode, has no save button,
+  and still shows everyone draw. The send path checks write access again for
+  every edit, so the flag only decides what the editor offers.
+- Excalidraw's own collaborator rendering shows the others: pointer, name
+  tag, selection outline and the avatar list, in each person's identity
+  colour (`sketch-collaborators.ts`). The agent is named with the person it
+  acts for.
+- Saving is explicit, by any writer, one Fassung per save, no autosave. The
+  canvas stays open after a save and sits on the new Fassung; the room hears
+  `saved`, and a peer whose canvas shows exactly that scene is told so and is
+  clean again. A save refused as stale (409, someone saved first) reads the
+  newer Fassung, merges it into the canvas and tries once more; a second
+  refusal asks the person to save again.
+- Closing with unsaved changes while another person is in the room says that
+  they keep the changes.
+- `/dev/sketch-room` is two people in one room over a `BroadcastChannel`
+  (open it twice, `?as=max`, `?role=reader`), with a stand-in for the route
+  that answers 409 on a stale base.
+
 ## Known limits
 
 - **`journey`, `block-beta` and `sankey-beta` do not draw.** Mermaid emits

@@ -115,6 +115,8 @@ async function sketchError(response: Response): Promise<SketchRequestError> {
 const SketchViewSchema = z.object({
   documentId: z.string().min(1),
   versionId: z.string().nullable(),
+  /** Absent from an older server: the save itself still decides. */
+  canWrite: z.boolean().default(true),
   title: z.string(),
   scene: z.looseObject({ type: z.literal('excalidraw'), elements: z.array(z.looseObject({})) }),
 })

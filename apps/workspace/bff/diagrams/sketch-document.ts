@@ -28,7 +28,7 @@
 
 import 'server-only'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { ApiError, BadRequestError, NotFoundError } from '@/lib/api/errors'
+import { ApiError, BadRequestError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { markingIsInBytes } from '@/lib/ai-provenance'
 import type { Document } from '@/lib/db/schema/documents'
@@ -90,11 +90,20 @@ function titleOf(document: Document): string {
 export async function readSketchDocument(session: AuthorizedSession, documentId: string): Promise<SketchDocumentView> {
   const document = await getAccessibleDocument(session, documentId, 'read')
   const scene = await storedSceneOf(document)
+  // Whether the editor opens to draw or to watch; the save and the room's edit lane check it again.
+  const canWrite = await getAccessibleDocument(session, documentId, 'write').then(
+    () => true,
+    (error: unknown) => {
+      if (error instanceof ForbiddenError || error instanceof NotFoundError) return false
+      throw error
+    }
+  )
   // The scene is the document's content as much as its picture is.
   await recordDocumentAccess(session, document, 'preview')
   return {
     documentId: document.id,
     versionId: document.publishedVersionId,
+    canWrite,
     title: titleOf(document),
     scene,
     outline: outlineSketch(scene),

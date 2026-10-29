@@ -63,6 +63,13 @@ export const diagrams: typeof en.diagrams = {
     saveFailed: 'Konnte nicht gespeichert werden',
     staleVersion: 'Inzwischen gibt es eine neuere Fassung. Öffnen Sie die Skizze erneut, um auf ihr weiterzuarbeiten.',
     sceneRejected: 'Die Skizze enthält etwas, das hier nicht gespeichert wird: ein Bild, eingebettete Inhalte oder zu viele Elemente.',
+    viewOnly: 'Sie können diese Skizze ansehen, aber nicht ändern. Was die anderen zeichnen, erscheint hier sofort.',
+    agentFor: '{name} · für {forName}',
+    peerSaved: '{name} hat eine Fassung gespeichert. Ihre Zeichenfläche zeigt genau diese.',
+    peerSavedDiffers: '{name} hat eine Fassung gespeichert. Was Sie seitdem gezeichnet haben, ist noch nicht gespeichert.',
+    tooLargeLive: 'Ein Element ist zu groß, um live geteilt zu werden. Die anderen sehen es, sobald Sie speichern.',
+    discardShared: '{names} ist noch im Raum und behält die Änderungen. Schließen, ohne zu speichern?',
+    saveAgain: 'Inzwischen hat jemand eine neuere Fassung gespeichert. Ihre Änderungen sind eingearbeitet; bitte erneut speichern.',
   },
   rejected: {
     empty: 'Das Diagramm war leer.',

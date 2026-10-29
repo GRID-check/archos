@@ -20,13 +20,24 @@
  * Fassung of that document (`useSketchRevision`, `PUT /api/documents/{id}/sketch`)
  * instead of filing a new pair.
  *
+ * A reopened sketch is live in its document's room (`useSketchRoom`): the
+ * others' pointers, selections and strokes show as they draw, a reader's
+ * canvas only shows, and any writer's save is the Fassung for everyone
+ * (`docs/architecture/diagrams.md`, "Two people on one Skizze"). The canvas
+ * stays open after a save, sitting on the new Fassung; a save refused because
+ * someone saved first merges their Fassung in and tries once more.
+ *
  * A close with unsaved changes asks once, in place. Excalidraw keeps no draft
  * of its own here (its local storage is the excalidraw.com app's, not the
  * component's), so a stray Escape would otherwise throw the work away.
  */
 
 import dynamic from 'next/dynamic'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getSketch } from '@/adapters/api/diagrams-client'
+import type { WireElement } from '@/lib/diagrams/sketch-room-types'
+import type { RealtimePeer } from '@/lib/realtime/types'
+import type { RoomTransport } from '@/features/documents'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useLocale, useTranslations } from '@/i18n'
@@ -36,6 +47,7 @@ import { useDiagramTheme } from '../use-diagram-theme'
 import { DiagramFilingControls } from '../components/diagram-filing-controls'
 import type { SketchCanvasHandle } from './sketch-canvas'
 import { useSketchRevision, type SketchRevisionState } from './use-sketch-revision'
+import { useSketchRoom, type SketchRoom } from './use-sketch-room'
 
 /** While the canvas chunk loads, and in its place when it could not be loaded (offline, a stale deploy). */
 function CanvasLoading({ error }: { error?: Error | null }) {
@@ -66,7 +78,11 @@ export interface SketchDialogProps {
     documentId: string
     baseVersionId: string | null
     scene: { elements: readonly object[]; appState?: Record<string, unknown> }
+    /** Whether the reader may save; otherwise the canvas only shows (and still shows the others draw). */
+    canWrite?: boolean
     onSaved?: () => void
+    /** The room's transport: the tab's live connection by default, a stand-in in the `/dev` preview. */
+    roomTransport?: RoomTransport
   } | null
 }
 
@@ -74,9 +90,27 @@ export interface SketchDialogProps {
 function RevisionStatus({ state }: { state: SketchRevisionState }) {
   const t = useTranslations(diagramsCopy)
   if (state.kind === 'saved') return <span>{t('sketch.savedVersion', { number: String(state.versionNumber) })}</span>
-  if (state.kind === 'stale') return <span className="text-destructive">{t('sketch.staleVersion')}</span>
+  if (state.kind === 'stale') {
+    return <span className="text-destructive">{t(state.merged ? 'sketch.saveAgain' : 'sketch.staleVersion')}</span>
+  }
   if (state.kind === 'failed') return <span className="text-destructive">{state.message}</span>
   return null
+}
+
+/** What the room says beside the buttons: another's save, and an element too large to share live. */
+function RoomStatus({ room }: { room: SketchRoom }) {
+  const t = useTranslations(diagramsCopy)
+  const { peerSave, tooLarge } = room
+  return (
+    <>
+      {peerSave ? (
+        <span data-testid="sketch-peer-saved">
+          {t(peerSave.matches ? 'sketch.peerSaved' : 'sketch.peerSavedDiffers', { name: peerSave.by.name })}
+        </span>
+      ) : null}
+      {tooLarge.length > 0 ? <span> {t('sketch.tooLargeLive')}</span> : null}
+    </>
+  )
 }
 
 export function SketchDialog({ open, onOpenChange, source, elements, title, revision = null }: SketchDialogProps) {
@@ -85,7 +119,44 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
   const theme = useDiagramTheme()
   const handle = useRef<SketchCanvasHandle | null>(null)
   const [dirty, setDirty] = useState(false)
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const [confirmingDiscard, setConfirmingDiscard] = useState<false | { others: string[] }>(false)
+  const canWrite = revision?.canWrite ?? true
+
+  const nameOf = useCallback(
+    (peer: RealtimePeer) => (peer.forName ? t('sketch.agentFor', { name: peer.name, forName: peer.forName }) : peer.name),
+    [t]
+  )
+  const room = useSketchRoom({
+    documentId: open && revision ? revision.documentId : null,
+    canWrite,
+    baseVersionId: revision?.baseVersionId ?? null,
+    transport: revision?.roomTransport,
+    nameOf,
+  })
+  const roomRef = useRef(room)
+  roomRef.current = room
+  const baseOf = useCallback(() => roomRef.current.base(), [])
+  /** Someone saved first: their Fassung is merged into this canvas, and the save is tried once more on it. */
+  const resolveStale = useCallback(async () => {
+    if (!revision) return false
+    const latest = await getSketch(revision.documentId).catch(() => null)
+    if (!latest) return false
+    roomRef.current.mergeFrom(latest.scene.elements as unknown as WireElement[], latest.versionId)
+    return true
+  }, [revision])
+  const onRevisionSaved = useCallback(
+    (saved: { versionId: string }) => {
+      handle.current?.markSaved()
+      void roomRef.current.announceSave(saved.versionId)
+      revision?.onSaved?.()
+    },
+    [revision]
+  )
+  // Another writer saved what this canvas shows: nothing here is unsaved any more.
+  const { peerSave } = room
+  useEffect(() => {
+    if (peerSave?.matches) handle.current?.markSaved()
+  }, [peerSave])
 
   const prepareSketch = useCallback(async () => {
     if (!handle.current) throw new Error('the canvas is not ready')
@@ -93,22 +164,22 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
   }, [])
   const filing = useDiagramFiling({ source, fileSvg: null, prepareSketch, title })
   const revised = useSketchRevision(
-    revision ? { documentId: revision.documentId, baseVersionId: revision.baseVersionId } : null,
+    revision ? { documentId: revision.documentId, baseVersionId: baseOf } : null,
     prepareSketch,
-    revision?.onSaved
+    onRevisionSaved,
+    resolveStale
   )
-  const filed = revision
-    ? revised.state.kind === 'saved' || revised.state.kind === 'stale'
-    : filing.state.kind === 'filed' || filing.state.kind === 'partial'
+  // A reopened sketch stays open after a save: the room goes on, on the new Fassung.
+  const filed = revision ? false : filing.state.kind === 'filed' || filing.state.kind === 'partial'
   const saving = revision ? revised.state.kind === 'saving' : filing.state.kind === 'filing'
 
   const requestClose = useCallback(
     (next: boolean) => {
       if (next) return onOpenChange(true)
-      if (dirty && !filed) return setConfirmingDiscard(true)
+      if (dirty && !filed) return setConfirmingDiscard({ others: revision ? room.otherPeople() : [] })
       onOpenChange(false)
     },
-    [dirty, filed, onOpenChange]
+    [dirty, filed, onOpenChange, revision, room]
   )
   const onReady = useCallback((ready: SketchCanvasHandle) => {
     handle.current = ready
@@ -127,7 +198,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
         <DialogHeader className="shrink-0 pr-8 text-left phone:pt-[max(0.75rem,env(safe-area-inset-top))] phone:pr-[calc(env(safe-area-inset-right)+3.75rem)] phone:pl-[max(1rem,env(safe-area-inset-left))]">
           <DialogTitle className="text-base">{t('sketch.title')}</DialogTitle>
           <DialogDescription className="text-xs">
-            {t(revision ? 'sketch.reviseDescription' : 'sketch.description')}
+            {t(!revision ? 'sketch.description' : canWrite ? 'sketch.reviseDescription' : 'sketch.viewOnly')}
           </DialogDescription>
         </DialogHeader>
         <div className="border-border min-h-0 flex-1 overflow-hidden rounded-lg border phone:rounded-none phone:border-x-0">
@@ -140,6 +211,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
               onReady={onReady}
               onDirtyChange={setDirty}
               readOnly={filed}
+              collab={revision ? room.collab : null}
             />
           ) : null}
         </div>
@@ -147,7 +219,9 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
           {confirmingDiscard ? (
             <>
               <span className="mr-auto" role="alert">
-                {t('sketch.discardQuestion')}
+                {confirmingDiscard.others.length > 0
+                  ? t('sketch.discardShared', { names: confirmingDiscard.others.join(', ') })
+                  : t('sketch.discardQuestion')}
               </span>
               <Button variant="ghost" onClick={() => setConfirmingDiscard(false)}>
                 {t('sketch.keepEditing')}
@@ -166,6 +240,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
             <>
               <span className="text-muted-foreground mr-auto text-xs" aria-live="polite">
                 {revision ? <RevisionStatus state={revised.state} /> : null}
+                {revision ? <RoomStatus room={room} /> : null}
                 {!revision && filed ? <DiagramFilingControls filing={filing} /> : null}
                 {!revision && filing.state.kind === 'failed' ? (
                   <span className="text-destructive">{filing.state.message}</span>
@@ -174,7 +249,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
               <Button variant="ghost" onClick={() => requestClose(false)}>
                 {t('sketch.close')}
               </Button>
-              {filed ? null : (
+              {filed || !canWrite ? null : (
                 <Button
                   onClick={() => void (revision ? revised.save() : filing.file())}
                   disabled={(!revision && !filing.target) || saving}

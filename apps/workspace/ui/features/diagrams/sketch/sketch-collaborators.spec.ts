@@ -26,7 +26,8 @@ const state = (overrides: Partial<RoomPeerState> & Pick<RoomPeerState, 'peer'>):
 })
 
 const ANNA = { peerId: 'tab-anna-1', userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }
-const PILOTI = { peerId: 'piloti-conv', userId: 'user_anna', name: 'Piloti', kind: 'piloti' as const, forName: 'Anna Berger' }
+/** The agent, as the server stamps it: a peer of its own, named with the person it acts for. Its kind does not change the name. */
+const AGENT = { peerId: 'agent-conv-1', userId: 'user_anna', name: 'Agent', kind: 'person' as const, forName: 'Anna Berger' }
 
 describe('collaboratorsOf', () => {
   it('keys each tab, colours it as the person, and carries pointer, button and selection', () => {
@@ -51,10 +52,10 @@ describe('collaboratorsOf', () => {
     expect(collaborators.get('tab-anna-2')).not.toHaveProperty('selectedElementIds')
   })
 
-  it('names a peer with the caller’s copy: Piloti with the person it acts for', () => {
-    const collaborators = collaboratorsOf([state({ peer: PILOTI })], {
+  it('names a peer with the caller’s copy: the agent with the person it acts for', () => {
+    const collaborators = collaboratorsOf([state({ peer: AGENT })], {
       nameOf: (peer) => (peer.forName ? `${peer.name} · für ${peer.forName}` : peer.name),
     })
-    expect(collaborators.get('piloti-conv')?.username).toBe('Piloti · für Anna Berger')
+    expect(collaborators.get('agent-conv-1')?.username).toBe('Agent · für Anna Berger')
   })
 })

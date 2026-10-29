@@ -114,7 +114,9 @@ have no slice yet. Both wait for S1's structured read.
   agent. Does a person's edit make the next Fassung theirs, and does a Skizze go
   through Freigabe before it can join an Einreichung?
 - **The room under load.** The realtime hub is lossy by design and sheds motion on
-  429. S2 must keep the Fassung as the truth and treat deltas as hints; how often
-  the editor saves is open.
+  429. S2 keeps the Fassung as the truth and treats deltas as hints (ADR-0110,
+  amendment of 2026-10-29), with saves explicit, one Fassung each. Whether an
+  autosave into an open draft Fassung is worth it (S2b) waits for how often people
+  lose work by closing unsaved.
 - **Image paste.** With `tools.image` off, a pasted image may still create an
   `<image>` that the validator refuses with a 400. Check before S1 ships.

@@ -21,8 +21,10 @@
  *     validator, and an embed is a third-party page inside a filed document.
  *   - **No load, save, export or image download of its own.** Filing into the
  *     project is the one way out, so the file lands where the office looks
- *     and carries its provenance. No collaboration (it needs a room server),
- *     no library browser (it opens libraries.excalidraw.com).
+ *     and carries its provenance. No collaboration server of Excalidraw's:
+ *     a reopened Skizze is co-edited in its own document room instead
+ *     (`collab`, `use-sketch-room.ts`), and no library browser (it opens
+ *     libraries.excalidraw.com).
  *   - **No AI and no mermaid import.** `aiEnabled={false}` takes the AI tools
  *     out of the menus, and the `ttd` dialog, which the extra-tools menu still
  *     opens for mermaid, is closed the moment it opens (`sketch-guards.ts`).
@@ -30,13 +32,17 @@
  *     the PDF can show, so what is filed reads like what was drawn.
  */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './excalidraw-assets'
 import {
+  CaptureUpdateAction,
   convertToExcalidrawElements,
   Excalidraw,
   exportToSvg,
+  hashElementsVersion,
   MainMenu,
+  reconcileElements,
+  restoreElements,
   serializeAsJSON,
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
@@ -44,6 +50,8 @@ import { DIAGRAM_SOURCE_FACTS } from '@/lib/diagrams/diagram-sources'
 import { SKETCH_FONT_FAMILY, SKETCH_FONT_SIZE } from './sketch-from-model'
 import { fileableSketchSvg } from './sketch-svg'
 import { opensForbiddenDialog } from './sketch-guards'
+import type { SketchHelpers } from './sketch-sync'
+import type { SketchCanvasBridge, SketchCollab } from './use-sketch-room'
 
 type ExcalidrawApi = Parameters<NonNullable<React.ComponentProps<typeof Excalidraw>['excalidrawAPI']>>[0]
 
@@ -51,6 +59,8 @@ type ExcalidrawApi = Parameters<NonNullable<React.ComponentProps<typeof Excalidr
 export interface SketchCanvasHandle {
   /** The scene as an `.excalidraw` document and its paper SVG, ready to file. */
   prepare: () => Promise<{ source: string; svg: string }>
+  /** The scene now is what was saved: what follows is a change again. */
+  markSaved: () => void
 }
 
 export interface SketchCanvasProps {
@@ -73,6 +83,22 @@ export interface SketchCanvasProps {
    * Fassung starts by opening the filed sketch again from Files.
    */
   readOnly?: boolean
+  /**
+   * The document room, for a reopened Skizze (`use-sketch-room.ts`): the
+   * others' pointers and edits come in, this canvas's go out. A reader's
+   * canvas is in view mode.
+   */
+  collab?: SketchCollab | null
+}
+
+type SceneElement = ReturnType<ExcalidrawApi['getSceneElementsIncludingDeleted']>[number]
+type SceneAppState = ReturnType<ExcalidrawApi['getAppState']>
+
+/** Excalidraw's own merge, hash and repair, handed to the room so nothing else imports Excalidraw. */
+const SKETCH_HELPERS: SketchHelpers<SceneElement, SceneAppState> = {
+  reconcile: (local, remote, appState) => reconcileElements(local, remote as never, appState),
+  hash: (elements) => hashElementsVersion(elements),
+  restore: (elements) => restoreElements(elements as never, null),
 }
 
 /** A scene's version: Excalidraw bumps an element's `version` on every edit. */
@@ -98,8 +124,10 @@ export default function SketchCanvas({
   onReady,
   onDirtyChange,
   readOnly = false,
+  collab = null,
 }: SketchCanvasProps) {
   const apiRef = useRef<ExcalidrawApi | null>(null)
+  const [api, setApi] = useState<ExcalidrawApi | null>(null)
   const baseline = useRef<number | null>(null)
   const dirty = useRef(false)
 
@@ -131,18 +159,43 @@ export default function SketchCanvas({
     return { source, svg: fileableSketchSvg(svg) }
   }, [])
 
+  const markSaved = useCallback(() => {
+    const current = apiRef.current
+    if (!current) return
+    baseline.current = sceneVersion(current.getSceneElementsIncludingDeleted())
+    dirty.current = false
+    onDirtyChange(false)
+  }, [onDirtyChange])
+
   useEffect(() => {
-    onReady({ prepare })
-  }, [onReady, prepare])
+    onReady({ prepare, markSaved })
+  }, [onReady, prepare, markSaved])
+
+  // In a room: hand it the scene and Excalidraw's helpers once the API is there.
+  useEffect(() => {
+    if (!api || !collab) return
+    const bridge: SketchCanvasBridge<SceneElement, SceneAppState> = {
+      helpers: SKETCH_HELPERS,
+      scene: () => ({ elements: api.getSceneElementsIncludingDeleted(), appState: api.getAppState() }),
+      apply: (elements) => api.updateScene({ elements, captureUpdate: CaptureUpdateAction.NEVER }),
+      setCollaborators: (collaborators) => api.updateScene({ collaborators: collaborators as never }),
+    }
+    return collab.attach(bridge as unknown as SketchCanvasBridge)
+  }, [api, collab])
 
   return (
     // The library sidebar's trigger opens a browser for libraries.excalidraw.com;
     // there is no prop for it in 0.18, so it is hidden here.
     <div className="h-full w-full [&_.default-sidebar-trigger]:hidden!" data-testid="sketch-canvas">
       <Excalidraw
-        excalidrawAPI={(api) => {
-          apiRef.current = api
+        excalidrawAPI={(ready) => {
+          apiRef.current = ready
+          setApi(ready)
         }}
+        isCollaborating={collab !== null}
+        onPointerUpdate={({ pointer, button }) =>
+          collab?.pointer({ pointer: { x: pointer.x, y: pointer.y }, tool: pointer.tool, button })
+        }
         initialData={{
           elements,
           appState: {
@@ -157,6 +210,10 @@ export default function SketchCanvas({
         }}
         onChange={(sceneElements, appState) => {
           if (opensForbiddenDialog(appState.openDialog)) apiRef.current?.updateScene({ appState: { openDialog: null } })
+          if (collab) {
+            collab.changed()
+            collab.selection(Object.keys(appState.selectedElementIds))
+          }
           const version = sceneVersion(sceneElements)
           // The first change is Excalidraw settling the initial scene (text
           // measured, arrows bound); that is the baseline, not an edit.
@@ -175,7 +232,7 @@ export default function SketchCanvas({
           }
         }}
         theme={theme}
-        viewModeEnabled={readOnly}
+        viewModeEnabled={readOnly || (collab !== null && !collab.canWrite)}
         langCode={langCode}
         UIOptions={{
           canvasActions: {

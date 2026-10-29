@@ -71,6 +71,7 @@ export function SketchReviseAction({ documentId, contentType, authoredBy, onChan
           documentId: sketch.documentId,
           baseVersionId: sketch.versionId,
           scene: sketch.scene,
+          canWrite: sketch.canWrite,
           onSaved,
         }}
       />

@@ -122,6 +122,13 @@ export const diagrams = {
     /** 409: someone saved a newer version since this one was opened. */
     staleVersion: 'A newer version exists now. Open the sketch again to continue from it.',
     sceneRejected: 'The sketch holds something that is not saved here: an image, embedded content or too many elements.',
+    viewOnly: 'You can view this sketch but not change it. What the others draw shows here as they draw it.',
+    agentFor: '{name} · for {forName}',
+    peerSaved: '{name} saved a version. Your canvas shows exactly that version.',
+    peerSavedDiffers: '{name} saved a version. What you drew since is not saved yet.',
+    tooLargeLive: 'One element is too large to share live. The others see it as soon as you save.',
+    discardShared: '{names} is still here and keeps the changes. Close without saving?',
+    saveAgain: 'Someone saved a newer version meanwhile. Your changes are merged into it; please save again.',
   },
   rejected: {
     empty: 'The diagram was empty.',

@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Two people with the same sketch open now draw on it together: each sees
+    the other's pointer, selection and strokes as they happen, and saving
+    writes one new version for both. Someone who may only read the sketch
+    watches the drawing live but cannot change it.
