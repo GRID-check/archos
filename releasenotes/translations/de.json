@@ -2780,6 +2780,10 @@
     "de": "Bei der Suche in den Dokumenten eines Projekts oder im Archiv werden Dokumente jetzt nicht nur anhand ihres Inhalts, sondern auch anhand ihres Namens und Dokumenttyps gefunden. Die Ergebnisse zeigen den passenden Textabschnitt und die Seitenzahl und sind nach Relevanz sortiert – ohne Prozentangabe zur Relevanz."
   },
   {
+    "en": "Searching from the command palette (Ctrl+K) is calmer: results hold still while you move through them, and each document shows on one line where it is filed and which revision it is.",
+    "de": "Die Suche über die Command Palette (Ctrl+K) ist übersichtlicher: Die Ergebnisse bleiben beim Navigieren an Ort und Stelle, und bei jedem Dokument sehen Sie in einer Zeile, wo es abgelegt ist und welche Revision es hat."
+  },
+  {
     "en": "Searching your files keeps the view you chose, list or cards. In the list, you can sort by relevance, and each row shows the matching passage and its page.",
     "de": "Die Suche in Ihren Dateien behält die gewählte Ansicht bei, Liste oder Karten. In der Liste lässt sich nach Relevanz sortieren, und jede Zeile zeigt die passende Textstelle samt Seite."
   },
@@ -3918,6 +3922,10 @@
   {
     "en": "When everything an upload brought in has been read, your inbox tells you, with a summary of what arrived, where it was filed, what each file is, and what was held back or failed. Project settings list every upload with its outcome and who uploaded it.",
     "de": "Sobald alles gelesen ist, was ein Upload gebracht hat, meldet es Ihr Postfach – mit einer Zusammenfassung, was angekommen ist, wo es abgelegt wurde, was jede Datei ist und was zurückgehalten wurde oder fehlgeschlagen ist. Die Projekteinstellungen listen jeden Upload mit seinem Ergebnis und der Person, die ihn hochgeladen hat."
+  },
+  {
+    "en": "When nothing is found or the search fails, the palette now says so and offers to try again or continue in the full search.",
+    "de": "Wenn nichts gefunden wird oder die Suche fehlschlägt, weist die Palette jetzt darauf hin und bietet an, es erneut zu versuchen oder in der vollständigen Suche fortzufahren."
   },
   {
     "en": "When reading a project's documents stops before it finishes, the person who started it now gets a Postfach entry saying so, instead of nothing.",

@@ -17,6 +17,7 @@ export const shortcuts = {
       move: 'to move',
       open: 'to open',
       close: 'to close',
+      all: 'for all results',
     },
   },
   cheatsheet: {

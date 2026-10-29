@@ -146,7 +146,7 @@
     "apps/workspace/ui/features/projects/components/project-memory-panel.tsx": 614,
     "apps/workspace/ui/features/projects/components/use-project-intake-wizard-controller.tsx": 753,
     "apps/workspace/ui/features/runs/components/RunBlock.tsx": 1046,
-    "apps/workspace/ui/features/search/components/search-atoms.tsx": 1176,
+    "apps/workspace/ui/features/search/components/search-atoms.tsx": 1116,
     "apps/workspace/ui/features/skills/components/skill-editor-dialog.tsx": 1085,
     "apps/workspace/ui/features/tasks/components/tasks-panel.tsx": 680,
     "deploy/pulumi/src/app/config.ts": 791,

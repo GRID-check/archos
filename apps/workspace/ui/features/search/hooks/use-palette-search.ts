@@ -26,6 +26,8 @@ export interface PaletteSearch {
 export interface PaletteSearchHandle extends PaletteSearch {
   /** The reader is about to go to `href`: when it is one of the answer's hits, `search_result_opened` says which. */
   opening: (href: string) => void
+  /** Ask the same question again, after an answer that failed. */
+  retry: () => void
 }
 
 const IDLE: PaletteSearch = { answered: '', response: null, loading: false, failed: false }
@@ -49,6 +51,8 @@ export function usePaletteSearch(
   const kindsKey = options.kinds ? options.kinds.join(',') : ''
   const limit = options.limit ?? PALETTE_HITS_PER_KIND
   const tracker = useSearchTracker('palette')
+  const [attempt, setAttempt] = useState(0)
+  const retry = useCallback(() => setAttempt((count) => count + 1), [])
 
   useEffect(() => {
     if (!enabled) tracker.flush()
@@ -90,7 +94,8 @@ export function usePaletteSearch(
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [words, scopeKey, enabled, tracker, kindsKey, limit])
+    // `attempt` asks again: a retry is the same question, so nothing else changes.
+  }, [words, scopeKey, enabled, tracker, kindsKey, limit, attempt])
 
   const { response } = state
   const opening = useCallback(
@@ -101,7 +106,7 @@ export function usePaletteSearch(
     },
     [response, tracker]
   )
-  return { ...state, opening }
+  return { ...state, opening, retry }
 }
 
 export interface PaletteShortcuts {
