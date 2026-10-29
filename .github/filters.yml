@@ -231,6 +231,9 @@ site:
   # The brand master and the app's copy: the site's `npm run check` holds
   # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
   - 'packages/brand/**'
+  # The brand rules the website's `bun run check` and `task website:verify` run.
+  - 'scripts/check_brand_rules.mjs'
+  - 'scripts/check_brand_rules.test.mjs'
   - 'apps/workspace/app/icon.svg'
   # The app's inline copy of the mark's path, held by the same --check.
   - 'apps/workspace/bff/brand.ts'
