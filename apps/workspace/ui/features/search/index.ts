@@ -9,11 +9,14 @@ export { ShelfSearchBack } from './components/shelf-search-toggle'
 export {
   PALETTE_ALL_RESULTS_VALUE,
   PALETTE_LATE_ANSWER_MS,
+  PALETTE_RETRY_VALUE,
   PaletteSearchResults,
   PaletteSearchStart,
   paletteFilter,
   isPaletteHitValue,
   paletteHitValue,
+  paletteHitHref,
+  paletteHits,
 } from './components/palette-search'
 export { usePaletteSearch, usePaletteShortcuts } from './hooks/use-palette-search'
 export {

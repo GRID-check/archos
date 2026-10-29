@@ -321,6 +321,10 @@ export const search: typeof en.search = {
     noHits: 'Nichts gefunden',
     noHitsFor: 'Nichts gefunden für „{text}“',
     continueInSearch: 'In der Suche weitersuchen',
+    retry: 'Erneut versuchen',
+    retryHint: 'Meist reicht ein zweiter Versuch; sonst die Verbindung prüfen.',
+    ofTotal: '{shown} von {total}',
+    allIn: 'Alle in {project}',
     recent: 'Zuletzt gesucht',
     hint: {
       office:

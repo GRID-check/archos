@@ -234,10 +234,11 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
           ]}
         />
       }
-      aside={hit.superseded ? <SupersededMark /> : null}
+      aside={hit.superseded ? <SupersededMark quiet={compact} /> : null}
       actions={menus ? <DocumentHitMenu hit={hit} /> : undefined}
     >
-      {hit.passage ? (
+      {/* The palette shows a passage only where the name did not match: there it is why the row is here; under a name that matched it was a third line saying it twice. */}
+      {hit.passage && !(compact && title.some((segment) => segment.match)) ? (
         <PassageQuote
           segments={termSegments(hit.passage.text, text)}
           page={hit.passage.page !== null ? t('passage.page', { page: hit.passage.page }) : undefined}
@@ -283,6 +284,7 @@ function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolea
 }
 
 function FolderRow({ hit, active, id }: { hit: FolderHit; active: boolean; id?: string }): JSX.Element {
+  const compact = useCompactRow()
   const where = useWhere()(hit.shelf, hit.projectId, hit.projectName)
   return (
     <ResultRow
@@ -294,7 +296,8 @@ function FolderRow({ hit, active, id }: { hit: FolderHit; active: boolean; id?: 
       meta={where.length > 0 ? <MetaLine lead={where} parts={[]} /> : undefined}
       testId={`search-hit-folder-${hit.id}`}
     >
-      {hit.excerpt ? <Excerpt>{hit.excerpt}</Excerpt> : null}
+      {/* A folder's description is the page's; in the palette its name and place say which folder. */}
+      {hit.excerpt && !compact ? <Excerpt>{hit.excerpt}</Excerpt> : null}
     </ResultRow>
   )
 }

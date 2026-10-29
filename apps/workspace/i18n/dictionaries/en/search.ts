@@ -313,6 +313,10 @@ export const search = {
     noHits: 'Nothing found',
     noHitsFor: 'Nothing found for “{text}”',
     continueInSearch: 'Continue in search',
+    retry: 'Try again',
+    retryHint: 'A second try is usually enough; otherwise check the connection.',
+    ofTotal: '{shown} of {total}',
+    allIn: 'All in {project}',
     recent: 'Recent searches',
     hint: {
       office:

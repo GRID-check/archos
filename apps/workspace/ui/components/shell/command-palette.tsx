@@ -34,6 +34,9 @@ import { useLayoutStore } from '@/features/layout/store'
 import {
   PALETTE_ALL_RESULTS_VALUE,
   PALETTE_LATE_ANSWER_MS,
+  PALETTE_RETRY_VALUE,
+  paletteHitHref,
+  paletteHits,
   PaletteSearchResults,
   PaletteSearchStart,
   captureSavedSearchRun,
@@ -45,11 +48,11 @@ import {
   usePaletteSearch,
   usePaletteShortcuts,
 } from '@/features/search'
-import { SEARCH_KINDS } from '@/lib/search/search-wire'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { useTranslations } from '@/i18n'
+import { cn } from '@/lib/utils'
 import { commonCopy } from '@/i18n/namespaces/common'
 import { navCopy } from '@/i18n/namespaces/nav'
 import { shortcutsCopy } from '@/i18n/namespaces/shortcuts'
@@ -69,9 +72,10 @@ export function projectIdFromPathname(pathname: string): string | null {
 }
 
 // 44px rows under a finger: they stack with no gap, so the row grows rather
-// than borrowing a catchment from its neighbour.
-const PALETTE_ITEM_CLASS =
-  'transition-colors duration-snap ease-out motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:text-[15px]'
+// than borrowing a catchment from its neighbour. No colour transition: the
+// highlight follows the arrows in the frame they are pressed, as the hits'
+// does, and an eased one left two rows half lit on every key.
+const PALETTE_ITEM_CLASS = 'pointer-coarse:min-h-11 pointer-coarse:text-[15px]'
 
 /**
  * On a desktop the palette carries search hits as well as commands: a hit is
@@ -171,21 +175,27 @@ export function CommandPalette({
 
   // The row the arrows are on. When hits arrive for what is typed, the first
   // one takes the selection from the „Alle Treffer“ row cmdk put it on, so
-  // Enter opens the best hit; a row the reader moved to themselves is kept.
+  // Enter opens the best hit; a row the reader moved to themselves is kept,
+  // and so is a hit they arrowed to that the newer answer still holds.
   const [selected, setSelected] = React.useState('')
-  const firstHit = React.useMemo(() => {
-    if (search.answered !== words || !search.response) return null
-    for (const kind of SEARCH_KINDS) {
-      const hit = search.response.sections[kind]?.hits[0]
-      if (hit) return paletteHitValue(hit)
-    }
-    return null
-  }, [search.answered, search.response, words])
+  const answerHits = React.useMemo(
+    () => (search.answered === words && search.response ? paletteHits(search.response).map(paletteHitValue) : []),
+    [search.answered, search.response, words],
+  )
+  const firstHit = answerHits[0] ?? null
   React.useEffect(() => {
     if (!firstHit) return
-    setSelected((current) => (current === '' || current === PALETTE_ALL_RESULTS_VALUE || isPaletteHitValue(current) ? firstHit : current))
-  }, [firstHit])
+    setSelected((current) =>
+      current === '' || current === PALETTE_ALL_RESULTS_VALUE || (isPaletteHitValue(current) && !answerHits.includes(current)) ? firstHit : current,
+    )
+  }, [firstHit, answerHits])
+  // A failed answer puts the arrows on „Erneut versuchen“, so Enter asks again.
+  React.useEffect(() => {
+    if (search.failed) setSelected(PALETTE_RETRY_VALUE)
+  }, [search.failed])
   const filter = React.useMemo(() => paletteFilter(defaultFilter), [])
+  // Nothing to open all of: the footer leaves out its „alle Treffer“.
+  const answeredEmpty = words !== '' && (search.failed || (search.answered === words && search.response !== null && firstHit === null))
 
   const { opening } = search
   const openSearchHref = React.useCallback(
@@ -200,14 +210,38 @@ export function CommandPalette({
   // Mod+Enter opens every hit for what is typed from whichever row the arrows
   // are on, so the search page is one chord away and never a scroll.
   const allHref = words ? searchPageHref(words, projectId) : null
+  // An Enter pressed before the first answer for what is typed is held for
+  // it: then it opens the best hit, as it would a moment later, or the search
+  // page when there is none. Taken at once it opened whatever row the network
+  // had got to, so the same keys went to two places depending on its speed.
+  const awaitingAnswer = words !== '' && !search.failed && (search.loading || search.answered !== words)
+  const [heldEnter, setHeldEnter] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    if (heldEnter === null) return
+    if (heldEnter !== words || search.failed) {
+      setHeldEnter(null)
+      return
+    }
+    if (awaitingAnswer) return
+    setHeldEnter(null)
+    openSearchHref(firstHit ? paletteHitHref(firstHit) : searchPageHref(words, projectId))
+  }, [heldEnter, words, search.failed, awaitingAnswer, firstHit, openSearchHref, projectId])
   const onFieldKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || !allHref) return
-      // cmdk skips its own Enter (select the active row) once this is handled.
-      event.preventDefault()
-      openSearchHref(allHref)
+      if (event.key !== 'Enter') return
+      const chord = event.metaKey || event.ctrlKey
+      if (chord && allHref) {
+        // cmdk skips its own Enter (select the active row) once this is handled.
+        event.preventDefault()
+        openSearchHref(allHref)
+        return
+      }
+      if (!chord && awaitingAnswer && selected === PALETTE_ALL_RESULTS_VALUE) {
+        event.preventDefault()
+        setHeldEnter(words)
+      }
     },
-    [allHref, openSearchHref],
+    [allHref, openSearchHref, awaitingAnswer, selected, words],
   )
   // The ↑ ↓ ↵ Esc legend is for a keyboard. Read off the primary pointer, so a
   // touch tablet past `md` drops it as well as a phone does.
@@ -223,7 +257,7 @@ export function CommandPalette({
   )
 
   // On a desktop the card's height follows its content: the commands give way
-  // to the hits, the placeholder rows to the answer, one answer to the next.
+  // to the placeholder, the placeholder rows to the answer, one answer to the next.
   // Landed in one frame, the card's bottom edge jumped by a hundred pixels on
   // each; glided (`useHeightGlide`, a swap in the frame the reader is looking
   // at), the change reads as the list answering. Keyed by the answer, so the
@@ -235,7 +269,39 @@ export function CommandPalette({
   // made once and read too early never saw the list, and never glided.
   const [listElement, setListElement] = React.useState<HTMLDivElement | null>(null)
   const listRef = React.useMemo(() => ({ current: listElement }), [listElement])
-  useHeightGlide(listRef, desktop && open ? (words ? `search:${search.answered}:${search.response === null}` : 'start') : 'still')
+  // The bottom edge dissolves only while there is more under it: on a list
+  // that fits, the fade smeared its last row, which was often the selected one.
+  // While the first answer for what is typed is on its way the list does not
+  // shrink: the commands the words stop matching drop out key by key, and each
+  // drop moved the card's bottom edge a moment before the answer moved it
+  // again. Held at its tallest, the answer's glide is the one change.
+  const awaitingFirst = desktop && open && words !== '' && !search.failed && search.response === null
+  const floor = React.useRef(0)
+  React.useLayoutEffect(() => {
+    if (!listElement) return
+    if (!awaitingFirst) {
+      floor.current = 0
+      listElement.style.minHeight = ''
+      return
+    }
+    floor.current = Math.max(floor.current, listElement.offsetHeight)
+    listElement.style.minHeight = `${floor.current}px`
+  })
+  const [overflows, setOverflows] = React.useState(false)
+  React.useLayoutEffect(() => {
+    if (!listElement || typeof ResizeObserver === 'undefined') return
+    const measure = () => setOverflows(listElement.scrollHeight > listElement.clientHeight + 1)
+    const observer = new ResizeObserver(measure)
+    observer.observe(listElement)
+    if (listElement.firstElementChild) observer.observe(listElement.firstElementChild)
+    measure()
+    return () => observer.disconnect()
+  }, [listElement])
+  // Keyed by the answer alone: a keystroke swaps the commands for the
+  // placeholder in two commits (cmdk filters its rows a render after ours), so
+  // a glide keyed by the keystroke measured the unfiltered list, grew toward it
+  // and then dropped back. That step is small and lands; the answer glides.
+  useHeightGlide(listRef, desktop && open ? search.answered : null)
 
   // Lazy project list — fetched once, the first time the palette opens.
   const [projects, setProjects] = React.useState<PaletteProject[] | null>(null)
@@ -291,7 +357,7 @@ export function CommandPalette({
       // once, in the footer where the other keys are, rather than as a second
       // footer pinned over the hits.
       hintsTrailing={
-        words ? (
+        words && !answeredEmpty ? (
           <>
             <ShortcutKeys segments={[{ kind: 'chord', caps: [MOD, '↵'] }]} />
             {t('hints.all')}
@@ -320,7 +386,7 @@ export function CommandPalette({
           {tCommon('actions.cancel')}
         </DialogClose>
       </div>
-      <CommandList ref={setListElement} className="md:scroll-fade-bottom min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain">
+      <CommandList ref={setListElement} className={cn(overflows && 'md:scroll-fade-bottom', 'min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain')}>
         {/* No „Keine Ergebnisse“: a search row always answers, with the way
             to every hit for what was typed. */}
         {words ? (
@@ -331,6 +397,7 @@ export function CommandPalette({
             loading={search.loading}
             failed={search.failed}
             onOpen={openSearchHref}
+            onRetry={search.retry}
             allHref={allHref ?? searchPageHref(words, projectId)}
             scope={scope}
             itemClassName={PALETTE_ITEM_CLASS}

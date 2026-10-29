@@ -16,25 +16,24 @@
 import type { JSX } from 'react'
 import { createContext, useContext } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Bookmark, History, Search, Users } from 'lucide-react'
+import { Bookmark, History, RotateCw, Search, Users } from 'lucide-react'
 
 import { CommandGroup, CommandItem } from '@/components/ui/command'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { useTranslations } from '@/i18n'
 import { searchCopy } from '@/i18n/namespaces/search'
-import { cn } from '@/lib/utils'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SEARCH_KINDS, type SearchHit, type SearchResponse, type SearchScopeQuery } from '@/lib/search/search-wire'
 import { PALETTE_HITS_PER_KIND } from '../hooks/use-palette-search'
 import { hitHref } from '../lib/search-hrefs'
 import {
-  PALETTE_GROUP_CLASS,
   PALETTE_HIT_CLASS,
   PALETTE_STALE_CLASS,
   PaletteAside,
   PaletteEmpty,
   PaletteGroupHeading,
   PaletteHitsSkeleton,
+  PaletteScopeLine,
   PaletteGlyph,
   PaletteLabel,
   PaletteStatusLine,
@@ -46,9 +45,12 @@ import { HitRow, HitScopeProvider } from './search-result-list'
 /** Every row this module adds carries this prefix, so the palette's filter can rank them above the commands. */
 export const PALETTE_SEARCH_VALUE_PREFIX = 'search:'
 export const PALETTE_ALL_RESULTS_VALUE = `${PALETTE_SEARCH_VALUE_PREFIX}all`
+export const PALETTE_RETRY_VALUE = `${PALETTE_SEARCH_VALUE_PREFIX}retry`
 const hitValue = (href: string): string => `${PALETTE_SEARCH_VALUE_PREFIX}hit:${href}`
 export const paletteHitValue = (hit: SearchHit): string => hitValue(hitHref(hit))
 export const isPaletteHitValue = (value: string): boolean => value.startsWith(`${PALETTE_SEARCH_VALUE_PREFIX}hit:`)
+/** Where a hit's option goes: its value without the prefix. */
+export const paletteHitHref = (value: string): string => value.slice(`${PALETTE_SEARCH_VALUE_PREFIX}hit:`.length)
 
 type CommandFilter = (value: string, search: string, keywords?: string[]) => number
 
@@ -94,6 +96,8 @@ export interface PaletteSearchResultsProps {
   failed: boolean
   /** Open a hit, or the search page, and close the palette. */
   onOpen: (href: string) => void
+  /** Ask again after a failed answer; given, the failure's row offers it instead of the search page. */
+  onRetry?: () => void
   /**
    * Pick a hit instead of opening it: the composer's `#`, which puts the hit
    * into the message. Given, a hit's Enter or click picks it.
@@ -124,6 +128,7 @@ export function PaletteSearchResults({
   loading,
   failed,
   onOpen,
+  onRetry,
   onPick,
   allHref,
   perKind = PALETTE_HITS_PER_KIND,
@@ -137,18 +142,28 @@ export function PaletteSearchResults({
   const anyHits = shown.length > 0
   const busy = !failed && (loading || stale)
   const late = useDelayedFlag(busy && anyHits, PALETTE_LATE_ANSWER_MS)
+  // „3 von 14“ only where there are more than the rows show: a bare 14 over
+  // three rows promised hits the palette has no way to reach but the page.
   const tCount = (kind: (typeof SEARCH_KINDS)[number]): string | null => {
     const section = response?.sections[kind]
-    if (!section) return null
-    return section.totalIsLowerBound ? t('totalAtLeast', { count: section.total }) : String(section.total)
+    const shownHere = Math.min(section?.hits.length ?? 0, perKind)
+    if (!section || (section.total <= shownHere && !section.totalIsLowerBound)) return null
+    const total = section.totalIsLowerBound ? t('totalAtLeast', { count: section.total }) : String(section.total)
+    return t('palette.ofTotal', { shown: shownHere, total })
   }
   // What the search is doing. Searching is said by the field's own progress
   // line (`CommandInput busy`) and here only to a screen reader: a „Sucht…“
   // that came and went at the row's end on every key was the panel's flicker.
   // An answer that found nothing, or failed, is shown.
   const status = failed ? t('error') : busy ? t('loading') : response && !anyHits ? t('palette.noHits') : null
-  const firstAnswer = busy && response === null
+  // On `loading`, not on the words alone: `loading` turns on a render after
+  // the keystroke, the render in which cmdk drops the commands the words do not
+  // match, so the placeholder and the shorter command list arrive in one frame.
+  // On the words, the placeholder stood one frame over the whole command list.
+  const firstAnswer = loading && !failed && response === null
   const empty = !busy && (failed || (response !== null && !anyHits))
+  const oneProject = scope.scope === 'project' ? null : sharedProject(shown)
+  const rowScope: SearchScopeQuery = oneProject ? { scope: 'project', projectId: oneProject.id } : scope
   const select = onPick
     ? (href: string): void => {
         const hit = shown.find((entry) => hitHref(entry) === href)
@@ -157,7 +172,8 @@ export function PaletteSearchResults({
     : onOpen
   return (
     <OpenContext.Provider value={select}>
-      <HitScopeProvider scope={scope}>
+      {oneProject ? <PaletteScopeLine project={oneProject.name} dimmed={late} /> : null}
+      <HitScopeProvider scope={rowScope}>
       <ResultRowFrameProvider value={PaletteHitFrame}>
         {SEARCH_KINDS.map((kind) => {
           const hits = response?.sections[kind]?.hits.slice(0, perKind) ?? []
@@ -170,7 +186,7 @@ export function PaletteSearchResults({
               // No entrance of its own: the hits take the placeholder's place at
               // full strength while the card's height glides, and a fade from
               // nothing in the same frame read as the panel blinking blank.
-              className={cn(PALETTE_GROUP_CLASS, late && PALETTE_STALE_CLASS)}
+              className={late ? PALETTE_STALE_CLASS : undefined}
               aria-busy={late || undefined}
               data-testid={`palette-group-${kind}`}
             >
@@ -194,7 +210,7 @@ export function PaletteSearchResults({
           {empty ? (
             <PaletteEmpty
               title={failed ? t('error') : t('palette.noHitsFor', { text: words })}
-              hint={failed ? undefined : t(scope.scope === 'project' ? 'palette.hint.project' : 'palette.hint.office')}
+              hint={failed ? (onRetry ? t('palette.retryHint') : undefined) : t(scope.scope === 'project' ? 'palette.hint.project' : 'palette.hint.office')}
               testId="palette-search-status"
             />
           ) : (
@@ -203,6 +219,12 @@ export function PaletteSearchResults({
             </span>
           )}
           <CommandGroup forceMount>
+            {failed && onRetry ? (
+              <CommandItem forceMount value={PALETTE_RETRY_VALUE} onSelect={onRetry} className={itemClassName} data-testid="palette-search-retry">
+                <PaletteGlyph icon={RotateCw} />
+                <PaletteLabel>{t('palette.retry')}</PaletteLabel>
+              </CommandItem>
+            ) : null}
             <CommandItem forceMount value={PALETTE_ALL_RESULTS_VALUE} onSelect={() => onOpen(allHref)} className={itemClassName} data-testid="palette-workspace-search">
               <PaletteGlyph icon={Search} />
               {/* Nothing here is no promise of nothing there: the page searches with filters, and further than three of a kind. */}
@@ -213,6 +235,24 @@ export function PaletteSearchResults({
       )}
     </OpenContext.Provider>
   )
+}
+
+/**
+ * The one project every hit shown lives in, when there are several hits and
+ * they agree: the palette then names it once above them rather than on each
+ * row. Null when any hit is a project itself, sits in the Büroablage, or in
+ * another project.
+ */
+export function sharedProject(hits: readonly SearchHit[]): { id: string; name: string } | null {
+  if (hits.length < 2) return null
+  let shared: { id: string; name: string } | null = null
+  for (const hit of hits) {
+    if (hit.kind === 'project' || !hit.projectId || !hit.projectName) return null
+    if ('shelf' in hit && hit.shelf !== 'project') return null
+    if (shared && shared.id !== hit.projectId) return null
+    shared = { id: hit.projectId, name: hit.projectName }
+  }
+  return shared
 }
 
 /** The hits the results show, in their order: each kind's first `perKind`, the kinds in the contract's order. */

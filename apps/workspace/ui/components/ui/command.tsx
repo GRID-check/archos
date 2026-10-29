@@ -155,7 +155,13 @@ const CommandInput = React.forwardRef<
       )}
     >
       {/* Mounted at rest too, paused, so the track's fade carries the sweep out instead of cutting it. */}
-      <span className={cn('animate-progress-sweep block h-full w-1/3 rounded-full bg-primary/60 motion-reduce:animate-none', !busy && '[animation-play-state:paused]')} />
+      {/* Under reduced motion a still line across the whole edge: a paused third read as progress stuck at a third. */}
+      <span
+        className={cn(
+          'animate-progress-sweep block h-full w-1/3 rounded-full bg-primary/60 motion-reduce:w-full motion-reduce:animate-none motion-reduce:bg-primary/30',
+          !busy && '[animation-play-state:paused]'
+        )}
+      />
     </span>
     <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
     <CommandPrimitive.Input

@@ -622,12 +622,22 @@ export function WherePart({ children, label }: { children: ReactNode; label: str
  * History icon, never the warning amber, which the provenance signal already
  * spends on the Büroablage (design language, principle 2).
  */
-export function SupersededMark({ className }: { className?: string }): JSX.Element {
-  const t = useTranslations(searchCopy, 'document')
+export function SupersededMark({ className, quiet = false }: { className?: string; quiet?: boolean }): JSX.Element {
+  const tDocument = useTranslations(searchCopy, 'document')
+  // In the palette as a word in the meta line's ink: an outlined chip with an
+  // icon was the loudest mark in a panel whose rows are otherwise text.
+  if (quiet) {
+    return (
+      <span className={cn('inline-flex items-center gap-1 text-xs text-muted-foreground', className)} title={tDocument('supersededHint')} data-testid="superseded-mark">
+        <History className="size-3" aria-hidden />
+        {tDocument('superseded')}
+      </span>
+    )
+  }
   return (
-    <Chip size="sm" variant="outline" className={cn('gap-1 text-muted-foreground', className)} title={t('supersededHint')} data-testid="superseded-mark">
+    <Chip size="sm" variant="outline" className={cn('gap-1 text-muted-foreground', className)} title={tDocument('supersededHint')} data-testid="superseded-mark">
       <History aria-hidden />
-      {t('superseded')}
+      {tDocument('superseded')}
     </Chip>
   )
 }
@@ -654,12 +664,13 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
   // stacked boxes per hit were most of what made the list read as busy.
   const compact = useCompactRow()
   if (compact) {
+    const shown = leadUpToMatch(segments)
     return (
       <span className="flex min-w-0 items-baseline gap-1.5 text-xs leading-5 text-muted-foreground" data-testid="search-passage">
         {page ? <span className="shrink-0 font-medium tabular-nums text-foreground/70">{page}</span> : null}
         <span className="min-w-0 truncate">
-          „
-          {segments.map((segment, index) =>
+          {shown === segments ? '„' : '„…'}
+          {shown.map((segment, index) =>
             segment.match ? (
               <MatchMark key={index} testId="search-passage-match">
                 {segment.text}
@@ -695,6 +706,27 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
       </span>
     </p>
   )
+}
+
+/** How many characters of a one-line passage may stand before its first match. */
+const PASSAGE_LEAD_CHARS = 32
+
+/**
+ * A one-line passage from a word or two before its first match, so the match
+ * is on the line rather than past its cut: the server's passage is a few
+ * sentences, and the palette shows the first forty characters of it. The cut
+ * falls on a word boundary. The segments unchanged when the match is already
+ * near the start, or there is none.
+ */
+export function leadUpToMatch(segments: readonly TextSegment[]): readonly TextSegment[] {
+  const first = segments.findIndex((segment) => segment.match)
+  if (first <= 0) return segments
+  const before = segments.slice(0, first).map((segment) => segment.text).join('')
+  if (before.length <= PASSAGE_LEAD_CHARS) return segments
+  const tail = before.slice(before.length - PASSAGE_LEAD_CHARS)
+  const wordStart = tail.indexOf(' ')
+  const lead = (wordStart === -1 ? tail : tail.slice(wordStart + 1)).trimStart()
+  return [{ text: lead, match: false }, ...segments.slice(first)]
 }
 
 /** A matched word: set apart by weight on a faint ink wash exactly as wide as the match. */
@@ -742,7 +774,7 @@ export function MatchHint({ label, parts, testId = 'search-matched-on' }: { labe
   const compact = useCompactRow()
   if (compact) {
     return (
-      <span className="flex min-w-0 items-baseline gap-1.5 text-xs leading-5 text-muted-foreground" data-testid={testId}>
+      <span className="flex min-w-0 items-baseline gap-1 text-xs leading-5 text-muted-foreground" data-testid={testId}>
         <span className="shrink-0">{label}</span>
         <span className="min-w-0 truncate font-medium text-foreground/70">{parts.join(' · ')}</span>
       </span>
@@ -1179,19 +1211,15 @@ export function SearchInset({ children }: { children: ReactNode }): JSX.Element 
 export const PALETTE_HIT_CLASS = 'py-2 [&_svg.size-3]:size-3! pointer-coarse:min-h-11'
 
 /**
- * A hit group's rows and heading ease their opacity both ways, so a stale
- * answer quiets and the fresh one lifts as a fade rather than a blink.
- */
-export const PALETTE_GROUP_CLASS =
-  '[&_[cmdk-group-heading]]:transition-opacity [&_[cmdk-item]]:transition-[background-color,color,opacity] [&_[cmdk-group-heading]]:duration-quick [&_[cmdk-item]]:duration-quick motion-reduce:[&_[cmdk-group-heading]]:transition-none motion-reduce:[&_[cmdk-item]]:transition-none'
-
-/**
  * Hits of an earlier question while a late answer is still on its way:
  * quieter, as the page's `ResultsBody` dims them, except the row the arrows are
  * on, which stays at full strength: it is still what Enter opens, and a dimmed
- * selection read as the whole list switched off.
+ * selection read as the whole list switched off. The dim eases in; the fresh
+ * answer stands at once. The ease lives in this class alone, so at rest the
+ * arrows move the highlight in one frame: an eased selection trailed the keys.
  */
-export const PALETTE_STALE_CLASS = '[&_[cmdk-group-heading]]:opacity-60 [&_[cmdk-item]:not([data-selected=true])]:opacity-60'
+export const PALETTE_STALE_CLASS =
+  '[&_[cmdk-group-heading]]:opacity-70 [&_[cmdk-item]:not([data-selected=true])]:opacity-70 [&_[cmdk-group-heading]]:transition-opacity [&_[cmdk-item]]:transition-opacity [&_[cmdk-group-heading]]:duration-quick [&_[cmdk-item]]:duration-quick motion-reduce:[&_[cmdk-group-heading]]:transition-none motion-reduce:[&_[cmdk-item]]:transition-none'
 
 /**
  * What the palette says when the answer is empty or failed, in the space the
@@ -1207,6 +1235,26 @@ export function PaletteEmpty({ title, hint, testId }: { title: ReactNode; hint?:
       </p>
       {hint ? <p className="text-pretty text-xs leading-5 text-muted-foreground">{hint}</p> : null}
     </div>
+  )
+}
+
+/**
+ * „Alle in Wohnhaus Seestadt“: where every hit below lives, said once above
+ * them, so the rows leave the project out instead of repeating it five times.
+ */
+export function PaletteScopeLine({ project, dimmed = false }: { project: string; dimmed?: boolean }): JSX.Element {
+  const t = useTranslations(searchCopy)
+  return (
+    <p
+      className={cn(
+        'flex min-w-0 items-center gap-1.5 px-3 pt-2.5 pb-0.5 text-xs text-muted-foreground transition-opacity duration-quick motion-reduce:transition-none',
+        dimmed && 'opacity-70'
+      )}
+      data-testid="palette-scope-line"
+    >
+      <FolderKanban className="size-3 shrink-0" style={{ color: sourceBase('project') }} aria-hidden />
+      <span className="truncate">{t('palette.allIn', { project })}</span>
+    </p>
   )
 }
 
@@ -1229,9 +1277,9 @@ export function PaletteGroupHeading({ children, count }: { children: ReactNode; 
  * placeholder rather than flashing one.
  */
 export function PaletteHitsSkeleton(): JSX.Element {
-  // Two kinds, three hits and one: about the answer a search in an office
-  // usually gets, so the height the answer glides to is a short way off.
-  const groups = [3, 1]
+  // Three kinds, three hits and one and one: about the answer a search in an
+  // office usually gets, so the height the answer glides to is a short way off.
+  const groups = [3, 1, 1]
   return (
     <div className="animate-in fade-in-0 duration-base flex flex-col motion-reduce:animate-none" data-testid="palette-skeleton" aria-hidden>
       {groups.map((rows, group) => (
