@@ -68,7 +68,7 @@ import {
 import { namespaceRoot, useLocale, useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { filesCopy } from '@/i18n/namespaces/files'
-import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
+import { formatAbsoluteTime, formatDayRange, formatRelativeTime } from '@/lib/format'
 import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import {
   INBOX_TYPE_PRESENTATION,
@@ -114,7 +114,6 @@ import { withReviewBack } from '@/features/documents/lib/open-review'
 import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
 import { useUndoableArchive } from '../hooks/use-undoable-archive'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
-import type { MarksSetBy } from '@/lib/annotations/attention'
 import { MentionText } from './MentionText'
 import { UploadReportLines } from '@/features/uploads/components/upload-report'
 
@@ -145,9 +144,6 @@ export interface InboxMarkClient {
 }
 
 const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
-
-/** The variants of `annotation.activity` that tell of new marks, counted per document (`MarksSetBy`, `lib/annotations/attention.ts`). */
-const MARKS_SET_VARIANTS: readonly string[] = ['created', 'created_piloti'] satisfies readonly MarksSetBy[]
 
 /** Only a plain primary click counts as "opened"; see the title link. */
 function isPlainClick(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }): boolean {
@@ -262,6 +258,14 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   // apart rather than widening `isRequest` keeps that distinction readable.
   const isWarning = presentation.tone === 'warning' && !inert
   const needsAttention = isRequest || isWarning
+  // A request whose date has passed is the one row that is late, and says so in
+  // the error's tint (icon + word on the meta line too: colour never travels alone).
+  const overdue = isRequest && item.variant === 'overdue'
+  const tint = overdue
+    ? 'border-transparent bg-danger-subtle text-error'
+    : needsAttention
+      ? 'border-transparent bg-warning-subtle text-warning'
+      : 'border-border bg-card text-muted-foreground'
 
   // A REDACTED row carries no href and no payload (IB-13); `inboxItemCopy` words it.
   const redacted = !item.href
@@ -390,15 +394,27 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const undoRef = useFocusBackOnClose<HTMLButtonElement>(!offerUndo)
   const resolveRef = useFocusBackOnClose<HTMLButtonElement>(offerUndo)
   const outcomeRef = useFocusBackOnClose<HTMLParagraphElement>(offerUndo)
-  /*
-    A row about new marks („Anna hat 15 Anmerkungen gesetzt“) opens the review
-    at the newest of them, and its button says it goes to all of them.
-  */
-  const marksSet = item.type === 'annotation.activity' && MARKS_SET_VARIANTS.includes(item.variant ?? '') && item.count > 1
 
-  // The row's own menu: read state, archive (the only archive control on a
-  // phone, where an icon column cost the text its width) and restore.
+  /*
+    The row's own menu: first what the row asks of the reader (answer, resolve,
+    compare), which on a touch screen lives only here, then the read state,
+    archive (the only archive control on a phone) and restore.
+  */
+  const settled = replying || markOutcome === 'resolved'
   const menuEntries: ActionMenuEntry[] = [
+    ...(answerHere && !settled
+      ? [{ type: 'item' as const, id: 'reply', label: t('inbox.mark.reply'), icon: MessageSquare, onSelect: () => { setMarkOutcome(null); setReplying(true) }, testId: 'inbox-mark-reply-menu' }]
+      : []),
+    ...(canResolveMark && !settled
+      ? [{ type: 'item' as const, id: 'resolve', label: t('inbox.mark.resolve'), icon: CheckCircle2, onSelect: resolveMark, testId: 'inbox-mark-resolve-menu' }]
+      : []),
+    ...(answerInReview && linkHref
+      ? [{ type: 'item' as const, id: 'review', label: t('inbox.mark.answerInReview'), icon: MessageSquare, href: linkHref, onSelect: () => onOpen?.(item) }]
+      : []),
+    ...(compareHref
+      ? [{ type: 'item' as const, id: 'compare', label: t('inbox.compareRevisions'), icon: Layers, href: compareHref, onSelect: () => onOpen?.(item) }]
+      : []),
+    ...(answerHere || canResolveMark || answerInReview || compareHref ? [{ type: 'separator' as const }] : []),
     ...(item.state === 'unread' && onMarkRead
       ? [{ type: 'item' as const, id: 'read', label: t('inbox.markRead'), icon: MailOpen, onSelect: () => onMarkRead(item.id), testId: 'inbox-mark-read' }]
       : []),
@@ -438,6 +454,51 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     item.resourceType === 'document' &&
     item.anchorId !== null &&
     item.subject !== null
+  /*
+    The body line says what the row's next move is („Antworten Sie im Verlauf
+    oder erledigen Sie die Anmerkung“): the words the push notification needs,
+    which has no buttons. A row that draws those moves as its own controls says
+    it twice, and every request read as three lines of instructions above the
+    buttons they describe (design language, principle 9). There the controls
+    are the sentence.
+  */
+  /*
+    And beside a quote, the body was a third paragraph between the title and
+    the words the row is about. It stays where it is the news: a row with no
+    quote, a warning (why Piloti stopped, what the content check found), and
+    a redacted row, whose body says why it is empty.
+  */
+  const showBody =
+    body !== null && !answerHere && !answerInReview && !canDecideReview && (!item.excerpt || isWarning || redacted)
+  /** The chat a row happened in, where its title does not name it: on the caption line, beside the project. */
+  const chatName = item.subject ?? t('inbox.untitledConversation')
+  // Named once per row: not where the title or the body already says it. Piloti's own rows about a chat
+  // (a proposal) carry no chat name by design: no „Unbenannter Chat“ for them.
+  const place =
+    item.resourceType === 'conversation' &&
+    presentation.icon !== 'piloti' &&
+    !redacted &&
+    !title.includes(chatName) &&
+    !(showBody && body?.includes(chatName))
+      ? chatName
+      : null
+  /** What a new Fassung leaves to check, where its sentence gave way to the quote: a fact on the caption line. */
+  const openMarks = item.type === 'document.new_revision' && !inert && !showBody ? (item.openMarks ?? 0) : 0
+  /*
+    By when, where the title does not already say it: a passed date in the
+    error's word, a near one in the warning's, any other as the plain date. A
+    title written about the date itself (`due…` variants) carries it already.
+  */
+  const dueChip: { label: string; variant: 'danger' | 'warning' | 'secondary' } | null =
+    !isRequest || !item.dueOn
+      ? null
+      : item.variant === 'overdue'
+        ? { label: t('inbox.due.overdue'), variant: 'danger' }
+        : item.variant === 'due_soon'
+          ? { label: t('inbox.due.soon'), variant: 'warning' }
+          : item.variant?.startsWith('due')
+            ? null
+            : { label: t('inbox.due.on', { due: formatDayRange(item.dueOn, item.dueOn, locale) }), variant: 'secondary' }
   const [reviewing, setReviewing] = useState<'approve' | 'request_changes' | 'reject' | null>(null)
   const [reviewComment, setReviewComment] = useState('')
   const [reviewChecked, setReviewChecked] = useState(false)
@@ -550,7 +611,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     <Item
       asChild
       className={cn(
-        'relative items-start py-3',
+        'group/row relative items-start py-3',
         inert && 'bg-muted hover:bg-muted',
         // The keyboard's row (j/k): a ring inside the card and the hover tint,
         // so it reads in both themes without a colour of its own.
@@ -582,12 +643,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             {Icon && (
               <span
                 data-testid="inbox-item-type-badge"
-                className={cn(
-                  'absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border',
-                  needsAttention
-                    ? 'border-transparent bg-warning-subtle text-warning'
-                    : 'border-border bg-card text-muted-foreground',
-                )}
+                className={cn('absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border', tint)}
               >
                 <Icon className="size-2.5" />
               </span>
@@ -596,13 +652,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
         ) : Icon ? (
           <ItemMedia
             aria-hidden
-            className={cn(
-              'mt-0.5 rounded-full border',
-              needsAttention
-                ? 'border-transparent bg-warning-subtle text-warning'
-                : 'border-border bg-card text-muted-foreground',
-              inert && 'opacity-90',
-            )}
+            className={cn('mt-0.5 rounded-full border', tint, inert && 'opacity-90')}
           >
             <Icon className="size-4" />
           </ItemMedia>
@@ -614,7 +664,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             <AgentGlyph
               size="lg"
               tone="outline"
-              className={cn(needsAttention && 'border-transparent bg-warning-subtle text-warning')}
+              className={cn(needsAttention && tint)}
             />
           </ItemMedia>
         )}
@@ -667,22 +717,82 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
           </ItemTitle>
 
+          {/* Where and when, under the title and before anything else: the
+              project first (an office runs several, and „Grundriss EG“ alone
+              does not say whose), then the moment, then by when. One caption
+              line, so the eye finds it at the same place on every row. */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground" data-testid="inbox-item-meta">
+            {/* Project and moment are one unit that never breaks between them:
+                a long project name gives way (truncates), the time does not. */}
+            <span className="flex min-w-0 max-w-full items-center gap-1.5">
+              {item.projectName && !inert && (
+                <>
+                  <span className="min-w-0 truncate" data-testid="inbox-item-project">{item.projectName}</span>
+                  <span aria-hidden>·</span>
+                </>
+              )}
+              {place && (
+                <>
+                  <span className="min-w-0 truncate" data-testid="inbox-item-place">{place}</span>
+                  <span aria-hidden>·</span>
+                </>
+              )}
+              {/* `updatedAt`, which is what the list is ORDERED by. A grouped row
+                  that just absorbed a new message sorts to the top, and showing its
+                  `createdAt` put "5 days ago" at the head of the list. The title
+                  carries the absolute moment for both. */}
+              <time className="shrink-0" dateTime={item.updatedAt} title={formatAbsoluteTime(item.updatedAt, locale)}>
+                {formatRelativeTime(item.updatedAt, locale)}
+              </time>
+            </span>
+            {dueChip && (
+              <Badge variant={dueChip.variant} className="gap-1" data-testid="inbox-item-due">
+                <Clock aria-hidden />
+                {dueChip.label}
+              </Badge>
+            )}
+            {openMarks > 0 && (
+              <Badge variant="secondary" data-testid="inbox-item-open-marks">
+                {t('inbox.openMarks', { count: openMarks })}
+              </Badge>
+            )}
+            {resolved && item.actionable && (
+              <Badge variant="success" className="gap-1">
+                <CheckCircle2 aria-hidden />
+                {t('inbox.resolved')}
+              </Badge>
+            )}
+            {/* The badge is the one place a redacted row says so; the body
+                already says it in a sentence. */}
+            {inert && (
+              <Badge variant="secondary" className="gap-1">
+                <EyeOff aria-hidden />
+                {t('inbox.inert')}
+              </Badge>
+            )}
+          </div>
+
           {/* Two lines, not one: the body is where a row says what to do, and one
               truncated line cut that sentence off in its middle. */}
-          {body && <ItemDescription className="mt-0.5 line-clamp-2 whitespace-normal">{body}</ItemDescription>}
+          {showBody && <ItemDescription className="mt-1 line-clamp-2 whitespace-normal">{body}</ItemDescription>}
 
-          {/* Three lines when it is the only body: then it is the news, and
-              on a phone two lines cut a change off mid-sentence. */}
+          {/* Two lines when it is the row's only body (what a colleague
+              asked, what changed): one cut the sentence in its middle. One
+              line under a body, which already said what the row is. */}
           {item.excerpt && (
             <Quote
               as="p"
               className={cn(
-                'mt-1 text-sm leading-relaxed',
+                // On the title's own edge, in the ink of the words it quotes:
+                // the indent gave every row a third left edge, and the muted
+                // italic made what a colleague actually wrote the faintest
+                // line of the row. The italic alone says it is quoted.
+                'mt-1 ps-0 text-sm leading-relaxed text-foreground/80',
                 // Dense on a phone: three rows to a screen is a list nobody can
                 // triage. A row that asks something of the reader keeps its
                 // words; an FYI gets one line, and the item has the rest.
                 // As the ONLY body it is the news and keeps three lines.
-                body ? (item.actionable && !resolved && !inert ? 'line-clamp-2' : 'line-clamp-1') : 'line-clamp-3',
+                showBody ? 'line-clamp-1' : 'line-clamp-2',
               )}
               data-testid="inbox-item-excerpt"
             >
@@ -939,107 +1049,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             </div>
           )}
 
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {/* `updatedAt`, which is what the list is ORDERED by. A grouped row
-                that just absorbed a new message sorts to the top, and showing its
-                `createdAt` put "5 days ago" at the head of the list. The title
-                carries the absolute moment for both. */}
-            <time
-              className="text-xs text-muted-foreground"
-              dateTime={item.updatedAt}
-              title={formatAbsoluteTime(item.updatedAt, locale)}
-            >
-              {formatRelativeTime(item.updatedAt, locale)}
-            </time>
-            {resolved && item.actionable && (
-              <Badge variant="success" className="gap-1">
-                <CheckCircle2 aria-hidden />
-                {t('inbox.resolved')}
-              </Badge>
-            )}
-            {/* The badge is the one place a redacted row says so; the body
-                already says it in a sentence. */}
-            {inert && (
-              <Badge variant="secondary" className="gap-1">
-                <EyeOff aria-hidden />
-                {t('inbox.inert')}
-              </Badge>
-            )}
-            {/* z-10, like the archive control: the row's stretched link paints an
-                overlay across the whole card, and anything meant to be clickable
-                has to sit above it. Never on an inert row — its target is gone,
-                which is the same reason the title is not a link there. */}
-            {compareHref && (
-              <Button asChild size="sm" className="relative z-10">
-                <Link
-                  href={compareHref}
-                  aria-label={t('inbox.compareRevisionsLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
-                  onClick={(event) => {
-                    if (isPlainClick(event)) onOpen?.(item)
-                  }}
-                  data-testid="inbox-compare-revisions"
-                >
-                  <Layers aria-hidden />
-                  {t('inbox.compareRevisions')}
-                </Link>
-              </Button>
-            )}
-            {markRow && item.href && (
-              <Button asChild size="sm" variant={markOpen ? 'default' : 'outline'} className="relative z-10 h-8">
-                <Link
-                  href={linkHref ?? item.href}
-                  onClick={(event) => {
-                    if (isPlainClick(event)) onOpen?.(item)
-                  }}
-                  data-testid="inbox-open-mark"
-                >
-                  {t(answerInReview ? 'inbox.mark.answerInReview' : marksSet ? 'inbox.mark.openMany' : 'inbox.mark.open')}
-                </Link>
-              </Button>
-            )}
-            {answerHere && !replying && markOutcome !== 'resolved' && (
-              <Button
-                ref={replyButtonRef}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="relative z-10 h-8"
-                disabled={markBusy}
-                data-testid="inbox-mark-reply"
-                onClick={() => {
-                  setMarkOutcome(null)
-                  setReplying(true)
-                }}
-              >
-                {t('inbox.mark.reply')}
-              </Button>
-            )}
-            {canResolveMark && !replying && markOutcome !== 'resolved' && (
-              <Button
-                ref={resolveRef}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="relative z-10 h-8"
-                disabled={markBusy}
-                data-testid="inbox-mark-resolve"
-                onClick={resolveMark}
-              >
-                {t('inbox.mark.resolve')}
-              </Button>
-            )}
-            {documentProjectId && !inert && !markRow && (
-              <DiscussDocumentButton
-                projectId={documentProjectId}
-                documentId={item.resourceId}
-                variant="outline"
-                iconOnlyOnPhone
-                onNavigate={() => onOpen?.(item)}
-                className="relative z-10"
-              />
-            )}
-          </div>
-
           {answerHere && replying && item.anchorId && (
             <div className="relative z-10 mt-2 space-y-1.5" data-testid="inbox-mark-reply-form">
               <Composer
@@ -1107,8 +1116,109 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
           )}
         </ItemContent>
 
-        {(menuEntries.length > 0 || (onArchive && !archived)) && (
-          <ItemActions className="gap-0.5">
+        {/* Drawn whenever the row has anything to offer, not only an archive:
+            a row rendered without the list's handlers still has its own moves. */}
+        {(menuEntries.length > 0 || (onArchive && !archived) || compareHref !== null || answerInReview || (documentProjectId !== null && !inert && !markRow)) && (
+          <ItemActions
+            data-testid="inbox-item-toolbar"
+            className={cn(
+              'gap-1 transition-opacity duration-snap motion-reduce:transition-none',
+              /*
+                A row at rest says who, what, where and when; what can be done
+                with it comes up on the row the pointer, the focus or the
+                keyboard (j/k) is on, as one small toolbar over the row's top
+                corner. Drawn on every row, the buttons made a list of eight
+                requests sixteen buttons and twenty-four icons: the loudest
+                pattern on the page, and identical on every row. Floating, it
+                moves nothing when it comes.
+
+                Touch has no hover (design language, Touch): there the toolbar
+                is the row's „…“ menu in its own column, and the menu carries
+                every action the toolbar has.
+              */
+              'pointer-fine:absolute pointer-fine:right-2 pointer-fine:top-2 pointer-fine:z-10',
+              'pointer-fine:rounded-surface pointer-fine:border pointer-fine:bg-card pointer-fine:p-0.5 pointer-fine:shadow-sm',
+              !focused &&
+                'pointer-fine:pointer-events-none pointer-fine:opacity-0 pointer-fine:group-hover/row:pointer-events-auto pointer-fine:group-hover/row:opacity-100 pointer-fine:group-focus-within/row:pointer-events-auto pointer-fine:group-focus-within/row:opacity-100',
+            )}
+          >
+            {/* z-10, like the archive control: the row's stretched link paints an
+                overlay across the whole card, and anything meant to be clickable
+                has to sit above it. Never on an inert row — its target is gone,
+                which is the same reason the title is not a link there. */}
+            {compareHref && (
+              <Button asChild size="sm" variant="outline" className="relative z-10 h-8 pointer-coarse:hidden">
+                <Link
+                  href={compareHref}
+                  aria-label={t('inbox.compareRevisionsLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
+                  onClick={(event) => {
+                    if (isPlainClick(event)) onOpen?.(item)
+                  }}
+                  data-testid="inbox-compare-revisions"
+                >
+                  <Layers aria-hidden />
+                  {t('inbox.compareRevisions')}
+                </Link>
+              </Button>
+            )}
+            {/* The row itself opens the mark (its stretched link), so a button
+                saying „Zur Anmerkung“ was the row's own click drawn a second
+                time, in ink, on every row about a mark. It stays where it IS
+                the action: Piloti's question answered in the Prüfansicht. */}
+            {answerInReview && item.href && (
+              <Button asChild size="sm" variant="outline" className="relative z-10 h-8 pointer-coarse:hidden">
+                <Link
+                  href={linkHref ?? item.href}
+                  onClick={(event) => {
+                    if (isPlainClick(event)) onOpen?.(item)
+                  }}
+                  data-testid="inbox-open-mark"
+                >
+                  {t('inbox.mark.answerInReview')}
+                </Link>
+              </Button>
+            )}
+            {answerHere && !settled && (
+              <Button
+                ref={replyButtonRef}
+                type="button"
+                size="sm"
+                variant="outline"
+                className="relative z-10 h-8 pointer-coarse:hidden"
+                disabled={markBusy}
+                data-testid="inbox-mark-reply"
+                onClick={() => {
+                  setMarkOutcome(null)
+                  setReplying(true)
+                }}
+              >
+                {t('inbox.mark.reply')}
+              </Button>
+            )}
+            {canResolveMark && !settled && (
+              <Button
+                ref={resolveRef}
+                type="button"
+                size="sm"
+                variant="outline"
+                className="relative z-10 h-8 pointer-coarse:hidden"
+                disabled={markBusy}
+                data-testid="inbox-mark-resolve"
+                onClick={resolveMark}
+              >
+                {t('inbox.mark.resolve')}
+              </Button>
+            )}
+            {documentProjectId && !inert && !markRow && (
+              <DiscussDocumentButton
+                projectId={documentProjectId}
+                documentId={item.resourceId}
+                variant="ghost"
+                iconOnlyOnPhone
+                onNavigate={() => onOpen?.(item)}
+                className="relative z-10"
+              />
+            )}
             {/* z-10 keeps these above the stretched link's overlay so they stay
                 clickable; they are siblings of the anchor, never children. The
                 archive icon is a desktop affordance: on a phone its column cost
@@ -1118,8 +1228,9 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="relative z-10 mt-0.5 text-muted-foreground max-sm:hidden"
+                className="relative z-10 size-8 text-muted-foreground pointer-coarse:hidden"
                 aria-label={t('inbox.archive')}
+                title={t('inbox.archive')}
                 onClick={() => onArchive(item.id)}
               >
                 <Archive className="size-4" aria-hidden />
@@ -1133,7 +1244,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="relative z-10 mt-0.5 text-muted-foreground"
+                  className="relative z-10 size-8 text-muted-foreground pointer-coarse:size-11"
                   aria-label={t('inbox.moreActions')}
                   data-testid="inbox-item-menu"
                 >

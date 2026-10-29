@@ -694,8 +694,21 @@ const ITEMS: InboxItemView[] = [
   },
 ]
 
+/**
+ * The project each row is about, as the server names it (`projectName`): the
+ * Schnitt rows in a second project, so the preview shows that the line tells
+ * two projects apart. Org, platform and redacted rows carry none.
+ */
+const WITH_PROJECTS: InboxItemView[] = ITEMS.map((item) =>
+  item.href?.includes('/projects/p1') && item.state !== 'inert'
+    ? item.resourceId === 'd-schnitt'
+      ? { ...item, projectId: 'p2', projectName: 'Volksschule Am Hang' }
+      : { ...item, projectId: 'p1', projectName: 'Wohnanlage Linzer Straße' }
+    : item,
+)
+
 /** Newest first, as the server orders a page. */
-const NEWEST_FIRST = [...ITEMS].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+const NEWEST_FIRST = [...WITH_PROJECTS].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 
 const isOpenRequest = (item: InboxItemView) => item.actionable && item.state !== 'resolved' && item.state !== 'inert'
 
@@ -819,7 +832,7 @@ export default function InboxDevPage(): JSX.Element {
     <I18nProvider initialLocale="de" fixedLocale>
       <main
         data-testid="inbox-preview"
-        className="mx-auto flex max-w-3xl flex-col gap-10 p-8 text-foreground"
+        className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8 text-foreground md:px-8"
       >
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Postfach</h1>
