@@ -33,6 +33,7 @@ from knowledge_layer.browse import split_alternatives
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
+from agent.common.brand import PRODUCT_NAME
 from agent.common.source_kinds import Shelf
 from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
 from agent.knowledge.inventory import set_turn_documents
@@ -669,7 +670,7 @@ class TestTheDokumentartProfile:
         last = select_files(rows, offset=6, limit=2)
 
         assert first.types == last.types == [("Grundriss", 5), ("Schnitt", 2)]
-        expected = "Dokumentart (assigned by Piloti): Grundriss 5 · Schnitt 2."
+        expected = f"Dokumentart (assigned by {PRODUCT_NAME}): Grundriss 5 · Schnitt 2."
         assert _profile_line(render_listing(first)) == _profile_line(render_listing(last)) == expected
 
     def test_it_sits_directly_under_the_count_line(self):
@@ -699,11 +700,11 @@ class TestTheDokumentartProfile:
 
     def test_the_untyped_count_is_named_on_the_profile_line(self):
         text = render_listing(select_files(_typed(("Grundriss",), ("Brandschutz",))))
-        assert _profile_line(text) == "Dokumentart (assigned by Piloti): Grundriss 1; without Dokumentart: 1."
+        assert _profile_line(text) == f"Dokumentart (assigned by {PRODUCT_NAME}): Grundriss 1; without Dokumentart: 1."
 
     def test_no_untyped_clause_when_every_row_has_a_type(self):
         text = render_listing(select_files(_typed(("Grundriss",), ("Grundriss",))))
-        assert _profile_line(text) == "Dokumentart (assigned by Piloti): Grundriss 2."
+        assert _profile_line(text) == f"Dokumentart (assigned by {PRODUCT_NAME}): Grundriss 2."
 
     def test_at_most_the_cap_is_named_and_the_listing_keeps_them_all(self):
         types = [tag for tag in DOCUMENT_TYPE_TAGS if tag != "Sonstiges"][:10]
@@ -717,8 +718,8 @@ class TestTheDokumentartProfile:
 
     def test_a_selection_with_no_document_type_says_so_rather_than_saying_nothing(self):
         rendered = render_listing(select_files(_typed((), ("Brandschutz",))))
-        assert "Piloti has assigned none of these files a Dokumentart" in rendered
-        assert "Dokumentart (assigned by Piloti)" not in rendered
+        assert f"{PRODUCT_NAME} has assigned none of these files a Dokumentart" in rendered
+        assert f"Dokumentart (assigned by {PRODUCT_NAME})" not in rendered
 
     def test_no_profile_line_for_an_empty_selection(self):
         assert "Dokumentart" not in render_listing(select_files([]))
@@ -818,24 +819,24 @@ class TestTopicsAndCaptureInTheListing:
         rows = _topical(("Attika", "Fluchtweg"), ("attika",), ("Holz",))
         listing = select_files(rows)
         assert listing.topics == [("Attika", 2), ("Fluchtweg", 1), ("Holz", 1)]
-        assert "Topics (recognised by Piloti): Attika 2 · Fluchtweg 1 · Holz 1." in render_listing(listing).splitlines()
+        assert f"Topics (recognised by {PRODUCT_NAME}): Attika 2 · Fluchtweg 1 · Holz 1." in render_listing(listing).splitlines()
 
     def test_the_profile_names_at_most_eight_topics_and_counts_the_whole_selection(self):
         rows = _topical(*[(f"Thema{index:02}",) for index in range(10)])
         listing = select_files(rows, limit=1)
-        line = _profile(render_listing(listing), "Topics (recognised by Piloti)")
+        line = _profile(render_listing(listing), f"Topics (recognised by {PRODUCT_NAME})")
         assert len(listing.topics) == 10
         assert line.count(" · ") == MAX_TOPIC_COUNTS - 1
         assert "Thema08" not in line
 
     def test_no_profile_line_without_topics(self):
-        assert "Topics (recognised by Piloti)" not in render_listing(select_files(_rows()))
+        assert f"Topics (recognised by {PRODUCT_NAME})" not in render_listing(select_files(_rows()))
 
     def test_the_profile_sits_directly_under_the_dokumentarten_line(self):
         rows = file_rows([_doc("Plan.pdf", "Plaene", tags=["Grundriss"], topics=["Attika"])])
         lines = render_listing(select_files(rows)).splitlines()
         dokumentarten = next(index for index, line in enumerate(lines) if line.startswith("Dokumentart ("))
-        assert lines[dokumentarten + 1] == "Topics (recognised by Piloti): Attika 1."
+        assert lines[dokumentarten + 1] == f"Topics (recognised by {PRODUCT_NAME}): Attika 1."
 
 
 class TestTopicsThroughTheTool:

@@ -1,6 +1,7 @@
 import { forwardRef, type AnchorHTMLAttributes, type ReactNode } from 'react'
 import { render, screen } from '@/test-utils'
 import { vi, describe, test, expect, afterEach } from 'vitest'
+import { PRODUCT_NAME } from '@/lib/brand'
 import { OrgHeader } from './org-header'
 import { useShellOverlays } from './shell-overlays'
 
@@ -65,7 +66,7 @@ afterEach(() => {
 describe('OrgHeader — the org scope in one slim band', () => {
   test('carries the wordmark home link, both doorways, and the avatar menu', () => {
     render(<OrgHeader {...baseProps} />)
-    expect(screen.getByText('Piloti').closest('a')).toHaveAttribute('href', '/app/projects')
+    expect(screen.getByRole('img', { name: PRODUCT_NAME }).closest('a')).toHaveAttribute('href', '/app/projects')
     expect(screen.getByLabelText('Office filing')).toHaveAttribute('href', '/app/office-shelf')
     expect(screen.getByLabelText('Inbox')).toHaveAttribute('href', '/app/inbox')
     expect(screen.getByTestId('user-menu')).toBeInTheDocument()
