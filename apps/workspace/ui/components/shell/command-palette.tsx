@@ -34,6 +34,7 @@ import { useLayoutStore } from '@/features/layout/store'
 import {
   PALETTE_ALL_RESULTS_VALUE,
   PALETTE_LATE_ANSWER_MS,
+  PALETTE_LATE_HOLD_MS,
   PALETTE_RETRY_VALUE,
   paletteHitHref,
   paletteHits,
@@ -175,10 +176,11 @@ export function CommandPalette({
 
   // The row the arrows are on. When hits arrive for what is typed, the first
   // one takes the selection from the „Alle Treffer“ row cmdk put it on, so
-  // Enter opens the best hit; a row the reader moved to themselves is kept,
-  // and so is a hit they arrowed to that the newer answer still holds. A hit
-  // the palette chose for an earlier answer is not kept: after a refine it may
-  // be second now, and Enter would open it over the new best.
+  // Enter opens the best hit. A command row the reader moved to is kept, and
+  // so is a hit they arrowed to since they last typed, while the answer for
+  // those words still holds it. Any other hit is the palette's own earlier
+  // choice and gives way: after a refine it may be second now, and Enter would
+  // open it over the new best.
   const [selected, setSelected] = React.useState('')
   // Whether the row the arrows are on is one the reader moved to since they
   // last typed. A row the palette chose for an earlier answer (its best hit,
@@ -271,7 +273,8 @@ export function CommandPalette({
   // is for a newer question over hits that stand.
   const searching = useDelayedFlag(
     words !== '' && !search.failed && search.response !== null && (search.loading || search.answered !== words),
-    PALETTE_LATE_ANSWER_MS
+    PALETTE_LATE_ANSWER_MS,
+    PALETTE_LATE_HOLD_MS
   )
 
   // On a desktop the card's height follows its content: the commands give way

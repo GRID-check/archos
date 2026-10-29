@@ -119,6 +119,8 @@ export interface PaletteSearchResultsProps {
  * typing never dims the hits on every key.
  */
 export const PALETTE_LATE_ANSWER_MS = 300
+/** Once said, how long „still searching“ stays, so an answer just past the threshold does not blink it. */
+export const PALETTE_LATE_HOLD_MS = 200
 
 /** What was typed, answered: three hits of each kind, then the way to all of them. */
 export function PaletteSearchResults({
@@ -141,7 +143,7 @@ export function PaletteSearchResults({
   const shown = paletteHits(response, perKind)
   const anyHits = shown.length > 0
   const busy = !failed && (loading || stale)
-  const late = useDelayedFlag(busy && anyHits, PALETTE_LATE_ANSWER_MS)
+  const late = useDelayedFlag(busy && anyHits, PALETTE_LATE_ANSWER_MS, PALETTE_LATE_HOLD_MS)
   // „3 von 14“ only where there are more than the rows show: a bare 14 over
   // three rows promised hits the palette has no way to reach but the page.
   const tCount = (kind: (typeof SEARCH_KINDS)[number]): string | null => {

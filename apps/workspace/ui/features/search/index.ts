@@ -9,6 +9,7 @@ export { ShelfSearchBack } from './components/shelf-search-toggle'
 export {
   PALETTE_ALL_RESULTS_VALUE,
   PALETTE_LATE_ANSWER_MS,
+  PALETTE_LATE_HOLD_MS,
   PALETTE_RETRY_VALUE,
   PaletteSearchResults,
   PaletteSearchStart,
