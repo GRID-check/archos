@@ -389,7 +389,6 @@
   "apps/workspace/bff/documents/version-repository.spec.ts": 4,
   "apps/workspace/bff/download-log/coverage.spec.ts": 1,
   "apps/workspace/bff/estate-tree/types.ts": 1,
-  "apps/workspace/bff/feedback/export-service.ts": 3,
   "apps/workspace/bff/feedback/restricted-readers-coverage.spec.ts": 1,
   "apps/workspace/bff/feedback/types.ts": 2,
   "apps/workspace/bff/images/signed-image-url.spec.ts": 3,

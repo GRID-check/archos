@@ -76,10 +76,6 @@ import {
   weeklyIgnoredFilters,
 } from './export-service'
 import { NO_RATINGS_FILTERS, type FeedbackQuery } from './filters'
-import { PRODUCT_NAME } from '@/lib/brand'
-
-/** The file-name stem, `<name>-bewertungen`, from the product's name. */
-const STEM = `${PRODUCT_NAME.toLowerCase()}-bewertungen`
 
 /** A repository row: the record fixture without what the service adds. */
 function row(overrides: Partial<FeedbackExportRow> = {}): FeedbackExportRow {
@@ -209,9 +205,9 @@ describe('feedbackExportFileName', () => {
   const base = { query: ALL, named: { organizations: [], projects: [] }, truncated: false, cap: 5000 }
 
   it('names the range, and a cut', () => {
-    expect(feedbackExportFileName(base, 'xlsx')).toBe(`${STEM}_2026-09-10_2026-10-09.xlsx`)
+    expect(feedbackExportFileName(base, 'xlsx')).toBe('bewertungen_2026-09-10_2026-10-09.xlsx')
     expect(feedbackExportFileName({ ...base, truncated: true }, 'csv')).toBe(
-      `${STEM}_2026-09-10_2026-10-09_erste-5000.csv`
+      'bewertungen_2026-09-10_2026-10-09_erste-5000.csv'
     )
   })
 
@@ -222,7 +218,7 @@ describe('feedbackExportFileName', () => {
       named: { organizations: [{ id: 'org_1', name: 'Planungsbüro Huber & Söhne' }], projects: [] },
     }
     expect(feedbackExportFileName(one, 'xlsx')).toBe(
-      `${STEM}_planungsbuero-huber-soehne_2026-09-10_2026-10-09.xlsx`
+      'bewertungen_planungsbuero-huber-soehne_2026-09-10_2026-10-09.xlsx'
     )
   })
 
@@ -233,8 +229,8 @@ describe('feedbackExportFileName', () => {
       query: { ...ALL, scope: { ...ALL.scope, organizationIds: ['org_1', 'org_2'] } },
       named: { organizations: [{ id: 'org_1', name: 'A' }, { id: 'org_2', name: 'B' }], projects: [] },
     }
-    expect(feedbackExportFileName(filtered, 'xlsx')).toBe(`${STEM}_2026-09-10_2026-10-09_gefiltert.xlsx`)
-    expect(feedbackExportFileName(two, 'csv')).toBe(`${STEM}_2026-09-10_2026-10-09_gefiltert.csv`)
+    expect(feedbackExportFileName(filtered, 'xlsx')).toBe('bewertungen_2026-09-10_2026-10-09_gefiltert.xlsx')
+    expect(feedbackExportFileName(two, 'csv')).toBe('bewertungen_2026-09-10_2026-10-09_gefiltert.csv')
   })
 })
 
@@ -254,7 +250,7 @@ describe('getAnswerFeedbackWeeklyExport', () => {
     expect(weekly.windowFrom.toISOString()).toBe('2026-08-31T00:00:00.000Z')
     expect(weekly.ignored).toEqual(['verdict', 'reasons', 'query'])
     expect(feedbackWeeklyFileName(weekly)).toBe(
-      `${STEM}-wochen_planungsbuero-huber_2026-08-31_2026-10-09_erste-5000.csv`
+      'bewertungen-wochen_planungsbuero-huber_2026-08-31_2026-10-09_erste-5000.csv'
     )
   })
 

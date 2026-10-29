@@ -69,7 +69,6 @@ vi.mock('@/lib/feedback/export-service', async (importOriginal) => {
 
 import { GET } from './route'
 import { getAnswerFeedbackExport, getAnswerFeedbackWeeklyExport } from '@/lib/feedback/export-service'
-import { PRODUCT_NAME } from '@/lib/brand'
 
 const request = (query = ''): Request => new Request(`http://localhost/api/platform/answer-feedback/export${query}`)
 
@@ -111,7 +110,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
       withSummary: true,
     })
     expect(res.headers.get('Content-Disposition')).toBe(
-      `attachment; filename="${PRODUCT_NAME.toLowerCase()}-bewertungen_ziviltechniker-gruber_2026-10-01_2026-10-07_gefiltert.xlsx"`
+      'attachment; filename="bewertungen_ziviltechniker-gruber_2026-10-01_2026-10-07_gefiltert.xlsx"'
     )
   })
 
@@ -139,7 +138,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
     isOwner.value = true
     const res = await GET(request('?from=2026-09-10&to=2026-10-09'))
     expect(res.headers.get('Content-Disposition')).toBe(
-      `attachment; filename="${PRODUCT_NAME.toLowerCase()}-bewertungen_2026-09-10_2026-10-09.csv"`
+      'attachment; filename="bewertungen_2026-09-10_2026-10-09.csv"'
     )
     const text = new TextDecoder().decode(await bytesOf(res))
     expect(text).toContain('"down"')
@@ -179,7 +178,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       )
       expect(res.headers.get('Content-Disposition')).toBe(
-        `attachment; filename="${PRODUCT_NAME.toLowerCase()}-bewertungen_2026-09-10_2026-10-09.xlsx"`
+        'attachment; filename="bewertungen_2026-09-10_2026-10-09.xlsx"'
       )
       expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(['Bewertungen', 'Wochen', 'Übersicht', 'Spalten'])
       expect(getAnswerFeedbackExport).toHaveBeenCalledWith(
@@ -224,7 +223,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
       const [header, row] = text.split('\r\n')
 
       expect(res.headers.get('Content-Disposition')).toBe(
-        `attachment; filename="${PRODUCT_NAME.toLowerCase()}-bewertungen-wochen_2026-08-31_2026-10-09.csv"`
+        'attachment; filename="bewertungen-wochen_2026-08-31_2026-10-09.csv"'
       )
       expect(header).toBe(
         'organization_name,organization_id,iso_week,week_start,answers,rated_answers,up,down,helpful_rate,coverage'
