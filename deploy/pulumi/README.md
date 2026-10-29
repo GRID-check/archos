@@ -141,6 +141,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **`storageClass`** | — | Provider class for every PVC: `premium` (3 replicas) / `standard` (2) / `single-replica` (1) |
 | **Ingress / TLS** | | |
 | **`baseDomain`** | — | Single source for every public host: `app.`/`s3.`/`otel.` subdomains derive from it, so a domain move is a one-key change. The **apex** itself is the public website's host (apps/website) |
+| `formerBaseDomain` | _(unset)_ | During a domain move only: the domain this stack served before. Its apex and `app.` host get a TLS listener each and answer 301 to `webDomain` / `appDomain`, path kept (`src/app/former-domain.ts`). Off by default. Runbook: [`docs/deployment/domain-cutover.md`](../../docs/deployment/domain-cutover.md) |
 | `appDomain` / `s3Domain` / `webDomain` | derived from `baseDomain` | Optional per-host overrides (e.g. an S3 endpoint on a different zone); `webDomain` defaults to the bare `baseDomain` |
 | **`letsEncryptEmail`** | — | ACME account email (placeholder rejected) |
 | `useStagingIssuer` | `true` | LE staging CA until DNS/TLS verified, then flip false |

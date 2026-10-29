@@ -12,6 +12,7 @@ import type { IRateLimitSpec } from "@kubernetes-models/envoy-gateway/gateway.en
 import { GATEWAY_NAME } from "../platform/gateway";
 import { EDGE_RATE_LIMIT, EDGE_RETRY, EDGE_TIMEOUT, PORT } from "../constants";
 import { logicalName, objectName } from "../names";
+import { formerDomainRedirects, formerDomainRouteSpec } from "./former-domain";
 
 /**
  * Retry policy applied to both public routes.
@@ -324,6 +325,20 @@ export function installHttpRoutes(
     },
     { provider, dependsOn },
   );
+
+  // A domain move: the former apex and app host redirect to the new ones (off by default).
+  for (const redirect of formerDomainRedirects(cfg.ingress)) {
+    new k8s.apiextensions.CustomResource(
+      logicalName(`grid-${redirect.route.replace(/^grid-/, "")}-route`),
+      {
+        apiVersion: "gateway.networking.k8s.io/v1",
+        kind: "HTTPRoute",
+        metadata: { name: redirect.route, namespace, labels: commonLabels("gateway") },
+        spec: formerDomainRouteSpec(redirect, GATEWAY_NAME),
+      },
+      { provider, dependsOn },
+    );
+  }
 
   return { app, s3, web, httpsRedirect };
 }

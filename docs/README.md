@@ -131,6 +131,7 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [Environment Variables](deployment/environment-variables.md) | Every variable by category, with required-ness, defaults and owning service |
 | [Docker Compose](deployment/docker-compose.md) | Service reference: images, ports, volumes, healthchecks, networks |
 | [Kubernetes](deployment/kubernetes.md) | The Pulumi stack |
+| [Domain cutover](deployment/domain-cutover.md) | Moving every public host to the domain in `identity.json`: config values, 301s from the former domain, WorkOS/PostHog/Search Console, order and rollback (prepared, not done) |
 | [Platform agent door runbook](deployment/platform-agent-door-runbook.md) | Switching on the operator console's MCP server for platform staff (ADR-0126), connecting a client in the GRID Platform organization, and what each refusal means |
 | [Ingest memory runbook](deployment/ingest-memory-runbook.md) | Verifying the bounded raster decode in production: which build is running, the OOM signature, the `[ingest-mem]` lines, queue depth. Read-only throughout |
 | [Qdrant runbook](deployment/qdrant-runbook.md) | Operating the vector store: metrics and alerts, restore from snapshots, peer replacement, rebuilds, upgrades, key rotation, the backend flip; every procedure with its drill |
