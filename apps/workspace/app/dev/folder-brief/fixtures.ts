@@ -22,6 +22,7 @@ import type { DocumentAuthor } from '@/lib/documents/document-authors'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 import type { DocumentTypeTag, DisciplineTag } from '@/lib/documents/tag-vocabulary'
 import { EMPTY_REVISION_LINKS, type RevisionLinks, type RevisionRef } from '@/lib/documents/revision-links'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 type ContentType = 'text' | 'table' | 'image' | 'chart' | 'drawing'
 
@@ -178,7 +179,7 @@ export const FILES: FileItem[] = [
   doc({
     id: 'd-02-06', filename: 'Kurzbericht_Flächenvergleich_KI.pdf', folderId: 'f-02',
     status: 'stored', authoredBy: 'agent', createdAt: '2026-09-22T07:15:00Z', fileSize: 260_000,
-    summary: 'Vergleich der Wohnflächen aus Entwurf und Massenermittlung, von Piloti als Bericht abgelegt.',
+    summary: 'Vergleich der Wohnflächen aus Entwurf und Massenermittlung, von ' + PRODUCT_NAME + ' als Bericht abgelegt.',
   }),
 
   // 03_Einreichung: the filing. Direct documents, then three subfolders.

@@ -67,11 +67,12 @@ import {
   type ChangeableField,
 } from './service'
 import type { AnnotationView, InternalAnnotationRequest, InternalMarkFields } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Thrown when the conversation is not about a document: the tool relays it as „open a chat on the document". */
 export class NoDocumentSubjectError extends UnprocessableError {
   constructor() {
-    super('This conversation is not about a document. Open the document and ask Piloti from there.', {
+    super('This conversation is not about a document. Open the document and ask ' + PRODUCT_NAME + ' from there.', {
       reason: 'no-document-subject',
     })
   }
@@ -93,7 +94,7 @@ export class AgentActsOffError extends ApiError {
     super(
       403,
       'PILOTI_ACTS_OFF',
-      'This organization has Piloti propose only: it does not set, change or delete Anmerkungen for a person. ' +
+      'This organization has ' + PRODUCT_NAME + ' propose only: it does not set, change or delete Anmerkungen for a person. ' +
         'Propose the mark instead, or tell the person to make the change themselves.',
       { reason: PILOTI_ACTS_OFF, op }
     )
@@ -234,7 +235,7 @@ async function tellAttention(
     assigneeUserId: mark.assigneeUserId,
     what,
     replyId,
-  }).catch((error: unknown) => console.warn('[annotations] attention for a write of Piloti failed', mark.id, error))
+  }).catch((error: unknown) => console.warn('[annotations] attention for a write of ' + PRODUCT_NAME + ' failed', mark.id, error))
 }
 
 const markChange = (mark: AnnotationView, change: Pick<AppliedChange, 'op' | 'before' | 'after'>): AppliedChange => ({

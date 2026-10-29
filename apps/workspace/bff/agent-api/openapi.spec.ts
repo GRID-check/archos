@@ -17,6 +17,7 @@ import { AGENT_OPERATIONS } from './catalog'
 import { isOnDoor } from './exposure'
 import { buildOpenApiDocument, documentedOperations, openApiPath } from './openapi'
 import { pathParams } from './operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const FIXTURE = join(process.cwd(), 'tests/fixtures/openapi.json')
 const SERVER_URL = 'https://piloti.example'
@@ -107,8 +108,8 @@ describe('agent API OpenAPI document', () => {
 
   it('leads with the workspace, and names the MCP door', () => {
     const info = document.info as { title: string; description: string }
-    expect(info.title).toBe('Piloti workspace API')
-    expect(info.description.startsWith('Piloti is the workspace for architects')).toBe(true)
+    expect(info.title).toBe(`${PRODUCT_NAME} workspace API`)
+    expect(info.description.startsWith(`${PRODUCT_NAME} is the workspace for architects`)).toBe(true)
     expect(info.description).toContain('/api/mcp')
   })
 

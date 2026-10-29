@@ -56,6 +56,7 @@ import { clip, summaryOfOperation } from './operation-proposals'
 import { callDecision, findVisibleOperation } from './policy'
 import type { AgentPrincipal } from './principal'
 import { type McpCallContext, recordOperationCalled } from './telemetry'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The key of the one input request: the person's yes or no. */
 export const CONFIRM_INPUT = 'confirm'
@@ -179,7 +180,7 @@ export function describeProposal(proposal: ProposedChangeView): string {
       return `a file ${proposal.payload.operation} of ${files.length === 1 ? 'one file' : `${files.length} files`}: ${shown}`
     }
     case 'memory':
-      return `a note for Piloti to remember (${proposal.payload.kind}): "${oneLine(proposal.payload.content)}"`
+      return `a note for ${PRODUCT_NAME} to remember (${proposal.payload.kind}): "${oneLine(proposal.payload.content)}"`
     case 'project_profile':
       return `a change to the project context, "${oneLine(proposal.payload.title)}"`
   }
@@ -214,7 +215,7 @@ async function decisionMessage(principal: AgentPrincipal, op: AgentOperation, in
   const where = read.project ? ` In project "${oneLine(read.project, 80)}".` : ''
   const effect = verb === 'discard' ? ' Discarding changes nothing in the workspace.' : ''
   return (
-    `An agent connected to Piloti wants to ${verb} this Piloti proposal as you: ${describeProposal(read.proposal)}.` +
+    `An agent connected to ${PRODUCT_NAME} wants to ${verb} this ${PRODUCT_NAME} proposal as you: ${describeProposal(read.proposal)}.` +
     `${where}${effect} Nothing happens unless you confirm.`
   )
 }
@@ -227,7 +228,7 @@ export async function confirmationMessage(principal: AgentPrincipal, op: AgentOp
   const what = summaryOfOperation(op, input).replace(/\.$/, '')
   const targets = await namedTargets(principal, op, input)
   const on = targets.length > 0 ? ` This affects ${targets.join(', ')}.` : ''
-  return `An agent connected to Piloti wants to make this change as you: ${what}.${on} Nothing changes unless you confirm.`
+  return `An agent connected to ${PRODUCT_NAME} wants to make this change as you: ${what}.${on} Nothing changes unless you confirm.`
 }
 
 /** What the agent reads when the person said no: nothing changed, and not to try again unasked. */

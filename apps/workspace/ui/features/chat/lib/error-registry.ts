@@ -7,6 +7,7 @@
  */
 
 import type { ErrorCode } from '../types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Metadata for each error type */
 export interface ErrorMeta {
@@ -74,7 +75,7 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorMeta> = {
   // connection"; waiting is what helps, and the recovery poll reconnects.
   'connection.server_incompatible': {
     status: 'error',
-    title: 'Piloti is not reachable right now',
+    title: PRODUCT_NAME + ' is not reachable right now',
     titleKey: 'errorRegistry.serverIncompatible.title',
     defaultMessage:
       'The server runs a different version than this page, which happens briefly during an update. Try again in a few minutes; if it persists, tell support.',
@@ -93,9 +94,9 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorMeta> = {
   // ============================================================
   'connection.client_outdated': {
     status: 'warning',
-    title: 'Piloti was updated',
+    title: PRODUCT_NAME + ' was updated',
     titleKey: 'errorRegistry.clientOutdated.title',
-    defaultMessage: 'Piloti was updated. Reload the page to continue.',
+    defaultMessage: PRODUCT_NAME + ' was updated. Reload the page to continue.',
     messageKey: 'errorRegistry.clientOutdated.message',
   },
   'auth.session_expired': {
@@ -127,7 +128,7 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorMeta> = {
     status: 'warning',
     title: 'Response Interrupted',
     titleKey: 'errorRegistry.responseInterrupted.title',
-    defaultMessage: 'Piloti did not finish this answer, and the server has none. Please send the question again.',
+    defaultMessage: PRODUCT_NAME + ' did not finish this answer, and the server has none. Please send the question again.',
     messageKey: 'errorRegistry.responseInterrupted.message',
   },
   // The server never acknowledged the question: no `RUN_STARTED`, no
@@ -138,7 +139,7 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorMeta> = {
     status: 'warning',
     title: 'No response',
     titleKey: 'errorRegistry.noResponse.title',
-    defaultMessage: 'Piloti did not respond to your question, not even to a second attempt. Send it again.',
+    defaultMessage: PRODUCT_NAME + ' did not respond to your question, not even to a second attempt. Send it again.',
     messageKey: 'errorRegistry.noResponse.message',
   },
   'agent.workflow_error': {

@@ -16,21 +16,22 @@ import {
   getAskQuerySchema,
 } from '@/lib/agent-asks/ask-wire'
 import type { AgentOperation } from '../operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const consultOperations = [
   {
     name: 'agent-ask-create',
     domain: 'conversations',
     links: 'conversation',
-    summary: 'Ask Piloti a question and get its answer',
+    summary: 'Ask ' + PRODUCT_NAME + ' a question and get its answer',
     description:
-      'Asks Piloti, the office’s own agent, as the signed-in person: it answers from the office’s documents, ' +
+      'Asks ' + PRODUCT_NAME + ', the office’s own agent, as the signed-in person: it answers from the office’s documents, ' +
       'the project’s files and building law, and may file a document. ' +
       `Waits up to ${ASK_WAIT_SECONDS} s (less with waitSeconds). "completed" carries answer.text, answer.sources ` +
       '(documentId, name, page, a url opening the cited page) and answer.confidence (level, reason); an answer with ' +
       'neither is not grounded in a document. "submitted" or "working": call agent-ask-get after pollAfterSeconds. ' +
       '"rejected" or "failed" say why (spent budget, busy conversation). Pass projectId (from project-list) to ask ' +
-      'about one project: without it Piloti answers for the office as a whole and reads no project’s files. ' +
+      'about one project: without it ' + PRODUCT_NAME + ' answers for the office as a whole and reads no project’s files. ' +
       'conversationId follows up an earlier ask. Uses the organization’s model budget.',
     method: 'POST',
     path: '/api/agent-asks',
@@ -41,11 +42,11 @@ export const consultOperations = [
     name: 'agent-ask-get',
     domain: 'conversations',
     links: 'conversation',
-    summary: 'Read an ask to Piloti, and its answer once there',
+    summary: 'Read an ask to ' + PRODUCT_NAME + ', and its answer once there',
     description:
       'The ask agent-ask-create started, by its id: its state, the answer once "completed" (with its sources and confidence, as agent-ask-create), ' +
       'the documents ' +
-      `Piloti filed, or the reason it failed. Pass waitSeconds (at most ${ASK_WAIT_SECONDS}) to wait for the ` +
+      `${PRODUCT_NAME} filed, or the reason it failed. Pass waitSeconds (at most ${ASK_WAIT_SECONDS}) to wait for the ` +
       'answer instead of polling quickly. Only the person the ask was made for can read it.',
     method: 'GET',
     path: '/api/agent-asks/[id]',
@@ -56,10 +57,10 @@ export const consultOperations = [
   {
     name: 'agent-ask-cancel',
     domain: 'conversations',
-    summary: 'Stop Piloti working on an ask',
+    summary: 'Stop ' + PRODUCT_NAME + ' working on an ask',
     description:
       'Stops the turn of an ask that is still "submitted" or "working"; the ask ends "canceled" and whatever ' +
-      'Piloti already wrote stays in the conversation. Refused (409) once the ask has ended. The id comes ' +
+      PRODUCT_NAME + ' already wrote stays in the conversation. Refused (409) once the ask has ended. The id comes ' +
       'from agent-ask-create.',
     method: 'POST',
     path: '/api/agent-asks/[id]/cancel',

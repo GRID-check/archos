@@ -14,6 +14,7 @@ import type {
   OwnProductFeedbackThread,
 } from '@/lib/product-feedback/types'
 import type { SubmitProductFeedbackRequest, SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const minutesAgo = (minutes: number): string => new Date(Date.now() - minutes * 60_000).toISOString()
 
@@ -101,7 +102,7 @@ const COLLEAGUES: OwnProductFeedbackSummary[] = [
   {
     id: '0b1c2d3e-4f50-4617-8899-aabbccddee12',
     kind: 'question',
-    excerpt: 'Kann ich einem Projektpartner ohne Piloti-Konto einzelne Fassungen zum Lesen freigeben?',
+    excerpt: 'Kann ich einem Projektpartner ohne ' + PRODUCT_NAME + '-Konto einzelne Fassungen zum Lesen freigeben?',
     createdAt: minutesAgo(60 * 30),
     status: 'pending',
     ticketNumber: 39,

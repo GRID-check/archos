@@ -32,6 +32,7 @@ import { AGENT_DOMAINS, annotationsOf } from '../operation'
 import { doorOfPrincipal, findVisibleOperation, visibleBackendOperations, visibleOperations } from '../policy'
 import type { McpCallContext } from '../telemetry'
 import { DOOR_DOCS, type DoorDoc } from './docs.generated'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const GUIDE_URI = 'piloti://guide'
 export const GLOSSARY_URI = 'piloti://glossary'
@@ -226,13 +227,13 @@ export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void 
   server.registerResource(
     'guide',
     GUIDE_URI,
-    { title: 'Working in Piloti', description: 'How the workspace fits together, how ids flow, and which operation reads what.', mimeType: 'text/markdown', icons: RESOURCE_ICONS.guide },
+    { title: 'Working in ' + PRODUCT_NAME, description: 'How the workspace fits together, how ids flow, and which operation reads what.', mimeType: 'text/markdown', icons: RESOURCE_ICONS.guide },
     async () => markdown(GUIDE_URI, DOOR_DOCS['guide.md']),
   )
   server.registerResource(
     'glossary',
     GLOSSARY_URI,
-    { title: 'Piloti glossary', description: 'The office’s German words and the catalog’s English ones.', mimeType: 'text/markdown', icons: RESOURCE_ICONS.glossary },
+    { title: PRODUCT_NAME + ' glossary', description: 'The office’s German words and the catalog’s English ones.', mimeType: 'text/markdown', icons: RESOURCE_ICONS.glossary },
     async () => markdown(GLOSSARY_URI, glossaryText()),
   )
   server.registerResource(
@@ -260,7 +261,7 @@ export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void 
         title: 'Use one of the office’s skills',
         description: 'Follow one of the office’s own written procedures, by its name.',
         icons: PROMPT_ICONS['office-skill'],
-        argsSchema: argsSchema({ skill: 'The skill’s name, as the skills page in Piloti shows it.' }, completers),
+        argsSchema: argsSchema({ skill: 'The skill’s name, as the skills page in ' + PRODUCT_NAME + ' shows it.' }, completers),
       },
       async (args) => userMessage(await officeSkillText(ctx, String((args as { skill?: unknown }).skill ?? ''))),
     )

@@ -77,6 +77,7 @@ import {
   type StartIntakeRequest,
 } from './types'
 import { buildIntakeView, intakeCounts } from './view'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Writing the profile (`PROFILE_WRITE` in `profile-service.ts`): a decision, a reading, starting one. */
 const PROFILE_WRITE: readonly ProjectPermission[] = ['project:memory:write', 'project:edit']
@@ -304,7 +305,7 @@ async function beginReading(
     // requester is told either way, on the row a later reading folds into.
     if (ended) await tellRequester(ended)
     console.error(`[project-intake] submitting the reading of ${projectId} failed:`, error)
-    throw new ServiceUnavailableError('Piloti could not start reading the documents. Try again in a moment.', {
+    throw new ServiceUnavailableError(PRODUCT_NAME + ' could not start reading the documents. Try again in a moment.', {
       reason: 'submit-failed',
     })
   }

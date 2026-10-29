@@ -42,6 +42,7 @@ import {
   FIXTURE_OVERLAYS,
   fixtureLoader,
 } from '@/features/documents/components/revision-compare/fixture-sheets'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 type Autoplay = 'mark' | 'mark-two'
 
@@ -99,7 +100,7 @@ const STORIES: readonly Story[] = [
   },
   {
     id: 'error',
-    label: 'Piloti nicht erreichbar',
+    label: PRODUCT_NAME + ' nicht erreichbar',
     older: { id: 'older', filename: 'Grundriss_1OG_B.pdf' },
     newer: { id: 'newer-503', filename: 'Grundriss_1OG_C.pdf' },
     overlays: [],

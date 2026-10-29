@@ -69,6 +69,7 @@ import { useShellOverlays } from './shell-overlays'
 import { ShellSearchButton } from './shell-search-button'
 import { ConnectionBand } from './connection-band'
 import { sectionAnchor } from '@/lib/onboarding/product-tour'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * THE ACTIVE PILL'S SHARED-LAYOUT IDENTITY.
@@ -517,7 +518,7 @@ function SidebarBrand({ iconRail }: { iconRail: boolean }) {
             : 'text-foreground text-[19px] font-medium'
         )}
       >
-        {iconRail ? <Logo kind="logo-only" size="small" /> : 'Piloti'}
+        {iconRail ? <Logo kind="logo-only" size="small" /> : PRODUCT_NAME}
       </Link>
       {!isMobile && (
         <button

@@ -18,6 +18,7 @@ import {
   type Shelf,
   type SourceKind,
 } from './source-kinds'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('asSourceKind', () => {
   test('accepts the four canonical kinds', () => {
@@ -105,7 +106,7 @@ describe('the agent-authored lane', () => {
   test('its label names the document kind and no approver', () => {
     // Who approved it, and when, arrive as data on the source payload and are
     // appended by the renderer — the taxonomy is not a sentence with a hole.
-    expect(AGENT_AUTHORED_LANE_LABEL).toBe('Piloti-Dokument')
+    expect(AGENT_AUTHORED_LANE_LABEL).toBe(`${PRODUCT_NAME}-Dokument`)
     expect(AGENT_AUTHORED_LANE_LABEL).not.toContain('{')
   })
 

@@ -35,6 +35,7 @@ import { callOperation } from '@/lib/agent-api/dispatch'
 import { buildMcpServer } from '@/lib/agent-api/mcp-server'
 import type { AgentPrincipal } from '@/lib/agent-api/principal'
 import { APP_INFO, ProposalCardFrame } from './ProposalCardApp'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session = {
   userId: 'user_anna',
@@ -159,7 +160,7 @@ describe('the proposal card in a host', () => {
     expect(apply?.[1]).toEqual({ params: { id: ID }, body: {} })
     expect(apply?.[2]).toBe(session)
     await waitFor(() =>
-      expect(contexts).toEqual([`Piloti proposal ${ID} is applied by Anna Berger; it is no longer open; do not apply or dismiss it.`]),
+      expect(contexts).toEqual([`${PRODUCT_NAME} proposal ${ID} is applied by Anna Berger; it is no longer open; do not apply or dismiss it.`]),
     )
 
     await app.close()

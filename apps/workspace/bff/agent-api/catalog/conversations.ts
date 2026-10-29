@@ -40,6 +40,7 @@ import {
 } from '@/lib/product-feedback/types'
 import { similarPassagesRequestSchema } from '@/lib/similar-passages/types'
 import type { AgentOperation } from '../operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const conversationParams = z.object({
   id: z.string().describe('The conversation id (`s_` plus a UUID with underscores), from conversation-list.'),
@@ -89,7 +90,7 @@ export const conversationsOperations = [
     links: 'conversation',
     summary: 'Read one conversation',
     description:
-      'One conversation: title, project, visibility, engagement mode (when Piloti answers) and the person’s role. Messages: conversation-message-list.',
+      'One conversation: title, project, visibility, engagement mode (when ' + PRODUCT_NAME + ' answers) and the person’s role. Messages: conversation-message-list.',
     method: 'GET',
     path: '/api/conversations/[id]',
     params: conversationParams,
@@ -99,9 +100,9 @@ export const conversationsOperations = [
     name: 'conversation-update',
     domain: 'conversations',
     links: 'conversation',
-    summary: 'Rename a conversation or change when Piloti answers',
+    summary: 'Rename a conversation or change when ' + PRODUCT_NAME + ' answers',
     description:
-      'Sets `title` (owner role) and/or the `engagement` mode that decides when Piloti answers (collaborator role); at least one. Returns it.',
+      'Sets `title` (owner role) and/or the `engagement` mode that decides when ' + PRODUCT_NAME + ' answers (collaborator role); at least one. Returns it.',
     method: 'PATCH',
     path: '/api/conversations/[id]',
     params: conversationParams,
@@ -140,7 +141,7 @@ export const conversationsOperations = [
     description:
       'Appends one message, or an array of them, to a thread the person may write in; you supply each id. `mentions` ' +
       '(ids from conversation-mention-candidate-list) address colleagues, who get an inbox item. Stores only: it opens no ' +
-      'turn with Piloti. Returns the stored rows.',
+      'turn with ' + PRODUCT_NAME + '. Returns the stored rows.',
     method: 'POST',
     path: '/api/conversations/[id]/messages',
     params: conversationParams,
@@ -166,7 +167,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'List what one answer changed',
     description:
-      'The changes Piloti made while producing one answer, each as it stands now, with `canUndo`. Changes on ' +
+      'The changes ' + PRODUCT_NAME + ' made while producing one answer, each as it stands now, with `canUndo`. Changes on ' +
       'documents the person may not see are left out. Each change carries the id the person’s undo takes.',
     method: 'GET',
     path: '/api/conversations/[id]/messages/[messageId]/changes',
@@ -201,7 +202,7 @@ export const conversationsOperations = [
   {
     name: 'conversation-title-generate',
     domain: 'conversations',
-    summary: 'Let Piloti name a conversation',
+    summary: 'Let ' + PRODUCT_NAME + ' name a conversation',
     description:
       'Generates a short title and topic tags from the opening exchange (up to 20 messages with role and content) ' +
       'and saves them on the conversation. Pass `locale` for the title’s language. Returns the stored title.',
@@ -214,7 +215,7 @@ export const conversationsOperations = [
   {
     name: 'conversation-draft-get',
     domain: 'conversations',
-    summary: 'Read an unfiled draft Piloti wrote',
+    summary: 'Read an unfiled draft ' + PRODUCT_NAME + ' wrote',
     description:
       'One draft in the conversation’s working directory, to read before filing; `path` is the one the answer’s card names. To keep it: conversation-draft-file.',
     method: 'GET',
@@ -252,7 +253,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Vote on an answer',
     description:
-      'Votes on one answer (messageId from conversation-message-list); voting again replaces the vote. A down-vote feeds Piloti’s failure learning: add the reason.',
+      'Votes on one answer (messageId from conversation-message-list); voting again replaces the vote. A down-vote feeds ' + PRODUCT_NAME + '’s failure learning: add the reason.',
     method: 'POST',
     path: '/api/feedback/answers',
     body: upsertAnswerFeedbackSchema,
@@ -275,9 +276,9 @@ export const conversationsOperations = [
   {
     name: 'feedback-report-submit',
     domain: 'conversations',
-    summary: 'Send product feedback to the Piloti team',
+    summary: 'Send product feedback to the ' + PRODUCT_NAME + ' team',
     description:
-      'Sends a bug report, idea, praise or question to the Piloti team and opens a ticket. Not an answer vote (that is answer-feedback-submit).',
+      'Sends a bug report, idea, praise or question to the ' + PRODUCT_NAME + ' team and opens a ticket. Not an answer vote (that is answer-feedback-submit).',
     method: 'POST',
     path: '/api/feedback/reports',
     body: submitProductFeedbackSchema,
@@ -289,7 +290,7 @@ export const conversationsOperations = [
     summary: 'List the person’s own feedback reports',
     description:
       'The person’s own product feedback reports, newest first, each with its ticket status (`resolved` is done, every other ' +
-      'status is an active case), ticket number, last activity, and `hasUpdate` when the Piloti team replied or changed the ' +
+      'status is an active case), ticket number, last activity, and `hasUpdate` when the ' + PRODUCT_NAME + ' team replied or changed the ' +
       'status since the person last read the thread; `updatedCount` counts those on the page. `canViewOffice` says whether ' +
       'feedback-office-report-list is open to them. Page with `nextCursor`. Threads: feedback-thread-get.',
     method: 'GET',
@@ -316,7 +317,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Read the conversation on one feedback report',
     description:
-      'The thread on one feedback report, oldest first: the report as written, the Piloti team’s replies (`author: team`) ' +
+      'The thread on one feedback report, oldest first: the report as written, the ' + PRODUCT_NAME + ' team’s replies (`author: team`) ' +
       'and the reporter’s answers (`author: reporter`). The person’s own report, or, with `org:settings:manage`, a ' +
       'colleague’s (read-only, `report.mine: false`). Reading one’s own marks it as read. `live: false` means the ticket ' +
       'could not be read and only the report is shown.',
@@ -328,9 +329,9 @@ export const conversationsOperations = [
   {
     name: 'feedback-thread-reply',
     domain: 'conversations',
-    summary: 'Answer the Piloti team on a feedback report',
+    summary: 'Answer the ' + PRODUCT_NAME + ' team on a feedback report',
     description:
-      'Posts the person’s answer on one of their own feedback reports; the Piloti team sees it on the ticket. Refused (409) when ' +
+      'Posts the person’s answer on one of their own feedback reports; the ' + PRODUCT_NAME + ' team sees it on the ticket. Refused (409) when ' +
       'the report has no ticket to answer on (`canReply: false` in feedback-report-list). Returns the updated thread.',
     method: 'POST',
     path: '/api/feedback/reports/[reportId]/messages',
@@ -373,7 +374,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Export one saved answer as a Word document',
     description:
-      'One answer from Piloti as a .docx with its sources, an attached resource (base64 `blob`) up to 5 MiB. Message ids: conversation-message-list.',
+      'One answer from ' + PRODUCT_NAME + ' as a .docx with its sources, an attached resource (base64 `blob`) up to 5 MiB. Message ids: conversation-message-list.',
     method: 'GET',
     path: '/api/conversations/[id]/messages/[messageId]/export',
     params: messageParams,

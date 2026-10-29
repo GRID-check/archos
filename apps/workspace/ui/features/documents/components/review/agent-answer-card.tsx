@@ -20,6 +20,7 @@ import { CANVAS_ASK_INTENTS, stepsOf, type CanvasAsk, type CanvasAskIntent } fro
 import type { DocumentReview } from '../../hooks/use-document-review'
 import { Composer } from './composer'
 import { ReviewCard, type CardPlacement } from './thread-card'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The line a failed question says: by what broke, never the wire code itself. */
 export function failureKey(ask: Pick<CanvasAsk, 'error' | 'view'>): 'busy' | 'failedSession' | 'failedConnection' | 'failed' {
@@ -215,7 +216,7 @@ export function AgentAnswerCard({
                 placeholder={t('review.piloti.steerPlaceholder')}
                 submitLabel={t('review.piloti.steerSend')}
                 onSubmit={async (note) => {
-                  if (!piloti.steer(note, ask.region)) throw new Error('Piloti takes no note right now')
+                  if (!piloti.steer(note, ask.region)) throw new Error(`${PRODUCT_NAME} takes no note right now`)
                 }}
               />
             )}

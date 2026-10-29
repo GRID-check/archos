@@ -3,7 +3,7 @@
   "tools": {
     "search-operations": {
       "title": "Search operations",
-      "description": "Find what can be done in the Piloti workspace (projects, members, documents and their versions, review, the inbox, tasks, building-law knowledge, BIM models) by plain words, ranked over each operation's name, summary and description. Start here. Answers operation names with one line each and whether each reads, writes or destroys. Then call-operation.",
+      "description": "Find what can be done in the ARCHOS workspace (projects, members, documents and their versions, review, the inbox, tasks, building-law knowledge, BIM models) by plain words, ranked over each operation's name, summary and description. Start here. Answers operation names with one line each and whether each reads, writes or destroys. Then call-operation.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -90,7 +90,7 @@
     },
     "report-missing-operation": {
       "title": "Report a missing operation",
-      "description": "Count a gap: the person wants something done in the workspace and search-operations found no operation for it with two different phrasings. Also for friction with an operation you did find: set category to tool_description, input_schema, error_message or result_shape when one was confusing. The Piloti team sees that a report was made and its category, never your words, so describe the goal or the confusion without names or document contents. For a gap, then tell the person it cannot be done here yet.",
+      "description": "Count a gap: the person wants something done in the workspace and search-operations found no operation for it with two different phrasings. Also for friction with an operation you did find: set category to tool_description, input_schema, error_message or result_shape when one was confusing. The ARCHOS team sees that a report was made and its category, never your words, so describe the goal or the confusion without names or document contents. For a gap, then tell the person it cannot be done here yet.",
       "inputSchema": {
         "type": "object",
         "properties": {

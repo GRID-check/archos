@@ -28,6 +28,7 @@ import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
 import { isOnDoor } from '@/lib/agent-api/exposure'
 import { isAgentAskOperation } from '@/lib/agent-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * Why Piloti never asks Piloti (ADR-0124, the recursion lock): every operation
@@ -35,7 +36,7 @@ import type { OperationPayload, ProposedChangeResult } from './types'
  * is what keeps a turn, a turn an ask started included, from starting another.
  */
 export const AGENT_ASK_REFUSAL =
-  'Piloti cannot ask Piloti: an ask is how another agent consults Piloti, and a turn may not start another.'
+  PRODUCT_NAME + ' cannot ask ' + PRODUCT_NAME + ': an ask is how another agent consults ' + PRODUCT_NAME + ', and a turn may not start another.'
 
 /**
  * The person's own decisions: deciding a proposal and undoing a change Piloti
@@ -54,7 +55,7 @@ export const PROPOSAL_DECISION_OPERATIONS: ReadonlySet<string> = new Set([
 
 /** Why Piloti never files a decision on a proposal, nor an undo: the person makes those ({@link PROPOSAL_DECISION_OPERATIONS}). */
 export const PROPOSAL_DECISION_REFUSAL =
-  'Piloti cannot apply, dismiss or undo a change for the person: they decide that themselves, on its own card.'
+  PRODUCT_NAME + ' cannot apply, dismiss or undo a change for the person: they decide that themselves, on its own card.'
 
 /**
  * Why `name` cannot be applied as a proposal, or null when it can: it exists, it
@@ -71,7 +72,7 @@ function unusableReason(op: AgentOperation | undefined, name: string): string | 
   // Piloti behind a native tool (`exposure.config.ts`) is still on the door: a card filed before applies.
   if (!op || !isOnDoor(op.name)) return `The operation ${name} no longer exists`
   if (annotationsOf(op).readOnlyHint) return `The operation ${name} only reads, so there is nothing to apply`
-  if (op.sensitivity) return `The operation ${name} is not one Piloti may propose; make the change in Piloti yourself`
+  if (op.sensitivity) return `The operation ${name} is not one ${PRODUCT_NAME} may propose; make the change in ${PRODUCT_NAME} yourself`
   if (PROPOSAL_DECISION_OPERATIONS.has(op.name)) return PROPOSAL_DECISION_REFUSAL
   return null
 }

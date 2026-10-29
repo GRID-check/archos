@@ -46,6 +46,7 @@ import { describeTargets } from './operation-targets'
 import { proposeOperation } from './operation-proposals'
 import type { AgentPrincipal } from './principal'
 import { recordOperationCalled } from './telemetry'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session = {
   userId: 'user_1',
@@ -156,7 +157,7 @@ describe('a client that declares elicitation, on a destructive write', () => {
     const request = (first.result?.inputRequests as Record<string, { method: string; params: { message: string; requestedSchema: unknown } }>).confirm
     expect(request.method).toBe('elicitation/create')
     expect(request.params.message).toBe(
-      'An agent connected to Piloti wants to make this change as you: Delete a project (id: p-1). ' +
+      `An agent connected to ${PRODUCT_NAME} wants to make this change as you: Delete a project (id: p-1). ` +
         'This affects project "Haus Josef". Nothing changes unless you confirm.',
     )
     expect(request.params.message).not.toContain('{')

@@ -39,6 +39,7 @@ import { getAccessibleDocument } from './access'
 import { collectionFileRef } from './collection-file-ref'
 import { hasPassedScreening } from './document-reader'
 import { parseRevisionVisualChanges, type RevisionVisualChanges } from './revision-compare-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Two pages rendered, one vision call (90 s on the backend), and the hop. */
 const BACKEND_TIMEOUT_MS = 120_000
@@ -115,7 +116,7 @@ async function loadPair(session: AuthorizedSession, newerId: string, olderId: st
   // A machine-authored row owns no chunks over there, and a name it shares belongs to someone else.
   if (!collectionFileRef(newer) || !collectionFileRef(older)) throw new NotFoundError()
   if (restrictedCollectionBase(newer.collectionName.toLowerCase()) !== null) {
-    throw new UnprocessableError('Documents in a restricted folder cannot be compared by Piloti', {
+    throw new UnprocessableError('Documents in a restricted folder cannot be compared by ' + PRODUCT_NAME, {
       reason: 'restricted_folder',
     })
   }

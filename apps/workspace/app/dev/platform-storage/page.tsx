@@ -22,6 +22,7 @@ import {
   PlatformStorageTable,
   type PlatformStorageResponse,
 } from '../../app/(shell)/platform/storage-table'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const GB = 1e9
 const MB = 1e6
@@ -61,7 +62,7 @@ const OVERVIEW: PlatformStorageResponse = {
     },
     {
       organizationId: 'org_01HQZX3K8PILO',
-      displayName: 'Piloti Interna',
+      displayName: PRODUCT_NAME + ' Interna',
       usedBytes: 3.2 * GB,
       documents: 96,
       quotaBytes: null,

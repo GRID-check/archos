@@ -41,6 +41,7 @@ import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { useChatStore } from '@/features/chat/store'
 import { DocumentDraftCard } from '@/features/cards/components/DocumentDraftCard'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function Panel({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {
   return (
@@ -68,7 +69,7 @@ export default function DocumentDraftCardPreview() {
       >
         <Panel
           title="Überarbeiteter Entwurf, noch nicht abgelegt"
-          note="Dreimal geschrieben: einmal angelegt, zweimal auf Zuruf geändert. Titel ist die erste Überschrift im Dokument, darunter der Pfad im Arbeitsordner — bewusst als Pfad und nicht als Dateiname, denn der Entwurf liegt nicht in den Projektdateien. „Ins Projekt übernehmen“ schreibt die Bitte in die Eingabezeile; abgelegt wird von Piloti."
+          note={"Dreimal geschrieben: einmal angelegt, zweimal auf Zuruf geändert. Titel ist die erste Überschrift im Dokument, darunter der Pfad im Arbeitsordner — bewusst als Pfad und nicht als Dateiname, denn der Entwurf liegt nicht in den Projektdateien. „Ins Projekt übernehmen“ schreibt die Bitte in die Eingabezeile; abgelegt wird von " + PRODUCT_NAME + "."}
         >
           <DocumentDraftCard
             title="Aktenvermerk – Abweichung Fluchtweglänge"
