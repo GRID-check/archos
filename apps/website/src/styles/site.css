@@ -250,6 +250,67 @@ button.ui-nav-link {
   color: var(--ink);
 }
 
+/* The footer's "Cookie-Einstellungen": a button that reads like the footer's links. */
+.site-footer-consent {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.site-footer-consent:hover {
+  text-decoration: underline;
+  text-decoration-thickness: var(--stroke-hairline);
+  text-underline-offset: 0.25em;
+}
+
+.site-footer-consent:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (max-width: 767px) {
+  .site-footer-consent {
+    min-height: 44px;
+  }
+}
+
+/* The consent note: a quiet card in the bottom corner, a strip along the bottom on a phone.
+   Fixed, so it shifts no layout; no overlay, the page stays usable behind it. */
+.consent-note {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 50;
+  box-sizing: border-box;
+  max-width: var(--login-form);
+  padding: var(--space-6);
+  border: var(--stroke-hairline) solid var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.consent-note-text {
+  margin: 0;
+}
+
+.consent-note-actions {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 767px) {
+  .consent-note {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-width: none;
+    padding: var(--space-4) var(--gutter-mobile);
+    border-width: var(--stroke-hairline) 0 0;
+  }
+}
+
 /* Not found: the two ways on. */
 .not-found-actions {
   margin-top: var(--space-8);
@@ -261,4 +322,11 @@ button.ui-nav-link {
     aspect-ratio: 4 / 3 !important;
     object-position: 50% center !important;
   }
+}
+
+/* The header's Login and its signed-in twin "App öffnen": one is shown, chosen before paint by
+   src/scripts/signed-in.js. Both have the same size class, so nothing shifts. */
+html[data-signed-in] .site-signed-out,
+html:not([data-signed-in]) .site-signed-in {
+  display: none;
 }

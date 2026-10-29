@@ -2,6 +2,7 @@
 import '../styles/brand/tokens.css';
 import '../styles/brand/components.css';
 import '../styles/site.css';
+import ConsentNote from '../components/ConsentNote.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import { alternateOf, type Locale } from '../i18n/paths';
@@ -9,6 +10,7 @@ import { t } from '../i18n/ui';
 import identity from '../lib/identity';
 import { jsonLd, siteGraph } from '../lib/structured-data';
 import { surfaceColor } from '../lib/theme';
+import signedInScript from '../scripts/signed-in.js?url&no-inline';
 
 interface Props {
   /** The page's language: sets `<html lang>`, the shell's strings and the hreflang pair */
@@ -76,6 +78,8 @@ const structuredData = jsonLd(siteGraph(Astro.site ?? new URL(`https://${identit
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content={surfaceColor} />
     <script type="application/ld+json" set:html={structuredData} />
+    <!-- Blocking on purpose and tiny: swaps Login for "App öffnen" before the header paints (README, "Signed in"). -->
+    <script is:inline src={signedInScript}></script>
     <!-- Web analytics, configured per stack at request time; a comment when
          PostHog is unset (src/pages/web-analytics.js.ts, runtime/web-analytics.mjs). -->
     <script is:inline src="/web-analytics.js" defer></script>
@@ -87,6 +91,7 @@ const structuredData = jsonLd(siteGraph(Astro.site ?? new URL(`https://${identit
       <slot />
     </main>
     {!bare && <Footer locale={locale} />}
+    <ConsentNote locale={locale} />
     <script>
       // Blocks below the fold arrive once as they scroll into view (styles in
       // packages/brand/css/components.css, [data-reveal]). Anything on screen at

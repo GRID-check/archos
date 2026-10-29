@@ -1,0 +1,6 @@
+---
+features:
+  - >
+    When you are already signed in, the website's header offers "App öffnen"
+    ("Open app") instead of "Login" and takes you straight into the
+    application, without passing the sign-in page again.

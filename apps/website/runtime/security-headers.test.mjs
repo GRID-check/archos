@@ -17,6 +17,7 @@ test('without analytics the policy allows the own origin only', () => {
   assert.deepEqual(directive(csp, 'script-src'), ["'self'"])
   assert.deepEqual(directive(csp, 'connect-src'), ["'self'"])
   assert.doesNotMatch(csp, /posthog/)
+  assert.deepEqual(directive(csp, 'worker-src'), ["'self'"])
 })
 
 test('with analytics the policy adds exactly the PostHog EU origins', () => {
@@ -27,6 +28,8 @@ test('with analytics the policy adds exactly the PostHog EU origins', () => {
     'https://eu.i.posthog.com',
     'https://eu-assets.i.posthog.com',
   ])
+  // Session replay, after consent, runs its compression in a blob worker.
+  assert.deepEqual(directive(csp, 'worker-src'), ["'self'", 'blob:'])
 })
 
 test('no inline or eval script is ever allowed, and the site cannot be framed', () => {

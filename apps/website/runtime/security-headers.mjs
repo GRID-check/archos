@@ -37,6 +37,8 @@ export function contentSecurityPolicy(analytics) {
     'media-src': ["'self'"],
     'connect-src': ["'self'", ...analytics.connect],
     'manifest-src': ["'self'"],
+    // Session replay (only after consent) compresses in a worker it starts from a blob.
+    'worker-src': ["'self'", ...(analytics.script.length ? ['blob:'] : [])],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'", 'mailto:'],

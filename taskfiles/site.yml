@@ -74,6 +74,12 @@ tasks:
       - task: website:install
       - task: website:check
       - task: website:build
+
+  website:capture:
+    desc: Screenshot every website route at four widths (agent-browser; flags after --)
+    dir: '{{.WEBSITE}}'
+    cmds:
+      - bun run capture {{.CLI_ARGS}}
       # The brand rules' own tests, then the rules once more over the fresh build:
       # the AI-tag rule reads the built pages.
       - node --test scripts/check_brand_rules.test.mjs

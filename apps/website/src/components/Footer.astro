@@ -71,6 +71,8 @@ const homeHref = Astro.props.homeHref ?? localePath('home', locale);
     <div class="ui-footer-bottom small">
       <span>{note}</span>
       {legal.map((link) => <a href={link.href}>{link.label}</a>)}
+      {/* Shown by ConsentNote once analytics is on: reopens the consent note. */}
+      <button type="button" class="site-footer-consent" data-consent-open hidden>{ui.cookieSettings}</button>
     </div>
   </div>
 </footer>

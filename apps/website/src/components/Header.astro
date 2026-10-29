@@ -13,7 +13,7 @@ interface Props {
   current?: string;
   /** The other-locale twin, when it is not the table's (a post's translation). Defaults to alternateOf(current) */
   switchPath?: string;
-  /** Small secondary button, e.g. Login. null hides it */
+  /** Small secondary button, e.g. Login. Shown as "App öffnen" to a visitor signed in to the app (README, "Signed in"). null hides it */
   login?: NavLink | null;
   /** Small primary button, e.g. Demo anfragen: the page's one primary. null hides it */
   cta?: NavLink | null;
@@ -60,8 +60,13 @@ const hasMenu = links.length > 0 || Boolean(login);
         {localeCodes[otherLocale]}
       </a>
       {login && (
-        <Button href={login.href} variant="secondary" size="sm" cta="header" ctaLabel="login">
+        <Button href={login.href} variant="secondary" size="sm" class="site-signed-out" cta="header" ctaLabel="login">
           {login.label}
+        </Button>
+      )}
+      {login && (
+        <Button href={login.href} variant="secondary" size="sm" class="site-signed-in" cta="header" ctaLabel="open_app">
+          {ui.openApp}
         </Button>
       )}
       {cta && (
@@ -88,8 +93,13 @@ const hasMenu = links.length > 0 || Boolean(login);
               </ul>
               <div class="ui-mnav-act">
                 {login && (
-                  <Button href={login.href} variant="secondary" size="lg" cta="mobile_menu" ctaLabel="login">
+                  <Button href={login.href} variant="secondary" size="lg" class="site-signed-out" cta="mobile_menu" ctaLabel="login">
                     {login.label}
+                  </Button>
+                )}
+                {login && (
+                  <Button href={login.href} variant="secondary" size="lg" class="site-signed-in" cta="mobile_menu" ctaLabel="open_app">
+                    {ui.openApp}
                   </Button>
                 )}
                 {cta && (
@@ -109,6 +119,12 @@ const hasMenu = links.length > 0 || Boolean(login);
 <script>
   // Closes the mobile menu when a link in it is followed (ported from the reference site).
   document.querySelectorAll<HTMLDetailsElement>('.ui-mnav').forEach((menu) => {
+    // Escape closes the open menu and puts focus back on its button.
+    menu.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !menu.open) return;
+      menu.open = false;
+      menu.querySelector('summary')?.focus();
+    });
     menu.querySelectorAll('a').forEach((link) => {
       link.addEventListener('click', () => {
         menu.open = false;

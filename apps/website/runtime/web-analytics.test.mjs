@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import vm from 'node:vm'
 import { test } from 'node:test'
 import {
+  ANALYTICS_READY_EVENT,
   analyticsOrigins,
   sdkUrl,
   webAnalyticsConfig,
@@ -18,17 +19,19 @@ const ENV = {
 function runLoader(body, extra = {}) {
   const appended = []
   const calls = []
+  const dispatched = []
   const script = {}
   const window = {
     posthog: { init: (...args) => calls.push(args) },
+    dispatchEvent: (event) => dispatched.push(event.type),
     ...extra,
   }
   const document = {
     createElement: () => script,
     head: { appendChild: (el) => appended.push(el) },
   }
-  vm.runInNewContext(body, { window, document, ...extra })
-  return { appended, calls, script }
+  vm.runInNewContext(body, { window, document, Event, ...extra })
+  return { appended, calls, dispatched, script }
 }
 
 test('analytics is off unless both the host and the token are set', () => {
@@ -57,9 +60,10 @@ test('the SDK comes from the assets host on Cloud and from the proxy otherwise',
 
 test('the init options match what the privacy policy says', () => {
   const options = webAnalyticsInitOptions({ host: 'https://eu.i.posthog.com', token: 'phc_test' })
-  // No person profile for a visitor, no screen recording, no survey.
+  // No person profile for a visitor, no survey; a recording masks every input and text.
   assert.equal(options.person_profiles, 'identified_only')
-  assert.equal(options.disable_session_recording, true)
+  assert.deepEqual(options.session_recording, { maskAllInputs: true, maskTextSelector: '*' })
+  assert.equal('disable_session_recording' in options, false)
   assert.equal(options.disable_surveys, true)
   // Pageviews, web vitals and heatmaps are measured.
   assert.equal(options.capture_pageview, 'history_change')
@@ -68,9 +72,12 @@ test('the init options match what the privacy policy says', () => {
   assert.equal(options.respect_dnt, true)
 })
 
-test("nothing is stored on the visitor's device: cookieless, and no storage option that would undo it", () => {
+test('cookieless until the visitor accepts: on_reject, and no choice counts as not yet accepted', () => {
   const options = webAnalyticsInitOptions({ host: 'https://eu.i.posthog.com', token: 'phc_test' })
-  assert.equal(options.cookieless_mode, 'always')
+  // Pending consent is treated as rejected, and rejected means cookieless: the SDK's own wiring.
+  assert.equal(options.cookieless_mode, 'on_reject')
+  assert.equal(options.opt_out_capturing_by_default, true)
+  // Nothing that would store across subdomains or change what accepting stores.
   assert.equal('persistence' in options, false)
   assert.equal('cross_subdomain_cookie' in options, false)
 })
@@ -93,9 +100,9 @@ test('the disabled script loads nothing', () => {
   assert.doesNotMatch(body, /createElement|posthog\.com/)
 })
 
-test('the enabled script is valid JavaScript that loads the SDK and then inits it', () => {
+test('the enabled script is valid JavaScript that loads the SDK, inits it and tells the page', () => {
   const body = webAnalyticsScript({ host: 'https://eu.i.posthog.com', token: 'phc_test' })
-  const { appended, calls, script } = runLoader(body)
+  const { appended, calls, dispatched, script } = runLoader(body)
   assert.equal(appended.length, 1)
   assert.equal(script.src, 'https://eu-assets.i.posthog.com/static/array.js')
   assert.equal(calls.length, 0, 'init waits for the SDK to load')
@@ -103,7 +110,8 @@ test('the enabled script is valid JavaScript that loads the SDK and then inits i
   assert.equal(calls.length, 1)
   assert.equal(calls[0][0], 'phc_test')
   assert.equal(calls[0][1].api_host, 'https://eu.i.posthog.com')
-  assert.equal(calls[0][1].cookieless_mode, 'always')
+  assert.equal(calls[0][1].cookieless_mode, 'on_reject')
+  assert.deepEqual(dispatched, [ANALYTICS_READY_EVENT], 'the consent note learns the SDK is there')
 })
 
 test('a token with script-breaking characters cannot escape the string', () => {
