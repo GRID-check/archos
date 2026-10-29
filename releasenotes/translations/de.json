@@ -1220,6 +1220,10 @@
     "de": "Buttons, Chips und Tabs geben jetzt sanft nach, wenn Sie darauf drücken, und Dialoge und Menüs verschwinden sofort, sobald Sie sie schließen. Der gesamte Arbeitsbereich reagiert etwas schneller auf Ihre Eingaben."
   },
   {
+    "en": "Buttons, fields, cards and dialogs in the workspace now follow one consistent shape and colour scheme, in light and dark mode alike.",
+    "de": "Buttons, Eingabefelder, Karten und Dialoge im Arbeitsbereich folgen jetzt einem einheitlichen Form- und Farbschema – sowohl im hellen als auch im dunklen Modus."
+  },
+  {
     "en": "Card headers with buttons in them no longer run past the edge of a narrow screen. Where there is not room for the title and the buttons on one line, the buttons move underneath.",
     "de": "Kartenüberschriften mit Schaltflächen ragen nicht mehr über den Rand schmaler Bildschirme hinaus. Wenn Titel und Schaltflächen nicht in eine Zeile passen, werden die Schaltflächen darunter angezeigt."
   },

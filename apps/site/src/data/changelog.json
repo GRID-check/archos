@@ -120,6 +120,10 @@
           "key": "improvements",
           "notes": [
             {
+              "en": "Buttons, fields, cards and dialogs in the workspace now follow one consistent shape and colour scheme, in light and dark mode alike.",
+              "de": "Buttons, Eingabefelder, Karten und Dialoge im Arbeitsbereich folgen jetzt einem einheitlichen Form- und Farbschema – sowohl im hellen als auch im dunklen Modus."
+            },
+            {
               "en": "When you ask Piloti to show you files on a topic, it now finds them with the same search you use, in the language of your documents, and the files it offers carry a link that opens that search with every result.",
               "de": "Wenn Sie Piloti bitten, Ihnen Dateien zu einem Thema anzuzeigen, findet es diese jetzt über dieselbe Suche, die Sie selbst verwenden, und in der Sprache Ihrer Dokumente. Die angezeigten Dateien enthalten einen Link, der diese Suche mit allen Ergebnissen öffnet."
             },
