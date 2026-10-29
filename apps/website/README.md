@@ -14,7 +14,7 @@ bun install        # first, and after a pull that moves bun.lock
 bun run dev        # http://localhost:4321
 bun run build      # static output in dist/
 bun run build && node dist/server/entry.mjs   # serve it: pages are static, /sign-in runs on the server
-bun run check      # astro check, then the brand copy check
+bun run check      # astro check, the brand copies (sync --check), then the brand rules (scripts/check_brand_rules.mjs)
 ```
 
 Or from the repo root: `task website:install`, `task website:check`, `task website:build`.
@@ -77,6 +77,18 @@ The favicon is `public/favicon.svg`.
 - There is no login page. Login goes to `/sign-in`, which hands over to AuthKit's hosted page; that page lists exactly the sign-in methods enabled in WorkOS, so the site keeps no list of its own. `/login` and `/en/login` redirect there.
 - Deployment: Dockerfile, redirects and the removal of `apps/site` belong to slice 5.
 
+## Signed in
+
+A visitor who is signed in to the app sees "App öffnen" / "Open app" in the header instead of "Login".
+The app keeps a contentless `signed_in=1` cookie on the website's domain while it has a session
+([authentication flow](../../docs/technical-reference/authentication-flow.md#the-websites-signed_in-cookie)).
+`src/scripts/signed-in.js`, loaded blocking in `<head>` from `BaseLayout`, sets `data-signed-in` on
+`<html>` when it finds it, and `site.css` shows the matching one of the two buttons `Header.astro`
+renders (`.site-signed-out`, `.site-signed-in`), so the swap happens before paint. Without the cookie or
+without JavaScript the header says "Login". Both buttons go to `/sign-in`, which hands over to the app's
+`/?sign-in`: the app opens for a browser with a session and signs in any other. The cookie is in the
+privacy policy (`src/i18n/pages/privacy.ts`, "Anmeldestatus").
+
 ## Blog
 
 Posts are MDX in `src/content/blog/<locale>/<slug>.mdx` (schema in
@@ -85,3 +97,5 @@ Posts are MDX in `src/content/blog/<locale>/<slug>.mdx` (schema in
 names its twin in the other locale for the language switch and hreflang. Drafts
 build only with `PUBLIC_INCLUDE_DRAFTS=1`. Until `apps/site` is deleted at the
 cutover, its copies of these posts are stale: write new posts here.
+
+Screenshots of every route for a PR: `bun run capture` (see [visual screenshots](../../docs/ux/visual-screenshots.md#website-targets)).

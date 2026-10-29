@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { artImage } from '@/lib/art'
 
@@ -282,5 +282,101 @@ describe('a request that carries a session and is still sent to sign in', () => 
 
     expect(warn).not.toHaveBeenCalled()
     warn.mockRestore()
+  })
+})
+
+/**
+ * The website's header says "Open app" while the browser has a session here.
+ * It cannot read AuthKit's host-only, HttpOnly cookie, so the proxy keeps a
+ * contentless `signed_in` cookie on the parent domain in step with the session.
+ */
+describe('the signed_in cookie for the website', () => {
+  const ENV_KEYS = ['REQUIRE_AUTH', 'WORKOS_REDIRECT_URI', 'LANDING_URL', 'WORKOS_COOKIE_MAX_AGE'] as const
+  const saved = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
+
+  beforeEach(() => {
+    process.env.REQUIRE_AUTH = 'true'
+    process.env.WORKOS_REDIRECT_URI = 'https://app.dev.piloti.at/api/auth/callback'
+    process.env.LANDING_URL = 'https://dev.piloti.at'
+    delete process.env.WORKOS_COOKIE_MAX_AGE
+  })
+
+  afterEach(() => {
+    for (const key of ENV_KEYS) {
+      if (saved[key] === undefined) delete process.env[key]
+      else process.env[key] = saved[key]
+    }
+  })
+
+  const request = (cookie?: string, path = '/app/projects') =>
+    new NextRequest(`https://app.dev.piloti.at${path}`, cookie ? { headers: { cookie } } : undefined)
+  const passThrough = (cookies: string[] = []) => {
+    const headers = new Headers()
+    for (const cookie of cookies) headers.append('set-cookie', cookie)
+    return new Response(null, { status: 200, headers })
+  }
+  const signedInCookie = (response: ProxyResponse) =>
+    response?.headers.getSetCookie().find((cookie) => cookie.startsWith('signed_in=')) ?? null
+
+  test('is set on the parent domain when a request arrives with a session AuthKit kept', async () => {
+    const response = await throughProxy(request('wos-session=sealed'), passThrough())
+
+    expect(signedInCookie(response)).toBe(
+      `signed_in=1; Path=/; Max-Age=${60 * 60 * 24 * 400}; SameSite=Lax; Domain=dev.piloti.at; Secure`
+    )
+  })
+
+  test('is set for a session split into chunks, and after a refresh that rewrites it', async () => {
+    const refreshed = passThrough(['wos-session.0=new; Path=/; HttpOnly', 'wos-session.1=; Path=/; Max-Age=0'])
+
+    const response = await throughProxy(request('wos-session.0=a; wos-session.1=b'), refreshed)
+
+    expect(signedInCookie(response)).toMatch(/^signed_in=1;/)
+  })
+
+  test('is not written again while the browser already holds it', async () => {
+    const response = await throughProxy(request('wos-session=sealed; signed_in=1'), passThrough())
+
+    expect(signedInCookie(response)).toBeNull()
+  })
+
+  // Sign-out deletes the session and returns to the app's `/`: the first request without one.
+  test('is cleared with its Domain and Path when a request arrives without a session', async () => {
+    const response = await throughProxy(request('signed_in=1', '/'), passThrough())
+
+    expect(signedInCookie(response)).toBe(
+      'signed_in=; Path=/; Max-Age=0; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Domain=dev.piloti.at; Secure'
+    )
+  })
+
+  test('is cleared when AuthKit discards an expired or invalid session', async () => {
+    const clearing = passThrough(['wos-session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=lax'])
+
+    const response = await throughProxy(request('wos-session=stale; signed_in=1', '/'), clearing)
+
+    expect(signedInCookie(response)).toMatch(/^signed_in=; Path=\/; Max-Age=0;/)
+  })
+
+  test('is cleared when AuthKit sends the request to sign in, on the rerouted answer', async () => {
+    const response = await throughProxy(request('wos-session=stale; signed_in=1'), authkitRedirect())
+
+    expect(locationOf(response).pathname).toBe('/api/auth/signin')
+    expect(signedInCookie(response)).toMatch(/^signed_in=; Path=\/; Max-Age=0;/)
+  })
+
+  test('is never written when the website is not on the app’s parent domain', async () => {
+    process.env.LANDING_URL = 'https://elsewhere.example'
+
+    const response = await throughProxy(request('wos-session=sealed'), passThrough())
+
+    expect(signedInCookie(response)).toBeNull()
+  })
+
+  test('is never written with auth switched off', async () => {
+    process.env.REQUIRE_AUTH = 'false'
+
+    const response = await throughProxy(request('wos-session=sealed'), passThrough())
+
+    expect(signedInCookie(response)).toBeNull()
   })
 })

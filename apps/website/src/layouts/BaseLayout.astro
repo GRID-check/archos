@@ -7,6 +7,7 @@ import Header from '../components/Header.astro';
 import { alternateOf, type Locale } from '../i18n/paths';
 import { t } from '../i18n/ui';
 import identity from '../lib/identity';
+import signedInScript from '../scripts/signed-in.js?url&no-inline';
 
 interface Props {
   /** The page's language: sets `<html lang>`, the shell's strings and the hreflang pair */
@@ -59,6 +60,8 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
     <link rel="alternate" hreflang="en" href={hrefFor('en')} />
     <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Blocking on purpose and tiny: swaps Login for "App öffnen" before the header paints (README, "Signed in"). -->
+    <script is:inline src={signedInScript}></script>
     <!-- Web analytics, configured per stack at request time; a comment when
          PostHog is unset (src/pages/web-analytics.js.ts, runtime/web-analytics.mjs). -->
     <script is:inline src="/web-analytics.js" defer></script>
@@ -71,14 +74,6 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
     </main>
     {!bare && <Footer locale={locale} />}
     <script>
-      // The header's hairline marks that the page has scrolled beneath it.
-      const header = document.querySelector('.ui-header');
-      if (header) {
-        const mark = () => header.toggleAttribute('data-scrolled', scrollY > 0);
-        addEventListener('scroll', mark, { passive: true });
-        mark();
-      }
-
       // Blocks below the fold arrive once as they scroll into view (styles in
       // packages/brand/css/components.css, [data-reveal]). Anything on screen at
       // load is left alone, and reduced motion leaves the page as it is.

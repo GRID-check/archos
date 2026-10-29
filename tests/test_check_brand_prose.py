@@ -50,6 +50,7 @@ def _add(repo: Path, path: str, text: str) -> None:
         ("Piloti reads your files.", 1),
         ("ask piloti, or PILOTI", 2),
         ("the piloti:// guide", 1),
+        ("https://app.dev.piloti.at/api and Domain=dev.piloti.at, anna@piloti.test", 0),
         ("AI-Q blueprint and AIQ", 2),
         ("GRID operates the platform", 1),
         ("Grid platform and Grid agent", 2),
@@ -79,7 +80,8 @@ def test_a_marked_line_may_quote_an_old_name_in_backticks(checker) -> None:
     ("text", "hits"),
     [
         ("Welcome to ARCHOS", 1),
-        ("archos reads it", 1),
+        ("Archos reads it", 1),
+        ("bash archos/scripts/cloud-setup.sh, the `archos` clone", 0),
         ("mail kontakt@archos.tech or see https://archos.tech/blog", 0),
         ("app.archos.tech and ghcr.io/archos-at/archos", 0),
     ],

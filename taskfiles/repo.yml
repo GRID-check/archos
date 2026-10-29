@@ -24,6 +24,22 @@ tasks:
     desc: Publish every skill in apm.yml into the harness directories it targets
     cmds:
       - uvx --from apm-cli=={{.APM_VERSION}} apm install --frozen
+      - task: agents:browser
+
+  agents:browser:
+    desc: Install agent-browser at the pinned version and run its doctor
+    cmds:
+      # Pinned like apm, and skipped when that version is already installed.
+      # `agent-browser install` is NOT run: it downloads Chrome for Testing,
+      # which the cloud network policy blocks. Where Playwright's Chromium
+      # exists, point AGENT_BROWSER_EXECUTABLE_PATH at it (the SessionStart hook
+      # does this in cloud sessions). `doctor` reports what is still missing.
+      - |
+        have=$(agent-browser --version 2>/dev/null | awk '{print $NF}' || true)
+        if [ "$have" != "{{.AGENT_BROWSER_VERSION}}" ]; then
+          npm i -g agent-browser@{{.AGENT_BROWSER_VERSION}}
+        fi
+      - agent-browser doctor || true
 
   agents:audit:
     desc: Fail when apm.lock.yaml is stale against skills/, or the deployed skills have drifted

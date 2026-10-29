@@ -68,6 +68,26 @@ upgrade that leaves the patch behind fails there. When AuthKit is upgraded,
 `bun install` refuses a patch that no longer applies: re-create it with
 `bun patch @workos-inc/authkit-nextjs`, or delete it if upstream has closed #404.
 
+## The website's `signed_in` cookie
+
+The public website shows "App öffnen" / "Open app" instead of "Login" while the
+browser has a session in the app. It cannot see AuthKit's cookie (host-only on
+the app's host, and HttpOnly), so the proxy (`apps/workspace/proxy.ts`,
+`signedInCookieFor`) keeps a second cookie in step: `signed_in=1` on the
+website's domain (`LANDING_URL`'s host, the app's parent), `Path=/`,
+`SameSite=Lax`, `Secure` on HTTPS, not HttpOnly, as long-lived as the session
+cookie (`WORKOS_COOKIE_MAX_AGE`, else 400 days). The value is always `1`: no
+user, organization or session id. It is set when a request arrives with a
+session AuthKit kept, and cleared, with the same Domain and Path, when one
+arrives without a session, when AuthKit expires the session, or when AuthKit
+sends it to sign in; sign-out returns to `/`, which is such a request. It is
+written only when that differs from what the browser sent, so an ordinary
+request carries no extra `Set-Cookie`. With auth off, or a website that is not
+on the app's parent domain, nothing is written and the website keeps "Login".
+A stale cookie costs nothing: both buttons go to the website's `/sign-in`,
+which hands over to the app's `/?sign-in`, and that opens the app or signs in.
+The website side: `apps/website/README.md`, "Signed in".
+
 ## Switching organization
 
 Someone who belongs to more than one organization finds „Switch organization"

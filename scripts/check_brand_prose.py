@@ -22,13 +22,14 @@ Over every text file git tracks:
   and ``GRID`` in capitals, ``Grid`` followed by OIB, platform, operates, agent or
   workspace, and ``grid-oib``. A bare ``grid`` never counts: it is CSS, Tailwind and
   the English layout noun.
-- **The current name typed out** (``CURRENT``): ``ARCHOS``/``archos`` as a word, in a
+- **The current name typed out** (``CURRENT``): ``ARCHOS`` or ``Archos`` as a word, in a
   file outside ``CURRENT_NAME_ALLOWED``. In code and the dictionaries the name is
   ``PRODUCT_NAME`` or ``{productName}``, so a literal is a string the next rename
   misses. URLs, e-mail addresses, the domain and the repository's own name
   (``archos-at/archos``) are not the name as copy and are left out.
 
-Never counted: in the three legal notices (``LEGAL_CONTINUITY_FILES``), the former name
+Never counted: a host name under the old domain (``OLD_HOSTS``), which the domain cutover
+moves; in the three legal notices (``LEGAL_CONTINUITY_FILES``), the former name
 in exactly "(vormals Piloti)" or "(formerly Piloti)". A link to an ADR file (``0146-piloti-draws-….md``), whose filename
 is history; and on a line carrying ``<!-- brand-history -->``, anything in
 backticks, which is how a later record quotes an old name.
@@ -98,7 +99,9 @@ RETIRED = re.compile(
         )
     )
 )
-CURRENT = re.compile(r"(?i:\barchos\b)")
+# The name as copy is written ARCHOS (or Archos). Lowercase `archos` is the repository and its
+# clone directory (`archos/scripts/…`), an identifier the brand-names check governs.
+CURRENT = re.compile(r"\b(?:ARCHOS|Archos)\b")
 NEEDLES = ("piloti", "aiq", "ai-q", "grid", "archos")  # lowercase; every pattern above contains one
 
 # Where the current name may be written out: the brand's own file and package, the
@@ -156,6 +159,9 @@ LEGAL_CONTINUITY_FILES = frozenset(
 LEGAL_CONTINUITY = re.compile(r"\((?:vormals|formerly) Piloti\)")
 URL = re.compile(r"\b(?:https?|git|ssh)://\S+|\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 OWN_NAMES = re.compile(r"(?i)\barchos-at(?:/archos)?\b|\b(?:[\w-]+\.)*archos\.tech\b")
+# Host names under the old domain (and its test domain) are infrastructure: the domain moves
+# by an operator's cutover (ADR-0148, owner decision D2), not by a copy edit.
+OLD_HOSTS = re.compile(r"(?i)\b(?:[\w-]+\.)*piloti\.(?:at|test)\b")
 
 BINARY_SUFFIXES = (
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".icns", ".woff", ".woff2", ".ttf", ".otf",
@@ -188,7 +194,7 @@ def scrub(text: str) -> str:
 
 
 def count_retired(text: str) -> int:
-    return len(RETIRED.findall(scrub(text)))
+    return len(RETIRED.findall(OLD_HOSTS.sub(" ", scrub(text))))
 
 
 def count_current(text: str) -> int:
