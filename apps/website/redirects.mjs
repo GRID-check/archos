@@ -3,7 +3,8 @@
  * (Astro's default is 308). An old address keeps the spelling it was published
  * under, product names included, because links and search results out in the
  * world still use it. That is why the brand-name check skips this file
- * (scripts/check_brand_names.py, EXCLUDED); new routes never carry a brand.
+ * (scripts/check_brand_names.py EXCLUDED, scripts/check_brand_prose.py HISTORY_PATHS);
+ * new routes never carry a brand.
  *
  * The full table for the old site's URLs (route fates) is still to come; this
  * file is where it belongs.
