@@ -37,14 +37,11 @@ import { Bell } from 'lucide-react'
 import { I18nProvider } from '@/i18n'
 import { InboxBadge, InboxList } from '@/features/collaboration/components'
 import type { InboxItemView } from '@/lib/inbox/types'
-import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
-import { MENTIONABLE, withProjects } from '../_fixtures/inbox-rows'
+import { MENTIONABLE, VIEWER_ID, markThread, replyToMark, withProjects } from '../_fixtures/inbox-rows'
 
 // Relative to now, so „vor 4 Minuten“ reads as it would in the product rather
 // than every row claiming months.
 const now = Date.now()
-/** The reader the fixtures are addressed to: Miriam Hofer. */
-const VIEWER_ID = 'u-miriam'
 
 const ago = (minutes: number): string => new Date(now - minutes * 60_000).toISOString()
 
@@ -707,6 +704,7 @@ const PENDING = NEWEST_FIRST.filter((item) => isOpenRequest(item) || item.state 
 const BY_FILTER: Record<string, InboxItemView[]> = {
   pending: PENDING,
   requests: NEWEST_FIRST.filter(isOpenRequest),
+  unread: NEWEST_FIRST.filter((item) => item.state === 'unread'),
   all: NEWEST_FIRST,
   archived: [],
 }
@@ -756,27 +754,14 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (/^\/api\/assignments\/document\/[^/]+\/candidates/.test(url)) {
         return Response.json({ candidates: MENTIONABLE })
       }
-      const reply = /^\/api\/documents\/[^/]+\/annotations\/([^/]+)\/replies$/.exec(url)
-      if (reply && init?.method === 'POST') {
-        const sent = JSON.parse(String(init.body ?? '{}')) as Pick<AnnotationReplyView, 'body' | 'mentions' | 'addressesPiloti'>
-        const replyId = `reply-${Date.now()}`
-        const now = new Date().toISOString()
-        // The mark as the reply route answers it, its thread holding the new reply with whom it kept.
-        const annotation: AnnotationView = {
-          id: reply[1], documentId: 'd-eg-c', number: 11, page: 1, shape: 'point', x: 0.4, y: 0.4, w: null, h: null,
-          kind: 'question', body: 'Fluchtwegbreite im Gang nachweisen.', mentions: [], basis: null, authorKind: 'person',
-          status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, revisionNumber: 3,
-          onCurrentRevision: true, createdBy: 'u-jakob', createdByName: 'Jakob Huber', createdAt: now, updatedAt: now,
-          acceptedBy: null, acceptedByName: null, closedBy: null, closedByName: null, closedAt: null,
-          delegatedBy: null, delegatedByName: null, delegatedAt: null, canEdit: true, canDelete: false,
-          replies: [{
-            id: replyId, annotationId: reply[1], authorKind: 'person', body: sent.body, createdBy: VIEWER_ID,
-            createdByName: 'Miriam Hofer', createdAt: now, addressesPiloti: sent.addressesPiloti === true,
-            mentions: sent.mentions ?? [], editedAt: null,
-          }],
-        }
-        const wake = sent.addressesPiloti ? 'queued' : 'none'
-        return Response.json({ annotation, replyId, wake }, { status: 201 })
+      // A mark's thread, read and answered: the detail beside the queue, and „Antworten" on a row.
+      const mark = /^\/api\/documents\/([^/]+)\/annotations\/([^/?]+)(\/replies)?$/.exec(url)
+      if (mark?.[3] && init?.method === 'POST') {
+        return Response.json(replyToMark(mark[1], mark[2], JSON.parse(String(init.body ?? '{}'))), { status: 201 })
+      }
+      if (mark && !mark[3] && (init?.method ?? 'GET') === 'GET') {
+        const row = ITEMS.find((item) => item.resourceId === mark[1] && item.anchorId === mark[2])
+        return Response.json({ annotation: markThread(mark[1], mark[2], row?.excerpt ?? undefined) })
       }
       // The live channel is deliberately absent here: the list must render fully
       // from the plain fetch (spec RT-3/RT-4), which is what a screenshot proves.
@@ -812,7 +797,7 @@ export default function InboxDevPage(): JSX.Element {
     <I18nProvider initialLocale="de" fixedLocale>
       <main
         data-testid="inbox-preview"
-        className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8 text-foreground md:px-8"
+        className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-8 text-foreground md:px-8"
       >
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Postfach</h1>
@@ -820,7 +805,8 @@ export default function InboxDevPage(): JSX.Element {
         </div>
 
         {/* One list, so a single screenshot carries every row treatment. */}
-        {ready && <InboxList initialFilter={empty ? 'needsMe' : 'all'} viewerId={VIEWER_ID} />}
+        {/* „Für mich“, the queue, opens it; ?filter=all shows every row treatment in one list. */}
+        {ready && <InboxList initialFilter="needsMe" viewerId={VIEWER_ID} />}
 
         {!empty && (
           <section className="space-y-3">

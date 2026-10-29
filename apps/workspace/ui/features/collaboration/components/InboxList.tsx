@@ -49,7 +49,7 @@ import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
-import { useInboxList } from '../hooks/use-inbox'
+import { useInboxBadge, useInboxList } from '../hooks/use-inbox'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '../hooks/use-undoable-archive'
 import type { InboxItemView, InboxListFilter } from '@/lib/inbox/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -69,6 +69,7 @@ import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { SectionLabel } from '@/components/ui/section-label'
 import { inboxSections } from '../lib/inbox-day-groups'
 import { InboxItemRow } from './InboxItemRow'
+import { InboxQueue } from './InboxQueue'
 
 type InboxFilter = 'needsMe' | 'all' | 'archived'
 
@@ -174,7 +175,13 @@ export function InboxList({
     markAllRead,
     archive,
     unarchive,
-  } = useInboxList(enabled, API_FILTER[filter])
+    // „Für mich“ is the queue (`InboxQueue`), which reads its own two slices:
+    // this read idles there, so the page asks the server once per question.
+  } = useInboxList(enabled && filter !== 'needsMe', API_FILTER[filter])
+  const queued = filter === 'needsMe'
+  // The badge's number is what „Für mich“ holds; the queue's reads do not count it.
+  const badge = useInboxBadge(enabled && queued)
+  const shownPending = queued ? badge.pending : pending
 
   const archiveLater = useUndoableArchive(archive)
   // A row waiting out its undo window is already gone as far as the reader can
@@ -267,7 +274,7 @@ export function InboxList({
       if (event.target instanceof Node && event.target !== document.body && !scope.contains(event.target)) return
       const key = event.key
       if (key !== 'j' && key !== 'k' && key !== 'Enter' && key !== 'e' && key !== 'u') return
-      if (visibleItems.length === 0) return
+      if (queued || visibleItems.length === 0) return
       const current = focusedIndex >= 0 ? visibleItems[focusedIndex] : null
       if (key === 'j' || key === 'k') {
         event.preventDefault()
@@ -303,14 +310,21 @@ export function InboxList({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [visibleItems, focusedIndex, focusRow, markRead, markUnread, onArchive, onUnarchive])
+  }, [queued, visibleItems, focusedIndex, focusRow, markRead, markUnread, onArchive, onUnarchive])
 
   // The count each filter wears: what waits on the reader, and what is unread.
-  const filterCount = (key: InboxFilter): number => (key === 'needsMe' ? pending : 0)
+  const filterCount = (key: InboxFilter): number => (key === 'needsMe' ? shownPending : 0)
   const emptyKey = filter
 
   return (
-    <div ref={rootRef} className={cn('space-y-4', className)} onFocus={trackFocus} onBlur={dropFocus}>
+    // The queue sets its detail beside the list, so it takes the width; a flat
+    // list keeps the reading measure.
+    <div
+      ref={rootRef}
+      className={cn('mx-auto w-full space-y-4', queued ? 'max-w-6xl' : 'max-w-3xl', className)}
+      onFocus={trackFocus}
+      onBlur={dropFocus}
+    >
       {/* ---- Filter + bulk action ---- */}
       {/* `min-h-8` holds the toolbar's line even if the filter wraps, so a
           count arriving cannot lift the list. */}
@@ -359,7 +373,7 @@ export function InboxList({
 
         {/* Nothing to mark on an empty list, and nothing to read under
             „Archiviert“: the button would be a control with no job. */}
-        {visibleItems.length > 0 && filter !== 'archived' && (
+        {!queued && visibleItems.length > 0 && filter !== 'archived' && (
           <Button
             variant="ghost"
             size="sm"
@@ -404,6 +418,9 @@ export function InboxList({
           inbox — every row, title, body, excerpt and timestamp — on the first
           skeleton→rows swap, on every filter change and after every archive. */}
       {/* Focusable from code only: where the focus goes when the last row leaves with it. */}
+      {queued ? (
+        <InboxQueue enabled={enabled} viewerId={viewerId} />
+      ) : (
       <div ref={listRef} data-testid="inbox-list" tabIndex={-1} className="outline-none">
         {error ? (
           <LoadError title={t('inbox.errors.loadFailed')} onRetry={() => refresh()} />
@@ -481,11 +498,12 @@ export function InboxList({
           />
         )}
       </div>
+      )}
 
       {/* The list's keys were there and nowhere said: a quiet line under the
           rows, where a pointer and a keyboard are (a phone has neither). Aria-
           hidden: the shortcuts sheet is where a screen reader learns them. */}
-      {!error && !loading && visibleItems.length > 0 && (
+      {!error && !loading && (queued || visibleItems.length > 0) && (
         <p
           aria-hidden
           data-testid="inbox-key-hint"
@@ -493,6 +511,7 @@ export function InboxList({
         >
           <span className="inline-flex items-center gap-1"><KbdGroup><Kbd>j</Kbd><Kbd>k</Kbd></KbdGroup>{t('inbox.keys.move')}</span>
           <span className="inline-flex items-center gap-1"><Kbd>↵</Kbd>{t('inbox.keys.open')}</span>
+          {queued && <span className="inline-flex items-center gap-1"><Kbd>r</Kbd>{t('inbox.keys.reply')}</span>}
           <span className="inline-flex items-center gap-1"><Kbd>e</Kbd>{t('inbox.keys.archive')}</span>
           <span className="inline-flex items-center gap-1"><Kbd>u</Kbd>{t('inbox.keys.read')}</span>
         </p>
@@ -508,11 +527,11 @@ export function InboxList({
           every archive — so an empty queue interrupted the reader to tell them
           about nothing, over and over. */}
       <p className="sr-only" role="status" aria-live="polite">
-        {loading || pending === 0
+        {(loading && !queued) || shownPending === 0
           ? ''
-          : pending === 1
+          : shownPending === 1
             ? t('inbox.badgeAriaOne')
-            : t('inbox.badgeAria', { count: pending })}
+            : t('inbox.badgeAria', { count: shownPending })}
       </p>
     </div>
   )

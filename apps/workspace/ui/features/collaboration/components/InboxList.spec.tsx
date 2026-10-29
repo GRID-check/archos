@@ -31,10 +31,21 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { useInboxList, type UseInboxListResult } from '../hooks/use-inbox'
+import { useInboxBadge, useInboxList, type UseInboxListResult } from '../hooks/use-inbox'
 import { InboxList } from './InboxList'
 
 const useInboxListMock = vi.mocked(useInboxList)
+const useInboxBadgeMock = vi.mocked(useInboxBadge)
+
+/**
+ * „Für mich“, the default, is the queue (`InboxQueue`, its own spec); the
+ * flat list these specs exercise is „Alle“ and „Archiviert“. So the address
+ * names „Alle“ unless a spec is about „Für mich“ and clears it.
+ */
+beforeEach(() => {
+  page.search = 'filter=all'
+  useInboxBadgeMock.mockReturnValue({ pending: 0, connected: true, refresh: vi.fn() })
+})
 
 const refresh = vi.fn()
 const markRead = vi.fn(async () => {})
@@ -100,8 +111,12 @@ describe('InboxList — filters', () => {
   })
 
   test('defaults to "needs me", which reads what the badge counts: open requests and anything unread', () => {
+    page.search = ''
     render(<InboxList />)
-    expect(useInboxListMock).toHaveBeenCalledWith(true, 'pending')
+    // The queue reads its two questions; the flat list's own read idles.
+    expect(useInboxListMock).toHaveBeenCalledWith(true, 'requests', expect.anything())
+    expect(useInboxListMock).toHaveBeenCalledWith(true, 'unread', expect.anything())
+    expect(useInboxListMock).not.toHaveBeenCalledWith(true, 'pending')
     const needsMe = screen.getByRole('radio', { name: /Needs me/ })
     const all = screen.getByRole('radio', { name: 'All' })
     expect(needsMe).toHaveAttribute('data-state', 'on')
@@ -152,6 +167,7 @@ describe('InboxList — filters', () => {
   })
 
   test('passes the disabled flag through, so a gated org issues no request', () => {
+    page.search = ''
     render(<InboxList enabled={false} />)
     expect(useInboxListMock).toHaveBeenCalledWith(false, 'pending')
   })
@@ -167,13 +183,14 @@ describe('InboxList — filters', () => {
     page.search = 'filter=unread'
     try {
       render(<InboxList />)
-      expect(useInboxListMock).toHaveBeenCalledWith(true, 'pending')
+      expect(useInboxListMock).toHaveBeenCalledWith(true, 'requests', expect.anything())
     } finally {
       page.search = ''
     }
   })
 
   test('the selected filter wears a filled thumb', () => {
+    page.search = ''
     render(<InboxList />)
     const needsMe = screen.getByRole('radio', { name: /Needs me/ })
     expect(needsMe.querySelector('[data-slot="toggle-pill"]')).toHaveClass('bg-foreground')
@@ -181,13 +198,14 @@ describe('InboxList — filters', () => {
 
   test('„Needs me“ carries the badge’s own number, and no pill at zero', () => {
     // The bell and the tab said different numbers (18 and 8): the tab counted
-    // requests alone. It says what the badge says now.
-    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 7, counts: { requests: 2, unread: 5 } }))
+    // requests alone. It says what the badge says now, whichever filter is open.
+    useInboxBadgeMock.mockReturnValue({ pending: 7, connected: true, refresh: vi.fn() })
+    page.search = ''
     const { unmount } = render(<InboxList />)
     expect(screen.getByRole('radio', { name: /Needs me/ })).toHaveTextContent('Needs me7')
     expect(screen.getByRole('radio', { name: 'All' }).querySelector('[data-slot="count-pill"]')).toBeNull()
     unmount()
-    useInboxListMock.mockReturnValue(result({ items: [], pending: 0 }))
+    useInboxBadgeMock.mockReturnValue({ pending: 0, connected: true, refresh: vi.fn() })
     render(<InboxList />)
     expect(screen.getByRole('radio', { name: /Needs me/ }).querySelector('[data-slot="count-pill"]')).toBeNull()
   })
@@ -212,6 +230,7 @@ describe('InboxList — states', () => {
 
   test('the empty state differs by filter', () => {
     useInboxListMock.mockReturnValue(result())
+    page.search = ''
     render(<InboxList />)
 
     expect(screen.getByText('All caught up')).toBeInTheDocument()

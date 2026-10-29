@@ -42,7 +42,7 @@
  */
 
 import type { JSX } from 'react'
-import { forwardRef, useState } from 'react'
+import { forwardRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -70,7 +70,7 @@ import {
 import { namespaceRoot, useLocale, useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { filesCopy } from '@/i18n/namespaces/files'
-import { formatAbsoluteTime, formatDayRange, formatRelativeTime } from '@/lib/format'
+import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import {
   INBOX_TYPE_PRESENTATION,
@@ -79,9 +79,6 @@ import {
   type InboxItemView,
   type InboxTypePresentation,
 } from '@/lib/inbox/types'
-import { AnnotationRequestError, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
-import type { MarkMention } from '@/lib/annotations/types'
-import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { AttentionDot } from '@/components/ui/attention-dot'
 import { Quote } from '@/components/ui/quote'
@@ -103,11 +100,12 @@ import { DiscussDocumentButton } from '@/features/documents/components/discuss-d
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareRevisionHref } from '@/features/documents/lib/revision-compare-link'
 import { withReviewBack } from '@/features/documents/lib/open-review'
-import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
-import { useUndoableArchive } from '../hooks/use-undoable-archive'
+import { Composer } from '@/features/documents/components/review/composer'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
 import { MentionText } from './MentionText'
-import { InboxItemCaption, type InboxDue } from './InboxItemCaption'
+import { MARK_CLIENT, useMarkAnswer, type InboxMarkClient } from '../hooks/use-mark-answer'
+import { InboxItemCaption } from './InboxItemCaption'
+import { inboxDue } from '../lib/inbox-due'
 import { InboxReviewDecision, type InboxReviewClient } from './InboxReviewDecision'
 import { isPlainClick } from '../lib/plain-click'
 import { UploadReportLines } from '@/features/uploads/components/upload-report'
@@ -132,13 +130,7 @@ const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon
     'shield-alert': ShieldAlert,
   }
 
-/** The two writes a mark row makes, through the annotations' own client. Injected by the specs. */
-export interface InboxMarkClient {
-  reply: typeof replyToAnnotation
-  update: typeof updateAnnotation
-}
-
-const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
+export type { InboxMarkClient }
 
 export interface InboxItemRowProps {
   item: InboxItemView
@@ -238,9 +230,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const inert = item.state === 'inert'
   const unread = item.state === 'unread'
   const resolved = item.state === 'resolved'
-  // A request only reads as a request while it is still outstanding; once it is
-  // answered it is history, and its date would keep shouting for attention.
-  const isRequest = presentation.tone === 'request' && item.actionable && !resolved && !inert
   // An operational warning is not a REQUEST: nobody is waiting on the reader, so
   // it is not actionable and it does not resolve. Its body is the news (why it
   // stopped, what was found), so the row keeps it beside a quote.
@@ -272,98 +261,23 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const query = searchParams?.toString()
   const here = pathname ? `${pathname}${query ? `?${query}` : ''}` : null
   const linkHref = markRow && item.href ? withReviewBack(item.href, here) : item.href
-  /*
-    A request on a mark is answered where the server says it may be
-    (`answerIn`): here in the row, only in the Prüfansicht (Piloti's Rückfrage
-    while events do not wake Piloti: the review asks Piloti itself), or not at
-    all (the reader may only read the document). Never guessed here.
-  */
-  const markOpen = markRow && item.answerIn !== null && item.actionable && !resolved && !archived
-  const answerHere = markOpen && item.answerIn === 'row'
-  const answerInReview = markOpen && item.answerIn === 'review'
-  const canResolveMark = answerHere && item.type === 'annotation.assigned_to_you'
-  const [replying, setReplying] = useState(false)
+  const {
+    answerHere,
+    answerInReview,
+    canResolveMark,
+    replying,
+    setReplying,
+    markBusy,
+    markOutcome,
+    setMarkOutcome,
+    untold,
+    sendReply,
+    resolveMark,
+    undoResolve,
+    offerUndo,
+  } = useMarkAnswer({ item, markRow, markClient, onOpen })
   // Sent or let go, the answer box goes and „Antworten“ comes back: the focus goes with it.
   const replyButtonRef = useFocusBackOnClose<HTMLButtonElement>(answerHere && replying && item.anchorId !== null)
-  const [markBusy, setMarkBusy] = useState(false)
-  const [markOutcome, setMarkOutcome] = useState<
-    'sent' | 'sentAgentNotAsked' | 'resolved' | 'conflict' | 'failed' | null
-  >(null)
-  /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
-  const [untold, setUntold] = useState<string[]>([])
-
-  /*
-    The answer goes in as the thread's would, with whom it mentions as picked
-    and @Piloti as its flag. A failure throws back into the composer, which
-    keeps the text and says the row's own words for it (`describeFailure`).
-    Answers with the mentions the server kept.
-  */
-  const sendReply = async (body: string, { piloti, mentions }: ComposerSend): Promise<readonly MarkMention[] | void> => {
-    if (!answerHere || !item.anchorId) return
-    setMarkBusy(true)
-    setMarkOutcome(null)
-    try {
-      const { annotation, replyId, wake } = await markClient.reply(item.resourceId, item.anchorId, {
-        body: body.trim(),
-        ...(piloti ? { addressesPiloti: true } : {}),
-        ...(mentions.length > 0 ? { mentions } : {}),
-      })
-      const kept = annotation.replies.find((reply) => reply.id === replyId)?.mentions ?? []
-      const keptIds = new Set(kept.map((mention) => mention.targetId))
-      setUntold(
-        mentions
-          .filter((mention) => mention.targetId !== AGENT_MENTION_ID && !keptIds.has(mention.targetId))
-          .map((mention) => mention.display),
-      )
-      setReplying(false)
-      // `off`: the answer met a wake rule but nothing wakes Piloti here; the row says how to ask it.
-      setMarkOutcome(wake === 'off' ? 'sentAgentNotAsked' : 'sent')
-      // Answered from here is read here: the thread has the reply.
-      onOpen?.(item)
-      return kept
-    } finally {
-      setMarkBusy(false)
-    }
-  }
-
-  /*
-    „Erledigen“ holds its write for the undo window, as archiving a row does
-    and as the review holds a decision by a key (`useUndoableArchive`): the
-    row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes
-    when the window ends, the page is hidden or the row goes. „Rückgängig“
-    inside the window lets go of it: nothing was sent, so the request this row
-    asks is still open on the server and the list keeps the row. The write is
-    from the status the row knows the mark in (`expectedStatus`): a mark
-    somebody moved meanwhile is a 409, never overwritten from a copy of it,
-    and the row says so when the write finally goes.
-  */
-  const sendResolve = async (anchorId: string): Promise<void> => {
-    setMarkBusy(true)
-    try {
-      await markClient.update(item.resourceId, anchorId, { status: 'resolved', expectedStatus: 'open' })
-    } catch (error) {
-      setMarkOutcome(error instanceof AnnotationRequestError && error.status === 409 ? 'conflict' : 'failed')
-    } finally {
-      setMarkBusy(false)
-    }
-  }
-  const resolveLater = useUndoableArchive(sendResolve)
-  const resolveHeld = item.anchorId !== null && resolveLater.pendingIds.has(item.anchorId)
-
-  const resolveMark = (): void => {
-    if (!canResolveMark || !item.anchorId || markBusy) return
-    setMarkOutcome('resolved')
-    resolveLater.request(item.anchorId)
-  }
-
-  const undoResolve = (): void => {
-    if (!item.anchorId) return
-    resolveLater.undo(item.anchorId)
-    setMarkOutcome(null)
-  }
-
-  // „Rückgängig“ while the write is held, not once it has gone out.
-  const offerUndo = resolveHeld && !markBusy && markOutcome === 'resolved'
   // „Erledigen“ goes when it is pressed and „Rückgängig“ takes its place, and back
   // again: the focus follows the control that took the place of the pressed one.
   // When the window ends with the write, „Rückgängig“ goes and „Erledigen“ does
@@ -463,21 +377,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       : null
   /** What a new Fassung leaves to check, where its sentence gave way to the quote: a fact on the caption line. */
   const openMarks = item.type === 'document.new_revision' && !inert && !showBody ? (item.openMarks ?? 0) : 0
-  /*
-    By when, where the title does not already say it: a passed date in the
-    error's word, a near one in the warning's, any other as the plain date. A
-    title written about the date itself (`due…` variants) carries it already.
-  */
-  const dueChip: InboxDue | null =
-    !isRequest || !item.dueOn
-      ? null
-      : item.variant === 'overdue'
-        ? { label: t('inbox.due.overdue'), variant: 'danger' }
-        : item.variant === 'due_soon'
-          ? { label: t('inbox.due.soon'), variant: 'warning' }
-          : item.variant?.startsWith('due')
-            ? null
-            : { label: t('inbox.due.on', { due: formatDayRange(item.dueOn, item.dueOn, locale) }), variant: 'secondary' }
+  const dueChip = inboxDue(item, t, locale)
   return (
     /* The row owns its own <li>, so it is the element that animates — wrapping it
        from the list would nest <li> in <li>, and a `display: contents` wrapper has

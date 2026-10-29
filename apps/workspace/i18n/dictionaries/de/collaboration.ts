@@ -271,9 +271,42 @@ export const collaboration: typeof en.collaboration = {
       open: 'öffnen',
       archive: 'archivieren',
       read: 'gelesen/ungelesen',
+      reply: 'antworten',
     },
     // Was eine neue Fassung zu prüfen lässt, als Angabe in der Zeile unter dem Titel.
     openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}',
+    // Das Postfach als Warteschlange: was auf Sie wartet, nach Dokument oder Chat gesammelt, dann die Neuigkeiten.
+    queue: {
+      waiting: 'Wartet auf Sie',
+      news: 'Neuigkeiten',
+      summary: '{count, plural, one {# wartet auf Sie} other {# warten auf Sie}}',
+      late: '{count} davon überfällig',
+      nothingWaiting: 'Nichts wartet auf Sie.',
+      newsRead: 'Als gelesen markieren',
+      chat: 'Chat',
+    },
+    // Warum ein wartender Eintrag Ihrer ist, kurz: das Dokument steht schon darüber.
+    reason: {
+      assigned: 'Von {actor} zugewiesen',
+      assignedNoActor: 'Ihnen zugewiesen',
+      mentioned: '{actor} hat Sie erwähnt',
+      mentionedNoActor: 'Sie wurden erwähnt',
+      asks: '{productName} fragt Sie',
+      input: '{actor} bittet um Ihre Einschätzung',
+      inputNoActor: 'Um Ihre Einschätzung gebeten',
+      approval: '{actor} bittet um Ihre Freigabe',
+      approvalNoActor: 'Wartet auf Ihre Freigabe',
+      mark: 'Anmerkung {number}',
+    },
+    // Der gewählte Eintrag neben der Liste.
+    detail: {
+      empty: 'Wählen Sie einen Eintrag, um ihn hier zu lesen und zu beantworten.',
+      openDocument: 'Im Dokument öffnen',
+      open: 'Öffnen',
+      thread: 'Verlauf der Anmerkung',
+      threadLoading: 'Der Verlauf wird geladen.',
+      threadFailed: 'Der Verlauf konnte nicht geladen werden. Im Dokument finden Sie ihn.',
+    },
     mark: {
       // Eine Rückfrage von Piloti, solange Ereignisse Piloti nicht wecken: Erst die Prüfansicht fragt Piloti mit der Antwort.
       answerInReview: 'In der Prüfansicht beantworten',

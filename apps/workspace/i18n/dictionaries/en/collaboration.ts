@@ -381,9 +381,42 @@ export const collaboration = {
       open: 'open',
       archive: 'archive',
       read: 'read/unread',
+      reply: 'reply',
     },
     /** What a new revision leaves to check, as a fact on the line under the title. */
     openMarks: '{count, plural, one {# open annotation} other {# open annotations}}',
+    /** The inbox as a queue: what waits on you, gathered by document or chat, then the news. */
+    queue: {
+      waiting: 'Waiting on you',
+      news: 'News',
+      summary: '{count, plural, one {# is waiting on you} other {# are waiting on you}}',
+      late: '{count} of them overdue',
+      nothingWaiting: 'Nothing is waiting on you.',
+      newsRead: 'Mark as read',
+      chat: 'Chat',
+    },
+    /** Why a waiting entry is yours, briefly: its document is already named above it. */
+    reason: {
+      assigned: 'Assigned by {actor}',
+      assignedNoActor: 'Assigned to you',
+      mentioned: '{actor} mentioned you',
+      mentionedNoActor: 'You were mentioned',
+      asks: '{productName} is asking you',
+      input: '{actor} asked for your input',
+      inputNoActor: 'Your input was asked for',
+      approval: '{actor} asked for your approval',
+      approvalNoActor: 'Waiting for your approval',
+      mark: 'Annotation {number}',
+    },
+    /** The selected entry, beside the list. */
+    detail: {
+      empty: 'Select an entry to read and answer it here.',
+      openDocument: 'Open in document',
+      open: 'Open',
+      thread: 'Annotation thread',
+      threadLoading: 'Loading the thread.',
+      threadFailed: 'The thread could not be loaded. You will find it in the document.',
+    },
     mark: {
       answerInReview: 'Answer in the review',
       reply: 'Reply',

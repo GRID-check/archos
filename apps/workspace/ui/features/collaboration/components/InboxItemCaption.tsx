@@ -21,12 +21,8 @@ import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { formatRelativeTime } from '@/lib/format'
 import type { InboxItemView } from '@/lib/inbox/types'
 import { cn } from '@/lib/utils'
+import type { InboxDue } from '../lib/inbox-due'
 
-/** By when, worded by the row: a passed date (`danger`), a near one (`warning`), or a plain date. */
-export interface InboxDue {
-  label: string
-  variant: 'danger' | 'warning' | 'secondary'
-}
 
 export interface InboxItemCaptionProps {
   item: InboxItemView
