@@ -1,0 +1,63 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Input from '../components/Input.astro';
+import SplitPage from '../components/SplitPage.astro';
+import { navigation } from '../i18n/nav';
+import copy from '../i18n/pages/login';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+import { withName } from '../lib/identity';
+
+// Markup and structure only. Text comes from src/i18n/pages/login.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+const ui = t(locale);
+const demoLink = navigation(locale).demo;
+// Sign-in happens in the app. /sign-in is a server endpoint that resolves the app host at runtime.
+---
+
+<BaseLayout locale={locale} bare noindex title={c.title} description={c.description}>
+  <SplitPage
+    locale={locale}
+    variant="login"
+    image="/media/login-office-photo.webp"
+    imageAlt={c.imageAlt}
+    ai
+    footer={[
+      { label: c.backToWebsite, href: localePath('home', locale) },
+      { label: ui.impressum, href: localePath('imprint', locale) },
+      { label: ui.datenschutz, href: localePath('privacy', locale) },
+    ]}
+  >
+    <h1 class="heading-1" style="margin: 0;">{c.heading}</h1>
+    <p class="body" style="margin: var(--space-3) 0 var(--space-12); color: var(--ink-muted);">
+      {c.welcome}
+    </p>
+
+    <div class="ui-stack">
+      <Button href="/sign-in" size="lg" class="ui-btn-block">{c.microsoft}</Button>
+      <Button href="/sign-in" size="lg" class="ui-btn-block">{c.google}</Button>
+    </div>
+
+    <div class="ui-split-or small" role="separator">{c.or}</div>
+
+    <form method="get" action="/sign-in">
+      <Input id="login-mail" name="email" type="email" label={c.emailLabel} placeholder={c.emailPlaceholder} autocomplete="email" required />
+      <div style="margin-top: var(--space-4);">
+        <Button type="submit" variant="primary" size="lg" class="ui-btn-block">{c.submit}</Button>
+      </div>
+    </form>
+    <p class="small" style="margin: var(--space-4) 0 0; color: var(--ink-muted);">
+      {c.linkNote}
+    </p>
+
+    <p class="small" style="margin: var(--space-12) 0 0; color: var(--ink-muted);">
+      {c.noAccess} <a class="ui-link" href={demoLink.href}>{demoLink.label}</a>
+    </p>
+  </SplitPage>
+</BaseLayout>

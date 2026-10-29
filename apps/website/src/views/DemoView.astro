@@ -1,0 +1,78 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Checkbox from '../components/Checkbox.astro';
+import Input from '../components/Input.astro';
+import LogoRow from '../components/LogoRow.astro';
+import Select from '../components/Select.astro';
+import SplitPage from '../components/SplitPage.astro';
+import copy from '../i18n/pages/demo';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+import identity, { withName } from '../lib/identity';
+
+// Markup and structure only. Text comes from src/i18n/pages/demo.ts, in both locales.
+// No backend yet: the form hands the answers to the sales inbox as a plain-text mail.
+// Follow-up: a real endpoint that stores the request.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+const ui = t(locale);
+const f = c.form;
+---
+
+<BaseLayout locale={locale} bare title={c.title} description={c.description}>
+  <SplitPage
+    locale={locale}
+    variant="form"
+    image="/media/demo-panel-background.webp"
+    footer={[
+      { label: c.backToWebsite, href: localePath('home', locale) },
+      { label: ui.navSecurity, href: localePath('security', locale) },
+      { label: ui.impressum, href: localePath('imprint', locale) },
+      { label: ui.datenschutz, href: localePath('privacy', locale) },
+    ]}
+  >
+    <h1 class="display" style="margin: 0; max-width: var(--split-form); text-wrap: balance;">
+      {c.heading}
+    </h1>
+    <p class="lead" style="margin: var(--space-8) 0 0; max-width: 480px; color: var(--ink);">
+      {c.lead}
+    </p>
+    <div style="margin-top: var(--space-18);">
+      <LogoRow
+        logos={[
+          { src: '/media/pilot-office-gerner-gerner-plus.svg', alt: 'Gerner Gerner Plus', height: 40 },
+          { src: '/media/pilot-office-zz-architecture.svg', alt: 'Z/Z architecture', height: 37 },
+          { src: '/media/pilot-office-feld72.svg', alt: 'feld72', height: 31 },
+          { src: '/media/pilot-office-bewe-emp.svg', alt: 'bewe em.p', height: 43 },
+        ]}
+      />
+    </div>
+
+    <div slot="aside">
+      <form class="ui-form-grid" action={`mailto:${identity.email}`} method="post" enctype="text/plain">
+        <Input id="demo-first-name" name="first-name" label={f.firstName} placeholder={f.firstNamePlaceholder} autocomplete="given-name" required />
+        <Input id="demo-last-name" name="last-name" label={f.lastName} placeholder={f.lastNamePlaceholder} autocomplete="family-name" required />
+        <Input id="demo-email" name="email" type="email" label={f.email} placeholder={f.emailPlaceholder} autocomplete="email" required />
+        <Input id="demo-office" name="office" label={f.office} placeholder={f.officePlaceholder} autocomplete="organization" required />
+        <Input id="demo-role" name="role" label={f.role} placeholder={f.rolePlaceholder} autocomplete="organization-title" required />
+        <Select id="demo-office-size" name="office-size" label={f.officeSize} options={f.officeSizes} placeholder={f.selectPlaceholder} required />
+        <Select id="demo-country" name="country" label={f.country} options={f.countries} placeholder={f.selectPlaceholder} required />
+        <Checkbox name="newsletter" class="ui-form-full">
+          {f.newsletter}
+        </Checkbox>
+        <div class="ui-form-full">
+          <Button type="submit" variant="primary" size="lg" class="ui-btn-block">{f.submit}</Button>
+        </div>
+      </form>
+    </div>
+
+    <span slot="aside-note">
+      {c.privacyNote.before}<a class="ui-link" href={localePath('privacy', locale)}>{c.privacyNote.link}</a>{c.privacyNote.after}
+    </span>
+  </SplitPage>
+</BaseLayout>
