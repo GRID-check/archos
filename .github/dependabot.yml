@@ -140,9 +140,11 @@ updates:
       - dependency-name: "@langfuse/client"
         update-types: ["version-update:semver-major"]
 
-  # Landing site (Astro microservice). bun.lock, like the UI's (ADR-0103).
+  # The public website (Astro). bun.lock, like the UI's (ADR-0103). Its playwright is
+  # pinned twice: package.json and ci.yml's `playwright@<version> install-deps`; a bump
+  # PR must move both.
   - package-ecosystem: bun
-    directory: "/apps/site"
+    directory: "/apps/website"
     schedule:
       interval: weekly
       day: monday
@@ -202,7 +204,7 @@ updates:
       # `pulumi preview`/`up` load TypeScript through ts-node, which calls the
       # compiler's JS API (@pulumi/pulumi cmd/run/run.js `require(typescriptRequire)`).
       # TypeScript 7 ships no JS API, so `tsc --noEmit` stays green while every
-      # deploy breaks. Same rule as apps/site.
+      # deploy breaks. Same rule as apps/website.
       - dependency-name: "typescript"
         versions: [">=7"]
 

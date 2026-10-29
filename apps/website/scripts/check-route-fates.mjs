@@ -10,7 +10,7 @@
  *   - a 301 row must answer 301 with the row's target, and the target must answer 200
  *     (one hop: the target is a page, never another redirect);
  *   - a Gone row must answer 410 with the not-found view's "no longer exists" heading.
- * A target that other work adds (`PENDING_TARGETS`, the changelog) is reported, not failed,
+ * A target that other work adds (`PENDING_TARGETS`, empty now) is reported, not failed,
  * while it still answers 404. Fails on anything else.
  */
 import { spawn } from 'node:child_process'

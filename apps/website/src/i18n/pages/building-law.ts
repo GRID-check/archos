@@ -23,7 +23,7 @@ const de = {
   },
   intro: {
     title: 'Das Projekt bestimmt, was gilt.',
-    text: 'Welche Anforderung ein Projekt trifft, hängt am Bundesland, an der Gebäudeklasse und an der Nutzung. {name} kennt diese Angaben aus dem Projekt und sucht mit ihnen, statt allgemein zu antworten.',
+    text: 'Welche Anforderung ein Projekt trifft, hängt am Bundesland, an der Gebäudeklasse und an der Nutzung. {name} übernimmt diese Angaben aus dem Projekt und sucht mit ihnen, statt allgemein zu antworten.',
     imageAlt:
       '{name}-Herleitung: eine Frage zum Termin mit dem Küchenplaner, darunter zehn Quellen aus Fachwissen, Projektwissen und Büroablage',
   },
@@ -105,7 +105,7 @@ const en: typeof de = {
   },
   intro: {
     title: 'The project decides what applies.',
-    text: 'Which requirement a project meets depends on the state, the building class and the use. {name} knows these facts from the project and searches with them, instead of answering in general.',
+    text: 'Which requirement a project meets depends on the state, the building class and the use. {name} takes these facts from the project and searches with them, instead of answering in general.',
     imageAlt:
       '{name} derivation: one question about an appointment with the kitchen planner, below it ten sources from specialist knowledge, project knowledge and office files',
   },

@@ -15,8 +15,7 @@ the details next to the code they explain; this is the map, and the reasons.
 | PR hygiene: Conventional title, closing keywords, labels | PR events | `pr.yml` | The title check |
 | Publish the changelog | merge touching `releasenotes/` | `release-notes.yml` | No |
 
-Everything else (`claude.yml`, `claude-code-review.yml`, `blog-preview.yml`,
-`labels.yml`) is assistance, not verification.
+Everything else (`claude.yml`, `claude-code-review.yml`, `labels.yml`) is assistance, not verification.
 
 ## How a CI run decides what to run
 
@@ -77,7 +76,7 @@ It also lists the third-party image pins the change adds or moves
 | Workspace (`workspace`) | workspace tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
 | Workspace tests (`workspace-test`) | workspace tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task workspace:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task workspace:test:related`) |
 | Workspace coverage | PRs, workspace tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
-| Site, Infra, Standalone packages | their tier | `task site:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
+| Website, Infra, Standalone packages | their tier | `task website:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |
 | Image build (`image`) | PRs that change an image's inputs | builds it, read-only token, no push. For the UI this IS the production build check: `workspace:build` is not run separately |
 | Image build + push (`image-push`) | pushes, image not in GHCR | builds and pushes `inputs-<hash>` and the layer cache |

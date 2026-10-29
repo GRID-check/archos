@@ -19,7 +19,9 @@ or a brand string changes here and reaches every surface on the next sync.
 | `sync.mjs` | Copies each app the files of its layer (`TARGETS`) and deletes any it no longer receives; copies `identity.json` alone into the agent's package (a `shared` target: nothing else there is touched); writes the product's name into the files listed in `name-copies.mjs`. `--check` writes nothing and fails on a stale, missing or unexpected file. |
 | `name-copies.mjs` | The files that must spell the product's name as a literal (the service worker's fallback title, the icons' SVG `<title>`). `sync.mjs` fills them from `identity.json`, so a rename is still one edit (ADR-0148). |
 | `dist/` | Built output, committed on purpose (see the root `.gitignore` negation). |
-| `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build. Unrelated to the tokens. The master's `<title>` is the token `{productName}`; every copy gets the name from `identity.json`. |
+| `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build (favicons and manifest icons for `apps/website` and `apps/workspace`, with the website's sharp). Unrelated to the tokens. The master's `<title>` is the token `{productName}`; every copy gets the name from `identity.json`. |
+| `email-signatures.mjs`, `signatures/` | The founders' email signatures, text only, generated from `identity.json` (`--check` runs in the website's `bun run check`). Paste the HTML into the mail client. |
+| `art/riso/` | The riso print kit (moved from the retired public site): its committed outputs are the app's empty-state vignettes; everything else exports to the gitignored `out/`. [`art/riso/README.md`](art/riso/README.md) |
 
 Apps receive copies, not imports: neither Docker build sees `packages/`.
 

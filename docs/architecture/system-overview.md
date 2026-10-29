@@ -461,7 +461,6 @@ What lives where in the checkout.
 | `packages/knowledge-layer`, `packages/ris-adapter`, `packages/tavily-web-search` | The Python packages of the uv workspace: the knowledge layer, the RIS adapter and web search, each a plugin entry point |
 | `apps/workspace/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
 | `apps/website/` | The public website (Astro, static with a few server endpoints, `de`/`en`, blog in MDX), built from `packages/brand`; the `web` image builds it |
-| `apps/site/` | The previous public site, no longer built into an image; deleted at the website cutover |
 | `apps/agent-host/` | The backend FastAPI front-end plugin (`_type: agent_host`): REST routes, async jobs, `/v1/ingest` |
 | `evals/` | Piloti's evals, each with its tests: `oib-retrieval` and the live `turn-shapes` check |
 | `packages/` | Libraries outside the uv and bun workspaces: `ifc-spatial` and `ifc-spatial-py` (the IFC spatial engine, ADR-0045) and `brand` (the Piloti mark and the script that renders every icon from it) |

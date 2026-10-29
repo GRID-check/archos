@@ -409,8 +409,9 @@ does not exist, so a moved file is caught; a missing row is not.
 | The BFF's address for the backend, and the service token it sends | `apps/workspace/bff/backend-url.ts` — `getBackendUrl`; `apps/workspace/bff/internal-auth.ts` — `internalServiceHeaders`, `InternalServiceUnavailableError` (inbound: `requireInternalToken`) | this table | ADR-0084 |
 | BFF proxy to the agent | `apps/workspace/bff/backend-proxy.ts` | [`docs/technical-reference/bff-proxy-pattern.md`](../technical-reference/bff-proxy-pattern.md) | ADR-0003 |
 | Collection scope header | `apps/workspace/bff/retrieval-scope/collection-scope-request.ts` | [`docs/technical-reference/collection-scoping.md`](../technical-reference/collection-scoping.md) | ADR-0013 |
-| Brand mark and every icon rendered from it (favicons, touch and manifest icons, the inline logos in both apps and PDF exports) | `packages/brand/mark.svg`, rendered into both apps by `packages/brand/build-brand-assets.mjs` | [`apps/site/AGENTS.md`](../../apps/site/AGENTS.md#head-and-seo) | — |
-| Public site head: meta, Open Graph, JSON-LD, sitemap, robots, RSS, llms.txt | `apps/site/src/components/seo/SeoHead.astro`, `apps/site/src/lib/seo.ts` | [`apps/site/AGENTS.md`](../../apps/site/AGENTS.md#head-and-seo) | — |
+| Brand mark and every icon rendered from it (favicons, touch and manifest icons, the inline logos in both apps and PDF exports) | `packages/brand/mark.svg`, rendered into both apps by `packages/brand/build-brand-assets.mjs` | [`packages/brand/README.md`](../../packages/brand/README.md) | — |
+| Public website head: meta, Open Graph, JSON-LD, sitemap, robots, manifest | `apps/website/src/layouts/BaseLayout.astro`, `apps/website/src/lib/structured-data.ts`, `apps/website/src/pages/robots.txt.ts` | [`apps/website/README.md`](../../apps/website/README.md) | — |
+| Public changelog (release notes rendered) | `apps/website/src/data/changelog.json` (generated), `apps/website/src/views/ChangelogView.astro` | [`docs/contributing/release-notes.md`](../contributing/release-notes.md) | — |
 
 ## Repo process
 

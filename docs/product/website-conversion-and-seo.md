@@ -70,6 +70,15 @@ Every 301 lands in one hop on a page that answers 200, held by `src/lib/route-fa
 by `bun run check:routes` against the built server. On the domain cutover (D2) the old domain
 forwards host and path, and this table resolves from there: two hops at most.
 
+**The changelog and the cutover (WP-CUTOVER, 2026-10-29).** `/changelog/` and `/en/changelog/` are
+pages of the website now: they render `apps/website/src/data/changelog.json`, which the
+release-notes workflow regenerates on every merge to `develop`, and the footer's product column
+links them. The retired site is deleted (its search pages are in git history). The domain move is
+staged, not done: [`domain-cutover.md`](../deployment/domain-cutover.md) has the order of
+operations; the former host's apex and `app.` answer 301 to the new ones, path kept, once the stack
+sets `formerBaseDomain`. Until then canonical URLs, the sitemap and hreflang use the host the site
+is served from (`PUBLIC_SITE_URL`, set at image build), not the domain in `identity.json`.
+
 Owner overrides worth a look: the Gebäudeklasse glossary entry was the old site's best ranking
 chance (recover it as a journal post when the blog reopens); the builders' page could 301 to home
 instead of 410; the comparison rankings that named other products will fade (accepted, the brand

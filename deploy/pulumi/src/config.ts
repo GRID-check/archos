@@ -212,7 +212,7 @@ export interface DeployConfig {
 
   frontend: FrontendConfig;
 
-  /** Landing site (apps/site) — a static-first Astro service; tiny resources. */
+  /** The public website (apps/website) — a static-first Astro service; tiny resources. */
   web: WebConfig;
 
   /**
