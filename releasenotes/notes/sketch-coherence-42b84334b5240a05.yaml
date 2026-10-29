@@ -1,0 +1,21 @@
+---
+improvements:
+  - >
+    A sketch under review is no longer changed behind the reviewer's back:
+    while a draft is open your saves go into that draft, and while a version
+    is being reviewed the editor says so and lets you keep drawing without
+    saving.
+  - >
+    Annotations on a sketch now follow it through approvals and uploads too,
+    and a sketch you have open in Files shows a colleague's saved version as
+    soon as it is saved.
+fixes:
+  - >
+    Opening a sketch's editor from Files no longer shows you as a second
+    person in the room, and asking for changes on a sketch no longer offers a
+    revision that would have replaced the drawing with text.
+security:
+  - >
+    The PDF beside a sketch now moves with the sketch into a restricted
+    folder, and is no longer redrawn with the latest drawing while it sits in
+    a folder more people can read.

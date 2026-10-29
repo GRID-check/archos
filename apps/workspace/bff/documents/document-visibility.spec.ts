@@ -187,7 +187,9 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
   'lib/annotations/repository.ts#carryAnnotationToDocument|documentAnnotations':
     "Carrying a mark (migration 0151): the next number and the count of the replacing document, the close of the replaced one's mark and the linked copy. The service read both documents for writing first (`getAccessibleDocument`, the replacing one found through `loadRevisionFacts` for the reader).",
   'lib/annotations/sketch-carry.ts#moveSketchMarks|documentAnnotations':
-    "A Skizze's live marks moving onto the Fassung its save publishes, in that publish's transaction: the save read the document for writing first (`getAccessibleDocument`, `lib/diagrams/sketch-document.ts`).",
+    "A Skizze's live marks moving onto the Fassung a publish makes current, in that publish's transaction: every publisher read the document for writing first (`getAccessibleDocument`: the sketch save, the Freigabe transition, the upload).",
+  'lib/annotations/sketch-carry.ts#moveSketchMarks|documentVersions':
+    'The earlier Fassungen of the same document the marks move from, a subquery keyed by the document the publish read for writing.',
   'lib/annotations/repository.ts#listReplies|documentAnnotationReplies':
     'The threads of Anmerkungen just read from a document the service read first.',
   'lib/search/providers-repository.ts#replyMatch|documentAnnotationReplies':

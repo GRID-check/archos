@@ -18,7 +18,7 @@ import { BadRequestError } from '@/lib/api/errors'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { getLocale } from '@/i18n/server'
 import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from '@/lib/diagrams/diagram-sources'
-import { readSketchDocument, saveSketchDocument } from '@/lib/diagrams/sketch-document'
+import { probeSketchDocument, readSketchDocument, saveSketchDocument } from '@/lib/diagrams/sketch-document'
 import { SketchSceneError } from '@/lib/diagrams/sketch-scene'
 import { ROOM_PEER_HEADER, saveSketchSchema } from '@/lib/diagrams/sketch-wire'
 import { DiagramSvgError } from '@/lib/diagrams/svg'
@@ -31,10 +31,12 @@ const MAX_SKETCH_REQUEST_BYTES = 2 * (MAX_DIAGRAM_SVG_BYTES + MAX_DIAGRAM_SOURCE
 
 const PEER_ID = /^[A-Za-z0-9_-]{8,64}$/
 
-/** `?probe=1`: the Files preview asking whether to offer the editor, which is not a read the download log records. */
+/** `?probe=1`: the Files preview asking whether to offer the editor. It carries nothing of the drawing, so it is no read the download log records. */
 export const GET = apiRoute<Params>(
   async ({ session, params, request }) =>
-    readSketchDocument(session, params.id, { probe: new URL(request.url).searchParams.get('probe') === '1' }),
+    new URL(request.url).searchParams.get('probe') === '1'
+      ? probeSketchDocument(session, params.id)
+      : readSketchDocument(session, params.id),
   {
     authz: { enforcedBy: 'readSketchDocument -> getAccessibleDocument (project:view, folder visibility)' },
   }

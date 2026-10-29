@@ -39,6 +39,8 @@ const proxyDb = drizzle(async (sql, params) => {
  */
 let currentDb: unknown = proxyDb
 vi.mock('@/lib/db', () => ({ getDb: () => currentDb }))
+// The carry of a Skizze's pinned marks runs in these transactions; its SQL is `sketch-carry.integration.spec.ts`'s.
+vi.mock('./published-version', () => ({ carryOnto: async () => ({ moved: [], lost: [] }) }))
 
 import { TransactionRollbackError, type SQL } from 'drizzle-orm'
 import { PgDialect } from 'drizzle-orm/pg-core'
@@ -195,7 +197,7 @@ describe('promoteVersionToPublished — the loser of a publish race', () => {
 
     await expect(
       promoteVersionToPublished('ver_new', 'doc_1', 'org_1', 'approved', {}),
-    ).resolves.toEqual({ version: { id: 'ver_new' }, superseded: [{ id: 'ver_old' }] })
+    ).resolves.toEqual({ version: { id: 'ver_new' }, superseded: [{ id: 'ver_old' }], carried: { moved: [], lost: [] } })
     expect(fake.statements).toEqual(['UPDATE', 'UPDATE', 'UPDATE'])
   })
 

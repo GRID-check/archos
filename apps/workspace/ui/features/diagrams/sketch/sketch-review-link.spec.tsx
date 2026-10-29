@@ -35,7 +35,11 @@ describe('a review request on a Skizze', () => {
   it('opens the editor with the review, at the requested mark, and hands the address back on close', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({ ok: true, status: 200, json: async () => SKETCH }))
+      vi.fn(async (url: string) => ({
+        ok: true,
+        status: 200,
+        json: async () => (url.endsWith('?probe=1') ? { hasScene: true, canWrite: true, versionId: 'v1' } : SKETCH),
+      }))
     )
     const select = vi.fn()
     const onOpenChange = vi.fn()

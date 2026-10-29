@@ -18,6 +18,7 @@
  * is data.
  */
 
+import { notRevisableAsText, revisableAsText } from './text-content'
 import { documentShelf } from '@/lib/documents/shelf'
 import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import 'server-only'
@@ -174,11 +175,9 @@ export interface RenderedVersionBytes {
  * ## Why this is not `Buffer.from(content)`
  *
  * It was, and it silently stripped the AI-provenance marking off every document
- * Piloti revised. The Python tool sends the model's raw Markdown — that is the
- * whole point of the working directory, where the model can read and edit the
- * text it wrote — and the branding line, the disclaimer and the marking are the
- * FILING seam's job, added by the producer's renderer when the first draft was
- * written. Writing the body verbatim over them meant version 2 of an
+ * Piloti revised. The Python tool sends the model's raw Markdown (what the
+ * model reads and edits in its working directory); the branding line, the
+ * disclaimer and the marking are the FILING seam's job, added by the renderer. Writing the body verbatim over them meant version 2 of an
  * agent-authored file left the product saying nothing about its own authorship,
  * which is the one failure `markingIsInBytes` exists to make impossible.
  *
@@ -187,9 +186,9 @@ export interface RenderedVersionBytes {
  * on the BYTES rather than on the renderer's promise, because two of the three
  * earlier producers shipped unmarked while passing every test there was.
  *
- * A human-authored document is NOT rendered through anything. Its bytes are its
- * own, and stamping „von Piloti erstellt" onto a Markdown file a person wrote
- * would be the same lie in the other direction.
+ * A human-authored document is NOT rendered through anything: stamping „von
+ * Piloti erstellt" onto its Markdown would be the same lie the other way round.
+ * Bytes that are not text (a Skizze) are refused, never overwritten (`./text-content.ts`).
  */
 export async function renderVersionBytes(
   document: Document,
@@ -202,6 +201,7 @@ export async function renderVersionBytes(
       : PRODUCER_RENDERERS[document.authoredByProducer as GeneratedDocumentProducer]
 
   if (!renderer) {
+    if (!revisableAsText(version.contentType)) throw notRevisableAsText(version.contentType)
     const bytes = Buffer.from(content, 'utf8')
     return {
       bytes,

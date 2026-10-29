@@ -73,6 +73,11 @@ export const diagrams: typeof en.diagrams = {
     refusedLive: 'Ein Element kann nicht live geteilt werden. Beim Speichern wird es noch einmal geprüft.',
     pdfStale: 'Die PDF daneben konnte nicht neu erstellt werden und zeigt noch die vorige Fassung.',
     discardShared: '{names} ist noch im Raum und behält die Änderungen. Schließen, ohne zu speichern?',
+    savedDraft: 'Im Entwurf zur Freigabe gespeichert (Fassung {number}); veröffentlicht wird er erst mit der Freigabe.',
+    reviewOpen: 'Diese Skizze ist in Prüfung: Speichern geht erst, wenn die Freigabe entschieden ist. Sie können weiterzeichnen, die anderen sehen es live; gespeichert wird nichts.',
+    keepDrawing: 'Weiterzeichnen',
+    reviseDraftDescription: 'Sie bearbeiten den Entwurf, der in Freigabe ist. Speichern ändert den Entwurf; veröffentlicht wird er erst mit der Freigabe.',
+    reviewOpenDescription: 'Diese Skizze ist in Prüfung. Sie können live mitzeichnen, gespeichert wird erst nach der Freigabe.',
     saveAgain: 'Inzwischen hat jemand eine neuere Fassung gespeichert. Ihre Änderungen sind eingearbeitet; bitte erneut speichern.',
   },
   rejected: {

@@ -12,6 +12,11 @@
  *   - **The elements of the published Fassung.** The box is drawn from the
  *     scene the document's current bytes carry; an element drawn after the last
  *     save is not in it yet (422, „save first").
+ *   - **None on a diagram's PDF.** The PDF filed beside a diagram is its
+ *     rendition, drawn again on every save (`lib/diagrams/sketch-companion.ts`):
+ *     a mark on it would be a „frühere Fassung“ mark after the next save, on a
+ *     picture its reader has not loaded. Marks belong on the SVG beside it (400
+ *     `sketch_rendition`), and the list says the PDF takes none (`canAnnotate`).
  *
  * The mark then lands on page 1 as a region, the CHECK
  * `…_anchor_is_region_on_sheet`.
@@ -87,8 +92,16 @@ function placeOf(input: PlacedInput, sketch: PublishedSketch | null) {
   return { page: 1, shape: 'region' as const, ...region, anchorElementIds: ids }
 }
 
+/** Whether a document is the PDF rendition of a filed diagram, which takes no marks of its own. */
+export const isDiagramRendition = (doc: Pick<Document, 'authoredByProducer'>) => doc.authoredByProducer === 'diagram_pdf'
+
 /** The Skizze a document is, read once for every mark of one request; null for any other document. */
 export async function sketchOfDocument(doc: Document, inputs: readonly PlacedInput[]): Promise<PublishedSketch | null> {
+  if (isDiagramRendition(doc)) {
+    throw new BadRequestError('This PDF is the rendition of the diagram filed beside it: set the mark on that SVG document instead.', {
+      reason: 'sketch_rendition',
+    })
+  }
   // A PDF is never a Skizze: its bytes are not read for it, unless a mark wrongly names elements.
   if (doc.contentType !== 'image/svg+xml') return null
   return publishedSketchOf(doc).then(

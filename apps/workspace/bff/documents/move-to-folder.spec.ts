@@ -82,6 +82,9 @@ vi.mock('./reingest', () => ({
   reingestDocument: vi.fn(),
 }))
 
+const companion = vi.hoisted(() => ({ found: null as null | { id: string; filename: string; folderId: string | null } }))
+vi.mock('./repository', () => ({ findDocumentAuthoredByRef: vi.fn(async () => companion.found) }))
+
 vi.mock('./access', () => ({
   findDocumentForSession: vi.fn(async () => db.selects.shift()?.[0] ?? null),
 }))
@@ -130,6 +133,7 @@ const mirrorBody = (): Record<string, unknown> =>
   JSON.parse(fetchSpy.mock.calls[0][1].body as string) as Record<string, unknown>
 
 beforeEach(() => {
+  companion.found = null
   db.selects = []
   db.updates = []
   fetchSpy = vi.fn().mockResolvedValue({ ok: true })
@@ -152,6 +156,25 @@ describe('moveDocumentToFolder', () => {
       'http://backend:8000/v1/collections/proj_1/documents/Fluchtwegplan.pdf/folder-path',
     )
     expect(mirrorBody()).toEqual({ folder_path: 'Brandschutz/Fluchtwege' })
+  })
+
+  it('takes the PDF beside a Skizze along, so the rendition never sits wider than the drawing (C3)', async () => {
+    const sketch = { ...DOCUMENT, id: 'doc-1', filename: 'Skizze.svg', authoredBy: 'agent', authoredByProducer: 'diagram_svg', authoredByRef: 'msg_1-1a2b3c4d' }
+    const pdf = { ...sketch, id: 'doc-pdf', filename: 'Skizze.pdf', authoredByProducer: 'diagram_pdf' }
+    companion.found = { id: 'doc-pdf', filename: 'Skizze.pdf', folderId: null }
+    db.selects = [[sketch], [{ id: 'folder-1', path: 'Vertraulich' }], [pdf], [{ id: 'folder-1', path: 'Vertraulich' }]]
+
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1' }, SESSION)
+
+    expect(result.ok).toBe(true)
+    expect(db.updates.map((update) => update.folderId)).toEqual(['folder-1', 'folder-1'])
+  })
+
+  it('moves no companion of a document that is no Skizze', async () => {
+    companion.found = { id: 'doc-pdf', filename: 'x.pdf', folderId: null }
+    db.selects = [[DOCUMENT], [{ id: 'folder-1', path: 'A' }]]
+    await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1' }, SESSION)
+    expect(db.updates).toHaveLength(1)
   })
 
   it('leaves a document where it is when it is no longer in the folder the caller expected', async () => {

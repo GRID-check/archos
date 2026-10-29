@@ -567,7 +567,10 @@ document, never a new pair.
   element each labels, shapes by label, connections from-label → to-label with
   the arrow's label, frames with their children, each with its element id. 415
   for a document without a scene. `PUT` (`document-sketch-update`) takes
-  `{ scene, svg, baseVersionId }`. The read comes from the stored bytes
+  `{ scene, svg, baseVersionId, baseContentHash? }`. `saveTarget` says what a
+  save writes: `published`, the next Fassung; `draft`, the open Freigabe
+  draft the view was read from (its `versionId` and `contentHash`); or
+  `review_open`, nothing (below, „A save during Freigabe“). The read comes from the stored bytes
   (`bff/diagrams/stored-source.ts`), not from the SVG parser, which caps the
   picture at 1 MiB while a stored sketch is picture plus scene.
 - **The scene is checked now** (`bff/diagrams/sketch-scene.ts`), on save and on
@@ -601,26 +604,56 @@ document, never a new pair.
   `insertPublishedVersion`, the repository write every published version goes
   through, with the `baseVersionId` as its expectation: under the per-document
   lock the published pointer must still be that version, or the save is a 409
-  with `currentVersionId` (`bff/documents/published-guard.ts`). It runs the
-  upload transition's audit event and event hint, but not its
-  `announceNewRevision`: a sketch is saved often and each save is a Fassung, so
-  announcing each in the inbox would flood it. The row stays `stored`, never
+  with `currentVersionId` (`bff/documents/published-guard.ts`). That write
+  carries the pinned marks itself (`bff/documents/published-version.ts`), as
+  every publish does, and the save then runs the hook every publish runs
+  (`bff/documents/current-version.ts`, `docs/architecture/revisions.md`). It
+  runs the upload transition's audit event and event hint, but not its
+  `announceNewRevision` for work in progress: a sketch is saved often and each
+  save is a Fassung, so announcing each in the inbox would flood it. A save that
+  supersedes a Fassung released through Freigabe (`approvedBy` set) does send
+  it, once: the office relied on that one. The row stays `stored`, never
   ingested. A sketch filed before it had Fassungen gets its filed bytes recorded
   as Fassung 1 first, so the history starts where Piloti drew it.
-- **The PDF companion follows.** The `diagram_pdf` row filed under the same
-  reference is drawn again from the new SVG and saved as its own next Fassung,
-  but only while that SVG Fassung is still current, checked under the PDF's
-  lock (`expected.of`): of two overlapping saves the later one's drawing lands
-  last, never the slower one's. When there is none, or a newer save took over,
-  the answer says `pdf: null`; when it could not be drawn, also `pdfStale:
-  true`, and the editor says the PDF shows an earlier version.
+- **The PDF is the Skizze's rendition** (`bff/diagrams/sketch-companion.ts`).
+  The `diagram_pdf` row filed under the same reference is drawn again from the
+  current Fassung and saved as its own next Fassung, but only while that SVG
+  Fassung is still current, checked under the PDF's lock (`expected.of`): of
+  two overlapping saves the later one's drawing lands last, never the slower
+  one's. It is drawn for a save that publishes and for a Freigabe that makes a
+  draft current (`sketch-promoted.ts`), never for a save into a draft. It goes
+  no wider than the Skizze: moving the Skizze moves the PDF with it
+  (`bff/documents/move-to-folder.ts`), and when they sit apart anyway while the
+  Skizze's folder restricts reading, nothing is drawn into it (`confined`,
+  ADR-0087). It takes no Anmerkungen of its own (400 `sketch_rendition`;
+  `canAnnotate` is false): marks belong on the Skizze, where they are pinned
+  to elements. When there is no PDF, or a newer save took over, or it is
+  confined, the answer says `pdf: null`; when it could not be drawn, also
+  `pdfStale: true`, and the editor says the PDF shows an earlier version.
 - **A committed Fassung is answered as saved.** Its audit event and hints run
   after the commit; one that fails is logged, not turned into a 500 the editor
   would retry into a second Fassung.
 - **The room is told by the server.** After the commit the PUT publishes
   `scene.saved` to `doc:<id>` with the stored scene's hash, stamped as the
   saver and, when the editor sent it (`x-room-peer-id`), with its tab's peer id
-  so that tab hears no echo. An agent's save reaches open canvases this way.
+  so that tab hears no echo, and `version.published`, which every path that
+  makes a Fassung current sends (`bff/documents/current-version.ts`). An
+  agent's save, a Freigabe and an upload reach open canvases and previews this
+  way.
+- **A save during Freigabe.** A save never publishes around an open round
+  (`bff/diagrams/sketch-target.ts`). While a draft is open (`draft`, or
+  `changes_requested`), a writer's editor opens the draft and a save writes
+  into it through the lifecycle's content replacement (`replaceVersionContent`,
+  the scene checked and versioned as on any save, compare-and-swap on the
+  draft's hash; a save from the published Fassung or an older draft state is
+  the 409 `stale_base_version` that merges first). Nothing is published, no
+  PDF is drawn, only `scene.saved` tells the open canvases. While a version is
+  `in_review` (or `approved` from before ADR-0104 rule 5) a save is a 409
+  `review_open`: the editor says „Diese Skizze ist in Prüfung …“, offers
+  „Weiterzeichnen“, and the canvas stays live without saving. „Piloti
+  überarbeiten lassen“ is not offered for a Skizze, and no revision task opens
+  for one (`bff/documents/text-content.ts`): Markdown written into its SVG
+  broke the drawing.
 - **Only a filed sketch is saved this way** (`diagram_svg`). A person's own
   upload that carries a scene is read, never written: new bytes for it are an
   upload, with an upload's screening.
@@ -629,13 +662,20 @@ document, never a new pair.
   through the documents feature's slot `features/documents/preview-actions.tsx`,
   so documents imports nothing of diagrams). It opens the same lazy editor on
   the stored scene; „Als neue Fassung speichern" saves, and a 409 tells the
-  person a newer Fassung exists. The preview asks with `?probe=1`, which the
-  download log does not record; the click reads again, logged, and opens the
-  latest Fassung. `canWrite` is what the PUT would take: write access and a
-  filed `diagram_svg`.
+  person a newer Fassung exists. The preview asks with `?probe=1`, which
+  answers `{ hasScene, canWrite, versionId }` and nothing of the drawing, so
+  the download log need not record it; the click reads, logged, and opens the
+  latest Fassung (or the open draft). `canWrite` is what the PUT would take:
+  write access and a filed `diagram_svg`. When another Fassung becomes current
+  (`version.published` from someone else), the preview reads its picture again.
+- **Compared by its outline.** „Text vergleichen“ on two Fassungen of a Skizze
+  diffs their outlines (`bff/diagrams/sketch-outline-text.ts`: one line per
+  shape, connection, frame and free text), never the SVG markup.
 - **Observable.** Each successful save scores `sketch-revised` (the Fassung
-  number), and every attempt `sketch-save` (`saved`, `pdf_stale`, `conflict`,
-  `refused`), on the trace of the turn that drew the sketch.
+  number), every attempt `sketch-save` (`saved`, `drafted`, `pdf_stale`,
+  `conflict`, `review_open`, `refused`; metadata `carried`, `lost`), and every
+  Fassung made current that moved a pin `sketch-pins-kept` (the share still on
+  an element), on the trace of the turn that drew the sketch.
 
 `DIAGRAM_RENDERERS.excalidraw` stays `null`: reopening hands the stored scene to
 the editor, and the preview shows the stored SVG, so nothing renders a scene
@@ -735,7 +775,7 @@ delta is a hint towards the same scene, never a record.
 - On `saved`, a peer moves its base to the new Fassung only when its scene
   hashes to the saved one. Otherwise it keeps its base, so its own save is a
   409 that merges first, and the editor reads the new Fassung and merges it at
-  once (`?probe=1`, not logged). A canvas that missed a delta can therefore
+  once (a logged read; the probe carries no scene). A canvas that missed a delta can therefore
   never save over the Fassung without it.
 - Merging a newer Fassung (after a 409, or on such a `saved`) deletes on this
   canvas what that Fassung left out, when the base Fassung drew it and this
@@ -749,6 +789,12 @@ delta is a hint towards the same scene, never a record.
 
 In the editor (`sketch-dialog.tsx`, `use-sketch-room.ts`):
 
+- One room per tab. The editor opened from the Files preview joins through
+  the preview's room (the review's, `useSketchRoom({ room })`), so a person is
+  one peer: no avatar of her own on the canvas, no „Anna ist noch hier“ in the
+  close guard, one entry in Piloti's `roomSnapshot` (which also lists a person
+  in two tabs once), and no pointer motion while she is alone. An editor with
+  no room to share (`/dev/sketch-room`) opens its own.
 - A reopened Skizze joins the room when the dialog opens. `GET …/sketch`
   answers `canWrite`; a reader's canvas is in view mode, has no save button,
   and still shows everyone draw. The send path checks write access again for
@@ -764,7 +810,7 @@ In the editor (`sketch-dialog.tsx`, `use-sketch-room.ts`):
   newer Fassung, merges it into the canvas and tries once more; a second
   refusal asks the person to save again.
 - Closing with unsaved changes while another person is in the room says that
-  they keep the changes.
+  they keep the changes; never the person herself, from another tab.
 - `/dev/sketch-room` is two people in one room over a `BroadcastChannel`
   (open it twice, `?as=max`, `?role=reader`), with a stand-in for the route
   that answers 409 on a stale base.

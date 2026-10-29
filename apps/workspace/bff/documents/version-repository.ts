@@ -25,6 +25,9 @@ import { DOCUMENT_VERSION_STATES, OPEN_DOCUMENT_VERSION_STATES } from './lifecyc
 import { mapVersionInsertError } from './unique-conflicts'
 import { assertPublishedVersionIs, type PublishedVersionExpectation } from './published-guard'
 import { documentVisibleTo, SCREENED_ONLY, type ShelfReader } from './visibility'
+import type { NextSketch } from '@/lib/annotations/sketch-carry'
+import { carryOnto, type PublishedVersionRows } from './published-version'
+export type { PublishedVersionRows } from './published-version'
 
 /**
  * A document's version list is a page, like every other list in this tier:
@@ -134,15 +137,15 @@ export async function insertDocumentVersion(
  * published version at all.
  *
  * The previous version's BYTES ARE NOT TOUCHED. A superseded version is
- * history; objects go when the document is deleted. `afterPublish` runs last,
- * in the same transaction: what must move with the Fassung or not at all (a
- * Skizze's marks, `lib/annotations/sketch-carry.ts`).
+ * history. What must move with the Fassung or not at all runs last, in the same
+ * transaction, here and in {@link promoteVersionToPublished} alike: a Skizze's
+ * pinned marks (`./published-version.ts`), placed on `sketch` when given.
  */
 export async function insertPublishedVersion(
   values: NewDocumentVersionValues,
   expected?: PublishedVersionExpectation,
-  afterPublish?: (tx: DbTransaction, published: { version: DocumentVersion; superseded: DocumentVersion[] }) => Promise<void>,
-): Promise<{ version: DocumentVersion; superseded: DocumentVersion[] }> {
+  sketch: NextSketch | null = null,
+): Promise<PublishedVersionRows> {
   const db = getDb()
   return db.transaction(async (tx) => {
     // First, so the supersede below and the insert run for one writer of this
@@ -180,8 +183,7 @@ export async function insertPublishedVersion(
         updatedAt: new Date(),
       })
       .where(and(eq(documents.id, values.documentId), eq(documents.organizationId, values.organizationId)))
-    await afterPublish?.(tx, { version, superseded })
-    return { version, superseded }
+    return { version, superseded, carried: await carryOnto(tx, version, sketch) }
   }).catch((error: unknown) => {
     // A document deleted before this insert is refused by the version's
     // foreign key and reads as `DocumentDeletedError`; nothing else is mapped.
@@ -669,7 +671,7 @@ export async function promoteVersionToPublished(
   expected: DocumentVersionState,
   patch: Partial<Omit<NewDocumentVersion, 'id' | 'organizationId' | 'documentId'>> = {},
   review?: ReviewRoundWrite,
-): Promise<{ version: DocumentVersion; superseded: DocumentVersion[] } | null> {
+): Promise<PublishedVersionRows | null> {
   const db = getDb()
   try {
     return await db.transaction(async (tx) => {
@@ -719,8 +721,8 @@ export async function promoteVersionToPublished(
           updatedAt: new Date(),
         })
         .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)))
-
-      return { version: swapped, superseded }
+      // No scene at hand: the marks keep their boxes until `current-version.ts` places them.
+      return { version: swapped, superseded, carried: await carryOnto(tx, swapped, null) }
     })
   } catch (error) {
     if (error instanceof LostCompareAndSwap) return null

@@ -76,11 +76,23 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "sketch-save",
         "CATEGORICAL",
         "One attempt to save a filed sketch as a new Fassung (ADR-0148), on the trace of the turn that drew it: "
-        "saved; pdf_stale (saved, the PDF beside it not drawn again); conflict (409, a newer Fassung: the editor "
-        "merges and tries again); refused (400, the comment names the rule). Metadata version_number, bumped, "
-        "tombstoned and pdf on a save.",
+        "saved; drafted (saved into the open Freigabe draft, nothing published); pdf_stale (saved, the PDF beside "
+        "it not drawn again); conflict (409, a newer Fassung: the editor merges and tries again); review_open "
+        "(409, a version is in review, nothing saved); refused (400, the comment names the rule). Metadata "
+        "version_number, bumped, tombstoned, pdf, carried and lost on a save.",
         writer="bff",
-        categories=("saved", "pdf_stale", "conflict", "refused"),
+        categories=("saved", "drafted", "pdf_stale", "conflict", "review_open", "refused"),
+    ),
+    ScoreDefinition(
+        "sketch-pins-kept",
+        "NUMERIC",
+        "The share of a Skizze's pinned marks still on an element after they were carried onto a Fassung made "
+        "current (a save, a Freigabe, an upload; ADR-0148), on the trace of the turn that drew it. 1 is every "
+        "pin still on its elements; lower is pins whose elements are gone („Element gelöscht“). Metadata moved, "
+        "lost and path (save or publish). Written only when a pin moved.",
+        writer="bff",
+        min_value=0,
+        max_value=1,
     ),
     ScoreDefinition(
         "revision-notice",

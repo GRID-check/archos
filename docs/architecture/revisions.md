@@ -275,6 +275,45 @@ content of a version. It is not the link between two documents.
 The two notions meet in the timeline, and nowhere else: a Fassung under another
 name shows as „Ersetzt“, while a same-name version shows its approval state.
 
+### One path makes a Fassung current
+
+A document gets a new current Fassung three ways: an upload of a new Fassung, a
+Freigabe that publishes a draft (`approve`, `publish`), and a Skizze's save
+(ADR-0148). All three move `documents.published_version_id` through one of two
+repository writes, `insertPublishedVersion` and `promoteVersionToPublished`
+(`lib/documents/version-repository.ts`), and both do the same thing after it:
+
+1. **In the transaction**, a Skizze's pinned marks (the live ones whose
+   `anchor_element_ids` name elements) move onto the new Fassung from whichever
+   earlier Fassung they sit on (`lib/documents/published-version.ts`,
+   `lib/annotations/sketch-carry.ts`). A save places their boxes on the scene it
+   wrote; the other paths keep the boxes for step 2. Marks on PDFs are never
+   pinned, so nothing moves for them: they stay on their Fassung and are carried
+   by a person („Auf aktuelle Fassung übernehmen“).
+2. **Once it committed**, `versionBecameCurrent` (`lib/documents/current-version.ts`)
+   tells the document's room: `annotations.changed` for the marks that moved,
+   `version.published` for the previews, and for a Skizze `scene.saved` so open
+   canvases merge the Fassung in. A Skizze made current by Freigabe reads its
+   promoted bytes once, places the pins on that scene and draws its PDF again
+   (`lib/diagrams/sketch-promoted.ts`). The transition table names this as the
+   `announceCurrentVersion` effect on every promoting row; the sketch save calls
+   the same function. The carry is scored (`sketch-pins-kept`).
+
+A revision link (`PUT …/revision-links`, „Als neue Fassung von X ablegen“)
+connects two documents and moves no pointer, so it is not one of these paths;
+marks reach the newer document by the manual carry.
+
+**A Skizze and an open round.** A save never publishes around Freigabe
+(`lib/diagrams/sketch-target.ts`). With a draft open (`draft`,
+`changes_requested`) the editor edits the draft and a save writes into it
+through `replaceVersionContent`, so the reviewer's next look is at the reworked
+draft and nothing is published. With a version `in_review` (or `approved`) a
+save is refused, 409 `review_open`. „Piloti überarbeiten lassen“ is not offered
+for a Skizze and opens no revision task (`lib/documents/text-content.ts`, 415
+`not_revisable_as_text`): the run writes Markdown, which would have replaced the
+drawing. A save that supersedes a Fassung released through Freigabe sends the
+revision notice to the Skizze's followers; work in progress stays silent.
+
 ## Compare
 
 Four things, in rising cost.
@@ -304,7 +343,9 @@ forwards to `POST /v1/collections/{c}/revision-compare`, which
 person is told that, rather than shown an empty panel that could mean a failure.
 Errors are 404 (page missing), 409 (not ingested), 503 (no vision model) and 502
 (model failed). The text comparison of two same-name versions is a line diff
-(`client.diff` in `document-revisions.tsx`).
+(`client.diff` in `document-revisions.tsx`). For a Skizze the two halves are
+its outlines (`lib/diagrams/sketch-outline-text.ts`), never its SVG; bytes that
+are neither text nor a Skizze are refused, 415 `not_revisable_as_text`.
 
 ## The agent
 

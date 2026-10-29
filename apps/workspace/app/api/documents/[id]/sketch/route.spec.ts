@@ -60,7 +60,9 @@ vi.mock('@/lib/realtime/document-channel', () => ({
 }))
 vi.mock('@/lib/documents/repository', () => ({
   findDocumentAuthoredByRef: vi.fn(async (_ref: string, _org: string, _project: string, producer: string) =>
-    producer === 'diagram_pdf' && documents.has('doc-pdf') ? { id: 'doc-pdf', filename: 'x.pdf', folderId: null } : null
+    producer === 'diagram_pdf' && documents.has('doc-pdf')
+      ? { id: 'doc-pdf', filename: 'x.pdf', folderId: (documents.get('doc-pdf')!.folderId as string | null) ?? null }
+      : null
   ),
 }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn(async () => ({ name: 'Wohnhaus Hietzing' })) }))
@@ -95,11 +97,28 @@ vi.mock('@/lib/documents/version-repository', async () => {
         const version = { ...values, id: `${values.documentId}-v${mine.length + 1}`, versionNumber: mine.length + 1 }
         versions.push(version)
         Object.assign(row, { publishedVersionId: version.id, storageKey: values.storageKey })
-        return { version, superseded }
+        return { version, superseded, carried: { moved: [], lost: [] } }
       }
     ),
   }
 })
+// A save into an open Freigabe draft goes through the lifecycle's content replacement; its swap is the lifecycle's spec.
+const replaceVersionContent = vi.fn(
+  async (_session: unknown, _documentId: string, versionId: string, rendered: { bytes: Buffer; contentHash: string }) => {
+    const draft = versions.find((v) => v.id === versionId)!
+    objects.set(`draft/${versionId}`, rendered.bytes.toString('utf8'))
+    return Object.assign(draft, { storageKey: `draft/${versionId}`, contentHash: rendered.contentHash })
+  }
+)
+vi.mock('@/lib/documents/lifecycle', () => ({
+  replaceVersionContent: (...a: Parameters<typeof replaceVersionContent>) => replaceVersionContent(...a),
+}))
+const folderRestrictsReading = vi.fn(async (_org: string, _project: string | null, folderId: string | null) => folderId === 'folder-restricted')
+vi.mock('@/lib/conversations/restricted-egress', () => ({
+  folderRestrictsReading: (...a: [string, string | null, string | null]) => folderRestrictsReading(...a),
+}))
+const announceNewRevision = vi.fn(async () => {})
+vi.mock('@/lib/documents/revision-notify', () => ({ announceNewRevision: (...a: unknown[]) => announceNewRevision(...(a as [])) }))
 const recordAuditEvent = vi.fn()
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: (...a: unknown[]) => recordAuditEvent(...a) }))
 vi.mock('@/lib/events/bus', () => ({ publishToUsers: vi.fn() }))
@@ -112,6 +131,7 @@ const recordSketchSaveScore = vi.fn()
 vi.mock('@/lib/langfuse/sketch-score', () => ({
   recordSketchRevisedScore: (...a: unknown[]) => recordSketchRevisedScore(...a),
   recordSketchSaveScore: (...a: unknown[]) => recordSketchSaveScore(...a),
+  recordSketchPinsKeptScore: vi.fn(async () => {}),
 }))
 
 import { createInProcessStore, setLimitStore } from '@/lib/limits'
@@ -185,6 +205,8 @@ beforeEach(() => {
   recordDocumentAccess.mockReset()
   roomEvents.length = 0
   renderDiagramPdf.mockClear()
+  replaceVersionContent.mockClear()
+  announceNewRevision.mockClear()
   fileSketch('doc-svg', 'diagram_svg', JSON.stringify(SCENE))
   documents.set('doc-pdf', { ...documents.get('doc-svg'), id: 'doc-pdf', contentType: 'application/pdf', storageKey: 'doc/doc-pdf/file', authoredByProducer: 'diagram_pdf' })
 })
@@ -229,6 +251,8 @@ describe('PUT /api/documents/[id]/sketch', () => {
       documentId: 'doc-svg',
       versionId: 'doc-svg-v2',
       versionNumber: 2,
+      state: 'published',
+      contentHash: expect.stringMatching(/^sha256:/),
       pdf: { documentId: 'doc-pdf', versionId: 'doc-pdf-v2' },
       pdfStale: false,
     })
@@ -311,14 +335,23 @@ describe('PUT /api/documents/[id]/sketch', () => {
 
   it('tells the document room of the Fassung, stamped with the saving tab so it hears no echo', async () => {
     await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null }, { headers: { [ROOM_PEER_HEADER]: 'peer_anna0001' } })
-    expect(roomEvents).toHaveLength(1)
-    const [{ documentId, event }] = roomEvents
+    const saved = roomEvents.filter(({ event }) => event.kind === 'scene.saved')
+    expect(saved).toHaveLength(1)
+    const [{ documentId, event }] = saved
     expect(documentId).toBe('doc-svg')
     expect(event).toMatchObject({ kind: 'scene.saved', versionId: 'doc-svg-v2', peer: { peerId: 'peer_anna0001', userId: 'user-1', kind: 'person' } })
     expect(event.sceneHash).toBe(sceneHashOf(storedScene('doc-svg').elements))
     // A save without a tab (an agent through MCP) is told under a peer of its own.
     await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v2' })
-    expect((roomEvents[1].event.peer as { peerId: string }).peerId).toMatch(/^save_[0-9a-f]{12}$/)
+    const second = roomEvents.filter(({ event }) => event.kind === 'scene.saved')[1]
+    expect((second.event.peer as { peerId: string }).peerId).toMatch(/^save_[0-9a-f]{12}$/)
+    // Every Fassung made current is told as such, the PDF's in its own room too (`lib/documents/current-version.ts`).
+    expect(roomEvents.filter(({ event }) => event.kind === 'version.published').map(({ documentId: id }) => id)).toEqual([
+      'doc-svg',
+      'doc-pdf',
+      'doc-svg',
+      'doc-pdf',
+    ])
   })
 
   it('drops an element link, customData outside the allow-list and appState Excalidraw does not export', async () => {
@@ -380,10 +413,88 @@ describe('GET, what it promises and what it logs', () => {
     expect((await (await call('GET', 'doc-svg')).json()).canWrite).toBe(false)
   })
 
-  it('logs a read, but not the preview’s probe', async () => {
-    await call('GET', 'doc-svg', undefined, { query: '?probe=1' })
+  it('logs a read, but not the preview’s probe, which carries nothing of the drawing (C6)', async () => {
+    const probe = await (await call('GET', 'doc-svg', undefined, { query: '?probe=1' })).json()
+    expect(probe).toEqual({ hasScene: true, canWrite: true, versionId: null })
     expect(recordDocumentAccess).not.toHaveBeenCalled()
     await call('GET', 'doc-svg')
     expect(recordDocumentAccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('probes a document without a scene as having none, instead of handing anything over', async () => {
+    fileSketch('doc-mermaid', 'diagram_svg', 'flowchart LR\n  A --> B')
+    expect(await (await call('GET', 'doc-mermaid', undefined, { query: '?probe=1' })).json()).toEqual({
+      hasScene: false,
+      canWrite: false,
+      versionId: null,
+    })
+  })
+})
+
+describe('a save and the Freigabe round (C2, C4)', () => {
+  const edited = { ...SCENE, elements: [...SCENE.elements, { id: 'stair', type: 'rectangle', x: 60, y: 0 }] }
+  const openDraft = (state: string) => {
+    versions.push({ documentId: 'doc-svg', id: 'doc-svg-d', state, versionNumber: 2, storageKey: 'doc/doc-svg/file', contentHash: 'sha256:filed' })
+  }
+
+  it('refuses a save while a version is in review, naming why, and writes nothing', async () => {
+    openDraft('in_review')
+    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    expect(response.status).toBe(409)
+    expect((await response.json()).details).toMatchObject({ reason: 'review_open', versionId: 'doc-svg-d' })
+    expect(versions.filter((v) => v.state === 'published')).toHaveLength(0)
+    expect(renderDiagramPdf).not.toHaveBeenCalled()
+    expect(recordSketchSaveScore).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: 'review_open' }))
+  })
+
+  it('opens the open draft for a writer, and saves into it: nothing published, no PDF drawn', async () => {
+    openDraft('changes_requested')
+    const view = await (await call('GET', 'doc-svg')).json()
+    expect(view).toMatchObject({ versionId: 'doc-svg-d', saveTarget: 'draft', contentHash: 'sha256:filed' })
+    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })
+    expect(response.status).toBe(200)
+    const saved = await response.json()
+    expect(saved).toMatchObject({ versionId: 'doc-svg-d', state: 'draft', pdf: null, pdfStale: false })
+    expect(replaceVersionContent).toHaveBeenCalledWith(expect.anything(), 'doc-svg', 'doc-svg-d', expect.objectContaining({ contentType: 'image/svg+xml' }), 'sha256:filed', expect.anything())
+    expect(storedDiagramSource(objects.get('draft/doc-svg-d')!)!.source).toContain('stair')
+    expect(versions.filter((v) => v.state === 'published')).toHaveLength(0)
+    expect(renderDiagramPdf).not.toHaveBeenCalled()
+    expect(roomEvents.map(({ event }) => event.kind)).toEqual(['scene.saved'])
+    expect(recordSketchSaveScore).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: 'drafted' }))
+    // A save from the published Fassung, or from an older state of the draft, merges first.
+    expect((await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })).status).toBe(409)
+    expect((await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })).status).toBe(409)
+  })
+
+  it('tells the followers once when a save leaves a Fassung released through Freigabe, and stays silent otherwise', async () => {
+    await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    expect(announceNewRevision).not.toHaveBeenCalled()
+    versions.find((v) => v.id === 'doc-svg-v2')!.approvedBy = 'user-chief'
+    await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v2' })
+    expect(announceNewRevision).toHaveBeenCalledTimes(1)
+    expect(announceNewRevision).toHaveBeenCalledWith(expect.objectContaining({ newerId: 'doc-svg', versionId: 'doc-svg-v3' }))
+  })
+})
+
+describe('the PDF is the Skizze’s rendition (C3)', () => {
+  const edited = { ...SCENE, elements: [...SCENE.elements, { id: 'safe', type: 'rectangle', x: 90, y: 0 }] }
+
+  it('draws no new drawing into a PDF that sits wider than the Skizze’s restricted folder', async () => {
+    documents.get('doc-svg')!.folderId = 'folder-restricted'
+    documents.get('doc-pdf')!.folderId = null
+    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ pdf: null, pdfStale: false })
+    expect(renderDiagramPdf).not.toHaveBeenCalled()
+    expect(recordSketchSaveScore).toHaveBeenLastCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ pdf: 'confined' }) }))
+  })
+
+  it('draws it when both sit in the same restricted folder', async () => {
+    documents.get('doc-svg')!.folderId = 'folder-restricted'
+    documents.get('doc-pdf')!.folderId = 'folder-restricted'
+    expect((await (await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })).json()).pdf).toEqual({
+      documentId: 'doc-pdf',
+      versionId: 'doc-pdf-v2',
+    })
   })
 })

@@ -156,6 +156,13 @@ describe('„Piloti überarbeiten lassen" is a field, not a fourth op', () => {
     expect(gestures.indexOf(DELEGATE_REVISION)).toBe(gestures.indexOf('request_changes') + 1)
   })
 
+  it('is not offered for a Skizze: Piloti revises text, a drawing is revised in its editor (C1)', () => {
+    const sketch = availableLifecycleGestures({ ...version('in_review'), contentType: 'image/svg+xml' }, 'active', editor)
+    expect(sketch).toContain('request_changes')
+    expect(sketch).not.toContain(DELEGATE_REVISION)
+    expect(availableLifecycleGestures({ ...version('in_review'), contentType: 'text/markdown' }, 'active', editor)).toContain(DELEGATE_REVISION)
+  })
+
   it('is absent wherever the row that carries it is', () => {
     // A reader who may not send this version back may not delegate its revision
     // either: there is one permission, because there is one transition.

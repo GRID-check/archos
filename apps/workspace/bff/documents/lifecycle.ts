@@ -71,6 +71,9 @@ import { isAgentDocumentFilename } from './agent-namespace'
 import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
 import { documentDisplayName } from './display-name'
 import { announceNewRevision } from './revision-notify'
+import { versionBecameCurrent } from './current-version'
+import { notRevisableAsText, revisableAsText } from './text-content'
+import type { MovedSketchMarks } from '@/lib/annotations/sketch-carry'
 import { findDocumentInOrg } from './repository'
 import { hasPassedScreening, internalRead, memberReader } from '@/lib/documents/document-reader'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -82,6 +85,7 @@ import {
   BACKEND_PURGE_TIMEOUT_MS,
   readVersionTextForTask,
   renderVersionBytes,
+  type RenderedVersionBytes,
   versionBytesReadableBy,
   writeVersionContent,
 } from './version-content'
@@ -216,6 +220,7 @@ interface EffectContext {
   version: DocumentVersion
   /** The version this one replaces, when there is one. */
   previous: DocumentVersion | null
+  carried?: MovedSketchMarks // the pinned marks the publish carried onto it (`./published-version.ts`)
   transition: DocumentVersionTransition
   input: TransitionInput
 }
@@ -538,12 +543,9 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
    * A published version that replaces an earlier one is a new Fassung of the
    * document: tell the people who follow it (`./revision-notify`).
    *
-   * `previous` is the version this transition superseded, so it is `null` for a
-   * document's first version, which is news to nobody. For a person's upload the
-   * document is still held here (its new bytes are screened after this runs) and
-   * the notifier says nothing; the settle hook calls it again once they pass.
-   * Detached because it asks the directory about each person, and the
-   * publisher's answer should not wait for that.
+   * `previous` is `null` for a first version, news to nobody. A person's upload
+   * is still held here and the notifier says nothing; the settle hook calls it
+   * again once its bytes pass. Detached: it asks the directory about each person.
    */
   announceNewRevision: async ({ session, document, version, previous }) => {
     if (!previous) return
@@ -557,39 +559,37 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
     })
   },
 
+  /** The Fassung is current: its room is told, and a Skizze's pins and PDF follow it (`./current-version`). */
+  announceCurrentVersion: async ({ session, document, version, carried }) => {
+    await versionBecameCurrent({ session, document, version, carried: carried ?? { moved: [], lost: [] } })
+  },
+
   /**
    * Hand a sent-back version to Piloti as a `revision` task — when there is
    * nobody in a conversation to hand it to instead.
    *
    * ## Why this is a condition and not a second button
    *
-   * „Request changes reaches the agent twice" is the design's own phrasing, and
-   * the two are not alternatives to pick between: a version filed from a live
-   * chat already has a reader and a thread, and the next turn there carries the
-   * comment verbatim (`./review-decisions.ts`). Opening a task for that case as
-   * well would queue a run for work the person is about to ask for in their next
-   * sentence, spend their budget on it, and put a second draft beside the one
-   * the conversation is holding. So the origin decides, and the reviewer can
-   * override it — `delegateRevision` is the one thing that opens a task for a
-   * conversation-born version.
+   * A version filed from a live chat already has a reader and a thread: the next
+   * turn carries the comment verbatim (`./review-decisions.ts`), and a task as
+   * well would queue a run the person is about to ask for and put a second draft
+   * beside the conversation's. So the origin decides; `delegateRevision` is the
+   * one override that opens a task for a conversation-born version.
    *
    * ## Why it cannot fail the transition
    *
-   * The reviewer's decision is recorded the moment the compare-and-swap lands;
-   * everything here is what happens NEXT. A queue that will not take the run, a
-   * requester who has left the organization, a project whose skills feature is
-   * off — none of those is a reason to tell a Ziviltechniker that their
-   * „Änderungen anfordern" did not go through. The failure is logged and the
-   * comment still stands on the row, which is where the Files pane reads it.
+   * The reviewer's decision is recorded once the swap lands; a queue that will
+   * not take the run, a requester who left, skills switched off are no reason to
+   * tell a Ziviltechniker their „Änderungen anfordern" failed. The failure is
+   * logged; the comment stands on the row, where the Files pane reads it. A
+   * Skizze opens none: it is revised in its editor (`./text-content.ts`).
    *
    * ## Why a restricted folder opens none
    *
-   * The task's goal (the comment), its plan (the draft's text) and the filename
-   * it files are listed to every project member (`listTasks`), and tasks carry
-   * no folder audience of their own. So a draft in a folder some member may not
-   * read gets no task, whoever filed it: the reviewer who asked outright was
-   * refused with the reason before the swap, and a version nobody asked about
-   * keeps its comment on the row for its author (ADR-0087).
+   * A task's goal, plan and filename are listed to every project member
+   * (`listTasks`), with no folder audience. So a draft in a folder some member
+   * may not read gets no task: a reviewer who asked was refused before the swap,
+   * and the comment stays on the row for its author (ADR-0087).
    */
   openRevisionTask: async ({ session, document, version, input }) => {
     const delegated = input.delegateRevision === true
@@ -600,8 +600,8 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
     if (!document.projectId) return
     // A held document (ADR-0086) opens no task: the run hands its text to a
     // model, and the task's goal and file name are listed to the whole project.
-    if (!hasPassedScreening(document)) {
-      console.warn(`[documents] no revision task for version ${version.id}: its document has not passed screening`)
+    if (!hasPassedScreening(document) || !revisableAsText(version.contentType)) {
+      console.warn(`[documents] no revision task for version ${version.id}: not screened, or not text (a Skizze)`)
       return
     }
 
@@ -985,6 +985,7 @@ export async function transitionDocumentVersion(
   // quote is refused with the reason, and the reviewer can still ask for the
   // changes without Piloti. The effect checks again for the case nobody asked.
   if (input.delegateRevision === true && transition.effects.includes('openRevisionTask')) {
+    if (!revisableAsText(version.contentType)) throw notRevisableAsText(version.contentType)
     if (await folderRestrictsReading(session.organizationId, document.projectId, document.folderId)) {
       throw confinementRefusal('revision', input.locale ?? AGENT_REFUSAL_LOCALE)
     }
@@ -1024,6 +1025,7 @@ export async function transitionDocumentVersion(
     document,
     version: swapped,
     previous: promoted?.superseded[0] ?? null,
+    carried: promoted?.carried,
     transition,
     input: effectInput,
   })
@@ -1110,6 +1112,7 @@ export async function createDocumentVersion(
     document: input.document,
     version,
     previous: promoted?.superseded[0] ?? null,
+    carried: promoted?.carried,
     transition,
     input: { request: input.request, actingHuman: input.actingHuman },
   })
@@ -1254,7 +1257,8 @@ export async function replaceVersionContent(
   session: AuthorizedSession,
   documentId: string,
   versionId: string,
-  content: string,
+  /** Markdown the producer renders, or bytes already rendered and checked (a Skizze's draft, `lib/diagrams/sketch-document.ts`). */
+  content: string | RenderedVersionBytes,
   ifMatch: string | null | undefined,
   options: {
     request?: Request
@@ -1290,7 +1294,7 @@ export async function replaceVersionContent(
     })
   }
 
-  const rendered = await renderVersionBytes(document, version, content)
+  const rendered = typeof content === 'string' ? await renderVersionBytes(document, version, content) : content
   const swapped = await writeVersionContent({
     organizationId: session.organizationId,
     document,

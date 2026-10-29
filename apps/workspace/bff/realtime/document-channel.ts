@@ -79,7 +79,7 @@ function observeRoom(documentId: string, organizationId: string, events: Readonl
   const key = rosterKey(organizationId, documentChannelKey(documentId))
   for (const raw of events) {
     const event = raw as RoomEvent
-    if (event.kind === 'annotations.changed' || NOT_RECORDED.has(event.kind)) continue
+    if (event.kind === 'annotations.changed' || event.kind === 'version.published' || NOT_RECORDED.has(event.kind)) continue
     if (event.kind === 'presence') {
       if (event.state === 'gone') forgetRosterPeer(key, event.peer.peerId)
       else noteRosterPeer(key, event.peer, event.ttlMs)
@@ -268,13 +268,32 @@ const toSnapshotPeer = (entry: RosterEntry): RoomSnapshotPeer => ({
 })
 
 /**
+ * One entry per person: a person in two tabs (or a tab that joined twice) is
+ * one participant to Piloti, as the one whose claim runs longest, which is the
+ * one heard last. Piloti stays one per conversation.
+ */
+function onePerPerson(entries: readonly RosterEntry[]): RosterEntry[] {
+  const people = new Map<string, RosterEntry>()
+  const rest: RosterEntry[] = []
+  for (const entry of entries) {
+    if (entry.peer.kind !== 'person') {
+      rest.push(entry)
+      continue
+    }
+    const known = people.get(entry.peer.userId)
+    if (!known || entry.expiresAt > known.expiresAt) people.set(entry.peer.userId, entry)
+  }
+  return entries.filter((entry) => rest.includes(entry) || people.get(entry.peer.userId) === entry)
+}
+
+/**
  * Who is in a document's room now, as the server last heard (within about a
- * second; `./roster`). Bounded and TTL'd; `[]` when nobody is or the store is
- * down. The CALLER has authorized the reader.
+ * second; `./roster`), one entry per person. Bounded and TTL'd; `[]` when
+ * nobody is or the store is down. The CALLER has authorized the reader.
  */
 export async function roomSnapshot(documentId: string, organizationId: string): Promise<RoomSnapshotPeer[]> {
   // This process's own last second goes first, so Piloti sees what was just said here.
   await flushRoster()
   const entries = await readRoster(rosterKey(organizationId, documentChannelKey(documentId)))
-  return entries.map(toSnapshotPeer)
+  return onePerPerson(entries).map(toSnapshotPeer)
 }

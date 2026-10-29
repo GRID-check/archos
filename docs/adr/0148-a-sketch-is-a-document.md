@@ -61,7 +61,9 @@ reopened and edited in place, and each save is a new Fassung of the same documen
 with its PDF companion following. Being a document, it inherits:
 
 * the Files pane, folders and restricted folders (ADR-0087), and sharing;
-* Fassungen and their timeline, Freigabe and revise from comment (ADR-0104);
+* Fassungen and their timeline, and Freigabe (ADR-0104). Revise from comment is the
+  one exception: it writes Markdown, so a Skizze is revised in its editor
+  (amendment below);
 * Anmerkungen (`document_annotations`, page 1, a region normalised to the scene);
 * the live document room `doc:<id>`: presence, cursors, Piloti in the roster
   (ADR-0110);
@@ -95,6 +97,31 @@ bytes. A sketch still claims no dimension (ADR-0146).
   `document_annotations` does not carry today.
 * Neutral, because the scene's 512 KiB cap (`DIAGRAM_SOURCE_FACTS.excalidraw`) and
   the SVG validator's allow-list now bound a document type, not only a filing.
+
+#### Amendment, 2026-10-29: sketches and the collaboration tools are one product
+
+An audit of the sketch against every collaboration feature found it publishing
+around them. Decided, and built:
+
+* **One path makes a Fassung current.** Upload, Freigabe and the sketch save all
+  carry the pinned marks in the publishing transaction and tell the room after it
+  (`docs/architecture/revisions.md`, „One path makes a Fassung current“). A
+  Freigabe that published an older draft over later saves had stranded the pins.
+* **A save respects an open round.** With a draft open, the editor edits the draft
+  and a save writes into it; with a version in review, a save is refused
+  (`review_open`) and the canvas stays live. A save over a Fassung released through
+  Freigabe sends the revision notice; work in progress stays silent.
+* **The PDF is the rendition.** It moves with the Skizze, is drawn only for the
+  current Fassung, never into a folder wider than the Skizze's, and takes no marks
+  of its own.
+* **Text paths ask first.** Revise from comment, the revision task and the text
+  compare refuse a Skizze (415 `not_revisable_as_text`); the compare reads its
+  outline instead. This corrects the „revise from comment“ promised above.
+* **One room per tab.** The editor joins through the preview's room; Piloti's
+  snapshot lists a person once.
+
+The open remainder is in `docs/roadmap/sketches.md`, „Coherence: what is still
+open“.
 
 ### Confirmation
 

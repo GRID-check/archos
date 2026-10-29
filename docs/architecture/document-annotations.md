@@ -620,20 +620,26 @@ elements are refused (400); an element drawn since the last save is not in
 the published scene (422, „save first“), so the editor saves before it sets
 the draft. The mark lands on page 1 as a region (the CHECK).
 
-**It goes on with every save.** In the transaction that publishes the
-Skizze's next Fassung (the `afterPublish` hook of `insertPublishedVersion`,
-`lib/documents/version-repository.ts`, passed by `lib/diagrams/sketch-version.ts`
-for the SVG only, never for an upload), `moveSketchMarks`
+**It goes on with every Fassung made current.** In the transaction that makes
+a Fassung current, whichever path it is (a save, a Freigabe that publishes a
+draft, an upload: `insertPublishedVersion` and `promoteVersionToPublished` in
+`lib/documents/version-repository.ts` both run it, through
+`lib/documents/published-version.ts`), `moveSketchMarks`
 (`lib/annotations/sketch-carry.ts`) moves every open and proposed mark pinned
-to elements onto the new Fassung, compared and swapped on the Fassung it was
-on and its status, its box drawn again from the elements still in the new
-scene. A mark whose elements are all gone keeps its last box and says so
+to elements onto the new Fassung from whichever earlier Fassung it sits on,
+compared and swapped on the Fassung it was on and its status. A save draws its
+box again from the elements still in the scene it wrote; a Freigabe keeps the
+box in the transaction, and the hook after it places it on the promoted scene
+(`lib/diagrams/sketch-promoted.ts`, `mode: 'place'`). Before, only the save
+carried, and only from the Fassung it superseded: a Freigabe that published an
+older draft over later saves left the pins on a superseded save for good. A mark whose elements are all gone keeps its last box and says so
 (`anchor_lost_at`; the view's `anchorLost`, the pin's „Element gelöscht“); an
 element that comes back clears it. Resolved and dismissed marks stay on the
 Fassung they were closed on. So an anchored mark is never a ghost, and the
-manual carry is not offered for it (`carryTarget` is null). The save announces
-no new revision (`sketch-version.ts`); the room hears `annotations.changed`
-for the marks that moved, and an open review reads them again.
+manual carry is not offered for it (`carryTarget` is null). A work-in-progress
+save announces no new revision (`sketch-version.ts`); the room hears
+`annotations.changed` for the marks that moved (`lib/documents/current-version.ts`),
+and an open review reads them again. The carry is scored, `sketch-pins-kept`.
 
 **Where it is shown.** The Files preview draws the marks over the Skizze's
 sheet with the review's own layer, as a PDF page's (`SheetWithMarks`,
@@ -647,9 +653,17 @@ is placed from where its elements are now, so a pin follows its element while
 it is dragged, before any save. „Anmerkung“ on a selection opens the review's
 draft card for those elements; the thread is the review's own card.
 
+**The PDF beside it takes none.** The PDF filed beside a diagram is its
+rendition, drawn again from the current Fassung (`lib/diagrams/sketch-companion.ts`),
+so a mark set on it would be a „frühere Fassung“ mark after the next save. A
+create on it is refused, 400 `sketch_rendition`, naming the SVG as the place,
+and its list says `canAnnotate: false`, so the review offers no tool there.
+
 Known gaps: an undo of Piloti's delete of an anchored mark sets it again with
-its box and is refused on a Skizze; the companion PDF carries no marks (they
-belong on the SVG).
+its box and is refused on a Skizze; marks set on a companion PDF before this
+rule stay on it, readable, with no way to move them to the Skizze; while a
+Skizze is in Freigabe, a mark is set on the published Fassung, so an element
+drawn only in the draft cannot be marked until the draft is published.
 
 ### Mentioning a colleague
 

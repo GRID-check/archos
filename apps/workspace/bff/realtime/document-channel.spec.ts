@@ -28,6 +28,7 @@ import {
   flushRoster,
   MAX_PEERS,
   noteRosterPeer,
+  readRoster,
   rosterKey,
 } from './roster'
 import { sendToChannel } from './send'
@@ -166,6 +167,15 @@ describe('roomSnapshot', () => {
     expect((await roomSnapshot('doc_1', 'org_1'))[0]).toMatchObject({ selected: null, viewport: { page: 3, y: 0.4 } })
   })
 
+  it('lists a person once however many tabs they are in, as the tab heard last (C5)', async () => {
+    await sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId: 'peer_anna_001', presence: 'here' } })
+    await sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId: 'peer_anna_002', presence: 'here' } })
+    await publishAsAgent('doc_1', 'org_1', AGENT, { op: 'presence', state: 'here' })
+    const snapshot = await roomSnapshot('doc_1', 'org_1')
+    expect(snapshot.filter((peer) => peer.kind === 'person').map((peer) => peer.userId)).toEqual(['user_1'])
+    expect(snapshot.filter((peer) => peer.kind !== 'person')).toHaveLength(1)
+  })
+
   it('lets a peer go when they leave, and keeps organizations apart', async () => {
     await sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId: 'peer_anna_001', presence: 'here' } })
     expect(await roomSnapshot('doc_1', 'org_2')).toEqual([])
@@ -186,7 +196,7 @@ describe('roomSnapshot', () => {
   it('records at most MAX_PEERS peers', async () => {
     const key = rosterKey('org_1', 'doc:doc_1')
     for (let index = 0; index < MAX_PEERS + 5; index += 1) {
-      noteRosterPeer(key, { peerId: `peer_${String(index).padStart(6, '0')}`, userId: 'u', name: 'N', kind: 'person' }, 25_000)
+      noteRosterPeer(key, { peerId: `peer_${String(index).padStart(6, '0')}`, userId: `u${index}`, name: 'N', kind: 'person' }, 25_000)
     }
     expect(await roomSnapshot('doc_1', 'org_1')).toHaveLength(MAX_PEERS)
   })
@@ -205,7 +215,12 @@ describe('a sketch in the room’s snapshot', () => {
     await say({ want: { requestId: 'req_abcdef12', base: 'ver_1' } }, 'peer_wanting01')
     await say({ saved: { versionId: 'ver_2', sceneHash: 9 } }, 'peer_saving001')
 
+    // The roster holds the two that spoke a fact; the snapshot shows the one person they both are.
+    await flushRoster()
+    const roster = await readRoster(rosterKey('org_1', 'doc:doc_1'))
+    expect(roster.map((entry) => entry.peer.peerId).sort()).toEqual(['peer_pointing1', 'peer_selecting'])
     const snapshot = await roomSnapshot('doc_1', 'org_1')
-    expect(snapshot.map((peer) => peer.peerId).sort()).toEqual(['peer_pointing1', 'peer_selecting'])
+    expect(snapshot).toHaveLength(1)
+    expect(['peer_pointing1', 'peer_selecting']).toContain(snapshot[0].peerId)
   })
 })

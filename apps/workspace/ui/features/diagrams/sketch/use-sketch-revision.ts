@@ -16,6 +16,12 @@
  * the save stale rather than write a scene without it over the Fassung. A save refused as stale is offered to `resolveStale`
  * (merge the newer Fassung into the canvas) and tried once more; a second
  * refusal is `stale` with `merged`, which asks the person to save again.
+ *
+ * During Freigabe (`docs/architecture/revisions.md`): a save into the open
+ * draft is `saved` with `draft`, and carries the draft's hash it started from
+ * (`baseContentHash`), so a colleague's save into the same draft is a stale
+ * save like any other. A version in review refuses every save: `review_open`,
+ * and the canvas stays live, without saving.
  */
 
 import { useCallback, useState } from 'react'
@@ -26,8 +32,9 @@ import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 export type SketchRevisionState =
   | { kind: 'idle' }
   | { kind: 'saving' }
-  | { kind: 'saved'; versionId: string; versionNumber: number; pdfStale?: boolean }
+  | { kind: 'saved'; versionId: string; versionNumber: number; pdfStale?: boolean; draft?: boolean }
   | { kind: 'stale'; merged?: boolean }
+  | { kind: 'review_open' }
   | { kind: 'failed'; message: string }
 
 export interface SketchRevisionTarget {
@@ -36,6 +43,8 @@ export interface SketchRevisionTarget {
   baseVersionId: string | null | (() => string | null)
   /** This tab's id in the document room, sent with the save so the room's notice of it is no echo here. */
   peerId?: () => string | null
+  /** The open draft's hash the canvas sits on, when it edits a Freigabe draft. */
+  baseContentHash?: () => string | null
 }
 
 /** A save that landed: the Fassung, and the elements of the scene it wrote. */
@@ -43,6 +52,8 @@ export interface SavedRevision {
   versionId: string
   versionNumber: number
   pdfStale: boolean
+  state: 'published' | 'draft'
+  contentHash: string | null
   elements: readonly object[]
 }
 
@@ -55,6 +66,8 @@ export interface SketchRevisionOptions {
 export interface SketchRevision {
   state: SketchRevisionState
   save: () => Promise<void>
+  /** Leave a refusal behind and draw on (the canvas stays live; nothing is saved). */
+  dismiss: () => void
 }
 
 export function useSketchRevision(
@@ -73,7 +86,8 @@ export function useSketchRevision(
       const base = typeof target.baseVersionId === 'function' ? target.baseVersionId() : target.baseVersionId
       const { source, svg } = await prepareSketch()
       const scene = JSON.parse(source) as { type: 'excalidraw'; elements: object[] }
-      const saved = await saveSketch(target.documentId, { scene, svg, baseVersionId: base }, { peerId: target.peerId?.() })
+      const baseContentHash = target.baseContentHash?.() ?? null
+      const saved = await saveSketch(target.documentId, { scene, svg, baseVersionId: base, baseContentHash }, { peerId: target.peerId?.() })
       return { ...saved, elements: scene.elements }
     }
     try {
@@ -90,15 +104,18 @@ export function useSketchRevision(
           throw again
         }
       }
-      setState({ kind: 'saved', versionId: saved.versionId, versionNumber: saved.versionNumber, pdfStale: saved.pdfStale })
+      const draft = saved.state === 'draft'
+      setState({ kind: 'saved', versionId: saved.versionId, versionNumber: saved.versionNumber, pdfStale: saved.pdfStale, draft })
       onSaved?.(saved)
     } catch (error) {
       if (error instanceof SketchRequestError && error.stale) return setState({ kind: 'stale' })
+      if (error instanceof SketchRequestError && error.reviewOpen) return setState({ kind: 'review_open' })
       const message =
         error instanceof SketchRequestError && error.serverMessage ? error.serverMessage : t('sketch.saveFailed')
       setState({ kind: 'failed', message })
     }
   }, [target, prepareSketch, onSaved, resolveStale, t])
 
-  return { state, save }
+  const dismiss = useCallback(() => setState({ kind: 'idle' }), [])
+  return { state, save, dismiss }
 }

@@ -18,6 +18,13 @@
  * `PATCH /api/documents/{id}`: that route renames and tags, resolving the
  * permission from the row, and a filing move needs the destination check and
  * the backend mirror below.
+ *
+ * A Skizze takes its PDF along (ADR-0148): the PDF filed beside it is its
+ * rendition, drawn again on every save, so it must sit where the Skizze sits or
+ * the drawing reaches readers its folder keeps it from (ADR-0087). The PDF's
+ * move is the same move, with every check this one makes; one that is refused
+ * leaves it where it was, and the redraw then refuses to draw a restricted
+ * Skizze into it (`lib/diagrams/sketch-companion.ts`).
  */
 
 import { eq } from 'drizzle-orm'
@@ -38,6 +45,7 @@ import { PURGE_TIMEOUT_MS, placeProjectDocuments } from '@/lib/projects/collecti
 import { assertIfcMayBeFiledIn } from '@/lib/projects/ifc-folder-guard'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { findDocumentForSession } from './access'
+import { findDocumentAuthoredByRef } from './repository'
 import { reingestDocument } from './reingest'
 import { documentShelf, type DocumentShelf } from './shelf'
 import { requireShelfWrite } from './shelf-authz'
@@ -105,7 +113,33 @@ const PURGE_FAILED_MESSAGE = 'The document could not be removed from its current
 export async function moveDocumentToFolder(
   input: MoveDocumentInput,
   session: AuthorizedSession,
+  options: MoveDocumentOptions = {},
+): Promise<MoveDocumentOutcomeResult> {
+  const read: { document?: MovedDocument } = {}
+  const moved = await moveSingle(input, session, options, read)
+  if (moved.ok && moved.changed && read.document) await companionFollows(read.document, input, session, options)
+  return moved
+}
+
+type MovedDocument = NonNullable<Awaited<ReturnType<typeof findDocumentForSession>>>
+
+/** The PDF filed beside a moved Skizze goes where it went. Logged, never thrown: the Skizze's move stands. */
+async function companionFollows(sketch: MovedDocument, input: MoveDocumentInput, session: AuthorizedSession, options: MoveDocumentOptions) {
+  if (sketch.authoredByProducer !== 'diagram_svg' || !sketch.authoredByRef || !sketch.projectId) return
+  const pdf = await findDocumentAuthoredByRef(sketch.authoredByRef, session.organizationId, sketch.projectId, 'diagram_pdf')
+  if (!pdf || pdf.folderId === input.folderId) return
+  const followed = await moveSingle({ documentId: pdf.id, folderId: input.folderId }, session, options).catch((error: unknown) => ({
+    ok: false as const,
+    error: error instanceof Error ? error.message : 'unknown',
+  }))
+  if (!followed.ok) console.warn(`[documents] the PDF beside sketch ${sketch.id} stayed where it was: ${followed.error}`)
+}
+
+async function moveSingle(
+  input: MoveDocumentInput,
+  session: AuthorizedSession,
   { deferPlacement = false }: MoveDocumentOptions = {},
+  read: { document?: MovedDocument } = {},
 ): Promise<MoveDocumentOutcomeResult> {
   const db = getDb()
 
@@ -117,6 +151,7 @@ export async function moveDocumentToFolder(
   const document = await findDocumentForSession(session, input.documentId)
 
   if (!document) return { ok: false, error: 'Document not found.' }
+  read.document = document
   if (input.expectedFolderId !== undefined && document.folderId !== input.expectedFolderId) {
     return { ok: false, error: MOVED_SINCE_MESSAGE }
   }

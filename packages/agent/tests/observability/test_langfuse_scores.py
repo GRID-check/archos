@@ -176,7 +176,7 @@ class TestOneListOfNames:
         source = "\n".join(path.read_text() for path in (REPO / "apps/workspace/bff/langfuse").glob("*.ts"))
         written = set(
             re.findall(
-                r"""['"](user-feedback[a-z-]*|piloti-decision|revision-notice|document-check|diagram-filed|sketch-revised|sketch-save)['"]""",
+                r"""['"](user-feedback[a-z-]*|piloti-decision|revision-notice|document-check|diagram-filed|sketch-revised|sketch-save|sketch-pins-kept)['"]""",
                 source,
             )
         )

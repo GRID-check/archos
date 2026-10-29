@@ -96,13 +96,13 @@ describe.skipIf(!url)('a Skizze’s marks on its next Fassung, against live Post
       })
     )
 
-  const move = (from: string, to: string, sketch: typeof NEXT | null = NEXT) =>
+  // `_from` names the Fassung the marks sit on, for the reader: the carry takes them from any earlier one.
+  const move = (_from: string, to: string, sketch: typeof NEXT | null = NEXT) =>
     inOrg(() =>
       db.transaction((tx) =>
         carry.moveSketchMarks(tx, {
           organizationId: ORG,
           documentId: ids.document,
-          fromVersionIds: [from],
           toVersionId: to,
           sketch,
         })

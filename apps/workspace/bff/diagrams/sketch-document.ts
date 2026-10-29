@@ -16,9 +16,22 @@
  *   3. The bytes become the document's next Fassung (`sketch-version.ts`),
  *      refused with 409 when `baseVersionId` is no longer the current one.
  *   4. The PDF companion, the `diagram_pdf` row filed under the same reference,
- *      is drawn again from the new SVG and becomes its next Fassung too. When it
- *      cannot be found or drawn, the SVG's Fassung stands and `pdf` is `null`:
- *      the SVG is the half that carries the scene, as in filing (`filing.ts`).
+ *      is drawn again from the new SVG and becomes its next Fassung too
+ *      (`sketch-companion.ts`). When it cannot be found or drawn, the SVG's
+ *      Fassung stands and `pdf` is `null`: the SVG is the half that carries the
+ *      scene, as in filing (`filing.ts`).
+ *
+ * ## A save during Freigabe (`docs/architecture/revisions.md`)
+ *
+ * A save never publishes around an open round. While the Skizze has a draft
+ * (`draft`, or `changes_requested` after a reviewer sent it back) the editor
+ * opens that draft and a save writes into it, through the draft machinery every
+ * revision uses (`replaceVersionContent`, the scene checked as on any save,
+ * compare-and-swap on the draft's content hash): nothing is published, no PDF
+ * is drawn, and the reviewer's next look is at the reworked draft. While a
+ * version is `in_review` (or `approved`, from before approval became one step),
+ * a save is refused, 409 `review_open`: the reviewer is reading those bytes, and
+ * the editor says so and lets the person draw on, live, without saving.
  *
  * Only a sketch filed into the project is saved here (`diagram_svg`, the
  * excalidraw kind): its row is machine-authored and `stored`, so new bytes need
@@ -29,7 +42,7 @@
 import 'server-only'
 import { randomBytes, randomInt } from 'node:crypto'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { ApiError, BadRequestError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
+import { ApiError, BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { markingIsInBytes } from '@/lib/ai-provenance'
 import type { Document } from '@/lib/db/schema/documents'
@@ -37,9 +50,12 @@ import { recordDocumentAccess } from '@/lib/download-log/service'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { generatedDocumentMarking } from '@/lib/documents/generated'
 import { PublishedVersionMovedError } from '@/lib/documents/published-guard'
-import { findDocumentAuthoredByRef } from '@/lib/documents/repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
-import { findProjectInOrg } from '@/lib/projects/repository'
+import { contentDigest } from '@/lib/documents/content-digest'
+import { replaceVersionContent } from '@/lib/documents/lifecycle'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
+import { sketchTargetOf, type SketchTarget } from './sketch-target'
+import { redrawCompanionPdf, type CompanionPdfOutcome } from './sketch-companion'
 import { s3Client } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from './diagram-sources'
@@ -55,12 +71,13 @@ import {
   SketchSceneError,
   type SketchScene,
 } from './sketch-scene'
-import type { SaveSketchBody, SavedSketch, SketchDocumentView } from './sketch-wire'
+import type { SaveSketchBody, SavedSketch, SketchDocumentView, SketchProbe } from './sketch-wire'
 import { storedDiagramSource } from './stored-source'
 import { viewBoxOf } from '@/lib/annotations/sketch-anchor'
 import { recordSketchSaveScore, type SketchSaveInput, type SketchSaveOutcome } from '@/lib/langfuse/sketch-score'
-import { acceptDiagram, censusSvg, DiagramSvgError, type AcceptedDiagram } from './svg'
-import { renderDiagramPdf } from './svg-to-pdf'
+import { acceptDiagram, DiagramSvgError, type AcceptedDiagram } from './svg'
+
+export type { CompanionPdfOutcome } from './sketch-companion'
 
 const SVG = 'image/svg+xml'
 /** A stored sketch is its picture plus its scene, and the markup around them. */
@@ -75,10 +92,10 @@ function notASketch(): ApiError {
   )
 }
 
-async function readStoredText(document: Document): Promise<string> {
+async function readStoredText(bytes: Pick<Document, 'storageBucket' | 'storageKey'>): Promise<string> {
   try {
     const object = await s3Client.send(
-      new GetObjectCommand({ Bucket: resolveDocumentBucket(document.storageBucket), Key: document.storageKey })
+      new GetObjectCommand({ Bucket: resolveDocumentBucket(bytes.storageBucket), Key: bytes.storageKey })
     )
     if (!object.Body) throw new NotFoundError('File not available')
     return await object.Body.transformToString('utf8')
@@ -99,7 +116,9 @@ export interface PublishedSketch {
  * carry no scene this product can read: the document is no Skizze. Where a
  * mark on a Skizze takes its box from (`lib/annotations/sketch-place.ts`).
  */
-export async function publishedSketchOf(document: Document): Promise<PublishedSketch | null> {
+export async function publishedSketchOf(
+  document: Pick<Document, 'contentType' | 'fileSize' | 'storageBucket' | 'storageKey'>
+): Promise<PublishedSketch | null> {
   if (document.contentType !== SVG || (document.fileSize ?? 0) > MAX_STORED_SKETCH_BYTES) return null
   const text = await readStoredText(document)
   const stored = storedDiagramSource(text)
@@ -107,8 +126,8 @@ export async function publishedSketchOf(document: Document): Promise<PublishedSk
   return scene ? { scene, viewBox: viewBoxOf(text) } : null
 }
 
-/** The scene a document's current bytes carry, or a 415 when they carry none this product can read. */
-async function storedSceneOf(document: Document): Promise<SketchScene> {
+/** The scene some bytes carry (the current ones, or a draft's), or a 415 when they carry none this product can read. */
+async function storedSceneOf(document: Pick<Document, 'contentType' | 'fileSize' | 'storageBucket' | 'storageKey'>): Promise<SketchScene> {
   const sketch = await publishedSketchOf(document)
   if (!sketch) throw notASketch()
   return sketch.scene
@@ -121,37 +140,52 @@ function titleOf(document: Document): string {
 /** Whether the save takes new bytes for this document at all: only a sketch filed into the project. */
 const savesAsVersion = (document: Document) => document.authoredByProducer === 'diagram_svg' && Boolean(document.authoredByRef)
 
+/** Whether the editor opens to draw or to watch: what the PUT would take. The save and the room's edit lane check it again. */
+async function mayWrite(session: AuthorizedSession, document: Document): Promise<boolean> {
+  if (!savesAsVersion(document)) return false
+  return getAccessibleDocument(session, document.id, 'write').then(
+    () => true,
+    (error: unknown) => {
+      if (error instanceof ForbiddenError || error instanceof NotFoundError) return false
+      throw error
+    }
+  )
+}
+
 /**
- * `GET /api/documents/[id]/sketch`. `probe`: the Files preview asking whether
- * to offer the editor, which is no reading of the document by the person and
- * is not logged; opening the editor reads again, and that is.
+ * `GET /api/documents/[id]/sketch?probe=1`: the Files preview asking whether to
+ * offer the editor. No reading of the document by the person, so it is not
+ * logged, and so it carries nothing of the drawing: no scene, no outline, no
+ * title. Opening the editor reads without the probe, and that read is logged.
  */
-export async function readSketchDocument(
-  session: AuthorizedSession,
-  documentId: string,
-  { probe = false }: { probe?: boolean } = {}
-): Promise<SketchDocumentView> {
+export async function probeSketchDocument(session: AuthorizedSession, documentId: string): Promise<SketchProbe> {
   const document = await getAccessibleDocument(session, documentId, 'read')
-  const scene = await storedSceneOf(document)
-  // Whether the editor opens to draw or to watch: what the PUT would take. The save and the room's edit lane check it again.
-  const canWrite =
-    savesAsVersion(document) &&
-    (await getAccessibleDocument(session, documentId, 'write').then(
-      () => true,
-      (error: unknown) => {
-        if (error instanceof ForbiddenError || error instanceof NotFoundError) return false
-        throw error
-      }
-    ))
+  const hasScene = (await publishedSketchOf(document).catch(() => null)) !== null
+  return { hasScene, canWrite: hasScene && (await mayWrite(session, document)), versionId: document.publishedVersionId }
+}
+
+/**
+ * `GET /api/documents/[id]/sketch`. A writer opens the open draft when the
+ * Skizze is in Freigabe (`./sketch-target.ts`); a reader always the current
+ * Fassung, which is what the office shows.
+ */
+export async function readSketchDocument(session: AuthorizedSession, documentId: string): Promise<SketchDocumentView> {
+  const document = await getAccessibleDocument(session, documentId, 'read')
+  const canWrite = await mayWrite(session, document)
+  const target: SketchTarget = canWrite ? await sketchTargetOf(document) : { kind: 'published' }
+  const draft = target.kind === 'draft' ? target.version : null
+  const scene = await storedSceneOf(draft ? { ...draft, contentType: SVG } : document)
   // The scene is the document's content as much as its picture is.
-  if (!probe) await recordDocumentAccess(session, document, 'preview')
+  await recordDocumentAccess(session, document, 'preview', draft ? { versionId: draft.id } : undefined)
   return {
     documentId: document.id,
-    versionId: document.publishedVersionId,
+    versionId: draft?.id ?? document.publishedVersionId,
     canWrite,
     title: titleOf(document),
     scene,
     outline: outlineSketch(scene),
+    saveTarget: target.kind,
+    contentHash: draft?.contentHash ?? null,
   }
 }
 
@@ -200,32 +234,48 @@ function acceptSketch(
   return { accepted, source, scene, bumped, tombstoned }
 }
 
-/** `PUT /api/documents/[id]/sketch`. */
-/** The saved Fassung, and the reference the score finds the drawing turn by (never sent on the wire). */
+/** The 409 a save meets while a Freigabe round is reading the Skizze: nothing is saved, the canvas stays live. */
+export function reviewOpenRefusal(version: Pick<DocumentVersion, 'id' | 'state'>): ConflictError {
+  return new ConflictError('This sketch is in review: it cannot be saved until the review is decided.', {
+    reason: 'review_open',
+    versionId: version.id,
+    state: version.state,
+  })
+}
+
+/** `PUT /api/documents/[id]/sketch`: the saved Fassung, and the reference the score finds the drawing turn by (never sent on the wire). */
 export async function saveSketchDocument(
   input: SaveSketchInput
 ): Promise<SavedSketch & { answerRef: string; pdfOutcome: CompanionPdfOutcome }> {
-  const { session, body } = input
+  const { session } = input
   const document = await getAccessibleDocument(session, input.documentId, 'write')
-  const stored = await storedSceneOf(document)
   if (!savesAsVersion(document) || !document.authoredByRef) {
+    await storedSceneOf(document)
     throw new BadRequestError('Only a sketch filed into the project is saved as a new version; upload a new file instead.')
   }
   const answerRef = document.authoredByRef
   const score = (outcome: SketchSaveOutcome, extra: Partial<SketchSaveInput> = {}) =>
     void recordSketchSaveScore({ organizationId: session.organizationId, documentId: document.id, answerRef, outcome, ...extra })
   try {
-    const saved = await writeVersion(input, document, stored, answerRef)
-    score(saved.pdfOutcome === 'failed' ? 'pdf_stale' : 'saved', { metadata: saved.facts })
+    const target = await sketchTargetOf(document)
+    if (target.kind === 'review_open') throw reviewOpenRefusal(target.version)
+    const saved =
+      target.kind === 'draft'
+        ? await writeDraft(input, document, target.version, answerRef)
+        : await writeVersion(input, document, await storedSceneOf(document), answerRef)
+    score(saved.state === 'draft' ? 'drafted' : saved.pdfOutcome === 'failed' ? 'pdf_stale' : 'saved', { metadata: saved.facts })
     const { facts: _facts, ...rest } = saved
     return rest
   } catch (error) {
     if (error instanceof PublishedVersionMovedError) score('conflict')
+    else if (error instanceof ConflictError && reasonOf(error) === 'review_open') score('review_open')
     else if (error instanceof SketchSceneError) score('refused', { refusal: error.refusal })
     else if (error instanceof DiagramSvgError) score('refused', { refusal: error.rejection })
     throw error
   }
 }
+
+const reasonOf = (error: ConflictError) => (error.details as { reason?: string } | undefined)?.reason
 
 async function writeVersion(input: SaveSketchInput, document: Document, stored: SketchScene, answerRef: string) {
   const { session, body } = input
@@ -234,6 +284,7 @@ async function writeVersion(input: SaveSketchInput, document: Document, stored: 
   const provenance = generatedDocumentMarking('diagram_svg', answerRef)
   if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch SVG lost its AI marking')
 
+  const sceneHash = sceneHashOf(scene.elements)
   const version = await publishNextVersion({
     session,
     document,
@@ -243,89 +294,89 @@ async function writeVersion(input: SaveSketchInput, document: Document, stored: 
     request: input.request,
     // Its marks go on with it, placed on the sheet just accepted (`lib/annotations/sketch-carry.ts`).
     sketch: { elements: scene.elements, viewBox: accepted.viewport },
+    // The room hears of it, stamped with the saving tab so it hears no echo (`lib/documents/current-version.ts`).
+    room: { sceneHash, peerId: input.peerId ?? null },
   })
-  await announceInRoom(input, document.id, version.id, scene)
-  const { pdf, outcome } = await redrawCompanionPdf(input, document, version.id, accepted)
+  const { pdf, outcome } = await redrawCompanionPdf({
+    session,
+    sketch: document,
+    svgVersionId: version.id,
+    drawing: accepted,
+    marking: input.marking,
+    title: titleOf(document),
+    request: input.request,
+  })
   return {
     documentId: document.id,
     versionId: version.id,
     versionNumber: version.versionNumber,
+    state: 'published' as const,
+    contentHash: version.contentHash,
     pdf,
     pdfStale: outcome === 'failed',
     pdfOutcome: outcome,
     answerRef,
-    facts: { version_number: version.versionNumber, bumped, tombstoned, pdf: outcome },
+    facts: {
+      version_number: version.versionNumber,
+      bumped,
+      tombstoned,
+      pdf: outcome,
+      carried: version.carried.moved.length,
+      lost: version.carried.lost.length,
+    },
   }
 }
 
 /**
- * Tell the document's room a Fassung was written, whoever wrote it (an agent
- * through MCP has no canvas to say it): every open canvas compares its scene
- * with the saved one and, when they differ, merges the Fassung in
- * (`sketch-sync.ts`). Stamped as the saver, with the saving editor's peer id
- * when it sent one, so that tab hears no echo. Never throws.
+ * A save into the Skizze's open draft: its scene is versioned against the
+ * draft's, the bytes are checked as on any save, and the draft's content is
+ * replaced through the lifecycle (`replaceVersionContent`, compare-and-swap on
+ * the hash read here). A save that started from anything but this draft, or
+ * from an older state of it, is the 409 `stale_base_version` a published save
+ * gets, so the editor merges and tries once more.
  */
-async function announceInRoom(input: SaveSketchInput, documentId: string, versionId: string, scene: SketchScene) {
+async function writeDraft(input: SaveSketchInput, document: Document, draft: DocumentVersion, answerRef: string) {
+  const { session, body } = input
+  const stale = () => new PublishedVersionMovedError(document.id, draft.id)
+  if (body.baseVersionId !== draft.id) throw stale()
+  if (body.baseContentHash && draft.contentHash && body.baseContentHash !== draft.contentHash) throw stale()
+  const stored = await storedSceneOf({ ...draft, contentType: SVG })
+  const { accepted, scene, bumped, tombstoned } = acceptSketch(body, stored, input.marking, answerRef)
+  const bytes = Buffer.from(accepted.svg, 'utf8')
+  if (!markingIsInBytes(bytes, generatedDocumentMarking('diagram_svg', answerRef))) throw new Error('the sketch SVG lost its AI marking')
+  let written: DocumentVersion
+  try {
+    written = await replaceVersionContent(
+      session,
+      document.id,
+      draft.id,
+      { bytes, contentType: SVG, contentHash: contentDigest(bytes) },
+      draft.contentHash,
+      { request: input.request }
+    )
+  } catch (error) {
+    // Another save won the swap, or a reviewer took the draft meanwhile: read again (the retry meets `review_open`).
+    if (error instanceof ConflictError && !(error instanceof PublishedVersionMovedError)) throw stale()
+    throw error
+  }
+  // The open canvases merge it; the draft is nobody's current Fassung, so nothing else is told.
   const peerId = input.peerId ?? `save_${randomBytes(6).toString('hex')}`
-  await publishToDocumentRoom(documentId, {
+  await publishToDocumentRoom(document.id, {
     kind: 'scene.saved',
-    peer: { peerId, userId: input.session.userId, name: input.session.name ?? input.session.email, kind: 'person' },
-    versionId,
+    peer: { peerId, userId: session.userId, name: session.name ?? session.email, kind: 'person' },
+    versionId: written.id,
     sceneHash: sceneHashOf(scene.elements),
   })
-}
-
-/** What became of the PDF beside a sketch after a save; a score reads it (`sketch-score.ts`). */
-export type CompanionPdfOutcome = 'redrawn' | 'none' | 'superseded' | 'failed'
-
-/**
- * The PDF filed beside the sketch, drawn again as its next Fassung from the
- * SVG Fassung `svgVersionId` this save wrote. It is published only while that
- * SVG Fassung is still the current one (checked under the PDF's lock), so a
- * slow save never files its older drawing over a newer save's: the newer save
- * draws its own (`superseded`). A drawing that fails leaves the PDF on an
- * earlier Fassung, which the editor says (`pdfStale`) and a score counts.
- */
-async function redrawCompanionPdf(
-  input: SaveSketchInput,
-  sketch: Document,
-  svgVersionId: string,
-  accepted: AcceptedDiagram,
-): Promise<{ pdf: SavedSketch['pdf']; outcome: CompanionPdfOutcome }> {
-  const { session } = input
-  if (!sketch.projectId || !sketch.authoredByRef) return { pdf: null, outcome: 'none' }
-  try {
-    const found = await findDocumentAuthoredByRef(sketch.authoredByRef, session.organizationId, sketch.projectId, 'diagram_pdf')
-    if (!found) return { pdf: null, outcome: 'none' }
-    const pdfDocument = await getAccessibleDocument(session, found.id, 'write')
-    const project = await findProjectInOrg(sketch.projectId, session.organizationId)
-    const provenance = generatedDocumentMarking('diagram_pdf', sketch.authoredByRef)
-    const bytes = await renderDiagramPdf({
-      root: accepted.root,
-      viewport: accepted.viewport,
-      title: titleOf(sketch),
-      projectName: project?.name ?? '',
-      marking: input.marking,
-      provenance,
-      createdAt: new Date(),
-    })
-    if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch PDF does not carry its AI marking')
-    const version = await publishNextVersion({
-      session,
-      document: pdfDocument,
-      bytes,
-      contentType: 'application/pdf',
-      expected: { publishedVersionId: svgVersionId, of: sketch.id },
-      request: input.request,
-    })
-    return { pdf: { documentId: pdfDocument.id, versionId: version.id }, outcome: 'redrawn' }
-  } catch (error) {
-    if (error instanceof PublishedVersionMovedError && error.documentId === sketch.id) return { pdf: null, outcome: 'superseded' }
-    console.error('[diagrams] the sketch was saved and its PDF was not', {
-      documentId: sketch.id,
-      cause: error instanceof Error ? `${error.name}: ${error.message}` : 'unknown',
-      census: censusSvg(accepted.root),
-    })
-    return { pdf: null, outcome: 'failed' }
+  return {
+    documentId: document.id,
+    versionId: written.id,
+    versionNumber: written.versionNumber,
+    state: 'draft' as const,
+    contentHash: written.contentHash,
+    pdf: null,
+    pdfStale: false,
+    pdfOutcome: 'none' as CompanionPdfOutcome,
+    answerRef,
+    facts: { version_number: written.versionNumber, bumped, tombstoned, pdf: 'none', carried: 0, lost: 0 },
   }
 }

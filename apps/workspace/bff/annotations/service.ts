@@ -75,7 +75,7 @@ import { documentDisplayName } from '@/lib/documents/display-name'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { replacingDocumentOf } from './carry'
-import { sketchOfDocument, toMark } from './sketch-place'
+import { isDiagramRendition, sketchOfDocument, toMark } from './sketch-place'
 import {
   AlreadyCarriedError,
   AnnotationLimitReachedError,
@@ -523,7 +523,7 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
     directoryNames(session.organizationId),
   ])
   const annotations = (await documentAnnotationViews(session, doc, records, { writable, names })).sort(compareAnnotations)
-  return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
+  return { annotations, canAnnotate: writable && !isDiagramRendition(doc), pilotiWakes: wakesEnabled(session) }
 }
 
 /**

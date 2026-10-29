@@ -152,6 +152,16 @@ export const roomEventSchema = z.discriminatedUnion('kind', [
     change: z.enum(ANNOTATION_CHANGES),
     actor: roomPeerSchema.omit({ peerId: true }).extend({ peerId: z.string().nullable() }),
   }),
+  /**
+   * Another Fassung is the document's current one now: a save, a Freigabe, an
+   * upload (`lib/documents/current-version.ts`). A hint, as `annotations.changed`
+   * is: a preview reads its picture and timeline again. Only the server sends it.
+   */
+  z.object({
+    kind: z.literal('version.published'),
+    versionId: z.string().min(1).max(64),
+    actor: roomPeerSchema.omit({ peerId: true }).extend({ peerId: z.string().nullable() }),
+  }),
   ...sketchEventSchemas,
 ])
 export type RoomEvent = z.infer<typeof roomEventSchema>

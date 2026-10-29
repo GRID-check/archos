@@ -27,6 +27,12 @@
  * stays open after a save, sitting on the new Fassung; a save refused because
  * someone saved first merges their Fassung in and tries once more.
  *
+ * It joins through the preview's room (`revision.review.room`), so the tab is
+ * in the room once. During Freigabe a writer edits the open draft
+ * (`saveTarget: 'draft'`) and „Speichern" writes into it; while a version is in
+ * review the save is refused and the dialog says why, and the canvas stays
+ * live so the person can draw on without saving.
+ *
  * A close with unsaved changes asks once, in place. Excalidraw keeps no draft
  * of its own here (its local storage is the excalidraw.com app's, not the
  * component's), so a stray Escape would otherwise throw the work away.
@@ -77,6 +83,10 @@ export interface SketchDialogProps {
   revision?: {
     documentId: string
     baseVersionId: string | null
+    /** The open draft's hash when the editor opened one (`saveTarget: 'draft'`). */
+    baseContentHash?: string | null
+    /** What a save writes: the next Fassung, the open Freigabe draft, or nothing while a version is in review. */
+    saveTarget?: 'published' | 'draft' | 'review_open'
     scene: { elements: readonly object[]; appState?: Record<string, unknown> }
     /** Whether the reader may save; otherwise the canvas only shows (and still shows the others draw). */
     canWrite?: boolean
@@ -94,7 +104,7 @@ function RevisionStatus({ state }: { state: SketchRevisionState }) {
   if (state.kind === 'saved') {
     return (
       <span>
-        {t('sketch.savedVersion', { number: String(state.versionNumber) })}
+        {t(state.draft ? 'sketch.savedDraft' : 'sketch.savedVersion', { number: String(state.versionNumber) })}
         {state.pdfStale ? <span data-testid="sketch-pdf-stale"> {t('sketch.pdfStale')}</span> : null}
       </span>
     )
@@ -103,6 +113,13 @@ function RevisionStatus({ state }: { state: SketchRevisionState }) {
     return <span className="text-destructive">{t(state.merged ? 'sketch.saveAgain' : 'sketch.staleVersion')}</span>
   }
   if (state.kind === 'failed') return <span className="text-destructive">{state.message}</span>
+  if (state.kind === 'review_open') {
+    return (
+      <span className="text-destructive" data-testid="sketch-review-open">
+        {t('sketch.reviewOpen')}
+      </span>
+    )
+  }
   return null
 }
 
@@ -142,23 +159,29 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
     baseVersionId: revision?.baseVersionId ?? null,
     transport: revision?.roomTransport,
     nameOf,
+    room: revision?.review?.room ?? null,
   })
   const roomRef = useRef(room)
   roomRef.current = room
   const baseOf = useCallback(() => roomRef.current.base(), [])
   const peerOf = useCallback(() => roomRef.current.peerId, [])
+  // The open draft's hash this canvas sits on: what it opened, then what its own save or a merge read.
+  const draftHash = useRef<string | null>(revision?.baseContentHash ?? null)
+  const hashOf = useCallback(() => draftHash.current, [])
   /** Someone saved first: their Fassung is merged into this canvas, and the save is tried once more on it. */
   const resolveStale = useCallback(async () => {
     if (!revision) return false
-    // An open editor merging, not a person opening the document: not a read the download log records.
-    const latest = await getSketch(revision.documentId, undefined, { probe: true }).catch(() => null)
+    // A read the download log records; it de-noises an editor that keeps one open.
+    const latest = await getSketch(revision.documentId).catch(() => null)
     if (!latest) return false
+    draftHash.current = latest.contentHash
     roomRef.current.mergeFrom(latest.scene.elements as unknown as WireElement[], latest.versionId)
     return true
   }, [revision])
   const onRevisionSaved = useCallback(
     (saved: SavedRevision) => {
       handle.current?.markSaved()
+      if (saved.state === 'draft') draftHash.current = saved.contentHash
       void roomRef.current.announceSave(saved.versionId, saved.elements as unknown as WireElement[])
       revision?.onSaved?.()
     },
@@ -181,7 +204,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
   }, [])
   const filing = useDiagramFiling({ source, fileSvg: null, prepareSketch, title })
   const revised = useSketchRevision(
-    revision ? { documentId: revision.documentId, baseVersionId: baseOf, peerId: peerOf } : null,
+    revision ? { documentId: revision.documentId, baseVersionId: baseOf, peerId: peerOf, baseContentHash: hashOf } : null,
     prepareSketch,
     onRevisionSaved,
     resolveStale
@@ -229,7 +252,17 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
         <DialogHeader className="shrink-0 pr-8 text-left phone:pt-[max(0.75rem,env(safe-area-inset-top))] phone:pr-[calc(env(safe-area-inset-right)+3.75rem)] phone:pl-[max(1rem,env(safe-area-inset-left))]">
           <DialogTitle className="text-base">{t('sketch.title')}</DialogTitle>
           <DialogDescription className="text-xs">
-            {t(!revision ? 'sketch.description' : canWrite ? 'sketch.reviseDescription' : 'sketch.viewOnly')}
+            {t(
+              !revision
+                ? 'sketch.description'
+                : !canWrite
+                  ? 'sketch.viewOnly'
+                  : revision.saveTarget === 'draft'
+                    ? 'sketch.reviseDraftDescription'
+                    : revision.saveTarget === 'review_open'
+                      ? 'sketch.reviewOpenDescription'
+                      : 'sketch.reviseDescription'
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="border-border min-h-0 flex-1 overflow-hidden rounded-lg border phone:rounded-none phone:border-x-0">
@@ -282,6 +315,11 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
                   <span className="text-destructive">{filing.state.message}</span>
                 ) : null}
               </span>
+              {revision && revised.state.kind === 'review_open' ? (
+                <Button variant="ghost" onClick={revised.dismiss} data-testid="sketch-keep-drawing">
+                  {t('sketch.keepDrawing')}
+                </Button>
+              ) : null}
               <Button variant="ghost" onClick={() => requestClose(false)}>
                 {t('sketch.close')}
               </Button>

@@ -230,6 +230,7 @@ function approvedInOneStep(): void {
   vi.mocked(promoteVersionToPublished).mockResolvedValue({
     version: version({ state: 'published' }),
     superseded: [],
+    carried: { moved: [], lost: [] },
   })
 }
 
@@ -863,6 +864,7 @@ describe('transitionDocumentVersion — effects', () => {
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: version({ state: 'published' }),
       superseded: [version({ id: 'ver_0', state: 'superseded', createdBy: 'user_first' })],
+      carried: { moved: [], lost: [] },
     })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -880,7 +882,7 @@ describe('transitionDocumentVersion — effects', () => {
 
   it('publish of a first version announces nothing: there is no earlier Fassung to follow', async () => {
     vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved' }))
-    vi.mocked(promoteVersionToPublished).mockResolvedValue({ version: version({ state: 'published' }), superseded: [] })
+    vi.mocked(promoteVersionToPublished).mockResolvedValue({ version: version({ state: 'published' }), superseded: [], carried: { moved: [], lost: [] } })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
 
@@ -893,6 +895,7 @@ describe('transitionDocumentVersion — effects', () => {
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: published,
       superseded: [version({ id: 'ver_0', state: 'superseded' })],
+      carried: { moved: [], lost: [] },
     })
 
     const result = await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -921,7 +924,7 @@ describe('transitionDocumentVersion — effects', () => {
     )
     const published = version({ state: 'published' })
     vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved' }))
-    vi.mocked(promoteVersionToPublished).mockResolvedValue({ version: published, superseded: [] })
+    vi.mocked(promoteVersionToPublished).mockResolvedValue({ version: published, superseded: [], carried: { moved: [], lost: [] } })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
 
@@ -937,7 +940,7 @@ describe('transitionDocumentVersion — effects', () => {
     )
     const published = version({ state: 'published', contentHash: 'sha256:edited' })
     vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved', contentHash: 'sha256:edited' }))
-    vi.mocked(promoteVersionToPublished).mockResolvedValue({ version: published, superseded: [] })
+    vi.mocked(promoteVersionToPublished).mockResolvedValue({ version: published, superseded: [], carried: { moved: [], lost: [] } })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
 
@@ -980,6 +983,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [],
+      carried: { moved: [], lost: [] },
     })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -1012,6 +1016,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [],
+      carried: { moved: [], lost: [] },
     })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -1043,6 +1048,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [version({ id: 'ver_0', state: 'superseded' })],
+      carried: { moved: [], lost: [] },
     })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -1064,6 +1070,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [],
+      carried: { moved: [], lost: [] },
     })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -1083,6 +1090,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [version({ id: 'ver_0', state: 'superseded' })],
+      carried: { moved: [], lost: [] },
     })
 
     const result = await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -1102,6 +1110,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [],
+      carried: { moved: [], lost: [] },
     })
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
@@ -1118,6 +1127,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [],
+      carried: { moved: [], lost: [] },
     })
 
     await expect(transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')).resolves.toMatchObject({
@@ -1132,6 +1142,7 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
       version: publishedVersion(),
       superseded: [],
+      carried: { moved: [], lost: [] },
     })
 
     await expect(transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')).rejects.toThrow(
@@ -1158,6 +1169,7 @@ describe('createDocumentVersion — a human upload', () => {
     vi.mocked(insertPublishedVersion).mockImplementation(async (values) => ({
       version: version({ ...(values as Partial<DocumentVersion>), id: 'ver_new' }),
       superseded: [],
+      carried: { moved: [], lost: [] },
     }))
 
     await upload()
@@ -1176,6 +1188,7 @@ describe('createDocumentVersion — a human upload', () => {
     vi.mocked(insertPublishedVersion).mockResolvedValue({
       version: version({ id: 'ver_new', state: 'published' }),
       superseded: [version({ id: 'ver_0', state: 'superseded' })],
+      carried: { moved: [], lost: [] },
     })
 
     await upload()
@@ -1188,6 +1201,7 @@ describe('createDocumentVersion — a human upload', () => {
     vi.mocked(insertPublishedVersion).mockImplementation(async (values) => ({
       version: version({ ...(values as Partial<DocumentVersion>), id: 'ver_new' }),
       superseded: [version({ id: 'ver_0', state: 'superseded', createdBy: 'user_first' })],
+      carried: { moved: [], lost: [] },
     }))
 
     await upload()
@@ -1207,6 +1221,7 @@ describe('createDocumentVersion — a human upload', () => {
     vi.mocked(insertPublishedVersion).mockImplementation(async (values) => ({
       version: version({ ...(values as Partial<DocumentVersion>), id: 'ver_first' }),
       superseded: [],
+      carried: { moved: [], lost: [] },
     }))
 
     await upload()
@@ -1552,6 +1567,23 @@ describe('request_changes and the revision task', () => {
       delegateRevision: true,
     })
     expect(delegateTask).toHaveBeenCalledTimes(1)
+  })
+
+  // A Skizze is revised in its editor: Markdown written into its SVG broke the drawing (the interference audit's C1).
+  it('opens no task for a Skizze, and refuses „Piloti überarbeiten lassen" for one before the decision', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    await refuse(version({ originConversationId: null, contentType: 'image/svg+xml' }))
+    expect(delegateTask).not.toHaveBeenCalled()
+    expect(readVersionTextForTask).not.toHaveBeenCalled()
+
+    vi.mocked(compareAndSwapVersionState).mockClear()
+    vi.mocked(findDocumentVersion).mockResolvedValue(version({ originConversationId: null, contentType: 'image/svg+xml' }))
+    const refused = transitionDocumentVersion(session, 'doc_1', 'ver_1', 'request_changes', {
+      comment: 'Die Stiege fehlt',
+      delegateRevision: true,
+    })
+    await expect(refused).rejects.toMatchObject({ status: 415, details: { reason: 'not_revisable_as_text' } })
+    expect(compareAndSwapVersionState).not.toHaveBeenCalled()
   })
 
   it('still records the decision when the task cannot be opened', async () => {

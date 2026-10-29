@@ -21,6 +21,7 @@
  * visibility rule tested through a mounted React tree is a rule nobody reads.
  */
 
+import { revisableAsText } from '@/lib/documents/text-content'
 import {
   DOCUMENT_VERSION_TRANSITIONS,
   transitionsForOp,
@@ -192,12 +193,14 @@ export function lifecycleRequestFor(gesture: DocumentLifecycleGesture): Document
  * either, and there is no second permission to read.
  */
 export function availableLifecycleGestures(
-  version: Pick<DocumentVersionView, 'state' | 'submittedBy'> | null,
+  version: (Pick<DocumentVersionView, 'state' | 'submittedBy'> & { contentType?: string | null }) | null,
   lifecycle: 'active' | 'archived',
   viewer: DocumentLifecycleViewer,
 ): DocumentLifecycleGesture[] {
+  // Piloti revises text; a Skizze is revised in its editor, so its round offers no delegation (`text-content.ts`).
+  const delegable = revisableAsText(version?.contentType)
   return availableLifecycleActions(version, lifecycle, viewer).flatMap((action) =>
-    action === 'request_changes' ? [action, DELEGATE_REVISION] : [action],
+    action === 'request_changes' && delegable ? [action, DELEGATE_REVISION] : [action],
   )
 }
 

@@ -13,6 +13,12 @@
  * attaches a {@link SketchCanvasBridge} once its API is ready, carrying
  * Excalidraw's merge, hash and repair and a way to read and update its scene.
  *
+ * One room per tab: the editor opened from the Files preview joins through the
+ * preview's own room (`room`, its review's), so the person is one peer, one
+ * avatar, one entry in Piloti's snapshot, and the close warning names nobody
+ * but the others. Only an editor with no room to share (the `/dev` preview, a
+ * spec) opens its own.
+ *
  * Pointers and selections go up only while another person is here. Edits go
  * up only from a writer; a reader's canvas is in view mode and still sees
  * everyone draw.
@@ -28,7 +34,7 @@ import {
   type WireElement,
 } from '@/lib/diagrams/sketch-room-types'
 import type { RealtimePeer } from '@/lib/realtime/types'
-import { useDocumentRoom, type RoomTransport } from '@/features/documents'
+import { useDocumentRoom, type DocumentRoom, type RoomTransport } from '@/features/documents'
 import { collaboratorsOf, type SketchCollaborator } from './sketch-collaborators'
 import { createSketchSync, type SketchElement, type SketchHelpers, type SketchSync } from './sketch-sync'
 
@@ -66,6 +72,8 @@ export interface SketchRoomOptions {
   transport?: RoomTransport
   /** What a peer is called on the canvas (Piloti with the person it acts for). */
   nameOf?: (peer: RealtimePeer) => string
+  /** The tab's room for this document, when the host is already in it (the preview's review): joined through, never twice. */
+  room?: DocumentRoom | null
 }
 
 /** A peer's save, as the dialog shows it. */
@@ -79,8 +87,9 @@ export interface PeerSave {
 const SYNC_EVENTS = new Set<string>(['scene.delta', 'scene.hash', 'scene.want', 'scene.saved'])
 const isSyncEvent = (event: { kind: string }): event is SketchRoomEvent => SYNC_EVENTS.has(event.kind)
 
-export function useSketchRoom({ documentId, canWrite, baseVersionId, transport, nameOf }: SketchRoomOptions) {
-  const room = useDocumentRoom(documentId ?? '', { enabled: documentId !== null, transport })
+export function useSketchRoom({ documentId, canWrite, baseVersionId, transport, nameOf, room: shared = null }: SketchRoomOptions) {
+  const own = useDocumentRoom(documentId ?? '', { enabled: documentId !== null && !shared, transport })
+  const room = shared ?? own
   const sync = useRef<SketchSync | null>(null)
   const bridgeRef = useRef<SketchCanvasBridge | null>(null)
   const settings = useRef({ canWrite, baseVersionId, nameOf })
@@ -183,10 +192,18 @@ export function useSketchRoom({ documentId, canWrite, baseVersionId, transport, 
     []
   )
 
-  /** The names of the other people here now, for the close guard. */
+  /** The names of the other people here now, for the close guard: never this person, from another tab of theirs. */
+  const { self } = room
   const otherPeople = useCallback(
-    () => [...new Set(peers.get().filter((state) => state.peer.kind === 'person').map((state) => state.peer.name))],
-    [peers]
+    () => [
+      ...new Set(
+        peers
+          .get()
+          .filter((state) => state.peer.kind === 'person' && state.peer.userId !== self?.userId)
+          .map((state) => state.peer.name)
+      ),
+    ],
+    [peers, self]
   )
 
   return {

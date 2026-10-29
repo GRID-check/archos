@@ -4,17 +4,23 @@
  * „Als Skizze bearbeiten" in the Files preview of a filed sketch (ADR-0148).
  *
  * Offered only where it works: an SVG Piloti filed whose bytes carry an
- * Excalidraw scene. That is asked of the server (`GET …/sketch`, 415 for a
- * mermaid diagram or any other SVG) when the preview shows such a file, as a
- * probe (`?probe=1`) the download log does not record: the person only looked
- * at the file. The click reads the sketch again, and that read is logged: it
- * is the person opening the drawing, and it opens the latest Fassung. The
- * editor (`SketchDialog`) is the chat's, loaded on the click.
+ * Excalidraw scene. That is asked of the server when the preview shows such a
+ * file, as a probe (`?probe=1`) that answers whether, and nothing of the
+ * drawing, so the download log need not record it: the person only looked at
+ * the file. The click reads the sketch, and that read is logged: it is the
+ * person opening the drawing, and it opens the latest Fassung (or, for a
+ * writer, the open Freigabe draft). The editor (`SketchDialog`) is the chat's,
+ * loaded on the click.
+ *
+ * The preview is in the document's room (its review's), and so is the editor
+ * it opens: one room per tab. When a colleague's save, a Freigabe or an upload
+ * makes another Fassung current (`version.published`), the preview reads its
+ * picture again (`onChanged`) and asks again whether to offer the editor.
  */
 
 import { PencilLine } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { getSketch, type SketchForEditing } from '@/adapters/api/diagrams-client'
+import { getSketch, probeSketch, type SketchForEditing, type SketchProbe } from '@/adapters/api/diagrams-client'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
@@ -37,6 +43,7 @@ export function SketchReviseAction({
   reviewRequest = null,
 }: PreviewDocumentActionProps) {
   const t = useTranslations(diagramsCopy)
+  const [probe, setProbe] = useState<SketchProbe | null>(null)
   const [sketch, setSketch] = useState<SketchForEditing | null>(null)
   const [open, setOpen] = useState(false)
   const [reads, setReads] = useState(0)
@@ -44,12 +51,23 @@ export function SketchReviseAction({
   const candidate = mayBeFiledSketch(contentType, authoredBy)
 
   useEffect(() => {
-    setSketch(null)
+    setProbe(null)
     if (!candidate) return
     const controller = new AbortController()
-    getSketch(documentId, controller.signal, { probe: true }).then(setSketch, () => setSketch(null))
+    probeSketch(documentId, controller.signal).then(setProbe, () => setProbe(null))
     return () => controller.abort()
   }, [candidate, documentId, reads])
+
+  // Another Fassung is current: the preview shows it, whoever made it (G1). This tab's own save already reloaded.
+  const room = review?.room ?? null
+  useEffect(() => {
+    if (!room || !candidate) return
+    return room.onRoomEvent((event) => {
+      if (event.kind !== 'version.published' || event.actor.peerId === room.peerId) return
+      onChanged()
+      setReads((count) => count + 1)
+    })
+  }, [room, candidate, onChanged])
 
   const onSaved = useCallback(() => onChanged(), [onChanged])
   const openEditor = useCallback(async () => {
@@ -83,7 +101,7 @@ export function SketchReviseAction({
     [requested, closeRequest]
   )
 
-  if (!sketch) return null
+  if (!probe?.hasScene) return null
   return (
     <>
       <Button
@@ -102,21 +120,25 @@ export function SketchReviseAction({
           {t('sketch.openFailed')}
         </p>
       ) : null}
-      <SketchDialog
-        open={open}
-        onOpenChange={onOpenChange}
-        source=""
-        elements={NO_ELEMENTS}
-        title={sketch.title}
-        revision={{
-          documentId: sketch.documentId,
-          baseVersionId: sketch.versionId,
-          scene: sketch.scene,
-          canWrite: sketch.canWrite,
-          onSaved,
-          review,
-        }}
-      />
+      {sketch ? (
+        <SketchDialog
+          open={open}
+          onOpenChange={onOpenChange}
+          source=""
+          elements={NO_ELEMENTS}
+          title={sketch.title}
+          revision={{
+            documentId: sketch.documentId,
+            baseVersionId: sketch.versionId,
+            baseContentHash: sketch.contentHash,
+            saveTarget: sketch.saveTarget,
+            scene: sketch.scene,
+            canWrite: sketch.canWrite,
+            onSaved,
+            review,
+          }}
+        />
+      ) : null}
     </>
   )
 }

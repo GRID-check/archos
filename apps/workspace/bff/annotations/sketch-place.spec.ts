@@ -78,6 +78,11 @@ describe('sketchOfDocument', () => {
     expect(publishedSketchOf).not.toHaveBeenCalled()
   })
 
+  it('refuses any mark on the PDF rendition of a diagram, naming where it belongs (C7)', async () => {
+    const rendition = { contentType: 'application/pdf', authoredByProducer: 'diagram_pdf' } as Document
+    await expect(sketchOfDocument(rendition, [content as never])).rejects.toMatchObject({ status: 400, details: { reason: 'sketch_rendition' } })
+  })
+
   it('reads the published scene of an SVG', async () => {
     vi.mocked(publishedSketchOf).mockResolvedValue(SKETCH)
     await expect(sketchOfDocument({ contentType: 'image/svg+xml' } as Document, [])).resolves.toBe(SKETCH)

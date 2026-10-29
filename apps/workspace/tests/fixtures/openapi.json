@@ -5494,13 +5494,13 @@
                       "type",
                       "elements"
                     ],
-                    "description": "The whole Excalidraw scene, as document-sketch-get returned it with your changes: `type: \"excalidraw\"`, `elements` (keep each element’s `id`), optional `appState`. No `files`: a sketch carries no images."
+                    "description": "The whole Excalidraw scene from document-sketch-get, with your changes: keep each element’s `id`; optional `appState`; no `files` (no images)."
                   },
                   "svg": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 1048576,
-                    "description": "The picture of that scene as SVG (Excalidraw’s exportToSvg); it is checked by the server’s SVG rules"
+                    "description": "That scene as SVG (Excalidraw’s exportToSvg), checked by the server’s SVG rules"
                   },
                   "baseVersionId": {
                     "anyOf": [
@@ -5513,7 +5513,20 @@
                         "type": "null"
                       }
                     ],
-                    "description": "The `versionId` document-sketch-get returned: the version these changes start from. A newer one answers 409 with `currentVersionId`; read again and redo the change on it"
+                    "description": "The `versionId` document-sketch-get returned. A newer one answers 409: read again, redo the change"
+                  },
+                  "baseContentHash": {
+                    "description": "The `contentHash` document-sketch-get returned",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [

@@ -19,7 +19,11 @@ import 'server-only'
  * the attempt came to. `saved`; `pdf_stale` (saved, and the PDF beside it could
  * not be drawn again); `conflict` (409, a newer Fassung: the editor merges it
  * and tries again, so a conflict followed by a `saved` is a merge that worked);
- * `refused` (400, the scene or the SVG; the comment names the refusal).
+ * `refused` (400, the scene or the SVG; the comment names the refusal);
+ * `drafted` (saved into the open Freigabe draft, nothing published);
+ * `review_open` (409, a version is in review: nothing saved). Metadata
+ * `carried` and `lost` count the pinned marks that went onto the Fassung and
+ * those of them whose elements are all gone.
  * `sketch-revised` counts the Fassungen; this is the share of saves that
  * needed a merge or failed, which is what a shared sketch most needs watched.
  */
@@ -95,7 +99,7 @@ export function recordSketchRevisedScore(input: SketchRevisedInput): Promise<voi
 /** The name of the per-attempt score. A contract, as above. */
 export const SKETCH_SAVE_SCORE_NAME = 'sketch-save'
 
-export const SKETCH_SAVE_OUTCOMES = ['saved', 'pdf_stale', 'conflict', 'refused'] as const
+export const SKETCH_SAVE_OUTCOMES = ['saved', 'drafted', 'pdf_stale', 'conflict', 'review_open', 'refused'] as const
 export type SketchSaveOutcome = (typeof SKETCH_SAVE_OUTCOMES)[number]
 
 export interface SketchSaveInput {
@@ -126,4 +130,43 @@ export function toSketchSaveScore(input: SketchSaveInput & { traceId: string; id
 export function recordSketchSaveScore(input: SketchSaveInput): Promise<void> {
   const id = `${SKETCH_SAVE_SCORE_NAME}-${randomUUID()}`
   return scoreOnDrawingTurn(input, id, (traceId) => toSketchSaveScore({ ...input, traceId, id }))
+}
+
+/** The name of the carry-forward score. A contract, as above. */
+export const SKETCH_PINS_KEPT_SCORE_NAME = 'sketch-pins-kept'
+
+export interface SketchPinsKeptInput {
+  organizationId: string
+  documentId: string
+  answerRef: string
+  /** The Fassung the pins went onto. */
+  versionId: string
+  moved: number
+  /** Of those, the pins whose elements are all gone. */
+  lost: number
+  /** How the Fassung became current: a sketch save, or a Freigabe or upload (`lib/documents/current-version.ts`). */
+  path: 'save' | 'publish'
+}
+
+/**
+ * The carry as a Langfuse score: the share of the moved pins still on an
+ * element. Pure. One per Fassung (the id names it), so a retry upserts.
+ */
+export function toSketchPinsKeptScore(input: SketchPinsKeptInput & { traceId: string }): ScoreRequest {
+  return {
+    id: `${SKETCH_PINS_KEPT_SCORE_NAME}-${input.versionId}`,
+    traceId: input.traceId,
+    name: SKETCH_PINS_KEPT_SCORE_NAME,
+    dataType: 'NUMERIC',
+    value: (input.moved - input.lost) / input.moved,
+    metadata: { document_id: input.documentId, moved: input.moved, lost: input.lost, path: input.path },
+  }
+}
+
+/** Record a carry that moved at least one pin. Resolves when done and never rejects. */
+export function recordSketchPinsKeptScore(input: SketchPinsKeptInput): Promise<void> {
+  if (input.moved <= 0) return Promise.resolve()
+  return scoreOnDrawingTurn(input, `${SKETCH_PINS_KEPT_SCORE_NAME}-${input.versionId}`, (traceId) =>
+    toSketchPinsKeptScore({ ...input, traceId })
+  )
 }

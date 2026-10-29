@@ -135,14 +135,10 @@ export const DOCUMENT_VERSION_EFFECTS = [
    * Open a `revision` task when the version that was sent back has nobody in a
    * conversation to hear about it (ADR-0051, §5 of the design of record).
    *
-   * The two halves of "request changes reaches the agent" are deliberately not
-   * one mechanism. A version filed from a live chat carries
-   * `origin_conversation_id` (migration 0084), and the next turn of THAT
-   * conversation reads the comment as a `REVIEW_DECISIONS v1` block — the person
-   * is already there, and a task would be a second queue for work somebody is
-   * about to ask for in the next sentence. A version with no origin — a
-   * scheduled deep-research report, an earlier revision's own output — has
-   * nobody typing, so the comment needs a row to live on or it reaches nothing.
+   * Not one mechanism with the chat: a version filed from a live chat
+   * (`origin_conversation_id`, migration 0084) reaches its next turn as a
+   * `REVIEW_DECISIONS v1` block; a version with no origin has nobody typing, so
+   * the comment needs a task to live on or it reaches nothing.
    *
    * The reviewer can also ask for the task outright („Piloti überarbeiten
    * lassen"), which is `TransitionInput.delegateRevision` and is the only thing
@@ -155,6 +151,8 @@ export const DOCUMENT_VERSION_EFFECTS = [
    * logged: it never fails the transition.
    */
   'announceNewRevision',
+  /** On every promoting row: the room hears of the current Fassung, a Skizze's pins and PDF follow (`./current-version`). */
+  'announceCurrentVersion',
 ] as const
 export type DocumentVersionEffect = (typeof DOCUMENT_VERSION_EFFECTS)[number]
 
@@ -282,7 +280,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['audit', 'eventHint', 'announceNewRevision'],
+    effects: ['audit', 'eventHint', 'announceNewRevision', 'announceCurrentVersion'],
   },
   {
     from: null,
@@ -361,7 +359,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: { notSubmitter: true, ifMatch: true },
     auditAction: 'document.version.approved',
     promotes: true,
-    effects: ['resolveReviewInbox', 'ingestPublished', 'audit', 'eventHint', 'announceNewRevision'],
+    effects: ['resolveReviewInbox', 'ingestPublished', 'audit', 'eventHint', 'announceNewRevision', 'announceCurrentVersion'],
   },
   {
     from: 'in_review',
@@ -394,7 +392,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['ingestPublished', 'audit', 'eventHint', 'announceNewRevision'],
+    effects: ['ingestPublished', 'audit', 'eventHint', 'announceNewRevision', 'announceCurrentVersion'],
   },
 ] as const satisfies readonly DocumentVersionTransition[]
 

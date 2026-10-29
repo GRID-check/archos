@@ -101,6 +101,11 @@ export class SketchRequestError extends ApiRequestError {
   get stale(): boolean {
     return this.status === 409 && this.reason === 'stale_base_version'
   }
+
+  /** A version of the Skizze is in Freigabe: nothing can be saved until the review is decided. */
+  get reviewOpen(): boolean {
+    return this.status === 409 && this.reason === 'review_open'
+  }
 }
 
 async function sketchError(response: Response): Promise<SketchRequestError> {
@@ -119,25 +124,40 @@ const SketchViewSchema = z.object({
   canWrite: z.boolean().default(true),
   title: z.string(),
   scene: z.looseObject({ type: z.literal('excalidraw'), elements: z.array(z.looseObject({})) }),
+  /** What a save writes; absent from an older server, which only published. */
+  saveTarget: z.enum(['published', 'draft', 'review_open']).default('published'),
+  /** The open draft's hash, sent back with a save into it. */
+  contentHash: z.string().nullable().default(null),
 })
 
-/** What the editor needs of a filed sketch: its scene and the Fassung it was read from. */
+/** What the editor needs of a filed sketch: its scene and the Fassung (or open draft) it was read from. */
 export type SketchForEditing = z.infer<typeof SketchViewSchema>
 
 /**
- * `GET /api/documents/{id}/sketch`: the stored scene. Throws {@link SketchRequestError} (415: not a sketch).
- * `probe`: asking whether to offer the editor, or an open editor merging a newer Fassung, neither of which
- * the download log records; opening the editor reads without it.
+ * `GET /api/documents/{id}/sketch`: the stored scene, a read the download log records.
+ * Throws {@link SketchRequestError} (415: not a sketch).
  */
-export const getSketch = async (
-  documentId: string,
-  signal?: AbortSignal,
-  { probe = false }: { probe?: boolean } = {}
-): Promise<SketchForEditing> => {
-  const query = probe ? '?probe=1' : ''
-  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch${query}`, { signal })
+export const getSketch = async (documentId: string, signal?: AbortSignal): Promise<SketchForEditing> => {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch`, { signal })
   if (!response.ok) throw await sketchError(response)
   const parsed = SketchViewSchema.safeParse(await response.json())
+  if (!parsed.success) throw new SketchRequestError(response.status, null, null)
+  return parsed.data
+}
+
+const SketchProbeSchema = z.object({ hasScene: z.boolean(), canWrite: z.boolean(), versionId: z.string().nullable() })
+
+/** Whether to offer the editor on a file. */
+export type SketchProbe = z.infer<typeof SketchProbeSchema>
+
+/**
+ * `GET /api/documents/{id}/sketch?probe=1`: whether the file is a Skizze this reader may open or edit. It carries
+ * nothing of the drawing, which is why the download log does not record it.
+ */
+export const probeSketch = async (documentId: string, signal?: AbortSignal): Promise<SketchProbe> => {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch?probe=1`, { signal })
+  if (!response.ok) throw await sketchError(response)
+  const parsed = SketchProbeSchema.safeParse(await response.json())
   if (!parsed.success) throw new SketchRequestError(response.status, null, null)
   return parsed.data
 }
@@ -149,6 +169,10 @@ export type SketchSaveRequest = z.input<typeof saveSketchSchema>
 export interface SavedSketchVersion {
   versionId: string
   versionNumber: number
+  /** `draft`: the save went into the open Freigabe draft, nothing was published. */
+  state: 'published' | 'draft'
+  /** The saved bytes' hash: the next save into the draft sends it back. */
+  contentHash: string | null
   /** The PDF beside the sketch could not be drawn again: it still shows an earlier version. */
   pdfStale: boolean
 }
@@ -166,7 +190,13 @@ export const saveSketch = async (
   })
   if (!response.ok) throw await sketchError(response)
   const parsed = z
-    .object({ versionId: z.string().min(1), versionNumber: z.number(), pdfStale: z.boolean().default(false) })
+    .object({
+      versionId: z.string().min(1),
+      versionNumber: z.number(),
+      pdfStale: z.boolean().default(false),
+      state: z.enum(['published', 'draft']).default('published'),
+      contentHash: z.string().nullable().default(null),
+    })
     .safeParse(await response.json())
   if (!parsed.success) throw new SketchRequestError(response.status, null, null)
   return parsed.data

@@ -21,15 +21,25 @@
  *   - **resolved and dismissed marks stay** on the Fassung they were closed on,
  *     as every closed mark does.
  *
+ * **Every path that makes a Fassung current runs it** (`insertPublishedVersion`
+ * and `promoteVersionToPublished` in `lib/documents/version-repository.ts`, in
+ * their transaction): a sketch save, a Freigabe publish, an upload. So a mark
+ * is taken from ANY earlier Fassung it sits on, not only from the one just
+ * superseded: a Freigabe that publishes an older draft over later saves leaves
+ * no mark behind on the save it supersedes (`docs/architecture/revisions.md`,
+ * „One path makes a Fassung current“). Marks on a draft or a refused version
+ * stay; nothing sets one there.
+ *
  * Nobody is told beyond the room: a save of a Skizze is no news
  * (`lib/diagrams/sketch-version.ts`), and the mark is where its readers left it,
  * on its elements.
  */
 
 import 'server-only'
-import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import type { DbTransaction } from '@/lib/db/executor'
 import { documentAnnotations } from '@/lib/db/schema/document-annotations'
+import { documentVersions } from '@/lib/db/schema/document-versions'
 import { LIVE_ANNOTATION_STATUSES, MAX_ANNOTATIONS_PER_DOCUMENT } from './types'
 import { elementRegion, presentIds, type AnchorElement } from './sketch-anchor'
 
@@ -42,11 +52,12 @@ export interface NextSketch {
 export interface MoveSketchMarksInput {
   organizationId: string
   documentId: string
-  /** The Fassungen the publish superseded; none when the document had no version row. */
-  fromVersionIds: readonly string[]
+  /** The Fassung now current: every live pinned mark on an earlier one (or on none) goes onto it. */
   toVersionId: string
   /** The scene the marks are placed on again; null keeps every box as it is. */
   sketch: NextSketch | null
+  /** `place`: draw the boxes of the marks already on `toVersionId` again, moving none (a Fassung promoted without its scene at hand). */
+  mode?: 'move' | 'place'
 }
 
 /** What moved: the marks that went on, and of those the ones whose elements are all gone. */
@@ -65,10 +76,18 @@ function placeAgain(ids: readonly string[], sketch: NextSketch | null) {
 
 /** Move the live marks pinned to elements onto the Fassung just published, in its transaction. */
 export async function moveSketchMarks(tx: DbTransaction, input: MoveSketchMarksInput): Promise<MovedSketchMarks> {
+  // An earlier Fassung of this document (superseded once the publish ran) or none; never a draft's.
+  const earlier = tx
+    .select({ id: documentVersions.id })
+    .from(documentVersions)
+    .where(and(eq(documentVersions.documentId, input.documentId), eq(documentVersions.state, 'superseded')))
   const onPrevious =
-    input.fromVersionIds.length > 0
-      ? inArray(documentAnnotations.versionId, [...input.fromVersionIds])
-      : isNull(documentAnnotations.versionId)
+    input.mode === 'place'
+      ? eq(documentAnnotations.versionId, input.toVersionId)
+      : and(
+          or(isNull(documentAnnotations.versionId), inArray(documentAnnotations.versionId, earlier)),
+          sql`${documentAnnotations.versionId} IS DISTINCT FROM ${input.toVersionId}::uuid`
+        )
   const marks = await tx
     .select({
       id: documentAnnotations.id,

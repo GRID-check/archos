@@ -95,6 +95,10 @@ const OBJECT_READERS: Record<string, Disposition> = {
   'lib/documents/version-content.ts::streamVersionFile': { logged: ['version'] },
   'lib/bim/model-service.ts::getModelSource': { logged: ['model'] },
   'lib/diagrams/sketch-document.ts::readSketchDocument': { logged: ['preview'] },
+  'lib/diagrams/sketch-promoted.ts::readVersionText': {
+    exempt:
+      'reads the Skizze a Freigabe just published, on the server, to place its marks on the scene and draw the PDF beside it again; no bytes go to anyone.',
+  },
   'lib/diagrams/sketch-document.ts::readStoredText': {
     exempt:
       'a private helper; its callers are pinned in PINNED_HELPERS (the read records, the save checks the scene and hands nothing over).',
@@ -142,9 +146,9 @@ const PINNED_HELPERS: Record<string, { callers: readonly string[]; reason: strin
       'publishedSketchOf is the one reader of a sketch’s stored scene: storedSceneOf here (see the next entry), and lib/annotations/sketch-place.ts, which reads it on the server to place a mark’s box on its elements and hands no bytes to anyone.',
   },
   'lib/diagrams/sketch-document.ts::storedSceneOf': {
-    callers: ['readSketchDocument', 'saveSketchDocument'],
+    callers: ['readSketchDocument', 'saveSketchDocument', 'writeDraft'],
     reason:
-      'readSketchDocument records the open (`preview`, not for the preview’s probe); saveSketchDocument reads the scene to refuse a document that carries none and to version the save against it, and returns the new version, never the old bytes.',
+      'readSketchDocument records the open (`preview`; the preview’s probe carries no scene and is not a reader of it); saveSketchDocument and writeDraft read the scene (the current one, or the open draft’s) to refuse a document that carries none and to version the save against it, and return the new version, never the old bytes.',
   },
   'lib/documents/version-content.ts::readObjectText': {
     callers: ['fetchVersionText', 'readVersionForService'],

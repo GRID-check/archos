@@ -105,6 +105,43 @@ slice F5 of [`model-collaboration.md`](model-collaboration.md); build it after F
 Search over the scene's texts (scene step 7) and the office's symbol library (step 8)
 have no slice yet. Both wait for S1's structured read.
 
+## Coherence: what is still open
+
+The interference audit of 2026-10-29 (sketches against the room, review,
+Freigabe, notices, sharing, the download log, proposals) closed C1 to C7 and G1,
+G5, G6 and G8; the ADR-0148 amendment says what was decided. Still open:
+
+- **C8, two edits of one chat sketch.** `use-diagram-filing.ts` keys an edited
+  sketch by its scene, so Anna and Max each editing Piloti's card in a shared
+  chat file two Skizzen. The fix: key the filing by the fence (answer and
+  source), and when it is already filed open the filed document in revision mode
+  so a save writes its next Fassung.
+- **G2, contributors.** A Fassung names only the person who saved it, neither the
+  live co-editors whose deltas it holds nor Piloti when its proposal was applied.
+  The sync can collect the user ids behind merged deltas and send them with the
+  PUT; the audit event records them as `contributors`.
+- **G3, a proposed sketch edit fails on the first save after it.** A
+  `document-sketch-update` proposal 409s once anyone saved; on a live sketch that
+  is nearly always. Rebase on the server (`reviseScene` against the current
+  scene) or have the card say „Skizze inzwischen geändert – neu vorschlagen“.
+- **G4, Piloti does not see the canvas selection.** `scene.selection` is not a
+  roster fact, so „ordne die nach Erschließung“ cannot be resolved; add
+  `sceneSelection` to `RosterFacts`.
+- **G1 for other documents.** Every path now sends `version.published`; only the
+  Skizze's preview reads its picture again on it. A PDF preview open during an
+  upload of a new Fassung still waits for its next read.
+- **PostHog for the carry.** `sketch-pins-kept` (Langfuse) measures it; no
+  `annotation_carried` product event exists yet.
+- **Marks on companion PDFs from before.** A create is refused now, but marks
+  set earlier stay on the PDF with no move to the Skizze.
+- **A draft's own elements.** While a Skizze is in Freigabe a mark is set on the
+  published Fassung, so an element drawn only in the draft cannot be marked yet.
+- **G9, G10.** A companion PDF in the bin may still report `pdfStale`
+  (`findDocumentAuthoredByRef` reads binned rows), and the save's storage check is
+  the advisory one an upload's atomic ceiling replaced.
+- **The office's locale on a Freigabe redraw.** A PDF drawn after a Freigabe
+  carries the German two-author line; the transition knows no reader's locale.
+
 ## Open questions
 
 - **Fassung model.** ADR-0104's `current_version_id` has not landed, and
