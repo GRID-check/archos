@@ -45,16 +45,16 @@ const FIRST_SCENE = {
   ],
 }
 
-interface StoredFassung {
+interface StoredRevision {
   versionId: string
   versionNumber: number
   scene: { elements: object[] }
 }
 
-function readFassung(): StoredFassung {
+function readStoredRevision(): StoredRevision {
   try {
     const stored = window.localStorage.getItem(STORE_KEY)
-    if (stored) return JSON.parse(stored) as StoredFassung
+    if (stored) return JSON.parse(stored) as StoredRevision
   } catch {
     // A blocked store is a fresh room.
   }
@@ -69,7 +69,7 @@ function useStandInRoute() {
     window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       if (!url.endsWith(path)) return original(input, init)
-      const current = readFassung()
+      const current = readStoredRevision()
       const json = (status: number, body: unknown) =>
         new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
       if (init?.method !== 'PUT') {
@@ -95,9 +95,9 @@ function Room() {
   const canWrite = params.get('role') !== 'reader'
   useStandInRoute()
   const [open, setOpen] = useState(true)
-  const [opened, setOpened] = useState<StoredFassung | null>(null)
+  const [opened, setOpened] = useState<StoredRevision | null>(null)
   useEffect(() => {
-    if (open) setOpened(readFassung())
+    if (open) setOpened(readStoredRevision())
   }, [open])
   const transport = useMemo(() => broadcastRoomTransport(DOCUMENT_ID, { ...who, canWrite }), [who, canWrite])
 
