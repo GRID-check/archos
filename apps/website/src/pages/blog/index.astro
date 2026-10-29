@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Button from '../../components/Button.astro';
+import Hero from '../../components/Hero.astro';
+import PostCard from '../../components/PostCard.astro';
+import { blogHero, moreLabel, postFilters, posts } from '../../data/posts';
+---
+
+<BaseLayout title="Blog" description={blogHero.text}>
+  <Hero title={blogHero.title} text={blogHero.text} />
+
+  <section class="ui-container page-section">
+    <nav aria-label="Beiträge filtern">
+      <ul class="ui-filter">
+        {
+          postFilters.map((filter) => (
+            <li>
+              <a class="ui-nav-link" href="#" aria-current={filter.current ? 'page' : undefined}>
+                {filter.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <ul class="ui-posts">
+      {posts.map((post) => <PostCard title={post.title} href={post.href} text={post.text} date={post.date} image={post.image} imageAlt={post.imageAlt} />)}
+    </ul>
+
+    <div class="ui-center page-gap">
+      <Button variant="secondary" size="lg">{moreLabel}</Button>
+    </div>
+  </section>
+</BaseLayout>

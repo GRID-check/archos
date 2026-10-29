@@ -1,8 +1,12 @@
 ---
+/** A piece of a value: plain text, an inline link, or a line break (the Impressum address). */
+export type InfoSegment = string | { text: string; href: string } | { br: true };
+
 interface InfoItem {
   key: string;
-  value: string;
-  /** Makes the value a link, e.g. a mailto: address */
+  /** Plain text, or a list of segments for inline links and line breaks */
+  value: string | InfoSegment[];
+  /** Makes the whole value a link, e.g. a mailto: address */
   href?: string;
 }
 
@@ -24,7 +28,17 @@ const { items, title, class: className } = Astro.props;
         {items.map((item) => (
           <li>
             <p class="ui-info-k">{item.key}</p>
-            <p class="ui-info-v">{item.href ? <a class="ui-link" href={item.href}>{item.value}</a> : item.value}</p>
+            <p class="ui-info-v">
+              {item.href ? (
+                <a class="ui-link" href={item.href}>{item.value as string}</a>
+              ) : typeof item.value === 'string' ? (
+                item.value
+              ) : (
+                item.value.map((s) =>
+                  typeof s === 'string' ? s : 'br' in s ? <br /> : <a class="ui-link" href={s.href}>{s.text}</a>,
+                )
+              )}
+            </p>
           </li>
         ))}
       </ul>
@@ -34,7 +48,17 @@ const { items, title, class: className } = Astro.props;
       {items.map((item) => (
         <li>
           <p class="ui-info-k">{item.key}</p>
-          <p class="ui-info-v">{item.href ? <a class="ui-link" href={item.href}>{item.value}</a> : item.value}</p>
+          <p class="ui-info-v">
+            {item.href ? (
+              <a class="ui-link" href={item.href}>{item.value as string}</a>
+            ) : typeof item.value === 'string' ? (
+              item.value
+            ) : (
+              item.value.map((s) =>
+                typeof s === 'string' ? s : 'br' in s ? <br /> : <a class="ui-link" href={s.href}>{s.text}</a>,
+              )
+            )}
+          </p>
         </li>
       ))}
     </ul>

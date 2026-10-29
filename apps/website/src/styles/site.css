@@ -26,3 +26,12 @@ video {
   transform: none;
   box-shadow: var(--focus-ring);
 }
+
+/* Page rhythm: the gap between sections and above a grid, from the spacing tokens. */
+.page-section {
+  padding-bottom: var(--space-40);
+}
+
+.page-gap {
+  margin-top: var(--space-18);
+}

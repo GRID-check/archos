@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import FeatureTiles from '../components/FeatureTiles.astro';
+import Hero from '../components/Hero.astro';
+import SectionIntro from '../components/SectionIntro.astro';
+import { demoLink } from '../lib/nav';
+import {
+  contactAction,
+  securityCta,
+  securityFaq,
+  securityFaqTitle,
+  securityHero,
+  securityIntro,
+  securityItems,
+} from '../data/security';
+---
+
+<BaseLayout title="Datensicherheit" description={securityHero.text}>
+  <Hero title={securityHero.title} text={securityHero.text} />
+
+  <section class="ui-container page-section">
+    <SectionIntro title={securityIntro.title} as="h2" />
+    <FeatureTiles class="page-gap" items={securityItems} columns={3} />
+  </section>
+
+  <section class="ui-container page-section">
+    <FAQ title={securityFaqTitle} items={securityFaq} />
+  </section>
+
+  <section class="ui-container page-section">
+    <CTABand
+      title={securityCta.title}
+      text={securityCta.text}
+      primary={demoLink}
+      secondary={contactAction}
+    />
+  </section>
+</BaseLayout>

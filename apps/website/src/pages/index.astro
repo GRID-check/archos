@@ -1,8 +1,118 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import DuoCards from '../components/DuoCards.astro';
+import FeatureTiles from '../components/FeatureTiles.astro';
+import Gallery from '../components/Gallery.astro';
+import Hero from '../components/Hero.astro';
+import LogoRow from '../components/LogoRow.astro';
+import Quote from '../components/Quote.astro';
+import SectionIntro from '../components/SectionIntro.astro';
+import Timeline from '../components/Timeline.astro';
+import Video from '../components/Video.astro';
 import identity from '../lib/identity';
-
-// Placeholder: the home page is written by the page work that follows the shell.
+import { demoLink } from '../lib/nav';
+import {
+  built,
+  founders,
+  gallery,
+  hero,
+  knowledge,
+  pilotOffices,
+  quote,
+  roadmap,
+  statement,
+  workload,
+} from '../data/home';
 ---
 
-<BaseLayout description={identity.claim} />
+<BaseLayout description={identity.claim}>
+  <Hero title={hero.title} text={hero.text}>
+    <img
+      slot="media"
+      src={hero.image}
+      alt={hero.alt}
+      style="display: block; width: 100%; height: auto; background: var(--surface-sunken);"
+    />
+  </Hero>
+
+  <section class="ui-container ui-section">
+    <SectionIntro title={workload.title} lead={workload.lead} text={workload.text} />
+  </section>
+
+  <Gallery items={gallery.items} label={gallery.label} id="funktionen" />
+
+  <section class="ui-container ui-section">
+    <SectionIntro size="display" align="center" title={knowledge.title} text={knowledge.text} />
+    <div style="margin-top: var(--space-16);">
+      <Video sources={knowledge.video.sources} poster={knowledge.video.poster} label={knowledge.video.label} />
+    </div>
+    <div style="margin-top: var(--space-16);">
+      <SectionIntro title={knowledge.intelligence.title} text={knowledge.intelligence.text} />
+    </div>
+  </section>
+
+  <section class="ui-band">
+    <div class="ui-container ui-section">
+      <SectionIntro size="display" align="center" title={statement.title} />
+      <div style="margin-top: var(--space-16);">
+        <DuoCards items={statement.duo} />
+      </div>
+    </div>
+  </section>
+
+  <section class="ui-container ui-section">
+    <SectionIntro title={built.title} />
+    <img
+      src={built.image.src}
+      alt={built.image.alt}
+      style="display: block; width: 100%; aspect-ratio: 4864 / 1620; object-fit: cover; object-position: left center; margin: var(--space-8) 0 var(--space-16); background: var(--surface-sunken);"
+    />
+    <FeatureTiles items={built.features} columns={3} />
+  </section>
+
+  <section class="ui-band">
+    <div class="ui-container ui-section">
+      <SectionIntro title={roadmap.title} />
+      <div style="margin-top: var(--space-16);">
+        <Timeline steps={roadmap.steps} current={0} />
+      </div>
+    </div>
+  </section>
+
+  <section class="ui-container ui-section">
+    <Quote
+      quote={quote.quote}
+      name={quote.name}
+      role={quote.role}
+      office={quote.office}
+      portrait={quote.portrait}
+      portraitAlt={quote.portraitAlt}
+    />
+    <div style="margin-top: calc(var(--space-24) + var(--space-4));">
+      <LogoRow logos={pilotOffices} />
+    </div>
+  </section>
+
+  <section class="ui-container ui-section">
+    <SectionIntro size="heading" title={founders.title} />
+    <img
+      src={founders.image.src}
+      alt={founders.image.alt}
+      style="display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; object-position: center 30%; margin-top: var(--space-8); background: var(--surface-sunken);"
+    />
+    <p class="small" style="margin: var(--space-4) 0 0; max-width: 560px; color: var(--ink-muted);">
+      {founders.caption} Die Gründer:{' '}
+      {founders.founders.map((person, i) => (
+        <>
+          <span style="color: var(--ink);">{person.name}</span>, {person.role}
+          {i < founders.founders.length - 1 ? ' · ' : '.'}
+        </>
+      ))}
+    </p>
+    <div style="margin-top: var(--space-8);">
+      <p class="lead" style="margin: 0 0 var(--space-8);">{founders.lead}</p>
+      <Button href={demoLink.href} variant="secondary" size="lg">{demoLink.label}</Button>
+    </div>
+  </section>
+</BaseLayout>

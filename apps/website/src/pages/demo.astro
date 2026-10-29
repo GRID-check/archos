@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Checkbox from '../components/Checkbox.astro';
+import Input from '../components/Input.astro';
+import LogoRow from '../components/LogoRow.astro';
+import Select from '../components/Select.astro';
+import SplitPage from '../components/SplitPage.astro';
+import identity from '../lib/identity';
+
+// No backend yet: the form hands the answers to the sales inbox as a plain-text mail.
+// Follow-up: a real endpoint that stores the request.
+const officeSizes = ['1–5 Mitarbeitende', '6–20 Mitarbeitende', '21–50 Mitarbeitende', '51–200 Mitarbeitende', 'Über 200 Mitarbeitende'];
+const countries = ['Österreich', 'Deutschland', 'Schweiz', 'Anderes Land'];
+---
+
+<BaseLayout bare title="Demo anfragen" description="Sehen Sie, wie Planungsbüros mit ARCHOS arbeiten.">
+  <SplitPage
+    variant="form"
+    image="/media/demo-panel-background.webp"
+    footer={[
+      { label: 'Zur Website', href: '/' },
+      { label: 'Datensicherheit', href: '/datensicherheit' },
+      { label: 'Impressum', href: '/impressum' },
+      { label: 'Datenschutz', href: '/datenschutz' },
+    ]}
+  >
+    <h1 class="display" style="margin: 0; max-width: var(--split-form); text-wrap: balance;">
+      Sehen Sie, wie Planungsbüros mit ARCHOS arbeiten.
+    </h1>
+    <p class="lead" style="margin: var(--space-8) 0 0; max-width: 480px; color: var(--ink);">
+      Wir zeigen Ihnen ARCHOS an einem echten Projekt und beantworten Ihre Fragen.
+    </p>
+    <div style="margin-top: var(--space-18);">
+      <LogoRow
+        logos={[
+          { src: '/media/pilot-office-gerner-gerner-plus.svg', alt: 'Gerner Gerner Plus', height: 40 },
+          { src: '/media/pilot-office-zz-architecture.svg', alt: 'Z/Z architecture', height: 37 },
+          { src: '/media/pilot-office-feld72.svg', alt: 'feld72', height: 31 },
+          { src: '/media/pilot-office-bewe-emp.svg', alt: 'bewe em.p', height: 43 },
+        ]}
+      />
+    </div>
+
+    <div slot="aside">
+      <form class="ui-form-grid" action={`mailto:${identity.email}`} method="post" enctype="text/plain">
+        <Input id="demo-first-name" name="first-name" label="Vorname *" placeholder="Vorname" autocomplete="given-name" required />
+        <Input id="demo-last-name" name="last-name" label="Nachname *" placeholder="Nachname" autocomplete="family-name" required />
+        <Input id="demo-email" name="email" type="email" label="Geschäftliche E-Mail *" placeholder="name@buero.at" autocomplete="email" required />
+        <Input id="demo-office" name="office" label="Büro *" placeholder="Name des Planungsbüros" autocomplete="organization" required />
+        <Input id="demo-role" name="role" label="Funktion *" placeholder="z. B. Projektleitung" autocomplete="organization-title" required />
+        <Select id="demo-office-size" name="office-size" label="Bürogröße *" options={officeSizes} required />
+        <Select id="demo-country" name="country" label="Land *" options={countries} required />
+        <Checkbox name="newsletter" class="ui-form-full">
+          Ja, ich möchte Neuigkeiten zu ARCHOS per E-Mail erhalten. Abmeldung jederzeit möglich.
+        </Checkbox>
+        <div class="ui-form-full">
+          <Button type="submit" variant="primary" size="lg" class="ui-btn-block">Demo anfragen</Button>
+        </div>
+      </form>
+    </div>
+
+    <span slot="aside-note">
+      Wie wir Ihre Angaben verarbeiten, steht in der <a class="ui-link" href="/datenschutz">Datenschutzerklärung</a>.
+    </span>
+  </SplitPage>
+</BaseLayout>

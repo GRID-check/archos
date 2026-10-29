@@ -1,0 +1,69 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Hero from '../components/Hero.astro';
+import InfoList from '../components/InfoList.astro';
+import Input from '../components/Input.astro';
+import TextLink from '../components/TextLink.astro';
+import identity from '../lib/identity';
+import { demoLink } from '../lib/nav';
+---
+
+<BaseLayout title="Kontakt" description={`Kontakt zu ${identity.name}: E-Mail, Adresse und Nachrichtenformular.`}>
+  <Hero
+    title="Kontakt."
+    text={`Fragen zu ${identity.name}, zu einem Pilotprojekt oder zur Zusammenarbeit? Schreiben Sie uns.`}
+  />
+  <section class="ui-container ui-section">
+    <div class="ui-features" style="--ui-cols: 2">
+      <div>
+        <InfoList
+          items={[
+            { key: 'E-Mail', value: identity.email, href: `mailto:${identity.email}` },
+            {
+              key: 'Adresse',
+              value: [
+                identity.legalEntity,
+                { br: true },
+                `${identity.street}, ${identity.postalCode} ${identity.city}, Österreich`,
+              ],
+            },
+            { key: 'LinkedIn', value: `${identity.name} auf LinkedIn` },
+          ]}
+        />
+        <p class="small">
+          Sie möchten {identity.name} in Ihrem Büro sehen? <TextLink href={demoLink.href}>Demo anfragen</TextLink>
+        </p>
+      </div>
+      <form action={`mailto:${identity.email}`} method="post" enctype="text/plain" class="ui-form-grid">
+        <Input id="contact-name" name="name" label="Name *" autocomplete="name" required class="ui-form-full" />
+        <Input
+          id="contact-email"
+          name="email"
+          type="email"
+          label="E-Mail *"
+          autocomplete="email"
+          placeholder="name@buero.at"
+          required
+          class="ui-form-full"
+        />
+        <Input
+          id="contact-office"
+          name="office"
+          label="Büro"
+          autocomplete="organization"
+          placeholder="Name des Planungsbüros"
+          class="ui-form-full"
+        />
+        <Input id="contact-message" name="message" label="Nachricht *" multiline required class="ui-form-full" />
+        <p class="small ui-form-full">
+          Pflichtfelder sind mit * markiert. Wir verwenden Ihre Angaben nur, um Ihre Anfrage zu beantworten. Mehr dazu
+          in der <TextLink href="/datenschutz">Datenschutzerklärung</TextLink>.
+        </p>
+        <div class="ui-form-full">
+          <Button type="submit" variant="primary" size="lg">Nachricht senden</Button>
+        </div>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
