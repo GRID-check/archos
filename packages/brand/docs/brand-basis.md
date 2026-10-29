@@ -161,10 +161,38 @@ Let **X** be the cap height of the wordmark as set (0.68 × its font size).
   the footer sets it at 28px (X = 19px). Check a new placement against it.
 - **Minimum size: 16px font size on screen** (X = 11px, the word about 64px wide) and **20mm
   wide in print**. Below that the semibold counters close up. The app icon (`mark.svg`)
-  stands in where the word would be smaller.
+  stands in where the word would be smaller (below).
 - Lockups with the claim (MB p.1, p.14): stacked (wordmark, claim below, left-aligned) or
   horizontal (claim beside it, smaller). The claim takes the clear space of the wordmark,
   and the gap between them is X.
 
 These numbers are derived, not handed over. TODO(owner): confirm them, or replace them when
 a vector logo with its own spacing arrives.
+
+## App icon
+
+**Derived, pending designer sign-off.** The design system defines the logo as the wordmark
+alone, „ohne Bildmarke“, and hands over no icon; a browser tab, a home screen and an agent's
+connector list still need a square. So the icon is typographic, taken from the wordmark itself:
+
+- **The letter**: the wordmark's first letter, the product name's initial („A“), in Switzer
+  Semibold, outlined to paths (no font at runtime). It follows `identity.json`: a rename
+  redraws it (`node packages/brand/build-brand-assets.mjs`, whose `--check` fails until then).
+- **Colour**: ink `#0f0e0d` on the warm white `#fafaf9`. Inverted (warm white on ink) for a
+  dark colour scheme (the SVG favicon switches by `prefers-color-scheme`) and for the maskable
+  launcher icon. No hue, no gradient, no outline.
+- **Clear space**: on a launcher icon (home screen, manifest, Apple touch icon, 180 px and up)
+  the letter's cap height is X = one third of the tile, so X stays free on every side, as for
+  the wordmark; the maskable icon's letter sits well inside the 80 % safe circle. At tab size
+  (16 to 48 px: `favicon.svg`, `favicon.ico`, the workspace's `icon.svg`) a third would be a
+  five-pixel smudge, so there the letter is 10/16 of the tile (10 px tall at 16 px) and the
+  tile's edge is its clear space.
+- **Shape**: a square with a corner of 20/96 where the platform does not cut its own; full
+  bleed for iOS and maskable icons.
+- **Never beside the wordmark.** The icon replaces the word where the word would fall below its
+  minimum size (the app's collapsed icon rail, a PDF cover's foot); it is never set next to it.
+
+The share card (`apps/website/public/media/share-card.png`, 1200 × 630, every page's
+`og:image`) is the stacked lockup on the warm white: the wordmark, the tagline below it at the
+gap X, left-aligned with at least X of clear space, and the domain in ink-muted at the foot.
+The same script draws it from `identity.json`, so it follows a rename too.

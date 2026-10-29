@@ -148,7 +148,7 @@ The table gives the source file and where it appears.
 | `knowledge-video-poster.webp` | `c9e9e60311.webp` | Home, poster of the video "Das Wissen Ihres Büros wird nutzbar." |
 | `knowledge-video.webm` | `28f2a93346.webm` | Same video, first source (WebM) |
 | `knowledge-video.mp4` | `8cde9d7ebc.mp4` | Same video, second source (MP4) |
-| `share-card.jpg` | none, cropped from the sign-in photo (`packages/brand/authkit/login-photo.webp` source) | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
+| `share-card.png` | none, drawn by `packages/brand/build-brand-assets.mjs` (the wordmark and tagline from identity, outlined in Switzer Semibold, on the warm white) | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
 | `jonathan-uhlemann.webp` | none, from the retired site's team photo `jonathan-uhlemann.webp` (git history) | Home, founders row "Das Planungsbüro der Zukunft entsteht heute." (portrait, 4:5 crop, 208 × 208 source) |
 | `matthias-bigl.webp` | none, from the retired site's team photo `matthias-bigl.webp` (git history) | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
 | `ferdinand-rubenbauer.webp` | none, from the retired site's team photo `ferdinand-rubenbauer.webp` (git history) | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
@@ -164,10 +164,14 @@ The reference fonts (`.woff2`) are not here: the design system ships them in `sr
 
 ## Icons
 
-`public/favicon.svg` is a copy of `packages/brand/mark.svg`, its title filled from identity by
-`packages/brand/build-brand-assets.mjs`. `favicon.ico`, `apple-touch-icon.png` and
-`icons/icon-{192,512}.png`, `icons/icon-maskable-512.png` are rendered from the same master with that
-script, which writes them here and into the app (sharp from this app's devDependencies). `src/pages/manifest.webmanifest.ts` names them, with the name from
+The icon is typographic: the wordmark's first letter in Switzer Semibold, ink on the warm white
+(`packages/brand/docs/brand-basis.md`, "App icon"). `public/favicon.svg` is a copy of
+`packages/brand/mark.svg`, its title filled from identity; it inverts under a dark colour scheme.
+`favicon.ico`, `apple-touch-icon.png`, `icons/icon-{192,512}.png`, `icons/icon-maskable-512.png` (the
+inverted variant) and `media/share-card.png` are drawn and rendered by
+`packages/brand/build-brand-assets.mjs`, which writes them here and into the app (sharp and fontkit
+from this app's devDependencies); a rename or a new tagline is a re-run of it. `bun run check` runs
+its `--check`. `src/pages/manifest.webmanifest.ts` names them, with the name from
 identity and the colour from the tokens. Every page carries schema.org `Organization` and `WebSite`
 JSON-LD (`src/lib/structured-data.ts`), all from identity.
 
@@ -212,8 +216,8 @@ old feed addresses; blog pages link them in `<head>`. `/llms.txt` is generated f
 product pages' own titles and descriptions and the newest posts (`src/pages/llms.txt.ts`, copy in
 `src/i18n/pages/llms.ts`).
 
-**Social previews.** Every page shares `share-card.jpg`, with its own title and description.
-Generated per-page cards (`astro-og-canvas`, or satori) were not adopted: each card needs a design
+**Social previews.** Every page shares `share-card.png` (the wordmark and the tagline, drawn by
+`packages/brand/build-brand-assets.mjs`), with its own title and description. Generated per-page cards (`astro-og-canvas`, or satori) were not adopted: each card needs a design
 pass (the plan asks for a motif per page) and the brand fonts in a format the renderer reads (the
 design system ships WOFF2 only), which no integration does simply. The plan's card spec stays in
 the SEO doc as an open item.

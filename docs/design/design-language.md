@@ -167,8 +167,9 @@ app's own choices, not defects). Inside that level the rules are the brand's:
   its fill. The files are listed in `tests/brand-literals.spec.ts`; a new one
   needs an entry there with this reason.
 - **The wordmark** is the product's name (`PRODUCT_NAME`) in capitals, Switzer
-  Semibold, tracked -0.02em, drawn only by `Logo` (`kind="horizontal"`,
-  `"logo-only"` or `"wordmark-only"`). Its face is the `@font-face` in
+  Semibold, tracked -0.02em, drawn only by `Logo` (`kind="wordmark"`, the default). It never
+  stands beside a mark: where the word does not fit (the collapsed icon rail),
+  `kind="icon"` draws the app icon's glyph, the name's initial, alone. Its face is the `@font-face` in
   `app/globals.css` (`--font-logo`), which the browser fetches only when the
   wordmark is on screen. The PDF exports set it in the same face
   (`bff/pdf/fonts.ts`).

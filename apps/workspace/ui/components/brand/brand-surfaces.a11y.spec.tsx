@@ -24,7 +24,7 @@ async function violations(container: HTMLElement): Promise<string[]> {
 
 describe('brand surfaces, accessibility', () => {
   it('the logo in each kind has an accessible name', async () => {
-    for (const kind of ['horizontal', 'logo-only', 'wordmark-only'] as const) {
+    for (const kind of ['wordmark', 'icon'] as const) {
       const { container, unmount } = render(<Logo kind={kind} />)
       expect(await violations(container)).toEqual([])
       unmount()
