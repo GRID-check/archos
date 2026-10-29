@@ -4,7 +4,8 @@ import type { ReactElement } from 'react'
 import { render, screen } from '@/test-utils'
 import { I18nProvider } from '@/i18n'
 import { CommandDialog } from '@/components/ui/command'
-import { ChoiceStrip, ComposerPickerFrame, FieldShortcut, MetaLine, MetaPart, leadUpToMatch } from './search-atoms'
+import { leadUpToMatch } from '../lib/passage-window'
+import { ChoiceStrip, ComposerPickerFrame, FieldShortcut, MetaLine, MetaPart } from './search-atoms'
 
 const inGerman = (ui: ReactElement) =>
   render(

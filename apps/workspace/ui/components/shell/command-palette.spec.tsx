@@ -121,6 +121,25 @@ describe('CommandPalette: the workspace search', () => {
     expect(push.mock.calls[0][0]).not.toMatch(/^\/app\/search/)
   })
 
+  it('lets an arrow key take back a held Enter', async () => {
+    let answer: (() => void) | null = null
+    server.use(
+      http.post('*/api/search', async () => {
+        await new Promise<void>((resolve) => {
+          answer = resolve
+        })
+        return HttpResponse.json(SEARCH_FIXTURE_RESPONSE)
+      })
+    )
+    render(palette())
+    await userEvent.type(field(), 'Fluchtweg')
+    await userEvent.keyboard('{Enter}{ArrowDown}')
+    await waitFor(() => expect(answer).not.toBeNull())
+    answer!()
+    await screen.findByTestId('palette-group-document')
+    expect(push).not.toHaveBeenCalled()
+  })
+
   it('holds an Enter on a refined question too, unless the reader moved to the row themselves', async () => {
     let slow = false
     let answer: (() => void) | null = null

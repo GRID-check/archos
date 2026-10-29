@@ -32,15 +32,14 @@ import {
   PALETTE_STALE_CLASS,
   PaletteAside,
   PaletteEmpty,
+  PaletteGlyph,
   PaletteGroupHeading,
   PaletteHitsSkeleton,
-  PaletteScopeLine,
-  PaletteGlyph,
   PaletteLabel,
+  PaletteScopeLine,
   PaletteStatusLine,
-  ResultRowFrameProvider,
-  type ResultRowFrameProps,
-} from './search-atoms'
+} from './palette-atoms'
+import { ResultRowFrameProvider, type ResultRowFrameProps } from './search-atoms'
 import { HitRow, HitScopeProvider } from './search-result-list'
 
 /** Every row this module adds carries this prefix, so the palette's filter can rank them above the commands. */

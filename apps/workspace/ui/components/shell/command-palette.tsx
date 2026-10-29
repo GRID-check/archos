@@ -241,7 +241,11 @@ export function CommandPalette({
   }, [heldEnter, words, search.failed, awaitingAnswer, firstHit, openSearchHref, projectId])
   const onFieldKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') movedByReader.current = true
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        // Moving on is a new choice: a held Enter must not open the best hit over it.
+        movedByReader.current = true
+        setHeldEnter(null)
+      }
       if (event.key !== 'Enter') return
       const chord = event.metaKey || event.ctrlKey
       if (chord && allHref) {
@@ -413,7 +417,11 @@ export function CommandPalette({
           {tCommon('actions.cancel')}
         </DialogClose>
       </div>
-      <CommandList ref={setListElement} className={cn(overflows && 'md:scroll-fade-bottom', awaitingFirst && '[&_[cmdk-list-sizer]]:flex [&_[cmdk-list-sizer]]:flex-col', 'min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain')}>
+      <CommandList
+        ref={setListElement}
+        // 44px of fade, not the utility's 24: a group heading cut by the edge sat
+        // above a 24px band, legible with no row under it, and read as a layout bug.
+        className={cn(overflows && 'md:scroll-fade-bottom md:[--scroll-fade-size:44px]', awaitingFirst && '[&_[cmdk-list-sizer]]:flex [&_[cmdk-list-sizer]]:flex-col', 'min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain')}>
         {/* No „Keine Ergebnisse“: a search row always answers, with the way
             to every hit for what was typed. */}
         {words ? (
