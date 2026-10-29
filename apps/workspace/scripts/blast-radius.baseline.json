@@ -32,7 +32,7 @@
   "bff/authz/resource-check.ts": 456,
   "bff/backend-proxy.ts": 279,
   "bff/bim/types.ts": 545,
-  "bff/brand.ts": 702,
+  "bff/brand.ts": 980,
   "bff/cache/index.ts": 506,
   "bff/conversations/message-provenance.ts": 389,
   "bff/conversations/message-retrieval-ledger.ts": 393,
