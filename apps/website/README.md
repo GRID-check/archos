@@ -77,6 +77,18 @@ The favicon is `public/favicon.svg`.
 - There is no login page. Login goes to `/sign-in`, which hands over to AuthKit's hosted page; that page lists exactly the sign-in methods enabled in WorkOS, so the site keeps no list of its own. `/login` and `/en/login` redirect there.
 - Deployment: Dockerfile, redirects and the removal of `apps/site` belong to slice 5.
 
+## Signed in
+
+A visitor who is signed in to the app sees "App öffnen" / "Open app" in the header instead of "Login".
+The app keeps a contentless `signed_in=1` cookie on the website's domain while it has a session
+([authentication flow](../../docs/technical-reference/authentication-flow.md#the-websites-signed_in-cookie)).
+`src/scripts/signed-in.js`, loaded blocking in `<head>` from `BaseLayout`, sets `data-signed-in` on
+`<html>` when it finds it, and `site.css` shows the matching one of the two buttons `Header.astro`
+renders (`.site-signed-out`, `.site-signed-in`), so the swap happens before paint. Without the cookie or
+without JavaScript the header says "Login". Both buttons go to `/sign-in`, which hands over to the app's
+`/?sign-in`: the app opens for a browser with a session and signs in any other. The cookie is in the
+privacy policy (`src/i18n/pages/privacy.ts`, "Anmeldestatus").
+
 ## Blog
 
 Posts are MDX in `src/content/blog/<locale>/<slug>.mdx` (schema in
