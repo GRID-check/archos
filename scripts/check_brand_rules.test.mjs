@@ -1,7 +1,7 @@
 // Pins the brand rules in check_brand_rules.mjs. Run: node --test scripts/check_brand_rules.test.mjs
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { aiTagFindings, copyFindings, cssFindings, definedProperties, headingFinding, stringLeaves } from './check_brand_rules.mjs'
+import { IDENTITY, aiTagFindings, copyFindings, cssFindings, definedProperties, headingFinding, stringLeaves } from './check_brand_rules.mjs'
 
 test('German copy may not shout; English may', () => {
   assert.equal(copyFindings('Jetzt testen!', 'de').length, 1)
@@ -15,10 +15,11 @@ test('emoji are refused, the typographic glyphs are not', () => {
 
 test('the name is {name}, never typed, and carries no ™', () => {
   assert.deepEqual(copyFindings('{name} prüft das Modell.', 'de'), [])
-  assert.equal(copyFindings('Archos prüft das Modell.', 'de').length, 1)
+  const typed = IDENTITY.name[0] + IDENTITY.name.slice(1).toLowerCase()
+  assert.equal(copyFindings(`${typed} prüft das Modell.`, 'de').length, 1)
   assert.equal(copyFindings('{name}™ prüft.', 'de').length, 1)
-  assert.deepEqual(copyFindings('kontakt@archos.tech', 'de'), [])
-  assert.deepEqual(copyFindings('ARCHOS – Startseite', 'de', { filled: true }), [])
+  assert.deepEqual(copyFindings(IDENTITY.email, 'de'), [])
+  assert.deepEqual(copyFindings(`${IDENTITY.name} – Startseite`, 'de', { filled: true }), [])
 })
 
 test('banned product nouns and jargon', () => {
@@ -33,7 +34,7 @@ test('statement headings end with a stop; page names and item labels do not have
   assert.equal(headingFinding(['knowledge', 'title'], 'Noch Fragen?'), null)
   assert.equal(headingFinding(['title'], 'Datensicherheit'), null)
   assert.equal(headingFinding(['items', '0', 'title'], 'Hosting in Wien'), null)
-  assert.equal(headingFinding(['meta', 'title'], 'Kontakt – ARCHOS'), null)
+  assert.equal(headingFinding(['meta', 'title'], 'Kontakt – {name}'), null)
   assert.equal(headingFinding(['hero', 'text'], 'no stop'), null)
 })
 

@@ -35,17 +35,21 @@ const EMOJI = /[\p{Emoji_Presentation}\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B5
  * on word boundaries. Sources: Markenbasis p.12 ("Feste Begriffe", "Nicht so") and p.2 (Antonyme).
  */
 export const BANNED_TERMS = [
-  { pattern: /\bcopilot\b/i, reason: 'ARCHOS is a Workspace or a Plattform, never a Copilot (Markenbasis, Feste Begriffe)' },
+  { pattern: /\bcopilot\b/i, reason: 'the product is a Workspace or a Plattform, never a Copilot (Markenbasis, Feste Begriffe)' },
   { pattern: /\b(?:KI|AI)[- ]?(?:Workspace|Tool|Lösung|Solution)\b/i, reason: 'not "KI-Workspace"/"KI-Tool": AI is a property, not the product (Markenbasis, Feste Begriffe)' },
   { pattern: /\b(?:LLMs?|large language models?|reasoning[- ]?(?:modell|model)\w*|agentic)\b/i, reason: 'planning language, not AI jargon: say Modell, Planstand, Baurecht (Markenbasis, Planungssprache statt KI-Sprache)' },
   { pattern: /\b(?:revolution\w*|disrupt\w*|bahnbrechend\w*|game[- ]?changer\w*|next[- ]level|superkr(?:a|ä)ft\w*|superpower\w*)\b/i, reason: 'progress without utopia: no revolution or hype words (Markenbasis, Fortschritt ohne Utopie)' },
   { pattern: /\b(?:nahtlos\w*|seamless\w*|magisch\w*|magic(?:al)?)\b/i, reason: 'facts instead of promises: no empty marketing words (Markenbasis, Voice)' },
-  { pattern: /\bgenerative[sn]? (?:Design|Entw(?:u|ü)rf\w*)\b|\bgenerative design\b/i, reason: 'ARCHOS generates no designs (Markenbasis, Antonyme)' },
+  { pattern: /\bgenerative[sn]? (?:Design|Entw(?:u|ü)rf\w*)\b|\bgenerative design\b/i, reason: 'the product generates no designs (Markenbasis, Antonyme)' },
   { pattern: /\balles ab\b/i, reason: 'precise, not absolute: "Wir übernehmen, was Planer:innen vom Planen abhält." (Markenbasis, Präzise statt absolut)' },
 ]
 
-/** The product name is copy: write {name}, never type it (apps/website/AGENTS.md). archos.tech is a domain, not the name. */
-const TYPED_NAME = /\barchos\b(?!\.tech)/i
+/** The brand strings, read from the one place they live (the name is copy, so this file never spells it). */
+export const IDENTITY = JSON.parse(readFileSync(join(REPO, 'packages/brand/identity.json'), 'utf8'))
+const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** The product name is copy: write {name}, never type it (apps/website/AGENTS.md). The domain is not the name. */
+const TYPED_NAME = new RegExp(`\\b${escape(IDENTITY.name)}\\b(?!${escape(IDENTITY.domain.slice(IDENTITY.name.length))})`, 'i')
 
 /**
  * Findings for one copy string.
