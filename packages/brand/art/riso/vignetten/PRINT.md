@@ -42,6 +42,33 @@ What this work does differently, and why:
 - **No numeral** (`empty` sets `numeral: false`): a vignette is not a plate of
   the series, it is a spot in a product.
 
+## Printed in the brand neutrals (2026-10-29)
+
+The product app follows the design system 3.0, which has no brand colour: ink
+`#0f0e0d`, warm white `#fafaf9`, one light grey `#f2f1f0` and ink-muted `#5e5b57`
+for secondary marks. Green line art and a red ribbon were the retired brand.
+So this work passes its own `look` to `Riso.run` (`lib/engine.js`) and leaves
+`lib/piloti.js` alone: each drum keeps its screen, angle, registration and every
+drawn coverage, and only the colour it prints in changes.
+
+| Drum | Series | Here |
+|---|---|---|
+| Hunter (key line) | `#407060` | ink `#0f0e0d` |
+| Bright Red (the one accent) | `#F15060` | ink `#0f0e0d`: the ribbon still reads as the stake's mark by its shape |
+| Moss (shade) | `#68724D` | ink-muted `#5e5b57` |
+| Kelly (lawn, tufts) | `#67B346` | ink-muted let down 40 % onto the ground, `#b7b5b3` |
+| Mist (haze, glancing faces) | `#D5E4C0` | ink-muted let down 20 % onto the ground, `#d4d3d1` |
+| Paper | `#F4F2E8`, mottled | `#f2f1f0` (`surface-sunken`, the image ground), flat |
+
+Kelly and Mist printed in full ink-muted turned the lawn and the chest's top
+into heavy dot fields (first proof, rejected); a riso tint is a lighter drum,
+so the two tint drums print a lighter grey of the same ink. No hue remains.
+
+Exported with Chromium: the container this was made in cannot launch Firefox
+(see the kit README), so the pixels differ from a Firefox export by
+antialiasing; `verify.mjs` in both engines is still the check after a drawing
+change.
+
 ## Plates
 
 ### I. Bauplatz (building plot)
@@ -122,6 +149,8 @@ the product app and its manifest is `apps/workspace/bff/art/art.json`.
 - III: 1:1 crops at 640 of the pulled drawer and the drawer fronts, before and
   after the south faces moved from Moss to Mist.
 - `verify.mjs --work vignetten`: all six jobs repeat in Chromium and Firefox.
+- Neutral look (2026-10-29): all three at 320 and 640, full frame, in Chromium;
+  first proof with every shade drum in ink-muted rejected as too heavy.
 
 ## Remaining weaknesses
 

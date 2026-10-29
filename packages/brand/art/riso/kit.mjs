@@ -144,8 +144,9 @@ export function evaluateWork(work) {
   return {
     jobs: JSON.parse(JSON.stringify(riso.jobs)),
     formats: JSON.parse(JSON.stringify(vm.runInContext('FORMATS', ctx))),
-    ink: vm.runInContext('({ INK, INK_DRUM })', ctx),
-    paper: vm.runInContext('PAPER', ctx),
+    // A work's own look (Riso.run({ look })) overrides the series inks and paper.
+    ink: vm.runInContext('({ INK: { ...INK, ...LOOK.ink }, INK_DRUM })', ctx),
+    paper: vm.runInContext('LOOK.paper || PAPER', ctx),
   };
 }
 
