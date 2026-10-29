@@ -56,7 +56,9 @@ The table gives the source file and where it appears.
 | `knowledge-video.webm` | `28f2a93346.webm` | Same video, first source (WebM) |
 | `knowledge-video.mp4` | `8cde9d7ebc.mp4` | Same video, second source (MP4) |
 | `share-card.jpg` | none, cropped from the sign-in photo (`packages/brand/authkit/login-photo.webp` source) | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
-| `founders-photo.jpg` | `d06fb4a368.jpg` | Home, "Das Planungsbüro der Zukunft entsteht heute." (founding team) |
+| `jonathan-uhlemann.webp` | none, from `apps/site/src/assets/team/jonathan-uhlemann.webp` | Home, founders row "Das Planungsbüro der Zukunft entsteht heute." (portrait, 4:5 crop, 208 × 208 source) |
+| `matthias-bigl.webp` | none, from `apps/site/src/assets/team/matthias-bigl.webp` | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
+| `ferdinand-rubenbauer.webp` | none, from `apps/site/src/assets/team/ferdinand-rubenbauer.webp` | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
 | `team-conversation-photo.jpg` | `88395fbfb8.jpg` | Home, portrait beside the feld72 quote (grayscale) |
 | `demo-panel-background.webp` | `99653e3df7.webp` | Demo, background of the form panel |
 | `pilot-office-gerner-gerner-plus.svg` | `f3402543bd.svg` | Pilot office logo row (home, demo) |

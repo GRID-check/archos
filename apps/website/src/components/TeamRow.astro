@@ -1,0 +1,78 @@
+---
+/**
+ * A row of portraits, one per person: a 4:5 photo, the name under it in body
+ * ink, the role under that in small muted ink. One column below 768px.
+ * The people (names, roles, portraits, alt text) come from the page copy.
+ */
+interface Member {
+  name: string;
+  role: string;
+  portrait: string;
+  portraitAlt: string;
+}
+
+interface Props {
+  members: Member[];
+}
+
+const { members } = Astro.props;
+---
+
+<ul class="ui-team-row">
+  {
+    members.map((member) => (
+      <li class="ui-team-member">
+        <img
+          src={member.portrait}
+          alt={member.portraitAlt}
+          loading="lazy"
+          decoding="async"
+        />
+        <p class="body ui-team-name">{member.name}</p>
+        <p class="small ui-team-role">{member.role}</p>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .ui-team-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 768px) {
+    .ui-team-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .ui-team-member {
+    margin: 0;
+    padding: 0;
+  }
+
+  .ui-team-member img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: var(--radius-none);
+    box-shadow: none;
+    background: var(--surface-sunken);
+  }
+
+  .ui-team-name {
+    margin: var(--space-4) 0 0;
+    color: var(--ink);
+  }
+
+  .ui-team-role {
+    margin: var(--space-2) 0 0;
+    color: var(--ink-muted);
+  }
+</style>

@@ -8,6 +8,7 @@ import Hero from '../components/Hero.astro';
 import LogoRow from '../components/LogoRow.astro';
 import Quote from '../components/Quote.astro';
 import SectionIntro from '../components/SectionIntro.astro';
+import TeamRow from '../components/TeamRow.astro';
 import Timeline from '../components/Timeline.astro';
 import Video from '../components/Video.astro';
 import { navigation } from '../i18n/nav';
@@ -43,6 +44,8 @@ const duo: [DuoItem, DuoItem] = [
     photo: '/media/planner-design-photo.webp',
     photoStyle:
       'object-position: 60% 100%; transform: translateX(-50%); filter: sepia(0.16) saturate(1.05) contrast(0.92) brightness(0.82);',
+    photoMaskStyle:
+      'object-position: 60% 100%; transform: translateX(-50%); filter: sepia(0.16) hue-rotate(10deg) saturate(1) contrast(0.92) brightness(0.82); -webkit-mask-image: linear-gradient(to left, transparent 38%, #000 62%); mask-image: linear-gradient(to left, transparent 38%, #000 62%);',
     onPhoto: true,
     ai: true,
   },
@@ -95,7 +98,7 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
 
   <section class="ui-band">
     <div class="ui-container ui-section">
-      <SectionIntro size="display" align="center" title={c.statement.title} />
+      <SectionIntro size="display" align="center" title={c.statement.title} class="ui-duo-intro" />
       <div style="margin-top: var(--space-16);">
         <DuoCards locale={locale} items={duo} />
       </div>
@@ -105,6 +108,7 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
   <section class="ui-container ui-section">
     <SectionIntro title={c.built.title} />
     <img
+      class="home-built-image"
       src="/media/product-floor-plan-query.webp"
       alt={c.built.imageAlt}
       style="display: block; width: 100%; aspect-ratio: 4864 / 1620; object-fit: cover; object-position: left center; margin: var(--space-8) 0 var(--space-16); background: var(--surface-sunken);"
@@ -137,20 +141,10 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
 
   <section class="ui-container ui-section">
     <SectionIntro size="heading" title={c.founders.title} />
-    <img
-      src="/media/founders-photo.jpg"
-      alt={c.founders.imageAlt}
-      style="display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; object-position: center 30%; margin-top: var(--space-8); background: var(--surface-sunken);"
-    />
-    <p class="small" style="margin: var(--space-4) 0 0; max-width: 560px; color: var(--ink-muted);">
-      {c.founders.caption} {c.founders.label}{' '}
-      {c.founders.people.map((person, i) => (
-        <>
-          <span style="color: var(--ink);">{person.name}</span>, {person.role}
-          {i < c.founders.people.length - 1 ? ' · ' : '.'}
-        </>
-      ))}
-    </p>
+    <p class="small" style="margin: var(--space-4) 0 0; max-width: 560px; color: var(--ink-muted);">{c.founders.caption}</p>
+    <div style="margin-top: var(--space-8);">
+      <TeamRow members={c.founders.people} />
+    </div>
     <div style="margin-top: var(--space-8);">
       <p class="lead" style="margin: 0 0 var(--space-8);">{c.founders.lead}</p>
       <Button href={nav.demo.href} variant="secondary" size="lg">{nav.demo.label}</Button>
