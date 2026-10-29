@@ -22,7 +22,7 @@
  * footer tab is the product's card, and it already has a primitive —
  * `components/ui/raised-card.tsx` (`RaisedCard` / `RaisedCardBody` /
  * `RaisedCardFooter`). This file holds what is specific to a PROJECT on that
- * shape. Adding a `rounded-b-[10px] bg-card shadow-xs` of its own here would
+ * shape. Adding a `rounded-b-[10px] bg-card ` of its own here would
  * have been the fifth hand-rolled copy of that geometry, which is the exact
  * drift `raised-card.tsx` was written to stop.
  *
@@ -80,7 +80,7 @@ export function ProjectOpenLink({
         // whole card, and an offset ring would be sliced off by the card's own
         // `overflow-hidden` — this is the documented inset exception at the
         // documented `/60` alpha, not the old `/50` third recipe.
-        'block min-w-0 after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring/60',
+        'block min-w-0 after:absolute after:inset-0 after:rounded-surface focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring/60',
         className,
       )}
     >
@@ -260,7 +260,7 @@ export function ProjectInitialsTile({
     <span
       aria-hidden
       className={cn(
-        'grid size-9 shrink-0 place-items-center rounded-control bg-muted text-xs font-semibold tracking-wide text-muted-foreground transition-colors duration-quick ease-out group-hover:bg-accent group-hover:text-foreground motion-reduce:transition-none',
+        'grid size-9 shrink-0 place-items-center rounded-control bg-muted text-xs font-medium tracking-wide text-muted-foreground transition-colors duration-quick ease-out group-hover:bg-accent group-hover:text-foreground motion-reduce:transition-none',
         className,
       )}
     >

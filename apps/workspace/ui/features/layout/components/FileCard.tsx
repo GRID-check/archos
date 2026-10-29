@@ -67,7 +67,7 @@ export const FileCard: FC<FileCardProps> = ({ file }) => {
   const shouldRenderMarkdown = isMarkdownFile(file.filename)
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border bg-muted">
+    <div className="flex flex-col overflow-hidden rounded-surface border bg-muted">
       {/* Header - always visible */}
       <button
         type="button"
@@ -84,7 +84,7 @@ export const FileCard: FC<FileCardProps> = ({ file }) => {
 
           {/* File Info */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-sm font-semibold">{file.filename}</span>
+            <span className="truncate text-sm font-medium">{file.filename}</span>
           </div>
 
           {/* Line count */}
@@ -129,7 +129,7 @@ export const FileCard: FC<FileCardProps> = ({ file }) => {
           {/* File Content */}
           {file.content && (
             <div className="mt-2 flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">
+              <span className="text-xs font-medium uppercase text-muted-foreground">
                 {t('fileCard.content')}
               </span>
               {shouldRenderMarkdown ? (

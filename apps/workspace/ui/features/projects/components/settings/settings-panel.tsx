@@ -58,7 +58,7 @@ export function SettingsSectionIntro({
 }): JSX.Element {
   return (
     <div className="space-y-1">
-      <h2 className="text-foreground text-sm font-semibold">{title}</h2>
+      <h2 className="text-foreground text-sm font-medium">{title}</h2>
       {description ? (
         <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">{description}</p>
       ) : null}

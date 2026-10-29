@@ -87,7 +87,7 @@ export function UploadField({
       <span className="text-sm font-medium">{question.label}</span>
       <Link
         href={`/app/projects/${projectId}/files`}
-        className="border-border bg-muted/20 text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-foreground inline-flex max-w-md items-center gap-3 rounded-lg border border-dashed px-4 py-3 text-sm transition-colors duration-quick ease-out motion-reduce:transition-none"
+        className="border-border bg-muted/20 text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-foreground inline-flex max-w-md items-center gap-3 rounded-control border border-dashed px-4 py-3 text-sm transition-colors duration-quick ease-out motion-reduce:transition-none"
       >
         <FolderOpen className="text-primary size-4 shrink-0" aria-hidden />
         <span>{t('intake.upload.hint')}</span>
@@ -100,7 +100,7 @@ export function UploadField({
 export function InfoPlaceholder({ question }: { question: ProjectIntakeQuestion }) {
   const t = useTranslations(projectsCopy)
   return (
-    <div className="bg-muted/30 rounded-xl border border-dashed px-4 py-3.5">
+    <div className="bg-muted/30 rounded-surface border border-dashed px-4 py-3.5">
       <div className="flex items-start gap-2.5">
         <Sparkles className="text-primary size-4 shrink-0 translate-y-0.5" aria-hidden />
         <div className="min-w-0">

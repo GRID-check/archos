@@ -151,7 +151,7 @@ export function ShortcutsCheatsheet({
               surface that opens on its own (see EmptyState). */}
           <DialogHeader className="flex-row items-start gap-3.5 space-y-0 px-6 pt-6 pb-5 text-left">
             <span
-              className="flex size-9 shrink-0 items-center justify-center rounded-control border border-border bg-surface-raised shadow-xs"
+              className="flex size-9 shrink-0 items-center justify-center rounded-control border border-border bg-surface-raised "
               aria-hidden
             >
               <Keyboard className="size-4.5 text-muted-foreground" />

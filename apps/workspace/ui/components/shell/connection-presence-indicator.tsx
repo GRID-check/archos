@@ -67,7 +67,7 @@ export function ConnectionPresenceIndicator({
           aria-label={label}
           data-presence={presence}
           className={cn(
-            'inline-flex min-h-4 items-center gap-2 rounded-sm text-xs text-muted-foreground select-none',
+            'inline-flex min-h-4 items-center gap-2 rounded-control text-xs text-muted-foreground select-none',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             className,
           )}

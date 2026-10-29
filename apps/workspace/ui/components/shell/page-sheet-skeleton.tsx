@@ -43,12 +43,12 @@ export function PageSheetSkeleton({ loadingLabel }: { loadingLabel: string }): J
             <Skeleton className="h-5 w-40" />
             <Skeleton className="h-3.5 w-64" />
           </div>
-          <Skeleton className="hidden size-9 rounded-lg md:block" />
+          <Skeleton className="hidden size-9 rounded-control md:block" />
         </div>
         <div className="min-h-0 flex-1 space-y-3 px-4 py-6 md:px-8">
-          <Skeleton className="h-16 w-full rounded-lg" />
-          <Skeleton className="h-16 w-full rounded-lg" />
-          <Skeleton className="h-16 w-2/3 rounded-lg" />
+          <Skeleton className="h-16 w-full rounded-control" />
+          <Skeleton className="h-16 w-full rounded-control" />
+          <Skeleton className="h-16 w-2/3 rounded-control" />
         </div>
       </div>
     </div>

@@ -135,7 +135,7 @@
     "apps/workspace/ui/features/knowledge/components/use-pdf-document-view-controller.tsx": 1076,
     "apps/workspace/ui/features/knowledge/lib/passage-highlight.ts": 758,
     "apps/workspace/ui/features/layout/components/ChatToolbar.tsx": 668,
-    "apps/workspace/ui/features/layout/components/SessionsPanel.tsx": 1304,
+    "apps/workspace/ui/features/layout/components/SessionsPanel.tsx": 1302,
     "apps/workspace/ui/features/layout/components/chat-area/use-chat-area-controller.tsx": 1322,
     "apps/workspace/ui/features/layout/components/input-area/use-input-area-controller.tsx": 1605,
     "apps/workspace/ui/features/platform/components/agent-profiler.tsx": 679,

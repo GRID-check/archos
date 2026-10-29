@@ -140,7 +140,7 @@ export const SourceBasisPicker: FC = () => {
       <Field className="gap-1">
         <div className="flex items-center gap-2">
           <Layers className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="text-sm font-semibold">{t('sourceBasis.label')}</span>
+          <span className="text-sm font-medium">{t('sourceBasis.label')}</span>
         </div>
         <FieldDescription>{t('sourceBasis.description')}</FieldDescription>
       </Field>
@@ -154,9 +154,9 @@ export const SourceBasisPicker: FC = () => {
       <div className="scroll-fade-bottom min-h-0 flex-1 space-y-4 overflow-y-auto pb-1">
         {dataSourcesLoading ? (
           <div className="space-y-2" aria-busy="true" aria-label={t('dataSources.loading')}>
-            <Skeleton className="h-14 w-full rounded-lg" />
-            <Skeleton className="h-14 w-full rounded-lg" />
-            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-control" />
+            <Skeleton className="h-14 w-full rounded-control" />
+            <Skeleton className="h-14 w-full rounded-control" />
           </div>
         ) : dataSourcesError ? (
           <Alert variant="destructive">
@@ -189,7 +189,7 @@ export const SourceBasisPicker: FC = () => {
             <section className="space-y-2">
               <SectionLabel as="h3">{t('sourceBasis.external')}</SectionLabel>
               {basis.external.length === 0 ? (
-                <div className="rounded-lg border border-dashed bg-muted p-6 text-center">
+                <div className="rounded-surface border border-dashed bg-muted p-6 text-center">
                   <Layers className="mx-auto size-6 text-muted-foreground/60" aria-hidden="true" />
                   <p className="mt-2 text-sm font-medium">{t('sourceBasis.emptyTitle')}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t('sourceBasis.emptyBody')}</p>

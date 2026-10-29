@@ -31,19 +31,19 @@ export function OfficeShelfEntryCard(): JSX.Element {
       aria-label={t('officeShelfCard.aria')}
       // Scale values only (`px-4`, `size-9`, `size-4`) — the 2px/1px drift from
       // the old arbitraries is a one-time static alignment to the scale, not an
-      // animated shift. `shadow-sm` at rest with NO hover lift (audit §5.6):
+      // animated shift. `` at rest with NO hover lift (audit §5.6):
       // the chevron's nudge is already the hover signal, so a lift would
       // promise a second one. The well is the shared `StatCardIcon` in the
       // office tint, and the control ring is the documented one instead of
       // the hand-rolled third recipe.
       className={cn(
-        'group flex w-full items-center gap-3.5 rounded-surface border border-border bg-card px-4 py-3.5 shadow-sm transition-colors duration-quick ease-out focus-visible:outline-none motion-reduce:transition-none',
+        'group flex w-full items-center gap-3.5 rounded-surface border border-border bg-card px-4 py-3.5 transition-colors duration-quick ease-out focus-visible:outline-none motion-reduce:transition-none',
         FOCUS_RING,
       )}
     >
       <StatCardIcon icon={Archive} tone="office" />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold tracking-tight">{t('officeShelfCard.title')}</span>
+        <span className="block text-sm font-medium">{t('officeShelfCard.title')}</span>
         <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{t('officeShelfCard.subtitle')}</span>
       </span>
       <ChevronRight

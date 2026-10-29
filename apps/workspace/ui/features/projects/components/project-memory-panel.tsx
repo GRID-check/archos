@@ -322,7 +322,7 @@ export function ProjectMemoryPanel({
     <section className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-56">
-          <h2 className="text-foreground text-sm font-semibold">{t('memory.heading')}</h2>
+          <h2 className="text-foreground text-sm font-medium">{t('memory.heading')}</h2>
           <p className="text-muted-foreground mt-1 text-sm">{t('memory.description')}</p>
         </div>
         {!readOnly && (

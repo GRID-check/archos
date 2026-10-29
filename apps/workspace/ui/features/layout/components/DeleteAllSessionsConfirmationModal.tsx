@@ -47,7 +47,7 @@ export const DeleteAllSessionsConfirmationModal: FC<DeleteAllSessionsConfirmatio
       description={
         <>
           {t('deleteModals.aboutToDelete')}{' '}
-          <span className="font-semibold text-foreground">
+          <span className="font-medium text-foreground">
             {count && count > 0
               ? t('deleteModals.all.countSessions', { count })
               : t('deleteModals.all.allSessions')}

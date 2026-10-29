@@ -150,7 +150,7 @@ export function SidebarUserMenu({
           // in the org header the search button stands right beside it.
           compact
             ? 'w-auto rounded-full p-0 pointer-coarse:size-11 pointer-coarse:justify-center'
-            : 'w-full rounded-lg py-1 pl-0 pr-2',
+            : 'w-full rounded-control py-1 pl-0 pr-2',
         )}
         aria-label={
           feedbackUpdatedCount > 0

@@ -48,7 +48,7 @@ export const DeleteSessionConfirmationModal: FC<DeleteSessionConfirmationModalPr
         <>
           {t('deleteModals.aboutToDelete')}{' '}
           {trimmedTitle ? (
-            <span className="font-semibold text-foreground">&ldquo;{trimmedTitle}&rdquo;</span>
+            <span className="font-medium text-foreground">&ldquo;{trimmedTitle}&rdquo;</span>
           ) : (
             t('deleteModals.session.thisSession')
           )}

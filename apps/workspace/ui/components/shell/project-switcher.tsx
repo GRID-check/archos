@@ -63,7 +63,7 @@ export function ProjectStatusDot({ active }: { active?: boolean }) {
 }
 
 const TRIGGER_CLASS = cn(
-  'flex h-9 w-full items-center gap-2.5 rounded-control border border-border bg-card px-3 text-left shadow-xs pointer-coarse:h-11',
+  'flex h-9 w-full items-center gap-2.5 rounded-control border border-border bg-card px-3 text-left pointer-coarse:h-11',
   'transition-[color,background-color,border-color,box-shadow,transform] duration-quick ease-out',
   'hover:bg-accent active:scale-[0.98] motion-reduce:transition-none',
   'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
@@ -134,7 +134,7 @@ export function ProjectSwitcher({ projects, activeProjectId, collapsed }: Projec
         {triggerBody}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="bottom" className="w-60 motion-reduce:animate-none">
-        <DropdownMenuLabel className="text-[10.5px] font-semibold tracking-[0.05em] text-muted-foreground uppercase">
+        <DropdownMenuLabel className="text-[10.5px] font-medium tracking-[0.05em] text-muted-foreground uppercase">
           {t('projectSwitcher.switchHeading')}
         </DropdownMenuLabel>
         {offered.map((project) => {

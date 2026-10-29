@@ -259,7 +259,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {/* Title, file size, and timestamp */}
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-semibold">{title}</span>
+          <span className="truncate text-sm font-medium">{title}</span>
           {fileSize != null && fileSize > 0 && (
             <span className="shrink-0 text-xs text-muted-foreground">
               {formatBytes(fileSize, locale)}
@@ -339,7 +339,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
   return (
     <motion.div
       className={cn(
-        'group flex items-start justify-between rounded-2xl bg-card p-3 shadow-xs transition-colors duration-quick ease-out',
+        'group border-border flex items-start justify-between rounded-surface border bg-card p-3 transition-colors duration-quick ease-out',
         status === 'error' && 'ring-1 ring-error/40'
       )}
       initial={{ opacity: 0, y: 8 }}
@@ -354,7 +354,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
             type="button"
             onClick={() => onOpen?.(id)}
             aria-label={t('fileSourceCard.open', { title })}
-            className="focus-visible:ring-ring/50 -m-1 flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left focus-visible:outline-none focus-visible:ring-2"
+            className="focus-visible:ring-ring/50 -m-1 flex min-w-0 flex-1 items-center gap-3 rounded-control p-1 text-left focus-visible:outline-none focus-visible:ring-2"
           >
             {rowBody}
           </button>
@@ -372,7 +372,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
             // Hover is the only trigger a touch device cannot generate, so without
             // it this row's delete was a control that existed, took a tab stop, and
             // could never be seen on a phone.
-            className="ml-2 size-8 flex-shrink-0 rounded-full text-muted-foreground opacity-0 transition-opacity duration-quick ease-out hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
+            className="ml-2 size-8 flex-shrink-0 rounded-control text-muted-foreground opacity-0 transition-opacity duration-quick ease-out hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
             onClick={handleDelete}
             disabled={deleteDisabled}
             aria-label={
@@ -403,8 +403,8 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
  * a lone centered spinner.
  */
 export const FileSourceCardSkeleton: FC = () => (
-  <div className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-xs">
-    <Skeleton className="size-8 shrink-0 rounded-lg" />
+  <div className="border-border flex items-center gap-3 rounded-surface border bg-card p-3">
+    <Skeleton className="size-8 shrink-0 rounded-control" />
     <div className="flex min-w-0 flex-1 flex-col gap-2">
       <Skeleton className="h-3.5 w-1/2" />
       <Skeleton className="h-3 w-1/4" />

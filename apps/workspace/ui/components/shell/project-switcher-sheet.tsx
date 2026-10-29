@@ -143,7 +143,7 @@ export function ProjectSwitcherSheet({
           contentRef.current?.focus()
         }}
         className={cn(
-          'gap-0 overflow-hidden rounded-surface p-0 outline-none',
+          'gap-0 overflow-hidden rounded-overlay p-0 outline-none',
           // Never taller than what the keyboard leaves, so the field and the
           // first matches stay in view while the reader types.
           'h-[min(85dvh,var(--visual-viewport-height,100dvh))] max-h-none',
@@ -152,7 +152,7 @@ export function ProjectSwitcherSheet({
       >
         <div aria-hidden className="bg-border mx-auto mt-2 h-1 w-9 shrink-0 rounded-full" />
         <SheetHeader className="shrink-0 gap-0.5 px-4 pb-3 pt-3">
-          <SheetTitle className="text-base font-semibold tracking-tight">
+          <SheetTitle className="text-base font-medium">
             {t('projectSwitcher.switchHeading')}
           </SheetTitle>
           <SheetDescription className="sr-only">{t('projectSheet.description')}</SheetDescription>

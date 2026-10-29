@@ -260,7 +260,7 @@ export function CloseProjectDialog({
                     {items.map((item) => {
                       const id = `cleanup-${item.documentId}`
                       return (
-                        <li key={item.documentId} className="flex items-start gap-3 rounded-lg border border-border p-2.5">
+                        <li key={item.documentId} className="flex items-start gap-3 rounded-control border border-border p-2.5">
                           <Checkbox
                             id={id}
                             checked={selected.has(item.documentId)}

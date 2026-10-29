@@ -440,7 +440,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
               without spending a word on it. */}
           {isNavigationBlocked && (
             <p
-              className="border-border bg-muted text-muted-foreground flex min-h-11 items-start gap-2 rounded-lg border px-3 py-2 text-xs"
+              className="border-border bg-muted text-muted-foreground flex min-h-11 items-start gap-2 rounded-surface border px-3 py-2 text-xs"
               role="status"
             >
               {/* Spinner injects its own role=status; hide it so this region
@@ -572,7 +572,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                   as="ul"
                   aria-busy="true"
                   data-testid="deep-research-skeleton"
-                  className="bg-card shadow-xs"
+                  className="border-border bg-card"
                 >
                   {Array.from({ length: 2 }).map((_, index) => (
                     <Item as="li" key={index} className="items-start py-3.5">
@@ -589,7 +589,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
               ) : deepResearchError ? (
                 // A failed fetch must never read as "no runs": one quiet line
                 // with the way to try again, beside the lists that still work.
-                <div className="border-border bg-card flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-2.5 shadow-xs">
+                <div className="border-border bg-card flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-surface border px-4 py-2.5 ">
                   <p className="text-muted-foreground text-xs">
                     {t('sessionsPanel.researchLoadFailed')}
                   </p>
@@ -621,7 +621,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                   />
                 )
               ) : (
-                <ItemList as="ul" className="bg-card shadow-xs">
+                <ItemList as="ul" className="bg-card ">
                   {filteredRuns.map((run) => {
                     const status = run.status
                     const href = runHref(run)
@@ -659,7 +659,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                                 label: runLabel(run),
                                 status: t(runStatusKey(status)),
                               })}
-                              className="min-w-0 flex-1 rounded-sm text-sm font-medium leading-snug outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+                              className="min-w-0 flex-1 rounded-control text-sm font-medium leading-snug outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                             >
                               <span className="block truncate" title={runLabel(run)}>
                                 {runLabel(run)}
@@ -725,8 +725,8 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                 <SectionLabel className="bg-background sticky top-0 z-10 -mx-2 px-2 pb-1.5 pt-1">
                   {dateLabel}
                 </SectionLabel>
-                <ItemList as="ul" className="bg-card shadow-xs">
-                  {/* Deleting a row removes it, so the list needs an exit —
+                <ItemList as="ul" className="border-border bg-card">
+                  {/*Deleting a row removes it, so the list needs an exit —
                       which CSS cannot give it — and `layout` so the rows below
                       close the gap instead of jumping. The inbox's pattern,
                       for the same reason. */}
@@ -1071,7 +1071,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
               // Stretched over the whole row via the ::after overlay, the
               // inbox's pattern — so the row stays ONE control without nesting
               // the icon disc inside it.
-              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-sm text-left outline-none pointer-coarse:mr-9 after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-control text-left outline-none pointer-coarse:mr-9 after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
             >
               {/* Two-line content block: title + persistent time on line 1, the
                   calm Deep Research badge on line 2. */}
@@ -1163,17 +1163,15 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
         {/* The actions OVERLAY the row on hover/focus instead of holding a
             permanent column that taxes every title's width. Overlaying is
             reflow-free (the row never resizes) and the resting row spends its
-            full width on the title. The gradient fades the row out beneath the
-            buttons so a long title slides under them instead of colliding —
-            its colour names the surface the row is actually on: `accent` for
-            the selected row, `muted` for the hovered/focused one. */}
+            full width on the title. The action block is a solid fill in the
+            colour of the surface the row is actually on (`accent` for the
+            selected row, `muted` for the hovered/focused one), so a long title
+            slides under it instead of colliding. No gradient: the brand has none. */}
         {showActions && (
           <div
             className={cn(
               'absolute inset-y-0 right-2 z-10 flex items-center gap-1 pl-6 pointer-coarse:hidden animate-in fade-in-0 duration-snap ease-out motion-reduce:animate-none',
-              isSelected
-                ? '[background:linear-gradient(to_right,transparent,var(--accent)_1.5rem)]'
-                : '[background:linear-gradient(to_right,transparent,var(--muted)_1.5rem)]'
+              isSelected ? 'bg-accent' : 'bg-muted'
             )}
           >
             {!session.contentLocked && (

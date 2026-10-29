@@ -119,7 +119,7 @@ export function ProjectBasisStep({
       {recommended.length > 0 && (
         <section className="space-y-3">
           <div>
-            <h3 className="text-sm font-semibold">Für dieses Projekt besonders wichtig</h3>
+            <h3 className="text-sm font-medium">Für dieses Projekt besonders wichtig</h3>
             <p className="text-muted-foreground mt-0.5 text-sm">
               {recommended.length === 1
                 ? 'Diese Unterlage ergibt sich aus Ihren Angaben.'
@@ -129,7 +129,7 @@ export function ProjectBasisStep({
           </div>
           <ul className="space-y-3">
             {recommended.map((slot) => (
-              <li key={slot.key} className="bg-card rounded-xl border px-4 py-3.5">
+              <li key={slot.key} className="bg-card rounded-surface border px-4 py-3.5">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium">{slot.label}</span>
                   <Badge variant="info">dringend empfohlen</Badge>
@@ -149,12 +149,12 @@ export function ProjectBasisStep({
       {optional.length > 0 && (
         <section className="space-y-2">
           <div>
-            <h3 className="text-sm font-semibold">Weitere Unterlagen</h3>
+            <h3 className="text-sm font-medium">Weitere Unterlagen</h3>
             <p className="text-muted-foreground mt-0.5 text-sm">
               Optional, und jederzeit später ergänzbar.
             </p>
           </div>
-          <ul className="bg-card divide-y rounded-xl border">
+          <ul className="bg-card divide-y rounded-surface border">
             {optional.map((slot) => (
               <CollapsedSlot
                 key={slot.key}

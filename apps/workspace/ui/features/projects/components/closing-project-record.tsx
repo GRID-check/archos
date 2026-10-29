@@ -48,7 +48,7 @@ export function ClosingProjectRecord({ projectId }: { projectId: string }): JSX.
         {t('projectRecord.closing.heading')}
       </SectionLabel>
       <p className="text-muted-foreground text-xs leading-relaxed">{t('projectRecord.closing.description')}</p>
-      {load.state === 'loading' && <Skeleton className="h-16 rounded-lg" />}
+      {load.state === 'loading' && <Skeleton className="h-16 rounded-control" />}
       {load.state === 'failed' && <p className="text-muted-foreground text-sm">{t('projectRecord.closing.loadFailed')}</p>}
       {load.state === 'ready' && (
         <ClosingPeople

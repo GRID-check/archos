@@ -143,7 +143,7 @@ export function ModuleList({
               onClick={() => onSelect(index)}
               aria-current={state === 'current' ? 'step' : undefined}
               className={cn(
-                'duration-quick focus-visible:ring-ring/40 group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left outline-none transition-colors ease-out focus-visible:ring-2 motion-reduce:transition-none',
+                'duration-quick focus-visible:ring-ring/40 group flex w-full items-center gap-2.5 rounded-control px-2 py-2 text-left outline-none transition-colors ease-out focus-visible:ring-2 motion-reduce:transition-none',
                 touch && 'min-h-12 px-3',
                 state === 'current' ? 'bg-muted' : 'hover:bg-muted/50'
               )}
@@ -220,7 +220,7 @@ export function ModulePicker({
           type="button"
           data-testid="intake-module-picker"
           aria-label={t('intake.modulePickerAria', { module: stage.id, title: stage.title })}
-          className="border-border bg-card focus-visible:ring-ring/40 mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg border px-3.5 text-left outline-none focus-visible:ring-2 lg:hidden"
+          className="border-border bg-card focus-visible:ring-ring/40 mb-3 flex min-h-11 w-full items-center gap-3 rounded-control border px-3.5 text-left outline-none focus-visible:ring-2 lg:hidden"
         >
           {/* Two spans: the content header below `lg` carries the same „Modul B“
               as one text node, and a screen that has the bar and the header at

@@ -38,7 +38,7 @@ export function ShellSearchButton({ className }: { className?: string }): JSX.El
       data-testid="shell-search"
       data-tour={TOUR_ANCHORS.search}
       className={cn(
-        'text-muted-foreground hover:bg-accent hover:text-foreground duration-quick pointer-coarse:size-11 relative flex size-9 shrink-0 items-center justify-center rounded-lg outline-none transition-colors ease-out motion-reduce:transition-none',
+        'text-muted-foreground hover:bg-accent hover:text-foreground duration-quick pointer-coarse:size-11 relative flex size-9 shrink-0 items-center justify-center rounded-control outline-none transition-colors ease-out motion-reduce:transition-none',
         FOCUS_RING,
         className
       )}

@@ -51,7 +51,7 @@ export const SourceBasisRow: FC<SourceBasisRowProps> = ({ entry, isBusy = false,
           800 lines away were fully colour-coded — two controls, one subject,
           opposite visual languages. */}
       <ItemMedia
-        className="size-8 rounded-lg"
+        className="size-8 rounded-control"
         style={{ backgroundColor: `var(--source-${entry.signal}-tint, var(--muted))` }}
       >
         <Icon

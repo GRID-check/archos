@@ -70,7 +70,7 @@ export function CreateProjectDialog({
         fullScreenOnMobile
         // The mockup's 560px card: roomier padding and radius than the kit's
         // default dialog, the same on every screen that is not a phone.
-        className="sm:top-[84px] sm:max-h-[calc(100dvh-84px-1.5rem)] sm:max-w-[560px] sm:translate-y-0 sm:rounded-surface sm:p-7"
+        className="sm:top-[84px] sm:max-h-[calc(100dvh-84px-1.5rem)] sm:max-w-[560px] sm:translate-y-0 sm:rounded-overlay sm:p-7"
         // Radix puts focus on the first field when a dialog opens, which on a
         // touch device opens the keyboard over the form before anyone has read
         // it. The dialog itself takes the focus there instead (so a screen
@@ -82,7 +82,7 @@ export function CreateProjectDialog({
         }}
       >
         <DialogHeader className="mb-1 gap-1.5 pr-8">
-          <DialogTitle className="text-xl tracking-tight">{t('dialog.title')}</DialogTitle>
+          <DialogTitle className="text-xl">{t('dialog.title')}</DialogTitle>
           <DialogDescription className="text-sm">{t('dialog.description')}</DialogDescription>
         </DialogHeader>
         <CreateProjectForm onCancel={() => handleOpenChange(false)} addressClients={addressClients} initial={initial} />

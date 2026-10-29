@@ -138,7 +138,7 @@ export const SourceSignalChipToggle = forwardRef<HTMLButtonElement, SourceSignal
           chipClasses,
           chipTouchClasses,
           'cursor-pointer',
-          active ? 'shadow-xs' : 'border-transparent hover:shadow-xs',
+          active ? '' : 'border-transparent hover:border-border',
           className
         )}
         style={active ? { ...tint, borderColor } : tint}

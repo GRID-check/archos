@@ -38,14 +38,14 @@ export function ProjectPill({
       aria-expanded={expanded}
       data-testid="project-pill"
       className={cn(
-        'border-border bg-card shadow-xs flex h-11 min-w-0 max-w-[min(100%,20rem)] items-center gap-2.5 rounded-control border pl-3 pr-2.5 text-left outline-none',
+        'border-border bg-card flex h-11 min-w-0 max-w-[min(100%,20rem)] items-center gap-2.5 rounded-control border pl-3 pr-2.5 text-left outline-none',
         PRESSABLE,
         FOCUS_RING,
         className
       )}
     >
       <ProjectStatusDot active />
-      <span className="text-foreground min-w-0 flex-1 truncate text-[15px] font-semibold tracking-[-0.01em]">
+      <span className="text-foreground min-w-0 flex-1 truncate text-[15px] font-medium">
         {name}
       </span>
       <ChevronDown className="text-muted-foreground size-4 shrink-0" aria-hidden />

@@ -65,7 +65,7 @@ export function ProjectIntakeWizardView({ controller }: { controller: ProjectInt
           <SectionLabel>
             {isEdit ? t('intake.eyebrowEdit') : t('intake.eyebrowCreate')}
           </SectionLabel>
-          <h1 className="mt-1 truncate text-xl font-semibold tracking-tight">
+          <h1 className="mt-1 truncate text-xl font-medium">
             {projectName || t('intake.titleFallback')}
           </h1>
           <p className="text-muted-foreground mt-1 hidden max-w-prose text-sm sm:[@media(min-height:32rem)]:block">
@@ -188,7 +188,7 @@ export function ProjectIntakeWizardView({ controller }: { controller: ProjectInt
                         </Button>
                       )}
                   </div>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight">{stage.title}</h2>
+                  <h2 className="mt-1 text-lg font-medium">{stage.title}</h2>
                   {stage.description && (
                     <p className="text-muted-foreground mt-1 max-w-prose text-sm">
                       {stage.description}
@@ -278,7 +278,7 @@ export function ProjectIntakeWizardView({ controller }: { controller: ProjectInt
                     {/* Says what Schnellstart is hiding, and offers it here. A
                       count the user cannot act on would just be a nag. */}
                     {hiddenByQuickStart > 0 && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-dashed px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-surface border border-dashed px-4 py-3">
                         <span className="text-muted-foreground text-sm">
                           {t('intake.hiddenByQuickstart', { count: hiddenByQuickStart })}
                         </span>

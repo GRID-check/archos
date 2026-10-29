@@ -109,7 +109,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea(props) {
             {controller.connectionNote ? (
               <motion.div
                 key={controller.connectionNote}
-                className="bg-background/85 text-muted-foreground flex h-6 items-center gap-1.5 rounded-md px-2 text-xs"
+                className="bg-background/85 text-muted-foreground flex h-6 items-center gap-1.5 rounded-control px-2 text-xs"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1, transition: controller.rowEnter }}
                 exit={{ opacity: 0, transition: controller.rowLeave }}
@@ -128,7 +128,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea(props) {
               controller.typists.length > 0 && (
                 <motion.div
                   key="typing"
-                  className="bg-background/85 rounded-md px-2"
+                  className="bg-background/85 rounded-control px-2"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1, transition: controller.rowEnter }}
                   exit={{ opacity: 0, transition: controller.rowLeave }}
@@ -185,7 +185,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea(props) {
                 className={cn(
                   PRESSABLE,
                   FOCUS_RING,
-                  'bg-card text-muted-foreground hover:text-foreground pointer-events-auto flex size-9 items-center justify-center rounded-lg border shadow-md outline-none pointer-coarse:size-11'
+                  'bg-card text-muted-foreground hover:text-foreground pointer-events-auto flex size-9 items-center justify-center rounded-control border outline-none pointer-coarse:size-11'
                 )}
               >
                 <ArrowDown className="size-4" aria-hidden="true" />
