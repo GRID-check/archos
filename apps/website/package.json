@@ -9,7 +9,7 @@
     "preview": "astro preview",
     "check": "astro check && node ../../packages/brand/sync.mjs --check",
     "start": "node runtime/server.mjs",
-    "test": "node --test runtime/*.test.mjs"
+    "test": "node --test runtime/*.test.mjs && bun test src"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.11",

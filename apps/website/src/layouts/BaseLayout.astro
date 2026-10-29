@@ -7,24 +7,28 @@ import Header from '../components/Header.astro';
 import { alternateOf, type Locale } from '../i18n/paths';
 import { t } from '../i18n/ui';
 import identity from '../lib/identity';
+import { jsonLd, siteGraph } from '../lib/structured-data';
+import { surfaceColor } from '../lib/theme';
 
 interface Props {
   /** The page's language: sets `<html lang>`, the shell's strings and the hreflang pair */
   locale: Locale;
-  /** Page name. Omitted on the home page, where the title is the brand name alone. */
-  title?: string;
+  /** Page name, printed as `<title> – <brand>`. On the home page the brand comes first (`brandFirst`). */
+  title: string;
+  /** The home page: `<brand> – <title>` */
+  brandFirst?: boolean;
   description: string;
   /** Keeps the page out of search results */
   noindex?: boolean;
-  /** Renders without header and footer (the split pages: Login, Demo) */
+  /** Renders without header and footer (the split pages: Demo) */
   bare?: boolean;
   /** The other locale's twin of this page, when its path is not the table's (a post's translation) */
   alternatePath?: string;
 }
 
-const { locale, title, description, noindex = false, bare = false, alternatePath } = Astro.props;
+const { locale, title, brandFirst = false, description, noindex = false, bare = false, alternatePath } = Astro.props;
 const ui = t(locale);
-const pageTitle = title ? `${title} – ${identity.name}` : identity.name;
+const pageTitle = brandFirst ? `${identity.name} – ${title}` : `${title} – ${identity.name}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // hreflang: the page and its other-locale twin, German as x-default.
 const here = Astro.url.pathname;
@@ -33,6 +37,7 @@ const hrefFor = (target: Locale) => new URL(target === locale ? here : there, As
 // Social previews: the share card is the one image every page shares; og:locale names the region.
 const ogLocale: Record<Locale, string> = { de: 'de_AT', en: 'en_GB' };
 const shareImage = new URL('/media/share-card.jpg', Astro.site);
+const structuredData = jsonLd(siteGraph(Astro.site ?? new URL(`https://${identity.domain}`), locale));
 ---
 
 <!doctype html>
@@ -43,7 +48,7 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
-    <link rel="canonical" href={canonical} />
+    {!noindex && <link rel="canonical" href={canonical} />}
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
@@ -51,14 +56,26 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
     <meta property="og:image" content={shareImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={identity.claim} />
     <meta property="og:locale" content={ogLocale[locale]} />
     <meta property="og:locale:alternate" content={ogLocale[locale === 'de' ? 'en' : 'de']} />
     <meta property="og:site_name" content={identity.name} />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="alternate" hreflang="de" href={hrefFor('de')} />
-    <link rel="alternate" hreflang="en" href={hrefFor('en')} />
-    <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
+    {
+      !noindex && (
+        <>
+          <link rel="alternate" hreflang="de" href={hrefFor('de')} />
+          <link rel="alternate" hreflang="en" href={hrefFor('en')} />
+          <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
+        </>
+      )
+    }
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content={surfaceColor} />
+    <script type="application/ld+json" set:html={structuredData} />
     <!-- Web analytics, configured per stack at request time; a comment when
          PostHog is unset (src/pages/web-analytics.js.ts, runtime/web-analytics.mjs). -->
     <script is:inline src="/web-analytics.js" defer></script>
