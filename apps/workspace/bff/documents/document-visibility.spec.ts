@@ -63,6 +63,10 @@ const SEES_EVERY_ROW: Record<string, string> = {
   'lib/search/facets-repository.ts#shelfSourceFingerprints':
     "Staleness probe: a count and newest change per shelf, compared with the projection's last sync. Numbers to a job, nothing to a person.",
 
+  // --- A writer's compare-and-swap on a document it already read -------------
+  'lib/documents/published-guard.ts#assertPublishedVersionIs':
+    "Inside a version insert, under the document's lock: the published pointer of a document the writer read through `getAccessibleDocument(…, 'write')`. An id compared, nothing returned.",
+
   // --- Orphan checks: a held document is not gone ---------------------------
   'lib/documents/repository/lookup.ts#documentIdsExisting':
     "The sharing registry's `exists`: the orphan sweep deletes grants of documents that are gone, and a held one is not.",

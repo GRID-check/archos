@@ -23,12 +23,12 @@ import {
 import type { DocumentVersionState } from './lifecycle-types'
 import { DOCUMENT_VERSION_STATES, OPEN_DOCUMENT_VERSION_STATES } from './lifecycle-types'
 import { mapVersionInsertError } from './unique-conflicts'
+import { assertPublishedVersionIs, type PublishedVersionExpectation } from './published-guard'
 import { documentVisibleTo, SCREENED_ONLY, type ShelfReader } from './visibility'
 
 /**
- * A document's version list is a page, like every other list in this tier.
- *
- * 500, matching `DOCUMENT_LIST_LIMIT`: version rows are light display rows,
+ * A document's version list is a page, like every other list in this tier:
+ * 500, matching `DOCUMENT_LIST_LIMIT`. Version rows are light display rows,
  * and the page no longer feeds any logic — the diff base is a direct
  * `findPreviousVersion` query, never a scan of this page — so the cap is a
  * render bound only. It is still a cap, not a promise: past it the list keeps
@@ -41,8 +41,7 @@ import { documentVisibleTo, SCREENED_ONLY, type ShelfReader } from './visibility
 export const DOCUMENT_VERSION_LIST_LIMIT = 500
 
 /**
- * What an insert is handed: everything but the number, which it allocates.
- *
+ * What an insert is handed: everything but the number, which it allocates:
  * `versionNumber` is not optional-and-ignored but ABSENT from the type, so a
  * caller cannot compute one outside the transaction and have it believed.
  */
@@ -61,12 +60,11 @@ type Transaction = DbTransaction
  * and both recorded „Version N" — and before migration 0092 nothing refused the
  * second. The per-document advisory lock makes the read and the insert one step
  * for every writer of this document: the second transaction blocks here until
- * the first commits, then reads the number the first one wrote.
- *
- * Keyed by the DOCUMENT, not the organization, so versions of different files
- * never queue behind each other, and namespaced (`document_versions:`) so it
- * can never share a key with the quota lock (`storage_quota:`). Held for one
- * `max()` and one insert; never across an object write.
+ * the first commits, then reads the number the first one wrote. Keyed by the
+ * DOCUMENT, not the organization, so versions of different files never queue
+ * behind each other, and namespaced (`document_versions:`) so it can never share
+ * a key with the quota lock (`storage_quota:`). Held for one `max()`, one insert
+ * and at most one read of the published pointer; never across an object write.
  *
  * `UNIQUE (document_id, version_number)` (migration 0092) is the ratchet under
  * it: a path that inserts without this lock gets a 23505, not a duplicate.
@@ -140,13 +138,16 @@ export async function insertDocumentVersion(
  */
 export async function insertPublishedVersion(
   values: NewDocumentVersionValues,
+  expected?: PublishedVersionExpectation,
 ): Promise<{ version: DocumentVersion; superseded: DocumentVersion[] }> {
   const db = getDb()
   return db.transaction(async (tx) => {
     // First, so the supersede below and the insert run for one writer of this
     // document at a time: the second of two overlapping re-uploads supersedes
-    // the FIRST one's new version, rather than racing it for number N.
+    // the FIRST one's new version, rather than racing it for number N. Under that
+    // lock, a writer that edited a version it read refuses to supersede a newer one.
     const versionNumber = await allocateVersionNumber(tx, values.documentId, values.organizationId)
+    if (expected) await assertPublishedVersionIs(tx, values.documentId, values.organizationId, expected)
     const superseded = await tx
       .update(documentVersions)
       .set({ state: 'superseded', updatedAt: new Date() })
