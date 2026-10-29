@@ -5,9 +5,44 @@ import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
 
 import { cn } from '@/lib/utils'
 
-const Collapsible = CollapsiblePrimitive.Root
+/**
+ * Radix points the trigger's `aria-controls` at the panel's id even while the
+ * panel is not rendered, which names nothing (axe `aria-valid-attr-value`).
+ * The root tracks `open` beside Radix so the trigger can leave the attribute
+ * off while closed, which is when the panel is absent.
+ */
+const OpenContext = React.createContext(false)
 
-const CollapsibleTrigger = CollapsiblePrimitive.CollapsibleTrigger
+const Collapsible = React.forwardRef<
+  React.ElementRef<typeof CollapsiblePrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Root>
+>(({ open: openProp, defaultOpen = false, onOpenChange, ...props }, ref) => {
+  const [inner, setInner] = React.useState(defaultOpen)
+  const open = openProp ?? inner
+  return (
+    <OpenContext.Provider value={open}>
+      <CollapsiblePrimitive.Root
+        ref={ref}
+        open={open}
+        onOpenChange={(next) => {
+          setInner(next)
+          onOpenChange?.(next)
+        }}
+        {...props}
+      />
+    </OpenContext.Provider>
+  )
+})
+Collapsible.displayName = CollapsiblePrimitive.Root.displayName
+
+const CollapsibleTrigger = React.forwardRef<
+  React.ElementRef<typeof CollapsiblePrimitive.CollapsibleTrigger>,
+  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleTrigger>
+>((props, ref) => {
+  const open = React.useContext(OpenContext)
+  return <CollapsiblePrimitive.CollapsibleTrigger ref={ref} {...(open ? {} : { 'aria-controls': undefined })} {...props} />
+})
+CollapsibleTrigger.displayName = CollapsiblePrimitive.CollapsibleTrigger.displayName
 
 /**
  * Animated collapsible body — opacity keyframes, owned once here.

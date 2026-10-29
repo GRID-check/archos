@@ -5,6 +5,7 @@ import InfoList, { type InfoSegment } from '../components/InfoList.astro';
 import copy from '../i18n/pages/privacy';
 import type { Locale } from '../i18n/paths';
 import identity, { withName } from '../lib/identity';
+import { linkedinUrl } from '../lib/social';
 import { format } from '../i18n/ui';
 
 // Markup and structure only. Text comes from src/i18n/pages/privacy.ts, in both locales.
@@ -35,8 +36,11 @@ function rich(text: string): string | InfoSegment[] {
     .filter((part) => part !== '');
 }
 
-const rows = (section: { rows: { key: string; value: string }[] }) =>
-  section.rows.map((row) => ({ key: row.key, value: rich(row.value) }));
+/** Rows that depend on something the site may not have yet (a LinkedIn link). */
+const shown = (row: { when?: 'linkedin' }) => row.when !== 'linkedin' || linkedinUrl !== null;
+
+const rows = (section: { rows: { key: string; value: string; when?: 'linkedin' }[] }) =>
+  section.rows.filter(shown).map((row) => ({ key: row.key, value: rich(row.value) }));
 ---
 
 <BaseLayout locale={locale} title={c.meta.title} description={c.meta.description}>

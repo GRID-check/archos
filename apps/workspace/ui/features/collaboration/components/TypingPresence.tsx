@@ -78,7 +78,7 @@ export const TypingPresence: FC<TypingPresenceProps> = ({ typists, className }) 
           --ease-cycle, its stagger inside the utility), not Tailwind's
           `animate-bounce`, whose ease-in keyframes and inline timings were a
           second dialect of the same three dots. */}
-      <WorkingDots className="text-muted-foreground/60" />
+      <WorkingDots className="text-muted-foreground" />
       <span className="sr-only" role="status" aria-live="polite">
         {label}
       </span>

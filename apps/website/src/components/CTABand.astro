@@ -8,10 +8,12 @@ interface Props {
   text?: string;
   primary?: NavLink;
   secondary?: NavLink;
+  /** Analytics: where the band sits; its buttons' clicks carry it as `cta-area` */
+  area?: string;
   class?: string;
 }
 
-const { title, text, primary, secondary, class: className } = Astro.props;
+const { title, text, primary, secondary, area, class: className } = Astro.props;
 ---
 
 <div data-reveal class:list={['ui-cta', className]}>
@@ -22,14 +24,14 @@ const { title, text, primary, secondary, class: className } = Astro.props;
   <div class="ui-cta-actions">
     {
       primary && (
-        <Button href={primary.href} variant="primary" size="lg">
+        <Button href={primary.href} variant="primary" size="lg" cta={area} ctaLabel={primary.key}>
           {primary.label}
         </Button>
       )
     }
     {
       secondary && (
-        <Button href={secondary.href} variant="secondary" size="lg">
+        <Button href={secondary.href} variant="secondary" size="lg" cta={area} ctaLabel={secondary.key}>
           {secondary.label}
         </Button>
       )

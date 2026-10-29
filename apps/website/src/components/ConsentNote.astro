@@ -1,0 +1,96 @@
+---
+/**
+ * The quiet cookie consent (owner decision D24): a small note in the bottom
+ * corner (a strip on a phone), never a modal, no overlay, no scroll lock, two
+ * equal choices. It appears only when analytics is on and the visitor has not
+ * chosen yet; the footer's "Cookie-Einstellungen" (`[data-consent-open]`)
+ * brings it back.
+ *
+ * The SDK does the work: "Accept" calls `posthog.opt_in_capturing()`,
+ * "Decline" `posthog.opt_out_capturing()`, and PostHog remembers the choice.
+ * Until then it counts cookieless (runtime/web-analytics.mjs). This file keeps
+ * no state of its own.
+ */
+import Button from './Button.astro';
+import TextLink from './TextLink.astro';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const ui = t(locale);
+---
+
+<section class="consent-note" aria-label={ui.cookieSettings} data-consent-note hidden>
+  <p class="small consent-note-text">
+    {ui.consentText} <TextLink href={localePath('privacy', locale)}>{ui.consentLink}</TextLink>
+  </p>
+  <div class="ui-row consent-note-actions">
+    <Button variant="secondary" size="md" class="consent-accept">{ui.consentAccept}</Button>
+    <Button variant="secondary" size="md" class="consent-decline">{ui.consentDecline}</Button>
+  </div>
+</section>
+
+<script>
+  import { ANALYTICS_READY_EVENT } from '../../runtime/web-analytics.mjs';
+
+  interface Consent {
+    get_explicit_consent_status: () => 'granted' | 'denied' | 'pending';
+    opt_in_capturing: () => void;
+    opt_out_capturing: () => void;
+  }
+
+  const note = document.querySelector<HTMLElement>('[data-consent-note]');
+  const openers = document.querySelectorAll<HTMLElement>('[data-consent-open]');
+  let returnFocus: HTMLElement | null = null;
+
+  function sdk(): Consent | undefined {
+    return (window as { posthog?: Consent & { __loaded?: boolean } }).posthog;
+  }
+
+  function show(focus: boolean) {
+    if (!note) return;
+    note.hidden = false;
+    if (focus) note.querySelector<HTMLElement>('.consent-accept')?.focus();
+  }
+
+  function hide() {
+    if (!note) return;
+    note.hidden = true;
+    returnFocus?.focus();
+    returnFocus = null;
+  }
+
+  function ready() {
+    const posthog = sdk();
+    if (!note || !posthog) return;
+    // The settings link only makes sense where there is something to set.
+    openers.forEach((opener) => (opener.hidden = false));
+    if (posthog.get_explicit_consent_status() === 'pending') show(false);
+  }
+
+  note?.querySelector('.consent-accept')?.addEventListener('click', () => {
+    sdk()?.opt_in_capturing();
+    hide();
+  });
+  note?.querySelector('.consent-decline')?.addEventListener('click', () => {
+    sdk()?.opt_out_capturing();
+    hide();
+  });
+  // Escape puts the note away for this page view without choosing.
+  note?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') hide();
+  });
+  openers.forEach((opener) =>
+    opener.addEventListener('click', () => {
+      returnFocus = opener;
+      show(true);
+    }),
+  );
+
+  addEventListener(ANALYTICS_READY_EVENT, ready, { once: true });
+  if ((window as { posthog?: { __loaded?: boolean } }).posthog?.__loaded) ready();
+</script>

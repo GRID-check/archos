@@ -27,6 +27,7 @@ import { Path, StyleSheet, Svg, View } from '@react-pdf/renderer'
 
 // See printable-text.tsx — the wrapper, not the library's `Text`.
 import { Text } from './printable-text'
+import { wordmarkFontStyle } from './fonts'
 import { BRAND_MARK, PRODUCT_NAME } from '@/lib/brand'
 import { PDF_PAGE, PDF_THEME, PDF_TYPE } from './theme'
 
@@ -95,10 +96,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordmark: {
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold',
-    // The app's wordmark is `tracking-tight`; at 8pt on paper the same optical
-    // tightness is a touch of negative letter spacing rather than none.
+    // The brand's logo tracking, -0.02em, as points at the small sizes the
+    // lockup is drawn at (the face itself is set in `BrandLockup`).
     letterSpacing: -0.2,
   },
 
@@ -289,10 +288,11 @@ export const BrandLockup: React.FC<{
     <Text
       style={[
         styles.wordmark,
+        wordmarkFontStyle(),
         { fontSize: fontSize ?? size, color, marginLeft: size / 3.5 },
       ]}
     >
-      {PRODUCT_NAME}
+      {PRODUCT_NAME.toUpperCase()}
     </Text>
   </View>
 )

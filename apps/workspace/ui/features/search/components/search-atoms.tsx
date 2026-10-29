@@ -471,7 +471,7 @@ export function ResultRow({
       </ItemMedia>
       <ItemContent className="flex min-w-0 flex-col gap-0.5">
         <span className="flex min-w-0 items-start gap-2">
-          <span className={cn('min-w-0 flex-1 text-sm font-semibold tracking-tight text-foreground', compact ? 'truncate' : 'max-sm:line-clamp-2 sm:truncate')}>{title}</span>
+          <span className={cn('min-w-0 flex-1 text-sm font-medium tracking-tight text-foreground', compact ? 'truncate' : 'max-sm:line-clamp-2 sm:truncate')}>{title}</span>
           {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
         </span>
         {meta ? (
@@ -538,7 +538,7 @@ export function MetaLine({
         {items.map((item, index) => (
           <span key={index} data-meta-part className="relative inline-flex min-w-0 max-w-full items-center pl-3">
             {item.dot ? (
-              <span className="absolute left-0 w-3 text-center text-muted-foreground/60" aria-hidden>
+              <span className="absolute left-0 w-3 text-center text-muted-foreground" aria-hidden>
                 ·
               </span>
             ) : null}
@@ -652,7 +652,7 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
 /** A matched word: set apart by weight on a faint ink wash exactly as wide as the match. */
 function MatchMark({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
   return (
-    <mark className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid={testId}>
+    <mark className="rounded-[2px] bg-foreground/[0.08] font-medium text-foreground [box-decoration-break:clone]" data-testid={testId}>
       {children}
     </mark>
   )
@@ -683,7 +683,7 @@ export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
 /** A quiet line under a hit: what the words were found in, when the row shows nothing that matched („Gefunden in Zusammenfassung“), what a Fassung changed. Present, never loud. */
 export function MatchHint({ label, parts, testId = 'search-matched-on' }: { label: string; parts: readonly string[]; testId?: string }): JSX.Element {
   return (
-    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid={testId}>
+    <span className="mt-0.5 text-xs text-muted-foreground" data-testid={testId}>
       {label} {parts.join(' · ')}
     </span>
   )
@@ -1010,7 +1010,7 @@ export function RegisterStackRow({
       >
         {code ? <span className="min-w-0 truncate font-mono text-xs text-foreground/80">{code}</span> : null}
         <span className="flex min-w-0 items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium tracking-tight text-foreground">{title}</span>
           {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
         </span>
         {meta && meta.some(Boolean) ? (

@@ -154,7 +154,7 @@ export function QuestionsStep({ view, canDecide, busy, canUpload, onDecide, onFi
           data-testid="questions-done"
         >
           {isMobile && note && <div className="text-muted-foreground text-[13px] leading-snug">{note}</div>}
-          <h2 className="text-[22px] leading-[1.3] font-semibold tracking-tight">
+          <h2 className="text-[22px] leading-[1.3] font-medium tracking-tight">
             {total > 0 ? t('doneTitle') : reading ? t('waitingTitle') : t('nothingTitle')}
           </h2>
           <p className="text-muted-foreground mt-2.5 text-[15px] leading-normal md:text-sm">

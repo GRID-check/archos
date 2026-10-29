@@ -61,8 +61,8 @@ would let two pods take different locks.
 
 What an agent reads (operation names, descriptions, schemas, refusals, the MCP
 server's instructions) uses these words and no others, in English, one word per
-concept, with the standard's word where one exists (AGENTS.md, "Industry
-standard first"; ADR-0122). A person reads the German word in the last column,
+concept, with the standard's word where one exists ([naming
+rules](contributing/naming.md); ADR-0122). A person reads the German word in the last column,
 through i18n. `lib/agent-api/english-only.spec.ts` holds the agent surface to
 English.
 

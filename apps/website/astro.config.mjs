@@ -4,6 +4,7 @@ import { defineConfig } from 'astro/config'
 import mdx from '@astrojs/mdx'
 import node from '@astrojs/node'
 import sitemap from '@astrojs/sitemap'
+import { redirects } from './redirects.mjs'
 
 // The domain is a brand string: it lives in identity.json, never in this file.
 const identity = JSON.parse(
@@ -22,7 +23,12 @@ export default defineConfig({
   // Output stays static; the Node adapter serves the endpoints that opt out of prerendering
   // (`export const prerender = false`, e.g. /sign-in). `astro build` writes dist/.
   adapter: node({ mode: 'standalone' }),
-  // The old login pages forward to AuthKit's sign-in, which lists the enabled methods itself.
-  redirects: { '/login': '/sign-in', '/en/login': '/sign-in' },
+  // Old public addresses and their new homes (301); see redirects.mjs.
+  redirects,
   integrations: [mdx(), sitemap()],
+  vite: {
+    // Every component script becomes a file under /_astro/ instead of an inline <script>, so
+    // the Content-Security-Policy can say `script-src 'self'` (runtime/security-headers.mjs).
+    build: { assetsInlineLimit: 0 },
+  },
 })

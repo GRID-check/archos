@@ -67,7 +67,7 @@ export const MapNode: FC<NodeProps<Node<GraphNodeData>>> = ({ data }) => {
     <div
       className={cn(
         'text-foreground leading-snug text-pretty',
-        level === 0 && 'bg-muted border-border rounded-xl border px-3 py-2 text-sm font-semibold shadow-xs',
+        level === 0 && 'bg-muted border-border rounded-xl border px-3 py-2 text-sm font-medium shadow-xs',
         level === 1 && 'border-border bg-card rounded-lg border px-3 py-2 text-[13px] font-medium shadow-xs',
         level >= 2 && 'text-muted-foreground px-1 py-0.5 text-[12.5px]'
       )}

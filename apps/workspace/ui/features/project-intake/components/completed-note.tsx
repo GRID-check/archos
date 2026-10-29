@@ -27,7 +27,7 @@ export function CompletedNote({ view }: { view: IntakeView }): JSX.Element {
       <div className="flex min-w-0 items-start gap-3">
         <EmptyStateDisc icon={CheckCircle2} size="sm" />
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-semibold">
+          <p className="text-sm font-medium">
             {view.mode === 'closing' ? t('complete.doneClosing') : t('complete.done')}
           </p>
           <p className="text-muted-foreground text-sm">{t('complete.doneHint')}</p>

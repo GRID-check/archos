@@ -53,7 +53,6 @@ import {
 } from '@/components/ui/item'
 import { SearchField } from '@/components/ui/search-field'
 import { Skeleton } from '@/components/ui/skeleton'
-import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { useLocale, useTranslations } from '@/i18n'
 import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
@@ -630,7 +629,6 @@ export function AgentProfiler({
     const firstTurnNumber = totalTurns - timeline.turns.length + 1
     return (
       <div className="usage-viz animate-in fade-in-0 duration-base flex flex-col gap-5 ease-out motion-reduce:animate-none">
-        <SeriesPaletteStyle />
         <KindLegend />
         {timeline.capped || totalTurns > timeline.turns.length ? (
           <p className="text-muted-foreground -mt-2 text-xs">

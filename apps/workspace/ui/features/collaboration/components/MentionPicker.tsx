@@ -251,7 +251,7 @@ function HighlightedName({ name, query }: { name: string; query: string }): JSX.
   return (
     <>
       {name.slice(0, from)}
-      <mark className="bg-transparent font-semibold text-foreground">{name.slice(from, to)}</mark>
+      <mark className="bg-transparent font-medium text-foreground">{name.slice(from, to)}</mark>
       {name.slice(to)}
     </>
   )
@@ -606,7 +606,7 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
           className="bg-muted pointer-coarse:hidden flex shrink-0 items-center gap-2 border-t px-3 py-2"
           aria-label={t('mentions.picker.keyboardHint')}
         >
-          <AtSign className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />
+          <AtSign className="size-3 shrink-0 text-muted-foreground" aria-hidden />
           <KbdGroup>
             <Kbd>↑</Kbd>
             <Kbd>↓</Kbd>

@@ -292,7 +292,7 @@ function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect:
         <button
           type="button"
           onClick={() => onSelect({ kind: 'state', state: 'unindexed' })}
-          className="text-muted-foreground/80 hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-control px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-control px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
           title={t('brief.showState', { state: t('brief.slice.unindexed') })}
           data-testid="folder-brief-state-unindexed"
         >
@@ -303,7 +303,7 @@ function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect:
         </button>
       )}
       {tally.pages > 0 && (
-        <span className="text-muted-foreground/80 ml-auto px-1.5 text-xs tabular-nums">
+        <span className="text-muted-foreground ml-auto px-1.5 text-xs tabular-nums">
           {t('brief.pages', { count: tally.pages, formatted: tally.pages.toLocaleString(locale) })}
         </span>
       )}
@@ -429,7 +429,7 @@ function DeferredAboutSection({
 function ChipFamily({ label, testId, children }: { label: string; testId?: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1" data-testid={testId}>
-      <p className="text-muted-foreground/80 text-[11px]">{label}</p>
+      <p className="text-muted-foreground text-[11px]">{label}</p>
       <div className="flex min-w-0 flex-wrap gap-1.5 pointer-coarse:gap-2">{children}</div>
     </div>
   )
@@ -464,7 +464,7 @@ function BriefDisclosure({
             >
               <span className="text-muted-foreground shrink-0 text-xs font-medium">{title}</span>
               {/* What the section holds, while it is shut; open, the section says it itself. */}
-              <span className="text-muted-foreground/80 min-w-0 flex-1 truncate text-xs font-normal" aria-hidden={open}>
+              <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs font-normal" aria-hidden={open}>
                 {open ? '' : summary}
               </span>
               <ChevronDown
@@ -657,7 +657,7 @@ function HotspotSection({
               className="hover:bg-accent focus-visible:ring-ring touch-target group flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-left transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
               data-testid={`folder-brief-hotspot-${folder.id}`}
             >
-              <CornerDownRight className="text-muted-foreground/60 size-3.5 shrink-0" aria-hidden />
+              <CornerDownRight className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
               <span className="text-foreground min-w-0 flex-1 truncate text-[13px]" title={trail.join(' / ')}>
                 {trail.join(' / ')}
               </span>

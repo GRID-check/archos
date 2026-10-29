@@ -552,7 +552,6 @@
   "apps/workspace/tests/test-utils/marks-for-reader.ts": 2,
   "apps/workspace/tests/vitest-durations.json": 1,
   "apps/workspace/ui/adapters/api/wire-v2.spec.ts": 1,
-  "apps/workspace/ui/components/charts/palette.tsx": 1,
   "apps/workspace/ui/components/form/index.tsx": 1,
   "apps/workspace/ui/components/motion/index.tsx": 1,
   "apps/workspace/ui/components/projects/create-project-form.spec.tsx": 8,

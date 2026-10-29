@@ -625,7 +625,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               // overflow-visible: `truncate` on ItemTitle would clip the
               // stretched-link overlay to the title box.
               'flex min-w-0 items-start gap-2 overflow-visible whitespace-normal',
-              unread ? 'font-semibold' : 'font-normal',
+              unread ? 'font-medium' : 'font-normal',
             )}
           >
             {item.href && !inert ? (
@@ -650,7 +650,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                   'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50',
                   // A read row steps back in dark mode, where weight alone did
                   // not tell the two apart.
-                  unread ? 'font-semibold text-foreground' : 'text-foreground dark:text-muted-foreground',
+                  unread ? 'font-medium text-foreground' : 'text-foreground dark:text-muted-foreground',
                 )}
               >
                 {title}
@@ -659,7 +659,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               <span
                 className={cn(
                   'min-w-0 leading-snug',
-                  unread ? 'font-semibold text-foreground' : 'text-foreground dark:text-muted-foreground',
+                  unread ? 'font-medium text-foreground' : 'text-foreground dark:text-muted-foreground',
                 )}
               >
                 {title}

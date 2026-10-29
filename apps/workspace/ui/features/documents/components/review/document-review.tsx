@@ -1096,7 +1096,7 @@ export function DocumentReviewMode({
               says which Fassung is under review. The line under it wraps there
               rather than lose the count. */}
           <div className="min-w-0 flex-1 max-sm:order-last max-sm:basis-full max-sm:pb-2">
-            <DialogTitle className="text-foreground flex text-sm font-semibold">
+            <DialogTitle className="text-foreground flex text-sm font-medium">
               <MiddleTruncate text={documentName} tail={12} />
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs sm:truncate">

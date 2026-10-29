@@ -98,7 +98,7 @@ function SetupHeading({ eyebrow, title, children }: { eyebrow: string; title: st
   return (
     <div>
       <p className="text-muted-foreground text-[10.5px] font-medium uppercase tracking-wider">{eyebrow}</p>
-      <h1 className="mt-2 text-xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="mt-2 text-xl font-medium tracking-tight">{title}</h1>
       <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">{children}</p>
     </div>
   )
@@ -212,7 +212,7 @@ function SetupDone({ name }: { name: string }): JSX.Element {
   return (
     <div role="status" aria-live="polite">
       <EmptyStateDisc icon={Check} />
-      <h1 className="mt-5 text-xl font-semibold tracking-tight">{t('success.title')}</h1>
+      <h1 className="mt-5 text-xl font-medium tracking-tight">{t('success.title')}</h1>
       <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
         {t('success.description', { name })}
       </p>

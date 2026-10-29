@@ -10,7 +10,8 @@
     "capture": "node scripts/capture.mjs",
     "check": "astro check && node ../../packages/brand/sync.mjs --check && bun ../../scripts/check_brand_rules.mjs",
     "start": "node runtime/server.mjs",
-    "test": "node --test runtime/*.test.mjs"
+    "test": "node --test runtime/*.test.mjs && bun test src",
+    "check:a11y": "node scripts/check-accessibility.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.11",
@@ -19,5 +20,11 @@
     "@astrojs/sitemap": "^3.7.4",
     "astro": "^7.4.1",
     "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "axe-core": "4",
+    "playwright": "1.63.0",
+    "sharp": "0.35.5"
   }
 }

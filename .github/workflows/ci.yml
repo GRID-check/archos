@@ -793,6 +793,9 @@ jobs:
           restore-keys: |
             astro-cache-${{ runner.os }}-
       - run: task site:verify
+      # The website's accessibility gate drives Chromium; this installs its system libraries
+      # (the version is apps/website's playwright devDependency).
+      - run: npx --yes playwright@1.63.0 install-deps chromium
       - run: task website:verify
 
   infra:

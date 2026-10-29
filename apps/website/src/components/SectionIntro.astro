@@ -1,32 +1,64 @@
 ---
 interface Props {
+  /** A `\n` is a deliberate line break, kept at every width */
   title: string;
   /** One statement sentence in ink (lead) */
   lead?: string;
   /** Grey explanation in body */
   text?: string;
-  /** display (statement, may be centered) · heading = heading-1 */
-  size?: 'display' | 'heading';
+  /** display (statement, may be centered) · heading = heading-1 · subheading = heading-2 */
+  size?: 'display' | 'heading' | 'subheading';
   align?: 'left' | 'center';
+  /** split: title left, lead and text right (two columns from 904px, stacked below) */
+  layout?: 'stack' | 'split';
   as?: 'h1' | 'h2' | 'h3';
   class?: string;
 }
 
 // Buttons below go in the default slot.
-const { title, lead, text, size = 'heading', align = 'left', as: Title = 'h2', class: className } = Astro.props;
-const titleClass = size === 'display' ? 'display' : 'heading-1';
+const {
+  title,
+  lead,
+  text,
+  size = 'heading',
+  align = 'left',
+  layout = 'stack',
+  as: Title = 'h2',
+  class: className,
+} = Astro.props;
+const titleClass = { display: 'display', heading: 'heading-1', subheading: 'heading-2' }[size];
 const hasActions = Astro.slots.has('default');
+const lines = title.split('\n');
 ---
 
-<div data-reveal class:list={['ui-intro', align === 'center' && 'ui-intro-center', className]}>
-  <Title class:list={['ui-intro-title', titleClass]}>{title}</Title>
-  {lead && <p class="ui-intro-lead lead">{lead}</p>}
-  {text && <p class="ui-intro-text body">{text}</p>}
+<div
+  data-reveal
+  class:list={['ui-intro', align === 'center' && 'ui-intro-center', layout === 'split' && 'site-intro-split', className]}
+>
+  <Title class:list={['ui-intro-title', titleClass]}>{lines.map((line, i) => (i === 0 ? line : [<br />, line]))}</Title>
   {
-    hasActions && (
-      <div class="ui-intro-actions ui-row">
-        <slot />
-      </div>
+    layout === 'split' ? (
+      (lead || text || hasActions) && (
+        <div class="site-intro-split-body">
+          {lead && <p class="ui-intro-lead lead">{lead}</p>}
+          {text && <p class="ui-intro-text body">{text}</p>}
+          {hasActions && (
+            <div class="ui-intro-actions ui-row">
+              <slot />
+            </div>
+          )}
+        </div>
+      )
+    ) : (
+      <>
+        {lead && <p class="ui-intro-lead lead">{lead}</p>}
+        {text && <p class="ui-intro-text body">{text}</p>}
+        {hasActions && (
+          <div class="ui-intro-actions ui-row">
+            <slot />
+          </div>
+        )}
+      </>
     )
   }
 </div>

@@ -152,6 +152,182 @@ button.ui-nav-link {
   margin: var(--space-16) 0 0;
 }
 
+/* Headlines balance their lines (design system: headings wrap with text-wrap: balance),
+   so a title never leaves one word alone on its last line. A German compound longer than a
+   320px screen ("Wissensmanagement", "Planungsbüros" in display size) hyphenates, or breaks as
+   a last resort, instead of pushing the page sideways (WCAG 1.4.10). */
+.display-xl,
+.display,
+.heading-1,
+.heading-2,
+.heading-3 {
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Two columns from 1024px, stacked below (reference: the home page's split blocks). Used by
+   SectionIntro layout="split" and the founders block. */
+.site-split,
+.site-intro-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .site-split,
+  .site-intro-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-16);
+  }
+}
+
+.site-intro-split {
+  max-width: none;
+}
+
+.site-intro-split-body > .ui-intro-lead:first-child,
+.site-intro-split-body > .ui-intro-text:first-child {
+  margin-top: 0;
+}
+
+/* The hero lead set as deliberate lines: each line keeps its length on a desktop, as on
+   the reference, instead of wrapping inside the design system's 400px column. */
+@media (min-width: 1024px) {
+  .site-hero-text-lines {
+    max-width: none;
+    width: max-content;
+  }
+}
+
+/* Home: the portrait beside the feld72 quote is grayscale, as the reference and the
+   media table say. */
+.home-quote .ui-quote-portrait img {
+  filter: grayscale(1);
+}
+
+/* Home: the founders' call to action sits at the bottom of its column on a desktop. */
+.home-founders-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+@media (min-width: 1024px) {
+  .home-founders-action {
+    align-self: end;
+  }
+}
+
+/* Contact and demo: what happens after the hand-off to the mail program. */
+.mail-form-sent > * {
+  margin: 0;
+}
+
+.mail-form-sent > * + * {
+  margin-top: var(--space-4);
+}
+
+.mail-form-sent > .ui-btn {
+  margin-top: var(--space-8);
+}
+
+.mail-form-sent:focus {
+  outline: none;
+}
+
+/* Gallery dots: each dot is a 24px-wide target (WCAG 2.5.8 target size); the design system's
+   5px padding left 16px. Belongs in packages/brand components.css (.ui-gallery-dot); remove
+   here once it is there. */
+.ui-gallery-dot {
+  min-width: var(--space-6);
+  padding: 0 var(--space-1);
+}
+
+/* Demo: the note under the form card sits on the photo. In the muted ink it reached only
+   3.05:1 over the photo's lightest pixels at 1280px (measured), under the 4.5:1 of WCAG 1.4.3;
+   in full ink it reaches 7:1. Belongs in packages/brand components.css (.ui-split-note). */
+.ui-split-note {
+  color: var(--ink);
+}
+
+/* The footer's "Cookie-Einstellungen": a button that reads like the footer's links. */
+.site-footer-consent {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.site-footer-consent:hover {
+  text-decoration: underline;
+  text-decoration-thickness: var(--stroke-hairline);
+  text-underline-offset: 0.25em;
+}
+
+.site-footer-consent:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (max-width: 767px) {
+  .site-footer-consent {
+    min-height: 44px;
+  }
+}
+
+/* The consent note: a quiet card in the bottom corner, a strip along the bottom on a phone.
+   Fixed, so it shifts no layout; no overlay, the page stays usable behind it. */
+.consent-note {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 50;
+  box-sizing: border-box;
+  max-width: var(--login-form);
+  padding: var(--space-6);
+  border: var(--stroke-hairline) solid var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.consent-note-text {
+  margin: 0;
+}
+
+.consent-note-actions {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 767px) {
+  .consent-note {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-width: none;
+    padding: var(--space-4) var(--gutter-mobile);
+    border-width: var(--stroke-hairline) 0 0;
+  }
+}
+
+/* Below 360px (WCAG 1.4.10 reflow at 320px) the header's wordmark, language switch, demo button
+   and menu do not fit in one row. The demo button steps back into the menu, where it also is. */
+@media (max-width: 359px) {
+  .ui-header-actions > .ui-btn-primary {
+    display: none;
+  }
+}
+
+/* Not found: the two ways on. */
+.not-found-actions {
+  margin-top: var(--space-8);
+}
+
 /* Home: the "Gebaut für" image is a 3:1 strip on desktop; on a phone it is 4:3 so the plan reads. */
 @media (max-width: 767px) {
   .home-built-image {

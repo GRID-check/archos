@@ -98,7 +98,7 @@ export function TourCard({
         </button>
       </div>
 
-      <h2 id={titleId} className="mt-1.5 text-sm font-semibold">
+      <h2 id={titleId} className="mt-1.5 text-sm font-medium">
         {title}
       </h2>
       <div id={bodyId} className="text-muted-foreground mt-1.5 text-sm leading-relaxed">

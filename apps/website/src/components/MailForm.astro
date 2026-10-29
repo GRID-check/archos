@@ -1,0 +1,117 @@
+---
+/**
+ * A form that hands its content to the visitor's mail program (contact, demo).
+ *
+ * The owner chose mailto for now (README, "Forms"): nothing is sent to a server
+ * of ours. With JavaScript the script below builds the mail itself, with a
+ * subject and a readable `Label: value` body, opens it, and shows what happens
+ * next. Without JavaScript the browser's own `mailto:` form post is the
+ * fallback. The fields are the default slot; every field needs a `<label for>`,
+ * whose text (without the `*`) becomes its line in the mail.
+ */
+import Button from './Button.astro';
+
+interface Props {
+  /** The form's name in analytics (`form_submitted`, `form` property) */
+  id: string;
+  /** Recipient address */
+  to: string;
+  /** Subject; `{field}` tokens take a field's value by its `name` (empty ones are dropped) */
+  subject: string;
+  /** Shown after the hand-off */
+  sent: { title: string; text: string; fallback: string; edit: string };
+  /** How the form's checkbox reads in the mail: a short label, and its ticked and unticked value */
+  checkbox?: { label: string; yes: string; no: string };
+  class?: string;
+}
+
+const { id, to, subject, sent, checkbox, class: className } = Astro.props;
+---
+
+<div class:list={['mail-form', className]} data-mail-form={id}>
+  <form
+    action={`mailto:${to}`}
+    method="post"
+    enctype="text/plain"
+    class="ui-form-grid"
+    data-ph-capture-attribute-form={id}
+    data-to={to}
+    data-subject={subject}
+    data-checkbox-label={checkbox?.label}
+    data-yes={checkbox?.yes}
+    data-no={checkbox?.no}
+  >
+    <slot />
+  </form>
+  <div class="mail-form-sent" role="status" tabindex="-1" hidden>
+    <h2 class="heading-3">{sent.title}</h2>
+    <p class="body">{sent.text}</p>
+    <p class="small">
+      {sent.fallback} <a class="ui-link" href={`mailto:${to}`}>{to}</a>.
+    </p>
+    <Button variant="secondary" size="md" class="mail-form-edit">{sent.edit}</Button>
+  </div>
+</div>
+
+<script>
+  import { fillSubject, mailBody, mailtoHref, type MailLine } from '../lib/mailto';
+
+  type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  type Analytics = { capture: (event: string, properties: Record<string, unknown>) => void };
+
+  /** A field's label text without the required marker. */
+  function labelOf(form: HTMLFormElement, field: Field): string {
+    const label = field.id ? form.querySelector(`label[for="${field.id}"]`) : field.closest('label');
+    return (label?.textContent ?? field.name).replace(/\s*\*\s*$/, '').trim();
+  }
+
+  function setup(root: HTMLElement) {
+    const form = root.querySelector('form');
+    const sent = root.querySelector<HTMLElement>('.mail-form-sent');
+    if (!form || !sent) return;
+    const { to = '', subject = '', checkboxLabel = '', yes = '', no = '' } = form.dataset;
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const fields = [...form.elements].filter(
+        (el): el is Field => (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) && el.name !== '',
+      );
+      const values: Record<string, string> = {};
+      const lines: MailLine[] = [];
+      let message = '';
+      let newsletter: boolean | undefined;
+      for (const field of fields) {
+        if (field instanceof HTMLInputElement && field.type === 'checkbox') {
+          newsletter = field.checked;
+          lines.push({ label: checkboxLabel || labelOf(form, field), value: field.checked ? yes : no });
+          continue;
+        }
+        values[field.name] = field.value;
+        if (field instanceof HTMLTextAreaElement) message = field.value;
+        else lines.push({ label: labelOf(form, field), value: field.value });
+      }
+      location.href = mailtoHref(to, fillSubject(subject, values), mailBody(lines, message));
+
+      // The one event autocapture cannot see: the hand-off itself. No field values.
+      const analytics = (window as { posthog?: Analytics }).posthog;
+      analytics?.capture('form_submitted', {
+        form: root.dataset.mailForm,
+        method: 'mailto',
+        locale: document.documentElement.lang,
+        ...(newsletter === undefined ? {} : { newsletter }),
+      });
+
+      form.hidden = true;
+      sent.hidden = false;
+      sent.focus();
+    });
+
+    sent.querySelector('.mail-form-edit')?.addEventListener('click', () => {
+      sent.hidden = true;
+      form.hidden = false;
+      form.querySelector<HTMLElement>('input, select, textarea')?.focus();
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-mail-form]').forEach(setup);
+</script>

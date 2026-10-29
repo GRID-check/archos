@@ -32,7 +32,7 @@ import Link from 'next/link'
 import { ArrowLeft, CalendarRange, ListChecks, MessageSquare, Plus } from 'lucide-react'
 
 import { ProjectSectionActions } from '@/components/shell/project-section-frame'
-import { SeriesPaletteStyle, SERIES_SLOT_COUNT } from '@/components/charts/palette'
+import { SERIES_SLOT_COUNT } from '@/components/charts/palette'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SectionLabel } from '@/components/ui/section-label'
@@ -526,7 +526,6 @@ export function TasksPanel({
 
           {isTimetableView ? (
             <div className="usage-viz mx-auto w-full max-w-5xl p-4 md:p-6">
-              <SeriesPaletteStyle />
               <ScheduleTimetable
                 schedules={jobs}
                 loading={loading}

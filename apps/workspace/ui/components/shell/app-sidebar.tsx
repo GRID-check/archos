@@ -69,7 +69,6 @@ import { useShellOverlays } from './shell-overlays'
 import { ShellSearchButton } from './shell-search-button'
 import { ConnectionBand } from './connection-band'
 import { sectionAnchor } from '@/lib/onboarding/product-tour'
-import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * THE ACTIVE PILL'S SHARED-LAYOUT IDENTITY.
@@ -515,10 +514,10 @@ function SidebarBrand({ iconRail }: { iconRail: boolean }) {
           'focus-visible:ring-ring/60 rounded-control focus-visible:outline-none focus-visible:ring-2',
           iconRail
             ? 'flex h-7 items-center justify-center'
-            : 'text-foreground text-[19px] font-medium'
+            : 'text-foreground'
         )}
       >
-        {iconRail ? <Logo kind="logo-only" size="small" /> : PRODUCT_NAME}
+        <Logo kind={iconRail ? 'logo-only' : 'wordmark-only'} size="small" />
       </Link>
       {!isMobile && (
         <button

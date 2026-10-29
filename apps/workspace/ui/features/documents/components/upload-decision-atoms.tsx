@@ -31,7 +31,7 @@ export function DecisionSection({
 } & Omit<HTMLAttributes<HTMLElement>, 'title'>): JSX.Element {
   return (
     <section className={cn('space-y-3 rounded-surface border p-3', className)} {...props}>
-      <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+      <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
         <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0">{title}</span>
       </h3>

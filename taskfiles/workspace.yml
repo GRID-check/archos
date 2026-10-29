@@ -23,6 +23,12 @@ tasks:
     cmds:
       - bun run build:jobs
 
+  workspace:a11y:
+    desc: 'axe-core (WCAG 2.0 to 2.2 A and AA) over the /dev preview routes, light and dark, 1440 and 390. Needs `bun run dev` running; A11Y_BASE_URL and A11Y_CHROME override the address and the browser. See scripts/a11y-audit.mjs'
+    dir: '{{.UI}}'
+    cmds:
+      - bun run a11y {{.CLI_ARGS}}
+
   workspace:lint:
     desc: 'Lint the UI (oxlint, the repo rules included as a JS plugin) and its module seams (dependency-cruiser). CI: task workspace:lint -- --format=github'
     dir: '{{.UI}}'

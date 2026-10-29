@@ -667,9 +667,9 @@ function PlanCount({
     <div className={cn('flex items-center gap-2.5 rounded-surface border p-2.5', count === 0 && 'opacity-55')} data-testid={testId}>
       <StatCardIcon icon={icon} tone={tone} size="sm" />
       <div className="min-w-0">
-        <p className="text-sm font-semibold tabular-nums text-foreground">{count}</p>
+        <p className="text-sm font-medium tabular-nums text-foreground">{count}</p>
         <p className="text-xs leading-snug text-muted-foreground">{label}</p>
-        {secondary && <p className="text-[11px] leading-snug text-muted-foreground/80">{secondary}</p>}
+        {secondary && <p className="text-[11px] leading-snug text-muted-foreground">{secondary}</p>}
       </div>
     </div>
   )
@@ -1015,11 +1015,11 @@ function PlanDetails({
                 drop, and approving a replacement you cannot locate is not
                 approval. */}
             {file.existingName && (
-              <span className="max-w-[45%] shrink-0 truncate text-muted-foreground/80">
+              <span className="max-w-[45%] shrink-0 truncate text-muted-foreground">
                 {t('folderUpload.alreadyHereAs', { name: file.existingName })}
               </span>
             )}
-            {file.existingArchived && <span className="shrink-0 text-muted-foreground/80">{t('folderUpload.archivedMatch')}</span>}
+            {file.existingArchived && <span className="shrink-0 text-muted-foreground">{t('folderUpload.archivedMatch')}</span>}
           </li>
         ))}
       </ul>
