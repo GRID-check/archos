@@ -56,5 +56,5 @@ COPY --from=builder --chown=website:nodejs /app/runtime ./runtime
 USER website
 EXPOSE 4321
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=5 \
-    CMD curl -sf http://localhost:4321/ || exit 1
+    CMD curl -sf http://localhost:4321/healthz || exit 1
 CMD ["node", "runtime/server.mjs"]

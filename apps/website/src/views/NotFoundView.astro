@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Hero from '../components/Hero.astro';
+import copy from '../i18n/pages/not-found';
+import { localePath, type Locale } from '../i18n/paths';
+import { withName } from '../lib/identity';
+
+// Markup only. Text comes from src/i18n/pages/not-found.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+---
+
+<BaseLayout locale={locale} title={c.title} description={c.description} noindex alternatePath={localePath('home', locale === 'de' ? 'en' : 'de')}>
+  <Hero title={c.hero.title} text={c.hero.text} />
+  <section class="ui-container page-section">
+    <div class="ui-row not-found-actions">
+      <Button href={localePath('home', locale)} variant="primary" size="lg">{c.home}</Button>
+      <Button href={localePath('contact', locale)} variant="secondary" size="lg">{c.contact}</Button>
+    </div>
+  </section>
+</BaseLayout>

@@ -19,10 +19,10 @@ interface Props {
 const { locale } = Astro.props;
 const c = withName(copy[locale]);
 const nav = navigation(locale);
-const contact = { label: t(locale).kontakt, href: localePath('contact', locale) };
+const contact = { label: t(locale).kontakt, href: localePath('contact', locale), key: 'contact' };
 ---
 
-<BaseLayout locale={locale} title={c.title} description={c.hero.text}>
+<BaseLayout locale={locale} title={c.title} description={c.description}>
   <Hero title={c.hero.title} text={c.hero.text} />
 
   <section class="ui-container page-section">
@@ -35,6 +35,6 @@ const contact = { label: t(locale).kontakt, href: localePath('contact', locale) 
   </section>
 
   <section class="ui-container page-section">
-    <CTABand title={c.cta.title} text={c.cta.text} primary={nav.demo} secondary={contact} />
+    <CTABand title={c.cta.title} text={c.cta.text} primary={nav.demo} secondary={contact} area="security_cta" />
   </section>
 </BaseLayout>

@@ -18,7 +18,11 @@ This is the public website, built from the shared design system. Read the root
 | Add an AI-generated image | Mark it with the `AITag` component | The design system requires the mark. |
 | Pair a blog post with its translation | Set `translationSlug` to the other locale's slug, and open both pages to check the language switch | Nothing yet: a slug that names no post breaks the switch and hreflang without an error |
 | Edit a legal page (`/datenschutz`, `/impressum`, the English twins) | Leave no bracketed placeholder (`[14 Tagen]`, `[EU]`); a value nobody verified is marked `TODO(owner):` and listed in the pull request | Nothing yet: `check_brand_rules.mjs` does not look for brackets |
-| Write a component that scripts | Keep the script inline in the `.astro` file and keep state in attributes | No React, no framework runtime. |
+| Write a component that scripts | Keep the script in the `.astro` file's `<script>` (Astro bundles it to `/_astro/`) and keep state in attributes. Never `is:inline` with a body, never an inline event handler | No React, no framework runtime. The Content-Security-Policy says `script-src 'self'` (`runtime/security-headers.mjs`): an inline script is blocked in production. |
+| Add a call to action, a form or a link worth measuring | Pass `cta`/`ctaLabel` to `Button` or `TextLink` (or `area` to `CTABand`), `id` to `MailForm`; let PostHog's autocapture do the rest. A custom `posthog.capture` only for what autocapture cannot see, named in English snake_case and added to README "Analytics" | Buy, don't build: the SDK records clicks, page views, scroll depth, UTMs and web vitals itself. No event may carry what a visitor typed. |
+| Put text on a photo | Add its selector to `PHOTO_TEXT` in `scripts/check-accessibility.mjs` | axe cannot measure text on images; that list is how the gate measures it (4.5:1 against every pixel). |
+| Change what the page stores, sends or shows to PostHog | Change `src/i18n/pages/privacy.ts` in the same commit | The privacy policy states exactly what `runtime/web-analytics.mjs` configures. |
+| Change a page | Run `bun run build && bun run check:a11y` | WCAG 2.2 AA is the bar (owner decision D21); the gate fails on any axe finding. |
 
 ## Layout
 

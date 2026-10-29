@@ -114,6 +114,8 @@ EXCLUDED = re.compile(
             r"^scripts/rls-test-db\.sh$",
             # The one release the BFF also sends the mode header under its old name, beside `x-chat-mode`.
             r"^apps/workspace/bff/turns/headless-mode\.ts$",
+            # The website's redirects from old public addresses, which keep the spelling they were published under.
+            r"^apps/website/redirects\.mjs$",
         )
     )
 )

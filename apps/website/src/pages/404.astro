@@ -1,0 +1,11 @@
+---
+import NotFoundView from '../views/NotFoundView.astro';
+import { localeFromUrl } from '../i18n/paths';
+
+// Rendered on request, so an unknown address under /en/ gets the English page and any
+// other the German one. The status stays 404 and the page is noindex.
+export const prerender = false;
+Astro.response.status = 404;
+---
+
+<NotFoundView locale={localeFromUrl(Astro.url)} />

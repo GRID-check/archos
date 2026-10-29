@@ -14,11 +14,86 @@ from `src/lib/identity.ts`, which reads `identity.json`.
 bun install        # first, and after a pull that moves bun.lock
 bun run dev        # http://localhost:4321
 bun run build      # static output in dist/
-bun run build && node dist/server/entry.mjs   # serve it: pages are static, /sign-in runs on the server
+bun run build && node runtime/server.mjs     # serve it as production does: headers, /healthz, 404
 bun run check      # astro check, the brand copies (sync --check), then the brand rules (scripts/check_brand_rules.mjs)
+bun run test       # runtime specs (node --test) and src/**/*.test.ts (bun test)
+bun run check:a11y # after a build: axe-core WCAG 2.2 AA on every page, DE and EN (needs Playwright's Chromium)
 ```
 
-Or from the repo root: `task website:install`, `task website:check`, `task website:build`.
+Or from the repo root: `task website:install`, `task website:check`, `task website:build`, and
+`task website:verify` for everything CI runs.
+
+## Production server
+
+`runtime/server.mjs` wraps the Astro node adapter's handler:
+
+- **Security headers** on every response (`runtime/security-headers.mjs`): a Content-Security-Policy
+  with `script-src 'self'` (plus PostHog's two EU origins when analytics is on) and no inline script
+  at all, which `vite.build.assetsInlineLimit: 0` in `astro.config.mjs` makes true; `frame-ancestors
+  'none'`, HSTS (no `includeSubDomains`: that is the domain owner's call), `nosniff`, Referrer-Policy,
+  COOP and a Permissions-Policy. JSON-LD is data and needs no allowance.
+- **`/healthz`** answers `ok` from the process itself; the Dockerfile's healthcheck uses it.
+  The Kubernetes probes in `deploy/pulumi` still hit `/` (a static page, so also cheap).
+- **Cache-Control** for static files (`runtime/cache-control.mjs`).
+
+Unknown addresses get `src/pages/404.astro`, rendered on request so `/en/...` answers in English,
+with status 404 and `noindex`. Old public addresses and their new homes (301) are in `redirects.mjs`.
+
+## Analytics
+
+PostHog EU, through the official SDK and its built-ins. `/web-analytics.js` (`runtime/web-analytics.mjs`)
+loads `posthog-js` when the container has `PUBLIC_POSTHOG_HOST` and `PUBLIC_POSTHOG_PROJECT_TOKEN`, and
+answers an empty script otherwise.
+
+**Consent, quietly** (owner decision D24). Until the visitor chooses, PostHog counts cookieless
+(`cookieless_mode: 'on_reject'`, `opt_out_capturing_by_default: true`): nothing is stored on the device.
+`src/components/ConsentNote.astro` shows a small note in the corner with two equal choices; "Accept"
+calls `posthog.opt_in_capturing()` (the SDK then keeps `ph_<token>_posthog` as cookie and in
+localStorage, and session replay may run with every input and text masked), "Decline" calls
+`posthog.opt_out_capturing()` (stays cookieless). The SDK stores the choice in localStorage
+(`__ph_opt_in_out_<token>`); the footer's "Cookie-Einstellungen" reopens the note. Without analytics
+configured the note and the footer link never appear.
+
+**The PostHog project must have cookieless server hash mode set to "stateful"**
+(Settings, Project, Web analytics), or PostHog discards every cookieless event. On 2026-10-29 it was
+off (`cookieless_server_hash_mode: 0`); the owner switches it.
+
+What is measured, all by the SDK unless named:
+
+| Signal | Source |
+|---|---|
+| Page views, page leaves with scroll depth (`$prev_pageview_max_scroll_percentage`), referrer, UTM parameters | `$pageview`, `$pageleave`, automatic |
+| Web vitals (LCP, INP, CLS, FCP) | `capture_performance.web_vitals` |
+| Clicks on links and buttons, form submits and changes, rage and dead clicks | autocapture |
+| Where a call to action sits | `data-ph-capture-attribute-cta-area` and `-cta-label` on `Button`, `TextLink`, `CTABand` (areas: `header`, `mobile_menu`, `founders`, `security_cta`, `contact_info`; labels: `demo`, `login`, `open_app`, `contact`) |
+| Language switch | `data-ph-capture-attribute-language-switch` (`de-en`, `en-de`) on the header link |
+| Which form | `data-ph-capture-attribute-form` (`contact`, `demo`) on the form |
+| `form_submitted` `{ form, method: 'mailto', locale, newsletter? }` | `MailForm.astro`, the one thing autocapture cannot see: the mail hand-off. No field values |
+| `video_played` `{ video, locale }` | `Video.astro`, first play |
+| Heatmaps | `enable_heatmaps` |
+
+No event carries what a visitor typed. Dashboards: PostHog's Web Analytics product is the dashboard
+(no dashboard as code). The demo funnel to build there: `$pageview` on `/demo/` (or `/en/demo/`), then
+`$autocapture` change with `form = demo`, then `form_submitted` with `form = demo`.
+
+## Forms
+
+Contact and demo hand off to the visitor's mail program (owner decision D9): `MailForm.astro` builds a
+`mailto:` with a subject and a readable `Label: value` body (`src/lib/mailto.ts`), opens it, and shows
+what happens next and the address to write to if no mail program opened. Without JavaScript the
+browser's own `mailto:` post is the fallback. Nothing reaches a server of ours, so nothing is stored.
+
+Roadmap: the target is Attio. A form posts to an endpoint that creates the person and the request in
+Attio, so a lead is recorded and answered from the CRM. Attio has a REST API and an MCP server, so an
+agent can read and act on the same records (AI-native tooling).
+
+## Accessibility
+
+`bun run check:a11y` (`scripts/check-accessibility.mjs`) serves `dist/` and runs axe-core with the
+WCAG 2.0, 2.1 and 2.2 A/AA rules on every page in the sitemap plus the 404 page, at 1280 and 390 px,
+with the mobile menu open and a form in its sent state. Text on a photo, which axe can only flag for
+review, is measured against every pixel behind it. It fails on any finding, and `task website:verify`
+runs it.
 
 ## Layout
 
@@ -69,14 +144,22 @@ The table gives the source file and where it appears.
 | `funding-aws-gray.png` | `e8ea93f801.png` | Footer, funding note (Austria Wirtschaftsservice) |
 
 The reference fonts (`.woff2`) are not here: the design system ships them in `src/styles/brand/fonts/`.
-The favicon is `public/favicon.svg`.
+
+## Icons
+
+`public/favicon.svg` is a copy of `packages/brand/mark.svg`, its title filled from identity by
+`packages/brand/build-brand-assets.mjs`. `favicon.ico`, `apple-touch-icon.png` and
+`icons/icon-{192,512}.png`, `icons/icon-maskable-512.png` are rendered from the same master with that
+script's recipe; the script itself still writes its rasters to `apps/site` until the cutover points it here. `src/pages/manifest.webmanifest.ts` names them, with the name from
+identity and the colour from the tokens. Every page carries schema.org `Organization` and `WebSite`
+JSON-LD (`src/lib/structured-data.ts`), all from identity.
 
 ## Not done here
 
-- The pages themselves. Only the home page is converted (`src/views/HomeView.astro`, with thin route files in `src/pages/` and `src/pages/en/`). The other pages are still German-only and pass `locale="de"`.
-- The demo page is a split page: `BaseLayout` with `bare`, no header or footer.
-- There is no login page. Login goes to `/sign-in`, which hands over to AuthKit's hosted page; that page lists exactly the sign-in methods enabled in WorkOS, so the site keeps no list of its own. `/login` and `/en/login` redirect there.
-- Deployment: Dockerfile, redirects and the removal of `apps/site` belong to slice 5.
+- The redirect table for the old site's URLs and new SEO pages (route fates) come with the SEO work.
+- The changelog page comes with the cutover work.
+- There is no login page. Login goes to `/sign-in`, which hands over to the app; `/login` and `/en/login` redirect there.
+- The company's LinkedIn URL is not known yet (`src/lib/social.ts`, TODO(owner)); the footer, contact page, privacy row and JSON-LD show it once it is set.
 
 ## Signed in
 
