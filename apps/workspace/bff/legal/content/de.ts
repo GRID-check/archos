@@ -9,10 +9,14 @@
  */
 
 import type { LegalContent } from '../types'
+import { PRODUCT_NAME } from '@/lib/brand'
+import identity from '@/shared/brand/identity.json'
 
-const OPERATOR = '[Name des Betreibers — z. B. Piloti Check GmbH]'
-const ADDRESS = '[Straße, Nummer, PLZ, Ort, Österreich]'
-const EMAIL = '[Kontakt-E-Mail-Adresse]'
+// Betreiber, Anschrift und Kontakt aus der einen Quelle der Marke (packages/brand/identity.json),
+// wie im Impressum der Website.
+const OPERATOR = identity.legalEntity
+const ADDRESS = `${identity.street}, ${identity.postalCode} ${identity.city}, Österreich`
+const EMAIL = identity.email
 
 export const de: LegalContent = {
   imprint: {
@@ -33,7 +37,7 @@ export const de: LegalContent = {
       {
         heading: 'Zweck des Dienstes',
         paragraphs: [
-          'Piloti ist ein KI-gestütztes Recherchewerkzeug, das Baufachleute dabei unterstützt, Informationen aus den österreichischen OIB-Richtlinien und den im Rechtsinformationssystem des Bundes (RIS) veröffentlichten Rechtsquellen zu finden und zu überprüfen. Piloti erbringt keine Rechtsberatung; siehe Nutzungsbedingungen und KI-Transparenzhinweis.',
+          PRODUCT_NAME + ' (vormals Piloti) ist ein KI-gestütztes Recherchewerkzeug, das Baufachleute dabei unterstützt, Informationen aus den österreichischen OIB-Richtlinien und den im Rechtsinformationssystem des Bundes (RIS) veröffentlichten Rechtsquellen zu finden und zu überprüfen. ' + PRODUCT_NAME + ' erbringt keine Rechtsberatung; siehe Nutzungsbedingungen und KI-Transparenzhinweis.',
         ],
       },
       {
@@ -55,13 +59,13 @@ export const de: LegalContent = {
     title: 'Datenschutzerklärung',
     updated: '2026-10-27',
     intro:
-      'Diese Erklärung informiert gemäß Verordnung (EU) 2016/679 (DSGVO) darüber, wie personenbezogene Daten bei der Nutzung von Piloti verarbeitet werden.',
+      'Diese Erklärung informiert gemäß Verordnung (EU) 2016/679 (DSGVO) darüber, wie personenbezogene Daten bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) verarbeitet werden.',
     sections: [
       {
         heading: '1. Verantwortlicher',
         paragraphs: [
           `Verantwortlicher im Sinne des Art. 4 Z 7 DSGVO: ${OPERATOR}, ${ADDRESS}, ${EMAIL}.`,
-          'Wird Piloti über Ihren Arbeitgeber bzw. Ihre Organisation bereitgestellt, bestimmt diese Organisation die Zwecke der Verarbeitung der Projektinhalte in ihrem Arbeitsbereich; insoweit handelt der Betreiber als Auftragsverarbeiter im Auftrag der Organisation, und ein Auftragsverarbeitungsvertrag (Art. 28 DSGVO) regelt das Verhältnis.',
+          'Wird ' + PRODUCT_NAME + ' über Ihren Arbeitgeber bzw. Ihre Organisation bereitgestellt, bestimmt diese Organisation die Zwecke der Verarbeitung der Projektinhalte in ihrem Arbeitsbereich; insoweit handelt der Betreiber als Auftragsverarbeiter im Auftrag der Organisation, und ein Auftragsverarbeitungsvertrag (Art. 28 DSGVO) regelt das Verhältnis.',
         ],
       },
       {
@@ -112,15 +116,15 @@ export const de: LegalContent = {
       {
         heading: '7. Cookies',
         paragraphs: [
-          'Piloti verwendet technisch notwendige Cookies: einen verschlüsselten Session-Cookie für die Anmeldung (WorkOS AuthKit), einen Cookie für Ihre Spracheinstellung und, solange Sie angemeldet sind, den Cookie ‚signed_in‘. Er enthält nur den Wert ‚1‘, keine Kennung, gilt für die ganze Domain und sagt unserer Website, dass sie statt „Login“ den Weg in die Anwendung anbieten soll; bei der Abmeldung oder wenn die Sitzung abläuft, wird er gelöscht.',
-          'Zusätzlich speichert unsere Produktanalyse (PostHog) eine pseudonyme Kennung, die Sitzungs-ID und einige Einstellungen in einem Cookie und im lokalen Speicher Ihres Browsers (Schlüssel „ph_…“, konkret „ph_<Projekt-Token>_posthog“; das Cookie läuft nach 365 Tagen ab und gilt auch für die öffentliche Website von Piloti auf derselben Domain). Wird Ihnen eine Umfrage angezeigt, legt PostHog dafür weitere Einträge im lokalen Speicher an (Schlüssel „seenSurvey_…“ und „lastSeenSurveyDate“). Ebenso merkt sich PostHog, welche Hinweise und Ankündigungen Sie schon gesehen, geschlossen oder abgeschlossen haben, damit sie nicht erneut erscheinen (Schlüssel „ph_product_tour_…“, „ph_last_seen_tour_date_…“ und „ph_active_product_tour“). Diese Speicherung ist nicht technisch notwendig; sie dient der Produktverbesserung. Werbe- oder seitenübergreifende Tracking-Cookies setzen wir nicht.',
+          PRODUCT_NAME + ' verwendet technisch notwendige Cookies: einen verschlüsselten Session-Cookie für die Anmeldung (WorkOS AuthKit), einen Cookie für Ihre Spracheinstellung und, solange Sie angemeldet sind, den Cookie ‚signed_in‘. Er enthält nur den Wert ‚1‘, keine Kennung, gilt für die ganze Domain und sagt unserer Website, dass sie statt „Login“ den Weg in die Anwendung anbieten soll; bei der Abmeldung oder wenn die Sitzung abläuft, wird er gelöscht.',
+          'Zusätzlich speichert unsere Produktanalyse (PostHog) eine pseudonyme Kennung, die Sitzungs-ID und einige Einstellungen in einem Cookie und im lokalen Speicher Ihres Browsers (Schlüssel „ph_…“, konkret „ph_<Projekt-Token>_posthog“; das Cookie läuft nach 365 Tagen ab und gilt auch für die öffentliche Website von ' + PRODUCT_NAME + ' auf derselben Domain). Wird Ihnen eine Umfrage angezeigt, legt PostHog dafür weitere Einträge im lokalen Speicher an (Schlüssel „seenSurvey_…“ und „lastSeenSurveyDate“). Ebenso merkt sich PostHog, welche Hinweise und Ankündigungen Sie schon gesehen, geschlossen oder abgeschlossen haben, damit sie nicht erneut erscheinen (Schlüssel „ph_product_tour_…“, „ph_last_seen_tour_date_…“ und „ph_active_product_tour“). Diese Speicherung ist nicht technisch notwendig; sie dient der Produktverbesserung. Werbe- oder seitenübergreifende Tracking-Cookies setzen wir nicht.',
           `Sie können die Produktanalyse in den Einstellungen Ihres Profils abschalten oder ihr jederzeit unter ${EMAIL} widersprechen; sie erfasst dann nichts mehr, und die genannten Einträge werden nicht mehr fortgeschrieben.`,
         ],
       },
       {
         heading: '8. Ihre Rechte',
         paragraphs: [
-          'Ihnen stehen die Rechte auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21) zu. Soweit eine Verarbeitung auf Einwilligung beruht, können Sie diese jederzeit widerrufen. Wird Piloti über Ihre Organisation bereitgestellt, richten Sie Anfragen bitte zunächst an Ihre Organisation; wir unterstützen die Organisation bei der Erfüllung.',
+          'Ihnen stehen die Rechte auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21) zu. Soweit eine Verarbeitung auf Einwilligung beruht, können Sie diese jederzeit widerrufen. Wird ' + PRODUCT_NAME + ' über Ihre Organisation bereitgestellt, richten Sie Anfragen bitte zunächst an Ihre Organisation; wir unterstützen die Organisation bei der Erfüllung.',
           `Zur Ausübung Ihrer Rechte wenden Sie sich an ${EMAIL}. Sie haben zudem das Recht auf Beschwerde bei der österreichischen Datenschutzbehörde, Barichgasse 40–42, 1030 Wien, dsb.gv.at, oder Ihrer örtlichen Aufsichtsbehörde.`,
         ],
       },
@@ -143,18 +147,18 @@ export const de: LegalContent = {
     title: 'Nutzungsbedingungen',
     updated: '2026-07-10',
     intro:
-      'Diese Bedingungen regeln die Nutzung von Piloti. Vorlage — vor Produktivbetrieb anwaltlich prüfen und vervollständigen.',
+      'Diese Bedingungen regeln die Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti). Vorlage — vor Produktivbetrieb anwaltlich prüfen und vervollständigen.',
     sections: [
       {
         heading: '1. Leistungsumfang',
         paragraphs: [
-          'Piloti ist ein KI-gestützter Rechercheassistent für österreichisches Baurecht (OIB-Richtlinien und RIS-Rechtsquellen). Piloti ruft Vorschrifteninhalte und von Ihrer Organisation bereitgestellte Projektdokumente ab, fasst sie zusammen und zitiert sie.',
+          PRODUCT_NAME + ' ist ein KI-gestützter Rechercheassistent für österreichisches Baurecht (OIB-Richtlinien und RIS-Rechtsquellen). ' + PRODUCT_NAME + ' ruft Vorschrifteninhalte und von Ihrer Organisation bereitgestellte Projektdokumente ab, fasst sie zusammen und zitiert sie.',
         ],
       },
       {
         heading: '2. Keine Rechtsberatung',
         paragraphs: [
-          'Piloti erbringt keine Rechtsberatung und ersetzt nicht die Beurteilung qualifizierter Fachleute wie Architektinnen und Architekten, Ziviltechnikerinnen und Ziviltechnikern oder Rechtsanwältinnen und Rechtsanwälten. Antworten werden von KI erzeugt, können fehlerhaft, unvollständig oder veraltet sein und müssen vor der Verwendung für Planungs-, Genehmigungs- oder Bauentscheidungen anhand der zitierten Primärquellen überprüft werden. Die Verantwortung für Entscheidungen auf Grundlage von Piloti-Ausgaben verbleibt bei den Nutzenden und ihrer Organisation.',
+          PRODUCT_NAME + ' erbringt keine Rechtsberatung und ersetzt nicht die Beurteilung qualifizierter Fachleute wie Architektinnen und Architekten, Ziviltechnikerinnen und Ziviltechnikern oder Rechtsanwältinnen und Rechtsanwälten. Antworten werden von KI erzeugt, können fehlerhaft, unvollständig oder veraltet sein und müssen vor der Verwendung für Planungs-, Genehmigungs- oder Bauentscheidungen anhand der zitierten Primärquellen überprüft werden. Die Verantwortung für Entscheidungen auf Grundlage von ' + PRODUCT_NAME + '-Ausgaben verbleibt bei den Nutzenden und ihrer Organisation.',
         ],
       },
       {
@@ -209,30 +213,30 @@ export const de: LegalContent = {
     title: 'KI-Transparenzhinweis',
     updated: '2026-07-10',
     intro:
-      'Information gemäß Art. 50 der Verordnung (EU) 2024/1689 (KI-Verordnung) über das KI-System, mit dem Sie bei der Nutzung von Piloti interagieren.',
+      'Information gemäß Art. 50 der Verordnung (EU) 2024/1689 (KI-Verordnung) über das KI-System, mit dem Sie bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) interagieren.',
     sections: [
       {
         heading: 'Sie interagieren mit einem KI-System',
         paragraphs: [
-          'Piloti beantwortet Ihre Fragen mit großen Sprachmodellen (LLMs). Chat-Antworten, Rechercheberichte und Rechtsgrundlagen-Karten sind KI-generierte Inhalte. Piloti kennzeichnet die zitierten Quellen, sodass jede Aussage anhand der zugrunde liegenden OIB-Richtlinie oder RIS-Fundstelle überprüft werden kann.',
+          PRODUCT_NAME + ' beantwortet Ihre Fragen mit großen Sprachmodellen (LLMs). Chat-Antworten, Rechercheberichte und Rechtsgrundlagen-Karten sind KI-generierte Inhalte. ' + PRODUCT_NAME + ' kennzeichnet die zitierten Quellen, sodass jede Aussage anhand der zugrunde liegenden OIB-Richtlinie oder RIS-Fundstelle überprüft werden kann.',
         ],
       },
       {
         heading: 'Was das System tut',
         paragraphs: [
-          'Piloti ruft Passagen aus den OIB-Richtlinien, österreichischen Rechtsquellen (RIS) und Ihren Projektdokumenten ab, führt optional Web-Recherchen durch und erstellt mit KI-Modellen eine Antwort mit Zitaten. Eine asynchrone Memory-Funktion kann aus Interaktionen Notizen auf Projekt- und Organisationsebene ableiten, um künftige Antworten zu verbessern; organisationsweite Memory-Einträge durch die KI sind standardmäßig deaktiviert.',
+          PRODUCT_NAME + ' ruft Passagen aus den OIB-Richtlinien, österreichischen Rechtsquellen (RIS) und Ihren Projektdokumenten ab, führt optional Web-Recherchen durch und erstellt mit KI-Modellen eine Antwort mit Zitaten. Eine asynchrone Memory-Funktion kann aus Interaktionen Notizen auf Projekt- und Organisationsebene ableiten, um künftige Antworten zu verbessern; organisationsweite Memory-Einträge durch die KI sind standardmäßig deaktiviert.',
         ],
       },
       {
         heading: 'Grenzen und menschliche Aufsicht',
         paragraphs: [
-          'KI-generierte Antworten können falsch, unvollständig oder veraltet sein, auch wenn sie überzeugend klingen. Piloti ist ein Recherchewerkzeug und als KI-Anwendung mit begrenztem Risiko eingestuft: Es trifft keine Entscheidungen über Gebäude, Genehmigungen oder Personen — die fachliche Prüfung jeder Antwort anhand der zitierten Primärquelle ist Teil der bestimmungsgemäßen Verwendung. Verwenden Sie Piloti-Ausgaben nicht als alleinige Grundlage sicherheitsrelevanter Planungsentscheidungen.',
+          'KI-generierte Antworten können falsch, unvollständig oder veraltet sein, auch wenn sie überzeugend klingen. ' + PRODUCT_NAME + ' ist ein Recherchewerkzeug und als KI-Anwendung mit begrenztem Risiko eingestuft: Es trifft keine Entscheidungen über Gebäude, Genehmigungen oder Personen — die fachliche Prüfung jeder Antwort anhand der zitierten Primärquelle ist Teil der bestimmungsgemäßen Verwendung. Verwenden Sie ' + PRODUCT_NAME + '-Ausgaben nicht als alleinige Grundlage sicherheitsrelevanter Planungsentscheidungen.',
         ],
       },
       {
         heading: 'Welche KI-Modelle eingesetzt werden',
         paragraphs: [
-          'Standardmäßig nutzt Piloti Modelle, die über das API-Gateway OpenRouter geleitet werden (Referenzmodell: OpenAI GPT-5.6 Luna). Verschiedene interne Funktionen (Rückfragen, Recherche, Tiefenrecherche, Memory-Reflexion) können unterschiedliche Modelle verwenden.',
+          'Standardmäßig nutzt ' + PRODUCT_NAME + ' Modelle, die über das API-Gateway OpenRouter geleitet werden (Referenzmodell: OpenAI GPT-5.6 Luna). Verschiedene interne Funktionen (Rückfragen, Recherche, Tiefenrecherche, Memory-Reflexion) können unterschiedliche Modelle verwenden.',
         ],
         notice:
           'Die Modellwahl ist dynamisch: Administratorinnen und Administratoren Ihrer Organisation können jede Funktion jederzeit auf ein anderes KI-Modell aus dem OpenRouter-Katalog umstellen, ohne dass eine neue Version des Dienstes erscheint. Jede Änderung wird gegen den Katalog validiert, versioniert, der handelnden Person zugeordnet und ist umkehrbar; für jede einzelne KI-Anfrage wird im Nutzungsledger festgehalten, welches Modell die Antwort tatsächlich erzeugt hat. Das Gateway (OpenRouter) und dessen Zugangsdaten können durch eine Modellauswahl niemals geändert werden — nur, welches Modell hinter diesem Gateway Ihre Organisation bedient.',
@@ -240,7 +244,7 @@ export const de: LegalContent = {
       {
         heading: 'Nachvollziehbarkeit',
         paragraphs: [
-          'Für jede Antwort protokolliert Piloti, welches Modell die Anfrage bedient hat, die verbrauchten Tokens und die Kosten, zugeordnet zu Organisation, Projekt und Nutzer. Administrative Änderungen der Modellkonfiguration erscheinen im Audit-Log der Organisation.',
+          'Für jede Antwort protokolliert ' + PRODUCT_NAME + ', welches Modell die Anfrage bedient hat, die verbrauchten Tokens und die Kosten, zugeordnet zu Organisation, Projekt und Nutzer. Administrative Änderungen der Modellkonfiguration erscheinen im Audit-Log der Organisation.',
         ],
       },
       {
@@ -256,7 +260,7 @@ export const de: LegalContent = {
     title: 'Externe Dienste & Subunternehmer',
     updated: '2026-10-10',
     intro:
-      'Alle externen Dienste, die bei der Nutzung von Piloti Daten verarbeiten können, sowie die vom Betreiber selbst betriebene Infrastruktur. Diese Seite setzt die in der Datenschutzerklärung genannte Transparenzzusage um.',
+      'Alle externen Dienste, die bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) Daten verarbeiten können, sowie die vom Betreiber selbst betriebene Infrastruktur. Diese Seite setzt die in der Datenschutzerklärung genannte Transparenzzusage um.',
     sections: [
       {
         heading: 'Externe Auftragsverarbeiter',
@@ -372,13 +376,13 @@ export const de: LegalContent = {
       {
         heading: 'Entwicklungs- und Build-Dienste (keine Nutzerinhalte)',
         paragraphs: [
-          'Die folgenden Dienste werden für Entwicklung und Build von Piloti genutzt. Sie verarbeiten Quellcode und Build-Artefakte, niemals Ihre Eingaben, Dokumente oder Kontodaten:',
+          'Die folgenden Dienste werden für Entwicklung und Build von ' + PRODUCT_NAME + ' genutzt. Sie verarbeiten Quellcode und Build-Artefakte, niemals Ihre Eingaben, Dokumente oder Kontodaten:',
         ],
         list: [
           'GitHub (USA) — Quellcode-Hosting, CI-Pipelines, Sicherheits-Scans.',
           'SonarSource / SonarQube Cloud (EU/CH) — statische Analyse des Quellcodes.',
           'Paket-Registries und Basis-Images (PyPI, npm, Docker Hub, NVIDIA NGC, Debian-/Node-Mirrors) — Software-Abhängigkeiten, die zur Build-Zeit geladen werden.',
-          'Google Fonts — Schriften werden einmalig zur Build-Zeit geladen und selbst gehostet; Ihr Browser kontaktiert bei der Nutzung von Piloti niemals Google.',
+          'Google Fonts — Schriften werden einmalig zur Build-Zeit geladen und selbst gehostet; Ihr Browser kontaktiert bei der Nutzung von ' + PRODUCT_NAME + ' niemals Google.',
         ],
       },
       {
