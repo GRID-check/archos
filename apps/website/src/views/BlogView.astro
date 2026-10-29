@@ -1,33 +1,46 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Button from '../components/Button.astro';
 import Hero from '../components/Hero.astro';
 import PostCard from '../components/PostCard.astro';
 import copy from '../i18n/pages/blog';
 import type { Locale } from '../i18n/paths';
-import { withName } from '../lib/identity';
+import { CATEGORIES, CATEGORY_IDS, blogPath, type Category } from '../lib/categories';
+import { formatDate, postPath, type BlogPost } from '../lib/posts';
 
-// Markup and structure only. Text comes from src/i18n/pages/blog.ts, in both locales.
+// Markup only. Text comes from src/i18n/pages/blog.ts and src/lib/categories.ts.
 interface Props {
   locale: Locale;
+  /** The listing's posts, newest first, already filtered by the route. */
+  posts: BlogPost[];
+  /** Set on a category page; the index leaves it out. */
+  category?: Category;
 }
 
-const { locale } = Astro.props;
-const c = withName(copy[locale]);
+const { locale, posts, category } = Astro.props;
+const c = copy[locale];
+const cat = category ? CATEGORIES[locale][category] : undefined;
+const title = cat ? cat.label : c.title;
+const description = cat ? cat.descriptor : c.hero.text;
+const heroTitle = cat ? cat.label : c.hero.title;
 ---
 
-<BaseLayout locale={locale} title={c.title} description={c.hero.text}>
-  <Hero title={c.hero.title} text={c.hero.text} />
+<BaseLayout locale={locale} title={title} description={description}>
+  <Hero title={heroTitle} text={description} />
 
   <section class="ui-container page-section">
     <nav aria-label={c.filterLabel}>
       <ul class="ui-filter">
+        <li>
+          <a class="ui-nav-link" href={blogPath(locale)} aria-current={category ? undefined : 'page'}>
+            {c.filterAll}
+          </a>
+        </li>
         {
-          c.filters.map((label, i) => (
+          CATEGORY_IDS.map((id) => (
             <li>
-              <button type="button" class="ui-nav-link" aria-pressed={i === 0 ? 'true' : 'false'}>
-                {label}
-              </button>
+              <a class="ui-nav-link" href={blogPath(locale, id)} aria-current={category === id ? 'page' : undefined}>
+                {CATEGORIES[locale][id].label}
+              </a>
             </li>
           ))
         }
@@ -35,11 +48,16 @@ const c = withName(copy[locale]);
     </nav>
 
     <ul class="ui-posts">
-      {c.posts.map((title) => <PostCard title={title} />)}
+      {
+        posts.map((post) => (
+          <PostCard
+            title={post.data.title}
+            text={post.data.description}
+            date={formatDate(post.data.pubDate, locale)}
+            href={postPath(locale, post)}
+          />
+        ))
+      }
     </ul>
-
-    <div class="ui-center page-gap">
-      <Button variant="secondary" size="lg">{c.more}</Button>
-    </div>
   </section>
 </BaseLayout>

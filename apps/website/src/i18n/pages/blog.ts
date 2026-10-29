@@ -1,6 +1,6 @@
 /**
- * Copy of the blog index, both locales. `{name}` is the brand name, filled by `withName`.
- * Post titles only: each card's teaser, date and image are added here when the copy exists.
+ * Copy of the blog, both locales. The listing's labels and the post page's
+ * strings. Category names and descriptors live in src/lib/categories.ts.
  */
 const de = {
   title: 'Blog',
@@ -9,16 +9,8 @@ const de = {
     text: 'Neue Funktionen, Entwicklungen in KI und Planung und Erfahrungen aus führenden Planungsbüros.',
   },
   filterLabel: 'Beiträge filtern',
-  filters: ['Alle', 'Produktfeatures', 'Praxiserfahrungen', 'Technologie'],
-  posts: [
-    'Baurecht durchsuchen: Wie {name} jede Antwort belegt',
-    'Planstände vergleichen in der Entwurfsphase',
-    'Pläne lesen statt Text: Wo die Modelle heute stehen',
-    'Warum {name} keine Entwürfe generiert',
-    'Wo die Daten Ihres Büros liegen',
-    'Vom Projektwissen zur Projektintelligenz',
-  ],
-  more: 'Weitere Beiträge',
+  filterAll: 'Alle',
+  backToBlog: 'Zurück zum Blog',
 };
 
 const en: typeof de = {
@@ -28,16 +20,8 @@ const en: typeof de = {
     text: 'New features, developments in AI and planning, and experience from leading planning firms.',
   },
   filterLabel: 'Filter posts',
-  filters: ['All', 'Product features', 'Practical experience', 'Technology'],
-  posts: [
-    'Searching building law: how {name} sources every answer',
-    'Comparing plan states in the design phase',
-    'Reading plans instead of text: where the models stand today',
-    'Why {name} does not generate designs',
-    'Where your office’s data is kept',
-    'From project knowledge to project intelligence',
-  ],
-  more: 'More posts',
+  filterAll: 'All',
+  backToBlog: 'Back to the blog',
 };
 
 export default { de, en };

@@ -1,0 +1,15 @@
+---
+import BlogView from '../../../views/BlogView.astro';
+import { CATEGORY_IDS, type Category } from '../../../lib/categories';
+import { getBlogPosts } from '../../../lib/posts';
+
+// /en/blog/<category>/. See the German route for why it shares a level with [slug].astro.
+export function getStaticPaths() {
+  return CATEGORY_IDS.map((category) => ({ params: { category } }));
+}
+
+const category = Astro.params.category as Category;
+const posts = await getBlogPosts('en', category);
+---
+
+<BlogView locale="en" posts={posts} category={category} />

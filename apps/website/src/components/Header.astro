@@ -11,6 +11,8 @@ interface Props {
   links?: NavLink[];
   /** href of the active page; the language switch points to its other-locale twin */
   current?: string;
+  /** The other-locale twin, when it is not the table's (a post's translation). Defaults to alternateOf(current) */
+  switchPath?: string;
   /** Small secondary button, e.g. Login. null hides it */
   login?: NavLink | null;
   /** Small primary button, e.g. Demo anfragen: the page's one primary. null hides it */
@@ -21,7 +23,7 @@ interface Props {
   class?: string;
 }
 
-const { locale, current = Astro.url.pathname, sticky = true, class: className } = Astro.props;
+const { locale, current = Astro.url.pathname, switchPath, sticky = true, class: className } = Astro.props;
 const nav = navigation(locale);
 const ui = t(locale);
 const links = Astro.props.links ?? nav.mainNav;
@@ -29,7 +31,7 @@ const login = Astro.props.login === undefined ? nav.login : Astro.props.login;
 const cta = Astro.props.cta === undefined ? nav.demo : Astro.props.cta;
 const homeHref = Astro.props.homeHref ?? localePath('home', locale);
 const otherLocale: Locale = locale === 'de' ? 'en' : 'de';
-const switchHref = alternateOf(current);
+const switchHref = switchPath ?? alternateOf(current);
 const hasMenu = links.length > 0 || Boolean(login);
 ---
 

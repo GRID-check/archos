@@ -74,3 +74,12 @@ The favicon is `public/favicon.svg`.
 - The demo page is a split page: `BaseLayout` with `bare`, no header or footer.
 - There is no login page. Login goes to `/sign-in`, which hands over to AuthKit's hosted page; that page lists exactly the sign-in methods enabled in WorkOS, so the site keeps no list of its own. `/login` and `/en/login` redirect there.
 - Deployment: Dockerfile, redirects and the removal of `apps/site` belong to slice 5.
+
+## Blog
+
+Posts are MDX in `src/content/blog/<locale>/<slug>.mdx` (schema in
+`src/content.config.ts`, categories in `src/lib/categories.ts`), figures in
+`src/components/figures/`. A post's file name is its slug; `translationSlug`
+names its twin in the other locale for the language switch and hreflang. Drafts
+build only with `PUBLIC_INCLUDE_DRAFTS=1`. Until `apps/site` is deleted at the
+cutover, its copies of these posts are stale: write new posts here.

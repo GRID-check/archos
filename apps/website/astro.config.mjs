@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'astro/config'
+import mdx from '@astrojs/mdx'
 import node from '@astrojs/node'
 import sitemap from '@astrojs/sitemap'
 
@@ -23,5 +24,5 @@ export default defineConfig({
   adapter: node({ mode: 'standalone' }),
   // The old login pages forward to AuthKit's sign-in, which lists the enabled methods itself.
   redirects: { '/login': '/sign-in', '/en/login': '/sign-in' },
-  integrations: [sitemap()],
+  integrations: [mdx(), sitemap()],
 })

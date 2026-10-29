@@ -18,15 +18,17 @@ interface Props {
   noindex?: boolean;
   /** Renders without header and footer (the split pages: Login, Demo) */
   bare?: boolean;
+  /** The other locale's twin of this page, when its path is not the table's (a post's translation) */
+  alternatePath?: string;
 }
 
-const { locale, title, description, noindex = false, bare = false } = Astro.props;
+const { locale, title, description, noindex = false, bare = false, alternatePath } = Astro.props;
 const ui = t(locale);
 const pageTitle = title ? `${title} – ${identity.name}` : identity.name;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // hreflang: the page and its other-locale twin, German as x-default.
 const here = Astro.url.pathname;
-const there = alternateOf(here);
+const there = alternatePath ?? alternateOf(here);
 const hrefFor = (target: Locale) => new URL(target === locale ? here : there, Astro.site);
 // Social previews: the share card is the one image every page shares; og:locale names the region.
 const ogLocale: Record<Locale, string> = { de: 'de_AT', en: 'en_GB' };
@@ -57,10 +59,13 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
     <link rel="alternate" hreflang="en" href={hrefFor('en')} />
     <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Web analytics, configured per stack at request time; a comment when
+         PostHog is unset (src/pages/web-analytics.js.ts, runtime/web-analytics.mjs). -->
+    <script is:inline src="/web-analytics.js" defer></script>
   </head>
   <body>
     <a class="site-skip" href="#main">{ui.skipLink}</a>
-    {!bare && <Header locale={locale} current={Astro.url.pathname} />}
+    {!bare && <Header locale={locale} current={Astro.url.pathname} switchPath={alternatePath} />}
     <main id="main">
       <slot />
     </main>
