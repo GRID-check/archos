@@ -11,10 +11,10 @@ The pipeline this file implements
    note is attributed to the release it actually shipped in, from git history
    rather than from whatever the file claims — translates the new English
    strings into German once, and writes
-   ``apps/site/src/data/changelog.json``.
-3. The Astro site renders that file at ``/changelog`` (de) and ``/en/changelog``
-   (en). The web image is built from the repo, so the commit made in step 2 is
-   what puts the note in front of a reader.
+   ``apps/website/src/data/changelog.json``.
+3. The website (``apps/website``) renders that file at ``/changelog/`` (de) and
+   ``/en/changelog/`` (en). The web image is built from the repo, so the commit
+   made in step 2 is what puts the note in front of a reader.
 
 Why a JSON artifact instead of ``reno report``
 ----------------------------------------------
@@ -69,7 +69,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RELNOTES_DIR = REPO_ROOT / "releasenotes"
 NOTES_DIR = RELNOTES_DIR / "notes"
 TRANSLATIONS_FILE = RELNOTES_DIR / "translations" / "de.json"
-CHANGELOG_FILE = REPO_ROOT / "apps" / "site" / "src" / "data" / "changelog.json"
+CHANGELOG_FILE = REPO_ROOT / "apps" / "website" / "src" / "data" / "changelog.json"
+SITE_DOMAIN = json.loads((REPO_ROOT / "packages" / "brand" / "identity.json").read_text(encoding="utf-8"))["domain"]
 
 SUMMARIES_FILE = RELNOTES_DIR / "summaries.yaml"
 
@@ -302,7 +303,7 @@ INTERNAL_PATTERNS = [
     (re.compile(r"\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b"), "commit sha"),
     (re.compile(r"\b\w+\.(py|ts|tsx|astro|yml|yaml|json|mjs)\b"), "file name"),
     (re.compile(r"\b(src|frontends|sources|configs|deploy)/"), "repository path"),
-    (re.compile(r"https?://(?!(www\.)?piloti\.at)"), "link to something other than piloti.at"),
+    (re.compile(rf"https?://(?!(www\.)?({re.escape(SITE_DOMAIN)}|piloti\.at))"), "link off the website"),
 ]
 
 # Sentences shipped by the `reno new` template. A note still carrying one was
@@ -969,8 +970,7 @@ def cmd_lint(args: argparse.Namespace) -> int:
         for problem in problems:
             print(f"  ✗ {problem}", file=sys.stderr)
         print(
-            "\nNotes in the public sections are published to https://piloti.at/changelog, for\n"
-            "the architect using Piloti; `security`, `incident` and `operators` never are.\n"
+            "\nPublic notes reach the website's /changelog/; `security`, `incident` and `operators` never do.\n"
             "Good and bad examples: docs/contributing/release-notes.md.\n",
             file=sys.stderr,
         )

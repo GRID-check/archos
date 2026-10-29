@@ -51,6 +51,8 @@ interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof Dialo
   showHints?: boolean
   /** Visible labels next to the hint keys. Ignored unless `showHints` is set. */
   hintLabels?: CommandHintLabels
+  /** A further key at the footer's end, for what this list alone offers (the palette's „alle Treffer“). */
+  hintsTrailing?: React.ReactNode
   /**
    * Open and close with no motion (`DialogContent`'s `instant`). On by default:
    * a palette is summoned from the keyboard many times a day, and Raycast's
@@ -70,7 +72,7 @@ interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof Dialo
  * palette's footer, and the footer of every picker that walks the same way
  * (the composer's `#`), so one key never has two descriptions.
  */
-function CommandHints({ labels, className }: { labels?: CommandHintLabels; className?: string }) {
+function CommandHints({ labels, className, trailing }: { labels?: CommandHintLabels; className?: string; trailing?: React.ReactNode }) {
   return (
     <div
       data-slot="command-hints"
@@ -91,6 +93,7 @@ function CommandHints({ labels, className }: { labels?: CommandHintLabels; class
         <Kbd>Esc</Kbd>
         {labels?.close}
       </span>
+      {trailing ? <span className="ml-auto inline-flex items-center gap-1.5">{trailing}</span> : null}
     </div>
   )
 }
@@ -102,6 +105,7 @@ function CommandDialog({
   className,
   showHints = false,
   hintLabels,
+  hintsTrailing,
   instant = true,
   commandProps,
   ...props
@@ -118,7 +122,7 @@ function CommandDialog({
         <Command {...commandProps} className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:size-4 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4">
           {children}
         </Command>
-        {showHints ? <CommandHints labels={hintLabels} /> : null}
+        {showHints ? <CommandHints labels={hintLabels} trailing={hintsTrailing} /> : null}
       </DialogContent>
     </Dialog>
   )
@@ -126,13 +130,39 @@ function CommandDialog({
 
 const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
+    /**
+     * Something is being fetched for what is typed: a thin sweep runs along
+     * the field's bottom edge, where the eye already is, instead of a spinner
+     * and a word appearing and vanishing somewhere in the list. The caller
+     * delays it, so a fast answer never shows it.
+     */
+    busy?: boolean
+  }
+>(({ className, busy = false, ...props }, ref) => (
   <div
     data-slot="command-input-wrapper"
     cmdk-input-wrapper=""
-    className="flex h-11 items-center gap-2 border-b border-border px-3 transition-colors duration-snap ease-out has-[:focus-visible]:bg-muted/40 motion-reduce:transition-none"
+    className="relative flex h-11 items-center gap-2 border-b border-border px-3 transition-colors duration-snap ease-out has-[:focus-visible]:bg-muted/40 motion-reduce:transition-none"
   >
+    <span
+      aria-hidden
+      data-slot="command-input-progress"
+      data-busy={busy || undefined}
+      className={cn(
+        'pointer-events-none absolute inset-x-0 -bottom-px h-0.5 overflow-hidden transition-opacity duration-quick motion-reduce:transition-none',
+        busy ? 'opacity-100' : 'opacity-0'
+      )}
+    >
+      {/* Mounted at rest too, paused, so the track's fade carries the sweep out instead of cutting it. */}
+      {/* Under reduced motion a still line across the whole edge: a paused third read as progress stuck at a third. */}
+      <span
+        className={cn(
+          'animate-progress-sweep block h-full w-1/3 rounded-full bg-primary/60 motion-reduce:w-full motion-reduce:animate-none motion-reduce:bg-primary/30',
+          !busy && '[animation-play-state:paused]'
+        )}
+      />
+    </span>
     <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
     <CommandPrimitive.Input
       ref={ref}

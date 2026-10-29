@@ -58,6 +58,7 @@ MOVED = {
     "frontends/benchmarks/": "evals/ (row 2)",
     "tests/benchmarks/": "evals/ (row 2)",
     "frontends/web/": "apps/site (row 3)",
+    "apps/site/": "apps/website, the riso kit to packages/brand/art/riso (corporate design plan, slice 5)",
     "shared/brand/": "packages/brand (row 3)",
     "shared/cards/": "contracts/cards (row 4)",
     "shared/wire/": "contracts/wire (row 4)",
@@ -82,6 +83,13 @@ HISTORY = (
     ":!apps/workspace/migrations/",
     # The secret scan walks full history, so its allowlist names the paths the fixtures lived at then.
     ":!.gitleaks.toml",
+    # Dated audits, research reports and records: what was true when they were written.
+    ":!docs/product/seo-geo-audit-2026-09.md",
+    ":!docs/roadmap/continuous-improvement-ledger.md",
+    ":!docs/roadmap/architect-workspace-voice-and-agentic-loop.md",
+    ":!docs/ux/motion.md",
+    # Test timings, keyed by the test ids of their day.
+    ":!tests/.test_durations",
     # Baselines and duration tables key their entries by path from the app root (`shared/cards/...`).
     ":(exclude,glob)apps/workspace/**/*.json",
 )

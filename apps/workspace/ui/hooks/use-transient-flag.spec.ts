@@ -38,6 +38,23 @@ describe('useDelayedFlag', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
+  it('once shown, stays for the minimum hold even when the work ends at once', () => {
+    const { result, rerender } = renderHook(({ active }) => useDelayedFlag(active, 300, 200), { initialProps: { active: true } })
+    act(() => vi.advanceTimersByTime(310))
+    expect(result.current).toBe(true)
+    rerender({ active: false })
+    expect(result.current).toBe(true)
+    act(() => vi.advanceTimersByTime(200))
+    expect(result.current).toBe(false)
+  })
+
+  it('without a hold, drops the moment the work ends', () => {
+    const { result, rerender } = renderHook(({ active }) => useDelayedFlag(active, 300), { initialProps: { active: true } })
+    act(() => vi.advanceTimersByTime(310))
+    rerender({ active: false })
+    expect(result.current).toBe(false)
+  })
+
   it('stays false for a wait shorter than the reveal delay', () => {
     const { result, rerender } = renderHook(({ active }) => useDelayedFlag(active), {
       initialProps: { active: true },

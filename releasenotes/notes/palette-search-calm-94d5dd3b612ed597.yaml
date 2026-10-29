@@ -1,0 +1,9 @@
+---
+features:
+  - >
+    Searching from the command palette (Ctrl+K) is calmer: results hold still
+    while you move through them, and each document shows on one line where it
+    is filed and which revision it is.
+  - >
+    When nothing is found or the search fails, the palette now says so and
+    offers to try again or continue in the full search.

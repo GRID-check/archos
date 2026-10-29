@@ -44,6 +44,30 @@ export const BANNED_TERMS = [
   { pattern: /\balles ab\b/i, reason: 'precise, not absolute: "Wir übernehmen, was Planer:innen vom Planen abhält." (Markenbasis, Präzise statt absolut)' },
 ]
 
+/**
+ * Claims the product does not keep, each retracted once and kept out by this list (ported from the
+ * retired site's lint-claims.mjs). `allowed` is removed from the text before the pattern is tried.
+ * Not ported: the site's "EU" rule (the privacy policy names PostHog's EU servers and the EU-US
+ * framework, both true) and its "plan" rule (the website's design-system copy says Pläne for
+ * drawings; the file-word rule stays with review, AGENTS.md).
+ * A phrase leaves the list only when the product genuinely makes it true again; say so in the PR.
+ */
+export const RETRACTED_CLAIMS = [
+  { pattern: /Platzhalter|\bplaceholder\]/i, reason: 'placeholder text on a public page' },
+  { pattern: /jederzeit exportierbar|exportable at any time/i, reason: 'unsupported claim: bulk export does not exist' },
+  { pattern: /selben Werktag|same working day/i, reason: 'unsupported claim: a response-time promise' },
+  { pattern: /gesamte Wissen|all the knowledge/i, reason: 'unprovable claim: "all" the knowledge' },
+  { pattern: /Stunden Suche|hours of searching/i, reason: 'unmeasured claim: only the answer time is measured' },
+  { pattern: /Standort offen|location disclosed/i, reason: 'unsupported claim: provider locations are not listed' },
+  { pattern: /\b(?:Die KI-Plattform|The AI platform)\b|ist die KI-Wissensplattform|is the AI knowledge platform/, reason: 'category claim: say "eine" / "an"' },
+  {
+    pattern: /jede Aussage lässt sich bis|every statement can be traced|(?:zu|für) jede[rn]? Aussage die (?:Quelle|Fundstelle)|(?:source|citation)s? (?:of|for) every statement|check every statement/i,
+    reason: 'unsupported claim: an answer cites its sources, not every statement its origin',
+  },
+  { pattern: /\{name\} (?:kennt|versteht|knows|understands)\b/, reason: 'anthropomorphic claim: say what the product works with' },
+  { pattern: /\b(?:Korpus|corpus)\b|Hinweis, bis (?:Sie|er|man)|pointer until/i, reason: 'unverified claim about what the legal corpus holds at a given time' },
+]
+
 /** The brand strings, read from the one place they live (the name is copy, so this file never spells it). */
 export const IDENTITY = JSON.parse(readFileSync(join(REPO, 'packages/brand/identity.json'), 'utf8'))
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -66,6 +90,10 @@ export function copyFindings(text, locale, { filled = false } = {}) {
   if (/™|\(TM\)/.test(text)) out.push('™ in copy: the brand name is written without it')
   if (!filled && TYPED_NAME.test(text)) out.push('brand name typed into copy: write {name} (filled from identity.json, set in capitals)')
   for (const { pattern, reason } of BANNED_TERMS) if (pattern.test(text)) out.push(`"${text.match(pattern)[0]}": ${reason}`)
+  for (const { pattern, allowed, reason } of RETRACTED_CLAIMS) {
+    const checked = allowed ? text.replace(allowed, '') : text
+    if (pattern.test(checked)) out.push(`"${checked.match(pattern)[0]}": ${reason}`)
+  }
   return out
 }
 

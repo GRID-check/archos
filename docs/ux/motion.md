@@ -1,5 +1,9 @@
 # Motion on the public site
 
+> **Status (2026-10-29):** `apps/site` is retired; the website (`apps/website`) moves only as the
+> design system defines (`packages/brand/css/components.css`, reduced motion included). This page
+> is the record of the old site's motion language and its reasoning, kept for the principles.
+
 The motion language of `apps/site`: what moves, why, how, and the longer
 list of what does not. Read it before you animate anything on the site, and
 before you add a duration, an easing or a distance that is not a token.

@@ -240,11 +240,11 @@ workspace:
   - 'packages/ris-adapter/src/client.py'
   # End of the files this tier's tests read.
 site:
-  - 'apps/site/**'
-  # The greenfield website (built from packages/brand), verified in the same job.
+  # The public website (built from packages/brand).
   - 'apps/website/**'
-  # The brand master and the app's copy: the site's `npm run check` holds
-  # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
+  # The brand package: the website's `bun run check` holds the token and name copies
+  # (sync.mjs --check), the icon copies (build-brand-assets.mjs --check) and the
+  # email signatures to it, and art:check holds the app's riso art to its source.
   - 'packages/brand/**'
   # The brand rules the website's `bun run check` and `task website:verify` run.
   - 'scripts/check_brand_rules.mjs'
@@ -252,12 +252,12 @@ site:
   - 'apps/workspace/app/icon.svg'
   # The app's inline copy of the mark's path, held by the same --check.
   - 'apps/workspace/bff/brand.ts'
-  # The app's riso art: exported from apps/site/art/riso and held to its
-  # JOBS tables by the site's `npm run check` (art/riso/check.mjs).
+  # The app's riso art: exported from packages/brand/art/riso and held to its
+  # JOBS tables by art:check (in task website:verify).
   - 'apps/workspace/public/art/**'
   - 'apps/workspace/bff/art/**'
   - 'Taskfile.yml'
-  - 'taskfiles/site.yml'
+  - 'taskfiles/website.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'

@@ -1,9 +1,9 @@
 # website
 
-The public website of the company, built with Astro as a static site. It replaces `apps/site`
-(slice 5 of [the corporate design plan](../../docs/design/corporate-design-plan.md)): the `web`
-image builds this directory (`ci/image_inputs.py`), and `apps/site` stays in the tree only until
-its cutover deletes it.
+The public website of the company, built with Astro as a static site. It replaced the previous
+site (slice 5 of [the corporate design plan](../../docs/design/corporate-design-plan.md)): the `web`
+image builds this directory (`ci/image_inputs.py`). The old site was deleted on 2026-10-29;
+it is in git history.
 
 Every visual value comes from the shared design system in `packages/brand`. The brand strings come
 from `src/lib/identity.ts`, which reads `identity.json`.
@@ -22,6 +22,11 @@ bun run check:routes           # after a build: every old address answers its ro
 bun run check:structured-data  # after a build: every JSON-LD block parses and carries its type's required fields
 ```
 
+Canonical URLs, the sitemap, hreflang, feeds and JSON-LD use the address the site is served from,
+not the brand's domain: `PUBLIC_SITE_URL` (CI passes the prod stack's `baseDomain`), else that key
+read from `deploy/pulumi/Pulumi.prod.yaml`, else `identity.json` (`src/lib/site-url.mjs`;
+[domain cutover](../../docs/deployment/domain-cutover.md)).
+
 Or from the repo root: `task website:install`, `task website:check`, `task website:build`, and
 `task website:verify` for everything CI runs.
 
@@ -35,12 +40,21 @@ Or from the repo root: `task website:install`, `task website:check`, `task websi
   'none'`, HSTS (no `includeSubDomains`: that is the domain owner's call), `nosniff`, Referrer-Policy,
   COOP and a Permissions-Policy. JSON-LD is data and needs no allowance.
 - **`/healthz`** answers `ok` from the process itself; the Dockerfile's healthcheck uses it.
-  The Kubernetes probes in `deploy/pulumi` still hit `/` (a static page, so also cheap).
+  The Kubernetes readiness and liveness probes in `deploy/pulumi` (`src/app/web.ts`) use it too.
 - **Cache-Control** for static files (`runtime/cache-control.mjs`).
 
 Unknown addresses get `src/pages/404.astro`, rendered on request so `/en/...` answers in English,
 with status 404 and `noindex`. Old public addresses and their fates (301, or 410 Gone) are in
 `redirects.mjs`; see [SEO](#seo). `runtime/gone.mjs` turns the 404 of a gone address into 410.
+
+## Changelog
+
+`/changelog/` and `/en/changelog/` render `src/data/changelog.json`, product data written by
+`scripts/release_notes.py publish` from the reno notes and committed by the release-notes workflow on
+every merge to `develop` (`docs/contributing/release-notes.md`). Never edit the JSON; write a note.
+`src/lib/changelog.ts` reads it, `src/views/ChangelogView.astro` lays each week out as a `ui-rows`
+row with its sections folded like the FAQ. Notes from before the rename keep the name they shipped
+under, and the page says so.
 
 ## Analytics
 
@@ -141,9 +155,9 @@ visitor at once. Everything else is in `public/media/`.
 | `knowledge-video.webm` | `28f2a93346.webm` | Same video, first source (WebM) |
 | `knowledge-video.mp4` | `8cde9d7ebc.mp4` | Same video, second source (MP4) |
 | `share-card.jpg` | none, cropped from the sign-in photo (`packages/brand/authkit/login-photo.webp` source) | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
-| `jonathan-uhlemann.webp` | none, from `apps/site/src/assets/team/jonathan-uhlemann.webp` | Home, founders row "Das Planungsbüro der Zukunft entsteht heute." (portrait, 4:5 crop, 208 × 208 source) |
-| `matthias-bigl.webp` | none, from `apps/site/src/assets/team/matthias-bigl.webp` | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
-| `ferdinand-rubenbauer.webp` | none, from `apps/site/src/assets/team/ferdinand-rubenbauer.webp` | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
+| `jonathan-uhlemann.webp` | none, from the retired site's team photo `jonathan-uhlemann.webp` (git history) | Home, founders row "Das Planungsbüro der Zukunft entsteht heute." (portrait, 4:5 crop, 208 × 208 source) |
+| `matthias-bigl.webp` | none, from the retired site's team photo `matthias-bigl.webp` (git history) | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
+| `ferdinand-rubenbauer.webp` | none, from the retired site's team photo `ferdinand-rubenbauer.webp` (git history) | Home, founders row (portrait, 4:5 crop, 208 × 208 source) |
 | `team-conversation-photo.jpg` | `88395fbfb8.jpg` | Home, portrait beside the feld72 quote (grayscale) |
 | `demo-panel-background.webp` | `99653e3df7.webp` | Demo, background of the form panel |
 | `pilot-office-gerner-gerner-plus.svg` | `f3402543bd.svg` | Pilot office logo row (home, demo) |
@@ -159,7 +173,7 @@ The reference fonts (`.woff2`) are not here: the design system ships them in `sr
 `public/favicon.svg` is a copy of `packages/brand/mark.svg`, its title filled from identity by
 `packages/brand/build-brand-assets.mjs`. `favicon.ico`, `apple-touch-icon.png` and
 `icons/icon-{192,512}.png`, `icons/icon-maskable-512.png` are rendered from the same master with that
-script's recipe; the script itself still writes its rasters to `apps/site` until the cutover points it here. `src/pages/manifest.webmanifest.ts` names them, with the name from
+script, which writes them here and into the app (sharp from this app's devDependencies). `src/pages/manifest.webmanifest.ts` names them, with the name from
 identity and the colour from the tokens. Every page carries schema.org `Organization` and `WebSite`
 JSON-LD (`src/lib/structured-data.ts`), all from identity.
 
@@ -228,7 +242,6 @@ Posts are MDX in `src/content/blog/<locale>/<slug>.mdx` (schema in
 `src/content.config.ts`, categories in `src/lib/categories.ts`), figures in
 `src/components/figures/`. A post's file name is its slug; `translationSlug`
 names its twin in the other locale for the language switch and hreflang. Drafts
-build only with `PUBLIC_INCLUDE_DRAFTS=1`. Until `apps/site` is deleted at the
-cutover, its copies of these posts are stale: write new posts here.
+build only with `PUBLIC_INCLUDE_DRAFTS=1`.
 
 Screenshots of every route for a PR: `bun run capture` (see [visual screenshots](../../docs/ux/visual-screenshots.md#website-targets)).
