@@ -134,6 +134,7 @@ evidence or by "not verified because …":
 - Caller exists for every new symbol: <grep evidence | n/a, nothing new added>
 - Live or LLM validation: <what was called, result | n/a because …>
 - UI evidence: <PR attachment, quoted copy | n/a because …>
+- Fits the lineup: <the existing features this touches and how each gets better | why none>
 - Docs updated: <files | none needed because …>
 - Independent verification: <who or what re-checked which claims>
 - Committed and pushed: <commit hashes, branch>

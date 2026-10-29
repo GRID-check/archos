@@ -37,7 +37,11 @@ deciding whether your forces still hold, and cannot do that from adjectives.
 
 ## Decision Drivers
 
-<!-- The forces that actually constrain the choice. Delete if there are none worth naming. -->
+<!--
+The forces that actually constrain the choice. Delete if there are none worth naming.
+When the decision shapes a feature, name the existing features it leans on and the
+ones it must not duplicate (VISION.md, principle 8).
+-->
 
 *
 *

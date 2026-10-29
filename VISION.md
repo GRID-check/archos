@@ -69,6 +69,9 @@ These are directions with a document behind them, not promises:
   is shown, carried across model revisions
   ([`docs/roadmap/ifc-compliance-ledger.md`](docs/roadmap/ifc-compliance-ledger.md),
   [`docs/roadmap/compliance-derivation-graph.md`](docs/roadmap/compliance-derivation-graph.md)).
+- **A sketch that is a document.** A Skizze in Files that opens again, keeps
+  Fassungen, takes Anmerkungen and is drawn by several people and Piloti at once
+  ([`docs/roadmap/sketches.md`](docs/roadmap/sketches.md)).
 - **An agent that holds work.** Longer tasks with a goal, a plan, a review and
   a decision that comes back
   ([`docs/roadmap/agentic-workspace-architecture.md`](docs/roadmap/agentic-workspace-architecture.md)).
@@ -107,12 +110,17 @@ These are directions with a document behind them, not promises:
 7. **AI-native, not AI-added.** The agent works on the same file system,
    folders, Fassungen and records the people do, through the same API
    (ADR-0055). Everything it does is observable (Langfuse, ADR-0089).
+8. **One product, not a set of features.** A feature draws on what the office
+   already holds, hands its result to the next step, and makes the features it
+   touches better. One that brings its own list, store, vocabulary or entry
+   point is a second product inside the first.
 
 ## How to use this document
 
 - **Deciding a feature:** does it help an architect do their work, in the
   office's language, in the place they already work? Building law is a means
-  to that, never the measure.
+  to that, never the measure. And which existing features does it make
+  better, and which does it lean on? "None" is a second product (principle 8).
 - **Writing a doc, a prompt or copy:** lead with the work. Mention the legal
   corpus where it is the topic, and describe it as the capability it is.
 - **Disagreeing with this document:** change it in a pull request. A vision

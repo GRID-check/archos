@@ -62,6 +62,11 @@ writing the code, and say what would. Name the gap and let the user decide which
 one they are paying for. This neither widens a task because you spotted
 something adjacent, nor narrows it to the comfortable part.
 
+**One product, not a set of features.** Before designing a feature, name the
+existing features it draws on and the ones it makes better; a feature with its
+own list, store or vocabulary is a second product.
+[`VISION.md`](VISION.md#principles), principle 8.
+
 **Aim at the north star, land on the clouds.** Design a capability twice:
 first the scene a person would experience if anything were buildable, with
 technology as the enabler and never the objection; then the slices we can

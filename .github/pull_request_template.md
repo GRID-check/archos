@@ -2,6 +2,12 @@
 
 <!-- Describe the change and why it is needed. -->
 
+#### Fits the lineup
+
+<!-- Name the existing features this change draws on and the ones it makes
+     better, and how (VISION.md, principle 8). A name per feature, not "yes".
+     If it touches none, say why it still belongs in the product. -->
+
 #### Validation
 
 <!-- List the exact commands, workflows, screenshots, or manual checks used. -->
