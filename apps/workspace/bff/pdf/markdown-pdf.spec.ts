@@ -161,7 +161,7 @@ describe('renderMarkdownPdf', () => {
         // The cover (lockup + title), then the running header, the page footer
         // and the body. No facts, no marking, no findings — which is what "the
         // caller supplied neither" means now that the chrome is always there.
-        'Piloti Brandschutz Straßenhäuser Piloti Brandschutz Straßenhäuser Piloti 2 / 2 ' +
+        'PILOTI Brandschutz Straßenhäuser PILOTI Brandschutz Straßenhäuser PILOTI 2 / 2 ' +
           'Die Fluchtwegbreite beträgt 1,20 m.'
       )
     )

@@ -3,8 +3,9 @@
  *
  * ## Why the tokens are copied rather than read
  *
- * `ui/styles/tokens.css` is the single source of truth for colour in the app,
- * and it is written in `oklch()` behind CSS custom properties. react-pdf has
+ * The brand's colours are CSS custom properties (`shared/brand/tokens.vars.css`,
+ * the synced copy of packages/brand), and the app maps its own names onto them in
+ * `ui/styles/tokens.css` with `oklch()` and `color-mix()`. react-pdf has
  * neither: `StyleSheet.create` resolves no variables and pdfkit understands no
  * colour space but sRGB. So the handful of tokens a document actually needs are
  * transcribed here as the hex values the token file itself already carries in
@@ -24,26 +25,32 @@
 
 /** Colours, each transcribed from the token named in its comment. */
 export const PDF_THEME = {
-  /** `--ink` — the strongest ink; headings, and the cover band's ground. */
+  /** `--ds-ink` — the strongest ink; headings, and the cover band's ground. */
   ink: '#0f0e0d',
-  /** `--text-color-base` — body copy, one step off ink so long prose stays soft. */
-  body: '#2f3033',
-  /** `--text-color-subtle` — meta lines, labels, the footer. */
+  /** `--ds-ink-hover` — body copy, one step off ink so long prose stays soft. */
+  body: '#2e2c29',
+  /** `--ds-ink-muted` — meta lines, labels, the footer. */
   subtle: '#5e5b57',
-  /** `--text-color-inverse` — type on the ink band. */
-  inverse: '#fafaf8',
-  /** `--card` — the page ground. A document prints on white, not on app paper. */
+  /** `--ds-on-ink` — type on the ink band. */
+  inverse: '#fafaf9',
+  /**
+   * The page ground: pure white, DOCUMENTED EXCEPTION to the brand's "never
+   * #ffffff". A document is printed, scanned and mailed on, and a warm
+   * #fafaf9 ground costs toner and prints as a grey wash on an office laser;
+   * white paper is what the sheet is made of. Every other colour here is a
+   * brand token.
+   */
   paper: '#ffffff',
-  /** `--background` — the warm paper the app sits on; used for inset panels. */
+  /** `--ds-surface` — the warm paper the app sits on; used for inset panels. */
   panel: '#fafaf9',
-  /** `--secondary` / `--muted` — table header band, code ground. */
-  surface: '#f2f2f0',
-  /** `--accent` — the zebra step; one shade off `surface` so rows separate quietly. */
+  /** `--ds-surface-sunken` — table header band, code ground. */
+  surface: '#f2f1f0',
+  /** `--ds-surface` — the zebra step; one shade off `surface` so rows separate quietly. */
   surfaceAlt: '#fafaf9',
-  /** `--border` — `--ink-border` at 8% over paper, resolved to a flat hairline. */
-  hairline: '#e4e4e2',
-  /** `--input` — `--ink-border` at 12%; the heavier rule under a section head. */
-  rule: '#dcdcd9',
+  /** `--ds-line` — the hairline. */
+  hairline: '#e7e5e3',
+  /** `--ds-line` stepped 6% toward ink; the heavier rule under a section head. */
+  rule: '#dad8d6',
   /** `--source-law` — the Baurecht signal blue. The document's one accent. */
   accent: '#2359d3',
   /** `--source-law-text` — the readable-on-paper version of the accent. */
