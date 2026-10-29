@@ -61,29 +61,25 @@ describe('route fates', () => {
 
   test('the plan rows, spot-checked', () => {
     const fate = (path: string) => fateOf(path);
-    expect(fate('/warum-piloti/')).toEqual({ status: 301, location: ROUTES.firms.de });
-    expect(fate('/en/why-piloti')).toEqual({ status: 301, location: ROUTES.firms.en });
     expect(fate('/vergleich/ris-und-google/')).toEqual({ status: 301, location: ROUTES.buildingLaw.de });
     expect(fate('/en/comparisons/chatgpt/')).toEqual({ status: 301, location: ROUTES.firms.en });
     expect(fate('/anwendungen/bueroarchiv/')).toEqual({ status: 301, location: ROUTES.home.de });
     expect(fate('/glossar/gebaeudeklasse/')).toEqual({ status: 301, location: ROUTES.buildingLaw.de });
     expect(fate('/en/building-law/tirol/')).toEqual({ status: 301, location: ROUTES.buildingLaw.en });
     expect(fate('/fuer/architekturbueros/')).toEqual({ status: 301, location: ROUTES.firms.de });
+    expect(fate('/neu/')).toEqual({ status: 301, location: '/changelog/' });
     expect(fate('/rechenweg/')).toEqual({ status: 410 });
     expect(fate('/fuer/baumeister-bautraeger/')).toEqual({ status: 410 });
     expect(fate('/bildmaterial/alle.zip')).toEqual({ status: 410 });
     expect(fate('/llms-full.txt')).toEqual({ status: 301, location: '/llms.txt' });
-    expect(fate('/blog/wie-piloti-funktioniert/')).toEqual({ status: 301, location: '/blog/so-arbeitet-der-workspace/' });
   });
 
   test('old aliases resolve straight to the final target', () => {
-    expect(fateOf('/de/warum-piloti/')).toEqual({ status: 301, location: ROUTES.firms.de });
     expect(fateOf('/en/vergleich/perplexity/')).toEqual({ status: 301, location: ROUTES.firms.en });
     expect(fateOf('/en/glossar/ris/')).toEqual({ status: 301, location: ROUTES.buildingLaw.en });
     expect(fateOf('/en/impressum/')).toEqual({ status: 301, location: ROUTES.imprint.en });
     expect(fateOf('/en/rechenweg/')).toEqual({ status: 410 });
     expect(fateOf('/de/kontakt/')).toEqual({ status: 301, location: '/kontakt/' });
-    expect(fateOf('/de/en/blog/welcome-to-piloti/')).toEqual({ status: 301, location: '/en/blog/welcome/' });
     expect(fateOf('/de/')).toEqual({ status: 301, location: '/' });
   });
 

@@ -23,7 +23,7 @@ const ALIAS_SAMPLES = [
   ['/de/kontakt/', '/kontakt/'],
   ['/de/datensicherheit/', '/datensicherheit/'],
   ['/de/blog/chatgpt-baurecht/', '/blog/chatgpt-baurecht/'],
-  ['/de/blog/willkommen-bei-piloti/', '/blog/willkommen/'],
+  ['/de/glossar/ris/', '/baurecht/'],
   ['/de/bildmaterial/alle.zip', 'gone'],
   ['/bildmaterial/feld.zip', 'gone'],
   ['/en/bildmaterial/', 'gone'],

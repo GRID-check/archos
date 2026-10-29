@@ -5,7 +5,7 @@
  *
  * Evidence for each claim (Belegpflicht, packages/brand/docs/brand-basis.md):
  * - one place for plans, models, documents and office knowledge; the four abilities: VISION.md
- *   ("What Piloti does today"), and owner decision D16 (model checks against building law, the
+ *   (its table of what the product does today), and owner decision D16 (model checks against building law, the
  *   drawing vs room schedule comparison, click-to-passage citations, the file formats are live);
  * - nothing changes until a person confirms: VISION.md principle 4;
  * - no designs: Markenbasis positioning; no training: the security page (src/i18n/pages/security.ts);
