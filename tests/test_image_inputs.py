@@ -115,6 +115,7 @@ def repo(mod, tmp_path, monkeypatch):
             "apps/website/Dockerfile": "FROM node\nCOPY . .\n",
             "apps/website/index.astro": "<p/>\n",
             "docs/readme.md": "hi\n",
+            "deploy/pulumi/Pulumi.prod.yaml": "config:\n  proj:baseDomain: live.example.org\n  proj:replicas: 2\n",
         },
     )
     monkeypatch.setattr(mod, "ROOT", tmp_path)
@@ -130,6 +131,23 @@ def test_only_an_input_change_renames_the_image(mod, repo):
     after = mod.hashes("HEAD", week=WEEK)
     assert after["backend"] != before["backend"]
     assert {k: after[k] for k in ("frontend", "web")} == {k: before[k] for k in ("frontend", "web")}
+
+
+def test_the_website_is_built_for_the_domain_prod_serves(mod, repo):
+    web = next(image for image in mod.IMAGES if image.name == "web")
+    assert mod.build_args(web) == {"PUBLIC_SITE_URL": "https://live.example.org"}
+    assert all(mod.build_args(image) == {} for image in mod.IMAGES if image.name != "web")
+
+    before = mod.hashes("HEAD", week=WEEK)
+    write(
+        repo, {"deploy/pulumi/Pulumi.prod.yaml": "config:\n  proj:baseDomain: live.example.org\n  proj:replicas: 3\n"}
+    )
+    assert mod.hashes("HEAD", week=WEEK) == before, "another prod key does not rebuild the website"
+
+    write(repo, {"deploy/pulumi/Pulumi.prod.yaml": "config:\n  proj:baseDomain: moved.example.org\n"})
+    after = mod.hashes("HEAD", week=WEEK)
+    assert after["web"] != before["web"], "the domain move rebuilds the website with its new address"
+    assert {k: after[k] for k in ("frontend", "backend")} == {k: before[k] for k in ("frontend", "backend")}
 
 
 def test_a_new_week_renames_every_image_so_base_images_are_refreshed(mod, repo):

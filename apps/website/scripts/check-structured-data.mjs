@@ -94,8 +94,9 @@ for (const file of htmlFiles(CLIENT)) {
     if (!crumbs) problems.push(`${page}: inner page without BreadcrumbList`)
     else if (!last || new URL(last).pathname !== page) problems.push(`${page}: breadcrumbs end at ${last}, not at the page`)
   }
-  // The FAQ component's questions: the <details> inside its `ui-faq` block (the menu has one too).
-  const faqBlock = /<div class="ui-faq[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(html)?.[1] ?? ''
+  // The FAQ component's questions: the <details> inside the block it marks `data-faq`. Not the
+  // `ui-faq` class: the changelog folds its weeks with the same styling and is no FAQ.
+  const faqBlock = /<div [^>]*\bdata-faq\b[^>]*>([\s\S]*?)<\/div>/.exec(html)?.[1] ?? ''
   const questions = (faqBlock.match(/<details/g) ?? []).length
   const faq = all.find((n) => n['@type'] === 'FAQPage')
   if (questions > 0) {

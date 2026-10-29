@@ -14,6 +14,7 @@ import { commonLabels } from "./namespaces";
 import { EDGE_SHUTDOWN, SURGE_ONLY_STRATEGY } from "./rollout";
 import { EDGE_RATE_LIMIT, EDGE_TIMEOUT, LANGFUSE, PLATFORM_RESOURCES, QDRANT } from "../constants";
 import { logicalName, objectName } from "../names";
+import { formerDomainListener, formerDomainRedirects } from "../app/former-domain";
 
 /** Stable names referenced by the cert-manager solver and the HTTPRoutes. */
 export const GATEWAY_NAME = objectName("gateway");
@@ -324,7 +325,7 @@ export function installGatewayResources(
         allowedRoutes: { namespaces: { from: "Same" } },
       },
       {
-        // Landing site (apps/site) — apex host (e.g. dev.piloti.at).
+        // The public website (apps/website) — apex host (e.g. dev.piloti.at).
         name: "https-web",
         port: 443,
         protocol: "HTTPS",
@@ -336,6 +337,8 @@ export function installGatewayResources(
       ...langfuseListeners,
       // Qdrant's dashboard — only when `qdrantDashboardEnabled`.
       ...qdrantListeners,
+      // The former domain's hosts during a domain move — only when `formerBaseDomain` is set.
+      ...formerDomainRedirects(cfg.ingress).map(formerDomainListener),
     ],
   };
   const gateway = new k8s.apiextensions.CustomResource(

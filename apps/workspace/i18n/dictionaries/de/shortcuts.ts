@@ -19,6 +19,7 @@ export const shortcuts: typeof en.shortcuts = {
       move: 'bewegen',
       open: 'öffnen',
       close: 'schließen',
+      all: 'alle Treffer',
     },
   },
   cheatsheet: {

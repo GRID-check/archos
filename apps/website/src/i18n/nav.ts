@@ -30,6 +30,7 @@ export function navigation(locale: Locale) {
           link('buildingLaw', ui.navBuildingLaw),
           link('revisions', ui.navRevisions),
           link('security', ui.navSecurity),
+          link('changelog', ui.changelog),
         ],
       },
       { title: ui.footerKnowledge, links: [link('blog', ui.navBlog)] },

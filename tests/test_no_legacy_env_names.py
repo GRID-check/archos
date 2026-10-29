@@ -31,8 +31,6 @@ ALLOWED = (
     "docs/adr/0145-the-repository-is-laid-out-by-job.md",
     "docs/adr/0079-background-work-runs-on-one-claim-substrate.md",
     "releasenotes/notes/",
-    # The prose check's own cases: an old variable name is the identifier it must not count.
-    "tests/test_check_brand_prose.py",
 )
 
 OLD_NAME = re.compile(r"\bAIQ_")
@@ -50,7 +48,7 @@ GRID_ALLOWED = (
     "tests/test_check_brand_prose.py",
     "tests/.test_durations",
     "apps/workspace/migrations/",
-    "apps/site/src/data/",
+    "apps/website/src/data/",
 )
 
 

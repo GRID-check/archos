@@ -5,8 +5,8 @@ import { blogPath, type Category } from './categories';
 export type BlogPost = CollectionEntry<'blog'>;
 
 /**
- * Preview builds render drafts. Set only by the blog-preview workflow, never
- * by a release build: a truthy value there would publish every unfinished draft.
+ * Preview builds render drafts. Set only for a local preview
+ * (`PUBLIC_INCLUDE_DRAFTS=1 bun run build`), never by a release build: a truthy value there would publish every unfinished draft.
  */
 const includeDrafts = import.meta.env.PUBLIC_INCLUDE_DRAFTS === '1';
 

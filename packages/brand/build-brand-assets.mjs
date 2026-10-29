@@ -7,7 +7,7 @@
  *
  * The master is `mark.svg` beside this file; its <title> is filled in from `identity.json`. Each app gets a committed copy,
  * because neither Docker build can see `packages/` (each builds from its own
- * directory). The site's `npm run check` runs the `--check` form, so an edited copy, or a
+ * directory). The website's `bun run check` runs the `--check` form, so an edited copy, or a
  * master edited without re-running this, fails CI instead of shipping two marks.
  * The same check holds the inline, `currentColor` copies of the path (see
  * INLINE_COPIES) to the master.
@@ -15,11 +15,11 @@
  * One master serves every size, 16 px to 512: the mark is built on a 16-unit
  * grid, so it has no small-size variant to keep in step.
  * The rasters are not compared: sharp's anti-aliasing moves between versions.
- * sharp is the site's (apps/site/node_modules): writing needs it, `--check` does
- * not, so this directory carries no install of its own.
+ * sharp is the website's (apps/website/node_modules, a devDependency): writing
+ * needs it, `--check` does not, so this directory carries no install of its own.
  *
  * Output
- *   apps/site/public/  favicon.svg, favicon.ico, apple-touch-icon.png,
+ *   apps/website/public/  favicon.svg, favicon.ico, apple-touch-icon.png,
  *                          icons/icon-{192,512}.png, icons/icon-maskable-512.png,
  *   apps/workspace/app/  icon.svg, favicon.ico, apple-icon.png (Next file conventions)
  *   apps/workspace/public/   icons/icon-{192,512}.png, icons/icon-maskable-512.png
@@ -32,7 +32,7 @@ import { MARK_COPIES, namedMark } from './name-copies.mjs'
 
 const brandRoot = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(brandRoot, '../..')
-const siteRoot = resolve(repoRoot, 'apps/site')
+const siteRoot = resolve(repoRoot, 'apps/website')
 const uiRoot = resolve(repoRoot, 'apps/workspace')
 const MASTER = resolve(brandRoot, 'mark.svg')
 
@@ -40,12 +40,11 @@ const INK = '#2a301f' // --color-accent-900, the tile
 
 const SVG_COPIES = MARK_COPIES.map((path) => resolve(repoRoot, path))
 /**
- * Where the mark is drawn inline in `currentColor` (the site's lockup, the app's
- * logo and PDF exports). They hold the master's path data as a string, so the
+ * Where the mark is drawn inline in `currentColor` (the app's logo and PDF
+ * exports; the website's header is the wordmark alone). They hold the master's path data as a string, so the
  * check is that the string is there; this script does not rewrite them.
  */
 const INLINE_COPIES = [
-  resolve(siteRoot, 'src/components/atoms/Logo.astro'),
   resolve(uiRoot, 'bff/brand.ts'),
 ]
 

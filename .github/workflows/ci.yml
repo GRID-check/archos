@@ -799,8 +799,8 @@ jobs:
           working-directory: apps/workspace
 
   site:
-    name: Site (Astro check + build)
-    # Both public sites: apps/site until the cutover, apps/website after it.
+    name: Website (Astro check, tests, build, a11y)
+    # The public website, apps/website, and the riso kit's fast gate (task website:verify).
     needs: changes
     if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
@@ -814,17 +814,6 @@ jobs:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
-      # Astro reprocesses every blog image on a cold cache. Keyed on the image
-      # sources, with `restore-keys` turning a miss into a partial hit. Outside
-      # node_modules, where a fresh install would delete it. The web image build
-      # restores the same entry into its build context.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: apps/site/.astro-cache
-          key: astro-cache-${{ runner.os }}-${{ hashFiles('apps/site/src/content/blog/_images/**', 'apps/site/src/assets/**') }}
-          restore-keys: |
-            astro-cache-${{ runner.os }}-
-      - run: task site:verify
       # The website's accessibility gate drives Chromium; this installs its system libraries
       # (the version is apps/website's playwright devDependency).
       - run: npx --yes playwright@1.63.0 install-deps chromium

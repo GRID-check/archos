@@ -272,7 +272,7 @@ export function posthogEnv(cfg: DeployConfig): EnvVar[] {
  * The landing site's PostHog pair (`PUBLIC_POSTHOG_HOST`,
  * `PUBLIC_POSTHOG_PROJECT_TOKEN`), or nothing unless both are configured: the
  * same stack keys the other runtimes read, under the names the Astro tier uses.
- * `apps/site/src/pages/web-analytics.js.ts` reads them per request (the
+ * `apps/website/src/pages/web-analytics.js.ts` reads them per request (the
  * pages are prerendered and the image builds with no env files) and answers an
  * empty script without them. Exported for `web.spec.ts`.
  */

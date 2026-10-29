@@ -10,6 +10,9 @@ import { hardenedContainerSecurityContext } from "../platform/security";
 import { ROLLOUT, gracefulShutdown, surgeRollout } from "../platform/rollout";
 import { PORT, UID } from "../constants";
 
+/** The website's health route, `HEALTH_PATH` in apps/website/runtime/security-headers.mjs (web.spec.ts holds the two together). */
+export const WEB_HEALTH_PATH = "/healthz";
+
 export interface Web {
   deployment: k8s.apps.v1.Deployment;
   service: k8s.core.v1.Service;
@@ -90,13 +93,16 @@ export function installWeb(
                 ],
                 resources: toResourceRequirements(cfg.web.resources),
                 lifecycle: shutdown.lifecycle,
+                // `/healthz` is answered by the server process itself
+                // (apps/website/runtime/server.mjs), uncached and never a page view;
+                // the Dockerfile's HEALTHCHECK uses the same path.
                 readinessProbe: {
-                  httpGet: { path: "/", port: PORT.web },
+                  httpGet: { path: WEB_HEALTH_PATH, port: PORT.web },
                   initialDelaySeconds: 5,
                   periodSeconds: 10,
                 },
                 livenessProbe: {
-                  httpGet: { path: "/", port: PORT.web },
+                  httpGet: { path: WEB_HEALTH_PATH, port: PORT.web },
                   initialDelaySeconds: 15,
                   periodSeconds: 15,
                   failureThreshold: 5,

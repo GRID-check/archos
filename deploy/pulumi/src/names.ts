@@ -66,6 +66,11 @@ const TABLE = {
   qdrantDashboardRoute: ["grid-qdrant-dashboard", "qdrant-dashboard"],
   qdrantDashboardAuth: ["grid-qdrant-dashboard-auth", "qdrant-dashboard-auth"],
   qdrantTls: ["grid-qdrant-tls", "qdrant-tls"],
+  // The former domain's hosts during a domain move (app/former-domain.ts); off unless formerBaseDomain is set.
+  formerWebTls: ["grid-former-web-tls", "former-web-tls"],
+  formerAppTls: ["grid-former-app-tls", "former-app-tls"],
+  formerWebRedirectRoute: ["grid-former-web-redirect", "former-web-redirect"],
+  formerAppRedirectRoute: ["grid-former-app-redirect", "former-app-redirect"],
 
   migrateJob: ["grid-app-migrate", "app-migrate"],
   auditSchemasJob: ["grid-app-audit-schemas", "app-audit-schemas"],

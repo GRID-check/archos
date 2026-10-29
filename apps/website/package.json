@@ -8,7 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "capture": "node scripts/capture.mjs",
-    "check": "astro check && node ../../packages/brand/sync.mjs --check && bun ../../scripts/check_brand_rules.mjs",
+    "check": "astro check && node ../../packages/brand/sync.mjs --check && node ../../packages/brand/build-brand-assets.mjs --check && node ../../packages/brand/email-signatures.mjs --check && bun ../../scripts/check_brand_rules.mjs",
     "start": "node runtime/server.mjs",
     "test": "node --test runtime/*.test.mjs && bun test src",
     "check:a11y": "node scripts/check-accessibility.mjs",

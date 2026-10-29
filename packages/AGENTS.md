@@ -11,8 +11,9 @@ the few literal copies `name-copies.mjs` lists (ADR-0148).
 The brand rules a machine can hold run in `scripts/check_brand_rules.mjs`. Brand strings live
 in `identity.json` only, the React components in `react/`, AuthKit's stylesheet in
 `authkit/authkit.css` (pasted into WorkOS branding per environment). `mark.svg` and
-`build-brand-assets.mjs` render the icons into both apps, borrowing `apps/site`'s
-sharp. Its README holds the design rules.
+`build-brand-assets.mjs` render the icons into both apps, borrowing `apps/website`'s
+sharp; `email-signatures.mjs` writes the founders' signatures from `identity.json`; `art/riso/`
+is the riso print kit whose committed outputs are the app's vignettes. Its README holds the design rules.
 
 ## The IFC packages
 

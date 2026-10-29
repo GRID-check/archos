@@ -311,6 +311,13 @@ export const search = {
     allResults: 'All results for “{text}”',
     open: 'Open search',
     noHits: 'Nothing found',
+    noHitsFor: 'Nothing found for “{text}”',
+    continueInSearch: 'Open search with filters',
+    noHitsHint: 'Try another spelling or fewer words, or open the search with filters.',
+    retry: 'Try again',
+    retryHint: 'A second try is usually enough; otherwise check the connection.',
+    ofTotal: '{shown} of {total}',
+    allIn: 'In {project}',
     recent: 'Recent searches',
     hint: {
       office:
