@@ -76,6 +76,7 @@ It also lists the third-party image pins the change adds or moves
 | Backend suites (`backend-suites`) | backend tier | three jobs side by side: the agent_host suite, the Python packages' suites (`sources`), and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Workspace (`workspace`) | workspace tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
 | Workspace tests (`workspace-test`) | workspace tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task workspace:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task workspace:test:related`) |
+| Workspace accessibility (`workspace-a11y`) | workspace tier; on a PR, unless nothing a UI spec reads changed | axe-core, WCAG 2.2 AA, over every `/dev` preview route, light and dark, 1440 and 390, in 4 shards (`task workspace:a11y -- --shard i/4`). The script starts `next dev` itself with placeholder WorkOS settings; fails on a violation not in `apps/workspace/scripts/a11y-baseline.json` and on an entry that is gone |
 | Workspace coverage | PRs, workspace tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
 | Site, Infra, Standalone packages | their tier | `task site:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |

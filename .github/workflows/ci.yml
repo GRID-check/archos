@@ -679,6 +679,38 @@ jobs:
           # The per-migration checks only when a migration or the script moved.
           RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
 
+  # WCAG 2.2 AA (owner decision D21) on every /dev preview route, light and
+  # dark, 1440 and 390: axe-core in Chromium against `next dev`, which the
+  # script starts itself with placeholder WorkOS settings (the /dev layout 404s
+  # in a production build). Turbopack compiles each route on its first visit,
+  # which is most of the time, hence the shards. A new violation, or a baseline
+  # entry that is gone, fails (scripts/a11y-baseline.json only shrinks).
+  workspace-a11y:
+    name: Workspace accessibility (shard ${{ matrix.shard }}/4)
+    needs: changes
+    if: needs.changes.outputs.workspace == 'true' && (github.event_name == 'push' || needs.changes.outputs.ui_mode != 'none')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - uses: ./.github/actions/setup-bun
+      - uses: ./.github/actions/setup-task
+      - run: task workspace:install
+      # Chromium and its system libraries, at the workspace's playwright-core
+      # version (the website job installs its own the same way).
+      - run: bunx playwright-core install --with-deps chromium
+        working-directory: apps/workspace
+      - run: task workspace:a11y -- --shard ${{ matrix.shard }}/4
+
   workspace-test:
     name: Workspace tests (shard ${{ matrix.shard }}/8)
     needs: changes
@@ -978,7 +1010,7 @@ jobs:
   # has all three images, and no commit CI failed has any.
   publish:
     name: Tag images for this commit
-    needs: [changes, repo, backend, backend-coverage, backend-suites, workspace, workspace-test, site, infra, packages, trivy, image-push]
+    needs: [changes, repo, backend, backend-coverage, backend-suites, workspace, workspace-a11y, workspace-test, site, infra, packages, trivy, image-push]
     if: >-
       always() && github.event_name == 'push' && needs.changes.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -1028,7 +1060,7 @@ jobs:
     # checkout can hold a corpus to measure, and a job that can only pass
     # vacuously is worse than none. It survives as `task be:eval:retrieval`;
     # ADR-0058 "Update (2026-09-09)" says what restoring the gate would take.
-    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, workspace, workspace-test, site, infra, packages, trivy, image, image-push, publish]
+    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, workspace, workspace-a11y, workspace-test, site, infra, packages, trivy, image, image-push, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
