@@ -42,9 +42,13 @@ looking, and costs the repository nothing.
 ## Setup, once per machine
 
 ```bash
-npm install -g agent-browser
-agent-browser install          # downloads its own Chrome for Testing
+task agents:browser            # installs the pinned agent-browser, then `agent-browser doctor`
+agent-browser install          # downloads its own Chrome for Testing (not in a cloud session)
 ```
+
+**Cloud sessions install it for you**, and use the image's Chromium instead of
+downloading one. What is installed and how:
+[agent-skills.md](../contributing/agent-skills.md#cloud-sessions-what-is-installed-and-how).
 
 On Linux, `agent-browser install --with-deps` if the browser fails to launch.
 `gh` must be **2.99 or newer** — `--attach` does not exist before that.

@@ -28,6 +28,10 @@ vars:
   # Agent Package Manager CLI, pinned so every machine and CI resolve the same
   # skill bytes. Bump deliberately and re-run `task agents:audit`.
   APM_VERSION: 0.28.0
+  # agent-browser CLI (UI screenshots), pinned like APM_VERSION. Read by
+  # .claude/hooks/session-start.sh and scripts/cloud-setup.sh with awk, so keep
+  # this one-line `NAME: value` shape.
+  AGENT_BROWSER_VERSION: 0.27.0
   SITE: apps/site
   WEBSITE: apps/website
   # go-task ships its own POSIX shell, so command SYNTAX is already portable and
