@@ -49,7 +49,7 @@ export function SurfacesSection(): JSX.Element {
             </RaisedCardBody>
             <RaisedCardFooter className="text-xs text-muted-foreground">Vor 2 Tagen</RaisedCardFooter>
           </RaisedCard>
-          <StatCard label="Dokumente" value="128" hint="+12 diese Woche" icon={<StatCardIcon tone="muted"><FileText aria-hidden /></StatCardIcon>} />
+          <StatCard label="Dokumente" value="128" hint="+12 diese Woche" icon={<StatCardIcon icon={FileText} tone="muted" />} />
           <StatCardSkeleton />
         </div>
       </Section>

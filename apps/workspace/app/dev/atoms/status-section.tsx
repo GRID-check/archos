@@ -90,9 +90,9 @@ export function StatusSection(): JSX.Element {
         <SegmentMeter
           label="Befunde"
           segments={[
-            { value: 4, tone: 'success' },
-            { value: 2, tone: 'warning' },
-            { value: 1, tone: 'destructive' },
+            { key: 'met', value: 4, tone: 'success' },
+            { key: 'open', value: 2, tone: 'warning' },
+            { key: 'failed', value: 1, tone: 'destructive' },
           ]}
           className="max-w-md"
         />
