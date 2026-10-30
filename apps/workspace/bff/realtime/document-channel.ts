@@ -267,21 +267,28 @@ const toSnapshotPeer = (entry: RosterEntry): RoomSnapshotPeer => ({
   expiresAt: new Date(entry.expiresAt).toISOString(),
 })
 
+/** How much of what Piloti reads a tab carries: a selection, a region half drawn, a scroll, a page. */
+const actingFacts = (entry: RosterEntry) =>
+  [entry.selected, entry.draft, entry.viewport, entry.page].filter((fact) => fact !== null && fact !== undefined).length
+
 /**
  * One entry per person: a person in two tabs (or a tab that joined twice) is
- * one participant to Piloti, as the one whose claim runs longest, which is the
- * one heard last. Piloti stays one per conversation.
+ * one participant to Piloti, as the tab they act in, the one carrying the most
+ * of a selection, a region, a scroll and a page (an editor beside an idle
+ * preview), and of equals the one heard last. Piloti stays one per conversation.
  */
 function onePerPerson(entries: readonly RosterEntry[]): RosterEntry[] {
   const people = new Map<string, RosterEntry>()
   const rest: RosterEntry[] = []
+  const wins = (entry: RosterEntry, known: RosterEntry) =>
+    actingFacts(entry) - actingFacts(known) || entry.expiresAt - known.expiresAt
   for (const entry of entries) {
     if (entry.peer.kind !== 'person') {
       rest.push(entry)
       continue
     }
     const known = people.get(entry.peer.userId)
-    if (!known || entry.expiresAt > known.expiresAt) people.set(entry.peer.userId, entry)
+    if (!known || wins(entry, known) > 0) people.set(entry.peer.userId, entry)
   }
   return entries.filter((entry) => rest.includes(entry) || people.get(entry.peer.userId) === entry)
 }

@@ -176,6 +176,18 @@ describe('roomSnapshot', () => {
     expect(snapshot.filter((peer) => peer.kind !== 'person')).toHaveLength(1)
   })
 
+  // The coherence review's finding 9: the tab heard last may be an idle preview beside the editor the person acts in.
+  it('of a person in two tabs, keeps the one they act in, not the idle one heard last', async () => {
+    await sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId: 'peer_anna_001', viewport: { page: 1, y: 0.2 }, selected: 'ann_7' } })
+    // The idle tab is heard a second later, so its claim runs longest.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.now() + 1_000)
+    await sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId: 'peer_anna_002', presence: 'here' } })
+    const people = (await roomSnapshot('doc_1', 'org_1')).filter((peer) => peer.kind === 'person')
+    vi.useRealTimers()
+    expect(people).toEqual([expect.objectContaining({ peerId: 'peer_anna_001', selected: 'ann_7' })])
+  })
+
   it('lets a peer go when they leave, and keeps organizations apart', async () => {
     await sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId: 'peer_anna_001', presence: 'here' } })
     expect(await roomSnapshot('doc_1', 'org_2')).toEqual([])
