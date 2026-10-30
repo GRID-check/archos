@@ -113,7 +113,7 @@ import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { ForbiddenError } from '@/lib/api/errors'
 import { reingestDocument } from './reingest'
-import { MOVED_SINCE_MESSAGE, moveDocumentToFolder, moveDocumentsToFolders } from './move-to-folder'
+import { COMPANION_STAYED_MESSAGE, MOVED_SINCE_MESSAGE, moveDocumentToFolder, moveDocumentsToFolders } from './move-to-folder'
 
 const SESSION = { organizationId: 'org-1', userId: 'user-1' } as never
 
@@ -168,6 +168,19 @@ describe('moveDocumentToFolder', () => {
 
     expect(result.ok).toBe(true)
     expect(db.updates.map((update) => update.folderId)).toEqual(['folder-1', 'folder-1'])
+  })
+
+  // The coherence review's finding 5a: a PDF that would not follow used to leave the Skizze moved and say ok.
+  it('moves the Skizze back and says why when the PDF beside it cannot follow', async () => {
+    const sketch = { ...DOCUMENT, id: 'doc-1', filename: 'Skizze.svg', authoredBy: 'agent', authoredByProducer: 'diagram_svg', authoredByRef: 'msg_1-1a2b3c4d' }
+    companion.found = { id: 'doc-pdf', filename: 'Skizze.pdf', folderId: null }
+    // The sketch and its destination; the PDF is not found for this session; the sketch, now in folder-1, read for the way back.
+    db.selects = [[sketch], [{ id: 'folder-1', path: 'Vertraulich' }], [], [{ ...sketch, folderId: 'folder-1' }]]
+
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1' }, SESSION)
+
+    expect(result).toEqual({ ok: false, error: expect.stringContaining(COMPANION_STAYED_MESSAGE) })
+    expect(db.updates.map((update) => update.folderId)).toEqual(['folder-1', null])
   })
 
   it('moves no companion of a document that is no Skizze', async () => {

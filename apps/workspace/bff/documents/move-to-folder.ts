@@ -23,8 +23,9 @@
  * rendition, drawn again on every save, so it must sit where the Skizze sits or
  * the drawing reaches readers its folder keeps it from (ADR-0087). The PDF's
  * move is the same move, with every check this one makes; one that is refused
- * leaves it where it was, and the redraw then refuses to draw a restricted
- * Skizze into it (`lib/diagrams/sketch-companion.ts`).
+ * moves the Skizze back and answers why (`moveBack`). Should the two sit apart
+ * anyway, the redraw refuses to draw a restricted Skizze into the PDF
+ * (`lib/diagrams/sketch-companion.ts`).
  */
 
 import { eq } from 'drizzle-orm'
@@ -106,6 +107,10 @@ export interface MoveDocumentOptions {
 /** The document is no longer where the caller expected it; it is left where it is. */
 export const MOVED_SINCE_MESSAGE = 'The document was moved since; it was left where it is.'
 
+/** A Skizze whose PDF would not follow it stays where it was (ADR-0148): the PDF is its rendition. */
+export const COMPANION_STAYED_MESSAGE = 'The PDF beside this sketch could not be moved with it, so the sketch was left where it was:'
+const COMPANION_APART_MESSAGE = 'The sketch was moved and the PDF beside it could not follow; move the PDF too:'
+
 const IN_FLIGHT_MESSAGE =
   'This document is still being processed. Move it across a restriction once processing has finished.'
 const PURGE_FAILED_MESSAGE = 'The document could not be removed from its current collection, so it was not moved. Try again.'
@@ -117,22 +122,38 @@ export async function moveDocumentToFolder(
 ): Promise<MoveDocumentOutcomeResult> {
   const read: { document?: MovedDocument } = {}
   const moved = await moveSingle(input, session, options, read)
-  if (moved.ok && moved.changed && read.document) await companionFollows(read.document, input, session, options)
-  return moved
+  if (!moved.ok || !moved.changed || !read.document) return moved
+  const refused = await companionFollows(read.document, input, session, options)
+  return refused ? await moveBack(read.document, input, session, options, refused) : moved
+}
+
+/**
+ * The PDF beside a Skizze would not move, so neither does the Skizze: it goes
+ * back where it was and the person is told why. Left apart, the PDF's earlier
+ * Fassungen (earlier drawings) stay readable in the wider folder, or the next
+ * save draws nothing into it (`confined`). When even the way back is refused,
+ * the answer says the two now sit apart.
+ */
+async function moveBack(sketch: MovedDocument, input: MoveDocumentInput, session: AuthorizedSession, options: MoveDocumentOptions, refused: string): Promise<MoveDocumentOutcomeResult> {
+  const back = { documentId: sketch.id, folderId: sketch.folderId, expectedFolderId: input.folderId }
+  const undone = await moveSingle(back, session, options).catch(() => ({ ok: false as const, error: 'unknown' }))
+  if (undone.ok) return { ok: false, error: `${COMPANION_STAYED_MESSAGE} ${refused}` }
+  console.warn(`[documents] sketch ${sketch.id} moved and its PDF did not; moving it back failed: ${undone.error}`)
+  return { ok: false, error: `${COMPANION_APART_MESSAGE} ${refused}` }
 }
 
 type MovedDocument = NonNullable<Awaited<ReturnType<typeof findDocumentForSession>>>
 
-/** The PDF filed beside a moved Skizze goes where it went. Logged, never thrown: the Skizze's move stands. */
-async function companionFollows(sketch: MovedDocument, input: MoveDocumentInput, session: AuthorizedSession, options: MoveDocumentOptions) {
-  if (sketch.authoredByProducer !== 'diagram_svg' || !sketch.authoredByRef || !sketch.projectId) return
+/** The PDF filed beside a moved Skizze goes where it went. Never throws: answers why it would not, or null. */
+async function companionFollows(sketch: MovedDocument, input: MoveDocumentInput, session: AuthorizedSession, options: MoveDocumentOptions): Promise<string | null> {
+  if (sketch.authoredByProducer !== 'diagram_svg' || !sketch.authoredByRef || !sketch.projectId) return null
   const pdf = await findDocumentAuthoredByRef(sketch.authoredByRef, session.organizationId, sketch.projectId, 'diagram_pdf')
-  if (!pdf || pdf.folderId === input.folderId) return
+  if (!pdf || pdf.folderId === input.folderId) return null
   const followed = await moveSingle({ documentId: pdf.id, folderId: input.folderId }, session, options).catch((error: unknown) => ({
     ok: false as const,
     error: error instanceof Error ? error.message : 'unknown',
   }))
-  if (!followed.ok) console.warn(`[documents] the PDF beside sketch ${sketch.id} stayed where it was: ${followed.error}`)
+  return followed.ok ? null : followed.error
 }
 
 async function moveSingle(
