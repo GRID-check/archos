@@ -159,11 +159,13 @@ function EntryItem({ item, onArchive, children }: { item: InboxItemView; onArchi
 /** The link an entry is, or plain text when its target is gone. */
 function EntryFrame({ item, href, current, onFollow, className, children }: EntryProps & { className: string; children: ReactNode }): JSX.Element {
   const frame = cn(
-    // Room at the end for the archive control that comes up over it.
-    'flex w-full min-w-0 rounded-control pr-9 text-left outline-none transition-colors duration-snap motion-reduce:transition-none',
+    'flex w-full min-w-0 rounded-control text-left outline-none transition-colors duration-snap motion-reduce:transition-none',
     'hover:bg-muted',
     current && 'bg-accent hover:bg-accent',
     className,
+    // Room at the end for the archive control that comes up over it. Last, so
+    // an entry's own `px-*` cannot merge it away and put the text under it.
+    'pr-9',
   )
   if (!href) {
     return <div className={frame} data-item-id={item.id}>{children}</div>

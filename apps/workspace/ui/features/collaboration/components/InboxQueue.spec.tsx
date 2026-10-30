@@ -166,6 +166,12 @@ describe('InboxQueue — every entry is a link to its real place', () => {
     expect(entries().map((entry) => entry.getAttribute('data-item-id'))).not.toContain('late')
     expect(waiting.archive).not.toHaveBeenCalled()
   })
+
+  test('every entry keeps room at its end for the archive control, which a finger always sees', () => {
+    render(<InboxQueue />)
+    // An entry's own `px-*` once merged the room away and put the text under the button.
+    for (const entry of entries()) expect(entry.className.split(' ')).toContain('pr-9')
+  })
 })
 
 describe('InboxQueue — keys', () => {
