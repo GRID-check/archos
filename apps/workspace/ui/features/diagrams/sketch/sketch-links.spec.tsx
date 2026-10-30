@@ -13,8 +13,8 @@ vi.mock('./sketch-link-picker', () => ({
       data-testid="pick"
       onClick={() =>
         onPick({
-          link: { documentId: 'doc_plan', page: 3 },
-          reading: { state: 'available', title: 'Polierplan', place: { shelf: 'project', projectId: 'proj_1', documentId: 'doc_plan' }, page: 3 },
+          link: { documentId: DOC_PLAN, page: 3 },
+          reading: { state: 'available', title: 'Polierplan', place: { shelf: 'project', projectId: 'proj_1', documentId: DOC_PLAN }, page: 3 },
         })
       }
     />
@@ -24,6 +24,11 @@ vi.mock('./sketch-link-picker', () => ({
 import { I18nProvider } from '@/i18n'
 import { SketchLinks } from './sketch-links'
 import type { SketchViewApi } from './sketch-pins'
+
+const ANN_1 = '33333333-3333-4333-8333-333333333333'
+const DOC_GONE = '44444444-4444-4444-8444-444444444444'
+const DOC_IFC = '11111111-1111-4111-8111-111111111111'
+const DOC_PLAN = '22222222-2222-4222-8222-222222222222'
 
 type Element = { id: string; x: number; y: number; width: number; height: number; customData?: unknown }
 
@@ -43,10 +48,10 @@ function fakeApi(elements: Element[], selected: string[] = []) {
 }
 
 const GLOBAL_ID = '2O2Fr$t4X7Zf8NOew3FLOH'
-const place = { shelf: 'project' as const, projectId: 'proj_1', documentId: 'doc_ifc' }
+const place = { shelf: 'project' as const, projectId: 'proj_1', documentId: DOC_IFC }
 const LINKS: ResolvedSketchLink[] = [
-  { elementId: 'room', kind: 'ifcElement', ref: { documentId: 'doc_ifc', ifcGlobalId: GLOBAL_ID }, state: 'available', title: 'Wohnen (IfcSpace)', place, modelFile: 'Haus.ifc' },
-  { elementId: 'cloud', kind: 'annotation', ref: { documentId: 'doc_gone', annotationId: 'ann_1' }, state: 'unavailable' },
+  { elementId: 'room', kind: 'ifcElement', ref: { documentId: DOC_IFC, ifcGlobalId: GLOBAL_ID }, state: 'available', title: 'Wohnen (IfcSpace)', place, modelFile: 'Haus.ifc' },
+  { elementId: 'cloud', kind: 'annotation', ref: { documentId: DOC_GONE, annotationId: ANN_1 }, state: 'unavailable' },
 ]
 
 const view = (canvas: ReturnType<typeof fakeApi>, onLink = vi.fn(), canLink = true) =>
@@ -91,7 +96,7 @@ describe('SketchLinks', () => {
     view(canvas, onLink)
     fireEvent.click(screen.getByTestId('sketch-link'))
     fireEvent.click(await screen.findByTestId('pick'))
-    expect(onLink).toHaveBeenCalledWith('note', { documentId: 'doc_plan', page: 3 })
+    expect(onLink).toHaveBeenCalledWith('note', { documentId: DOC_PLAN, page: 3 })
     act(() => canvas.changed())
     await act(() => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined))))
     expect(screen.getByTestId('sketch-link-mark')).toHaveAttribute('aria-label', 'Öffnen: Polierplan, S. 3')

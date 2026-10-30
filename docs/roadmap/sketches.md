@@ -139,6 +139,11 @@ G5, G6 and G8; the ADR-0148 amendment says what was decided. Still open:
 - **G9, G10.** A companion PDF in the bin may still report `pdfStale`
   (`findDocumentAuthoredByRef` reads binned rows), and the save's storage check is
   the advisory one an upload's atomic ceiling replaced.
+- **Excalidraw's German is incomplete.** `de-DE` in Excalidraw 0.18 lacks some
+  hint strings, so the editor's hint line says „Hold CtrlOrCmd and Arrow key to
+  create a flowchart“ in English. Excalidraw takes only a `langCode` and offers
+  no way to override a string; the fix is upstream (its Crowdin) or a patch of
+  the package's locale.
 - **The office's locale on a Freigabe redraw.** A PDF drawn after a Freigabe
   carries the German two-author line; the transition knows no reader's locale.
 

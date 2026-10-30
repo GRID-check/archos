@@ -11,6 +11,8 @@ import { describe, expect, it } from 'vitest'
 import { roomEventSchema, roomPostSchema } from '@/lib/annotations/room-types'
 import { SKETCH_DELTA_MAX_BYTES, SKETCH_DELTA_MAX_ELEMENTS, sketchEventsOf } from './sketch-room-types'
 
+const DOC_PLAN = '22222222-2222-4222-8222-222222222222'
+
 const element = { id: 'el_1', type: 'ellipse', version: 4, versionNonce: -12, isDeleted: false, index: 'a1', x: 3, strokeColor: '#1e1e1e' }
 const post = (msg: Record<string, unknown>) => roomPostSchema.safeParse({ peerId: 'peer_abcdef12', ...msg })
 const PEER = { peerId: 'peer_abcdef12', userId: 'user_1', name: 'Anna', kind: 'person' as const }
@@ -41,7 +43,7 @@ describe('the sketch vocabulary', () => {
   })
 
   it('carries a link into the workspace live, as a save keeps it', () => {
-    const customData = { documentId: 'doc_plan', page: 12 }
+    const customData = { documentId: DOC_PLAN, page: 12 }
     const parsed = post({ delta: { base: 'ver_1', seq: 1, elements: [{ ...element, customData: { ...customData, taskId: 't' } }] } })
     expect(parsed.success && parsed.data.delta?.elements[0]).toEqual({ ...element, customData })
   })

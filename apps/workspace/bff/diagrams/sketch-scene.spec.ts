@@ -12,6 +12,9 @@ import {
   type SceneRefusal,
 } from './sketch-scene'
 
+const DOC_IFC = '11111111-1111-4111-8111-111111111111'
+const DOC_PLAN = '22222222-2222-4222-8222-222222222222'
+
 const element = (overrides: Record<string, unknown> = {}) => ({ id: 'a', type: 'rectangle', x: 0, y: 0, ...overrides })
 const scene = (elements: unknown[], extra: Record<string, unknown> = {}) => ({ type: 'excalidraw', elements, ...extra })
 
@@ -43,15 +46,21 @@ describe('checkSketchScene', () => {
   })
 
   it('keeps a link into the workspace and drops its foreign keys; a wrong link goes whole', () => {
-    const link = { documentId: 'doc_ifc', ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' }
+    const link = { documentId: DOC_IFC, ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' }
     const kept = checkSketchScene(
       scene([
         element({ customData: { ...link, tracker: 'x' } }),
-        element({ id: 'b', customData: { documentId: 'doc_plan', page: 0 } }),
+        element({ id: 'b', customData: { documentId: DOC_PLAN, page: 0 } }),
+        element({ id: 'c', customData: { documentId: 'doc_plan', page: 2 } }),
+        element({ id: 'd', customData: { documentId: DOC_PLAN.toUpperCase(), versionId: null } }),
       ])
     )
     expect(kept.elements[0].customData).toEqual(link)
     expect(kept.elements[1]).toEqual(element({ id: 'b' }))
+    // A non-uuid id would make Postgres refuse the read of the whole sketch; it is no link.
+    expect(kept.elements[2]).toEqual(element({ id: 'c' }))
+    // A uuid in capitals is the same id, kept as the column prints it; a null key is absent.
+    expect(kept.elements[3].customData).toEqual({ documentId: DOC_PLAN })
   })
 
   it.each([

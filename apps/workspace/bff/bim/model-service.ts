@@ -41,11 +41,13 @@ import { attachConfirmations, canonicalBimRuleId } from './rules'
 import { revisionSeriesKey } from './revision-series'
 import {
   deleteBimCheckConfirmation,
+  findBimElementsByGlobalIds,
   findBimModelByDocument,
   findBimModelById,
   listBimCheckConfirmations,
   listBimModels,
   upsertBimCheckConfirmation,
+  type BimElementListRow,
   type BimModelHeader,
   type BimStoredConfirmation,
 } from './repository'
@@ -160,7 +162,29 @@ export async function getModelForDocument(
   const document = await findDocumentForSession(session, documentId)
   if (!document) throw new NotFoundError('Document not found')
   await assertDocumentReadable(session, document, 'Document not found')
+  return modelOfLoadedDocument(session, documentId)
+}
+
+/** The model of a document this request just loaded through `findDocumentForSession` and authorized. */
+function modelOfLoadedDocument(session: AuthorizedSession, documentId: string): Promise<BimModelHeader | null> {
   return findBimModelByDocument(documentId, session.organizationId, internalRead('reloaded'))
+}
+
+/**
+ * Elements of the model a document is, by GlobalId, in one query: for a
+ * `document` this request read through `getAccessibleDocument(…, 'read')`, whose
+ * shelf rule is {@link assertDocumentReadable}'s. Null when it has no model
+ * ready. What a sketch's links show of a model (`diagrams/sketch-link-resolve.ts`).
+ */
+export async function findElementsOfReadDocument(
+  session: AuthorizedSession,
+  document: Pick<Document, 'id'>,
+  globalIds: readonly string[]
+): Promise<{ model: BimModelHeader; elements: BimElementListRow[] } | null> {
+  assertIfcModelsEnabled(session)
+  const model = await modelOfLoadedDocument(session, document.id)
+  if (!model || model.status !== 'ready') return null
+  return { model, elements: await findBimElementsByGlobalIds(model.id, session.organizationId, globalIds) }
 }
 
 /**

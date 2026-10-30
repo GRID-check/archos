@@ -32,6 +32,7 @@
  */
 
 import { z } from 'zod'
+import { isUuid } from '@/lib/ids'
 
 /** The `customData` keys a sketch element may carry, the only ones every door keeps. */
 export const SKETCH_LINK_KEYS = ['documentId', 'page', 'versionId', 'ifcGlobalId', 'annotationId'] as const
@@ -41,7 +42,12 @@ export const MAX_SKETCH_LINK_PAGE = 9999
 /** IFC's GlobalId: 22 characters of its base-64 alphabet. */
 export const IFC_GLOBAL_ID = /^[0-9A-Za-z_$]{22}$/
 
-const id = z.string().trim().min(1).max(64)
+/**
+ * A document, version or Anmerkung id: a uuid, as the column stores it. Any
+ * other string bound to a uuid column makes Postgres throw (22P02), so it is
+ * refused at every door rather than reaching a query.
+ */
+const id = z.string().trim().toLowerCase().refine(isUuid, 'a uuid')
 
 export const sketchLinkSchema = z
   .object({
@@ -71,7 +77,8 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
  */
 export function keptSketchLink(value: unknown): SketchLink | undefined {
   if (!isObject(value)) return undefined
-  const picked = Object.fromEntries(SKETCH_LINK_KEYS.filter((key) => value[key] !== undefined).map((key) => [key, value[key]]))
+  // `null` reads as absent, as in `common/sketch_fence.py`: `{"page": null}` is a link without a page.
+  const picked = Object.fromEntries(SKETCH_LINK_KEYS.filter((key) => value[key] != null).map((key) => [key, value[key]]))
   if (Object.keys(picked).length === 0) return undefined
   const parsed = sketchLinkSchema.safeParse(picked)
   return parsed.success ? parsed.data : undefined
@@ -90,7 +97,7 @@ export interface SketchOutlineLink {
   ref: SketchLink
 }
 
-/** Where a resolved link leads in the app; the browser builds the address (`features/diagrams/sketch/sketch-link-href.ts`). */
+/** Where a resolved link leads in the app; the browser builds the address (`ui/features/documents/lib/sketch-link-href.ts`). */
 export interface SketchLinkPlace {
   /** The shelf the target document lies on: a project's Dateien, or the Büroablage. */
   shelf: 'project' | 'office_shelf'

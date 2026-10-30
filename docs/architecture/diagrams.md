@@ -830,16 +830,24 @@ Anmerkung of kind `defect`; an Aufgabe is work handed to Piloti, so there is no
   holds both to the same `link_keys` and cases. The scene a save stores and the
   live wire keep it through `withoutForeignFields`; `document-sketch-edit`'s
   `set.customData` takes a link or `null`, and its diff compares what a save
-  keeps. A wrong value (a GlobalId that is not 22 characters, page 0) drops the
-  link whole: half a link points somewhere nobody meant.
+  keeps. A wrong value (a GlobalId that is not 22 characters, page 0, a
+  document, Fassung or Anmerkung id that is no uuid) drops the link whole: half
+  a link points somewhere nobody meant, and a non-uuid id bound to a uuid column
+  makes Postgres throw. A key set to `null` reads as absent, and `12.0` is page
+  12, in both fences.
 - **Ids in the scene, the reader's view on read.** The outline lists `links`
   `{elementId, kind, ref}`. `GET /api/documents/{id}/sketch` resolves them per
   reader (`sketch-link-resolve.ts`): a document through `getAccessibleDocument`
-  (shelf, folder visibility, the hold), a pinned Fassung by its row, a model
-  element through `getModelForDocument` and the model's element query, an
-  Anmerkung by its row on a document the reader may open. Gone or not theirs:
-  `unavailable`, no title and no reason, so a link never names a document its
-  reader cannot see. At most 60 are resolved per read. The search row indexes
+  (shelf, folder visibility, the hold), a pinned Fassung by its row when it
+  was published and its bytes are the reader's (`versionBytesReadableBy`; a
+  draft in Freigabe or a held upload shows no number), a model element through
+  `findElementsOfReadDocument`, an Anmerkung by its row on a document the reader
+  may open. Gone or not theirs: `unavailable`, no title and no reason, so a link
+  never names a document its reader cannot see. The links are grouped by
+  document: one access check per document, one query per kind of target
+  (`sketch-link-repository.ts`, no reply threads), four documents at a time, at
+  most 60 links per read. Any error resolving a link makes it `unavailable`
+  (logged unless it is a refusal), never a failed read. The search row indexes
   no link.
 - **In the editor.** A linked element carries a mark at its corner
   (`sketch-links.tsx`); pressed, it opens the target with `router.push`

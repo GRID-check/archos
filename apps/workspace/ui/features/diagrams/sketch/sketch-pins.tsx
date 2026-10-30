@@ -164,7 +164,7 @@ export function SketchPins({ api, review, canAnnotate, onAnnotate, canPickAssign
     height: frame.height * view.zoom,
   }
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="sketch-pins">
+    <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden" data-testid="sketch-pins">
       <div className="absolute" style={sheet} data-testid="sketch-pins-sheet">
         <ReviewPageLayer page={1} review={live} focused renderThread={renderThread} />
       </div>

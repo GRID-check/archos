@@ -180,6 +180,10 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'The Fassung number each Anmerkung was set on, of that same document.',
   'lib/annotations/repository.ts#findDocumentAnnotation|documentAnnotations':
     'One Anmerkung of a document the service read through `getAccessibleDocument` first.',
+  'lib/diagrams/sketch-link-repository.ts#listAnnotationHeads|documentAnnotations':
+    "The Anmerkungen a Skizze's links name, of a document `resolveSketchLinks` read through `getAccessibleDocument` first.",
+  'lib/diagrams/sketch-link-repository.ts#listPinnedVersions|documentVersions':
+    "The Fassungen a Skizze's links pin, of a document `resolveSketchLinks` read through `getAccessibleDocument` first; a held or unpublished one reads as unavailable (`versionBytesReadableBy`).",
   'lib/annotations/repository.ts#findDocumentAnnotation|documentVersions':
     'The Fassung number it was set on, of that same document.',
   'lib/annotations/repository.ts#insertDocumentAnnotations|documentAnnotations':
@@ -236,9 +240,9 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
     makes: ['internal:resolve-document'],
     why: "Learns WHICH document a model id belongs to; `findDocumentForSession` then decides on that document.",
   },
-  'lib/bim/model-service.ts#getModelForDocument': {
+  'lib/bim/model-service.ts#modelOfLoadedDocument': {
     makes: ['internal:reloaded'],
-    why: 'The model of a document this request just loaded through `findDocumentForSession`.',
+    why: 'The model of a document this request just loaded through `findDocumentForSession` (`getModelForDocument`, or `getAccessibleDocument` before `findElementsOfReadDocument`).',
   },
   'lib/bim/query.ts#runBimQuery': {
     makes: ['internal:reloaded'],

@@ -145,7 +145,7 @@
   },
   {
    "name": "a link to a model element, a document page and an Anmerkung is kept",
-   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"ellipse\", \"id\": \"r\", \"x\": 0, \"y\": 0, \"label\": {\"text\": \"Wohnen\"}, \"customData\": {\"documentId\": \"doc_ifc\", \"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\"}}, {\"type\": \"arrow\", \"id\": \"p\", \"x\": 0, \"y\": 120, \"points\": [[0, 0], [120, 0]], \"customData\": {\"documentId\": \"doc_plan\", \"page\": 12}}, {\"type\": \"text\", \"id\": \"t\", \"x\": 0, \"y\": 200, \"text\": \"Mangel\", \"customData\": {\"documentId\": \"doc_plan\", \"annotationId\": \"ann_1\"}}]}",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"ellipse\", \"id\": \"r\", \"x\": 0, \"y\": 0, \"label\": {\"text\": \"Wohnen\"}, \"customData\": {\"documentId\": \"11111111-1111-4111-8111-111111111111\", \"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\"}}, {\"type\": \"arrow\", \"id\": \"p\", \"x\": 0, \"y\": 120, \"points\": [[0, 0], [120, 0]], \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"page\": 12}}, {\"type\": \"text\", \"id\": \"t\", \"x\": 0, \"y\": 200, \"text\": \"Mangel\", \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"annotationId\": \"33333333-3333-4333-8333-333333333333\"}}]}",
    "refusal": null,
    "elements": 3,
    "dimension_labels": 0,
@@ -153,7 +153,7 @@
   },
   {
    "name": "a foreign customData key is dropped and the link kept",
-   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"doc_plan\", \"taskId\": \"task_1\", \"colour\": \"red\"}}]}",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"taskId\": \"task_1\", \"colour\": \"red\"}}]}",
    "refusal": null,
    "elements": 1,
    "dimension_labels": 0,
@@ -161,11 +161,43 @@
   },
   {
    "name": "a link with a bad GlobalId, a page 0 or no document is dropped whole",
-   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"doc_ifc\", \"ifcGlobalId\": \"not-a-global-id\"}}, {\"type\": \"rectangle\", \"id\": \"b\", \"x\": 0, \"y\": 100, \"customData\": {\"documentId\": \"doc_plan\", \"page\": 0}}, {\"type\": \"rectangle\", \"id\": \"c\", \"x\": 0, \"y\": 200, \"customData\": {\"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\"}}, {\"type\": \"rectangle\", \"id\": \"d\", \"x\": 0, \"y\": 300, \"customData\": {\"documentId\": \"doc_ifc\", \"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\", \"annotationId\": \"ann_1\"}}]}",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"11111111-1111-4111-8111-111111111111\", \"ifcGlobalId\": \"not-a-global-id\"}}, {\"type\": \"rectangle\", \"id\": \"b\", \"x\": 0, \"y\": 100, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"page\": 0}}, {\"type\": \"rectangle\", \"id\": \"c\", \"x\": 0, \"y\": 200, \"customData\": {\"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\"}}, {\"type\": \"rectangle\", \"id\": \"d\", \"x\": 0, \"y\": 300, \"customData\": {\"documentId\": \"11111111-1111-4111-8111-111111111111\", \"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\", \"annotationId\": \"33333333-3333-4333-8333-333333333333\"}}]}",
    "refusal": null,
    "elements": 4,
    "dimension_labels": 0,
    "links": 0
+  },
+  {
+   "name": "a link whose document, version or Anmerkung id is no uuid is dropped whole",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"Polierplan\", \"page\": 12}}, {\"type\": \"rectangle\", \"id\": \"b\", \"x\": 0, \"y\": 100, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"versionId\": \"ver_1\"}}, {\"type\": \"rectangle\", \"id\": \"c\", \"x\": 0, \"y\": 200, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"annotationId\": \"ann_1\"}}, {\"type\": \"rectangle\", \"id\": \"d\", \"x\": 0, \"y\": 300, \"customData\": {\"documentId\": \"doc_ifc\", \"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\"}}, {\"type\": \"rectangle\", \"id\": \"e\", \"x\": 0, \"y\": 400, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-2222222222220\"}}]}",
+   "refusal": null,
+   "elements": 5,
+   "dimension_labels": 0,
+   "links": 0
+  },
+  {
+   "name": "an uppercase uuid is the same id",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\"}}]}",
+   "refusal": null,
+   "elements": 1,
+   "dimension_labels": 0,
+   "links": 1
+  },
+  {
+   "name": "a key set to null reads as absent and the link is kept",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"page\": null}}, {\"type\": \"rectangle\", \"id\": \"b\", \"x\": 0, \"y\": 100, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"annotationId\": null, \"page\": 3}}, {\"type\": \"rectangle\", \"id\": \"c\", \"x\": 0, \"y\": 200, \"customData\": {\"documentId\": null}}]}",
+   "refusal": null,
+   "elements": 3,
+   "dimension_labels": 0,
+   "links": 2
+  },
+  {
+   "name": "page 12.0 is the whole number 12",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"page\": 12.0}}, {\"type\": \"rectangle\", \"id\": \"b\", \"x\": 0, \"y\": 100, \"customData\": {\"documentId\": \"22222222-2222-4222-8222-222222222222\", \"page\": 12.5}}]}",
+   "refusal": null,
+   "elements": 2,
+   "dimension_labels": 0,
+   "links": 1
   }
  ]
 }

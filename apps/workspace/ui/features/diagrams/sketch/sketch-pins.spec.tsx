@@ -91,6 +91,15 @@ describe('SketchPins', () => {
     expect(sheet.style.width).toBe(`${132 * 2}px`)
   })
 
+  it('stacks above the canvas, as the link marks do', () => {
+    // Excalidraw's canvases are positioned with z-index 1 and 2 in the same slot:
+    // without a stacking order of its own the layer is drawn, and clicked, under them.
+    // jsdom has no layout, so this holds the class; `elementFromPoint` on /dev/sketch-links checked the paint.
+    const canvas = fakeApi([{ id: 'a', x: 0, y: 0, width: 100, height: 100 }])
+    render(<SketchPins api={canvas.api} review={review([])} canAnnotate onAnnotate={vi.fn()} />)
+    expect(screen.getByTestId('sketch-pins').classList).toContain('z-10')
+  })
+
   it('offers „Anmerkung“ on a selection and hands its elements to the dialog', () => {
     const onAnnotate = vi.fn()
     const canvas = fakeApi([{ id: 'a', x: 0, y: 0, width: 100, height: 100 }], ['a'])

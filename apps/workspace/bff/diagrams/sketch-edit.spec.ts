@@ -8,6 +8,9 @@ import { outlineSketch } from './sketch-outline'
 import { checkSketchScene, type SketchScene } from './sketch-scene'
 import { sketchEditSchema, type SketchEditOp } from './sketch-edit-wire'
 
+const DOC_IFC = '11111111-1111-4111-8111-111111111111'
+const DOC_PLAN = '22222222-2222-4222-8222-222222222222'
+
 const shape = (id: string, type: string, x: number, y: number, extra: Record<string, unknown> = {}) => ({
   id,
   type,
@@ -84,13 +87,13 @@ describe('applySketchEdit', () => {
   })
 
   it('sets an element’s link whole, removes it with null, and an added element keeps its own', () => {
-    const link = { documentId: 'doc_ifc', ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' }
+    const link = { documentId: DOC_IFC, ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' }
     const linked = run([
       { op: 'update', intent, id: 'kitchen', set: { customData: link } },
-      { op: 'add', intent, element: { type: 'text', id: 'note', x: 0, y: 400, text: 'S. 12', customData: { documentId: 'doc_plan', page: 12, x: 1 } } },
+      { op: 'add', intent, element: { type: 'text', id: 'note', x: 0, y: 400, text: 'S. 12', customData: { documentId: DOC_PLAN, page: 12, x: 1 } } },
     ]).scene
     expect(byId(linked, 'kitchen')?.customData).toEqual(link)
-    expect(byId(linked, 'note')?.customData).toEqual({ documentId: 'doc_plan', page: 12 })
+    expect(byId(linked, 'note')?.customData).toEqual({ documentId: DOC_PLAN, page: 12 })
     expect(outlineSketch(linked).links.map((l) => [l.elementId, l.kind])).toEqual([
       ['kitchen', 'ifcElement'],
       ['note', 'document'],
@@ -100,11 +103,11 @@ describe('applySketchEdit', () => {
   })
 
   it('reports a link as a change only when the kept link changed', () => {
-    const link = { documentId: 'doc_plan', page: 2 }
+    const link = { documentId: DOC_PLAN, page: 2 }
     const linked = run([{ op: 'update', intent, id: 'hall', set: { customData: link } }])
     expect(linked.diff.changed).toEqual(['hall'])
     // The same link again, its keys in another order: nothing a save keeps moved.
-    const again = applySketchEdit(linked.scene, [{ op: 'update', intent, id: 'hall', set: { customData: { page: 2, documentId: 'doc_plan' } } }], {
+    const again = applySketchEdit(linked.scene, [{ op: 'update', intent, id: 'hall', set: { customData: { page: 2, documentId: DOC_PLAN } } }], {
       nonce: () => 7,
       now: 2,
     })
@@ -116,9 +119,12 @@ describe('applySketchEdit', () => {
 
   it('refuses a link that is not one on the wire', () => {
     const op = (customData: unknown) => ({ baseVersionId: 'v', ops: [{ op: 'update', intent, id: 'kitchen', set: { customData } }] })
-    expect(sketchEditSchema.safeParse(op({ documentId: 'doc', ifcGlobalId: 'short' })).success).toBe(false)
-    expect(sketchEditSchema.safeParse(op({ documentId: 'doc', taskId: 't' })).success).toBe(false)
-    expect(sketchEditSchema.safeParse(op({ documentId: 'doc', page: 3 })).success).toBe(true)
+    expect(sketchEditSchema.safeParse(op({ documentId: DOC_PLAN, ifcGlobalId: 'short' })).success).toBe(false)
+    expect(sketchEditSchema.safeParse(op({ documentId: DOC_PLAN, taskId: 't' })).success).toBe(false)
+    expect(sketchEditSchema.safeParse(op({ documentId: DOC_PLAN, page: 3 })).success).toBe(true)
+    // An id the database could not bind (a uuid column) is no link: the model invents names.
+    expect(sketchEditSchema.safeParse(op({ documentId: 'Polierplan', page: 3 })).success).toBe(false)
+    expect(sketchEditSchema.safeParse(op({ documentId: DOC_PLAN, annotationId: 'ann_1' })).success).toBe(false)
   })
 
   it('refuses an add whose id is taken, also by a deleted element, and an unknown binding', () => {

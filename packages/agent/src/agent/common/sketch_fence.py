@@ -86,7 +86,8 @@ SKETCH_REFUSALS: tuple[str, ...] = (
 
 #: The ``customData`` keys a sketch element keeps, the browser's ``SKETCH_LINK_KEYS``.
 SKETCH_LINK_KEYS: tuple[str, ...] = ("documentId", "page", "versionId", "ifcGlobalId", "annotationId")
-_LINK_ID_CHARS = 64
+#: A document, version or Anmerkung id is a uuid, as the browser's ``isUuid`` (``bff/ids.ts``) holds it.
+_LINK_UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 _LINK_MAX_PAGE = 9999
 #: IFC's GlobalId: 22 characters of its base-64 alphabet.
 _IFC_GLOBAL_ID = re.compile(r"^[0-9A-Za-z_$]{22}$")
@@ -194,12 +195,18 @@ def _element_texts(element: dict[str, Any]) -> list[str]:
 
 
 def _link_id(value: Any) -> bool:
-    return isinstance(value, str) and 0 < len(value.strip()) <= _LINK_ID_CHARS
+    return isinstance(value, str) and bool(_LINK_UUID.match(value.strip()))
+
+
+def _link_page(value: Any) -> bool:
+    # JSON has one number type: ``12.0`` is the integer 12 to the browser, so it is here.
+    whole = isinstance(value, int) or (isinstance(value, float) and value.is_integer())
+    return whole and not isinstance(value, bool) and 1 <= value <= _LINK_MAX_PAGE
 
 
 def _link_value(key: str, value: Any) -> bool:
     if key == "page":
-        return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= _LINK_MAX_PAGE
+        return _link_page(value)
     if key == "ifcGlobalId":
         return isinstance(value, str) and bool(_IFC_GLOBAL_ID.match(value))
     return _link_id(value)
