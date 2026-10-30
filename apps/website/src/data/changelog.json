@@ -99,6 +99,26 @@
               "de": "Die Ergebnisse eines Projekts zeigen jetzt nebeneinander, wo ein Dokument eine andere Gebäudeklasse, Geschossanzahl, Grundstücksfläche, Bauweise, Nutzung oder ein anderes Bundesland als im Projektprofil angibt, jeweils mit Links zu beiden."
             },
             {
+              "en": "When you are already signed in, the website's header offers \"App öffnen\" (\"Open app\") instead of \"Login\" and takes you straight into the application, without passing the sign-in page again.",
+              "de": "Wenn Sie bereits eingeloggt sind, zeigt der Header der Website statt „Login“ die Option „App öffnen“ an und führt Sie direkt in die Anwendung, ohne dass Sie die Login-Seite erneut aufrufen müssen."
+            },
+            {
+              "en": "The website now asks quietly whether it may set analytics cookies; until you choose, and if you decline, visits are counted without any cookie. You can change your choice under \"Cookie settings\" at the bottom of every page.",
+              "de": "Die Website fragt jetzt unaufdringlich, ob sie Analytics-Cookies setzen darf. Solange Sie keine Auswahl treffen und wenn Sie ablehnen, werden Besuche ohne Cookies gezählt. Sie können Ihre Auswahl unter „Cookie settings“ am Ende jeder Seite ändern."
+            },
+            {
+              "en": "The contact and demo forms open a ready-to-send e-mail with your details filled in, and tell you what to do if no e-mail program opens.",
+              "de": "Die Kontakt- und Demoformulare öffnen eine versandfertige E-Mail mit Ihren bereits eingetragenen Daten und zeigen Ihnen, was zu tun ist, wenn sich kein E-Mail-Programm öffnet."
+            },
+            {
+              "en": "The website has three new pages, in German and English: what the workspace takes over for architecture and planning firms, comparing plan revisions, and searching building law. The footer lists them with the other product pages.",
+              "de": "Die Website umfasst drei neue Seiten auf Deutsch und Englisch: dazu, was der Workspace für Architektur- und Planungsbüros übernimmt, zum Vergleichen von Planrevisionen und zur Suche im Bauordnungsrecht. Im Footer stehen sie neben den anderen Produktseiten."
+            },
+            {
+              "en": "The blog has a feed again at its old addresses (/rss.xml and /en/rss.xml), so existing subscriptions keep working.",
+              "de": "Der Blog-Feed ist wieder unter den alten Adressen (/rss.xml und /en/rss.xml) verfügbar, sodass bestehende Abonnements weiterhin funktionieren."
+            },
+            {
               "en": "A U-value, the Schrittmaßregel, an escape route's length or a room's glazing share now comes as a „Was wäre, wenn“ card, held to the Richtlinie's limit for your stair type, component or room. Change an input and the result and the verdict are recomputed on the spot; your value is marked „Ihre Annahme“ beside the source's figure, and nothing is saved.",
               "de": "Ein U-Wert, die Schrittmaßregel, die Länge eines Fluchtwegs oder der Verglasungsanteil eines Raums wird jetzt als „Was wäre, wenn“-Karte angezeigt und mit dem Grenzwert der Richtlinie für Ihren Treppentyp, Ihr Bauteil oder Ihren Raum abgeglichen. Ändern Sie eine Eingabe, werden Ergebnis und Bewertung sofort neu berechnet; Ihr Wert ist neben dem Quellenwert als „Ihre Annahme“ gekennzeichnet, und nichts wird gespeichert."
             },
@@ -180,6 +200,14 @@
               "de": "In einem Projekt ohne gespeicherte Notizen antwortet Piloti bis zu einer Sekunde schneller, weil es nicht mehr darauf wartet, Ihre Frage mit nicht vorhandenen Notizen abzugleichen."
             },
             {
+              "en": "The imprint, privacy, terms and AI transparency pages in the app now state the company's details as they stand, with no open placeholders, and describe the product as the workspace for architecture and planning firms.",
+              "de": "Die Seiten zu Impressum, Datenschutz, Nutzungsbedingungen und KI-Transparenz in der App enthalten jetzt die aktuellen Unternehmensangaben ohne offene Platzhalter und beschreiben das Produkt als Arbeitsumgebung für Architektur- und Planungsbüros."
+            },
+            {
+              "en": "The app's header, the answer card in the document review and the project setup now show the product's current name everywhere.",
+              "de": "Der Header der App, die Antwortkarte in der Dokumentenprüfung und das Projekt-Setup zeigen jetzt überall den aktuellen Produktnamen."
+            },
+            {
               "en": "When Piloti notes something about your project during an answer, you now see it right on the answer instead of inside Details, and one tap shows what was noted. When a note corrects an earlier one, the answer says Memory updated and shows the old note struck through.",
               "de": "Wenn Piloti während einer Antwort etwas zu Ihrem Projekt festhält, sehen Sie es jetzt direkt bei der Antwort statt unter „Details“. Mit einem Tippen sehen Sie, was festgehalten wurde. Korrigiert eine Notiz eine frühere, steht in der Antwort „Memory aktualisiert“, und die alte Notiz wird durchgestrichen angezeigt."
             },
@@ -192,6 +220,18 @@
               "de": "Zitate, Notizen, Hinweise, Nachrichten und Termineinträge haben keine farbige Leiste mehr am linken Rand. Zitierte Wörter sind kursiv gesetzt, Auszüge aus einer Quelle heben sich durch einen dezenten Hintergrund ab, ungelesene Nachrichten sind mit einem Punkt gekennzeichnet, und Bestätigungen oder Warnungen werden mit einem Symbol und einer Bezeichnung statt mit einem farbigen Streifen kenntlich gemacht."
             },
             {
+              "en": "Piloti is now ARCHOS. The workspace and its agent introduce themselves by the new name in the app, in notifications and in the documents they write, and your projects, files and settings stay exactly as they were.",
+              "de": "Piloti heißt jetzt ARCHOS. Der Workspace und sein Agent stellen sich in der App, in Benachrichtigungen und in den von ihnen verfassten Dokumenten unter dem neuen Namen vor. Ihre Projekte, Dateien und Einstellungen bleiben genau wie bisher."
+            },
+            {
+              "en": "The legal notices in the app (imprint, privacy policy, terms, AI notice and the list of providers who process data) now say ARCHOS (formerly Piloti), so it is clear they cover your account from before the rename, and they name the operator, its address and its contact e-mail.",
+              "de": "Die rechtlichen Hinweise in der App (Impressum, Datenschutzerklärung, Nutzungsbedingungen, KI-Hinweis und Liste der Anbieter, die Daten verarbeiten) nennen jetzt ARCHOS (vormals Piloti), sodass klar ist, dass sie auch für Ihr Konto aus der Zeit vor der Umbenennung gelten; außerdem nennen sie den Betreiber, seine Adresse und seine Kontakt-E-Mail-Adresse."
+            },
+            {
+              "en": "The app icon in your browser tab and on your home screen is now the A of the ARCHOS wordmark in black and white, and the pictures on empty pages are drawn in the same black and grey. Links to the website shared in chats and social networks now show the ARCHOS name and its claim.",
+              "de": "Das App-Icon in Ihrem Browser-Tab und auf Ihrem Startbildschirm zeigt jetzt das A des ARCHOS-Schriftzugs in Schwarz-Weiß. Auch die Bilder auf leeren Seiten sind in denselben Schwarz- und Grautönen gehalten. Links zur Website, die in Chats und sozialen Netzwerken geteilt werden, zeigen jetzt den Namen ARCHOS und den Claim."
+            },
+            {
               "en": "The search filters now complete as you type: party names, place, cited norms and drawings, drawing number, revision, scale and stated facts offer the values your documents actually hold, each with how many documents hold it, so you pick the exact spelling instead of guessing it.",
               "de": "Die Suchfilter ergänzen jetzt beim Tippen: Beteiligte, Ort, zitierte Normen und Pläne, Plannummer, Index, Maßstab und Angaben schlagen die Werte vor, die in Ihren Dokumenten tatsächlich stehen, jeweils mit der Zahl der Dokumente, die ihn enthalten. So wählen Sie die genaue Schreibweise, statt sie zu erraten."
             },
@@ -202,6 +242,42 @@
             {
               "en": "The workspace now takes the shapes of its parts: chips and counts are round, messages sit in soft bubbles, and menus and dialogs float with gentle corners and faint shadows.",
               "de": "Der Arbeitsbereich übernimmt jetzt die Formen seiner Bestandteile: Chips und Zähler sind rund, Nachrichten erscheinen in weichen Sprechblasen, und Menüs und Dialoge schweben mit sanft abgerundeten Ecken und dezenten Schatten."
+            },
+            {
+              "en": "The website's home page follows the new design more closely: two-column introductions, headlines that break evenly, a calmer header without the scroll line, and call-to-action buttons that sit side by side on most phones.",
+              "de": "Die Startseite der Website orientiert sich stärker am neuen Design: zweispaltige Einführungen, gleichmäßig umbrechende Überschriften, ein ruhigerer Header ohne Scroll-Linie und Call-to-Action-Buttons, die auf den meisten Smartphones nebeneinander stehen."
+            },
+            {
+              "en": "Pages are easier to use with a keyboard, a screen reader or low vision: larger touch targets, readable text on photos, and a menu that closes with Escape.",
+              "de": "Seiten lassen sich mit Tastatur, Screenreader oder bei Sehschwäche leichter bedienen: mit größeren Touch-Zielen, gut lesbarem Text auf Fotos und einem Menü, das sich mit Escape schließen lässt."
+            },
+            {
+              "en": "Product screenshots load in a size that fits the screen, so pages open faster on phones.",
+              "de": "Produkt-Screenshots werden in einer an den Bildschirm angepassten Größe geladen, sodass Seiten auf Smartphones schneller laden."
+            },
+            {
+              "en": "The English pages use one term, \"plan revision\", and read more naturally.",
+              "de": "Die englischen Seiten verwenden einheitlich den Begriff „plan revision“ und lesen sich natürlicher."
+            },
+            {
+              "en": "The list of what changed each week is back on the website, under \"What's new\" in the footer, in German and English. The newest week opens with its new features, and every section of every week is one click away.",
+              "de": "Die Liste der wöchentlichen Änderungen ist wieder auf der Website verfügbar – unter „Neuigkeiten“ im Footer, auf Deutsch und Englisch. In der neuesten Woche werden die neuen Funktionen zuerst angezeigt, und jeder Abschnitt jeder Woche ist mit einem Klick erreichbar."
+            },
+            {
+              "en": "The privacy policy now says exactly what the website measures and stores, with no open placeholders left.",
+              "de": "Die Datenschutzerklärung gibt jetzt genau an, was die Website misst und speichert. Es gibt keine offenen Platzhalter mehr."
+            },
+            {
+              "en": "Links to the old website's pages lead to the page that answers the same question today, in one step, including old German and English addresses and renamed blog posts. The few pages that have no successor now say that they were removed on purpose.",
+              "de": "Links zu Seiten der alten Website führen jetzt direkt zur Seite, die dieselbe Frage beantwortet – auch bei alten deutschen und englischen Adressen sowie umbenannten Blogbeiträgen. Bei den wenigen Seiten ohne Nachfolger wird jetzt darauf hingewiesen, dass sie bewusst entfernt wurden."
+            },
+            {
+              "en": "The workspace now wears the corporate design consistently: the name is set as the brand's wordmark in the sidebar and on the error pages, titles and labels use one calm weight instead of bold, cards and menus take the warm paper tone instead of pure white, and exported PDFs carry the wordmark and the brand's black, warm white and grey.",
+              "de": "Der Arbeitsbereich folgt jetzt durchgehend dem Corporate Design: Der Name erscheint als Wortmarke in der Sidebar und auf den Fehlerseiten, Titel und Labels haben statt Fettdruck eine einheitliche, zurückhaltende Schriftstärke, Karten und Menüs sind in warmem Papierweiß statt Reinweiß gehalten und exportierte PDFs tragen die Wortmarke sowie das Schwarz, Warmweiß und Grau der Marke."
+            },
+            {
+              "en": "Secondary text and status chips are darker where they were too faint to read comfortably, in the light and the dark theme, and the file preview can be scrolled with the keyboard.",
+              "de": "Sekundärtexte und Status-Chips sind im hellen und dunklen Theme dunkler, wenn sie zuvor zu blass waren, und die Dateivorschau lässt sich mit der Tastatur scrollen."
             }
           ]
         },
@@ -323,6 +399,31 @@
             {
               "en": "When your office gives someone a role of its own, Piloti now acts with exactly what that role allows, as the person does themselves.",
               "de": "Wenn Ihr Büro einer Person eine eigene Rolle zuweist, handelt Piloti jetzt genau so, wie es diese Rolle erlaubt – genauso wie die Person selbst."
+            },
+            {
+              "en": "Blog posts now use the ARCHOS name, and their links no longer lead to pages that do not exist; old post addresses forward to the new ones.",
+              "de": "Blogbeiträge verwenden jetzt den Namen ARCHOS, und ihre Links führen nicht mehr auf nicht vorhandene Seiten; alte Beitrags-URLs werden auf die neuen weitergeleitet."
+            },
+            {
+              "en": "Unknown addresses show a proper \"page not found\" page in German or English with ways back, instead of a bare error.",
+              "de": "Bei unbekannten Adressen wird statt einer schlichten Fehlermeldung eine richtige Seite mit „Seite nicht gefunden“ auf Deutsch oder Englisch und Möglichkeiten zur Rückkehr angezeigt."
+            },
+            {
+              "en": "The product image at the top of the home page and of \"comparing plan revisions\" shows the ARCHOS name, and on the comparison page it is no longer cut off at the edges. \"Searching building law\" now shows a building-law question.",
+              "de": "Das Produktbild oben auf der Startseite und bei „Planrevisionen vergleichen“ zeigt den Namen ARCHOS; auf der Vergleichsseite ist er nicht mehr an den Rändern abgeschnitten. „Baurecht durchsuchen“ zeigt jetzt eine Baurechtsfrage."
+            },
+            {
+              "en": "The English home page no longer plays the knowledge animation, whose frames carry German text; it shows the section's text alone until an English version exists. Website headings no longer break short words with an automatic hyphen (\"com-pares\"); a long German word breaks only where the text marks it.",
+              "de": "Die englische Startseite spielt die Wissensanimation mit deutschen Texten in den Frames nicht mehr ab; bis eine englische Version verfügbar ist, wird nur der Abschnittstext angezeigt. Website-Überschriften trennen kurze Wörter nicht mehr automatisch mit einem Bindestrich („com-pares“); lange deutsche Wörter werden nur an den im Text gekennzeichneten Stellen getrennt."
+            }
+          ]
+        },
+        {
+          "key": "deprecations",
+          "notes": [
+            {
+              "en": "If you connected your own AI assistant to the workspace, that connection keeps working under its old addresses for at least one more release. We will publish the new connection names first, and only then retire the old.",
+              "de": "Wenn Sie Ihren eigenen KI-Assistenten mit dem Workspace verbunden haben, funktioniert die Verbindung mindestens noch ein weiteres Release unter den bisherigen Adressen. Wir veröffentlichen zuerst die neuen Verbindungsnamen und nehmen erst danach die alten außer Betrieb."
             }
           ]
         }
