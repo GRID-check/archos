@@ -31,8 +31,9 @@
  * 2. **Pinned helpers.** A private helper several functions share
  *    ({@link PINNED_HELPERS}) is held to the exact list of its callers, so a new
  *    caller has to say whether it hands the bytes to a person.
- * 3. **Routes.** Every `app/api` route that reaches a logged function (by name,
- *    through any chain of functions in `src`), or builds a raw `Response`, is in
+ * 3. **Routes.** Every `app/api` route that reaches a logged function (through
+ *    any chain of references in `src`, each resolved to the function it names,
+ *    as layer 4 resolves a call), or builds a raw `Response`, is in
  *    {@link ROUTES}: logged through a named function, or exempt with the reason.
  * 4. **The access check comes first.** Every logged function asks
  *    `getAccessibleDocument` (itself, or through a function that does) before it
@@ -62,8 +63,13 @@
  *    the one whose bytes move, or one whose result is read and then not used for
  *    them, still passes. Layer 4 guards against a reader that forgets the check,
  *    makes it late or throws its answer away; it is not a proof, and review
- *    reads the arguments. Layer 3 follows names, so a route that reaches a
- *    default export under a name of its own is not followed there.
+ *    reads the arguments. Layer 3 follows what a name resolves to, including a
+ *    function handed on as a value (`{ run: read }`) and a member of an object
+ *    or class of `src` (`store.get`); it used to follow bare names, and one
+ *    generic member name (`get`, `request`) that a reached function shared
+ *    flooded it to every route. A method on an object it cannot resolve (an
+ *    instance in a local, a parameter) is not followed, the same blind spot
+ *    layer 4 has.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -183,6 +189,22 @@ const ROUTES: Record<string, RouteDisposition> = {
   'documents/[id]/sketch/route.ts': { via: 'readSketchDocument' },
   'documents/[id]/versions/[versionId]/pages/[page]/raster/route.ts': { via: 'readPageRaster' },
   'documents/[id]/versions/[versionId]/pages/[page]/sketch/route.ts': { via: 'readPageRaster' },
+  'documents/[id]/sketch/edits/route.ts': {
+    exempt:
+      'logged where the base is read: the edit service reads the Fassung the edit builds on through readVersionContent and sceneOfBase, which record it as the person’s `version` and `preview` read; the route answers the new Fassung.',
+  },
+  'documents/[id]/sketch/edits/preview/route.ts': {
+    exempt:
+      'logged where the base is read: the edit service reads the Fassung the edit builds on through readVersionContent and sceneOfBase, which record it as the person’s `version` and `preview` read; the route answers the edited scene, and saves nothing.',
+  },
+  'documents/[id]/sketch/revert/route.ts': {
+    exempt:
+      'logged where the Fassung is read: the edit service reads the one it reverts to through readVersionContent, which records it as the person’s `version` read; the route answers the new Fassung.',
+  },
+  'internal/jobs/run/route.ts': {
+    exempt:
+      'the queue worker runs a job slice on the server; the one that reaches a byte reader, the Skizze’s rendition, reads its page with readPageRaster `{ log: false }` to file it with the rendition, and hands it to no one.',
+  },
   'documents/[id]/sketch/underlay/route.ts': {
     exempt: 'matches the page on the newer Fassung (labels read on the server) and saves the Skizze with the page it already shows; it answers the plan or the saved Fassung, never a page’s bytes.',
   },
@@ -250,6 +272,13 @@ interface TopLevelFunction {
   file: string
   /** Every identifier the function mentions. */
   identifiers: Set<string>
+  /**
+   * Every function of `src` the unit names, resolved the way {@link ResolvedCall}
+   * resolves a call, whether it calls it or hands it on as a value (`{ run: read }`):
+   * `X.member` of a class or an object `X` declared in or imported from `src` too.
+   * Keys as written ({@link writtenKey}). What layer 3 follows.
+   */
+  references: Set<string>
   callsRecord: boolean
   /** The `kind` literals passed to `recordDocumentAccess`. */
   recordedKinds: string[]
@@ -683,14 +712,47 @@ function functionsInSource(rel: string, text: string): TopLevelFunction[] {
     if (owner?.startsWith('ns:')) return declarationOf(owner.slice(3), expression.name.text)
     return `?.${expression.name.text}`
   }
+  /** A name that is a key of its own, not a reference: a declaration's, a property's, a member's. */
+  const declares = (node: ts.Identifier): boolean => {
+    const parent = node.parent
+    if (ts.isPropertyAccessExpression(parent)) return parent.name === node
+    if (ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent) || ts.isPropertyDeclaration(parent)) return parent.name === node
+    if (ts.isGetAccessor(parent) || ts.isSetAccessor(parent) || ts.isPropertySignature(parent)) return parent.name === node
+    if (ts.isQualifiedName(parent) || ts.isImportSpecifier(parent) || ts.isExportSpecifier(parent)) return true
+    return false
+  }
+  /**
+   * The functions of `src` a node names ({@link TopLevelFunction.references}): an
+   * identifier, resolved as a call's callee is; `this.x` and `ns.x` as a call
+   * resolves them; and `X.x` as `X`'s member `x` when `X` is declared in or
+   * imported from `src`. A member of any other object names nothing.
+   */
+  const referencesAt = (node: ts.Node): string[] => {
+    if (ts.isIdentifier(node) && !declares(node)) {
+      const target = resolve(node, undefined)
+      return target && target.includes('::') && !target.startsWith('ns:') ? [target] : []
+    }
+    if (!ts.isPropertyAccessExpression(node)) return []
+    const owner = node.expression
+    if (owner.kind === ts.SyntaxKind.ThisKeyword || ts.isIdentifier(owner)) {
+      const direct = resolve(node, currentThis)
+      if (direct && !direct.startsWith('?.')) return [direct]
+    }
+    if (!ts.isIdentifier(owner)) return []
+    const declared = resolve(owner, undefined)
+    return declared && declared.includes('::') && !declared.startsWith('ns:') ? [`${declared}.${node.name.text}`] : []
+  }
+  let currentThis: string | undefined
   const found: TopLevelFunction[] = []
   for (const unit of source.statements.flatMap((statement) => unitsOf(source, statement))) {
     const { name, thisPrefix } = unit
+    currentThis = thisPrefix
     const fn: TopLevelFunction = {
       key: `${rel}::${name}`,
       name,
       file: rel,
       identifiers: new Set(),
+      references: new Set(),
       callsRecord: false,
       recordedKinds: [],
       buildsObjectRead: false,
@@ -701,6 +763,7 @@ function functionsInSource(rel: string, text: string): TopLevelFunction[] {
     // it is a callback ({@link Unit.root}).
     const visit = (node: ts.Node, conditional: boolean): void => {
       if (ts.isIdentifier(node)) fn.identifiers.add(node.text)
+      for (const reference of referencesAt(node)) fn.references.add(reference)
       if (ts.isNewExpression(node) && node.expression.getText() === 'GetObjectCommand') fn.buildsObjectRead = true
       if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
         const target = resolve(node.expression, thisPrefix)
@@ -774,6 +837,17 @@ function accessCheckedFirst(functions: readonly TopLevelFunction[]): Set<string>
     }
   }
   return checked
+}
+
+/**
+ * A key as a caller writes it: a static member, a getter and a setter without
+ * their prefix (`f::Files.static open` is `f::Files.open`, `f::A.get doc` is
+ * `f::A.doc`), so `Files.open()` names the static member it calls.
+ */
+function writtenKey(key: string): string {
+  const at = key.indexOf('::')
+  if (at < 0) return key
+  return `${key.slice(0, at)}::${key.slice(at + 2).split('.').map((segment) => segment.replace(/^(static )?([gs]et )?/, '')).join('.')}`
 }
 
 const FILES = sourceFiles()
@@ -1190,67 +1264,94 @@ describe('download log coverage: object readers', () => {
 })
 
 describe('download log coverage: routes', () => {
-  /** The name a caller writes for a unit: a member's own name (`get` of `Reader.get`, `doc` of `Reader.static get doc`). */
-  const calledAs = (name: string): string => name.slice(name.lastIndexOf('.') + 1).replace(/^(static )?([gs]et )?/, '')
+  /** Functions that hand bytes to a person (logged, or exempt but reachable by a browser), by key. */
+  const seeds = Object.entries(OBJECT_READERS)
+    .filter(([, disposition]) => 'logged' in disposition || ('servesPerson' in disposition && disposition.servesPerson))
+    .map(([key]) => writtenKey(key))
 
-  /** Names of functions that hand bytes to a person (logged or reachable-by-browser exempt). */
-  const seeds = new Set(
-    Object.entries(OBJECT_READERS)
-      .filter(([, disposition]) => 'logged' in disposition || ('servesPerson' in disposition && disposition.servesPerson))
-      .map(([key]) => calledAs(key.split('::')[1]))
-  )
-
-  /** Everything in `src` (or `functions`) that, through any chain of functions, reaches a seed by name. */
+  /**
+   * Every unit of `src` (or `functions`) that, through any chain of references,
+   * names a seed, by key ({@link writtenKey}). A reference is resolved the way a
+   * call is (the same file, an import through its re-exports, `this`, `ns.x`),
+   * so a generic member name (`get`, `request`) that something reached happens
+   * to share leads nowhere. A unit that names a value holding a reached one (an
+   * object of operations, a class) reaches it too: the value hands it out.
+   */
   function reaching(functions: readonly TopLevelFunction[] = CALLERS): Set<string> {
-    const names = new Set(seeds)
+    const reached = new Set(seeds)
+    /** A reached key and every value it is a member of (`f::A.b.c` makes `f::A.b` and `f::A`). */
+    const holders = new Set<string>()
+    const hold = (key: string) => {
+      for (let at = key.lastIndexOf('.'); at > key.indexOf('::'); at = key.lastIndexOf('.', at - 1)) holders.add(key.slice(0, at))
+    }
+    seeds.forEach(hold)
+    const names = (reference: string) => reached.has(reference) || holders.has(reference)
     for (let grew = true; grew; ) {
       grew = false
       for (const fn of functions) {
-        // A route's own handler names (`GET`) are not functions anything calls.
-        const name = calledAs(fn.name)
-        if (/^app\/api\/.*route\.ts$/.test(fn.file) || names.has(name)) continue
-        if ([...fn.identifiers].some((identifier) => identifier !== name && names.has(identifier))) {
-          names.add(name)
+        const key = writtenKey(fn.key)
+        if (reached.has(key)) continue
+        if ([...fn.references].some((reference) => reference !== key && names(writtenKey(reference)))) {
+          reached.add(key)
+          hold(key)
           grew = true
         }
       }
     }
-    return names
+    return new Set([...reached, ...holders])
   }
 
   const RAW_RESPONSE = /new (Next)?Response\(|\bstreamKnowledgeBaseDocument\b/
 
   function detectedRoutes(): string[] {
-    const names = reaching()
+    const reached = reaching()
+    const routeFunctions = new Map<string, TopLevelFunction[]>()
+    for (const fn of ALL_FUNCTIONS) routeFunctions.set(fn.file, [...(routeFunctions.get(fn.file) ?? []), fn])
     return ROUTE_FILES.filter((file) => {
-      const text = readFileSync(file, 'utf8')
-      if (RAW_RESPONSE.test(text)) return true
-      const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)
-      let reached = false
-      const visit = (node: ts.Node): void => {
-        if (ts.isIdentifier(node) && names.has(node.text)) reached = true
-        ts.forEachChild(node, visit)
-      }
-      visit(source)
-      return reached
+      if (RAW_RESPONSE.test(readFileSync(file, 'utf8'))) return true
+      const units = routeFunctions.get(srcKey(file)) ?? []
+      return units.some((fn) => [...fn.references].some((reference) => reached.has(writtenKey(reference))))
     })
       .map(ROUTE_KEY)
       .sort()
   }
 
   it('follows a member by the name a caller writes for it, a getter and a static member too', () => {
-    const names = reaching(
+    const reached = reaching(
       functionsInSource(
         'lib/example.ts',
         `
+        import { getDocumentDownload, getDocumentPreview } from '@/lib/documents/document-delivery'
         export class Files {
           static async open(session, id) { return getDocumentDownload(session, id) }
           get original() { return getDocumentPreview(this.session, this.id) }
+          async serve() { return this.original }
         }
+        export const viaStatic = (session, id) => Files.open(session, id)
+        export const operations = [{ name: 'download', run: viaStatic }]
         `
       )
     )
-    expect(['open', 'original'].filter((name) => !names.has(name))).toEqual([])
+    const key = (name: string) => `lib/example.ts::${name}`
+    expect(['Files.open', 'Files.original', 'Files.serve', 'viaStatic', 'operations'].filter((name) => !reached.has(key(name)))).toEqual([])
+  })
+
+  it('follows what a name resolves to, never a same-named member of another object', () => {
+    const reached = reaching(
+      functionsInSource(
+        'lib/example.ts',
+        `
+        import { getDocumentDownload } from '@/lib/documents/document-delivery'
+        export const store = { get: (session, id) => getDocumentDownload(session, id) }
+        export async function viaStore(session, id) { return store.get(session, id) }
+        export async function viaCache(cache, id) { return cache.get(id) }
+        export async function viaMap(id) { return new Map().get(id) }
+        `
+      )
+    )
+    const key = (name: string) => `lib/example.ts::${name}`
+    expect(['store.get', 'viaStore'].filter((name) => !reached.has(key(name)))).toEqual([])
+    expect(['viaCache', 'viaMap'].filter((name) => reached.has(key(name)))).toEqual([])
   })
 
   it('finds the route surface', () => {
