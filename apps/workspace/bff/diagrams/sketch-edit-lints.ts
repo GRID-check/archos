@@ -22,6 +22,13 @@ import { readsAsDimension } from './sketch-fence'
 import { BOUND_TEXT_PADDING, boundIds, boxOf, estimatedTextSize, SHAPE_TYPES, type Box, type EditElement } from './sketch-edit-elements'
 import type { SketchEditWarning } from './sketch-edit-wire'
 
+/**
+ * At most this many warnings go back with an edit, the rest as a count: a
+ * frame of two thousand stacked boxes moved once would otherwise answer two
+ * million overlaps, and every one of them is text Piloti reads.
+ */
+export const MAX_SKETCH_EDIT_WARNINGS = 20
+
 /** Intersection over the smaller box above which two boxes overlap. */
 export const OVERLAP_RATIO = 0.05
 
@@ -57,46 +64,52 @@ function overflows(container: EditElement, label: EditElement): boolean {
   return longestWord > room.width || lines * (height / text.split('\n').length) > room.height
 }
 
-/** The warnings for the elements an edit placed (added or moved) and wrote (added or changed). */
+/** The warnings for the elements an edit placed (added or moved) and wrote (added or changed): the first {@link MAX_SKETCH_EDIT_WARNINGS}, and how many more. */
 export function lintSketchEdit(
   live: ReadonlyMap<string, EditElement>,
   touched: { placed: ReadonlySet<string>; written: ReadonlySet<string> }
-): SketchEditWarning[] {
+): { warnings: SketchEditWarning[]; more: number } {
   const warnings: SketchEditWarning[] = []
-  const elements = [...live.values()]
-  const seen = new Set<string>()
+  let more = 0
+  const warn = (warning: SketchEditWarning) => {
+    if (warnings.length < MAX_SKETCH_EDIT_WARNINGS) warnings.push(warning)
+    else more += 1
+  }
+  // Boxes once, not once per pair.
+  const solids = [...live.values()].flatMap((element) => (solid(element) ? [{ id: element.id, box: boxOf(element) }] : []))
+  const order = new Map(solids.map((entry, at) => [entry.id, at]))
   for (const id of touched.placed) {
     const element = live.get(id)
     if (!element || !solid(element)) continue
     const box = boxOf(element)
-    for (const other of elements) {
-      if (other.id === id || !solid(other)) continue
-      const pair = [id, other.id].sort().join('\u0000')
-      if (seen.has(pair) || overlapRatio(box, boxOf(other)) <= OVERLAP_RATIO) continue
-      seen.add(pair)
-      warnings.push({ kind: 'overlap', ids: [id, other.id] })
+    const at = order.get(id) ?? -1
+    for (const other of solids) {
+      if (other.id === id) continue
+      // A pair of two placed elements is looked at once, from the one drawn first.
+      if (touched.placed.has(other.id) && (order.get(other.id) ?? -1) < at) continue
+      if (overlapRatio(box, other.box) > OVERLAP_RATIO) warn({ kind: 'overlap', ids: [id, other.id] })
     }
     const frame = element.frameId ? live.get(element.frameId) : undefined
-    if (frame && !inside(box, boxOf(frame))) warnings.push({ kind: 'outside-frame', ids: [id, frame.id] })
+    if (frame && !inside(box, boxOf(frame))) warn({ kind: 'outside-frame', ids: [id, frame.id] })
   }
   for (const id of touched.written) {
     const element = live.get(id)
     if (!element) continue
     const labels = boundIds(element, 'text').flatMap((textId) => (live.get(textId) ? [live.get(textId) as EditElement] : []))
     const words = [element.type === 'text' ? element.text : undefined, element.name, ...labels.map((label) => label.text)]
-    if (words.some((word) => typeof word === 'string' && readsAsDimension(word))) warnings.push({ kind: 'dimension-label', ids: [id] })
+    if (words.some((word) => typeof word === 'string' && readsAsDimension(word))) warn({ kind: 'dimension-label', ids: [id] })
     if (SHAPE_TYPES.has(element.type) && labels.some((label) => overflows(element, label))) {
-      warnings.push({ kind: 'label-overflow', ids: [id] })
+      warn({ kind: 'label-overflow', ids: [id] })
     }
     if (element.type === 'arrow' && !element.startBinding && !element.endBinding && touched.placed.has(id)) {
-      warnings.push({ kind: 'unbound-arrow', ids: [id] })
+      warn({ kind: 'unbound-arrow', ids: [id] })
     }
   }
-  return warnings
+  return { warnings, more }
 }
 
-/** The warnings as one line each, in English, for the model that proposed the edit. */
-export function describeWarnings(warnings: readonly SketchEditWarning[]): string[] {
+/** The warnings as one line each, in English, for the model that proposed the edit; each line once, and the rest as a count. */
+export function describeWarnings(warnings: readonly SketchEditWarning[], more = 0): string[] {
   const words: Record<SketchEditWarning['kind'], string> = {
     overlap: 'overlaps',
     'label-overflow': 'has a label wider or taller than its box; the box grows to fit it',
@@ -104,9 +117,17 @@ export function describeWarnings(warnings: readonly SketchEditWarning[]): string
     'unbound-arrow': 'is an arrow bound at neither end',
     'dimension-label': 'has a label that reads like a measurement; a sketch claims no dimension',
   }
-  return warnings.map((warning) =>
-    warning.kind === 'overlap' || warning.kind === 'outside-frame'
-      ? `${warning.ids[0]} ${words[warning.kind]} ${warning.ids[1]}`
-      : `${warning.ids[0]} ${words[warning.kind]}`
-  )
+  const lines = [
+    ...new Set(
+      warnings
+        .slice(0, MAX_SKETCH_EDIT_WARNINGS)
+        .map((warning) =>
+          warning.kind === 'overlap' || warning.kind === 'outside-frame'
+            ? `${warning.ids[0]} ${words[warning.kind]} ${warning.ids[1]}`
+            : `${warning.ids[0]} ${words[warning.kind]}`
+        )
+    ),
+  ]
+  const left = more + Math.max(0, warnings.length - MAX_SKETCH_EDIT_WARNINGS)
+  return left > 0 ? [...lines, `and ${left} more warnings: fix these first, then check the edit again`] : lines
 }

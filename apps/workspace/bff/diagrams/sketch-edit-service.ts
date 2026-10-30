@@ -57,6 +57,7 @@ const REFUSAL_WORDS: Record<string, string> = {
   'dangling-binding': 'binds to an element that does not exist',
   'bad-intent': 'has no intent, or one longer than 200 characters: one short sentence the person reads',
   'bad-coordinate': 'sets a position or size outside ±10000',
+  'too-many-ids': 'names more than 100 elements in one step; split it',
 }
 
 /** The sketch moved on and an id the edit names is gone: the 409 the route words in the reader's language. */
@@ -98,7 +99,7 @@ function score(base: Pick<SketchSaveBase, 'document'>, outcome: SketchEditOutcom
 const facts = (body: SketchEditBody, applied: AppliedSketchScene) => ({
   ops: body.ops.length,
   kinds: kindsOf(body),
-  warnings: applied.warnings.length,
+  warnings: applied.warnings.length + applied.moreWarnings,
   added: applied.diff.added.length,
   removed: applied.diff.removed.length,
   changed: applied.diff.changed.length,
@@ -267,7 +268,7 @@ export async function checkSketchEditProposal(
     throw error
   }
   score(current, 'proposed', { metadata: facts(body, applied) })
-  const warnings = describeWarnings(applied.warnings)
+  const warnings = describeWarnings(applied.warnings, applied.moreWarnings)
   if (current.target === 'review_open') warnings.push('the sketch is in review: the edit can be applied once the review is decided')
   return { warnings }
 }

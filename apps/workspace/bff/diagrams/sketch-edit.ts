@@ -31,6 +31,7 @@
 
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing'
 import { checkSketchSkeleton, MAX_SKETCH_COORDINATE, type SketchRefusal } from './sketch-fence'
+import { keptSketchLink } from './sketch-links'
 import {
   absolutePoints,
   addBound,
@@ -289,7 +290,9 @@ function applyUpdate(state: EditState, op: Extract<SketchEditOp, { op: 'update' 
   for (const field of ['strokeColor', 'backgroundColor', 'fillStyle', 'strokeStyle'] as const) {
     if (set[field] !== undefined) element[field] = set[field]
   }
-  if (set.customData !== undefined) element.customData = { ...((element.customData as object | undefined) ?? {}), ...set.customData }
+  // The link is replaced whole, never merged: half of one link and half of another points nowhere.
+  if (set.customData === null) delete element.customData
+  else if (set.customData !== undefined) element.customData = keptSketchLink(set.customData)
   if (set.text !== undefined) {
     element.text = set.text
     element.originalText = set.text
@@ -431,8 +434,17 @@ function applyOp(state: EditState, op: SketchEditOp, index: number): void {
   }
 }
 
+/** What a save keeps of a field: the link of `customData` in its key order (`sketch-links.ts`), every other field as it is. */
+const keptField = ([key, value]: [string, unknown]): [string, unknown] => [key, key === 'customData' ? (keptSketchLink(value) ?? null) : value]
+
 const drawn = (element: SceneElement | EditElement) =>
-  JSON.stringify(Object.entries(element).filter(([key]) => !BOOKKEEPING.has(key)).sort(([a], [b]) => a.localeCompare(b)))
+  JSON.stringify(
+    Object.entries(element)
+      .filter(([key]) => !BOOKKEEPING.has(key))
+      .map(keptField)
+      .filter(([key, value]) => key !== 'customData' || value !== null)
+      .sort(([a], [b]) => a.localeCompare(b))
+  )
 
 /** A label is reported as its container: the person sees the box change, not a text element. */
 function reported(ids: Iterable<string>, byId: (id: string) => SceneElement | EditElement | undefined): string[] {
