@@ -517,7 +517,7 @@ function SidebarBrand({ iconRail }: { iconRail: boolean }) {
             : 'text-foreground'
         )}
       >
-        <Logo kind={iconRail ? 'logo-only' : 'wordmark-only'} size="small" />
+        <Logo kind={iconRail ? 'icon' : 'wordmark'} size="small" />
       </Link>
       {!isMobile && (
         <button

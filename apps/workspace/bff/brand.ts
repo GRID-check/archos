@@ -37,16 +37,19 @@ export function withProductName<T>(dictionary: T): T {
 }
 
 /**
- * The product's mark (the column) for every place that draws it inline: the app's
- * logo and the PDF exports. `path` is the master's, character for character
- * (`packages/brand/mark.svg`); `node packages/brand/build-brand-assets.mjs --check` fails when
- * it drifts. `viewBox` crops the master's 32-unit tile to the column itself, so
- * the mark sits flush against a wordmark. Plain data, no DOM: the PDF renderer
- * imports it too.
+ * The app icon's glyph for every place that draws it inline: the app's icon
+ * rail and the PDF exports. The design system's logo is the wordmark alone, so
+ * the icon is typographic: the product name's initial in Switzer Semibold,
+ * outlined. `path` is the master's, character for character
+ * (`packages/brand/mark.svg`, written by `packages/brand/build-brand-assets.mjs`
+ * from `identity.json` and the font), which also writes the three lines below;
+ * its `--check` fails when they drift. Do not edit them. `viewBox` crops the
+ * master's 96-unit tile to the letter's ink box, so it sits flush in its box.
+ * Plain data, no DOM: the PDF renderer imports it too.
  */
 export const BRAND_MARK = {
-  viewBox: '6 4 20 24',
-  /** Width over height of the cropped mark. */
-  aspect: 20 / 24,
-  path: 'M16 4H10A4 4 0 0 0 6 8A4 4 0 0 0 10 12V10A2 2 0 0 1 8 8A2 2 0 0 1 10 6A2 2 0 0 1 12 8V24H20V8A2 2 0 0 1 22 6A2 2 0 0 1 24 8A2 2 0 0 1 22 10V12A4 4 0 0 0 26 8A4 4 0 0 0 22 4ZM8 26H24V28H8Z',
+  viewBox: '18.4 18 59.21 60',
+  /** Width over height of the cropped glyph. */
+  aspect: 59.21 / 60,
+  path: 'M65.07 78L77.6 78L55.01 18L40.99 18L18.4 78L30.31 78L34.9 65.56L60.49 65.56ZM45.93 35.82L47.69 29.65L49.46 35.82L57.04 56.38L38.34 56.38Z',
 } as const

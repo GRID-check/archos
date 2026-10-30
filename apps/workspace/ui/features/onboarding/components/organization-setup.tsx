@@ -67,7 +67,7 @@ export function OrganizationSetup({
           once it is paid, so the row sat on the island instead of below it. The
           side insets are for a phone on its side. */}
       <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] md:px-6">
-        <Logo kind="horizontal" size="small" />
+        <Logo size="small" />
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-muted-foreground hidden min-w-0 truncate text-xs sm:block">
             {email ? t('account.signedInAs', { email }) : t('account.signedIn')}

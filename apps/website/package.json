@@ -27,6 +27,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "axe-core": "4",
+    "fontkit": "2.0.4",
     "playwright": "1.63.0",
     "sharp": "0.35.5"
   }
