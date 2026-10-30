@@ -21,15 +21,18 @@
  *
  * Only the fields in `ALLOWED_FIELDS`, with enumerated values held to their
  * enumeration and numbers to a range: a `link` (Excalidraw makes an element
- * clickable with it), `customData`, a `fileId` or anything else the model
- * wrote is dropped, not refused, because a sketch with one stray field is
- * still a sketch. Every text is set in Helvetica (`SKETCH_FONT_FAMILY`), the
+ * clickable with it), a `fileId` or anything else the model wrote is dropped,
+ * not refused, because a sketch with one stray field is still a sketch.
+ * `customData` keeps a link into the workspace and nothing else
+ * (`sketch-links.ts`): the link keys when they make a valid link. Every text is set in Helvetica (`SKETCH_FONT_FAMILY`), the
  * type the filed SVG and PDF can show, so the file reads like the sketch.
  *
  * The doctrine (`diagram-sources.ts`) holds by subject, not by parse: a sketch
  * claims no dimension, and the reader is told so beside it. A label that reads
  * like a measurement is counted (`dimensionLabels`), as the server counts it.
  */
+
+import { keptSketchLink } from './sketch-links'
 
 /** The fence tag the model writes, and the one the server stores a refused sketch under. */
 export const SKETCH_FENCE_LANGUAGE = 'excalidraw'
@@ -80,6 +83,8 @@ export type SketchFence =
       elements: SceneSkeleton[]
       /** Labels that read like a measurement, which a sketch must not claim. */
       dimensionLabels: number
+      /** Elements that kept a link into the workspace (`customData`, `sketch-links.ts`). */
+      links: number
     }
   | { ok: false; refusal: SketchRefusal }
 
@@ -193,15 +198,15 @@ const RANGES: Record<string, readonly [number, number]> = {
   opacity: [10, 100],
   angle: [-Math.PI * 2, Math.PI * 2],
 }
-const SHAPE_FIELDS = ['id', 'x', 'y', 'width', 'height', 'strokeColor', 'backgroundColor', 'fillStyle', 'strokeWidth', 'strokeStyle', 'roughness', 'opacity', 'angle']
+const SHAPE_FIELDS = ['id', 'x', 'y', 'width', 'height', 'strokeColor', 'backgroundColor', 'fillStyle', 'strokeWidth', 'strokeStyle', 'roughness', 'opacity', 'angle', 'customData']
 const ALLOWED_FIELDS: Record<SketchElementType, readonly string[]> = {
   rectangle: [...SHAPE_FIELDS, 'roundness', 'label'],
   ellipse: [...SHAPE_FIELDS, 'label'],
   diamond: [...SHAPE_FIELDS, 'roundness', 'label'],
-  text: ['id', 'x', 'y', 'text', 'fontSize', 'textAlign', 'strokeColor', 'opacity', 'angle'],
+  text: ['id', 'x', 'y', 'text', 'fontSize', 'textAlign', 'strokeColor', 'opacity', 'angle', 'customData'],
   arrow: [...SHAPE_FIELDS, 'points', 'start', 'end', 'startArrowhead', 'endArrowhead', 'label'],
   line: [...SHAPE_FIELDS, 'points'],
-  frame: ['id', 'children', 'name'],
+  frame: ['id', 'children', 'name', 'customData'],
 }
 const LABEL_FIELDS = ['text', 'fontSize', 'textAlign', 'verticalAlign', 'strokeColor']
 
@@ -218,6 +223,7 @@ function kept(field: string, value: unknown): unknown {
   if (field === 'roundness') return isObject(value) && (value.type === 2 || value.type === 3) ? { type: value.type } : undefined
   if (field === 'start' || field === 'end') return isObject(value) ? { id: value.id } : undefined
   if (field === 'label') return isObject(value) ? labelOf(value) : undefined
+  if (field === 'customData') return keptSketchLink(value)
   if (field === 'children') return [...(value as unknown[])]
   if (field === 'points') return (value as number[][]).map(([x, y]) => [x, y])
   return value
@@ -261,11 +267,13 @@ function checked(scene: unknown): SketchFence {
   if (objects.some((element) => references(element).some((ref) => typeof ref !== 'string' || !known.has(ref)))) {
     throw new Refused('dangling-binding')
   }
+  const skeletons = objects.map(skeletonOf)
   return {
     ok: true,
     title,
-    elements: objects.map(skeletonOf),
+    elements: skeletons,
     dimensionLabels: texts.filter((value) => DIMENSION.test(value)).length,
+    links: skeletons.filter((skeleton) => skeleton.customData !== undefined).length,
   }
 }
 

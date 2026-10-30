@@ -64,6 +64,7 @@ import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from './diagram-sources'
 import { publishNextVersion } from './sketch-version'
 import { outlineSketch } from './sketch-outline'
+import { resolveSketchLinks } from './sketch-link-resolve'
 import { reviseScene, withoutTombstones } from './sketch-revise'
 import { drawSketchScene } from './sketch-picture'
 import { indexSketchForSearch } from './sketch-search'
@@ -226,12 +227,16 @@ export async function readSketchDocument(
   const scene = await storedSceneOf(draft ? { ...draft, contentType: SVG } : document)
   // The scene is the document's content as much as its picture is.
   await recordDocumentAccess(session, document, 'preview', draft ? { versionId: draft.id } : undefined)
+  const outline = outlineSketch(scene)
   return {
     documentId: document.id,
+    projectId: document.projectId,
     versionId: draft?.id ?? document.publishedVersionId,
     canWrite,
     title: titleOf(document),
-    outline: outlineSketch(scene),
+    outline,
+    // What each link is for this reader: the outline names ids, this what they may see of them.
+    links: await resolveSketchLinks(session, outline.links),
     ...(options.scene ? { scene } : {}),
     ...(options.ids ? { elements: focusedElements(scene, options.ids) } : {}),
     saveTarget: target.kind,

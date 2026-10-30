@@ -40,6 +40,12 @@ describe('the sketch vocabulary', () => {
     expect(event.kind === 'scene.delta' && event.elements[0]).toEqual(element)
   })
 
+  it('carries a link into the workspace live, as a save keeps it', () => {
+    const customData = { documentId: 'doc_plan', page: 12 }
+    const parsed = post({ delta: { base: 'ver_1', seq: 1, elements: [{ ...element, customData: { ...customData, taskId: 't' } }] } })
+    expect(parsed.success && parsed.data.delta?.elements[0]).toEqual({ ...element, customData })
+  })
+
   it('refuses a full part past its last, and a selection longer than its cap', () => {
     expect(post({ delta: { base: null, seq: 0, full: { requestId: 'req_abcdef12', part: 2, of: 2 }, elements: [] } }).success).toBe(false)
     expect(post({ sceneSelection: Array.from({ length: 501 }, (_, i) => `el_${i}`) }).success).toBe(false)

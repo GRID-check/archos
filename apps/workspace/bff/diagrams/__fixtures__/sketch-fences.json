@@ -1,5 +1,12 @@
 {
- "$comment": "Both sketch fence checks run these: common/sketch_fence.py (packages/agent/tests/common/test_sketch_fence.py) and lib/diagrams/sketch-fence.ts (sketch-fence.spec.ts). Same body, same verdict.",
+ "$comment": "Both sketch fence checks run these: common/sketch_fence.py (packages/agent/tests/common/test_sketch_fence.py) and lib/diagrams/sketch-fence.ts (sketch-fence.spec.ts). Same body, same verdict. `link_keys` is the one list of customData keys a sketch element keeps (bff/diagrams/sketch-links.ts, common/sketch_fence.py); `links` counts the elements that kept a valid link.",
+ "link_keys": [
+  "documentId",
+  "page",
+  "versionId",
+  "ifcGlobalId",
+  "annotationId"
+ ],
  "cases": [
   {
    "name": "labelled shapes bound by an arrow",
@@ -135,6 +142,30 @@
    "refusal": null,
    "elements": 3,
    "dimension_labels": 0
+  },
+  {
+   "name": "a link to a model element, a document page and an Anmerkung is kept",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"ellipse\", \"id\": \"r\", \"x\": 0, \"y\": 0, \"label\": {\"text\": \"Wohnen\"}, \"customData\": {\"documentId\": \"doc_ifc\", \"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\"}}, {\"type\": \"arrow\", \"id\": \"p\", \"x\": 0, \"y\": 120, \"points\": [[0, 0], [120, 0]], \"customData\": {\"documentId\": \"doc_plan\", \"page\": 12}}, {\"type\": \"text\", \"id\": \"t\", \"x\": 0, \"y\": 200, \"text\": \"Mangel\", \"customData\": {\"documentId\": \"doc_plan\", \"annotationId\": \"ann_1\"}}]}",
+   "refusal": null,
+   "elements": 3,
+   "dimension_labels": 0,
+   "links": 3
+  },
+  {
+   "name": "a foreign customData key is dropped and the link kept",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"doc_plan\", \"taskId\": \"task_1\", \"colour\": \"red\"}}]}",
+   "refusal": null,
+   "elements": 1,
+   "dimension_labels": 0,
+   "links": 1
+  },
+  {
+   "name": "a link with a bad GlobalId, a page 0 or no document is dropped whole",
+   "body": "{\"title\": \"Links\", \"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0, \"customData\": {\"documentId\": \"doc_ifc\", \"ifcGlobalId\": \"not-a-global-id\"}}, {\"type\": \"rectangle\", \"id\": \"b\", \"x\": 0, \"y\": 100, \"customData\": {\"documentId\": \"doc_plan\", \"page\": 0}}, {\"type\": \"rectangle\", \"id\": \"c\", \"x\": 0, \"y\": 200, \"customData\": {\"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\"}}, {\"type\": \"rectangle\", \"id\": \"d\", \"x\": 0, \"y\": 300, \"customData\": {\"documentId\": \"doc_ifc\", \"ifcGlobalId\": \"2O2Fr$t4X7Zf8NOew3FLOH\", \"annotationId\": \"ann_1\"}}]}",
+   "refusal": null,
+   "elements": 4,
+   "dimension_labels": 0,
+   "links": 0
   }
  ]
 }

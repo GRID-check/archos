@@ -5404,7 +5404,7 @@
       "post": {
         "operationId": "document-sketch-edit",
         "summary": "Change a sketch by operations",
-        "description": "Changes a filed sketch by operations on its elements (ids from document-sketch-get, `scene=omit`), saved as its next version. Prefer the relative ops (place, align, distribute, stack) over computed x and y; remove takes labels and bound arrows along; bound arrows are rerouted. No ops plus a `note` changes nothing: never write dimensions. 409 `sketch_changed` when an id is gone from a newer version; 422 names a wrong op.",
+        "description": "Changes a filed sketch by operations on its elements (ids from document-sketch-get, `scene=omit`), saved as its next version. Prefer the relative ops (place, align, distribute, stack) over computed x and y; remove takes labels and bound arrows along; bound arrows are rerouted. `set.customData` links an element (a GlobalId only from a model query); a link is no measurement. No ops plus a `note` changes nothing: never write dimensions. 409 `sketch_changed` when an id is gone from a newer version; 422 names a wrong op.",
         "tags": [
           "documents"
         ],
@@ -5562,8 +5562,45 @@
                                   "maxLength": 500
                                 },
                                 "customData": {
-                                  "type": "object",
-                                  "additionalProperties": {}
+                                  "description": "`documentId` + `page`, + `ifcGlobalId` (its IFC model), or + `annotationId`; null unlinks.",
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "documentId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        },
+                                        "page": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 9999
+                                        },
+                                        "versionId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        },
+                                        "ifcGlobalId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9A-Za-z_$]{22}$"
+                                        },
+                                        "annotationId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        }
+                                      },
+                                      "required": [
+                                        "documentId"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
                                 }
                               },
                               "additionalProperties": false
@@ -5826,7 +5863,7 @@
       "get": {
         "operationId": "document-sketch-get",
         "summary": "Read a sketch’s outline and scene",
-        "description": "A sketch document (an SVG filed from an Excalidraw drawing) read as structure. `outline` first: `texts` (with the element each labels), `shapes` with labels, `connections` (from-label → to-label, bound ids, own label; `points` when an end is unbound) and `frames` with children, each with its id and a `box` {x, y, w, h} in scene pixels, y down. `scene=omit` drops `scene`; `ids` answers just those `elements`. To change it, send operations with `versionId` to document-sketch-edit; document-sketch-update takes a whole scene. Other documents answer 415. A sketch claims no dimension.",
+        "description": "A sketch document (an SVG filed from an Excalidraw drawing) read as structure. `outline` first: `texts` (with the element each labels), `shapes` with labels, `connections` (from-label → to-label, bound ids, own label; `points` when an end is unbound) and `frames` with children, each with its id and a `box` {x, y, w, h} in scene pixels, y down; `links`: elements pointing at a document page, model element or annotation, `available` with a `title` or `unavailable`. `scene=omit` drops `scene`; `ids` answers just those `elements`. To change it, send operations with `versionId` to document-sketch-edit; document-sketch-update takes a whole scene. Other documents answer 415. A sketch claims no dimension.",
         "tags": [
           "documents"
         ],

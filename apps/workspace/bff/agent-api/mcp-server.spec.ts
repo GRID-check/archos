@@ -214,7 +214,9 @@ describe('what tools mode costs a client', () => {
   // operation shapes (add, update, remove, rebind and the relative place, align, distribute, stack). They are the
   // edit's vocabulary; the bounds an agent would otherwise read (ids, coordinates, the intent's length) moved into
   // the apply's 422s, and its preview is withheld from the door. Measured 1,063 with it.
-  const MAX_AVERAGE_CHARS = 1_065
+  // Raised to 1,070 on 2026-10-30 for sketch links (S5): the link's five keys with their bounds and the GlobalId
+  // pattern in `document-sketch-edit`'s update, and one sentence each on reading and setting a link. Measured 1,066.
+  const MAX_AVERAGE_CHARS = 1_070
   const MAX_OPERATION_CHARS = 9_000
 
   it(`stays under ${MAX_AVERAGE_CHARS} characters a tool on average, and ${MAX_OPERATION_CHARS} for any catalog operation`, async () => {

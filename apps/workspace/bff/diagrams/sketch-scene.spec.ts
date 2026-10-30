@@ -42,6 +42,18 @@ describe('checkSketchScene', () => {
     expect(kept.appState).toEqual({ gridSize: 20 })
   })
 
+  it('keeps a link into the workspace and drops its foreign keys; a wrong link goes whole', () => {
+    const link = { documentId: 'doc_ifc', ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' }
+    const kept = checkSketchScene(
+      scene([
+        element({ customData: { ...link, tracker: 'x' } }),
+        element({ id: 'b', customData: { documentId: 'doc_plan', page: 0 } }),
+      ])
+    )
+    expect(kept.elements[0].customData).toEqual(link)
+    expect(kept.elements[1]).toEqual(element({ id: 'b' }))
+  })
+
   it.each([
     ['not an object', [], 'not-a-scene'],
     ['another type', { type: 'tldraw', elements: [] }, 'not-a-scene'],

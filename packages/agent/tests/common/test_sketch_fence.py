@@ -9,13 +9,15 @@ import pytest
 
 from agent.common.answer_dialect import validate_dialect
 from agent.common.sketch_fence import REFUSED_SKETCH_FENCE_INFO
+from agent.common.sketch_fence import SKETCH_LINK_KEYS
 from agent.common.sketch_fence import SKETCH_REFUSALS
 from agent.common.sketch_fence import check_sketch
 from agent.common.sketch_fence import sketch_census
 from agent.observability.answer_scores import sketch_scores
 
 FIXTURES = Path(__file__).resolve().parents[4] / "apps/workspace/bff/diagrams/__fixtures__/sketch-fences.json"
-CASES = json.loads(FIXTURES.read_text(encoding="utf-8"))["cases"]
+FIXTURE = json.loads(FIXTURES.read_text(encoding="utf-8"))
+CASES = FIXTURE["cases"]
 
 
 @pytest.mark.parametrize("case", CASES, ids=[case["name"] for case in CASES])
@@ -25,6 +27,11 @@ def test_each_case_gets_the_verdict_both_checks_agree_on(case):
     if case["refusal"] is None:
         assert check.elements == case["elements"]
         assert check.dimension_labels == case["dimension_labels"]
+        assert check.links == case.get("links", 0)
+
+
+def test_the_link_keys_are_the_ones_the_browser_keeps():
+    assert list(SKETCH_LINK_KEYS) == FIXTURE["link_keys"]
 
 
 def test_every_refusal_has_a_case():

@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import fixtures from './__fixtures__/sketch-fences.json'
 import { readSketchFence, SKETCH_REFUSALS, sketchFenceKind, streamedSketchElements } from './sketch-fence'
+import { SKETCH_LINK_KEYS } from './sketch-links'
 
 interface Case {
   name: string
@@ -11,6 +12,7 @@ interface Case {
   refusal: string | null
   elements?: number
   dimension_labels?: number
+  links?: number
 }
 
 const cases = fixtures.cases as Case[]
@@ -19,11 +21,15 @@ describe('the sketch fence check agrees with the server on every shared case', (
   it.each(cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
     const fence = readSketchFence(c.body)
     if (c.refusal === null) {
-      expect(fence).toMatchObject({ ok: true, dimensionLabels: c.dimension_labels })
+      expect(fence).toMatchObject({ ok: true, dimensionLabels: c.dimension_labels, links: c.links ?? 0 })
       expect(fence.ok && fence.elements).toHaveLength(c.elements ?? 0)
     } else {
       expect(fence).toEqual({ ok: false, refusal: c.refusal })
     }
+  })
+
+  it('keeps the link keys the server keeps', () => {
+    expect(fixtures.link_keys).toEqual([...SKETCH_LINK_KEYS])
   })
 
   it('has a case for every refusal', () => {
@@ -47,6 +53,7 @@ describe('what reaches Excalidraw', () => {
       ok: true,
       title: 'Zonen',
       dimensionLabels: 0,
+      links: 0,
       elements: [
         { type: 'rectangle', id: 'a', x: 0, y: 0, label: { text: 'Wohnen', fontFamily: 2, fontSize: 16 } },
         { type: 'text', x: 0, y: 90, text: 'Notiz', fontSize: 64, fontFamily: 2 },

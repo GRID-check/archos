@@ -26,6 +26,11 @@ more than a sketch is worth: unparseable JSON, a scene over
 outside :data:`SKETCH_ELEMENT_TYPES` (no image, embed or iframe), coordinates
 past :data:`MAX_SKETCH_COORDINATE`, a binding to an id the scene does not hold.
 
+What is counted besides is an element's link into the workspace: its
+``customData`` keeps the keys of :data:`SKETCH_LINK_KEYS` when they make a
+valid link (:func:`sketch_link`, the rule of ``bff/diagrams/sketch-links.ts``),
+and the browser drops every other key. A link points; it is never a measurement.
+
 What is only counted is a label that reads like a measurement
 (:data:`_DIMENSION`): the doctrine is a rule about subject, and a label such as
 „Wohnen 30 m²“ may restate a figure a document gives. The count goes to the
@@ -79,6 +84,13 @@ SKETCH_REFUSALS: tuple[str, ...] = (
     "dangling-binding",
 )
 
+#: The ``customData`` keys a sketch element keeps, the browser's ``SKETCH_LINK_KEYS``.
+SKETCH_LINK_KEYS: tuple[str, ...] = ("documentId", "page", "versionId", "ifcGlobalId", "annotationId")
+_LINK_ID_CHARS = 64
+_LINK_MAX_PAGE = 9999
+#: IFC's GlobalId: 22 characters of its base-64 alphabet.
+_IFC_GLOBAL_ID = re.compile(r"^[0-9A-Za-z_$]{22}$")
+
 #: A number with a unit of length or area: „3,5 m“, „30 m²“, „120cm“.
 _DIMENSION = re.compile(r"\d(?:[.,]\d+)?\s*(?:mm|cm|dm|km|m²|m2|m³|m)(?![a-zäöüß])", re.IGNORECASE)
 
@@ -93,6 +105,8 @@ class SketchCheck:
     elements: int = 0
     kinds: dict[str, int] = field(default_factory=dict)
     dimension_labels: int = 0
+    #: Elements that keep a link into the workspace (:func:`sketch_link`).
+    links: int = 0
 
     @property
     def drawn(self) -> bool:
@@ -179,6 +193,31 @@ def _element_texts(element: dict[str, Any]) -> list[str]:
     return [_text(label.get("text"), required=True)]
 
 
+def _link_id(value: Any) -> bool:
+    return isinstance(value, str) and 0 < len(value.strip()) <= _LINK_ID_CHARS
+
+
+def _link_value(key: str, value: Any) -> bool:
+    if key == "page":
+        return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= _LINK_MAX_PAGE
+    if key == "ifcGlobalId":
+        return isinstance(value, str) and bool(_IFC_GLOBAL_ID.match(value))
+    return _link_id(value)
+
+
+def sketch_link(custom_data: Any) -> dict[str, Any] | None:
+    """The link an element's ``customData`` keeps, or ``None``: foreign keys dropped, a wrong value drops it whole."""
+    if not isinstance(custom_data, dict):
+        return None
+    link = {key: custom_data[key] for key in SKETCH_LINK_KEYS if custom_data.get(key) is not None}
+    if "documentId" not in link or not all(_link_value(key, value) for key, value in link.items()):
+        return None
+    target = "ifcGlobalId" in link or "annotationId" in link
+    if ("ifcGlobalId" in link and "annotationId" in link) or (target and ("page" in link or "versionId" in link)):
+        return None
+    return link
+
+
 def _references(element: dict[str, Any]) -> list[Any]:
     """The ids an element points at: an arrow's bound ends, a frame's children."""
     if element.get("type") == "frame":
@@ -204,6 +243,7 @@ def _checked(scene: Any) -> SketchCheck:
         elements=len(elements),
         kinds=dict(Counter(element["type"] for element in elements)),
         dimension_labels=sum(1 for text in texts if _DIMENSION.search(text)),
+        links=sum(1 for element in elements if sketch_link(element.get("customData")) is not None),
     )
 
 
@@ -254,7 +294,7 @@ def refused_fence_info(info: str) -> str:
 
 
 def sketch_census(checks: list[SketchCheck]) -> dict[str, Any]:
-    """The answer's sketches for the trace metadata: drawn, refused by reason, elements, measurement-like labels."""
+    """The answer's sketches for the trace: drawn, refused by reason, elements, measurement-like labels, links."""
     return {
         "drawn": sum(1 for check in checks if check.drawn),
         "refused": dict(Counter(check.refusal for check in checks if check.refusal)),
@@ -262,4 +302,5 @@ def sketch_census(checks: list[SketchCheck]) -> dict[str, Any]:
         "elements": sum(check.elements for check in checks),
         "kinds": dict(sum((Counter(check.kinds) for check in checks), Counter())),
         "dimension_labels": sum(check.dimension_labels for check in checks),
+        "links": sum(check.links for check in checks),
     }

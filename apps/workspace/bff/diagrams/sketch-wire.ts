@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod'
+import type { ResolvedSketchLink } from './sketch-links'
 import type { SketchOutline } from './sketch-outline'
 import type { SceneElement } from './sketch-scene'
 import type { SketchScene } from './sketch-scene'
@@ -82,8 +83,15 @@ export interface SketchDocumentView {
   /** Whether the reader may save a Fassung (and edit live): otherwise the editor only shows. */
   canWrite: boolean
   title: string
+  /** The project the Skizze lies in; `null` in the Büroablage. Where the editor's „Verknüpfen“ looks. */
+  projectId: string | null
   /** Before the scene, so a reader cut off at a size limit still has it. */
   outline: SketchOutline
+  /**
+   * The outline's links as this reader sees them: `available` with a title and
+   * where it leads, or `unavailable` (gone, or not theirs to open) with nothing more.
+   */
+  links: ResolvedSketchLink[]
   /** The whole scene; absent for `?scene=omit` and for a focused read. */
   scene?: SketchScene
   /** For `?ids=`: those elements whole, in scene order; an id that is not drawn is left out. */

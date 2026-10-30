@@ -178,3 +178,23 @@ describe('the outline at the agent door', () => {
     expect(chars).toBeLessThan(0.8 * MAX_RESULT_CHARS)
   })
 })
+
+describe('links in the outline', () => {
+  it('lists each linked element by its stored ids, and the search reads no link', async () => {
+    const { checkSketchScene } = await import('./sketch-scene')
+    const { sketchReadingOf } = await import('./sketch-search')
+    const scene = checkSketchScene({
+      type: 'excalidraw',
+      elements: [
+        { id: 'room', type: 'ellipse', x: 0, y: 0, width: 100, height: 60, customData: { documentId: 'doc_ifc', ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' } },
+        { id: 'note', type: 'text', x: 0, y: 100, text: 'Detail', customData: { documentId: 'doc_plan', page: 4 } },
+        { id: 'gone', type: 'rectangle', x: 0, y: 0, isDeleted: true, customData: { documentId: 'doc_plan' } },
+      ],
+    })
+    expect(outlineSketch(scene).links).toEqual([
+      { elementId: 'room', kind: 'ifcElement', ref: { documentId: 'doc_ifc', ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' } },
+      { elementId: 'note', kind: 'document', ref: { documentId: 'doc_plan', page: 4 } },
+    ])
+    expect(JSON.stringify(sketchReadingOf('Skizze', scene))).not.toMatch(/doc_|2O2Fr/)
+  })
+})

@@ -83,6 +83,44 @@ describe('applySketchEdit', () => {
     expect(byId(scene, 'hall')?.boundElements).toContainEqual({ type: 'arrow', id: 'a2' })
   })
 
+  it('sets an element’s link whole, removes it with null, and an added element keeps its own', () => {
+    const link = { documentId: 'doc_ifc', ifcGlobalId: '2O2Fr$t4X7Zf8NOew3FLOH' }
+    const linked = run([
+      { op: 'update', intent, id: 'kitchen', set: { customData: link } },
+      { op: 'add', intent, element: { type: 'text', id: 'note', x: 0, y: 400, text: 'S. 12', customData: { documentId: 'doc_plan', page: 12, x: 1 } } },
+    ]).scene
+    expect(byId(linked, 'kitchen')?.customData).toEqual(link)
+    expect(byId(linked, 'note')?.customData).toEqual({ documentId: 'doc_plan', page: 12 })
+    expect(outlineSketch(linked).links.map((l) => [l.elementId, l.kind])).toEqual([
+      ['kitchen', 'ifcElement'],
+      ['note', 'document'],
+    ])
+    const unlinked = applySketchEdit(linked, [{ op: 'update', intent, id: 'kitchen', set: { customData: null } }], { nonce: () => 7, now: 2 }).scene
+    expect(byId(unlinked, 'kitchen')?.customData).toBeUndefined()
+  })
+
+  it('reports a link as a change only when the kept link changed', () => {
+    const link = { documentId: 'doc_plan', page: 2 }
+    const linked = run([{ op: 'update', intent, id: 'hall', set: { customData: link } }])
+    expect(linked.diff.changed).toEqual(['hall'])
+    // The same link again, its keys in another order: nothing a save keeps moved.
+    const again = applySketchEdit(linked.scene, [{ op: 'update', intent, id: 'hall', set: { customData: { page: 2, documentId: 'doc_plan' } } }], {
+      nonce: () => 7,
+      now: 2,
+    })
+    expect(again.diff.changed).toEqual([])
+    // A foreign key a stored scene carries from before drops on save, so it is no change either.
+    const stale = { ...linked.scene, elements: linked.scene.elements.map((e) => (e.id === 'hall' ? { ...e, customData: { ...link, tracker: 'x' } } : e)) }
+    expect(applySketchEdit(stale, [{ op: 'update', intent, id: 'hall', set: { customData: link } }], { nonce: () => 7, now: 3 }).diff.changed).toEqual([])
+  })
+
+  it('refuses a link that is not one on the wire', () => {
+    const op = (customData: unknown) => ({ baseVersionId: 'v', ops: [{ op: 'update', intent, id: 'kitchen', set: { customData } }] })
+    expect(sketchEditSchema.safeParse(op({ documentId: 'doc', ifcGlobalId: 'short' })).success).toBe(false)
+    expect(sketchEditSchema.safeParse(op({ documentId: 'doc', taskId: 't' })).success).toBe(false)
+    expect(sketchEditSchema.safeParse(op({ documentId: 'doc', page: 3 })).success).toBe(true)
+  })
+
   it('refuses an add whose id is taken, also by a deleted element, and an unknown binding', () => {
     expect(() => run([{ op: 'add', intent, element: { type: 'text', id: 'gone', x: 0, y: 0, text: 'x' } }])).toThrow(SketchEditError)
     try {

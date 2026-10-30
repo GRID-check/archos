@@ -15,6 +15,7 @@
 
 import { z } from 'zod'
 import { SKETCH_ELEMENT_TYPES } from './sketch-fence'
+import { sketchLinkSchema } from './sketch-links'
 
 /** At most this many operations in one edit: a proposal a person reads through. */
 export const MAX_SKETCH_EDIT_OPS = 60
@@ -42,7 +43,7 @@ export const SKETCH_EDIT_ALIGNS = ['start', 'center', 'end'] as const
 export const SKETCH_EDIT_EDGES = ['left', 'center', 'right', 'top', 'middle', 'bottom'] as const
 export const SKETCH_EDIT_AXES = ['horizontal', 'vertical'] as const
 
-/** What `update` may set: geometry, style, the label or text, and `customData` keys the scene keeps (`sketch-scene.ts`). */
+/** What `update` may set: geometry, style, the label or text, and the element's link (`customData`, `sketch-links.ts`). */
 export const sketchEditSetSchema = z
   .object({
     x: coordinate.optional(),
@@ -55,7 +56,10 @@ export const sketchEditSetSchema = z
     strokeStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
     label: z.object({ text: z.string().max(500) }).optional().describe('Empty removes it.'),
     text: z.string().min(1).max(500).optional(),
-    customData: z.record(z.string(), z.unknown()).optional(),
+    customData: sketchLinkSchema
+      .nullable()
+      .optional()
+      .describe('`documentId` + `page`, + `ifcGlobalId` (its IFC model), or + `annotationId`; null unlinks.'),
   })
   .strict()
 

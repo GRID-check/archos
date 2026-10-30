@@ -19,9 +19,15 @@
  * floor), which nothing else locates. Coordinates are Excalidraw's scene
  * coordinates, y downwards; a sketch claims no dimension, so they are positions
  * on the sheet, never measurements.
+ *
+ * And the links (`sketch-links.ts`): which element points at which document,
+ * model element or Anmerkung, by the ids it stores. What the reader may see of
+ * each target is the read's (`sketch-link-resolve.ts`), never the outline's: the
+ * outline is the scene's, and the scene is the same for every reader.
  */
 
 import type { SceneElement, SketchScene } from './sketch-scene'
+import { linksOf, type SketchOutlineLink } from './sketch-links'
 
 const SHAPE_TYPES: ReadonlySet<string> = new Set(['rectangle', 'ellipse', 'diamond'])
 const CONNECTOR_TYPES: ReadonlySet<string> = new Set(['arrow', 'line'])
@@ -79,6 +85,8 @@ export interface SketchOutline {
   shapes: SketchOutlineShape[]
   connections: SketchOutlineConnection[]
   frames: SketchOutlineFrame[]
+  /** The elements that link into the workspace, by stored ids. */
+  links: SketchOutlineLink[]
 }
 
 function clean(text: string | undefined): string | null {
@@ -148,7 +156,7 @@ export function outlineSketch(scene: SketchScene): SketchOutline {
   const elements = scene.elements.filter((element) => !element.isDeleted)
   const byId = new Map(elements.map((element) => [element.id, element]))
   const labels = labelsOf(elements)
-  const outline: SketchOutline = { texts: [], shapes: [], connections: [], frames: [] }
+  const outline: SketchOutline = { texts: [], shapes: [], connections: [], frames: [], links: linksOf(elements) }
 
   for (const element of elements) {
     if (element.type === 'text') {

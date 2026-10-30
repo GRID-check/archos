@@ -30,6 +30,7 @@
 
 import { DIAGRAM_SOURCE_FACTS } from './diagram-sources'
 import { SKETCH_ELEMENT_TYPES } from './sketch-fence'
+import { keptSketchLink, SKETCH_LINK_KEYS } from './sketch-links'
 
 export const MAX_SCENE_ELEMENTS = 2_000
 export const MAX_SCENE_COORDINATE = 1_000_000
@@ -39,23 +40,21 @@ export const MAX_SCENE_TEXT_CHARS = 5_000
 export const SCENE_ELEMENT_TYPES: ReadonlySet<string> = new Set([...SKETCH_ELEMENT_TYPES, 'freedraw'])
 
 /**
- * The `customData` keys a stored or travelling element may carry; every other
- * key is dropped. A slice that ties an element to something of the workspace
- * names its key here, one line, and both the save and the wire keep it.
+ * The `customData` keys a stored or travelling element may carry: a link into
+ * the workspace (`sketch-links.ts`, the one list). Every other key is dropped,
+ * and so is a link whose value is wrong.
  */
-export const SCENE_CUSTOM_DATA_KEYS: ReadonlySet<string> = new Set<string>([])
+export const SCENE_CUSTOM_DATA_KEYS: ReadonlySet<string> = new Set<string>(SKETCH_LINK_KEYS)
 
 /** The `appState` a stored scene keeps: what Excalidraw's own export writes (`APP_STATE_STORAGE_CONF`, `export: true`). */
 export const SCENE_APP_STATE_KEYS: ReadonlySet<string> = new Set(['gridSize', 'gridStep', 'gridModeEnabled', 'viewBackgroundColor'])
 
-/** An element without the fields a sketch does not carry: `link`, and `customData` outside the allow-list. */
+/** An element without the fields a sketch does not carry: `link`, and `customData` that is not a valid link. */
 export function withoutForeignFields<T extends Record<string, unknown>>(element: T): T {
   if (!('link' in element) && !('customData' in element)) return element
   const { link: _link, customData, ...rest } = element
-  const kept = isObject(customData)
-    ? Object.fromEntries(Object.entries(customData).filter(([key]) => SCENE_CUSTOM_DATA_KEYS.has(key)))
-    : {}
-  return (Object.keys(kept).length > 0 ? { ...rest, customData: kept } : rest) as unknown as T
+  const kept = keptSketchLink(customData)
+  return (kept ? { ...rest, customData: kept } : rest) as unknown as T
 }
 
 function keptAppState(appState: Json): Json {
