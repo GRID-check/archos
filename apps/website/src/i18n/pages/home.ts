@@ -139,7 +139,7 @@ const en: typeof de = {
   hero: {
     title: 'The workspace for architecture and planning firms.',
     text: '{name} brings AI into the planning process.\nFor teams that set new standards.',
-    alt: '{name}: plan changes since Rev. C, three changes with sources, beside the floor plan with the marked spots',
+    alt: '{name}: changes to the plan since Rev. C, three changes with their sources, beside the floor plan with the changes marked',
   },
   workload: {
     title: 'Every planning round creates work.\n{name} reduces it.',
@@ -152,10 +152,10 @@ const en: typeof de = {
       {
         title: 'One question. The whole project as context.',
         text: 'Backed by specialist knowledge, project and office.',
-        alt: '{name} derivation: one question about an appointment with the kitchen planner, below it ten sources from specialist knowledge, project knowledge and office files',
+        alt: '{name} shows how it reached the answer: a question about tomorrow’s meeting with the kitchen planner, and below it ten sources from specialist knowledge, project knowledge and office files',
       },
       {
-        title: 'Plan status and requirements. Compared directly.',
+        title: 'Plan revision and requirements. Checked against each other.',
         text: 'Deviations show up immediately.',
         alt: '{name} check: ceiling height 10 cm too low, with sources from the room schedule and the section, beside the marked section',
       },
@@ -180,11 +180,11 @@ const en: typeof de = {
     duo: [
       {
         title: 'Planners design.',
-        text: 'Design, stance and innovation stay with people.',
+        text: 'Design, judgement and innovation stay with people.',
       },
       {
         title: 'AI searches, compares and checks.',
-        text: 'What can be automated, {name} takes over. That way, building gets faster and safer.',
+        text: '{name} takes over what can be automated, so building gets faster and safer.',
       },
     ],
   },
@@ -198,24 +198,24 @@ const en: typeof de = {
       },
       {
         title: 'Understands plans and models',
-        text: '{name} works on visual data: on plans and 3D models, not only on text.',
+        text: '{name} reads visual data: plans and 3D models, not just text.',
       },
       {
-        title: 'Get the work done on the plan',
+        title: 'Work directly on the plan',
         text: 'Ask, check and keep working directly in the plan or the model.',
       },
     ],
   },
   roadmap: {
-    title: 'Progress that reaches the office day to day.',
+    title: 'Progress you notice in the office every day.',
     steps: [
       {
         when: 'Today',
-        text: 'Plans, models, documents and office knowledge in one workspace. {name} searches projects, compares plan states and checks models against requirements and building law.',
+        text: 'Plans, models, documents and office knowledge in one workspace. {name} searches projects, compares plan revisions and checks models against requirements and building law.',
       },
       {
         when: 'Next',
-        text: '{name} takes over entire workflows. New plan states are checked automatically for risks, requirements and the wishes of the client.',
+        text: '{name} takes over entire workflows. Every new plan revision is checked automatically against risks, requirements and the client’s wishes.',
       },
       {
         when: 'Long term',
@@ -224,9 +224,9 @@ const en: typeof de = {
     ],
   },
   quote: {
-    text: 'The strength of architects is their stance, less their output. Handling the flood of information is something AI can do.',
+    text: 'An architect’s strength is their point of view, not their output. Handling the flood of information is something AI can do.',
     name: 'Ralph Reisinger',
-    role: 'Architect & project lead',
+    role: 'Architect & project lead (translated from German)',
     portraitAlt: 'Four men in conversation in front of a light brick facade',
   },
   founders: {

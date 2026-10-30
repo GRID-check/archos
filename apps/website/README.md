@@ -136,15 +136,22 @@ drifted. Change a token or a brand string in `packages/brand`, then sync.
 Reference media from the eight-page reference site, renamed in English by what each file shows.
 The table gives the source file and where it appears.
 
+The product screenshots (`product-*.webp`, 2560 px masters) are in `src/assets/media/`, not
+`public/media/`: views take them from `src/lib/media.ts` and render them with Astro's `<Image>`,
+which builds 640 to 2560 px variants with a `srcset` and `sizes`, so a phone loads the variant
+its layout needs (the hero at 390 px: 57 KB instead of 181 KB; a gallery card stays 2560 px,
+because on a phone it shows its image 500 px high and 1250 px wide). The built files have hashed names, so a replaced screenshot reaches every
+visitor at once. Everything else is in `public/media/`.
+
 | File in `public/media/` | Reference file | Where it is used |
 |---|---|---|
 | `planner-design-photo.webp` | `870709db80.webp` | Home, duo card "Planer:innen entwerfen." (photo, tinted) |
 | `ai-search-compare-photo.webp` | `1097bac5d4.webp` | Home, duo card "KI sucht, vergleicht und prüft." (dark, photo) |
-| `product-plan-revision-changes.webp` | `b3c4660c81.webp` | Home, product image under the hero (plan revision with sources) |
+| `product-plan-revision-changes.webp` | `b3c4660c81.webp`, the composer hint retouched to the current name (Inter Regular 15.6 px, the app's face when it was captured) | Home and „Planstände vergleichen“, hero image (plan revision with sources) |
 | `product-search-derivation.webp` | `895cf6a19d.webp` | Home, gallery slide 1, "Suchen" |
-| `product-compare-clearance.webp` | `ffa209f24b.webp` | Home, gallery slide 2, "Vergleichen" |
+| `product-compare-clearance.webp` | `ffa209f24b.webp` | Home, gallery slide 2, "Vergleichen"; „Planstände vergleichen“, requirements |
 | `product-model-check.webp` | `2a7b9ca2d2.webp` | Home, gallery slide 3, "Prüfen" (3D model check) |
-| `product-floor-plan-query.webp` | `58af499fe3.webp` | Home, "Gebaut für Architektur- & Planungsbüros." (floor plan with questions) |
+| `product-floor-plan-query.webp` | `58af499fe3.webp` | Home, "Gebaut für Architektur- & Planungsbüros." (floor plan with questions); „Baurecht durchsuchen“ and „KI für Architekturbüros“ (the escape-route question) |
 | `knowledge-video-poster.webp` | `c9e9e60311.webp` | Home, poster of the video "Das Wissen Ihres Büros wird nutzbar." |
 | `knowledge-video.webm` | `28f2a93346.webm` | Same video, first source (WebM) |
 | `knowledge-video.mp4` | `8cde9d7ebc.mp4` | Same video, second source (MP4) |

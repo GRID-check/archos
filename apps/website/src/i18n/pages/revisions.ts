@@ -89,11 +89,11 @@ const en: typeof de = {
   hero: {
     title: 'Comparing plan revisions.',
     text: 'Every new revision changes something. {name} shows what: side by side, overlaid or with a swipe, and on request marked on the plan.',
-    alt: '{name}: plan changes since Rev. C, three changes with sources, beside the floor plan with the marked spots',
+    alt: '{name}: changes to the plan since Rev. C, three changes with their sources, beside the floor plan with the changes marked',
   },
   intro: {
     title: 'What changed. At a glance.',
-    text: 'A new revision arrives from the structural engineer, the building services consultant or your own team. Until now that meant opening two PDFs, comparing sheet by sheet and hunting for clouds. In {name}, each document sits in one place with all its revisions, and comparing is one click.',
+    text: 'A new revision arrives from the structural engineer, the building services consultant or your own team. Until now that meant opening two PDFs, comparing sheet by sheet and hunting for revision clouds. In {name}, each document sits in one place with all its revisions, and comparing is one click.',
   },
   items: [
     {
@@ -115,16 +115,16 @@ const en: typeof de = {
   ],
   requirements: {
     title: 'Against what applies.',
-    text: 'A revision is only checked once it is compared with the requirements: room schedule, the client’s wishes, building law. {name} reads the plan and the project documents and shows deviations with their source, such as a ceiling height 10 cm below the room schedule.',
+    text: 'A revision is not checked until it has been compared with the requirements: room schedule, the client’s wishes, building law. {name} reads the plan and the project documents and shows deviations with their source, such as a ceiling height 10 cm below the room schedule.',
     imageAlt: '{name} check: ceiling height 10 cm too low, with sources from the room schedule and the section, beside the marked section',
   },
   round: {
     title: 'The review stays in the project.',
     items: [
-      { key: 'Annotations', value: 'Open annotations from an earlier revision carry over to the new one, with their number, place and thread.' },
-      { key: 'Notification', value: 'Whoever is assigned to a document hears in their inbox when a new revision replaces it, with the first line of the changes.' },
+      { key: 'Annotations', value: 'Open annotations from an earlier revision carry over to the new one, with their number, position and thread.' },
+      { key: 'Notification', value: 'Whoever is assigned to a document is told in their inbox when a new revision replaces it, with the first line of the changes.' },
       { key: 'Due dates', value: 'Whoever is responsible for an annotation sees its due date and is reminded the day before.' },
-      { key: 'Current state', value: '{name} answers from the current revision. It uses an older one only when you name it, and says so.' },
+      { key: 'Current revision', value: '{name} answers from the current revision. It uses an older one only when you name it, and says so.' },
     ],
   },
   faqTitle: 'Frequently asked questions.',
@@ -139,7 +139,7 @@ const en: typeof de = {
     },
     {
       q: 'Who decides whether a change is right?',
-      a: 'You do. {name} shows and names changes. What applies in the project, you confirm in the review.',
+      a: 'You do. {name} shows and names changes. You confirm in the review what applies to the project.',
     },
     {
       q: 'How do the plans get into {name}?',

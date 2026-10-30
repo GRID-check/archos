@@ -9,7 +9,8 @@
  * slash, plus old aliases the rows do not spell out (`/de/...`, `/en/<German segment>/...`):
  *   - a 301 row must answer 301 with the row's target, and the target must answer 200
  *     (one hop: the target is a page, never another redirect);
- *   - a Gone row must answer 410 with the not-found view's "no longer exists" heading.
+ *   - a Gone row must answer 410 with the not-found view's "no longer exists" heading;
+ *   - a HEAD request answers the same status as the GET.
  * A target that other work adds (`PENDING_TARGETS`, empty now) is reported, not failed,
  * while it still answers 404. Fails on anything else.
  */
@@ -70,6 +71,9 @@ async function statusOf(path) {
 async function expect(path, fate) {
   checked += 1
   const response = await fetch(`${base}${path}`, { redirect: 'manual' })
+  // HEAD answers what GET answers, without the body (RFC 9110); Astro alone would say 308.
+  const head = await fetch(`${base}${path}`, { method: 'HEAD', redirect: 'manual' })
+  if (head.status !== response.status) problems.push(`${path}: HEAD ${head.status}, GET ${response.status}`)
   if (fate === 'gone') {
     const body = await response.text()
     if (response.status !== 410) problems.push(`${path}: ${response.status}, expected 410`)

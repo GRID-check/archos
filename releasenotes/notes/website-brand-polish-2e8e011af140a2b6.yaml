@@ -9,6 +9,11 @@ improvements:
     Pages are easier to use with a keyboard, a screen reader or low vision:
     larger touch targets, readable text on photos, and a menu that closes with
     Escape.
+  - >
+    Product screenshots load in a size that fits the screen, so pages open
+    faster on phones.
+  - >
+    The English pages use one term, "plan revision", and read more naturally.
 fixes:
   - >
     Blog posts now use the ARCHOS name, and their links no longer lead to pages
@@ -16,3 +21,8 @@ fixes:
   - >
     Unknown addresses show a proper "page not found" page in German or English
     with ways back, instead of a bare error.
+  - >
+    The product image at the top of the home page and of "comparing plan
+    revisions" shows the ARCHOS name, and on the comparison page it is no
+    longer cut off at the edges. "Searching building law" now shows a
+    building-law question.
