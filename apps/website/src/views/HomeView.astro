@@ -42,6 +42,10 @@ const site = Astro.site ?? new URL(`https://${identity.domain}`);
 const product = softwareApplication(site, locale, c.meta.description, localePath('home', locale));
 
 const galleryImages = [productImages.searchDerivation, productImages.compareClearance, productImages.modelCheck];
+// The knowledge animation has German text baked into its frames and there is no English cut yet,
+// so only the German page plays it. Every product screenshot already appears on this page, and a
+// repeat reads as a fault, so the English section goes on to its next block without a visual.
+const showKnowledgeVideo = locale === 'de';
 const knowledgeVideo = {
   poster: '/media/knowledge-video-poster.webp',
   sources: [
@@ -95,9 +99,13 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
 
   <section class="ui-container ui-section">
     <SectionIntro size="display" align="center" title={c.knowledge.title} text={c.knowledge.text} />
-    <div style="margin-top: var(--space-16);">
-      <Video locale={locale} name="knowledge" sources={knowledgeVideo.sources} poster={knowledgeVideo.poster} label={c.knowledge.videoLabel} />
-    </div>
+    {
+      showKnowledgeVideo && (
+        <div style="margin-top: var(--space-16);">
+          <Video locale={locale} name="knowledge" sources={knowledgeVideo.sources} poster={knowledgeVideo.poster} label={c.knowledge.videoLabel} />
+        </div>
+      )
+    }
     <div style="margin-top: var(--space-16);">
       <SectionIntro
         layout="split"

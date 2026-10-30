@@ -152,7 +152,7 @@ visitor at once. Everything else is in `public/media/`.
 | `product-compare-clearance.webp` | `ffa209f24b.webp` | Home, gallery slide 2, "Vergleichen"; „Planstände vergleichen“, requirements |
 | `product-model-check.webp` | `2a7b9ca2d2.webp` | Home, gallery slide 3, "Prüfen" (3D model check) |
 | `product-floor-plan-query.webp` | `58af499fe3.webp` | Home, "Gebaut für Architektur- & Planungsbüros." (floor plan with questions); „Baurecht durchsuchen“ and „KI für Architekturbüros“ (the escape-route question) |
-| `knowledge-video-poster.webp` | `c9e9e60311.webp` | Home, poster of the video "Das Wissen Ihres Büros wird nutzbar." |
+| `knowledge-video-poster.webp` | `c9e9e60311.webp` | German home only (its frames carry German text; the English home has no visual there until an English cut exists), poster of the video "Das Wissen Ihres Büros wird nutzbar." |
 | `knowledge-video.webm` | `28f2a93346.webm` | Same video, first source (WebM) |
 | `knowledge-video.mp4` | `8cde9d7ebc.mp4` | Same video, second source (MP4) |
 | `share-card.png` | none, drawn by `packages/brand/build-brand-assets.mjs` (the wordmark and tagline from identity, outlined in Switzer Semibold, on the warm white) | Every page, `og:image` and `twitter:card` (1200 × 630, social previews) |
