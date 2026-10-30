@@ -158,7 +158,9 @@ async function auditRoute(browser, base, route, found) {
     const page = await context.newPage()
     let scheme = 'light'
     try {
-      await page.goto(base + route, { waitUntil: 'load', timeout: 300000 })
+      const response = await page.goto(base + route, { waitUntil: 'load', timeout: 300000 })
+      // An error page has no title and no lang; reporting those would hide the real fault.
+      if (!response?.ok()) throw new Error(`HTTP ${response?.status() ?? 'no response'}`)
       await page.waitForTimeout(2500)
       await page.evaluate(axeSource)
       for (scheme of ['light', 'dark']) {
@@ -194,11 +196,11 @@ const base = process.env.A11Y_BASE_URL ?? server.origin
 console.log(`auditing ${routes.length} of ${all.length} routes against ${base}; ${args.named.length ? 0 : pending.length} pending (scripts/a11y-pending-routes.json)`)
 
 const launch = () => chromium.launch({ executablePath: process.env.A11Y_CHROME || undefined })
-let browser = await launch()
+let browser
 let relaunching
 /** The browser, relaunched once if it crashed (a long run on a busy machine can lose it). */
 const liveBrowser = async () => {
-  if (browser.isConnected()) return browser
+  if (browser?.isConnected()) return browser
   relaunching ??= launch().then((fresh) => {
     browser = fresh
     relaunching = undefined
@@ -210,6 +212,7 @@ const found = new Map()
 const queue = [...routes]
 const started = Date.now()
 try {
+  browser = await launch()
   await Promise.all(
     Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
       for (let route = queue.shift(); route; route = queue.shift()) {
@@ -219,7 +222,7 @@ try {
     }),
   )
 } finally {
-  await browser.close().catch(() => {})
+  await browser?.close().catch(() => {})
   server?.stop()
 }
 
@@ -238,11 +241,20 @@ const fresh = [...found.keys()].filter((key) => !known.has(key))
 const reportsOrphans = !args.named.length && (!args.shard || args.shard.index === 1)
 const orphan = (key) => reportsOrphans && !discovered.includes(key.split(' ')[0])
 const gone = [...known].filter((key) => (inScope(key) && !found.has(key)) || orphan(key))
+// On GitHub Actions each difference is also an annotation, which the check-run API returns.
+const annotate = (message) => process.env.GITHUB_ACTIONS === 'true' && console.log(`::error title=a11y::${message.replace(/\n/g, '%0A')}`)
 for (const key of fresh) {
   const v = found.get(key)
   console.log(`NEW   ${key}  x${v.count}  ${v.help}\n      ${v.sample}`)
+  annotate(`NEW ${key} x${v.count} ${v.help}: ${v.sample}`)
 }
-for (const key of gone) console.log(`FIXED ${key} (remove it from scripts/a11y-baseline.json)`)
-for (const route of stalePending) console.log(`GONE  ${route} (remove it from scripts/a11y-pending-routes.json)`)
+for (const key of gone) {
+  console.log(`FIXED ${key} (remove it from scripts/a11y-baseline.json)`)
+  annotate(`FIXED ${key} (remove it from scripts/a11y-baseline.json)`)
+}
+for (const route of stalePending) {
+  console.log(`GONE  ${route} (remove it from scripts/a11y-pending-routes.json)`)
+  annotate(`GONE ${route} (remove it from scripts/a11y-pending-routes.json)`)
+}
 console.log(`${found.size} violation groups, ${fresh.length} new, ${gone.length} fixed`)
 process.exit(fresh.length || gone.length || stalePending.length ? 1 : 0)
