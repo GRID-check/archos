@@ -27,6 +27,7 @@ import {
   type MaskedText,
 } from '@/lib/upload-screening/content-screen'
 import { SUGGESTED_SCREENING_POLICY } from '@/lib/upload-screening/policy'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const RULES = chatScreeningRules(SUGGESTED_SCREENING_POLICY)
 
@@ -75,7 +76,7 @@ export default function ChatScreeningDevPage(): JSX.Element {
         <h1 className="text-lg font-semibold">Composer — Sensible Daten</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           What the composer says before a message with sensitive data leaves the browser (ADR-0086).
-          Piloti&apos;s suggested list; the office&apos;s own list works the same way.
+          {PRODUCT_NAME}&apos;s suggested list; the office&apos;s own list works the same way.
         </p>
       </div>
       {SAMPLES.map((sample) => (

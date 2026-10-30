@@ -21,6 +21,7 @@ import { ScanSearch } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UploadScreeningCard } from '@/features/organization/components/upload-screening-card'
 import { SUGGESTED_SCREENING_POLICY } from '@/lib/upload-screening/policy'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const STATE = {
   policy: SUGGESTED_SCREENING_POLICY,
@@ -69,7 +70,7 @@ export default function UploadScreeningDevPage(): JSX.Element {
               <ScanSearch className="size-4 text-muted-foreground" aria-hidden />
               {view.title}
             </CardTitle>
-            <CardDescription>Piloti prüft jeden Upload gegen diese Listen. Was anschlägt, liest kein Modell.</CardDescription>
+            <CardDescription>{PRODUCT_NAME} prüft jeden Upload gegen diese Listen. Was anschlägt, liest kein Modell.</CardDescription>
           </CardHeader>
           <CardContent>
             <UploadScreeningCard canEdit={view.canEdit} />

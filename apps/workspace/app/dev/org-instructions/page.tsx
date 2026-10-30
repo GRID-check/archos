@@ -23,6 +23,7 @@ import { I18nProvider } from '@/i18n'
 import { OrgInstructionsForm } from '@/app/app/(shell)/organization/org-instructions-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ORG_INSTRUCTIONS_MAX_CHARS } from '@/lib/org-instructions/constants'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const WRITTEN = [
   'Antworten zuerst mit dem Ergebnis, dann mit der Begründung.',
@@ -57,7 +58,7 @@ export default function OrgInstructionsDevPage(): JSX.Element {
           <CardHeader>
             <CardTitle>Anweisungen</CardTitle>
             <CardDescription>
-              Was Piloti für Ihre Organisation dauerhaft beachten soll. Wird bei jeder Anfrage
+              Was {PRODUCT_NAME} für Ihre Organisation dauerhaft beachten soll. Wird bei jeder Anfrage
               mitgegeben.
             </CardDescription>
           </CardHeader>

@@ -59,6 +59,7 @@ import type {
 } from '@/lib/documents/lifecycle-types'
 import { DOCUMENT_VERSION_STATES } from '@/lib/documents/lifecycle-types'
 import type { FileItem } from '@/features/documents/file-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const REVIEWER = 'user_reviewer'
 const AUTHOR = 'user_anna'
@@ -498,7 +499,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
 
       <section className="space-y-3">
         <h2 className="text-muted-foreground text-sm font-medium">
-          Zurückgeben — und Piloti überarbeiten lassen
+          Zurückgeben — und {PRODUCT_NAME} überarbeiten lassen
         </h2>
         <div className="rounded-xl border p-4" data-preview-block="delegate">
           <DocumentRevisions

@@ -407,7 +407,7 @@ const filingProposal = (id: string, patch: Pick<FilingProposal, 'payload'>): Fil
 })
 
 /**
- * Piloti's two open filing suggestions for the project, one per target folder:
+ * The agent's two open filing suggestions for the project, one per target folder:
  * two files into a folder that exists, and one into a folder it would create.
  * What `GET /api/proposals?projectId=…&kind=file_operation` answers, so the
  * setup page's „Ablage“ section and its specs read the real shape.

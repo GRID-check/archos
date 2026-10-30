@@ -47,7 +47,7 @@ export const FILING_PROJECT_FOLDER: File[] = [
   fixtureFile('Wohnbau Nord/temp/Plot_EG_A1.pdf', 5.0 * MB),
 ]
 
-/** The office still on Piloti's suggested list; the reader manages the project. */
+/** The office still on the agent's suggested list; the reader manages the project. */
 export const FILING_SCREENING: ProjectUploadScreeningState = {
   policy: SUGGESTED_SCREENING_POLICY,
   office: SUGGESTED_SCREENING_POLICY,

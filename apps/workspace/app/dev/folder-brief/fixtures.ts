@@ -5,7 +5,7 @@
  * Every status the brief sorts is present once or more: mostly completed, three
  * in flight, one pending, four failed (two in `Pläne`, two in `Details`), one
  * held by the content screen, one agent report at rest, and five photos of the
- * site that Piloti read but could not place in a document type (three carry
+ * site that the agent read but could not place in a document type (three carry
  * what the camera wrote). Three earlier Fassungen sit in `03_Einreichung/alt`,
  * named with their index and linked to their newer one (`revision`), one of them
  * a failed read. The brief counts one entry per document (ADR-0099), so none of
@@ -41,7 +41,7 @@ interface DocSpec {
   summary?: string | null
   errorMessage?: string | null
   authoredBy?: DocumentAuthor
-  /** Piloti's open keywords beside the tags. */
+  /** The agent's open keywords beside the tags. */
   topics?: readonly string[] | null
   /** What the camera wrote, for a photo. */
   capture?: PhotoCapture | null
@@ -196,7 +196,7 @@ export const FILES: FileItem[] = [
     status: 'completed', createdAt: '2026-08-14T15:30:00Z', fileSize: 3_200_000,
     pageCount: 1, chunkCount: 12, contentTypes: ['drawing', 'text'], tags: ['Grundriss', 'Brandschutz'],
     summary: 'Grundriss Erdgeschoß Index C mit Fluchtwegen, Brandabschnitten und Stellplatzzufahrt.',
-    // The last topic is 40 characters, the longest Piloti writes
+    // The last topic is 40 characters, the longest the agent writes
     // (`MAX_TOPIC_LENGTH`): its chip truncates instead of widening the page.
     topics: ['Fluchtweg', 'Brandabschnitt', 'Stellplatzzufahrt', 'Brandabschnitte zwischen Tiefgarage & UG'],
     revision: current(GROUND_FLOOR_B),
