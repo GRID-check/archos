@@ -3,7 +3,8 @@
  * applies the operations on the server and saves the result as the next Fassung
  * (or into the open Freigabe draft), the picture drawn by the server (ADR-0149).
  * No operations and a note: nothing is saved, `{ declined: true, note }`. 409
- * `sketch_changed` when a newer Fassung no longer has an element the edit names;
+ * `sketch_changed` when a newer Fassung no longer has an element the edit names,
+ * or someone changed one it leans on (`sketch-edit-rebase.ts`);
  * 422 for an operation the sketch cannot take. Thin: the service is
  * `bff/diagrams/sketch-edit-service.ts`, the wire `bff/diagrams/sketch-edit-wire.ts`.
  *

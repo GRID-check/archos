@@ -15,6 +15,7 @@ vi.mock('@/lib/langfuse/sketch-score', () => ({ recordSketchEditScore: vi.fn(asy
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document } from '@/lib/db/schema/documents'
 import type { DocumentVersion } from '@/lib/db/schema/document-versions'
+import { PublishedVersionMovedError } from '@/lib/documents/published-guard'
 import { readVersionContent } from '@/lib/documents/version-content'
 import { findDocumentVersion, findPreviousVersion } from '@/lib/documents/version-repository'
 import { recordSketchEditScore } from '@/lib/langfuse/sketch-score'
@@ -53,6 +54,8 @@ const outcomes = () => vi.mocked(recordSketchEditScore).mock.calls.map(([input])
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // The Fassung an edit was made on, read for a rebase: the same scene unless a spec says otherwise.
+  vi.mocked(sketchSceneOfText).mockReturnValue(scene())
   vi.mocked(saveSketchDocument).mockResolvedValue({
     documentId: 'doc_1',
     versionId: 'ver_3',
@@ -85,6 +88,41 @@ describe('editSketchDocument', () => {
     const saved = await edit({ baseVersionId: 'ver_2', ops: [remove] })
     expect(saved).toMatchObject({ rebased: true })
     expect(vi.mocked(saveSketchDocument).mock.calls[0][0].body.baseVersionId).toBe('ver_5')
+    expect(outcomes()).toEqual(['rebased'])
+  })
+
+  it('refuses a rebase when a colleague changed the element the edit names in between', async () => {
+    vi.mocked(sketchSaveBaseOf).mockResolvedValue({
+      ...base('ver_5'),
+      scene: checkSketchScene({
+        type: 'excalidraw',
+        elements: [
+          { id: 'hall', type: 'rectangle', x: 0, y: 0, width: 160, height: 80 },
+          { id: 'store', type: 'rectangle', x: 500, y: 0, width: 160, height: 80, version: 4, versionNonce: 99 },
+        ],
+      }),
+    })
+    vi.mocked(sketchSceneOfText).mockReturnValue(
+      checkSketchScene({
+        type: 'excalidraw',
+        elements: [
+          { id: 'hall', type: 'rectangle', x: 0, y: 0, width: 160, height: 80 },
+          { id: 'store', type: 'rectangle', x: 300, y: 0, width: 160, height: 80, version: 3, versionNonce: 7 },
+        ],
+      })
+    )
+    await expect(edit({ baseVersionId: 'ver_2', ops: [remove] })).rejects.toBeInstanceOf(SketchChangedError)
+    expect(readVersionContent).toHaveBeenCalledWith(SESSION, 'doc_1', 'ver_2')
+    expect(saveSketchDocument).not.toHaveBeenCalled()
+    expect(outcomes()).toEqual(['refused'])
+  })
+
+  it('applies once more onto the newer Fassung when a colleague saved during the render', async () => {
+    vi.mocked(sketchSaveBaseOf).mockResolvedValueOnce(base('ver_2')).mockResolvedValueOnce(base('ver_3'))
+    vi.mocked(saveSketchDocument).mockRejectedValueOnce(new PublishedVersionMovedError('doc_1', 'ver_3'))
+    const saved = await edit({ baseVersionId: 'ver_2', ops: [remove] })
+    expect(saved).toMatchObject({ versionId: 'ver_3', rebased: true })
+    expect(vi.mocked(saveSketchDocument).mock.calls.map(([call]) => call.body.baseVersionId)).toEqual(['ver_2', 'ver_3'])
     expect(outcomes()).toEqual(['rebased'])
   })
 

@@ -13,21 +13,26 @@
  *
  * An edit names the Fassung it was made on (`baseVersionId`). When someone
  * saved since, the edit is applied to the newest one instead, as long as every
- * id it names is still drawn there: operations address elements, not a whole
- * scene, so a colleague's change elsewhere does not undo them. When one is
- * gone, nothing is saved and the answer is 409 `sketch_changed`.
+ * id it names is still drawn there and none of what it leans on changed
+ * (`sketch-edit-rebase.ts`): operations address elements, not a whole scene,
+ * so a colleague's change elsewhere does not undo them. When one is gone or
+ * changed, nothing is saved and the answer is 409 `sketch_changed`. A
+ * colleague's save landing while this one renders is retried once, as a
+ * rebase onto it.
  */
 
 import 'server-only'
 import { UnprocessableError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordDocumentAccess } from '@/lib/download-log/service'
+import { PublishedVersionMovedError } from '@/lib/documents/published-guard'
 import { readVersionContent } from '@/lib/documents/version-content'
 import { findDocumentVersion, findPreviousVersion } from '@/lib/documents/version-repository'
 import { recordSketchEditScore, type SketchEditOutcome } from '@/lib/langfuse/sketch-score'
 import { applySketchEdit, idsNamedBy, SketchEditError, type AppliedSketchScene } from './sketch-edit'
 import { sketchEditDiffElements } from './sketch-edit-diff'
 import { describeWarnings } from './sketch-edit-lints'
+import { changedUnderEdit } from './sketch-edit-rebase'
 import { saveSketchDocument, sketchSaveBaseOf, sketchSceneOfText, type SketchSaveBase } from './sketch-document'
 import { textsToMeasure } from './sketch-picture'
 import { sketchRenderer } from './sketch-renderer'
@@ -107,19 +112,59 @@ const facts = (body: SketchEditBody, applied: AppliedSketchScene) => ({
 
 /**
  * The edit on the scene it should go onto: `current` when the edit was made
- * on it, or when every id it names is still drawn there (a rebase).
+ * on it, or a newer Fassung (a rebase) when every id it names is still drawn
+ * there and nothing it leans on changed since (`sketch-edit-rebase.ts`).
  */
-function applyOnto(current: SketchSaveBase, body: SketchEditBody): { applied: AppliedSketchScene; rebased: boolean } {
+async function applyOnto(
+  session: AuthorizedSession,
+  current: SketchSaveBase,
+  body: SketchEditBody
+): Promise<{ applied: AppliedSketchScene; rebased: boolean }> {
   const rebased = body.baseVersionId !== current.versionId
   if (rebased) {
     const live = new Set(current.scene.elements.filter((element) => !element.isDeleted).map((element) => element.id))
     if (!idsNamedBy(body.ops).every((id) => live.has(id))) throw new SketchChangedError(current.versionId)
+    // An edit made on no Fassung has nothing to compare with; the ids it names are all it can be checked by.
+    if (body.baseVersionId) {
+      const base = sketchSceneOfText(await readVersionContent(session, current.document.id, body.baseVersionId))
+      if (changedUnderEdit(base, current.scene, body.ops).length > 0) throw new SketchChangedError(current.versionId)
+    }
   }
   try {
     return { applied: applySketchEdit(current.scene, body.ops), rebased }
   } catch (error) {
     // On a newer Fassung an add whose id was taken meanwhile is the sketch having changed, not a wrong edit.
     if (rebased && error instanceof SketchEditError) throw new SketchChangedError(current.versionId)
+    throw error
+  }
+}
+
+type SavedEdit = Omit<Awaited<ReturnType<typeof saveSketchDocument>>, 'answerRef' | 'pdfOutcome'>
+
+/** One try: the edit applied onto `current` and saved, or `moved` when a newer Fassung was saved meanwhile. */
+async function applyAndSave(
+  input: EditSketchInput,
+  current: SketchSaveBase
+): Promise<{ saved: SavedEdit; applied: AppliedSketchScene; rebased: boolean } | 'moved'> {
+  let outcome: { applied: AppliedSketchScene; rebased: boolean }
+  try {
+    outcome = await applyOnto(input.session, current, input.body)
+  } catch (error) {
+    if (error instanceof SketchEditError) score(current, 'refused', { refusal: error.refusal })
+    if (error instanceof SketchChangedError) score(current, 'refused', { refusal: 'sketch_changed' })
+    throw error
+  }
+  try {
+    const { answerRef: _ref, pdfOutcome: _pdf, ...saved } = await saveSketchDocument({
+      session: input.session,
+      documentId: input.documentId,
+      body: { scene: asSaveScene(outcome.applied.scene), baseVersionId: current.versionId, baseContentHash: current.contentHash },
+      marking: input.marking,
+      request: input.request,
+    })
+    return { saved, ...outcome }
+  } catch (error) {
+    if (error instanceof PublishedVersionMovedError) return 'moved'
     throw error
   }
 }
@@ -140,23 +185,15 @@ export async function editSketchDocument(input: EditSketchInput): Promise<Applie
     if (!body.note) throw new UnprocessableError('An edit needs at least one operation, or a note saying why it changes nothing.', { reason: 'empty-edit' })
     return { declined: true, note: body.note }
   }
-  const current = await sketchSaveBaseOf(session, input.documentId, 'write')
-  let outcome: { applied: AppliedSketchScene; rebased: boolean }
-  try {
-    outcome = applyOnto(current, body)
-  } catch (error) {
-    if (error instanceof SketchEditError) score(current, 'refused', { refusal: error.refusal })
-    if (error instanceof SketchChangedError) score(current, 'refused', { refusal: 'sketch_changed' })
-    throw error
+  let current = await sketchSaveBaseOf(session, input.documentId, 'write')
+  let attempt = await applyAndSave(input, current)
+  // A colleague's save landed while this one rendered: read the newer Fassung and apply onto it once more.
+  if (attempt === 'moved') {
+    current = await sketchSaveBaseOf(session, input.documentId, 'write')
+    attempt = await applyAndSave(input, current)
+    if (attempt === 'moved') throw new SketchChangedError(current.versionId)
   }
-  const { applied, rebased } = outcome
-  const { answerRef: _ref, pdfOutcome: _pdf, ...saved } = await saveSketchDocument({
-    session,
-    documentId: input.documentId,
-    body: { scene: asSaveScene(applied.scene), baseVersionId: current.versionId, baseContentHash: current.contentHash },
-    marking: input.marking,
-    request: input.request,
-  })
+  const { saved, applied, rebased } = attempt
   score(current, rebased ? 'rebased' : 'accepted', { metadata: { ...facts(body, applied), version_number: saved.versionNumber } })
   return {
     documentId: saved.documentId,
@@ -252,7 +289,7 @@ export async function checkSketchEditProposal(
   }
   let applied: AppliedSketchScene
   try {
-    applied = applyOnto(current, body).applied
+    applied = (await applyOnto(session, current, body)).applied
   } catch (error) {
     if (error instanceof SketchEditError) {
       score(current, 'refused', { refusal: error.refusal })
@@ -260,10 +297,13 @@ export async function checkSketchEditProposal(
     }
     if (error instanceof SketchChangedError) {
       score(current, 'refused', { refusal: 'sketch_changed' })
-      throw new ConflictError('The sketch changed since you read it and an element this edit names is gone: read it again with document-sketch-get and redo the edit.', {
-        reason: 'sketch_changed',
-        currentVersionId: error.currentVersionId,
-      })
+      throw new ConflictError(
+        'The sketch changed since you read it: an element this edit names is gone, or a colleague changed one it names or removes along. Read it again with document-sketch-get and redo the edit.',
+        {
+          reason: 'sketch_changed',
+          currentVersionId: error.currentVersionId,
+        }
+      )
     }
     throw error
   }
