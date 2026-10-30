@@ -193,7 +193,8 @@ def render_listing(listing: Listing, *, in_flight: Sequence[str] = ()) -> str:
 
     lines.append("")
     lines.append(
-        f"An index, not a source: a row proves the file exists, not what it says. It shows only what {PRODUCT_NAME} could "
+        "An index, not a source: a row proves the file exists, not what it says. "
+        f"It shows only what {PRODUCT_NAME} could "
         "read; a file whose reading failed is not here but under `documents_unreadable:` in the project context, "
         "and a file missing here is no proof it does not exist. Write file names exactly as they appear here: the "
         "reader sees each as a link that opens the file. Read: `read_passage(document=…)`; search inside: "

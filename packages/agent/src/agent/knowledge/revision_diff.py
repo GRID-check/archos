@@ -34,8 +34,9 @@ from dataclasses import dataclass
 from dataclasses import field
 from difflib import SequenceMatcher
 from typing import Any
-from agent.common.brand import PRODUCT_NAME
 from typing import Literal
+
+from agent.common.brand import PRODUCT_NAME
 
 #: Title-block fields in the order the report names them, with their German labels.
 TITLE_BLOCK_LABELS: tuple[tuple[str, str], ...] = (
@@ -475,7 +476,8 @@ def render_diff(
     if change_summary:
         lines.append(f"{PRODUCT_NAME}'s summary of the change (from the descriptions): {_clip(change_summary)}")
     lines.append(
-        f"What was compared is the printed text and {PRODUCT_NAME}'s reading of the drawings, not the drawings themselves. "
+        f"What was compared is the printed text and {PRODUCT_NAME}'s reading of the drawings, "
+        "not the drawings themselves. "
         "Check a dimension by reading the document before stating it; marks on the page are shown by "
         "„Vergleichen“ in Dateien."
     )

@@ -819,7 +819,10 @@ class TestTopicsAndCaptureInTheListing:
         rows = _topical(("Attika", "Fluchtweg"), ("attika",), ("Holz",))
         listing = select_files(rows)
         assert listing.topics == [("Attika", 2), ("Fluchtweg", 1), ("Holz", 1)]
-        assert f"Topics (recognised by {PRODUCT_NAME}): Attika 2 · Fluchtweg 1 · Holz 1." in render_listing(listing).splitlines()
+        assert (
+            f"Topics (recognised by {PRODUCT_NAME}): Attika 2 · Fluchtweg 1 · Holz 1."
+            in render_listing(listing).splitlines()
+        )
 
     def test_the_profile_names_at_most_eight_topics_and_counts_the_whole_selection(self):
         rows = _topical(*[(f"Thema{index:02}",) for index in range(10)])
