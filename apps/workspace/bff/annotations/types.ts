@@ -441,6 +441,10 @@ export const agentRepliedSince = (
 /** The statuses that still ask something of somebody: open, and Piloti's proposals nobody has decided on. */
 export const LIVE_ANNOTATION_STATUSES = ['open', 'proposed'] as const satisfies readonly AnnotationStatus[]
 
+/** Piloti's mark that no person took over: a proposal still, or one dismissed as one. Not yet the office's record. */
+export const isUnreviewedProposal = (annotation: Pick<AnnotationView, 'authorKind' | 'acceptedBy'>): boolean =>
+  annotation.authorKind === 'piloti' && annotation.acceptedBy === null
+
 /** Whether an Anmerkung still asks something of somebody. */
 export const isLive = (annotation: Pick<AnnotationView, 'status'>): boolean =>
   (LIVE_ANNOTATION_STATUSES as readonly AnnotationStatus[]).includes(annotation.status)

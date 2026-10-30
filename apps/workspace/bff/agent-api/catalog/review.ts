@@ -24,6 +24,7 @@ import {
   ANNOTATION_EXPORT_REVISIONS,
   ANNOTATION_EXPORT_SCOPES,
 } from '@/lib/annotations/export-request'
+import { BCF3_MEDIA_TYPE, bcf3QuerySchema } from '@/lib/bim/bcf3-wire'
 import { projectProtocolQuerySchema } from '@/lib/annotations/project-types'
 import type { AgentOperation } from '../operation'
 
@@ -449,6 +450,20 @@ export const reviewOperations = [
     }),
     binaryResponse: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
     load: () => import('@/app/api/documents/[id]/annotations/export/route'),
+  },
+  {
+    name: 'document-annotations-bcf-export',
+    domain: 'review',
+    summary: 'Export a model’s annotations as a BCF 3.0 file',
+    description:
+      'An IFC model’s annotations as a BCF 3.0 file for a BIM tool: topics with camera, section, elements, snapshot, ' +
+      'assignee, due date and thread. Untaken proposals are left out; snapshots past 4 MiB in all are left out.',
+    method: 'GET',
+    path: '/api/documents/[id]/annotations/bcf',
+    params: documentParams,
+    query: bcf3QuerySchema,
+    binaryResponse: [BCF3_MEDIA_TYPE],
+    load: () => import('@/app/api/documents/[id]/annotations/bcf/route'),
   },
   {
     name: 'project-annotations-export',

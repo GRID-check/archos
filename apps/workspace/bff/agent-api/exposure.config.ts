@@ -280,6 +280,7 @@ export const EXPOSURE = {
   'annotation-reply-update': OFFERED,
   'annotation-update': { external: true, piloti: 'native:canvas__update', reason: CANVAS },
   'annotation-viewpoint-get': OFFERED,
+  'document-annotations-bcf-export': OFFERED,
   'document-annotations-export': OFFERED,
   'document-quarantine-allow': SENSITIVE,
   'document-quarantine-allow-request': OFFERED,
@@ -704,7 +705,6 @@ export const EXPOSURE = {
   'platform-skill-update': PLATFORM,
   'platform-storage-overview': PLATFORM,
   'platform-vectors-reconcile': PLATFORM,
-
   // the agent’s read tools (`backend-operations.ts`)
   'knowledge-search': { external: true, piloti: 'native:knowledge_search', reason: NATIVE_READ },
   'passage-read': { external: true, piloti: 'native:read_file', reason: NATIVE_READ },

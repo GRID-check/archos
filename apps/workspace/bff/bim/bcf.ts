@@ -116,10 +116,10 @@ const ILLEGAL_XML = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\ufffe\
 
 const clean = (value: string): string => value.replace(ILLEGAL_XML, '')
 
-const text = (value: string): string => xml(clean(value))
+export const text = (value: string): string => xml(clean(value))
 
 /** ISO-8601 with seconds and a `Z` — `xsd:dateTime` as every reader wants it. */
-const isoDate = (value: Date): string => `${value.toISOString().slice(0, 19)}Z`
+export const isoDate = (value: Date): string => `${value.toISOString().slice(0, 19)}Z`
 
 // ---------------------------------------------------------------------------
 // Deterministic ids

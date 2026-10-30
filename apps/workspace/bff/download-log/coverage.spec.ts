@@ -129,6 +129,11 @@ const OBJECT_READERS: Record<string, Disposition> = {
     exempt:
       'presigns the person’s own staged .pst for the filing job to hand the backend, whose range reader opens it for libpff: a machine reading an upload in flight, not a document’s bytes. Nobody downloads it; the mails it files are documents, logged when a person opens them.',
   },
+  'lib/annotations/viewpoint-snapshot.ts::readSnapshot': {
+    servesPerson: true,
+    exempt:
+      'the picture the viewer drew when an Anmerkung was set on a model view: part of the mark, not the model file. Its readers (readViewpointSnapshot, the BCF 3.0 export) gate it like reading the document; the export records document.annotations.exported.',
+  },
   'lib/s3.ts::presignForBackend': {
     exempt:
       'signs, against the in-network endpoint, the command its caller built for the backend, a machine. A caller that reads builds the GetObjectCommand itself and is classified here in its own right.',
@@ -184,6 +189,12 @@ const ROUTES: Record<string, RouteDisposition> = {
   },
   'documents/[id]/annotations/export/route.ts': {
     exempt: 'renders the document’s Anmerkungen and their threads as a Protokoll; none of the document’s bytes, and the audit event document.annotations.exported records it.',
+  },
+  'documents/[id]/annotations/bcf/route.ts': {
+    exempt: 'renders a model’s Anmerkungen, their threads and viewpoint pictures as a BCF 3.0 file; none of the model file’s bytes, and the audit event document.annotations.exported (format bcf3) records it.',
+  },
+  'documents/[id]/annotations/[annotationId]/snapshot/route.ts': {
+    exempt: 'the picture of one Anmerkung’s model view, part of the mark; see OBJECT_READERS.readSnapshot.',
   },
   'projects/[id]/annotations/export/route.ts': {
     exempt: 'renders the open Anmerkungen of a project’s documents and their threads as one Protokoll; none of a document’s bytes, and the audit event project.annotations.exported records it.',

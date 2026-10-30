@@ -18,6 +18,11 @@ const decoder = new TextDecoder()
 
 /** Entry path → decoded UTF-8 content, in central-directory order. */
 export function readZipEntries(bytes: Uint8Array): Map<string, string> {
+  return new Map([...readZipFiles(bytes)].map(([path, data]) => [path, decoder.decode(data)]))
+}
+
+/** Entry path → its bytes as stored, for binary entries (a snapshot picture). */
+export function readZipFiles(bytes: Uint8Array): Map<string, Uint8Array> {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
 
   let eocd = -1
@@ -31,7 +36,7 @@ export function readZipEntries(bytes: Uint8Array): Map<string, string> {
 
   const count = view.getUint16(eocd + 10, true)
   let at = view.getUint32(eocd + 16, true)
-  const out = new Map<string, string>()
+  const out = new Map<string, Uint8Array>()
 
   for (let i = 0; i < count; i += 1) {
     if (view.getUint32(at, true) !== 0x02014b50) throw new Error('bad central directory signature')
@@ -49,7 +54,7 @@ export function readZipEntries(bytes: Uint8Array): Map<string, string> {
     const data = bytes.subarray(dataAt, dataAt + size)
     if (crc32(data) !== crc) throw new Error(`crc mismatch for ${path}`)
 
-    out.set(path, decoder.decode(data))
+    out.set(path, data)
     at += 46 + nameLength + extraLength + commentLength
   }
   return out

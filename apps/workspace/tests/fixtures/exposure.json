@@ -1240,6 +1240,16 @@
    "withheld": null,
    "reason": null
   },
+  "document-annotations-bcf-export": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "document-annotations-export": {
    "kind": "catalog",
    "domain": "review",

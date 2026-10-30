@@ -219,6 +219,7 @@
    "annotationOp": null,
    "operations": [
     "document-annotations-export",
+    "document-annotations-bcf-export",
     "project-annotations-export"
    ],
    "canvas": {

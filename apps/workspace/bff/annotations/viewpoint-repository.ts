@@ -9,7 +9,7 @@
  */
 
 import 'server-only'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { annotationViewpoints, type AnnotationViewpointRow } from '@/lib/db/schema/annotation-viewpoints'
 import { bimElements, bimModels } from '@/lib/db/schema/bim'
@@ -115,6 +115,31 @@ export async function findViewpoint(
       .limit(1)
   )
   return row ?? null
+}
+
+/** These viewpoints of one document, in one query. The service read the document through its reader. */
+export async function findViewpoints(
+  organizationId: string,
+  documentId: string,
+  viewpointIds: readonly string[]
+): Promise<AnnotationViewpointRow[]> {
+  if (viewpointIds.length === 0) return []
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select()
+      .from(annotationViewpoints)
+      .where(
+        and(
+          eq(annotationViewpoints.organizationId, organizationId),
+          eq(annotationViewpoints.documentId, documentId),
+          inArray(annotationViewpoints.id, [...viewpointIds])
+        )
+      )
+      // A stable order, so a caller that walks the rows sees them the same way twice.
+      .orderBy(asc(annotationViewpoints.id))
+      .limit(viewpointIds.length)
+  )
 }
 
 /** The short form of each of these viewpoints, in one query, keyed by viewpoint id. */

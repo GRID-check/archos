@@ -59,7 +59,7 @@ import { getLocale, getTranslations } from '@/i18n/server'
 import type { Translator } from '@/i18n/translate'
 import { filesCopy } from '@/i18n/namespaces/files'
 import { listAnnotations } from './service'
-import { isLive, isOverdue, type AnnotationView } from './types'
+import { isLive, isOverdue, isUnreviewedProposal, type AnnotationView } from './types'
 import { protocolFileNameOf, type AnnotationExportOptions } from './export-request'
 
 export const MARKDOWN_MEDIA_TYPE = 'text/markdown; charset=utf-8'
@@ -103,9 +103,7 @@ export interface Protocol {
   body: DocBlock[]
 }
 
-/** Piloti's mark that no person took over: a proposal still, or one dismissed as one. */
-const unreviewed = (annotation: AnnotationView): boolean =>
-  annotation.authorKind === 'piloti' && annotation.acceptedBy === null
+const unreviewed = isUnreviewedProposal
 
 const byNumber = (a: AnnotationView, b: AnnotationView): number => a.number - b.number
 

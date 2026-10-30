@@ -11161,6 +11161,84 @@
         }
       }
     },
+    "/api/documents/{id}/annotations/bcf": {
+      "get": {
+        "operationId": "document-annotations-bcf-export",
+        "summary": "Export a model’s annotations as a BCF 3.0 file",
+        "description": "An IFC model’s annotations as a BCF 3.0 file for a BIM tool: topics with camera, section, elements, snapshot, assignee, due date and thread. Untaken proposals are left out; snapshots past 4 MiB in all are left out.",
+        "tags": [
+          "review"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or workspace-search."
+            },
+            "description": "The document id, from a project document listing or workspace-search."
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "all (default): closed ones too; open: what still asks something.",
+              "type": "string",
+              "enum": [
+                "open",
+                "all"
+              ]
+            },
+            "description": "all (default): closed ones too; open: what still asks something."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Export a model’s annotations as a BCF 3.0 file",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/annotations/export": {
       "get": {
         "operationId": "document-annotations-export",

@@ -993,6 +993,24 @@
    "describe": "{\"name\":\"annotation-reply-update\",\"domain\":\"review\",\"summary\":\"Reword one of your own replies\",\"description\":\"Rewords one’s own reply while the annotation is live and Piloti has not taken it up (else 409). Returns the annotation with its thread.\",\"annotations\":{\"title\":\"Reword one of your own replies\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or workspace-search.\"},\"annotationId\":{\"type\":\"string\",\"description\":\"The annotation id, from annotation-list.\"},\"replyId\":{\"type\":\"string\",\"description\":\"The reply id, from the annotation’s `replies` in annotation-get.\"}},\"required\":[\"id\",\"annotationId\",\"replyId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"mentions\":{\"maxItems\":10,\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"targetId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"display\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"required\":[\"targetId\",\"display\"],\"additionalProperties\":false}}},\"required\":[\"body\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
+   "name": "annotation-viewpoint-get",
+   "domain": "review",
+   "summary": "Read the 3D view an annotation is set in",
+   "description": "The 3D view of an annotation on a model (camera, section planes, elements by GlobalId; IFC world coordinates, Z-up, metres). A mark on a page has none (404).",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"annotation-viewpoint-get\",\"domain\":\"review\",\"summary\":\"Read the 3D view an annotation is set in\",\"description\":\"The 3D view of an annotation on a model (camera, section planes, elements by GlobalId; IFC world coordinates, Z-up, metres). A mark on a page has none (404).\",\"annotations\":{\"title\":\"Read the 3D view an annotation is set in\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or workspace-search.\"},\"annotationId\":{\"type\":\"string\",\"description\":\"The annotation id, from annotation-list.\"}},\"required\":[\"id\",\"annotationId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
+   "name": "document-annotations-bcf-export",
+   "domain": "review",
+   "summary": "Export a model’s annotations as a BCF 3.0 file",
+   "description": "An IFC model’s annotations as a BCF 3.0 file for a BIM tool: topics with camera, section, elements, snapshot, assignee, due date and thread. Untaken proposals are left out; snapshots past 4 MiB in all are left out.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"document-annotations-bcf-export\",\"domain\":\"review\",\"summary\":\"Export a model’s annotations as a BCF 3.0 file\",\"description\":\"An IFC model’s annotations as a BCF 3.0 file for a BIM tool: topics with camera, section, elements, snapshot, assignee, due date and thread. Untaken proposals are left out; snapshots past 4 MiB in all are left out.\",\"annotations\":{\"title\":\"Export a model’s annotations as a BCF 3.0 file\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or workspace-search.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"scope\":{\"default\":\"all\",\"description\":\"all (default): closed ones too; open: what still asks something.\",\"type\":\"string\",\"enum\":[\"open\",\"all\"]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
+  },
+  {
    "name": "document-annotations-export",
    "domain": "review",
    "summary": "Export a document’s annotations as a minutes file",
@@ -2164,6 +2182,7 @@
    "project-cleanup-confirm",
    "project-cleanup-propose",
    "annotation-list",
+   "document-annotations-bcf-export",
    "conversation-message-update"
   ],
   "assign document responsible": [
@@ -2172,11 +2191,11 @@
    "assignment-list",
    "document-version-submit",
    "annotation-list",
+   "document-annotations-bcf-export",
    "assignment-remove",
    "project-annotation-list",
    "document-archive",
-   "document-bin",
-   "document-delete"
+   "document-bin"
   ],
   "Verantwortlich zuweisen": [
    "assignment-add",
@@ -2189,16 +2208,18 @@
    "annotation-reply-update",
    "annotation-get",
    "annotation-list",
+   "annotation-viewpoint-get",
+   "document-annotations-bcf-export",
    "document-annotations-export",
    "project-annotation-list",
    "project-annotations-export",
-   "feedback-thread-reply",
-   "feedback-thread-get",
-   "workspace-search"
+   "feedback-thread-reply"
   ],
   "Anmerkung beantworten": [
    "annotation-get",
    "annotation-list",
+   "annotation-viewpoint-get",
+   "document-annotations-bcf-export",
    "document-annotations-export",
    "annotation-reply-delete",
    "annotation-reply-update",
