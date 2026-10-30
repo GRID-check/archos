@@ -19,6 +19,7 @@ import { createSketchRenderer, SketchRenderError, type SketchRenderer } from './
 import { applySketchEdit } from './sketch-edit'
 import { sketchEditDiffElements, DIFF_COLORS } from './sketch-edit-diff'
 import { textsToMeasure } from './sketch-picture'
+import { SKETCH_DOM_OPTIONS } from './sketch-render-dom'
 import { checkSketchScene } from './sketch-scene'
 
 const FIXTURES = join(process.cwd(), 'bff', 'diagrams', '__fixtures__')
@@ -111,6 +112,18 @@ describe('the sketch renderer', () => {
     await expect(slow.render({ elements: [], remeasure: [] })).rejects.toMatchObject({ reason: 'timeout' })
     await expect(slow.render({ elements: [], remeasure: [] })).rejects.toBeInstanceOf(SketchRenderError)
     await slow.close()
+  })
+
+  it('gives the worker a document that runs and loads nothing', () => {
+    expect(SKETCH_DOM_OPTIONS.url).toBe('about:blank')
+    expect(SKETCH_DOM_OPTIONS.settings).toMatchObject({
+      enableJavaScriptEvaluation: false,
+      disableJavaScriptFileLoading: true,
+      disableCSSFileLoading: true,
+      enableImageFileLoading: false,
+      disableIframePageLoading: true,
+      navigation: { disableMainFrameNavigation: true, disableChildFrameNavigation: true, disableChildPageNavigation: true },
+    })
   })
 
   it('says so when there is no renderer to start', async () => {

@@ -45,6 +45,9 @@ export const POST = apiRoute<Params>(
       }
       if (error instanceof DiagramSvgError) throw new BadRequestError(diagrams.rejected[error.rejection])
       if (error instanceof SketchSceneError) throw new BadRequestError(diagrams.sketch.sceneRejected, { refusal: error.refusal })
+      if (error instanceof SketchRenderError && error.reason === 'too_much_text') {
+        throw new UnprocessableError(diagrams.sketch.tooMuchText, { reason: 'too_much_text' })
+      }
       if (error instanceof SketchRenderError) throw new ServiceUnavailableError(diagrams.sketch.renderUnavailable, { reason: error.reason })
       throw error
     }

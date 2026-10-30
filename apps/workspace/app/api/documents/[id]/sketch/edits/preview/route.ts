@@ -32,6 +32,9 @@ export const POST = apiRoute<Params>(
         const message = locale === 'en' ? sketchEditRefusalMessage(error) : diagrams.sketchEdit.refused
         throw new UnprocessableError(message, { reason: 'sketch-edit-refused', refusal: error.refusal, op: error.opIndex + 1, elementId: error.elementId })
       }
+      if (error instanceof SketchRenderError && error.reason === 'too_much_text') {
+        throw new UnprocessableError(diagrams.sketch.tooMuchText, { reason: 'too_much_text' })
+      }
       if (error instanceof SketchRenderError) throw new ServiceUnavailableError(diagrams.sketch.renderUnavailable, { reason: error.reason })
       throw error
     }

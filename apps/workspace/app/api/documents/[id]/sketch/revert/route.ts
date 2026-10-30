@@ -7,7 +7,7 @@
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { BadRequestError, ConflictError, ServiceUnavailableError } from '@/lib/api/errors'
+import { BadRequestError, ConflictError, ServiceUnavailableError, UnprocessableError } from '@/lib/api/errors'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { getLocale } from '@/i18n/server'
 import { revertSketchDocument, SketchMovedOnError } from '@/lib/diagrams/sketch-edit-service'
@@ -30,6 +30,9 @@ export const POST = apiRoute<Params>(
       }
       if (error instanceof DiagramSvgError) throw new BadRequestError(diagrams.rejected[error.rejection])
       if (error instanceof SketchSceneError) throw new BadRequestError(diagrams.sketch.sceneRejected, { refusal: error.refusal })
+      if (error instanceof SketchRenderError && error.reason === 'too_much_text') {
+        throw new UnprocessableError(diagrams.sketch.tooMuchText, { reason: 'too_much_text' })
+      }
       if (error instanceof SketchRenderError) throw new ServiceUnavailableError(diagrams.sketch.renderUnavailable, { reason: error.reason })
       throw error
     }

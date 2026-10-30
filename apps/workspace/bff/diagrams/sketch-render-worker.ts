@@ -28,6 +28,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parentPort, workerData } from 'node:worker_threads'
+import { getHeapStatistics } from 'node:v8'
 import { facesFrom, type FontCoverage } from './sketch-font-faces'
 import { fitContainerToLabel } from './sketch-label-fit'
 import { installSketchDom } from './sketch-render-dom'
@@ -121,7 +122,8 @@ async function render(request: SketchRenderRequest): Promise<SketchRenderRespons
     exportPadding: 16,
     skipInliningFonts: true,
   })
-  return { id: request.id, ok: true, svg: fileable(svg), remeasured, ms: Math.round(performance.now() - started) }
+  const heapMb = Math.round(getHeapStatistics().used_heap_size / 2 ** 20)
+  return { id: request.id, ok: true, svg: fileable(svg), remeasured, ms: Math.round(performance.now() - started), heapMb }
 }
 
 parentPort?.on('message', (request: SketchRenderRequest) => {

@@ -147,6 +147,8 @@ export const diagrams = {
     /** 409: someone saved a newer version since this one was opened. */
     staleVersion: 'A newer version exists now. Open the sketch again to continue from it.',
     renderUnavailable: 'The sketch’s picture could not be drawn just now. Please save again in a moment.',
+    /** 422: more new or changed text than one render lays out (`MAX_REMEASURED_CHARS`). */
+    tooMuchText: 'The sketch has too much new text at once to draw its picture. Use shorter labels, or save in several steps.',
     sceneRejected: 'The sketch holds something that is not saved here: an image, embedded content or too many elements.',
     viewOnly: 'You can view this sketch but not change it. What the others draw shows here as they draw it.',
     agentFor: '{name} · for {forName}',

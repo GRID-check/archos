@@ -19,6 +19,8 @@ export type SketchRenderResponse =
       remeasured: Record<string, unknown>[]
       /** Time inside the worker. */
       ms: number
+      /** The worker's heap after the render, in MB, for the renderer to recycle it. */
+      heapMb?: number
     }
   | { id: number; ok: false; error: string }
 

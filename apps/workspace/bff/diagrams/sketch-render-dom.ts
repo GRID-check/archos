@@ -105,10 +105,36 @@ const WINDOW_GLOBALS = [
   'DocumentFragment',
 ] as const
 
+/**
+ * The document runs nothing and loads nothing: no script evaluated or fetched,
+ * no stylesheet, image or frame loaded, no navigation, on `about:blank`. No
+ * path from scene content reaches any of these today (element types are
+ * fenced, links dropped, files refused, the SVG never attached); this is the
+ * second wall, should one ever open.
+ */
+export const SKETCH_DOM_OPTIONS = {
+  url: 'about:blank',
+  settings: {
+    enableJavaScriptEvaluation: false,
+    disableJavaScriptEvaluation: true,
+    disableJavaScriptFileLoading: true,
+    disableCSSFileLoading: true,
+    enableImageFileLoading: false,
+    disableIframePageLoading: true,
+    handleDisabledFileLoadingAsSuccess: true,
+    navigation: {
+      disableMainFrameNavigation: true,
+      disableChildFrameNavigation: true,
+      disableChildPageNavigation: true,
+      disableFallbackToSetURL: true,
+    },
+  },
+} as const
+
 /** Install the document on this worker's globals. Throws on the main thread. */
 export function installSketchDom(metrics: TextMetrics): void {
   if (isMainThread) throw new Error('the sketch DOM is installed only inside its worker thread')
-  const window = new Window({ url: 'http://localhost/' })
+  const window = new Window(SKETCH_DOM_OPTIONS)
   const scope = globalThis as unknown as Globals
   const win = window as unknown as Globals
   for (const name of WINDOW_GLOBALS) scope[name] = win[name]

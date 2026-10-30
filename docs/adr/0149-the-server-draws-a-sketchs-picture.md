@@ -65,8 +65,13 @@ Chosen option 3.
   client bundle and `next build` never see it. Bun builds it, as it builds the jobs
   bundle and the MCP Apps views (ADR-0103), instead of a separate esbuild step.
 * **The bounds** (`sketch-renderer.ts`): one worker, one render at a time, 16 queued
-  (one more is a 503 `busy`), a 10 s deadline that terminates the worker, a 384 MB
-  old-generation cap, ended after 5 minutes idle.
+  (one more is a 503 `busy`), at most 4 of them one organization's (the S4 review:
+  one office's burst must not stall every other office's saves), at most 50,000
+  characters laid out again per render (more is a 422 `too_much_text`, refused
+  before it queues), a 10 s deadline that terminates the worker, a 384 MB
+  old-generation cap, recycled between renders after 500 renders or above a 256 MB
+  heap (its caches only grow under steady traffic), ended after 5 minutes idle.
+  Its document (happy-dom) runs no script and loads nothing, on `about:blank`.
 * **The save** (`PUT /api/documents/{id}/sketch`) takes `{ scene, baseVersionId }`;
   an `svg` field is dropped unread. The stored picture, and the PDF drawn from it, are
   always the server's. A render that fails is a 503 and scores `sketch-save:

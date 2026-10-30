@@ -88,6 +88,7 @@ export const diagrams: typeof en.diagrams = {
     saveFailed: 'Konnte nicht gespeichert werden',
     staleVersion: 'Inzwischen gibt es eine neuere Fassung. Öffnen Sie die Skizze erneut, um auf ihr weiterzuarbeiten.',
     renderUnavailable: 'Das Bild der Skizze konnte gerade nicht gezeichnet werden. Bitte gleich noch einmal speichern.',
+    tooMuchText: 'Die Skizze hat zu viel neuen Text auf einmal, um ihr Bild zu zeichnen. Bitte kürzere Beschriftungen verwenden oder in mehreren Schritten speichern.',
     sceneRejected: 'Die Skizze enthält etwas, das hier nicht gespeichert wird: ein Bild, eingebettete Inhalte oder zu viele Elemente.',
     viewOnly: 'Sie können diese Skizze ansehen, aber nicht ändern. Was die anderen zeichnen, erscheint hier sofort.',
     agentFor: '{name} · für {forName}',
