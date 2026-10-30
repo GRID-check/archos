@@ -86,6 +86,28 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("saved", "drafted", "pdf_stale", "conflict", "review_open", "refused", "render_failed"),
     ),
     ScoreDefinition(
+        "sketch-underlay",
+        "CATEGORICAL",
+        "What became of a page traced into a Skizze (S6, ADR-0150), each event its own trace sketch-underlay: "
+        "created (a Skizze started on a PDF page); moved (its page swapped for the base's newer Fassung, metadata "
+        "matched_by label, index or chosen); refused:<reason> (underlay_held: the base version is held by the upload "
+        "screening; underlay_wider, underlay_other_project, underlay_unavailable: the folder rule or the saver's "
+        "rights; traced_sketches_wider: a base moved narrower than its Skizzen; label_ambiguous and page_gone: the "
+        "newer Fassung does not name the page). Metadata sketch_id and base_id, never a name.",
+        writer="bff",
+        categories=(
+            "created",
+            "moved",
+            "refused:underlay_held",
+            "refused:underlay_wider",
+            "refused:underlay_other_project",
+            "refused:underlay_unavailable",
+            "refused:traced_sketches_wider",
+            "refused:label_ambiguous",
+            "refused:page_gone",
+        ),
+    ),
+    ScoreDefinition(
         "sketch-edit",
         "CATEGORICAL",
         "What became of one edit to a filed sketch by operations (document-sketch-edit, S4), on the trace of the "

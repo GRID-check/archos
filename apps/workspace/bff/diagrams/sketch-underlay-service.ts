@@ -37,6 +37,7 @@ import { recordUnderlayBase, sketchesTracing, underlayBasesOf } from './sketch-u
 import { findDocumentAuthoredByRef } from '@/lib/documents/repository'
 import { PERSON_SKETCH_REF_PREFIX } from '@/lib/documents/document-authors'
 import type { SketchNotices } from './sketch-notice'
+import { recordSketchUnderlayScore, underlayRefusalValue, type SketchUnderlayEvent } from '@/lib/langfuse/underlay-score'
 import { matchUnderlayPage } from './sketch-underlay-match'
 import { publishedSketchOf, saveSketchDocument, sketchSaveBaseOf } from './sketch-document'
 import { drawSketchScene } from './sketch-picture'
@@ -64,8 +65,32 @@ function sceneOnPage(underlay: SketchUnderlay, raster: PageRaster): SketchScene 
   return checkSketchScene({ type: 'excalidraw', version: 2, elements: [element], appState: { viewBackgroundColor: '#ffffff' } })
 }
 
-/** `POST …/versions/[versionId]/pages/[page]/sketch`: the new Skizze's ids, and where it lies. */
-export async function createSketchFromPage(input: SketchFromPageInput): Promise<FiledDiagram & { underlay: SketchUnderlay; movedToBase: boolean }> {
+/** Score what became of an underlay step (`sketch-underlay`), never failing it: its answer, or its refusal by name. */
+async function scored<T>(
+  session: AuthorizedSession,
+  facts: Omit<SketchUnderlayEvent, 'organizationId' | 'userId' | 'value'>,
+  value: SketchUnderlayEvent['value'],
+  run: () => Promise<T>,
+  more: (answer: T) => Partial<SketchUnderlayEvent> = () => ({})
+): Promise<T> {
+  const event = { organizationId: session.organizationId, userId: session.userId, ...facts }
+  try {
+    const answer = await run()
+    void recordSketchUnderlayScore({ ...event, value, ...more(answer) })
+    return answer
+  } catch (error) {
+    const refused = underlayRefusalValue(error)
+    if (refused) void recordSketchUnderlayScore({ ...event, value: refused })
+    throw error
+  }
+}
+
+/** `POST …/versions/[versionId]/pages/[page]/sketch`: the new Skizze's ids, and where it lies; scored `created` or by its refusal. */
+export function createSketchFromPage(input: SketchFromPageInput): Promise<FiledDiagram & { underlay: SketchUnderlay; movedToBase: boolean }> {
+  return scored(input.session, { baseId: input.documentId }, 'created', () => createOnPage(input), (filed) => ({ sketchId: filed.svg.documentId }))
+}
+
+async function createOnPage(input: SketchFromPageInput): Promise<FiledDiagram & { underlay: SketchUnderlay; movedToBase: boolean }> {
   const { session } = input
   const ref: SketchUnderlay = { documentId: input.documentId, versionId: input.versionId, page: input.page, dpi: (input.body.dpi ?? DEFAULT_PAGE_RASTER_DPI) as SketchUnderlay['dpi'] }
   // The person opens the page here: logged like any viewer's open.
@@ -137,14 +162,20 @@ export async function planSketchUnderlayMove(session: AuthorizedSession, documen
 }
 
 /** `POST /api/documents/[id]/sketch/underlay`: the page swapped for the newer Fassung's, saved as the Skizze's next Fassung. */
-export async function moveSketchUnderlay(input: {
+export function moveSketchUnderlay(input: UnderlayMoveInput) {
+  return scored(input.session, { sketchId: input.documentId }, 'moved', () => moveOntoNewer(input), (moved) => ({ matchedBy: moved.plan.matchedBy }))
+}
+
+interface UnderlayMoveInput {
   session: AuthorizedSession
   documentId: string
   body: UnderlayMoveBody
   marking: string
   notices?: SketchNotices
   request?: Request
-}) {
+}
+
+async function moveOntoNewer(input: UnderlayMoveInput) {
   const { session } = input
   const { saveBase, underlay, to } = await moveTarget(session, input.documentId, input.body.versionId)
   const plan = await planFor(session, underlay.ref, to, input.body.page)

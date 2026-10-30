@@ -14,3 +14,12 @@ features:
     A colleague who may not open the drawing sees your strokes without the page
     underneath, and a sketch on a page in a restricted folder stays in that
     folder.
+  - >
+    A sketch you start on a page is labelled as drawn by a person, not as
+    AI-generated; once Piloti continues it, it says so. A page still held by
+    the upload check cannot be drawn on until it is released.
+  - >
+    Moving a drawing into a folder fewer people may open, while sketches on it
+    lie elsewhere, names those sketches and offers to move them along. When a
+    newer version names the page twice you choose which one, and when its
+    label is gone the dialog says the page number was used instead.

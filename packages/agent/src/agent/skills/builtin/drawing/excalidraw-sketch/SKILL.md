@@ -137,6 +137,21 @@ then read it with document-sketch-get and `scene: "omit"`: the `outline` lists
 `id`, and the `versionId`. Answer from the outline and name things by their
 label, never by id. `ids` reads a few elements whole when you need their style.
 
+**Drawn on a page.** When the outline has an `underlay`, the sketch is traced
+over one page of a PDF: `ref.documentId`, its version `ref.versionId`, page
+`ref.page`, locked underneath at `box`. That page is what the strokes are
+drawn on: name the sketch by it, the document and its page. To say what lies
+under a stroke, read the page itself with the
+document tools you use for any document (`look` on that document and page,
+its passages from a search), and cite it like any page. The underlay is not
+to scale here either: never read a length, area or distance off the page or
+off the strokes over it, never add one, and never size a new shape to the
+drawing's scale. You cannot start an underlay, and an edit that moves,
+changes, removes or binds to it is refused (`underlay-locked`): draw around
+it. When the read says the base has a newer version, tell the person; moving
+the sketch onto it (document-sketch-underlay-move) is their step, never yours
+unasked.
+
 To change it, call document-sketch-edit with `baseVersionId` and `ops`. The
 person sees the change drawn and decides; nothing changes before. Each op has
 an `intent`, one short sentence in the person's language: the card lists them

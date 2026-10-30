@@ -97,12 +97,41 @@ a fetch.
   the page, because a Skizze drawn on a page means that page: a blank filed picture
   would say something else. A Skizze started on a restricted page is filed without the
   page and moved beside it; its first save there files the page.
-* Bad, because a base document moved into a narrower folder after a Skizze was filed
-  leaves the earlier Fassungen' pictures where they were; the next save is refused until
-  the Skizze follows. Nothing finds the Skizzen drawn on a document yet (open).
-* Bad, because a Skizze a person starts on a page is filed through the generated-document
-  seam and carries its machine marking (`AIGenerated=true`), though no model drew it. A
-  person-authored sketch producer is open.
+* **Only screened bytes** (ADR-0086). A Skizze is machine-filed and never held, so a page
+  traced from bytes no passing verdict judged would reach every member through it. The
+  raster, starting, saving and moving refuse such a page with `underlay_held` (the
+  uploader and the reviewers hear why; anyone else gets a 404). A Freigabe's redraw draws
+  the page only while the slot's PNG is the server's raster of screened bytes the scene
+  names, else a blank sheet. The slot carries the PNG's SHA-256 (`data-sha256`), which a
+  lift checks.
+* **Every Fassung's page counts** (migration 0193, `sketch_underlay_bases`). Every document
+  a Skizze was ever traced over is recorded and never cleared; a move of the Skizze, of the
+  PDF beside it, or of the base asks those rows, not the current scene alone. A base moved
+  into a folder narrower than its Skizzen is refused, `traced_sketches_wider` with their
+  names (those the mover may open), and the Files pane offers to move them along
+  (`withTracedSketches`): the base moves, then each Skizze with every check, and a Skizze
+  that will not follow takes the base back. Downloading a Skizze's SVG or PDF logs its
+  bases too.
+* **Who drew it.** A Skizze a person starts is filed under a `person-sketch-` reference:
+  `AIGenerated=false` and „Von einer Person auf einer Dokumentseite gezeichnet“, until an
+  agent's edit is filed on it, from when its bytes carry the AI marking and
+  „… von Piloti weitergeführt — KI-unterstützt“, kept by every later save. The row stays
+  machine-filed, so Freigabe and screening treat it as the sketch it is.
+* **Bounded rendering.** Refusals are remembered for five minutes per (organization,
+  Fassung, page, dpi), concurrent misses share one render, the raster route has its own
+  rate limit (`page-raster`), and the backend checks `Content-Length` first, caps a raster
+  at 4096 × 2900 px, runs two renders at once (503 past that) and answers 504 past 25 s.
+* **Page matching.** A label is followed only when it names one page; two pages with it
+  are the person's choice (`label_ambiguous`); a label gone falls back to the page number
+  and the dialog says so; the page count comes apart from the 2000 labels.
+* Bad, because tightening a folder's access list (`setFolderAccess`, a folder moved under a
+  restricted parent) asks nothing of the Skizzen traced over its documents: their filed
+  pictures keep the page as wide as they lie until someone moves them (open, loudly; the
+  0193 register makes the check a query).
+* Bad, because pdfium cannot be stopped in-process: a render past its time keeps one of the
+  two slots until it returns. A killable subprocess is open.
+* Bad, because Skizze bytes filed before a base was held keep the page on their presigned
+  URLs until the next save or Freigabe redraws them (open).
 * Neutral, because the edit receipt (S4) draws the change without the page.
 * The doctrine holds: every export says „nicht maßstäblich“; there is no measuring tool on
   an underlay. If the base page is calibrated in the PDF viewer, the link to offer is
@@ -114,7 +143,11 @@ a fetch.
 SVG image or a non-underlay image at every door (stored scene, live wire, fence, edit, SVG
 validator, slot reader); `sketch-underlay-render.spec.ts` files a page through the real
 worker and PDF renderer; `sketch-underlay-access.spec.ts` holds the access rule;
-`documents/page-raster.spec.ts` the raster's access, cache and checks.
+`documents/page-raster.spec.ts` the raster's access, cache, refusals and checks;
+`sketch-underlay-register.integration.spec.ts` the register under RLS;
+`documents/move-to-folder.spec.ts` and `sketch-underlay-service.spec.ts` the moves;
+`app/api/documents/[id]/sketch/route.spec.ts` a person-started Skizze's markings;
+`apps/agent-host/tests/test_page_raster_route.py` the backend's bounds.
 
 ## More Information
 

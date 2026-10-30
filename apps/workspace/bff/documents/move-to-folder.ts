@@ -198,6 +198,10 @@ async function underlayRefusalOf(document: MovedDocument, input: MoveDocumentInp
     read.alongSketches = refusal.details.sketches
     return null
   }
+  if (refusal) {
+    const { recordSketchUnderlayScore } = await import('@/lib/langfuse/underlay-score')
+    void recordSketchUnderlayScore({ organizationId: session.organizationId, userId: session.userId, value: `refused:${refusal.reason}`, ...(refusal.reason === 'traced_sketches_wider' ? { baseId: document.id } : { sketchId: document.id }) })
+  }
   return refusal
 }
 

@@ -893,9 +893,11 @@ starts a Skizze with that page locked underneath (ADR-0150).
   `underlay: { elementId, ref, box }` so Piloti knows what the strokes lie on.
 - **The raster** (`bff/documents/page-raster.ts`,
   `GET …/versions/{v}/pages/{n}/raster?dpi=`): read with the reader's rights
-  (shelf, restricted folders, the hold), drawn by the backend
+  (shelf, restricted folders, the hold) and only from screened bytes
+  (`underlay_held` otherwise, ADR-0086), rate-limited per person (`page-raster`),
+  refusals remembered for 5 minutes and concurrent misses shared, drawn by the backend
   (`agent_host/routes/page_raster.py`, pypdfium, a 16-colour palette PNG, long
-  side ≤ 4096 px), cached at `<dir>/_raster/p<page>-<dpi>.png` beside the
+  side ≤ 4096 px and at most 4096 × 2900 px, two renders at once, 504 past 25 s), cached at `<dir>/_raster/p<page>-<dpi>.png` beside the
   Fassung and swept with it, kept only with a PNG signature and a page's size,
   logged as an open. A3 at 150 dpi: 328 KB, 300 ms; at 100 dpi 187 KB, at 200
   dpi 478 KB.
@@ -909,28 +911,44 @@ starts a Skizze with that page locked underneath (ADR-0150).
   Excalidraw places it, takes the stand-in out and answers its place; the save
   writes the server's PNG there, after the validator, and the PDF draws it from
   a Buffer through `<Image src>` (never a URL: react-pdf would fetch it). The
+  slot carries the PNG's SHA-256; a Freigabe's redraw draws the page only while
+  it is the server's raster of screened bytes the scene names, else blank. The
   vector picture keeps its 1 MiB cap, the slot adds at most 4 MiB. A 41-element
   sketch on an A3 page: render 12 ms, filed SVG 475 KB, PDF 346 KB in 141 ms.
 - **Access** (`sketch-underlay-access.ts`). A Skizze lies in its base's project,
   and when the base's folder is not open to every member, in that folder. A save
   or a move that would break it is refused by name (`underlay_wider`,
-  `underlay_other_project`, `underlay_unavailable`), never filed blank. A Skizze
-  started on a restricted page is filed without the page and moved beside it;
-  its first save files the page.
+  `underlay_other_project`, `underlay_unavailable`, `underlay_held`), never filed
+  blank. A Skizze started on a restricted page is filed without the page and
+  moved beside it; its first save files the page. Every base a Fassung was ever
+  drawn on is recorded (`sketch_underlay_bases`, migration 0193,
+  `sketch-underlay-register.ts`) and asked by every move of the Skizze, of its
+  PDF, and of the base: a base moved into a folder narrower than its Skizzen is
+  refused (`traced_sketches_wider`, their names), and the Files pane offers to
+  move them along. Handing over a Skizze's SVG or PDF logs its bases too.
+- **Who drew it** (`sketch-notice.ts`). A Skizze a person starts is filed under a
+  `person-sketch-` reference and marked „Von einer Person auf einer Dokumentseite
+  gezeichnet“, `AIGenerated=false`; once an agent's edit is filed, „… von Piloti
+  weitergeführt — KI-unterstützt“ and the AI marking, read back from its bytes
+  on every later save. Each step is scored `sketch-underlay` (`created`, `moved`,
+  `refused:<reason>`).
 - **Bound to its Fassung.** When the base's current Fassung moves past the
   underlay's, `GET …/sketch` answers `underlay.newer` and the editor says
   „liegt auf Fassung 3, aktuell 4“. „Auf neue Fassung übertragen“ opens the move
-  (`sketch-underlay.tsx`): the page found by its PDF label, else its number
-  (`document-sketch-underlay-get`), old and new alone or overlaid, and
+  (`sketch-underlay.tsx`): the page found by a PDF label that names one page,
+  else its number, said so when the old label is gone; two pages with the label
+  are the person's choice (`document-sketch-underlay-get`, `label_ambiguous`),
+  old and new alone or overlaid, and
   „Übertragen“ (`document-sketch-underlay-move`), which saves the Skizze's next
   Fassung. Strokes, pins and links stay.
 - **The doctrine holds.** Every export says „nicht maßstäblich“; there is no
   measuring on an underlay.
-- **Not yet.** The base's preview does not list „Skizzen auf dieser Seite“:
-  nothing indexes which Skizzen lie on a document. A base moved into a narrower
-  folder after filing leaves earlier Fassungen' pictures where they were. The
-  receipt of an edit draws the change without the page. A person's Skizze still
-  carries the machine marking of the filing seam.
+- **Not yet.** The base's preview does not list „Skizzen auf dieser Seite“ (the
+  register makes it a query). Tightening a folder's access list asks nothing of
+  the Skizzen traced over its documents. A render past its time keeps its slot
+  until pdfium returns (no killable subprocess). Skizze bytes filed before their
+  base was held keep the page until the next save or Freigabe. The receipt of an
+  edit draws the change without the page.
 
 ## Two people on one Skizze
 
