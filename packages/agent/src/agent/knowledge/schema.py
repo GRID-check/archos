@@ -310,7 +310,7 @@ class FileInfo(BaseModel):
     topics: list[str] | None = Field(
         None,
         description=(
-            "Open topics (Themen) Piloti recognised in the document, or set by a person; "
+            "Open topics (Themen) the agent recognised in the document, or set by a person; "
             "free terms such as 'Attika', beside the controlled tags."
         ),
     )
@@ -341,7 +341,7 @@ class FileInfo(BaseModel):
         None,
         description=(
             "File name of the newer Fassung in this collection that a PERSON confirmed replaces this one. "
-            "Piloti never sets it on its own."
+            "The agent never sets it on its own."
         ),
     )
     supersedes: list[str] | None = Field(
@@ -351,7 +351,7 @@ class FileInfo(BaseModel):
     revision_suggestion: dict[str, Any] | None = Field(
         None,
         description=(
-            "Piloti's open suggestion that this document is a newer Fassung of another: of (the older file name), "
+            "The agent's open suggestion that this document is a newer Fassung of another: of (the older file name), "
             "confidence (0..1), reason (German, short), basis ('title_block', 'name' or 'content'). "
             "Absent once dismissed."
         ),

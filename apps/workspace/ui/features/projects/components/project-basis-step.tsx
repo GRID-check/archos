@@ -20,6 +20,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { PRODUCT_NAME } from '@/lib/brand'
 import { DOCUMENT_ROLE_DEFINITIONS, recommendedRoles } from '@/lib/project-profile/document-roles'
 import type { DocumentRole } from '@/lib/project-profile/document-roles'
 import type { BuildingInstance } from '@/lib/project-profile/intake-building-keys'
@@ -124,7 +125,7 @@ export function ProjectBasisStep({
               {recommended.length === 1
                 ? 'Diese Unterlage ergibt sich aus Ihren Angaben.'
                 : `Diese ${recommended.length} Unterlagen ergeben sich aus Ihren Angaben.`}{' '}
-              Ohne sie beantwortet Piloti Fragen dazu nur unter Vorbehalt.
+              Ohne sie beantwortet {PRODUCT_NAME} Fragen dazu nur unter Vorbehalt.
             </p>
           </div>
           <ul className="space-y-3">

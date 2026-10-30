@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Archive, Bell, MessageSquarePlus, Search } from 'lucide-react'
 
+import { Logo } from '@/components/brand/logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
 import { useFeedbackAvailable, useOpenFeedback } from '@/features/product-feedback/components'
@@ -89,9 +90,9 @@ export function OrgHeader({
           <Link
             href="/app/projects"
             aria-label={t('allProjects')}
-            className="text-foreground focus-visible:ring-ring/60 rounded-control text-[19px] font-medium focus-visible:outline-none focus-visible:ring-2"
+            className="text-foreground focus-visible:ring-ring/60 rounded-control flex items-center focus-visible:outline-none focus-visible:ring-2"
           >
-            Piloti
+            <Logo kind="wordmark" size="small" />
           </Link>
         </div>
 

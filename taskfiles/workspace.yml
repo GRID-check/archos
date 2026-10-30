@@ -24,7 +24,7 @@ tasks:
       - bun run build:jobs
 
   workspace:a11y:
-    desc: 'axe-core (WCAG 2.0 to 2.2 A and AA) over the /dev preview routes, light and dark, 1440 and 390. Needs `bun run dev` running; A11Y_BASE_URL and A11Y_CHROME override the address and the browser. See scripts/a11y-audit.mjs'
+    desc: 'axe-core (WCAG 2.0 to 2.2 A and AA) over every /dev preview route, light and dark, 1440 and 390. Starts its own `next dev` (A11Y_BASE_URL uses a running one); `-- --shard 1/4` for a quarter; A11Y_CHROME overrides the browser. See scripts/a11y-audit.mjs'
     dir: '{{.UI}}'
     cmds:
       - bun run a11y {{.CLI_ARGS}}
