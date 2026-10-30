@@ -325,6 +325,13 @@ describe('GET …/versions/diff', () => {
     expect(result.to.content).toBe('neu')
   })
 
+  // The coherence review's finding 6: a refusal by type comes before any read, so nothing lands in the download log.
+  it('refuses a PDF by its type before reading either side', async () => {
+    vi.mocked(getDocumentVersionView).mockResolvedValue({ ...VIEW, contentType: 'application/pdf' })
+    await expect(client.diff('doc_1', 'ver_1', 'ver_2')).rejects.toMatchObject({ status: 415 })
+    expect(readVersionContent).not.toHaveBeenCalled()
+  })
+
   it('refuses a request that names only one side', async () => {
     const response = await diff(
       new Request('https://grid.test/api/documents/doc_1/versions/diff?from=ver_1'),

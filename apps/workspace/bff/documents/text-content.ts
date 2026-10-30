@@ -35,6 +35,27 @@ export function revisableAsText(contentType: string | null | undefined): boolean
   return type.startsWith('text/') || TEXT_APPLICATION_TYPES.has(type)
 }
 
+/** Types whose bytes are text a diff can show, though no model may rewrite them: markup and data files. */
+const COMPARABLE_APPLICATION_TYPES: ReadonlySet<string> = new Set([
+  'image/svg+xml',
+  'application/xml',
+  'application/yaml',
+  'application/x-yaml',
+  'application/toml',
+])
+
+/**
+ * True for what the text compare shows as text: everything {@link revisableAsText}
+ * takes, and SVG, XML and YAML (a Skizze among them is compared by its outline,
+ * `lib/diagrams/sketch-outline-text.ts`). Asked of the version's type before
+ * its bytes are read, so a refusal records no download.
+ */
+export function comparableAsText(contentType: string | null | undefined): boolean {
+  if (revisableAsText(contentType)) return true
+  const type = (contentType ?? '').split(';')[0].trim().toLowerCase()
+  return COMPARABLE_APPLICATION_TYPES.has(type) || type.endsWith('+xml')
+}
+
 /** The 415 a text path answers for bytes that are not text, naming the type and the way that works. */
 export function notRevisableAsText(contentType: string | null | undefined): ApiError {
   return new ApiError(

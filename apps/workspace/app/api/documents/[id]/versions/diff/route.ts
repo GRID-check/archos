@@ -14,6 +14,7 @@ import { BadRequestError } from '@/lib/api/errors'
 import { getDocumentVersionView } from '@/lib/documents/lifecycle'
 import { readVersionContent } from '@/lib/documents/version-content'
 import { comparableText } from '@/lib/diagrams/sketch-outline-text'
+import { comparableAsText, notRevisableAsText } from '@/lib/documents/text-content'
 
 type Params = { id: string }
 
@@ -24,9 +25,13 @@ export const GET = apiRoute<Params>(
     const to = url.searchParams.get('to')
     if (!from || !to) throw new BadRequestError('from and to are required')
 
-    const [fromVersion, toVersion, fromContent, toContent] = await Promise.all([
+    const [fromVersion, toVersion] = await Promise.all([
       getDocumentVersionView(session, params.id, from),
       getDocumentVersionView(session, params.id, to),
+    ])
+    // Refused by type before a byte is read: a read records a download (`readVersionContent`).
+    for (const { contentType } of [fromVersion, toVersion]) if (!comparableAsText(contentType)) throw notRevisableAsText(contentType)
+    const [fromContent, toContent] = await Promise.all([
       readVersionContent(session, params.id, from),
       readVersionContent(session, params.id, to),
     ])

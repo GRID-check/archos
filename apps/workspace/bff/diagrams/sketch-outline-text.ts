@@ -10,11 +10,11 @@
  * ours, only the labels people wrote and signs for the kind of thing, so the
  * same diff reads in German and English.
  *
- * Bytes that are neither text nor a Skizze are refused by name
- * (`lib/documents/text-content.ts`).
+ * Other markup (an SVG with no scene, XML, YAML) is compared as it is; bytes
+ * that are not text are refused by name (`lib/documents/text-content.ts`).
  */
 
-import { notRevisableAsText, revisableAsText } from '@/lib/documents/text-content'
+import { comparableAsText, notRevisableAsText, revisableAsText } from '@/lib/documents/text-content'
 import { outlineSketch } from './sketch-outline'
 import { parseStoredSketchScene, type SketchScene } from './sketch-scene'
 import { storedDiagramSource } from './stored-source'
@@ -36,11 +36,12 @@ export function outlineText(scene: SketchScene): string {
   return [...sorted(frames), ...sorted(shapes), ...sorted(connections), ...sorted(free)].join('\n')
 }
 
-/** A version's content as the text compare shows it: text as it is, a Skizze as its outline, anything else refused. */
+/** A version's content as the text compare shows it: text and markup as they are, a Skizze as its outline, anything else refused. */
 export function comparableText(contentType: string | null, content: string): string {
   if (revisableAsText(contentType)) return content
   const stored = contentType === 'image/svg+xml' ? storedDiagramSource(content) : null
   const scene = stored?.kind === 'excalidraw' ? parseStoredSketchScene(stored.source) : null
-  if (!scene) throw notRevisableAsText(contentType)
-  return outlineText(scene)
+  if (scene) return outlineText(scene)
+  if (comparableAsText(contentType)) return content
+  throw notRevisableAsText(contentType)
 }

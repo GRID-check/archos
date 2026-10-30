@@ -13,7 +13,7 @@ vi.mock('@/lib/organizations/display-name', () => ({ getOrganizationDisplayName:
 import { acceptDiagram } from '@/lib/diagrams/svg'
 import { comparableText } from '@/lib/diagrams/sketch-outline-text'
 import { renderVersionBytes } from './version-content'
-import { NOT_REVISABLE_AS_TEXT, revisableAsText } from './text-content'
+import { comparableAsText, NOT_REVISABLE_AS_TEXT, revisableAsText } from './text-content'
 
 const SKETCH_SVG = acceptDiagram(
   {
@@ -66,9 +66,23 @@ describe('comparing Fassungen of a Skizze (G5)', () => {
     expect(text.split('\n')).toEqual(['▭ „Küche“', '◯ „Flur“', '„Küche“ → „Flur“'])
   })
 
-  it('passes text through, and refuses bytes that are neither text nor a Skizze', () => {
+  // The coherence review's finding 6: an SVG with no scene, XML and YAML compared before the Skizze slice and must again.
+  it('passes text and markup through, and refuses bytes that are not text', () => {
     expect(comparableText('text/markdown', '# A')).toBe('# A')
+    const plain = '<svg xmlns="http://www.w3.org/2000/svg"/>'
+    expect(comparableText('image/svg+xml', plain)).toBe(plain)
+    expect(comparableText('application/xml', '<a/>')).toBe('<a/>')
+    expect(comparableText('application/yaml', 'a: 1')).toBe('a: 1')
+    expect(comparableText('application/vnd.custom+xml', '<b/>')).toBe('<b/>')
     expect(() => comparableText('application/pdf', '%PDF')).toThrow(expect.objectContaining({ status: 415 }))
-    expect(() => comparableText('image/svg+xml', '<svg xmlns="http://www.w3.org/2000/svg"/>')).toThrow(expect.objectContaining({ status: 415 }))
+    expect(() => comparableText('image/png', 'x')).toThrow(expect.objectContaining({ status: 415 }))
+  })
+
+  it('a compare of what no model may rewrite: markup compares, it is still no revision', () => {
+    for (const type of ['image/svg+xml', 'application/xml', 'application/yaml']) {
+      expect(comparableAsText(type)).toBe(true)
+      expect(revisableAsText(type)).toBe(false)
+    }
+    expect(comparableAsText('application/pdf')).toBe(false)
   })
 })
