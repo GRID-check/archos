@@ -74,6 +74,7 @@ import {
 } from './operation-targets'
 import type { TargetPlace } from './operation-targets-repository'
 import type { AgentPrincipal } from './principal'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Who reads the conversation, as read once per request. */
 export interface ConversationAudience {
@@ -115,37 +116,37 @@ export async function conversationAudienceOf(principal: AgentPrincipal): Promise
 export const READ_REFUSALS = {
   shared:
     'This conversation is shared, and that read answers with what the person may see, not with what everyone in ' +
-    'the conversation may: in a shared conversation Piloti reads only a document or a project\'s facts, of a project ' +
+    'the conversation may: in a shared conversation ' + PRODUCT_NAME + ' reads only a document or a project\'s facts, of a project ' +
     'every reader may open. Tell the person to open it themselves, or to ask in a conversation that is theirs alone.',
   outsideReach:
     'That belongs to a project outside what this conversation may read from: the projects the person may chat in ' +
     'when the conversation is theirs alone; when it is shared, the closed projects and those every reader may open. ' +
     'Tell the person to open it themselves, or to ask in a conversation that is theirs alone.',
   restrictedFolder:
-    'That sits in a folder with its own access list, and this conversation is shared, so Piloti does not read it ' +
+    'That sits in a folder with its own access list, and this conversation is shared, so ' + PRODUCT_NAME + ' does not read it ' +
     'here: not every reader was asked whether they may read that folder. Tell the person to open it themselves, or ' +
     'to ask in a conversation that is theirs alone.',
   notEveryReader:
     'Not everyone who reads this shared conversation may read that (a file still being screened, a file of another ' +
-    'conversation, or one outside every project), so Piloti does not read it here. Tell the person to open it themselves.',
+    'conversation, or one outside every project), so ' + PRODUCT_NAME + ' does not read it here. Tell the person to open it themselves.',
   otherConversation:
-    'That conversation drew on other projects, so Piloti does not read it here: their content would land in this ' +
+    'That conversation drew on other projects, so ' + PRODUCT_NAME + ' does not read it here: their content would land in this ' +
     'conversation without the record that keeps it to their readers. Tell the person to open it themselves.',
   spansProjects:
-    'That read reaches across the office\'s projects, so Piloti does not run it in this project\'s conversation: ' +
+    'That read reaches across the office\'s projects, so ' + PRODUCT_NAME + ' does not run it in this project\'s conversation: ' +
     'it answers with every project the person sees, not with what this conversation may read. Narrow it to one ' +
     'project where the operation allows, or tell the person to open it themselves.',
   unknown:
-    'Piloti cannot tell where that lives, so it does not read it here: what it does not find, it cannot hold to ' +
+    PRODUCT_NAME + ' cannot tell where that lives, so it does not read it here: what it does not find, it cannot hold to ' +
     'this conversation\'s rules for who may read it. Check the id, or tell the person to open it themselves.',
   tooMany:
     'The call names too many projects, documents, folders or conversations to check. Narrow it and call again.',
   proposalOutsideReach:
     'This conversation is shared, and that change names a project not everyone who reads it may open: its card, ' +
-    'and what the change returns, would sit here. Tell the person to make the change in Piloti themselves, or to ' +
+    'and what the change returns, would sit here. Tell the person to make the change in ' + PRODUCT_NAME + ' themselves, or to ' +
     'ask in a conversation that is theirs alone.',
   audienceChanged:
-    'Who reads this conversation changed while Piloti was reading, so nothing was read. Call again: the read is ' +
+    'Who reads this conversation changed while ' + PRODUCT_NAME + ' was reading, so nothing was read. Call again: the read is ' +
     'judged against the readers the conversation has now.',
 } as const
 

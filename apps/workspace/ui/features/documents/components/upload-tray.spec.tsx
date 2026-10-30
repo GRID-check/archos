@@ -8,6 +8,7 @@ vi.mock('@/adapters/api/upload-screening-client', () => ({
   requestQuarantineRelease: (documentId: string) => requestQuarantineRelease(documentId),
 }))
 import type { TrackedFile } from '../types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const tracked = (overrides: Partial<TrackedFile> = {}): TrackedFile => ({
   id: 'f1',
@@ -81,7 +82,7 @@ describe('UploadTray', () => {
       expect(screen.getByText('Uploading 1 document')).toBeDefined()
 
       rerender(<UploadTray files={[tracked({ status: 'ingesting' })]} onRetry={vi.fn()} />)
-      expect(screen.getByText('Piloti is reading 1 document')).toBeDefined()
+      expect(screen.getByText(`${PRODUCT_NAME} is reading 1 document`)).toBeDefined()
 
       rerender(<UploadTray files={[tracked({ status: 'success' })]} onRetry={vi.fn()} />)
       expect(screen.getByText('1 document added')).toBeDefined()

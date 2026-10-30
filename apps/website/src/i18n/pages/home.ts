@@ -1,16 +1,22 @@
 /**
  * Copy of the home page, both locales. `{name}` is the brand name, filled by
  * `withName`. Text, alt text and labels only: images, video sources and the
- * page's structure live in `src/views/HomeView.astro`.
+ * page's structure live in `src/views/HomeView.astro`. A `\n` in a title or in
+ * the hero text is a line break the design sets on purpose, at every width.
  */
 const de = {
+  meta: {
+    title: 'Der Workspace für Architektur- und Planungsbüros',
+    description:
+      'Projektwissen, Unterlagen, Pläne und Modelle in einem Workspace. {name} durchsucht Projekte, vergleicht Planstände und prüft Modelle gegen Vorgaben und Baurecht.',
+  },
   hero: {
-    title: 'Der Workspace für Architekturbüros.',
-    text: '{name} bringt KI in den Planungsprozess. Für Teams, die neue Standards setzen.',
+    title: 'Der Workspace für Architektur- und Planungsbüros.',
+    text: '{name} bringt KI in den Planungsprozess.\nFür Teams, die neue Standards setzen.',
     alt: '{name}: Planänderungen seit Rev. C – drei Änderungen mit Quellen, daneben der Grundriss mit markierten Stellen',
   },
   workload: {
-    title: 'Jede Planungsrunde erzeugt Arbeit. {name} reduziert sie.',
+    title: 'Jede Planungsrunde erzeugt Arbeit.\n{name} reduziert sie.',
     lead: 'Planungsprozesse werden sich grundlegend verändern.',
     text: '{name} schafft die Plattform dafür: Projektwissen, Unterlagen, Pläne und Modelle kommen in einem Workspace zusammen. Darauf aufbauend übernimmt {name} Schritt für Schritt Aufgaben und ganze Abläufe im Planungsprozess.',
   },
@@ -35,11 +41,11 @@ const de = {
     ],
   },
   knowledge: {
-    title: 'Das Wissen Ihres Büros wird nutzbar.',
+    title: 'Das Wissen Ihres Büros\nwird nutzbar.',
     text: 'Jedes Projekt erzeugt Wissen: Pläne, Modelle, Protokolle, E-Mails, Details, Entscheidungen. Heute liegt es verteilt in Ordnern, Servern, Systemen und Köpfen. {name} führt es zusammen und macht es für das ganze Team nutzbar.',
     videoLabel: 'Animation: Jedes Projekt erzeugt Wissen. Wer es braucht, muss suchen. Ihr Wissen arbeitet für Sie.',
     intelligence: {
-      title: 'Vom Projektwissen zur Projektintelligenz.',
+      title: 'Vom Projektwissen\nzur Projektintelligenz.',
       text: 'Neue Kolleg:innen finden sich schneller ein, gelöste Fragen müssen nicht neu gelöst werden, und jede Antwort zeigt, woher sie kommt. {name} ist das Rückgrat, an dem die Systeme des Büros andocken.',
     },
   },
@@ -125,13 +131,18 @@ const de = {
 };
 
 const en: typeof de = {
+  meta: {
+    title: 'The workspace for architecture and planning firms',
+    description:
+      'Project knowledge, documents, plans and models in one workspace. {name} searches projects, compares plan revisions and checks models against requirements and building law.',
+  },
   hero: {
-    title: 'The workspace for architecture firms.',
-    text: '{name} brings AI into the planning process. For teams that set new standards.',
-    alt: '{name}: plan changes since Rev. C, three changes with sources, beside the floor plan with the marked spots',
+    title: 'The workspace for architecture and planning firms.',
+    text: '{name} brings AI into the planning process.\nFor teams that set new standards.',
+    alt: '{name}: changes to the plan since Rev. C, three changes with their sources, beside the floor plan with the changes marked',
   },
   workload: {
-    title: 'Every planning round creates work. {name} reduces it.',
+    title: 'Every planning round creates work.\n{name} reduces it.',
     lead: 'Planning processes are about to change fundamentally.',
     text: '{name} provides the platform: project knowledge, documents, plans and models come together in one workspace. Building on that, {name} takes over tasks and entire workflows in the planning process, step by step.',
   },
@@ -141,10 +152,10 @@ const en: typeof de = {
       {
         title: 'One question. The whole project as context.',
         text: 'Backed by specialist knowledge, project and office.',
-        alt: '{name} derivation: one question about an appointment with the kitchen planner, below it ten sources from specialist knowledge, project knowledge and office files',
+        alt: '{name} shows how it reached the answer: a question about tomorrow’s meeting with the kitchen planner, and below it ten sources from specialist knowledge, project knowledge and office files',
       },
       {
-        title: 'Plan status and requirements. Compared directly.',
+        title: 'Plan revision and requirements. Checked against each other.',
         text: 'Deviations show up immediately.',
         alt: '{name} check: ceiling height 10 cm too low, with sources from the room schedule and the section, beside the marked section',
       },
@@ -156,11 +167,11 @@ const en: typeof de = {
     ],
   },
   knowledge: {
-    title: 'The knowledge of your office becomes usable.',
+    title: 'The knowledge of your office\nbecomes usable.',
     text: 'Every project creates knowledge: plans, models, minutes, emails, details, decisions. Today it is spread across folders, servers, systems and people’s heads. {name} brings it together and makes it usable for the whole team.',
     videoLabel: 'Animation: every project creates knowledge. Whoever needs it has to search. Your knowledge works for you.',
     intelligence: {
-      title: 'From project knowledge to project intelligence.',
+      title: 'From project knowledge\nto project intelligence.',
       text: 'New colleagues get up to speed faster, solved questions do not have to be solved again, and every answer shows where it comes from. {name} is the backbone the office’s systems connect to.',
     },
   },
@@ -169,11 +180,11 @@ const en: typeof de = {
     duo: [
       {
         title: 'Planners design.',
-        text: 'Design, stance and innovation stay with people.',
+        text: 'Design, judgement and innovation stay with people.',
       },
       {
         title: 'AI searches, compares and checks.',
-        text: 'What can be automated, {name} takes over. That way, building gets faster and safer.',
+        text: '{name} takes over what can be automated, so building gets faster and safer.',
       },
     ],
   },
@@ -187,24 +198,24 @@ const en: typeof de = {
       },
       {
         title: 'Understands plans and models',
-        text: '{name} works on visual data: on plans and 3D models, not only on text.',
+        text: '{name} reads visual data: plans and 3D models, not just text.',
       },
       {
-        title: 'Get the work done on the plan',
+        title: 'Work directly on the plan',
         text: 'Ask, check and keep working directly in the plan or the model.',
       },
     ],
   },
   roadmap: {
-    title: 'Progress that reaches the office day to day.',
+    title: 'Progress you notice in the office every day.',
     steps: [
       {
         when: 'Today',
-        text: 'Plans, models, documents and office knowledge in one workspace. {name} searches projects, compares plan states and checks models against requirements and building law.',
+        text: 'Plans, models, documents and office knowledge in one workspace. {name} searches projects, compares plan revisions and checks models against requirements and building law.',
       },
       {
         when: 'Next',
-        text: '{name} takes over entire workflows. New plan states are checked automatically for risks, requirements and the wishes of the client.',
+        text: '{name} takes over entire workflows. Every new plan revision is checked automatically against risks, requirements and the client’s wishes.',
       },
       {
         when: 'Long term',
@@ -213,9 +224,9 @@ const en: typeof de = {
     ],
   },
   quote: {
-    text: 'The strength of architects is their stance, less their output. Handling the flood of information is something AI can do.',
+    text: 'An architect’s strength is their point of view, not their output. Handling the flood of information is something AI can do.',
     name: 'Ralph Reisinger',
-    role: 'Architect & project lead',
+    role: 'Architect & project lead (translated from German)',
     portraitAlt: 'Four men in conversation in front of a light brick facade',
   },
   founders: {

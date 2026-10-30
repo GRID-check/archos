@@ -12,6 +12,7 @@ import { fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
 import { lookCardSchema } from '@/shared/cards/generated'
 import { placeFileUrl } from '@/features/knowledge/lib/page-place'
 import { LookCard, lookItemColor, lookItemPlace } from './LookCard'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const state = vi.hoisted((): FakePdfState => ({ fail: false, pages: [], destroyed: 0 }))
 vi.mock('@/features/knowledge/lib/pdfjs-runtime', () => fakePdfjsRuntime(state))
@@ -57,7 +58,7 @@ describe('LookCard', () => {
     expect(look).toHaveTextContent('p. 2 · oben rechts')
     expect(look).toHaveTextContent('Maßstab im Plankopf?')
     expect(within(look).getByTestId('look-reading')).toHaveTextContent('Read: M 1:100')
-    expect(within(look).getByTestId('look-reading')).toHaveAttribute('title', 'Read off the page by Piloti, not measured.')
+    expect(within(look).getByTestId('look-reading')).toHaveAttribute('title', `Read off the page by ${PRODUCT_NAME}, not measured.`)
     expect(screen.getByTestId('look-reading-note')).toHaveTextContent('not measured')
     expect(reference).toHaveAttribute('data-origin', 'reference')
     expect(reference).toHaveTextContent('Shown on p. 2 · in der Seitenmitte')

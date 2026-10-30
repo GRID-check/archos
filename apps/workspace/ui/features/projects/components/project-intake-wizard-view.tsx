@@ -123,7 +123,7 @@ export function ProjectIntakeWizardView({ controller }: { controller: ProjectInt
             t={t}
           />
           <div className="mb-4 flex items-center justify-between gap-4 lg:mb-6">
-            <Progress value={progress} className="h-1 flex-1" />
+            <Progress value={progress} aria-hidden="true" className="h-1 flex-1" />
             <span
               className={cn(
                 'shrink-0 text-xs transition-opacity duration-quick ease-out motion-reduce:transition-none',

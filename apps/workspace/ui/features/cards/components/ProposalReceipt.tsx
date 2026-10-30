@@ -118,7 +118,7 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
   return (
     <ProposalShell tone="pending">
       {eyebrow}
-      <p className="text-foreground text-sm font-semibold">{title}</p>
+      <p className="text-foreground text-sm font-medium">{title}</p>
       {open}
 
       {/* Why there is nothing to press, stated where the buttons would be:

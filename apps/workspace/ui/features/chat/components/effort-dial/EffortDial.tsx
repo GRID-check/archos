@@ -216,7 +216,7 @@ export const EffortDial: FC<EffortDialProps> = ({
           size="sm"
           data-testid="effort-dial-trigger"
           className={cn(
-            'text-muted-foreground h-8 gap-1 rounded-control px-2.5 text-xs font-semibold',
+            'text-muted-foreground h-8 gap-1 rounded-control px-2.5 text-xs font-medium',
             isMaximum && 'text-warning hover:text-warning',
             hidden && 'invisible',
             className
@@ -261,7 +261,7 @@ export const EffortDial: FC<EffortDialProps> = ({
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm">
             <span className="text-muted-foreground">{t('effortDial.title')}</span>{' '}
-            <span className="font-semibold" data-testid="effort-dial-level">
+            <span className="font-medium" data-testid="effort-dial-level">
               {label}
             </span>
           </p>

@@ -36,6 +36,8 @@ from difflib import SequenceMatcher
 from typing import Any
 from typing import Literal
 
+from agent.common.brand import PRODUCT_NAME
+
 #: Title-block fields in the order the report names them, with their German labels.
 TITLE_BLOCK_LABELS: tuple[tuple[str, str], ...] = (
     ("document_number", "Nummer"),
@@ -434,7 +436,7 @@ def _page_lines(change: PageChange) -> list[str]:
     if change.annotations_removed:
         drawing.append("removed: " + ", ".join(f"„{a}“" for a in change.annotations_removed[:8]))
     if drawing:
-        parts.append("according to Piloti's reading of the drawing: " + "; ".join(drawing))
+        parts.append(f"according to {PRODUCT_NAME}'s reading of the drawing: " + "; ".join(drawing))
     return [f"- {_page_name(change)}: " + ". ".join(parts) + "."]
 
 
@@ -472,9 +474,10 @@ def render_diff(
                 "it does not follow that they are the same."
             )
     if change_summary:
-        lines.append(f"Piloti's summary of the change (from the descriptions): {_clip(change_summary)}")
+        lines.append(f"{PRODUCT_NAME}'s summary of the change (from the descriptions): {_clip(change_summary)}")
     lines.append(
-        "What was compared is the printed text and Piloti's reading of the drawings, not the drawings themselves. "
+        f"What was compared is the printed text and {PRODUCT_NAME}'s reading of the drawings, "
+        "not the drawings themselves. "
         "Check a dimension by reading the document before stating it; marks on the page are shown by "
         "„Vergleichen“ in Dateien."
     )

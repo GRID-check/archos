@@ -14,6 +14,7 @@ import { FileCard } from './file-card'
 import { FileListView } from './file-list-view'
 import type { FileItem } from './project-file-workspace'
 import { filingBarEntries, suggestionsByDocument, suggestionsByFolder } from '../lib/filing-suggestions'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 type FileProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
 
@@ -123,7 +124,7 @@ describe('FilingViewBar', () => {
   it('appears once a folder collects two files, and then lists every target folder of the view', async () => {
     renderView([PERMIT_DECISIONS, BRIEF])
     const bar = screen.getByTestId('filing-bar')
-    expect(bar).toHaveAccessibleName('Piloti suggests filing 3 files')
+    expect(bar).toHaveAccessibleName(`${PRODUCT_NAME} suggests filing 3 files`)
     const lines = within(bar).getAllByTestId('filing-bar-line')
     expect(lines).toHaveLength(2)
     expect(lines[0]).toHaveTextContent('Behörde/Bescheide')

@@ -563,14 +563,14 @@ class TestTheRecordedDecisions:
         assert sources[0].citation_key == "Projektgedächtnis (Wohnbau Graz)"
         assert sources[0].project_name == "Wohnbau Graz"
         assert "Decision (confirmed by a person, 2021): Stiegenhaus in Stahlbeton" in result
-        assert "Constraint (noted by Piloti, 2021): Brandsperre" in result
+        assert "Constraint (noted by you, 2021): Brandsperre" in result
         assert result.index("Projektgedächtnis") < result.index("Detail Traufe.pdf")
 
     @pytest.mark.parametrize(
         ("decision", "marker"),
         [
             ({"origin": "person", "confirmed": True}, "(confirmed by a person, 2021): "),
-            ({"origin": "agent", "confirmed": False}, "(noted by Piloti, 2021): "),
+            ({"origin": "agent", "confirmed": False}, "(noted by you, 2021): "),
             (
                 {
                     "origin": "documents",
@@ -603,7 +603,7 @@ class TestTheRecordedDecisions:
 
         assert f"Decision {marker}Stiegenhaus in Stahlbeton." in result
 
-    @pytest.mark.parametrize(("confirmed", "marker"), [(True, "confirmed by a person"), (False, "noted by Piloti")])
+    @pytest.mark.parametrize(("confirmed", "marker"), [(True, "confirmed by a person"), (False, "noted by you")])
     async def test_an_older_bff_without_origin_is_read_by_its_confirmed_flag(
         self, monkeypatch, calls, turn, confirmed, marker
     ) -> None:

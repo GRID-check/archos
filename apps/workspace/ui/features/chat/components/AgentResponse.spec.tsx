@@ -13,6 +13,7 @@ import { resetDecidedProposals } from '@/features/cards/decided-proposals'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { proposalBase, PROPOSAL_ID, decidedByAnna } from '@/features/cards/components/proposal-test-kit'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** A presentational card that draws its title, for placement tests. */
 const calculationCard = (title: string): AnswerCard => ({ ...CARD_PREVIEW_FIXTURES.calculation!, title } as AnswerCard)
@@ -121,7 +122,7 @@ describe('AgentResponse', () => {
       render(<AgentResponse content="Answer" messageId="m1" cards={[card]} />)
 
       // On the meta row: no disclosure to open first.
-      expect(await screen.findByText('Piloti noted')).toBeInTheDocument()
+      expect(await screen.findByText(`${PRODUCT_NAME} noted`)).toBeInTheDocument()
     })
 
     test('does not list a note whose proposal was dismissed', async () => {
@@ -129,7 +130,7 @@ describe('AgentResponse', () => {
       render(<AgentResponse content="Answer" messageId="m1" cards={[card]} />)
 
       await screen.findByTestId('proposal-status')
-      expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
+      expect(screen.queryByText(`${PRODUCT_NAME} noted`)).not.toBeInTheDocument()
     })
   })
 
@@ -396,7 +397,7 @@ describe('AgentResponse', () => {
         />
       )
 
-      const chip = screen.getByRole('button', { name: 'Piloti noted 1 item' })
+      const chip = screen.getByRole('button', { name: `${PRODUCT_NAME} noted 1 item` })
       const trigger = screen.getByTestId('answer-details-trigger')
       expect(trigger).toHaveAttribute('aria-expanded', 'false')
       expect(chip.closest('.min-h-6')).toContainElement(trigger)
@@ -417,7 +418,7 @@ describe('AgentResponse', () => {
     test('renders no meta row when it would hold nothing at all', () => {
       render(<AgentResponse content="Answer" />)
 
-      expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
+      expect(screen.queryByText(`${PRODUCT_NAME} noted`)).not.toBeInTheDocument()
       expect(screen.queryByText(/\d{1,2}:\d{2}/)).not.toBeInTheDocument()
       expect(screen.queryByText('Was this helpful?')).not.toBeInTheDocument()
       expect(screen.queryByTestId('answer-details-trigger')).not.toBeInTheDocument()
@@ -432,7 +433,7 @@ describe('AgentResponse', () => {
 
       expect(screen.getByRole('button', { name: 'Copy answer' })).toBeInTheDocument()
       expect(screen.queryByTestId('answer-details-trigger')).not.toBeInTheDocument()
-      expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
+      expect(screen.queryByText(`${PRODUCT_NAME} noted`)).not.toBeInTheDocument()
       expect(screen.queryByText('Was this helpful?')).not.toBeInTheDocument()
       expect(screen.queryByText(/\d{1,2}:\d{2}/)).not.toBeInTheDocument()
     })
@@ -487,7 +488,7 @@ describe('AgentResponse', () => {
 
       // Opened: everything else the turn carries is in the document.
       expect(screen.getByText('Confidence: high')).toBeInTheDocument()
-      expect(screen.getByText('Piloti noted')).toBeInTheDocument()
+      expect(screen.getByText(`${PRODUCT_NAME} noted`)).toBeInTheDocument()
       expect(screen.getByText(/^\d{1,2}:\d{2}/)).toBeInTheDocument()
     })
 
@@ -572,13 +573,13 @@ describe('AgentResponse', () => {
       )
 
       expect(screen.queryByText('Confidence: high')).not.toBeInTheDocument()
-      expect(screen.getByText('Piloti noted')).toBeInTheDocument()
+      expect(screen.getByText(`${PRODUCT_NAME} noted`)).toBeInTheDocument()
 
       await user.click(screen.getByTestId('answer-details-trigger'))
 
       expect(screen.getByText('Confidence: high')).toBeInTheDocument()
       // Still exactly one chip: opening the details does not mount a second.
-      expect(screen.getAllByText('Piloti noted')).toHaveLength(1)
+      expect(screen.getAllByText(`${PRODUCT_NAME} noted`)).toHaveLength(1)
     })
 
     test('renders the feedback row in the open, beside the export actions', async () => {
@@ -618,7 +619,7 @@ describe('AgentResponse', () => {
       render(<AgentResponse content="Cited answer" variant="inline" citations={citations} />)
 
       const row = screen.getByRole('list', { name: /sources this answer is backed by/i })
-      expect(row.className).toContain('border-t')
+      expect(row.parentElement?.className).toContain('border-t')
     })
   })
 

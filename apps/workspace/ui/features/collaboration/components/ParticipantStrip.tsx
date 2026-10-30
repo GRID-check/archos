@@ -86,7 +86,7 @@ export function ParticipantStrip({
             <span className="relative inline-flex">{face}</span>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            <span className="block font-semibold">
+            <span className="block font-medium">
               {person.userId === currentUserId
                 ? `${person.name} (${t('sharing.overview.you')})`
                 : person.name}

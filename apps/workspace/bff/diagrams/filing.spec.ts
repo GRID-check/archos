@@ -94,6 +94,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { makeProject } from '@/test-utils/db-fixtures'
 import { generatedDocumentMarking } from '@/lib/documents/generated'
 import { fileDiagramDocuments } from './filing'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SESSION = {
   userId: 'user-1',
@@ -123,7 +124,7 @@ const file = (overrides: Partial<Parameters<typeof fileDiagramDocuments>[0]> = {
     sourceKind: 'mermaid',
     source: SOURCE,
     svg: SVG,
-    marking: 'Von Piloti erstellt — KI-generiert, nicht geprüft.',
+    marking: `Von ${PRODUCT_NAME} erstellt — KI-generiert, nicht geprüft.`,
     ...overrides,
   })
 
@@ -334,7 +335,7 @@ describe('what leaves the product says a machine made it', () => {
   }
 
   /** What `generatedDocumentMarking` answers for an `answer_artifact`. */
-  const EXPECTED_MARKING = 'AIGenerated=true; AIGenerator=Piloti; AIHumanReviewed=false'
+  const EXPECTED_MARKING = `AIGenerated=true; AIGenerator=${PRODUCT_NAME}; AIHumanReviewed=false`
 
   it('puts the marking in the stored SVG, past the allow-list that rewrites it', async () => {
     await file()
@@ -343,7 +344,7 @@ describe('what leaves the product says a machine made it', () => {
     // The human half: `<title>` is the SVG's accessible name, so this is what a
     // browser tooltip shows and a screen reader announces for the file.
     expect(stored).toContain(
-      '<title>Von Piloti erstellt — KI-generiert, nicht geprüft.</title>',
+      `<title>Von ${PRODUCT_NAME} erstellt — KI-generiert, nicht geprüft.</title>`,
     )
     // The machine half, in the same vocabulary the PDF and the .docx use.
     expect(stored).toContain(`<desc>${EXPECTED_MARKING}</desc>`)
@@ -362,7 +363,7 @@ describe('what leaves the product says a machine made it', () => {
     expect(stored.slice(0, 5)).toBe('%PDF-')
     expect(stored).toContain(EXPECTED_MARKING)
     // `Creator` is the obvious field, for a tool that reads only that one.
-    expect(stored).toContain('Piloti')
+    expect(stored).toContain(PRODUCT_NAME)
   })
 
   it('does not claim a diagram was drawn in a run that does not exist', async () => {

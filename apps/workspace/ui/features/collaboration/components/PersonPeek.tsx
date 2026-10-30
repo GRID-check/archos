@@ -71,7 +71,7 @@ export function PersonPeek({
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="text-foreground truncate text-sm font-semibold">
+        <p className="text-foreground truncate text-sm font-medium">
           {person.name}
           {isYou && (
             <span className="text-muted-foreground font-normal">

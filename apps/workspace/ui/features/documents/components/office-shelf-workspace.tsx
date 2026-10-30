@@ -66,7 +66,7 @@ export function OfficeShelfWorkspace({
           ? {
               footerLead: (
                 <span
-                  className="text-muted-foreground/80 min-w-0 flex-1 truncate"
+                  className="text-muted-foreground min-w-0 flex-1 truncate"
                   data-testid="office-shelf-provenance"
                   title={line}
                 >

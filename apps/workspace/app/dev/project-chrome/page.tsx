@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { SearchField } from '@/components/ui/search-field'
 import { SectionLabel } from '@/components/ui/section-label'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function Chrome({
   title,
@@ -58,7 +59,7 @@ export default function ProjectChromePreviewPage(): JSX.Element {
       <Group label="Work">
         <Chrome
           title="Files"
-          subtitle="The project’s files: documents, drawings and reports, read by Piloti and cited where it uses them."
+          subtitle={"The project’s files: documents, drawings and reports, read by " + PRODUCT_NAME + " and cited where it uses them."}
           action={<Button type="button">Upload</Button>}
         />
         <Chrome

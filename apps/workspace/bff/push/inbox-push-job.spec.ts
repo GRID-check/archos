@@ -38,6 +38,7 @@ import {
   recordFailure,
 } from './repository'
 import type { PushSender, PushSendOptions, PushSendOutcome, PushTarget } from './sender'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const keys = generateVAPIDKeys()
 const ORG = 'org_1'
@@ -120,7 +121,7 @@ describe('a push goes to the recipient’s devices with the item’s words', () 
     const { sender, send } = senderReturning({})
     await runInboxPush(ORG, payload, first, sender)
     const body = JSON.parse(send.mock.calls[0]![1])
-    expect(body.title).toBe('New message in Piloti')
+    expect(body.title).toBe(`New message in ${PRODUCT_NAME}`)
     expect(body.body).toBeNull()
   })
 })

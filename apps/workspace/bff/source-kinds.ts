@@ -18,6 +18,7 @@
  */
 
 import { SHELVES, SOURCE_KINDS } from '@/shared/vocabularies.generated'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /**
  * The provenance signal a source belongs to (spec §4 `--source-*` family).
@@ -131,7 +132,7 @@ export const KIND_TO_SIGNAL: Record<SourceKind, SourceSignal> = {
  * in the reader's own locale rather than parsing him out of a German sentence.
  */
 export const AGENT_AUTHORED_LANE = 'office_piloti'
-export const AGENT_AUTHORED_LANE_LABEL = 'Piloti-Dokument'
+export const AGENT_AUTHORED_LANE_LABEL = PRODUCT_NAME + '-Dokument'
 
 // Fine lane family → coarse kind (mirror of backend `source_kinds.kind_for_lane`).
 // The Herleitung fan-out and the chips MUST share this so they never disagree

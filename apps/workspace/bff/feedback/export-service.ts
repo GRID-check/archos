@@ -22,7 +22,6 @@ import { requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import type { UserSession } from '@/lib/auth/types'
 import { configuredAppOrigin } from '@/lib/app-origin'
-import { PRODUCT_NAME } from '@/lib/brand'
 import { describeResource } from '@/lib/sharing/registry'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import { langfuseTraceUrl, langfuseUiConfig } from '@/lib/langfuse/config'
@@ -253,8 +252,11 @@ export async function getAnswerFeedbackFilterOptions(
   }
 }
 
-/** File-name stem shared by the workbook and the CSV: `piloti-bewertungen`. */
-const FILE_STEM = `${PRODUCT_NAME.toLowerCase()}-bewertungen`
+/**
+ * File-name stem shared by the workbook and the CSV: `bewertungen`. No product name:
+ * a download's name says what it holds, and a rename then touches nothing here (ADR-0149).
+ */
+const FILE_STEM = 'bewertungen'
 
 const day = (instant: Date): string => instant.toISOString().slice(0, 10)
 
@@ -278,7 +280,7 @@ function narrowedBeyondName(query: FeedbackQuery): boolean {
 }
 
 /**
- * `piloti-bewertungen[_<org>]_<from>_<to>[_gefiltert][_erste-<cap>].<ext>`, dates UTC.
+ * `bewertungen[_<org>]_<from>_<to>[_gefiltert][_erste-<cap>].<ext>`, dates UTC.
  *
  * The organization is named when the file is about exactly one, because that is
  * the file somebody forwards to that customer. `_gefiltert` says the file is a
@@ -295,7 +297,7 @@ export function feedbackExportFileName(
   return `${FILE_STEM}${organizationSegment(data.named)}_${scope.from}_${scope.to}${filtered}${cut}.${extension}`
 }
 
-/** `piloti-bewertungen-wochen[_<org>]_<monday>_<to>[_erste-<cap>].csv`. */
+/** `bewertungen-wochen[_<org>]_<monday>_<to>[_erste-<cap>].csv`. */
 export function feedbackWeeklyFileName(
   data: Pick<FeedbackWeeklyExport, 'windowFrom' | 'query' | 'named' | 'truncated' | 'cap'>
 ): string {

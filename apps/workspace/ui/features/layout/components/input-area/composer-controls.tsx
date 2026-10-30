@@ -176,7 +176,7 @@ export function ComposerControls({ controller }: { controller: InputAreaControll
                 }
               >
                 <FileText className="size-3" aria-hidden="true" />
-                <span className="text-xs font-semibold">{controller.attachedFilesCount}</span>
+                <span className="text-xs font-medium">{controller.attachedFilesCount}</span>
               </Button>
             )}
 

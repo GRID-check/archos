@@ -154,7 +154,7 @@ function BrowserAppliedProfileCard({
 
   return (
     <ProposalShell tone="pending">
-      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="text-sm font-medium text-foreground">{title}</p>
       <p className="text-sm leading-relaxed text-muted-foreground">{rationale}</p>
 
       <ProfilePatchTable rows={rows} showBefore={profile !== null} />

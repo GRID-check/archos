@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@/test-utils'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import { DocumentLifecyclePosition } from './document-lifecycle-position'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function version(state: DocumentVersionState) {
   return { state }
@@ -31,7 +32,7 @@ describe('DocumentLifecyclePosition — the sentence', () => {
 
     const meaning = screen.getByTestId('document-lifecycle-meaning')
     expect(meaning).toHaveTextContent('Waiting for approval')
-    expect(meaning).toHaveTextContent('Piloti does not answer from it')
+    expect(meaning).toHaveTextContent(`${PRODUCT_NAME} does not answer from it`)
     expect(meaning).not.toHaveTextContent('published revision')
   })
 
@@ -39,7 +40,7 @@ describe('DocumentLifecyclePosition — the sentence', () => {
     render(<DocumentLifecyclePosition version={version('published')} lifecycle="active" />)
 
     expect(screen.getByTestId('document-lifecycle-meaning')).toHaveTextContent(
-      'Piloti answers from this revision.',
+      `${PRODUCT_NAME} answers from this revision.`,
     )
   })
 

@@ -69,7 +69,7 @@ export const QUESTIONS_TYPED_ADDRESS: IntakeView = {
   locationRegister: registerOf(profileOf({ site_address: 'Hauptstraße 4, 3420 Kritzendorf' }), null),
 }
 
-/** Piloti still reads: the round says so and takes what is already known. */
+/** The agent still reads: the round says so and takes what is already known. */
 export const QUESTIONS_READING: IntakeView = { ...INTAKE_READING, locationRegister: REGISTER_READY }
 
 /** A past project: no Bundesland was found, so it is the one question; no document is requested. */

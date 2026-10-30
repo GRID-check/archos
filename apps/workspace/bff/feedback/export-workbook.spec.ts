@@ -24,6 +24,7 @@ import {
 } from '@/test-utils/feedback-export-fixtures'
 import { FEEDBACK_EXPORT_COLUMNS, FEEDBACK_WEEKLY_COLUMNS } from './export-columns'
 import type { FeedbackExport } from './export-service'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('server-only', () => ({}))
 
@@ -94,7 +95,7 @@ describe('the answer-feedback workbook', () => {
       const link = row.getCell(columnIndex('app_url')).value as CellHyperlinkValue
 
       expect(link.hyperlink).toBe(feedbackExportRecord().appUrl)
-      expect(link.text).toBe('In Piloti öffnen')
+      expect(link.text).toBe(`In ${PRODUCT_NAME} öffnen`)
       expect((row.getCell(columnIndex('langfuse_trace_url')).value as CellHyperlinkValue).hyperlink).toBe(
         feedbackExportRecord().langfuseTraceUrl
       )

@@ -89,6 +89,9 @@ runs:
         {
           echo "list<<EOF"
           echo "GIT_SHA=$GITHUB_SHA"
+          # Arguments that are part of the image, and of its input hash (the web image's
+          # PUBLIC_SITE_URL, from the prod stack's baseDomain): ci/image_inputs.py build-args.
+          python3 ci/image_inputs.py build-args "$IMAGE_NAME"
           if [ "$IMAGE_NAME" = frontend ] && [ -n "$POSTHOG_API_KEY" ] && [ -n "$POSTHOG_PROJECT_ID" ]; then
             echo "POSTHOG_PROJECT_ID=$POSTHOG_PROJECT_ID"
           fi

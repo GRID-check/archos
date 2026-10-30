@@ -11,6 +11,7 @@ import { filesCopy } from '@/i18n/namespaces/files'
 import type { DocumentReview } from '../hooks/use-document-review'
 import { MarkBody } from './review/mark-body'
 import { markInk } from './review/review-page-layer'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Long enough that crossing a pin on the way somewhere else does not open it. */
 const OPEN_DELAY_MS = 130
@@ -64,7 +65,7 @@ export function InlineMarkPeek({
     (annotation) => annotation.id === shownId && annotation.page === page && annotation.onCurrentRevision
   )
   if (!canHover || !mark) return null
-  const author = mark.authorKind === 'piloti' ? 'Piloti' : mark.createdByName
+  const author = mark.authorKind === 'piloti' ? PRODUCT_NAME : mark.createdByName
   return (
     <Popover open onOpenChange={(open) => !open && setShownId(null)}>
       <PopoverAnchor asChild>

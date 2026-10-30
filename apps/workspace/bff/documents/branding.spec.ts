@@ -38,6 +38,7 @@ import {
   PLATFORM_DOCUMENT_BRANDING,
   resolveDocumentBranding,
 } from './branding'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const noSettings = { displayName: null, defaultLocale: 'de', settings: {} }
 
@@ -58,15 +59,15 @@ describe('the platform default', () => {
       organizationName: 'Musterbüro ZT GmbH',
       locale: 'de',
     })
-    expect(branding.headerLine).toBe('Erstellt mit Piloti für Musterbüro ZT GmbH')
-    expect(branding.footerLine).toBe('Piloti · Entwurf, nicht freigegeben')
+    expect(branding.headerLine).toBe(`Erstellt mit ${PRODUCT_NAME} für Musterbüro ZT GmbH`)
+    expect(branding.footerLine).toBe(`${PRODUCT_NAME} · Entwurf, nicht freigegeben`)
   })
 
   it('names the product alone when there is no organization to name', async () => {
     // An anonymous deployment, or WorkOS unreachable. „Erstellt mit Piloti für"
     // with nothing after it is worse than not naming an office at all.
     const branding = await resolveDocumentBranding({ organizationName: null, locale: 'de' })
-    expect(branding.headerLine).toBe('Erstellt mit Piloti')
+    expect(branding.headerLine).toBe(`Erstellt mit ${PRODUCT_NAME}`)
     expect(branding.headerLine).not.toContain('{')
   })
 
@@ -92,20 +93,20 @@ describe('the platform default', () => {
       locale: 'de',
     })
     expect(branding.productName).toBe('Bürotool')
-    expect(branding.aiGeneratorName).toBe('Piloti')
+    expect(branding.aiGeneratorName).toBe(PRODUCT_NAME)
   })
 })
 
 describe('the language the document is in', () => {
   it('picks the English copy for an English reader', async () => {
     const branding = await resolveDocumentBranding({ organizationName: 'Acme', locale: 'en' })
-    expect(branding.headerLine).toBe('Created with Piloti for Acme')
+    expect(branding.headerLine).toBe(`Created with ${PRODUCT_NAME} for Acme`)
     expect(branding.prose).toContain('responsibility for its content')
   })
 
   it('falls back to the app default rather than rendering nothing', async () => {
     const branding = await resolveDocumentBranding({ organizationName: 'Acme' })
-    expect(branding.headerLine).toBe('Created with Piloti for Acme')
+    expect(branding.headerLine).toBe(`Created with ${PRODUCT_NAME} for Acme`)
   })
 
   it('inherits the office’s own language when the caller has none', async () => {
@@ -116,7 +117,7 @@ describe('the language the document is in', () => {
       organizationId: 'org_1',
       organizationName: 'Musterbüro',
     })
-    expect(branding.headerLine).toBe('Erstellt mit Piloti für Musterbüro')
+    expect(branding.headerLine).toBe(`Erstellt mit ${PRODUCT_NAME} für Musterbüro`)
   })
 
   it('lets an explicit language beat the office’s default', async () => {
@@ -127,7 +128,7 @@ describe('the language the document is in', () => {
       organizationName: 'Musterbüro',
       locale: 'en',
     })
-    expect(branding.headerLine).toBe('Created with Piloti for Musterbüro')
+    expect(branding.headerLine).toBe(`Created with ${PRODUCT_NAME} for Musterbüro`)
   })
 
   it('carries every field in every language the app supports', () => {
@@ -167,7 +168,7 @@ describe('the override seam', () => {
       organizationName: 'Musterbüro ZT GmbH',
       locale: 'de',
     })
-    expect(branding.headerLine).toBe('Musterbüro ZT GmbH · erstellt mit Piloti')
+    expect(branding.headerLine).toBe(`Musterbüro ZT GmbH · erstellt mit ${PRODUCT_NAME}`)
     expect(branding.disclaimer).toBe(PLATFORM_DOCUMENT_BRANDING.copy.de.disclaimer)
   })
 
@@ -180,7 +181,7 @@ describe('the override seam', () => {
       organizationName: '{product}',
       locale: 'de',
     })
-    expect(branding.headerLine).toBe('Erstellt mit Piloti für {product}')
+    expect(branding.headerLine).toBe(`Erstellt mit ${PRODUCT_NAME} für {product}`)
   })
 
   it('is null when nothing is stored, which is every organization today', async () => {
@@ -204,7 +205,7 @@ describe('the override seam', () => {
       organizationName: 'Musterbüro',
       locale: 'de',
     })
-    expect(branding.headerLine).toBe('Erstellt mit Piloti für Musterbüro')
+    expect(branding.headerLine).toBe(`Erstellt mit ${PRODUCT_NAME} für Musterbüro`)
     expect(logged).toHaveBeenCalled()
     logged.mockRestore()
   })
@@ -219,7 +220,7 @@ describe('the override seam', () => {
       locale: 'de',
     })
     expect(branding.prose).toBe(
-      PLATFORM_DOCUMENT_BRANDING.copy.de.prose.replaceAll('{product}', 'Piloti'),
+      PLATFORM_DOCUMENT_BRANDING.copy.de.prose.replaceAll('{product}', PRODUCT_NAME),
     )
     expect(logged).toHaveBeenCalled()
     logged.mockRestore()

@@ -9,6 +9,7 @@ import type { ProjectLifecycleView } from '@/lib/projects/project-status'
 import { CurrentProjectProvider, type CurrentProject } from '../lib/current-project'
 import { ProjectStatusBanner } from './project-status-banner'
 import { ProjectLifecycleCard } from './project-lifecycle-card'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const refresh = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh, push: vi.fn(), replace: vi.fn() }) }))
@@ -59,7 +60,7 @@ describe('ProjectStatusBanner', () => {
     )
     expect(screen.getByText('Closed project · read-only')).toBeInTheDocument()
     // When the work ended leads; the day it was closed in Piloti follows.
-    expect(screen.getByTestId('closed-project-banner')).toHaveTextContent('Completed September 2026. Closed in Piloti on October 6, 2026.')
+    expect(screen.getByTestId('closed-project-banner')).toHaveTextContent(`Completed September 2026. Closed in ${PRODUCT_NAME} on October 6, 2026.`)
     expect(screen.getByTestId('closed-project-banner')).toHaveAttribute('role', 'status')
     expect(screen.getByTestId('closed-project-banner')).not.toHaveTextContent('closed projects are readable by the whole office')
     expect(screen.getByTestId('closed-project-banner')).not.toHaveTextContent('not realized')
@@ -178,7 +179,7 @@ describe('ProjectLifecycleCard', () => {
     expect(screen.getByTestId('close-step-keep')).not.toBeVisible()
     expect(screen.getByTestId('closing-debrief')).toBeInTheDocument()
     // Step three: nothing to clear out, so one button closes.
-    expect(await screen.findByText('Piloti proposes nothing to remove.')).toBeInTheDocument()
+    expect(await screen.findByText(`${PRODUCT_NAME} proposes nothing to remove.`)).toBeInTheDocument()
     expect(statusPuts(fetchMock)).toEqual([])
     await userEvent.click(screen.getByRole('button', { name: 'Close project' }))
 
@@ -208,7 +209,7 @@ describe('ProjectLifecycleCard', () => {
     render(<ProjectLifecycleCard projectId="p1" lifecycle={CLOSED} />)
 
     expect(screen.getByTestId('lifecycle-closed-facts')).toHaveTextContent('Completed · completion September 2026')
-    expect(screen.getByText('Closed in Piloti on October 6, 2026')).toBeInTheDocument()
+    expect(screen.getByText(`Closed in ${PRODUCT_NAME} on October 6, 2026`)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Reopen project' }))
     expect(screen.queryByTestId('closing-debrief')).not.toBeInTheDocument()

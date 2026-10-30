@@ -8,11 +8,12 @@
  * row, a READ grouped row with `count: 0`, the OPERATIONAL storage-quota
  * warning (ADR-0042), a row whose type this build does not know (the runtime
  * fallback), an INERT row whose target is gone (IB-13), and the marks, Fassungen
- * and Piloti rows of the review.
+ * and the agent's rows of the review.
  */
 
 import type { InboxItemView } from '@/lib/inbox/types'
 import { MENTIONABLE, VIEWER_ID, replyToMark, withProjects } from './inbox-rows'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // Relative to now, so „vor 4 Minuten“ reads as it would in the product rather
 // than every row claiming months.
@@ -240,7 +241,7 @@ export const ITEMS: InboxItemView[] = [
     resourceType: 'conversation',
     resourceId: 'c5c',
     anchorId: null,
-    actorName: 'Piloti',
+    actorName: PRODUCT_NAME,
     actorUserId: null,
     count: 1,
     href: '/app/projects/p1/chat?session=c5c',
@@ -378,9 +379,9 @@ export const ITEMS: InboxItemView[] = [
     createdAt: ago(13),
     updatedAt: ago(13),
   },
-  // What Piloti did, told to the person whose act woke it (ADR-0106): which
+  // What the agent did, told to the person whose act woke it (ADR-0106): which
   // mark in which document, why it did not work (the failure's `variant`),
-  // and what to do now. The excerpt is what the mark says, or Piloti's question.
+  // and what to do now. The excerpt is what the mark says, or the agent's question.
   {
     id: 'i-agent-failed',
     type: 'piloti.work_failed',
@@ -421,7 +422,7 @@ export const ITEMS: InboxItemView[] = [
     excerpt: 'Gilt für die Brüstung die Höhe ab Fertigfußboden oder ab Rohdecke?',
     mentions: [],
     variant: null,
-    // Events do not wake Piloti (the default): the answer goes in the Prüfansicht, which asks Piloti.
+    // Events do not wake the agent (the default): the answer goes in the Prüfansicht, which asks the agent.
     answerIn: 'review',
     createdAt: ago(5),
     updatedAt: ago(5),
@@ -567,7 +568,7 @@ export const ITEMS: InboxItemView[] = [
     mentions: [{ targetId: VIEWER_ID, display: 'Miriam Hofer' }],
     variant: null,
     answerIn: 'row',
-    // Events wake Piloti in this office: „Antworten" opens the thread's composer with @Piloti beside Send.
+    // Events wake the agent in this office: „Antworten" opens the thread's composer with @{productName} beside Send.
     pilotiWakes: true,
     createdAt: ago(3),
     updatedAt: ago(3),
@@ -618,8 +619,8 @@ export const ITEMS: InboxItemView[] = [
     createdAt: ago(48),
     updatedAt: ago(9),
   },
-  // Piloti's proposals a colleague took over, on a document the reader uploaded:
-  // a proposal tells nobody until then, and then reads as Piloti's marks for them.
+  // The agent's proposals a colleague took over, on a document the reader uploaded:
+  // a proposal tells nobody until then, and then reads as the agent's marks for them.
   {
     id: 'i-marks-taken-over',
     type: 'annotation.activity',

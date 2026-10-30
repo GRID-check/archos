@@ -24,6 +24,7 @@ import {
   DocumentReviewControls,
   type ReviewerOption,
 } from './document-review-controls'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function version(
   state: DocumentVersionState,
@@ -223,7 +224,7 @@ describe('DocumentReviewControls — approving signs its stand', () => {
     )
     await userEvent.click(screen.getByTestId('document-lifecycle-approve'))
     expect(screen.getByTestId('document-review-approve-open-marks')).toHaveTextContent(
-      '2 open annotations and 12 proposals from Piloti – approve anyway?',
+      `2 open annotations and 12 proposals from ${PRODUCT_NAME} – approve anyway?`,
     )
   })
 
@@ -316,7 +317,7 @@ describe('DocumentReviewControls — publishing is its own act', () => {
 
     const section = screen.getByTestId('document-review-publish')
     expect(section).toHaveTextContent('Publication')
-    expect(section).toHaveTextContent('the one Piloti answers from')
+    expect(section).toHaveTextContent(`the one ${PRODUCT_NAME} answers from`)
     expect(section).toHaveTextContent('revision 2')
     // Its own section, visually cut off from the row above it.
     expect(section.className).toContain('border-t')

@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { CleanupProposal } from '@/lib/projects/cleanup-types'
 import { CloseProjectDialog } from './close-project-dialog'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const A = '00000000-0000-4000-8000-00000000000a'
 const B = '00000000-0000-4000-8000-00000000000b'
@@ -59,7 +60,7 @@ describe('CloseProjectDialog', () => {
     const onClose = vi.fn(async () => true)
     await renderAtCleanup(onClose)
 
-    expect(await screen.findByTestId('cleanup-notice')).toHaveTextContent('AI proposal: made by Piloti')
+    expect(await screen.findByTestId('cleanup-notice')).toHaveTextContent(`AI proposal: made by ${PRODUCT_NAME}`)
     expect(screen.getByText('Ältere Fassung.')).toBeInTheDocument()
     expect(screen.getByText('Lock file of an Office program')).toBeInTheDocument()
     expect(screen.getAllByText('AI proposal')).toHaveLength(1)

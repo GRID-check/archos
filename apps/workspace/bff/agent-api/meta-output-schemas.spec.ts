@@ -16,6 +16,7 @@ import { buildMcpServer, createAgentDoorHandler } from './mcp-server'
 import { META_OUTPUT_SCHEMAS } from './meta-output-schemas'
 import { visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session = {
   userId: 'user_1',
@@ -137,7 +138,7 @@ describe('icons', () => {
       { authInfo: { token: '', clientId: 'c', scopes: [], extra: { principal, mode: 'search' } } },
     )
     const info = ((await response.json()) as Rpc).result?.serverInfo as { title: string; websiteUrl?: string; icons: { src: string; theme?: string; mimeType?: string }[] }
-    expect(info.title).toBe('Piloti')
+    expect(info.title).toBe(PRODUCT_NAME)
     expect(info.websiteUrl).toBe('https://app.piloti.test')
     // PNG first, from the pinned origin: the one format every client must render.
     expect(info.icons[0]).toMatchObject({ src: 'https://app.piloti.test/icons/icon-192.png', mimeType: 'image/png', sizes: ['192x192'] })

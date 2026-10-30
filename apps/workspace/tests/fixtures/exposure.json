@@ -139,7 +139,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "project-member-list": {
    "kind": "catalog",
@@ -159,7 +159,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "project-memory-create": {
    "kind": "catalog",
@@ -169,7 +169,7 @@
    "piloti": "native:remember",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project"
+   "reason": "The agent keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project"
   },
   "project-memory-delete": {
    "kind": "catalog",
@@ -370,7 +370,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "a project’s upload screening override; how Piloti treats uploads, set by a person"
+    "reason": "a project’s upload screening override; how the agent treats uploads, set by a person"
    },
    "reason": null
   },
@@ -383,7 +383,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "a project’s upload screening override; how Piloti treats uploads, set by a person"
+    "reason": "a project’s upload screening override; how the agent treats uploads, set by a person"
    },
    "reason": null
   },
@@ -698,7 +698,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "mail-import-cancel": {
    "kind": "catalog",
@@ -988,7 +988,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "project-folder-bin-list": {
    "kind": "catalog",
@@ -1138,7 +1138,7 @@
    "piloti": "native:canvas__mark",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+   "reason": "The agent marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
   },
   "annotation-delete": {
    "kind": "catalog",
@@ -1148,7 +1148,7 @@
    "piloti": "native:canvas__delete",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+   "reason": "The agent marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
   },
   "annotation-get": {
    "kind": "catalog",
@@ -1178,7 +1178,7 @@
    "piloti": "native:canvas__reply",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+   "reason": "The agent marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
   },
   "annotation-reply-delete": {
    "kind": "catalog",
@@ -1208,7 +1208,7 @@
    "piloti": "native:canvas__update",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+   "reason": "The agent marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
   },
   "document-annotations-export": {
    "kind": "catalog",
@@ -1228,7 +1228,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "document-quarantine-allow-request": {
    "kind": "catalog",
@@ -1448,7 +1448,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+   "reason": "how another agent consults the workspace’s agent; the agent never asks itself (ADR-0124, the recursion lock)"
   },
   "agent-ask-create": {
    "kind": "catalog",
@@ -1458,7 +1458,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+   "reason": "how another agent consults the workspace’s agent; the agent never asks itself (ADR-0124, the recursion lock)"
   },
   "agent-ask-get": {
    "kind": "catalog",
@@ -1468,7 +1468,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+   "reason": "how another agent consults the workspace’s agent; the agent never asks itself (ADR-0124, the recursion lock)"
   },
   "answer-feedback-list": {
    "kind": "catalog",
@@ -1632,7 +1632,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "what one Piloti answer cost; billing, not office work"
+    "reason": "what one of the agent’s answers cost; billing, not office work"
    },
    "reason": null
   },
@@ -1740,7 +1740,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
+   "reason": "the person decides a proposal, or undoes a change, on its own card; the agent never decides it for them"
   },
   "assignment-add": {
    "kind": "catalog",
@@ -1905,7 +1905,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
+   "reason": "the person decides a proposal, or undoes a change, on its own card; the agent never decides it for them"
   },
   "proposal-dismiss": {
    "kind": "catalog",
@@ -1915,7 +1915,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
+   "reason": "the person decides a proposal, or undoes a change, on its own card; the agent never decides it for them"
   },
   "proposal-get": {
    "kind": "catalog",
@@ -2037,7 +2037,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "sharing-grant-revoke": {
    "kind": "catalog",
@@ -2047,7 +2047,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "sharing-grant-update": {
    "kind": "catalog",
@@ -2057,7 +2057,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "sharing-visibility-set": {
    "kind": "catalog",
@@ -2067,7 +2067,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "user-preference-get": {
    "kind": "catalog",
@@ -2113,7 +2113,7 @@
    "piloti": "native:create_task",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms"
+   "reason": "The agent proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms"
   },
   "task-delete": {
    "kind": "catalog",
@@ -2163,7 +2163,7 @@
    "piloti": "native:create_task",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms"
+   "reason": "The agent proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms"
   },
   "task-run-document-add": {
    "kind": "catalog",
@@ -2284,7 +2284,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "switches a platform-curated skill of Piloti’s on or off; product configuration"
+    "reason": "switches one of the agent’s platform-curated skills on or off; product configuration"
    },
    "reason": null
   },
@@ -2306,7 +2306,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
+   "reason": "The agent is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
   },
   "skill-invocable-list": {
    "kind": "catalog",
@@ -2349,7 +2349,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
+   "reason": "The agent is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
   },
   "skill-update": {
    "kind": "catalog",
@@ -2485,7 +2485,7 @@
    "piloti": "native:ifc_query",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti counts and reads the model with its own `ifc_query`, which says what the export cannot answer"
+   "reason": "The agent counts and reads the model with its own `ifc_query`, which says what the export cannot answer"
   },
   "bim-model-source-get": {
    "kind": "catalog",
@@ -2549,7 +2549,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "spend limits on Piloti itself; a refused call says when one stops work"
+    "reason": "spend limits on the agent itself; a refused call says when one stops work"
    },
    "reason": null
   },
@@ -2562,7 +2562,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "spend limits on Piloti itself; product configuration"
+    "reason": "spend limits on the agent itself; product configuration"
    },
    "reason": null
   },
@@ -2575,7 +2575,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "spend limits on Piloti itself; product configuration"
+    "reason": "spend limits on the agent itself; product configuration"
    },
    "reason": null
   },
@@ -2588,7 +2588,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "what Piloti keeps of a purged folder; a retention policy a person sets"
+    "reason": "what the agent keeps of a purged folder; a retention policy a person sets"
    },
    "reason": null
   },
@@ -2601,7 +2601,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "what Piloti keeps of a purged folder; a retention policy a person sets"
+    "reason": "what the agent keeps of a purged folder; a retention policy a person sets"
    },
    "reason": null
   },
@@ -2624,7 +2624,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "how long Piloti keeps the download log; a retention policy a person sets"
+    "reason": "how long the agent keeps the download log; a retention policy a person sets"
    },
    "reason": null
   },
@@ -2647,7 +2647,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the standing instructions shape every Piloti answer; they configure the product, and Piloti already reads them"
+    "reason": "the standing instructions shape every answer of the agent; they configure the product, and the agent already reads them"
    },
    "reason": null
   },
@@ -2660,7 +2660,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the standing instructions shape every Piloti answer; configuring the product is a person’s act"
+    "reason": "the standing instructions shape every answer of the agent; configuring the product is a person’s act"
    },
    "reason": null
   },
@@ -2673,7 +2673,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+    "reason": "the LLM provider keys the agent runs on; product configuration and a credential"
    },
    "reason": null
   },
@@ -2686,7 +2686,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+    "reason": "the LLM provider keys the agent runs on; product configuration and a credential"
    },
    "reason": null
   },
@@ -2699,7 +2699,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+    "reason": "the LLM provider keys the agent runs on; product configuration and a credential"
    },
    "reason": null
   },
@@ -2712,7 +2712,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+    "reason": "the LLM provider keys the agent runs on; product configuration and a credential"
    },
    "reason": null
   },
@@ -2725,7 +2725,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "whether Piloti runs on the platform’s or the office’s provider key; product configuration"
+    "reason": "whether the agent runs on the platform’s or the office’s provider key; product configuration"
    },
    "reason": null
   },
@@ -2747,7 +2747,7 @@
    "piloti": "native:remember",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project"
+   "reason": "The agent keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project"
   },
   "organization-memory-delete": {
    "kind": "catalog",
@@ -2788,7 +2788,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "which models Piloti runs on; product configuration"
+    "reason": "which models the agent runs on; product configuration"
    },
    "reason": null
   },
@@ -2801,7 +2801,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "which models Piloti runs on; product configuration"
+    "reason": "which models the agent runs on; product configuration"
    },
    "reason": null
   },
@@ -2814,7 +2814,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "which models Piloti runs on; product configuration"
+    "reason": "which models the agent runs on; product configuration"
    },
    "reason": null
   },
@@ -2827,7 +2827,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the history of which models Piloti ran on; product configuration"
+    "reason": "the history of which models the agent ran on; product configuration"
    },
    "reason": null
   },
@@ -2852,7 +2852,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "organization-role-delete": {
    "kind": "catalog",
@@ -2862,7 +2862,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "organization-role-list": {
    "kind": "catalog",
@@ -2882,7 +2882,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card the agent worded is not the confirmation it needs"
   },
   "organization-settings-get": {
    "kind": "catalog",
@@ -2893,7 +2893,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "how Piloti works for the office (language, effort and other defaults); a person sets it in Settings"
+    "reason": "how the agent works for the office (language, effort and other defaults); a person sets it in Settings"
    },
    "reason": null
   },
@@ -2906,7 +2906,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "how Piloti works for the office (language, effort and other defaults); a person sets it in Settings"
+    "reason": "how the agent works for the office (language, effort and other defaults); a person sets it in Settings"
    },
    "reason": null
   },
@@ -2929,7 +2929,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the office’s upload screening policy; how Piloti treats uploads, set by a person"
+    "reason": "the office’s upload screening policy; how the agent treats uploads, set by a person"
    },
    "reason": null
   },
@@ -2942,7 +2942,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "the office’s upload screening policy; how Piloti treats uploads, set by a person"
+    "reason": "the office’s upload screening policy; how the agent treats uploads, set by a person"
    },
    "reason": null
   },
@@ -2955,7 +2955,7 @@
    "platform": false,
    "withheld": {
     "category": "product-config",
-    "reason": "what the office spent on Piloti itself, by model and day; billing, not office work"
+    "reason": "what the office spent on the agent itself, by model and day; billing, not office work"
    },
    "reason": null
   },
@@ -2981,7 +2981,7 @@
    "platform": false,
    "withheld": {
     "category": "external-service",
-    "reason": "switches the web search provider Piloti answers with; a calling agent has its own web search"
+    "reason": "switches the web search provider the agent answers with; a calling agent has its own web search"
    },
    "reason": null
   },
@@ -3556,7 +3556,7 @@
    "piloti": "native:knowledge_search",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "reason": "The agent reads with this native tool itself; the door offers it to outside agents"
   },
   "passage-read": {
    "kind": "backend",
@@ -3566,7 +3566,7 @@
    "piloti": "native:read_file",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "reason": "The agent reads with this native tool itself; the door offers it to outside agents"
   },
   "files-list": {
    "kind": "backend",
@@ -3576,7 +3576,7 @@
    "piloti": "native:list_files",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "reason": "The agent reads with this native tool itself; the door offers it to outside agents"
   },
   "document-look": {
    "kind": "backend",
@@ -3586,7 +3586,7 @@
    "piloti": "native:look",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "reason": "The agent reads with this native tool itself; the door offers it to outside agents"
   },
   "ifc-query": {
    "kind": "backend",
@@ -3596,7 +3596,7 @@
    "piloti": "native:ifc_query",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "reason": "The agent reads with this native tool itself; the door offers it to outside agents"
   },
   "ifc-measure": {
    "kind": "backend",
@@ -3606,7 +3606,7 @@
    "piloti": "native:ifc_measure",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "reason": "The agent reads with this native tool itself; the door offers it to outside agents"
   },
   "law-lookup": {
    "kind": "backend",
@@ -3616,7 +3616,7 @@
    "piloti": "native:ris_lookup_tool",
    "platform": false,
    "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "reason": "The agent reads with this native tool itself; the door offers it to outside agents"
   }
  },
  "appTools": {
@@ -3624,13 +3624,13 @@
    "view": "ui://piloti/proposal-card",
    "operation": "proposal-apply",
    "app": true,
-   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
+   "reason": "pressed by the person on the agent’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
   },
   "proposal-card-dismiss": {
    "view": "ui://piloti/proposal-card",
    "operation": "proposal-dismiss",
    "app": true,
-   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
+   "reason": "pressed by the person on the agent’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
   }
  }
 }

@@ -30,9 +30,11 @@ when the check arrived.
 What is not a hit
 -----------------
 
-- The name as a word in prose: the bare token `Piloti` or `Grid` (a comment, a
-  docstring, a string a person reads). That copy is the brand's business, and
-  the place to centralise it is the `productName` constant, not this check.
+- The name as a word in prose: the bare token `Piloti`, `Grid` or `ARCHOS` (a
+  comment, a docstring, a string a person reads, a generated fixture that renders
+  `PRODUCT_NAME` into copy). That copy is the brand's business, and the place to
+  centralise it is the `PRODUCT_NAME` constant; `scripts/check_brand_prose.py`
+  counts it in text, this check does not.
 - `grid` the English word: a bare lowercase `grid`, CSS and Tailwind
   (`grid-cols-2`, `gridTemplateColumns`), and `grid` as the last word, the
   layout noun (`FileGrid`, `document_grid`, `stat-grid`).
@@ -69,7 +71,7 @@ from pathlib import PurePosixPath
 
 BASELINE = Path("ci/brand_names_baseline.json")
 BRANDS = ("aiq", "archos", "piloti", "grid")
-PROSE = {"Piloti", "Grid"}
+PROSE = {"Piloti", "Grid", "ARCHOS", "Archos"}
 CONTENT_SUFFIXES = (
     ".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".astro", ".css", ".html", ".hog",
     ".yaml", ".yml", ".json", ".toml", ".sh", ".sql", ".example",
@@ -84,13 +86,15 @@ EXCLUDED = re.compile(
             r"^docs/(adr|audits)/",  # decisions and audits: history, written once
             r"^releasenotes/",  # what shipped, under the name it shipped with
             r"(^|/)migrations/|^apps/workspace/migrations/",  # Alembic and Drizzle history, written once
-            r"(^|/)i18n/dictionaries/|^apps/site/src/(i18n|data)/",  # copy, where the name belongs
+            r"(^|/)i18n/dictionaries/",  # copy, where the name belongs
+            r"^apps/website/src/data/changelog\.json$",  # generated from releasenotes/, excluded above
+            r"^packages/brand/signatures/",  # email signatures, generated from identity.json
             r"(^|/)public/",  # published assets: their URLs are public
             r"(^|/)(uv\.lock|bun\.lockb?|package-lock\.json|apm\.lock\.yaml)$",  # rendered from manifests
             r"\.mdx?$",  # prose, which follows the code it names
             r"^ci/[^/]*baseline[^/]*\.json$",  # ratchet baselines: they list paths, not names
             r"^\.github/filters\.yml$",  # CI path filters: they list paths, not names
-            r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
+            r"^scripts/check_brand_(names|prose)\.py$|^tests/test_check_brand_(names|prose)\.py$",  # these checks
             # The layout test names the old directories it forbids; the import test plants one in a fixture.
             r"^tests/test_(repo_layout|test_imports)\.py$",
             # The one-release fallback that reads the old, prefixed variable names, and its tests.
@@ -100,8 +104,9 @@ EXCLUDED = re.compile(
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
             r"^apps/workspace/bff/http/legacy-header-names\.|^apps/agent-host/src/agent_host/legacy_headers\.py$",
             # The brand's one file, where the name is meant to live, and the copies a sync script writes from it
-            # (apps/*/**/identity.json). The product is renamed by editing that file, so it is not a code identifier.
-            r"^packages/brand/identity\.json$|^apps/[^/]+/(.*/)?identity\.json$",
+            # (apps/*/**/identity.json, and the agent's beside agent.common.brand). The product is renamed by
+            # editing that file, so it is not a code identifier.
+            r"^packages/brand/identity\.json$|^apps/[^/]+/(.*/)?identity\.json$|^packages/agent/src/agent/common/identity\.json$",
             r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",
@@ -113,6 +118,8 @@ EXCLUDED = re.compile(
             r"^scripts/rls-test-db\.sh$",
             # The one release the BFF also sends the mode header under its old name, beside `x-chat-mode`.
             r"^apps/workspace/bff/turns/headless-mode\.ts$",
+            # The website's redirects from old public addresses, which keep the spelling they were published under.
+            r"^apps/website/redirects\.mjs$",
         )
     )
 )

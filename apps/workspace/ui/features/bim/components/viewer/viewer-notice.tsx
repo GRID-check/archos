@@ -51,7 +51,7 @@ export function ViewerNotice({
       {description && (
         <p className="max-w-prose text-sm text-balance text-muted-foreground">{description}</p>
       )}
-      {detail && <p className="max-w-prose text-xs text-muted-foreground/80">{detail}</p>}
+      {detail && <p className="max-w-prose text-xs text-muted-foreground">{detail}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   )

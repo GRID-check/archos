@@ -45,10 +45,11 @@ import type { DraftMention } from '@/lib/mentions/mention-text'
 import { I18nProvider, useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const ANNA: DraftMention = { targetId: 'user_anna', display: 'Anna Berger' }
 const TOBIAS: DraftMention = { targetId: 'user_tobias', display: 'Tobias Kern' }
-const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: 'Piloti' }
+const AGENT: DraftMention = { targetId: AGENT_MENTION_ID, display: PRODUCT_NAME }
 
 /**
  * The composer's chrome, reproduced. Only the action row matters for this preview,
@@ -135,7 +136,7 @@ function Previews(): JSX.Element {
   return (
     <>
       <section className="space-y-3">
-        <Eyebrow>Standard — der Chat fragt Piloti, ohne es zu sagen</Eyebrow>
+        <Eyebrow>Standard — der Chat fragt {PRODUCT_NAME}, ohne es zu sagen</Eyebrow>
         {/* `onMentionSomeone` is passed because the real composer passes it, and
             without it this preview quietly captured a state the product never
             shows: the affordance renders only when a handler exists, so every
@@ -150,7 +151,7 @@ function Previews(): JSX.Element {
       </section>
 
       <section className="space-y-3">
-        <Eyebrow>Eine Person erwähnt — Piloti hält sich zurück</Eyebrow>
+        <Eyebrow>Eine Person erwähnt — {PRODUCT_NAME} hält sich zurück</Eyebrow>
         <MockComposer
           text="@Anna Berger stimmt das für den Bestand?"
           hint={{
@@ -192,8 +193,8 @@ function Previews(): JSX.Element {
       </section>
 
       <section className="space-y-3">
-        <Eyebrow>Person und Piloti erwähnt — beide werden adressiert</Eyebrow>
-        <MockComposer text="@Anna Berger @Piloti bitte gemeinsam prüfen.">
+        <Eyebrow>Person und {PRODUCT_NAME} erwähnt — beide werden adressiert</Eyebrow>
+        <MockComposer text={"@Anna Berger @" + PRODUCT_NAME + " bitte gemeinsam prüfen."}>
           <AddresseeIndicator mentions={[ANNA, AGENT]} awaitingHuman />
         </MockComposer>
       </section>
@@ -215,7 +216,7 @@ export default function ComposerAddresseePreviewPage(): JSX.Element {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Wer die Nachricht bekommt</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Die Aussage im Composer — überall dort, wo die Nachricht nicht an Piloti geht.
+            Die Aussage im Composer — überall dort, wo die Nachricht nicht an {PRODUCT_NAME} geht.
             Der Standardfall bleibt still; genau das macht die anderen lesbar.
           </p>
         </div>

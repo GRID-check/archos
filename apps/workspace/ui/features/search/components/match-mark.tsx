@@ -14,7 +14,7 @@ export function MatchMark({ children, testId }: { children: ReactNode; testId?: 
   const compact = useCompactRow()
   return (
     <mark
-      className={cn('font-semibold text-foreground', compact ? 'bg-transparent' : 'rounded-[2px] bg-foreground/[0.08] [box-decoration-break:clone]')}
+      className={cn('font-medium text-foreground', compact ? 'bg-transparent' : 'rounded-[2px] bg-foreground/[0.08] [box-decoration-break:clone]')}
       data-testid={testId}
     >
       {children}

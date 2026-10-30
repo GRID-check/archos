@@ -1,11 +1,12 @@
 /**
  * The shared thread the chat previews render (`/dev/shared-thread`,
- * `/dev/inbox-dock?page=chat`): three people and Piloti in one conversation, and
+ * `/dev/inbox-dock?page=chat`): three people and the agent in one conversation, and
  * the `fetch` and `EventSource` shims that serve it to the real `ChatArea` with
  * no backend. One copy, so both previews show the same thread.
  */
 
 import { useChatStore } from '@/features/chat/store'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** `useAuth` returns this id when auth is disabled, so it is "me" in the preview. */
 const ME = 'default-user'
@@ -79,12 +80,12 @@ const MESSAGE_ROWS = [
     role: 'user',
     authorUserId: TOBIAS,
     content:
-      'Dann zählt der Innenhof nicht als zweiter Rettungsweg. @Piloti wie wirkt sich das auf den Nachweis aus?',
+      'Dann zählt der Innenhof nicht als zweiter Rettungsweg. @' + PRODUCT_NAME + ' wie wirkt sich das auf den Nachweis aus?',
     // Structured mentions ride in the metadata and are rendered as chips; the
     // addressee ruling next to them is the SERVER's, stored at persist time (MN-2).
     metadata: {
       messageType: 'user',
-      mentions: [{ targetId: 'agent:piloti', display: 'Piloti' }],
+      mentions: [{ targetId: 'agent:piloti', display: PRODUCT_NAME }],
       addressees: { agent: true, users: [] },
     },
     createdAt: at(11),
@@ -94,7 +95,7 @@ const MESSAGE_ROWS = [
 /**
  * The hand-back variant's thread: the reader asked Anna (a hand-off — the server
  * ruled `{ agent: false, users: [Anna] }`, so no turn was started), and Anna has
- * now answered. The wait is therefore closed, Piloti is out of the loop, and the
+ * now answered. The wait is therefore closed, the agent is out of the loop, and the
  * thread sits at the moment where the way on has to be offered.
  */
 const HANDBACK_ROWS = [
@@ -301,7 +302,7 @@ export function installSharedThreadShim(): void {
             this.replayFrames()
             return
           }
-          // A turn in flight would contradict the hand-back variant (Piloti is
+          // A turn in flight would contradict the hand-back variant (the agent is
           // precisely NOT working there), so that variant only opens the channel.
           if (isHandbackVariant()) return
           this.emitEnvelope({

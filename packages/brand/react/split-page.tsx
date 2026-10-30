@@ -66,7 +66,7 @@ export function SplitPage({
         <div className="ui-split-aside ui-split-panel">
           {image ? <img src={image} alt="" /> : null}
           <div className="ui-split-card">{aside}</div>
-          {asideNote ? <p className="ui-split-note small">{asideNote}</p> : null}
+          {asideNote ? <p className="ui-split-note small" data-theme="dark">{asideNote}</p> : null}
         </div>
       ) : (
         <div className="ui-split-aside">

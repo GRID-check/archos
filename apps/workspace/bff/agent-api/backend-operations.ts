@@ -46,6 +46,7 @@ import backendTools from '../../tests/fixtures/backend-tools.schema.json'
 import type { AgentDomain, ToolAnnotations } from './operation'
 import { type OperationResult, readResponseBody } from './dispatch'
 import { fittedHits, withOperationNames, withRankedOrderNote, type ToolNames } from './door-text'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export type { OperationResult }
 
@@ -127,14 +128,14 @@ const ENTRIES = [
       'only (`base` needs no `projectId`); omitted, every shelf is read, the OIB corpus included, so pass `project` for whether something is in the ' +
       'project’s own documents; an exact or regex answer states per shelf how many documents were searched and how many matched. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
       '`document_type` (a type key such as `fire_safety_concept`) and `refers_to` (a norm, a law, a plan number or a kind of ' +
-      'document) narrow to the documents Piloti read to be that kind or to refer to that, inside the search. ' +
+      'document) narrow to the documents ' + PRODUCT_NAME + ' read to be that kind or to refer to that, inside the search. ' +
       'A search that stops at its limit says its counts are lower bounds. `group_by: "document"` (ranked search only) returns one ' +
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
       'scope and outline. ' +
       'Returns the platform’s configured number of excerpts (16 unless raised, at most 50; the header counts them), each with source, citation key, document type, folder and page. ' +
       'A `Folder:` line after them is a folder whose summary matches: a pointer to look inside with files-list or `folder`, never a source. ' +
-      'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
+      'A hit marked as a document ' + PRODUCT_NAME + ' wrote is knowledge the office approved, never a source for a normative value. When you know ' +
       'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
       'citation or a file name; an empty result says how to retry.',
     needsProject: true,

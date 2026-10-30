@@ -594,7 +594,7 @@ export function DocumentRevisions({
             `[text-transform:inherit]` because the preflight resets a button's
             case, which drew this one heading in mixed case under three
             uppercase ones. */}
-        <SectionLabel as="h3" className="px-3 font-semibold tracking-[0.05em]">
+        <SectionLabel as="h3" className="px-3 font-medium tracking-[0.05em]">
           <CollapsibleTrigger asChild>
             <button
               type="button"

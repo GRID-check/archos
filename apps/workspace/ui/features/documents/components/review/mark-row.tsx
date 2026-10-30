@@ -91,7 +91,7 @@ export function MarkRowContent({
             </span>
           )}
           {annotation.dueOn && (
-            <span className={cn('inline-flex items-center gap-0.5 whitespace-nowrap', overdue && 'text-foreground font-semibold')}>
+            <span className={cn('inline-flex items-center gap-0.5 whitespace-nowrap', overdue && 'text-foreground font-medium')}>
               <Clock className="size-3" aria-hidden />
               {overdue ? t('review.overdue') : formatDayRange(annotation.dueOn, annotation.dueOn, locale)}
             </span>

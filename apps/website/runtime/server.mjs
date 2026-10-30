@@ -1,6 +1,10 @@
 /**
  * Production entry for the public site: the Astro node adapter's own handler,
- * behind one step that sets Cache-Control on static files (`cache-control.mjs`).
+ * behind steps that set the security headers on every response
+ * (`security-headers.mjs`), answer the health probe at `/healthz`, and set
+ * Cache-Control on static files (`cache-control.mjs`), and answer 410 for an old
+ * address that is gone on purpose (`gone.mjs`, reading the route fates in
+ * `../redirects.mjs`).
  *
  * Why a wrapper and not an adapter option: `@astrojs/node` has no hook for the
  * headers of files it serves from `dist/client` (`staticHeaders` covers
@@ -18,6 +22,9 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { cacheControlFor } from './cache-control.mjs'
+import { HEALTH_PATH, securityHeaders } from './security-headers.mjs'
+import { analyticsOrigins, webAnalyticsConfig } from './web-analytics.mjs'
+import { goneStatus } from './gone.mjs'
 
 // The standalone entry starts its own server on import unless told not to.
 // Static imports are hoisted, so the flag has to be set before a dynamic one.
@@ -52,8 +59,23 @@ function setCacheControl(req, res) {
   if (value && isClientFile(pathname)) res.setHeader('Cache-Control', value)
 }
 
+// The policy names the PostHog origins only when this container has analytics on.
+const SECURITY_HEADERS = securityHeaders(analyticsOrigins(webAnalyticsConfig(process.env)))
+
 const server = http.createServer((req, res) => {
+  for (const [name, value] of SECURITY_HEADERS) res.setHeader(name, value)
+  // Liveness and readiness: the process answers. Cheap, uncached, never logged
+  // as a page view, and not dependent on any file in dist/.
+  if ((req.url ?? '').split('?', 1)[0] === HEALTH_PATH) {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' })
+    res.end(req.method === 'HEAD' ? undefined : 'ok\n')
+    return
+  }
+  // HEAD is GET without the body (RFC 9110). Astro answers a redirect to a HEAD with 308 where
+  // the GET gets 301; Node already knows the request was HEAD and sends no body either way.
+  if (req.method === 'HEAD') req.method = 'GET'
   setCacheControl(req, res)
+  goneStatus(req, res)
   handler(req, res)
 })
 server.listen(PORT, HOST, () => {

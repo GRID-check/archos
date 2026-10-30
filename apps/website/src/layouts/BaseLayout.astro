@@ -2,29 +2,58 @@
 import '../styles/brand/tokens.css';
 import '../styles/brand/components.css';
 import '../styles/site.css';
+import ConsentNote from '../components/ConsentNote.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import { alternateOf, type Locale } from '../i18n/paths';
 import { t } from '../i18n/ui';
 import identity from '../lib/identity';
+import { breadcrumbList, faqPage, jsonLd, siteGraph, type Crumb, type GraphNode } from '../lib/structured-data';
+import { surfaceColor } from '../lib/theme';
+import signedInScript from '../scripts/signed-in.js?url&no-inline';
 
 interface Props {
   /** The page's language: sets `<html lang>`, the shell's strings and the hreflang pair */
   locale: Locale;
-  /** Page name. Omitted on the home page, where the title is the brand name alone. */
-  title?: string;
+  /** Page name, printed as `<title> – <brand>`. On the home page the brand comes first (`brandFirst`). */
+  title: string;
+  /** The home page: `<brand> – <title>` */
+  brandFirst?: boolean;
   description: string;
   /** Keeps the page out of search results */
   noindex?: boolean;
-  /** Renders without header and footer (the split pages: Login, Demo) */
+  /** Renders without header and footer (the split pages: Demo) */
   bare?: boolean;
   /** The other locale's twin of this page, when its path is not the table's (a post's translation) */
   alternatePath?: string;
+  /**
+   * JSON-LD breadcrumbs between home and this page (home and the page itself are added).
+   * Every indexed page except home gets Start › <title> by default.
+   */
+  crumbs?: Crumb[];
+  /** The FAQ items the page renders: emitted as an `FAQPage` too */
+  faq?: { q: string; a: string }[];
+  /** More JSON-LD nodes for this page (`SoftwareApplication` on home, `BlogPosting` on a post) */
+  graph?: GraphNode[];
+  /** The page links its blog feed (`<link rel="alternate" type="application/rss+xml">`) */
+  feed?: string;
 }
 
-const { locale, title, description, noindex = false, bare = false, alternatePath } = Astro.props;
+const {
+  locale,
+  title,
+  brandFirst = false,
+  description,
+  noindex = false,
+  bare = false,
+  alternatePath,
+  crumbs = [],
+  faq,
+  graph = [],
+  feed,
+} = Astro.props;
 const ui = t(locale);
-const pageTitle = title ? `${title} – ${identity.name}` : identity.name;
+const pageTitle = brandFirst ? `${identity.name} – ${title}` : `${title} – ${identity.name}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // hreflang: the page and its other-locale twin, German as x-default.
 const here = Astro.url.pathname;
@@ -32,7 +61,16 @@ const there = alternatePath ?? alternateOf(here);
 const hrefFor = (target: Locale) => new URL(target === locale ? here : there, Astro.site);
 // Social previews: the share card is the one image every page shares; og:locale names the region.
 const ogLocale: Record<Locale, string> = { de: 'de_AT', en: 'en_GB' };
-const shareImage = new URL('/media/share-card.jpg', Astro.site);
+const shareImage = new URL('/media/share-card.png', Astro.site);
+const site = Astro.site ?? new URL(`https://${identity.domain}`);
+const isHome = here === '/' || here === '/en/' || here === '/en';
+const nodes: GraphNode[] = [...graph];
+if (!noindex && !isHome) {
+  const home = { name: ui.breadcrumbHome, path: locale === 'en' ? '/en/' : '/' };
+  nodes.push(breadcrumbList(site, [home, ...crumbs, { name: title, path: here }]));
+}
+if (faq?.length) nodes.push(faqPage(site, here, faq));
+const structuredData = jsonLd(siteGraph(site, locale, nodes));
 ---
 
 <!doctype html>
@@ -43,7 +81,7 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
-    <link rel="canonical" href={canonical} />
+    {!noindex && <link rel="canonical" href={canonical} />}
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
@@ -51,14 +89,29 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
     <meta property="og:image" content={shareImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={identity.claim} />
     <meta property="og:locale" content={ogLocale[locale]} />
     <meta property="og:locale:alternate" content={ogLocale[locale === 'de' ? 'en' : 'de']} />
     <meta property="og:site_name" content={identity.name} />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="alternate" hreflang="de" href={hrefFor('de')} />
-    <link rel="alternate" hreflang="en" href={hrefFor('en')} />
-    <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
+    {
+      !noindex && (
+        <>
+          <link rel="alternate" hreflang="de" href={hrefFor('de')} />
+          <link rel="alternate" hreflang="en" href={hrefFor('en')} />
+          <link rel="alternate" hreflang="x-default" href={hrefFor('de')} />
+        </>
+      )
+    }
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    {feed && <link rel="alternate" type="application/rss+xml" title={ui.rssTitle} href={feed} />}
+    <meta name="theme-color" content={surfaceColor} />
+    <script type="application/ld+json" set:html={structuredData} />
+    <!-- Blocking on purpose and tiny: swaps Login for "App öffnen" before the header paints (README, "Signed in"). -->
+    <script is:inline src={signedInScript}></script>
     <!-- Web analytics, configured per stack at request time; a comment when
          PostHog is unset (src/pages/web-analytics.js.ts, runtime/web-analytics.mjs). -->
     <script is:inline src="/web-analytics.js" defer></script>
@@ -70,15 +123,8 @@ const shareImage = new URL('/media/share-card.jpg', Astro.site);
       <slot />
     </main>
     {!bare && <Footer locale={locale} />}
+    <ConsentNote locale={locale} />
     <script>
-      // The header's hairline marks that the page has scrolled beneath it.
-      const header = document.querySelector('.ui-header');
-      if (header) {
-        const mark = () => header.toggleAttribute('data-scrolled', scrollY > 0);
-        addEventListener('scroll', mark, { passive: true });
-        mark();
-      }
-
       // Blocks below the fold arrive once as they scroll into view (styles in
       // packages/brand/css/components.css, [data-reveal]). Anything on screen at
       // load is left alone, and reduced motion leaves the page as it is.

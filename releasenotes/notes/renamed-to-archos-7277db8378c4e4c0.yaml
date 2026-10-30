@@ -1,0 +1,21 @@
+---
+improvements:
+  - >
+    Piloti is now ARCHOS. The workspace and its agent introduce themselves
+    by the new name in the app, in notifications and in the documents they
+    write, and your projects, files and settings stay exactly as they were.
+  - >
+    The legal notices in the app (imprint, privacy policy, terms, AI notice and
+    the list of providers who process data) now say ARCHOS (formerly Piloti), so it is
+    clear they cover your account from before the rename, and they name the
+    operator, its address and its contact e-mail.
+  - >
+    The app icon in your browser tab and on your home screen is now the A of
+    the ARCHOS wordmark in black and white, and the pictures on empty pages are
+    drawn in the same black and grey. Links to the website shared in chats and
+    social networks now show the ARCHOS name and its claim.
+deprecations:
+  - >
+    If you connected your own AI assistant to the workspace, that connection
+    keeps working under its old addresses for at least one more release. We
+    will publish the new connection names first, and only then retire the old.

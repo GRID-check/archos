@@ -7,7 +7,7 @@
  *
  * The writes are the thread's own (`replyToAnnotation`, `updateAnnotation`):
  * the answer goes in as the thread's would, with whom it mentions as picked
- * and @Piloti as its flag; „Erledigen“ is held for the undo window and sent
+ * and @{productName} as its flag; „Erledigen“ is held for the undo window and sent
  * from the status the reader knows the mark in, so a mark somebody moved
  * meanwhile is a 409, never overwritten from a copy of it. The server decides
  * where an answer may be written (`answerIn`); nothing here guesses it.
@@ -84,7 +84,7 @@ export function useMarkAnswer({ item, markRow, markClient = MARK_CLIENT, onOpen 
           .map((mention) => mention.display),
       )
       setReplying(false)
-      // `off`: the answer met a wake rule but nothing wakes Piloti here; the row says how to ask it.
+      // `off`: the answer met a wake rule but nothing wakes the agent here; the row says how to ask it.
       setMarkOutcome(wake === 'off' ? 'sentAgentNotAsked' : 'sent')
       // Answered from here is read here: the thread has the reply.
       onOpen?.(item)

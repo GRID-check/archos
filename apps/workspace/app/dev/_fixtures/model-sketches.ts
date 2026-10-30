@@ -1,5 +1,5 @@
 /**
- * Sketches dev Piloti's model wrote on 2026-10-27, verbatim: each `answer` is the
+ * Sketches the dev agent's model wrote on 2026-10-27, verbatim: each `answer` is the
  * answer text `piloti-ask` returned for `question` (with the fence rules of the
  * `excalidraw-sketch` skill appended to the question, since dev did not have the
  * skill yet). Rendered by `/dev/excalidraw-sketch` (ADR-0146); not hand-edited.

@@ -21,6 +21,8 @@ ALLOWED = (
     "apps/agent-host/entrypoint.py",
     "tests/test_entrypoint_roles.py",
     "tests/test_no_legacy_env_names.py",
+    # The prose check's test plants identifiers to show it leaves them to the identifier check.
+    "tests/test_check_brand_prose.py",
     "apps/workspace/scripts/legacy-env-names.cjs",
     "apps/workspace/scripts/legacy-env-names.spec.mjs",
     "deploy/compose/docker-compose.yaml",
@@ -43,9 +45,10 @@ PROSE = (".md", ".mdx")
 GRID_ALLOWED = (
     "scripts/check_brand_names.py",
     "tests/test_check_brand_names.py",
+    "tests/test_check_brand_prose.py",
     "tests/.test_durations",
     "apps/workspace/migrations/",
-    "apps/site/src/data/",
+    "apps/website/src/data/",
 )
 
 

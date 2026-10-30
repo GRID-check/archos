@@ -20,6 +20,7 @@ from agent.citations.session import set_session_registry
 from agent.common import LLMProvider
 from agent.common import LLMRole
 from agent.common.answer_envelope import render_envelope_response_format
+from agent.common.brand import PRODUCT_NAME
 from agent.common.data_source_registry import populate_from_config
 from agent.common.data_source_registry import reset_registry
 from agent.common.retrieval_rounds import assistant_checkpoint
@@ -3479,7 +3480,7 @@ class TestTheDelegationRulesLiveInTheTool:
         """So the model recognises the handoff instead of judging every long task one."""
         description = self._description()
         assert "Einreichcheck bis Freitag" in description
-        assert "@Piloti prüf das" in description
+        assert f"@{PRODUCT_NAME} prüf das" in description
 
     def test_the_deadline_is_a_date_and_not_a_phrase(self):
         """A string nothing can compare is a deadline the scheduler never enforces."""

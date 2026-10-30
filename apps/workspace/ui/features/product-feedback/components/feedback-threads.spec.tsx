@@ -7,6 +7,7 @@ import type {
   OwnProductFeedbackThread,
 } from '@/lib/product-feedback/types'
 import { FeedbackThreadsDialog, type FeedbackThreadsApi } from './feedback-threads'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const REPORT: OwnProductFeedbackSummary = {
   id: '0b1c2d3e-4f50-4617-8899-aabbccddee01',
@@ -164,7 +165,7 @@ describe('FeedbackThreadsDialog: one thread', () => {
       'data-shared-author',
       'feedback-reporter',
     )
-    expect(detail().getByText(/Matthias, Piloti team/)).toBeInTheDocument()
+    expect(detail().getByText(new RegExp(String.raw`Matthias, ${PRODUCT_NAME} team`))).toBeInTheDocument()
     expect(detail().getByText('Since when does it happen?').closest('[data-side]')).toHaveAttribute('data-side', 'start')
     expect(detail().getByText('The upload stops at 99 percent.').closest('[data-side]')).toHaveAttribute('data-side', 'end')
   })

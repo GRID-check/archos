@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AppBridge, PostMessageTransport, type McpUiHostContext } from '@modelcontextprotocol/ext-apps/app-bridge'
 import type { CallToolResult } from '@modelcontextprotocol/client'
 import type { ProposedChangeView } from '@/lib/proposals/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The spec's default when a resource declares no CSP domain ("Host Behavior", restrictive default). */
 export const DEFAULT_VIEW_CSP =
@@ -121,11 +122,11 @@ export function HostFrame({
         style={{ background: dark ? '#1f1e1d' : '#faf9f5', border: `1px solid ${dark ? '#3d3d3a' : '#e8e6dc'}` }}
       >
         <p className="mb-3 text-sm" style={{ color: dark ? '#c2c0b6' : '#5e5d59' }}>
-          Assistant: Piloti has one open proposal for this project.
+          Assistant: {PRODUCT_NAME} has one open proposal for this project.
         </p>
         <iframe
           ref={frame}
-          title={`Piloti proposal (${label})`}
+          title={`${PRODUCT_NAME} proposal (${label})`}
           sandbox="allow-scripts"
           className="block w-full border-0"
           style={{ height, colorScheme: dark ? 'dark' : 'light' }}

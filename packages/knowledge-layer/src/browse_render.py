@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from agent.common.brand import PRODUCT_NAME
 from agent.knowledge.title_block import title_block_label
 
 from .browse_rows import _SHELF_LABELS
@@ -116,13 +117,13 @@ def _profile_lines(listing: Listing) -> list[str]:
     if listing.types:
         profile = " · ".join(f"{tag} {count}" for tag, count in listing.types[:MAX_TYPE_COUNTS])
         untyped = f"; without Dokumentart: {listing.untyped}" if listing.untyped else ""
-        lines.append(f"Dokumentart (assigned by Piloti): {profile}{untyped}.")
+        lines.append(f"Dokumentart (assigned by {PRODUCT_NAME}): {profile}{untyped}.")
     elif listing.untyped:
         # Said rather than left out: no line would read the same as "no profile".
-        lines.append("Dokumentart: Piloti has assigned none of these files a Dokumentart.")
+        lines.append(f"Dokumentart: {PRODUCT_NAME} has assigned none of these files a Dokumentart.")
     if listing.topics:
         profile = " · ".join(f"{topic} {count}" for topic, count in listing.topics[:MAX_TOPIC_COUNTS])
-        lines.append(f"Topics (recognised by Piloti): {profile}.")
+        lines.append(f"Topics (recognised by {PRODUCT_NAME}): {profile}.")
     if listing.confirmed_replacements:
         lines.append(
             f"Fassungen (confirmed): a person replaced {listing.confirmed_replacements} file(s) with a "
@@ -192,7 +193,8 @@ def render_listing(listing: Listing, *, in_flight: Sequence[str] = ()) -> str:
 
     lines.append("")
     lines.append(
-        "An index, not a source: a row proves the file exists, not what it says. It shows only what Piloti could "
+        "An index, not a source: a row proves the file exists, not what it says. "
+        f"It shows only what {PRODUCT_NAME} could "
         "read; a file whose reading failed is not here but under `documents_unreadable:` in the project context, "
         "and a file missing here is no proof it does not exist. Write file names exactly as they appear here: the "
         "reader sees each as a link that opens the file. Read: `read_passage(document=…)`; search inside: "

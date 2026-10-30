@@ -74,7 +74,7 @@ RATE_LIMITED = "Error: rate limited; nothing was changed. Call again in the next
 _ROUTE_RATE_LIMITED = re.compile(r"\(HTTP 429\b")
 
 _NO_ENVELOPE = (
-    "Error: this run carries no signed request context, so Piloti cannot read or do anything in the "
+    "Error: this run carries no signed request context, so you cannot read or do anything in the "
     "workspace on a person's behalf. Do not retry."
 )
 

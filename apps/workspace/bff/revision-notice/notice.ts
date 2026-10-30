@@ -17,6 +17,7 @@
 import { v5 as uuidv5 } from 'uuid'
 import { MAX_ANNOTATION_BASIS, MAX_ANNOTATION_BODY, MAX_PROPOSALS_PER_CALL, type AnnotationProposal } from '@/lib/annotations/types'
 import type { CompareRegion, RevisionVisualChanges } from '@/lib/documents/revision-compare-types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Pages one notice may look at, unless the deployment says otherwise: one vision call each. */
 export const DEFAULT_MAX_PAGES = 3
@@ -102,7 +103,7 @@ export function markBody(region: CompareRegion, sentence: string | null, olderNa
 /** Where the mark comes from, said so a reader weighs it: a picture comparison, not a check. */
 export function markBasis(page: number, olderName: string): string {
   return clip(
-    `Bildvergleich mit „${clip(olderName, 160)}“, S. ${page}; von Piloti ohne Auftrag vorgeschlagen, nicht geprüft`,
+    `Bildvergleich mit „${clip(olderName, 160)}“, S. ${page}; von ${PRODUCT_NAME} ohne Auftrag vorgeschlagen, nicht geprüft`,
     MAX_ANNOTATION_BASIS,
   )
 }

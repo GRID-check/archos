@@ -17,12 +17,13 @@ import { ACCESS_LOG_MAX_LIMIT, DOWNLOAD_LOG_KINDS } from '@/lib/download-log/kin
 import { AGENT_GROUP_IDS, MODEL_ID_PATTERN } from '@/lib/model-config/agent-groups'
 import { ORG_INSTRUCTIONS_MAX_CHARS } from '@/lib/org-instructions/constants'
 import { CHAT_EFFORT_SETTING, CHAT_EFFORTS, isChatEffort } from '@/lib/reasoning-settings/catalog'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // --- web search ------------------------------------------------------------
 
 /** `PUT /api/organization/web-search`: whether Piloti may search the web for this organization (ADR-0022). */
 export const webSearchPutSchema = z.object({
-  enabled: z.boolean().describe('true lets Piloti search the web for this organization; false keeps every answer inside it.'),
+  enabled: z.boolean().describe('true lets ' + PRODUCT_NAME + ' search the web for this organization; false keeps every answer inside it.'),
 })
 
 // --- budgets ---------------------------------------------------------------

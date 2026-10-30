@@ -29,24 +29,31 @@ const de = {
     officePlaceholder: 'Name des Planungsbüros',
     message: 'Nachricht *',
     noteBefore:
-      'Pflichtfelder sind mit * markiert. Wir verwenden Ihre Angaben nur, um Ihre Anfrage zu beantworten. Mehr dazu in der',
+      'Pflichtfelder sind mit * markiert. Beim Absenden öffnet sich Ihr E-Mail-Programm mit einer vorbereiteten Nachricht an uns. Wir verwenden Ihre Angaben nur, um Ihre Anfrage zu beantworten. Mehr dazu in der',
     noteLink: 'Datenschutzerklärung',
     noteAfter: '.',
     submit: 'Nachricht senden',
+    subject: 'Kontaktanfrage über die Website: {office}',
+    sent: {
+      title: 'Ihre Nachricht liegt in Ihrem E-Mail-Programm bereit.',
+      text: 'Wir haben Ihre Angaben in eine E-Mail an uns übernommen. Senden Sie sie dort ab, dann antworten wir Ihnen.',
+      fallback: 'Hat sich kein E-Mail-Programm geöffnet? Schreiben Sie uns direkt an',
+      edit: 'Angaben bearbeiten',
+    },
   },
 };
 
 const en: typeof de = {
   meta: {
     title: 'Contact',
-    description: 'Contact {name}: e-mail, address and message form.',
+    description: 'Contact {name}: email, address and message form.',
   },
   hero: {
     title: 'Contact.',
     text: 'Questions about {name}, a pilot project or working together? Write to us.',
   },
   info: {
-    email: 'E-Mail',
+    email: 'Email',
     address: 'Address',
     addressValue: '{street}, {postalCode} {city}, Austria',
     linkedin: 'LinkedIn',
@@ -55,16 +62,23 @@ const en: typeof de = {
   },
   form: {
     name: 'Name *',
-    email: 'E-Mail *',
+    email: 'Email *',
     emailPlaceholder: 'name@office.at',
     office: 'Office',
     officePlaceholder: 'Name of the planning firm',
     message: 'Message *',
     noteBefore:
-      'Required fields are marked with *. We use your details only to answer your enquiry. More on this in the',
+      'Required fields are marked with *. Sending opens your email program with a prepared message to us. We use your details only to answer your enquiry. More on this in the',
     noteLink: 'privacy policy',
     noteAfter: '.',
     submit: 'Send message',
+    subject: 'Enquiry via the website: {office}',
+    sent: {
+      title: 'Your message is ready in your email program.',
+      text: 'We have put your details into an email to us. Send it from there, and we will reply.',
+      fallback: 'No email program opened? Write to us directly at',
+      edit: 'Edit details',
+    },
   },
 };
 

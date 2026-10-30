@@ -1,0 +1,17 @@
+---
+features:
+  - >
+    The website now asks quietly whether it may set analytics cookies; until you
+    choose, and if you decline, visits are counted without any cookie. You can
+    change your choice under "Cookie settings" at the bottom of every page.
+  - >
+    The contact and demo forms open a ready-to-send e-mail with your details
+    filled in, and tell you what to do if no e-mail program opens.
+improvements:
+  - >
+    The privacy policy now says exactly what the website measures and stores,
+    with no open placeholders left.
+security:
+  - >
+    The website sends a strict Content-Security-Policy and the usual security
+    headers, and allows no inline scripts.

@@ -164,7 +164,7 @@ class TestWhatItSays:
         result = await run_marks()
 
         assert result.index("No. 2") < result.index("No. 1")
-        assert "proposal, not yet taken over" in result and "by Piloti, for Martin Huber" in result
+        assert "proposal, not yet taken over" in result and "by you, for Martin Huber" in result
         assert "point x 0.10, y 0.20" in result
 
     async def test_an_older_revision_is_named(self, monkeypatch, calls) -> None:

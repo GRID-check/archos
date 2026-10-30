@@ -20,6 +20,7 @@ import { fireEvent, render, screen, within } from '@/test-utils'
 import { FileCard } from './file-card'
 import { FileListView } from './file-list-view'
 import type { FileItem } from './project-file-workspace'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const doc = (overrides: Partial<FileItem> = {}): FileItem => ({
   id: 'doc-1',
@@ -117,16 +118,16 @@ describe('the open Anmerkungen on a file card', () => {
     focusVisible()
     render(<FileCard file={doc({ marks: { open: 2, proposed: 12, forYou: 1 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
     const chip = screen.getByRole('button', {
-      name: '2 open annotations, 1 for you and 12 proposals from Piloti in “Grundriss_EG.pdf”',
+      name: `2 open annotations, 1 for you and 12 proposals from ${PRODUCT_NAME} in “Grundriss_EG.pdf”`,
     })
     expect(chip).toHaveTextContent('2 open · 1 for you · 12 proposals')
     fireEvent.focus(chip)
-    expect(screen.getByRole('tooltip')).toHaveTextContent('2 open annotations, 1 for you and 12 proposals from Piloti')
+    expect(screen.getByRole('tooltip')).toHaveTextContent(`2 open annotations, 1 for you and 12 proposals from ${PRODUCT_NAME}`)
   })
 
   it('names only the proposals when nothing of the office’s own is open', () => {
     render(<FileCard file={doc({ marks: { open: 0, proposed: 1, forYou: 0 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
-    expect(screen.getByRole('button', { name: '1 proposal from Piloti in “Grundriss_EG.pdf”' })).toHaveTextContent('1 proposal')
+    expect(screen.getByRole('button', { name: `1 proposal from ${PRODUCT_NAME} in “Grundriss_EG.pdf”` })).toHaveTextContent('1 proposal')
   })
 
   it('shows nothing where nothing is open', () => {

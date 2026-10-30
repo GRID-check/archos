@@ -61,6 +61,7 @@ import { filesCopy } from '@/i18n/namespaces/files'
 import { listAnnotations } from './service'
 import { isLive, isOverdue, type AnnotationView } from './types'
 import { protocolFileNameOf, type AnnotationExportOptions } from './export-request'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export const MARKDOWN_MEDIA_TYPE = 'text/markdown; charset=utf-8'
 
@@ -163,7 +164,7 @@ export function formatters(locale: string, now: Date): Formatters {
 
 /** „Piloti · für Anna Berger", or plain „Piloti" when the directory does not know the person. */
 const agentFor = (t: Translator, name: string | null): string =>
-  name ? t('review.attribution.agentFor', { name }) : 'Piloti'
+  name ? t('review.attribution.agentFor', { name }) : PRODUCT_NAME
 
 /** Who set the mark, who closed it, and whether Piloti works it now: one small line each. */
 function attributionLines(annotation: AnnotationView, t: Translator, f: Formatters): string[] {

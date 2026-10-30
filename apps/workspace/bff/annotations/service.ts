@@ -163,6 +163,7 @@ import {
   type UpdateReplyRequest,
   type WakeOutcome,
 } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** Who acts: a person in their own session, or Piloti in the asker's. `peerId` is the person's tab, when it says. */
 export interface AnnotationActor {
@@ -457,7 +458,7 @@ function announce(
     actor: {
       peerId: actor.peerId ?? null,
       userId: session.userId,
-      name: actor.kind === 'piloti' ? 'Piloti' : (session.name ?? session.email),
+      name: actor.kind === 'piloti' ? PRODUCT_NAME : (session.name ?? session.email),
       kind: actor.kind,
     },
   })
@@ -958,15 +959,15 @@ function delegationOf(
   const cleared = { delegatedBy: null, delegatedAt: null } as const
   const closing = parsed.status === 'resolved' || parsed.status === 'dismissed'
   if (parsed.delegateToPiloti === undefined) return closing && existing.delegatedBy ? cleared : undefined
-  if (actor.kind === 'piloti') throw new ForbiddenError('Piloti cannot delegate a mark to itself.')
+  if (actor.kind === 'piloti') throw new ForbiddenError(PRODUCT_NAME + ' cannot delegate a mark to itself.')
   if (!parsed.delegateToPiloti) return existing.delegatedBy ? cleared : undefined
   if (!wakesEnabled(session)) {
-    throw new ForbiddenError('Delegating to Piloti is not switched on for this organization.', {
+    throw new ForbiddenError('Delegating to ' + PRODUCT_NAME + ' is not switched on for this organization.', {
       reason: 'piloti-wakes-off',
     })
   }
   if ((parsed.status ?? existing.status) !== 'open') {
-    throw new UnprocessableError('Only an open Anmerkung can be delegated to Piloti.', { field: 'delegateToPiloti' })
+    throw new UnprocessableError('Only an open Anmerkung can be delegated to ' + PRODUCT_NAME + '.', { field: 'delegateToPiloti' })
   }
   return existing.delegatedBy ? undefined : { delegatedBy: session.userId, delegatedAt: now }
 }
@@ -1167,7 +1168,7 @@ async function carryAcross(
 ): Promise<{ annotation: AnnotationView }> {
   const target = await requireWritableDocument(session, replacing.id)
   if (existing.delegatedBy) {
-    throw new UnprocessableError('Take the Anmerkung back from Piloti before it goes on with the new Fassung.', {
+    throw new UnprocessableError('Take the Anmerkung back from ' + PRODUCT_NAME + ' before it goes on with the new Fassung.', {
       field: 'carryToCurrent',
       reason: 'delegated',
     })
@@ -1569,7 +1570,7 @@ async function ownReplyOf(
     })
   }
   if (await agentTookUp(session, existing, reply)) {
-    throw new ConflictError('Piloti has taken this answer up: it stays as it was. Write a new one.', {
+    throw new ConflictError(PRODUCT_NAME + ' has taken this answer up: it stays as it was. Write a new one.', {
       reason: REPLY_TAKEN_UP_REASON,
     })
   }

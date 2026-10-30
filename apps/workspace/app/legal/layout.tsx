@@ -23,7 +23,7 @@ const LegalLayout = async ({ children }: LegalLayoutProps): Promise<ReactNode> =
       <header className="border-b border-border">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/" aria-label={t('nav.home')}>
-            <Logo kind="horizontal" size="small" />
+            <Logo size="small" />
           </Link>
           <Link
             href="/"

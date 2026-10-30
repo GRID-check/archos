@@ -35,6 +35,7 @@ import {
 } from '@/lib/annotations/types'
 import type { AgentChangeRow } from './repository'
 import { matchesState } from './state'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export type UndoPlan =
   /** Dismiss a proposal Piloti made. */
@@ -50,7 +51,7 @@ export type UndoPlan =
 
 export type UndoOutcome = { plan: UndoPlan } | { refused: 'moved-on'; message: string }
 
-const movedOn = (message = 'This is no longer as Piloti left it.'): UndoOutcome => ({ refused: 'moved-on', message })
+const movedOn = (message = 'This is no longer as ' + PRODUCT_NAME + ' left it.'): UndoOutcome => ({ refused: 'moved-on', message })
 const noWayBack = (message: string): UndoOutcome => ({ refused: 'moved-on', message })
 
 /** The fields a person's PATCH can put back. */

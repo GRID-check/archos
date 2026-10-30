@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@/test-utils'
 import { AuthorshipLine } from './authorship-line'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('AuthorshipLine', () => {
   it('says who wrote a generated report', () => {
     render(<AuthorshipLine authoredBy="agent" />)
-    expect(screen.getByText('Created by Piloti')).toBeInTheDocument()
+    expect(screen.getByText(`Created by ${PRODUCT_NAME}`)).toBeInTheDocument()
   })
 
   it('says nothing about a file a person uploaded', () => {

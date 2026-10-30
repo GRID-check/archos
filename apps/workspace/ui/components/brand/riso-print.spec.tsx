@@ -41,9 +41,9 @@ describe('RisoPrint', () => {
   })
 })
 
-// The riso harness (apps/site/art/riso/check.mjs) is the full gate; this is
+// The riso harness (packages/brand/art/riso/check.mjs) is the full gate; this is
 // the app's own half of it, so an app-only change that drops or orphans a file
-// fails here even when the web job does not run.
+// fails here even when the riso check does not run.
 describe('the app art manifest', () => {
   it('names only files that exist in public/art', () => {
     for (const id of ids) {

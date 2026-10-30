@@ -24,6 +24,7 @@ import { createRoleSchema, updateRoleSchema } from '@/lib/authz/role-wire'
 import { createCredentialSchema, providerModeSchema } from '@/lib/llm-credentials/credential-wire'
 import { uploadScreeningPolicySchema } from '@/lib/upload-screening/policy'
 import type { AgentOperation } from '../operation'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const memoryParams = z.object({
   itemId: z.string().describe('The organization memory item id, from organization-memory-list.'),
@@ -148,7 +149,7 @@ export const organizationOperations = [
     domain: 'organization',
     summary: 'Switch web search on or off',
     description:
-      'Switches whether Piloti may search the web when it answers the organization’s members. Needs ' +
+      'Switches whether ' + PRODUCT_NAME + ' may search the web when it answers the organization’s members. Needs ' +
       'org:settings:manage. Switching it on sends the members’ questions to a web search provider; read the ' +
       'current value (`settings.webSearchEnabled`, absent means on) with organization-settings-get. Returns ' +
       '`{ webSearchEnabled }`. Sensitive: the organization switches it on for agents, and the person confirms every call.',
@@ -187,12 +188,12 @@ export const organizationOperations = [
   {
     name: 'office-conventions-list',
     domain: 'organization',
-    summary: 'List what Piloti has learned about the office’s conventions',
+    summary: 'List what ' + PRODUCT_NAME + ' has learned about the office’s conventions',
     description:
-      'The office’s conventions as Piloti counted them from its projects: where each document type is usually filed, the folders ' +
+      'The office’s conventions as ' + PRODUCT_NAME + ' counted them from its projects: where each document type is usually filed, the folders ' +
       'most projects keep, the shape of Plannummern, the Index style and how file names write a date. Each line has a `key`, ' +
       'the projects that show it (`projects` of `of`), whether the latest count still `counted` it, and the office’s ' +
-      '`decision` (`confirmed`, `declined` or null). Declined lines never reach Piloti’s answers; confirmed lines always do. ' +
+      '`decision` (`confirmed`, `declined` or null). Declined lines never reach ' + PRODUCT_NAME + '’s answers; confirmed lines always do. ' +
       'Any member may read. The keys feed office-conventions-decide.',
     method: 'GET',
     path: '/api/organization/office-conventions',
@@ -204,7 +205,7 @@ export const organizationOperations = [
     summary: 'Confirm or decline a learned convention',
     description:
       'Confirms or declines one line of office-conventions-list by its `lineKey`, or takes an earlier decision back with ' +
-      '`undecided`. Confirmed lines stay in Piloti’s answers even when later counts fall below the threshold; declined lines ' +
+      '`undecided`. Confirmed lines stay in ' + PRODUCT_NAME + '’s answers even when later counts fall below the threshold; declined lines ' +
       'are never used. The decision holds for everyone in the organization. Needs org:settings:manage. Returns the updated list.',
     method: 'POST',
     path: '/api/organization/office-conventions',
@@ -504,7 +505,7 @@ export const organizationOperations = [
     domain: 'organization',
     summary: 'Read the upload screening policy',
     description:
-      'The policy that screens file names before an upload, whether it is still Piloti’s suggested list, and that ' +
+      'The policy that screens file names before an upload, whether it is still ' + PRODUCT_NAME + '’s suggested list, and that ' +
       'suggestion. Any member may read. Change with organization-upload-screening-set.',
     method: 'GET',
     path: '/api/organization/upload-screening',

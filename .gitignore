@@ -30,10 +30,9 @@ lib64/
 !apps/*/src/**/lib/
 !apps/workspace/**/lib/
 !apps/workspace/tests/lib/
-!apps/site/art/riso/lib/
-# `downloads/` above does the same to the site's committed riso downloads
-# (art/riso/downloads.mjs writes them; the unlisted image page serves them).
-!apps/site/public/downloads/
+!packages/brand/art/riso/lib/
+# The riso exporter's non-committed files (decks, social, postcards, separations).
+packages/brand/art/riso/out/
 parts/
 # `parts/` is buildout's, and like `lib/` above it matches at any depth: it hid
 # the mail import's `mail-imports/[importId]/parts/[partNumber]` route from the

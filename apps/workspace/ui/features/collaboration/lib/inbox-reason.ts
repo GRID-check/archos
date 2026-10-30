@@ -1,6 +1,6 @@
 /**
  * Why a waiting row is the reader's, in a few words: „Von Anna Weber
- * zugewiesen · Anmerkung 9“, „Piloti fragt Sie“. The queue gathers rows under
+ * zugewiesen · Anmerkung 9“, „{productName} fragt Sie“. The queue gathers rows under
  * their document, so the row's own title („Anna Weber hat Ihnen Anmerkung 9 in
  * „Grundriss EG“ zugewiesen“) would say the document again under its own
  * name; this is the part of it that is left.

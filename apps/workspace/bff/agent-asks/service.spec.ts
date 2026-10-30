@@ -84,6 +84,7 @@ import {
   recordAskOutcome,
 } from './service'
 import { CHAT_TURN_DEADLINE_SECONDS, DEFAULT_ASK_MAX_SECONDS } from './ask-wire'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SECRET = 'internal-secret'
 const ORG = 'org_1'
@@ -321,8 +322,8 @@ describe('askAgent', () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new Error('connection reset'))
     const view = await askAgent(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(view.state).toBe('failed')
-    expect(view.reason).toBe('Piloti could not start the turn.')
-    expect(endAsk).toHaveBeenCalledWith(ORG, view.id, { state: 'failed', reason: 'Piloti could not start the turn.' })
+    expect(view.reason).toBe(`${PRODUCT_NAME} could not start the turn.`)
+    expect(endAsk).toHaveBeenCalledWith(ORG, view.id, { state: 'failed', reason: `${PRODUCT_NAME} could not start the turn.` })
   })
 
   it('takes back the question, and keeps the thread, when a continued conversation is busy', async () => {

@@ -12,11 +12,12 @@ import type { AnnotationView } from '@/lib/annotations/types'
 import type { CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview } from '../../hooks/use-document-review'
 import { ANNOUNCE_AFTER_MS, announcementOf, ReviewAnnouncer } from './review-announcer'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 type Changed = Parameters<Parameters<DocumentReview['room']['onAnnotationsChanged']>[0]>[0]
 
 const ANNA = { peerId: 'peer_anna', userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }
-const AGENT = { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' as const }
+const AGENT = { peerId: null, userId: 'user_me', name: PRODUCT_NAME, kind: 'piloti' as const }
 
 function reviewWith(annotations: Array<Pick<AnnotationView, 'id' | 'number'>>, asks: Array<Pick<CanvasAsk, 'id' | 'status'>> = []) {
   const listeners = new Set<(event: Changed) => void>()
@@ -50,7 +51,7 @@ describe('announcementOf', () => {
       (id) => numbers[id] ?? null,
       result.current
     )
-    expect(line).toBe('Piloti set 3 proposals. Anna Berger: new annotation 7. Piloti answered')
+    expect(line).toBe(`${PRODUCT_NAME} set 3 proposals. Anna Berger: new annotation 7. ${PRODUCT_NAME} answered`)
   })
 })
 
@@ -76,7 +77,7 @@ describe('ReviewAnnouncer', () => {
     expect(region).toHaveTextContent('')
 
     act(() => vi.advanceTimersByTime(ANNOUNCE_AFTER_MS))
-    expect(region).toHaveTextContent('Anna Berger: new annotation 7. Piloti set 3 proposals')
+    expect(region).toHaveTextContent(`Anna Berger: new annotation 7. ${PRODUCT_NAME} set 3 proposals`)
   })
 
   it('says the same line again when the same thing happens again', () => {
@@ -100,6 +101,6 @@ describe('ReviewAnnouncer', () => {
     const view = render(<ReviewAnnouncer review={review} />)
     view.rerender(<ReviewAnnouncer review={reviewWith([], [{ id: 'ask_1', status: 'answered' }]).review} />)
     act(() => vi.advanceTimersByTime(ANNOUNCE_AFTER_MS))
-    expect(screen.getByTestId('review-announcer')).toHaveTextContent('Piloti answered')
+    expect(screen.getByTestId('review-announcer')).toHaveTextContent(`${PRODUCT_NAME} answered`)
   })
 })

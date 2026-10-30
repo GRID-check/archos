@@ -37,6 +37,7 @@ import { suggestionsByDocument, suggestionsByFolder } from '@/features/documents
 import type { TrackedFile } from '@/features/documents/types'
 import type { ListedProposal, ProposedChangeView } from '@/lib/proposals/types'
 import { useFakeProposalClient } from '../_fixtures/fake-proposals'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 type FileProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
 
@@ -248,7 +249,7 @@ export default function FilingSuggestionsDevPage(): JSX.Element {
       <div>
         <h1 className="text-lg font-semibold">Ablagevorschläge</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Piloti schlägt vor, in welchen beschriebenen Ordner ein Upload gehört. Eine Person bestätigt pro Ordner.
+          {PRODUCT_NAME} schlägt vor, in welchen beschriebenen Ordner ein Upload gehört. Eine Person bestätigt pro Ordner.
         </p>
       </div>
 

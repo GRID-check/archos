@@ -13,6 +13,13 @@ interface Props {
   disabled?: boolean;
   class?: string;
   'aria-label'?: string;
+  /**
+   * Analytics: where this call to action sits (`header`, `hero`, ...). PostHog's
+   * autocapture adds it to the click as the property `cta-area` (README, "Analytics").
+   */
+  cta?: string;
+  /** Analytics: a stable name for the target (`demo`, `login`), the click's `cta-label` */
+  ctaLabel?: string;
 }
 
 const {
@@ -25,18 +32,20 @@ const {
   disabled,
   class: className,
   'aria-label': ariaLabel,
+  cta,
+  ctaLabel,
 } = Astro.props;
 const classes = ['ui-btn', `ui-btn-${variant}`, `ui-btn-${size}`, className];
 ---
 
 {
   href ? (
-    <a href={href} class:list={classes} id={id} aria-label={ariaLabel}>
+    <a href={href} class:list={classes} id={id} aria-label={ariaLabel} data-ph-capture-attribute-cta-area={cta} data-ph-capture-attribute-cta-label={ctaLabel}>
       <slot />
       {arrow && <span class="ui-btn-arrow" aria-hidden="true">→</span>}
     </a>
   ) : (
-    <button type={type} class:list={classes} id={id} disabled={disabled} aria-label={ariaLabel}>
+    <button type={type} class:list={classes} id={id} disabled={disabled} aria-label={ariaLabel} data-ph-capture-attribute-cta-area={cta} data-ph-capture-attribute-cta-label={ctaLabel}>
       <slot />
       {arrow && <span class="ui-btn-arrow" aria-hidden="true">→</span>}
     </button>

@@ -84,7 +84,7 @@ export function PageHeader({
             gone: the tab bar and the page already say where this is, and the
             sentence cost two lines of a 393px-wide screen on every tab. A
             ratchet in `page-header.spec.tsx` holds it. */}
-        <h1 className="text-balance text-xl font-semibold tracking-tight phone:text-base">{title}</h1>
+        <h1 className="text-balance text-xl font-medium tracking-tight phone:text-base">{title}</h1>
         {subtitle && (
           <p className="mt-1 text-pretty text-sm text-muted-foreground phone:hidden">{subtitle}</p>
         )}

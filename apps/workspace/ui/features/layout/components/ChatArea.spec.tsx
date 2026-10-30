@@ -258,6 +258,7 @@ vi.mock('@/features/collaboration/hooks/use-sharing', () => ({
 }))
 
 import { useChatStore } from '@/features/chat/store'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 // Time-of-day greeting shown on the authenticated empty state.
 const GREETING_RE = /good (morning|afternoon|evening)/i
@@ -307,7 +308,7 @@ describe('ChatArea', () => {
     render(<ChatArea isAuthenticated={false} />)
 
     expect(
-      screen.getByText(/piloti opens after your organization is verified/i)
+      screen.getByText(new RegExp(`${PRODUCT_NAME} opens after your organization is verified`, 'i'))
     ).toBeInTheDocument()
     expect(screen.getByText(/sign in to open the project workspace/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sign in with.*sso/i })).toBeInTheDocument()
@@ -2056,14 +2057,14 @@ describe('ChatArea — the awaiting banner is reachable', () => {
     setThread(waitingThread())
 
     render(<ChatArea isAuthenticated canCollaborate />)
-    await user.click(screen.getByRole('button', { name: 'Ask Piloti instead' }))
+    await user.click(screen.getByRole('button', { name: `Ask ${PRODUCT_NAME} instead` }))
 
     // `@Piloti` is what releases the wait server-side, so the ruling does it —
     // no separate release call, and the message stays honestly authored. The
     // token travels as a STRUCTURED mention: as plain text it would send as a
     // remark to the chat and the wait would persist (spec MN-3).
-    expect(mockSetComposerPrefill).toHaveBeenCalledWith('@Piloti ', [
-      { targetId: 'agent:piloti', display: 'Piloti' },
+    expect(mockSetComposerPrefill).toHaveBeenCalledWith(`@${PRODUCT_NAME} `, [
+      { targetId: 'agent:piloti', display: PRODUCT_NAME },
     ])
   })
 })
@@ -2147,7 +2148,7 @@ describe('ChatArea — the hand-back offer', () => {
     render(<ChatArea isAuthenticated canCollaborate />)
 
     expect(screen.getByTestId('handback-offer')).toHaveTextContent(
-      'Anna Berger replied — let Piloti carry on?'
+      `Anna Berger replied — let ${PRODUCT_NAME} carry on?`
     )
   })
 
@@ -2161,7 +2162,7 @@ describe('ChatArea — the hand-back offer', () => {
     render(<ChatArea isAuthenticated canCollaborate />)
 
     expect(screen.getByTestId('handback-offer')).toHaveTextContent(
-      'Anna Berger, Tobias Kern replied — let Piloti carry on?'
+      `Anna Berger, Tobias Kern replied — let ${PRODUCT_NAME} carry on?`
     )
   })
 
@@ -2181,12 +2182,12 @@ describe('ChatArea — the hand-back offer', () => {
     setThread(resolvedThread())
 
     render(<ChatArea isAuthenticated canCollaborate />)
-    await user.click(screen.getByRole('button', { name: 'Let Piloti carry on' }))
+    await user.click(screen.getByRole('button', { name: `Let ${PRODUCT_NAME} carry on` }))
 
     // Structured, for the same reason as the awaiting banner: a plain-text
     // `@Piloti` here would have been a remark to the chat, not a hand-back.
-    expect(mockSetComposerPrefill).toHaveBeenCalledWith('@Piloti — please carry on from here.', [
-      { targetId: 'agent:piloti', display: 'Piloti' },
+    expect(mockSetComposerPrefill).toHaveBeenCalledWith(`@${PRODUCT_NAME} — please carry on from here.`, [
+      { targetId: 'agent:piloti', display: PRODUCT_NAME },
     ])
     // And it steps aside — the composer now holds the offer. It leaves on the
     // exit easing rather than vanishing, so wait for it to have gone.
@@ -2304,7 +2305,7 @@ describe('ChatArea — the engagement notice is reachable', () => {
     render(<ChatArea isAuthenticated canCollaborate />)
 
     expect(screen.getByTestId('engagement-notice')).toHaveTextContent(
-      'Piloti answers when mentioned'
+      `${PRODUCT_NAME} answers when mentioned`
     )
   })
 
@@ -2332,7 +2333,7 @@ describe('ChatArea — the engagement notice is reachable', () => {
     render(<ChatArea isAuthenticated canCollaborate />)
 
     expect(screen.getByTestId('engagement-notice')).toHaveTextContent(
-      'Should Piloti wait to be mentioned?'
+      `Should ${PRODUCT_NAME} wait to be mentioned?`
     )
   })
 
@@ -2358,7 +2359,7 @@ describe('ChatArea — the engagement notice is reachable', () => {
 
     expect(screen.getByTestId('engagement-notice')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Let Piloti answer everything' })
+      screen.queryByRole('button', { name: `Let ${PRODUCT_NAME} answer everything` })
     ).not.toBeInTheDocument()
   })
 })

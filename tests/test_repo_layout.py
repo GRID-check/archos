@@ -11,6 +11,8 @@ Two ratchets on the layout ADR-0145 sets out:
   history names it. History is the ADRs, `releasenotes/`, `docs/audit/` and the Drizzle
   migrations, which say what was true then. A one-segment old path (`plans/`) only gets
   the first half: as a word it turns up in prose and test data.
+  A file inside an app that has the old path as its own live directory
+  (`apps/workspace/shared/brand/`) may name it app-relative.
 
 A move adds its old path to `MOVED` and removes its legacy name in the same PR.
 """
@@ -56,6 +58,7 @@ MOVED = {
     "frontends/benchmarks/": "evals/ (row 2)",
     "tests/benchmarks/": "evals/ (row 2)",
     "frontends/web/": "apps/site (row 3)",
+    "apps/site/": "apps/website, the riso kit to packages/brand/art/riso (corporate design plan, slice 5)",
     "shared/brand/": "packages/brand (row 3)",
     "shared/cards/": "contracts/cards (row 4)",
     "shared/wire/": "contracts/wire (row 4)",
@@ -80,6 +83,13 @@ HISTORY = (
     ":!apps/workspace/migrations/",
     # The secret scan walks full history, so its allowlist names the paths the fixtures lived at then.
     ":!.gitleaks.toml",
+    # Dated audits, research reports and records: what was true when they were written.
+    ":!docs/product/seo-geo-audit-2026-09.md",
+    ":!docs/roadmap/continuous-improvement-ledger.md",
+    ":!docs/roadmap/architect-workspace-voice-and-agentic-loop.md",
+    ":!docs/ux/motion.md",
+    # Test timings, keyed by the test ids of their day.
+    ":!tests/.test_durations",
     # Baselines and duration tables key their entries by path from the app root (`shared/cards/...`).
     ":(exclude,glob)apps/workspace/**/*.json",
 )
@@ -120,6 +130,15 @@ def test_a_finished_move_leaves_nothing_behind():
         assert tracked.stdout == "", f"{old} is tracked again; its contents moved to {went}"
 
 
+def _names_a_live_directory(file: str, old: str) -> bool:
+    """`file` sits in an app that still has `old` of its own: `apps/workspace/shared/brand/` for `shared/brand/`.
+
+    An app-relative path in that app's docs, specs and `@disk-inputs` lines names
+    the live directory, not the root one that moved.
+    """
+    return any((ROOT / parent / old).is_dir() for parent in Path(file).parents if parent != Path("."))
+
+
 def test_nothing_but_history_names_a_moved_path():
     named = {}
     # A one-segment name (`plans/`) is also a word in prose and test data; the
@@ -132,7 +151,7 @@ def test_nothing_but_history_names_a_moved_path():
             capture_output=True,
             text=True,
         )
-        if files := found.stdout.split():
+        if files := [file for file in found.stdout.split() if not _names_a_live_directory(file, old)]:
             named[old] = files
 
     assert named == {}, f"these still name a moved path; point them at where it went: {named}"
@@ -145,3 +164,8 @@ def test_a_moved_path_is_matched_only_where_a_path_starts():
     assert pattern.search("`tests/benchmarks/`")
     assert not pattern.search("sources/knowledge_layer/tests/benchmarks/")
     assert not pattern.search("frontends/ui/tests/benchmarks/")
+
+
+def test_an_app_relative_name_of_a_live_directory_is_not_a_moved_path():
+    assert _names_a_live_directory("apps/workspace/bff/brand.ts", "shared/brand/")
+    assert not _names_a_live_directory("docs/design/design-language.md", "shared/brand/")

@@ -11,6 +11,7 @@ import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { AnswerActions } from './AnswerActions'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const toastError = vi.hoisted(() => vi.fn())
 vi.mock('sonner', () => ({ toast: { error: toastError } }))
@@ -56,7 +57,7 @@ describe('AnswerActions: native share', () => {
 
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
     const shared = share.mock.calls[0]![0] as { title: string; text: string }
-    expect(shared.title).toBe('Answer from Piloti')
+    expect(shared.title).toBe(`Answer from ${PRODUCT_NAME}`)
     expect(shared.text).toContain('**40 m**')
   })
 

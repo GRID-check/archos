@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils'
  * The ONE place the registry's icon names become components. Keeping the map here
  * (rather than storing components in `lib/inbox/types.ts`) keeps the registry a
  * plain data module that the server half can import without pulling in React.
- * `piloti` is not a Lucide icon but Piloti's own glyph, drawn below.
+ * `piloti` is not a Lucide icon but the agent's own glyph, drawn below.
  */
 const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon> =
   {
@@ -47,7 +47,7 @@ const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon
 
 /**
  * Who an inbox item is from, in one material wherever an item is listed (its
- * row, the queue's news): a person's face, Piloti's glyph, or the type's glyph
+ * row, the queue's news): a person's face, the agent's glyph, or the type's glyph
  * for a system notice, all on the same neutral ground. The registry's icon
  * decides; a row whose type this build does not know reads as a system notice.
  */

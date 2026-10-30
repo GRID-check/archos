@@ -27,6 +27,7 @@ from agent.agents.intake.agent import ProjectIntakeAgent
 from agent.agents.intake.models import IntakeAgentState
 from agent.agents.intake.read_log import current_read_log
 from agent.common import LLMProvider
+from agent.common.brand import PRODUCT_NAME
 from agent.common.cost_tracking import BudgetExceededError
 
 
@@ -333,7 +334,7 @@ class TestThePrompt:
 
         rendered = system_prompt()
         assert not FILE_AS_PLAN.search(rendered) and not OLD_FRAME.search(rendered)
-        assert "workspace" in rendered and "Piloti" in rendered
+        assert "workspace" in rendered and PRODUCT_NAME in rendered
 
     @pytest.mark.parametrize("phrase", ["Never guess", "Zielzustand", "newest Fassung", "Never compute it"])
     def test_the_rules_the_tools_cannot_carry_are_in_it(self, phrase):

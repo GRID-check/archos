@@ -62,7 +62,7 @@ export function SimilarGroupHeading({
   return (
     <h3 className="flex min-w-0 items-center gap-2.5">
       {tile}
-      <span className="min-w-0 truncate text-sm font-semibold text-foreground" title={name}>
+      <span className="min-w-0 truncate text-sm font-medium text-foreground" title={name}>
         {name}
       </span>
       {meta}

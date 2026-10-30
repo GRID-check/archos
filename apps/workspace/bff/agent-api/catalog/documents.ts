@@ -16,6 +16,7 @@ import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
 import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
 import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const documentParams = z.object({
   id: z.string().describe('The document id, from document-list or workspace-search.'),
@@ -72,7 +73,7 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Rename a document',
     description:
-      'Set the name Piloti shows for a document (`displayName`); `null` clears it so the file name shows again. ' +
+      'Set the name ' + PRODUCT_NAME + ' shows for a document (`displayName`); `null` clears it so the file name shows again. ' +
       'The stored file name never changes. Needs write access to the document’s project or shelf.',
     method: 'PATCH',
     path: '/api/documents/[id]',
@@ -200,7 +201,7 @@ export const documentsOperations = [
   {
     name: 'document-visual-details-get',
     domain: 'documents',
-    summary: 'Read what Piloti saw on a drawing or image',
+    summary: 'Read what ' + PRODUCT_NAME + ' saw on a drawing or image',
     description:
       'The visual reading of a drawing or image document: what the vision model found on its pages. ' +
       'Empty for documents that have no visual reading.',

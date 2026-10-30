@@ -1,4 +1,4 @@
-"""The look card (ADR-0128): where Piloti looked, as addresses, never pixels."""
+"""The look card (ADR-0128): where the agent looked, as addresses, never pixels."""
 
 from typing import Annotated
 from typing import Any
@@ -58,12 +58,12 @@ class LookDocument(CardModel):
 
 
 class LookItem(CardModel):
-    """One place on the document: a look Piloti took, or a box or pointer it showed the room (`reference`)."""
+    """One place on the document: a look the agent took, or a box or pointer it showed the room (`reference`)."""
 
     model_config = ConfigDict(regex_engine="python-re")
 
     origin: Literal["look", "reference"] = Field(
-        default="look", description="`look`: Piloti looked here; `reference`: Piloti pointed the room here"
+        default="look", description="`look`: the agent looked here; `reference`: the agent pointed the room here"
     )
     page: int = Field(ge=1, description="The page, from 1")
     frame: Literal["page", "image"] = Field(
@@ -90,7 +90,7 @@ class LookItem(CardModel):
         description="The Fassung looked at; absent means the document's current Fassung",
     )
     question: str | None = Field(
-        default=None, max_length=200, pattern=NOT_A_DATA_URL, description="What Piloti looked for"
+        default=None, max_length=200, pattern=NOT_A_DATA_URL, description="What the agent looked for"
     )
     reading: str | None = Field(
         default=None, max_length=300, pattern=NOT_A_DATA_URL, description="The first thing read there"
@@ -118,7 +118,7 @@ class LookItem(CardModel):
 
 
 class LookCard(CardModel):
-    """Where Piloti looked on one document in this turn, and what it showed the room there.
+    """Where the agent looked on one document in this turn, and what it showed the room there.
 
     System-emitted (``tools/look/cards.py``) once the answer is final, from the
     looks the answer relies on; the model cannot emit it (``SYSTEM_CARD_TYPES``).
@@ -127,7 +127,7 @@ class LookCard(CardModel):
     type: Literal["look"] = "look"
     document: LookDocument
     items: list[LookItem] = Field(
-        min_length=1, max_length=MAX_LOOK_ITEMS, description="The places, in the order Piloti reached them"
+        min_length=1, max_length=MAX_LOOK_ITEMS, description="The places, in the order the agent reached them"
     )
 
     @model_validator(mode="before")

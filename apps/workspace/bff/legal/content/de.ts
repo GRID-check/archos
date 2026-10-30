@@ -2,22 +2,29 @@
  * Rechtsdokumente — Deutsch (maßgebliche Sprachfassung für den
  * österreichischen Markt). Strukturelles Gegenstück zu `./en.ts`.
  *
- * Betreiberangaben sind bewusste Platzhalter in [KLAMMERN] — sie MÜSSEN vor
- * dem Produktivbetrieb vervollständigt werden. Diese Texte entstanden im
+ * Betreiberangaben kommen aus packages/brand/identity.json. Die Gesellschaft ist
+ * in Gründung: Firmenbuchnummer, Firmenbuchgericht und UID gibt es noch nicht,
+ * und der Text sagt das so wie das Impressum der Website
+ * (apps/website/src/i18n/pages/imprint.ts). Kein Wert steht in eckigen Klammern;
+ * was nicht belegt ist, ist ein TODO(owner) im Kommentar. Diese Texte entstanden im
  * Rahmen des Compliance-Reviews 2026-07 (docs/compliance/) und sind
  * Vorlagen, keine Rechtsberatung: vor Verwendung anwaltlich prüfen lassen.
  */
 
 import type { LegalContent } from '../types'
+import { PRODUCT_NAME } from '@/lib/brand'
+import identity from '@/shared/brand/identity.json'
 
-const OPERATOR = '[Name des Betreibers — z. B. Piloti Check GmbH]'
-const ADDRESS = '[Straße, Nummer, PLZ, Ort, Österreich]'
-const EMAIL = '[Kontakt-E-Mail-Adresse]'
+// Betreiber, Anschrift und Kontakt aus der einen Quelle der Marke (packages/brand/identity.json),
+// wie im Impressum der Website.
+const OPERATOR = identity.legalEntity
+const ADDRESS = `${identity.street}, ${identity.postalCode} ${identity.city}, Österreich`
+const EMAIL = identity.email
 
 export const de: LegalContent = {
   imprint: {
     title: 'Impressum',
-    updated: '2026-07-10',
+    updated: '2026-10-29',
     intro:
       'Offenlegung gemäß §5 E-Commerce-Gesetz (ECG), §25 Mediengesetz und §63 Gewerbeordnung.',
     sections: [
@@ -26,14 +33,17 @@ export const de: LegalContent = {
         paragraphs: [
           `${OPERATOR}, ${ADDRESS}.`,
           `Kontakt: ${EMAIL}`,
-          'Firmenbuchnummer: [FN-Nummer], Firmenbuchgericht: [Gericht]. UID: [ATU-Nummer].',
-          'Unternehmensgegenstand: [z. B. IT-Dienstleistungen / Software as a Service]. Aufsichtsbehörde gemäß ECG: [zuständige Bezirksverwaltungsbehörde]. Anwendbare gewerberechtliche Vorschriften: Gewerbeordnung 1994, abrufbar unter ris.bka.gv.at.',
+          // Wortlaut wie im Impressum der Website (apps/website/src/i18n/pages/imprint.ts).
+          'Rechtsform: Flexible Kapitalgesellschaft (FlexCo), in Gründung. Firmenbuch: Noch nicht eingetragen. Firmenbuchnummer, Firmenbuchgericht und UID-Nummer ergänzen wir nach der Eintragung.',
+          // TODO(owner): die Aufsichtsbehörde gemäß ECG nach Eintragung und Gewerbeanmeldung nennen.
+          'Unternehmensgegenstand: Entwicklung und Betrieb von Software für Architektur- und Planungsbüros. Die Aufsichtsbehörde gemäß ECG ergänzen wir nach der Eintragung. Anwendbare gewerberechtliche Vorschriften: Gewerbeordnung 1994, abrufbar unter ris.bka.gv.at.',
         ],
       },
       {
         heading: 'Zweck des Dienstes',
         paragraphs: [
-          'Piloti ist ein KI-gestütztes Recherchewerkzeug, das Baufachleute dabei unterstützt, Informationen aus den österreichischen OIB-Richtlinien und den im Rechtsinformationssystem des Bundes (RIS) veröffentlichten Rechtsquellen zu finden und zu überprüfen. Piloti erbringt keine Rechtsberatung; siehe Nutzungsbedingungen und KI-Transparenzhinweis.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          PRODUCT_NAME + ' (vormals Piloti) ist der Workspace für Architektur- und Planungsbüros. Projektwissen, Unterlagen und Modelle liegen an einem Ort, und ' + PRODUCT_NAME + ' übernimmt dort mit Unterstützung von KI die regelgeleitete Arbeit. Baurecht ist eine dieser Fähigkeiten: ' + PRODUCT_NAME + ' findet Stellen in den österreichischen OIB-Richtlinien und den im Rechtsinformationssystem des Bundes (RIS) veröffentlichten Rechtsquellen und zitiert sie zur Überprüfung. ' + PRODUCT_NAME + ' erbringt keine Rechtsberatung; siehe Nutzungsbedingungen und KI-Transparenzhinweis.',
         ],
       },
       {
@@ -45,7 +55,7 @@ export const de: LegalContent = {
       {
         heading: 'Haftung für Inhalte',
         paragraphs: [
-          'Die von diesem Dienst erzeugten Antworten werden von einem KI-System generiert und können fehlerhaft oder unvollständig sein. Sie ersetzen weder die Prüfung der anwendbaren Vorschriften noch fachliche Beratung. Maßgeblich sind in jedem Fall die zitierten Primärquellen (OIB-Richtlinien, RIS).',
+          'Die von diesem Dienst erzeugten Antworten werden von einem KI-System generiert und können fehlerhaft oder unvollständig sein. Sie ersetzen weder die Prüfung der anwendbaren Vorschriften noch fachliche Beratung. Maßgeblich sind in jedem Fall die zitierten Primärquellen (etwa Projektunterlagen, OIB-Richtlinien, RIS).',
         ],
       },
     ],
@@ -55,13 +65,13 @@ export const de: LegalContent = {
     title: 'Datenschutzerklärung',
     updated: '2026-10-27',
     intro:
-      'Diese Erklärung informiert gemäß Verordnung (EU) 2016/679 (DSGVO) darüber, wie personenbezogene Daten bei der Nutzung von Piloti verarbeitet werden.',
+      'Diese Erklärung informiert gemäß Verordnung (EU) 2016/679 (DSGVO) darüber, wie personenbezogene Daten bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) verarbeitet werden.',
     sections: [
       {
         heading: '1. Verantwortlicher',
         paragraphs: [
           `Verantwortlicher im Sinne des Art. 4 Z 7 DSGVO: ${OPERATOR}, ${ADDRESS}, ${EMAIL}.`,
-          'Wird Piloti über Ihren Arbeitgeber bzw. Ihre Organisation bereitgestellt, bestimmt diese Organisation die Zwecke der Verarbeitung der Projektinhalte in ihrem Arbeitsbereich; insoweit handelt der Betreiber als Auftragsverarbeiter im Auftrag der Organisation, und ein Auftragsverarbeitungsvertrag (Art. 28 DSGVO) regelt das Verhältnis.',
+          'Wird ' + PRODUCT_NAME + ' über Ihren Arbeitgeber bzw. Ihre Organisation bereitgestellt, bestimmt diese Organisation die Zwecke der Verarbeitung der Projektinhalte in ihrem Arbeitsbereich; insoweit handelt der Betreiber als Auftragsverarbeiter im Auftrag der Organisation, und ein Auftragsverarbeitungsvertrag (Art. 28 DSGVO) regelt das Verhältnis.',
         ],
       },
       {
@@ -112,15 +122,15 @@ export const de: LegalContent = {
       {
         heading: '7. Cookies',
         paragraphs: [
-          'Piloti verwendet technisch notwendige Cookies: einen verschlüsselten Session-Cookie für die Anmeldung (WorkOS AuthKit) und einen Cookie für Ihre Spracheinstellung.',
-          'Zusätzlich speichert unsere Produktanalyse (PostHog) eine pseudonyme Kennung, die Sitzungs-ID und einige Einstellungen in einem Cookie und im lokalen Speicher Ihres Browsers (Schlüssel „ph_…“, konkret „ph_<Projekt-Token>_posthog“; das Cookie läuft nach 365 Tagen ab und gilt auch für die öffentliche Website von Piloti auf derselben Domain). Wird Ihnen eine Umfrage angezeigt, legt PostHog dafür weitere Einträge im lokalen Speicher an (Schlüssel „seenSurvey_…“ und „lastSeenSurveyDate“). Ebenso merkt sich PostHog, welche Hinweise und Ankündigungen Sie schon gesehen, geschlossen oder abgeschlossen haben, damit sie nicht erneut erscheinen (Schlüssel „ph_product_tour_…“, „ph_last_seen_tour_date_…“ und „ph_active_product_tour“). Diese Speicherung ist nicht technisch notwendig; sie dient der Produktverbesserung. Werbe- oder seitenübergreifende Tracking-Cookies setzen wir nicht.',
+          PRODUCT_NAME + ' verwendet technisch notwendige Cookies: einen verschlüsselten Session-Cookie für die Anmeldung (WorkOS AuthKit), einen Cookie für Ihre Spracheinstellung und, solange Sie angemeldet sind, den Cookie ‚signed_in‘. Er enthält nur den Wert ‚1‘, keine Kennung, gilt für die ganze Domain und sagt unserer Website, dass sie statt „Login“ den Weg in die Anwendung anbieten soll; bei der Abmeldung oder wenn die Sitzung abläuft, wird er gelöscht.',
+          'Zusätzlich speichert unsere Produktanalyse (PostHog) eine pseudonyme Kennung, die Sitzungs-ID und einige Einstellungen in einem Cookie und im lokalen Speicher Ihres Browsers (Schlüssel „ph_…“, konkret „ph_<Projekt-Token>_posthog“; das Cookie läuft nach 365 Tagen ab und gilt auch für die öffentliche Website von ' + PRODUCT_NAME + ' auf derselben Domain). Wird Ihnen eine Umfrage angezeigt, legt PostHog dafür weitere Einträge im lokalen Speicher an (Schlüssel „seenSurvey_…“ und „lastSeenSurveyDate“). Ebenso merkt sich PostHog, welche Hinweise und Ankündigungen Sie schon gesehen, geschlossen oder abgeschlossen haben, damit sie nicht erneut erscheinen (Schlüssel „ph_product_tour_…“, „ph_last_seen_tour_date_…“ und „ph_active_product_tour“). Diese Speicherung ist nicht technisch notwendig; sie dient der Produktverbesserung. Werbe- oder seitenübergreifende Tracking-Cookies setzen wir nicht.',
           `Sie können die Produktanalyse in den Einstellungen Ihres Profils abschalten oder ihr jederzeit unter ${EMAIL} widersprechen; sie erfasst dann nichts mehr, und die genannten Einträge werden nicht mehr fortgeschrieben.`,
         ],
       },
       {
         heading: '8. Ihre Rechte',
         paragraphs: [
-          'Ihnen stehen die Rechte auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21) zu. Soweit eine Verarbeitung auf Einwilligung beruht, können Sie diese jederzeit widerrufen. Wird Piloti über Ihre Organisation bereitgestellt, richten Sie Anfragen bitte zunächst an Ihre Organisation; wir unterstützen die Organisation bei der Erfüllung.',
+          'Ihnen stehen die Rechte auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21) zu. Soweit eine Verarbeitung auf Einwilligung beruht, können Sie diese jederzeit widerrufen. Wird ' + PRODUCT_NAME + ' über Ihre Organisation bereitgestellt, richten Sie Anfragen bitte zunächst an Ihre Organisation; wir unterstützen die Organisation bei der Erfüllung.',
           `Zur Ausübung Ihrer Rechte wenden Sie sich an ${EMAIL}. Sie haben zudem das Recht auf Beschwerde bei der österreichischen Datenschutzbehörde, Barichgasse 40–42, 1030 Wien, dsb.gv.at, oder Ihrer örtlichen Aufsichtsbehörde.`,
         ],
       },
@@ -141,20 +151,21 @@ export const de: LegalContent = {
 
   terms: {
     title: 'Nutzungsbedingungen',
-    updated: '2026-07-10',
+    updated: '2026-10-29',
     intro:
-      'Diese Bedingungen regeln die Nutzung von Piloti. Vorlage — vor Produktivbetrieb anwaltlich prüfen und vervollständigen.',
+      'Diese Bedingungen regeln die Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti). Vorlage — vor Produktivbetrieb anwaltlich prüfen und vervollständigen.',
     sections: [
       {
         heading: '1. Leistungsumfang',
         paragraphs: [
-          'Piloti ist ein KI-gestützter Rechercheassistent für österreichisches Baurecht (OIB-Richtlinien und RIS-Rechtsquellen). Piloti ruft Vorschrifteninhalte und von Ihrer Organisation bereitgestellte Projektdokumente ab, fasst sie zusammen und zitiert sie.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          PRODUCT_NAME + ' ist der Workspace für Architektur- und Planungsbüros, in dem eine Organisation ihre Projekte, Unterlagen und Modelle führt; ' + PRODUCT_NAME + ' unterstützt die Arbeit darin mit KI. Zum Leistungsumfang gehört die Recherche im österreichischen Baurecht (OIB-Richtlinien und RIS-Rechtsquellen). ' + PRODUCT_NAME + ' ruft Vorschrifteninhalte und von Ihrer Organisation bereitgestellte Projektdokumente ab, fasst sie zusammen und zitiert sie.',
         ],
       },
       {
         heading: '2. Keine Rechtsberatung',
         paragraphs: [
-          'Piloti erbringt keine Rechtsberatung und ersetzt nicht die Beurteilung qualifizierter Fachleute wie Architektinnen und Architekten, Ziviltechnikerinnen und Ziviltechnikern oder Rechtsanwältinnen und Rechtsanwälten. Antworten werden von KI erzeugt, können fehlerhaft, unvollständig oder veraltet sein und müssen vor der Verwendung für Planungs-, Genehmigungs- oder Bauentscheidungen anhand der zitierten Primärquellen überprüft werden. Die Verantwortung für Entscheidungen auf Grundlage von Piloti-Ausgaben verbleibt bei den Nutzenden und ihrer Organisation.',
+          PRODUCT_NAME + ' erbringt keine Rechtsberatung und ersetzt nicht die Beurteilung qualifizierter Fachleute wie Architektinnen und Architekten, Ziviltechnikerinnen und Ziviltechnikern oder Rechtsanwältinnen und Rechtsanwälten. Antworten werden von KI erzeugt, können fehlerhaft, unvollständig oder veraltet sein und müssen vor der Verwendung für Planungs-, Genehmigungs- oder Bauentscheidungen anhand der zitierten Primärquellen überprüft werden. Die Verantwortung für Entscheidungen auf Grundlage von ' + PRODUCT_NAME + '-Ausgaben verbleibt bei den Nutzenden und ihrer Organisation.',
         ],
       },
       {
@@ -181,7 +192,8 @@ export const de: LegalContent = {
       {
         heading: '6. Verfügbarkeit und Support',
         paragraphs: [
-          'Der Dienst wird ohne zugesichertes Service-Level bereitgestellt, sofern nicht schriftlich anderes vereinbart ist. Geplante Wartungen und Abhängigkeiten von externen Anbietern (Identität, KI-Modelle, Websuche) können die Verfügbarkeit beeinträchtigen. [Vereinbarte SLA-/Support-Regelungen einfügen, falls zutreffend.]',
+          'Der Dienst wird ohne zugesichertes Service-Level bereitgestellt, sofern nicht schriftlich anderes vereinbart ist. Geplante Wartungen und Abhängigkeiten von externen Anbietern (Identität, KI-Modelle, Websuche) können die Verfügbarkeit beeinträchtigen.',
+          // TODO(owner): vereinbarte SLA- und Support-Regelungen ergänzen, falls zutreffend.
         ],
       },
       {
@@ -193,13 +205,15 @@ export const de: LegalContent = {
       {
         heading: '8. Haftung',
         paragraphs: [
-          'Die Haftung für leichte Fahrlässigkeit ist im gesetzlich zulässigen Umfang ausgeschlossen; zwingende Haftung (z. B. für Personenschäden, nach dem Produkthaftungsgesetz) bleibt unberührt. Der Betreiber haftet nicht für Entscheidungen, die entgegen Punkt 2 im Vertrauen auf KI-generierte Ausgaben getroffen wurden. [Haftungsbeschränkungsklausel anwaltlich vervollständigen.]',
+          'Die Haftung für leichte Fahrlässigkeit ist im gesetzlich zulässigen Umfang ausgeschlossen; zwingende Haftung (z. B. für Personenschäden, nach dem Produkthaftungsgesetz) bleibt unberührt. Der Betreiber haftet nicht für Entscheidungen, die entgegen Punkt 2 im Vertrauen auf KI-generierte Ausgaben getroffen wurden.',
+          // TODO(owner): die Haftungsbeschränkungsklausel anwaltlich vervollständigen.
         ],
       },
       {
         heading: '9. Schlussbestimmungen',
         paragraphs: [
-          'Es gilt österreichisches Recht unter Ausschluss der Verweisungsnormen und des UN-Kaufrechts. Gerichtsstand: [zuständiges Gericht]; für Verbraucher gelten zwingende Verbrauchergerichtsstände. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Rest wirksam.',
+          // TODO(owner): einen Gerichtsstand vereinbaren und nennen; bis dahin gilt der gesetzliche.
+          'Es gilt österreichisches Recht unter Ausschluss der Verweisungsnormen und des UN-Kaufrechts. Für Verbraucher gelten zwingende Verbrauchergerichtsstände. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Rest wirksam.',
         ],
       },
     ],
@@ -207,32 +221,34 @@ export const de: LegalContent = {
 
   'ai-transparency': {
     title: 'KI-Transparenzhinweis',
-    updated: '2026-07-10',
+    updated: '2026-10-29',
     intro:
-      'Information gemäß Art. 50 der Verordnung (EU) 2024/1689 (KI-Verordnung) über das KI-System, mit dem Sie bei der Nutzung von Piloti interagieren.',
+      'Information gemäß Art. 50 der Verordnung (EU) 2024/1689 (KI-Verordnung) über das KI-System, mit dem Sie bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) interagieren.',
     sections: [
       {
         heading: 'Sie interagieren mit einem KI-System',
         paragraphs: [
-          'Piloti beantwortet Ihre Fragen mit großen Sprachmodellen (LLMs). Chat-Antworten, Rechercheberichte und Rechtsgrundlagen-Karten sind KI-generierte Inhalte. Piloti kennzeichnet die zitierten Quellen, sodass jede Aussage anhand der zugrunde liegenden OIB-Richtlinie oder RIS-Fundstelle überprüft werden kann.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          PRODUCT_NAME + ' beantwortet Ihre Fragen und arbeitet in Ihren Projekten mit großen Sprachmodellen (LLMs). Chat-Antworten, Rechercheberichte und Rechtsgrundlagen-Karten sind KI-generierte Inhalte. ' + PRODUCT_NAME + ' kennzeichnet die zitierten Quellen, sodass jede Aussage anhand der zugrunde liegenden Quelle überprüft werden kann, etwa eines Projektdokuments, einer OIB-Richtlinie oder einer RIS-Fundstelle.',
         ],
       },
       {
         heading: 'Was das System tut',
         paragraphs: [
-          'Piloti ruft Passagen aus den OIB-Richtlinien, österreichischen Rechtsquellen (RIS) und Ihren Projektdokumenten ab, führt optional Web-Recherchen durch und erstellt mit KI-Modellen eine Antwort mit Zitaten. Eine asynchrone Memory-Funktion kann aus Interaktionen Notizen auf Projekt- und Organisationsebene ableiten, um künftige Antworten zu verbessern; organisationsweite Memory-Einträge durch die KI sind standardmäßig deaktiviert.',
+          PRODUCT_NAME + ' ruft Passagen aus Ihren Projektdokumenten, den OIB-Richtlinien und österreichischen Rechtsquellen (RIS) ab, führt optional Web-Recherchen durch und erstellt mit KI-Modellen eine Antwort mit Zitaten. Eine asynchrone Memory-Funktion kann aus Interaktionen Notizen auf Projekt- und Organisationsebene ableiten, um künftige Antworten zu verbessern; organisationsweite Memory-Einträge durch die KI sind standardmäßig deaktiviert.',
         ],
       },
       {
         heading: 'Grenzen und menschliche Aufsicht',
         paragraphs: [
-          'KI-generierte Antworten können falsch, unvollständig oder veraltet sein, auch wenn sie überzeugend klingen. Piloti ist ein Recherchewerkzeug und als KI-Anwendung mit begrenztem Risiko eingestuft: Es trifft keine Entscheidungen über Gebäude, Genehmigungen oder Personen — die fachliche Prüfung jeder Antwort anhand der zitierten Primärquelle ist Teil der bestimmungsgemäßen Verwendung. Verwenden Sie Piloti-Ausgaben nicht als alleinige Grundlage sicherheitsrelevanter Planungsentscheidungen.',
+          // TODO(owner): Satz am 2026-10-29 neu gefasst (Positionierung: Workspace statt Recherchewerkzeug); die rechtliche Aussage ist unverändert. Zur anwaltlichen Prüfung.
+          'KI-generierte Antworten können falsch, unvollständig oder veraltet sein, auch wenn sie überzeugend klingen. ' + PRODUCT_NAME + ' ist als KI-Anwendung mit begrenztem Risiko eingestuft: Es trifft keine Entscheidungen über Gebäude, Genehmigungen oder Personen — die fachliche Prüfung jeder Antwort anhand der zitierten Primärquelle ist Teil der bestimmungsgemäßen Verwendung. Verwenden Sie ' + PRODUCT_NAME + '-Ausgaben nicht als alleinige Grundlage sicherheitsrelevanter Planungsentscheidungen.',
         ],
       },
       {
         heading: 'Welche KI-Modelle eingesetzt werden',
         paragraphs: [
-          'Standardmäßig nutzt Piloti Modelle, die über das API-Gateway OpenRouter geleitet werden (Referenzmodell: OpenAI GPT-5.6 Luna). Verschiedene interne Funktionen (Rückfragen, Recherche, Tiefenrecherche, Memory-Reflexion) können unterschiedliche Modelle verwenden.',
+          'Standardmäßig nutzt ' + PRODUCT_NAME + ' Modelle, die über das API-Gateway OpenRouter geleitet werden (Referenzmodell: OpenAI GPT-5.6 Luna). Verschiedene interne Funktionen (Rückfragen, Recherche, Tiefenrecherche, Memory-Reflexion) können unterschiedliche Modelle verwenden.',
         ],
         notice:
           'Die Modellwahl ist dynamisch: Administratorinnen und Administratoren Ihrer Organisation können jede Funktion jederzeit auf ein anderes KI-Modell aus dem OpenRouter-Katalog umstellen, ohne dass eine neue Version des Dienstes erscheint. Jede Änderung wird gegen den Katalog validiert, versioniert, der handelnden Person zugeordnet und ist umkehrbar; für jede einzelne KI-Anfrage wird im Nutzungsledger festgehalten, welches Modell die Antwort tatsächlich erzeugt hat. Das Gateway (OpenRouter) und dessen Zugangsdaten können durch eine Modellauswahl niemals geändert werden — nur, welches Modell hinter diesem Gateway Ihre Organisation bedient.',
@@ -240,7 +256,7 @@ export const de: LegalContent = {
       {
         heading: 'Nachvollziehbarkeit',
         paragraphs: [
-          'Für jede Antwort protokolliert Piloti, welches Modell die Anfrage bedient hat, die verbrauchten Tokens und die Kosten, zugeordnet zu Organisation, Projekt und Nutzer. Administrative Änderungen der Modellkonfiguration erscheinen im Audit-Log der Organisation.',
+          'Für jede Antwort protokolliert ' + PRODUCT_NAME + ', welches Modell die Anfrage bedient hat, die verbrauchten Tokens und die Kosten, zugeordnet zu Organisation, Projekt und Nutzer. Administrative Änderungen der Modellkonfiguration erscheinen im Audit-Log der Organisation.',
         ],
       },
       {
@@ -254,9 +270,9 @@ export const de: LegalContent = {
 
   subprocessors: {
     title: 'Externe Dienste & Subunternehmer',
-    updated: '2026-10-10',
+    updated: '2026-10-29',
     intro:
-      'Alle externen Dienste, die bei der Nutzung von Piloti Daten verarbeiten können, sowie die vom Betreiber selbst betriebene Infrastruktur. Diese Seite setzt die in der Datenschutzerklärung genannte Transparenzzusage um.',
+      'Alle externen Dienste, die bei der Nutzung von ' + PRODUCT_NAME + ' (vormals Piloti) Daten verarbeiten können, sowie die vom Betreiber selbst betriebene Infrastruktur. Diese Seite setzt die in der Datenschutzerklärung genannte Transparenzzusage um.',
     sections: [
       {
         heading: 'Externe Auftragsverarbeiter',
@@ -334,10 +350,11 @@ export const de: LegalContent = {
               'Optional (nur falls konfiguriert)',
             ],
             [
-              'Hosting-Anbieter',
+              // Anbieter und Ort wie auf der Website (apps/website/src/i18n/pages/security.ts) und in docs/deployment/kubernetes.md.
+              'IPAX (Hosting-Anbieter)',
               'Betrieb der Anwendung, Datenbanken und des Objektspeichers',
               'Alle Anwendungsdaten',
-              '[Ergänzen: Anbieter & Region]',
+              'Österreich (Wien)',
               'Ja',
             ],
           ],
@@ -372,13 +389,13 @@ export const de: LegalContent = {
       {
         heading: 'Entwicklungs- und Build-Dienste (keine Nutzerinhalte)',
         paragraphs: [
-          'Die folgenden Dienste werden für Entwicklung und Build von Piloti genutzt. Sie verarbeiten Quellcode und Build-Artefakte, niemals Ihre Eingaben, Dokumente oder Kontodaten:',
+          'Die folgenden Dienste werden für Entwicklung und Build von ' + PRODUCT_NAME + ' genutzt. Sie verarbeiten Quellcode und Build-Artefakte, niemals Ihre Eingaben, Dokumente oder Kontodaten:',
         ],
         list: [
           'GitHub (USA) — Quellcode-Hosting, CI-Pipelines, Sicherheits-Scans.',
           'SonarSource / SonarQube Cloud (EU/CH) — statische Analyse des Quellcodes.',
           'Paket-Registries und Basis-Images (PyPI, npm, Docker Hub, NVIDIA NGC, Debian-/Node-Mirrors) — Software-Abhängigkeiten, die zur Build-Zeit geladen werden.',
-          'Google Fonts — Schriften werden einmalig zur Build-Zeit geladen und selbst gehostet; Ihr Browser kontaktiert bei der Nutzung von Piloti niemals Google.',
+          'Google Fonts — Schriften werden einmalig zur Build-Zeit geladen und selbst gehostet; Ihr Browser kontaktiert bei der Nutzung von ' + PRODUCT_NAME + ' niemals Google.',
         ],
       },
       {

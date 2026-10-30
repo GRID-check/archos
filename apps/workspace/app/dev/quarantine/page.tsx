@@ -20,6 +20,7 @@ import { notFound } from 'next/navigation'
 
 import { PageHeader } from '@/components/ui/page-header'
 import { QuarantineQueue } from '@/features/organization/components/quarantine-queue'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const HOUR = 3_600_000
 const at = (hoursAgo: number): string => new Date(Date.now() - hoursAgo * HOUR).toISOString()
@@ -134,7 +135,7 @@ export default function QuarantineDevPage(): JSX.Element {
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8" data-testid="quarantine-preview">
       <PageHeader
         title="Quarantäne"
-        subtitle="Dateien, die die Inhaltsprüfung zurückgehalten hat. Solange sie hier liegen, zeigt Piloti sie keinem Modell. Wer sie prüfen darf, lässt sie hier zu oder löscht sie."
+        subtitle={"Dateien, die die Inhaltsprüfung zurückgehalten hat. Solange sie hier liegen, zeigt " + PRODUCT_NAME + " sie keinem Modell. Wer sie prüfen darf, lässt sie hier zu oder löscht sie."}
       />
       <QuarantineQueue />
     </main>

@@ -149,7 +149,7 @@ export function DocumentTagsEditor({
           </span>
         ))}
         {tags.length === 0 && readOnly && (
-          <span className="text-muted-foreground/70 text-xs">{t('preview.noTags')}</span>
+          <span className="text-muted-foreground text-xs">{t('preview.noTags')}</span>
         )}
         {!readOnly && !atCap && (
           <span className="relative inline-flex items-center">
@@ -199,7 +199,7 @@ export function DocumentTagsEditor({
               // `h-6` is 24px, a little over half the touch floor, on a control
               // that has to be hit precisely because a mis-tap lands on a tag
               // chip that removes itself.
-              className="border-input text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-36 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-28 rounded-control border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
+              className="border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:w-36 pointer-coarse:pl-8 pointer-coarse:text-base h-6 w-28 rounded-control border border-dashed bg-transparent pl-6 pr-1.5 text-xs focus-visible:border-solid focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50"
             />
           </span>
         )}
@@ -233,7 +233,7 @@ export function DocumentTagsEditor({
         </div>
       )}
       {showNoMatchHint && (
-        <p className="text-muted-foreground/70 text-xs">{t('preview.noTagMatch')}</p>
+        <p className="text-muted-foreground text-xs">{t('preview.noTagMatch')}</p>
       )}
     </div>
   )

@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 
 from agent.citations.extraction import extract_sources_from_tool_result
+from agent.common.brand import PRODUCT_NAME
 from agent.common.grounding_block import COVERAGE_GAP_LABEL
 from agent.common.grounding_block import COVERAGE_GAP_NOTE
 from agent.common.grounding_block import GroundingBlock
@@ -222,7 +223,8 @@ class TestTheRenderingDidNotMove:
         ],
     )
     def test_the_renderer_reproduces_the_producer_byte_for_byte(self, fixture_name, preamble, hits):
-        fixture = (FIXTURE_DIR / fixture_name).read_text(encoding="utf-8")
+        # The fixture says {productName} where the product name stands, so a rename needs no edit here.
+        fixture = (FIXTURE_DIR / fixture_name).read_text(encoding="utf-8").replace("{productName}", PRODUCT_NAME)
         block = GroundingBlock(
             preamble=preamble,
             degraded_banner="",

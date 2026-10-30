@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Piloti can be driven from the keyboard: open the command palette, jump between
+ARCHOS can be driven from the keyboard: open the command palette, jump between
 sections, and work the composer without reaching for the mouse. Press **?**
 anywhere in the app to see the full set — the cheatsheet is generated from the
 same registry the app binds, so it is never out of date with what actually works.
@@ -43,7 +43,7 @@ navigation rail, so what you see in the rail is what you can jump to:
 |---|---|
 | **G** then **P** | All projects |
 | **G** then **O** | Organization |
-| **G** then **C** | Ask Piloti (chat) |
+| **G** then **C** | Ask ARCHOS (chat) |
 | **G** then **W** | Skills |
 | **G** then **F** | Files |
 | **G** then **K** | Knowledge |
@@ -71,7 +71,7 @@ unless you asked for it.
 | **Enter** or **⌘Enter** | Send the message |
 | **Shift+Enter** | New line |
 | **@** | Mention a colleague (where collaboration is enabled) |
-| **1**–**9** | Pick a numbered option when Piloti asks you to choose |
+| **1**–**9** | Pick a numbered option when ARCHOS asks you to choose |
 
 While the mention picker is open it owns the navigation keys: ↑/↓ move the
 selection, Tab or Enter inserts the name, and Escape dismisses the picker without

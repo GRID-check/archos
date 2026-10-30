@@ -59,7 +59,7 @@ was deleted rather than moved.
 | `aiq-maintain-ci` | moved | CI maintenance is contributor knowledge, and [ci.md](ci.md) already held most of it | [ci.md, "Changing CI"](ci.md#changing-ci) |
 | `aiq-add-tool`, `aiq-add-data-source` | merged and moved | One procedure, needed by anyone extending the agent | [adding-a-tool.md](../architecture/adding-a-tool.md) |
 | `aiq-customize-prompts-models` | moved | Prompt and model configuration is architecture knowledge | [llm-providers.md](../architecture/llm-providers.md#which-model-each-role-uses) and the prompt section of [backend-deep-dive.md](../architecture/backend-deep-dive.md#prompts-three-layers-and-where-each-is-authored) |
-| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`apps/site/art/riso/README.md`](../../apps/site/art/riso/README.md#making-a-print) |
+| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`packages/brand/art/riso/README.md`](../../packages/brand/art/riso/README.md#making-a-print) |
 | `aiq-deploy` | deleted | A deployment runbook, and the upstream blueprint's: it cloned NVIDIA's repository and deployed with Helm | [`docs/deployment/`](../deployment/), [`scripts/README.md`](../../scripts/README.md) |
 
 ## Installed
@@ -145,6 +145,82 @@ A skill carrying `disable-model-invocation: true` never triggers by itself. Ask
 for it by name. That is deliberate for `interrogate` and `blast-radius`, which
 spawn subagents.
 
+## Cloud sessions: what is installed and how
+
+A Claude Code cloud session starts from a container with the repository cloned
+and nothing else installed. Two pieces make `agent-browser`, `apm` and the
+pinned skills present in every session, with nobody installing anything by hand.
+
+**Paste this one line into claude.ai, environment settings, Setup script:**
+
+```bash
+bash archos/scripts/cloud-setup.sh
+```
+
+The script starts in the directory above the clone and finds the repository from
+its own location. `archos` is the clone's directory name; change it if the
+environment clones under another name. For a session that attaches several
+repositories, use `bash archos/scripts/cloud-setup.sh --with-skills` (see
+"Why two pieces" below).
+
+| Piece | Runs | Does |
+|---|---|---|
+| [`scripts/cloud-setup.sh`](../../scripts/cloud-setup.sh) | once per environment snapshot, as root, before Claude starts | Installs go-task and `agent-browser` (one `npm i -g`, pinned), installs `uv` if missing, warms the `apm` CLI cache, reports `gh`. Needs no secrets |
+| `.claude/hooks/session-start.sh` | every `startup` and `resume` session (matcher `startup\|resume`, timeout 540 s), only when `CLAUDE_CODE_REMOTE=true` | Mirrors `task setup`: venv, the four bun installs, `apm install --frozen` (28 skills into `.claude/skills` and `.agents/skills`), and, if missing, the pinned `agent-browser`. Each step records a hash of its lockfile and skips itself when it and its output are unchanged, so a warm start takes about a second |
+
+The pins live in one place: `APM_VERSION` and `AGENT_BROWSER_VERSION` in
+`Taskfile.yml`, the go-task version in `.github/actions/setup-task`. Both
+scripts and the Taskfile read them from there.
+
+### Why two pieces
+
+- **Snapshot.** If the Setup script finishes in about five minutes, the disk is
+  snapshotted and later sessions skip it. Over that, it runs every session and
+  can fail with a generic container error. So it holds only slow, global tools,
+  runs independent installs in parallel and sleeps never.
+- **Exit codes.** A non-zero exit stops the session from starting. Every step
+  of both scripts is therefore non-fatal where the tool is optional, and prints
+  a `WARNING` instead.
+- **Lockfiles.** The snapshot is rebuilt only when the script or the allowed
+  domains change, or after about a week. It never notices a changed `uv.lock`
+  or `bun.lock`, so project dependencies belong in the hook, which hashes them.
+- **Secrets and bun.** The script runs before the proxy that adds network
+  secrets, so it uses none, and bun has known trouble with that proxy, so it
+  installs with npm.
+- **Several repositories.** A session with more than one repository loads none
+  of their `.claude/settings.json`, so the hook never runs there. The
+  `--with-skills` flag publishes the apm skills from the setup line itself.
+  Dependencies for the other tiers still need `task setup`.
+
+### Chromium for `agent-browser`
+
+`agent-browser install` downloads Chrome for Testing from a host the cloud
+network policy blocks. The image ships Playwright's Chromium instead, so the
+hook appends `export AGENT_BROWSER_EXECUTABLE_PATH=/opt/pw-browsers/chromium` to
+`$CLAUDE_ENV_FILE`, the file Claude Code reads after a SessionStart hook to
+persist environment variables into every later Bash call. It does this only when
+that path exists and you have configured no Chrome of your own
+(`AGENT_BROWSER_EXECUTABLE_PATH` or `AGENT_BROWSER_PROVIDER`). If
+`CLAUDE_ENV_FILE` is unset, the hook prints the export line instead. Do not run
+`agent-browser install` in a cloud session.
+
+### Verify
+
+```bash
+agent-browser --version          # the AGENT_BROWSER_VERSION pin
+agent-browser doctor             # or: task agents:browser
+ls .claude/skills | wc -l        # 28
+```
+
+`task agents:setup` does the same on a developer machine (apm skills, then
+`agents:browser`). The hook is silent about a healthy warm start; its
+`[session-start]` lines show what it did.
+
+`apm install` reports `1 file(s) contain hidden characters`. It is the vendored
+`improve-animations` skill from `emilkowalski/skills` (`--verbose` names it). It
+is third-party content under a commit pin, `apm audit` treats it as info, and
+`task agents:audit` does not gate on it.
+
 ## Two things to know before trusting them
 
 **`interrogate` is weaker here than upstream.** It reads a reviewer list from
@@ -165,10 +241,10 @@ was never swept at all. Two deliberate exceptions: the `next dev` block at the t
 `apps/workspace/AGENTS.md`, which regenerates itself, and ADR titles quoted in
 `docs/adr/README.md`, which have to match the records they point at.
 
-Rule 26 bans some words this repo uses on purpose. "Ratchet" and "substrate
-debt" are defined terms here, each with a document behind it, and the
-`writing-for-agents` skill calls that a leading word rather than a metaphor to
-avoid. Keep them.
+Rule 26 bans some words as metaphors. The house decision for the two this repo
+used is in [`naming.md`](naming.md#house-words): keep "ratchet" for a check
+whose baseline only falls; say what "substrate" meant instead (the sharing
+layer, the shared code).
 
 **apm 0.28 resolves targets inconsistently, and names them inconsistently.**
 Autodetection in `install` and in the `audit` replay disagree, which reported

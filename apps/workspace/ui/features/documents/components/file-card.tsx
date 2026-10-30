@@ -517,7 +517,7 @@ export const FileCard = memo(function FileCard({
       {!hideFooter && (
         <FileTileFooter
           onClick={onSelect}
-          className="@container/foot group/foot cursor-pointer flex-wrap justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
+          className="@container/foot group/foot cursor-pointer flex-wrap justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground phone:px-2.5"
           data-testid="file-card-footer"
         >
           <span className="flex min-w-0 flex-1 items-center gap-1.5">

@@ -22,7 +22,7 @@ The visual language is **warm paper monochrome + provenance signal colors** (ado
 
 Use shadcn semantic classes: `bg-background/card/muted/accent`, `text-foreground/muted-foreground`, `border`, `bg-primary/text-primary-foreground` (primary = **ink**, near-black), `bg-destructive`, `ring-ring`. Feedback subtle backgrounds via the `--background-color-feedback-*-subtle` vars (already wired into Badge/Alert success/warning/info/destructive variants — these now resolve to the provenance tints). Never hardcode hex/oklch in components.
 
-**Surfaces (light):** app bg `--background` ≈ #f6f6f4 warm paper · sidebar/rails `--background-color-surface-sunken` ≈ #f1f1ef · cards white · subtle input surface `--input-background` ≈ #fafaf8 · chip/quiet fill `--secondary`/`--muted` ≈ #f2f2f0 · inset/hover `--accent` ≈ #ececea. Dark mode is the derived warm-charcoal equivalent (same warm hues, no cold blue-grays).
+**Surfaces (light):** app bg `--background` ≈ #f6f6f4 warm paper · sidebar/rails `--background-color-surface-sunken` ≈ #f1f1ef · cards `--card` = the brand's raised surface `--ds-surface-raised` (#fafaf9, never pure white; a card is told from the paper by its hairline and faint shadow) · input surface `--input-background` = `--ds-surface` · chip/quiet fill `--secondary`/`--muted` = `--ds-surface-sunken` (#f2f1f0) · inset/hover `--accent` ≈ #ececea. Dark mode is the derived warm-charcoal equivalent (same warm hues, no cold blue-grays).
 
 **Surfaces (dark):** sidebar/rails #100f0d · app bg `--background` #171613 · input well `--input-background` #1c1b18 · cards `--card` #22211d · popovers #2a2825 · chip/quiet fill #2e2c28 · inset/hover `--accent` #373531.
 
@@ -33,7 +33,7 @@ themes are not the same system with swapped values. Copying light's ratios into
 dark is what made the first pass read as mud, so before re-tuning any dark
 surface, know why it is shaped this way:
 
-- **Elevation is carried by lightness, not by shadow.** On paper a white card
+- **Elevation is carried by lightness, not by shadow.** On paper a raised card (`--ds-surface-raised`, the paper tone itself)
   separates from the background mostly through its drop shadow — dark-on-light,
   high contrast — and the surface step itself only does ~0.03L of work. On
   charcoal that shadow contributes nothing (black on near-black is invisible),
@@ -139,16 +139,75 @@ The ramp targets the dummy's 9.5–24px scale: **20px page titles**, **23px hero
 
 | Role | Classes |
 |---|---|
-| Hero greeting (chat empty state only, ≈23px) | `text-[23px] font-semibold tracking-tight` |
-| Page title (≈20px) | `text-xl font-semibold tracking-tight` |
-| Section heading | `text-lg font-semibold tracking-tight` |
-| Card/subsection title | `text-sm font-semibold` |
+| Hero greeting (chat empty state only, ≈23px) | `text-[23px] font-medium tracking-tight` |
+| Page title (≈20px) | `text-xl font-medium tracking-tight` |
+| Section heading | `text-lg font-medium tracking-tight` |
+| Card/subsection title | `text-sm font-medium` |
 | Eyebrow / label (uppercase ≈10.5px) | `text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground`, written once as `.card-eyebrow` (`tracking-wider` is its 0.05em) and reached through `SectionLabel`; `TableHead` takes it too (existing `text-xs` eyebrows are acceptable until a screen is restyled) |
 | Body | `text-sm` (leading-relaxed for prose) |
 | Body secondary | `text-sm text-muted-foreground` |
 | Caption / meta | `text-xs text-muted-foreground` |
 | Identifiers (job id, § refs, collection names) | `font-mono text-xs` |
-| Numeric stat | `text-2xl font-semibold tracking-tight tabular-nums` |
+| Numeric stat | `text-2xl font-medium tracking-tight tabular-nums` |
+
+### Weight, face and white (the app's brand level)
+
+The app wears the corporate design with a lighter hand than the website
+(owner decision D3: soft radius ladder, faint shadows and lucide icons are the
+app's own choices, not defects). Inside that level the rules are the brand's:
+
+- **Content weight is 500.** Emphasis is size and ink, never 600 or 700: a
+  title is `font-medium` at a larger size or in `text-foreground`, its
+  context in `text-muted-foreground`. Secondary running text is 400
+  (`font-normal`). The card scale in `globals.css` (`.card-title`,
+  `.card-headline`, `.card-figure-*`) is 500 as well.
+- **One documented exception to 600:** numerals and initials set at 12px or
+  smaller inside a badge, marker, count or avatar (a citation marker, a count
+  pill, a stepper numeral, a collaborator's initials), where 500 loses against
+  its fill. The files are listed in `tests/brand-literals.spec.ts`; a new one
+  needs an entry there with this reason.
+- **The wordmark** is the product's name (`PRODUCT_NAME`) in capitals, Switzer
+  Semibold, tracked -0.02em, drawn only by `Logo` (`kind="wordmark"`, the default). It never
+  stands beside a mark: where the word does not fit (the collapsed icon rail),
+  `kind="icon"` draws the app icon's glyph, the name's initial, alone. Its face is the `@font-face` in
+  `app/globals.css` (`--font-logo`), which the browser fetches only when the
+  wordmark is on screen. The PDF exports set it in the same face
+  (`bff/pdf/fonts.ts`).
+- **Body face** is General Sans (`--font-sans`). **Geist Mono** is the app's
+  monospace for code, keycaps, identifiers and the skill editor
+  (`--font-mono`); the brand has no mono, and the app keeps one on purpose.
+- **The brand has no colour of its own.** It is black and white: warm white `--ds-surface` (#fafaf9), black `--ds-ink` (#0f0e0d) and one light grey `--ds-surface-sunken` (#f2f1f0). The app's hues (provenance signals, status, the data palette, the energy scale) are functional and documented exceptions; add no new one.
+- **No pure white.** Surfaces are `--ds-surface` (paper), `--ds-surface-raised`
+  (`--card`, `--popover`, overlays) and `--ds-surface-sunken`. Pure white stays
+  only where something is a document's own paper (the PDF viewer page, a
+  review pointer's ring on a page, a diagram export, text on a collaborator's
+  fixed-hue cursor) and on printed PDFs (`bff/pdf/theme.ts`: a laser prints
+  white, not a warm wash). `tests/brand-literals.spec.ts` lists them.
+- **Data colours** (charts, meters, the timetable) are typed once, in
+  `ui/styles/data-palette.css`, with the validator notes; a chart reads
+  `--chart-series-N` / `--spend-series-N`. Diagram colours are read off the
+  tokens (`diagram-palette.ts`). Nothing else carries a data hex.
+- **PDF exports:** ink, paper and greys are the brand neutrals (`theme.spec.ts` holds them to
+  `apps/workspace/shared/brand/tokens.vars.css`); the wordmark is Switzer Semibold; the body
+  stays Helvetica because the brand ships General Sans only as a variable
+  WOFF2, which react-pdf embeds as blank glyphs. A static General Sans Medium
+  TTF or OTF from `packages/brand` is the one thing that unlocks it.
+
+### Accessibility gate (WCAG 2.2 AA, light and dark)
+
+`task workspace:a11y` runs axe-core with the WCAG 2.0, 2.1 and 2.2 A and AA rule
+sets over every `/dev` preview route (`scripts/a11y-audit.mjs` finds them on disk, so a
+new preview is covered without an edit; the older routes still in `scripts/a11y-pending-routes.json` wait for their first audit), light and dark, at 1440 and 390 pixels. It
+starts its own `next dev`; it is not in CI yet (see `docs/contributing/ci.md`), so run it before a UI change lands. It fails on any violation not in
+`scripts/a11y-baseline.json` and on a baseline entry that is gone, so the list only
+shrinks. `ui/components/brand/brand-surfaces.a11y.spec.tsx` holds the structural
+rules in the unit suite (jsdom cannot measure contrast). Contrast rules for what
+you write: text is 4.5:1 and large text 3:1; secondary text is
+`text-muted-foreground` at full strength, never `/60` to `/90` of it; text on a
+tint takes the `-text` token (`--source-*-text`, `--status-active-text`), never the
+signal colour itself. Disabled controls are exempt, as WCAG 1.4.3 says
+("inactive user interface components"); axe skips them. A scrollable region must be
+reachable by keyboard (`tabIndex={0}`).
 
 **Answer prose** (`MarkdownRenderer`). Paragraphs and lists hold a
 `max-w-[72ch]` measure. The body hyphenates (`hyphens-auto`, words of ten
@@ -165,7 +224,7 @@ only if it arrives whole.
 - **Page container:** `mx-auto w-full max-w-5xl px-4 py-8 md:px-8` (content pages). Chat/full-bleed surfaces are exceptions.
 - **Vertical section gap:** `space-y-8` between major sections; `space-y-4` within a section; `gap-3` in tight lists.
 - **Card padding:** `p-6` for feature cards, `p-5` for stat cards, `px-4 py-3` for list rows.
-- **Radius ladder:** two steps, both from the brand package (`--ds-radius-*`, `apps/workspace/shared/brand/tokens.vars.css`). Controls take `rounded-control` (4px, `--radius-control` — buttons, fields, badges, chips, tabs, menu and list items); surfaces take `rounded-surface` (8px, `--radius-surface` from the brand's `radius-lg` — cards, panels, sheets, dialogs, popovers, tooltips, toasts). `rounded-full` only for what is round (avatars, dots, switches). Radius is paint: a radius-only change moves no layout box.
+- **Radius ladder:** the app's own ladder from the brand package (`tokens.json` radius tokens with `"scope": "app"`, as `--ds-radius-*` in `apps/workspace/shared/brand/tokens.vars.css`; the website never receives them). Small inline things take `rounded-inline` (4px — kbd, checkbox, a tag inside a field); controls `rounded-control` (6px — buttons, fields, selects, tabs, menu and list items); surfaces `rounded-surface` (10px — cards, panels, list containers, toasts, tables, code blocks); floating layers `rounded-overlay` (14px — dialogs, popovers, menus, sheets, the command palette); chat messages and the composer `rounded-bubble` (18px); `rounded-full` only for what is round (chips, badges, counts, avatars, dots, switches). Tailwind's `rounded-sm/md/lg/xl` are mapped onto the same four steps for code not yet on a semantic name. The names differ from the website's `radius-md` (4px, controls) on purpose, so no name means two sizes. Radius is paint: a radius-only change moves no layout box.
 - **Glyph sizes:** the glyph sits two steps below its well — `size-3.5` in badges/chips, `size-4` free-floating UI glyphs (pagination chevrons, dialog close, `size-9` wells), `size-3.5` in `size-7` wells, `size-5` in the empty-state/confirm discs. A new well picks the glyph its size already owns; it does not invent one.
 - **Borders:** hairline `border` (border-border — alpha ink, composites on any surface). Prefer a single border + `bg-card` over nested boxes. Use `divide-y` for list groups inside one bordered container. Depth = surface step + layered soft shadow (`shadow-xs/sm/md/lg` are bound to `--elevation-*`, and a bare `shadow` is the `sm` step rather than Tailwind's cold black default), never a heavy border.
 
@@ -469,7 +528,7 @@ in the review.
 ```tsx
 <header className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
   <div className="min-w-0">
-    <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+    <h1 className="text-xl font-medium tracking-tight">{title}</h1>
     <p className="mt-1 text-sm text-muted-foreground">{oneLineContext}</p>
   </div>
   <div className="sm:shrink-0">{primaryAction}</div>
@@ -510,7 +569,7 @@ The Archiv and the Postfach are NOT this case since the org-nav redesign: they r
 
 Tabbed shells (Organisation, Platform) are **one place**, not a stack of submenus. Switching Models → Knowledge `replace`s the URL and collapses those siblings on the trail, so Back leaves the shell and returns to the project — it does not walk the previous settings tab. Project sections stay a real stack: Files → Chat is a step.
 
-**Stat** — `rounded-lg border bg-card p-5 shadow-xs`, number in `text-2xl font-semibold tabular-nums`, label in `text-sm text-muted-foreground` below. A leading icon sits in a `StatCardIcon` well (`components/ui/stat-card.tsx`: the chip tint pairs plus the office provenance tint, `size-9`/`size-7`). Stat vs charter Figure (§A2): a Stat is a dashboard tile whose number *is* the content; a Figure is the one emphasized answer *inside* an evidence card. A tile never carries a Figure, a card never carries a Stat.
+**Stat** — `rounded-lg border bg-card p-5 shadow-xs`, number in `text-2xl font-medium tabular-nums`, label in `text-sm text-muted-foreground` below. A leading icon sits in a `StatCardIcon` well (`components/ui/stat-card.tsx`: the chip tint pairs plus the office provenance tint, `size-9`/`size-7`). Stat vs charter Figure (§A2): a Stat is a dashboard tile whose number *is* the content; a Figure is the one emphasized answer *inside* an evidence card. A tile never carries a Figure, a card never carries a Stat.
 
 **Search** — `SearchField` (`components/ui/search-field.tsx`) is the one magnifier + input + clear control. Archiv composes it inside `FileSearchBar` (sticky band, run button, result banner). Files composes the bare `FileSearchField` in the page header instead — no sticky band, no run button (Enter alone commits the semantic search), no banner (the results are the report); `useFileSearch` owns the two-mode query state one level above both the field and `FileBrowserPane`. Admin lists compose `SearchField` inside `DataToolbar`. Do not hand-roll another `relative` + `Search` icon + `Input`.
 
@@ -536,7 +595,7 @@ surface that already has a border.
                   border bg-card text-muted-foreground/70 shadow-sm">
     <Icon className="size-5" aria-hidden />
   </div>
-  <p className="text-balance text-sm font-semibold tracking-tight text-foreground">{title}</p>
+  <p className="text-balance text-sm font-medium tracking-tight text-foreground">{title}</p>
   <p className="mt-1.5 max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">{whyAndWhatToDo}</p>
   <div className="mt-5">{primaryAction}</div>
 </div>
@@ -897,7 +956,7 @@ More than one ambient loop on screen. `ease-linear`. `transition-all`.
 
 - No gradients.
 - No emojis anywhere in UI. Icons are lucide-react only.
-- No hardcoded colors — tokens only, so dark mode is free.
+- No hardcoded colors — tokens only, so dark mode is free. The exceptions are listed under *Weight, face and white*.
 - No nested cards (card-inside-card). Flatten with borders/dividers/spacing.
 - Avoid side stripes: a coloured or ruled bar down the left (inline-start) edge of a card, callout, quote, toast, peek, row or chip, for status or for emphasis, is discouraged. And no status tint across a whole card. Status is a 10px rounded swatch on the title line, or an icon and a word — see **Emphasis without a stripe**.
 - No purple/generic-AI aesthetic. **Provenance signals are the only chroma** — no blue active states (actions and focus are ink app-wide), and a source color is never used outside its meaning or without its icon + label. No general accent token: one existed briefly and was withdrawn (see §"Accent pop" above). A control that wants to stand out wants contrast, not chroma.

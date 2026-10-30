@@ -75,7 +75,7 @@ export function IfcComplianceDiff({
     <section aria-labelledby="bim-compliance-diff-heading" className="space-y-2">
       <h2
         id="bim-compliance-diff-heading"
-        className="flex items-center gap-2 text-sm font-semibold"
+        className="flex items-center gap-2 text-sm font-medium"
       >
         <GitCompare className="size-4 text-muted-foreground" aria-hidden="true" />
         {t('complianceDiff.title')}

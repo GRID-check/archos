@@ -20,6 +20,7 @@ import { INTAKE_CLOSING, INTAKE_READING } from '@/app/dev/_fixtures/project-inta
 import type { IntakeView } from '@/lib/project-intake/types'
 import { SetupFooter, StepFooterProvider, useStepFooterChannel } from '../setup-frame'
 import { ProfileStep, type ProfileStepProps } from './profile-step'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
@@ -129,7 +130,7 @@ describe('ProfileStep', () => {
       screen.getByRole('button', { name: 'OIB 5 Sound, probably' }).focus()
       expect(await screen.findByText('Sound protection usually applies.')).toBeInTheDocument()
       expect(screen.queryByText('Sound protection typically applies.')).toBeNull()
-      expect(screen.getByRole('link', { name: /Ask Piloti/ })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: new RegExp(String.raw`Ask ${PRODUCT_NAME}`) })).toHaveAttribute(
         'href',
         expect.stringContaining(`/app/projects/${PROFILE_REVIEW.projectId}/chat?ask=`)
       )
@@ -261,7 +262,7 @@ describe('ProfileStep', () => {
 
     it('takes every open value and class as the person’s, then finishes, in one action', async () => {
       setup(PROFILE_REVIEW)
-      expect(footer()).toHaveTextContent('What you did not change, Piloti takes as it is, with its source.')
+      expect(footer()).toHaveTextContent(`What you did not change, ${PRODUCT_NAME} takes as it is, with its source.`)
       await userEvent.click(within(footer()).getByRole('button', { name: 'Take everything and finish' }))
       expect(onDecide).toHaveBeenCalledWith([
         { key: 'oib_edition', action: 'confirm' },
@@ -325,7 +326,7 @@ describe('ProfileStep', () => {
     it('keeps the finish while reading with something found, and says more is coming', () => {
       setup(INTAKE_READING)
       expect(screen.getByTestId('profile-finish')).toBeInTheDocument()
-      expect(screen.getByTestId('profile-findings')).toHaveTextContent('Piloti is still reading. More values will be added.')
+      expect(screen.getByTestId('profile-findings')).toHaveTextContent(`${PRODUCT_NAME} is still reading. More values will be added.`)
     })
   })
 })

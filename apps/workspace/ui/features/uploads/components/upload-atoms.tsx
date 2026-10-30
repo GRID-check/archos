@@ -88,7 +88,7 @@ export function TallyTile({ tally, count, label }: { tally: CountKey; count: num
     >
       <StatCardIcon icon={look.icon} tone={look.tone} size="sm" />
       <div className="min-w-0">
-        <p className="text-foreground text-lg leading-tight font-semibold tracking-tight tabular-nums">{count}</p>
+        <p className="text-foreground text-lg leading-tight font-medium tracking-tight tabular-nums">{count}</p>
         <p className="text-muted-foreground text-xs leading-tight hyphens-auto">{label}</p>
       </div>
     </li>

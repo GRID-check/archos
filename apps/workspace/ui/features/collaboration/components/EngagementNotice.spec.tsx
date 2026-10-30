@@ -10,6 +10,7 @@ import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 
 import { EngagementNotice } from './EngagementNotice'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('EngagementNotice', () => {
   test('renders nothing in ask mode with nothing to offer — the composer already says it (NF-8)', () => {
@@ -29,10 +30,10 @@ describe('EngagementNotice', () => {
 
     const notice = screen.getByTestId('engagement-notice')
     expect(notice).toHaveTextContent(
-      'Several of you are talking here. Should Piloti wait to be mentioned?',
+      `Several of you are talking here. Should ${PRODUCT_NAME} wait to be mentioned?`,
     )
     // Nothing that claims the rule already changed.
-    expect(notice).not.toHaveTextContent('Piloti answers when mentioned')
+    expect(notice).not.toHaveTextContent(`${PRODUCT_NAME} answers when mentioned`)
   })
 
   test('accepting the offer sets mention', async () => {
@@ -58,7 +59,7 @@ describe('EngagementNotice', () => {
     render(<EngagementNotice mode="mention" onChange={vi.fn()} />)
 
     expect(screen.getByTestId('engagement-notice')).toHaveTextContent(
-      'Piloti answers when mentioned',
+      `${PRODUCT_NAME} answers when mentioned`,
     )
     expect(screen.getByTestId('engagement-notice')).toHaveTextContent(
       // Deliberately not "two of you": the mode holds for any number of
@@ -72,7 +73,7 @@ describe('EngagementNotice', () => {
     const onChange = vi.fn().mockResolvedValue(true)
     render(<EngagementNotice mode="mention" onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Let Piloti answer everything' }))
+    await user.click(screen.getByRole('button', { name: `Let ${PRODUCT_NAME} answer everything` }))
 
     expect(onChange).toHaveBeenCalledWith('ask')
   })
@@ -81,7 +82,7 @@ describe('EngagementNotice', () => {
     const user = userEvent.setup()
     render(<EngagementNotice mode="mention" onChange={vi.fn().mockResolvedValue(false)} />)
 
-    await user.click(screen.getByRole('button', { name: 'Let Piloti answer everything' }))
+    await user.click(screen.getByRole('button', { name: `Let ${PRODUCT_NAME} answer everything` }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('That could not be changed.')
   })
@@ -95,7 +96,7 @@ describe('EngagementNotice', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Let Piloti answer everything' }))
+    await user.click(screen.getByRole('button', { name: `Let ${PRODUCT_NAME} answer everything` }))
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
   })
@@ -106,7 +107,7 @@ describe('EngagementNotice', () => {
     render(<EngagementNotice mode="mention" onChange={vi.fn()} canChange={false} />)
 
     expect(screen.getByTestId('engagement-notice')).toHaveTextContent(
-      'Piloti answers when mentioned',
+      `${PRODUCT_NAME} answers when mentioned`,
     )
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })

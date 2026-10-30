@@ -48,6 +48,7 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
+from agent.common.brand import PRODUCT_NAME
 from agent.common.budget_guard import RunBudgetExceededError
 from agent.common.cost_tracking import BudgetExceededError
 from agent.common.message_utils import content_to_text
@@ -145,7 +146,7 @@ _ENDINGS = {
     "llm_budget": "Die Erfassung wurde beendet: das Nutzungsbudget ist aufgebraucht.",
     "error": "Die Erfassung wurde nach einem Fehler beendet.",
     "no_model": "Die Erfassung konnte nicht starten: kein Modell konfiguriert.",
-    "model": "Piloti hat die Erfassung ohne eigene Zusammenfassung beendet.",
+    "model": f"{PRODUCT_NAME} hat die Erfassung ohne eigene Zusammenfassung beendet.",
 }
 
 

@@ -13,6 +13,7 @@ import { server } from '@/mocks/server'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { FileCard, ThumbnailWithFallback, resetThumbnailCache } from './file-card'
 import type { FileItem } from './project-file-workspace'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function file(id: string, filename: string, contentType: string | null): FileItem {
   return {
@@ -302,7 +303,7 @@ describe('FileCard while the document is still being read', () => {
     // An unclassified message says the generic sentence; the stored text is
     // the tooltip, since the card is one click target and has no disclosure.
     const line = screen.getByTestId('file-card-failure')
-    expect(line).toHaveTextContent(/Piloti (couldn't read|konnte dieses Dokument nicht lesen)/)
+    expect(line).toHaveTextContent(new RegExp(`${PRODUCT_NAME} (couldn't read|konnte dieses Dokument nicht lesen)`))
     expect(line).toHaveAttribute('title', 'Verschlüsseltes PDF')
   })
 
@@ -365,7 +366,7 @@ describe('FileCard for a report Piloti wrote', () => {
   it('names its author under the file name, as a line and not a chip', () => {
     render(<FileCard file={generated} isSelected={false} onSelect={() => {}} locale="de" />)
 
-    const byline = screen.getByText('Created by Piloti')
+    const byline = screen.getByText(`Created by ${PRODUCT_NAME}`)
     expect(byline.tagName).toBe('P')
     // In the BODY, under the name — not in the footer, which is the assignment
     // slot where the faces and the word `Unvergeben` live.
@@ -378,7 +379,7 @@ describe('FileCard for a report Piloti wrote', () => {
       <FileCard file={{ ...generated, authoredBy: 'user', status: 'ready' }} isSelected={false} onSelect={() => {}} locale="de" />,
     )
 
-    expect(screen.queryByText('Created by Piloti')).not.toBeInTheDocument()
+    expect(screen.queryByText(`Created by ${PRODUCT_NAME}`)).not.toBeInTheDocument()
   })
 
   it('badges `stored` as neither citable nor failed', () => {
@@ -528,7 +529,7 @@ describe('FileCard and the version state badge', () => {
     // The byline still says who wrote it; the badge waits for a second
     // version, when there is something to distinguish.
     expect(screen.queryByTestId('document-version-badge')).not.toBeInTheDocument()
-    expect(screen.getByText('Created by Piloti')).toBeInTheDocument()
+    expect(screen.getByText(`Created by ${PRODUCT_NAME}`)).toBeInTheDocument()
   })
 
   it('says nothing when the listing never read the state', () => {

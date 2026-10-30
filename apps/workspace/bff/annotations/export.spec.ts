@@ -51,6 +51,7 @@ import {
 } from './export'
 import { listAnnotations } from './service'
 import type { AnnotationReplyView, AnnotationView } from './types'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const SESSION = {
   userId: 'user_anna',
@@ -241,21 +242,21 @@ describe('the Protokoll', () => {
 
   it("names whom Piloti wrote a reply for, and who stands behind a mark Piloti set", () => {
     const md = markdownOf()
-    expect(md).toContain('- **Piloti · für Anna Berger · 09.10.2026:** Erledigt: im Schnitt B-B mit 1,25 m kotiert.')
-    expect(md).toContain('*von Piloti gesetzt · für Anna Berger · 07.10.2026*')
+    expect(md).toContain(`- **${PRODUCT_NAME} · für Anna Berger · 09.10.2026:** Erledigt: im Schnitt B-B mit 1,25 m kotiert.`)
+    expect(md).toContain(`*von ${PRODUCT_NAME} gesetzt · für Anna Berger · 07.10.2026*`)
     expect(md).toContain('*Gesetzt von Anna Berger · 07.10.2026*')
   })
 
   it('leaves the proposals out by default, and puts them under their own heading when asked', () => {
     expect(markdownOf()).not.toContain('Geländer zu niedrig?')
-    expect(markdownOf()).not.toContain('Vorschläge von Piloti, nicht geprüft')
+    expect(markdownOf()).not.toContain(`Vorschläge von ${PRODUCT_NAME}, nicht geprüft`)
 
     const md = markdownOf({ includeProposals: true })
-    const heading = md.indexOf('## Vorschläge von Piloti, nicht geprüft')
+    const heading = md.indexOf(`## Vorschläge von ${PRODUCT_NAME}, nicht geprüft`)
     expect(heading).toBeGreaterThan(md.indexOf('Nr. 5 ·'))
     expect(md.indexOf('### Nr. 6 · Seite 1 · Hinweis · Vorschlag')).toBeGreaterThan(heading)
-    expect(md).toContain('*Vorschlag von Piloti · für Anna Berger · 07.10.2026*')
-    expect(md).toContain('Umfang: Offene Anmerkungen · alle Fassungen · mit Vorschlägen von Piloti')
+    expect(md).toContain(`*Vorschlag von ${PRODUCT_NAME} · für Anna Berger · 07.10.2026*`)
+    expect(md).toContain(`Umfang: Offene Anmerkungen · alle Fassungen · mit Vorschlägen von ${PRODUCT_NAME}`)
   })
 
   it('names the Fassungen it covers as they are: the current one alone only while nothing earlier came along', () => {
@@ -367,7 +368,7 @@ describe('exportAnnotationProtocol', () => {
     expect(file.mediaType).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     const xml = readZipEntries(file.bytes).get('word/document.xml') ?? ''
     expect(xml).toContain('Nr. 4 · Seite 2 · Mangel · offen')
-    expect(xml).toContain('Piloti · für Anna Berger')
+    expect(xml).toContain(`${PRODUCT_NAME} · für Anna Berger`)
   })
 
   it('writes a PDF whose words survive layout', async () => {

@@ -29,6 +29,7 @@ import {
 import { startMailImportSchema } from '@/lib/mail-import/types'
 import type { AgentOperation } from '../operation'
 import { rawBodySchema } from '../upload-wire'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const projectParams = z.object({ id: z.string().describe('The project id, from project-list.') })
 const folderParams = projectParams.extend({
@@ -251,7 +252,7 @@ export const foldersOperations = [
     summary: 'List a project’s document roles',
     description:
       'The role bindings of the project (which document is the Baugenehmigung, the Lageplan and so on) ' +
-      'in `roles`, plus `missing`: the roles Piloti expects the project to hold and does not. Binding ' +
+      'in `roles`, plus `missing`: the roles ' + PRODUCT_NAME + ' expects the project to hold and does not. Binding ' +
       'ids feed document-role-clear.',
     method: 'GET',
     path: '/api/projects/[id]/document-roles',
@@ -268,7 +269,7 @@ export const foldersOperations = [
       '`contradiction` (two current documents state one fact, ' +
       'e.g. storeys_above_ground, with different values), `missing_document` (a document points at a document type ' +
       'the project does not hold), `missing_plan` (a drawing number no document matches) and `incomplete_read` ' +
-      '(pages Piloti could not fully read). Each finding names its documents and pages in `sources`; open them with ' +
+      '(pages ' + PRODUCT_NAME + ' could not fully read). Each finding names its documents and pages in `sources`; open them with ' +
       'document-get. Pass `documentId` to also get that document’s references resolved to project documents and ' +
       'the documents that point at it.',
     method: 'GET',

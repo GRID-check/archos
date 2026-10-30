@@ -34,7 +34,7 @@ export function InboxDock(): JSX.Element {
   return (
     <aside aria-labelledby="inbox-dock-title" className="flex h-full min-h-0 flex-col" data-testid="inbox-dock">
       <header className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-2">
-        <h2 id="inbox-dock-title" className="text-sm font-semibold">
+        <h2 id="inbox-dock-title" className="text-sm font-medium">
           {t('inbox.title')}
         </h2>
         {pending > 0 && <CountPill count={pending} />}

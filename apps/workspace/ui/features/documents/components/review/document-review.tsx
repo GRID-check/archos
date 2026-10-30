@@ -63,6 +63,7 @@ import { hasLiveMarks, openMarksLabel, openMarksShortLabel } from '../open-marks
 import { clearReviewParams, setReviewParams } from '../../lib/open-review'
 import { covers, ReviewStageContext, STAGE_FOOT, STAGE_HEAD, type StageBounds } from './review-stage'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** A tool on the palette: the review's own, or the cursor chat, which sets nothing. */
 type PaletteTool = ReviewTool | 'chat'
@@ -278,7 +279,7 @@ export function Presence({
       <span aria-hidden className="flex items-center -space-x-1" data-testid="review-presence">
         {piloti && (
           <span className="ring-background rounded-full ring-2">
-            <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
+            <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? PRODUCT_NAME} />
           </span>
         )}
         {others.map((person) => (
@@ -298,7 +299,7 @@ export function Presence({
         <Tooltip>
           <TooltipTrigger asChild>
             <span data-testid="review-presence-agent" className="ring-background rounded-full ring-2">
-              <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
+              <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? PRODUCT_NAME} />
             </span>
           </TooltipTrigger>
           <TooltipContent>
@@ -1096,7 +1097,7 @@ export function DocumentReviewMode({
               says which Fassung is under review. The line under it wraps there
               rather than lose the count. */}
           <div className="min-w-0 flex-1 max-sm:order-last max-sm:basis-full max-sm:pb-2">
-            <DialogTitle className="text-foreground flex text-sm font-semibold">
+            <DialogTitle className="text-foreground flex text-sm font-medium">
               <MiddleTruncate text={documentName} tail={12} />
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs sm:truncate">

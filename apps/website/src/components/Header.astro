@@ -13,7 +13,7 @@ interface Props {
   current?: string;
   /** The other-locale twin, when it is not the table's (a post's translation). Defaults to alternateOf(current) */
   switchPath?: string;
-  /** Small secondary button, e.g. Login. null hides it */
+  /** Small secondary button, e.g. Login. Shown as "App öffnen" to a visitor signed in to the app (README, "Signed in"). null hides it */
   login?: NavLink | null;
   /** Small primary button, e.g. Demo anfragen: the page's one primary. null hides it */
   cta?: NavLink | null;
@@ -56,23 +56,28 @@ const hasMenu = links.length > 0 || Boolean(login);
       )
     }
     <div class="ui-header-actions">
-      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} aria-label={`${otherLocale.toUpperCase()} – ${ui.switchLanguage}`}>
+      <a class="ui-nav-link" href={switchHref} lang={otherLocale} hreflang={otherLocale} data-ph-capture-attribute-language-switch={`${locale}-${otherLocale}`} aria-label={`${otherLocale.toUpperCase()} – ${ui.switchLanguage}`}>
         {localeCodes[otherLocale]}
       </a>
       {login && (
-        <Button href={login.href} variant="secondary" size="sm">
+        <Button href={login.href} variant="secondary" size="sm" class="site-signed-out" cta="header" ctaLabel="login">
           {login.label}
         </Button>
       )}
+      {login && (
+        <Button href={login.href} variant="secondary" size="sm" class="site-signed-in" cta="header" ctaLabel="open_app">
+          {ui.openApp}
+        </Button>
+      )}
       {cta && (
-        <Button href={cta.href} variant="primary" size="sm">
+        <Button href={cta.href} variant="primary" size="sm" cta="header" ctaLabel="demo">
           {cta.label}
         </Button>
       )}
       {
         hasMenu && (
           <details class="ui-mnav">
-            <summary class="ui-btn ui-btn-secondary ui-btn-sm" aria-label={ui.menu}>
+            <summary class="ui-btn ui-btn-secondary ui-btn-sm">
               <span class="ui-mnav-o">{ui.menu}</span>
               <span class="ui-mnav-x">{ui.menuClose}</span>
             </summary>
@@ -88,12 +93,17 @@ const hasMenu = links.length > 0 || Boolean(login);
               </ul>
               <div class="ui-mnav-act">
                 {login && (
-                  <Button href={login.href} variant="secondary" size="lg">
+                  <Button href={login.href} variant="secondary" size="lg" class="site-signed-out" cta="mobile_menu" ctaLabel="login">
                     {login.label}
                   </Button>
                 )}
+                {login && (
+                  <Button href={login.href} variant="secondary" size="lg" class="site-signed-in" cta="mobile_menu" ctaLabel="open_app">
+                    {ui.openApp}
+                  </Button>
+                )}
                 {cta && (
-                  <Button href={cta.href} variant="primary" size="lg">
+                  <Button href={cta.href} variant="primary" size="lg" cta="mobile_menu" ctaLabel="demo">
                     {cta.label}
                   </Button>
                 )}
@@ -109,6 +119,12 @@ const hasMenu = links.length > 0 || Boolean(login);
 <script>
   // Closes the mobile menu when a link in it is followed (ported from the reference site).
   document.querySelectorAll<HTMLDetailsElement>('.ui-mnav').forEach((menu) => {
+    // Escape closes the open menu and puts focus back on its button.
+    menu.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !menu.open) return;
+      menu.open = false;
+      menu.querySelector('summary')?.focus();
+    });
     menu.querySelectorAll('a').forEach((link) => {
       link.addEventListener('click', () => {
         menu.open = false;

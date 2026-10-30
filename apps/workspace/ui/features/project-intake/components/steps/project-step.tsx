@@ -37,7 +37,7 @@ export function ProjectStep({ view, projectId, busy, canDecide, onDecide, onNext
 
   return (
     <div className="mx-auto w-full max-w-[960px]" data-testid="setup-step-project">
-      <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+      <h1 className="text-2xl font-medium tracking-tight">{t('title')}</h1>
       <p className="text-muted-foreground mt-2 text-sm">{t('intro')}</p>
       <div className="mt-6 grid grid-cols-1 items-start gap-4 lg:mt-[26px] lg:grid-cols-2 lg:gap-6">
         <DialogFactsSection

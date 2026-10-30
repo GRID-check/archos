@@ -69,7 +69,7 @@ export function SheetTag({ side, label, name, style }: { side: 'left' | 'right';
       )}
       style={style}
     >
-      <span className="shrink-0 font-semibold">{label}</span>
+      <span className="shrink-0 font-medium">{label}</span>
       {/* Cut at the START, not the middle: a tag on a small sheet has room
           for a dozen characters, and a middle cut there left „G…ss_1OG_B.pdf"
           reading as „Gss". The end is the part that tells the two apart. */}

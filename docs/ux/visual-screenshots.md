@@ -42,9 +42,13 @@ looking, and costs the repository nothing.
 ## Setup, once per machine
 
 ```bash
-npm install -g agent-browser
-agent-browser install          # downloads its own Chrome for Testing
+task agents:browser            # installs the pinned agent-browser, then `agent-browser doctor`
+agent-browser install          # downloads its own Chrome for Testing (not in a cloud session)
 ```
+
+**Cloud sessions install it for you**, and use the image's Chromium instead of
+downloading one. What is installed and how:
+[agent-skills.md](../contributing/agent-skills.md#cloud-sessions-what-is-installed-and-how).
 
 On Linux, `agent-browser install --with-deps` if the browser fails to launch.
 `gh` must be **2.99 or newer** — `--attach` does not exist before that.
@@ -120,6 +124,10 @@ gh pr comment 123 --attach './after.png#Cards gallery, dark'
 
 Alt text goes after a `#`. The flag repeats, but not for the same file twice.
 PNG, JPEG, GIF, WebP, SVG, MP4, MOV and WebM all work.
+
+## Website targets
+
+`cd apps/website && bun run capture` builds the site, serves it with the production server (`runtime/server.mjs`, headers and 410s as deployed), screenshots every route at 1440, 768, 390 and 360 px (full page, every lazy image loaded, no scrollbar, so a 390 shot is 390 px of layout) into `apps/website/.capture/` (gitignored), and stops. Flags: `--widths 1440,390`, `--only /en/`, `--out DIR`, `--base URL` (use a running server, skip the build). Cloud containers: `task website:capture` runs the same command; Chromium is taken from `AGENT_BROWSER_EXECUTABLE_PATH`, defaulting to `/opt/pw-browsers/chromium`. Attach the PNGs with `before-and-after`, never commit them.
 
 ## What is gone, and what replaced it
 

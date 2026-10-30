@@ -1,6 +1,7 @@
 import { render, screen } from '@/test-utils'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { StorageUsageCard } from './storage-usage-card'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
@@ -33,7 +34,7 @@ describe('StorageUsageCard', () => {
     expect(screen.getByText('Largest file per upload')).toBeDefined()
     expect(screen.queryByRole('textbox')).toBeNull()
     expect(
-      screen.getByText(/storage quota and the largest file you can upload are set by Piloti/)
+      screen.getByText(new RegExp(String.raw`storage quota and the largest file you can upload are set by ${PRODUCT_NAME}`))
     ).toBeDefined()
   })
 })

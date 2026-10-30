@@ -90,7 +90,7 @@ export function CuratedSkills({
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2
           id="featured-skills-heading"
-          className="text-foreground text-sm font-semibold tracking-[-0.01em]"
+          className="text-foreground text-sm font-medium tracking-[-0.01em]"
         >
           {t('curated.heading')}
         </h2>
@@ -108,7 +108,7 @@ export function CuratedSkills({
         <div key={group.category?.id ?? '__unsorted__'} className="flex flex-col gap-3">
           {group.category && (
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h3 className="text-foreground text-sm font-semibold tracking-[-0.01em]">
+              <h3 className="text-foreground text-sm font-medium tracking-[-0.01em]">
                 {group.category.name}
               </h3>
               <span className="text-muted-foreground text-xs tabular-nums">
@@ -163,7 +163,7 @@ function CuratedSkillCard({
               !skill.enabled && 'opacity-45',
             )}
           >
-            <h3 className="text-foreground truncate font-mono text-sm font-semibold">
+            <h3 className="text-foreground truncate font-mono text-sm font-medium">
               <button
                 type="button"
                 onClick={() => onSelect(skill)}

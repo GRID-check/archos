@@ -84,7 +84,7 @@
   --source-project-text: oklch(0.509 0.13 151.5); /* #0f7a3d */
   --source-office: oklch(0.674 0.127 79); /* #c08c28 — Büroablage, archive-box icon */
   --source-office-tint: oklch(0.951 0.033 88.1); /* #f8eed6 */
-  --source-office-text: oklch(0.554 0.111 77.9); /* #96690e */
+  --source-office-text: oklch(0.51 0.105 77.9); /* darkened a step so text on its tint clears AA (axe, /dev/settings) */
   --source-auto: oklch(0.609 0.006 106.6); /* #83837f — Automatisch / Lücke (knowledge gap) */
   --source-auto-tint: oklch(0.939 0.004 106.5); /* #ebebe8 */
   --source-auto-text: oklch(0.47 0.006 106.6); /* #5b5b57 */
@@ -98,6 +98,7 @@
   --source-model-text: oklch(0.474 0.086 202);
   --status-active: var(--source-project); /* "Aktiv" doubles the project green */
   --status-active-tint: var(--source-project-tint);
+  --status-active-text: var(--source-project-text);
   --status-done: var(--source-auto-text); /* "Abgeschlossen" — quiet warm gray */
   --status-done-tint: var(--source-auto-tint);
   --signal-error: oklch(0.567 0.157 31); /* #c14a38 — errors only */
@@ -106,23 +107,23 @@
   /* ---- shadcn vars (light) — warm paper ---- */
   --background: var(--ds-surface); /* #fafaf9 — warm paper app bg (corporate design: surface) */
   --foreground: var(--ink); /* #0f0e0d */
-  --card: oklch(1 0 0); /* white cards on paper */
+  --card: var(--ds-surface-raised); /* #fafaf9 — the brand's raised surface: cards sit on paper and are told apart by hairline and shadow, never by a pure white */
   --card-foreground: var(--ink);
-  --popover: oklch(1 0 0);
+  --popover: var(--ds-surface-raised);
   --popover-foreground: var(--ink);
   --primary: var(--ink); /* near-black action — no accent color */
   --primary-foreground: var(--ds-on-ink);
-  --secondary: var(--ds-surface-sunken); /* #f2f2f0 — chip / quiet fill */
+  --secondary: var(--ds-surface-sunken); /* #f2f1f0 — chip / quiet fill */
   --secondary-foreground: var(--ink);
-  --muted: var(--ds-surface-sunken); /* #f2f2f0 */
+  --muted: var(--ds-surface-sunken); /* #f2f1f0 */
   --muted-foreground: var(--ds-ink-muted); /* #5e5b57 — mid ink (ink-muted) */
   --accent: color-mix(in oklch, var(--ds-surface-sunken), var(--ds-ink) 2%); /* #ececea — inset / hover fill */
   --accent-foreground: var(--ink);
   --destructive: var(--signal-error); /* #c14a38 */
-  --destructive-foreground: oklch(0.995 0 0);
+  --destructive-foreground: var(--ds-surface); /* #fafaf9 */
   --border: color-mix(in oklch, var(--ink-border) 8%, transparent); /* hairline .08, composites everywhere */
   --input: color-mix(in oklch, var(--ink-border) 12%, transparent); /* .12 */
-  --input-background: oklch(0.985 0.003 106.4); /* #fafaf8 — subtle surface, one step off card white */
+  --input-background: var(--ds-surface); /* #fafaf9 — a field on a card; the hairline border marks it */
   --ring: color-mix(in oklch, var(--ink) 64%, transparent); /* ink-based focus ring */
   --overlay: color-mix(in oklch, var(--ink) 35%, transparent); /* modal/backdrop scrim */
 
@@ -144,17 +145,17 @@
   --text-color-subtle: oklch(0.543 0.006 118); /* #6f706c */
   --text-color-base: oklch(0.29 0.006 272); /* strong body, one step off ink */
   --text-color-placeholder: oklch(0.632 0.006 106.6); /* #8a8a86 (ghost step: #b3b3af / oklch(0.766 0.006 106.5)) */
-  --text-color-inverse: oklch(0.985 0.003 106.4);
+  --text-color-inverse: var(--ds-on-ink); /* #fafaf9 */
   --text-color-brand: var(--ink); /* brand/active accent is ink now, not blue */
   --text-color-feedback-success: var(--source-project-text); /* #0f7a3d */
   --text-color-feedback-danger: var(--signal-error);
   --text-color-feedback-warning: var(--source-office-text); /* #96690e */
   --text-color-feedback-info: var(--source-law-text); /* #1c47ab */
 
-  --background-color-surface-base: oklch(0.985 0.001 106.4); /* #fafaf9 */
-  --background-color-surface-raised: oklch(0.961 0.003 106.4); /* #f2f2f0 — chip */
+  --background-color-surface-base: var(--ds-surface); /* #fafaf9 */
+  --background-color-surface-raised: var(--ds-surface-sunken); /* #f2f1f0 — chip */
   --background-color-surface-sunken: var(--ds-surface-sunken); /* #f2f1f0 — sidebar / rails (surface-sunken) */
-  --background-color-surface-overlay: oklch(1 0 0);
+  --background-color-surface-overlay: var(--ds-surface-raised);
   --background-color-interaction-base: oklch(0.943 0.003 106.5); /* #ececea — inset */
   --background-color-interaction-primary-base: var(--ink);
   --background-color-interaction-primary-hover: var(--ink-hover);
@@ -216,6 +217,7 @@
   --source-model-text: oklch(0.851 0.069 203);
   --status-active: var(--source-project);
   --status-active-tint: var(--source-project-tint);
+  --status-active-text: var(--source-project-text);
   --status-done: var(--source-auto-text);
   --status-done-tint: var(--source-auto-tint);
   --signal-error: oklch(0.672 0.144 31.6); /* lifted #c14a38 */
@@ -513,17 +515,17 @@
   /* Radius follows size and shape: the brand's ladder (packages/brand/README.md
      "Layout and shape", tokens.json radius-*). Pick the semantic step for the job;
      the same kind of element always takes the same step. */
-  --radius-inline: var(--ds-radius-sm); /* 4px: kbd, checkbox, a tag inside a field */
-  --radius-control: var(--ds-radius-md); /* 6px: buttons, inputs, selects, tabs, toggles, menu and list items */
-  --radius-surface: var(--ds-radius-lg); /* 10px: cards, panels, list containers, toasts, tables, code blocks */
-  --radius-overlay: var(--ds-radius-xl); /* 14px: dialogs, popovers, menus, sheets, the command palette */
+  --radius-inline: var(--ds-radius-inline); /* 4px: kbd, checkbox, a tag inside a field */
+  --radius-control: var(--ds-radius-control); /* 6px: buttons, inputs, selects, tabs, toggles, menu and list items */
+  --radius-surface: var(--ds-radius-surface); /* 10px: cards, panels, list containers, toasts, tables, code blocks */
+  --radius-overlay: var(--ds-radius-overlay); /* 14px: dialogs, popovers, menus, sheets, the command palette */
   --radius-bubble: var(--ds-radius-bubble); /* 18px: chat messages and the composer */
   /* rounded-full stays Tailwind's: chips, badges, counts, avatars, dots, switches. */
   /* Tailwind's own steps, for code not yet on a semantic name; mapped onto the ladder. */
-  --radius-sm: var(--ds-radius-sm);
-  --radius-md: var(--ds-radius-md);
-  --radius-lg: var(--ds-radius-lg);
-  --radius-xl: var(--ds-radius-xl);
+  --radius-sm: var(--ds-radius-inline);
+  --radius-md: var(--ds-radius-control);
+  --radius-lg: var(--ds-radius-surface);
+  --radius-xl: var(--ds-radius-overlay);
   --radius-2xl: var(--ds-radius-bubble);
   --radius-3xl: var(--ds-radius-bubble);
 
@@ -560,6 +562,8 @@
 
   --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  /* The wordmark only (brand: Switzer Semibold, loaded by the @font-face in globals.css). */
+  --font-logo: 'Switzer', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 /* =============================================================================

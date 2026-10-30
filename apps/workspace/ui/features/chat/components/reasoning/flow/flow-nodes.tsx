@@ -295,7 +295,7 @@ const UncitedFoldCard: FC<{
           FOCUS_RING
         )}
       >
-        <span className="text-foreground/80 text-sm leading-5 font-semibold">
+        <span className="text-foreground/80 text-sm leading-5 font-medium">
           {t(`${U}${slot.live ? 'nameLive' : 'name'}`, { count: slot.count })}
         </span>
         <span className="text-muted-foreground line-clamp-2 text-[13px] leading-[19px] [overflow-wrap:break-word] hyphens-auto [hyphenate-limit-chars:10_4_4]">
@@ -351,7 +351,7 @@ const FindingsFlowNode: FC<NodeProps<Node<FindingsData>>> = ({ data }) => (
               className={cn(
                 data.compact && 'text-[13px] leading-[19px]',
                 group.open
-                  ? 'text-foreground inline-flex items-start gap-1.5 font-semibold'
+                  ? 'text-foreground inline-flex items-start gap-1.5 font-medium'
                   : 'text-muted-foreground'
               )}
             >
@@ -369,7 +369,7 @@ const FindingsFlowNode: FC<NodeProps<Node<FindingsData>>> = ({ data }) => (
                     <>
                       <CitationMarkers
                         numbers={line.numbers}
-                        className="font-semibold tabular-nums"
+                        className="font-medium tabular-nums"
                       />{' '}
                     </>
                   )}

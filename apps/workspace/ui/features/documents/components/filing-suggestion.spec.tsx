@@ -16,6 +16,7 @@ import { FileCard } from './file-card'
 import { FileListView } from './file-list-view'
 import type { FileItem } from './project-file-workspace'
 import { suggestionsByDocument, suggestionsByFolder, type FilingSuggestionView } from '../lib/filing-suggestions'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 type FileProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
 
@@ -139,7 +140,7 @@ describe('the popover the chip opens', () => {
   it('shows the move as a before and an after, the reason, and that the one click moves the other file too', async () => {
     renderSlot(current, { folderPathOf: () => 'Eingang' })
     await userEvent.click(chip())
-    const dialog = await screen.findByRole('dialog', { name: 'Filing suggestion from Piloti' })
+    const dialog = await screen.findByRole('dialog', { name: `Filing suggestion from ${PRODUCT_NAME}` })
     expect(within(dialog).getByText('Eingang').closest('s')).not.toBeNull()
     expect(within(dialog).getByText('Behörde/Bescheide')).toBeInTheDocument()
     expect(within(dialog).getByText('Ein Bescheid der MA 37.')).toBeInTheDocument()

@@ -82,7 +82,7 @@ export const OrgWidgets = ({
       {hasAdvanced && (
         <section className="flex flex-col gap-6">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold tracking-tight">{t('advanced.title')}</h2>
+            <h2 className="text-lg font-medium tracking-tight">{t('advanced.title')}</h2>
             <p className="text-sm text-muted-foreground">{t('advanced.description')}</p>
           </div>
 

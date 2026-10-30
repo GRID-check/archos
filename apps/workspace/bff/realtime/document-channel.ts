@@ -45,6 +45,7 @@ import {
 import { defineChannel } from './channel'
 import { publish } from './hub'
 import { flushRoster, forgetRosterPeer, noteRosterPeer, readRoster, rosterKey, type RosterEntry, type RosterFacts } from './roster'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** How often an open stream checks that its reader may still read the document. */
 export const DOCUMENT_REAUTHORIZE_MS = 30_000
@@ -144,7 +145,7 @@ export function agentPeer(conversationId: string, onBehalfOf: string, forName?: 
   return {
     peerId: `piloti-${id}`.padEnd(8, '0'),
     userId: onBehalfOf,
-    name: 'Piloti',
+    name: PRODUCT_NAME,
     kind: 'piloti',
     ...(name ? { forName: name } : {}),
   }

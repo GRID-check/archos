@@ -1,5 +1,5 @@
 /**
- * Fixtures for `/dev/look` (ADR-0128): where Piloti looked on an A1 Grundriss
+ * Fixtures for `/dev/look` (ADR-0128): where the agent looked on an A1 Grundriss
  * (`a1-sheet.ts`, served by the page's fetch shim as a stored document's
  * `/file`), as the look card's items and as the turn's wire steps.
  *
@@ -22,7 +22,7 @@ const PLANKOPF = [0.765, 0.852, 0.225, 0.135]
 const TOP_1 = [0.084, 0.62, 0.13, 0.225]
 const CORE = [0.415, 0.39, 0.105, 0.16]
 
-/** Two looks and the box Piloti showed the room. */
+/** Two looks and the box the agent showed the room. */
 export const LOOK_CARD: LookCardData = {
   type: 'look',
   document: { id: LOOK_SHEET_ID, name: LOOK_SHEET_NAME, shelf: 'stored' },

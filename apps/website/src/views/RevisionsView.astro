@@ -1,0 +1,76 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import FeatureTiles from '../components/FeatureTiles.astro';
+import Hero from '../components/Hero.astro';
+import InfoList from '../components/InfoList.astro';
+import SectionIntro from '../components/SectionIntro.astro';
+import TextLink from '../components/TextLink.astro';
+import { navigation } from '../i18n/nav';
+import copy from '../i18n/pages/revisions';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
+import { withName } from '../lib/identity';
+import { productImages, SCREENSHOT_QUALITY, SCREENSHOT_WIDTHS, SIZES } from '../lib/media';
+
+// Markup and structure only. Text comes from src/i18n/pages/revisions.ts, in both locales.
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = withName(copy[locale]);
+const nav = navigation(locale);
+const ui = t(locale);
+const security = { label: ui.navSecurity, href: localePath('security', locale), key: 'security' };
+---
+
+<BaseLayout locale={locale} title={c.title} description={c.description} faq={c.faq}>
+  <Hero title={c.hero.title} text={c.hero.text}>
+    <Image
+      slot="media"
+      src={productImages.planRevisionChanges}
+      widths={SCREENSHOT_WIDTHS}
+      sizes={SIZES.hero}
+      quality={SCREENSHOT_QUALITY}
+      loading="eager"
+      fetchpriority="high"
+      alt={c.hero.alt}
+    />
+  </Hero>
+
+  <section class="ui-container ui-section">
+    <SectionIntro layout="split" title={c.intro.title} text={c.intro.text} />
+    <FeatureTiles class="page-gap" items={c.items} columns={4} />
+  </section>
+
+  <section class="ui-band">
+    <div class="ui-container ui-section">
+      <SectionIntro title={c.requirements.title} text={c.requirements.text}>
+        <TextLink href={localePath('buildingLaw', locale)} arrow>{ui.navBuildingLaw}</TextLink>
+      </SectionIntro>
+      <Image
+        src={productImages.compareClearance}
+        widths={SCREENSHOT_WIDTHS}
+        sizes={SIZES.container}
+        quality={SCREENSHOT_QUALITY}
+        alt={c.requirements.imageAlt}
+        style="display: block; width: 100%; height: auto; margin-top: var(--space-16); background: var(--surface);"
+      />
+    </div>
+  </section>
+
+  <section class="ui-container ui-section">
+    <InfoList title={c.round.title} items={c.round.items} />
+  </section>
+
+  <section class="ui-container page-section">
+    <FAQ title={c.faqTitle} items={c.faq} />
+  </section>
+
+  <section class="ui-container page-section">
+    <CTABand title={c.cta.title} text={c.cta.text} primary={nav.demo} secondary={security} area="revisions_cta" />
+  </section>
+</BaseLayout>

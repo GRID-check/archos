@@ -251,7 +251,7 @@ export function PlatformSkillCatalog(): JSX.Element {
                   )}
                 >
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <p className="text-foreground min-w-0 truncate font-mono text-sm font-semibold">
+                    <p className="text-foreground min-w-0 truncate font-mono text-sm font-medium">
                       <span aria-hidden className="text-muted-foreground">
                         /
                       </span>

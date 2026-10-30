@@ -3,7 +3,8 @@ import identity from '../lib/identity';
 import AITag from './AITag.astro';
 import Wordmark from './Wordmark.astro';
 import type { NavLink } from '../i18n/nav';
-import type { Locale } from '../i18n/paths';
+import { localePath, type Locale } from '../i18n/paths';
+import { t } from '../i18n/ui';
 
 interface Props {
   locale: Locale;
@@ -31,7 +32,7 @@ const {
   ai = false,
   footer = [],
   note,
-  homeHref = '/',
+  homeHref = localePath('home', locale),
   class: className,
 } = Astro.props;
 const even = variant === 'form';
@@ -42,7 +43,7 @@ const mainWidth = even ? 'var(--split-form)' : 'var(--login-form)';
 <div class:list={['ui-split', even && 'ui-split-even', className]}>
   <div class="ui-split-side">
     <div class="ui-split-top">
-      <Wordmark size="sm" href={homeHref} aria-label={`${identity.name} – Startseite`} />
+      <Wordmark size="sm" href={homeHref} aria-label={t(locale).homeLabel} />
     </div>
     <div class="ui-split-main" style={`max-width: ${mainWidth}`}>
       <slot />
@@ -60,7 +61,7 @@ const mainWidth = even ? 'var(--split-form)' : 'var(--login-form)';
           <slot name="aside" />
         </div>
         {hasAsideNote && (
-          <p class="ui-split-note small">
+          <p class="ui-split-note small" data-theme="dark">
             <slot name="aside-note" />
           </p>
         )}

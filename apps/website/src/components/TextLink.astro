@@ -2,13 +2,22 @@
 interface Props {
   href: string;
   arrow?: boolean;
+  /** Analytics: where this link sits, carried on its click as `cta-area` (see Button) */
+  cta?: string;
+  /** Analytics: a stable name for the target, the click's `cta-label` */
+  ctaLabel?: string;
   class?: string;
 }
 
-const { href, arrow = false, class: className } = Astro.props;
+const { href, arrow = false, cta, ctaLabel, class: className } = Astro.props;
 ---
 
-<a href={href} class:list={['ui-link', className]}>
+<a
+  href={href}
+  class:list={['ui-link', className]}
+  data-ph-capture-attribute-cta-area={cta}
+  data-ph-capture-attribute-cta-label={ctaLabel}
+>
   <slot />
   {arrow && ' →'}
 </a>

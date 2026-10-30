@@ -14,6 +14,7 @@ import { EMPTY_SEARCH_STATE, type SearchUrlState } from '../lib/search-url'
 import { sectionView } from '../lib/sections'
 import { SearchWorkspace } from './search-workspace'
 import { SearchWorkspaceView } from './search-workspace-view'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The URL the organism reads; a test sets it before rendering, the router writes it. */
 let currentSearch = ''
@@ -263,7 +264,7 @@ describe('SearchWorkspaceView', () => {
       />
     )
     expect(screen.getByTestId('search-empty')).toHaveTextContent('Noch nichts gefunden')
-    expect(screen.getByTestId('search-empty')).toHaveTextContent('Piloti liest noch 2 Ablagen, dort können noch Treffer dazukommen.')
+    expect(screen.getByTestId('search-empty')).toHaveTextContent(`${PRODUCT_NAME} liest noch 2 Ablagen, dort können noch Treffer dazukommen.`)
     expect(screen.getByTestId('search-empty-archived')).toHaveTextContent('Archivierte einschließen')
     expect(screen.getByTestId('search-empty-all-kinds')).toHaveTextContent('Alles zeigen')
     expect(screen.getByTestId('search-empty-office')).toHaveAttribute('href', '/app/search?q=Stiege&kind=document')
@@ -413,7 +414,7 @@ describe('SearchWorkspaceView', () => {
         onLoadMore={() => {}}
       />
     )
-    expect(screen.getByTestId('search-empty')).toHaveTextContent('Piloti liest noch eine Ablage')
+    expect(screen.getByTestId('search-empty')).toHaveTextContent(`${PRODUCT_NAME} liest noch eine Ablage`)
     await userEvent.click(screen.getByTestId('search-empty-clear'))
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ text: 'x', filters: {} }))
     const onRetry = vi.fn()

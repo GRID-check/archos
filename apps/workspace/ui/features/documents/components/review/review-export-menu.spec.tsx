@@ -19,6 +19,7 @@ import { render, screen } from '@/test-utils'
 import { captureDownloads, type StartedDownload } from '@/test-utils/downloads'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { ReviewExportMenu } from './review-export-menu'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const fetchMock = vi.fn()
 let downloads: StartedDownload[] = []
@@ -70,7 +71,7 @@ describe('ReviewExportMenu', () => {
     const user = await open({ hasRevisions: true, hasProposals: true })
     await user.click(await screen.findByRole('menuitemradio', { name: 'Resolved ones too' }))
     await user.click(screen.getByRole('menuitemradio', { name: 'All revisions' }))
-    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Add Piloti’s proposals' }))
+    await user.click(screen.getByRole('menuitemcheckbox', { name: `Add ${PRODUCT_NAME}’s proposals` }))
     await user.click(screen.getByRole('menuitem', { name: 'Word (.docx)' }))
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -90,7 +91,7 @@ describe('ReviewExportMenu', () => {
     await open()
     expect(await screen.findByRole('menuitemradio', { name: 'Open only' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitemradio', { name: 'All revisions' })).toBeNull()
-    expect(screen.queryByRole('menuitemcheckbox', { name: 'Add Piloti’s proposals' })).toBeNull()
+    expect(screen.queryByRole('menuitemcheckbox', { name: `Add ${PRODUCT_NAME}’s proposals` })).toBeNull()
   })
 
   it('says why a PDF was refused, and points at Word and Markdown', async () => {

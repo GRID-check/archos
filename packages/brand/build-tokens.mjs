@@ -6,10 +6,13 @@
  *   node packages/brand/build-tokens.mjs    write dist/
  *
  * Output (dist/)
- *   tokens.css        CSS variables (light and dark theme), text classes, @font-face
- *   tokens.vars.css   the same colours, shadows and scalars as variables only, each
- *                     prefixed --ds-, dark under .dark too: for an app with its own
- *                     token names (the workspace), which maps them onto these
+ *   tokens.css        the website layer: CSS variables (light and dark theme), text
+ *                     classes, @font-face. Tokens with "scope": "app" are left out, so
+ *                     the website cannot reach the app's shadows or radius ladder.
+ *   tokens.vars.css   the app layer: every colour, shadow and scalar, app-scoped ones
+ *                     included, as variables only, each prefixed --ds-, dark under .dark
+ *                     too: for an app with its own token names (the workspace), which
+ *                     maps them onto these
  *   components.css    copied from css/components.css (class prefix ui-)
  *   fonts/            copied from fonts/
  *
@@ -27,6 +30,10 @@ const FORMATS = { '.woff2': 'woff2', '.woff': 'woff', '.ttf': 'truetype', '.otf'
 const isThemed = (value) => value !== null && typeof value === 'object' && 'light' in value
 const isAlias = (value) => typeof value === 'string' && /^\{[a-z0-9-]+\}$/.test(value)
 const toVar = (value) => value.replace(/\{([a-z0-9-]+)\}/g, 'var(--$1)')
+
+/** A token every surface receives; "scope": "app" tokens reach only the app layer (tokens.vars.css). */
+const isShared = (token) => token.scope === undefined
+const tokensOf = (tokens, group, { app }) => tokens[group].tokens.filter((t) => app || isShared(t))
 
 const declarations = (pairs) => pairs.map(([name, value]) => `  --${name}: ${value};`).join('\n')
 
@@ -50,7 +57,7 @@ function themeBlocks(themed) {
 const SCALAR_GROUPS = ['spacing', 'radius', 'stroke', 'effect', 'layout', 'motion']
 
 function rootBlock(tokens) {
-  const scalars = SCALAR_GROUPS.flatMap((group) => tokens[group].tokens.map((t) => [t.name, t.value]))
+  const scalars = SCALAR_GROUPS.flatMap((group) => tokensOf(tokens, group, { app: false }).map((t) => [t.name, t.value]))
   const families = Object.entries(tokens.type.families).map(([key, value]) => [`font-${key}`, value])
   const texts = tokens.type.groups.flatMap((group) =>
     group.styles.map((s) => [
@@ -96,9 +103,9 @@ function fontFaces(tokens) {
  */
 export function renderVarsCss(tokens, prefix = 'ds') {
   const named = (pairs) => pairs.map(([name, value]) => [`${prefix}-${name}`, value.replace(/var\(--/g, `var(--${prefix}-`)])
-  const themed = [...tokens.color.tokens, ...tokens.shadow.tokens].filter((t) => isThemed(t.value))
+  const themed = [...tokensOf(tokens, 'color', { app: true }), ...tokensOf(tokens, 'shadow', { app: true })].filter((t) => isThemed(t.value))
   const { light, dark } = themePairs(themed)
-  const scalars = SCALAR_GROUPS.flatMap((group) => tokens[group].tokens.map((t) => [t.name, String(t.value)]))
+  const scalars = SCALAR_GROUPS.flatMap((group) => tokensOf(tokens, group, { app: true }).map((t) => [t.name, String(t.value)]))
   return `${HEADER}
 :root {
 ${declarations(named([...light, ...scalars]))}
@@ -110,7 +117,7 @@ ${declarations(named(dark))}
 }
 
 export function renderTokensCss(tokens) {
-  const themed = [...tokens.color.tokens, ...tokens.shadow.tokens].filter((t) => isThemed(t.value))
+  const themed = [...tokensOf(tokens, 'color', { app: false }), ...tokensOf(tokens, 'shadow', { app: false })].filter((t) => isThemed(t.value))
   const blocks = [...themeBlocks(themed), rootBlock(tokens), ...textClasses(tokens), ...fontFaces(tokens)]
   return `${HEADER}\n${blocks.join('\n')}\n`
 }
@@ -121,6 +128,11 @@ export function renderTokensCss(tokens) {
  */
 export function renderDist() {
   const tokens = JSON.parse(readFileSync(join(BRAND, 'tokens.json'), 'utf8'))
+  for (const group of [...SCALAR_GROUPS, 'color', 'shadow']) {
+    for (const t of tokens[group].tokens) {
+      if (t.scope !== undefined && t.scope !== 'app') throw new Error(`tokens.json ${t.name}: unknown scope "${t.scope}" (only "app" exists)`)
+    }
+  }
   const out = new Map()
   out.set('tokens.css', renderTokensCss(tokens))
   out.set('tokens.vars.css', renderVarsCss(tokens))

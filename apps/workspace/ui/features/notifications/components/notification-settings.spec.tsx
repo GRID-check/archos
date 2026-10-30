@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { DEFAULT_PUSH_PREFERENCES } from '@/lib/inbox/push-categories'
 import { FIXTURE_DEVICES, pushFixture } from './fixtures'
 import { NotificationSettingsView } from './notification-settings'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 describe('NotificationSettingsView', () => {
   test('draws nothing where the deployment sends no notifications', () => {
@@ -19,8 +20,8 @@ describe('NotificationSettingsView', () => {
 
   test.each([
     ['unsupported', 'This browser cannot show notifications'],
-    ['needs-install', 'Add Piloti to your Home Screen first'],
-    ['denied', 'Notifications are blocked for Piloti'],
+    ['needs-install', `Add ${PRODUCT_NAME} to your Home Screen first`],
+    ['denied', `Notifications are blocked for ${PRODUCT_NAME}`],
   ] as const)('explains %s instead of offering a switch that does nothing', (phase, title) => {
     render(<NotificationSettingsView push={pushFixture({ phase })} />)
     expect(screen.getByText(title)).toBeInTheDocument()
@@ -71,7 +72,7 @@ describe('NotificationSettingsView', () => {
   test('shows the empty list and no choices before any device exists', () => {
     render(<NotificationSettingsView push={pushFixture()} />)
     expect(screen.getByText('No device receives notifications yet.')).toBeInTheDocument()
-    expect(screen.queryByText('What Piloti notifies you about')).not.toBeInTheDocument()
+    expect(screen.queryByText(`What ${PRODUCT_NAME} notifies you about`)).not.toBeInTheDocument()
   })
 
   test('changes a category and the lock-screen preview through the preferences', async () => {

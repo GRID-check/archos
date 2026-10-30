@@ -403,7 +403,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               // stretched-link overlay to the title box. The clamp is on the
               // words instead: one line where there is room, two on a phone.
               'min-w-0 flex-1 overflow-visible whitespace-normal',
-              unread ? 'font-semibold' : 'font-normal',
+              unread ? 'font-medium' : 'font-normal',
             )}
           >
             {item.href && !inert ? (
@@ -428,7 +428,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                   'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50',
                   // A read row steps back in dark mode, where weight alone did
                   // not tell the two apart.
-                  unread ? 'font-semibold text-foreground' : 'text-foreground dark:text-muted-foreground',
+                  unread ? 'font-medium text-foreground' : 'text-foreground dark:text-muted-foreground',
                 )}
               >
                 {title}
@@ -437,7 +437,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               <span
                 className={cn(
                   'line-clamp-2 min-w-0 leading-snug sm:line-clamp-1',
-                  unread ? 'font-semibold text-foreground' : 'text-foreground dark:text-muted-foreground',
+                  unread ? 'font-medium text-foreground' : 'text-foreground dark:text-muted-foreground',
                 )}
               >
                 {title}

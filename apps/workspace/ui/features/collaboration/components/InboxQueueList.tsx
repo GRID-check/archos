@@ -70,7 +70,7 @@ export function InboxQueueList({
               <li key={group.key} className="overflow-hidden rounded-surface border bg-card" data-testid="inbox-queue-group">
                 {group.subject && (
                   <p className="flex min-w-0 items-baseline gap-2 px-3 pt-2.5 pb-0.5 text-xs">
-                    <span className="truncate font-semibold text-foreground">{group.subject}</span>
+                    <span className="truncate font-medium text-foreground">{group.subject}</span>
                     <span className="shrink-0 text-muted-foreground">{group.chat ? t('inbox.queue.chat') : group.projectName}</span>
                   </p>
                 )}

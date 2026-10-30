@@ -103,6 +103,7 @@ import { NotFoundError } from '@/lib/api/errors'
 import { AI_PROVENANCE_PROPERTIES } from '@/lib/ai-provenance'
 import { recordDocumentAccess } from '@/lib/download-log/service'
 import { maySeeHeld } from '@/lib/upload-screening/quarantine-reviewers'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const session: AuthorizedSession = {
   userId: 'user_reviewer',
@@ -221,7 +222,7 @@ describe('renderVersionBytes — the marking survives an update', () => {
 
     expect(text).toContain('# Aktenvermerk')
     expect(text).toContain(`${AI_PROVENANCE_PROPERTIES.generated}=true`)
-    expect(text).toContain(`${AI_PROVENANCE_PROPERTIES.generator}=Piloti`)
+    expect(text).toContain(`${AI_PROVENANCE_PROPERTIES.generator}=${PRODUCT_NAME}`)
     expect(rendered.contentType).toBe('text/markdown')
     expect(rendered.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/)
   })

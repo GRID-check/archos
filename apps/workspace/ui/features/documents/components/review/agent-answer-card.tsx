@@ -20,6 +20,7 @@ import { CANVAS_ASK_INTENTS, stepsOf, type CanvasAsk, type CanvasAskIntent } fro
 import type { DocumentReview } from '../../hooks/use-document-review'
 import { Composer } from './composer'
 import { ReviewCard, type CardPlacement } from './thread-card'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The line a failed question says: by what broke, never the wire code itself. */
 export function failureKey(ask: Pick<CanvasAsk, 'error' | 'view'>): 'busy' | 'failedSession' | 'failedConnection' | 'failed' {
@@ -100,7 +101,7 @@ export function AgentAnswerCard({
       <div className={cn('flex items-center gap-2 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
         <AgentGlyph working={working} />
         <span id={headerId} className="flex min-w-0 items-center gap-2">
-          <span className="text-foreground text-xs font-semibold">Piloti</span>
+          <span className="text-foreground text-xs font-medium">{PRODUCT_NAME}</span>
           {ask.region && (
             <span className="text-muted-foreground text-[11px]">{t('review.piloti.regionLabel', { page: ask.region.page })}</span>
           )}
@@ -215,7 +216,7 @@ export function AgentAnswerCard({
                 placeholder={t('review.piloti.steerPlaceholder')}
                 submitLabel={t('review.piloti.steerSend')}
                 onSubmit={async (note) => {
-                  if (!piloti.steer(note, ask.region)) throw new Error('Piloti takes no note right now')
+                  if (!piloti.steer(note, ask.region)) throw new Error(`${PRODUCT_NAME} takes no note right now`)
                 }}
               />
             )}

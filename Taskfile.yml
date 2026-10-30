@@ -28,7 +28,10 @@ vars:
   # Agent Package Manager CLI, pinned so every machine and CI resolve the same
   # skill bytes. Bump deliberately and re-run `task agents:audit`.
   APM_VERSION: 0.28.0
-  SITE: apps/site
+  # agent-browser CLI (UI screenshots), pinned like APM_VERSION. Read by
+  # .claude/hooks/session-start.sh and scripts/cloud-setup.sh with awk, so keep
+  # this one-line `NAME: value` shape.
+  AGENT_BROWSER_VERSION: 0.27.0
   WEBSITE: apps/website
   # go-task ships its own POSIX shell, so command SYNTAX is already portable and
   # nothing below needs an OS branch. These two are the exception, because they
@@ -78,8 +81,8 @@ includes:
     taskfile: taskfiles/workspace.yml
     flatten: true
     dir: .
-  site:
-    taskfile: taskfiles/site.yml
+  website:
+    taskfile: taskfiles/website.yml
     flatten: true
     dir: .
   infra:
@@ -124,13 +127,13 @@ tasks:
       # whole when it finishes. Ruff and the English-names test are skipped in
       # the hooks because be:verify runs both (be:lint, the core suite).
       - 'SKIP={{.VERIFY_SKIP}} {{.TASK_EXE}} lint:repo'
-      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:workspace verify:site infra:types infra:test'
+      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:workspace verify:website infra:types infra:test'
 
   verify:fast:
     desc: Everything CI runs except the production builds (the slow step)
     cmds:
       - 'SKIP={{.VERIFY_SKIP}} {{.TASK_EXE}} lint:repo'
-      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:workspace:fast verify:site:fast infra:types infra:test'
+      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:workspace:fast verify:website:fast infra:types infra:test'
 
   # The tiers as `verify` runs them, once lint:repo has checked the generated
   # card schemas (its card-schemas hook), so that check does not run twice.
@@ -147,18 +150,21 @@ tasks:
       # instrumentation only slows the suite down.
       - task: workspace:test
 
-  verify:site:
+  verify:website:
     cmds:
-      - task: verify:site:fast
-      - task: site:build
+      - task: verify:website:fast
+      - task: website:build
 
-  verify:site:fast:
+  verify:website:fast:
     cmds:
-      - task: site:install
-      - task: site:check
+      - task: website:install
+      - task: website:check
+      - task: website:test
+      # The riso kit's fast gate: the app's vignettes against their source.
+      - task: art:check
 
   setup:
-    desc: Install every toolchain this repo needs (backend venv + UI + site + infra)
+    desc: Install every toolchain this repo needs (backend venv + UI + website + infra)
     env:
       # Same reason as .github/actions/setup-python-env: nltk pathsec refuses
       # hard-linked corpora, and SentenceSplitter (production + retrieval gate)
@@ -168,7 +174,7 @@ tasks:
       # uv sync creates .venv itself; a separate `uv venv` fails on a second run.
       - uv sync --group dev
       - task: workspace:install
-      - task: site:install
+      - task: website:install
       - task: infra:install
       # packages/ used to be skipped here too, so `task pkg:test` on a fresh
       # clone failed at "vitest: not found" rather than at an assertion.

@@ -12,6 +12,7 @@ import { EMPTY_SEARCH_STATE, type SearchUrlState } from '../lib/search-url'
 import { sectionView } from '../lib/sections'
 import { SearchReturnProvider } from '../hooks/use-search-return'
 import { SearchWorkspaceView } from './search-workspace-view'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const routerPush = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -70,7 +71,7 @@ describe('a document hit’s ⋯', () => {
   it('offers what a Dateien row offers, in its order: open and ask, where it stands, its link', async () => {
     render(view({ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }))
     await userEvent.click(screen.getByTestId(`search-hit-actions-${REPLACED}`))
-    expect(items()).toEqual(['Öffnen', 'Piloti fragen', 'Aktuelle Fassung öffnen', 'Offene Punkte', 'Im Ordner zeigen', 'Link kopieren'])
+    expect(items()).toEqual(['Öffnen', `${PRODUCT_NAME} fragen`, 'Aktuelle Fassung öffnen', 'Offene Punkte', 'Im Ordner zeigen', 'Link kopieren'])
   })
 
   it('opens where the row goes: at the passage, returning to this search', async () => {

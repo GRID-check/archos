@@ -4,6 +4,7 @@ import Button from '../components/Button.astro';
 import Checkbox from '../components/Checkbox.astro';
 import Input from '../components/Input.astro';
 import LogoRow from '../components/LogoRow.astro';
+import MailForm from '../components/MailForm.astro';
 import Select from '../components/Select.astro';
 import SplitPage from '../components/SplitPage.astro';
 import copy from '../i18n/pages/demo';
@@ -12,8 +13,8 @@ import { t } from '../i18n/ui';
 import identity, { withName } from '../lib/identity';
 
 // Markup and structure only. Text comes from src/i18n/pages/demo.ts, in both locales.
-// No backend yet: the form hands the answers to the sales inbox as a plain-text mail.
-// Follow-up: a real endpoint that stores the request.
+// The form hands the answers to the visitor's mail program, addressed to the sales inbox
+// (MailForm; README, "Forms"). Target state: a CRM, see the README roadmap line.
 interface Props {
   locale: Locale;
 }
@@ -42,7 +43,7 @@ const f = c.form;
     <p class="lead" style="margin: var(--space-8) 0 0; max-width: 480px; color: var(--ink);">
       {c.lead}
     </p>
-    <div class="demo-logos">
+    <div class="ui-split-logos">
       <LogoRow
         logos={[
           { src: '/media/pilot-office-gerner-gerner-plus.svg', alt: 'Gerner Gerner Plus', height: 40 },
@@ -54,7 +55,7 @@ const f = c.form;
     </div>
 
     <div slot="aside">
-      <form class="ui-form-grid" action={`mailto:${identity.email}`} method="post" enctype="text/plain">
+      <MailForm id="demo" to={identity.email} subject={f.subject} sent={f.sent} checkbox={f.newsletterMail}>
         <Input id="demo-first-name" name="first-name" label={f.firstName} placeholder={f.firstNamePlaceholder} autocomplete="given-name" required />
         <Input id="demo-last-name" name="last-name" label={f.lastName} placeholder={f.lastNamePlaceholder} autocomplete="family-name" required />
         <Input id="demo-email" name="email" type="email" label={f.email} placeholder={f.emailPlaceholder} autocomplete="email" required />
@@ -68,7 +69,7 @@ const f = c.form;
         <div class="ui-form-full">
           <Button type="submit" variant="primary" size="lg" class="ui-btn-block">{f.submit}</Button>
         </div>
-      </form>
+      </MailForm>
     </div>
 
     <span slot="aside-note">

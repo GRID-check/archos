@@ -42,6 +42,7 @@ vi.mock('@/adapters/api/jobs-client', async (importOriginal) => {
 })
 
 import { toast } from 'sonner'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('@/adapters/api/data-sources-client', () => ({
   createDataSourcesClient: () => ({
@@ -92,7 +93,7 @@ describe('step 1 — one required answer', () => {
   test('opens on the request, with nothing above it to read past', () => {
     wizard()
     expect(screen.getByTestId('wizard-step-task')).toBeInTheDocument()
-    expect(screen.getByText('What should Piloti do?')).toBeInTheDocument()
+    expect(screen.getByText(`What should ${PRODUCT_NAME} do?`)).toBeInTheDocument()
   })
 
   test('cannot be left empty — the one place the wizard blocks', async () => {
@@ -240,7 +241,7 @@ describe('step 3 — what will happen, then one button', () => {
     // The noun is part of the sentence now, not a slot filled from a choice:
     // there is only ever one thing a task produces.
     expect(screen.getByTestId('wizard-review-sentence')).toHaveTextContent(
-      /Piloti researches a report .* and files it in the project/,
+      new RegExp(`${PRODUCT_NAME} researches a report .* and files it in the project`),
     )
     expect(createJob).not.toHaveBeenCalled()
   })
