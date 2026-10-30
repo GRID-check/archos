@@ -35,7 +35,7 @@ import type { Document } from '@/lib/db/schema/documents'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { recordSketchPinsKeptScore } from '@/lib/langfuse/sketch-score'
 
-export interface CurrentFassungInput {
+export interface CurrentRevisionInput {
   session: AuthorizedSession
   document: Document
   /** The version now current. */
@@ -49,7 +49,7 @@ export interface CurrentFassungInput {
 export const isFiledSketch = (document: Pick<Document, 'authoredByProducer' | 'contentType'>) =>
   document.authoredByProducer === 'diagram_svg' && document.contentType === 'image/svg+xml'
 
-export async function versionBecameCurrent(input: CurrentFassungInput): Promise<void> {
+export async function versionBecameCurrent(input: CurrentRevisionInput): Promise<void> {
   const { session, document, version } = input
   try {
     let scene = input.scene ?? null

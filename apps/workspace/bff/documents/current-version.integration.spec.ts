@@ -82,7 +82,7 @@ describe.skipIf(!url)('every path that makes a Fassung current carries the pinne
           authorKind: 'person',
           createdBy: USER,
           marks: [
-            { page: 1, shape: 'region', x: 0.1, y: 0.1, w: 0.2, h: 0.2, anchorElementIds: ['a'], kind: 'hint', body: 'Treppe', basis: null, assigneeUserId: null, dueOn: null },
+            { page: 1, shape: 'region', x: 0.1, y: 0.1, w: 0.2, h: 0.2, anchorElementIds: ['a'], anchorKind: 'sketch', kind: 'hint', body: 'Treppe', basis: null, assigneeUserId: null, dueOn: null },
           ],
         })
       )
