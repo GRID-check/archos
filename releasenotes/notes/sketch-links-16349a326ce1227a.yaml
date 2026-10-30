@@ -1,0 +1,13 @@
+---
+features:
+  - >
+    An element of a sketch can now point at a page of a drawing, a room or
+    beam in the building model, or an annotation: select it, choose
+    „Verknüpfen“, and a small mark on the element opens the target in the app.
+  - >
+    Each reader of a linked sketch sees only the targets they may open, and a
+    target that is gone shows as no longer available.
+  - >
+    Piloti can link the parts of a sketch it draws or changes, a room bubble
+    to the room in the model or an arrow to the page of a plan, using the
+    model's own element and never a made-up one.

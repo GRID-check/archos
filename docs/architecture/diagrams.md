@@ -757,7 +757,8 @@ Piloti does not send a whole scene back. It reads the Skizze's outline
 
 - `add` (a fence skeleton with a new id, checked by `checkSketchSkeleton`;
   bindings and frame children may name drawn elements), `update` (geometry,
-  style, a label or a free text's words, `customData` the scene keeps),
+  style, a label or a free text's words, the element's link as `customData`,
+  replaced whole or removed with `null`),
   `remove` (takes its label and every arrow bound to it along; a frame lets its
   children go), `rebind` (an arrow's ends);
 - the relative `place` (beside a reference, on a side, with an offset and an
@@ -811,6 +812,52 @@ box changes size (`textsToMeasure`).
   an endpoint.
 - **Not yet.** In an open editor the proposal is not drawn as a ghost layer
   with its own buttons; the person decides on the card.
+
+### A sketch element links into the workspace (S5)
+
+An element can point at what it means: an arrow at „Detail 4, Polierplan S. 12“,
+a Raumprogramm bubble at the model's Raum, a cloud at an Anmerkung. The link is
+Excalidraw's own `customData` with the keys of `SKETCH_LINK_KEYS`
+(`bff/diagrams/sketch-links.ts`) and no others: `documentId`, then `page` and a
+pinned `versionId` for a document, `ifcGlobalId` for an element of the model
+that document is, or `annotationId` for an Anmerkung on it. A defect is an
+Anmerkung of kind `defect`; an Aufgabe is work handed to Piloti, so there is no
+`taskId`. Excalidraw's `link` field stays dropped everywhere.
+
+- **One list, every door.** The fence keeps a valid link and drops every other
+  key (`sketch-fence.ts`), `common/sketch_fence.py` counts the same links on the
+  trace (`links` on the sketch score), and `__fixtures__/sketch-fences.json`
+  holds both to the same `link_keys` and cases. The scene a save stores and the
+  live wire keep it through `withoutForeignFields`; `document-sketch-edit`'s
+  `set.customData` takes a link or `null`, and its diff compares what a save
+  keeps. A wrong value (a GlobalId that is not 22 characters, page 0) drops the
+  link whole: half a link points somewhere nobody meant.
+- **Ids in the scene, the reader's view on read.** The outline lists `links`
+  `{elementId, kind, ref}`. `GET /api/documents/{id}/sketch` resolves them per
+  reader (`sketch-link-resolve.ts`): a document through `getAccessibleDocument`
+  (shelf, folder visibility, the hold), a pinned Fassung by its row, a model
+  element through `getModelForDocument` and the model's element query, an
+  Anmerkung by its row on a document the reader may open. Gone or not theirs:
+  `unavailable`, no title and no reason, so a link never names a document its
+  reader cannot see. At most 60 are resolved per read. The search row indexes
+  no link.
+- **In the editor.** A linked element carries a mark at its corner
+  (`sketch-links.tsx`); pressed, it opens the target with `router.push`
+  (`features/documents/lib/sketch-link-href.ts`: the document's preview at the
+  page, the model view at the element, the review at the mark), or says
+  „Nicht mehr vorhanden“ in place. A linked Anmerkung colours its mark by its
+  status, read with the link and never stored. „Verknüpfen“ on one selected
+  element opens the picker (`sketch-link-picker.tsx`): a document and page from
+  the workspace search, a model element by name from the project's models, an
+  Anmerkung from the search. `sketch_link_opened` (PostHog) counts the opens.
+- **Piloti** links through `document-sketch-edit` and writes links in a fence;
+  the skill says a GlobalId comes from `ifc_query`, never made up, and a link is
+  never a measurement.
+- **Not yet.** A pinned Fassung opens the document's current preview at the page
+  (the preview has no address for a Fassung); a page past the document's end is
+  not refused, because the page count lives only in the search projection; the
+  Files preview of a target does not yet say „verlinkt aus Skizze …“; a link a
+  co-editor sets live shows as unresolved until the next open.
 
 ## Two people on one Skizze
 

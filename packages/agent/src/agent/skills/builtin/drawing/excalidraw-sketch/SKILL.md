@@ -2,7 +2,8 @@
 name: excalidraw-sketch
 description: >
   Draw a sketch as an excalidraw fence: rooms by adjacency, a site sketch, a
-  wireframe, a timeline, a comparison board, callouts over shapes. Also how to
+  wireframe, a timeline, a comparison board, callouts over shapes; elements
+  that link to a document page, a model element or an Anmerkung. Also how to
   read a filed Skizze and change it with document-sketch-edit. Read before
   writing or changing one.
 metadata:
@@ -44,7 +45,8 @@ text, sizes labelled shapes and binds arrows, so write only this:
 | `line` | `x`, `y`, `points` (`[[0,0],[dx,dy],…]`, offsets from `x`, `y`) | `strokeStyle`, `roughness` (0 to 2) |
 | `frame` | `children` (ids), `name` | |
 
-Every field outside this table is dropped. No `image`, `embeddable`, `iframe`
+Any element may also carry `customData`, a link into the workspace (below).
+Every other field outside this table is dropped. No `image`, `embeddable`, `iframe`
 or `freedraw`: a sketch with one is refused and the reader gets no picture. At most
 150 elements and 32 KB; every `id` unique; every `start`, `end` and `children`
 id one the scene holds.
@@ -66,6 +68,30 @@ id one the scene holds.
   (`strokeStyle: "dashed"`) for what is proposed or uncertain.
 - Order is z-order: zones and frames first, then shapes, then arrows, then
   notes.
+
+## Linking an element
+
+An element can point at what it means: `customData` holds ids, never a title.
+
+| points at | `customData` |
+|---|---|
+| a page of a document | `{"documentId": "…", "page": 12}` (`page` optional) |
+| an element of an IFC model, a Raum, a Unterzug | `{"documentId": "<the model's document>", "ifcGlobalId": "<22 characters>"}` |
+| an Anmerkung | `{"documentId": "<its document>", "annotationId": "…"}` |
+
+- A bubble of a Raumprogramm links to its Raum by the GlobalId the model query
+  returned (ifc_query, `IfcSpace` by name). Never invent or shorten a
+  GlobalId; without one from the model, leave the bubble unlinked.
+- An arrow or a callout links to the document and page a search result gave
+  („Detail 4, Polierplan S. 12“): the id from workspace-search, the page from
+  its passage.
+- A defect is an Anmerkung of kind defect: link to it, do not draw a second one.
+- A link is never a measurement. It says which thing is meant; the sketch still
+  claims no dimension, and a value from the linked element goes in the answer
+  with its source.
+
+The reader sees a mark on the element and opens the target in the app; what
+they may not open reads as unavailable, with no name.
 
 ## Shapes that recur
 
@@ -123,7 +149,10 @@ server's numbers, not the person's plan.
 - `add` takes one element as in the fence table, with a new `id`; `start`,
   `end` and `children` may name elements already drawn.
 - `update` with `set`: `label` (or a frame's name), `text` (a free text),
-  colours, `strokeStyle`, `x`, `y`, `width`, `height`.
+  colours, `strokeStyle`, `x`, `y`, `width`, `height`, and `customData` to
+  link the element (the table above; it replaces the link, `null` removes it).
+  The outline's `links` and the read's `links` list what is linked, each
+  `available` with a `title` or `unavailable`.
 - `remove` takes the element's label and every arrow bound to it along; a
   frame lets its children go.
 - `rebind` moves an arrow's `start` or `end` to another element.
