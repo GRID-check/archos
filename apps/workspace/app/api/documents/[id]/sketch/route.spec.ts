@@ -74,11 +74,21 @@ const renderDiagramPdf = vi.fn(async (input: { provenance: string }) => new Text
 vi.mock('@/lib/diagrams/svg-to-pdf', () => ({
   renderDiagramPdf: (...a: [{ provenance: string }]) => renderDiagramPdf(...a),
 }))
+const draftGate = vi.hoisted(() => ({ received: true, generate: true }))
 vi.mock('@/lib/documents/version-content', () => ({
+  mayReceiveVersionBytes: async () => draftGate.received,
   newVersionWriteId: () => 'w1',
   resolveVersionBucket: async () => 'bucket',
   versionWriteKey: (key: string, n: number, id: string) => `${key}/v${n}/${id}`,
 }))
+vi.mock('@/lib/authz/projects', async () => {
+  const { ForbiddenError } = await import('@/lib/api/errors')
+  return {
+    requireProjectAccess: vi.fn(async (_session: unknown, _project: string, permission: string | string[]) => {
+      if (permission === 'project:documents:generate' && !draftGate.generate) throw new ForbiddenError('no generate')
+    }),
+  }
+})
 vi.mock('@/lib/documents/version-repository', async () => {
   const { PublishedVersionMovedError } = await import('@/lib/documents/published-guard')
   return {
@@ -464,6 +474,34 @@ describe('a save and the Freigabe round (C2, C4)', () => {
     // A save from the published Fassung, or from an older state of the draft, merges first.
     expect((await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })).status).toBe(409)
     expect((await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })).status).toBe(409)
+  })
+
+  // The coherence review's findings 3 and 4: the editor offered a save the draft write refuses, and read a draft's bytes past the hold.
+  it('opens a draft to watch for a writer who may not write into it (no project:documents:generate)', async () => {
+    openDraft('draft')
+    draftGate.generate = false
+    try {
+      const view = await (await call('GET', 'doc-svg')).json()
+      expect(view).toMatchObject({ canWrite: false, saveTarget: 'draft' })
+      expect((await (await call('GET', 'doc-svg', undefined, { query: '?probe=1' })).json()).canWrite).toBe(false)
+    } finally {
+      draftGate.generate = true
+    }
+  })
+
+  it('reads no draft bytes this session may not receive: the current Fassung, to watch, and a save is refused', async () => {
+    openDraft('draft')
+    draftGate.received = false
+    const written = vi.mocked(replaceVersionContent).mock.calls.length
+    try {
+      const view = await (await call('GET', 'doc-svg')).json()
+      expect(view).toMatchObject({ canWrite: false, versionId: expect.not.stringMatching(/^doc-svg-d$/), contentHash: null })
+      const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })
+      expect(response.status).toBe(404)
+      expect(vi.mocked(replaceVersionContent).mock.calls.length).toBe(written)
+    } finally {
+      draftGate.received = true
+    }
   })
 
   it('tells the followers once when a save leaves a Fassung released through Freigabe, and stays silent otherwise', async () => {

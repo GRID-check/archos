@@ -54,7 +54,8 @@ import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { contentDigest } from '@/lib/documents/content-digest'
 import { replaceVersionContent } from '@/lib/documents/lifecycle'
 import type { DocumentVersion } from '@/lib/db/schema/document-versions'
-import { sketchTargetOf, type SketchTarget } from './sketch-target'
+import { sketchOpeningFor, sketchTargetOf } from './sketch-target'
+import { mayReceiveVersionBytes } from '@/lib/documents/version-content'
 import { redrawCompanionPdf, type CompanionPdfOutcome } from './sketch-companion'
 import { s3Client } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
@@ -161,7 +162,8 @@ async function mayWrite(session: AuthorizedSession, document: Document): Promise
 export async function probeSketchDocument(session: AuthorizedSession, documentId: string): Promise<SketchProbe> {
   const document = await getAccessibleDocument(session, documentId, 'read')
   const hasScene = (await publishedSketchOf(document).catch(() => null)) !== null
-  return { hasScene, canWrite: hasScene && (await mayWrite(session, document)), versionId: document.publishedVersionId }
+  const canWrite = hasScene && (await sketchOpeningFor(session, document, await mayWrite(session, document))).canWrite
+  return { hasScene, canWrite, versionId: document.publishedVersionId }
 }
 
 /**
@@ -171,9 +173,8 @@ export async function probeSketchDocument(session: AuthorizedSession, documentId
  */
 export async function readSketchDocument(session: AuthorizedSession, documentId: string): Promise<SketchDocumentView> {
   const document = await getAccessibleDocument(session, documentId, 'read')
-  const canWrite = await mayWrite(session, document)
-  const target: SketchTarget = canWrite ? await sketchTargetOf(document) : { kind: 'published' }
-  const draft = target.kind === 'draft' ? target.version : null
+  // A draft only when this session may receive its bytes and write into it (`./sketch-target.ts`).
+  const { target, draft, canWrite } = await sketchOpeningFor(session, document, await mayWrite(session, document))
   const scene = await storedSceneOf(draft ? { ...draft, contentType: SVG } : document)
   // The scene is the document's content as much as its picture is.
   await recordDocumentAccess(session, document, 'preview', draft ? { versionId: draft.id } : undefined)
@@ -340,6 +341,8 @@ async function writeDraft(input: SaveSketchInput, document: Document, draft: Doc
   const stale = () => new PublishedVersionMovedError(document.id, draft.id)
   if (body.baseVersionId !== draft.id) throw stale()
   if (body.baseContentHash && draft.contentHash && body.baseContentHash !== draft.contentHash) throw stale()
+  // Held bytes reach only who may see them (ADR-0086): a draft nobody screened is not merged into.
+  if (!(await mayReceiveVersionBytes(session, document, draft))) throw new NotFoundError('Version not found')
   const stored = await storedSceneOf({ ...draft, contentType: SVG })
   const { accepted, scene, bumped, tombstoned } = acceptSketch(body, stored, input.marking, answerRef)
   const bytes = Buffer.from(accepted.svg, 'utf8')
