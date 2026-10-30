@@ -8,6 +8,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('./model-service', () => ({ getModelForDocument: vi.fn() }))
@@ -32,7 +33,7 @@ import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { listAnnotations } from '@/lib/annotations/service'
-import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
+import { AGENT_AUTHOR, annotationReplyViewSchema, type AnnotationReplyView, type AnnotationView } from '@/lib/annotations/types'
 import { findViewpoints } from '@/lib/annotations/viewpoint-repository'
 import { readSnapshot } from '@/lib/annotations/viewpoint-snapshot'
 import type { AnnotationViewpointRow } from '@/lib/db/schema/annotation-viewpoints'
@@ -46,7 +47,8 @@ const SESSION = { userId: 'user_anna', organizationId: 'org_1', email: 'anna@bue
 const uuid = (n: number) => `5b1a2c3d-0000-4000-8000-${String(n).padStart(12, '0')}`
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4])
 
-const reply = (overrides: Partial<AnnotationReplyView> = {}): AnnotationReplyView => ({
+const reply = (overrides: Partial<AnnotationReplyView> = {}): AnnotationReplyView =>
+  annotationReplyViewSchema.parse({
   id: uuid(900),
   annotationId: uuid(1),
   authorKind: 'person',
@@ -54,10 +56,9 @@ const reply = (overrides: Partial<AnnotationReplyView> = {}): AnnotationReplyVie
   createdBy: 'user_max',
   createdByName: 'Max Huber',
   createdAt: '2026-10-29T09:00:00.000Z',
-  addressesPiloti: false,
   editedAt: null,
   ...overrides,
-})
+  })
 
 const mark = (n: number, overrides: Partial<AnnotationView> = {}): AnnotationView => ({
   id: uuid(n),
@@ -137,7 +138,7 @@ const MODEL = {
 } as unknown as NonNullable<Awaited<ReturnType<typeof getModelForDocument>>>
 
 function given(marks: AnnotationView[], rows: AnnotationViewpointRow[] = marks.map((m) => row(m.number))) {
-  vi.mocked(listAnnotations).mockResolvedValue({ annotations: marks, canAnnotate: true, pilotiWakes: false })
+  vi.mocked(listAnnotations).mockResolvedValue({ annotations: marks, canAnnotate: true } as Awaited<ReturnType<typeof listAnnotations>>)
   vi.mocked(findViewpoints).mockResolvedValue(rows)
 }
 
@@ -194,18 +195,18 @@ describe('exportAnnotationsBcf3', () => {
     expect(entries.has(`${uuid(1)}/${uuid(101)}.png`)).toBe(true)
   })
 
-  it('never carries Piloti’s untaken proposals, a mark without a viewpoint, or (scope open) a closed one', async () => {
+  it('never carries the agent’s untaken proposals, a mark without a viewpoint, or (scope open) a closed one', async () => {
     given([
       mark(1),
-      mark(2, { authorKind: 'piloti', status: 'proposed' }),
-      mark(3, { authorKind: 'piloti', status: 'dismissed' }),
-      mark(4, { authorKind: 'piloti', status: 'open', acceptedBy: 'user_anna', acceptedByName: 'Anna Berger', basis: 'OIB-RL 2, 3.1' }),
+      mark(2, { authorKind: AGENT_AUTHOR, status: 'proposed' }),
+      mark(3, { authorKind: AGENT_AUTHOR, status: 'dismissed' }),
+      mark(4, { authorKind: AGENT_AUTHOR, status: 'open', acceptedBy: 'user_anna', acceptedByName: 'Anna Berger', basis: 'OIB-RL 2, 3.1' }),
       mark(5, { viewpoint: null, anchor: 'page' }),
       mark(6, { status: 'resolved', closedBy: 'user_max', closedByName: 'Max Huber', closedAt: '2026-10-30T07:00:00.000Z' }),
     ])
     const all = await files('all')
     expect([...all.entries.keys()].filter((p) => p.endsWith('/'))).toEqual([`${uuid(1)}/`, `${uuid(4)}/`, `${uuid(6)}/`])
-    expect(all.entries.get(`${uuid(4)}/markup.bcf`)).toMatch(/Grundlage: OIB-RL 2, 3\.1\n\nvon Piloti gesetzt · für Anna Berger · \d/)
+    expect(all.entries.get(`${uuid(4)}/markup.bcf`)).toMatch(new RegExp(`Grundlage: OIB-RL 2, 3\\.1\n\nvon ${PRODUCT_NAME} gesetzt · für Anna Berger · \\d`))
     const closed = all.entries.get(`${uuid(6)}/markup.bcf`) ?? ''
     expect(closed).toContain('TopicStatus="Resolved"')
     expect(closed).toContain('<ModifiedAuthor>max@buero.test</ModifiedAuthor>')
@@ -213,11 +214,11 @@ describe('exportAnnotationsBcf3', () => {
     expect([...open.entries.keys()].filter((p) => p.endsWith('/'))).toEqual([`${uuid(1)}/`, `${uuid(4)}/`])
   })
 
-  it('writes Piloti’s replies as Piloti, and falls back to the name when the directory has no email', async () => {
+  it('writes the agent’s replies under the product name, and falls back to the name when the directory has no email', async () => {
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map())
-    given([mark(1, { replies: [reply({ id: uuid(901), authorKind: 'piloti', createdBy: 'user_anna' }), reply()] })])
+    given([mark(1, { replies: [reply({ id: uuid(901), authorKind: AGENT_AUTHOR, createdBy: 'user_anna' }), reply()] })])
     const markup = (await files()).entries.get(`${uuid(1)}/markup.bcf`) ?? ''
-    expect(markup).toContain('<Author>Piloti</Author>')
+    expect(markup).toContain(`<Author>${PRODUCT_NAME}</Author>`)
     expect(markup).toContain('<Author>Max Huber</Author>')
     expect(markup).toContain('<CreationAuthor>Anna Berger</CreationAuthor>')
   })

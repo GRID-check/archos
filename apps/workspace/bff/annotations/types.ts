@@ -34,6 +34,8 @@ export type AnnotationKind = (typeof ANNOTATION_KINDS)[number]
 
 /** Who set it. Piloti's marks are proposals until a person takes one over. */
 export const ANNOTATION_AUTHORS = ['person', 'piloti'] as const
+/** The author of a mark the agent set or a reply it wrote. */
+export const AGENT_AUTHOR = ANNOTATION_AUTHORS[1]
 export type AnnotationAuthor = (typeof ANNOTATION_AUTHORS)[number]
 
 /** Vorschlag, Offen, Erledigt, Verworfen. */

@@ -180,7 +180,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           list.push(created)
           return Response.json({ annotation: created }, { status: 201 })
         }
-        return Response.json({ annotations: list, canAnnotate: !params.has('readonly'), pilotiWakes: false })
+        return Response.json({ annotations: list, canAnnotate: !params.has('readonly') })
       }
       const viewpoint = path.match(/\/annotations\/([^/]+)\/viewpoint$/)
       if (viewpoint) return Response.json({ viewpoint: viewpointOf(viewpoint[1] ?? '') })

@@ -98,7 +98,7 @@ function serve(marks: AnnotationView[]) {
   const posted: unknown[] = []
   const viewpointReads: string[] = []
   server.use(
-    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations: marks, canAnnotate: true, pilotiWakes: false })),
+    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations: marks, canAnnotate: true })),
     http.get('/api/documents/:id/annotations/:annotationId/viewpoint', ({ params }) => {
       viewpointReads.push(String(params.annotationId))
       return HttpResponse.json({ viewpoint: VIEWPOINT })

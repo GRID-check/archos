@@ -41,7 +41,7 @@ import { getAccessibleDocument } from '@/lib/documents/access'
 import { documentDisplayName, splitDocumentName } from '@/lib/documents/display-name'
 import { safeFileStem } from '@/lib/annotations/export-request'
 import { listAnnotations } from '@/lib/annotations/service'
-import { isLive, isUnreviewedProposal, type AnnotationView } from '@/lib/annotations/types'
+import { AGENT_AUTHOR, isLive, isUnreviewedProposal, type AnnotationView } from '@/lib/annotations/types'
 import { findViewpoints } from '@/lib/annotations/viewpoint-repository'
 import { toViewpointView } from '@/lib/annotations/viewpoint-read'
 import { readSnapshot } from '@/lib/annotations/viewpoint-snapshot'
@@ -136,7 +136,7 @@ interface Wording {
 /** The Description's lines after the body: the basis, and who set the mark when the agent did; the Protokoll's words. */
 function notesOf(mark: ExportableMark, { t, date }: Wording): string[] {
   const notes = mark.basis ? [`${t('review.export.document.basis')}: ${mark.basis}`] : []
-  if (mark.authorKind === 'piloti') {
+  if (mark.authorKind === AGENT_AUTHOR) {
     const set = date(mark.createdAt)
     notes.push(
       mark.acceptedByName
@@ -175,7 +175,7 @@ function toTopic(
         : null,
     replies: mark.replies.map((reply) => ({
       id: reply.id.toLowerCase(),
-      author: reply.authorKind === 'piloti' ? PRODUCT_NAME : bcfName(people, reply.createdBy, reply.createdByName),
+      author: reply.authorKind === AGENT_AUTHOR ? PRODUCT_NAME : bcfName(people, reply.createdBy, reply.createdByName),
       date: new Date(reply.createdAt),
       body: reply.body,
       editedAt: reply.editedAt ? new Date(reply.editedAt) : null,
