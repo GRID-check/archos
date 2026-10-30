@@ -152,20 +152,6 @@ button.ui-nav-link {
   margin: var(--space-16) 0 0;
 }
 
-/* Headlines balance their lines (design system: headings wrap with text-wrap: balance),
-   so a title never leaves one word alone on its last line. A German compound longer than a
-   320px screen ("Wissensmanagement", "Planungsbüros" in display size) hyphenates, or breaks as
-   a last resort, instead of pushing the page sideways (WCAG 1.4.10). */
-.display-xl,
-.display,
-.heading-1,
-.heading-2,
-.heading-3 {
-  text-wrap: balance;
-  overflow-wrap: break-word;
-  hyphens: auto;
-}
-
 /* Two columns from 1024px, stacked below (reference: the home page's split blocks). Used by
    SectionIntro layout="split" and the founders block. */
 .site-split,
@@ -237,21 +223,6 @@ button.ui-nav-link {
 
 .mail-form-sent:focus {
   outline: none;
-}
-
-/* Gallery dots: each dot is a 24px-wide target (WCAG 2.5.8 target size); the design system's
-   5px padding left 16px. Belongs in packages/brand components.css (.ui-gallery-dot); remove
-   here once it is there. */
-.ui-gallery-dot {
-  min-width: var(--space-6);
-  padding: 0 var(--space-1);
-}
-
-/* Demo: the note under the form card sits on the photo. In the muted ink it reached only
-   3.05:1 over the photo's lightest pixels at 1280px (measured), under the 4.5:1 of WCAG 1.4.3;
-   in full ink it reaches 7:1. Belongs in packages/brand components.css (.ui-split-note). */
-.ui-split-note {
-  color: var(--ink);
 }
 
 /* The footer's "Cookie-Einstellungen": a button that reads like the footer's links. */

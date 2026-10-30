@@ -15,6 +15,15 @@ body { margin: 0; font-family: var(--font-sans); font-weight: 500; font-size: 16
   .ui-hero-title.display-xl { font-size: min(40px, 10.4vw); line-height: 1.1; }
 }
 
+/* Headings balance their lines, so a title never leaves one word alone on its last line.
+   A German compound longer than a 320px screen ("Wissensmanagement" in display size) breaks
+   instead of pushing the page sideways (WCAG 1.4.10). Heading sizes hyphenate by the page's
+   lang; display sizes only at a soft hyphen (&shy;) the copy sets, because an automatic
+   break in a 44px word ("archi-tecture" at 360px) reads as a fault. */
+.display-xl, .display, .heading-1, .heading-2, .heading-3 { text-wrap: balance; overflow-wrap: break-word; }
+.heading-1, .heading-2, .heading-3 { hyphens: auto; }
+.display-xl, .display { hyphens: manual; }
+
 /* Layout: two widths and the section rhythm */
 .ui-container { box-sizing: border-box; max-width: var(--container-max); margin: 0 auto; padding: 0 var(--gutter); }
 .ui-wide { box-sizing: border-box; padding: 0 var(--gutter-wide); }
@@ -117,7 +126,8 @@ a.ui-wordmark:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .ui-gallery-btn { width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-md); background: var(--surface-sunken); color: var(--ink); font-family: var(--font-sans); font-size: 18px; line-height: 1; cursor: pointer; transition: background-color var(--duration-quick) ease-out; }
 .ui-gallery-btn:hover { background: var(--line); }
 .ui-gallery-dots { display: flex; align-items: center; height: 44px; padding: 0 10px; border-radius: var(--radius-md); background: var(--surface-sunken); }
-.ui-gallery-dot { display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 5px; border: 0; background: none; cursor: pointer; }
+/* Each dot is a target at least 24px wide (WCAG 2.5.8): the handover's 5px padding left 16px. */
+.ui-gallery-dot { display: flex; align-items: center; justify-content: center; min-width: var(--space-6); height: 44px; padding: 0 var(--space-1); border: 0; background: none; cursor: pointer; }
 .ui-gallery-dot span { display: block; width: 6px; height: 6px; background: var(--ink-muted); transition: width 300ms ease-out, background-color 300ms ease-out; }
 .ui-gallery-dot[aria-current="true"] span { width: 28px; background: var(--ink); }
 .ui-gallery-btn:focus-visible, .ui-gallery-dot:focus-visible { outline: none; box-shadow: var(--focus-ring); }
@@ -309,7 +319,9 @@ textarea.ui-input { resize: vertical; min-height: 144px; }
 .ui-split-panel > img { z-index: 0; }
 .ui-split-card { position: relative; z-index: 1; width: 100%; max-width: var(--split-card); box-sizing: border-box; padding: 40px; background: var(--surface); }
 /* The note sits on the dark photo, so it carries data-theme="dark": its tokens are the dark ones, without the theme's surface. */
-.ui-split-note { position: relative; z-index: 1; margin: var(--space-6) 0 0; max-width: var(--split-card); text-align: center; background: none; color: var(--ink-muted); }
+/* The note sits on the photo: in ink-muted it reached 3.05:1 over the photo's lightest pixels
+   (measured at 1280px), under WCAG 1.4.3's 4.5:1; in ink it reaches 7:1. */
+.ui-split-note { position: relative; z-index: 1; margin: var(--space-6) 0 0; max-width: var(--split-card); text-align: center; background: none; color: var(--ink); }
 .ui-split-note a { color: var(--ink); }
 .ui-split-or { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-8) 0; color: var(--ink-muted); }
 .ui-split-or::before, .ui-split-or::after { content: ""; flex: 1; height: var(--stroke-hairline); background: var(--line); }

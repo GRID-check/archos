@@ -109,6 +109,7 @@ Full text: the component sheets in `docs/components/`.
 - Tracking is never tighter than 0, except the logo.
 - Left-aligned, except large opening statements and the hero text (right-aligned).
 - Mobile (below 768px) steps the display and heading sizes down; the component sheets give the numbers.
+- Headings (`display-xl` to `heading-3`) wrap with `text-wrap: balance` and `overflow-wrap: break-word`, so no title strands a word and no long compound pushes a 320px page sideways. Heading sizes hyphenate automatically (`hyphens: auto`, by the page's `lang`); display sizes only at a soft hyphen the copy sets (`hyphens: manual`), because an automatic break in a 44px word reads as a fault.
 
 **Layout and shape**
 
