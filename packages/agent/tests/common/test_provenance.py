@@ -88,7 +88,8 @@ class TestLabel:
     def test_the_line_names_the_document_kind_the_approver_and_the_date(self):
         provenance = parse_agent_provenance(_STAMPED)
         assert provenance is not None
-        assert provenance_label(provenance) == f"{AGENT_AUTHORED_LANE_LABEL} · freigegeben von Maria Huber am 01.09.2026"
+        expected = f"{AGENT_AUTHORED_LANE_LABEL} · freigegeben von Maria Huber am 01.09.2026"
+        assert provenance_label(provenance) == expected
 
     def test_the_label_starts_with_the_lane_label_the_taxonomy_owns(self):
         """The citation parser reads exactly this leading token back."""
@@ -107,8 +108,14 @@ class TestLabel:
         "metadata,expected",
         [
             ({"authored_by": "agent"}, AGENT_AUTHORED_LANE_LABEL),
-            ({"authored_by": "agent", "approved_by": "Maria Huber"}, f"{AGENT_AUTHORED_LANE_LABEL} · freigegeben von Maria Huber"),
-            ({"authored_by": "agent", "approved_at": "2026-09-01"}, f"{AGENT_AUTHORED_LANE_LABEL} · freigegeben am 01.09.2026"),
+            (
+                {"authored_by": "agent", "approved_by": "Maria Huber"},
+                f"{AGENT_AUTHORED_LANE_LABEL} · freigegeben von Maria Huber",
+            ),
+            (
+                {"authored_by": "agent", "approved_at": "2026-09-01"},
+                f"{AGENT_AUTHORED_LANE_LABEL} · freigegeben am 01.09.2026",
+            ),
         ],
     )
     def test_a_missing_field_shortens_the_line_instead_of_leaving_a_hole(self, metadata: dict, expected: str):

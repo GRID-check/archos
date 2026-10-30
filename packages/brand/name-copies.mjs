@@ -26,10 +26,15 @@ export function withName(text, pattern, name) {
   return text.replace(pattern, (_, before, after) => `${before}${name}${after}`)
 }
 
+/** `text` safe as XML character data: the name goes into an SVG's <title>. */
+function escapeXml(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 /** The mark master, whose <title> holds the token `{productName}`, with the name put in. */
 export function namedMark(master, name) {
   if (!master.includes('<title>{productName}</title>')) {
     throw new Error('mark.svg must keep <title>{productName}</title>; the name is filled in from identity.json')
   }
-  return master.replace('<title>{productName}</title>', `<title>${name}</title>`)
+  return master.replace('<title>{productName}</title>', (title) => title.replace('{productName}', () => escapeXml(name)))
 }

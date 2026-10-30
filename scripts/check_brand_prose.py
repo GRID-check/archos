@@ -160,9 +160,15 @@ LEGAL_CONTINUITY_FILES = frozenset(
 )
 LEGAL_CONTINUITY = re.compile(r"\((?:vormals|formerly) Piloti\)")
 URL = re.compile(r"\b(?:https?|git|ssh)://\S+|\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+# The input is this repository's own text (``name_lines``), not a request: the leading
+# label repetition is quadratic on a long dotted run, never exponential.
+# nosemgrep: python.lang.security.audit.regex-dos.regex_dos
 OWN_NAMES = re.compile(r"(?i)\barchos-at(?:/archos)?\b|\b(?:[\w-]+\.)*archos\.tech\b")
 # Host names under the old domain (and its test domain) are infrastructure: the domain moves
 # by an operator's cutover (ADR-0148, owner decision D2), not by a copy edit.
+# The input is this repository's own text (``name_lines``), not a request: the leading
+# label repetition is quadratic on a long dotted run, never exponential.
+# nosemgrep: python.lang.security.audit.regex-dos.regex_dos
 OLD_HOSTS = re.compile(r"(?i)\b(?:[\w-]+\.)*piloti\.(?:at|test)\b")
 
 BINARY_SUFFIXES = (

@@ -45,7 +45,7 @@ function routes() {
 const SETTLE = `(async () => {
   document.documentElement.style.scrollbarWidth = 'none';
   for (const img of document.images) img.loading = 'eager';
-  await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
+  await Promise.all([...document.images].map((img) => img.decode().catch(() => undefined)));
   return JSON.stringify([document.documentElement.scrollWidth - innerWidth]);
 })()`;
 

@@ -21,8 +21,8 @@ from pathlib import Path
 
 import pytest
 
-from agent.common.brand import PRODUCT_NAME
 from agent.citations.extraction import extract_sources_from_tool_result
+from agent.common.brand import PRODUCT_NAME
 from agent.common.grounding_block import COVERAGE_GAP_LABEL
 from agent.common.grounding_block import COVERAGE_GAP_NOTE
 from agent.common.grounding_block import GroundingBlock
