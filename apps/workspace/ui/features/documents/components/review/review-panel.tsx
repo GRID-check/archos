@@ -122,10 +122,10 @@ function Pages({
   return (
     <>
       {pages.map((page) => (
-        <section key={page} aria-label={t('review.page', { page })}>
+        <section key={page} aria-label={page == null ? t('review.modelView') : t('review.page', { page })}>
           {headed && (
             <h3 className="text-muted-foreground px-2.5 pt-3 pb-1 text-[11px] font-semibold tracking-[0.05em] uppercase">
-              {t('review.page', { page })}
+              {page == null ? t('review.modelView') : t('review.page', { page })}
             </h3>
           )}
           <ul className="space-y-0.5">
@@ -296,7 +296,7 @@ function CarriedFrom({
               </span>
               <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs">
                 <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
-                {t('review.page', { page: annotation.page })}
+                {annotation.page == null ? t('review.modelView') : t('review.page', { page: annotation.page })}
                 {annotation.assigneeName && (
                   <span className="inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap">
                     <UserRound className="size-3 shrink-0" aria-hidden />

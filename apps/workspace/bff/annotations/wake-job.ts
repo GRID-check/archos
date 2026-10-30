@@ -49,7 +49,7 @@ import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import { onWakeEnded } from './attention'
 import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
-import { regionAround } from './types'
+import { hasBox, regionAround } from './types'
 import { auditSuppressedWake, capReached, wakesEnabled } from './wake'
 import { auditWakeEnded, auditWakeStarted, type AuditedWake } from './wake-audit'
 import { delegationEventId } from './wake-ids'
@@ -105,7 +105,8 @@ export function wakeMessage(input: {
     focus_file_name: doc.displayName?.trim() || doc.filename,
     focus_shelf: doc.scope === 'office_shelf' ? 'office_shelf' : 'project',
     focus_document_id: doc.id,
-    focus_region: { ...regionAround(mark), annotation_id: mark.id },
+    // A mark on a model has no box to point Piloti at; its viewpoint is read with the mark.
+    ...(hasBox(mark) ? { focus_region: { ...regionAround(mark), annotation_id: mark.id } } : {}),
     reply_in_thread: true,
     trigger: { kind: payload.trigger, event_id: payload.eventId, annotation_id: payload.annotationId },
     if_idle: true,

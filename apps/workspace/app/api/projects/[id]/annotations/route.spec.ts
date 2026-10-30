@@ -125,6 +125,8 @@ const record = (documentId: string, number: number, extra: Partial<ProjectAnnota
   carriedFromId: null,
   anchorElementIds: null,
   anchorLostAt: null,
+  anchorKind: 'page',
+  viewpointId: null,
   mentions: [],
   revisionNumber: 1,
   replies: [],

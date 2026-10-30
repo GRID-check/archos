@@ -156,7 +156,7 @@ const DOC_ID = '11111111-1111-4111-8111-111111111111'
 const MARK_ID = '22222222-2222-4222-8222-222222222222'
 const REPLY_ID = '33333333-3333-4333-8333-333333333333'
 
-const DOC = { id: DOC_ID, organizationId: 'org_1', scope: 'project', projectId: 'proj_1', publishedVersionId: null } as Partial<Document> as Document
+const DOC = { id: DOC_ID, organizationId: 'org_1', scope: 'project', filename: 'Grundriss EG.pdf', projectId: 'proj_1', publishedVersionId: null } as Partial<Document> as Document
 
 const MARK: AnnotationRecord = {
   id: MARK_ID,
@@ -189,6 +189,8 @@ const MARK: AnnotationRecord = {
   carriedFromId: null,
   anchorElementIds: null,
   anchorLostAt: null,
+  anchorKind: 'page',
+  viewpointId: null,
   mentions: [],
   revisionNumber: null,
   replies: [],

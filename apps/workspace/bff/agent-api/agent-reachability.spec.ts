@@ -60,6 +60,11 @@ interface Exemption {
  * here: it is catalogued and withheld in `exposure.config.ts`.
  */
 const NOT_AN_AGENT_CAPABILITY: Record<string, Exemption> = {
+  'GET /api/documents/[id]/annotations/[annotationId]/snapshot': {
+    category: 'other',
+    reason:
+      'the snapshot is the image of a viewpoint, served as binary for the review to draw; an agent reads the viewpoint itself through annotation-viewpoint-get, which is the structured form of the same view',
+  },
   'GET /api/ris/document': {
     category: 'external-service',
     reason: 'the RIS text dialog proxies the public legal text service; an agent reads a RIS document by number or URL through law-lookup (`instrument`)',

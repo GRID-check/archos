@@ -77,6 +77,7 @@ describe.skipIf(!url)('a Skizze’s marks on its next Fassung, against live Post
     w: 0.2,
     h: 0.2,
     anchorElementIds,
+    anchorKind: anchorElementIds ? ('sketch' as const) : ('page' as const),
     kind: 'hint' as const,
     body,
     basis: null,

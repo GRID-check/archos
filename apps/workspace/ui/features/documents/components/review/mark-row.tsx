@@ -76,7 +76,11 @@ export function MarkRowContent({
             when a line wraps; each item keeps to one line. */}
         <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs" data-testid="review-row-meta">
           <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
-          {showPage && <span className="whitespace-nowrap">{t('review.page', { page: annotation.page })}</span>}
+          {annotation.page == null ? (
+            <span className="whitespace-nowrap">{t('review.modelView')}</span>
+          ) : (
+            showPage && <span className="whitespace-nowrap">{t('review.page', { page: annotation.page })}</span>
+          )}
           <span className="min-w-0 truncate">{author}</span>
           {annotation.assigneeName && (
             <span className="inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap">

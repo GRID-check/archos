@@ -112,7 +112,7 @@ function useCanvasView(api: SketchViewApi | null): CanvasView | null {
 }
 
 /** A mark with its box where its elements stand now; a mark whose elements are gone keeps the box it has. */
-export function placedLive<T extends { elementIds?: string[] | null; x: number; y: number; w: number | null; h: number | null }>(
+export function placedLive<T extends { elementIds?: string[] | null; x: number | null; y: number | null; w: number | null; h: number | null }>(
   mark: T,
   elements: readonly AnchorElement[],
   frame: SheetFrame | null

@@ -75,7 +75,8 @@ import { documentDisplayName } from '@/lib/documents/display-name'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { replacingDocumentOf } from './carry'
-import { isDiagramRendition, sketchOfDocument, toMark } from './sketch-place'
+import { anchorEventProperties, placeAndInsert, placeAndInsertForAgent } from './place-and-insert'
+import { isDiagramRendition } from './sketch-place'
 import {
   AlreadyCarriedError,
   AnnotationLimitReachedError,
@@ -84,7 +85,6 @@ import {
   deleteDocumentAnnotation,
   findDocumentAnnotation,
   insertAnnotationReply,
-  insertDocumentAnnotations,
   listDocumentAnnotations,
   ReplyLimitReachedError,
   updateAnnotationReply,
@@ -120,7 +120,11 @@ import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEna
 import { delegationEventId, wakeTurnId } from './wake-ids'
 import { findWake } from './wake-repository'
 import { latestWakesFor, agentWorkOf } from './agent-work'
-import { wakeOfReply, wakeSpansFor, type WakeSpan } from './wake-attribution'
+import { nameOf, toReplyView, type Names } from './reply-view'
+import { findViewpoint, viewpointSummariesOfMarks } from './viewpoint-repository'
+import { discardStoredSnapshot } from './viewpoint-snapshot'
+import type { ViewpointSummary } from './viewpoint-types'
+import { wakeSpansFor, type WakeSpan } from './wake-attribution'
 import {
   auditDeletedWithMark,
   readTakeBack,
@@ -129,40 +133,8 @@ import {
   type TakeBack,
   type TakeBackAudit,
 } from './take-back'
-import {
-  annotationBox,
-  annotationProposalSchema,
-  compareAnnotations,
-  createAnnotationRequestSchema,
-  createReplyRequestSchema,
-  MAX_ANNOTATIONS_PER_DOCUMENT,
-  MAX_PROPOSALS_PER_CALL,
-  MAX_REPLIES_PER_ANNOTATION,
-  agentRepliedSince,
-  REPLY_MARK_CLOSED_REASON,
-  REPLY_TAKEN_UP_REASON,
-  replyIsForAgent,
-  isLive,
-  updateAnnotationRequestSchema,
-  updateReplyRequestSchema,
-  type AnnotationAuthor,
-  type AnnotationDeleteRefusal,
-  type AnnotationListResponse,
-  type AnnotationProposal,
-  type AnnotationReplyView,
-  type AnnotationStatus,
-  type AnnotationView,
-  type CarryLinkView,
-  type CarryTargetView,
-  type CreateAnnotationRequest,
-  type CreateReplyRequest,
-  type InternalAnnotation,
-  type MarkMention,
-  type AgentWakeTrigger,
-  type UpdateAnnotationRequest,
-  type UpdateReplyRequest,
-  type WakeOutcome,
-} from './types'
+import { annotationBox, annotationProposalSchema, compareAnnotations, createAnnotationRequestSchema, createReplyRequestSchema, MAX_ANNOTATIONS_PER_DOCUMENT, MAX_PROPOSALS_PER_CALL, MAX_REPLIES_PER_ANNOTATION, agentRepliedSince, REPLY_MARK_CLOSED_REASON, REPLY_TAKEN_UP_REASON, replyIsForAgent, isLive, updateAnnotationRequestSchema, updateReplyRequestSchema, type AnnotationAuthor, type AnnotationDeleteRefusal, type AnnotationListResponse, type AnnotationProposal, type AnnotationStatus, type AnnotationView, type CarryLinkView, type CarryTargetView, type CreateAnnotationRequest, type CreateReplyRequest, type MarkMention, type AgentWakeTrigger, type UpdateAnnotationRequest, type UpdateReplyRequest, type WakeOutcome } from './types'
+import { type InternalAnnotation } from './internal-types'
 
 /** Who acts: a person in their own session, or Piloti in the asker's. `peerId` is the person's tab, when it says. */
 export interface AnnotationActor {
@@ -212,33 +184,8 @@ export function deleteRefusalOf(
 /** Whether the document sits on a shelf that carries Anmerkungen. */
 const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'office_shelf'
 
-/** Display names by user id; empty when the directory cannot be read, which costs names and nothing else. */
-type Names = ReadonlyMap<string, { name: string }>
-
 async function directoryNames(organizationId: string): Promise<Names> {
   return loadOrganizationDirectory(organizationId).catch(() => new Map())
-}
-
-const nameOf = (names: Names, userId: string | null) => (userId ? (names.get(userId)?.name ?? null) : null)
-
-function toReplyView(
-  reply: DocumentAnnotationReplyRow,
-  names: Names,
-  wakes: readonly WakeSpan[]
-): AnnotationReplyView {
-  return {
-    id: reply.id,
-    annotationId: reply.annotationId,
-    authorKind: reply.authorKind,
-    body: reply.body,
-    createdBy: reply.createdBy,
-    createdByName: nameOf(names, reply.createdBy),
-    createdAt: reply.createdAt.toISOString(),
-    addressesPiloti: reply.addressesAgent,
-    wokenBy: wakeOfReply(reply, wakes),
-    mentions: reply.mentions,
-    editedAt: reply.editedAt ? reply.editedAt.toISOString() : null,
-  }
 }
 
 function toView(
@@ -250,7 +197,8 @@ function toView(
   wakes: readonly WakeSpan[] = [],
   work: ReadonlyMap<string, AgentWakeRow> = new Map(),
   linked: LinkedDocuments = new Map(),
-  carryWay: CarryWay | null = null
+  carryWay: CarryWay | null = null,
+  viewpoints: ReadonlyMap<string, ViewpointSummary> = new Map()
 ): AnnotationView {
   const wake = work.get(record.id)
   // The author's own mark that the thread or a carry keeps: the card says why it stays.
@@ -260,12 +208,14 @@ function toView(
     id: record.id,
     documentId: record.documentId,
     number: record.number,
+    anchor: record.anchorKind,
     page: record.page,
     shape: record.shape,
     x: record.x,
     y: record.y,
     w: record.w,
     h: record.h,
+    viewpoint: record.viewpointId ? (viewpoints.get(record.viewpointId) ?? null) : null,
     elementIds: record.anchorElementIds ?? null,
     anchorLost: record.anchorLostAt != null,
     kind: record.kind,
@@ -375,7 +325,8 @@ async function carryWayOf(
  */
 function carryTargetOf(record: AnnotationRecord, doc: Document, way: CarryWay | null): CarryTargetView | null {
   // A mark on elements of a Skizze goes on with every save by itself (`./sketch-carry.ts`).
-  if (!way || record.status !== 'open' || record.anchorElementIds) return null
+  // A mark on a model is anchored to a view, not to a sheet: it has no Fassung to move to.
+  if (!way || record.status !== 'open' || record.anchorKind !== 'page') return null
   if (way.across) return record.delegatedBy ? null : way.to
   return (record.versionId ?? null) === (doc.publishedVersionId ?? null) ? null : way.to
 }
@@ -477,7 +428,7 @@ function markEvent(
   session: AuthorizedSession,
   event: Extract<ServerEvent, 'annotation_created' | 'annotation_closed' | 'annotation_carried'>,
   documentId: string,
-  properties: Record<string, string | boolean>
+  properties: Record<string, string | boolean | number>
 ): void {
   captureServer({
     event,
@@ -496,15 +447,19 @@ async function requireWritableDocument(session: AuthorizedSession, documentId: s
 async function viewOf(session: AuthorizedSession, doc: Document, annotationId: string): Promise<AnnotationView> {
   const record = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!record) throw new NotFoundError()
-  const [names, wakes, work, linked, carryWay] = await Promise.all([
+  const [names, wakes, work, linked, carryWay, viewpoints] = await Promise.all([
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),
     linkedDocuments(session, [record]),
     carryWayOf(session, doc, [record]),
+    viewpointsOf(session, doc, [record]),
   ])
-  return toView(record, doc, session, true, names, wakes, work, linked, carryWay)
+  return toView(record, doc, session, true, names, wakes, work, linked, carryWay, viewpoints)
 }
+
+const viewpointsOf = (session: AuthorizedSession, doc: Document, records: readonly AnnotationRecord[]) =>
+  viewpointSummariesOfMarks(session.organizationId, doc.id, records)
 
 const limitReached = (error: unknown): never => {
   if (error instanceof AnnotationLimitReachedError) {
@@ -539,14 +494,15 @@ export async function documentAnnotationViews(
   records: readonly AnnotationRecord[],
   { writable, names }: { writable: boolean; names?: Names }
 ): Promise<AnnotationView[]> {
-  const [directory, wakes, work, linked, carryWay] = await Promise.all([
+  const [directory, wakes, work, linked, carryWay, viewpoints] = await Promise.all([
     names ?? directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, records),
     latestWakesFor(session.organizationId, doc.id),
     linkedDocuments(session, records),
     writable ? carryWayOf(session, doc, records) : null,
+    viewpointsOf(session, doc, records),
   ])
-  return records.map((record) => toView(record, doc, session, writable, directory, wakes, work, linked, carryWay))
+  return records.map((record) => toView(record, doc, session, writable, directory, wakes, work, linked, carryWay, viewpoints))
 }
 
 /** The organization's directory by user id, for a caller that projects several documents' marks with one read. */
@@ -564,17 +520,14 @@ export async function createAnnotation(
   if (parsed.assigneeUserId) await requireAssignable(session, doc, parsed.assigneeUserId)
   const mentions = await keepMentions(session, doc, parsed.body, parsed.mentions ?? [], { piloti: false })
   const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId), false)
-  const sketch = await sketchOfDocument(doc, [parsed])
-  const [row] = await insertDocumentAnnotations({
-    organizationId: session.organizationId,
-    documentId: doc.id,
-    versionId: doc.publishedVersionId ?? null,
-    authorKind: 'person',
-    createdBy: session.userId,
-    marks: [toMark({ ...parsed, mentions }, sketch)],
-  }).catch(limitReached)
+  const { row, placed } = await placeAndInsert(session, doc, { ...parsed, mentions }).catch(limitReached)
   announce(session, doc.id, [row.id], 'created', { ...actor, kind: 'person' })
-  markEvent(session, 'annotation_created', doc.id, { author_kind: 'person', kind: row.kind, status: row.status })
+  markEvent(session, 'annotation_created', doc.id, {
+    author_kind: 'person',
+    kind: row.kind,
+    status: row.status,
+    ...anchorEventProperties(placed),
+  })
   if (row.assigneeUserId) traceAssigned(session, doc, row, null, PERSON)
   traceMentioned(session, doc, row, mentioned, row.body, mentions, row.assigneeUserId)
   traceSet(session, doc, 'created', [{ ...row, toldOtherwise: [row.assigneeUserId, ...mentioned] }])
@@ -617,16 +570,7 @@ async function insertAgentMarks(
   }
   const parsed = proposals.map((proposal) => annotationProposalSchema.parse(proposal))
   const doc = await requireWritableDocument(session, documentId)
-  const sketch = await sketchOfDocument(doc, parsed)
-  const rows = await insertDocumentAnnotations({
-    organizationId: session.organizationId,
-    documentId: doc.id,
-    versionId: doc.publishedVersionId ?? null,
-    authorKind: 'piloti',
-    createdBy: session.userId,
-    acceptedBy,
-    marks: parsed.map((mark) => toMark(mark, sketch)),
-  }).catch(limitReached)
+  const rows = await placeAndInsertForAgent(session, doc, parsed, acceptedBy).catch(limitReached)
   const ids = rows.map((row) => row.id)
   announce(session, doc.id, ids, 'created', AGENT)
   for (const row of rows) {
@@ -1098,6 +1042,12 @@ async function carryToCurrent(
   existing: AnnotationRecord,
   actor: AnnotationActor
 ): Promise<{ annotation: AnnotationView }> {
+  if (existing.anchorKind === 'viewpoint') {
+    throw new UnprocessableError('A mark on a model is anchored to a view, not to a Fassung of a sheet.', {
+      field: 'carryToCurrent',
+      reason: 'viewpoint',
+    })
+  }
   if (existing.status !== 'open') {
     throw new UnprocessableError('Only an open Anmerkung goes on with the current Fassung.', {
       field: 'carryToCurrent',
@@ -1238,6 +1188,7 @@ export async function deleteAnnotation(
   }
   const ended = delegationOfMark(session, doc.id, existing)
   const stopTurn = actor.kind === 'person'
+  const viewpoint = existing.viewpointId && (await findViewpoint(session.organizationId, doc.id, existing.viewpointId))
   // Set in the delete's transaction; a holder, because a closure's assignment is not narrowed.
   const found: { takeBack: TakeBack | null } = { takeBack: null }
   await deleteDocumentAnnotation(
@@ -1252,6 +1203,7 @@ export async function deleteAnnotation(
         }
       : undefined
   )
+  if (viewpoint && viewpoint.snapshotKey) void discardStoredSnapshot(doc, viewpoint.snapshotKey)
   announce(session, doc.id, [annotationId], 'deleted', actor)
   if (found.takeBack) auditDeletedWithMark(found.takeBack, takeBackAudit(session, doc, existing, actor))
   bestEffort('clear the deleted mark’s rows', () =>
@@ -1269,15 +1221,16 @@ export async function readAnnotation(
   const doc = await getAccessibleDocument(session, documentId, 'read')
   const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
   if (!record) throw new NotFoundError()
-  const [writable, names, wakes, work, linked] = await Promise.all([
+  const [writable, names, wakes, work, linked, viewpoints] = await Promise.all([
     canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),
     linkedDocuments(session, [record]),
+    viewpointsOf(session, doc, [record]),
   ])
   const carryWay = writable ? await carryWayOf(session, doc, [record]) : null
-  return toView(record, doc, session, writable, names, wakes, work, linked, carryWay)
+  return toView(record, doc, session, writable, names, wakes, work, linked, carryWay, viewpoints)
 }
 
 /** What Piloti may change on a mark for the asker: what a person's PATCH changes, the assignee by name. */
@@ -1633,6 +1586,7 @@ export async function listAnnotationsForAgent(
       page: annotation.page,
       shape: annotation.shape,
       box: annotationBox(annotation),
+      viewpoint: annotation.viewpoint ?? null,
       elementIds: annotation.elementIds ?? null,
       anchorLost: annotation.anchorLost ?? false,
       kind: annotation.kind,

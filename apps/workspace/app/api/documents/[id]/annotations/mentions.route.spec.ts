@@ -130,6 +130,7 @@ const DOC = {
   id: 'doc_1',
   organizationId: 'org_1',
   scope: 'project',
+  filename: 'Grundriss EG.pdf',
   projectId: 'proj_1',
   folderId: 'folder_plans',
   publishedVersionId: 'ver_2',
@@ -175,6 +176,8 @@ const MARK: AnnotationRecord = {
   carriedFromId: null,
   anchorElementIds: null,
   anchorLostAt: null,
+  anchorKind: 'page',
+  viewpointId: null,
   revisionNumber: 2,
   replies: [],
 }

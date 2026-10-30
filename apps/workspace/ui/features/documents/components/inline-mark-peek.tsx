@@ -8,6 +8,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
+import { hasBox } from '@/lib/annotations/types'
 import type { DocumentReview } from '../hooks/use-document-review'
 import { MarkBody } from './review/mark-body'
 import { markInk } from './review/review-page-layer'
@@ -63,7 +64,7 @@ export function InlineMarkPeek({
   const mark = review.annotations.find(
     (annotation) => annotation.id === shownId && annotation.page === page && annotation.onCurrentRevision
   )
-  if (!canHover || !mark) return null
+  if (!canHover || !mark || !hasBox(mark)) return null
   const author = mark.authorKind === 'piloti' ? 'Piloti' : mark.createdByName
   return (
     <Popover open onOpenChange={(open) => !open && setShownId(null)}>

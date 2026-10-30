@@ -427,7 +427,7 @@ describe('POST /api/internal/document-annotations', () => {
 
 const MARK_ID = '44444444-4444-4444-8444-444444444444'
 const NOW = new Date('2026-10-13T08:00:00.000Z')
-const DOC_ROW = { id: DOC_ID, scope: 'project', projectId: 'proj_1', publishedVersionId: null } as Partial<Document> as Document
+const DOC_ROW = { id: DOC_ID, scope: 'project', filename: 'Grundriss EG.pdf', projectId: 'proj_1', publishedVersionId: null } as Partial<Document> as Document
 const NOTE = 'Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert.'
 
 /** The fake repository's rows, by id. */
@@ -464,6 +464,8 @@ const record = (patch: Partial<AnnotationRecord> = {}): AnnotationRecord => ({
   carriedFromId: null,
   anchorElementIds: null,
   anchorLostAt: null,
+  anchorKind: 'page',
+  viewpointId: null,
   mentions: [],
   revisionNumber: null,
   replies: [],

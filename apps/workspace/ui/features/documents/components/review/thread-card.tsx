@@ -37,6 +37,7 @@ import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { AnnotationRequestError } from '@/lib/annotations/client'
 import {
   ANNOTATION_KINDS,
+  hasBox,
   isGhostMark,
   isLive,
   agentRepliedSince,
@@ -919,7 +920,7 @@ export function ThreadCard({
     // `off` is the server saying a wake rule met this reply (an @Piloti, or an
     // answer to Piloti's own open Rückfrage) and the switch is off: this tab
     // asks. Anything else, the server already did what there was to do.
-    if (wake !== 'off' || !piloti.available) return kept
+    if (wake !== 'off' || !piloti.available || !hasBox(annotation)) return kept
     piloti.ask({
       text: body.trim(),
       region: askRegionOf(annotation),
@@ -982,7 +983,7 @@ export function ThreadCard({
       icon: KIND_ICONS[kind],
       onSelect: () => void act(() => review.update(annotation.id, { kind })),
     })),
-    ...(piloti.available && annotation.onCurrentRevision
+    ...(piloti.available && annotation.onCurrentRevision && hasBox(annotation)
       ? [
           {
             type: 'item' as const,

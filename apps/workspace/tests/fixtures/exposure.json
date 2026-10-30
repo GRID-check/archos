@@ -1230,6 +1230,16 @@
    "withheld": null,
    "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
   },
+  "annotation-viewpoint-get": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "document-annotations-export": {
    "kind": "catalog",
    "domain": "review",

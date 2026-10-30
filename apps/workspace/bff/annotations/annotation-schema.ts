@@ -7,7 +7,7 @@
  */
 
 import { jsonSchemaDocument, type JsonSchemaNode } from '@/lib/api/zod-json-schema'
-import { ANNOTATION_WIRE_SCHEMAS } from './types'
+import { ANNOTATION_WIRE_SCHEMAS } from './internal-types'
 
 /** The whole export, exactly as the fixture holds it; `$defs` keyed by the names in `ANNOTATION_WIRE_SCHEMAS`. */
 export function documentAnnotationsJsonSchema(): JsonSchemaNode {

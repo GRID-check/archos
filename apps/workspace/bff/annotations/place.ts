@@ -11,6 +11,11 @@
  */
 
 import { z } from 'zod'
+import { viewpointInputSchema, type ParsedViewpointInput } from './viewpoint-types'
+
+/** What a mark is anchored to (the CHECK `…_anchor_kind_known`, migration 0193). */
+export const ANNOTATION_ANCHORS = ['page', 'sketch', 'viewpoint'] as const
+export type AnnotationAnchor = (typeof ANNOTATION_ANCHORS)[number]
 
 /** A point, or a region dragged out on the page. */
 export const ANNOTATION_SHAPES = ['point', 'region'] as const
@@ -70,7 +75,7 @@ export const boxPlaced = <T extends z.ZodRawShape>(content: T) =>
 const BOX_FIELDS = ['page', 'shape', 'x', 'y', 'w', 'h'] as const
 
 /**
- * Either place: a box on a page, or `elementIds` of a Skizze and no box. One
+ * One place: a box on a page, `elementIds` of a Skizze, or a `viewpoint` of a model. One
  * object rather than a union, so the schema an agent reads names each field
  * once; the refinement holds the either-or.
  */
@@ -83,11 +88,18 @@ export const placed = <T extends z.ZodRawShape>(content: T) =>
       x: unit.optional(),
       y: unit.optional(),
       elementIds: elementIdsSchema.optional(),
+      viewpoint: viewpointInputSchema.optional(),
       ...content,
     })
     .strict()
     .superRefine((value, context) => {
-      const place = value as Partial<PlaceInput> & { page?: number; elementIds?: string[] }
+      const place = value as Partial<PlaceInput> & { page?: number; elementIds?: string[]; viewpoint?: unknown }
+      if (place.viewpoint !== undefined) {
+        if (place.elementIds || BOX_FIELDS.some((field) => place[field as keyof typeof place] != null)) {
+          context.addIssue({ code: 'custom', message: 'give exactly one of a box, elementIds or a viewpoint' })
+        }
+        return
+      }
       if (place.elementIds) {
         if (BOX_FIELDS.some((field) => place[field as keyof typeof place] != null)) {
           context.addIssue({ code: 'custom', message: 'elementIds go without a box: the server derives it' })
@@ -95,7 +107,7 @@ export const placed = <T extends z.ZodRawShape>(content: T) =>
         return
       }
       if (place.page == null || place.shape == null || place.x == null || place.y == null) {
-        context.addIssue({ code: 'custom', message: 'give page, shape, x and y, or elementIds on a sketch' })
+        context.addIssue({ code: 'custom', message: 'give page, shape, x and y, or elementIds on a sketch, or a viewpoint on a model' })
         return
       }
       checkPlace(place as PlaceInput, context)
@@ -104,3 +116,7 @@ export const placed = <T extends z.ZodRawShape>(content: T) =>
 /** Whether a parsed request names elements rather than a box. */
 export const namesElements = <T extends object>(input: T): input is T & { elementIds: string[] } =>
   'elementIds' in input && Array.isArray((input as { elementIds?: unknown }).elementIds)
+
+/** Whether a parsed request names a viewpoint of a model rather than a box or elements. */
+export const namesViewpoint = <T extends object>(input: T): input is T & { viewpoint: ParsedViewpointInput } =>
+  'viewpoint' in input && (input as { viewpoint?: unknown }).viewpoint != null

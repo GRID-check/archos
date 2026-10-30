@@ -22,7 +22,7 @@
  * add its entry here.
  */
 
-import type { InternalAnnotationRequest } from '@/lib/annotations/types'
+import type { InternalAnnotationRequest } from '@/lib/annotations/internal-types'
 
 /** A way of showing a capability. At least one field; `component` is a path under `src/`, the spec checks it exists. */
 export interface Rendering {
@@ -145,7 +145,7 @@ export const SURFACE_CAPABILITIES = {
     summary: 'Read the marks of a document or a project',
     tool: 'canvas__marks',
     annotationOp: 'list',
-    operations: ['annotation-list', 'annotation-get', 'project-annotation-list'],
+    operations: ['annotation-list', 'annotation-get', 'annotation-viewpoint-get', 'project-annotation-list'],
     canvas: { component: `${REVIEW}/review-panel.tsx` },
     chat: { exempt: 'A read whose result is the answer; the marks it quotes are cited as text' },
   },

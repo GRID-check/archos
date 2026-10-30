@@ -9883,7 +9883,7 @@
       "post": {
         "operationId": "annotation-create",
         "summary": "Place an annotation on a document",
-        "description": "Sets an annotation at a place on the document (page position or text range) with a kind and a body. On a sketch send `elementIds` (from document-sketch-get) instead of a place; the box follows those elements. Returns it with its number. Colleagues in `mentions` are told.",
+        "description": "Sets an annotation at a place on the document (page position or text range) with a kind and a body. On a sketch send `elementIds` (from document-sketch-get) instead of a place; the box follows those elements. On a ready 3D model send a `viewpoint` (IFC world coordinates, Z-up, metres; GlobalIds must exist) instead. Exactly one of box, `elementIds`, `viewpoint`. Returns it with its number. Colleagues in `mentions` are told.",
         "tags": [
           "review"
         ],
@@ -9961,6 +9961,374 @@
                       "minLength": 1,
                       "maxLength": 128
                     }
+                  },
+                  "viewpoint": {
+                    "type": "object",
+                    "properties": {
+                      "camera": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "perspective"
+                              },
+                              "position": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "z": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y",
+                                  "z"
+                                ]
+                              },
+                              "direction": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "z": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y",
+                                  "z"
+                                ]
+                              },
+                              "up": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "z": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y",
+                                  "z"
+                                ]
+                              },
+                              "aspectRatio": {
+                                "type": "number",
+                                "minimum": 0.1,
+                                "maximum": 10
+                              },
+                              "fieldOfView": {
+                                "type": "number",
+                                "minimum": 1,
+                                "maximum": 179
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "position",
+                              "direction",
+                              "up",
+                              "aspectRatio",
+                              "fieldOfView"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "orthographic"
+                              },
+                              "position": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "z": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y",
+                                  "z"
+                                ]
+                              },
+                              "direction": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "z": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y",
+                                  "z"
+                                ]
+                              },
+                              "up": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "z": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y",
+                                  "z"
+                                ]
+                              },
+                              "aspectRatio": {
+                                "type": "number",
+                                "minimum": 0.1,
+                                "maximum": 10
+                              },
+                              "viewToWorldScale": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "position",
+                              "direction",
+                              "up",
+                              "aspectRatio",
+                              "viewToWorldScale"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "discriminator": {
+                          "propertyName": "type"
+                        }
+                      },
+                      "clippingPlanes": {
+                        "default": [],
+                        "maxItems": 6,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "location": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                },
+                                "z": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y",
+                                "z"
+                              ]
+                            },
+                            "direction": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                },
+                                "z": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y",
+                                "z"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "location",
+                            "direction"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "components": {
+                        "type": "object",
+                        "properties": {
+                          "selection": {
+                            "type": "object",
+                            "properties": {
+                              "globalIds": {
+                                "maxItems": 500,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^[0-9A-Za-z_$]{22}$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "globalIds"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "visibility": {
+                            "type": "object",
+                            "properties": {
+                              "defaultVisibility": {
+                                "type": "boolean",
+                                "description": "Whether elements not in exceptions are shown."
+                              },
+                              "exceptions": {
+                                "maxItems": 2000,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^[0-9A-Za-z_$]{22}$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "defaultVisibility",
+                              "exceptions"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "coloring": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "color": {
+                                  "type": "string",
+                                  "pattern": "^[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+                                },
+                                "globalIds": {
+                                  "maxItems": 500,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "pattern": "^[0-9A-Za-z_$]{22}$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "color",
+                                "globalIds"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "selection",
+                          "visibility",
+                          "coloring"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "pin": {
+                        "type": "object",
+                        "properties": {
+                          "point": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              },
+                              "z": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "globalId": {
+                            "type": "string",
+                            "pattern": "^[0-9A-Za-z_$]{22}$"
+                          }
+                        },
+                        "required": [
+                          "point"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "snapshot": {
+                        "type": "object",
+                        "properties": {
+                          "contentType": {
+                            "type": "string",
+                            "enum": [
+                              "image/jpeg",
+                              "image/png"
+                            ]
+                          },
+                          "dataBase64": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000000
+                          }
+                        },
+                        "required": [
+                          "contentType",
+                          "dataBase64"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "camera",
+                      "components"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A view of the model: camera, section planes, selected, hidden and coloured elements, and a snapshot."
                   },
                   "kind": {
                     "type": "string",
@@ -10723,6 +11091,70 @@
         "x-mcp-annotations": {
           "title": "Reword one of your own replies",
           "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/annotations/{annotationId}/viewpoint": {
+      "get": {
+        "operationId": "annotation-viewpoint-get",
+        "summary": "Read the 3D view an annotation is set in",
+        "description": "The 3D view of an annotation on a model (camera, section planes, elements by GlobalId; IFC world coordinates, Z-up, metres). A mark on a page has none (404).",
+        "tags": [
+          "review"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or workspace-search."
+            },
+            "description": "The document id, from a project document listing or workspace-search."
+          },
+          {
+            "name": "annotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The annotation id, from annotation-list."
+            },
+            "description": "The annotation id, from annotation-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read the 3D view an annotation is set in",
+          "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false

@@ -10,7 +10,7 @@
  */
 
 import 'server-only'
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
@@ -20,17 +20,9 @@ import { documentVersions } from '@/lib/db/schema/document-versions'
 import { documents } from '@/lib/db/schema/documents'
 import { withTenant } from '@/lib/db/tenant-context'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
-import {
-  LIVE_ANNOTATION_STATUSES,
-  MAX_ANNOTATIONS_PER_DOCUMENT,
-  MAX_REPLIES_PER_ANNOTATION,
-  type AnnotationAuthor,
-  type AnnotationKind,
-  type AnnotationShape,
-  type AnnotationStatus,
-  type MarkMention,
-  type MarkTally,
-} from './types'
+import { allocateNumbers } from './numbering'
+import { deleteViewpointRow } from './viewpoint-delete'
+import { LIVE_ANNOTATION_STATUSES, MAX_ANNOTATIONS_PER_DOCUMENT, MAX_REPLIES_PER_ANNOTATION, type AnnotationAuthor, type AnnotationKind, type AnnotationShape, type AnnotationStatus, type MarkMention, type MarkTally } from './types'
 
 /** The other end of a carry (migration 0151): a mark on another document, by its id, its document and its number. */
 export interface CarryLink {
@@ -68,6 +60,8 @@ export const selection = {
   toDocumentId: carriedCopy.documentId,
   toNumber: carriedCopy.number,
 }
+
+export { AnnotationLimitReachedError } from './numbering'
 
 export type SelectedRow = {
   row: DocumentAnnotationRow
@@ -243,6 +237,8 @@ export interface NewAnnotationValues {
   h: number | null
   /** On a Skizze, the elements its box was derived from (migration 0192, `./sketch-place.ts`). */
   anchorElementIds?: string[] | null
+  /** `sketch` when `anchorElementIds` is set, else `page` (migration 0193). */
+  anchorKind?: 'page' | 'sketch'
   kind: AnnotationKind
   body: string
   /** Whom `body` mentions, as the service kept them (`./mentions.ts`); none when absent. */
@@ -267,9 +263,6 @@ export interface NewAnnotationsInput {
   marks: readonly NewAnnotationValues[]
 }
 
-/** Thrown when the marks would take a document past {@link MAX_ANNOTATIONS_PER_DOCUMENT}. */
-export class AnnotationLimitReachedError extends Error {}
-
 /**
  * Insert one or more Anmerkungen in ONE transaction, their numbers allocated
  * as max + 1 under a per-document advisory lock, so two people setting a mark
@@ -287,26 +280,7 @@ export async function insertDocumentAnnotations(input: NewAnnotationsInput): Pro
   const acceptance = acceptedBy ? { acceptedBy, acceptedAt: new Date() } : {}
   return withTenant({ organizationId: input.organizationId }, () =>
     db.transaction(async (tx) => {
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`document_annotations:${input.documentId}`}, 0))`
-      )
-      const [current] = await tx
-        .select({
-          highest: sql<number | string | null>`max(${documentAnnotations.number})`,
-          count: sql<number | string>`count(*)`,
-        })
-        .from(documentAnnotations)
-        .where(
-          and(
-            eq(documentAnnotations.organizationId, input.organizationId),
-            eq(documentAnnotations.documentId, input.documentId)
-          )
-        )
-      if (Number(current?.count ?? 0) + input.marks.length > MAX_ANNOTATIONS_PER_DOCUMENT) {
-        throw new AnnotationLimitReachedError()
-      }
-      const highest = current?.highest
-      const first = highest === null || highest === undefined ? 1 : Number(highest) + 1
+      const first = await allocateNumbers(tx, input.organizationId, input.documentId, input.marks.length)
       return tx
         .insert(documentAnnotations)
         .values(
@@ -354,22 +328,7 @@ export async function carryAnnotationToDocument(input: {
   return withTenant({ organizationId }, () =>
     db
       .transaction(async (tx) => {
-        await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${`document_annotations:${target.documentId}`}, 0))`
-        )
-        const [current] = await tx
-          .select({
-            highest: sql<number | string | null>`max(${documentAnnotations.number})`,
-            count: sql<number | string>`count(*)`,
-          })
-          .from(documentAnnotations)
-          .where(
-            and(
-              eq(documentAnnotations.organizationId, organizationId),
-              eq(documentAnnotations.documentId, target.documentId)
-            )
-          )
-        if (Number(current?.count ?? 0) + 1 > MAX_ANNOTATIONS_PER_DOCUMENT) throw new AnnotationLimitReachedError()
+        const number = await allocateNumbers(tx, organizationId, target.documentId, 1)
         const now = new Date()
         const [closed] = await tx
           .update(documentAnnotations)
@@ -388,14 +347,13 @@ export async function carryAnnotationToDocument(input: {
           )
           .returning({ id: documentAnnotations.id })
         if (!closed) return null
-        const highest = current?.highest
         const [row] = await tx
           .insert(documentAnnotations)
           .values({
             organizationId,
             documentId: target.documentId,
             versionId: target.versionId,
-            number: highest === null || highest === undefined ? 1 : Number(highest) + 1,
+            number,
             page: source.page,
             shape: source.shape,
             x: source.x,
@@ -490,7 +448,7 @@ export async function updateDocumentAnnotation(
             eq(documentAnnotations.documentId, documentId),
             eq(documentAnnotations.id, annotationId),
             eq(documentAnnotations.status, expectedStatus),
-            ...(revision ? [sql`${documentAnnotations.versionId} IS NOT DISTINCT FROM ${revision.from}`] : [])
+            ...(revision ? [sql`${documentAnnotations.versionId} IS NOT DISTINCT FROM ${revision.from}`, ne(documentAnnotations.anchorKind, 'viewpoint')] : [])
           )
         )
         .returning()
@@ -516,7 +474,7 @@ export async function deleteDocumentAnnotation(
   const rows = await withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
       await beforeDelete?.(tx)
-      return tx
+      const removed = await tx
         .delete(documentAnnotations)
         .where(
           and(
@@ -525,7 +483,11 @@ export async function deleteDocumentAnnotation(
             eq(documentAnnotations.id, annotationId)
           )
         )
-        .returning({ id: documentAnnotations.id })
+        .returning({ id: documentAnnotations.id, viewpointId: documentAnnotations.viewpointId })
+      // A viewpoint belongs to its one mark: it goes in the same transaction, after the mark (the foreign key is NO ACTION).
+      const viewpointId = removed[0]?.viewpointId
+      if (viewpointId) await deleteViewpointRow(tx, organizationId, viewpointId)
+      return removed
     })
   )
   return rows.length > 0

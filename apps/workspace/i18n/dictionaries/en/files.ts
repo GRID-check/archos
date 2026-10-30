@@ -1820,6 +1820,7 @@ export const files = {
       agentAnswered: '{productName} answered',
     },
     page: 'Page {page}',
+    modelView: 'Model view',
     draftPlaceholder: 'Write an annotation … (Enter to save)',
     set: 'Place',
     replyPlaceholder: 'Reply …',
@@ -1995,6 +1996,7 @@ export const files = {
         marks: 'Annotations',
         none: 'No annotations in this selection.',
         entry: 'No. {number} · Page {page} · {kind} · {status}',
+        entryOnModel: 'No. {number} · Model view · {kind} · {status}',
         status: {
           open: 'open',
           resolved: 'resolved',

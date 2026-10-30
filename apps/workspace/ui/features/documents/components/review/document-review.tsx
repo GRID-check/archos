@@ -36,7 +36,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { filesCopy } from '@/i18n/namespaces/files'
 import { presenceCopy } from '@/i18n/namespaces/presence'
-import { isGhostMark, type AnnotationView } from '@/lib/annotations/types'
+import { hasBox, isGhostMark, type AnnotationView } from '@/lib/annotations/types'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
 import { stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
@@ -734,7 +734,7 @@ export function DocumentReviewMode({
       setDraft(null)
       select(annotation.id)
       // A ghost (an open mark of an earlier Fassung) is drawn where it stood: the view goes there too.
-      if (annotation.onCurrentRevision || isGhostMark(annotation, review.documentId)) {
+      if (hasBox(annotation) && (annotation.onCurrentRevision || isGhostMark(annotation, review.documentId))) {
         setFocus({ page: annotation.page, y: annotation.y + (annotation.h ?? 0) / 2, key: `${annotation.id}:${Date.now()}` })
       }
     },

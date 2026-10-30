@@ -66,7 +66,8 @@ import {
   updateAnnotationForAsker,
   type ChangeableField,
 } from './service'
-import type { AnnotationView, InternalAnnotationRequest, InternalMarkFields } from './types'
+import type { AnnotationView } from './types'
+import type { InternalAnnotationRequest, InternalMarkFields } from './internal-types'
 
 /** Thrown when the conversation is not about a document: the tool relays it as „open a chat on the document". */
 export class NoDocumentSubjectError extends UnprocessableError {

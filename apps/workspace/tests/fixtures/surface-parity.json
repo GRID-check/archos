@@ -199,6 +199,7 @@
    "operations": [
     "annotation-list",
     "annotation-get",
+    "annotation-viewpoint-get",
     "project-annotation-list"
    ],
    "canvas": {

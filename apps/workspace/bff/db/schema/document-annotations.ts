@@ -16,7 +16,7 @@ import {
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { MAX_MENTIONS_PER_MESSAGE } from '@/lib/limits/catalog'
-import { MAX_ANCHOR_ELEMENTS } from '@/lib/annotations/place'
+import { ANNOTATION_ANCHORS, MAX_ANCHOR_ELEMENTS, type AnnotationAnchor } from '@/lib/annotations/place'
 import {
   ANNOTATION_AUTHORS,
   ANNOTATION_KINDS,
@@ -32,6 +32,7 @@ import {
   type AgentWakeStatus,
   type AgentWakeTrigger,
 } from '@/lib/annotations/types'
+import { annotationViewpoints } from './annotation-viewpoints'
 import { documentVersions } from './document-versions'
 import { documents } from './documents'
 
@@ -66,10 +67,11 @@ export const documentAnnotations = pgTable(
     documentId: uuid('document_id').notNull(),
     versionId: uuid('version_id'),
     number: integer('number').notNull(),
-    page: integer('page').notNull(),
-    shape: text('shape').$type<AnnotationShape>().notNull(),
-    x: doublePrecision('x').notNull(),
-    y: doublePrecision('y').notNull(),
+    /** Null on a mark anchored to a viewpoint (migration 0193); `…_anchor_*` say when. */
+    page: integer('page'),
+    shape: text('shape').$type<AnnotationShape>(),
+    x: doublePrecision('x'),
+    y: doublePrecision('y'),
     w: doublePrecision('w'),
     h: doublePrecision('h'),
     kind: text('kind').$type<AnnotationKind>().notNull(),
@@ -112,6 +114,10 @@ export const documentAnnotations = pgTable(
     anchorElementIds: text('anchor_element_ids').array(),
     /** When the last of its elements was deleted by a save; it keeps its last box (migration 0192). */
     anchorLostAt: timestamp('anchor_lost_at', { withTimezone: true }),
+    /** What the mark is anchored to: a box on a page, elements of a Skizze, or a viewpoint of a model (migration 0193). */
+    anchorKind: text('anchor_kind').$type<AnnotationAnchor>().notNull().default('page'),
+    /** The viewpoint of a mark on a model; with `document_id` it names a viewpoint of the same document. */
+    viewpointId: uuid('viewpoint_id'),
   },
   (table) => ({
     documentFk: foreignKey({
@@ -129,6 +135,14 @@ export const documentAnnotations = pgTable(
       columns: [table.carriedFromId],
       foreignColumns: [table.id],
     }).onDelete('set null'),
+    viewpointFk: foreignKey({
+      name: 'document_annotations_viewpoint_fkey',
+      columns: [table.viewpointId, table.documentId],
+      foreignColumns: [annotationViewpoints.id, annotationViewpoints.documentId],
+    }),
+    viewpointIdx: index('idx_document_annotations_viewpoint')
+      .on(table.viewpointId)
+      .where(sql`${table.viewpointId} IS NOT NULL`),
     numberUniq: uniqueIndex('uniq_document_annotations_number').on(table.documentId, table.number),
     carriedOnce: uniqueIndex('uniq_document_annotations_carried_from')
       .on(table.carriedFromId)
@@ -193,6 +207,22 @@ export const documentAnnotations = pgTable(
     anchorIsRegionOnSheet: check(
       'document_annotations_anchor_is_region_on_sheet',
       sql`${table.anchorElementIds} IS NULL OR (${table.page} = 1 AND ${table.shape} = 'region')`
+    ),
+    anchorKindKnown: check(
+      'document_annotations_anchor_kind_known',
+      sql`${table.anchorKind} IN (${list(ANNOTATION_ANCHORS)})`
+    ),
+    anchorPageIsBox: check(
+      'document_annotations_anchor_page_is_box',
+      sql`${table.anchorKind} <> 'page' OR (${table.page} IS NOT NULL AND ${table.shape} IS NOT NULL AND ${table.x} IS NOT NULL AND ${table.y} IS NOT NULL AND ${table.anchorElementIds} IS NULL AND ${table.viewpointId} IS NULL)`
+    ),
+    anchorSketchIsElements: check(
+      'document_annotations_anchor_sketch_is_elements',
+      sql`${table.anchorKind} <> 'sketch' OR (${table.anchorElementIds} IS NOT NULL AND ${table.viewpointId} IS NULL AND ${table.page} IS NOT NULL AND ${table.shape} IS NOT NULL AND ${table.x} IS NOT NULL AND ${table.y} IS NOT NULL)`
+    ),
+    anchorViewpointIs3d: check(
+      'document_annotations_anchor_viewpoint_is_3d',
+      sql`${table.anchorKind} <> 'viewpoint' OR (${table.viewpointId} IS NOT NULL AND ${table.page} IS NULL AND ${table.shape} IS NULL AND ${table.x} IS NULL AND ${table.y} IS NULL AND ${table.w} IS NULL AND ${table.h} IS NULL AND ${table.anchorElementIds} IS NULL AND ${table.anchorLostAt} IS NULL)`
     ),
     anchorLostNeedsAnchor: check(
       'document_annotations_anchor_lost_needs_anchor',

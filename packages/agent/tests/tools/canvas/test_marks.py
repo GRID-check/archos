@@ -189,6 +189,25 @@ class TestWhatItSays:
 
         assert "on sketch elements stair, door" in result and "elements were deleted" in result
 
+    async def test_a_mark_on_a_3d_model_view_has_no_page_and_comes_last(self, monkeypatch, calls) -> None:
+        view = listed(
+            id="v",
+            number=1,
+            page=None,
+            shape=None,
+            box=None,
+            viewpoint={"id": "vp", "cameraKind": "perspective", "selectionCount": 3, "hasSection": True, "hasSnapshot": False},
+        )
+        page_mark = listed(id="p", number=2, page=5)
+        answering(monkeypatch, calls, {**LIST_BODY, "annotations": [view, page_mark]})
+
+        result = await run_marks()
+
+        assert "None" not in result and "?" not in result
+        assert "No. 1 · 3D view ·" in result
+        assert "on a 3D model view (3 elements selected), with a section" in result
+        assert result.index("No. 2") < result.index("No. 1")
+
     async def test_an_empty_document_says_so(self, monkeypatch, calls) -> None:
         answering(monkeypatch, calls, {**LIST_BODY, "annotations": []})
 

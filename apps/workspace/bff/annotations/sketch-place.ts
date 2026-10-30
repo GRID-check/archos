@@ -30,6 +30,7 @@ import { namesElements } from './place'
 import type { NewAnnotationValues } from './repository'
 import { elementRegion, presentIds } from './sketch-anchor'
 import type { AnnotationShape, MarkMention } from './types'
+import type { ParsedViewpointInput } from './viewpoint-types'
 
 /** A mark's fields as a request names its place: a box, or elements (never both, `./place.ts`). */
 export type PlacedInput = {
@@ -46,6 +47,8 @@ export type PlacedInput = {
   w?: number | null
   h?: number | null
   elementIds?: string[]
+  /** On a model: the view the mark is anchored to (`./viewpoint-place.ts`). */
+  viewpoint?: ParsedViewpointInput
 }
 
 /** A box on a page; the request schema's refinement (`./place.ts`) guarantees it without elements. */
@@ -62,6 +65,7 @@ export const toMark = (input: PlacedInput, sketch: PublishedSketch | null): NewA
     w: shape === 'region' ? (w ?? null) : null,
     h: shape === 'region' ? (h ?? null) : null,
     anchorElementIds,
+    anchorKind: anchorElementIds ? ('sketch' as const) : ('page' as const),
     kind: input.kind,
     body: input.body,
     mentions: input.mentions ?? [],

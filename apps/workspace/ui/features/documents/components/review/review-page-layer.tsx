@@ -22,7 +22,7 @@ import { WorkingDots } from '@/components/ui/working-dots'
 import { useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
 import { presenceCopy } from '@/i18n/namespaces/presence'
-import { isGhostMark, isLive, type AnnotationView } from '@/lib/annotations/types'
+import { hasBox, isGhostMark, isLive, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import { askRegionOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview, ReviewDraft, ReviewTool } from '../../hooks/use-document-review'
@@ -198,14 +198,14 @@ export function selectionTagged(
   layer: { width: number; height: number },
   near = SELECTION_TAG_NEAR
 ): RoomPeerState[] {
-  if (!(layer.width > 0 && layer.height > 0)) return [...selectors]
-  const x1 = mark.x + (mark.w ?? 0)
-  const y1 = mark.y + (mark.h ?? 0)
+  const { x: x0, y: y0 } = mark
+  if (!(layer.width > 0 && layer.height > 0) || x0 == null || y0 == null) return [...selectors]
+  const [x1, y1] = [x0 + (mark.w ?? 0), y0 + (mark.h ?? 0)]
   return selectors.filter((state) => {
     const cursor = state.cursor
     if (!cursor || cursor.page !== mark.page) return true
-    const dx = Math.max(mark.x - cursor.x, 0, cursor.x - x1) * layer.width
-    const dy = Math.max(mark.y - cursor.y, 0, cursor.y - y1) * layer.height
+    const dx = Math.max(x0 - cursor.x, 0, cursor.x - x1) * layer.width
+    const dy = Math.max(y0 - cursor.y, 0, cursor.y - y1) * layer.height
     return Math.hypot(dx, dy) > near
   })
 }
@@ -246,7 +246,7 @@ function PeerSelection({
   tagged,
   pageHeight,
 }: {
-  annotation: Pick<AnnotationView, 'shape' | 'x' | 'y' | 'w' | 'h'>
+  annotation: Pick<AnnotationView, 'shape' | 'w' | 'h'> & { x: number; y: number }
   selectors: readonly RoomPeerState[]
   /** Those of them the tag names: see {@link selectionTagged}. */
   tagged: readonly RoomPeerState[]
@@ -461,7 +461,7 @@ const PageCompany = memo(function PageCompany({
     pointers.find((pointer) => pointer.peer.peerId === state.peer.peerId) ?? { ...state, cursor: null }
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-30" data-testid={`review-company-${page}`}>
-      {marks.map((annotation) => {
+      {marks.filter(hasBox).map((annotation) => {
         const selectors = selections.get(annotation.id)
         if (!selectors) return null
         return (
@@ -548,7 +548,7 @@ const PageMarks = memo(function PageMarks({
   const byline = useAgentByline()
   return (
     <>
-      {marks.map((annotation) => {
+      {marks.filter(hasBox).map((annotation) => {
         const active = annotation.id === selectedId || annotation.id === hoveredId
         const ink = markInk(annotation)
         const proposed = annotation.status === 'proposed'
@@ -987,7 +987,7 @@ export function ReviewPageLayer({
     backToNavigate(event.pointerType)
   }
 
-  const selected = marks.find((annotation) => annotation.id === selectedId) ?? null
+  const selected = marks.filter(hasBox).find((annotation) => annotation.id === selectedId) ?? null
   const draftHere = draft?.page === page ? draft : null
   // The questions asked about boxes on this page; a thread reply is asked about its mark, which is drawn already.
   const asksHere = piloti.asks.filter(

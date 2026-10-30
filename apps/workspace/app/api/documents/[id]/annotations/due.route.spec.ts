@@ -98,6 +98,7 @@ const DOC = {
   id: 'doc_1',
   organizationId: 'org_1',
   scope: 'project',
+  filename: 'Grundriss EG.pdf',
   projectId: 'proj_1',
   publishedVersionId: 'ver_2',
 } as Partial<Document> as Document
@@ -134,6 +135,8 @@ const MARK: AnnotationRecord = {
   carriedFromId: null,
   anchorElementIds: null,
   anchorLostAt: null,
+  anchorKind: 'page',
+  viewpointId: null,
   revisionNumber: 2,
   replies: [],
 }

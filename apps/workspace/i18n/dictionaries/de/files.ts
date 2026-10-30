@@ -1784,6 +1784,7 @@ export const files: typeof en.files = {
       agentAnswered: '{productName} hat geantwortet',
     },
     page: 'Seite {page}',
+    modelView: 'Modellansicht',
     draftPlaceholder: 'Anmerkung schreiben … (Enter zum Speichern)',
     set: 'Setzen',
     replyPlaceholder: 'Antworten …',
@@ -1979,6 +1980,7 @@ export const files: typeof en.files = {
         marks: 'Anmerkungen',
         none: 'Keine Anmerkungen in dieser Auswahl.',
         entry: 'Nr. {number} · Seite {page} · {kind} · {status}',
+        entryOnModel: 'Nr. {number} · Modellansicht · {kind} · {status}',
         status: {
           open: 'offen',
           resolved: 'erledigt',

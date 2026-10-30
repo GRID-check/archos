@@ -7,7 +7,7 @@
 
 import type { CanvasFocus } from '@/features/chat/lib/canvas-bridge'
 import type { AnnotationView } from '@/lib/annotations/types'
-import { regionAround } from '@/lib/annotations/types'
+import { hasBox, regionAround } from '@/lib/annotations/types'
 import type { ReviewDraft } from '../hooks/use-document-review'
 import type { UseCanvasAskOptions } from '../hooks/use-canvas-ask'
 
@@ -24,7 +24,7 @@ export function reviewFocusOf({
   document: Pick<UseCanvasAskOptions, 'fileName' | 'versionId' | 'versionState' | 'shelf'> | null
 }): CanvasFocus | null {
   const place = draft ?? selected
-  if (!place) return null
+  if (!place || !hasBox(place)) return null
   return {
     documentId,
     fileName: document?.fileName ?? null,

@@ -8,6 +8,7 @@
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { MAX_CREATE_BODY_BYTES } from '@/lib/annotations/viewpoint-types'
 import { roomPeerOf } from '@/lib/annotations/peer-header'
 import { createAnnotation, listAnnotations } from '@/lib/annotations/service'
 import { createAnnotationRequestSchema } from '@/lib/annotations/types'
@@ -20,7 +21,7 @@ export const GET = apiRoute<Params>(async ({ session, params }) => listAnnotatio
 
 export const POST = apiRoute<Params>(
   async ({ session, request, params }) =>
-    createAnnotation(session, params.id, await parseJsonBody(request, createAnnotationRequestSchema), {
+    createAnnotation(session, params.id, await parseJsonBody(request, createAnnotationRequestSchema, { maxBytes: MAX_CREATE_BODY_BYTES }), {
       kind: 'person',
       peerId: roomPeerOf(request),
     }),

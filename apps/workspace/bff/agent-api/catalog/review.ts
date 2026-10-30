@@ -231,7 +231,8 @@ export const reviewOperations = [
     description:
       'Sets an annotation at a place on the document (page position or text range) with a kind and a body. ' +
       'On a sketch send `elementIds` (from document-sketch-get) instead of a place; the box follows those ' +
-      'elements. Returns it with its number. Colleagues in `mentions` are told.',
+      'elements. On a ready 3D model send a `viewpoint` (IFC world coordinates, Z-up, metres; GlobalIds must exist) ' +
+      'instead. Exactly one of box, `elementIds`, `viewpoint`. Returns it with its number. Colleagues in `mentions` are told.',
     method: 'POST',
     path: '/api/documents/[id]/annotations',
     params: documentParams,
@@ -259,6 +260,18 @@ export const reviewOperations = [
     path: '/api/documents/[id]/annotations/[annotationId]',
     params: annotationParams,
     load: () => import('@/app/api/documents/[id]/annotations/[annotationId]/route'),
+  },
+  {
+    name: 'annotation-viewpoint-get',
+    domain: 'review',
+    summary: 'Read the 3D view an annotation is set in',
+    description:
+      'The 3D view of an annotation on a model (camera, section planes, elements by GlobalId; IFC world coordinates, Z-up, metres). ' +
+      'A mark on a page has none (404).',
+    method: 'GET',
+    path: '/api/documents/[id]/annotations/[annotationId]/viewpoint',
+    params: annotationParams,
+    load: () => import('@/app/api/documents/[id]/annotations/[annotationId]/viewpoint/route'),
   },
   {
     name: 'annotation-update',

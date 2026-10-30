@@ -195,6 +195,7 @@ TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app"
     bff/permits/repository.integration.spec.ts \
     bff/annotations/repository.integration.spec.ts \
     bff/annotations/sketch-carry.integration.spec.ts \
+    bff/annotations/viewpoint-repository.integration.spec.ts \
     bff/documents/current-version.integration.spec.ts \
     bff/annotations/project-repository.integration.spec.ts \
     bff/proposals/repository.integration.spec.ts \
@@ -2548,3 +2549,79 @@ apply_in anchor_0192 0192_annotation_element_anchor.sql
 apply_in anchor_0192 0192_annotation_element_anchor.sql
 check_in anchor_0192 "SELECT count(*) FROM document_annotations WHERE anchor_element_ids IS NULL" "2" "0192 re-applies, twice"
 echo "==> 0192 element anchors and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0193: a mark on a 3D model is anchored to a viewpoint, and the
+# DOWN.
+#
+# On a database of its own, migrated to 0192. The marks written before take
+# their anchor from what they hold (a Skizze's elements, else a page); a
+# viewpoint mark has no box and names a viewpoint of its own document; a mark
+# of either older kind keeps its box; the viewpoint's bounds hold; the runtime
+# role sees and writes only its own organization's viewpoints; the down drops
+# the viewpoint marks and the table, leaves the others, and the up re-applies,
+# twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0193 viewpoint anchors and their down migration on viewpoints_0193"
+migrate_until viewpoints_0193 0192_annotation_element_anchor
+sql_in viewpoints_0193 <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000193', 'org_0193', 'Modell 0193', 'user_1', 'proj_0193');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000193', 'org_0193', 'user_1', 'Haus.ifc', 'k/0193/a', 'proj_0193', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000193'),
+       ('d2d2d2d2-0000-4000-8000-000000000193', 'org_0193', 'user_1', 'Skizze.svg', 'k/0193/b', 'proj_0193', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000193');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, w, h, kind, body, author_kind, status, created_by, anchor_element_ids)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000193', 'org_0193', 'd2d2d2d2-0000-4000-8000-000000000193', 1, 1, 'region', 0.1, 0.1, 0.2, 0.2, 'hint', 'Stiege', 'person', 'open', 'user_1', '{stair}'),
+       ('f2f2f2f2-0000-4000-8000-000000000193', 'org_0193', 'd2d2d2d2-0000-4000-8000-000000000193', 2, 1, 'point', 0.5, 0.5, null, null, 'hint', 'Tür', 'person', 'open', 'user_1', null);
+SQL
+apply_in viewpoints_0193 0193_annotation_viewpoints.sql
+check_in viewpoints_0193 "SELECT string_agg(number || ':' || anchor_kind, ',' ORDER BY number) FROM document_annotations" "1:sketch,2:page" "a mark written before 0193 takes its anchor from what it holds"
+check_in viewpoints_0193 "SELECT relrowsecurity::text || ',' || (SELECT count(*) FROM pg_policies WHERE tablename = 'annotation_viewpoints' AND policyname = 'tenant_isolation') FROM pg_class WHERE relname = 'annotation_viewpoints'" "true,1" "the viewpoint table is under row-level security with one tenant policy"
+sql_in viewpoints_0193 <<'SQL'
+INSERT INTO annotation_viewpoints (id, organization_id, document_id, camera_kind, camera, created_by)
+VALUES ('a1a1a1a1-0000-4000-8000-000000000193', 'org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 'perspective', '{"type":"perspective"}', 'user_1'),
+       ('a2a2a2a2-0000-4000-8000-000000000193', 'org_0193', 'd2d2d2d2-0000-4000-8000-000000000193', 'perspective', '{"type":"perspective"}', 'user_1');
+INSERT INTO document_annotations (id, organization_id, document_id, number, anchor_kind, viewpoint_id, kind, body, author_kind, status, created_by)
+VALUES ('f3f3f3f3-0000-4000-8000-000000000193', 'org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 1, 'viewpoint', 'a1a1a1a1-0000-4000-8000-000000000193', 'defect', 'Sturz fehlt', 'person', 'open', 'user_1');
+SQL
+check_in viewpoints_0193 "SELECT count(*) FROM document_annotations WHERE anchor_kind = 'viewpoint' AND page IS NULL AND x IS NULL" "1" "a viewpoint mark has no box"
+refused_in viewpoints_0193 "INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, viewpoint_id, page, kind, body, author_kind, status, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 2, 'viewpoint', 'a1a1a1a1-0000-4000-8000-000000000193', 1, 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_anchor_viewpoint_is_3d" "a viewpoint mark was given a page"
+refused_in viewpoints_0193 "INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, page, shape, y, kind, body, author_kind, status, created_by) VALUES ('org_0193', 'd2d2d2d2-0000-4000-8000-000000000193', 3, 'page', 1, 'point', 0.5, 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_anchor_page_is_box" "a page mark was set without x"
+refused_in viewpoints_0193 "INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, kind, body, author_kind, status, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 2, 'viewpoint', 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_anchor_viewpoint_is_3d" "a viewpoint mark was set without a viewpoint"
+refused_in viewpoints_0193 "INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, viewpoint_id, kind, body, author_kind, status, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 2, 'viewpoint', 'a2a2a2a2-0000-4000-8000-000000000193', 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_viewpoint_fkey" "a mark named a viewpoint of another document"
+refused_in viewpoints_0193 "INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, page, shape, x, y, viewpoint_id, kind, body, author_kind, status, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 2, 'page', 1, 'point', 0.5, 0.5, 'a1a1a1a1-0000-4000-8000-000000000193', 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_anchor_page_is_box" "a page mark named a viewpoint"
+refused_in viewpoints_0193 "UPDATE document_annotations SET anchor_kind = 'sketch' WHERE number = 2 AND document_id = 'd2d2d2d2-0000-4000-8000-000000000193'" "document_annotations_anchor_sketch_is_elements" "a sketch mark without elements"
+refused_in viewpoints_0193 "INSERT INTO annotation_viewpoints (organization_id, document_id, camera_kind, camera, clipping_planes, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 'perspective', '{\"type\":\"perspective\"}', '[1,2,3,4,5,6,7]', 'user_1')" "annotation_viewpoints_planes_bounded" "a viewpoint was given seven section planes"
+refused_in viewpoints_0193 "INSERT INTO annotation_viewpoints (organization_id, document_id, camera_kind, camera, snapshot_key, snapshot_content_type, snapshot_bytes, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 'perspective', '{\"type\":\"perspective\"}', 'k', 'image/png', 0, 'user_1')" "annotation_viewpoints_snapshot_bounded" "a snapshot of no bytes"
+refused_in viewpoints_0193 "INSERT INTO annotation_viewpoints (organization_id, document_id, camera_kind, camera, snapshot_key, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 'perspective', '{\"type\":\"perspective\"}', 'k', 'user_1')" "annotation_viewpoints_snapshot_complete" "a snapshot key without its size and type"
+refused_in viewpoints_0193 "INSERT INTO annotation_viewpoints (organization_id, document_id, camera_kind, camera, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 'perspective', '{\"type\":\"orthographic\"}', 'user_1')" "annotation_viewpoints_camera_is_object" "a camera that is not the kind it says"
+refused_in viewpoints_0193 "INSERT INTO annotation_viewpoints (organization_id, document_id, camera_kind, camera, pin_global_id, created_by) VALUES ('org_0193', 'd1d1d1d1-0000-4000-8000-000000000193', 'perspective', '{\"type\":\"perspective\"}', 'g', 'user_1')" "annotation_viewpoints_pin_complete" "a pinned element without a point"
+RW193=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d viewpoints_0193 -qtA \
+  -c "SET grid.organization_id = 'org_0193'" \
+  -c "SELECT count(*) FROM annotation_viewpoints")
+if [ "$RW193" != "2" ]; then
+  echo "MIGRATION ASSERTION FAILED on viewpoints_0193: the runtime role did not see its own organization's viewpoints (got: $RW193)" >&2
+  exit 1
+fi
+RWOTHER193=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d viewpoints_0193 -qtA \
+  -c "SET grid.organization_id = 'org_other'" \
+  -c "SELECT count(*) FROM annotation_viewpoints")
+if [ "$RWOTHER193" != "0" ]; then
+  echo "MIGRATION ASSERTION FAILED on viewpoints_0193: another organization saw viewpoints (got: $RWOTHER193)" >&2
+  exit 1
+fi
+if PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d viewpoints_0193 -qtA -v ON_ERROR_STOP=1 \
+  -c "SET grid.organization_id = 'org_other'" \
+  -c "INSERT INTO annotation_viewpoints (organization_id, document_id, camera_kind, camera, created_by) VALUES ('org_other', 'd1d1d1d1-0000-4000-8000-000000000193', 'perspective', '{\"type\":\"perspective\"}', 'user_1')" >/dev/null 2>&1; then
+  echo "MIGRATION ASSERTION FAILED on viewpoints_0193: another organization planted a viewpoint on this organization's document" >&2
+  exit 1
+fi
+apply_in viewpoints_0193 0193_annotation_viewpoints.down.sql
+check_in viewpoints_0193 "SELECT count(*) FROM information_schema.tables WHERE table_name = 'annotation_viewpoints'" "0" "down dropped the viewpoint table"
+check_in viewpoints_0193 "SELECT count(*) FROM information_schema.columns WHERE table_name = 'document_annotations' AND column_name IN ('anchor_kind', 'viewpoint_id')" "0" "down dropped both columns"
+check_in viewpoints_0193 "SELECT string_agg(number::text, ',' ORDER BY number) FROM document_annotations" "1,2" "down deleted the viewpoint mark and left the others"
+check_in viewpoints_0193 "SELECT string_agg(attname || ':' || attnotnull::text, ',' ORDER BY attname) FROM pg_attribute WHERE attrelid = 'document_annotations'::regclass AND attname IN ('page', 'shape', 'x', 'y')" "page:true,shape:true,x:true,y:true" "down made the box required again"
+apply_in viewpoints_0193 0193_annotation_viewpoints.sql
+apply_in viewpoints_0193 0193_annotation_viewpoints.sql
+check_in viewpoints_0193 "SELECT string_agg(number || ':' || anchor_kind, ',' ORDER BY number) FROM document_annotations" "1:sketch,2:page" "0193 re-applies, twice"
+echo "==> 0193 viewpoint anchors and down migration verified"

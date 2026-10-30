@@ -232,7 +232,7 @@ async function finishCheck(
   }
   const marks = (await listDocumentAnnotations(organizationId, document.id))
     .filter((mark) => proposed.has(mark.id))
-    .sort((a, b) => a.page - b.page || a.number - b.number)
+    .sort((a, b) => (a.page ?? 0) - (b.page ?? 0) || a.number - b.number)
   if (marks.length === 0) {
     // Every mark it proposed is gone already: nothing is left to point at.
     await eraseConversation(organizationId, conversationId)

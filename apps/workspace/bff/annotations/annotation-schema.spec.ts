@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { documentAnnotationsJsonSchema } from './annotation-schema'
-import { ANNOTATION_WIRE_SCHEMAS } from './types'
+import { ANNOTATION_WIRE_SCHEMAS } from './internal-types'
 
 const FIXTURE = join(process.cwd(), 'tests/fixtures/document-annotations.schema.json')
 

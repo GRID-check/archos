@@ -665,6 +665,44 @@ rule stay on it, readable, with no way to move them to the Skizze; while a
 Skizze is in Freigabe, a mark is set on the published Fassung, so an element
 drawn only in the draft cannot be marked until the draft is published.
 
+### A mark on a 3D model: a viewpoint
+
+A model (an IFC document) has no page. A mark on one is anchored to a
+**viewpoint** (migration `0193_annotation_viewpoints.sql`, BCF's word): the
+camera, up to six section planes, the selected elements, which elements are
+shown or hidden, up to sixteen colour groups, an optional pin and a snapshot.
+Everything is in IFC world coordinates, Z-up, metres, so a viewpoint means the
+same in any viewer; the viewer converts to and from its own frame
+(`ui/features/bim/lib/viewpoint.ts`). The wire is `bff/annotations/viewpoint-types.ts`.
+
+- **One request, three places.** `POST …/annotations` takes exactly one of a box,
+  `elementIds` or `viewpoint`. `document_annotations.anchor_kind` says which
+  (`page`, `sketch`, `viewpoint`); `page`, `shape`, `x` and `y` are null on a
+  viewpoint mark, and the three `…_anchor_*` CHECKs say which fields each kind
+  carries. A reader that draws a box asks `hasBox(mark)` first; a viewpoint mark
+  lists as „Modellansicht“ with no page.
+- **Refusals** (`viewpoint-place.ts`): a viewpoint on a document that is no model
+  is a 400 `not_a_model`; a box or elements on a model are a 422 („A mark on a
+  model sets a viewpoint“); a model that is not `ready` is a 422
+  `model_not_ready`; a selected or pinned GlobalId the model lacks is a 422
+  `unknown_elements` naming the first twenty (skipped when the model's element list
+  is truncated; exceptions and colouring are format-checked only); a snapshot
+  whose bytes are not the PNG or JPEG it says, or that is over 1.5 MB, is a 422
+  `bad_snapshot`. Piloti sets no viewpoint mark yet (400).
+- **Storage.** `annotation_viewpoints` is immutable and under `secure_table`
+  (its organization and its document's). The snapshot is an object at
+  `<document dir>/_bim/viewpoints/<id>.jpg|png`, swept with the document's
+  `_bim/` prefix; it is stored before the transaction and deleted again when the
+  transaction fails. The mark and its viewpoint are one transaction
+  (`viewpoint-repository.ts`); numbering is shared with every other mark
+  (`numbering.ts`).
+- **Reading.** A mark in a list carries a short `viewpoint` summary; the whole
+  view is `GET …/annotations/{id}/viewpoint` (agent operation
+  `annotation-viewpoint-get`) and the image `GET …/snapshot` (binary, not an
+  agent operation). Both are gated like reading the document.
+- **No carry.** A viewpoint mark is not carried to a newer Fassung: its
+  referent is a view, not a sheet.
+
 ### Mentioning a colleague
 
 The draft card and a thread's reply box are the chat's composer for mentions,

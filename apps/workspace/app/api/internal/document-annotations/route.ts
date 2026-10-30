@@ -22,7 +22,7 @@
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal-envelope'
 import { resolveAgentDocument, runAgentAnnotationRequest } from '@/lib/annotations/agent'
-import { internalAnnotationRequestSchema } from '@/lib/annotations/types'
+import { internalAnnotationRequestSchema } from '@/lib/annotations/internal-types'
 import { withTenant } from '@/lib/db/tenant-context'
 
 export const POST = internalApiRoute(

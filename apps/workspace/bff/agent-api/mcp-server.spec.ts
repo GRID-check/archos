@@ -210,7 +210,11 @@ describe('what tools mode costs a client', () => {
   // minimums, `.regex()` patterns and defaults zod always enforced and the hand-written converter dropped
   // (measured 1,042, +22 a tool). They are constraints an agent otherwise learns from a 400, not ballast;
   // the exporter drops the keywords that only restate an absence (`lib/api/zod-json-schema.ts`).
-  const MAX_AVERAGE_CHARS = 1_050
+  // Raised to 1,065 on 2026-10-30 for the viewpoint of a mark on a 3D model (migration 0193): the request
+  // schema of `annotation-create` carries the camera, section planes and element lists (a camera is two
+  // branches of three vectors each) and `annotation-viewpoint-get` is one more tool. Descriptions, the
+  // example and the vectors' bounds were cut first; measured 1,064.
+  const MAX_AVERAGE_CHARS = 1_065
   const MAX_OPERATION_CHARS = 9_000
 
   it(`stays under ${MAX_AVERAGE_CHARS} characters a tool on average, and ${MAX_OPERATION_CHARS} for any catalog operation`, async () => {

@@ -137,7 +137,17 @@ def _share(value: object) -> str:
         return "?"
 
 
+def _viewpoint(item: dict[str, Any]) -> dict[str, Any] | None:
+    """The short form of a mark's viewpoint (a mark on a 3D model has no page and no box), or None."""
+    return item["viewpoint"] if isinstance(item.get("viewpoint"), dict) else None
+
+
 def _place(item: dict[str, Any]) -> str:
+    if viewpoint := _viewpoint(item):
+        count = viewpoint.get("selectionCount")
+        selected = f" ({count} elements selected)" if isinstance(count, int) else ""
+        section = ", with a section" if viewpoint.get("hasSection") else ""
+        return f"on a 3D model view{selected}{section}"
     if isinstance(item.get("elementIds"), list) and item["elementIds"]:
         lost = "; all its elements were deleted, it keeps its last place" if item.get("anchorLost") else ""
         return "on sketch elements " + ", ".join(str(element) for element in item["elementIds"]) + lost
@@ -169,7 +179,8 @@ def _reply_lines(replies: list[Any]) -> list[str]:
 def _annotation_lines(item: dict[str, Any]) -> list[str]:
     kind = _KIND_LABELS.get(str(item.get("kind")), _text(item.get("kind")))
     status = _STATUS_LABELS.get(str(item.get("status")), _text(item.get("status")))
-    head = f"No. {item.get('number')} · p. {item.get('page')} · {kind} · {status} · by {_author(item)}"
+    page = "3D view" if _viewpoint(item) else f"p. {item.get('page')}"
+    head = f"No. {item.get('number')} · {page} · {kind} · {status} · by {_author(item)}"
     lines = [head, f"  {_clipped(item.get('body'), MAX_LISTED_BODY)}"]
     if basis := _text(item.get("basis")):
         lines.append(f"  Basis: {basis}")
@@ -185,12 +196,12 @@ def _annotation_lines(item: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _sort_key(item: dict[str, Any]) -> tuple[int, int, int]:
-    """Live ones first, then by page and number: the order a review walks them in (``compareAnnotations``)."""
+def _sort_key(item: dict[str, Any]) -> tuple[int, int, int, int]:
+    """Live ones first, then by page and number, marks on a model after the pages (``compareAnnotations``)."""
     live = 0 if item.get("status") in _LIVE else 1
     page = item.get("page") if isinstance(item.get("page"), int) else 0
     number = item.get("number") if isinstance(item.get("number"), int) else 0
-    return live, page, number
+    return live, 1 if _viewpoint(item) else 0, page, number
 
 
 def _annotations(body: dict[str, Any]) -> list[dict[str, Any]]:

@@ -235,9 +235,9 @@ function threadBlocks(annotation: AnnotationView, t: Translator, f: Formatters):
 
 /** One mark: „Nr. 4 · Seite 2 · Mangel · offen", who stands behind it, the text, its facts and its thread. */
 export function entryBlocks(annotation: AnnotationView, t: Translator, f: Formatters): DocBlock[] {
-  const heading = t('review.export.document.entry', {
+  const heading = t(annotation.page == null ? 'review.export.document.entryOnModel' : 'review.export.document.entry', {
     number: annotation.number,
-    page: annotation.page,
+    page: annotation.page ?? 0,
     kind: t(`annotations.kinds.${annotation.kind}`),
     status: t(`review.export.document.status.${annotation.status}`),
   })

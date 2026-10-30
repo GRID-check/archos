@@ -279,6 +279,7 @@ export const EXPOSURE = {
   'annotation-reply-delete': OFFERED,
   'annotation-reply-update': OFFERED,
   'annotation-update': { external: true, piloti: 'native:canvas__update', reason: CANVAS },
+  'annotation-viewpoint-get': OFFERED,
   'document-annotations-export': OFFERED,
   'document-quarantine-allow': SENSITIVE,
   'document-quarantine-allow-request': OFFERED,
@@ -712,7 +713,6 @@ export const EXPOSURE = {
   'ifc-query': { external: true, piloti: 'native:ifc_query', reason: NATIVE_READ },
   'ifc-measure': { external: true, piloti: 'native:ifc_measure', reason: NATIVE_READ },
   'law-lookup': { external: true, piloti: 'native:ris_lookup_tool', reason: NATIVE_READ },
-
   // the app-only tools of the door's MCP Apps views (`catalog/app-views.ts`)
   'proposal-card-apply': APP_ONLY,
   'proposal-card-dismiss': APP_ONLY,

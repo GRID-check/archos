@@ -108,10 +108,11 @@ export function markBasis(page: number, olderName: string): string {
 }
 
 /** A mark already on the document, as the notice compares it. */
+/** A mark on a model has no box (migration 0193): it is never the same place as a proposal. */
 export interface ExistingMark {
-  page: number
-  x: number
-  y: number
+  page: number | null
+  x: number | null
+  y: number | null
   w: number | null
   h: number | null
   body: string
@@ -121,6 +122,8 @@ export interface ExistingMark {
 const samePlace = (mark: ExistingMark, proposal: AnnotationBoxProposal): boolean =>
   mark.authorKind === 'piloti' &&
   mark.page === proposal.page &&
+  mark.x !== null &&
+  mark.y !== null &&
   mark.body.trim() === proposal.body.trim() &&
   Math.abs(mark.x - proposal.x) < 1e-4 &&
   Math.abs(mark.y - proposal.y) < 1e-4 &&

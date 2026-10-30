@@ -25,7 +25,7 @@ vi.mock('server-only', () => ({}))
 
 import { BACKEND_OPERATIONS } from '@/lib/agent-api/backend-operations'
 import { AGENT_OPERATIONS } from '@/lib/agent-api/catalog'
-import { internalAnnotationRequestSchema } from '@/lib/annotations/types'
+import { internalAnnotationRequestSchema } from '@/lib/annotations/internal-types'
 import { answerCardSchema } from '@/shared/cards/schemas'
 import {
   isCanvasOperation,
