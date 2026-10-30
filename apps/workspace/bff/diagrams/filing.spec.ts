@@ -89,6 +89,9 @@ vi.mock('@/lib/documents/ingest-dispatch', () => ({
   dispatchIngest: (...args: unknown[]) => dispatchIngest(...args),
 }))
 
+const upsertSearchFacets = vi.fn(async (_org: string, rows: readonly unknown[]) => rows.length)
+vi.mock('@/lib/search/facets-repository', () => ({ upsertSearchFacets: (...a: [string, readonly unknown[]]) => upsertSearchFacets(...a) }))
+
 import type { NewDocument } from '@/lib/db/schema/documents'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { makeProject } from '@/test-utils/db-fixtures'
@@ -160,6 +163,27 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.clearAllMocks()
+})
+
+describe('a filed Skizze is found by what is drawn on it', () => {
+  it('writes its search row from the scene; a mermaid diagram gets none', async () => {
+    const scene = {
+      type: 'excalidraw',
+      elements: [
+        { id: 'frame', type: 'frame', x: 0, y: 0, name: 'Erdgeschoss' },
+        { id: 'lift', type: 'rectangle', x: 0, y: 0 },
+        { id: 'lift-label', type: 'text', x: 0, y: 0, text: 'Lift', containerId: 'lift' },
+      ],
+    }
+    const filed = await file({ sourceKind: 'excalidraw', source: JSON.stringify(scene), title: 'Raumprogramm' })
+    expect(upsertSearchFacets).toHaveBeenCalledTimes(1)
+    const [, [row]] = upsertSearchFacets.mock.calls[0] as [string, [{ documentId: string; searchText: string }]]
+    expect(row).toMatchObject({ documentId: filed.svg.documentId, searchText: 'Raumprogramm · Erdgeschoss · Lift' })
+
+    upsertSearchFacets.mockClear()
+    await file()
+    expect(upsertSearchFacets).not.toHaveBeenCalled()
+  })
 })
 
 describe('a diagram is two files', () => {

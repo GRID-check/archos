@@ -79,6 +79,10 @@ only the palette differs (`use-rendered-diagram.ts`). "What got filed is not
 what I saw" is not a defect a Ziviltechniker can spot before signing, which is
 why everything but the palette is held constant.
 
+**A saved Skizze is the exception** (ADR-0149): its picture is drawn by the
+server from its scene, below („The server draws the picture“). Filing from the
+chat still takes the browser's.
+
 The bytes therefore arrive from an authenticated user's browser. **That is the
 same trust posture every upload already has** — and it is stated rather than
 assumed, because nothing on the server can assert that the SVG is a faithful
@@ -86,6 +90,14 @@ drawing of the source text beside it. What the server *can* assert is that the
 file is inert.
 
 ## Trust: what the server does with client bytes
+
+**What is trusted, by path.** A filed mermaid diagram and a sketch filed from the
+chat: the browser's SVG, held inert by the two rules below; nothing checks it
+draws its source. A saved Skizze (`PUT /api/documents/{id}/sketch`): nothing of the
+client's picture. The server draws the SVG from the checked scene and files that,
+so the picture, the PDF, the outline and the editor come from one scene and cannot
+disagree (ADR-0149). The client's scene is still the writer's: checked
+(`sketch-scene.ts`), never trusted to be what anyone else drew.
 
 `bff/diagrams/svg.ts` does two things, and neither is redundant:
 
@@ -565,9 +577,16 @@ document, never a new pair.
   answers the stored scene, the `versionId` it was read from and an `outline`
   derived without a model call (`bff/diagrams/sketch-outline.ts`): texts with the
   element each labels, shapes by label, connections from-label → to-label with
-  the arrow's label, frames with their children, each with its element id. 415
-  for a document without a scene. `PUT` (`document-sketch-update`) takes
-  `{ scene, svg, baseVersionId, baseContentHash? }`. `saveTarget` says what a
+  the arrow's label and the bound ids, frames with their children, each with its
+  element id and a `box` `{x, y, w, h}` in whole scene pixels (shapes, frames, free
+  text, connections), and the `points` of a line not bound at both ends (a plot
+  edge, a street), so an agent places things without looking at the picture. The
+  outline comes before the scene in the answer; `?scene=omit` leaves the scene out
+  and `?ids=a,b` answers only those `elements` whole (at most 200), because a
+  150-element sketch's outline is about 25,000 characters and the door shows
+  40,000 (`sketch-outline.spec.ts` holds it). 415 for a document without a scene.
+  `PUT` (`document-sketch-update`) takes `{ scene, baseVersionId, baseContentHash? }`;
+  an `svg` an older editor still sends is dropped unread. `saveTarget` says what a
   save writes: `published`, the next Fassung; `draft`, the open Freigabe
   draft the view was read from (its `versionId` and `contentHash`); or
   `review_open`, nothing (below, „A save during Freigabe“). The read comes from the stored bytes
@@ -589,14 +608,18 @@ document, never a new pair.
   agent's edit through `document-sketch-update` wins the merge on every open
   canvas, and a delete survives it; an editor's save changes nothing but the
   tombstones. Tombstones that would push the scene over its caps are left out.
-- **The picture is trusted as an upload is.** `scene` and `svg` arrive
-  separately and nothing renders one from the other on the server: the
-  outline and the editor read the scene, the preview and the PDF show the SVG.
-  The writer is authorized to change the document, so a mismatch is the
-  writer's integrity, not an escalation; the SVG still goes through the
-  filing validator, and the operation's description tells an agent the two
-  must agree. No cheap check fits: an agent's hand-written SVG need not set
-  text the way `exportToSvg` does.
+- **The server draws the picture** (ADR-0149, `bff/diagrams/sketch-renderer.ts`).
+  Excalidraw's own `exportToSvg`, with the editor's settings, runs in a worker
+  thread on happy-dom (`sketch-render-worker.ts`, bundled by
+  `scripts/build-sketch-renderer.ts` into `dist-sketch-render/`), then the same
+  cleaning and validator as the browser (`fileableSketchSvg`, `sketch-svg.ts`).
+  The output is the browser's stroke for stroke; a render takes 13 ms for 40
+  elements and 40 to 60 ms for 150, the worker about 200 MB while warm. A text the
+  save adds or changes is laid out again with the server's metrics
+  (`sketch-picture.ts`, `sketch-text-metrics.ts`: the editor's own font files,
+  within 0.0005 px of Chromium), so an agent need not guess a label's width. One
+  render at a time, 16 queued, a 10 s deadline; a render that fails is a 503 and
+  nothing is saved.
 - **The marking stays honest.** The SVG goes through `acceptDiagram` as filing
   does, with the two-author line (`diagrams.markingEdited`); the machine half
   stays `AIHumanReviewed=false`, because editing is not a Freigabe.
@@ -668,18 +691,27 @@ document, never a new pair.
   latest Fassung (or the open draft). `canWrite` is what the PUT would take:
   write access and a filed `diagram_svg`. When another Fassung becomes current
   (`version.published` from someone else), the preview reads its picture again.
+- **Found by what is drawn on it.** Filing and every save that publishes write the
+  Skizze's search row from its scene (`sketch-search.ts`, `sketchSearchFacets`):
+  title, every text and the frames' names, so a search for „Lift“ finds the sketch
+  with a room labelled „Lift“. A sketch is never ingested, so no backend listing
+  names it and the shelf's backstop leaves the row alone; a save into a Freigabe
+  draft writes nothing (the search shows the current Fassung). A draft that
+  becomes current through Freigabe keeps the row of the Fassung before it until the
+  next save (open).
 - **Compared by its outline.** „Text vergleichen“ on two Fassungen of a Skizze
   diffs their outlines (`bff/diagrams/sketch-outline-text.ts`: one line per
   shape, connection, frame and free text), never the SVG markup.
 - **Observable.** Each successful save scores `sketch-revised` (the Fassung
   number), every attempt `sketch-save` (`saved`, `drafted`, `pdf_stale`,
-  `conflict`, `review_open`, `refused`; metadata `carried`, `lost`), and every
+  `conflict`, `review_open`, `refused`, `render_failed`; metadata `carried`, `lost`,
+  `render_ms`, `render_elements`, `remeasured`), and every
   Fassung made current that moved a pin `sketch-pins-kept` (the share still on
   an element), on the trace of the turn that drew the sketch.
 
 `DIAGRAM_RENDERERS.excalidraw` stays `null`: reopening hands the stored scene to
-the editor, and the preview shows the stored SVG, so nothing renders a scene
-from its source.
+the editor, and the preview shows the stored SVG. The one server-side render of a
+scene is the save's (above).
 
 The editor offers no AI: `aiEnabled={false}`, and the `ttd` dialog (mermaid to
 Excalidraw) is closed when it opens (`sketch/sketch-guards.ts`, ADR-0141's

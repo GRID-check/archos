@@ -11,7 +11,7 @@ import {
   updateTagsSchema,
 } from '@/lib/documents/document-wire'
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
-import { saveSketchSchema } from '@/lib/diagrams/sketch-wire'
+import { saveSketchSchema, sketchReadQuerySchema } from '@/lib/diagrams/sketch-wire'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
 import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
@@ -201,16 +201,17 @@ export const documentsOperations = [
   {
     name: 'document-sketch-get',
     domain: 'documents',
-    summary: 'Read a sketch’s scene and outline',
+    summary: 'Read a sketch’s outline and scene',
     description:
-      'A sketch document (an SVG filed from an Excalidraw drawing) read as structure: `outline` lists its `texts` (with the ' +
-      'shape or arrow each labels), `shapes` with their labels, `connections` (arrow from-label → to-label, with the ' +
-      'arrow’s own label) and `frames` with their children, each with the element id. `scene` is the whole Excalidraw ' +
-      'scene and `versionId` the version read; send both back to document-sketch-update. Any other document answers 415. ' +
-      'A sketch claims no dimension.',
+      'A sketch document (an SVG filed from an Excalidraw drawing) read as structure. `outline` first: `texts` (with the ' +
+      'element each labels), `shapes` with labels, `connections` (from-label → to-label, bound ids, own label; `points` ' +
+      'when an end is unbound) and `frames` with children, each with its id and a `box` {x, y, w, h} in scene pixels, y ' +
+      'down. `scene=omit` drops `scene`; `ids` answers just those `elements`. To save, read the whole scene and send it ' +
+      'with `versionId` to document-sketch-update. Other documents answer 415. A sketch claims no dimension.',
     method: 'GET',
     path: '/api/documents/[id]/sketch',
     params: documentParams,
+    query: sketchReadQuerySchema,
     readOnly: true,
     load: () => import('@/app/api/documents/[id]/sketch/route'),
   },
@@ -219,15 +220,13 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Save a changed sketch as a new version',
     description:
-      'Writes a new version of the same sketch document from the whole changed `scene`, its picture as `svg` (Excalidraw’s ' +
-      'exportToSvg) and `baseVersionId`, the `versionId` document-sketch-get returned. The PDF filed beside the sketch is ' +
-      'drawn again as its next version. A newer version answers 409 with `currentVersionId`: read again and redo the ' +
-      'change. Change elements in place and leave out the ones to remove: the server gives each changed element its next ' +
-      '`version`, keeps a removed one as deleted, and tells the people who have the sketch open, so their canvases take ' +
-      'your change. `svg` must draw the same scene: the preview and the PDF show the `svg`, the outline and the editor the ' +
-      '`scene`. The files then say a person edited the drawing. Only a sketch filed into the project; needs ' +
-      'project:documents:write and project:edit. Returns `{ documentId, versionId, versionNumber, pdf, pdfStale }`; ' +
-      '`pdfStale` is true when the PDF could not be drawn again and still shows an earlier version.',
+      'Writes the next version of the sketch from the whole changed `scene` and `baseVersionId` (the `versionId` ' +
+      'document-sketch-get returned). The server draws the picture and the PDF beside it from the scene, and lays out ' +
+      'texts you add or change, so their size need not be right. 409 with `currentVersionId` when a newer version ' +
+      'exists: read again and redo the change. Change elements in place and leave out the ones to remove; people with ' +
+      'the sketch open see your change. Only a sketch filed into the project; needs project:documents:write and ' +
+      'project:edit. 503 when the picture could not be drawn: retry. Returns `{ documentId, versionId, versionNumber, ' +
+      'pdf, pdfStale }`; `pdfStale` means the PDF still shows an earlier version.',
     method: 'PUT',
     path: '/api/documents/[id]/sketch',
     params: documentParams,

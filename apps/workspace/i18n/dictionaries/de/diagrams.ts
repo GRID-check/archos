@@ -64,6 +64,7 @@ export const diagrams: typeof en.diagrams = {
     savedVersion: 'Als Fassung {number} gespeichert',
     saveFailed: 'Konnte nicht gespeichert werden',
     staleVersion: 'Inzwischen gibt es eine neuere Fassung. Öffnen Sie die Skizze erneut, um auf ihr weiterzuarbeiten.',
+    renderUnavailable: 'Das Bild der Skizze konnte gerade nicht gezeichnet werden. Bitte gleich noch einmal speichern.',
     sceneRejected: 'Die Skizze enthält etwas, das hier nicht gespeichert wird: ein Bild, eingebettete Inhalte oder zu viele Elemente.',
     viewOnly: 'Sie können diese Skizze ansehen, aber nicht ändern. Was die anderen zeichnen, erscheint hier sofort.',
     agentFor: '{name} · für {forName}',

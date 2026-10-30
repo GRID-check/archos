@@ -5,8 +5,8 @@
  */
 
 import { z } from 'zod'
-import { MAX_DIAGRAM_SVG_BYTES } from './diagram-sources'
 import type { SketchOutline } from './sketch-outline'
+import type { SceneElement } from './sketch-scene'
 import type { SketchScene } from './sketch-scene'
 
 export const saveSketchSchema = z.object({
@@ -19,11 +19,6 @@ export const saveSketchSchema = z.object({
       'The whole Excalidraw scene from document-sketch-get, with your changes: keep each element’s `id`; ' +
         'optional `appState`; no `files` (no images).'
     ),
-  svg: z
-    .string()
-    .min(1)
-    .max(MAX_DIAGRAM_SVG_BYTES)
-    .describe('That scene as SVG (Excalidraw’s exportToSvg), checked by the server’s SVG rules'),
   baseVersionId: z
     .string()
     .min(1)
@@ -41,6 +36,37 @@ export const saveSketchSchema = z.object({
 
 export type SaveSketchBody = z.infer<typeof saveSketchSchema>
 
+/** At most this many elements in one focused read (`?ids=`). */
+export const MAX_FOCUSED_IDS = 200
+
+/** The query of `GET /api/documents/[id]/sketch` (beside `?probe=1`, the Files preview's, which is no operation). */
+export const sketchReadQuerySchema = z.object({
+  scene: z
+    .enum(['include', 'omit'])
+    .optional()
+    .describe('`omit`: the outline without the scene.'),
+  ids: z
+    .string()
+    .max(MAX_FOCUSED_IDS * 65)
+    .optional()
+    .describe(
+      `Comma-separated element ids: answers those \`elements\` whole, no scene (at most ${MAX_FOCUSED_IDS}).`
+    ),
+})
+
+export interface SketchReadOptions {
+  scene: boolean
+  ids: string[] | null
+}
+
+/** What a read asks for; a focused read (`ids`) carries no scene. */
+export function sketchReadOptions(query: z.infer<typeof sketchReadQuerySchema>): SketchReadOptions {
+  const ids = query.ids
+    ? [...new Set(query.ids.split(',').map((id) => id.trim()).filter(Boolean))].slice(0, MAX_FOCUSED_IDS)
+    : null
+  return { scene: query.scene !== 'omit' && ids === null, ids }
+}
+
 /**
  * The saving editor's peer id in the document room, a header beside the body:
  * the server tells the room of every save (`scene.saved`) stamped with it, so
@@ -56,8 +82,12 @@ export interface SketchDocumentView {
   /** Whether the reader may save a Fassung (and edit live): otherwise the editor only shows. */
   canWrite: boolean
   title: string
-  scene: SketchScene
+  /** Before the scene, so a reader cut off at a size limit still has it. */
   outline: SketchOutline
+  /** The whole scene; absent for `?scene=omit` and for a focused read. */
+  scene?: SketchScene
+  /** For `?ids=`: those elements whole, in scene order; an id that is not drawn is left out. */
+  elements?: SceneElement[]
   /**
    * What a save writes: `published`, the next current Fassung; `draft`, the open
    * Freigabe draft this view was read from (`versionId` is the draft's); or

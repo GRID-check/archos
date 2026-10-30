@@ -25,7 +25,7 @@
  * as a 400 on their finished sketch.
  */
 
-import { parseDiagramSvg, serializeDiagramSvg } from '@/lib/diagrams/svg'
+import { parseDiagramSvg, serializeDiagramSvg } from './svg'
 
 /** Elements removed by the producer because they carry no geometry the file needs. */
 const SKETCH_EFFECTS = ['style', 'mask'] as const

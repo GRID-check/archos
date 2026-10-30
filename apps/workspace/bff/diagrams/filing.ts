@@ -86,6 +86,8 @@ import type { ConversationOrigin } from '@/lib/conversations/restricted-egress'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { acceptDiagram, censusSvg, type DiagramSubmission } from './svg'
 import { renderDiagramPdf } from './svg-to-pdf'
+import { parseStoredSketchScene } from './sketch-scene'
+import { indexSketchForSearch } from './sketch-search'
 
 export interface FileDiagramInput extends DiagramSubmission {
   /** The commissioning human. Their permission is what authorizes the write. */
@@ -194,6 +196,12 @@ export async function fileDiagramDocuments(input: FileDiagramInput): Promise<Fil
     // it.
     render: ({ marking }) => ({ bytes: svgBytes, contentType: 'image/svg+xml', marking }),
   })
+
+  // A Skizze is found by what is drawn on it (`sketch-search.ts`); a mermaid diagram has no scene.
+  const scene = input.sourceKind === 'excalidraw' ? parseStoredSketchScene(input.source) : null
+  if (scene) {
+    await indexSketchForSearch({ organizationId: input.session.organizationId, documentId: svg.documentId, title: input.title, scene })
+  }
 
   try {
     const pdf = await fileGeneratedDocument({

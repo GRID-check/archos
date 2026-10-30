@@ -19,7 +19,7 @@
 import './excalidraw-assets'
 import { convertToExcalidrawElements, exportToSvg, serializeAsJSON } from '@excalidraw/excalidraw'
 import type { SceneSkeleton } from '@/lib/diagrams/sketch-fence'
-import { fileableSketchSvg } from './sketch-svg'
+import { fileableSketchSvg } from '@/lib/diagrams/sketch-svg'
 
 type Skeletons = Parameters<typeof convertToExcalidrawElements>[0]
 

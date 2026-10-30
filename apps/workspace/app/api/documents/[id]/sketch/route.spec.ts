@@ -5,7 +5,8 @@
  * A Skizze read back and saved as a new Fassung of the same document (ADR-0148).
  *
  * The service runs for real (`bff/diagrams/sketch-document.ts`, the scene check,
- * the SVG validator, the Fassung write); what is faked is the storage under it:
+ * the SVG validator, the Fassung write); what is faked is the storage under it
+ * and the renderer's worker (`sketch-renderer.spec.ts` runs the real one):
  * the row, the object store and the version repository. The version repository
  * fake keeps the one rule the real one enforces under its lock, the published
  * pointer a writer read (`published-guard.ts`), so the 409 is the service's.
@@ -144,6 +145,21 @@ vi.mock('@/lib/langfuse/sketch-score', () => ({
   recordSketchPinsKeptScore: vi.fn(async () => {}),
 }))
 
+const upsertSearchFacets = vi.fn(async (_org: string, rows: readonly unknown[]) => rows.length)
+vi.mock('@/lib/search/facets-repository', () => ({ upsertSearchFacets: (...a: [string, readonly unknown[]]) => upsertSearchFacets(...a) }))
+
+/** The server's drawing: a picture of its own, so a test can tell it from anything a client sent. */
+const SERVER_PICTURE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><circle cx="30" cy="30" r="20"/></svg>'
+const render = vi.fn(async (input: { elements: readonly Record<string, unknown>[]; remeasure: readonly string[] }) => ({
+  svg: SERVER_PICTURE,
+  remeasured: input.remeasure.map((id) => ({ id, width: 77, height: 25 })),
+  ms: 12,
+}))
+vi.mock('@/lib/diagrams/sketch-renderer', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/diagrams/sketch-renderer')>('@/lib/diagrams/sketch-renderer')
+  return { ...actual, sketchRenderer: () => ({ render: (...a: Parameters<typeof render>) => render(...a), close: async () => {} }) }
+})
+
 import { createInProcessStore, setLimitStore } from '@/lib/limits'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { acceptDiagram } from '@/lib/diagrams/svg'
@@ -213,6 +229,8 @@ beforeEach(() => {
   recordSketchRevisedScore.mockReset()
   recordSketchSaveScore.mockReset()
   recordDocumentAccess.mockReset()
+  render.mockClear()
+  upsertSearchFacets.mockClear()
   roomEvents.length = 0
   renderDiagramPdf.mockClear()
   replaceVersionContent.mockClear()
@@ -227,8 +245,20 @@ describe('GET /api/documents/[id]/sketch', () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body).toMatchObject({ documentId: 'doc-svg', versionId: null, title: 'Raumprogramm', scene: { type: 'excalidraw' } })
-    expect(body.outline.shapes).toEqual([{ id: 'room', type: 'rectangle', label: 'Küche' }])
+    expect(body.outline.shapes).toEqual([{ id: 'room', type: 'rectangle', label: 'Küche', box: { x: 0, y: 0, w: 0, h: 0 } }])
     expect(body.canWrite).toBe(true)
+    // The outline comes first: a reader cut off at a size limit still has it.
+    expect(Object.keys(body).indexOf('outline')).toBeLessThan(Object.keys(body).indexOf('scene'))
+  })
+
+  it('leaves the scene out on ?scene=omit, and answers only the named elements on ?ids=', async () => {
+    const outlineOnly = await (await call('GET', 'doc-svg', undefined, { query: '?scene=omit' })).json()
+    expect(outlineOnly.scene).toBeUndefined()
+    expect(outlineOnly.outline.texts).toHaveLength(1)
+    const focused = await (await call('GET', 'doc-svg', undefined, { query: '?ids=room-label,missing' })).json()
+    expect(focused.scene).toBeUndefined()
+    expect(focused.elements).toEqual([SCENE.elements[1]])
+    expect((await call('GET', 'doc-svg', undefined, { query: '?scene=all' })).status).toBe(400)
   })
 
   it('tells a reader who may not write that the editor only shows', async () => {
@@ -254,7 +284,7 @@ describe('PUT /api/documents/[id]/sketch', () => {
   const edited = { ...SCENE, elements: [...SCENE.elements, { id: 'lift', type: 'diamond', x: 90, y: 0 }] }
 
   it('writes a new Fassung of the same document, keeps the filed bytes as Fassung 1, and redraws the PDF', async () => {
-    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body).toEqual({
@@ -286,8 +316,8 @@ describe('PUT /api/documents/[id]/sketch', () => {
   })
 
   it('refuses a stale base Fassung with 409 and the current one, and keeps no bytes for it', async () => {
-    await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
-    const response = await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v1' })
+    await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
+    const response = await call('PUT', 'doc-svg', { scene: SCENE, baseVersionId: 'doc-svg-v1' })
     expect(response.status).toBe(409)
     expect(await response.json()).toMatchObject({ details: { reason: 'stale_base_version', currentVersionId: 'doc-svg-v2' } })
     expect(discardObject).toHaveBeenCalled()
@@ -295,16 +325,51 @@ describe('PUT /api/documents/[id]/sketch', () => {
   })
 
   it('answers 415 for a document without a scene, and 400 for a scene with an image', async () => {
-    expect((await call('PUT', 'doc-pdf', { scene: SCENE, svg: PICTURE, baseVersionId: null })).status).toBe(415)
+    expect((await call('PUT', 'doc-pdf', { scene: SCENE, baseVersionId: null })).status).toBe(415)
     const withImage = { ...SCENE, elements: [{ id: 'img', type: 'image', x: 0, y: 0 }] }
-    const response = await call('PUT', 'doc-svg', { scene: withImage, svg: PICTURE, baseVersionId: null })
+    const response = await call('PUT', 'doc-svg', { scene: withImage, baseVersionId: null })
     expect(response.status).toBe(400)
     expect(versions).toHaveLength(0)
   })
 
-  it('refuses an SVG the filing validator refuses', async () => {
+  it('stores the picture the server drew from the scene, never one a client sent', async () => {
     const response = await call('PUT', 'doc-svg', { scene: edited, svg: '<svg><script/></svg>', baseVersionId: null })
-    expect(response.status).toBe(400)
+    expect(response.status).toBe(200)
+    const stored = objects.get('doc/doc-svg/file/v2/w1')!
+    expect(stored).toContain('<circle')
+    expect(stored).not.toContain('script')
+    expect(render.mock.calls[0][0].elements.map((element) => element.id)).toEqual(['room', 'room-label', 'lift'])
+    // The PDF is drawn from the same picture.
+    expect(renderDiagramPdf.mock.calls[0][0]).toMatchObject({ viewport: { width: 120, height: 60 } })
+  })
+
+  it('writes the sketch’s search row from the saved scene, so its labels are found', async () => {
+    await call('PUT', 'doc-svg', { scene: { ...edited, elements: [...edited.elements, { id: 'lift-label', type: 'text', x: 92, y: 2, text: 'Lift', containerId: 'lift' }] }, baseVersionId: null })
+    expect(upsertSearchFacets).toHaveBeenCalledTimes(1)
+    const [org, [row]] = upsertSearchFacets.mock.calls[0] as [string, [{ documentId: string; searchText: string }]]
+    expect(org).toBe('org-1')
+    expect(row).toMatchObject({ documentId: 'doc-svg', searchText: 'Raumprogramm · Küche · Lift' })
+  })
+
+  it('lays out again only the texts a save added or changed, and stores their new size', async () => {
+    const relabelled = {
+      ...SCENE,
+      elements: [SCENE.elements[0], { ...SCENE.elements[1], text: 'Küche und Essen' }, { id: 'note', type: 'text', x: 0, y: 90, text: 'Süden', width: 1 }],
+    }
+    await call('PUT', 'doc-svg', { scene: relabelled, baseVersionId: null })
+    expect(render.mock.calls[0][0].remeasure).toEqual(['room-label', 'note'])
+    const note = storedScene('doc-svg').elements.find((element) => element.id === 'note')!
+    expect(note).toMatchObject({ width: 77, height: 25, text: 'Süden' })
+  })
+
+  it('answers 503 when the picture cannot be drawn, scores it, and saves nothing', async () => {
+    const { SketchRenderError } = await import('@/lib/diagrams/sketch-renderer')
+    render.mockRejectedValueOnce(new SketchRenderError('timeout'))
+    const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
+    expect(response.status).toBe(503)
+    expect((await response.json()).details).toMatchObject({ reason: 'timeout' })
+    expect(versions).toHaveLength(0)
+    expect(recordSketchSaveScore).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'render_failed', refusal: 'timeout' }))
   })
 
   it('reads a chunked body only up to the cap: no declared length is no way past it', async () => {
@@ -327,12 +392,10 @@ describe('PUT /api/documents/[id]/sketch', () => {
     // As an agent writes it: the label changed at the version it read, and the lift is simply gone.
     await call('PUT', 'doc-svg', {
       scene: { ...SCENE, elements: [{ ...SCENE.elements[0], version: 3, versionNonce: 5 }, { ...SCENE.elements[1], version: 3, versionNonce: 6 }, { id: 'lift', type: 'diamond', x: 90, y: 0, version: 2, versionNonce: 7 }] },
-      svg: PICTURE,
       baseVersionId: null,
     })
     const response = await call('PUT', 'doc-svg', {
       scene: { ...SCENE, elements: [{ ...SCENE.elements[0], version: 3, versionNonce: 5 }, { ...SCENE.elements[1], text: 'Speis', version: 3, versionNonce: 6 }] },
-      svg: PICTURE,
       baseVersionId: 'doc-svg-v2',
     })
     expect(response.status).toBe(200)
@@ -344,7 +407,7 @@ describe('PUT /api/documents/[id]/sketch', () => {
   })
 
   it('tells the document room of the Fassung, stamped with the saving tab so it hears no echo', async () => {
-    await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null }, { headers: { [ROOM_PEER_HEADER]: 'peer_anna0001' } })
+    await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null }, { headers: { [ROOM_PEER_HEADER]: 'peer_anna0001' } })
     const saved = roomEvents.filter(({ event }) => event.kind === 'scene.saved')
     expect(saved).toHaveLength(1)
     const [{ documentId, event }] = saved
@@ -352,7 +415,7 @@ describe('PUT /api/documents/[id]/sketch', () => {
     expect(event).toMatchObject({ kind: 'scene.saved', versionId: 'doc-svg-v2', peer: { peerId: 'peer_anna0001', userId: 'user-1', kind: 'person' } })
     expect(event.sceneHash).toBe(sceneHashOf(storedScene('doc-svg').elements))
     // A save without a tab (an agent through MCP) is told under a peer of its own.
-    await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v2' })
+    await call('PUT', 'doc-svg', { scene: SCENE, baseVersionId: 'doc-svg-v2' })
     const second = roomEvents.filter(({ event }) => event.kind === 'scene.saved')[1]
     expect((second.event.peer as { peerId: string }).peerId).toMatch(/^save_[0-9a-f]{12}$/)
     // Every Fassung made current is told as such, the PDF's in its own room too (`lib/documents/current-version.ts`).
@@ -370,7 +433,7 @@ describe('PUT /api/documents/[id]/sketch', () => {
       elements: [{ ...SCENE.elements[0], link: 'https://evil.example', customData: { tracker: 1 } }, SCENE.elements[1]],
       appState: { viewBackgroundColor: '#fff', gridSize: 20, theme: 'dark', openDialog: { name: 'ttd' } },
     }
-    expect((await call('PUT', 'doc-svg', { scene: planted, svg: PICTURE, baseVersionId: null })).status).toBe(200)
+    expect((await call('PUT', 'doc-svg', { scene: planted, baseVersionId: null })).status).toBe(200)
     const scene = storedScene('doc-svg')
     expect(scene.elements[0]).not.toHaveProperty('link')
     expect(scene.elements[0]).not.toHaveProperty('customData')
@@ -383,7 +446,7 @@ describe('PUT /api/documents/[id]/sketch', () => {
       documents.get('doc-svg')!.publishedVersionId = 'doc-svg-newer'
       return new TextEncoder().encode(`%PDF ${input.provenance}`)
     })
-    const superseded = await (await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })).json()
+    const superseded = await (await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })).json()
     expect(superseded).toMatchObject({ pdf: null, pdfStale: false })
     // The filed PDF is recorded as Fassung 1, as on every first save; nothing was drawn over it.
     expect(versions.filter((v) => v.documentId === 'doc-pdf').map((v) => v.storageKey)).toEqual(['doc/doc-pdf/file'])
@@ -391,7 +454,7 @@ describe('PUT /api/documents/[id]/sketch', () => {
     documents.get('doc-svg')!.publishedVersionId = 'doc-svg-v2'
     renderDiagramPdf.mockRejectedValueOnce(new Error('font missing'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    const failed = await (await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v2' })).json()
+    const failed = await (await call('PUT', 'doc-svg', { scene: SCENE, baseVersionId: 'doc-svg-v2' })).json()
     expect(failed).toMatchObject({ pdf: null, pdfStale: true })
     expect(recordSketchSaveScore).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: 'pdf_stale', metadata: expect.objectContaining({ pdf: 'failed' }) }))
   })
@@ -399,15 +462,15 @@ describe('PUT /api/documents/[id]/sketch', () => {
   it('answers a committed Fassung as saved even when its audit write fails', async () => {
     recordAuditEvent.mockRejectedValueOnce(new Error('audit down'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
     expect(response.status).toBe(200)
     expect((await response.json()).versionNumber).toBe(2)
   })
 
   it('scores every attempt: saved, a conflict and a refusal', async () => {
-    await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
-    await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v1' })
-    await call('PUT', 'doc-svg', { scene: { ...SCENE, elements: [{ id: 'img', type: 'image', x: 0, y: 0 }] }, svg: PICTURE, baseVersionId: 'doc-svg-v2' })
+    await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
+    await call('PUT', 'doc-svg', { scene: SCENE, baseVersionId: 'doc-svg-v1' })
+    await call('PUT', 'doc-svg', { scene: { ...SCENE, elements: [{ id: 'img', type: 'image', x: 0, y: 0 }] }, baseVersionId: 'doc-svg-v2' })
     expect(recordSketchSaveScore.mock.calls.map(([input]) => [input.outcome, input.refusal])).toEqual([
       ['saved', undefined],
       ['conflict', undefined],
@@ -449,7 +512,7 @@ describe('a save and the Freigabe round (C2, C4)', () => {
 
   it('refuses a save while a version is in review, naming why, and writes nothing', async () => {
     openDraft('in_review')
-    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
     expect(response.status).toBe(409)
     expect((await response.json()).details).toMatchObject({ reason: 'review_open', versionId: 'doc-svg-d' })
     expect(versions.filter((v) => v.state === 'published')).toHaveLength(0)
@@ -461,7 +524,7 @@ describe('a save and the Freigabe round (C2, C4)', () => {
     openDraft('changes_requested')
     const view = await (await call('GET', 'doc-svg')).json()
     expect(view).toMatchObject({ versionId: 'doc-svg-d', saveTarget: 'draft', contentHash: 'sha256:filed' })
-    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })
+    const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })
     expect(response.status).toBe(200)
     const saved = await response.json()
     expect(saved).toMatchObject({ versionId: 'doc-svg-d', state: 'draft', pdf: null, pdfStale: false })
@@ -472,8 +535,8 @@ describe('a save and the Freigabe round (C2, C4)', () => {
     expect(roomEvents.map(({ event }) => event.kind)).toEqual(['scene.saved'])
     expect(recordSketchSaveScore).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: 'drafted' }))
     // A save from the published Fassung, or from an older state of the draft, merges first.
-    expect((await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })).status).toBe(409)
-    expect((await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })).status).toBe(409)
+    expect((await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })).status).toBe(409)
+    expect((await call('PUT', 'doc-svg', { scene: edited, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })).status).toBe(409)
   })
 
   // The coherence review's findings 3 and 4: the editor offered a save the draft write refuses, and read a draft's bytes past the hold.
@@ -496,7 +559,7 @@ describe('a save and the Freigabe round (C2, C4)', () => {
     try {
       const view = await (await call('GET', 'doc-svg')).json()
       expect(view).toMatchObject({ canWrite: false, versionId: expect.not.stringMatching(/^doc-svg-d$/), contentHash: null })
-      const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })
+      const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: 'doc-svg-d', baseContentHash: 'sha256:filed' })
       expect(response.status).toBe(404)
       expect(vi.mocked(replaceVersionContent).mock.calls.length).toBe(written)
     } finally {
@@ -505,10 +568,10 @@ describe('a save and the Freigabe round (C2, C4)', () => {
   })
 
   it('tells the followers once when a save leaves a Fassung released through Freigabe, and stays silent otherwise', async () => {
-    await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
     expect(announceNewRevision).not.toHaveBeenCalled()
     versions.find((v) => v.id === 'doc-svg-v2')!.approvedBy = 'user-chief'
-    await call('PUT', 'doc-svg', { scene: SCENE, svg: PICTURE, baseVersionId: 'doc-svg-v2' })
+    await call('PUT', 'doc-svg', { scene: SCENE, baseVersionId: 'doc-svg-v2' })
     expect(announceNewRevision).toHaveBeenCalledTimes(1)
     expect(announceNewRevision).toHaveBeenCalledWith(expect.objectContaining({ newerId: 'doc-svg', versionId: 'doc-svg-v3' }))
   })
@@ -520,7 +583,7 @@ describe('the PDF is the Skizze’s rendition (C3)', () => {
   it('draws no new drawing into a PDF that sits wider than the Skizze’s restricted folder', async () => {
     documents.get('doc-svg')!.folderId = 'folder-restricted'
     documents.get('doc-pdf')!.folderId = null
-    const response = await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })
+    const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ pdf: null, pdfStale: false })
     expect(renderDiagramPdf).not.toHaveBeenCalled()
@@ -530,7 +593,7 @@ describe('the PDF is the Skizze’s rendition (C3)', () => {
   it('draws it when both sit in the same restricted folder', async () => {
     documents.get('doc-svg')!.folderId = 'folder-restricted'
     documents.get('doc-pdf')!.folderId = 'folder-restricted'
-    expect((await (await call('PUT', 'doc-svg', { scene: edited, svg: PICTURE, baseVersionId: null })).json()).pdf).toEqual({
+    expect((await (await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })).json()).pdf).toEqual({
       documentId: 'doc-pdf',
       versionId: 'doc-pdf-v2',
     })

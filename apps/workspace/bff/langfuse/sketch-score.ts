@@ -21,9 +21,12 @@ import 'server-only'
  * and tries again, so a conflict followed by a `saved` is a merge that worked);
  * `refused` (400, the scene or the SVG; the comment names the refusal);
  * `drafted` (saved into the open Freigabe draft, nothing published);
- * `review_open` (409, a version is in review: nothing saved). Metadata
+ * `review_open` (409, a version is in review: nothing saved); `render_failed`
+ * (503, the server could not draw the scene's picture: the comment names why,
+ * `busy`, `timeout`, `crashed`, `failed` or `unavailable`; ADR-0149). Metadata
  * `carried` and `lost` count the pinned marks that went onto the Fassung and
- * those of them whose elements are all gone.
+ * those of them whose elements are all gone; `render_ms`, `render_elements` and
+ * `remeasured` say what drawing the picture cost.
  * `sketch-revised` counts the Fassungen; this is the share of saves that
  * needed a merge or failed, which is what a shared sketch most needs watched.
  */
@@ -99,7 +102,7 @@ export function recordSketchRevisedScore(input: SketchRevisedInput): Promise<voi
 /** The name of the per-attempt score. A contract, as above. */
 export const SKETCH_SAVE_SCORE_NAME = 'sketch-save'
 
-export const SKETCH_SAVE_OUTCOMES = ['saved', 'drafted', 'pdf_stale', 'conflict', 'review_open', 'refused'] as const
+export const SKETCH_SAVE_OUTCOMES = ['saved', 'drafted', 'pdf_stale', 'conflict', 'review_open', 'refused', 'render_failed'] as const
 export type SketchSaveOutcome = (typeof SKETCH_SAVE_OUTCOMES)[number]
 
 export interface SketchSaveInput {

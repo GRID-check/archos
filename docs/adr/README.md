@@ -211,6 +211,7 @@ Consequences, where a reader looks for them.
 | [0146](0146-piloti-draws-sketches-in-excalidraws-own-format.md) | Piloti draws sketches in Excalidraw's own format: an `excalidraw` fence, checked twice, drawn as it streams; amends 0141 | Proposed |
 | [0147](0147-infrastructure-names-carry-no-brand.md) | Infrastructure names carry no brand: namespace `workspace`, Pulumi project `workspace`, moved by expand, switch and contract | Proposed |
 | [0148](0148-a-sketch-is-a-document.md) | A sketch is a document: an SVG carrying its Excalidraw scene, reopened in place, saved as Fassungen, inheriting Files, Anmerkungen, Freigabe, the room and the agent door | Proposed |
+| [0149](0149-the-server-draws-a-sketchs-picture.md) | The server draws a sketch's picture from its scene: Excalidraw's `exportToSvg` in a worker thread on happy-dom, text measured from the font files, so scene and picture cannot disagree | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

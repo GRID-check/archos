@@ -131,8 +131,10 @@ describe('in a shared conversation', () => {
     expect(result.isError).toBe(true)
   })
 
+  const PLACE_KEY = /project|folder|document|conversation|organi[sz]ation|url|path/i
+
   it('lists only reads of the catalog that name the one kind of place they carry, and no link', () => {
-    for (const [name, { carries }] of Object.entries(AUDIENCE_READS)) {
+    for (const [name, { carries, narrows }] of Object.entries(AUDIENCE_READS)) {
       const op = reads.find((candidate) => candidate.name === name)
       expect(op, `${name} is not a read Piloti runs`).toBeDefined()
       expect(LINK_BEARING_OPERATIONS.has(name), `${name} hands on a link`).toBe(false)
@@ -140,7 +142,9 @@ describe('in a shared conversation', () => {
       const segment = carries === 'document' ? '/api/documents/[id]' : '/api/projects/[id]'
       expect(op?.path.startsWith(segment), `${name} must name its ${carries} in its path`).toBe(true)
       expect(op?.path.match(/\[[^\]]+\]/g), `${name} must name nothing else`).toHaveLength(1)
-      expect(op?.query, name).toBeUndefined()
+      // A query only cuts the same answer shorter, says how, and names no place.
+      if (narrows) expect(Object.keys((op?.query as { shape?: object } | undefined)?.shape ?? {}).filter((key) => PLACE_KEY.test(key)), name).toEqual([])
+      else expect(op?.query, name).toBeUndefined()
       expect(op?.body, name).toBeUndefined()
     }
   })

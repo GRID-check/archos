@@ -1,0 +1,10 @@
+---
+features:
+  - >
+    Search now finds a sketch by what is written on it: a room label, an arrow's
+    text or a frame's name finds the sketch that carries it.
+improvements:
+  - >
+    A sketch's preview and PDF now always show exactly the drawing that was
+    saved, also when Piloti or another assistant changed it, and labels they
+    add fit their text.

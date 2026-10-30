@@ -78,10 +78,12 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "One attempt to save a filed sketch as a new Fassung (ADR-0148), on the trace of the turn that drew it: "
         "saved; drafted (saved into the open Freigabe draft, nothing published); pdf_stale (saved, the PDF beside "
         "it not drawn again); conflict (409, a newer Fassung: the editor merges and tries again); review_open "
-        "(409, a version is in review, nothing saved); refused (400, the comment names the rule). Metadata "
-        "version_number, bumped, tombstoned, pdf, carried and lost on a save.",
+        "(409, a version is in review, nothing saved); refused (400, the comment names the rule); render_failed "
+        "(503, the server could not draw the picture from the scene, ADR-0149; the comment says why). Metadata "
+        "version_number, bumped, tombstoned, pdf, carried and lost on a save, and render_ms, render_elements and "
+        "remeasured for the server's drawing.",
         writer="bff",
-        categories=("saved", "drafted", "pdf_stale", "conflict", "review_open", "refused"),
+        categories=("saved", "drafted", "pdf_stale", "conflict", "review_open", "refused", "render_failed"),
     ),
     ScoreDefinition(
         "sketch-pins-kept",

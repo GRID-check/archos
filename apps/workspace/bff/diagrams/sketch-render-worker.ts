@@ -1,0 +1,111 @@
+/**
+ * The sketch renderer's worker thread: a stored scene in, the SVG a Skizze
+ * files out, drawn by Excalidraw's own `exportToSvg` (ADR-0149).
+ *
+ * Not imported by the app. `scripts/build-sketch-renderer.ts` bundles this
+ * file, Excalidraw, happy-dom and fontkit into one Node module,
+ * `dist-sketch-render/sketch-render-worker.mjs`, and `sketch-renderer.ts`
+ * starts it as a `worker_thread`. The DOM is installed first
+ * (`sketch-render-dom.ts`), then Excalidraw is imported, so its import-time
+ * reads find a document.
+ *
+ * Each message is one render:
+ *
+ *   - `remeasure` names the text elements whose text or type the save
+ *     changed; Excalidraw lays them out again (`restoreElements` with
+ *     `refreshDimensions`, which it applies only with `repairBindings`) with
+ *     the server's metrics
+ *     (`sketch-text-metrics.ts`), so a label an agent wrote gets the width the
+ *     editor would give it. Every other element is drawn as it came: the
+ *     editor measured it.
+ *   - The export is the editor's own (`sketch-canvas.tsx`, `prepare`): paper,
+ *     never dark mode, padding 16, fonts not inlined; then the same cleaning
+ *     and re-serialisation through the server's validator
+ *     (`fileableSketchSvg`).
+ */
+
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { parentPort, workerData } from 'node:worker_threads'
+import { facesFrom, type FontCoverage } from './sketch-font-faces'
+import { installSketchDom } from './sketch-render-dom'
+import { createTextMetrics } from './sketch-text-metrics'
+import { FONT_COVERAGE_FILE, type SketchRenderRequest, type SketchRenderResponse } from './sketch-render-types'
+
+const { fontsDir } = workerData as { fontsDir: string }
+
+/** The build's index of which file has which characters (`sketch-font-faces.ts`); without it, folders are decoded whole. */
+function readCoverage(): FontCoverage | null {
+  try {
+    return JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), FONT_COVERAGE_FILE), 'utf8')) as FontCoverage
+  } catch {
+    return null
+  }
+}
+
+const facesOf = facesFrom(fontsDir, readCoverage())
+const metrics = createTextMetrics(facesOf)
+installSketchDom(metrics)
+
+type Excalidraw = typeof import('@excalidraw/excalidraw')
+type Elements = Parameters<Excalidraw['exportToSvg']>[0]['elements']
+/** An element as it travels: what this file reads of it, the rest passed through. */
+type Plain = { readonly id: string; readonly containerId?: string | null; readonly [field: string]: unknown }
+
+// After the DOM: Excalidraw reads `window` and `document` when it loads.
+const loading: Promise<{ excalidraw: Excalidraw; fileable: (svg: SVGSVGElement) => string }> = Promise.all([
+  import('@excalidraw/excalidraw'),
+  import('./sketch-svg'),
+]).then(([excalidraw, svg]) => {
+  excalidraw.setCustomTextMetricsProvider({ getLineWidth: (text: string, font: string) => metrics.lineWidth(text, font) })
+  return { excalidraw, fileable: svg.fileableSketchSvg }
+})
+
+async function render(request: SketchRenderRequest): Promise<SketchRenderResponse> {
+  const started = performance.now()
+  const { excalidraw, fileable } = await loading
+  const remeasure = new Set(request.remeasure)
+  let elements = request.elements as readonly Plain[]
+  const remeasured: Record<string, unknown>[] = []
+  if (remeasure.size > 0) {
+    // Only the texts to lay out and the containers they wrap in: restoring the whole scene would measure every text.
+    const containers = new Set(elements.flatMap((element) => (remeasure.has(element.id) && element.containerId ? [element.containerId] : [])))
+    const subset = elements.filter((element) => remeasure.has(element.id) || containers.has(element.id))
+    const restored = excalidraw.restoreElements(subset as unknown as Elements, null, { refreshDimensions: true, repairBindings: true })
+    const byId = new Map(restored.map((element) => [element.id, element as unknown as Plain]))
+    elements = elements.map((element) => {
+      const fresh = remeasure.has(element.id) ? byId.get(element.id) : undefined
+      if (!fresh) return element
+      // Only the layout changes; every other field stays as the save sent it (`sketch-picture.ts` stores the same).
+      const laid = { id: fresh.id, x: fresh.x, y: fresh.y, width: fresh.width, height: fresh.height, text: fresh.text }
+      remeasured.push(laid)
+      return { ...element, ...laid }
+    })
+  }
+  const svg = await excalidraw.exportToSvg({
+    elements: elements as unknown as Elements,
+    appState: {
+      ...(request.appState ?? {}),
+      exportBackground: true,
+      viewBackgroundColor: '#ffffff',
+      exportWithDarkMode: false,
+    },
+    files: null,
+    exportPadding: 16,
+    skipInliningFonts: true,
+  })
+  return { id: request.id, ok: true, svg: fileable(svg), remeasured, ms: Math.round(performance.now() - started) }
+}
+
+parentPort?.on('message', (request: SketchRenderRequest) => {
+  render(request).then(
+    (response) => parentPort?.postMessage(response),
+    (error: unknown) =>
+      parentPort?.postMessage({
+        id: request.id,
+        ok: false,
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      } satisfies SketchRenderResponse)
+  )
+})

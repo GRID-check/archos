@@ -835,6 +835,26 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       expect(await current()).toContain('A4')
     })
 
+    it('finds a Skizze by a label drawn on it and by a frame’s name (ADR-0149)', async () => {
+      const { sketchSearchFacets } = await import('./facets')
+      const { upsertSearchFacets } = await import('./facets-repository')
+      // A12 has no reading of its own, as a filed Skizze has none: its row is the sketch's.
+      const row = sketchSearchFacets(
+        { documentId: ids.A12, organizationId: ORG },
+        { title: 'Raumprogramm', texts: ['Lift', 'Wohnküche', 'Lift'], frameNames: ['Obergeschoss'] }
+      )
+      try {
+        expect(await upsertSearchFacets(ORG, [row])).toBe(1)
+        expect(await found(officeReach(), query({}, { text: 'Lift', contentKeys: [] }))).toEqual(keys('A12'))
+        expect(await found(officeReach(), query({}, { text: 'Wohnkueche', contentKeys: [] }))).toEqual(keys('A12'))
+        expect(await found(officeReach(), query({}, { text: 'Obergeschoss', contentKeys: [] }))).toEqual(keys('A12'))
+        // Written again unchanged, it costs no write.
+        expect(await upsertSearchFacets(ORG, [row])).toBe(0)
+      } finally {
+        await inTenant(ORG, () => db.execute(sql`DELETE FROM document_search_facets WHERE document_id = ${ids.A12}::uuid`))
+      }
+    })
+
     it('marks a synced shelf stale without unsyncing it, and lets the next search claim its refresh at once', async () => {
       const { claimShelfRefresh, markShelfSynced, markShelvesStale, readShelfSyncStates, STALE_FINGERPRINT } = await import(
         './facets-repository'

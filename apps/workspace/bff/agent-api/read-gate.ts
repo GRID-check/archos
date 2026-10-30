@@ -49,12 +49,18 @@ import type { AgentPrincipal } from './principal'
  * and why that answer is the same for every reader who may read the place it
  * names. Everything else a route answers is the requester's view. Adding one is
  * a claim a reviewer can check against the route: a link-bearing read
- * ({@link LINK_BEARING_OPERATIONS}) never qualifies.
+ * ({@link LINK_BEARING_OPERATIONS}) never qualifies. A read with a query says
+ * in `narrows` why the query only cuts the same answer shorter and names no
+ * other place; `read-gate.spec.ts` holds its keys to that.
  */
-export const AUDIENCE_READS: Readonly<Record<string, { carries: ReadCarries; reason: string }>> = {
+export const AUDIENCE_READS: Readonly<Record<string, { carries: ReadCarries; reason: string; narrows?: string }>> = {
   'document-get': { carries: 'document', reason: 'the document as its listing row, which every reader of it sees' },
   'document-text-get': { carries: 'document', reason: 'the document’s own text, which every reader of it reads' },
-  'document-sketch-get': { carries: 'document', reason: 'the sketch’s own scene and outline, which every reader of its picture sees' },
+  'document-sketch-get': {
+    carries: 'document',
+    reason: 'the sketch’s own scene and outline, which every reader of its picture sees',
+    narrows: '`scene=omit` and `ids` (element ids inside the sketch) leave parts of the same answer out',
+  },
   'project-get': { carries: 'projectFacts', reason: 'the project row, gated by project:view alone' },
   'project-profile-get': { carries: 'projectFacts', reason: 'the project’s profile, gated by project:view alone' },
 }

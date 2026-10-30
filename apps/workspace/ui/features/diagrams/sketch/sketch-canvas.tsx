@@ -48,7 +48,7 @@ import {
 import '@excalidraw/excalidraw/index.css'
 import { DIAGRAM_SOURCE_FACTS } from '@/lib/diagrams/diagram-sources'
 import { SKETCH_FONT_FAMILY, SKETCH_FONT_SIZE } from './sketch-from-model'
-import { fileableSketchSvg } from './sketch-svg'
+import { fileableSketchSvg } from '@/lib/diagrams/sketch-svg'
 import { opensForbiddenDialog } from './sketch-guards'
 import type { SketchHelpers } from './sketch-sync'
 import type { SketchCanvasBridge, SketchCollab } from './use-sketch-room'

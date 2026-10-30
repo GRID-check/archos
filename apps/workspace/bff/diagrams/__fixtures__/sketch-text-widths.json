@@ -1,0 +1,506 @@
+{
+ "measuredWith": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.12 Safari/537.36; Linux, Helvetica resolved by fontconfig to Liberation Sans; Excalifont from public/excalidraw/fonts, one @font-face per chunk with its unicode-range",
+ "measuredAt": "2026-10-30",
+ "widths": [
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Zugang 4",
+   "width": 67.609
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Wohnen",
+   "width": 59.305
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Küche",
+   "width": 45.367
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Bad",
+   "width": 28.469
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Schlafzimmer",
+   "width": 96.906
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Abstellraum",
+   "width": 84.477
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Gäste-WC",
+   "width": 74.672
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Büro 1 → Flur",
+   "width": 99.586
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Raumprogramm EG – Skizze, nicht maßstäblich",
+   "width": 341.445
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Südlage, Abendsonne",
+   "width": 157.469
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Treppenhaus / Lift",
+   "width": 128.375
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "WAVE Tf. AV",
+   "width": 93.047
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Variante B (empfohlen)",
+   "width": 163.344
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Fluchtweg 1",
+   "width": 86.266
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Erschließung über Lindenstraße",
+   "width": 227.68
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Kinderzimmer 2",
+   "width": 112.031
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "HWR",
+   "width": 38.211
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Garderobe",
+   "width": 76.492
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "Terrasse",
+   "width": 61.352
+  },
+  {
+   "font": "16px Helvetica, Segoe UI Emoji",
+   "text": "„Eingang“",
+   "width": 69.375
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Zugang 4",
+   "width": 84.512
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Wohnen",
+   "width": 74.131
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Küche",
+   "width": 56.709
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Bad",
+   "width": 35.586
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Schlafzimmer",
+   "width": 121.133
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Abstellraum",
+   "width": 105.596
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Gäste-WC",
+   "width": 93.34
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Büro 1 → Flur",
+   "width": 124.482
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Raumprogramm EG – Skizze, nicht maßstäblich",
+   "width": 426.807
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Südlage, Abendsonne",
+   "width": 196.836
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Treppenhaus / Lift",
+   "width": 160.469
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "WAVE Tf. AV",
+   "width": 116.309
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Variante B (empfohlen)",
+   "width": 204.18
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Fluchtweg 1",
+   "width": 107.832
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Erschließung über Lindenstraße",
+   "width": 284.6
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Kinderzimmer 2",
+   "width": 140.039
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "HWR",
+   "width": 47.764
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Garderobe",
+   "width": 95.615
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "Terrasse",
+   "width": 76.689
+  },
+  {
+   "font": "20px Helvetica, Segoe UI Emoji",
+   "text": "„Eingang“",
+   "width": 86.719
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Zugang 4",
+   "width": 118.316
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Wohnen",
+   "width": 103.783
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Küche",
+   "width": 79.393
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Bad",
+   "width": 49.82
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Schlafzimmer",
+   "width": 169.586
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Abstellraum",
+   "width": 147.834
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Gäste-WC",
+   "width": 130.676
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Büro 1 → Flur",
+   "width": 174.275
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Raumprogramm EG – Skizze, nicht maßstäblich",
+   "width": 597.529
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Südlage, Abendsonne",
+   "width": 275.57
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Treppenhaus / Lift",
+   "width": 224.656
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "WAVE Tf. AV",
+   "width": 162.832
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Variante B (empfohlen)",
+   "width": 285.852
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Fluchtweg 1",
+   "width": 150.965
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Erschließung über Lindenstraße",
+   "width": 398.439
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Kinderzimmer 2",
+   "width": 196.055
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "HWR",
+   "width": 66.869
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Garderobe",
+   "width": 133.861
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "Terrasse",
+   "width": 107.365
+  },
+  {
+   "font": "28px Helvetica, Segoe UI Emoji",
+   "text": "„Eingang“",
+   "width": 121.406
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Zugang 4",
+   "width": 91.54
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Wohnen",
+   "width": 70.24
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Küche",
+   "width": 54.58
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Bad",
+   "width": 38.84
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Schlafzimmer",
+   "width": 121.64
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Abstellraum",
+   "width": 109.46
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Gäste-WC",
+   "width": 95.62
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Büro 1 → Flur",
+   "width": 135.08
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Raumprogramm EG – Skizze, nicht maßstäblich",
+   "width": 447.32
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Südlage, Abendsonne",
+   "width": 198.32
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Treppenhaus / Lift",
+   "width": 185.5
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "WAVE Tf. AV",
+   "width": 126.74
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Variante B (empfohlen)",
+   "width": 221.58
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Fluchtweg 1",
+   "width": 113.4
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Erschließung über Lindenstraße",
+   "width": 297.76
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Kinderzimmer 2",
+   "width": 142.56
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "HWR",
+   "width": 41.9
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Garderobe",
+   "width": 100.28
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Terrasse",
+   "width": 85.94
+  },
+  {
+   "font": "20px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "„Eingang“",
+   "width": 90.58
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Zugang 4",
+   "width": 164.772
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Wohnen",
+   "width": 126.432
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Küche",
+   "width": 98.244
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Bad",
+   "width": 69.912
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Schlafzimmer",
+   "width": 218.952
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Abstellraum",
+   "width": 197.028
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Gäste-WC",
+   "width": 172.116
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Büro 1 → Flur",
+   "width": 243.144
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Raumprogramm EG – Skizze, nicht maßstäblich",
+   "width": 805.176
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Südlage, Abendsonne",
+   "width": 356.976
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Treppenhaus / Lift",
+   "width": 333.9
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "WAVE Tf. AV",
+   "width": 228.132
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Variante B (empfohlen)",
+   "width": 398.844
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Fluchtweg 1",
+   "width": 204.12
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Erschließung über Lindenstraße",
+   "width": 535.968
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Kinderzimmer 2",
+   "width": 256.608
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "HWR",
+   "width": 75.42
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Garderobe",
+   "width": 180.504
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "Terrasse",
+   "width": 154.692
+  },
+  {
+   "font": "36px Excalifont, Xiaolai, Segoe UI Emoji",
+   "text": "„Eingang“",
+   "width": 163.044
+  }
+ ]
+}

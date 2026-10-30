@@ -17,6 +17,7 @@ node_modules/
 .next/
 # MCP Apps views (rebuilt in the image by `bun run build`, ADR-0142)
 mcp-app-views/
+dist-sketch-render/
 out/
 
 # Build artifacts

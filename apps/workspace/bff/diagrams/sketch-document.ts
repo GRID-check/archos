@@ -7,7 +7,9 @@
  *
  *   1. The scene is checked (`sketch-scene.ts`); the server used to store it
  *      unread.
- *   2. The SVG goes through the filing validator (`acceptDiagram`), which writes
+ *   2. The server draws the SVG from the scene (`sketch-picture.ts`, ADR-0149):
+ *      no picture a client sends is stored, so scene and picture cannot disagree.
+ *      It goes through the filing validator (`acceptDiagram`), which writes
  *      the stored bytes from its allow-list, puts the scene in `<metadata>` and
  *      the marking in `<title>`/`<desc>`. The marking is the two-author one
  *      (`markingEdited`), because a person changed what Piloti drew; the
@@ -63,6 +65,9 @@ import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from './diagram-sourc
 import { publishNextVersion } from './sketch-version'
 import { outlineSketch } from './sketch-outline'
 import { reviseScene, withoutTombstones } from './sketch-revise'
+import { drawSketchScene } from './sketch-picture'
+import { indexSketchForSearch } from './sketch-search'
+import { SketchRenderError } from './sketch-renderer'
 import {
   checkSketchScene,
   MAX_SCENE_ELEMENTS,
@@ -72,7 +77,7 @@ import {
   SketchSceneError,
   type SketchScene,
 } from './sketch-scene'
-import type { SaveSketchBody, SavedSketch, SketchDocumentView, SketchProbe } from './sketch-wire'
+import type { SaveSketchBody, SavedSketch, SketchDocumentView, SketchProbe, SketchReadOptions } from './sketch-wire'
 import { storedDiagramSource } from './stored-source'
 import { viewBoxOf } from '@/lib/annotations/sketch-anchor'
 import { recordSketchSaveScore, type SketchSaveInput, type SketchSaveOutcome } from '@/lib/langfuse/sketch-score'
@@ -141,6 +146,12 @@ function titleOf(document: Document): string {
 /** Whether the save takes new bytes for this document at all: only a sketch filed into the project. */
 const savesAsVersion = (document: Document) => document.authoredByProducer === 'diagram_svg' && Boolean(document.authoredByRef)
 
+/** The drawn elements a focused read names, whole, in scene order. */
+function focusedElements(scene: SketchScene, ids: readonly string[]) {
+  const wanted = new Set(ids)
+  return scene.elements.filter((element) => wanted.has(element.id) && !element.isDeleted)
+}
+
 /** Whether the editor opens to draw or to watch: what the PUT would take. The save and the room's edit lane check it again. */
 async function mayWrite(session: AuthorizedSession, document: Document): Promise<boolean> {
   if (!savesAsVersion(document)) return false
@@ -171,7 +182,11 @@ export async function probeSketchDocument(session: AuthorizedSession, documentId
  * Skizze is in Freigabe (`./sketch-target.ts`); a reader always the current
  * Fassung, which is what the office shows.
  */
-export async function readSketchDocument(session: AuthorizedSession, documentId: string): Promise<SketchDocumentView> {
+export async function readSketchDocument(
+  session: AuthorizedSession,
+  documentId: string,
+  options: SketchReadOptions = { scene: true, ids: null }
+): Promise<SketchDocumentView> {
   const document = await getAccessibleDocument(session, documentId, 'read')
   // A draft only when this session may receive its bytes and write into it (`./sketch-target.ts`).
   const { target, draft, canWrite } = await sketchOpeningFor(session, document, await mayWrite(session, document))
@@ -183,8 +198,9 @@ export async function readSketchDocument(session: AuthorizedSession, documentId:
     versionId: draft?.id ?? document.publishedVersionId,
     canWrite,
     title: titleOf(document),
-    scene,
     outline: outlineSketch(scene),
+    ...(options.scene ? { scene } : {}),
+    ...(options.ids ? { elements: focusedElements(scene, options.ids) } : {}),
     saveTarget: target.kind,
     contentHash: draft?.contentHash ?? null,
   }
@@ -210,8 +226,7 @@ const nonce = () => randomInt(2 ** 31)
  * Tombstones that would push it over the source cap are left out: the save
  * matters more than a stale canvas's merge.
  */
-function storedSceneFor(stored: SketchScene, sent: unknown): { scene: SketchScene; source: string; bumped: number; tombstoned: number } {
-  const next = checkSketchScene(sent)
+function storedSceneFor(stored: SketchScene, next: SketchScene): { scene: SketchScene; source: string; bumped: number; tombstoned: number } {
   const revised = reviseScene(stored, next, nonce)
   const fits = revised.scene.elements.length <= MAX_SCENE_ELEMENTS
   try {
@@ -223,16 +238,17 @@ function storedSceneFor(stored: SketchScene, sent: unknown): { scene: SketchScen
   return { scene, source: serializeSketchScene(scene), bumped: revised.bumped, tombstoned: 0 }
 }
 
-function acceptSketch(
-  body: SaveSketchBody,
-  stored: SketchScene,
-  marking: string,
-  ref: string
-): { accepted: AcceptedDiagram; source: string; scene: SketchScene; bumped: number; tombstoned: number } {
-  const { scene, source, bumped, tombstoned } = storedSceneFor(stored, body.scene)
+/**
+ * The scene checked, its picture drawn by the server from it (`sketch-picture.ts`,
+ * ADR-0149), then versioned and filed through the validator. The picture is
+ * always the server's: no SVG a client sends is stored.
+ */
+async function acceptSketch(body: SaveSketchBody, stored: SketchScene, marking: string, ref: string) {
+  const drawn = await drawSketchScene(stored, checkSketchScene(body.scene))
+  const { scene, source, bumped, tombstoned } = storedSceneFor(stored, drawn.scene)
   const provenance = generatedDocumentMarking('diagram_svg', ref)
-  const accepted = acceptDiagram({ svg: body.svg, source, sourceKind: 'excalidraw' }, { notice: marking, provenance })
-  return { accepted, source, scene, bumped, tombstoned }
+  const accepted: AcceptedDiagram = acceptDiagram({ svg: drawn.svg, source, sourceKind: 'excalidraw' }, { notice: marking, provenance })
+  return { accepted, source, scene, bumped, tombstoned, render: drawn.render }
 }
 
 /** The 409 a save meets while a Freigabe round is reading the Skizze: nothing is saved, the canvas stays live. */
@@ -272,15 +288,23 @@ export async function saveSketchDocument(
     else if (error instanceof ConflictError && reasonOf(error) === 'review_open') score('review_open')
     else if (error instanceof SketchSceneError) score('refused', { refusal: error.refusal })
     else if (error instanceof DiagramSvgError) score('refused', { refusal: error.rejection })
+    else if (error instanceof SketchRenderError) score('render_failed', { refusal: error.reason })
     throw error
   }
 }
+
+/** The server's drawing of the save, as the score's metadata (ADR-0149). */
+const renderFacts = (render: { ms: number; elements: number; remeasured: number }) => ({
+  render_ms: render.ms,
+  render_elements: render.elements,
+  remeasured: render.remeasured,
+})
 
 const reasonOf = (error: ConflictError) => (error.details as { reason?: string } | undefined)?.reason
 
 async function writeVersion(input: SaveSketchInput, document: Document, stored: SketchScene, answerRef: string) {
   const { session, body } = input
-  const { accepted, scene, bumped, tombstoned } = acceptSketch(body, stored, input.marking, answerRef)
+  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, input.marking, answerRef)
   const bytes = new TextEncoder().encode(accepted.svg)
   const provenance = generatedDocumentMarking('diagram_svg', answerRef)
   if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch SVG lost its AI marking')
@@ -298,6 +322,8 @@ async function writeVersion(input: SaveSketchInput, document: Document, stored: 
     // The room hears of it, stamped with the saving tab so it hears no echo (`lib/documents/current-version.ts`).
     room: { sceneHash, peerId: input.peerId ?? null },
   })
+  // The search finds the sketch by what is drawn on it now (`sketch-search.ts`).
+  await indexSketchForSearch({ organizationId: session.organizationId, documentId: document.id, title: titleOf(document), scene })
   const { pdf, outcome } = await redrawCompanionPdf({
     session,
     sketch: document,
@@ -324,6 +350,7 @@ async function writeVersion(input: SaveSketchInput, document: Document, stored: 
       pdf: outcome,
       carried: version.carried.moved.length,
       lost: version.carried.lost.length,
+      ...renderFacts(render),
     },
   }
 }
@@ -344,7 +371,7 @@ async function writeDraft(input: SaveSketchInput, document: Document, draft: Doc
   // Held bytes reach only who may see them (ADR-0086): a draft nobody screened is not merged into.
   if (!(await mayReceiveVersionBytes(session, document, draft))) throw new NotFoundError('Version not found')
   const stored = await storedSceneOf({ ...draft, contentType: SVG })
-  const { accepted, scene, bumped, tombstoned } = acceptSketch(body, stored, input.marking, answerRef)
+  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, input.marking, answerRef)
   const bytes = Buffer.from(accepted.svg, 'utf8')
   if (!markingIsInBytes(bytes, generatedDocumentMarking('diagram_svg', answerRef))) throw new Error('the sketch SVG lost its AI marking')
   let written: DocumentVersion
@@ -380,6 +407,6 @@ async function writeDraft(input: SaveSketchInput, document: Document, draft: Doc
     pdfStale: false,
     pdfOutcome: 'none' as CompanionPdfOutcome,
     answerRef,
-    facts: { version_number: written.versionNumber, bumped, tombstoned, pdf: 'none', carried: 0, lost: 0 },
+    facts: { version_number: written.versionNumber, bumped, tombstoned, pdf: 'none', carried: 0, lost: 0, ...renderFacts(render) },
   }
 }

@@ -193,3 +193,59 @@ export function toSearchFacets(
   const withText = { ...base, searchText: searchTextOf(base, revision?.title) }
   return { ...withText, fingerprint: fingerprintOf(withText) }
 }
+
+/** What a Skizze says, as its search row reads it: its title, the texts drawn on it and its frames' names. */
+export interface SketchReading {
+  title: string
+  /** Every text on the sketch: labels of shapes and arrows, and free text. */
+  texts: readonly string[]
+  frameNames: readonly string[]
+}
+
+/**
+ * The search row of a Skizze (ADR-0136, ADR-0149). A sketch is filed `stored`
+ * and never ingested, so no backend listing reads it and the projector never
+ * writes its row: this does, from its scene, when it is filed and on every
+ * save that publishes a Fassung. Searching „Lift“ then finds the sketch with a
+ * shape labelled „Lift“. The shelf's backstop leaves the row alone: it rewrites
+ * only rows of documents a listing names (`projectDocuments`), and deletes none.
+ * Pure.
+ */
+export function sketchSearchFacets(subject: Omit<FacetSubject, 'superseded'>, reading: SketchReading): NewDocumentSearchFacetsRow {
+  const words = [...new Set([...reading.frameNames, ...reading.texts].map(collapse).filter(Boolean))]
+  const base = {
+    documentId: subject.documentId,
+    organizationId: subject.organizationId,
+    documentType: null,
+    tags: [],
+    topics: [],
+    title: collapse(reading.title) || null,
+    summary: null,
+    parties: [],
+    partyRoles: [],
+    address: null,
+    municipality: null,
+    federalState: null,
+    facts: [],
+    factTokens: [],
+    factNumbers: {},
+    referenceTokens: [],
+    referenceLabels: {},
+    planNumber: null,
+    planNumberKey: null,
+    planIndex: null,
+    planDate: null,
+    scale: null,
+    documentDate: null,
+    capturedAt: null,
+    camera: null,
+    pageCount: null,
+    pagesNotRead: null,
+    superseded: false,
+    changedFacts: [],
+    changedFactKeys: [],
+  } satisfies Omit<NewDocumentSearchFacetsRow, 'searchText' | 'fingerprint'>
+  const searchText = [base.title, ...words].filter(Boolean).join(' · ').slice(0, SEARCH_TEXT_MAX)
+  const withText = { ...base, searchText }
+  return { ...withText, fingerprint: fingerprintOf(withText) }
+}

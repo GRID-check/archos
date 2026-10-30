@@ -17,6 +17,9 @@ public/excalidraw/
 # MCP Apps views (built by scripts/build-mcp-app-views.ts on dev, build and in the image; ADR-0142)
 mcp-app-views/
 
+# The sketch renderer's worker bundle (built by scripts/build-sketch-renderer.ts on dev, build and in the image; ADR-0149)
+dist-sketch-render/
+
 # Next.js
 .next/
 out/

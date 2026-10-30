@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "concurrently --kill-others --names \",next\" \"bun run dev:proxy\" \"bun run dev:next\"",
     "dev:proxy": "node server.js",
-    "dev:next": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && next dev --turbopack -p 3001",
-    "build": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && next build",
+    "dev:next": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && bun run build:sketch-renderer && next dev --turbopack -p 3001",
+    "build": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && bun run build:sketch-renderer && next build",
     "build:mcp-apps": "bun scripts/build-mcp-app-views.ts",
+    "build:sketch-renderer": "bun scripts/build-sketch-renderer.ts",
     "build:jobs": "bun scripts/build-jobs-bundle.ts",
     "start": "NODE_ENV=production node server.js",
     "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs",

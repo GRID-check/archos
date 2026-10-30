@@ -84,10 +84,11 @@ export function useSketchRevision(
     setState({ kind: 'saving' })
     const attempt = async () => {
       const base = typeof target.baseVersionId === 'function' ? target.baseVersionId() : target.baseVersionId
-      const { source, svg } = await prepareSketch()
+      // The server draws the picture from the scene (ADR-0149); the editor's own export is only the filing path's.
+      const { source } = await prepareSketch()
       const scene = JSON.parse(source) as { type: 'excalidraw'; elements: object[] }
       const baseContentHash = target.baseContentHash?.() ?? null
-      const saved = await saveSketch(target.documentId, { scene, svg, baseVersionId: base, baseContentHash }, { peerId: target.peerId?.() })
+      const saved = await saveSketch(target.documentId, { scene, baseVersionId: base, baseContentHash }, { peerId: target.peerId?.() })
       return { ...saved, elements: scene.elements }
     }
     try {

@@ -87,8 +87,8 @@ describe('useSketchRevision', () => {
     expect(result.current.state).toEqual({ kind: 'saved', versionId: 'v2', versionNumber: 2, pdfStale: false, draft: false })
     expect(fetch.mock.calls[0][1]?.method).toBe('PUT')
     expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({
+      // No picture: the server draws it from the scene (ADR-0149).
       scene: SKETCH.scene,
-      svg: '<svg/>',
       baseVersionId: 'v1',
       baseContentHash: null,
     })
