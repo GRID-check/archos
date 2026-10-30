@@ -26,7 +26,7 @@ Status is read from each doc's header. A **dated review** is a record of what wa
 | [piloti-writes-perspective-review.md](piloti-writes-perspective-review.md) | dated review 2026-09-10 | A product review of what the Piloti writes branch delivers, and what it leaves open. |
 | [plan-measurement-from-drawings.md](plan-measurement-from-drawings.md) | live, research note 2026-08-19 | Whether a dimension can be measured from a 2D drawing with one known length, and with what uncertainty. |
 | [sketches.md](sketches.md) | live, proposed 2026-10-29 | A Skizze as a project document: why sketches are an island today, the scene, slices S0–S6 and what each makes better. Decision: ADR-0148. |
-| [working-on-a-plan.md](working-on-a-plan.md) | design, 2026-10-30 | Working on a plan by what the office is trying to do: one canvas per surface, drawing on a plan is a remark, a drawing of your own is a Skizze. Evidence from the pilot protocols. |
+| [working-on-a-plan.md](working-on-a-plan.md) | design, 2026-10-30 | Working on a Fassung together, from the pilot protocols: the Besprechung is the unit, decisions live in the Protokoll, one canvas per surface, marks are closed and Skizzen are kept. Slices in evidence order. |
 | [spatial-review-findings.md](spatial-review-findings.md) | dated review 2026-08-12 | An adversarial review of `ifc_measure` and `ifc-spatial-py`: defects reachable through the tool surface that no test catches. |
 
 `agent-spatial-reasoning-architecture.excalidraw` is the diagram that goes with [agent-spatial-reasoning.md](agent-spatial-reasoning.md).
