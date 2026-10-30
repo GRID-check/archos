@@ -1,0 +1,10 @@
+---
+fixes:
+  - >
+    After a sketch is approved, the PDF beside it now shows the approved
+    drawing even when drawing it fails at first, and comparing versions works
+    again for SVG, XML and YAML files.
+  - >
+    A sketch whose PDF cannot be moved with it now stays where it was and you
+    are told why, and the sketch editor only offers saving into a draft when
+    you are allowed to.
