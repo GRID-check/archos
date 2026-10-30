@@ -4,6 +4,7 @@ import type { ReactElement } from 'react'
 import { render, screen } from '@/test-utils'
 import { I18nProvider } from '@/i18n'
 import { CommandDialog } from '@/components/ui/command'
+import { leadUpToMatch } from '../lib/passage-window'
 import { ChoiceStrip, ComposerPickerFrame, FieldShortcut, MetaLine, MetaPart } from './search-atoms'
 
 const inGerman = (ui: ReactElement) =>
@@ -103,5 +104,29 @@ describe('ChoiceStrip', () => {
     )
     expect(screen.getByRole('region', { name: 'Art' })).toBeInTheDocument()
     expect(container.querySelectorAll('svg.lucide-chevron-right')).toHaveLength(1)
+  })
+})
+
+describe('leadUpToMatch', () => {
+  // The palette shows a passage on one line, about forty characters of it: a
+  // match past that was cut off, and the line said nothing about why it matched.
+  it('starts a long lead-in a few words before the first match, on a word boundary', () => {
+    const lead = 'Laut Gutachten der MA 37 vom Oktober beträgt die maximale '
+    const shown = leadUpToMatch([
+      { text: lead, match: false },
+      { text: 'Fluchtweglänge', match: true },
+      { text: ' 40 m.', match: false },
+    ])
+    expect(shown[0].text.length).toBeLessThanOrEqual(32)
+    expect(lead.endsWith(shown[0].text)).toBe(true)
+    expect(shown[0].text.startsWith(' ')).toBe(false)
+    expect(shown[1]).toEqual({ text: 'Fluchtweglänge', match: true })
+  })
+
+  it('leaves a passage whose match is near the start, or that has none, as it is', () => {
+    const near = [{ text: 'Die ', match: false }, { text: 'Fluchtweglänge', match: true }]
+    const none = [{ text: 'Kein Treffer hier', match: false }]
+    expect(leadUpToMatch(near)).toBe(near)
+    expect(leadUpToMatch(none)).toBe(none)
   })
 })
