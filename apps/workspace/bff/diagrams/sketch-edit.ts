@@ -64,6 +64,7 @@ export const SKETCH_EDIT_REFUSALS = [
   'empty-update',
   'empty-rebind',
   'bad-intent',
+  'too-many-ids',
 ] as const
 export type SketchEditRefusal = (typeof SKETCH_EDIT_REFUSALS)[number] | SketchRefusal
 
@@ -83,13 +84,19 @@ export class SketchEditError extends Error {
 export interface AppliedSketchScene {
   scene: SketchScene
   diff: SketchEditDiff
+  /** At most `MAX_SKETCH_EDIT_WARNINGS`, so neither the card nor Piloti's text grows with the scene. */
   warnings: SketchEditWarning[]
+  /** How many more the edit would leave. */
+  moreWarnings: number
 }
 
 export interface ApplyOptions {
   nonce?: () => number
   now?: number
 }
+
+/** At most this many elements in one `align`, `distribute` or `stack`: a step a person reads as one. */
+export const MAX_SKETCH_EDIT_IDS = 100
 
 const COLOR = /^(?:#[0-9a-f]{3,8}|transparent)$/i
 const DEFAULT_GAP = 40
@@ -149,6 +156,12 @@ class EditState {
   readonly reroute = new Set<string>()
   readonly factory: ElementFactory
   private readonly baseIds: Set<string>
+  /**
+   * Labels by container, connectors by bound element and members by frame, in
+   * scene order. Built on first use and dropped by {@link restructured}: a move
+   * changes none of it, so sixty moves of a big frame read it once.
+   */
+  private index: { labels: Map<string, EditElement[]>; connectors: Map<string, EditElement[]>; members: Map<string, EditElement[]> } | null = null
 
   constructor(
     readonly base: SketchScene,
@@ -171,24 +184,53 @@ class EditState {
     return element
   }
 
+  /** An element was added or dropped, or a binding, container or frame changed: the index is read again. */
+  restructured(): void {
+    this.index = null
+  }
+
+  private indexed() {
+    if (this.index) return this.index
+    const labels = new Map<string, EditElement[]>()
+    const connectors = new Map<string, EditElement[]>()
+    const members = new Map<string, EditElement[]>()
+    const push = (map: Map<string, EditElement[]>, key: unknown, element: EditElement) => {
+      if (typeof key !== 'string') return
+      const list = map.get(key)
+      if (!list) map.set(key, [element])
+      else if (list.at(-1) !== element) list.push(element)
+    }
+    for (const element of this.live.values()) {
+      if (element.type === 'text') {
+        push(labels, element.containerId, element)
+      } else {
+        for (const id of boundIds(element, 'text')) {
+          const text = this.live.get(id)
+          if (text?.type === 'text' && text.containerId !== element.id) push(labels, element.id, text)
+        }
+      }
+      if (CONNECTOR_TYPES.has(element.type)) {
+        push(connectors, (element.startBinding as { elementId?: unknown } | null)?.elementId, element)
+        push(connectors, (element.endBinding as { elementId?: unknown } | null)?.elementId, element)
+      }
+      if (!element.containerId) push(members, element.frameId, element)
+    }
+    this.index = { labels, connectors, members }
+    return this.index
+  }
+
   labelsOf(container: EditElement): EditElement[] {
-    const ids = new Set(boundIds(container, 'text'))
-    return [...this.live.values()].filter((element) => element.type === 'text' && (element.containerId === container.id || ids.has(element.id)))
+    return [...new Set(this.indexed().labels.get(container.id) ?? [])]
   }
 
   connectorsAt(id: string): EditElement[] {
-    return [...this.live.values()].filter(
-      (element) =>
-        CONNECTOR_TYPES.has(element.type) &&
-        ((element.startBinding as { elementId?: string } | null)?.elementId === id ||
-          (element.endBinding as { elementId?: string } | null)?.elementId === id)
-    )
+    return this.indexed().connectors.get(id) ?? []
   }
 
   /** Move an element, its labels and, for a frame, what it holds; its arrows are routed again later. */
   moveBy(element: EditElement, dx: number, dy: number): void {
     if (dx === 0 && dy === 0) return
-    const members = element.type === 'frame' ? [...this.live.values()].filter((other) => other.frameId === element.id && !other.containerId) : []
+    const members = element.type === 'frame' ? (this.indexed().members.get(element.id) ?? []) : []
     for (const target of [element, ...members]) {
       target.x += dx
       target.y += dy
@@ -209,6 +251,7 @@ class EditState {
       gone.add(connector.id)
       for (const label of this.labelsOf(connector)) gone.add(label.id)
     }
+    this.restructured()
     for (const id of gone) {
       this.live.delete(id)
       if (this.baseIds.has(id)) this.removed.add(id)
@@ -239,6 +282,7 @@ function applyAdd(state: EditState, op: Extract<SketchEditOp, { op: 'add' }>, in
     state.live.set(element.id, element)
     state.added.push(element.id)
   }
+  state.restructured()
 }
 
 function setLabel(state: EditState, element: EditElement, text: string): void {
@@ -260,6 +304,7 @@ function setLabel(state: EditState, element: EditElement, text: string): void {
   addBound(element, 'text', created.id)
   state.live.set(created.id, created)
   state.added.push(created.id)
+  state.restructured()
 }
 
 function applyUpdate(state: EditState, op: Extract<SketchEditOp, { op: 'update' }>, index: number): void {
@@ -322,6 +367,7 @@ function applyRebind(state: EditState, op: Extract<SketchEditOp, { op: 'rebind' 
     if (old && old.id !== other) dropBound(old, new Set([connector.id]))
     bindEnd(connector, end, target)
   }
+  state.restructured()
   state.reroute.add(connector.id)
 }
 
@@ -405,6 +451,7 @@ function applyStack(state: EditState, op: Extract<SketchEditOp, { op: 'stack' }>
 function checkBounds(op: SketchEditOp, index: number): void {
   const intent = op.intent.trim()
   if (!intent || intent.length > MAX_SKETCH_EDIT_INTENT_CHARS) throw new SketchEditError('bad-intent', index)
+  if ('ids' in op && op.ids.length > MAX_SKETCH_EDIT_IDS) throw new SketchEditError('too-many-ids', index)
   if (op.op !== 'update') return
   const { x, y, width, height } = op.set
   for (const value of [x, y, width, height]) {
@@ -507,12 +554,13 @@ export function applySketchEdit(base: SketchScene, ops: readonly SketchEditOp[],
   const top = lastIndex(base.elements)
   const keys = generateNKeysBetween(top, null, state.added.length)
   const fresh = state.added.map((id, at) => Object.assign(state.live.get(id) as EditElement, { index: keys[at] }) as SceneElement)
-  const after = top === null ? elements.length : elements.findIndex((element) => element.index === top) + 1
-  elements.splice(after, 0, ...fresh)
+  // After the top element, or after the last one kept below it when the edit removed the top one; at the end when none is indexed.
+  const kept = top === null ? -1 : elements.findLastIndex((element) => validKey(element.index) && element.index <= top)
+  elements.splice(kept < 0 ? elements.length : kept + 1, 0, ...fresh)
   const diff = diffOf(state)
-  const warnings = lintSketchEdit(state.live, {
+  const { warnings, more } = lintSketchEdit(state.live, {
     placed: new Set([...state.added, ...state.moved]),
     written: new Set([...diff.added, ...diff.changed]),
   })
-  return { scene: { ...base, elements }, diff, warnings }
+  return { scene: { ...base, elements }, diff, warnings, moreWarnings: more }
 }
