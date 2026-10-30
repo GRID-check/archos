@@ -21,7 +21,7 @@ dependencies = [
     # SeaweedFS. It was reaching us only as a transitive of langchain-aws, so
     # the one S3 code path in the Python tier would have vanished the day an
     # unrelated LLM provider dependency was dropped.
-    "boto3>=1.43.116",
+    "boto3>=1.43.118",
     # match="regex": a person's pattern runs under a match timeout (`timeout=`), which `re` has not. Already
     # in the lock as a transitive of tiktoken; the search must not lose it with that.
     "regex>=2026.5.9",
