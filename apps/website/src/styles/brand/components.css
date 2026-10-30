@@ -17,12 +17,10 @@ body { margin: 0; font-family: var(--font-sans); font-weight: 500; font-size: 16
 
 /* Headings balance their lines, so a title never leaves one word alone on its last line.
    A German compound longer than a 320px screen ("Wissensmanagement" in display size) breaks
-   instead of pushing the page sideways (WCAG 1.4.10). Heading sizes hyphenate by the page's
-   lang; display sizes only at a soft hyphen (&shy;) the copy sets, because an automatic
-   break in a 44px word ("archi-tecture" at 360px) reads as a fault. */
-.display-xl, .display, .heading-1, .heading-2, .heading-3 { text-wrap: balance; overflow-wrap: break-word; }
-.heading-1, .heading-2, .heading-3 { hyphens: auto; }
-.display-xl, .display { hyphens: manual; }
+   instead of pushing the page sideways (WCAG 1.4.10). Headings hyphenate only at a soft
+   hyphen (&shy;) the copy sets, never automatically: an automatic break in a short English
+   word ("com-pares" at 1440px, "archi-tecture" at 360px) reads as a fault. */
+.display-xl, .display, .heading-1, .heading-2, .heading-3 { text-wrap: balance; overflow-wrap: break-word; hyphens: manual; }
 
 /* Layout: two widths and the section rhythm */
 .ui-container { box-sizing: border-box; max-width: var(--container-max); margin: 0 auto; padding: 0 var(--gutter); }

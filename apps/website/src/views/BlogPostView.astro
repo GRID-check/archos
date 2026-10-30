@@ -17,7 +17,7 @@ interface Props {
 
 const { locale, post } = Astro.props;
 const { Content } = await render(post);
-const { title, description, pubDate, category, translationSlug } = post.data;
+const { title, heading, description, pubDate, category, translationSlug } = post.data;
 const c = copy[locale];
 const cat = CATEGORIES[locale][category];
 // The language switch and hreflang point at the post's translation. A post with
@@ -48,7 +48,7 @@ const feed = locale === 'en' ? '/en/rss.xml' : '/rss.xml';
         <a class="ui-link" href={blogPath(locale, category)}>{cat.label}</a>
         <time datetime={pubDate.toISOString()}>{formatDate(pubDate, locale)}</time>
       </p>
-      <h1 class="heading-1 post-title">{title}</h1>
+      <h1 class="heading-1 post-title">{heading}</h1>
       <p class="lead post-lead">{description}</p>
     </header>
 
