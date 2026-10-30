@@ -37,7 +37,7 @@ import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { recordSketchPinsKeptScore } from '@/lib/langfuse/sketch-score'
 import { versionBytesPassedScreening } from './document-reader'
 
-export interface CurrentFassungInput {
+export interface CurrentVersionInput {
   session: AuthorizedSession
   document: Document
   /** The version now current. */
@@ -76,7 +76,7 @@ export async function sketchToPlace(document: Document, version: DocumentVersion
   )
 }
 
-export async function versionBecameCurrent(input: CurrentFassungInput): Promise<void> {
+export async function versionBecameCurrent(input: CurrentVersionInput): Promise<void> {
   const { session, document, version } = input
   try {
     let scene = input.scene ?? null
