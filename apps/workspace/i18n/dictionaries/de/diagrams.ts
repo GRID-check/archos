@@ -93,7 +93,6 @@ export const diagrams: typeof en.diagrams = {
     previewFailed: 'Die Vorschau konnte nicht gezeichnet werden. Die Schritte stehen darunter.',
     warnings: 'Hinweise zur Anordnung',
     applied: 'In die Skizze übernommen',
-    appliedRebased: 'In die neueste Fassung der Skizze übernommen',
     dismissed: 'Verworfen, die Skizze bleibt, wie sie ist',
     undo: 'Rückgängig',
     undoing: 'Wird zurückgenommen …',

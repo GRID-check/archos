@@ -61,7 +61,39 @@ export const DEMO = {
   /** An action of the agent catalog with a long value: „Übernehmen“ waits until it is read in full. */
   operationOpen: id(10),
   operationIds: id(11),
+  /** A change to a filed Skizze, open: the server's picture of it and the steps. */
+  sketchEditOpen: id(12),
+  /** The same kind of change, applied: „Rückgängig“ while its Fassung is current. */
+  sketchEditApplied: id(13),
 } as const
+
+/** The Skizze the sketch-edit demos change, and the Fassung an applied one made. */
+const SKETCH = { documentId: 'doc-sketch-demo', base: 'ver-sketch-1', made: 'ver-sketch-2' }
+
+const SKETCH_EDIT_INPUT = {
+  params: { id: SKETCH.documentId },
+  body: {
+    baseVersionId: SKETCH.base,
+    ops: [
+      { op: 'add', intent: 'Bad rechts neben den Flur', element: { type: 'rectangle', id: 'bath', x: 0, y: 0, label: { text: 'Bad' } } },
+      { op: 'place', intent: 'Bad 40 px rechts vom Flur', id: 'bath', referenceId: 'hall', side: 'right' },
+      { op: 'remove', intent: 'Abstellraum entfällt, mit seinem Pfeil', id: 'store' },
+      { op: 'update', intent: 'Küche heißt jetzt Kochen', id: 'kitchen', set: { label: { text: 'Kochen' } } },
+    ],
+  },
+}
+
+/** What the server's renderer draws for that edit, drawn by hand: `/dev` has no renderer. */
+const SKETCH_EDIT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" width="520" height="220">
+<rect width="520" height="220" fill="#fff"/>
+<g fill="none" stroke-width="2" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="middle">
+<rect x="20" y="20" width="160" height="80" rx="8" stroke="#1e1e1e" opacity="0.3"/><text x="100" y="65" fill="#1e1e1e" stroke="none" opacity="0.3">Flur</text>
+<rect x="220" y="20" width="160" height="80" rx="8" stroke="#2f9e44"/><text x="300" y="65" fill="#2f9e44" stroke="none">Bad</text>
+<rect x="20" y="130" width="160" height="70" rx="8" stroke="#868e96" stroke-dasharray="8 6" opacity="0.6"/>
+<rect x="20" y="130" width="160" height="70" rx="8" stroke="#1971c2"/><text x="100" y="170" fill="#1971c2" stroke="none">Kochen</text>
+<rect x="340" y="130" width="160" height="70" rx="8" stroke="#e03131" stroke-dasharray="8 6" opacity="0.8"/><text x="420" y="170" fill="#e03131" stroke="none" opacity="0.8">Abstellraum</text>
+<path d="M180 165 L340 165" stroke="#e03131" stroke-dasharray="8 6" opacity="0.8"/>
+</g></svg>`
 
 /** The ids an operation names, for the card that shows each by its name (and one this reader may not read). */
 const NAMED = {
@@ -198,6 +230,25 @@ const seed = (): Map<string, ProposedChangeView> =>
             { type: 'member', id: NAMED.person, name: 'Anna Berger' },
           ],
         },
+        {
+          ...base,
+          id: DEMO.sketchEditOpen,
+          kind: 'operation',
+          payload: { operation: 'document-sketch-edit', input: SKETCH_EDIT_INPUT, summary: 'Skizze „Raumprogramm EG“ ändern: vier Schritte' },
+          targets: [{ type: 'document', id: SKETCH.documentId, name: 'Raumprogramm EG.svg' }],
+        },
+        {
+          ...base,
+          id: DEMO.sketchEditApplied,
+          kind: 'operation',
+          status: 'applied',
+          canDecide: false,
+          decidedBy: 'user_anna',
+          decidedByName: 'Anna Berger',
+          decidedAt: '2026-10-30T09:12:00.000Z',
+          results: [{ label: 'Skizze „Raumprogramm EG“ ändern', ok: true, itemId: SKETCH.made }],
+          payload: { operation: 'document-sketch-edit', input: SKETCH_EDIT_INPUT, summary: 'Skizze „Raumprogramm EG“ ändern: vier Schritte' },
+        },
       ] satisfies ProposedChangeView[]
     ).map((proposal) => [proposal.id, proposal])
   )
@@ -246,7 +297,9 @@ export function installFakeProposalClient(listed: readonly ListedProposal[] = []
         ? null
         : current.kind === 'file_operation'
           ? current.payload.operations.map((item) => ({ label: item.document ?? item.folder_name ?? '', ok: true }))
-          : [{ label: labelOf(current), ok: true }]
+          : current.kind === 'operation' && current.payload.operation === 'document-sketch-edit'
+            ? [{ label: labelOf(current), ok: true, itemId: SKETCH.made }]
+            : [{ label: labelOf(current), ok: true }]
     return {
       ...current,
       status,
@@ -281,6 +334,13 @@ export function installFakeProposalClient(listed: readonly ListedProposal[] = []
       return json({ proposal: next })
     }
     if (url.pathname === `/api/projects/${DEMO_PROJECT_ID}/profile`) return json({ profile: PROFILE_NOW, profileVersion: 1 })
+    const sketch = `/api/documents/${SKETCH.documentId}/sketch`
+    if (url.pathname === `${sketch}/edits/preview`) {
+      const diff = { added: ['bath'], removed: ['store'], changed: ['kitchen'] }
+      return json({ documentId: SKETCH.documentId, baseVersionId: SKETCH.base, diff, warnings: [], svg: SKETCH_EDIT_SVG })
+    }
+    if (url.pathname === sketch) return json({ hasScene: true, canWrite: true, versionId: SKETCH.made })
+    if (url.pathname === `${sketch}/revert`) return json({ documentId: SKETCH.documentId, versionId: 'ver-sketch-3', versionNumber: 3 })
     return real(input, init)
   }
   return () => {

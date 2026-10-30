@@ -4,6 +4,7 @@ import { cardKey } from '../card-decision'
 import { ProjectProfilePatchCard } from './ProjectProfilePatchCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
 import { OperationReceipt } from './ProposalReceipts'
+import { SKETCH_EDIT_OPERATION, SketchEditReceipt } from './SketchEditReceipt'
 import { FileOperationProposalCard } from './FileOperationProposalCard'
 import { CanvasActivityCard } from './CanvasActivityCard'
 import { LookCard } from './LookCard'
@@ -448,9 +449,10 @@ export const AnswerCardView: FC<AnswerCardViewProps> = ({
   }
 
   if (card.type === 'operation_proposal') {
+    const Receipt = card.operation === SKETCH_EDIT_OPERATION ? SketchEditReceipt : OperationReceipt
     return (
       <FadeIn distance={6}>
-        <OperationReceipt
+        <Receipt
           proposalId={card.proposal_id}
           title={card.title}
           operation={card.operation}

@@ -152,7 +152,6 @@ export const diagrams = {
     previewFailed: 'The preview could not be drawn. The steps are listed below.',
     warnings: 'Notes on the layout',
     applied: 'Applied to the sketch',
-    appliedRebased: 'Applied to the newest version of the sketch',
     dismissed: 'Dismissed; the sketch stays as it is',
     undo: 'Undo',
     undoing: 'Undoing…',

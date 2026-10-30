@@ -21,6 +21,9 @@
  *  - Project facts: before → after derived from the PATCH against the profile,
  *    never from a model's preview.
  *
+ *  - Skizze: the server's picture of the change with its legend, the intents as
+ *    steps; once applied, „Rückgängig“ while the edit's Fassung is current.
+ *
  * The last panel is the card of an answer without a stored proposal: read-only.
  *
  * Pinned to German (`I18nProvider initialLocale="de" fixedLocale`): the copy
@@ -33,6 +36,7 @@ import { FileOperationProposalCard } from '@/features/cards/components/FileOpera
 import { MemoryProposalCard } from '@/features/cards/components/MemoryProposalCard'
 import { OperationReceipt } from '@/features/cards/components/ProposalReceipts'
 import { ProjectProfilePatchCard } from '@/features/cards/components/ProjectProfilePatchCard'
+import { SketchEditReceipt } from '@/features/cards/components/SketchEditReceipt'
 import { DEMO, DEMO_PROJECT_ID, useFakeProposalClient } from '../_fixtures/fake-proposals'
 
 const MOVES = [
@@ -149,6 +153,14 @@ export default function ProposalReceiptsPreview() {
 
             <Panel title="Aktion, deren Eingaben IDs sind" note="Projekt, Ordner, Dokument und Person beim Namen, die ID beim Darüberfahren; ein Dokument, das dieser Leser nicht sehen darf, bleibt die ID.">
               <OperationReceipt proposalId={DEMO.operationIds} title="Dokumente verschieben" operation="document-move" input={{}} />
+            </Panel>
+
+            <Panel title="Skizze ändern, offen" note="Das Bild der Änderung vom Server (neu grün, entfernt rot gestrichelt, geändert blau über dem grauen Stand davor), die Legende in Worten, die Schritte nummeriert.">
+              <SketchEditReceipt proposalId={DEMO.sketchEditOpen} title="Skizze ändern" input={{}} />
+            </Panel>
+
+            <Panel title="Skizze ändern, übernommen" note="„Rückgängig“ solange die Fassung der Änderung die aktuelle ist; danach der Grund, warum nicht mehr.">
+              <SketchEditReceipt proposalId={DEMO.sketchEditApplied} title="Skizze ändern" input={{}} />
             </Panel>
 
             <Panel title="Dateien, ohne gespeicherten Vorschlag" note="Eine Antwort aus der Zeit vor den Vorschlägen auf dem Server, oder einer, den der Agent nicht ablegen konnte: lesbar, nicht übernehmbar, mit dem Grund.">
