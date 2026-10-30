@@ -95,8 +95,6 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         max_value=1,
     ),
     ScoreDefinition(
-        "revision-notice",
-    ScoreDefinition(
         "sketch-released",
         "CATEGORICAL",
         "A Skizze's Fassung made current by Freigabe (ADR-0148, ADR-0104), and what became of the PDF beside it "
@@ -107,6 +105,8 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         writer="bff",
         categories=("redrawn", "none", "superseded", "confined", "failed", "unreadable"),
     ),
+    ScoreDefinition(
+        "revision-notice",
         "NUMERIC",
         "How many marks Piloti proposed when it compared a new Fassung on its own (ADR-0130); 0 is compared, "
         "nothing visible. On the trace of the first page's vision call; with piloti-decision on those marks, "
