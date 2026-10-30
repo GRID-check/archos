@@ -42,27 +42,21 @@
  */
 
 import type { JSX } from 'react'
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
   Archive,
   ArchiveRestore,
-  AtSign,
   CheckCircle2,
-  Clock,
-  EyeOff,
-  HardDrive,
   Layers,
   Mail,
   MailOpen,
-  Megaphone,
   MessageSquare,
   MoreHorizontal,
-  ShieldAlert,
-  UserPlus,
-  type LucideIcon,
-  AlertTriangle,
+  ArrowUpRight,
+  Check,
+  Reply,
 } from 'lucide-react'
 
 import { namespaceRoot, useLocale, useTranslations } from '@/i18n'
@@ -75,20 +69,11 @@ import {
   isMarkAnchored,
   UNKNOWN_TYPE_PRESENTATION,
   type InboxItemView,
-  type InboxTypePresentation,
 } from '@/lib/inbox/types'
-import { AnnotationRequestError, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
-import type { MarkMention } from '@/lib/annotations/types'
-import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { AttentionDot } from '@/components/ui/attention-dot'
 import { Quote } from '@/components/ui/quote'
-import { PersonAvatar } from '@/components/ui/avatar-stack'
-import { AgentGlyph } from '@/components/ui/agent-glyph'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Item,
   ItemActions,
@@ -99,60 +84,23 @@ import {
 } from '@/components/ui/item'
 import { motion, motionQuick } from '@/components/motion'
 import { cn } from '@/lib/utils'
-import type {
-  DocumentLifecycleClient,
-} from '@/lib/documents/lifecycle-client'
-import {
-  DocumentLifecycleError,
-  documentLifecycleClient,
-} from '@/lib/documents/lifecycle-client'
-import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
+import { documentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareRevisionHref } from '@/features/documents/lib/revision-compare-link'
 import { withReviewBack } from '@/features/documents/lib/open-review'
-import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
-import { useUndoableArchive } from '../hooks/use-undoable-archive'
+import { Composer } from '@/features/documents/components/review/composer'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
-import type { MarksSetBy } from '@/lib/annotations/attention'
 import { MentionText } from './MentionText'
+import { InboxItemFace } from './InboxItemFace'
+import { MARK_CLIENT, useMarkAnswer, type InboxMarkClient } from '../hooks/use-mark-answer'
+import { InboxItemCaption } from './InboxItemCaption'
+import { inboxDue } from '../lib/inbox-due'
+import { InboxReviewDecision, type InboxReviewClient } from './InboxReviewDecision'
+import { isPlainClick } from '../lib/plain-click'
 import { UploadReportLines } from '@/features/uploads/components/upload-report'
 
-/**
- * The ONE place the registry's icon names become components. Keeping the map here
- * (rather than storing components in `lib/inbox/types.ts`) keeps the registry a
- * plain data module that the server half can import without pulling in React.
- * `piloti` is not a Lucide icon but Piloti's own glyph, drawn below.
- */
-const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon> =
-  {
-    'at-sign': AtSign,
-    'message-square': MessageSquare,
-    'user-plus': UserPlus,
-    'check-circle': CheckCircle2,
-    'hard-drive': HardDrive,
-    'alert-triangle': AlertTriangle,
-    clock: Clock,
-    layers: Layers,
-    megaphone: Megaphone,
-    'shield-alert': ShieldAlert,
-  }
-
-/** The two writes a mark row makes, through the annotations' own client. Injected by the specs. */
-export interface InboxMarkClient {
-  reply: typeof replyToAnnotation
-  update: typeof updateAnnotation
-}
-
-const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
-
-/** The variants of `annotation.activity` that tell of new marks, counted per document (`MarksSetBy`, `lib/annotations/attention.ts`). */
-const MARKS_SET_VARIANTS: readonly string[] = ['created', 'created_piloti'] satisfies readonly MarksSetBy[]
-
-/** Only a plain primary click counts as "opened"; see the title link. */
-function isPlainClick(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }): boolean {
-  return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) && event.button === 0
-}
+export type { InboxMarkClient }
 
 export interface InboxItemRowProps {
   item: InboxItemView
@@ -179,8 +127,7 @@ export interface InboxItemRowProps {
    * read that names the STAND (Fassung number, date) and carries its
    * `contentHash` as the `ifMatch` the decisions send.
    */
-  reviewClient?: Pick<DocumentLifecycleClient, 'approve' | 'requestChanges' | 'reject'> &
-    Partial<Pick<DocumentLifecycleClient, 'getVersion'>>
+  reviewClient?: InboxReviewClient
 }
 
 export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(function InboxItemRow(
@@ -210,7 +157,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     route, not just its own row. One unknown row must cost one unremarkable row.
   */
   const presentation = INBOX_TYPE_PRESENTATION[item.type] ?? UNKNOWN_TYPE_PRESENTATION
-  const Icon = presentation.icon === 'piloti' ? null : ICONS[presentation.icon]
 
   /*
     „Besprechen", for a row whose target is a DOCUMENT.
@@ -253,15 +199,10 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const inert = item.state === 'inert'
   const unread = item.state === 'unread'
   const resolved = item.state === 'resolved'
-  // A request only reads as a request while it is still outstanding; once it is
-  // answered it is history, and colouring it would keep shouting for attention.
-  const isRequest = presentation.tone === 'request' && item.actionable && !resolved && !inert
-  // An operational warning gets the same tint for the same reason — something
-  // needs attention — but it is not a REQUEST: nobody is waiting on the reader,
-  // so it is not actionable and it does not resolve. Keeping the two conditions
-  // apart rather than widening `isRequest` keeps that distinction readable.
+  // An operational warning is not a REQUEST: nobody is waiting on the reader, so
+  // it is not actionable and it does not resolve. Its body is the news (why it
+  // stopped, what was found), so the row keeps it beside a quote.
   const isWarning = presentation.tone === 'warning' && !inert
-  const needsAttention = isRequest || isWarning
 
   // A REDACTED row carries no href and no payload (IB-13); `inboxItemCopy` words it.
   const redacted = !item.href
@@ -289,98 +230,23 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const query = searchParams?.toString()
   const here = pathname ? `${pathname}${query ? `?${query}` : ''}` : null
   const linkHref = markRow && item.href ? withReviewBack(item.href, here) : item.href
-  /*
-    A request on a mark is answered where the server says it may be
-    (`answerIn`): here in the row, only in the Prüfansicht (Piloti's Rückfrage
-    while events do not wake Piloti: the review asks Piloti itself), or not at
-    all (the reader may only read the document). Never guessed here.
-  */
-  const markOpen = markRow && item.answerIn !== null && item.actionable && !resolved && !archived
-  const answerHere = markOpen && item.answerIn === 'row'
-  const answerInReview = markOpen && item.answerIn === 'review'
-  const canResolveMark = answerHere && item.type === 'annotation.assigned_to_you'
-  const [replying, setReplying] = useState(false)
+  const {
+    answerHere,
+    answerInReview,
+    canResolveMark,
+    replying,
+    setReplying,
+    markBusy,
+    markOutcome,
+    setMarkOutcome,
+    untold,
+    sendReply,
+    resolveMark,
+    undoResolve,
+    offerUndo,
+  } = useMarkAnswer({ item, markRow, markClient, onOpen })
   // Sent or let go, the answer box goes and „Antworten“ comes back: the focus goes with it.
   const replyButtonRef = useFocusBackOnClose<HTMLButtonElement>(answerHere && replying && item.anchorId !== null)
-  const [markBusy, setMarkBusy] = useState(false)
-  const [markOutcome, setMarkOutcome] = useState<
-    'sent' | 'sentAgentNotAsked' | 'resolved' | 'conflict' | 'failed' | null
-  >(null)
-  /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
-  const [untold, setUntold] = useState<string[]>([])
-
-  /*
-    The answer goes in as the thread's would, with whom it mentions as picked
-    and @Piloti as its flag. A failure throws back into the composer, which
-    keeps the text and says the row's own words for it (`describeFailure`).
-    Answers with the mentions the server kept.
-  */
-  const sendReply = async (body: string, { piloti, mentions }: ComposerSend): Promise<readonly MarkMention[] | void> => {
-    if (!answerHere || !item.anchorId) return
-    setMarkBusy(true)
-    setMarkOutcome(null)
-    try {
-      const { annotation, replyId, wake } = await markClient.reply(item.resourceId, item.anchorId, {
-        body: body.trim(),
-        ...(piloti ? { addressesPiloti: true } : {}),
-        ...(mentions.length > 0 ? { mentions } : {}),
-      })
-      const kept = annotation.replies.find((reply) => reply.id === replyId)?.mentions ?? []
-      const keptIds = new Set(kept.map((mention) => mention.targetId))
-      setUntold(
-        mentions
-          .filter((mention) => mention.targetId !== AGENT_MENTION_ID && !keptIds.has(mention.targetId))
-          .map((mention) => mention.display),
-      )
-      setReplying(false)
-      // `off`: the answer met a wake rule but nothing wakes Piloti here; the row says how to ask it.
-      setMarkOutcome(wake === 'off' ? 'sentAgentNotAsked' : 'sent')
-      // Answered from here is read here: the thread has the reply.
-      onOpen?.(item)
-      return kept
-    } finally {
-      setMarkBusy(false)
-    }
-  }
-
-  /*
-    „Erledigen“ holds its write for the undo window, as archiving a row does
-    and as the review holds a decision by a key (`useUndoableArchive`): the
-    row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes
-    when the window ends, the page is hidden or the row goes. „Rückgängig“
-    inside the window lets go of it: nothing was sent, so the request this row
-    asks is still open on the server and the list keeps the row. The write is
-    from the status the row knows the mark in (`expectedStatus`): a mark
-    somebody moved meanwhile is a 409, never overwritten from a copy of it,
-    and the row says so when the write finally goes.
-  */
-  const sendResolve = async (anchorId: string): Promise<void> => {
-    setMarkBusy(true)
-    try {
-      await markClient.update(item.resourceId, anchorId, { status: 'resolved', expectedStatus: 'open' })
-    } catch (error) {
-      setMarkOutcome(error instanceof AnnotationRequestError && error.status === 409 ? 'conflict' : 'failed')
-    } finally {
-      setMarkBusy(false)
-    }
-  }
-  const resolveLater = useUndoableArchive(sendResolve)
-  const resolveHeld = item.anchorId !== null && resolveLater.pendingIds.has(item.anchorId)
-
-  const resolveMark = (): void => {
-    if (!canResolveMark || !item.anchorId || markBusy) return
-    setMarkOutcome('resolved')
-    resolveLater.request(item.anchorId)
-  }
-
-  const undoResolve = (): void => {
-    if (!item.anchorId) return
-    resolveLater.undo(item.anchorId)
-    setMarkOutcome(null)
-  }
-
-  // „Rückgängig“ while the write is held, not once it has gone out.
-  const offerUndo = resolveHeld && !markBusy && markOutcome === 'resolved'
   // „Erledigen“ goes when it is pressed and „Rückgängig“ takes its place, and back
   // again: the focus follows the control that took the place of the pressed one.
   // When the window ends with the write, „Rückgängig“ goes and „Erledigen“ does
@@ -390,15 +256,27 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const undoRef = useFocusBackOnClose<HTMLButtonElement>(!offerUndo)
   const resolveRef = useFocusBackOnClose<HTMLButtonElement>(offerUndo)
   const outcomeRef = useFocusBackOnClose<HTMLParagraphElement>(offerUndo)
-  /*
-    A row about new marks („Anna hat 15 Anmerkungen gesetzt“) opens the review
-    at the newest of them, and its button says it goes to all of them.
-  */
-  const marksSet = item.type === 'annotation.activity' && MARKS_SET_VARIANTS.includes(item.variant ?? '') && item.count > 1
 
-  // The row's own menu: read state, archive (the only archive control on a
-  // phone, where an icon column cost the text its width) and restore.
+  /*
+    The row's own menu: first what the row asks of the reader (answer, resolve,
+    compare), which on a touch screen lives only here, then the read state,
+    archive (the only archive control on a phone) and restore.
+  */
+  const settled = replying || markOutcome === 'resolved'
   const menuEntries: ActionMenuEntry[] = [
+    ...(answerHere && !settled
+      ? [{ type: 'item' as const, id: 'reply', label: t('inbox.mark.reply'), icon: MessageSquare, onSelect: () => { setMarkOutcome(null); setReplying(true) }, testId: 'inbox-mark-reply-menu' }]
+      : []),
+    ...(canResolveMark && !settled
+      ? [{ type: 'item' as const, id: 'resolve', label: t('inbox.mark.resolve'), icon: CheckCircle2, onSelect: resolveMark, testId: 'inbox-mark-resolve-menu' }]
+      : []),
+    ...(answerInReview && linkHref
+      ? [{ type: 'item' as const, id: 'review', label: t('inbox.mark.answerInReview'), icon: MessageSquare, href: linkHref, onSelect: () => onOpen?.(item) }]
+      : []),
+    ...(compareHref
+      ? [{ type: 'item' as const, id: 'compare', label: t('inbox.compareRevisions'), icon: Layers, href: compareHref, onSelect: () => onOpen?.(item) }]
+      : []),
+    ...(answerHere || canResolveMark || answerInReview || compareHref ? [{ type: 'separator' as const }] : []),
     ...(item.state === 'unread' && onMarkRead
       ? [{ type: 'item' as const, id: 'read', label: t('inbox.markRead'), icon: MailOpen, onSelect: () => onMarkRead(item.id), testId: 'inbox-mark-read' }]
       : []),
@@ -412,13 +290,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       ? [{ type: 'item' as const, id: 'archive', label: t('inbox.archive'), icon: Archive, onSelect: () => onArchive(item.id), testId: 'inbox-archive-menu' }]
       : []),
   ]
-
-  // Who caused it, when a person did: their face, with the type's glyph in the
-  // corner. Piloti's rows keep Piloti's face; a system row keeps its glyph.
-  const actorFace =
-    presentation.icon !== 'piloti' && item.actorUserId && item.actorName
-      ? { userId: item.actorUserId, name: item.actorName }
-      : null
 
   /*
     Inline triage for a version waiting for a decision (ADR-0054): the three
@@ -438,110 +309,37 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     item.resourceType === 'document' &&
     item.anchorId !== null &&
     item.subject !== null
-  const [reviewing, setReviewing] = useState<'approve' | 'request_changes' | 'reject' | null>(null)
-  const [reviewComment, setReviewComment] = useState('')
-  const [reviewChecked, setReviewChecked] = useState(false)
-  const [reviewBusy, setReviewBusy] = useState(false)
-  const [reviewFailed, setReviewFailed] = useState(false)
-  const [reviewStale, setReviewStale] = useState(false)
-  const [reviewDecided, setReviewDecided] = useState(false)
-  const [reviewVersion, setReviewVersion] = useState<DocumentVersionView | null>(null)
-  const [reviewVersionError, setReviewVersionError] = useState(false)
-
-  // The STAND the decisions act on: version number for the signature (Fassung
-  // required — nothing is released without naming it) and `contentHash` as the
-  // `ifMatch` the calls below send, so a stale row 409s instead of deciding on
-  // bytes the reviewer never saw. Read with the row, not when a decision
-  // opens: the signature must already name the Fassung when it appears, and a
-  // refusal must already carry the expected bytes when it is sent — waiting
-  // for the read inside the confirm would race the send. One attempt per
-  // version anchor; a failed read falls back to deciding on state alone,
-  // exactly as before, rather than stranding the row.
-  //
-  // Deliberately NO loading flag: setting one before the `await` would re-run
-  // this effect (it is in the deps) and its cleanup would flip `live` to false
-  // while the read is still in flight — the resolve below would then be
-  // discarded and the STAND would never arrive. The pending state is visible
-  // anyway: the stand renders '…' and the approve send stays shut until the
-  // Fassung number is known.
-  useEffect(() => {
-    if (!canDecideReview || !item.anchorId) return
-    if (reviewVersion !== null || reviewVersionError) return
-    if (typeof reviewClient.getVersion !== 'function') return
-    let live = true
-    void reviewClient
-      .getVersion(item.resourceId, item.anchorId)
-      .then((version) => {
-        if (live) {
-          setReviewVersion(version)
-        }
-      })
-      .catch(() => {
-        if (live) {
-          setReviewVersionError(true)
-        }
-      })
-    return () => {
-      live = false
-    }
-  }, [
-    canDecideReview,
-    item.anchorId,
-    item.resourceId,
-    reviewClient,
-    reviewVersion,
-    reviewVersionError,
-  ])
-
-  const sendReview = async () => {
-    if (!canDecideReview || !reviewing || !item.anchorId || reviewBusy) return
-    // Approval is signed, refusals are worded — the transition table's own
-    // requirements, read at the same point the file pane reads them. Approval
-    // additionally requires the Fassung number: the stand is not released
-    // without naming which version it releases.
-    if (reviewing === 'approve' && !reviewChecked) return
-    if (reviewing === 'approve' && typeof reviewClient.getVersion === 'function') {
-      if (reviewVersion?.versionNumber == null) return
-    }
-    const words = reviewComment.trim()
-    if (reviewing !== 'approve' && words === '') return
-    setReviewBusy(true)
-    setReviewFailed(false)
-    setReviewStale(false)
-    // The expected bytes, when the STAND above could be read. Absent when the
-    // read never ran (old callers, a version without a digest): the server
-    // then decides on state alone, exactly as before, and a provided-but-stale
-    // digest 409s with the current STAND.
-    const ifMatch = reviewVersion?.contentHash ?? undefined
-    try {
-      if (reviewing === 'approve') {
-        await reviewClient.approve(item.resourceId, item.anchorId, undefined, ifMatch)
-      } else if (reviewing === 'request_changes') {
-        await reviewClient.requestChanges(item.resourceId, item.anchorId, words, undefined, ifMatch)
-      } else {
-        await reviewClient.reject(item.resourceId, item.anchorId, words, ifMatch)
-      }
-      // Decided here; resolved everywhere by the server, which settles the
-      // round for every reviewer and nudges this list to re-read it.
-      setReviewDecided(true)
-      setReviewing(null)
-      setReviewComment('')
-      setReviewChecked(false)
-    } catch (error) {
-      // A 409 is not a failed decision, it is a moved STAND: somebody decided
-      // first, or the bytes changed under the row. Surfaced distinctly, with
-      // the file as the way back to the current Fassung — never as a silent
-      // nothing, and never as the generic red line.
-      if (error instanceof DocumentLifecycleError && error.status === 409) {
-        setReviewStale(true)
-      } else {
-        setReviewFailed(true)
-      }
-    } finally {
-      setReviewBusy(false)
-    }
-  }
-
+  /*
+    The body line says what the row's next move is („Antworten Sie im Verlauf
+    oder erledigen Sie die Anmerkung“): the words the push notification needs,
+    which has no buttons. A row that draws those moves as its own controls says
+    it twice, and every request read as three lines of instructions above the
+    buttons they describe (design language, principle 9). There the controls
+    are the sentence.
+  */
+  /*
+    And beside a quote, the body was a third paragraph between the title and
+    the words the row is about. It stays where it is the news: a row with no
+    quote, a warning (why Piloti stopped, what the content check found), and
+    a redacted row, whose body says why it is empty.
+  */
+  const showBody =
+    body !== null && !answerHere && !answerInReview && !canDecideReview && (!item.excerpt || isWarning || redacted)
+  /** The chat a row happened in, where its title does not name it: on the caption line, beside the project. */
+  const chatName = item.subject ?? t('inbox.untitledConversation')
+  // Named once per row: not where the title or the body already says it. Piloti's own rows about a chat
+  // (a proposal) carry no chat name by design: no „Unbenannter Chat“ for them.
+  const place =
+    item.resourceType === 'conversation' &&
+    presentation.icon !== 'piloti' &&
+    !redacted &&
+    !title.includes(chatName) &&
+    !(showBody && body?.includes(chatName))
+      ? chatName
+      : null
+  /** What a new Fassung leaves to check, where its sentence gave way to the quote: a fact on the caption line. */
+  const openMarks = item.type === 'document.new_revision' && !inert && !showBody ? (item.openMarks ?? 0) : 0
+  const dueChip = inboxDue(item, t, locale)
   return (
     /* The row owns its own <li>, so it is the element that animates — wrapping it
        from the list would nest <li> in <li>, and a `display: contents` wrapper has
@@ -550,11 +348,21 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     <Item
       asChild
       className={cn(
-        'relative items-start py-3',
-        inert && 'bg-muted hover:bg-muted',
-        // The keyboard's row (j/k): a ring inside the card and the hover tint,
-        // so it reads in both themes without a colour of its own.
-        focused && 'bg-accent/40 ring-2 ring-inset ring-ring',
+        'group/row relative items-start gap-3 py-3 pl-7 pr-4',
+        /*
+          One state for "the row you are on", whoever put you there: the
+          pointer, the keyboard (j/k) or the focus. An opaque surface step, so
+          the toolbar that comes up over its corner sits on the same ground.
+          It used to be a translucent tint plus an inset ring on top of the
+          Item's own focus ring, which drew a double black bar against the
+          dividers and read as a rendering fault.
+        */
+        'hover:bg-muted focus-visible:bg-muted focus-visible:ring-0',
+        // The keyboard's own indicator is the app's focus outline (3:1, WCAG
+        // 2.4.11), drawn inside the row's rounded edge (`data-focus-inset`).
+        'rounded-control',
+        inert && 'bg-muted/60',
+        focused && 'bg-muted',
       )}
     >
       <motion.li
@@ -567,64 +375,34 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
         data-state={item.state}
         data-type={item.type}
         data-focused={focused || undefined}
+        data-focus-inset=""
         tabIndex={-1}
       >
-        {/* Unread: the attention dot in the row's leading gutter, beside the
-            semibold title, rather than a bar down the edge (side stripes are
-            discouraged, design-language.md). 10px, where the 6px dot
-            before the bar was lost under glare. */}
-        <AttentionDot show={unread} className="absolute left-1.5 top-[1.375rem]" />
-        {/* Type icon. A live request carries the "needs attention" tint; colour
-            never travels alone here — the icon and the title text say the same. */}
-        {actorFace ? (
-          <ItemMedia aria-hidden className={cn('relative mt-0.5', inert && 'opacity-90')}>
-            <PersonAvatar person={actorFace} size="md" />
-            {Icon && (
-              <span
-                data-testid="inbox-item-type-badge"
-                className={cn(
-                  'absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border',
-                  needsAttention
-                    ? 'border-transparent bg-warning-subtle text-warning'
-                    : 'border-border bg-card text-muted-foreground',
-                )}
-              >
-                <Icon className="size-2.5" />
-              </span>
-            )}
-          </ItemMedia>
-        ) : Icon ? (
-          <ItemMedia
-            aria-hidden
-            className={cn(
-              'mt-0.5 rounded-full border',
-              needsAttention
-                ? 'border-transparent bg-warning-subtle text-warning'
-                : 'border-border bg-card text-muted-foreground',
-              inert && 'opacity-90',
-            )}
-          >
-            <Icon className="size-4" />
-          </ItemMedia>
-        ) : (
-          // Piloti's rows wear its face, drawn as a line like every other row's
-          // glyph; a live request keeps the tint, and the title still says what
-          // is asked: colour never travels alone.
-          <ItemMedia aria-hidden className={cn('mt-0.5', inert && 'opacity-90')}>
-            <AgentGlyph
-              size="lg"
-              tone="outline"
-              className={cn(needsAttention && 'border-transparent bg-warning-subtle text-warning')}
-            />
-          </ItemMedia>
-        )}
+        {/* Unread: the attention dot in the row's own gutter, on the title's
+            first line, rather than a bar down the edge (side stripes are
+            discouraged, design-language.md). It no longer touches the avatar:
+            the ring it wore merged the two into one smudge. */}
+        <AttentionDot show={unread} className="absolute left-3 top-[1.1rem] size-2 ring-0" />
+        {/* Who it is from, in one material: a person's face, Piloti's glyph,
+            or the type's glyph for a system row, all on the same neutral
+            ground. The tinted wells and the glyph badges in the avatars'
+            corners made a rainbow of small marks down the list; what a row
+            asks and how urgent it is are said in words on its lines. */}
+        <ItemMedia aria-hidden className={cn('mt-0.5 size-8', inert && 'opacity-60')}>
+          <InboxItemFace item={item} />
+        </ItemMedia>
 
         <ItemContent className={cn(inert && 'opacity-90')}>
+          {/* What happened, and when at the line's end: where every mail
+              client puts it, so the eye goes there without being told. The
+              toolbar comes up over it on the row you are on. */}
+          <div className="flex items-baseline gap-3">
           <ItemTitle
             className={cn(
               // overflow-visible: `truncate` on ItemTitle would clip the
-              // stretched-link overlay to the title box.
-              'flex min-w-0 items-start gap-2 overflow-visible whitespace-normal',
+              // stretched-link overlay to the title box. The clamp is on the
+              // words instead: one line where there is room, two on a phone.
+              'min-w-0 flex-1 overflow-visible whitespace-normal',
               unread ? 'font-semibold' : 'font-normal',
             )}
           >
@@ -645,7 +423,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 onAuxClick={(event) => event.stopPropagation()}
                 data-testid="inbox-item-link"
                 className={cn(
-                  'min-w-0 rounded-sm leading-snug outline-none',
+                  'line-clamp-2 min-w-0 rounded-sm leading-snug outline-none sm:line-clamp-1',
                   'after:absolute after:inset-0 after:content-[""]',
                   'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50',
                   // A read row steps back in dark mode, where weight alone did
@@ -658,7 +436,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             ) : (
               <span
                 className={cn(
-                  'min-w-0 leading-snug',
+                  'line-clamp-2 min-w-0 leading-snug sm:line-clamp-1',
                   unread ? 'font-semibold text-foreground' : 'text-foreground dark:text-muted-foreground',
                 )}
               >
@@ -666,23 +444,59 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               </span>
             )}
           </ItemTitle>
+            {/* `updatedAt`, which is what the list is ORDERED by. A grouped row
+                that just absorbed a new message sorts to the top, and showing its
+                `createdAt` put "5 days ago" at the head of the list. The title
+                carries the absolute moment for both. */}
+            <time
+              className={cn(
+                // Beside the title where there is room; a phone's title needs
+                // the width, and there the moment heads the caption line.
+                'shrink-0 text-xs tabular-nums text-muted-foreground max-sm:hidden',
+                // Under the toolbar on the row you are on: a narrower toolbar
+                // left the moment's first letters peeking out beside it.
+                'pointer-fine:group-hover/row:invisible pointer-fine:group-focus-within/row:invisible',
+                focused && 'pointer-fine:invisible',
+              )}
+              dateTime={item.updatedAt}
+              title={formatAbsoluteTime(item.updatedAt, locale)}
+            >
+              {formatRelativeTime(item.updatedAt, locale)}
+            </time>
+          </div>
+
+          {/* Where and when, under the title and before anything else: the
+              project first (an office runs several, and „Grundriss EG“ alone
+              does not say whose), then the moment, then by when. One caption
+              line, so the eye finds it at the same place on every row. */}
+          <InboxItemCaption
+            item={item}
+            place={place}
+            openMarks={openMarks}
+            due={dueChip}
+            answered={resolved && item.actionable}
+          />
 
           {/* Two lines, not one: the body is where a row says what to do, and one
               truncated line cut that sentence off in its middle. */}
-          {body && <ItemDescription className="mt-0.5 line-clamp-2 whitespace-normal">{body}</ItemDescription>}
+          {showBody && <ItemDescription className="mt-1 line-clamp-2 whitespace-normal">{body}</ItemDescription>}
 
-          {/* Three lines when it is the only body: then it is the news, and
-              on a phone two lines cut a change off mid-sentence. */}
+          {/* Two lines when it is the row's only body (what a colleague
+              asked, what changed): one cut the sentence in its middle. One
+              line under a body, which already said what the row is. */}
           {item.excerpt && (
             <Quote
               as="p"
               className={cn(
-                'mt-1 text-sm leading-relaxed',
+                // On the title's own edge, upright and in the secondary ink: a
+                // preview, as a mail client shows the first words of a mail.
+                // Italic on every row was texture, not emphasis.
+                'mt-0.5 ps-0 text-sm not-italic leading-snug text-muted-foreground',
                 // Dense on a phone: three rows to a screen is a list nobody can
                 // triage. A row that asks something of the reader keeps its
                 // words; an FYI gets one line, and the item has the rest.
                 // As the ONLY body it is the news and keeps three lines.
-                body ? (item.actionable && !resolved && !inert ? 'line-clamp-2' : 'line-clamp-1') : 'line-clamp-3',
+                showBody ? 'line-clamp-1' : 'line-clamp-2',
               )}
               data-testid="inbox-item-excerpt"
             >
@@ -706,339 +520,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               one; the open link below is the file behind the decision. A real
               diff needs the previous version, which the payload does not name
               — so triage opens the file, it does not pretend to compare. */}
-          {canDecideReview && (
-            <div className="relative z-10 mt-2" data-testid="inbox-review-actions">
-              {reviewDecided ? (
-                <p
-                  className="text-muted-foreground text-xs"
-                  data-testid="inbox-review-decided"
-                >
-                  {t('inbox.review.decided')}
-                </p>
-              ) : reviewing === null ? (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-7 text-xs"
-                    disabled={reviewBusy}
-                    data-testid="inbox-review-approve"
-                    onClick={() => {
-                      setReviewFailed(false)
-                      setReviewStale(false)
-                      setReviewChecked(false)
-                      setReviewing('approve')
-                    }}
-                  >
-                    {t('inbox.review.approve')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    disabled={reviewBusy}
-                    data-testid="inbox-review-request-changes"
-                    onClick={() => {
-                      setReviewFailed(false)
-                      setReviewStale(false)
-                      setReviewComment('')
-                      setReviewing('request_changes')
-                    }}
-                  >
-                    {t('inbox.review.requestChanges')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    disabled={reviewBusy}
-                    data-testid="inbox-review-reject"
-                    onClick={() => {
-                      setReviewFailed(false)
-                      setReviewStale(false)
-                      setReviewComment('')
-                      setReviewing('reject')
-                    }}
-                  >
-                    {t('inbox.review.reject')}
-                  </Button>
-                  {item.href && (
-                    <Link
-                      href={item.href}
-                      className="text-primary text-xs font-medium hover:underline"
-                      data-testid="inbox-review-open"
-                      onClick={(event) => {
-                        if (isPlainClick(event)) onOpen?.(item)
-                      }}
-                    >
-                      {t('inbox.review.open')}
-                    </Link>
-                  )}
-                </div>
-              ) : reviewing === 'approve' ? (
-                /* The same minimum ceremony as on the file: never one click,
-                   and the signature names the same facts — which Fassung is
-                   released (subject + number + round opening) and who acts
-                   when. The number is required: without the STAND read above
-                   nothing is released. Who asked is already in the title, so
-                   the acting line stays date-only like the file pane's own
-                   fallback when no viewer name is known. */
-                <div
-                  className="space-y-2 rounded-lg border p-2"
-                  data-testid="inbox-review-approve-confirm"
-                >
-                  <p className="text-xs font-medium" data-testid="inbox-review-approve-as-of">
-                    {t('inbox.review.approveSummary', {
-                      subject: item.subject ?? t('inbox.untitledConversation'),
-                      number: reviewVersion?.versionNumber ?? '…',
-                      date: formatAbsoluteTime(
-                        reviewVersion?.updatedAt ?? item.createdAt,
-                        locale,
-                      ),
-                    })}
-                  </p>
-                  <p
-                    className="text-muted-foreground text-xs"
-                    data-testid="inbox-review-approve-acting"
-                  >
-                    {t('inbox.review.approveActing', {
-                      date: formatAbsoluteTime(new Date().toISOString(), locale),
-                    })}
-                  </p>
-                  {/* The STAND read failed: say so and offer the retry, because
-                      approval stays blocked without the Fassung number. A silent
-                      '…' would read as a bug rather than as a blocked signature. */}
-                  {reviewVersionError && (
-                    <p className="text-error text-xs" data-testid="inbox-review-stand-failed">
-                      {t('inbox.review.revisionUnreadable')}{' '}
-                      <button
-                        type="button"
-                        className="text-primary font-medium hover:underline"
-                        data-testid="inbox-review-stand-retry"
-                        onClick={() => setReviewVersionError(false)}
-                      >
-                        {t('inbox.review.retry')}
-                      </button>
-                    </p>
-                  )}
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id={`inbox-review-approve-${item.id}`}
-                      checked={reviewChecked}
-                      onCheckedChange={(checked) => setReviewChecked(checked === true)}
-                      data-testid="inbox-review-approve-checkbox"
-                    />
-                    <label
-                      htmlFor={`inbox-review-approve-${item.id}`}
-                      className="text-xs leading-snug"
-                    >
-                      {t('inbox.review.approveConfirm')}
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        setReviewing(null)
-                        setReviewChecked(false)
-                      }}
-                    >
-                      {t('inbox.review.cancel')}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-7 text-xs"
-                      disabled={
-                        !reviewChecked ||
-                        reviewBusy ||
-                        (typeof reviewClient.getVersion === 'function' &&
-                          reviewVersion?.versionNumber == null)
-                      }
-                      data-testid="inbox-review-approve-send"
-                      onClick={() => void sendReview()}
-                    >
-                      {t('inbox.review.approve')}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                /* A refusal without words is refused by the transition itself;
-                   the button stays shut until something is typed. */
-                <div className="space-y-2 rounded-lg border p-2" data-testid="inbox-review-comment">
-                  <label
-                    htmlFor={`inbox-review-comment-${item.id}`}
-                    className="text-muted-foreground block text-xs"
-                  >
-                    {t(
-                      reviewing === 'reject'
-                        ? 'inbox.review.reasonLabel'
-                        : 'inbox.review.changesLabel',
-                    )}
-                  </label>
-                  <Textarea
-                    id={`inbox-review-comment-${item.id}`}
-                    value={reviewComment}
-                    autoFocus
-                    rows={2}
-                    onChange={(event) => setReviewComment(event.target.value)}
-                  />
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        setReviewing(null)
-                        setReviewComment('')
-                      }}
-                    >
-                      {t('inbox.review.cancel')}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-7 text-xs"
-                      disabled={reviewComment.trim() === '' || reviewBusy}
-                      data-testid="inbox-review-comment-send"
-                      onClick={() => void sendReview()}
-                    >
-                      {t('inbox.review.send')}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {reviewStale && (
-                <p className="mt-1.5 text-xs" data-testid="inbox-review-stale">
-                  <span className="text-error">{t('inbox.review.stale')}</span>{' '}
-                  {item.href && (
-                    <Link
-                      href={item.href}
-                      className="text-primary font-medium hover:underline"
-                      data-testid="inbox-review-reload"
-                      onClick={(event) => {
-                        if (isPlainClick(event)) onOpen?.(item)
-                      }}
-                    >
-                      {t('inbox.review.reload')}
-                    </Link>
-                  )}
-                </p>
-              )}
-              {reviewFailed && (
-                <p className="text-error mt-1.5 text-xs" data-testid="inbox-review-failed">
-                  {t('inbox.review.failed')}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {/* `updatedAt`, which is what the list is ORDERED by. A grouped row
-                that just absorbed a new message sorts to the top, and showing its
-                `createdAt` put "5 days ago" at the head of the list. The title
-                carries the absolute moment for both. */}
-            <time
-              className="text-xs text-muted-foreground"
-              dateTime={item.updatedAt}
-              title={formatAbsoluteTime(item.updatedAt, locale)}
-            >
-              {formatRelativeTime(item.updatedAt, locale)}
-            </time>
-            {resolved && item.actionable && (
-              <Badge variant="success" className="gap-1">
-                <CheckCircle2 aria-hidden />
-                {t('inbox.resolved')}
-              </Badge>
-            )}
-            {/* The badge is the one place a redacted row says so; the body
-                already says it in a sentence. */}
-            {inert && (
-              <Badge variant="secondary" className="gap-1">
-                <EyeOff aria-hidden />
-                {t('inbox.inert')}
-              </Badge>
-            )}
-            {/* z-10, like the archive control: the row's stretched link paints an
-                overlay across the whole card, and anything meant to be clickable
-                has to sit above it. Never on an inert row — its target is gone,
-                which is the same reason the title is not a link there. */}
-            {compareHref && (
-              <Button asChild size="sm" className="relative z-10">
-                <Link
-                  href={compareHref}
-                  aria-label={t('inbox.compareRevisionsLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
-                  onClick={(event) => {
-                    if (isPlainClick(event)) onOpen?.(item)
-                  }}
-                  data-testid="inbox-compare-revisions"
-                >
-                  <Layers aria-hidden />
-                  {t('inbox.compareRevisions')}
-                </Link>
-              </Button>
-            )}
-            {markRow && item.href && (
-              <Button asChild size="sm" variant={markOpen ? 'default' : 'outline'} className="relative z-10 h-8">
-                <Link
-                  href={linkHref ?? item.href}
-                  onClick={(event) => {
-                    if (isPlainClick(event)) onOpen?.(item)
-                  }}
-                  data-testid="inbox-open-mark"
-                >
-                  {t(answerInReview ? 'inbox.mark.answerInReview' : marksSet ? 'inbox.mark.openMany' : 'inbox.mark.open')}
-                </Link>
-              </Button>
-            )}
-            {answerHere && !replying && markOutcome !== 'resolved' && (
-              <Button
-                ref={replyButtonRef}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="relative z-10 h-8"
-                disabled={markBusy}
-                data-testid="inbox-mark-reply"
-                onClick={() => {
-                  setMarkOutcome(null)
-                  setReplying(true)
-                }}
-              >
-                {t('inbox.mark.reply')}
-              </Button>
-            )}
-            {canResolveMark && !replying && markOutcome !== 'resolved' && (
-              <Button
-                ref={resolveRef}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="relative z-10 h-8"
-                disabled={markBusy}
-                data-testid="inbox-mark-resolve"
-                onClick={resolveMark}
-              >
-                {t('inbox.mark.resolve')}
-              </Button>
-            )}
-            {documentProjectId && !inert && !markRow && (
-              <DiscussDocumentButton
-                projectId={documentProjectId}
-                documentId={item.resourceId}
-                variant="outline"
-                iconOnlyOnPhone
-                onNavigate={() => onOpen?.(item)}
-                className="relative z-10"
-              />
-            )}
-          </div>
+          {canDecideReview && <InboxReviewDecision item={item} reviewClient={reviewClient} onOpen={onOpen} />}
 
           {answerHere && replying && item.anchorId && (
             <div className="relative z-10 mt-2 space-y-1.5" data-testid="inbox-mark-reply-form">
@@ -1107,8 +589,119 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
           )}
         </ItemContent>
 
-        {(menuEntries.length > 0 || (onArchive && !archived)) && (
-          <ItemActions className="gap-0.5">
+        {/* Drawn whenever the row has anything to offer, not only an archive:
+            a row rendered without the list's handlers still has its own moves. */}
+        {(menuEntries.length > 0 || (onArchive && !archived) || compareHref !== null || answerInReview || (documentProjectId !== null && !inert && !markRow)) && (
+          <ItemActions
+            data-testid="inbox-item-toolbar"
+            className={cn(
+              'gap-1 transition-opacity duration-snap motion-reduce:transition-none',
+              /*
+                A row at rest says who, what, where and when; what can be done
+                with it comes up on the row the pointer, the focus or the
+                keyboard (j/k) is on, as one small toolbar over the row's top
+                corner. Drawn on every row, the buttons made a list of eight
+                requests sixteen buttons and twenty-four icons: the loudest
+                pattern on the page, and identical on every row. Floating, it
+                moves nothing when it comes.
+
+                Touch has no hover (design language, Touch): there the toolbar
+                is the row's „…“ menu in its own column, and the menu carries
+                every action the toolbar has.
+              */
+              // On the row's own ground (the hover surface), over the moment at
+              // the title line's end, as a mail client swaps the date for its
+              // actions: no box of its own to collide with the title.
+              'pointer-fine:absolute pointer-fine:right-2 pointer-fine:top-1.5 pointer-fine:z-10 pointer-fine:gap-0.5',
+              'pointer-fine:rounded-control pointer-fine:bg-muted pointer-fine:pl-2',
+              !focused &&
+                'pointer-fine:pointer-events-none pointer-fine:opacity-0 pointer-fine:group-hover/row:pointer-events-auto pointer-fine:group-hover/row:opacity-100 pointer-fine:group-focus-within/row:pointer-events-auto pointer-fine:group-focus-within/row:opacity-100',
+            )}
+          >
+            {/* z-10, like the archive control: the row's stretched link paints an
+                overlay across the whole card, and anything meant to be clickable
+                has to sit above it. Never on an inert row — its target is gone,
+                which is the same reason the title is not a link there. */}
+            {compareHref && (
+              <Button asChild variant="ghost" size="icon" className="relative z-10 size-8 text-muted-foreground hover:text-foreground pointer-coarse:hidden">
+                <Link
+                  href={compareHref}
+                  title={t('inbox.compareRevisions')}
+                  aria-label={t('inbox.compareRevisionsLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
+                  onClick={(event) => {
+                    if (isPlainClick(event)) onOpen?.(item)
+                  }}
+                  data-testid="inbox-compare-revisions"
+                >
+                  <Layers aria-hidden />
+                  <span className="sr-only">{t('inbox.compareRevisions')}</span>
+                </Link>
+              </Button>
+            )}
+            {/* The row itself opens the mark (its stretched link), so a button
+                saying „Zur Anmerkung“ was the row's own click drawn a second
+                time, in ink, on every row about a mark. It stays where it IS
+                the action: Piloti's question answered in the Prüfansicht. */}
+            {answerInReview && item.href && (
+              <Button asChild variant="ghost" size="icon" className="relative z-10 size-8 text-muted-foreground hover:text-foreground pointer-coarse:hidden">
+                <Link
+                  href={linkHref ?? item.href}
+                  title={t('inbox.mark.answerInReview')}
+                  onClick={(event) => {
+                    if (isPlainClick(event)) onOpen?.(item)
+                  }}
+                  data-testid="inbox-open-mark"
+                >
+                  <ArrowUpRight aria-hidden />
+                  <span className="sr-only">{t('inbox.mark.answerInReview')}</span>
+                </Link>
+              </Button>
+            )}
+            {answerHere && !settled && (
+              <Button
+                ref={replyButtonRef}
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="relative z-10 size-8 text-muted-foreground hover:text-foreground pointer-coarse:hidden"
+                title={t('inbox.mark.reply')}
+                disabled={markBusy}
+                data-testid="inbox-mark-reply"
+                onClick={() => {
+                  setMarkOutcome(null)
+                  setReplying(true)
+                }}
+              >
+                <Reply aria-hidden />
+                <span className="sr-only">{t('inbox.mark.reply')}</span>
+              </Button>
+            )}
+            {canResolveMark && !settled && (
+              <Button
+                ref={resolveRef}
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="relative z-10 size-8 text-muted-foreground hover:text-foreground pointer-coarse:hidden"
+                title={t('inbox.mark.resolve')}
+                disabled={markBusy}
+                data-testid="inbox-mark-resolve"
+                onClick={resolveMark}
+              >
+                <Check aria-hidden />
+                <span className="sr-only">{t('inbox.mark.resolve')}</span>
+              </Button>
+            )}
+            {documentProjectId && !inert && !markRow && (
+              <DiscussDocumentButton
+                projectId={documentProjectId}
+                documentId={item.resourceId}
+                variant="ghost"
+                iconOnly
+                onNavigate={() => onOpen?.(item)}
+                className="relative z-10 text-muted-foreground hover:text-foreground"
+              />
+            )}
             {/* z-10 keeps these above the stretched link's overlay so they stay
                 clickable; they are siblings of the anchor, never children. The
                 archive icon is a desktop affordance: on a phone its column cost
@@ -1118,8 +711,9 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="relative z-10 mt-0.5 text-muted-foreground max-sm:hidden"
+                className="relative z-10 size-8 text-muted-foreground hover:text-foreground pointer-coarse:hidden"
                 aria-label={t('inbox.archive')}
+                title={t('inbox.archive')}
                 onClick={() => onArchive(item.id)}
               >
                 <Archive className="size-4" aria-hidden />
@@ -1133,7 +727,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="relative z-10 mt-0.5 text-muted-foreground"
+                  className="relative z-10 size-8 text-muted-foreground touch-target"
                   aria-label={t('inbox.moreActions')}
                   data-testid="inbox-item-menu"
                 >

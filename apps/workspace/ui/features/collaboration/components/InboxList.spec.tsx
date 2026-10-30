@@ -31,10 +31,21 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { useInboxList, type UseInboxListResult } from '../hooks/use-inbox'
+import { useInboxBadge, useInboxList, type UseInboxListResult } from '../hooks/use-inbox'
 import { InboxList } from './InboxList'
 
 const useInboxListMock = vi.mocked(useInboxList)
+const useInboxBadgeMock = vi.mocked(useInboxBadge)
+
+/**
+ * „Für mich“, the default, is the queue (`InboxQueue`, its own spec); the
+ * flat list these specs exercise is „Alle“ and „Archiviert“. So the address
+ * names „Alle“ unless a spec is about „Für mich“ and clears it.
+ */
+beforeEach(() => {
+  page.search = 'filter=all'
+  useInboxBadgeMock.mockReturnValue({ pending: 0, connected: true, refresh: vi.fn() })
+})
 
 const refresh = vi.fn()
 const markRead = vi.fn(async () => {})
@@ -99,9 +110,13 @@ describe('InboxList — filters', () => {
     useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
   })
 
-  test('defaults to "needs me", which asks the hook for open requests only', () => {
+  test('defaults to "needs me", which reads what the badge counts: open requests and anything unread', () => {
+    page.search = ''
     render(<InboxList />)
-    expect(useInboxListMock).toHaveBeenCalledWith(true, 'requests')
+    // The queue reads its two questions; the flat list's own read idles.
+    expect(useInboxListMock).toHaveBeenCalledWith(true, 'requests', expect.anything())
+    expect(useInboxListMock).toHaveBeenCalledWith(true, 'unread', expect.anything())
+    expect(useInboxListMock).not.toHaveBeenCalledWith(true, 'pending')
     const needsMe = screen.getByRole('radio', { name: /Needs me/ })
     const all = screen.getByRole('radio', { name: 'All' })
     expect(needsMe).toHaveAttribute('data-state', 'on')
@@ -129,8 +144,8 @@ describe('InboxList — filters', () => {
     page.search = 'tab=x'
     try {
       render(<InboxList />)
-      fireEvent.click(screen.getByRole('radio', { name: 'Unread' }))
-      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x&filter=unread')
+      fireEvent.click(screen.getByRole('radio', { name: 'All' }))
+      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x&filter=all')
       // „Needs me“ is the default, and the address does not say it.
       fireEvent.click(screen.getByRole('radio', { name: /Needs me/ }))
       expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x')
@@ -152,29 +167,47 @@ describe('InboxList — filters', () => {
   })
 
   test('passes the disabled flag through, so a gated org issues no request', () => {
+    page.search = ''
     render(<InboxList enabled={false} />)
-    expect(useInboxListMock).toHaveBeenCalledWith(false, 'requests')
+    expect(useInboxListMock).toHaveBeenCalledWith(false, 'pending')
   })
 
-  test('„Unread“ and „Archived“ are filters of their own, each reading its own slice', () => {
+  test('„Archived“ is a filter of its own, reading its own slice; „Unread“ is no tab beside „Needs me“, which holds it', () => {
     render(<InboxList />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Unread' }))
-    expect(useInboxListMock).toHaveBeenLastCalledWith(true, 'unread')
+    expect(screen.queryByRole('radio', { name: 'Unread' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('radio', { name: 'Archived' }))
     expect(useInboxListMock).toHaveBeenLastCalledWith(true, 'archived')
   })
 
+  test('an old address naming „unread“ opens on „Needs me“, where those rows now are', () => {
+    page.search = 'filter=unread'
+    try {
+      render(<InboxList />)
+      expect(useInboxListMock).toHaveBeenCalledWith(true, 'requests', expect.anything())
+    } finally {
+      page.search = ''
+    }
+  })
+
   test('the selected filter wears a filled thumb', () => {
+    page.search = ''
     render(<InboxList />)
     const needsMe = screen.getByRole('radio', { name: /Needs me/ })
     expect(needsMe.querySelector('[data-slot="toggle-pill"]')).toHaveClass('bg-foreground')
   })
 
-  test('a filter carries its count only when there is one, with no blank tail at zero', () => {
-    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1, counts: { requests: 2, unread: 0 } }))
+  test('„Needs me“ carries the badge’s own number, and no pill at zero', () => {
+    // The bell and the tab said different numbers (18 and 8): the tab counted
+    // requests alone. It says what the badge says now, whichever filter is open.
+    useInboxBadgeMock.mockReturnValue({ pending: 7, connected: true, refresh: vi.fn() })
+    page.search = ''
+    const { unmount } = render(<InboxList />)
+    expect(screen.getByRole('radio', { name: /Needs me/ })).toHaveTextContent('Needs me7')
+    expect(screen.getByRole('radio', { name: 'All' }).querySelector('[data-slot="count-pill"]')).toBeNull()
+    unmount()
+    useInboxBadgeMock.mockReturnValue({ pending: 0, connected: true, refresh: vi.fn() })
     render(<InboxList />)
-    expect(screen.getByRole('radio', { name: /Needs me/ })).toHaveTextContent('Needs me2')
-    expect(screen.getByRole('radio', { name: 'Unread' }).querySelector('[data-slot="count-pill"]')).toBeNull()
+    expect(screen.getByRole('radio', { name: /Needs me/ }).querySelector('[data-slot="count-pill"]')).toBeNull()
   })
 })
 
@@ -197,17 +230,16 @@ describe('InboxList — states', () => {
 
   test('the empty state differs by filter', () => {
     useInboxListMock.mockReturnValue(result())
+    page.search = ''
     render(<InboxList />)
 
-    expect(screen.getByText('Nothing needs you')).toBeInTheDocument()
-    expect(
-      screen.getByText('When someone mentions you, assigns you an annotation or Piloti asks you something, it appears here.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('All caught up')).toBeInTheDocument()
+    expect(screen.getByText('What is new or waiting on you appears here. What you have already read is under “All”.')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'All' }))
     expect(screen.getByText('Your inbox is empty')).toBeInTheDocument()
     expect(screen.getByText('News from your team and from Piloti appears here.')).toBeInTheDocument()
-    expect(screen.queryByText('Nothing needs you')).not.toBeInTheDocument()
+    expect(screen.queryByText('All caught up')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'Archived' }))
     expect(screen.getByText('Nothing archived')).toBeInTheDocument()

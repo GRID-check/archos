@@ -334,6 +334,11 @@ export const collaboration = {
 
   inbox: {
     title: 'Inbox',
+    /** The inbox beside the page: close it, and the way to every entry. */
+    dock: {
+      close: 'Close the inbox',
+      all: 'All entries',
+    },
     /** Nav entry + the count badge. */
     navLabel: 'Inbox',
     badgeAria:
@@ -343,7 +348,6 @@ export const collaboration = {
     /** "Needs me" is what waits on you (an open request); "Unread" what you have not opened. */
     filters: {
       needsMe: 'Needs me',
-      unread: 'Unread',
       all: 'All',
       archived: 'Archived',
       ariaLabel: 'Filter inbox',
@@ -363,10 +367,52 @@ export const collaboration = {
     loadingMore: 'Loading older items …',
     loadMoreFailed: 'Older items could not be loaded.',
     /** A row about an annotation: go there, and for a request answer or resolve it right here. */
+    /** By when, on a request with a date, where the title does not say it already. */
+    due: {
+      overdue: 'Overdue',
+      soon: 'Due soon',
+      on: 'Due {due}',
+    },
+    /** The list's sections, by the moment a row last changed. */
+    groups: {
+      today: 'Today',
+      yesterday: 'Yesterday',
+      week: 'This week',
+      older: 'Earlier',
+    },
+    /** The hint under the list, with a pointer and keyboard only: the keys that work the inbox. */
+    keys: {
+      move: 'select',
+      open: 'open',
+      archive: 'archive',
+      read: 'read/unread',
+    },
+    /** What a new revision leaves to check, as a fact on the line under the title. */
+    openMarks: '{count, plural, one {# open annotation} other {# open annotations}}',
+    /** The inbox as a queue: what waits on you, gathered by document or chat, then the news. */
+    queue: {
+      waiting: 'Waiting on you',
+      news: 'News',
+      summary: '{count, plural, one {# is waiting on you} other {# are waiting on you}}',
+      late: '{count} of them overdue',
+      nothingWaiting: 'Nothing is waiting on you.',
+      newsRead: 'Mark as read',
+      chat: 'Chat',
+    },
+    /** Why a waiting entry is yours, briefly: its document is already named above it. */
+    reason: {
+      assigned: 'Assigned by {actor}',
+      assignedNoActor: 'Assigned to you',
+      mentioned: '{actor} mentioned you',
+      mentionedNoActor: 'You were mentioned',
+      asks: '{productName} is asking you',
+      input: '{actor} asked for your input',
+      inputNoActor: 'Your input was asked for',
+      approval: '{actor} asked for your approval',
+      approvalNoActor: 'Waiting for your approval',
+      mark: 'Annotation {number}',
+    },
     mark: {
-      open: 'Go to annotation',
-      /** A row about new marks („Anna set 15 annotations“): it opens the review at the newest. */
-      openMany: 'To the annotations',
       answerInReview: 'Answer in the review',
       reply: 'Reply',
       replyLabel: 'Your reply to annotation {related}',
@@ -398,11 +444,9 @@ export const collaboration = {
     compareRevisions: 'Compare revisions',
     compareRevisionsLabel: 'Compare the new and the older revision of “{subject}”',
     empty: {
-      needsMeTitle: 'Nothing needs you',
+      needsMeTitle: 'All caught up',
       needsMeDescription:
-        'When someone mentions you, assigns you an annotation or {productName} asks you something, it appears here.',
-      unreadTitle: 'All caught up',
-      unreadDescription: 'What is new stays here until you open it.',
+        'What is new or waiting on you appears here. What you have already read is under “All”.',
       allTitle: 'Your inbox is empty',
       allDescription: 'News from your team and from {productName} appears here.',
       archivedTitle: 'Nothing archived',

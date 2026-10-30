@@ -18,7 +18,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { PageDialog, PageDialogContent } from '@/components/ui/page-dialog'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { Button } from '@/components/ui/button'
@@ -601,9 +602,9 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
  * through it with its own pointer, and its findings arrive as proposals that
  * count only once a person takes one over.
  *
- * Everything else of the workspace is gone while it is open (a full-screen
- * `Dialog`, the overlay the design language gives an artifact looked at with
- * full attention). Escape steps back one thing at a time: the draft, the tool,
+ * The rest of the page is gone while it is open (a full-page `PageDialog`; a
+ * panel docked beside the page, the Postfach, stays usable: ADR-0148).
+ * Escape steps back one thing at a time: the draft, the tool,
  * the open thread, and only then the review itself.
  */
 export function DocumentReviewMode({
@@ -1067,14 +1068,14 @@ export function DocumentReviewMode({
   const checkFixed = useCheckFixed(review, { documentName, revisionLabel: revisionLabel ?? null })
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
-      <DialogContent
+    <PageDialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
+      <PageDialogContent
         showCloseButton={false}
         onEscapeKeyDown={stepBack}
         // The sheet is what has focus to begin with, not the close button: a
         // ring on the X is the first thing an opened review would say.
         onOpenAutoFocus={(event) => event.preventDefault()}
-        className="bg-background inset-0 top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:max-w-none"
+        className="bg-background inset-0 top-[var(--page-inset-top,0px)] left-[var(--page-inset-start,0px)] flex h-[calc(100dvh-var(--page-inset-top,0px))] max-h-none w-auto max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:max-w-none"
         data-testid="document-review"
       >
         <header className="flex min-h-13 shrink-0 items-center gap-3 border-b px-3 pt-[env(safe-area-inset-top)] pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] max-sm:flex-wrap max-sm:gap-x-2 max-sm:gap-y-0">
@@ -1328,7 +1329,7 @@ export function DocumentReviewMode({
           </Sheet>
         )}
         <ReviewAnnouncer review={review} />
-      </DialogContent>
-    </Dialog>
+      </PageDialogContent>
+    </PageDialog>
   )
 }

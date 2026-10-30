@@ -11,6 +11,8 @@ export const nav = {
    * width, and folding the rail is the far end of that same move.
    */
   resizeSidebar: 'Resize sidebar',
+  /** The panel docked beside the page (the inbox): its width by arrow keys or by dragging. */
+  resizeDock: 'Resize the panel beside the page',
   /** Tooltip on that edge, in each of the two states it can be in. */
   resizeSidebarHint: 'Drag to resize, click to collapse',
   expandSidebarHint: 'Drag or click to expand the sidebar',

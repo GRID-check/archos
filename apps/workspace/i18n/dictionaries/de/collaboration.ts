@@ -223,6 +223,11 @@ export const collaboration: typeof en.collaboration = {
 
   inbox: {
     title: 'Postfach',
+    // Das Postfach neben der Seite: schließen, und der Weg zu allen Einträgen.
+    dock: {
+      close: 'Postfach schließen',
+      all: 'Alle Einträge',
+    },
     navLabel: 'Postfach',
     badgeAria:
       '{count, plural, one {# Eintrag braucht} other {# Einträge brauchen}} Ihre Aufmerksamkeit',
@@ -232,7 +237,6 @@ export const collaboration: typeof en.collaboration = {
     // was Sie noch nicht geöffnet haben. Zwei Fragen, zwei Filter.
     filters: {
       needsMe: 'Für mich',
-      unread: 'Ungelesen',
       all: 'Alle',
       archived: 'Archiviert',
       ariaLabel: 'Postfach filtern',
@@ -253,10 +257,52 @@ export const collaboration: typeof en.collaboration = {
     loadMoreFailed: 'Ältere Einträge konnten nicht geladen werden.',
     // Die Zeile zu einer Anmerkung: dorthin, und für eine Anfrage gleich hier
     // antworten oder erledigen, wie im Verlauf der Anmerkung.
+    // Bis wann, auf der Zeile einer Anfrage mit Frist, wo der Titel es nicht schon sagt.
+    due: {
+      overdue: 'Überfällig',
+      soon: 'Bald fällig',
+      on: 'Frist {due}',
+    },
+    // Die Abschnitte der Liste, nach dem Zeitpunkt der letzten Änderung.
+    groups: {
+      today: 'Heute',
+      yesterday: 'Gestern',
+      week: 'Diese Woche',
+      older: 'Früher',
+    },
+    // Der Hinweis unter der Liste, nur mit Maus und Tastatur: die Tasten, mit denen sich das Postfach abarbeiten lässt.
+    keys: {
+      move: 'auswählen',
+      open: 'öffnen',
+      archive: 'archivieren',
+      read: 'gelesen/ungelesen',
+    },
+    // Was eine neue Fassung zu prüfen lässt, als Angabe in der Zeile unter dem Titel.
+    openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}',
+    // Das Postfach als Warteschlange: was auf Sie wartet, nach Dokument oder Chat gesammelt, dann die Neuigkeiten.
+    queue: {
+      waiting: 'Wartet auf Sie',
+      news: 'Neuigkeiten',
+      summary: '{count, plural, one {# wartet auf Sie} other {# warten auf Sie}}',
+      late: '{count} davon überfällig',
+      nothingWaiting: 'Nichts wartet auf Sie.',
+      newsRead: 'Als gelesen markieren',
+      chat: 'Chat',
+    },
+    // Warum ein wartender Eintrag Ihrer ist, kurz: das Dokument steht schon darüber.
+    reason: {
+      assigned: 'Von {actor} zugewiesen',
+      assignedNoActor: 'Ihnen zugewiesen',
+      mentioned: '{actor} hat Sie erwähnt',
+      mentionedNoActor: 'Sie wurden erwähnt',
+      asks: '{productName} fragt Sie',
+      input: '{actor} bittet um Ihre Einschätzung',
+      inputNoActor: 'Um Ihre Einschätzung gebeten',
+      approval: '{actor} bittet um Ihre Freigabe',
+      approvalNoActor: 'Wartet auf Ihre Freigabe',
+      mark: 'Anmerkung {number}',
+    },
     mark: {
-      open: 'Zur Anmerkung',
-      // Eine Zeile über neue Anmerkungen („Anna hat 15 Anmerkungen gesetzt“): sie öffnet die Prüfansicht bei der neuesten.
-      openMany: 'Zu den Anmerkungen',
       // Eine Rückfrage von Piloti, solange Ereignisse Piloti nicht wecken: Erst die Prüfansicht fragt Piloti mit der Antwort.
       answerInReview: 'In der Prüfansicht beantworten',
       reply: 'Antworten',
@@ -280,11 +326,9 @@ export const collaboration: typeof en.collaboration = {
     compareRevisions: 'Fassungen vergleichen',
     compareRevisionsLabel: 'Neue und ältere Fassung von „{subject}“ vergleichen',
     empty: {
-      needsMeTitle: 'Nichts zu tun',
+      needsMeTitle: 'Alles erledigt',
       needsMeDescription:
-        'Wenn jemand Sie erwähnt, Ihnen eine Anmerkung zuweist oder {productName} Sie etwas fragt, erscheint es hier.',
-      unreadTitle: 'Alles gelesen',
-      unreadDescription: 'Was neu ist, steht hier, bis Sie es öffnen.',
+        'Was neu ist oder auf Sie wartet, erscheint hier. Was Sie schon gelesen haben, finden Sie unter „Alle“.',
       allTitle: 'Ihr Postfach ist leer',
       allDescription: 'Neuigkeiten aus Ihrem Team und von {productName} erscheinen hier.',
       archivedTitle: 'Nichts archiviert',

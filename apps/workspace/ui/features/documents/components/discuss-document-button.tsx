@@ -74,10 +74,11 @@ export interface DiscussDocumentButtonProps {
   /** Icon-led, for a dense row (the inbox) where the label alone reads as chrome. */
   withIcon?: boolean
   /**
-   * The icon alone below `sm`, the label kept for assistive technology: a
-   * phone row with three labelled buttons wraps them onto three lines.
+   * The icon alone, its label kept for assistive technology and as the
+   * tooltip: for a toolbar of icons (the inbox row's), where one labelled
+   * button among them is the one that does not belong.
    */
-  iconOnlyOnPhone?: boolean
+  iconOnly?: boolean
   /** Told just before the navigation, for a caller that counts it as opening something (the inbox row marks itself read). */
   onNavigate?: () => void
   className?: string
@@ -92,7 +93,7 @@ export function DiscussDocumentButton({
   variant = 'default',
   size = 'sm',
   withIcon = false,
-  iconOnlyOnPhone = false,
+  iconOnly = false,
   onNavigate,
   className,
 }: DiscussDocumentButtonProps): JSX.Element {
@@ -104,9 +105,8 @@ export function DiscussDocumentButton({
       type="button"
       variant={variant}
       size={size}
-      className={cn('h-8', className)}
-      title={hint}
-      aria-label={iconOnlyOnPhone ? t('assignment.discuss') : undefined}
+      className={cn('h-8', iconOnly && 'w-8 px-0', className)}
+      title={hint ?? (iconOnly ? t('assignment.discuss') : undefined)}
       data-testid="discuss-document"
       onClick={() => {
         onNavigate?.()
@@ -122,8 +122,8 @@ export function DiscussDocumentButton({
     >
       {/* Sparkles is Piloti's glyph across the rail („Von Piloti gelesen“), so
           the button that talks to Piloti carries it too. */}
-      {(withIcon || iconOnlyOnPhone) && <Sparkles className="size-3.5" aria-hidden />}
-      {iconOnlyOnPhone ? <span className="max-sm:hidden">{t('assignment.discuss')}</span> : t('assignment.discuss')}
+      {(withIcon || iconOnly) && <Sparkles className="size-3.5" aria-hidden />}
+      {iconOnly ? <span className="sr-only">{t('assignment.discuss')}</span> : t('assignment.discuss')}
     </Button>
   )
 }

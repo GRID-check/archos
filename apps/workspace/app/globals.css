@@ -184,7 +184,10 @@ body {
      drew a thick ink edge along its top on a phone. Tab from there lands on a
      control, which shows the outline.
    - A cmdk search field, which sits inside its own bordered row: the outline
-     drew a second box inside it. */
+     drew a second box inside it.
+   - A row of a bordered list (`data-focus-inset`, the inbox's rows under j/k)
+     keeps the outline, inside its own edge: drawn outside, the list's rounded,
+     clipped frame cut it to two black bars along the dividers. */
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
@@ -193,6 +196,10 @@ body {
 :is([role='dialog'], [role='alertdialog']):focus-visible,
 [cmdk-input]:focus-visible {
   outline: none;
+}
+
+[data-focus-inset]:focus-visible {
+  outline-offset: -2px;
 }
 
 /* Bottom edge of a scrollable list, made legibly intentional.
