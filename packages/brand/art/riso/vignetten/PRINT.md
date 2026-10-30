@@ -48,7 +48,7 @@ The product app follows the design system 3.0, which has no brand colour: ink
 `#0f0e0d`, warm white `#fafaf9`, one light grey `#f2f1f0` and ink-muted `#5e5b57`
 for secondary marks. Green line art and a red ribbon were the retired brand.
 So this work passes its own `look` to `Riso.run` (`lib/engine.js`) and leaves
-`lib/piloti.js` alone: each drum keeps its screen, angle, registration and every
+the series file in `lib/` alone: each drum keeps its screen, angle, registration and every
 drawn coverage, and only the colour it prints in changes.
 
 | Drum | Series | Here |

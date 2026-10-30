@@ -36,8 +36,8 @@ const NOPAPER = QS.get('paper') === '0';
 
 /* A work's own look, from Riso.run({ look }): `ink` maps an ink name to the hex it
    prints in, `paper` is the sheet's colour, `mottle: false` leaves the sheet flat
-   (no fibres, flecks or mottling). Unset, a work prints in the series look of
-   piloti.js. The vignetten work uses it to print in the brand neutrals. */
+   (no fibres, flecks or mottling). Unset, a work prints in the series look
+   (the series file). The vignetten work uses it to print in the brand neutrals. */
 let LOOK = { ink: {}, paper: null, mottle: true };
 const inkHex = (ink) => LOOK.ink[ink] || INK[ink];
 
