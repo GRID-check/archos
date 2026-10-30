@@ -34,7 +34,7 @@ import {
   type WireElement,
 } from '@/lib/diagrams/sketch-room-types'
 import type { RealtimePeer } from '@/lib/realtime/types'
-import { useDocumentRoom, type DocumentRoom, type RoomTransport } from '@/features/documents'
+import { useDocumentRoom, type DocumentRoom, type RoomTransport } from '@/features/documents/document-room'
 import { collaboratorsOf, type SketchCollaborator } from './sketch-collaborators'
 import { createSketchSync, type SketchElement, type SketchHelpers, type SketchSync } from './sketch-sync'
 

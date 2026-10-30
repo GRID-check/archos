@@ -39,12 +39,13 @@
  */
 
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react'
 import { getSketch } from '@/adapters/api/diagrams-client'
 import type { WireElement } from '@/lib/diagrams/sketch-room-types'
 import type { ResolvedSketchLink } from '@/lib/diagrams/sketch-links'
 import type { RealtimePeer } from '@/lib/realtime/types'
-import type { DocumentReview, ReviewDraft, RoomTransport } from '@/features/documents'
+import type { DocumentReview, ReviewDraft } from '@/features/documents/sketch-review'
+import type { RoomTransport } from '@/features/documents/document-room'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useLocale, useTranslations } from '@/i18n'
@@ -53,6 +54,7 @@ import { useDiagramFiling } from '../use-diagram-filing'
 import { useDiagramTheme } from '../use-diagram-theme'
 import { DiagramFilingControls } from '../components/diagram-filing-controls'
 import type { SketchCanvasHandle } from './sketch-canvas'
+import type { SketchPinsProps } from './sketch-pins'
 import { useSketchRevision, type SavedRevision, type SketchRevisionState } from './use-sketch-revision'
 import { useSketchRoom, type SketchRoom } from './use-sketch-room'
 import { UnderlayBanner } from './sketch-underlay'
@@ -99,6 +101,8 @@ export interface SketchDialogProps {
     roomTransport?: RoomTransport
     /** The document's review (the preview's): its Anmerkungen are drawn over the canvas on their elements. */
     review?: DocumentReview | null
+    /** What draws them: `SketchPins`, passed by the review's owner so this dialog, below every Markdown fence, does not import the review (`sketch-canvas.tsx`, `pins`). */
+    Pins?: ComponentType<SketchPinsProps>
     /** The links as the server read them for this reader (`GET`'s `links`), marked on their elements. */
     links?: readonly ResolvedSketchLink[]
     /** The project the Skizze lies in: where „Verknüpfen“ looks. */
@@ -307,8 +311,8 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
                   : null
               }
               pins={
-                revision?.review
-                  ? { review: revision.review, canAnnotate: canWrite && revision.review.canAnnotate, onAnnotate: annotate, canPickAssignee: true }
+                revision?.review && revision.Pins
+                  ? { Pins: revision.Pins, review: revision.review, canAnnotate: canWrite && revision.review.canAnnotate, onAnnotate: annotate, canPickAssignee: true }
                   : null
               }
             />

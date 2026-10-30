@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/features/documents', () => ({
+vi.mock('@/features/documents/sketch-review', () => ({
   ReviewPageLayer: ({ review }: { review: { annotations: Array<{ id: string; x: number; w: number | null }> } }) => (
     <div data-testid="layer">
       {review.annotations.map((mark) => (
@@ -13,7 +13,8 @@ vi.mock('@/features/documents', () => ({
   ThreadCard: () => null,
 }))
 
-import { placedLive, SketchPins, type SketchViewApi } from './sketch-pins'
+import { placedLive, SketchPins } from './sketch-pins'
+import type { SketchViewApi } from './sketch-view'
 
 type Listener = () => void
 

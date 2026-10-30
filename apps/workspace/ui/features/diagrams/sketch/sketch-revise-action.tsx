@@ -26,6 +26,7 @@ import { useTranslations } from '@/i18n'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import type { PreviewDocumentActionProps } from '@/features/documents/preview-actions'
 import { SketchDialog } from './sketch-dialog'
+import { SketchPins } from './sketch-pins'
 
 const NO_ELEMENTS: readonly object[] = []
 
@@ -137,6 +138,7 @@ export function SketchReviseAction({
             canWrite: sketch.canWrite,
             onSaved,
             review,
+            Pins: SketchPins,
             links: sketch.links,
             projectId: sketch.projectId,
             underlay: sketch.underlay,

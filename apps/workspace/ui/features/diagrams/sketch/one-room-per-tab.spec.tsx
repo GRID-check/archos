@@ -11,7 +11,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { RoomFrame, RoomPost } from '@/lib/annotations/room-types'
-import { useDocumentRoom, type RoomTransport } from '@/features/documents'
+import { useDocumentRoom, type RoomTransport } from '@/features/documents/document-room'
 import { useSketchRoom } from './use-sketch-room'
 
 const ME = { userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }

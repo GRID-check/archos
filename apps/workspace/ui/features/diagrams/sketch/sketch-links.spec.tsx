@@ -23,7 +23,7 @@ vi.mock('./sketch-link-picker', () => ({
 
 import { I18nProvider } from '@/i18n'
 import { SketchLinks } from './sketch-links'
-import type { SketchViewApi } from './sketch-pins'
+import type { SketchViewApi } from './sketch-view'
 
 const ANN_1 = '33333333-3333-4333-8333-333333333333'
 const DOC_GONE = '44444444-4444-4444-8444-444444444444'

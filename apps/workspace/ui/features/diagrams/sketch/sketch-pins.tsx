@@ -23,32 +23,14 @@
  */
 
 import { MessageSquarePlus } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  paddedFrame,
-  regionInFrame,
-  type AnchorElement,
-  type SheetFrame,
-  type SheetRegion,
-} from '@/lib/annotations/sketch-anchor'
+import { useCallback, useMemo } from 'react'
+import { regionInFrame, type AnchorElement, type SheetFrame, type SheetRegion } from '@/lib/annotations/sketch-anchor'
 import { MAX_ANCHOR_ELEMENTS, type AnnotationView } from '@/lib/annotations/types'
-import { DraftCard, ReviewPageLayer, ThreadCard, type DocumentReview, type ReviewDraft } from '@/features/documents'
+import { DraftCard, ReviewPageLayer, ThreadCard, type DocumentReview, type ReviewDraft } from '@/features/documents/sketch-review'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
-
-/** What the pins read of the canvas: Excalidraw's imperative API, by shape. */
-export interface SketchViewApi {
-  getSceneElements: () => readonly AnchorElement[]
-  getAppState: () => {
-    scrollX: number
-    scrollY: number
-    zoom: { value: number }
-    selectedElementIds: Readonly<Record<string, boolean>>
-  }
-  onChange: (callback: () => void) => () => void
-  onScrollChange: (callback: () => void) => () => void
-}
+import { useCanvasView, type SketchViewApi } from './sketch-view'
 
 export interface SketchPinsProps {
   api: SketchViewApi | null
@@ -61,55 +43,6 @@ export interface SketchPinsProps {
 }
 
 const NONE: string[] = []
-
-export interface CanvasView {
-  elements: readonly AnchorElement[]
-  frame: SheetFrame | null
-  scrollX: number
-  scrollY: number
-  zoom: number
-  selected: string[]
-}
-
-function readView(api: SketchViewApi): CanvasView {
-  const elements = api.getSceneElements()
-  const state = api.getAppState()
-  return {
-    elements,
-    frame: paddedFrame(elements),
-    scrollX: state.scrollX,
-    scrollY: state.scrollY,
-    zoom: state.zoom.value,
-    selected: Object.entries(state.selectedElementIds)
-      .filter(([, on]) => on)
-      .map(([id]) => id),
-  }
-}
-
-/** The canvas's view, read again once per animation frame while it changes or scrolls. */
-export function useCanvasView(api: SketchViewApi | null): CanvasView | null {
-  const [view, setView] = useState<CanvasView | null>(null)
-  useEffect(() => {
-    if (!api) return
-    let frame: number | null = null
-    const schedule = () => {
-      if (frame !== null) return
-      frame = requestAnimationFrame(() => {
-        frame = null
-        setView(readView(api))
-      })
-    }
-    setView(readView(api))
-    const offChange = api.onChange(schedule)
-    const offScroll = api.onScrollChange(schedule)
-    return () => {
-      offChange()
-      offScroll()
-      if (frame !== null) cancelAnimationFrame(frame)
-    }
-  }, [api])
-  return view
-}
 
 /** A mark with its box where its elements stand now; a mark whose elements are gone keeps the box it has. */
 export function placedLive<T extends { elementIds?: string[] | null; x: number; y: number; w: number | null; h: number | null }>(

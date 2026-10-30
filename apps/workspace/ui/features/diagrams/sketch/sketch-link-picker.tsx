@@ -30,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTranslations } from '@/i18n'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
-import type { AvailableSketchLink } from '@/features/documents'
+import type { AvailableSketchLink } from '@/features/documents/sketch-link-target'
 
 /** What a pick stores, and what the mark shows of it meanwhile. */
 export interface PickedSketchLink {

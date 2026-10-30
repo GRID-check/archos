@@ -37,7 +37,7 @@
  *     the PDF can show, so what is filed reads like what was drawn.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import './excalidraw-assets'
 import {
   CaptureUpdateAction,
@@ -58,7 +58,8 @@ import { fileableSketchSvg } from '@/lib/diagrams/sketch-svg'
 import { opensForbiddenDialog } from './sketch-guards'
 import type { SketchHelpers } from './sketch-sync'
 import type { SketchCanvasBridge, SketchCollab } from './use-sketch-room'
-import { SketchPins, type SketchPinsProps, type SketchViewApi } from './sketch-pins'
+import type { SketchPinsProps } from './sketch-pins'
+import type { SketchViewApi } from './sketch-view'
 import { SketchLinks, type SketchLinksProps } from './sketch-links'
 import type { SketchLink } from '@/lib/diagrams/sketch-links'
 import { loadUnderlay, type UnderlayLoadState } from './sketch-underlay-load'
@@ -99,8 +100,14 @@ export interface SketchCanvasProps {
    * canvas is in view mode.
    */
   collab?: SketchCollab | null
-  /** A reopened Skizze's Anmerkungen, drawn over the canvas where their elements are (`sketch-pins.tsx`). */
-  pins?: Omit<SketchPinsProps, 'api'> | null
+  /**
+   * A reopened Skizze's Anmerkungen, drawn over the canvas where their elements
+   * are. `Pins` is `SketchPins` (`sketch-pins.tsx`), handed in by the caller
+   * that owns the review (`sketch-revise-action.tsx`) instead of imported here:
+   * this canvas sits below every rendered Markdown fence, and an import would
+   * put the review's whole subtree below them (`task workspace:blast-radius`).
+   */
+  pins?: (Omit<SketchPinsProps, 'api'> & { Pins: ComponentType<SketchPinsProps> }) | null
   /** A reopened Skizze's links, marked on their elements and opened in the app (`sketch-links.tsx`). */
   links?: Omit<SketchLinksProps, 'api' | 'onLink'> | null
   /** Whether the page under the strokes could be shown to this reader (S6). */
@@ -295,7 +302,7 @@ export default function SketchCanvas({
           <MainMenu.DefaultItems.Help />
         </MainMenu>
       </Excalidraw>
-      {pins ? <SketchPins api={api as unknown as SketchViewApi | null} {...pins} /> : null}
+      {pins ? <pins.Pins api={api as unknown as SketchViewApi | null} {...pins} /> : null}
       {links ? <SketchLinks api={api as unknown as SketchViewApi | null} onLink={setLink} {...links} /> : null}
     </div>
   )

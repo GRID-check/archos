@@ -24,14 +24,14 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { keptSketchLink, sketchLinkKind, type ResolvedSketchLink, type SketchLink } from '@/lib/diagrams/sketch-links'
-import { sketchLinkHref } from '@/features/documents'
+import { sketchLinkHref } from '@/features/documents/sketch-link-target'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useTranslations } from '@/i18n'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { cn } from '@/lib/utils'
 import { SketchLinkPicker, type PickedSketchLink } from './sketch-link-picker'
-import { useCanvasView, type SketchViewApi } from './sketch-pins'
+import { useCanvasView, type SketchViewApi } from './sketch-view'
 
 export interface SketchLinksProps {
   api: SketchViewApi | null

@@ -15,15 +15,7 @@
 export { useFileUpload } from './hooks/use-file-upload'
 export { useFileDragDrop } from './hooks/use-file-drag-drop'
 export { FileUploadZone } from './components/FileUploadZone'
-export {
-  useDocumentRoom,
-  type DocumentRoom,
-  type RoomPeerState,
-  type RoomTransport,
-} from './hooks/use-document-room'
-// The review's own pieces, for a Skizze's marks drawn over its live canvas (`features/diagrams/sketch/sketch-pins.tsx`).
-export type { DocumentReview, ReviewDraft } from './hooks/use-document-review'
-export { ReviewPageLayer } from './components/review/review-page-layer'
-export { DraftCard, ThreadCard } from './components/review/thread-card'
-// Where a Skizze's link leads: a document's page, its model's element, an Anmerkung (`features/diagrams/sketch/sketch-links.tsx`).
-export { sketchLinkHref, type AvailableSketchLink } from './lib/sketch-link-href'
+// A Skizze takes the room, the review's pieces and its links' targets from
+// top-level modules instead (`document-room.ts`, `sketch-review.ts`,
+// `sketch-link-target.ts`): through here they put the upload hooks, and with
+// them the folder rules and upload screening, below every sketch canvas.

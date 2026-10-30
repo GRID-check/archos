@@ -14,7 +14,7 @@
 import { roomEventSchema, type RoomFrame, type RoomPost } from '@/lib/annotations/room-types'
 import { sketchEventsOf } from '@/lib/diagrams/sketch-room-types'
 import type { RealtimePeer } from '@/lib/realtime/types'
-import type { RoomTransport } from '@/features/documents'
+import type { RoomTransport } from '@/features/documents/document-room'
 
 declare global {
   interface Window {
