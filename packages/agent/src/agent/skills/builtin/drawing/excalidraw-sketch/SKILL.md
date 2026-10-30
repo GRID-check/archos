@@ -2,8 +2,9 @@
 name: excalidraw-sketch
 description: >
   Draw a sketch as an excalidraw fence: rooms by adjacency, a site sketch, a
-  wireframe, a timeline, a comparison board, callouts over shapes. Read before
-  writing one.
+  wireframe, a timeline, a comparison board, callouts over shapes. Also how to
+  read a filed Skizze and change it with document-sketch-edit. Read before
+  writing or changing one.
 metadata:
   grid-agents: researcher
   grid-title: Skizze zeichnen
@@ -100,3 +101,36 @@ id one the scene holds.
 ```
 
 One sketch per answer, and a sentence before it saying what it shows.
+
+## A filed Skizze: read it, change it
+
+A sketch filed into the project is a document. Find it with workspace-search,
+then read it with document-sketch-get and `scene: "omit"`: the `outline` lists
+`shapes` (label, `box` {x, y, w, h}), `texts`, `connections` (from → to, or
+`points` where an end is free) and `frames` with their children, each with its
+`id`, and the `versionId`. Answer from the outline and name things by their
+label, never by id. `ids` reads a few elements whole when you need their style.
+
+To change it, call document-sketch-edit with `baseVersionId` and `ops`. The
+person sees the change drawn and decides; nothing changes before. Each op has
+an `intent`, one short sentence in the person's language: the card lists them
+as the steps.
+
+- `add` takes one element as in the fence table, with a new `id`; `start`,
+  `end` and `children` may name elements already drawn.
+- `update` with `set`: `label` (or a frame's name), `text` (a free text),
+  colours, `strokeStyle`, `x`, `y`, `width`, `height`.
+- `remove` takes the element's label and every arrow bound to it along; a
+  frame lets its children go.
+- `rebind` moves an arrow's `start` or `end` to another element.
+- Place by reference, not by arithmetic: `place` (`id` beside `referenceId`,
+  `side` above, below, left or right, `offset`, `align` start, center or end),
+  `align` (`ids` to an `edge`), `distribute` and `stack` (`ids` on an `axis`,
+  `stack` with a `gap`). Add a shape with any `x`, `y`, then `place` it.
+
+Arrows bound to what moved are routed again, and a box grows to fit its label.
+The answer brings layout warnings (overlap, a label too long, outside its
+frame, an arrow bound to nothing): fix one with a new call when it matters. A
+wrong op is refused with its number; read the sketch again and redo it. When
+the change would need a dimension („schreib die Flächen dazu“), send no ops and
+a `note` saying why: a sketch claims none, and nothing is proposed.
