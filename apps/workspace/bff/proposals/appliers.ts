@@ -35,6 +35,8 @@ export interface ApplyContext {
   request: Request
   /** Where the proposal was made; the restricted-use checks run against it. */
   originConversationId: string | null
+  /** The answer the proposal was filed from, whose trace an apply's scores go on (`proposing-turn.ts`). */
+  originMessageId?: string | null
   /** The deciding person's language, for a refusal they read. */
   locale: Locale
   /** The decider's choice to file an organization note in the project instead. */

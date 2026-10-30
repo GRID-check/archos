@@ -29,13 +29,15 @@ import { PublishedVersionMovedError } from '@/lib/documents/published-guard'
 import { readVersionContent } from '@/lib/documents/version-content'
 import { findDocumentVersion, findPreviousVersion } from '@/lib/documents/version-repository'
 import { recordSketchEditScore, type SketchEditOutcome } from '@/lib/langfuse/sketch-score'
+import { proposingTurn } from '@/lib/proposals/proposing-turn'
+import type { ProposingTurn } from '@/lib/agent-api/operation'
 import { applySketchEdit, idsNamedBy, SketchEditError, type AppliedSketchScene } from './sketch-edit'
 import { sketchEditDiffElements } from './sketch-edit-diff'
 import { describeWarnings } from './sketch-edit-lints'
 import { changedUnderEdit } from './sketch-edit-rebase'
 import { saveSketchDocument, sketchSaveBaseOf, sketchSceneOfText, type SketchSaveBase } from './sketch-document'
 import { textsToMeasure } from './sketch-picture'
-import { sketchRenderer } from './sketch-renderer'
+import { SketchRenderError, sketchRenderer } from './sketch-renderer'
 import type { SketchScene } from './sketch-scene'
 import { sketchTargetOf } from './sketch-target'
 import type { SaveSketchBody, SavedSketch } from './sketch-wire'
@@ -91,15 +93,30 @@ const asSaveScene = (scene: SketchScene): SaveSketchBody['scene'] => ({ ...scene
 
 const kindsOf = (body: SketchEditBody) => [...new Set(body.ops.map((op) => op.op))].sort().join(',')
 
-function score(base: Pick<SketchSaveBase, 'document'>, outcome: SketchEditOutcome, extra: { refusal?: string; metadata?: Record<string, string | number> } = {}) {
+/**
+ * Score one outcome, on the proposing turn's trace when it is known: the
+ * check's own turn (`proposing`), or the turn whose proposal is being applied
+ * (`proposingTurn()`); otherwise on the turn that drew the sketch.
+ */
+function score(
+  base: Pick<SketchSaveBase, 'document'>,
+  outcome: SketchEditOutcome,
+  extra: { refusal?: string; metadata?: Record<string, string | number>; proposing?: string | null } = {}
+) {
+  const { proposing, ...rest } = extra
   void recordSketchEditScore({
     organizationId: base.document.organizationId,
     documentId: base.document.id,
     answerRef: base.document.authoredByRef ?? null,
+    proposingMessageId: proposing ?? proposingTurn(),
     outcome,
-    ...extra,
+    ...rest,
   })
 }
+
+/** Why a preview or an undo failed, as the score's comment. */
+const failureOf = (error: unknown) =>
+  error instanceof SketchEditError ? error.refusal : error instanceof SketchRenderError ? `render_${error.reason}` : error instanceof Error ? error.name : 'unknown'
 
 const facts = (body: SketchEditBody, applied: AppliedSketchScene) => ({
   ops: body.ops.length,
@@ -220,13 +237,18 @@ async function sceneOfBase(session: AuthorizedSession, current: SketchSaveBase, 
 /** The edit's picture and diff on the Fassung it was made on, so a decided card keeps showing what it proposed. */
 export async function previewSketchEdit(session: AuthorizedSession, documentId: string, body: SketchEditBody): Promise<SketchEditPreview> {
   const current = await sketchSaveBaseOf(session, documentId, 'read')
-  const base = await sceneOfBase(session, current, body.baseVersionId)
-  const applied = applySketchEdit(base.scene, body.ops)
-  const rendered = await sketchRenderer().render({
-    elements: sketchEditDiffElements(base.scene, applied.scene, applied.diff),
-    remeasure: textsToMeasure(base.scene, applied.scene),
-  })
-  return { documentId, baseVersionId: base.versionId ?? '', diff: applied.diff, warnings: applied.warnings, svg: rendered.svg }
+  try {
+    const base = await sceneOfBase(session, current, body.baseVersionId)
+    const applied = applySketchEdit(base.scene, body.ops)
+    const rendered = await sketchRenderer().render({
+      elements: sketchEditDiffElements(base.scene, applied.scene, applied.diff),
+      remeasure: textsToMeasure(base.scene, applied.scene),
+    })
+    return { documentId, baseVersionId: base.versionId ?? '', diff: applied.diff, warnings: applied.warnings, svg: rendered.svg }
+  } catch (error) {
+    score(current, 'failed', { refusal: failureOf(error), metadata: { step: 'preview' } })
+    throw error
+  }
 }
 
 export interface RevertSketchInput {
@@ -243,8 +265,17 @@ export interface RevertSketchInput {
  * longer current or a Freigabe round is open: then something came after.
  */
 export async function revertSketchDocument(input: RevertSketchInput): Promise<SavedSketch> {
+  const current = await sketchSaveBaseOf(input.session, input.documentId, 'write')
+  try {
+    return await revertOnto(input, current)
+  } catch (error) {
+    score(current, 'failed', { refusal: error instanceof SketchMovedOnError ? 'moved_on' : failureOf(error), metadata: { step: 'undo' } })
+    throw error
+  }
+}
+
+async function revertOnto(input: RevertSketchInput, current: SketchSaveBase): Promise<SavedSketch> {
   const { session } = input
-  const current = await sketchSaveBaseOf(session, input.documentId, 'write')
   const { document } = current
   const target = await sketchTargetOf(document)
   if (target.kind !== 'published' || document.publishedVersionId !== input.body.versionId) {
@@ -279,12 +310,14 @@ export interface SketchEditProposalCheck {
  */
 export async function checkSketchEditProposal(
   input: { params?: Record<string, string>; body?: unknown },
-  session: AuthorizedSession
+  session: AuthorizedSession,
+  turn: ProposingTurn = { answerMessageId: null }
 ): Promise<SketchEditProposalCheck> {
   const body = sketchEditSchema.parse(input.body)
   const current = await sketchSaveBaseOf(session, String(input.params?.id ?? ''), 'read')
+  const proposing = turn.answerMessageId
   if (body.ops.length === 0) {
-    score(current, 'declined')
+    score(current, 'declined', { proposing })
     return { decline: body.note ?? 'No change proposed.' }
   }
   let applied: AppliedSketchScene
@@ -292,11 +325,11 @@ export async function checkSketchEditProposal(
     applied = (await applyOnto(session, current, body)).applied
   } catch (error) {
     if (error instanceof SketchEditError) {
-      score(current, 'refused', { refusal: error.refusal })
+      score(current, 'refused', { refusal: error.refusal, proposing })
       throw new UnprocessableError(sketchEditRefusalMessage(error), { reason: 'sketch-edit-refused', refusal: error.refusal })
     }
     if (error instanceof SketchChangedError) {
-      score(current, 'refused', { refusal: 'sketch_changed' })
+      score(current, 'refused', { refusal: 'sketch_changed', proposing })
       throw new ConflictError(
         'The sketch changed since you read it: an element this edit names is gone, or a colleague changed one it names or removes along. Read it again with document-sketch-get and redo the edit.',
         {
@@ -307,7 +340,7 @@ export async function checkSketchEditProposal(
     }
     throw error
   }
-  score(current, 'proposed', { metadata: facts(body, applied) })
+  score(current, 'proposed', { metadata: facts(body, applied), proposing })
   const warnings = describeWarnings(applied.warnings, applied.moreWarnings)
   if (current.target === 'review_open') warnings.push('the sketch is in review: the edit can be applied once the review is decided')
   return { warnings }

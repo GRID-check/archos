@@ -22,6 +22,7 @@ import { findOperation } from '@/lib/agent-api/catalog'
 import { callOperation } from '@/lib/agent-api/dispatch'
 import { findVisibleOperation, visibleOperations } from '@/lib/agent-api/policy'
 import type { AgentPrincipal } from '@/lib/agent-api/principal'
+import { proposingTurn } from './proposing-turn'
 import { applyOperation, PROPOSAL_DECISION_OPERATIONS, PROPOSAL_DECISION_REFUSAL, requireProposableOperation } from './operation-applier'
 import type { OperationPayload } from './types'
 
@@ -59,6 +60,19 @@ describe('proposal decisions', () => {
     const results = await applyOperation(payload(name), { session: SESSION })
     expect(results).toEqual([{ label: payload(name).summary, ok: false, reason: PROPOSAL_DECISION_REFUSAL }])
     expect(callOperation).not.toHaveBeenCalled()
+  })
+})
+
+describe('the proposing turn', () => {
+  it('is the proposal’s origin message while its route runs, and nothing after', async () => {
+    let seen: string | null = 'unset'
+    vi.mocked(callOperation).mockImplementationOnce(async () => {
+      seen = proposingTurn()
+      return { status: 200, ok: true, body: {} }
+    })
+    await applyOperation(payload('document-sketch-edit'), { session: SESSION, originMessageId: 'msg_1' })
+    expect(seen).toBe('msg_1')
+    expect(proposingTurn()).toBeNull()
   })
 })
 

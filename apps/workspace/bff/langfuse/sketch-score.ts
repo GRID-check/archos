@@ -23,7 +23,7 @@ import 'server-only'
  * `drafted` (saved into the open Freigabe draft, nothing published);
  * `review_open` (409, a version is in review: nothing saved); `render_failed`
  * (503, the server could not draw the scene's picture: the comment names why,
- * `busy`, `timeout`, `crashed`, `failed` or `unavailable`; ADR-0149). Metadata
+ * `busy`, `timeout`, `crashed`, `failed`, `unavailable` or `too_much_text`; ADR-0149). Metadata
  * `carried` and `lost` count the pinned marks that went onto the Fassung and
  * those of them whose elements are all gone; `render_ms`, `render_elements` and
  * `remeasured` say what drawing the picture cost.
@@ -78,9 +78,19 @@ async function scoreOnDrawingTurn(
   scoreId: string,
   build: (traceId: string) => ScoreRequest
 ): Promise<void> {
-  const config = langfuseApiConfig()
   const answerId = answerIdOfDiagramRef(input.answerRef)
-  if (!config || !answerId) return
+  if (answerId) await scoreOnAnswer(input, answerId, scoreId, build)
+}
+
+/** Write a score on the trace of one answer message. Resolves when done and never rejects. */
+async function scoreOnAnswer(
+  input: { organizationId: string; documentId: string },
+  answerId: string,
+  scoreId: string,
+  build: (traceId: string) => ScoreRequest
+): Promise<void> {
+  const config = langfuseApiConfig()
+  if (!config) return
   try {
     const traceId = await withTenant({ organizationId: input.organizationId }, () =>
       getAnswerTraceId(answerId, input.organizationId)
@@ -229,16 +239,24 @@ export const SKETCH_EDIT_SCORE_NAME = 'sketch-edit'
  * e.g. `unknown-id`, or `sketch_changed` when a rebase found an id gone),
  * `accepted` (applied on the Fassung it was made for), `rebased` (applied on a
  * newer one, every id it names still drawn), `undone` (the Fassung an edit or
- * a save made was taken back with document-sketch-revert).
+ * a save made was taken back with document-sketch-revert), `failed` (a
+ * preview or an undo that could not be done; metadata `step` says which,
+ * the comment why).
+ *
+ * On the trace of the turn that proposed the edit when it is known (the
+ * check's turn, or the applied proposal's origin, `proposing-turn.ts`),
+ * otherwise on the trace of the turn that drew the sketch.
  */
-export const SKETCH_EDIT_OUTCOMES = ['proposed', 'declined', 'refused', 'accepted', 'rebased', 'undone'] as const
+export const SKETCH_EDIT_OUTCOMES = ['proposed', 'declined', 'refused', 'accepted', 'rebased', 'undone', 'failed'] as const
 export type SketchEditOutcome = (typeof SKETCH_EDIT_OUTCOMES)[number]
 
 export interface SketchEditScoreInput {
   organizationId: string
   documentId: string
-  /** The sketch's `authored_by_ref`; no reference, no score. */
+  /** The sketch's `authored_by_ref`: the drawing turn, where the score goes when no proposing turn is known. */
   answerRef: string | null
+  /** The answer message of the turn that proposed the edit; wins over `answerRef`. */
+  proposingMessageId?: string | null
   outcome: SketchEditOutcome
   refusal?: string
   /** `ops`, the operation kinds (`kinds`, comma-separated), `warnings`, `added`, `removed`, `changed`. */
@@ -258,9 +276,10 @@ export function toSketchEditScore(input: SketchEditScoreInput & { traceId: strin
   }
 }
 
-/** Record one edit's outcome on the trace of the turn that drew the sketch. Resolves when done and never rejects. */
+/** Record one edit's outcome on the trace of the turn that proposed it, else the one that drew the sketch. Resolves when done and never rejects. */
 export function recordSketchEditScore(input: SketchEditScoreInput): Promise<void> {
-  if (!input.answerRef) return Promise.resolve()
+  const answerId = input.proposingMessageId ?? (input.answerRef ? answerIdOfDiagramRef(input.answerRef) : null)
+  if (!answerId) return Promise.resolve()
   const id = `${SKETCH_EDIT_SCORE_NAME}-${randomUUID()}`
-  return scoreOnDrawingTurn({ ...input, answerRef: input.answerRef }, id, (traceId) => toSketchEditScore({ ...input, traceId, id }))
+  return scoreOnAnswer(input, answerId, id, (traceId) => toSketchEditScore({ ...input, traceId, id }))
 }

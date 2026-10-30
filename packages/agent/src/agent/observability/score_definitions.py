@@ -89,13 +89,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "sketch-edit",
         "CATEGORICAL",
         "What became of one edit to a filed sketch by operations (document-sketch-edit, S4), on the trace of the "
-        "turn that drew it: proposed (passed the check, filed as a proposal); declined (no operations, only a note: "
-        "nothing proposed); refused (an operation the sketch cannot take, or sketch_changed when a newer Fassung "
-        "lost an element it names; the comment names it); accepted (applied on the Fassung it was made for); "
-        "rebased (applied on a newer one, every id still drawn); undone (the Fassung taken back with "
-        "document-sketch-revert). Metadata ops, kinds, warnings, added, removed, changed.",
+        "turn that proposed it (the turn that drew the sketch when that is not known): proposed (passed the check, "
+        "filed as a proposal); declined (no operations, only a note: nothing proposed); refused (an operation the "
+        "sketch cannot take, or sketch_changed when a newer Fassung lost or changed an element it needs; the "
+        "comment names it); accepted (applied on the Fassung it was made for); rebased (applied on a newer one, "
+        "nothing it needs changed); undone (the Fassung taken back with document-sketch-revert); failed (a "
+        "preview or an undo that could not be done; metadata step is preview or undo, the comment why). Metadata "
+        "ops, kinds, warnings, added, removed, changed.",
         writer="bff",
-        categories=("proposed", "declined", "refused", "accepted", "rebased", "undone"),
+        categories=("proposed", "declined", "refused", "accepted", "rebased", "undone", "failed"),
     ),
     ScoreDefinition(
         "sketch-pins-kept",

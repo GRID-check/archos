@@ -5404,7 +5404,7 @@
       "post": {
         "operationId": "document-sketch-edit",
         "summary": "Change a sketch by operations",
-        "description": "Changes a filed sketch by operations on its elements (ids from document-sketch-get, `scene=omit`), saved as its next version. Prefer the relative ops (place, align, distribute, stack) over computed x and y; remove takes labels and bound arrows along; bound arrows are rerouted. `set.customData` links an element (a GlobalId only from a model query); a link is no measurement. No ops plus a `note` changes nothing: never write dimensions. 409 `sketch_changed` when an id is gone from a newer version; 422 names a wrong op.",
+        "description": "Changes a filed sketch by operations on its elements (ids from document-sketch-get, `scene=omit`), saved as its next version. Prefer the relative ops (place, align, distribute, stack) over computed x and y; remove takes labels and bound arrows along; bound arrows are rerouted. `set.customData` links an element (a GlobalId only from a model query); a link is no measurement. No ops plus a `note` changes nothing: never write dimensions. 409 `sketch_changed` when a newer version lost or changed an element it needs; 422 names a wrong op.",
         "tags": [
           "documents"
         ],

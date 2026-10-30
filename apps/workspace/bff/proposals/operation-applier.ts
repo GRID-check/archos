@@ -27,6 +27,7 @@ import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
 import { isOnDoor } from '@/lib/agent-api/exposure'
 import { isAgentAskOperation } from '@/lib/agent-asks/ask-wire'
+import { withProposingTurn } from './proposing-turn'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
 /**
@@ -114,13 +115,13 @@ const failed = (label: string, reason: string): ProposedChangeResult[] => [{ lab
 /** Run the proposal's operation as the deciding person: one result, the route's outcome. */
 export async function applyOperation(
   payload: OperationPayload,
-  context: { session: AuthorizedSession }
+  context: { session: AuthorizedSession; originMessageId?: string | null }
 ): Promise<ProposedChangeResult[]> {
   const label = payload.summary
   const found = usableOperation(payload.operation)
   if ('reason' in found) return failed(label, found.reason)
   try {
-    const result = await callOperation(found.op, payload.input, context.session)
+    const result = await withProposingTurn(context.originMessageId ?? null, () => callOperation(found.op, payload.input, context.session))
     if (!result.ok) return failed(label, routeMessage(result.status, result.body))
     // What the call made, when the operation names it (a sketch edit's new Fassung), for the card to offer an undo.
     const itemId = found.op.resultItemId?.(result.body)

@@ -169,13 +169,18 @@ export interface AgentOperation {
    * `warnings` go back to the model beside the proposal. Imported lazily, as
    * `load` is.
    */
-  readonly checkProposal?: (input: OperationExample, session: AuthorizedSession) => Promise<ProposalCheck>
+  readonly checkProposal?: (input: OperationExample, session: AuthorizedSession, turn: ProposingTurn) => Promise<ProposalCheck>
   /**
    * The id of what an applied proposal made, read from the route's answer
    * (`ProposedChangeResult.itemId`): a sketch edit's new Fassung, which the
    * receipt offers to take back.
    */
   readonly resultItemId?: (body: unknown) => string | undefined
+}
+
+/** The turn a proposal is being filed from: its answer message, whose trace the check's scores go on. */
+export interface ProposingTurn {
+  readonly answerMessageId: string | null
 }
 
 /** What {@link AgentOperation.checkProposal} answers. */

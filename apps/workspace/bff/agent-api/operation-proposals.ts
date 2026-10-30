@@ -173,7 +173,7 @@ export async function proposeOperation({
     const outsideReach = await proposalReachRefusal(principal, targets)
     if (outsideReach) throw new ForbiddenError(outsideReach)
     // The operation's own check, as the person whose turn it is: what could only fail on the card fails here.
-    const check = op.checkProposal ? await op.checkProposal(stored, session) : {}
+    const check = op.checkProposal ? await op.checkProposal(stored, session, { answerMessageId: principal.answerMessageId ?? null }) : {}
     if (check.decline !== undefined) throw new ProposalDeclined(check.decline)
     const row = await createProposal(session, {
       projectId: principal.projectId ?? null,

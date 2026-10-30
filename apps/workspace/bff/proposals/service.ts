@@ -464,6 +464,7 @@ export async function applyProposal(
       projectId: claim.projectId,
       request,
       originConversationId: claim.originConversationId,
+      originMessageId: claim.originMessageId,
       locale: options.locale ?? defaultLocale,
       memoryScope: options.memoryScope,
     })

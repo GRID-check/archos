@@ -28,6 +28,7 @@ import {
   SketchChangedError,
   SketchMovedOnError,
 } from './sketch-edit-service'
+import { withProposingTurn } from '@/lib/proposals/proposing-turn'
 import { checkSketchScene } from './sketch-scene'
 import { sketchTargetOf } from './sketch-target'
 
@@ -155,6 +156,33 @@ describe('checkSketchEditProposal', () => {
     })
     expect(await check({ baseVersionId: 'ver_2', ops: [], note: 'Keine Maße.' })).toEqual({ decline: 'Keine Maße.' })
     expect(outcomes()).toEqual(['proposed', 'refused', 'declined'])
+  })
+})
+
+describe('where the edit is scored', () => {
+  const proposingOf = () => vi.mocked(recordSketchEditScore).mock.calls.map(([input]) => input.proposingMessageId)
+
+  it('scores the check on the turn that proposes it', async () => {
+    vi.mocked(sketchSaveBaseOf).mockResolvedValue(base('ver_2'))
+    await checkSketchEditProposal({ params: { id: 'doc_1' }, body: { baseVersionId: 'ver_2', ops: [remove] } }, SESSION, { answerMessageId: 'msg_9' })
+    expect(proposingOf()).toEqual(['msg_9'])
+  })
+
+  it('scores the apply of a proposal on the turn that proposed it', async () => {
+    vi.mocked(sketchSaveBaseOf).mockResolvedValue(base('ver_2'))
+    await withProposingTurn('msg_9', () => editSketchDocument({ session: SESSION, documentId: 'doc_1', body: { baseVersionId: 'ver_2', ops: [remove] }, marking: 'edited' }))
+    expect(proposingOf()).toEqual(['msg_9'])
+  })
+
+  it('scores a failed preview and a failed undo', async () => {
+    vi.mocked(sketchSaveBaseOf).mockResolvedValue(base('ver_2'))
+    await expect(previewSketchEdit(SESSION, 'doc_1', { baseVersionId: 'ver_2', ops: [{ op: 'remove', intent: 'x', id: 'nope' }] })).rejects.toThrow()
+    vi.mocked(sketchTargetOf).mockResolvedValue({ kind: 'published' })
+    await expect(revertSketchDocument({ session: SESSION, documentId: 'doc_1', body: { versionId: 'ver_1' }, marking: 'edited' })).rejects.toThrow()
+    expect(vi.mocked(recordSketchEditScore).mock.calls.map(([input]) => [input.outcome, input.refusal, input.metadata?.step])).toEqual([
+      ['failed', 'unknown-id', 'preview'],
+      ['failed', 'moved_on', 'undo'],
+    ])
   })
 })
 

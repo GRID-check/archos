@@ -245,14 +245,14 @@ export const documentsOperations = [
       'next version. Prefer the relative ops (place, align, distribute, stack) over computed x and y; remove takes ' +
       'labels and bound arrows along; bound arrows are rerouted. `set.customData` links an element (a GlobalId only ' +
         'from a model query); a link is no measurement. No ops plus a `note` changes nothing: never write ' +
-      'dimensions. 409 `sketch_changed` when an id is gone from a newer version; 422 names a wrong op.',
+      'dimensions. 409 `sketch_changed` when a newer version lost or changed an element it needs; 422 names a wrong op.',
     method: 'POST',
     path: '/api/documents/[id]/sketch/edits',
     params: documentParams,
     body: sketchEditSchema,
     load: () => import('@/app/api/documents/[id]/sketch/edits/route'),
-    checkProposal: async (input, session) =>
-      (await import('@/lib/diagrams/sketch-edit-service')).checkSketchEditProposal(input, session),
+    checkProposal: async (input, session, turn) =>
+      (await import('@/lib/diagrams/sketch-edit-service')).checkSketchEditProposal(input, session, turn),
     resultItemId: (body) =>
       typeof body === 'object' && body !== null && typeof (body as { versionId?: unknown }).versionId === 'string'
         ? (body as { versionId: string }).versionId

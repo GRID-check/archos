@@ -296,7 +296,7 @@ describe('proposeOperation', () => {
     const check = vi.fn(async () => ({ warnings: ['bath overlaps hall'] }))
     const { warnings } = await propose(checked(check))
     expect(warnings).toEqual(['bath overlaps hall'])
-    expect(check).toHaveBeenCalledWith(INPUT, ASKER)
+    expect(check).toHaveBeenCalledWith(INPUT, ASKER, { answerMessageId: null })
     expect(insertProposedChange).toHaveBeenCalledTimes(1)
   })
 
@@ -346,6 +346,17 @@ describe('proposeOperation', () => {
       input: INPUT,
     })
     expect(insertProposedChange).toHaveBeenCalledWith(expect.objectContaining({ originMessageId: answerMessageId }))
+  })
+
+  it('hands the operation’s check the turn it is filed from, so its scores go on that trace', async () => {
+    const answerMessageId = '0d9f8e7c-6b5a-4c3d-9e2f-1a0b9c8d7e6f'
+    const check = vi.fn(async () => ({}))
+    await proposeOperation({
+      principal: { session: ASKER, conversationId: 'conv_1', projectId: PROJECT, answerMessageId },
+      op: { ...FOLDER_RENAME, checkProposal: check },
+      input: INPUT,
+    })
+    expect(check).toHaveBeenCalledWith(INPUT, ASKER, { answerMessageId })
   })
 
   it('refuses a call naming a project the asker cannot read, before anything is filed (confused deputy)', async () => {
