@@ -1,5 +1,9 @@
 [
   {
+    "en": "\"For me\" now holds everything new or waiting on you, so the number on the inbox matches what you find inside; opening an entry moves it out, and \"u\" brings it back.",
+    "de": "„Für mich“ enthält jetzt alles Neue und alles, bei dem Ihre Rückmeldung aussteht, sodass die Zahl im Posteingang mit den Einträgen darin übereinstimmt; wenn Sie einen Eintrag öffnen, wird er daraus entfernt, und mit „u“ holen Sie ihn zurück."
+  },
+  {
     "en": "\"For you\" in the review now lists exactly the annotations you are responsible for, the same ones the count in Files names, and carrying all annotations on to the current revision is much faster.",
     "de": "„Für Sie“ im Review zeigt jetzt genau die Anmerkungen an, für die Sie zuständig sind – dieselben, die auch der Zähler unter „Dateien“ ausweist. Außerdem lassen sich alle Anmerkungen jetzt viel schneller in die aktuelle Revision übernehmen."
   },
@@ -2176,6 +2180,10 @@
     "de": "Am Telefon steht das Suchfeld oder die Schaltfläche neben der Überschrift eines Projektbereichs jetzt darunter, und der Erklärtext bekommt die volle Breite. Bisher brach er auf ein Wort pro Zeile um."
   },
   {
+    "en": "On a wide screen the bell docks the inbox beside your page: what waits on you comes first, grouped by document and most urgent on top, and an entry opens the chat or the review in place while the inbox stays open for the next one.",
+    "de": "Auf breiten Bildschirmen dockt die Glocke den Posteingang neben Ihrer Seite an: Was auf Sie wartet, steht an erster Stelle, nach Dokument gruppiert und das Dringendste ganz oben. Ein Eintrag öffnet den Chat oder die Prüfung direkt dort, während der Posteingang für den nächsten Eintrag offen bleibt."
+  },
+  {
     "en": "On an iPhone, the input field no longer hides behind the keyboard.",
     "de": "Auf dem iPhone verschwindet das Eingabefeld nicht mehr hinter der Tastatur."
   },
@@ -3306,6 +3314,10 @@
   {
     "en": "The header of the file preview now holds only the name, the kind of document and the controls for the file. Who created it, who is responsible and „Piloti dazu fragen“ moved into the panel beside it.",
     "de": "Der Kopf der Dateivorschau zeigt nur noch Namen, Dokumentart und die Schaltflächen für die Datei. Wer sie erstellt hat, wer zuständig ist und „Piloti dazu fragen“ stehen jetzt im Bereich daneben."
+  },
+  {
+    "en": "The inbox is calmer: each entry shows what happened, which project it belongs to and when, with overdue and soon-due annotations marked, and its actions appear when you point at it.",
+    "de": "Der Posteingang ist übersichtlicher: Jeder Eintrag zeigt, was passiert ist, zu welchem Projekt er gehört und wann; überfällige und bald fällige Einträge sind gekennzeichnet, und die Aktionen erscheinen, wenn Sie mit der Maus darauf zeigen."
   },
   {
     "en": "The interface feels calmer and more responsive: buttons answer every press with a subtle dip, copying an answer pops a check mark, and loading placeholders shimmer instead of flashing grey.",

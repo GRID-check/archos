@@ -132,6 +132,18 @@
               "de": "Buttons, Eingabefelder, Karten und Dialoge im Arbeitsbereich folgen jetzt einem einheitlichen Form- und Farbschema – sowohl im hellen als auch im dunklen Modus."
             },
             {
+              "en": "The inbox is calmer: each entry shows what happened, which project it belongs to and when, with overdue and soon-due annotations marked, and its actions appear when you point at it.",
+              "de": "Der Posteingang ist übersichtlicher: Jeder Eintrag zeigt, was passiert ist, zu welchem Projekt er gehört und wann; überfällige und bald fällige Einträge sind gekennzeichnet, und die Aktionen erscheinen, wenn Sie mit der Maus darauf zeigen."
+            },
+            {
+              "en": "\"For me\" now holds everything new or waiting on you, so the number on the inbox matches what you find inside; opening an entry moves it out, and \"u\" brings it back.",
+              "de": "„Für mich“ enthält jetzt alles Neue und alles, bei dem Ihre Rückmeldung aussteht, sodass die Zahl im Posteingang mit den Einträgen darin übereinstimmt; wenn Sie einen Eintrag öffnen, wird er daraus entfernt, und mit „u“ holen Sie ihn zurück."
+            },
+            {
+              "en": "On a wide screen the bell docks the inbox beside your page: what waits on you comes first, grouped by document and most urgent on top, and an entry opens the chat or the review in place while the inbox stays open for the next one.",
+              "de": "Auf breiten Bildschirmen dockt die Glocke den Posteingang neben Ihrer Seite an: Was auf Sie wartet, steht an erster Stelle, nach Dokument gruppiert und das Dringendste ganz oben. Ein Eintrag öffnet den Chat oder die Prüfung direkt dort, während der Posteingang für den nächsten Eintrag offen bleibt."
+            },
+            {
               "en": "When you ask Piloti to show you files on a topic, it now finds them with the same search you use, in the language of your documents, and the files it offers carry a link that opens that search with every result.",
               "de": "Wenn Sie Piloti bitten, Ihnen Dateien zu einem Thema anzuzeigen, findet es diese jetzt über dieselbe Suche, die Sie selbst verwenden, und in der Sprache Ihrer Dokumente. Die angezeigten Dateien enthalten einen Link, der diese Suche mit allen Ergebnissen öffnet."
             },
