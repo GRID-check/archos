@@ -5,13 +5,6 @@ video {
   max-width: 100%;
 }
 
-/* An image's width and height attributes (Astro's <Image> writes them, against layout shift) become
-   a CSS height, which beats the design system's hero `aspect-ratio` and makes `object-fit: cover`
-   zoom into the screenshot. The master has the hero ratio, so the auto height is the same box. */
-.ui-hero-media > img {
-  height: auto;
-}
-
 /* Scripts toggle `hidden` on controls (the video play button); the design system sets display on them. */
 [hidden] {
   display: none !important;
