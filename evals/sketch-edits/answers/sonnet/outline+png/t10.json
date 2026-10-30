@@ -1,0 +1,86 @@
+{
+ "ops": [
+  {
+   "op": "update",
+   "id": "garage",
+   "set": {
+    "x": 440
+   }
+  },
+  {
+   "op": "remove",
+   "id": "k1"
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "hwr",
+    "x": 220,
+    "y": 0,
+    "width": 160,
+    "height": 80,
+    "backgroundColor": "#ffd8a8",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Hauswirtschaftsraum"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "k_kh",
+    "x": 160,
+    "y": 40,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      60,
+      0
+     ]
+    ],
+    "start": {
+     "id": "kueche"
+    },
+    "end": {
+     "id": "hwr"
+    },
+    "startArrowhead": null,
+    "endArrowhead": null
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "k_hg",
+    "x": 380,
+    "y": 40,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      60,
+      0
+     ]
+    ],
+    "start": {
+     "id": "hwr"
+    },
+    "end": {
+     "id": "garage"
+    },
+    "startArrowhead": null,
+    "endArrowhead": null
+   }
+  }
+ ],
+ "note": "Der Hauswirtschaftsraum liegt jetzt zwischen Küche und Garage und ist mit beiden verbunden, die direkte Linie ist entfernt."
+}

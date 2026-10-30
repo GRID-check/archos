@@ -1,0 +1,7 @@
+{"ops":[
+{"op":"remove","id":"title2"},
+{"op":"remove","id":"warten2"},
+{"op":"remove","id":"c3"},
+{"op":"remove","id":"beh1b"},
+{"op":"add","element":{"type":"line","id":"c3-neu","x":160,"y":200,"points":[[0,0],[80,0]]}}
+],"note":"Der doppelte Titel, das zweite Warten und die zweite Behandlung sind entfernt; die Verbindung zu Labor hängt jetzt an der verbliebenen Behandlung."}

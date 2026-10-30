@@ -1,0 +1,182 @@
+{
+ "ops": [
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "kochen",
+    "x": 0,
+    "y": 60,
+    "width": 160,
+    "height": 80,
+    "label": {
+     "text": "Kochen"
+    },
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure"
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "essen",
+    "x": 260,
+    "y": 60,
+    "width": 160,
+    "height": 80,
+    "label": {
+     "text": "Essen"
+    },
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure"
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "wohnen",
+    "x": 520,
+    "y": 60,
+    "width": 160,
+    "height": 80,
+    "label": {
+     "text": "Wohnen"
+    },
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure"
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "arbeiten",
+    "x": 520,
+    "y": 220,
+    "width": 160,
+    "height": 80,
+    "label": {
+     "text": "Arbeiten"
+    },
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure"
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "schlafen",
+    "x": 0,
+    "y": 380,
+    "width": 160,
+    "height": 80,
+    "label": {
+     "text": "Schlafen"
+    },
+    "backgroundColor": "#a5d8ff",
+    "fillStyle": "hachure"
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "bad",
+    "x": 260,
+    "y": 380,
+    "width": 160,
+    "height": 80,
+    "label": {
+     "text": "Bad"
+    },
+    "backgroundColor": "#a5d8ff",
+    "fillStyle": "hachure"
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "a-kochen-essen",
+    "x": 160,
+    "y": 100,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      100,
+      0
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "start": {
+     "id": "kochen"
+    },
+    "end": {
+     "id": "essen"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "a-essen-wohnen",
+    "x": 420,
+    "y": 100,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      100,
+      0
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "start": {
+     "id": "essen"
+    },
+    "end": {
+     "id": "wohnen"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "a-schlafen-bad",
+    "x": 160,
+    "y": 420,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      100,
+      0
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "start": {
+     "id": "schlafen"
+    },
+    "end": {
+     "id": "bad"
+    }
+   }
+  }
+ ],
+ "note": "Tagbereich (grün) und Nachtbereich (blau) sind als Blasen angeordnet, angrenzende Räume liegen nah beieinander und sind verbunden."
+}

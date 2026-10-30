@@ -218,6 +218,17 @@ transport failure gets one rerun, a behaviour miss does not. A red run means
 the prompt no longer holds the model on one of the two shapes; the ADR's
 "More Information" section says what to do about that.
 
+## The sketch-edit eval
+
+[`evals/sketch-edits/`](../../evals/sketch-edits/README.md) asks whether a model
+reading a filed Skizze's outline writes a `document-sketch-edit` that does what
+the architect asked: thirteen tasks, a checker that mirrors the shipped
+operations, and the blind answers recorded on 2026-10-29. `selftest` and the
+recorded scores run in the backend suite with no model
+(`test_sketch_edit_eval.py`); `run --model <id>` needs an endpoint
+(`OPENROUTER_API_KEY`, or `LLM_API_KEY` with `LLM_BASE_URL`). Change a rule in
+`bff/diagrams/sketch-edit.ts`, change its mirror there too.
+
 ## The intake eval
 
 `task be:eval:intake` measures the Erfassungs-Agent (agent type

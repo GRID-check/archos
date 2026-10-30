@@ -1,0 +1,27 @@
+{
+ "ops": [
+  {
+   "op": "update",
+   "id": "abst",
+   "set": {
+    "backgroundColor": "#b2f2bb",
+    "strokeColor": "#2f9e44",
+    "label": {
+     "text": "Abstellraum (neu)"
+    }
+   }
+  },
+  {
+   "op": "update",
+   "id": "gwc",
+   "set": {
+    "strokeColor": "#e03131",
+    "strokeStyle": "dashed",
+    "label": {
+     "text": "Gäste-WC (entfällt)"
+    }
+   }
+  }
+ ],
+ "note": "Der neue Abstellraum ist grün, das entfallende Gäste-WC rot gestrichelt markiert, nichts wurde gelöscht."
+}

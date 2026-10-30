@@ -1,0 +1,4 @@
+{"ops":[
+{"op":"add","element":{"type":"arrow","id":"fluchtweg-buero1-flur","x":80,"y":80,"points":[[0,0],[0,80]],"start":{"id":"b1"},"end":{"id":"flur"},"strokeStyle":"dashed","startArrowhead":null,"endArrowhead":"arrow","label":{"text":"Fluchtweg"}}},
+{"op":"add","element":{"type":"arrow","id":"fluchtweg-flur-treppenhaus","x":600,"y":200,"points":[[0,0],[80,0]],"start":{"id":"flur"},"end":{"id":"th"},"strokeStyle":"dashed","startArrowhead":null,"endArrowhead":"arrow","label":{"text":"Fluchtweg"}}}
+],"note":"Der Fluchtweg führt als zwei gestrichelte Pfeile von Büro 1 über den Flur ins Treppenhaus."}

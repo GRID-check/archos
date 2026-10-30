@@ -241,6 +241,19 @@ the same id shows no second card. The model reads the server's text with
 and tells the model the card could not be shown; the proposal waits in the
 person's inbox.
 
+**The operation's own check.** An operation may carry `checkProposal`
+(`lib/agent-api/operation.ts`), run last, in the tenant scope, as the person whose
+turn it is. Its refusal (an `ApiError`) reaches the model and files nothing; its
+`decline` files nothing either (`ProposalDeclined`), and the model reads
+`{ decision: 'declined', note }` with the note to relay; its `warnings` follow the
+server's text („Layout warnings, fix them with a new call if they matter: …“).
+`document-sketch-edit` is the first: it applies the edit on the current Fassung,
+so a wrong op is a 422 and no ops plus a note (a sketch claims no dimension) is a
+decline ([`diagrams.md`](diagrams.md#piloti-changes-a-filed-skizze-by-operations-s4)).
+An operation's `resultItemId` names what an applied call made (the sketch edit's
+new Fassung), recorded as the result's `itemId`, which the card offers to take
+back. Its card is `SketchEditReceipt`, picked in `AnswerCards` by the operation.
+
 Gate: `project:view`, and for an organization-scoped one nothing beyond reading
 it. The accepting person's own authorization is the
 operation's route, which runs in their session. Applier: `applyOperation`

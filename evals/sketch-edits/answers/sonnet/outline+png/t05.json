@@ -1,0 +1,180 @@
+{
+ "ops": [
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "kochen",
+    "x": 0,
+    "y": 0,
+    "width": 160,
+    "height": 80,
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Kochen"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "essen",
+    "x": 260,
+    "y": 0,
+    "width": 160,
+    "height": 80,
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Essen"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "wohnen",
+    "x": 520,
+    "y": 0,
+    "width": 160,
+    "height": 80,
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Wohnen"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "arbeiten",
+    "x": 780,
+    "y": 0,
+    "width": 160,
+    "height": 80,
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Arbeiten"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "schlafen",
+    "x": 0,
+    "y": 240,
+    "width": 160,
+    "height": 80,
+    "backgroundColor": "#a5d8ff",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Schlafen"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "bad",
+    "x": 260,
+    "y": 240,
+    "width": 160,
+    "height": 80,
+    "backgroundColor": "#a5d8ff",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Bad"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "line",
+    "id": "l_ke",
+    "x": 160,
+    "y": 40,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      100,
+      0
+     ]
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "line",
+    "id": "l_ew",
+    "x": 420,
+    "y": 40,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      100,
+      0
+     ]
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "line",
+    "id": "l_sb",
+    "x": 160,
+    "y": 280,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      100,
+      0
+     ]
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "text",
+    "id": "n_tag",
+    "x": 520,
+    "y": 110,
+    "text": "Tagbereich",
+    "fontSize": 16
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "text",
+    "id": "n_nacht",
+    "x": 0,
+    "y": 340,
+    "text": "Nachtbereich",
+    "fontSize": 16
+   }
+  }
+ ],
+ "note": "Das Raumprogramm zeigt Tagbereich grün und Nachtbereich blau, mit den drei genannten Nachbarschaften als Linien, nicht maßstäblich."
+}

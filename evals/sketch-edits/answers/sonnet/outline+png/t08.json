@@ -1,0 +1,48 @@
+{
+ "ops": [
+  {
+   "op": "remove",
+   "id": "title2"
+  },
+  {
+   "op": "remove",
+   "id": "warten2"
+  },
+  {
+   "op": "remove",
+   "id": "c3"
+  },
+  {
+   "op": "remove",
+   "id": "beh1b"
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "c3b",
+    "x": 240,
+    "y": 200,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      -80,
+      0
+     ]
+    ],
+    "start": {
+     "id": "labor"
+    },
+    "end": {
+     "id": "beh1"
+    },
+    "startArrowhead": null,
+    "endArrowhead": null
+   }
+  }
+ ],
+ "note": "Doppelter Titel, zweites Warten und zweite Behandlung sind entfernt, und Labor ist nun mit der verbleibenden Behandlung verbunden."
+}

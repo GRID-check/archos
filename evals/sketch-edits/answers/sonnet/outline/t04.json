@@ -1,0 +1,40 @@
+{
+ "ops": [
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "zufahrt",
+    "x": 310,
+    "y": 380,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      -120
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": "arrow",
+    "end": {
+     "id": "haus"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "text",
+    "id": "strasse",
+    "x": 340,
+    "y": 390,
+    "text": "Lindenstraße",
+    "fontSize": 20
+   }
+  }
+ ],
+ "note": "Die Lindenstraße ist an der Südseite (unten, gegenüber dem Nordpfeil) beschriftet, die Zufahrt führt als Pfeil von dort zum Wohnhaus."
+}

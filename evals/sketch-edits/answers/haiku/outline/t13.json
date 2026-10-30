@@ -1,0 +1,4 @@
+{"ops":[
+{"op":"remove","id":"r2"},
+{"op":"add","element":{"type":"line","id":"r5-flur-schlafen","x":380,"y":160,"points":[[0,0],[60,0],[60,-120]]}}
+],"note":"Die Verbindung Wohnen–Schlafen ist entfernt, und Schlafen hängt jetzt über eine Linie am Flur."}

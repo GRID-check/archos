@@ -1,0 +1,7 @@
+{"ops":[
+{"op":"add","element":{"type":"rectangle","id":"b_eingang","x":260,"y":0,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Eingang"}}},
+{"op":"add","element":{"type":"rectangle","id":"b_essen","x":260,"y":120,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Essen"}}},
+{"op":"add","element":{"type":"rectangle","id":"b_kueche","x":260,"y":240,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Küche"}}},
+{"op":"add","element":{"type":"rectangle","id":"b_wohnen","x":260,"y":360,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Wohnen"}}},
+{"op":"add","element":{"type":"frame","id":"var_b","name":"Variante B (empfohlen)","children":["b_eingang","b_essen","b_kueche","b_wohnen"]}}
+],"note":"Variante B steht rechts neben A mit Essen vor Küche und ist grün als empfohlen markiert."}

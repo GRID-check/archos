@@ -1,0 +1,11 @@
+{"ops":[
+{"op":"add","element":{"type":"ellipse","id":"kochen","x":0,"y":0,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Kochen"}}},
+{"op":"add","element":{"type":"ellipse","id":"essen","x":240,"y":0,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Essen"}}},
+{"op":"add","element":{"type":"ellipse","id":"wohnen","x":480,"y":0,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Wohnen"}}},
+{"op":"add","element":{"type":"ellipse","id":"arbeiten","x":480,"y":200,"width":160,"height":80,"backgroundColor":"#b2f2bb","fillStyle":"hachure","label":{"text":"Arbeiten"}}},
+{"op":"add","element":{"type":"ellipse","id":"schlafen","x":0,"y":400,"width":160,"height":80,"backgroundColor":"#a5d8ff","fillStyle":"hachure","label":{"text":"Schlafen"}}},
+{"op":"add","element":{"type":"ellipse","id":"bad","x":240,"y":400,"width":160,"height":80,"backgroundColor":"#a5d8ff","fillStyle":"hachure","label":{"text":"Bad"}}},
+{"op":"add","element":{"type":"line","id":"verbindung-kochen-essen","x":160,"y":40,"points":[[0,0],[80,0]],"strokeStyle":"solid"}},
+{"op":"add","element":{"type":"line","id":"verbindung-essen-wohnen","x":400,"y":40,"points":[[0,0],[80,0]],"strokeStyle":"solid"}},
+{"op":"add","element":{"type":"line","id":"verbindung-schlafen-bad","x":160,"y":440,"points":[[0,0],[80,0]],"strokeStyle":"solid"}}
+],"note":"Tagbereich (Wohnen, Kochen, Essen, Arbeiten) ist grün und Nachtbereich (Schlafen, Bad) blau, Arbeiten habe ich dem Tagbereich zugeordnet."}

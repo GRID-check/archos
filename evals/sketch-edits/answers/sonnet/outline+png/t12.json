@@ -1,0 +1,38 @@
+{
+ "ops": [
+  {
+   "op": "add",
+   "element": {
+    "type": "text",
+    "id": "notiz",
+    "x": 0,
+    "y": 320,
+    "text": "Südlage, Abendsonne",
+    "fontSize": 16
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "notiz_pfeil",
+    "x": 80,
+    "y": 315,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      20,
+      -55
+     ]
+    ],
+    "end": {
+     "id": "terrasse"
+    }
+   }
+  }
+ ],
+ "note": "Die Notiz „Südlage, Abendsonne“ steht unter der Terrasse und zeigt mit einem Pfeil darauf."
+}

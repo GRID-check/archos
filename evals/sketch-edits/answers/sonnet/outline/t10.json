@@ -1,0 +1,86 @@
+{
+ "ops": [
+  {
+   "op": "remove",
+   "id": "k1"
+  },
+  {
+   "op": "update",
+   "id": "garage",
+   "set": {
+    "x": 440,
+    "y": 0
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "ellipse",
+    "id": "hwr",
+    "x": 220,
+    "y": 0,
+    "width": 160,
+    "height": 80,
+    "label": {
+     "text": "Hauswirtschaftsraum"
+    },
+    "backgroundColor": "#ffd8a8"
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "k4",
+    "x": 160,
+    "y": 40,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      60,
+      0
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "start": {
+     "id": "kueche"
+    },
+    "end": {
+     "id": "hwr"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "k5",
+    "x": 380,
+    "y": 40,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      60,
+      0
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "start": {
+     "id": "hwr"
+    },
+    "end": {
+     "id": "garage"
+    }
+   }
+  }
+ ],
+ "note": "Der Hauswirtschaftsraum liegt zwischen Küche und Garage und ist mit beiden verbunden, die direkte Verbindung entfällt."
+}

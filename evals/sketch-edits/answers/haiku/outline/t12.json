@@ -1,0 +1,4 @@
+{"ops":[
+{"op":"add","element":{"type":"text","id":"notiz-terrasse","x":0,"y":300,"text":"Südlage, Abendsonne","fontSize":16}},
+{"op":"add","element":{"type":"arrow","id":"notiz-terrasse-zeiger","x":100,"y":290,"points":[[0,0],[0,-30]],"end":{"id":"terrasse"},"startArrowhead":null,"endArrowhead":"arrow"}}
+],"note":"Die Notiz „Südlage, Abendsonne“ steht unter der Terrasse und zeigt mit einem Pfeil auf sie."}

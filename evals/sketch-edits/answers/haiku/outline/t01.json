@@ -1,0 +1,8 @@
+{"ops":[
+{"op":"update","id":"eingang","set":{"x":0,"y":0}},
+{"op":"update","id":"gruppe2","set":{"x":660,"y":0}},
+{"op":"update","id":"garderobe","set":{"x":220,"y":0}},
+{"op":"update","id":"flur","set":{"x":440,"y":0}},
+{"op":"update","id":"wc","set":{"x":660,"y":160}},
+{"op":"update","id":"gruppe1","set":{"x":440,"y":160}}
+],"note":"Eingang, Garderobe und Flur liegen jetzt von links nach rechts in einer Reihe, und die Räume am Flur sitzen direkt daran."}

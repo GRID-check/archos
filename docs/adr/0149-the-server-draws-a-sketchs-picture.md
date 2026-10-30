@@ -140,9 +140,10 @@ the fixture scene):
   before.
 * Neutral, because the editor still exports an SVG for filing and for its own check,
   and no longer sends it on a save.
-* Open: a bound label that grows is laid out again but its container is not grown
-  (Excalidraw's `redrawTextBoundingBox` is the editor's); S4's edit operations need
-  it. A CJK label is measured in Xiaolai only when its chunk is staged, as all are.
+* Closed by S4 (2026-10-30): a bound label that grows is laid out again and its
+  container grown to hold it (`sketch-label-fit.ts`, the arithmetic of Excalidraw's
+  `redrawTextBoundingBox`), and a label is laid out again when its box changes size.
+  Open: a CJK label is measured in Xiaolai only when its chunk is staged, as all are.
 
 ### Confirmation
 

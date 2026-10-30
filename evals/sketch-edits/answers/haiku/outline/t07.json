@@ -1,0 +1,7 @@
+{"ops":[
+{"op":"update","id":"abst","set":{"backgroundColor":"#b2f2bb"}},
+{"op":"update","id":"gwc","set":{"strokeStyle":"dashed"}},
+{"op":"update","id":"x3","set":{"strokeStyle":"dashed"}},
+{"op":"add","element":{"type":"text","id":"marker-new-abstellraum","x":0,"y":230,"text":"neu","fontSize":16}},
+{"op":"add","element":{"type":"text","id":"marker-removed-gaeste-wc","x":220,"y":230,"text":"entfällt","fontSize":16}}
+],"note":"Der Abstellraum ist grün als neu markiert, das Gäste-WC gestrichelt als entfallend; nichts wurde gelöscht."}

@@ -1,0 +1,39 @@
+{
+ "ops": [
+  {
+   "op": "update",
+   "id": "abst",
+   "set": {
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "solid",
+    "label": {
+     "text": "Abstellraum (neu)"
+    }
+   }
+  },
+  {
+   "op": "update",
+   "id": "gwc",
+   "set": {
+    "strokeStyle": "dashed",
+    "backgroundColor": "#ffc9c9",
+    "fillStyle": "hachure",
+    "label": {
+     "text": "Gäste-WC (entfällt)"
+    }
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "text",
+    "id": "legende",
+    "x": 440,
+    "y": 20,
+    "text": "Neu: grün\nEntfällt: rot, gestrichelt",
+    "fontSize": 16
+   }
+  }
+ ],
+ "note": "Der neue Abstellraum ist grün, das entfallende Gäste-WC rot und gestrichelt gekennzeichnet; nichts wurde gelöscht."
+}

@@ -1,0 +1,36 @@
+{
+ "ops": [
+  {
+   "op": "remove",
+   "id": "r2"
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "r5",
+    "x": 380,
+    "y": 180,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      140,
+      -100
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "start": {
+     "id": "flur"
+    },
+    "end": {
+     "id": "schlafen"
+    }
+   }
+  }
+ ],
+ "note": "Die Verbindung Wohnen–Schlafen ist entfernt, Schlafen hängt jetzt am Flur."
+}

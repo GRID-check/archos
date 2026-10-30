@@ -1,0 +1,79 @@
+{
+ "ops": [
+  {
+   "op": "update",
+   "id": "diele",
+   "set": {
+    "x": 0,
+    "y": 60
+   }
+  },
+  {
+   "op": "update",
+   "id": "wohnen",
+   "set": {
+    "x": 220,
+    "y": 60
+   }
+  },
+  {
+   "op": "update",
+   "id": "kueche",
+   "set": {
+    "x": 440,
+    "y": 60
+   }
+  },
+  {
+   "op": "update",
+   "id": "schlafen",
+   "set": {
+    "x": 0,
+    "y": 300
+   }
+  },
+  {
+   "op": "update",
+   "id": "kind",
+   "set": {
+    "x": 220,
+    "y": 300
+   }
+  },
+  {
+   "op": "update",
+   "id": "bad",
+   "set": {
+    "x": 440,
+    "y": 300
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "frame",
+    "id": "frame-eg",
+    "name": "EG",
+    "children": [
+     "diele",
+     "wohnen",
+     "kueche"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "frame",
+    "id": "frame-og",
+    "name": "OG",
+    "children": [
+     "schlafen",
+     "kind",
+     "bad"
+    ]
+   }
+  }
+ ],
+ "note": "Die Räume sind je Geschoss in eine Reihe gesetzt und in die Rahmen EG und OG gefasst, die sich nicht überlappen."
+}

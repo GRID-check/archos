@@ -1,0 +1,36 @@
+{
+ "ops": [
+  {
+   "op": "remove",
+   "id": "r2"
+  },
+  {
+   "op": "add",
+   "element": {
+    "type": "arrow",
+    "id": "r5",
+    "x": 380,
+    "y": 180,
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      140,
+      -100
+     ]
+    ],
+    "start": {
+     "id": "flur"
+    },
+    "end": {
+     "id": "schlafen"
+    },
+    "startArrowhead": null,
+    "endArrowhead": null
+   }
+  }
+ ],
+ "note": "Die falsche Linie Wohnen–Schlafen ist entfernt und Schlafen ist nun mit dem Flur verbunden."
+}

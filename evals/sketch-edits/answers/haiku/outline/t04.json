@@ -1,0 +1,4 @@
+{"ops":[
+{"op":"add","element":{"type":"text","id":"strasse-lindenstrasse","x":340,"y":320,"text":"Lindenstraße","fontSize":16}},
+{"op":"add","element":{"type":"arrow","id":"zufahrt","x":310,"y":320,"points":[[0,0],[0,-60]],"end":{"id":"haus"},"startArrowhead":null,"endArrowhead":"arrow"}}
+],"note":"Die Lindenstraße steht südlich unter dem Wohnhaus und die Zufahrt führt als Pfeil von dort ins Haus; die Grundstücksgrenze hat in der Skizze keine Koordinaten, also bitte die Lage des Südrands prüfen."}

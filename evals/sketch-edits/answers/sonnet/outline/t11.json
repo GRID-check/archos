@@ -1,0 +1,29 @@
+{
+ "ops": [
+  {
+   "op": "update",
+   "id": "schlafen",
+   "set": {
+    "backgroundColor": "#a5d8ff"
+   }
+  },
+  {
+   "op": "update",
+   "id": "kind",
+   "set": {
+    "backgroundColor": "#a5d8ff",
+    "label": {
+     "text": "Kinderzimmer"
+    }
+   }
+  },
+  {
+   "op": "update",
+   "id": "bad",
+   "set": {
+    "backgroundColor": "#a5d8ff"
+   }
+  }
+ ],
+ "note": "Schlafen, Kind und Bad sind blau, Kind heißt jetzt Kinderzimmer."
+}

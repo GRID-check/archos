@@ -1,0 +1,7 @@
+{"ops":[
+{"op":"update","id":"garage","set":{"x":520,"y":0}},
+{"op":"remove","id":"k1"},
+{"op":"add","element":{"type":"rectangle","id":"hauswirtschaftsraum","x":220,"y":0,"width":240,"height":80,"backgroundColor":"#ffd8a8","fillStyle":"hachure","label":{"text":"Hauswirtschaftsraum"}}},
+{"op":"add","element":{"type":"line","id":"k4-kueche-hwr","x":160,"y":40,"points":[[0,0],[60,0]]}},
+{"op":"add","element":{"type":"line","id":"k5-hwr-garage","x":460,"y":40,"points":[[0,0],[60,0]]}}
+],"note":"Der Hauswirtschaftsraum sitzt jetzt zwischen Küche und Garage, die Garage rückt dafür nach rechts, und die direkte Verbindung Küche–Garage ist entfernt."}

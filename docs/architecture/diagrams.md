@@ -748,6 +748,70 @@ subject: a sketch claims no dimension, and says so.
 - **Observable.** `sketch-drawn` per fence and trace metadata `answer_dialect.sketches`
   (`docs/observability/langfuse.md`).
 
+### Piloti changes a filed Skizze by operations (S4)
+
+Piloti does not send a whole scene back. It reads the Skizze's outline
+(`document-sketch-get`, `scene=omit`) and calls `document-sketch-edit`
+(`POST /api/documents/{id}/sketch/edits`) with up to 60 operations, each with an
+`intent`, the step as the person reads it:
+
+- `add` (a fence skeleton with a new id, checked by `checkSketchSkeleton`;
+  bindings and frame children may name drawn elements), `update` (geometry,
+  style, a label or a free text's words, `customData` the scene keeps),
+  `remove` (takes its label and every arrow bound to it along; a frame lets its
+  children go), `rebind` (an arrow's ends);
+- the relative `place` (beside a reference, on a side, with an offset and an
+  alignment), `align`, `distribute` and `stack`, which the server turns into
+  numbers, so a model never does pixel arithmetic from an outline.
+
+`applySketchEdit` (`bff/diagrams/sketch-edit.ts`, pure) builds the next scene:
+new elements as `convertToExcalidrawElements` would make them
+(`sketch-edit-elements.ts`, fractional indices above the scene's), moves that
+carry labels and a frame's members, every arrow bound to what moved, grew or was
+rebound routed again edge to edge. It answers the diff (added, removed and
+changed ids, a label reported as its box) and layout warnings
+(`sketch-edit-lints.ts`: overlap over 5 % of the smaller box, a label its box
+cannot hold, outside its frame, an arrow bound to nothing, a label that reads
+like a dimension). A wrong operation is a `SketchEditError` naming the op; a
+warning leaves the edit valid. The save is the existing one
+(`saveSketchDocument`): server render, two-author marking, Freigabe target.
+
+The render closes ADR-0149's open item: when a label is laid out again, the
+worker grows its box to hold it (`sketch-label-fit.ts`, Excalidraw's own
+arithmetic from `redrawTextBoundingBox`), and a label is laid out again when its
+box changes size (`textsToMeasure`).
+
+- **A proposal, checked first.** Piloti's call is an ordinary `operation`
+  proposal ([`proposed-changes.md`](proposed-changes.md)). The operation's
+  `checkProposal` applies the edit before anything is filed, as the person whose
+  turn it is: a wrong op is a 422 to Piloti, never a card nobody can accept; no
+  ops and a `note` (the dimension trap) files nothing and Piloti says why; the
+  warnings go back to the model beside the proposal.
+- **Rebased, not refused.** When someone saved since the edit's
+  `baseVersionId`, the edit is applied to the newest Fassung while every id it
+  names is still drawn; else 409 `sketch_changed` („Die Skizze hat sich
+  geändert“).
+- **The receipt.** `SketchEditReceipt` (`ui/features/cards/components/`) draws
+  the change from `/sketch/edits/preview` (the server's renderer, on the Fassung
+  the edit was made on: new green, removed dashed red, changed blue over its
+  dashed grey state before; `sketch-edit-diff.ts`), the legend in words, the
+  intents as numbered steps. The preview route is the card's, no operation of the
+  door (`agent-reachability.spec.ts`).
+- **Undo.** The applied proposal records the Fassung it made
+  (`resultItemId`); „Rückgängig“ calls `document-sketch-revert`
+  (`POST /api/documents/{id}/sketch/revert`), which saves the Fassung before it as
+  the next one while the edit's Fassung is still current and no Freigabe round is
+  open, else 409 `moved_on` and the card says why.
+- **Observable.** `sketch-edit` (`proposed`, `declined`, `refused`, `accepted`,
+  `rebased`, `undone`) on the drawing turn's trace, and `piloti-decision` names
+  the `operation`.
+- **Measured.** `evals/sketch-edits/` holds the thirteen tasks and the checker;
+  the recorded blind answers score Sonnet 13/13 on the outline, 12/13 with the
+  picture, Haiku 9/13 under the shipped rules. The product model's run waits for
+  an endpoint.
+- **Not yet.** In an open editor the proposal is not drawn as a ghost layer
+  with its own buttons; the person decides on the card.
+
 ## Two people on one Skizze
 
 A Skizze is a document (ADR-0148), so its editor joins the room every document

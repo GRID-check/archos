@@ -1,0 +1,14 @@
+---
+features:
+  - >
+    Piloti can now change a sketch filed in your project, and its card shows
+    the change drawn on your sketch, new parts in green and removed ones in
+    red, with each step listed. Nothing changes until you accept, and you can
+    undo it as long as nobody has saved a newer version.
+  - >
+    When a change would need dimensions, such as areas written on the rooms,
+    Piloti says why a sketch does not carry them instead of proposing it.
+improvements:
+  - >
+    A box in a sketch now grows to fit a longer label, so renamed rooms no
+    longer spill out of their shape in the preview or the PDF.

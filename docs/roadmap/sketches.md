@@ -94,7 +94,7 @@ features it makes better.
 | S1 | **Reopen and save as a Fassung.** A filed Skizze opens in the editor from Files; save writes a new Fassung of the same document and its PDF. Headless first: `GET /api/documents/{id}/sketch` (scene plus a structured read: texts, shapes, connections, frames) and `PUT` (new Fassung from scene and SVG), each a catalog operation with its exposure | 2, 7, 8 | Files, Fassungen and their timeline, Freigabe, the agent door | share of filed sketches reopened; `diagram-filed: edited` per document, not per pair |
 | S2 | **Live room.** The editor joins `doc:<id>`; Excalidraw's collaborators come from the existing presence (cursor, selection, name, colour); element deltas go over the room and merge with `reconcileElements`. The Fassung stays the truth | 2 | the document room, the participant strip, Piloti's presence | two-tab convergence test; edits lost on a dropped message (expected 0 after save) |
 | S3 | **Anmerkungen on elements.** Reuse `document_annotations`: page 1, the region is the element's bounds normalised to the scene, the element id carried; pins drawn over the canvas; threads, mentions and inbox unchanged | 3 | Anmerkungen, the inbox, Zuständige and Frist reminders | Anmerkungen per Skizze; a pin still on its element after a move. Built: migration 0192, a save carries the marks on in its transaction ([„A mark on a Skizze“](../architecture/document-annotations.md#a-mark-on-a-skizze)) |
-| S4 | **Piloti reads and proposes.** Piloti reads a Skizze through the S1 read; an edit is a proposed change the person applies, which writes a Fassung | 4, 7 | proposed changes, Piloti's answers about the project | proposals accepted against dismissed; answer-suite cases on a sketch |
+| S4 | **Piloti reads and proposes.** Piloti reads a Skizze through the S1 read; an edit is a proposed change the person applies, which writes a Fassung | 4, 7 | proposed changes, Piloti's answers about the project | proposals accepted against dismissed (`piloti-decision` by `operation`); `sketch-edit` outcomes; `evals/sketch-edits`. Built: the server draws the picture (ADR-0149), `document-sketch-edit` applies operations on the server under the person's yes, the receipt draws the change and offers „Rückgängig“ ([`diagrams.md`](../architecture/diagrams.md#piloti-changes-a-filed-skizze-by-operations-s4)); open: the ghost layer in an open editor, the product model's eval run |
 | S5 | **Links into the workspace.** `customData` with `documentId`, `page`, `ifcGlobalId`, `taskId` kept through the fence, the editor and the file; `onLinkOpen` routes inside the app | 5 | the BIM viewer's model links, the document viewer, Aufgaben | links opened per week; links still resolving after a model revision |
 | S6 | **Underlays.** A PDF page or a BIM view as a locked image base, which needs `<image>` in the SVG validator with a same-origin document href only | 6 | the PDF viewer, the BIM viewer, schematic cards, the Einreichung | sketches with a base; validator refuses every other href |
 
@@ -120,10 +120,10 @@ G5, G6 and G8; the ADR-0148 amendment says what was decided. Still open:
   live co-editors whose deltas it holds nor Piloti when its proposal was applied.
   The sync can collect the user ids behind merged deltas and send them with the
   PUT; the audit event records them as `contributors`.
-- **G3, a proposed sketch edit fails on the first save after it.** A
-  `document-sketch-update` proposal 409s once anyone saved; on a live sketch that
-  is nearly always. Rebase on the server (`reviseScene` against the current
-  scene) or have the card say „Skizze inzwischen geändert – neu vorschlagen“.
+- **G3, closed for operations (S4).** A `document-sketch-edit` proposal is
+  rebased on the newest Fassung while every id it names is still drawn, else the
+  card says „Die Skizze hat sich geändert“. A `document-sketch-update` proposal,
+  a whole scene, still 409s once anyone saved.
 - **G4, Piloti does not see the canvas selection.** `scene.selection` is not a
   roster fact, so „ordne die nach Erschließung“ cannot be resolved; add
   `sceneSelection` to `RosterFacts`.
@@ -148,9 +148,8 @@ G5, G6 and G8; the ADR-0148 amendment says what was decided. Still open:
   `replaceVersionContent` takes Markdown only. S1 either adds a binary content path
   beside it or writes Fassungen through the upload path. Decide in S1, against
   ADR-0104.
-- **Who renders.** The server cannot render a scene to SVG; only the browser can.
-  An outside agent's `PUT` therefore sends both, and the server cannot check they
-  match. Is that acceptable, or does S4 need a headless renderer?
+- **Who renders.** Answered by ADR-0149: the server draws every save's picture
+  from its scene, and S4's edits are applied and drawn there.
 - **Freigabe for a generated file.** Filed sketches are `stored` and authored by the
   agent. Does a person's edit make the next Fassung theirs, and does a Skizze go
   through Freigabe before it can join an Einreichung?

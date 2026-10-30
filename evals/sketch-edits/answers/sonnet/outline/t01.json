@@ -1,0 +1,53 @@
+{
+ "ops": [
+  {
+   "op": "update",
+   "id": "eingang",
+   "set": {
+    "x": 0,
+    "y": 200
+   }
+  },
+  {
+   "op": "update",
+   "id": "garderobe",
+   "set": {
+    "x": 240,
+    "y": 200
+   }
+  },
+  {
+   "op": "update",
+   "id": "flur",
+   "set": {
+    "x": 480,
+    "y": 200
+   }
+  },
+  {
+   "op": "update",
+   "id": "gruppe1",
+   "set": {
+    "x": 720,
+    "y": 60
+   }
+  },
+  {
+   "op": "update",
+   "id": "wc",
+   "set": {
+    "x": 720,
+    "y": 200
+   }
+  },
+  {
+   "op": "update",
+   "id": "gruppe2",
+   "set": {
+    "x": 720,
+    "y": 340
+   }
+  }
+ ],
+ "note": "Eingang, Garderobe und Flur stehen jetzt von links nach rechts in einer Reihe, die drei vom Flur erschlossenen Räume rechts daneben."
+}
