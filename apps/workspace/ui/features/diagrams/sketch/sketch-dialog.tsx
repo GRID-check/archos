@@ -285,7 +285,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
             shown={underlayShown}
             documentId={revision.documentId}
             baseVersionId={revision.baseVersionId}
-            canMove={canWrite && revision.saveTarget === 'published' && !dirty}
+            canMove={canWrite && (revision.saveTarget ?? 'published') === 'published' && !dirty}
             onMoved={(number) => revision.onUnderlayMoved?.(number)}
           />
         ) : null}
