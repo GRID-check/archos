@@ -3,8 +3,10 @@
  * body and answers `{ diff, warnings, svg }`, the change drawn by the server on
  * the Fassung the edit was made on (added green, removed dashed red, changed
  * blue over its dashed grey state before). Nothing is saved. The receipt card
- * shows it; an agent can check an edit with it before proposing. Thin: the
- * service is `bff/diagrams/sketch-edit-service.ts`.
+ * shows it. No agent capability (`NOT_AN_AGENT_CAPABILITY` in
+ * `agent-reachability.spec.ts`): an agent gets the same diff and warnings from
+ * `document-sketch-edit`, whose check runs before the proposal is filed. Thin:
+ * the service is `bff/diagrams/sketch-edit-service.ts`.
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'

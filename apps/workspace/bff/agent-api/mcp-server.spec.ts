@@ -213,10 +213,14 @@ describe('what tools mode costs a client', () => {
   // Raised to 1,065 on 2026-10-30 for `document-sketch-edit` (S4): about 4,400 characters, which are its eight
   // operation shapes (add, update, remove, rebind and the relative place, align, distribute, stack). They are the
   // edit's vocabulary; the bounds an agent would otherwise read (ids, coordinates, the intent's length) moved into
-  // the apply's 422s, and its preview is withheld from the door. Measured 1,063 with it.
+  // the apply's 422s, and its preview is no tool at all (`NOT_AN_AGENT_CAPABILITY`, the receipt card's picture).
+  // Measured 1,063 with it.
   // Raised to 1,070 on 2026-10-30 for sketch links (S5): the link's five keys with their bounds and the GlobalId
   // pattern in `document-sketch-edit`'s update, and one sentence each on reading and setting a link. Measured 1,066.
-  const MAX_AVERAGE_CHARS = 1_070
+  // Set to 1,066 on 2026-10-30, the measured value (1,065.7) after the S4 review's fixes, which replaced the dead
+  // free-form `customData` with the link and reworded the 409: the limit sits at what the catalog measures, so the
+  // next tool that grows it says why here instead of spending headroom nobody explained.
+  const MAX_AVERAGE_CHARS = 1_066
   const MAX_OPERATION_CHARS = 9_000
 
   it(`stays under ${MAX_AVERAGE_CHARS} characters a tool on average, and ${MAX_OPERATION_CHARS} for any catalog operation`, async () => {
