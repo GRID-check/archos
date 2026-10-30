@@ -170,3 +170,47 @@ export function recordSketchPinsKeptScore(input: SketchPinsKeptInput): Promise<v
     toSketchPinsKeptScore({ ...input, traceId })
   )
 }
+
+/** The name of the release score. A contract, as above. */
+export const SKETCH_RELEASED_SCORE_NAME = 'sketch-released'
+
+/** What the step after a Freigabe came to: the PDF's outcome (`CompanionPdfOutcome`), or `unreadable` when the bytes could not be read. */
+export const SKETCH_RELEASED_OUTCOMES = ['redrawn', 'none', 'superseded', 'confined', 'failed', 'unreadable'] as const
+export type SketchReleasedOutcome = (typeof SKETCH_RELEASED_OUTCOMES)[number]
+
+export interface SketchReleasedInput {
+  organizationId: string
+  documentId: string
+  answerRef: string
+  /** The Fassung the Freigabe made current. */
+  versionId: string
+  outcome: SketchReleasedOutcome
+  /** 1 for the release itself, then the `sketch_rendition` job's attempts. */
+  attempt: number
+  /** Whether a retry is queued after this attempt. */
+  queued: boolean
+}
+
+/**
+ * A Skizze's Fassung made current by Freigabe, and what became of its PDF and
+ * marks once the release committed (`lib/diagrams/sketch-promoted.ts`). Pure.
+ * One per Fassung (the id names it): a retry upserts, so the value is the
+ * latest attempt's and `attempt` says how many it took.
+ */
+export function toSketchReleasedScore(input: SketchReleasedInput & { traceId: string }): ScoreRequest {
+  return {
+    id: `${SKETCH_RELEASED_SCORE_NAME}-${input.versionId}`,
+    traceId: input.traceId,
+    name: SKETCH_RELEASED_SCORE_NAME,
+    dataType: 'CATEGORICAL',
+    value: input.outcome,
+    metadata: { document_id: input.documentId, attempt: input.attempt, queued: input.queued ? 1 : 0 },
+  }
+}
+
+/** Record one attempt of the step after a Freigabe. Resolves when done and never rejects. */
+export function recordSketchReleasedScore(input: SketchReleasedInput): Promise<void> {
+  return scoreOnDrawingTurn(input, `${SKETCH_RELEASED_SCORE_NAME}-${input.versionId}`, (traceId) =>
+    toSketchReleasedScore({ ...input, traceId })
+  )
+}

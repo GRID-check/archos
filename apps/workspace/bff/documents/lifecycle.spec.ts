@@ -124,6 +124,7 @@ vi.mock('@/lib/projects/repository', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/projects/repository')>()),
   findProjectInOrg: vi.fn(),
 }))
+vi.mock('@/lib/diagrams/sketch-promoted', () => ({ promotedSketchOf: vi.fn(), releasedSketch: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/lib/s3', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/s3')>()),
   s3Client: { send: vi.fn() },
@@ -131,6 +132,7 @@ vi.mock('@/lib/s3', async (importOriginal) => ({
 }))
 
 import { getAccessibleDocument } from './access'
+import { promotedSketchOf } from '@/lib/diagrams/sketch-promoted'
 import { versionBytesPassedScreening } from './document-reader'
 import { findDocumentInOrg } from './repository'
 import { discardObject } from '@/lib/storage/discard'
@@ -516,6 +518,8 @@ describe('transitionDocumentVersion — guards', () => {
         reviewedBy: session.userId,
       }),
       { kind: 'decide', outcome: 'approved', decidedBy: session.userId, comment: null },
+      // Not a Skizze: no scene to place marks on.
+      null,
     )
     expect(compareAndSwapVersionState).not.toHaveBeenCalled()
   })
@@ -889,6 +893,24 @@ describe('transitionDocumentVersion — effects', () => {
     expect(announceNewRevision).not.toHaveBeenCalled()
   })
 
+  // The coherence review's finding 2: a Skizze's marks are placed on the released scene IN the publishing
+  // transaction, from bytes read before it (a version in review is frozen), not after the commit.
+  it('a Freigabe of a Skizze places its marks on the released scene in the publishing transaction', async () => {
+    const svg = '<svg viewBox="0 0 100 50"><metadata></metadata></svg>'
+    vi.mocked(getAccessibleDocument).mockResolvedValue(
+      makeDocument({ id: 'doc_1', projectId: 'proj_1', authoredBy: 'agent', authoredByProducer: 'diagram_svg', authoredByRef: 'msg_1-1a2b3c4d', authoredByRefKind: 'answer_artifact', contentType: 'image/svg+xml', status: 'stored' }),
+    )
+    vi.mocked(findDocumentVersion).mockResolvedValue(version({ contentType: 'image/svg+xml' }))
+    approvedInOneStep()
+    const next = { elements: [{ id: 'el_1' }], viewBox: { width: 100, height: 50 } }
+    vi.mocked(promotedSketchOf).mockResolvedValue({ text: svg, scene: { elements: next.elements }, next } as never)
+
+    await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'approve')
+
+    expect(promotedSketchOf).toHaveBeenCalledWith(expect.objectContaining({ id: 'ver_1' }))
+    expect(vi.mocked(promoteVersionToPublished).mock.calls[0][6]).toEqual(next)
+  })
+
   it('publishes a version approved before approval became one step', async () => {
     const published = version({ state: 'published' })
     vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved' }))
@@ -909,6 +931,7 @@ describe('transitionDocumentVersion — effects', () => {
       expect.objectContaining({ state: 'published', publishedBy: session.userId }),
       // Publishing decides no round: the approval that opened the way did.
       undefined,
+      null,
     )
     // The plain swap is NOT used for a promoting row: two published versions of
     // one document is a state the partial unique index refuses to hold.

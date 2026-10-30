@@ -661,8 +661,8 @@ export class LostCompareAndSwap extends Error {
  * inside the transaction that supersedes its predecessor. That is
  * {@link insertPublishedVersion}.
  *
- * Returns `null` when the compare-and-swap matched nothing — the caller turns
- * that into a `ConflictError`.
+ * `sketch` is a Skizze's promoted scene (`sketchToPlace`): its marks are placed on it in the transaction.
+ * Returns `null` when the compare-and-swap matched nothing — the caller turns that into a `ConflictError`.
  */
 export async function promoteVersionToPublished(
   versionId: string,
@@ -671,6 +671,7 @@ export async function promoteVersionToPublished(
   expected: DocumentVersionState,
   patch: Partial<Omit<NewDocumentVersion, 'id' | 'organizationId' | 'documentId'>> = {},
   review?: ReviewRoundWrite,
+  sketch: NextSketch | null = null,
 ): Promise<PublishedVersionRows | null> {
   const db = getDb()
   try {
@@ -721,8 +722,7 @@ export async function promoteVersionToPublished(
           updatedAt: new Date(),
         })
         .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)))
-      // No scene at hand: the marks keep their boxes until `current-version.ts` places them.
-      return { version: swapped, superseded, carried: await carryOnto(tx, swapped, null) }
+      return { version: swapped, superseded, carried: await carryOnto(tx, swapped, sketch) }
     })
   } catch (error) {
     if (error instanceof LostCompareAndSwap) return null

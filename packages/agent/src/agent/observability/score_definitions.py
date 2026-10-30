@@ -96,6 +96,17 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ),
     ScoreDefinition(
         "revision-notice",
+    ScoreDefinition(
+        "sketch-released",
+        "CATEGORICAL",
+        "A Skizze's Fassung made current by Freigabe (ADR-0148, ADR-0104), and what became of the PDF beside it "
+        "once the release committed, on the trace of the turn that drew it: redrawn; none (no PDF, or no scene); "
+        "superseded (a newer save drew its own); confined (the PDF sits wider than a restricted Skizze); failed "
+        "(not drawn); unreadable (the bytes could not be read, the marks keep their boxes). One per Fassung, "
+        "upserted by the sketch_rendition job's retries. Metadata attempt and queued.",
+        writer="bff",
+        categories=("redrawn", "none", "superseded", "confined", "failed", "unreadable"),
+    ),
         "NUMERIC",
         "How many marks Piloti proposed when it compared a new Fassung on its own (ADR-0130); 0 is compared, "
         "nothing visible. On the trace of the first page's vision call; with piloti-decision on those marks, "

@@ -71,7 +71,7 @@ import { isAgentDocumentFilename } from './agent-namespace'
 import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
 import { documentDisplayName } from './display-name'
 import { announceNewRevision } from './revision-notify'
-import { versionBecameCurrent } from './current-version'
+import { sketchToPlace, versionBecameCurrent } from './current-version'
 import { notRevisableAsText, revisableAsText } from './text-content'
 import type { MovedSketchMarks } from '@/lib/annotations/sketch-carry'
 import { findDocumentInOrg } from './repository'
@@ -999,16 +999,10 @@ export async function transitionDocumentVersion(
   const stamp = stampFor(transition, session, effectInput, new Date())
   const round = reviewRoundFor(transition.op, session, effectInput)
   // `promotes` rows go through the transaction that also supersedes the
-  // previous published version and moves the item's pointer; see the flag.
+  // previous published version, moves the item's pointer and places a Skizze's marks.
+  const sketch = transition.promotes ? await sketchToPlace(document, version) : null
   const promoted = transition.promotes
-    ? await promoteVersionToPublished(
-        versionId,
-        documentId,
-        session.organizationId,
-        version.state,
-        stamp,
-        round,
-      )
+    ? await promoteVersionToPublished(versionId, documentId, session.organizationId, version.state, stamp, round, sketch)
     : null
   const swapped = transition.promotes
     ? (promoted?.version ?? null)

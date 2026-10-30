@@ -56,6 +56,10 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema/bff-job-q
  * `search_facets_sync` walks one shelf's documents a page per slice as the
  * system (ADR-0136): it rewrites their derived search rows from the reading the
  * agent stored, and decides nothing about who may read them.
+ * `sketch_rendition` is one step AS the person whose Freigabe made a Skizze's
+ * Fassung current: it places its marks and draws its PDF again when that
+ * failed right after the release (`lib/diagrams/sketch-promoted.ts`), and
+ * throws for the queue to retry while it still fails.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -81,6 +85,7 @@ export const BFF_JOB_KINDS = [
   'revision_notice',
   'document_check',
   'search_facets_sync',
+  'sketch_rendition',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -526,3 +531,12 @@ export const searchFacetsSyncPayloadSchema = z.object({
   written: z.number().int().nonnegative(),
 })
 export type SearchFacetsSyncPayload = z.infer<typeof searchFacetsSyncPayloadSchema>
+
+/** `sketch_rendition`: draw the PDF beside a released Skizze again, and place its marks (`lib/diagrams/sketch-promoted.ts`). */
+export const sketchRenditionPayloadSchema = z.object({
+  documentId: z.guid(),
+  /** The Fassung the release made current; a newer one draws its own and ends the job. */
+  versionId: z.guid(),
+  requester: requesterSchema,
+})
+export type SketchRenditionPayload = z.infer<typeof sketchRenditionPayloadSchema>

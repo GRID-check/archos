@@ -15,15 +15,26 @@ vi.mock('@/lib/realtime/document-channel', () => ({
   publishToDocumentRoom: vi.fn(async (documentId: string, event: Record<string, unknown>) => void events.push({ documentId, event })),
 }))
 const sketchBecameCurrent = vi.fn()
-vi.mock('@/lib/diagrams/sketch-promoted', () => ({ sketchBecameCurrent: (...a: unknown[]) => sketchBecameCurrent(...a) }))
+vi.mock('@/lib/diagrams/sketch-promoted', () => ({ releasedSketch: (...a: unknown[]) => sketchBecameCurrent(...a) }))
 const recordSketchPinsKeptScore = vi.fn(async () => {})
 vi.mock('@/lib/langfuse/sketch-score', () => ({ recordSketchPinsKeptScore: (...a: unknown[]) => recordSketchPinsKeptScore(...(a as [])) }))
 
 import { versionBecameCurrent } from './current-version'
 
 const session = { userId: 'user_chief', organizationId: 'org_1', email: 'c@example.test', name: 'Eva Chef' } as never
-const version = { id: 'ver_3' } as never
-const sketch = { id: 'doc_sketch', contentType: 'image/svg+xml', authoredByProducer: 'diagram_svg', authoredByRef: 'msg_1-1a2b3c4d' } as never
+const version = { id: 'ver_3', state: 'published', contentHash: 'h3', screenedHash: null } as never
+const filed = {
+  id: 'doc_sketch',
+  contentType: 'image/svg+xml',
+  authoredBy: 'agent',
+  authoredByProducer: 'diagram_svg',
+  authoredByRef: 'msg_1-1a2b3c4d',
+  status: 'stored',
+  screeningOutcome: null,
+  contentHash: 'h3',
+  screenedHash: null,
+}
+const sketch = filed as never
 const pdf = { id: 'doc_pdf', contentType: 'application/pdf', authoredByProducer: null, authoredByRef: null } as never
 
 beforeEach(() => {
@@ -60,6 +71,20 @@ describe('a Fassung made current', () => {
     await versionBecameCurrent({ session, document: pdf, version, carried: { moved: [], lost: [] } })
     expect(events).toEqual([{ documentId: 'doc_pdf', event: expect.objectContaining({ kind: 'version.published', versionId: 'ver_3' }) }])
     expect(recordSketchPinsKeptScore).not.toHaveBeenCalled()
+  })
+
+  // ADR-0086: the PDF is machine-authored and never held, so what it draws must be bytes screening let through.
+  it('never draws a PDF from bytes a person uploaded, whatever the producer column says', async () => {
+    const upload = { ...filed, authoredBy: 'user', status: 'uploaded', screeningOutcome: null, screenedHash: null } as never
+    await versionBecameCurrent({ session, document: upload, version, carried: { moved: [], lost: [] } })
+    expect(sketchBecameCurrent).not.toHaveBeenCalled()
+    expect(events.map(({ event }) => event.kind)).toEqual(['version.published'])
+  })
+
+  it('never draws a PDF from a Skizze screening holds', async () => {
+    const held = { ...filed, status: 'quarantined' } as never
+    await versionBecameCurrent({ session, document: held, version, carried: { moved: [], lost: [] } })
+    expect(sketchBecameCurrent).not.toHaveBeenCalled()
   })
 
   it('never throws: the Fassung is committed whatever the room does', async () => {

@@ -42,6 +42,7 @@ import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
 import { runDocumentCheckSlice } from '@/lib/document-check/job'
 import { runRevisionNotice } from '@/lib/revision-notice/job'
 import { runSearchFacetsSyncSlice } from '@/lib/search/shelf-projection'
+import { runSketchRenditionSlice } from '@/lib/diagrams/sketch-promoted'
 import { isLastAttempt } from './attempts'
 import {
   annotationDueRemindersPayloadSchema,
@@ -63,6 +64,7 @@ import {
   documentCheckPayloadSchema,
   rootSortPayloadSchema,
   searchFacetsSyncPayloadSchema,
+  sketchRenditionPayloadSchema,
   type BffJobKind,
   type JobAttempt,
   type JobRequester,
@@ -201,4 +203,7 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   // Sliced: start the turn, then wait for its answer; the person is resolved in each slice.
   document_check: systemSliceHandler(documentCheckPayloadSchema, runDocumentCheckSlice),
   search_facets_sync: systemSliceHandler(searchFacetsSyncPayloadSchema, runSearchFacetsSyncSlice),
+  // As the person who released the Fassung; the release itself was attempt 1 of the score's count.
+  sketch_rendition: (job) =>
+    handler(sketchRenditionPayloadSchema, (session, payload) => runSketchRenditionSlice(session, payload, job.attempts + 1))(job),
 }

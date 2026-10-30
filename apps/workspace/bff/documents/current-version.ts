@@ -16,7 +16,8 @@
  *     compares and merges the Fassung in (`ui/features/diagrams/sketch/sketch-sync.ts`).
  *     A save hands in the hash it holds; a Freigabe that made a draft current
  *     has no scene at hand, so the Skizze's own step reads it from the bytes,
- *     places the marks on it and draws its PDF again (`lib/diagrams/sketch-promoted.ts`);
+ *     places the marks on it and draws its PDF again (`lib/diagrams/sketch-promoted.ts`),
+ *     only for bytes screening let through, and retried by a job when it fails;
  *   - `version.published`, so a preview shows the new picture and timeline.
  *
  * For a Skizze it also scores the carry (`sketch-pins-kept`): the share of the
@@ -28,12 +29,13 @@
 
 import 'server-only'
 import { randomBytes } from 'node:crypto'
-import type { MovedSketchMarks } from '@/lib/annotations/sketch-carry'
+import type { MovedSketchMarks, NextSketch } from '@/lib/annotations/sketch-carry'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import type { Document } from '@/lib/db/schema/documents'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { recordSketchPinsKeptScore } from '@/lib/langfuse/sketch-score'
+import { versionBytesPassedScreening } from './document-reader'
 
 export interface CurrentFassungInput {
   session: AuthorizedSession
@@ -45,9 +47,34 @@ export interface CurrentFassungInput {
   scene?: { sceneHash: number; peerId: string | null }
 }
 
-/** A Skizze the sketch editor saves: Piloti filed it, and its SVG carries a scene. */
-export const isFiledSketch = (document: Pick<Document, 'authoredByProducer' | 'contentType'>) =>
-  document.authoredByProducer === 'diagram_svg' && document.contentType === 'image/svg+xml'
+/**
+ * A Skizze the sketch editor saves: Piloti filed it, and its SVG carries a
+ * scene. Never a person's upload, whatever its producer column says: a
+ * person's bytes are an upload, held until screened (ADR-0086), and never the
+ * source of a machine-authored PDF.
+ */
+export const isFiledSketch = (document: Pick<Document, 'authoredBy' | 'authoredByProducer' | 'contentType'>) =>
+  document.authoredBy !== 'user' && document.authoredByProducer === 'diagram_svg' && document.contentType === 'image/svg+xml'
+
+/** A filed Skizze's Fassung whose bytes may be drawn into its PDF and placed under its marks: screening let them through. */
+export const isReleasableSketch = (document: Document, version: DocumentVersion) =>
+  isFiledSketch(document) && versionBytesPassedScreening(document, version)
+
+/**
+ * The scene a Fassung about to be promoted carries, for the repository to place
+ * the pinned marks on in the publishing transaction (`./published-version.ts`).
+ * A version in review is frozen (no row updates it), so these are the bytes the
+ * promotion makes current. Null when it is no releasable Skizze, carries no
+ * scene, or cannot be read: the step after the commit places them then.
+ */
+export async function sketchToPlace(document: Document, version: DocumentVersion): Promise<NextSketch | null> {
+  if (!isReleasableSketch(document, version)) return null
+  const { promotedSketchOf } = await import('@/lib/diagrams/sketch-promoted')
+  return promotedSketchOf(version).then(
+    (sketch) => sketch?.next ?? null,
+    () => null
+  )
+}
 
 export async function versionBecameCurrent(input: CurrentFassungInput): Promise<void> {
   const { session, document, version } = input
@@ -55,9 +82,9 @@ export async function versionBecameCurrent(input: CurrentFassungInput): Promise<
     let scene = input.scene ?? null
     const marks = new Set(input.carried.moved)
     let lost = input.carried.lost.length
-    if (!scene && isFiledSketch(document)) {
-      const { sketchBecameCurrent } = await import('@/lib/diagrams/sketch-promoted')
-      const promoted = await sketchBecameCurrent(session, document, version)
+    if (!scene && isReleasableSketch(document, version)) {
+      const { releasedSketch } = await import('@/lib/diagrams/sketch-promoted')
+      const promoted = await releasedSketch(session, document, version)
       if (promoted) {
         scene = { sceneHash: promoted.sceneHash, peerId: null }
         for (const id of promoted.placed) marks.add(id)
