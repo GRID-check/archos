@@ -75,8 +75,8 @@ const SKETCH_EDIT_INPUT = {
   body: {
     baseVersionId: SKETCH.base,
     ops: [
-      { op: 'add', intent: 'Bad rechts neben den Flur', element: { type: 'rectangle', id: 'bath', x: 0, y: 0, label: { text: 'Bad' } } },
-      { op: 'place', intent: 'Bad 40 px rechts vom Flur', id: 'bath', referenceId: 'hall', side: 'right' },
+      { op: 'add', intent: 'Ein Bad anlegen', element: { type: 'rectangle', id: 'bath', x: 0, y: 0, label: { text: 'Bad' } } },
+      { op: 'place', intent: 'Das Bad rechts neben den Flur setzen', id: 'bath', referenceId: 'hall', side: 'right' },
       { op: 'remove', intent: 'Abstellraum entfällt, mit seinem Pfeil', id: 'store' },
       { op: 'update', intent: 'Küche heißt jetzt Kochen', id: 'kitchen', set: { label: { text: 'Kochen' } } },
     ],

@@ -65,6 +65,7 @@ const REFUSAL_WORDS: Record<string, string> = {
   'bad-intent': 'has no intent, or one longer than 200 characters: one short sentence the person reads',
   'bad-coordinate': 'sets a position or size outside ±10000',
   'too-many-ids': 'names more than 100 elements in one step; split it',
+  'pixel-intent': 'has an intent in pixels or coordinates; say where by the room or element it relates to (right of the hall)',
 }
 
 /** The sketch moved on and an id the edit names is gone: the 409 the route words in the reader's language. */

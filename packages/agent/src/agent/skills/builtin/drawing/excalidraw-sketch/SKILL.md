@@ -114,7 +114,11 @@ label, never by id. `ids` reads a few elements whole when you need their style.
 To change it, call document-sketch-edit with `baseVersionId` and `ops`. The
 person sees the change drawn and decides; nothing changes before. Each op has
 an `intent`, one short sentence in the person's language: the card lists them
-as the steps.
+as the steps. Say where in the words an architect uses, by the room or element
+it relates to: „Abstellraum rechts neben dem Flur anlegen“, „Bad unter die
+Küche schieben“, „Küche und Essen oben bündig ausrichten“. Never pixels,
+coordinates or offsets („40 px nach rechts“, „x = 320“): those are the
+server's numbers, not the person's plan.
 
 - `add` takes one element as in the fence table, with a new `id`; `start`,
   `end` and `children` may name elements already drawn.

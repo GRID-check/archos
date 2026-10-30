@@ -68,3 +68,16 @@ describe('where new elements go', () => {
     expect(next.elements.filter((element) => !element.isDeleted).map((element) => `${element.id}:${element.index}`)).toEqual(['a:a0', 'c:a2'])
   })
 })
+
+describe('an intent', () => {
+  const scene = () => checkSketchScene({ type: 'excalidraw', elements: [{ id: 'hall', type: 'rectangle', x: 0, y: 0, width: 100, height: 50 }, { id: 'bath', type: 'rectangle', x: 0, y: 100, width: 100, height: 50 }] })
+  const place = (words: string): SketchEditOp => ({ op: 'place', intent: words, id: 'bath', referenceId: 'hall', side: 'right' })
+
+  it.each(['Bad 40 px rechts vom Flur', 'Bad um 40px verschieben', 'Bad auf x = 320 setzen', 'move the bath 40 pixels right'])('refuses one in pixels or coordinates: %s', (words) => {
+    expect(() => applySketchEdit(scene(), [place(words)])).toThrow(expect.objectContaining({ refusal: 'pixel-intent' }))
+  })
+
+  it.each(['Das Bad rechts neben den Flur setzen', 'Bad unter die Küche, 2 Räume weiter', 'Raum 3 an den Flur'])('takes one in an architect’s words: %s', (words) => {
+    expect(() => applySketchEdit(scene(), [place(words)])).not.toThrow()
+  })
+})

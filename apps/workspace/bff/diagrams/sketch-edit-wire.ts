@@ -33,7 +33,7 @@ const describedIntent = z
   .trim()
   .min(1)
   .max(MAX_SKETCH_EDIT_INTENT_CHARS)
-  .describe('Every op has one: the step as the person reads it, one short sentence in their language.')
+  .describe('Every op has one: the step as the person reads it, one short sentence in their language; where by room or element, never pixels.')
 const coordinate = z.number()
 const size = z.number().positive()
 const gap = z.number().min(0).max(MAX_SKETCH_EDIT_GAP)

@@ -5455,7 +5455,7 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 200,
-                              "description": "Every op has one: the step as the person reads it, one short sentence in their language."
+                              "description": "Every op has one: the step as the person reads it, one short sentence in their language; where by room or element, never pixels."
                             },
                             "element": {
                               "type": "object",

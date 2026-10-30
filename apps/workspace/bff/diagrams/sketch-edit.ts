@@ -65,6 +65,7 @@ export const SKETCH_EDIT_REFUSALS = [
   'empty-rebind',
   'bad-intent',
   'too-many-ids',
+  'pixel-intent',
 ] as const
 export type SketchEditRefusal = (typeof SKETCH_EDIT_REFUSALS)[number] | SketchRefusal
 
@@ -99,6 +100,11 @@ export interface ApplyOptions {
 export const MAX_SKETCH_EDIT_IDS = 100
 
 const COLOR = /^(?:#[0-9a-f]{3,8}|transparent)$/i
+/**
+ * An intent that says where in pixels or coordinates („40 px nach rechts“, „x = 320“): the person reads the
+ * card as their plan and places by room or element („rechts neben dem Flur“); the numbers are the server's.
+ */
+const PIXEL_INTENT = /\d\s*(?:px|pixel)|\bpixel|\b[xy]\s*[=:]\s*-?\d/i
 const DEFAULT_GAP = 40
 /** Fields that are bookkeeping, not drawing: a change to them alone is no change a person sees. */
 const BOOKKEEPING = new Set(['boundElements', 'version', 'versionNonce', 'updated', 'seed', 'index'])
@@ -451,6 +457,7 @@ function applyStack(state: EditState, op: Extract<SketchEditOp, { op: 'stack' }>
 function checkBounds(op: SketchEditOp, index: number): void {
   const intent = op.intent.trim()
   if (!intent || intent.length > MAX_SKETCH_EDIT_INTENT_CHARS) throw new SketchEditError('bad-intent', index)
+  if (PIXEL_INTENT.test(intent)) throw new SketchEditError('pixel-intent', index)
   if ('ids' in op && op.ids.length > MAX_SKETCH_EDIT_IDS) throw new SketchEditError('too-many-ids', index)
   if (op.op !== 'update') return
   const { x, y, width, height } = op.set
