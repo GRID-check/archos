@@ -31,4 +31,3 @@ export function toReplyView(
     editedAt: reply.editedAt ? reply.editedAt.toISOString() : null,
   }
 }
-

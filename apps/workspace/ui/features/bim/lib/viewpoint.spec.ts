@@ -275,6 +275,17 @@ describe('restoreViewpoint', () => {
     expect(restored.visibility).toEqual({ hidden: new Set(), isolated: new Set([12, 13]) })
   })
 
+  it('shows the whole model rather than nothing when none of an isolation is in this model, and counts them missing', () => {
+    const vp = captureViewpoint(state())
+    vp.components.visibility = {
+      defaultVisibility: false,
+      exceptions: ['NOTINMODELNOTINMODEL01', 'NOTINMODELNOTINMODEL02'],
+    }
+    const restored = restoreViewpoint(vp, fresh(), context)
+    expect(restored.visibility).toEqual({ hidden: new Set(), isolated: null })
+    expect(restored.missing).toBe(2)
+  })
+
   it('restores hidden as a hidden set with nothing isolated', () => {
     const vp = captureViewpoint(state({ visibility: { hidden: new Set([12]), isolated: null } }))
     expect(restoreViewpoint(vp, fresh(), context).visibility).toEqual({

@@ -182,3 +182,29 @@ describe('withModelView', () => {
     expect(withModelView({ xray: true }, { xray: false })).toEqual({})
   })
 })
+
+describe('the mark a link opens on', () => {
+  const MARK = '3f2b8c1e-5a47-4e0b-9d6a-1c2e3f4a5b6c'
+
+  it('round-trips an Anmerkung id, so a mention in the inbox opens the view it was set on', () => {
+    const query = buildModelQuery({ model: 'haus-a.ifc', mark: MARK })
+    expect(query).toContain(`mark=${MARK}`)
+    expect(parseModelView(query)).toEqual({ model: 'haus-a.ifc', mark: MARK })
+  })
+
+  it('keeps the mark beside the highlights and the id cap', () => {
+    const ids = Array.from({ length: 80 }, (_, index) => `id${index}`)
+    const view = parseModelView(buildModelQuery({ mark: MARK, highlights: [{ status: 'fail', globalIds: ids }] }))
+    expect(view.mark).toBe(MARK)
+    expect(view.highlights?.[0]?.globalIds).toHaveLength(60)
+  })
+
+  it('drops a value that is no id instead of looking it up', () => {
+    expect(parseModelView('mark=../../etc/passwd').mark).toBeUndefined()
+    expect(parseModelView('mark=').mark).toBeUndefined()
+  })
+
+  it('is removed by withModelView like any other field', () => {
+    expect(withModelView({ mark: MARK, element: 'e' }, { mark: undefined })).toEqual({ element: 'e' })
+  })
+})

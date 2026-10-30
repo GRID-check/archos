@@ -700,6 +700,12 @@ same in any viewer; the viewer converts to and from its own frame
   view is `GET …/annotations/{id}/viewpoint` (agent operation
   `annotation-viewpoint-get`) and the image `GET …/snapshot` (binary, not an
   agent operation). Both are gated like reading the document.
+- **BCF 3.0.** `GET …/annotations/bcf` (agent operation
+  `document-annotations-bcf-export`) writes the model's viewpoint marks as a
+  BCF 3.0 file with camera, section, elements, snapshot, Zuständige, Frist and
+  thread, behind the same gate as the Protokoll; Piloti's untaken proposals are
+  left out (`bff/bim/bcf3-*.ts`, mapping in
+  [`model-collaboration.md`](../roadmap/model-collaboration.md#bcf-30-mapped)).
 - **No carry.** A viewpoint mark is not carried to a newer Fassung: its
   referent is a view, not a sheet.
 

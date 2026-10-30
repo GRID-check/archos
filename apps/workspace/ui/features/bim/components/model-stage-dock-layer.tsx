@@ -1,6 +1,6 @@
 
 
-import { Camera, Eye, Home, Layers, MonitorX, PanelLeft, Ruler, Scissors, SlidersHorizontal, Undo2 } from 'lucide-react'
+import { Camera, Eye, Home, Layers, MessageSquarePlus, MessagesSquare, MonitorX, PanelLeft, Ruler, Scissors, SlidersHorizontal, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 import { cn } from '@/lib/utils'
@@ -16,8 +16,9 @@ import { StageViewMenu } from './stage-view-menu'
 import { ViewerDock, ViewerDockSeparator, ViewerIconButton, ViewerLegend, ViewerSlider, ViewerSurface } from './viewer'
 
 import type { ModelStageController } from './use-model-stage-controller'
+import type { ModelMarks } from '../hooks/use-model-marks'
 
-export function ModelStageDockLayer({ controller }: { controller: ModelStageController }) {
+export function ModelStageDockLayer({ controller, marks }: { controller: ModelStageController; marks: ModelMarks }) {
   const { advancedOpen, advancedToggleRef, captureFailed, closeAdvanced, coarsePointer, compact, compactSheet, cutDefault, elementList, elementsError, elementsLoading, focusViewport, goBack, handleSelect, history, layout, legendEntries, locale, measureLabels, model, modelId, models, phoneSheet, projectId, railHasContent, railOpen, reloadElements, section, selectedGlobalId, setAdvancedOpen, setRailChoice, setView, storey, t, togglePhoneSheet, view, viewport, xrayNeedsTarget } = controller
   return (
     <>
@@ -218,6 +219,26 @@ export function ModelStageDockLayer({ controller }: { controller: ModelStageCont
                   active={railOpen && railHasContent}
                   disabled={!railHasContent}
                   onClick={() => setRailChoice(!railOpen)}
+                />
+                {/*
+                  Anmerkungen on the model: the list (a toggle) and a new one on
+                  the view as it is now. In the trailing pill, which every
+                  layout draws; the same marks as on a page, in the same words.
+                */}
+                <ViewerIconButton
+                  label={t('marks.list')}
+                  icon={MessagesSquare}
+                  active={marks.open}
+                  disabled={!marks.available}
+                  onClick={() => (marks.open ? marks.close() : marks.setOpen(true))}
+                  data-testid="stage-marks"
+                />
+                <ViewerIconButton
+                  label={t('marks.add')}
+                  icon={MessageSquarePlus}
+                  disabled={!marks.available || viewport.status.phase !== 'ready' || !marks.review.canAnnotate || marks.capturing}
+                  onClick={marks.startMark}
+                  data-testid="stage-mark-add"
                 />
                 <ViewerIconButton
                   ref={advancedToggleRef}

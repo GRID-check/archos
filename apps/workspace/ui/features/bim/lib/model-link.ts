@@ -54,6 +54,11 @@ export interface BimModelView {
   /** Element to select, by IFC GlobalId. */
   element?: string
   /**
+   * An Anmerkung on the model, by id: opening the link restores the view that
+   * mark was set on (camera, cut, what was shown, what was selected).
+   */
+  mark?: string
+  /**
    * Elements to colour: `status:label:globalId,globalId`.
    *
    * The LABEL travels because it is the answer's own words. Without it the
@@ -83,6 +88,9 @@ export interface BimModelView {
   camera?: BimViewerCameraState
 }
 
+/** An Anmerkung id is a UUID; anything else in a pasted link is dropped, not looked up. */
+const MARK_ID = /^[0-9a-fA-F-]{8,64}$/
+
 const STATUSES = new Set<BimHighlightStatus>(['pass', 'fail', 'warning', 'info'])
 
 /** Cap on ids per link, so a URL cannot grow past what a browser will follow. */
@@ -108,6 +116,7 @@ export function buildModelQuery(view: BimModelView): string {
   if (view.tab) params.set('tab', view.tab)
   if (view.storey) params.set('storey', view.storey)
   if (view.element) params.set('element', view.element)
+  if (view.mark) params.set('mark', view.mark)
   for (const group of view.highlights ?? []) {
     const ids = group.globalIds.slice(0, MAX_LINK_IDS)
     if (ids.length === 0) continue
@@ -186,6 +195,8 @@ export function parseModelView(search: string | URLSearchParams): BimModelView {
   if (storey) view.storey = storey
   const element = params.get('element')?.trim()
   if (element) view.element = element
+  const mark = params.get('mark')?.trim()
+  if (mark && MARK_ID.test(mark)) view.mark = mark
   if (params.get('xray') === '1') view.xray = true
 
   // Always present, because "no camera in the link" is itself a camera — the

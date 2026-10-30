@@ -582,4 +582,32 @@ export const bim = {
     failed: 'The models for this project could not be loaded.',
     openAria: 'Open {name} in the model workspace',
   },
+  // Anmerkungen on the model: each is set on a view (camera, cut, selection) and lists as the review's own marks do.
+  marks: {
+    title: 'Annotations on the model',
+    list: 'Annotations on the model',
+    add: 'Annotate this view',
+    close: 'Close annotations',
+    all: 'All annotations',
+    cancel: 'Discard',
+    capturing: 'Taking the view …',
+    dismiss: 'OK',
+    jump: 'Go to view',
+    pin: 'Annotation {number}',
+    snapshot: 'The view the annotation was set on',
+    empty: {
+      title: 'No annotations on this model yet',
+      body: 'Set the view you want to talk about, then “Annotate this view”: the annotation keeps the camera, the cut and the selection.',
+      readOnly: 'You can read this model but not annotate it.',
+    },
+    notice: {
+      missing: '{count, plural, one {One element} other {# elements}} of this view {count, plural, one {is} other {are}} not in this model.',
+      planes: '{count, plural, one {One section plane} other {# section planes}} of this view cannot be shown here: the viewer cuts horizontally only.',
+      captureFailed: 'The view could not be read. Please try again.',
+      jumpFailed: 'The view of this annotation could not be loaded. Please try again.',
+      selectionCut: 'More elements were selected than an annotation holds; it keeps the first 500.',
+      visibilityDropped: 'More elements were hidden or isolated than an annotation can list; it shows the whole model instead.',
+      noSnapshot: 'No picture could be made of this view; the annotation is set without one.',
+    },
+  },
 }

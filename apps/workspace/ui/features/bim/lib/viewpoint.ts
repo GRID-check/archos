@@ -126,13 +126,15 @@ function normalize(v: Vec3, fallback: Vec3): Vec3 {
   return cleanVec({ x: v.x / length, y: v.y / length, z: v.z / length })
 }
 
-function worldPoint(point: Vec3, frame: RenderFrameInfo | null): Vec3 {
+/** A render-frame point as IFC world coordinates (Z-up, metres): what a viewpoint stores. */
+export function worldPoint(point: Vec3, frame: RenderFrameInfo | null): Vec3 {
   const local = viewerToIfcAxes(point)
   const offset = renderFrameWorldOffset(frame)
   return cleanVec({ x: local.x + offset.x, y: local.y + offset.y, z: local.z + offset.z })
 }
 
-function renderPoint(point: Vec3, frame: RenderFrameInfo | null): Vec3 {
+/** An IFC world point back in the render frame: where a stored pin stands in this viewer. */
+export function renderPoint(point: Vec3, frame: RenderFrameInfo | null): Vec3 {
   const offset = renderFrameWorldOffset(frame)
   return cleanVec(
     ifcToViewerAxes({ x: point.x - offset.x, y: point.y - offset.y, z: point.z - offset.z })
@@ -279,9 +281,11 @@ export function restoreViewpoint(
   return {
     missing: unresolved.size,
     section,
-    visibility: visibility.defaultVisibility
-      ? { hidden: exceptions, isolated: null }
-      : { hidden: new Set(), isolated: exceptions },
+    // An isolation of which this model has none of the elements would be an empty view: show everything instead.
+    visibility:
+      visibility.defaultVisibility || exceptions.size === 0
+        ? { hidden: visibility.defaultVisibility ? exceptions : new Set(), isolated: null }
+        : { hidden: new Set(), isolated: exceptions },
     selected,
     ignoredPlanes,
   }

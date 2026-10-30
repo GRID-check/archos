@@ -9,9 +9,12 @@ import { documentDisplayName } from '@/lib/documents/display-name'
 import type { ModelStageController } from './use-model-stage-controller'
 import { ModelStageCanvasLayer, ModelStageChromeLayer } from './model-stage-layers'
 import { ModelStageDockLayer } from './model-stage-dock-layer'
+import { ModelMarksPanel } from './model-marks-panel'
+import { useModelMarks } from '../hooks/use-model-marks'
 
 export function ModelStageView({ controller }: { controller: ModelStageController }) {
   const { advancedOpen, closeAdvanced, compactSheet, layout, model, onClose, phoneSheet, selectedGlobalId, setPhoneSheet, setView, stageRef, t, viewport } = controller
+  const marks = useModelMarks(controller)
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
@@ -79,6 +82,9 @@ export function ModelStageView({ controller }: { controller: ModelStageControlle
           if (viewport.measure.active) {
             event.preventDefault()
             viewport.measure.setActive(false)
+          } else if (marks.open) {
+            event.preventDefault()
+            marks.close()
           } else if (advancedOpen) {
             event.preventDefault()
             // The same restore the drawer's X does. Without it, closing with
@@ -107,9 +113,10 @@ export function ModelStageView({ controller }: { controller: ModelStageControlle
           // Abbrechen stays on screen and pressable.
           data-sheet={layout === 'phone' && compactSheet ? 'open' : undefined}
         >
-          <ModelStageCanvasLayer controller={controller} />
+          <ModelStageCanvasLayer controller={controller} marks={marks} />
           <ModelStageChromeLayer controller={controller} />
-          <ModelStageDockLayer controller={controller} />
+          <ModelMarksPanel marks={marks} />
+          <ModelStageDockLayer controller={controller} marks={marks} />
         </div>
       </DialogContent>
     </Dialog>

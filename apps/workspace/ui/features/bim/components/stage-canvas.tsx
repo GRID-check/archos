@@ -7,6 +7,7 @@ import { useTranslations } from '@/i18n'
 import { bimCopy } from '@/i18n/namespaces/bim'
 
 import { useModelViewport } from '../hooks/use-model-viewport'
+import type { ViewerBridge } from '../lib/viewpoint-bridge'
 
 import { IfcViewerCanvasLazy, ModelViewportProgress, ViewerRetry } from './ifc-model-viewer'
 
@@ -30,6 +31,8 @@ export function StageCanvas({
   model,
   source,
   viewport,
+  bridge,
+  canvasOverride,
 }: {
   isLoading: boolean
   error: string | null
@@ -40,6 +43,10 @@ export function StageCanvas({
   model: { status: string; errorMessage: string | null } | null
   source: { data: string | null; error: string | null; reload: () => void }
   viewport: ReturnType<typeof useModelViewport>
+  /** What the marks ask of the canvas and what it answers (`use-viewpoint-bridge.ts`). */
+  bridge?: ViewerBridge
+  /** Props that win over the viewport's, e.g. no fly-to on the element a restore selected. */
+  canvasOverride?: { zoomToSelection: false } | null
 }): JSX.Element {
   const t = useTranslations(bimCopy)
 
@@ -167,7 +174,7 @@ export function StageCanvas({
 
   return (
     <>
-      <IfcViewerCanvasLazy {...viewport.canvasProps} className="size-full" />
+      <IfcViewerCanvasLazy {...viewport.canvasProps} {...canvasOverride} bridge={bridge} className="size-full" />
       <ModelViewportProgress
         phase={viewport.status.phase}
         percent={viewport.status.percent}

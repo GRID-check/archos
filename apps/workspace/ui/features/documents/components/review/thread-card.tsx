@@ -568,8 +568,8 @@ export function DraftCard({
   const [dueOn, setDueOn] = useState<string | null>(null)
   const self = useSelfAssignee(review)
   const { piloti } = review
-  /** The draft's place handed to Piloti: asked at once with what was typed, or a card waiting for the question. */
-  const askAgent = piloti.available
+  /** The draft's place handed to Piloti: asked at once with what was typed, or a card waiting for the question. Not on a model: its box is a placeholder. */
+  const askAgent = piloti.available && !draft.viewpoint
     ? (body: string) => {
         const region = askRegionOf(draft)
         if (body) piloti.ask({ text: body, region })

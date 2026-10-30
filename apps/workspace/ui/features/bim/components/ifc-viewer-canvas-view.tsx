@@ -19,9 +19,19 @@
 import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 
+import type { ReactNode, RefObject } from 'react'
 import type { IfcViewerCanvasController } from './use-ifc-viewer-canvas-controller'
 
-export function IfcViewerCanvasView({ controller }: { controller: IfcViewerCanvasController }) {
+export function IfcViewerCanvasView({
+  controller,
+  pinLayerRef,
+  pins,
+}: {
+  controller: IfcViewerCanvasController
+  /** The layer the marks' pins are moved in every frame (`use-viewpoint-bridge.ts`). */
+  pinLayerRef?: RefObject<HTMLDivElement | null>
+  pins?: ReactNode
+}) {
   const { canvasRef, className, dragging, handleDoubleClick, handleKeyDown, handlePointerCancel, handlePointerDown, handlePointerMove, handlePointerUp, hovering, keysId, measuring, overlayLabelsRef, overlaySvgRef, setHovering, t } = controller
   return (
     /*
@@ -103,6 +113,8 @@ export function IfcViewerCanvasView({ controller }: { controller: IfcViewerCanva
         className="pointer-events-none absolute inset-0 overflow-hidden"
         aria-hidden="true"
       />
+      {/* Pins are buttons: the layer lets the canvas have every gesture and each pin its own click. */}
+      {pinLayerRef && <div ref={pinLayerRef} className="pointer-events-none absolute inset-0 overflow-hidden">{pins}</div>}
     </div>
   )
 }

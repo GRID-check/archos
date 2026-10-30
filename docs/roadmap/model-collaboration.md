@@ -19,7 +19,7 @@ its **anchor**:
 |---|---|---|
 | Page region on a Fassung | `page`, `shape`, `x`, `y`, `w`, `h` on `document_annotations` (0138) | built |
 | Elements of a Skizze | `anchor_element_ids`, `anchor_lost_at` (0192), box derived on the server | built (S3) |
-| Model viewpoint | camera, clipping planes, selected and visible components by IFC GlobalId, snapshot | new |
+| Model viewpoint | camera, clipping planes, selected and visible components by IFC GlobalId, snapshot | built (F1, F2) |
 
 So the session does not build model issues. It adds a third anchor and leaves the
 lifecycle alone. One thread, one status set, one Zuständige, one Frist reminder, one
@@ -121,6 +121,64 @@ Each ships alone. "Makes better" is principle 8's test.
 | F3 | **BCF 3.0 export and import.** One mapping written against 3.0, `extensions.xml` declaring our types and statuses, snapshot from F1. 2.1 stays the default download until the offices' Revit and ArchiCAD BCF managers read 3.0. Import makes Anmerkungen on the model (people as authors where the email resolves, the rest in the thread). Align field names and resources with the BCF API (topics, comments, viewpoints, snapshot, events) so F3b is an adapter, not a rewrite | the Prüfbuch export (gains camera, snapshot, Zuständige, Frist), the Fachplaner round trip | exports per project; import round trip lossless on our own file; topics landing on the right elements in one real tool |
 | F4 | **Piloti proposes model Anmerkungen from findings.** A failing or undecidable Prüfbuch requirement becomes one `proposed` mark (author `piloti`, `basis` the citation, selection its elements), idempotent per requirement and revision series like today's UUIDv5 topic ids. `buildComplianceBcf` then exports Anmerkungen; its second topic builder goes | the Prüfbuch, Piloti's Vorschläge, the BCF export (one path, not two) | Vorschläge taken over against dismissed, as a Langfuse score |
 | F5 | **Sketch over a model view.** S6's BIM base is an F1 viewpoint: the Skizze names it, elements clicked carry GlobalIds, and its export as a BCF topic uses the browser's composite as snapshot and the Skizze as `DocumentReference` | Skizzen (S5 links, S6 bases), the BIM viewer | Skizzen with a model base; links still resolving after a revision |
+
+### F1 status: built
+
+Migration `0193_annotation_viewpoints.sql`, the third anchor, the refusals, the two
+read routes and the agent operation `annotation-viewpoint-get`, as
+[`document-annotations.md`](../architecture/document-annotations.md#a-mark-on-a-3d-model-a-viewpoint)
+describes them. The viewer half is `apps/workspace/ui/features/bim/lib/viewpoint.ts`
+(`captureViewpoint`, `restoreViewpoint`, render frame to IFC world and back).
+
+### F2 status: built in the viewer, open on the agent door
+
+In the model stage (`apps/workspace/ui/features/bim/`): a dock button sets an
+Anmerkung on the view as it is (`hooks/use-model-marks.tsx`). The canvas captures
+from the live renderer, not the preset: camera, cut, visibility and selection in IFC
+world coordinates from the geometry stream's offsets (`lib/render-frame.ts`), a pin on
+the selection's centre or where the middle of the view hits the model, and a snapshot
+from one exhaustive frame, downsized to 1500 px JPEG (`lib/snapshot.ts`). All of it
+sits in `components/use-viewpoint-bridge.ts` beside the canvas controller, which did
+not grow. The composer, list, thread and rows are the review's own (`DraftCard`,
+`ThreadCard`, `MarkRowContent`); the panel is `components/model-marks-panel.tsx`. Pins
+are the review's `CommentPin`, moved each frame from `projectToScreen` like the
+measurement overlay (`lib/viewpoint-pins.ts`), without occlusion. „Zur Ansicht
+springen“ and a link with `?mark=<id>` (`lib/model-link.ts`) put back camera, cut,
+visibility and selection and say how many elements this model lacks. Preview:
+`/dev/model-marks`.
+
+Open: the agent door and viewer cards returning a link with `mark`; the pixel diff
+between capture and restore in a browser (headless Chromium has no WebGPU, so it is
+unverified); vertical section planes, which a restore counts and skips.
+
+### F3 status: export built, import and the button open
+
+`GET /api/documents/{id}/annotations/bcf?scope=all|open` (operation
+`document-annotations-bcf-export`) writes a model's Anmerkungen as BCF 3.0, the
+mapping above, in `apps/workspace/bff/bim/bcf3-build.ts` (markup, `extensions.xml`,
+`bcf.version`) and `bcf3-viewpoint.ts` (`.bcfv`), read behind the Protokoll's gate
+by `bcf3-service.ts`. Only marks with a viewpoint go; a Vorschlag nobody took over
+never does. `ViewToWorldScale` is the full visible height, as F1 stores it: the
+3.0 `visinfo.xsd` says "view's visible vertical size in meters". The specs check
+the output against the 3.0 XSDs (`BCF3_XSD_DIR`) and read it back field by field.
+Open: no button in the viewer yet (agents and a direct GET reach it), the import,
+`DocumentReferences`, and a reading in a real BCF manager.
+
+### F4 status: framing core exists, bounding-box source missing
+
+`apps/workspace/bff/annotations/viewpoint-frame.ts` (`frameViewpoint`) is the pure
+core: from element boxes in IFC world coordinates (Z-up, metres) it computes the
+union, a perspective camera at a fixed azimuth and elevation whose distance fits the
+bounding sphere in the field of view with margin, Z as up, an optional six-plane
+section box (BCF directions toward the hidden half) and the selection. Geometry comes
+only from stored boxes and documented constants, never from a model-written
+coordinate. It is not wired: no route, no migration.
+
+It is blocked on a bounding-box source: `bim_elements` stores none, because geometry
+lives only in the browser mesher. Recommendation: extract world-space AABBs at ingest
+with IfcOpenShell (`ifcopenshell.geom` plus `ifcopenshell.util.shape.get_bbox`) into
+a nullable bounds column, with a lazy backfill for existing models. IFC's Z-up metres
+is BCF's frame, so no conversion is needed. Pending product-owner approval.
 
 F1 is the foundation; F2 makes it usable; F3 to F5 are independent after it.
 

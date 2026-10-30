@@ -18,13 +18,18 @@ import type { JSX } from 'react'
  * type error at the call site, which is where it was always meant to be caught.
  */
 
-import { useIfcViewerCanvasController, type IfcViewerCanvasProps } from './use-ifc-viewer-canvas-controller'
+import { useRef } from 'react'
+import { useIfcViewerCanvasController } from './use-ifc-viewer-canvas-controller'
+import { useViewpointBridge, type IfcViewerCanvasWithBridgeProps } from './use-viewpoint-bridge'
 import { IfcViewerCanvasView } from './ifc-viewer-canvas-view'
 export type { IfcViewerCanvasProps, IfcViewerStatus } from './use-ifc-viewer-canvas-controller'
+export type { IfcViewerCanvasWithBridgeProps } from './use-viewpoint-bridge'
 
-export function IfcViewerCanvas(props: IfcViewerCanvasProps): JSX.Element {
+export function IfcViewerCanvas(props: IfcViewerCanvasWithBridgeProps): JSX.Element {
   const controller = useIfcViewerCanvasController(props)
-  return <IfcViewerCanvasView controller={controller} />
+  const pinLayerRef = useRef<HTMLDivElement | null>(null)
+  useViewpointBridge(controller, props, pinLayerRef)
+  return <IfcViewerCanvasView controller={controller} pinLayerRef={pinLayerRef} pins={props.bridge?.pinNodes} />
 }
 
 export default IfcViewerCanvas

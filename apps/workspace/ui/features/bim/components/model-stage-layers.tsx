@@ -14,8 +14,9 @@ import { ViewerIconButton, ViewerIconButtonBase, ViewerLegend, ViewerRail, Viewe
 import { DOCK_ABOVE_OFFSET } from './model-stage-helpers'
 import { StageCanvas } from './stage-canvas'
 import type { ModelStageController } from './use-model-stage-controller'
+import type { ModelMarks } from '../hooks/use-model-marks'
 
-export function ModelStageCanvasLayer({ controller }: { controller: ModelStageController }) {
+export function ModelStageCanvasLayer({ controller, marks }: { controller: ModelStageController; marks: ModelMarks }) {
   const { error, isLoading, measureLabels, model, models, newestMeasurement, onClose, reloadModels, source, stageAnnouncement, viewport } = controller
   return (
     <>
@@ -57,6 +58,8 @@ export function ModelStageCanvasLayer({ controller }: { controller: ModelStageCo
             model={model}
             source={source}
             viewport={viewport}
+            bridge={marks.bridge}
+            canvasOverride={marks.canvasOverride}
           />
 
     </>

@@ -21,10 +21,12 @@ import { bimCopy } from '@/i18n/namespaces/bim'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import type { BimViewerElement, Rgba } from '../lib/model-index'
 import { MeasureOverlay } from '../lib/measure-overlay'
+import { noteGeometryEvent } from '../lib/render-frame'
+import { notifyFrame } from '../lib/viewpoint-pins'
 import { completeMeasurement, MEASURE_SNAP_OPTIONS, type MeasureAnchor, type MeasureSnapKind, type Measurement } from '../lib/viewer-measure'
 import { boundsCentre, downloadWithProgress, dragSlopFor, isDoubleTap, keyboardCameraStep, pointerDragged, rendererPreset, rendererSectionPlane, wheelZoomDelta, type BimCameraView, type BimSection } from '../lib/viewer-camera'
 import { unwrapModelSource } from '../lib/model-source'
-import { captureFrameOptions, interactiveFrameOptions } from '../lib/viewer-performance'
+import { interactiveFrameOptions } from '../lib/viewer-performance'
 import { observeViewerTheme, readViewerTheme, VIEWER_CLEAR_COLOR, viewerEnhancement, viewerEnhancementCompact, viewerEnvironment } from '../lib/viewer-scene'
 
 import { RendererLike, HOVER_BUDGET_MS, KEY_ORBIT_PX, KEY_PAN_PX, modelBoundsMetres } from './ifc-viewer-canvas-helpers'
@@ -156,8 +158,6 @@ export function useIfcViewerCanvasController(props: IfcViewerCanvasProps) {
   measurements,
   onMeasure,
   onMeasurePending,
-  captureNonce = 0,
-  onCapture,
   className,
   } = props
   const t = useTranslations(bimCopy)
@@ -209,8 +209,6 @@ export function useIfcViewerCanvasController(props: IfcViewerCanvasProps) {
   onMeasurePendingRef.current = onMeasurePending
   const measuringRef = useRef(measuring)
   measuringRef.current = measuring
-  const onCaptureRef = useRef(onCapture)
-  onCaptureRef.current = onCapture
 
   /**
    * The measurement in progress, and the drawing of every finished one.
@@ -274,6 +272,7 @@ export function useIfcViewerCanvasController(props: IfcViewerCanvasProps) {
     try {
       const camera = renderer.getCamera()
       overlay.update((point) => camera.projectToScreen(point, width, height))
+      notifyFrame(canvas, (point) => camera.projectToScreen(point, width, height), { width, height })
     } catch {
       // A camera mid-teardown is a frame without an overlay, not a crash.
     }
@@ -549,6 +548,7 @@ export function useIfcViewerCanvasController(props: IfcViewerCanvasProps) {
         let meshCount = 0
         for await (const event of geometry.processAdaptive(buffer)) {
           if (cancelled) break
+          noteGeometryEvent(renderer, event)
           if (event.type !== 'batch') continue
           renderer.addMeshes(event.meshes, true)
           meshCount += event.meshes.length
@@ -862,45 +862,7 @@ export function useIfcViewerCanvasController(props: IfcViewerCanvasProps) {
     fitModel()
   }, [fitNonce, ready, fitModel])
 
-  /**
-   * Capture the view, exhaustively.
-   *
-   * `captureScreenshot` grabs what is on the swap chain, so the frame drawn
-   * immediately before it IS the image. That frame must not be an interactive
-   * one: sub-pixel culling and LOD are invisible at 60 fps and perfectly
-   * visible in a PNG somebody prints and attaches to a finding. So one
-   * complete frame is drawn first — no culling, no LOD, every evicted batch
-   * rebuilt — and the interactive loop resumes on the next request.
-   *
-   * The initial value is skipped, or every mount would capture itself.
-   */
-  const capturedRef = useRef(captureNonce)
-  useEffect(() => {
-    if (!ready || captureNonce === capturedRef.current) return
-    capturedRef.current = captureNonce
-    const renderer = rendererRef.current
-    if (!renderer) return
-    let cancelled = false
-    const run = async () => {
-      try {
-        renderer.render({
-          ...frameOptions(),
-          ...captureFrameOptions(),
-        })
-        const png = await renderer.captureScreenshot()
-        if (!cancelled) onCaptureRef.current?.(png)
-      } catch {
-        if (!cancelled) onCaptureRef.current?.(null)
-      }
-      // Back to the interactive frame, so the viewport is not left showing a
-      // capture-quality image it will never redraw at that cost again.
-      if (!cancelled) requestFrame()
-    }
-    void run()
-    return () => {
-      cancelled = true
-    }
-  }, [captureNonce, ready, requestFrame, frameOptions])
+  // The capture of the view (PNG, and a mark's viewpoint) is `use-viewpoint-bridge.ts`, beside this controller.
 
   // Frame the selected element, when the selection came from somewhere other
   // than a click in this canvas.
@@ -1560,8 +1522,6 @@ export function useIfcViewerCanvasController(props: IfcViewerCanvasProps) {
     anchorRef,
     cameraLoopRef,
     canvasRef,
-    captureNonce,
-    capturedRef,
     className,
     colorOverrides,
     compact,
@@ -1607,8 +1567,6 @@ export function useIfcViewerCanvasController(props: IfcViewerCanvasProps) {
     measuringRef,
     onBounds,
     onBoundsRef,
-    onCapture,
-    onCaptureRef,
     onMeasure,
     onMeasurePending,
     onMeasurePendingRef,

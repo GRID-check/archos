@@ -19,13 +19,13 @@ import {
   isLive,
   REPLY_TAKEN_UP_REASON,
   type AnnotationKind,
-  type AnnotationShape,
   type AnnotationStatus,
   type AnnotationView,
   type MarkMention,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
 import type { RevisionRef } from '@/lib/documents/revision-links'
+import type { ReviewDraft } from '../lib/review-draft'
 import { inPool } from '@/lib/utils/in-pool'
 import { useChatStore } from '@/features/chat/store'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
@@ -114,17 +114,7 @@ export const CARRY_GROUPS_MAX = 3
 /** How many carries „Alle übernehmen" has in flight at once: quick for thirty marks, gentle on the server. */
 export const CARRY_AT_ONCE = 4
 
-/** A place picked on a page and not yet saved: a point, or a region dragged out. */
-export interface ReviewDraft {
-  page: number
-  shape: AnnotationShape
-  x: number
-  y: number
-  w: number | null
-  h: number | null
-  /** On a Skizze: the elements it is about; the box is drawn until the server derives its own (`lib/annotations/sketch-place.ts`). */
-  elementIds?: string[]
-}
+export type { ReviewDraft } from '../lib/review-draft'
 
 /**
  * Everything a review of one document holds, shared by the inline preview and

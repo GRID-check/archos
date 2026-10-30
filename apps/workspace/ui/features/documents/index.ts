@@ -23,5 +23,8 @@ export {
 } from './hooks/use-document-room'
 // The review's own pieces, for a Skizze's marks drawn over its live canvas (`features/diagrams/sketch/sketch-pins.tsx`).
 export type { DocumentReview, ReviewDraft } from './hooks/use-document-review'
-export { ReviewPageLayer } from './components/review/review-page-layer'
+export { markInk, ReviewPageLayer } from './components/review/review-page-layer'
 export { DraftCard, ThreadCard } from './components/review/thread-card'
+// …and a model's: its marks are the same review, set on a viewpoint (`features/bim/components/model-marks-panel.tsx`).
+export { useDocumentReview } from './hooks/use-document-review'
+export { MarkRowContent, markRowClassName } from './components/review/mark-row'

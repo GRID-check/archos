@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    You can now annotate a 3D model: the annotation keeps your camera, section
+    and selected elements with a picture of the view, and appears as a pin in
+    the model. "Go to view" takes anyone who opens it, or follows its link,
+    back to exactly that view.

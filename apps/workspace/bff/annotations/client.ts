@@ -17,6 +17,7 @@ import {
   type ProjectMarksFilters,
   type ProjectMarksResponse,
 } from './project-types'
+import { viewpointResponseSchema, type ViewpointView } from './viewpoint-types'
 import {
   annotationListResponseSchema,
   annotationResponseSchema,
@@ -114,7 +115,9 @@ export function getAnnotation(
  * on the canvas carries both, the box to draw it with until it is saved.
  */
 function placeOnWire(input: CreateAnnotationRequest): CreateAnnotationRequest {
-  if (!('elementIds' in input) || !input.elementIds) return input
+  // A mark on a model sets a viewpoint and no box: the draft carries one only to satisfy the review's shape.
+  const anchored = ('elementIds' in input && input.elementIds) || ('viewpoint' in input && input.viewpoint)
+  if (!anchored) return input
   const { page: _page, shape: _shape, x: _x, y: _y, w: _w, h: _h, ...rest } = input as typeof input & Partial<ReviewBox>
   return rest
 }
@@ -197,6 +200,24 @@ export function deleteReply(
     () => undefined
   )
 }
+
+/** The whole viewpoint of a mark on a model (`GET …/annotations/{id}/viewpoint`): camera, section, selection, visibility, pin. */
+export function getAnnotationViewpoint(
+  documentId: string,
+  annotationId: string,
+  run: AnnotationFetch = defaultFetch
+): Promise<ViewpointView> {
+  return request(
+    run,
+    `${annotationPath(documentId, annotationId)}/viewpoint`,
+    { method: 'GET' },
+    (value) => viewpointResponseSchema.parse(value).viewpoint
+  )
+}
+
+/** Where the snapshot image of a viewpoint mark is served from (binary, so no typed read). */
+export const annotationSnapshotHref = (documentId: string, annotationId: string): string =>
+  `${annotationPath(documentId, annotationId)}/snapshot`
 
 /** The caller's own thread about a document, created when it does not exist (ADR-0106). */
 export function documentThread(

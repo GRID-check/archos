@@ -499,4 +499,32 @@ export const bim: typeof en.bim = {
     failed: 'Die Modelle dieses Projekts konnten nicht geladen werden.',
     openAria: '{name} im Modellbereich öffnen',
   },
+  // Anmerkungen am Modell: jede sitzt auf einer Ansicht (Kamera, Schnitt, Auswahl) und steht in der Liste wie jede andere.
+  marks: {
+    title: 'Anmerkungen am Modell',
+    list: 'Anmerkungen am Modell',
+    add: 'Anmerkung zu dieser Ansicht',
+    close: 'Anmerkungen schließen',
+    all: 'Alle Anmerkungen',
+    cancel: 'Verwerfen',
+    capturing: 'Ansicht wird festgehalten …',
+    dismiss: 'OK',
+    jump: 'Zur Ansicht springen',
+    pin: 'Anmerkung {number}',
+    snapshot: 'Die Ansicht, auf der die Anmerkung gesetzt wurde',
+    empty: {
+      title: 'Noch keine Anmerkungen an diesem Modell',
+      body: 'Stellen Sie die Ansicht ein, um die es geht, dann „Anmerkung zu dieser Ansicht“: Die Anmerkung behält Kamera, Schnitt und Auswahl.',
+      readOnly: 'Sie können dieses Modell lesen, aber keine Anmerkungen setzen.',
+    },
+    notice: {
+      missing: '{count, plural, one {Ein Bauteil} other {# Bauteile}} dieser Ansicht {count, plural, one {ist} other {sind}} in diesem Modell nicht enthalten.',
+      planes: '{count, plural, one {Eine Schnittebene} other {# Schnittebenen}} dieser Ansicht {count, plural, one {kann} other {können}} hier nicht gezeigt werden: Der Viewer schneidet nur waagrecht.',
+      captureFailed: 'Die Ansicht konnte nicht gelesen werden. Bitte noch einmal.',
+      jumpFailed: 'Die Ansicht dieser Anmerkung konnte nicht geladen werden. Bitte noch einmal.',
+      selectionCut: 'Es waren mehr Bauteile ausgewählt, als eine Anmerkung hält; sie behält die ersten 500.',
+      visibilityDropped: 'Es waren mehr Bauteile aus- oder eingeblendet, als eine Anmerkung aufzählen kann; sie zeigt stattdessen das ganze Modell.',
+      noSnapshot: 'Von dieser Ansicht konnte kein Bild gemacht werden; die Anmerkung wird ohne gesetzt.',
+    },
+  },
 }

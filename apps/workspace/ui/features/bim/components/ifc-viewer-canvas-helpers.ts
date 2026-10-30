@@ -90,6 +90,17 @@ export type CameraLike = Pick<
   | 'projectToScreen'
   | 'getPosition'
   | 'getFOV'
+  /** What a mark's viewpoint reads and puts back (`lib/viewpoint.ts`). */
+  | 'getTarget'
+  | 'getUp'
+  | 'getProjectionMode'
+  | 'getOrthoSize'
+  | 'getDistance'
+  | 'setPosition'
+  | 'setTarget'
+  | 'setUp'
+  | 'setFOV'
+  | 'setOrthoSize'
   | 'enableFirstPersonMode'
   | 'moveFirstPerson'
 >

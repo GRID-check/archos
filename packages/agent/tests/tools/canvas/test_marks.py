@@ -196,7 +196,13 @@ class TestWhatItSays:
             page=None,
             shape=None,
             box=None,
-            viewpoint={"id": "vp", "cameraKind": "perspective", "selectionCount": 3, "hasSection": True, "hasSnapshot": False},
+            viewpoint={
+                "id": "vp",
+                "cameraKind": "perspective",
+                "selectionCount": 3,
+                "hasSection": True,
+                "hasSnapshot": False,
+            },
         )
         page_mark = listed(id="p", number=2, page=5)
         answering(monkeypatch, calls, {**LIST_BODY, "annotations": [view, page_mark]})
