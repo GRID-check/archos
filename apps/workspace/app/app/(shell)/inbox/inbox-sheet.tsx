@@ -45,12 +45,11 @@ export async function InboxSheet({ standalone }: { standalone: boolean }): Promi
         standalone={standalone}
         bodyClassName="overflow-y-auto"
       >
-        {/* A capped, centred column: inbox rows are reading material, and a
-            1400px line of them is not. The sheet's width is the place; the
-            column is the text measure inside it. */}
+        {/* The list caps its own width: a flat list keeps a reading measure,
+            the queue takes the room its detail needs beside it. */}
         {/* The sheet reaches the screen's edge, so the last row ends above the home
             indicator instead of under it. */}
-        <div className="mx-auto w-full max-w-3xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 md:px-8">
+        <div className="w-full px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 md:px-8">
           <InboxList viewerId={session.userId} />
         </div>
       </RoutePageSheet>

@@ -51,7 +51,9 @@ const baseProps = {
 }
 
 let mobile = false
-vi.mock('@/hooks/use-is-mobile', () => ({
+// Only the hook is stood in for: the module's named queries stay real.
+vi.mock('@/hooks/use-is-mobile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-is-mobile')>()),
   useIsMobile: () => mobile,
 }))
 vi.mock('./connection-band', () => ({ ConnectionBand: () => <div data-testid="connection-band" /> }))

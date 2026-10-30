@@ -1,0 +1,8 @@
+---
+improvements:
+  - >
+    The inbox is calmer: each entry shows what happened, which project it belongs to and when, with overdue and soon-due annotations marked, and its actions appear when you point at it.
+  - >
+    "For me" now holds everything new or waiting on you, so the number on the inbox matches what you find inside; opening an entry moves it out, and "u" brings it back.
+  - >
+    On a wide screen the bell docks the inbox beside your page: what waits on you comes first, grouped by document and most urgent on top, and an entry opens the chat or the review in place while the inbox stays open for the next one.

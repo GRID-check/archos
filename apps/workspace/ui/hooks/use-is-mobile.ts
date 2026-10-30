@@ -24,6 +24,13 @@ export const MOBILE_LAYOUT_QUERY = `(width < 48rem), ${PHONE_ON_ITS_SIDE_QUERY}`
 /** A phone-sized screen: below `sm`, or a phone on its side. The `phone:` variant. */
 export const PHONE_QUERY = `(width < 40rem), ${PHONE_ON_ITS_SIDE_QUERY}`
 
+/**
+ * Room for a panel docked beside the page (the Postfach): from `lg`, the `lg:`
+ * variant. Below it the panel's list is a page of its own and an entry opens
+ * in its place.
+ */
+export const DOCK_LAYOUT_QUERY = '(width >= 64rem)'
+
 const subscribe = (onStoreChange: () => void): (() => void) => {
   const mql = window.matchMedia(MOBILE_LAYOUT_QUERY)
   mql.addEventListener('change', onStoreChange)

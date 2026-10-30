@@ -25,9 +25,8 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 
-import { Logo } from '@/components/brand/logo'
 import { motion, springGlide } from '@/components/motion'
 import {
   Sidebar,
@@ -50,9 +49,11 @@ import { navCopy } from '@/i18n/namespaces/nav'
 import { pruneProjectSections, useRecordProjectSection } from '@/hooks/use-last-project-section'
 import { useLayoutStore } from '@/features/layout/store'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
+import { useStartDockDoor, type StartDockDoor } from './start-dock'
 import { InboxBadge } from '@/features/collaboration/components'
 import { cn } from '@/lib/utils'
 import { ProjectPill } from './project-pill'
+import { SidebarBrand } from './sidebar-brand'
 import { ProjectSwitcher, type ProjectSwitcherProject } from './project-switcher'
 import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
 import { ConnectionPresenceIndicator } from './connection-presence-indicator'
@@ -155,6 +156,8 @@ interface RailItemModel {
   label: string
   active: boolean
   badgeCount: number
+  /** The Postfach's: it may open beside the page instead of following `href`. */
+  door?: StartDockDoor
 }
 
 interface RailGroupModel {
@@ -198,6 +201,7 @@ function AppSidebarFrame({
   const tCollaboration = useTranslations(collaborationCopy)
   const { state, isMobile } = useSidebar()
   const { pending: inboxPending } = useInboxBadge(canAccessInbox)
+  const inboxDoor = useStartDockDoor('inbox')
 
   const projectSheetOpen = useShellOverlays((s) => s.projectSheetOpen)
   const setProjectSheetOpen = useShellOverlays((s) => s.setProjectSheetOpen)
@@ -235,6 +239,7 @@ function AppSidebarFrame({
       label: sectionLabel(item, t, tCollaboration),
       active: pathname.startsWith(sectionHref(item, base)),
       badgeCount: item.key === 'inbox' ? inboxPending : 0,
+      door: item.key === 'inbox' ? inboxDoor : undefined,
     })),
   }))
 
@@ -367,6 +372,7 @@ function AppSidebarFrame({
                         badgeCount={item.badgeCount}
                         tooltip={iconRail}
                         pillId={activePillId}
+                        door={item.door}
                       />
                     ))}
                   </SidebarMenu>
@@ -399,6 +405,7 @@ function AppSidebarFrame({
                           badgeCount={item.badgeCount}
                           tooltip={iconRail}
                           pillId={activePillId}
+                          door={item.door}
                         />
                       ))}
                     </SidebarMenu>
@@ -500,50 +507,6 @@ function MobileNavSync({ pathname }: { pathname: string }) {
   return null
 }
 
-function SidebarBrand({ iconRail }: { iconRail: boolean }) {
-  const t = useTranslations(navCopy)
-  const { state, toggleSidebar, isMobile } = useSidebar()
-  const collapsed = state === 'collapsed'
-
-  return (
-    <div className={cn('flex items-center', iconRail ? 'flex-col' : 'px-1.5')}>
-      <Link
-        href="/app/projects"
-        aria-label={t('allProjects')}
-        className={cn(
-          'focus-visible:ring-ring/60 rounded-control focus-visible:outline-none focus-visible:ring-2',
-          iconRail
-            ? 'flex h-7 items-center justify-center'
-            : 'text-foreground'
-        )}
-      >
-        <Logo kind={iconRail ? 'icon' : 'wordmark'} size="small" />
-      </Link>
-      {!isMobile && (
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          aria-label={collapsed ? t('expandSidebar') : t('collapseSidebar')}
-          className={cn(
-            'text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 flex items-center justify-center rounded-control transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2',
-            // Icon rail: exactly a nav tile (36px square), so it lands on the same
-            // column and the same grid as the items below instead of reading as a
-            // loose glyph floating in the header's dead space. It was `h-9 w-10` —
-            // a 40px width that matched nothing else in the rail.
-            iconRail ? 'mt-2 size-9' : 'ml-auto size-7'
-          )}
-        >
-          {collapsed ? (
-            <ChevronsRight className="size-4" aria-hidden />
-          ) : (
-            <ChevronsLeft className="size-4" aria-hidden />
-          )}
-        </button>
-      )}
-    </div>
-  )
-}
-
 function RailNavItem({
   icon: Icon,
   href,
@@ -553,6 +516,7 @@ function RailNavItem({
   tooltip,
   pillId,
   tourAnchor,
+  door,
 }: {
   icon: ProjectSection['icon']
   href: string
@@ -564,6 +528,7 @@ function RailNavItem({
   pillId: string
   /** Marks the item as a product-tour stop (`data-tour`). */
   tourAnchor: string
+  door?: StartDockDoor
 }) {
   return (
     <SidebarMenuItem>
@@ -587,7 +552,7 @@ function RailNavItem({
             : 'text-muted-foreground hover:bg-accent hover:text-muted-foreground'
         )}
       >
-        <Link href={href} aria-current={active ? 'page' : undefined} data-tour={tourAnchor}>
+        <Link href={href} aria-current={active ? 'page' : undefined} aria-expanded={door?.open} data-tour={tourAnchor} onClick={door?.onClick}>
           {active && (
             <motion.span
               layoutId={pillId}

@@ -12,6 +12,9 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { InboxItemRow, type InboxMarkClient } from './InboxItemRow'
+import { inboxItemCopy } from '@/lib/inbox/item-copy'
+import { createTranslator } from '@/i18n/translate'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { ARCHIVE_UNDO_MS } from '../hooks/use-undoable-archive'
 import { PRODUCT_NAME } from '@/lib/brand'
 
@@ -59,12 +62,26 @@ const base: InboxItemView = {
 
 const item = (overrides: Partial<InboxItemView> = {}): InboxItemView => ({ ...base, ...overrides })
 
+/**
+ * A body sentence that is the push notification's (`inboxItemCopy`) and not
+ * the row's: beside a quote, or above controls that do what it says, the row
+ * leaves it out. The words are still the item's, so they are held here.
+ */
+function expectBodyOnlyInPush(row: InboxItemView, words: string | RegExp, locale: 'de' | 'en' = 'de'): void {
+  const dictionary = { collaboration: collaborationCopy.messages[locale] }
+  const body = inboxItemCopy(row, createTranslator(dictionary, 'collaboration'), dictionary, locale).body ?? ''
+  if (typeof words === 'string') expect(body.replaceAll('{productName}', PRODUCT_NAME)).toBe(words)
+  else expect(body.replaceAll('{productName}', PRODUCT_NAME)).toMatch(words)
+  expect(screen.queryByText(words)).not.toBeInTheDocument()
+}
+
 /** Default locale in an unprovided test tree is `en`. */
 describe('InboxItemRow — registry-driven rendering (IB-6)', () => {
   test('renders a mention request from its registry entry: who, what and where', () => {
     render(<InboxItemRow item={item()} />)
     expect(screen.getByText('Anna Weber asked for your input')).toBeInTheDocument()
-    expect(screen.getByText('in Atrium – Rauchabschnitte')).toBeInTheDocument()
+    // Where: the chat's name on the caption line, beside the moment.
+    expect(screen.getByTestId('inbox-item-place')).toHaveTextContent('Atrium – Rauchabschnitte')
     expect(screen.getByText('Ist die Annahme richtig?')).toBeInTheDocument()
     // …and when: a rendered, machine-readable timestamp (the exact relative
     // wording depends on how long ago the fixture is, so assert the element).
@@ -177,7 +194,7 @@ describe('InboxItemRow — registry-driven rendering (IB-6)', () => {
   test('falls back to the placeholder copy for an unresolvable actor and an untitled target', () => {
     render(<InboxItemRow item={item({ actorName: null, subject: null })} />)
     expect(screen.getByText('Someone asked for your input')).toBeInTheDocument()
-    expect(screen.getByText('in Untitled conversation')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-place')).toHaveTextContent('Untitled conversation')
   })
 
   test('an answered request is labelled as resolved, and its title says whose question it was', () => {
@@ -267,7 +284,7 @@ describe('InboxItemRow — inert items are never links (IB-13)', () => {
     // The two cases must not be conflated in the other direction either.
     render(<InboxItemRow item={item({ subject: null })} />)
 
-    expect(screen.getByText('in Untitled conversation')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-place')).toHaveTextContent('Untitled conversation')
   })
 })
 
@@ -349,12 +366,12 @@ describe('InboxItemRow — the operational storage alert (ADR-0042)', () => {
     expect(screen.getByText('Your organization is running out of storage')).toBeInTheDocument()
   })
 
-  test('is tinted as needing attention without being an actionable request', () => {
+  test('says what needs attention in words, not in a tint', () => {
     const { container } = render(<InboxItemRow item={storageAlert()} />)
-
-    // `tone: 'warning'` shares the request tint — something needs attention —
-    // but the row is not actionable, so it never sits in the "needs me" badge.
-    expect(container.querySelector('.bg-warning-subtle')).not.toBeNull()
+    // A warning's body is its news, and stays. No row wears a tinted well any
+    // more: the tints down the list were a rainbow that said less than a word.
+    expect(screen.getByText(/82%/)).toBeInTheDocument()
+    expect(container.querySelector('.bg-warning-subtle')).toBeNull()
   })
 })
 
@@ -381,7 +398,10 @@ describe('InboxItemRow — a version waiting for a decision (ADR-0054)', () => {
     expect(
       screen.getByText('Anna Weber asked you to review Brandschutzkonzept_Wohnbau-Nord.md'),
     ).toBeInTheDocument()
-    expect(screen.getByText('A new revision is waiting for your approval.')).toBeInTheDocument()
+    // The sentence saying a revision waits for approval is the push's words:
+    // here the three decisions below the title say it.
+    expect(screen.queryByText('A new revision is waiting for your approval.')).not.toBeInTheDocument()
+    expect(screen.getByTestId('inbox-review-approve')).toBeInTheDocument()
     // The deep links are the document's own — the title row and the explicit
     // open control both land on the pane where the review controls are.
     const links = screen.getAllByRole('link')
@@ -391,9 +411,9 @@ describe('InboxItemRow — a version waiting for a decision (ADR-0054)', () => {
     }
   })
 
-  test('reads as an outstanding request while it is open', () => {
-    const { container } = render(<InboxItemRow item={reviewRequest()} />)
-    expect(container.querySelector('.bg-warning-subtle')).not.toBeNull()
+  test('reads as an outstanding request while it is open: its decisions are on the row', () => {
+    render(<InboxItemRow item={reviewRequest()} />)
+    expect(screen.getByTestId('inbox-review-actions')).toBeInTheDocument()
   })
 
   test('stops shouting once the decision has been taken', () => {
@@ -762,9 +782,9 @@ describe('InboxItemRow — a new Fassung (document.new_revision)', () => {
     expect(screen.getByText('Anna Weber uploaded a new revision of “Grundriss EG A”')).toBeInTheDocument()
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Wand im EG verschoben.')
     // No sentence above the excerpt repeating that something changed, so the
-    // excerpt gets the three lines a phone needs to say what.
+    // excerpt is the row's body and gets two lines to say what.
     expect(screen.queryByText(/to see what changed/)).not.toBeInTheDocument()
-    expect(screen.getByTestId('inbox-item-excerpt')).toHaveClass('line-clamp-3')
+    expect(screen.getByTestId('inbox-item-excerpt')).toHaveClass('line-clamp-2')
     expect(screen.getByRole('link', { name: /uploaded a new revision/ })).toHaveAttribute(
       'href',
       '/app/projects/p1/files?doc=doc-b',
@@ -804,11 +824,17 @@ describe('InboxItemRow — a new Fassung (document.new_revision)', () => {
       )
     const many = de(newRevision({ ...same, variant: 'marks', openMarks: 4, marksRevision: 2 }))
     expect(screen.getByText('4 offene Anmerkungen aus Fassung 2 prüfen')).toBeInTheDocument()
+
+    // Nothing says it twice: the sentence is the body, so no count beside it.
+    expect(screen.queryByTestId('inbox-item-open-marks')).not.toBeInTheDocument()
     many.unmount()
 
-    // Beside what changed, and from another document: „the previous Fassung".
-    de(newRevision({ variant: 'mark_earlier', openMarks: 1, marksRevision: null }))
-    expect(screen.getByText('1 offene Anmerkung aus der vorigen Fassung prüfen')).toBeInTheDocument()
+    // Beside what changed, the quote is the body, and the count stands on the
+    // caption line: the sentence („the previous Fassung") is the push's.
+    const earlier = newRevision({ variant: 'mark_earlier', openMarks: 1, marksRevision: null })
+    de(earlier)
+    expect(screen.getByTestId('inbox-item-open-marks')).toHaveTextContent('1 offene Anmerkung')
+    expectBodyOnlyInPush(earlier, '1 offene Anmerkung aus der vorigen Fassung prüfen')
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Wand im EG verschoben.')
   })
 
@@ -867,7 +893,7 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
   test('a finished mark names the mark and the document, says it was for the reader, and what to do', () => {
     german(onMark())
     expect(screen.getByText(`${PRODUCT_NAME} hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet`)).toBeInTheDocument()
-    expect(screen.getByText('Lesen Sie die Antwort im Verlauf der Anmerkung.')).toBeInTheDocument()
+    expectBodyOnlyInPush(onMark(), 'Lesen Sie die Antwort im Verlauf der Anmerkung.')
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Türbreite prüfen')
     expect(screen.getByTestId('inbox-item-link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
   })
@@ -905,7 +931,7 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
   test('a delegation handed back says the mark is with the reader again', () => {
     german(onMark({ variant: 'assigned' }))
     expect(screen.getByText(`${PRODUCT_NAME} hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet`)).toBeInTheDocument()
-    expect(screen.getByText('Die Anmerkung liegt wieder bei Ihnen.')).toBeInTheDocument()
+    expectBodyOnlyInPush(onMark({ variant: 'assigned' }), 'Die Anmerkung liegt wieder bei Ihnen.')
   })
 
   test('a Piloti row wears Piloti’s glyph, and a person’s row its type icon', () => {
@@ -918,32 +944,34 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
   })
 
   test('a Rückfrage asks the reader, with the question below', () => {
-    german(onMark({ type: 'piloti.asks_you', actionable: true, excerpt: 'Ist die Brüstungshöhe hier 1,00 m?' }))
+    const asks = onMark({ type: 'piloti.asks_you', actionable: true, excerpt: 'Ist die Brüstungshöhe hier 1,00 m?' })
+    german(asks)
     expect(screen.getByText(`${PRODUCT_NAME} hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG“`)).toBeInTheDocument()
-    expect(screen.getByText(`${PRODUCT_NAME} wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.`)).toBeInTheDocument()
+    expectBodyOnlyInPush(asks, `${PRODUCT_NAME} wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.`)
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Ist die Brüstungshöhe hier 1,00 m?')
   })
 
-  test('a proposal says what it changes, and that nothing changes until the reader decides', () => {
-    german(
-      onMark({
-        type: 'piloti.proposal_waiting',
-        actionable: true,
-        resourceType: 'conversation',
-        resourceId: 'c1',
-        anchorId: 'prop-1',
-        href: '/app/projects/p1/chat?session=c1',
-        subject: null,
-        related: null,
-        excerpt: 'Grundriss.pdf, Schnitt.pdf +1',
-        variant: 'rename',
-      }),
-    )
+  test('a proposal says what it changes; where it waits is the push’s sentence, the row leads there', () => {
+    const proposal = onMark({
+      type: 'piloti.proposal_waiting',
+      actionable: true,
+      resourceType: 'conversation',
+      resourceId: 'c1',
+      anchorId: 'prop-1',
+      href: '/app/projects/p1/chat?session=c1',
+      subject: null,
+      related: null,
+      excerpt: 'Grundriss.pdf, Schnitt.pdf +1',
+      variant: 'rename',
+    })
+    german(proposal)
     expect(screen.getByText(`${PRODUCT_NAME} schlägt eine Umbenennung vor`)).toBeInTheDocument()
-    expect(
-      screen.getByText('Der Vorschlag steht im Chat. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.'),
-    ).toBeInTheDocument()
+    expectBodyOnlyInPush(proposal, 'Der Vorschlag steht im Chat. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.')
+    expect(screen.getByTestId('inbox-item-link')).toHaveAttribute('href', '/app/projects/p1/chat?session=c1')
+    // A proposal's chat has no name to give: no „Unbenannter Chat“ on its line.
+    expect(screen.queryByTestId('inbox-item-place')).not.toBeInTheDocument()
   })
+
 
   test('mirrors the meaning in English', () => {
     render(<InboxItemRow item={onMark({ type: 'piloti.work_failed', variant: 'budget' })} />)
@@ -989,9 +1017,7 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
   test('being made responsible names who, which mark in which document, and what to do', () => {
     german(onMark())
     expect(screen.getByText('Anna Weber hat Ihnen Anmerkung 4 in „Grundriss EG“ zugewiesen')).toBeInTheDocument()
-    expect(
-      screen.getByText('Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.'),
-    ).toBeInTheDocument()
+    expectBodyOnlyInPush(onMark(), 'Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.')
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Türbreite prüfen')
     expect(screen.getByTestId('inbox-item-link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
   })
@@ -1003,9 +1029,12 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
 
   test('says by when the Zuständige is responsible, when the mark has a date', () => {
     german(onMark({ dueOn: '2026-10-24' }))
-    expect(
-      screen.getByText('Sie sind dafür zuständig, bis 24. Okt. 2026. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.'),
-    ).toBeInTheDocument()
+    // On the row, the date is the caption line's chip; the sentence is the push's.
+    expect(screen.getByTestId('inbox-item-due')).toHaveTextContent('Frist 24. Okt. 2026')
+    expectBodyOnlyInPush(
+      onMark({ dueOn: '2026-10-24' }),
+      'Sie sind dafür zuständig, bis 24. Okt. 2026. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.',
+    )
   })
 
   test.each([
@@ -1025,7 +1054,9 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
 
     german(onMark({ ...reminder, variant: 'overdue' }))
     expect(screen.getByText('Anmerkung 4 in „Grundriss EG“ war am 18. Okt. 2026 fällig')).toBeInTheDocument()
-    expect(screen.getByText(/die Frist ist abgelaufen/)).toBeInTheDocument()
+    // Late says so in the error's word, beside the moment, not in a sentence.
+    expect(screen.getByTestId('inbox-item-due')).toHaveTextContent('Überfällig')
+    expectBodyOnlyInPush(onMark({ ...reminder, variant: 'overdue' }), /die Frist ist abgelaufen/)
   })
 
   test('counts replies on one mark in one row, and reads a read row without „neu“', () => {
@@ -1061,9 +1092,10 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
   })
 
   test('being mentioned names who, which mark in which document, and quotes what they wrote', () => {
-    german(onMark({ type: 'annotation.mentioned', variant: null, excerpt: '@Miriam Hofer bitte die Breite prüfen' }))
+    const mentioned = onMark({ type: 'annotation.mentioned', variant: null, excerpt: '@Miriam Hofer bitte die Breite prüfen' })
+    german(mentioned)
     expect(screen.getByText('Anna Weber hat Sie in Anmerkung 4 in „Grundriss EG“ erwähnt')).toBeInTheDocument()
-    expect(screen.getByText('Antworten Sie im Verlauf der Anmerkung.')).toBeInTheDocument()
+    expectBodyOnlyInPush(mentioned, 'Antworten Sie im Verlauf der Anmerkung.')
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('@Miriam Hofer bitte die Breite prüfen')
     expect(screen.getByTestId('inbox-item-link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
   })
@@ -1140,29 +1172,22 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
   const candidates = () =>
     server.use(http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: [JAKOB] })))
 
-  test('leads with „Go to annotation“, which opens the mark and marks the row read, and offers no chat about the document', () => {
+  test('opens the mark from the row itself, marks the row read, and offers no chat about the document', () => {
     const onOpen = vi.fn()
     render(<InboxItemRow item={markRow()} onOpen={onOpen} />)
-    const open = screen.getByTestId('inbox-open-mark')
-    expect(open).toHaveTextContent('Go to annotation')
+    const open = screen.getByTestId('inbox-item-link')
     expect(open).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
+    // The row is the way to the mark: no second, inked „Go to annotation“ saying it again.
+    expect(screen.queryByTestId('inbox-open-mark')).not.toBeInTheDocument()
     expect(screen.queryByTestId('discuss-document')).not.toBeInTheDocument()
     fireEvent.click(open)
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
   })
 
-  test('says „To the annotations“ on a row about several new marks, which opens the review at the newest', () => {
-    const created = (count: number, variant: string) =>
-      markRow({ type: 'annotation.activity', variant, count, answerIn: null, actionable: false })
-    const { rerender } = render(<InboxItemRow item={created(15, 'created')} />)
-    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('To the annotations')
-    rerender(<InboxItemRow item={created(3, 'created_piloti')} />)
-    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('To the annotations')
-    // One new mark, or news about one mark, is one annotation.
-    rerender(<InboxItemRow item={created(1, 'created')} />)
-    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
-    rerender(<InboxItemRow item={created(4, 'reply')} />)
-    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
+  test('a row about several new marks opens the review at the newest, from the row', () => {
+    render(<InboxItemRow item={markRow({ type: 'annotation.activity', variant: 'created', count: 15, answerIn: null, actionable: false })} />)
+    expect(screen.getByTestId('inbox-item-link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
+    expect(screen.queryByTestId('inbox-open-mark')).not.toBeInTheDocument()
   })
 
   test('opens the mark with the Postfach as the page to return to, so closing the review comes back here', () => {
@@ -1171,10 +1196,6 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     try {
       render(<InboxItemRow item={markRow()} />)
       const back = encodeURIComponent('/app/inbox?filter=unread')
-      expect(screen.getByTestId('inbox-open-mark')).toHaveAttribute(
-        'href',
-        `/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4&back=${back}`
-      )
       expect(screen.getByTestId('inbox-item-link')).toHaveAttribute(
         'href',
         `/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4&back=${back}`
@@ -1311,7 +1332,7 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
   // document cannot answer or close the mark, so the row just opens it.
   test('offers neither answering nor resolving when the server says the reader may not answer the mark', () => {
     render(<InboxItemRow item={markRow({ answerIn: null })} markClient={client()} />)
-    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
+    expect(screen.getByTestId('inbox-item-link')).toBeInTheDocument()
     expect(screen.queryByTestId('inbox-mark-reply')).not.toBeInTheDocument()
     expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
   })
@@ -1440,7 +1461,7 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
 
   test('news on a mark only opens it: nothing waits on the reader there', () => {
     render(<InboxItemRow item={markRow({ type: 'annotation.activity', actionable: false, variant: 'reply' })} markClient={client()} />)
-    expect(screen.getByTestId('inbox-open-mark')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-link')).toBeInTheDocument()
     expect(screen.queryByTestId('inbox-mark-reply')).not.toBeInTheDocument()
     expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
   })
@@ -1456,10 +1477,11 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
 })
 
 describe('InboxItemRow — who and what at a glance', () => {
-  test('a row a person caused wears their face, with the type’s glyph in the corner', () => {
+  test('a row a person caused wears their face, and nothing in its corner', () => {
     render(<InboxItemRow item={item()} />)
     expect(screen.getByTestId('person-avatar')).toHaveTextContent('AW')
-    expect(screen.getByTestId('inbox-item-type-badge')).toBeInTheDocument()
+    // The title says what kind of row it is; a glyph badge on every face was clutter.
+    expect(screen.queryByTestId('inbox-item-type-badge')).not.toBeInTheDocument()
   })
 
   test('a system row keeps its glyph, and Piloti’s row keeps Piloti’s face, drawn as a line', () => {
@@ -1474,8 +1496,25 @@ describe('InboxItemRow — who and what at a glance', () => {
   })
 
   test('the line under the title wraps to two lines instead of cutting its sentence', () => {
-    render(<InboxItemRow item={item()} />)
-    expect(screen.getByText('in Atrium – Rauchabschnitte')).toHaveClass('line-clamp-2', 'whitespace-normal')
+    // A row whose body is its news: no quote beside it.
+    render(<InboxItemRow item={item({ type: 'conversation.shared_with_you', actionable: false, excerpt: null })} />)
+    expect(screen.getByText('Atrium – Rauchabschnitte')).toHaveClass('line-clamp-2', 'whitespace-normal')
+    // The body names the chat, so the caption line does not name it again.
+    expect(screen.queryByTestId('inbox-item-place')).not.toBeInTheDocument()
+  })
+
+  test('says when at the title line’s end, and where on the line under it', () => {
+    render(<InboxItemRow item={item({ projectId: 'p1', projectName: 'Wohnanlage Linzer Straße' })} />)
+    const meta = screen.getByTestId('inbox-item-meta')
+    expect(within(meta).getByTestId('inbox-item-project')).toHaveTextContent('Wohnanlage Linzer Straße')
+    expect(within(meta).getByTestId('inbox-item-place')).toHaveTextContent('Atrium – Rauchabschnitte')
+    const link = screen.getByTestId('inbox-item-link')
+    expect(link.closest('div')?.querySelector('time')).toHaveAttribute('dateTime', '2026-07-29T09:00:00Z')
+  })
+
+  test('leaves the project out of a redacted row', () => {
+    render(<InboxItemRow item={item({ state: 'inert', href: null, projectName: 'Wohnanlage Linzer Straße' })} />)
+    expect(screen.queryByTestId('inbox-item-project')).not.toBeInTheDocument()
   })
 
   test('a read title steps back in dark mode; an unread one does not', () => {
@@ -1486,11 +1525,14 @@ describe('InboxItemRow — who and what at a glance', () => {
     expect(screen.getByTestId('inbox-item-link')).not.toHaveClass('dark:text-muted-foreground')
   })
 
-  test('the keyboard’s row is marked and ringed', () => {
+  test('the keyboard’s row is marked, on the hover ground, with the app’s outline drawn inside its edge', () => {
     render(<InboxItemRow item={item()} focused />)
     const row = screen.getByTestId('inbox-item')
     expect(row).toHaveAttribute('data-focused', 'true')
-    expect(row).toHaveClass('ring-2', 'ring-inset')
+    expect(row).toHaveClass('bg-muted')
+    // No ring of its own over the global focus outline: the two drew a double bar.
+    expect(row).not.toHaveClass('ring-2')
+    expect(row).toHaveAttribute('data-focus-inset')
   })
 
   test('a filing suggestion says it waits on the file under Dateien, not in a chat', () => {
@@ -1539,7 +1581,8 @@ describe('InboxItemRow — the row’s menu', () => {
     const user = userEvent.setup()
     const onArchive = vi.fn()
     render(<InboxItemRow item={item()} onArchive={onArchive} />)
-    expect(screen.getByRole('button', { name: 'Archive' })).toHaveClass('max-sm:hidden')
+    // A touch screen has no hover to bring the toolbar up: there the menu archives.
+    expect(screen.getByRole('button', { name: 'Archive' })).toHaveClass('pointer-coarse:hidden')
     await user.click(screen.getByRole('button', { name: 'More actions' }))
     await user.click(await screen.findByTestId('inbox-archive-menu'))
     expect(onArchive).toHaveBeenCalledWith('i1')
@@ -1592,7 +1635,7 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
-  test('„Mit Piloti besprechen“ marks the row read, and is an icon with a name on a phone', () => {
+  test('„Mit Piloti besprechen“ marks the row read, and is an icon with its name kept for the ear and the tooltip', () => {
     const onOpen = vi.fn()
     render(
       <InboxItemRow
@@ -1601,8 +1644,8 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
       />,
     )
     const discuss = screen.getByTestId('discuss-document')
-    expect(discuss).toHaveAttribute('aria-label', `Discuss with ${PRODUCT_NAME}`)
-    expect(discuss.querySelector('.max-sm\\:hidden')).not.toBeNull()
+    expect(discuss).toHaveAccessibleName(`Discuss with ${PRODUCT_NAME}`)
+    expect(discuss).toHaveAttribute('title', `Discuss with ${PRODUCT_NAME}`)
     fireEvent.click(discuss)
     expect(onOpen).toHaveBeenCalledTimes(1)
   })

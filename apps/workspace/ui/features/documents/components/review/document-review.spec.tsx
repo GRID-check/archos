@@ -9,7 +9,7 @@
  */
 
 import { useState, type ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { act, fireEvent, render, screen, waitFor, within } from '@/test-utils'
@@ -22,6 +22,8 @@ import type { RoomTransport } from '../../hooks/use-document-room'
 import { DocumentReviewMode, TOOLS_INTRO_KEY } from './document-review'
 import { REVIEW_TOASTER } from './review-toaster'
 import { useChatStore } from '@/features/chat/store'
+import { useStartDock } from '@/components/shell/start-dock'
+import { DOCK_LAYOUT_QUERY } from '@/hooks/use-is-mobile'
 import { PRODUCT_NAME } from '@/lib/brand'
 
 // The real chat store, signed in as `user_me`: the review reads who is looking
@@ -749,5 +751,44 @@ describe('opening the review reads the news about new marks', () => {
     )
     render(<Host />)
     await waitFor(() => expect(reads).toContainEqual({ resourceType: 'document', resourceId: 'doc_1', marksSet: true }))
+  })
+})
+
+describe('beside a panel docked at the page’s start edge (ADR-0148)', () => {
+  // Room for the dock (`DOCK_LAYOUT_QUERY`); every other query as the environment answers it.
+  const realMatchMedia = window.matchMedia
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query === DOCK_LAYOUT_QUERY ? true : realMatchMedia(query).matches,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia
+    serve([])
+  })
+  afterEach(() => {
+    window.matchMedia = realMatchMedia
+    useStartDock.getState().close()
+  })
+
+  it('alone, is the full-screen modal it always was: a scrim over everything', async () => {
+    render(<Host />)
+    expect(await screen.findByTestId('document-review')).toBeInTheDocument()
+    expect(document.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull()
+  })
+
+  it('beside the Postfach, covers the page and leaves the panel usable: no scrim, and touching the panel does not close it', async () => {
+    useStartDock.getState().open('inbox')
+    const onOpenChange = vi.fn()
+    const panel = document.createElement('button')
+    document.body.appendChild(panel)
+    onTestFinished(() => panel.remove())
+    render(<Host onOpenChange={onOpenChange} />)
+    const review = await screen.findByTestId('document-review')
+    expect(document.querySelector('[data-slot="dialog-overlay"]')).toBeNull()
+    expect(review.className).toContain('left-[var(--page-inset-start,0px)]')
+    fireEvent.pointerDown(panel)
+    fireEvent.focus(panel)
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
   })
 })

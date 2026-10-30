@@ -388,11 +388,12 @@ trapping, Escape and scroll locking are identical; what differs is intent.
 |---|---|---|
 | `Dialog` | One question with an answer — confirm, rename, a short form — or one artifact you look at with full attention. What is behind it does not matter while it is open. Also a self-contained conversation opened from the shell menu and closed again, with its own list beside it, when it belongs to no page: two panes from `md:` up, one with a back step below, full screen on a phone. | `ConfirmDialog`, `skill-editor-dialog.tsx`, the PDF viewer, „Mein Feedback" (`feedback-threads.tsx`) |
 | `Sheet` (side) | The DETAIL of a row the reader just selected. The list stays put behind it and keeps updating. | `task-detail.tsx`, `schedule-detail.tsx`, `skill-detail.tsx` |
-| `PageSheet` | A whole PLACE, independent of wherever the reader is standing. Route-backed, reached from the org nav. | Postfach, Archiv, chat history |
+| `PageSheet` | A whole PLACE, independent of wherever the reader is standing. Route-backed, reached from the org nav. | Postfach (on a phone and below `lg`; docked above), Archiv, chat history |
 | `Popover` | A transient choice attached to the control that opened it. Never a panel with its own header and scroll region. | the `/` command picker, filter menus |
 | `HoverPeekPanel` | A glance at what a reference in running text stands for: hover or focus to see, click or tap to pin, Escape or an outside click to close (`useHoverPopover`). Mounted on first engagement and BESIDE its trigger, never around it, so a page of references costs nothing until one is looked at and the trigger never remounts. | citation chips, `[N]` markers, Herleitung source cards, file references, @-mentions |
 | `Collapsible` | More of THIS row, in place. No scrim, nothing dimmed. | the wizard's „Erweitert", the document lifecycle panel |
 | No overlay | A multi-step flow that owns its section, or a second pane you read the first pane AGAINST. | `ScheduleWizard` inline in Tasks, the file peek |
+| Docked panel (`DockedSplit`) | A list you WORK, entry after entry, beside the real place each entry opens. Not an overlay: it is beside the page, never behind anything, and the page's own overlays (`PageDialog`, the file preview) cover the page and leave it usable. It never draws a copy of what an entry opens ([ADR-0148](../adr/0148-a-list-is-worked-beside-the-real-surface-never-a-copy.md), [how](../architecture/docked-panels.md)). | the Postfach docked from the bell, the file peek beside the chat |
 
 Two corollaries that are the whole reason the table exists:
 

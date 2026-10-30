@@ -26,11 +26,14 @@
  *     „Postfach“ group). The keys are the list's own while focus is not in a
  *     field, so typing a reply never archives anything.
  *
- * The four filters are four questions: „Für mich“ is what waits on the reader
- * (an open request), „Ungelesen“ what they have not opened, „Alle“ everything,
- * and „Archiviert“ what they put away, which can come back from there.
+ * The three filters are three questions: „Für mich“ is what is new or waits
+ * on the reader (the badge's number: an open request, or a row not yet
+ * opened), „Alle“ everything, and „Archiviert“ what they put away, which can
+ * come back from there. Opening a piece of news takes it out of „Für mich“,
+ * as reading a mail does; `u` puts it back. A request stays until it is
+ * answered.
  *
- * The filter is in the page's address (`filter=unread|all|archived`; „Für
+ * The filter is in the page's address (`filter=all|archived`; „Für
  * mich“, the default, is not written), as Offene Punkte keeps its own: a row
  * that opens a mark carries this address as `back`, so closing the review
  * comes back to the filter the reader left, and a reload keeps it. A change
@@ -41,12 +44,12 @@
 import type { FocusEvent, JSX } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { AlertCircle, Archive, Bell, CheckCheck, CheckCircle2, MailOpen } from 'lucide-react'
+import { AlertCircle, Archive, Bell, CheckCheck, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
-import { useInboxList } from '../hooks/use-inbox'
+import { useInboxBadge, useInboxList } from '../hooks/use-inbox'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '../hooks/use-undoable-archive'
 import type { InboxItemView, InboxListFilter } from '@/lib/inbox/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -62,21 +65,29 @@ import { AnimatePresence } from '@/components/motion'
 import { cn } from '@/lib/utils'
 import { NotificationPrompt } from '@/features/notifications/components/notification-prompt'
 import { focusLost, restoreFocus } from '@/features/documents/components/review/focus-return'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
+import { SectionLabel } from '@/components/ui/section-label'
+import { inboxSections } from '../lib/inbox-day-groups'
 import { InboxItemRow } from './InboxItemRow'
+import { InboxQueue } from './InboxQueue'
 
-type InboxFilter = 'needsMe' | 'unread' | 'all' | 'archived'
+type InboxFilter = 'needsMe' | 'all' | 'archived'
 
-const FILTERS: readonly InboxFilter[] = ['needsMe', 'unread', 'all', 'archived']
+const FILTERS: readonly InboxFilter[] = ['needsMe', 'all', 'archived']
 
-/** Which slice of the API each filter reads. */
+/**
+ * Which slice of the API each filter reads. „Für mich“ is `pending`, the set
+ * the badge counts (an open request, or anything not yet opened): a bell
+ * saying 18 opened on a tab saying 8, because the tab counted requests alone
+ * and the news sat one tab over under „Ungelesen“. One number, one place.
+ */
 const API_FILTER: Record<InboxFilter, InboxListFilter> = {
-  needsMe: 'requests',
-  unread: 'unread',
+  needsMe: 'pending',
   all: 'all',
   archived: 'archived',
 }
 
-const EMPTY_ICON = { needsMe: CheckCircle2, unread: MailOpen, all: Bell, archived: Archive } as const
+const EMPTY_ICON = { needsMe: CheckCircle2, all: Bell, archived: Archive } as const
 
 function isInboxFilter(value: string): value is InboxFilter {
   return (FILTERS as readonly string[]).includes(value)
@@ -149,7 +160,6 @@ export function InboxList({
   const {
     items,
     pending,
-    counts,
     loading,
     error,
     mutationError,
@@ -165,7 +175,13 @@ export function InboxList({
     markAllRead,
     archive,
     unarchive,
-  } = useInboxList(enabled, API_FILTER[filter])
+    // „Für mich“ is the queue (`InboxQueue`), which reads its own two slices:
+    // this read idles there, so the page asks the server once per question.
+  } = useInboxList(enabled && filter !== 'needsMe', API_FILTER[filter])
+  const queued = filter === 'needsMe'
+  // The badge's number is what „Für mich“ holds; the queue's reads do not count it.
+  const badge = useInboxBadge(enabled && queued)
+  const shownPending = queued ? badge.pending : pending
 
   const archiveLater = useUndoableArchive(archive)
   // A row waiting out its undo window is already gone as far as the reader can
@@ -258,7 +274,7 @@ export function InboxList({
       if (event.target instanceof Node && event.target !== document.body && !scope.contains(event.target)) return
       const key = event.key
       if (key !== 'j' && key !== 'k' && key !== 'Enter' && key !== 'e' && key !== 'u') return
-      if (visibleItems.length === 0) return
+      if (queued || visibleItems.length === 0) return
       const current = focusedIndex >= 0 ? visibleItems[focusedIndex] : null
       if (key === 'j' || key === 'k') {
         event.preventDefault()
@@ -294,18 +310,28 @@ export function InboxList({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [visibleItems, focusedIndex, focusRow, markRead, markUnread, onArchive, onUnarchive])
+  }, [queued, visibleItems, focusedIndex, focusRow, markRead, markUnread, onArchive, onUnarchive])
 
   // The count each filter wears: what waits on the reader, and what is unread.
-  const filterCount = (key: InboxFilter): number => (key === 'needsMe' ? counts.requests : key === 'unread' ? counts.unread : 0)
+  const filterCount = (key: InboxFilter): number => (key === 'needsMe' ? shownPending : 0)
   const emptyKey = filter
 
   return (
-    <div ref={rootRef} className={cn('space-y-4', className)} onFocus={trackFocus} onBlur={dropFocus}>
+    // A reading measure: inbox rows are reading material, and a 1400px line of them is not.
+    <div
+      ref={rootRef}
+      className={cn('mx-auto w-full max-w-3xl space-y-4', className)}
+      onFocus={trackFocus}
+      onBlur={dropFocus}
+    >
       {/* ---- Filter + bulk action ---- */}
       {/* `min-h-8` holds the toolbar's line even if the filter wraps, so a
           count arriving cannot lift the list. */}
-      <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
+      <div className="flex min-h-8 items-center justify-between gap-2">
+        {/* One line at any width: on a phone the four filters ran off the
+            screen's edge („Archivie…“) and the bulk action took a line of its
+            own. The filters scroll sideways inside their own box instead. */}
+        <div className="-mx-1 min-w-0 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <ToggleGroup
           type="single"
           // Segmented with a filled thumb: the outlined pair this was before
@@ -324,8 +350,17 @@ export function InboxList({
           {FILTERS.map((key) => {
             const count = filterCount(key)
             return (
-              <ToggleGroupItem key={key} value={key}>
-                {t(`inbox.filters.${key}`)}
+              <ToggleGroupItem key={key} value={key} aria-label={key === 'archived' ? t('inbox.filters.archived') : undefined}>
+                {/* „Archiviert“ is the filter visited least, and on a phone its
+                    word was the one pushed off the screen: there it is its icon. */}
+                {key === 'archived' ? (
+                  <>
+                    <Archive aria-hidden className="sm:hidden" />
+                    <span className="max-sm:hidden">{t('inbox.filters.archived')}</span>
+                  </>
+                ) : (
+                  t(`inbox.filters.${key}`)
+                )}
                 {/* Only when there is a number to say: an invisible pill kept
                     a blank tail after the label at zero. */}
                 {count > 0 && <CountPill count={count} className={cn(filter === key && 'bg-background/20 text-current')} />}
@@ -333,20 +368,22 @@ export function InboxList({
             )
           })}
         </ToggleGroup>
+        </div>
 
         {/* Nothing to mark on an empty list, and nothing to read under
             „Archiviert“: the button would be a control with no job. */}
-        {visibleItems.length > 0 && filter !== 'archived' && (
+        {!queued && visibleItems.length > 0 && filter !== 'archived' && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
+            className="shrink-0 text-muted-foreground"
             disabled={!hasUnread || mutating}
             aria-label={t('inbox.markAllRead')}
+            title={t('inbox.markAllRead')}
             onClick={() => void markAllRead()}
           >
-            <CheckCheck aria-hidden className="sm:hidden" />
-            <span className="sm:hidden">{t('inbox.markAllReadShort')}</span>
-            <span className="max-sm:hidden">{t('inbox.markAllRead')}</span>
+            <CheckCheck aria-hidden />
+            <span className="max-sm:hidden">{t('inbox.markAllReadShort')}</span>
           </Button>
         )}
       </div>
@@ -380,6 +417,9 @@ export function InboxList({
           inbox — every row, title, body, excerpt and timestamp — on the first
           skeleton→rows swap, on every filter change and after every archive. */}
       {/* Focusable from code only: where the focus goes when the last row leaves with it. */}
+      {queued ? (
+        <InboxQueue enabled={enabled} />
+      ) : (
       <div ref={listRef} data-testid="inbox-list" tabIndex={-1} className="outline-none">
         {error ? (
           <LoadError title={t('inbox.errors.loadFailed')} onRetry={() => refresh()} />
@@ -405,31 +445,44 @@ export function InboxList({
             description={t(`inbox.empty.${emptyKey}Description`)}
           />
         ) : (
-          <ItemList as="ul" className="bg-card shadow-xs">
-            {/* Archiving a row is the one action here, and it removes that row —
-                so the list needs an exit, which CSS cannot give it, and `layout`
-                so the rows below close the gap instead of jumping.
+          /* Sections by the day a row last changed („Heute“, „Gestern“ …): one
+             heading does the date arithmetic forty timestamps left to the
+             reader. The order is the server's; the sections only cut it, so
+             j/k walks the rows as drawn. */
+          <div className="space-y-5">
+            {inboxSections(visibleItems, new Date()).map((section, index) => (
+              <section key={`${section.group}-${index}`} aria-labelledby={`inbox-section-${index}`} data-testid="inbox-section">
+                <SectionLabel as="h3" id={`inbox-section-${index}`} className="mb-2 block px-1">
+                  {t(`inbox.groups.${section.group}`)}
+                </SectionLabel>
+                <ItemList as="ul" className="bg-card shadow-xs">
+                  {/* Archiving a row is the one action here, and it removes that row —
+                      so the list needs an exit, which CSS cannot give it, and `layout`
+                      so the rows below close the gap instead of jumping.
 
-                No entrance stagger. The inbox is a work queue people open to
-                triage, and a cascade makes the first glance slower every single
-                time for a flourish that only reads once. Motion here is reserved
-                for a change the user causes. */}
-            <AnimatePresence initial={false} mode="popLayout">
-              {visibleItems.map((item) => (
-                <InboxItemRow
-                  key={item.id}
-                  item={item}
-                  focused={item.id === focusedId}
-                  viewerId={viewerId}
-                  onOpen={onOpen}
-                  onArchive={onArchive}
-                  onUnarchive={onUnarchive}
-                  onMarkRead={(itemId) => void markRead([itemId])}
-                  onMarkUnread={(itemId) => void markUnread([itemId])}
-                />
-              ))}
-            </AnimatePresence>
-          </ItemList>
+                      No entrance stagger. The inbox is a work queue people open to
+                      triage, and a cascade makes the first glance slower every single
+                      time for a flourish that only reads once. Motion here is reserved
+                      for a change the user causes. */}
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {section.items.map((item) => (
+                      <InboxItemRow
+                        key={item.id}
+                        item={item}
+                        focused={item.id === focusedId}
+                        viewerId={viewerId}
+                        onOpen={onOpen}
+                        onArchive={onArchive}
+                        onUnarchive={onUnarchive}
+                        onMarkRead={(itemId) => void markRead([itemId])}
+                        onMarkUnread={(itemId) => void markUnread([itemId])}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </ItemList>
+              </section>
+            ))}
+          </div>
         )}
         {/* The list stopped at a page and used to say nothing about it. */}
         {!error && !loading && (
@@ -444,6 +497,23 @@ export function InboxList({
           />
         )}
       </div>
+      )}
+
+      {/* The list's keys were there and nowhere said: a quiet line under the
+          rows, where a pointer and a keyboard are (a phone has neither). Aria-
+          hidden: the shortcuts sheet is where a screen reader learns them. */}
+      {!error && !loading && (queued || visibleItems.length > 0) && (
+        <p
+          aria-hidden
+          data-testid="inbox-key-hint"
+          className="hidden flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground pointer-fine:flex"
+        >
+          <span className="inline-flex items-center gap-1"><KbdGroup><Kbd>j</Kbd><Kbd>k</Kbd></KbdGroup>{t('inbox.keys.move')}</span>
+          <span className="inline-flex items-center gap-1"><Kbd>↵</Kbd>{t('inbox.keys.open')}</span>
+          <span className="inline-flex items-center gap-1"><Kbd>e</Kbd>{t('inbox.keys.archive')}</span>
+          <span className="inline-flex items-center gap-1"><Kbd>u</Kbd>{t('inbox.keys.read')}</span>
+        </p>
+      )}
 
       {/* The whole announcement, in one always-mounted node: how many things need
           this person. A live region that is created at the same moment as its
@@ -455,11 +525,11 @@ export function InboxList({
           every archive — so an empty queue interrupted the reader to tell them
           about nothing, over and over. */}
       <p className="sr-only" role="status" aria-live="polite">
-        {loading || pending === 0
+        {(loading && !queued) || shownPending === 0
           ? ''
-          : pending === 1
+          : shownPending === 1
             ? t('inbox.badgeAriaOne')
-            : t('inbox.badgeAria', { count: pending })}
+            : t('inbox.badgeAria', { count: shownPending })}
       </p>
     </div>
   )

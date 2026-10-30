@@ -8,6 +8,8 @@ export const nav: typeof en.nav = {
   collapseSidebar: 'Seitenleiste einklappen',
   expandSidebar: 'Seitenleiste ausklappen',
   resizeSidebar: 'Breite der Seitenleiste ändern',
+  // Die Leiste neben der Seite (das Postfach): ihre Breite mit den Pfeiltasten oder durch Ziehen.
+  resizeDock: 'Breite der Leiste neben der Seite ändern',
   resizeSidebarHint: 'Ziehen zum Ändern der Breite, klicken zum Einklappen',
   expandSidebarHint: 'Ziehen oder klicken zum Ausklappen',
   openNavigation: 'Navigation öffnen',
