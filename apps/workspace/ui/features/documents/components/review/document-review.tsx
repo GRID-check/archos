@@ -603,7 +603,7 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
  * count only once a person takes one over.
  *
  * The rest of the page is gone while it is open (a full-page `PageDialog`; a
- * panel docked beside the page, the Postfach, stays usable: ADR-0153).
+ * panel docked beside the page, the Postfach, stays usable: ADR-0148).
  * Escape steps back one thing at a time: the draft, the tool,
  * the open thread, and only then the review itself.
  */

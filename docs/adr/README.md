@@ -210,6 +210,7 @@ Consequences, where a reader looks for them.
 | [0145](0145-the-repository-is-laid-out-by-job.md) | The repository is laid out by job: `apps/`, `packages/`, `contracts/`, `evals/`, moved one tree per PR, and no brand names | Proposed |
 | [0146](0146-piloti-draws-sketches-in-excalidraws-own-format.md) | Piloti draws sketches in Excalidraw's own format: an `excalidraw` fence, checked twice, drawn as it streams; amends 0141 | Proposed |
 | [0147](0147-infrastructure-names-carry-no-brand.md) | Infrastructure names carry no brand: namespace `workspace`, Pulumi project `workspace`, moved by expand, switch and contract | Proposed |
+| [0148](0148-a-list-is-worked-beside-the-real-surface-never-a-copy.md) | A list is worked beside the real surface, never a copy of it: one docked-panel primitive, and page overlays that leave it in view | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

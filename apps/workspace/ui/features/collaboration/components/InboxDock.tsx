@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * The Postfach docked beside the page (ADR-0153): the queue, worked next to
+ * The Postfach docked beside the page (ADR-0148): the queue, worked next to
  * the real places its entries open.
  *
  * Following an entry replaces the page beside the dock with the entry's own

@@ -8,7 +8,7 @@
  * beside the conversation (`FilePreviewBridge`, the end edge) and the Postfach
  * beside whatever page an entry opened (`InboxDock`, the start edge). The rule
  * they share: a list or a reference sits BESIDE the real surface, never a copy
- * of the surface inside the panel (ADR-0153).
+ * of the surface inside the panel (ADR-0148).
  *
  * What this primitive owns, because every docked panel needs it and each one
  * that solved it alone solved it once, the hard way:

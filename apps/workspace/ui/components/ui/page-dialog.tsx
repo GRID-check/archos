@@ -6,7 +6,7 @@
  * that interrupts the whole app (a confirm).
  *
  * Alone it is the ordinary modal `Dialog`. Beside a panel docked at the page's
- * start edge (the Postfach, ADR-0153) the panel is not behind it, so the
+ * start edge (the Postfach, ADR-0148) the panel is not behind it, so the
  * dialog does not lock it: it is not modal, renders no scrim, and working the
  * panel does not close it. Its content places itself on the page with the
  * shell's `--page-inset-start` / `--page-inset-top` (unset when nothing is

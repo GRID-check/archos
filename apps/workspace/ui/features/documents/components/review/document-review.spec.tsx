@@ -753,7 +753,7 @@ describe('opening the review reads the news about new marks', () => {
   })
 })
 
-describe('beside a panel docked at the page’s start edge (ADR-0153)', () => {
+describe('beside a panel docked at the page’s start edge (ADR-0148)', () => {
   // Room for the dock (`DOCK_LAYOUT_QUERY`); every other query as the environment answers it.
   const realMatchMedia = window.matchMedia
   beforeEach(() => {

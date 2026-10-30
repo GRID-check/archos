@@ -183,7 +183,7 @@ describe('AppShellChrome — the phone tab bar', () => {
   })
 })
 
-describe('AppShellChrome — the panel docked beside the page (ADR-0153)', () => {
+describe('AppShellChrome — the panel docked beside the page (ADR-0148)', () => {
   // Room for the dock; ResizeObserver is the shell's way of following the panel's edge.
   const realMatchMedia = window.matchMedia
   let roomy = true

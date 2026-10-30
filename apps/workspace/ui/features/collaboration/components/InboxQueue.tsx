@@ -4,7 +4,7 @@
  * „Für mich“ as a queue: what waits on the reader, gathered by document or
  * chat and most urgent first, then what is new.
  *
- * A list, never a copy of what it lists (ADR-0153). Every entry is a link to
+ * A list, never a copy of what it lists (ADR-0148). Every entry is a link to
  * its real place: the chat at the message, the review at the mark. Docked
  * beside the page (`InboxDock`), following one replaces the page beside the
  * list; on the Postfach page it leaves the page, and closing the review comes
