@@ -105,6 +105,40 @@ export const diagrams: typeof en.diagrams = {
     reviewOpenDescription: 'Diese Skizze ist in Prüfung. Sie können live mitzeichnen, gespeichert wird erst nach der Freigabe.',
     saveAgain: 'Inzwischen hat jemand eine neuere Fassung gespeichert. Ihre Änderungen sind eingearbeitet; bitte erneut speichern.',
   },
+  // Eine Skizze über einer PDF-Seite (S6): die Seite liegt gesperrt darunter, an ihrer Fassung.
+  underlay: {
+    title: '{name}, S. {page} — Skizze',
+    drawOnPage: 'Auf Seite zeichnen',
+    drawOnPageHint: 'Eine Skizze über dieser Seite beginnen. Sie bleibt an dieser Fassung und ist nicht maßstäblich.',
+    creating: 'Skizze wird angelegt …',
+    createFailed: 'Die Skizze konnte nicht angelegt werden.',
+    loading: 'Seite wird geladen …',
+    unavailable: 'Die Seite darunter ist für Sie nicht verfügbar; Sie sehen nur die Striche.',
+    onVersion: 'Liegt auf {title}, Fassung {number}, S. {page}',
+    drift: 'liegt auf Fassung {from}, aktuell {to}',
+    noMeasure: 'Auf der Unterlage wird nicht gemessen: die Skizze ist nicht maßstäblich.',
+    moveAction: 'Auf neue Fassung übertragen',
+    moveTitle: 'Auf Fassung {number} übertragen',
+    moveDescription:
+      'Die Striche bleiben, wo sie sind; darunter liegt dann die Seite der neuen Fassung. Anmerkungen und Verknüpfungen bleiben an ihren Elementen. Gespeichert wird eine neue Fassung der Skizze.',
+    matchedByLabel: 'Seite „{label}“ der Fassung {number}, gefunden über die Seitenbezeichnung',
+    matchedByIndex: 'Seite {page} der Fassung {number}: gleiche Seitenzahl, das PDF bezeichnet seine Seiten nicht',
+    showOld: 'Alt',
+    showNew: 'Neu',
+    showBoth: 'Übereinander',
+    move: 'Übertragen',
+    moving: 'Wird übertragen …',
+    moved: 'Übertragen, gespeichert als Fassung {number}',
+    moveFailed: 'Konnte nicht übertragen werden.',
+    pageGone: 'Die neue Fassung hat diese Seite nicht mehr.',
+    cancel: 'Abbrechen',
+    refused: {
+      underlay_wider:
+        'Die Seite darunter liegt in einem Ordner, den nicht alle im Projekt lesen dürfen. Die Skizze bleibt in diesem Ordner, sonst zeigte ihr Bild die Seite Menschen, die das Dokument nicht öffnen dürfen.',
+      underlay_other_project: 'Eine Skizze liegt im Projekt des Dokuments, auf dem sie gezeichnet ist.',
+      underlay_unavailable: 'Das Dokument, auf dem diese Skizze gezeichnet ist, ist für Sie nicht verfügbar.',
+    },
+  },
   sketchEdit: {
     eyebrow: 'Skizze ändern',
     // Die vorgeschlagenen Schritte, nummeriert.

@@ -19,6 +19,11 @@
  *     `public/excalidraw/` the way pdf.js's are.
  *   - **No images, no embeds.** An image would be refused by the SVG
  *     validator, and an embed is a third-party page inside a filed document.
+ *     The one image a Skizze holds is the PDF page it is traced over (S6): a
+ *     locked element whose bytes this canvas loads from the raster route with
+ *     the reader's rights (`addFiles`) and never sends back, so a save carries
+ *     no `files`. Excalidraw draws an image without its dark filter, so the page
+ *     reads as paper in dark mode too.
  *   - **No load, save, export or image download of its own.** Filing into the
  *     project is the one way out, so the file lands where the office looks
  *     and carries its provenance. No collaboration server of Excalidraw's:
@@ -56,6 +61,7 @@ import type { SketchCanvasBridge, SketchCollab } from './use-sketch-room'
 import { SketchPins, type SketchPinsProps, type SketchViewApi } from './sketch-pins'
 import { SketchLinks, type SketchLinksProps } from './sketch-links'
 import type { SketchLink } from '@/lib/diagrams/sketch-links'
+import { loadUnderlay, type UnderlayLoadState } from './sketch-underlay-load'
 
 type ExcalidrawApi = Parameters<NonNullable<React.ComponentProps<typeof Excalidraw>['excalidrawAPI']>>[0]
 
@@ -97,6 +103,8 @@ export interface SketchCanvasProps {
   pins?: Omit<SketchPinsProps, 'api'> | null
   /** A reopened Skizze's links, marked on their elements and opened in the app (`sketch-links.tsx`). */
   links?: Omit<SketchLinksProps, 'api' | 'onLink'> | null
+  /** Whether the page under the strokes could be shown to this reader (S6). */
+  onUnderlay?: (state: UnderlayLoadState) => void
 }
 
 type SceneElement = ReturnType<ExcalidrawApi['getSceneElementsIncludingDeleted']>[number]
@@ -135,6 +143,7 @@ export default function SketchCanvas({
   collab = null,
   pins = null,
   links = null,
+  onUnderlay,
 }: SketchCanvasProps) {
   const apiRef = useRef<ExcalidrawApi | null>(null)
   const [api, setApi] = useState<ExcalidrawApi | null>(null)
@@ -155,7 +164,8 @@ export default function SketchCanvas({
     if (!api) throw new Error('the canvas is not ready')
     const scene = api.getSceneElements()
     const appState = api.getAppState()
-    const files = api.getFiles()
+    // No files: the page under a Skizze is a reference the server resolves, never bytes from here.
+    const files = {}
     const source = serializeAsJSON(scene, appState, files, 'local')
     if (new TextEncoder().encode(source).length > MAX_SCENE_BYTES) throw new SketchTooLargeError()
     const svg = await exportToSvg({
@@ -190,6 +200,18 @@ export default function SketchCanvas({
   useEffect(() => {
     onReady({ prepare, markSaved })
   }, [onReady, prepare, markSaved])
+
+  // The page under the strokes, loaded with this reader's rights once the API is there.
+  useEffect(() => {
+    if (!api || !initialScene) return
+    const controller = new AbortController()
+    void loadUnderlay(initialScene.elements, controller.signal).then((loaded) => {
+      if (controller.signal.aborted) return
+      if (loaded.state === 'shown') api.addFiles([loaded.file as never])
+      if (loaded.state !== 'none') onUnderlay?.(loaded.state)
+    })
+    return () => controller.abort()
+  }, [api, initialScene, onUnderlay])
 
   // In a room: hand it the scene and Excalidraw's helpers once the API is there.
   useEffect(() => {

@@ -5018,6 +5018,92 @@
         }
       }
     },
+    "/api/documents/{id}/versions/{versionId}/pages/{page}/raster": {
+      "get": {
+        "operationId": "document-page-raster-get",
+        "summary": "Draw one page of a PDF version as a PNG",
+        "description": "The page as a 16-colour PNG, long side at most 4096 px: what a sketch traced over the page shows underneath. document-look shows a page to a model.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or workspace-search."
+            },
+            "description": "The document id, from document-list or workspace-search."
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The version id, from document-version-list."
+            },
+            "description": "The version id, from document-version-list."
+          },
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999,
+              "description": "The page, from 1."
+            },
+            "description": "The page, from 1."
+          },
+          {
+            "name": "dpi",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Resolution of the page: 100, 150, 200 dpi (default 150); the long side is at most 4096 px.",
+              "type": "integer"
+            },
+            "description": "Resolution of the page: 100, 150, 200 dpi (default 150); the long side is at most 4096 px."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Draw one page of a PDF version as a PNG",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/preview": {
       "get": {
         "operationId": "document-preview-get",
@@ -5568,9 +5654,7 @@
                                       "type": "object",
                                       "properties": {
                                         "documentId": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 64
+                                          "type": "string"
                                         },
                                         "page": {
                                           "type": "integer",
@@ -5578,18 +5662,14 @@
                                           "maximum": 9999
                                         },
                                         "versionId": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 64
+                                          "type": "string"
                                         },
                                         "ifcGlobalId": {
                                           "type": "string",
                                           "pattern": "^[0-9A-Za-z_$]{22}$"
                                         },
                                         "annotationId": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 64
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
@@ -5859,6 +5939,98 @@
         }
       }
     },
+    "/api/documents/{id}/versions/{versionId}/pages/{page}/sketch": {
+      "post": {
+        "operationId": "document-sketch-from-page",
+        "summary": "Start a sketch traced over a PDF page",
+        "description": "Files a new sketch whose only element is that page of that version, locked underneath. It stays on that version until document-sketch-underlay-move; it is not to scale and nothing is measured on it. Answers the new `documentId`; draw on it with document-sketch-edit.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or workspace-search."
+            },
+            "description": "The document id, from document-list or workspace-search."
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The version id, from document-version-list."
+            },
+            "description": "The version id, from document-version-list."
+          },
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999,
+              "description": "The page, from 1."
+            },
+            "description": "The page, from 1."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dpi": {
+                    "description": "Resolution of the page: 100, 150, 200 dpi (default 150); the long side is at most 4096 px.",
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Start a sketch traced over a PDF page",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/sketch": {
       "get": {
         "operationId": "document-sketch-get",
@@ -5978,7 +6150,7 @@
                       "type",
                       "elements"
                     ],
-                    "description": "The whole Excalidraw scene from document-sketch-get, with your changes: keep each element’s `id`; optional `appState`; no `files` (no images)."
+                    "description": "The whole Excalidraw scene from document-sketch-get, with your changes: keep each element’s `id`; optional `appState`; no `files`. The one `image` a Skizze may hold is the page it is traced over: keep it as read."
                   },
                   "baseVersionId": {
                     "anyOf": [
@@ -6117,6 +6289,158 @@
         },
         "x-mcp-annotations": {
           "title": "Take back a sketch’s current version",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/sketch/underlay": {
+      "get": {
+        "operationId": "document-sketch-underlay-get",
+        "summary": "Show what moving a sketch to its page’s newer version would do",
+        "description": "For a sketch traced over a PDF page: the page it lies on now and the page of the newer version it would move to, found by the page label, else by the page number. 409 `underlay_current` when it already lies on that version.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or workspace-search."
+            },
+            "description": "The document id, from document-list or workspace-search."
+          },
+          {
+            "name": "versionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "The base document’s version to move to; default its current one.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "The base document’s version to move to; default its current one."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Show what moving a sketch to its page’s newer version would do",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "post": {
+        "operationId": "document-sketch-underlay-move",
+        "summary": "Move a sketch to its page’s newer version",
+        "description": "Swaps the page under the sketch for the same page of the newer version (document-sketch-underlay-get) and saves the next version of the sketch. Strokes, annotations and links stay where they are.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or workspace-search."
+            },
+            "description": "The document id, from document-list or workspace-search."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "baseVersionId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "The Skizze’s `versionId` from document-sketch-get; a newer one answers 409."
+                  },
+                  "versionId": {
+                    "description": "The base document’s version to move to; default its current one.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "baseVersionId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Move a sketch to its page’s newer version",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,

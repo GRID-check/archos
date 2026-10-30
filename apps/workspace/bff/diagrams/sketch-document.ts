@@ -83,12 +83,14 @@ import { storedDiagramSource } from './stored-source'
 import { viewBoxOf } from '@/lib/annotations/sketch-anchor'
 import { recordSketchSaveScore, type SketchSaveInput, type SketchSaveOutcome } from '@/lib/langfuse/sketch-score'
 import { acceptDiagram, DiagramSvgError, type AcceptedDiagram } from './svg'
+import { embeddedUnderlayFor, resolveUnderlayView } from './sketch-underlay-access'
+import { MAX_UNDERLAY_SLOT_BYTES, withUnderlayImage, type EmbeddedUnderlay } from './sketch-underlay-svg'
 
 export type { CompanionPdfOutcome } from './sketch-companion'
 
 const SVG = 'image/svg+xml'
-/** A stored sketch is its picture plus its scene, and the markup around them. */
-const MAX_STORED_SKETCH_BYTES = MAX_DIAGRAM_SVG_BYTES + 2 * MAX_DIAGRAM_SOURCE_BYTES
+/** A stored sketch is its picture plus its scene, and the markup around them, and the page it is traced over (S6). */
+const MAX_STORED_SKETCH_BYTES = MAX_DIAGRAM_SVG_BYTES + 2 * MAX_DIAGRAM_SOURCE_BYTES + MAX_UNDERLAY_SLOT_BYTES
 
 function notASketch(): ApiError {
   return new ApiError(
@@ -237,6 +239,8 @@ export async function readSketchDocument(
     outline,
     // What each link is for this reader: the outline names ids, this what they may see of them.
     links: await resolveSketchLinks(session, outline.links),
+    // Whether this reader may see the page it is traced over, and whether a newer Fassung of it exists (S6).
+    underlay: await resolveUnderlayView(session, outline.underlay),
     ...(options.scene ? { scene } : {}),
     ...(options.ids ? { elements: focusedElements(scene, options.ids) } : {}),
     saveTarget: target.kind,
@@ -279,13 +283,20 @@ function storedSceneFor(stored: SketchScene, next: SketchScene): { scene: Sketch
 /**
  * The scene checked, its picture drawn by the server from it (`sketch-picture.ts`,
  * ADR-0149), then versioned and filed through the validator. The picture is
- * always the server's: no SVG a client sends is stored.
+ * always the server's: no SVG a client sends is stored. A scene traced over a
+ * page gets the server's own raster of that page in the filed SVG, after the
+ * validator, where only the server writes (`sketch-underlay-svg.ts`), once the
+ * Skizze's place may show it (`sketch-underlay-access.ts`, S6).
  */
-async function acceptSketch(body: SaveSketchBody, stored: SketchScene, marking: string, ref: string) {
+async function acceptSketch(body: SaveSketchBody, stored: SketchScene, input: { session: AuthorizedSession; document: Document; marking: string; ref: string }) {
   const drawn = await drawSketchScene(stored, checkSketchScene(body.scene))
   const { scene, source, bumped, tombstoned } = storedSceneFor(stored, drawn.scene)
-  const provenance = generatedDocumentMarking('diagram_svg', ref)
-  const accepted: AcceptedDiagram = acceptDiagram({ svg: drawn.svg, source, sourceKind: 'excalidraw' }, { notice: marking, provenance })
+  const provenance = generatedDocumentMarking('diagram_svg', input.ref)
+  const vector: AcceptedDiagram = acceptDiagram({ svg: drawn.svg, source, sourceKind: 'excalidraw' }, { notice: input.marking, provenance })
+  const underlay = await embeddedUnderlayFor(input.session, input.document, scene, drawn.underlay)
+  const accepted: AcceptedDiagram & { underlay: EmbeddedUnderlay | null } = underlay
+    ? { ...vector, svg: withUnderlayImage(vector.svg, underlay), underlay }
+    : { ...vector, underlay: null }
   return { accepted, source, scene, bumped, tombstoned, render: drawn.render }
 }
 
@@ -342,7 +353,7 @@ const reasonOf = (error: ConflictError) => (error.details as { reason?: string }
 
 async function writeVersion(input: SaveSketchInput, document: Document, stored: SketchScene, answerRef: string) {
   const { session, body } = input
-  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, input.marking, answerRef)
+  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, { session, document, marking: input.marking, ref: answerRef })
   const bytes = new TextEncoder().encode(accepted.svg)
   const provenance = generatedDocumentMarking('diagram_svg', answerRef)
   if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch SVG lost its AI marking')
@@ -409,7 +420,7 @@ async function writeDraft(input: SaveSketchInput, document: Document, draft: Doc
   // Held bytes reach only who may see them (ADR-0086): a draft nobody screened is not merged into.
   if (!(await mayReceiveVersionBytes(session, document, draft))) throw new NotFoundError('Version not found')
   const stored = await storedSceneOf({ ...draft, contentType: SVG })
-  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, input.marking, answerRef)
+  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, { session, document, marking: input.marking, ref: answerRef })
   const bytes = Buffer.from(accepted.svg, 'utf8')
   if (!markingIsInBytes(bytes, generatedDocumentMarking('diagram_svg', answerRef))) throw new Error('the sketch SVG lost its AI marking')
   let written: DocumentVersion

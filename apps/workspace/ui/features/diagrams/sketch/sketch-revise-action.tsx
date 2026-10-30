@@ -122,6 +122,7 @@ export function SketchReviseAction({
       ) : null}
       {sketch ? (
         <SketchDialog
+          key={sketch.versionId ?? 'unversioned'}
           open={open}
           onOpenChange={onOpenChange}
           source=""
@@ -138,6 +139,12 @@ export function SketchReviseAction({
             review,
             links: sketch.links,
             projectId: sketch.projectId,
+            underlay: sketch.underlay,
+            // Moved to the base's newer Fassung: the preview shows the new picture, the editor reopens on it.
+            onUnderlayMoved: () => {
+              onChanged()
+              void openEditor()
+            },
           }}
         />
       ) : null}

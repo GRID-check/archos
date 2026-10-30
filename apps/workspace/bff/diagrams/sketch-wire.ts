@@ -8,6 +8,7 @@ import { z } from 'zod'
 import type { ResolvedSketchLink } from './sketch-links'
 import type { SketchOutline } from './sketch-outline'
 import type { SceneElement } from './sketch-scene'
+import type { SketchUnderlayView } from './sketch-underlay-wire'
 import type { SketchScene } from './sketch-scene'
 
 export const saveSketchSchema = z.object({
@@ -18,7 +19,7 @@ export const saveSketchSchema = z.object({
     })
     .describe(
       'The whole Excalidraw scene from document-sketch-get, with your changes: keep each element’s `id`; ' +
-        'optional `appState`; no `files` (no images).'
+        'optional `appState`; no `files`. The one `image` a Skizze may hold is the page it is traced over: keep it as read.'
     ),
   baseVersionId: z
     .string()
@@ -92,6 +93,8 @@ export interface SketchDocumentView {
    * where it leads, or `unavailable` (gone, or not theirs to open) with nothing more.
    */
   links: ResolvedSketchLink[]
+  /** The page the Skizze is traced over, as this reader sees it, or null: the outline names the ids, this whether the reader may see it and whether a newer Fassung exists. */
+  underlay: SketchUnderlayView | null
   /** The whole scene; absent for `?scene=omit` and for a focused read. */
   scene?: SketchScene
   /** For `?ids=`: those elements whole, in scene order; an id that is not drawn is left out. */

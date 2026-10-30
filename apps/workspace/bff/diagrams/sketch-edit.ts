@@ -66,6 +66,7 @@ export const SKETCH_EDIT_REFUSALS = [
   'bad-intent',
   'too-many-ids',
   'pixel-intent',
+  'underlay-locked',
 ] as const
 export type SketchEditRefusal = (typeof SKETCH_EDIT_REFUSALS)[number] | SketchRefusal
 
@@ -466,8 +467,16 @@ function checkBounds(op: SketchEditOp, index: number): void {
   }
 }
 
+/** The page a Skizze is traced over is locked (`sketch-underlay.ts`): no operation moves, changes, removes or binds to it; a `place` may stand beside it. */
+function leavesUnderlay(state: EditState, op: SketchEditOp, index: number): void {
+  for (const id of op.op === 'place' ? [op.id] : idsNamedBy([op])) {
+    if (state.live.get(id)?.type === 'image') throw new SketchEditError('underlay-locked', index, id)
+  }
+}
+
 function applyOp(state: EditState, op: SketchEditOp, index: number): void {
   checkBounds(op, index)
+  leavesUnderlay(state, op, index)
   switch (op.op) {
     case 'add':
       return applyAdd(state, op, index)

@@ -95,6 +95,11 @@ const OBJECT_READERS: Record<string, Disposition> = {
   'lib/documents/version-content.ts::streamVersionFile': { logged: ['version'] },
   'lib/bim/model-service.ts::getModelSource': { logged: ['model'] },
   'lib/diagrams/sketch-document.ts::readSketchDocument': { logged: ['preview'] },
+  'lib/diagrams/sketch-edit-service.ts::sceneOfBase': { logged: ['preview'] },
+  'lib/documents/page-raster.ts::readPageRaster': { logged: ['preview'] },
+  'lib/documents/page-raster.ts::readObject': {
+    exempt: 'a private helper; its callers are pinned in PINNED_HELPERS (the person-facing one records, the others read on the server).',
+  },
   'lib/diagrams/sketch-promoted.ts::readVersionText': {
     exempt:
       'reads the Skizze a Freigabe just published, on the server, to place its marks on the scene and draw the PDF beside it again; no bytes go to anyone.',
@@ -146,9 +151,14 @@ const PINNED_HELPERS: Record<string, { callers: readonly string[]; reason: strin
       'publishedSketchOf is the one reader of a sketch’s stored scene: storedSceneOf here (see the next entry), and lib/annotations/sketch-place.ts, which reads it on the server to place a mark’s box on its elements and hands no bytes to anyone.',
   },
   'lib/diagrams/sketch-document.ts::storedSceneOf': {
-    callers: ['readSketchDocument', 'saveSketchDocument', 'writeDraft'],
+    callers: ['readSketchDocument', 'saveSketchDocument', 'sketchSaveBaseOf', 'writeDraft'],
     reason:
-      'readSketchDocument records the open (`preview`; the preview’s probe carries no scene and is not a reader of it); saveSketchDocument and writeDraft read the scene (the current one, or the open draft’s) to refuse a document that carries none and to version the save against it, and return the new version, never the old bytes.',
+      'readSketchDocument records the open (`preview`; the preview’s probe carries no scene and is not a reader of it); saveSketchDocument and writeDraft read the scene (the current one, or the open draft’s) to refuse a document that carries none and to version the save against it, and return the new version, never the old bytes; sketchSaveBaseOf reads it on the server for an edit or a move to build on, and its person-facing caller records (sceneOfBase).',
+  },
+  'lib/documents/page-raster.ts::readObject': {
+    callers: ['readPageLabels', 'readPageRaster', 'sourceBytes'],
+    reason:
+      'readPageRaster records the open (`preview`) unless its caller files the raster on the server (a save or a move of a Skizze, which hands the page to nobody new); readPageLabels and sourceBytes read on the server to match pages and to draw the raster, and hand no bytes to anyone.',
   },
   'lib/documents/version-content.ts::readObjectText': {
     callers: ['fetchVersionText', 'readVersionForService'],
@@ -171,6 +181,11 @@ const ROUTES: Record<string, RouteDisposition> = {
   // The same route serves a version's bytes (`?versionId=`) through streamVersionFile.
   'documents/[id]/text/route.ts': { via: 'getDocumentTextPreview' },
   'documents/[id]/sketch/route.ts': { via: 'readSketchDocument' },
+  'documents/[id]/versions/[versionId]/pages/[page]/raster/route.ts': { via: 'readPageRaster' },
+  'documents/[id]/versions/[versionId]/pages/[page]/sketch/route.ts': { via: 'readPageRaster' },
+  'documents/[id]/sketch/underlay/route.ts': {
+    exempt: 'matches the page on the newer Fassung (labels read on the server) and saves the Skizze with the page it already shows; it answers the plan or the saved Fassung, never a page’s bytes.',
+  },
   'documents/[id]/versions/[versionId]/content/route.ts': { via: 'readVersionContent' },
   'documents/[id]/versions/diff/route.ts': { via: 'readVersionContent' },
   'bim/models/[modelId]/source/route.ts': { via: 'getModelSource' },

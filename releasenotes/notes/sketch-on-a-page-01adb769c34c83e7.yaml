@@ -1,0 +1,16 @@
+---
+features:
+  - >
+    You can now sketch over a page of a PDF drawing: „Auf Seite zeichnen“ in
+    the viewer's toolbar starts a sketch with that page locked underneath, and
+    you draw your markup on top. The sketch's picture and its PDF show the page
+    under your strokes, and both still say the sketch is not to scale.
+  - >
+    A sketch stays on the version of the drawing it was made on. When a newer
+    version arrives, the editor says so („liegt auf Fassung 3, aktuell 4“) and
+    offers to move the sketch onto it, showing the old and the new page side by
+    side or overlaid; your annotations and links stay where they are.
+  - >
+    A colleague who may not open the drawing sees your strokes without the page
+    underneath, and a sketch on a page in a restricted folder stays in that
+    folder.

@@ -101,7 +101,7 @@ export interface PdfDocumentViewProps {
    * surface's tools), so a stage has one pill rather than two competing at its
    * foot. Rendered as they come, followed by a divider.
    */
-  toolbarLead?: ReactNode
+  toolbarLead?: ReactNode | ((page: number) => ReactNode)
   /**
    * A point to bring to the middle of the view: a page, and the share of its
    * height to centre. A new `key` asks again for the same point. `instant`

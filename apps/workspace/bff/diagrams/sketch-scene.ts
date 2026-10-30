@@ -9,9 +9,12 @@
  * It keeps that checker's vocabulary and its stance on what a sketch is:
  *
  *   - **The same element types**, plus `freedraw`, which only a hand makes. An
- *     `image`, an `embeddable` or an `iframe` is refused: the editor has no
- *     image tool and no embeds, and a scene that names one did not come from it.
- *   - **No files.** A sketch carries no binary payloads (the same reason).
+ *     `embeddable` or an `iframe` is refused: the editor has no embeds. An
+ *     `image` only as the one underlay, a locked page of a Fassung named by
+ *     `customData.underlay` and below everything drawn (`sketch-underlay.ts`,
+ *     S6); any other image is refused: the editor has no image tool.
+ *   - **No files.** A sketch carries no binary payloads: an underlay is a
+ *     reference, and its bytes come from the raster route.
  *   - **Bounded.** The byte cap is the excalidraw source cap the filing route
  *     already applies (`DIAGRAM_SOURCE_FACTS.excalidraw`); the element count,
  *     coordinates and text are bounded so a scene stays a sketch and its
@@ -31,6 +34,7 @@
 import { DIAGRAM_SOURCE_FACTS } from './diagram-sources'
 import { SKETCH_ELEMENT_TYPES } from './sketch-fence'
 import { keptSketchLink, SKETCH_LINK_KEYS } from './sketch-links'
+import { keptUnderlayData, MAX_UNDERLAYS, underlayProblem } from './sketch-underlay'
 
 export const MAX_SCENE_ELEMENTS = 2_000
 export const MAX_SCENE_COORDINATE = 1_000_000
@@ -49,11 +53,11 @@ export const SCENE_CUSTOM_DATA_KEYS: ReadonlySet<string> = new Set<string>(SKETC
 /** The `appState` a stored scene keeps: what Excalidraw's own export writes (`APP_STATE_STORAGE_CONF`, `export: true`). */
 export const SCENE_APP_STATE_KEYS: ReadonlySet<string> = new Set(['gridSize', 'gridStep', 'gridModeEnabled', 'viewBackgroundColor'])
 
-/** An element without the fields a sketch does not carry: `link`, and `customData` that is not a valid link. */
+/** An element without the fields a sketch does not carry: `link`, and `customData` that is not a valid link (an underlay's: its page). */
 export function withoutForeignFields<T extends Record<string, unknown>>(element: T): T {
   if (!('link' in element) && !('customData' in element)) return element
   const { link: _link, customData, ...rest } = element
-  const kept = keptSketchLink(customData)
+  const kept = element.type === 'image' ? keptUnderlayData(customData) : keptSketchLink(customData)
   return (kept ? { ...rest, customData: kept } : rest) as unknown as T
 }
 
@@ -116,7 +120,10 @@ function checkElement(raw: unknown, seen: Set<string>): void {
   if (!isObject(raw) || typeof raw.id !== 'string' || !raw.id || typeof raw.type !== 'string') {
     throw new SketchSceneError('not-a-scene', 'an element without id or type')
   }
-  if (!SCENE_ELEMENT_TYPES.has(raw.type)) throw new SketchSceneError('unsupported-element', raw.type)
+  if (raw.type === 'image') {
+    const problem = underlayProblem(raw)
+    if (problem) throw new SketchSceneError('unsupported-element', problem)
+  } else if (!SCENE_ELEMENT_TYPES.has(raw.type)) throw new SketchSceneError('unsupported-element', raw.type)
   if (seen.has(raw.id)) throw new SketchSceneError('duplicate-id', raw.id)
   seen.add(raw.id)
   for (const axis of ['x', 'y'] as const) {
@@ -128,6 +135,14 @@ function checkElement(raw: unknown, seen: Set<string>): void {
   if (raw.text !== undefined && (typeof raw.text !== 'string' || [...raw.text].length > MAX_SCENE_TEXT_CHARS)) {
     throw new SketchSceneError('text-too-long', raw.id)
   }
+}
+
+/** At most {@link MAX_UNDERLAYS} underlay, and nothing drawn below it: the page is the sheet the strokes lie on. */
+function checkUnderlayPlace(elements: readonly Json[]): void {
+  const drawn = elements.filter((element) => element.isDeleted !== true)
+  const images = drawn.filter((element) => element.type === 'image')
+  if (images.length > MAX_UNDERLAYS) throw new SketchSceneError('unsupported-element', 'a second underlay')
+  if (images.length === 1 && drawn[0] !== images[0]) throw new SketchSceneError('unsupported-element', 'an underlay above a drawn element')
 }
 
 function hasFiles(files: unknown): boolean {
@@ -150,6 +165,7 @@ export function checkSketchScene(value: unknown): SketchScene {
   if (hasFiles(value.files)) throw new SketchSceneError('has-files')
   const seen = new Set<string>()
   for (const element of value.elements) checkElement(element, seen)
+  checkUnderlayPlace(value.elements as Json[])
   if (value.appState !== undefined && !isObject(value.appState)) throw new SketchSceneError('not-a-scene', 'appState')
   const elements = (value.elements as Json[]).map(withoutForeignFields)
   const { appState, ...rest } = value

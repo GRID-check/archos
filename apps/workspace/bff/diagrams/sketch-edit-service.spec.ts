@@ -10,6 +10,7 @@ vi.mock('./sketch-renderer', () => ({ sketchRenderer: () => ({ render: vi.fn(asy
 vi.mock('@/lib/documents/version-content', () => ({ readVersionContent: vi.fn(async () => 'svg-text') }))
 vi.mock('@/lib/documents/version-repository', () => ({ findDocumentVersion: vi.fn(), findPreviousVersion: vi.fn() }))
 vi.mock('@/lib/download-log/service', () => ({ recordDocumentAccess: vi.fn() }))
+vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn(async (_session: unknown, id: string) => ({ id })) }))
 vi.mock('@/lib/langfuse/sketch-score', () => ({ recordSketchEditScore: vi.fn(async () => undefined) }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'

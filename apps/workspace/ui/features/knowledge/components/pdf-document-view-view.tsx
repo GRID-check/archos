@@ -210,7 +210,7 @@ export function PdfDocumentViewView({ controller }: { controller: PdfDocumentVie
               railOpen={railOpen}
               hasRail={doc ? doc.numPages > 1 : false}
               onToggleRail={() => setRailOpen((open) => !open)}
-              lead={toolbarLead}
+              lead={typeof toolbarLead === 'function' ? toolbarLead(currentPage) : toolbarLead}
             />
           </div>
         </div>

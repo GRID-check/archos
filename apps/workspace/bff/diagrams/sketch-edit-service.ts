@@ -25,6 +25,7 @@ import 'server-only'
 import { UnprocessableError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordDocumentAccess } from '@/lib/download-log/service'
+import { getAccessibleDocument } from '@/lib/documents/access'
 import { PublishedVersionMovedError } from '@/lib/documents/published-guard'
 import { readVersionContent } from '@/lib/documents/version-content'
 import { findDocumentVersion, findPreviousVersion } from '@/lib/documents/version-repository'
@@ -66,6 +67,7 @@ const REFUSAL_WORDS: Record<string, string> = {
   'bad-coordinate': 'sets a position or size outside ±10000',
   'too-many-ids': 'names more than 100 elements in one step; split it',
   'pixel-intent': 'has an intent in pixels or coordinates; say where by the room or element it relates to (right of the hall)',
+  'underlay-locked': 'changes the page the sketch is drawn on; it is locked: draw beside or over it',
 }
 
 /** The sketch moved on and an id the edit names is gone: the 409 the route words in the reader's language. */
@@ -227,8 +229,10 @@ export async function editSketchDocument(input: EditSketchInput): Promise<Applie
 
 /** The scene an edit was made on: the current one, or the Fassung it names, read as the person (and logged). */
 async function sceneOfBase(session: AuthorizedSession, current: SketchSaveBase, baseVersionId: string | null): Promise<{ scene: SketchScene; versionId: string | null }> {
+  // Asked again here, where the hand-over is recorded: the download log's one access decision (`coverage.spec.ts`).
+  const document = await getAccessibleDocument(session, current.document.id, 'read')
   if (!baseVersionId || baseVersionId === current.versionId) {
-    await recordDocumentAccess(session, current.document, 'preview')
+    await recordDocumentAccess(session, document, 'preview')
     return { scene: current.scene, versionId: current.versionId }
   }
   const text = await readVersionContent(session, current.document.id, baseVersionId)

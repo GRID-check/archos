@@ -16,6 +16,8 @@ import { z } from 'zod'
 import type { fileDiagramSchema } from '@/lib/diagrams/diagram-wire'
 import { ROOM_PEER_HEADER, type saveSketchSchema } from '@/lib/diagrams/sketch-wire'
 import { SKETCH_LINK_KINDS, type ResolvedSketchLink } from '@/lib/diagrams/sketch-links'
+import type { SketchUnderlay } from '@/lib/diagrams/sketch-underlay'
+import type { SketchUnderlayView, UnderlayMovePlan } from '@/lib/diagrams/sketch-underlay-wire'
 import { ApiRequestError } from './api-error'
 
 // ============================================================
@@ -136,6 +138,12 @@ const SketchViewSchema = z.object({
     .array(z.looseObject({ elementId: z.string(), kind: z.enum(SKETCH_LINK_KINDS), state: z.enum(['available', 'unavailable']), ref: z.looseObject({}) }))
     .default([])
     .transform((links) => links as unknown as ResolvedSketchLink[]),
+  /** The page it is traced over, as this reader sees it (`lib/diagrams/sketch-underlay-wire.ts`); absent from an older server. */
+  underlay: z
+    .looseObject({ state: z.enum(['available', 'unavailable']), elementId: z.string(), ref: z.looseObject({}) })
+    .nullable()
+    .default(null)
+    .transform((underlay) => underlay as unknown as SketchUnderlayView | null),
 })
 
 /** What the editor needs of a filed sketch: its scene and the Fassung (or open draft) it was read from. */
@@ -206,6 +214,59 @@ export const saveSketch = async (
       contentHash: z.string().nullable().default(null),
     })
     .safeParse(await response.json())
+  if (!parsed.success) throw new SketchRequestError(response.status, null, null)
+  return parsed.data
+}
+
+// ============================================================
+// A Skizze traced over a PDF page (S6, ADR-0150)
+// ============================================================
+
+/** The page's raster, same origin and with the reader's rights: what the editor lays under the strokes. */
+export const pageRasterUrl = (underlay: Pick<SketchUnderlay, 'documentId' | 'versionId' | 'page' | 'dpi'>): string =>
+  `/api/documents/${encodeURIComponent(underlay.documentId)}/versions/${encodeURIComponent(underlay.versionId)}/pages/${underlay.page}/raster?dpi=${underlay.dpi}`
+
+/** The document's current Fassung, which „Auf Seite zeichnen“ traces over. */
+export const currentVersionOf = async (documentId: string): Promise<string | null> => {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/versions`)
+  if (!response.ok) throw await sketchError(response)
+  const parsed = z.object({ publishedVersionId: z.string().nullable() }).safeParse(await response.json())
+  return parsed.success ? parsed.data.publishedVersionId : null
+}
+
+/** `POST …/pages/{page}/sketch`: a new Skizze on that page; answers its document id. */
+export const createSketchFromPage = async (documentId: string, versionId: string, page: number): Promise<{ documentId: string }> => {
+  const response = await fetch(
+    `/api/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}/pages/${page}/sketch`,
+    { method: 'POST', headers: jsonHeaders, body: '{}' }
+  )
+  if (!response.ok) throw await sketchError(response)
+  const parsed = z.object({ documentId: z.string().min(1) }).safeParse(await response.json())
+  if (!parsed.success) throw new SketchRequestError(response.status, null, null)
+  return parsed.data
+}
+
+const UnderlayPageSchema = z.object({ versionId: z.string(), versionNumber: z.number(), page: z.number(), pageLabel: z.string().nullable() })
+const UnderlayPlanSchema = z.object({ from: UnderlayPageSchema, to: UnderlayPageSchema, matchedBy: z.enum(['label', 'index']) })
+
+/** `GET /api/documents/{id}/sketch/underlay`: which page of the newer Fassung the Skizze would move to. */
+export const getUnderlayMovePlan = async (documentId: string, signal?: AbortSignal): Promise<UnderlayMovePlan> => {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch/underlay`, { signal })
+  if (!response.ok) throw await sketchError(response)
+  const parsed = UnderlayPlanSchema.safeParse(await response.json())
+  if (!parsed.success) throw new SketchRequestError(response.status, null, null)
+  return parsed.data
+}
+
+/** `POST /api/documents/{id}/sketch/underlay`: the move, saved as the Skizze's next Fassung. */
+export const moveSketchUnderlay = async (documentId: string, baseVersionId: string | null, versionId: string): Promise<{ versionNumber: number }> => {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch/underlay`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ baseVersionId, versionId }),
+  })
+  if (!response.ok) throw await sketchError(response)
+  const parsed = z.object({ versionNumber: z.number() }).safeParse(await response.json())
   if (!parsed.success) throw new SketchRequestError(response.status, null, null)
   return parsed.data
 }

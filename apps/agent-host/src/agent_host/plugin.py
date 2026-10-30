@@ -94,6 +94,7 @@ from .routes.maintenance import add_maintenance_routes
 from .routes.norms import add_norm_routes
 from .routes.note_embeddings import add_note_embedding_routes
 from .routes.oib import add_oib_routes
+from .routes.page_raster import add_page_raster_routes
 from .routes.project_experience import add_project_experience_routes
 from .routes.project_facts import add_project_facts_routes
 from .routes.revision_compare import add_revision_compare_routes
@@ -326,9 +327,9 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
     return (
         add_collection_routes,
         add_document_routes,
-        # What changed between two Fassungen of a page, marked on it and said in
-        # words: one vision call for the pair, cached (CONTEXT.md, „Fassung").
+        # What changed between two Fassungen of a page, marked and said in words, and (page_raster) a page as a PNG.
         add_revision_compare_routes,
+        add_page_raster_routes,
         add_document_search_routes,
         # A project's facts and status onto its points, for the cross-project
         # search's filters and likeness (design: qdrant-retrieval-design §7).

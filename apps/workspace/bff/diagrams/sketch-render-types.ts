@@ -21,8 +21,18 @@ export type SketchRenderResponse =
       ms: number
       /** The worker's heap after the render, in MB, for the renderer to recycle it. */
       heapMb?: number
+      /** Where the underlay lies in the picture's own coordinates, when the scene has one (S6); its bytes are the filing's. */
+      underlay?: UnderlayPlacement
     }
   | { id: number; ok: false; error: string }
 
 /** The build's font index, beside the bundled worker (`sketch-font-faces.ts`). */
 export const FONT_COVERAGE_FILE = 'font-coverage.json'
+
+/** An underlay's box in the SVG's `viewBox` coordinates. */
+export interface UnderlayPlacement {
+  x: number
+  y: number
+  width: number
+  height: number
+}

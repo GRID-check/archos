@@ -144,6 +144,13 @@ async function moveBack(sketch: MovedDocument, input: MoveDocumentInput, session
 
 type MovedDocument = NonNullable<Awaited<ReturnType<typeof findDocumentForSession>>>
 
+/** A Skizze traced over a page goes nowhere its filed picture would show the page wider than the page's own folder (S6). */
+async function underlayRefusalOf(document: MovedDocument, folderId: string | null, session: AuthorizedSession): Promise<string | null> {
+  if (document.authoredByProducer !== 'diagram_svg' || document.folderId === folderId) return null
+  const { sketchMoveRefusal } = await import('@/lib/diagrams/sketch-underlay-service')
+  return sketchMoveRefusal(session, document, folderId)
+}
+
 /** The PDF filed beside a moved Skizze goes where it went. Never throws: answers why it would not, or null. */
 async function companionFollows(sketch: MovedDocument, input: MoveDocumentInput, session: AuthorizedSession, options: MoveDocumentOptions): Promise<string | null> {
   if (sketch.authoredByProducer !== 'diagram_svg' || !sketch.authoredByRef || !sketch.projectId) return null
@@ -176,6 +183,8 @@ async function moveSingle(
   if (input.expectedFolderId !== undefined && document.folderId !== input.expectedFolderId) {
     return { ok: false, error: MOVED_SINCE_MESSAGE }
   }
+  const traced = await underlayRefusalOf(document, input.folderId, session)
+  if (traced) return { ok: false, error: traced }
   const shelf = documentShelf(document)
   if (!shelf) {
     // A session attachment. It is filed nowhere, and the database agrees.

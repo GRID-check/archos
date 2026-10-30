@@ -49,7 +49,7 @@
  *     refusal is in the validator rather than here.
  */
 
-import React from 'react'
+import React, { type ComponentType } from 'react'
 import {
   Circle,
   ClipPath,
@@ -57,6 +57,7 @@ import {
   Document,
   Ellipse,
   G,
+  Image,
   Line,
   LinearGradient,
   Page,
@@ -74,6 +75,7 @@ import {
 } from '@react-pdf/renderer'
 import { AI_GENERATOR_NAME, type AiProvenanceMarking } from '@/lib/ai-provenance'
 import { attributeOf, type DiagramSvgViewport, type SvgElement, type SvgNode } from './svg'
+import type { EmbeddedUnderlay } from './sketch-underlay-svg'
 
 /**
  * The presentation props every drawable shares, taken from the component's own
@@ -612,6 +614,8 @@ function withArrowheads(element: SvgElement, key: number, edge: React.ReactNode)
 /** A4 in PostScript points, the unit `@react-pdf/renderer` lays out in. */
 const A4_SHORT = 595.28
 const A4_LONG = 841.89
+/** Inside `<Svg>`, @react-pdf's Image is placed by x/y/width/height (its types know only the page Image's props). */
+const SvgImage = Image as unknown as ComponentType<{ src: Buffer; x: number; y: number; width: number; height: number }>
 const MARGIN = 36
 const HEADER_HEIGHT = 54
 const FOOTER_HEIGHT = 28
@@ -622,12 +626,8 @@ export interface DiagramPdfInput {
   readonly title: string
   readonly projectName: string
   /**
-   * The provenance line, already in the reader's locale.
-   *
-   * Passed in rather than looked up here for the reason `answer-export` gives
-   * about the same problem: this module runs on a request whose locale the
-   * caller resolved, and a renderer that reaches for a dictionary is a renderer
-   * that renders German for a Viennese office and German for a Brussels one.
+   * The provenance line, already in the reader's locale: passed in for the reason `answer-export` gives, a
+   * renderer that reaches for a dictionary renders German for a Viennese office and for a Brussels one.
    */
   readonly marking: string
   /**
@@ -644,6 +644,8 @@ export interface DiagramPdfInput {
    */
   readonly provenance: AiProvenanceMarking
   readonly createdAt: Date
+  /** The page a Skizze is traced over (S6), drawn first, from the server's PNG as a Buffer: never a URL, which @react-pdf would fetch. */
+  readonly underlay?: EmbeddedUnderlay | null
 }
 
 /**
@@ -660,9 +662,8 @@ export async function renderDiagramPdf(input: DiagramPdfInput): Promise<Uint8Arr
   const boxWidth = pageWidth - MARGIN * 2
   const boxHeight = pageHeight - MARGIN * 2 - HEADER_HEIGHT - FOOTER_HEIGHT
 
-  // Fit inside the box, never up-scale past it. `preserveAspectRatio` on the
-  // <Svg> would do the fitting, but the box has to be sized for the caption
-  // rows either way, so the arithmetic is here where both can see it.
+  // Fit inside the box, never up-scale past it. `preserveAspectRatio` on the <Svg> would do the fitting, but the
+  // box has to be sized for the caption rows either way, so the arithmetic is here where both can see it.
   const scale = Math.min(boxWidth / input.viewport.width, boxHeight / input.viewport.height)
   const drawnWidth = input.viewport.width * scale
   const drawnHeight = input.viewport.height * scale
@@ -696,6 +697,7 @@ export async function renderDiagramPdf(input: DiagramPdfInput): Promise<Uint8Arr
         </View>
         <View style={{ height: boxHeight, alignItems: 'center', justifyContent: 'center' }}>
           <Svg width={drawnWidth} height={drawnHeight} viewBox={input.viewport.viewBox}>
+            {input.underlay ? <SvgImage src={Buffer.from(input.underlay.png)} x={input.underlay.x} y={input.underlay.y} width={input.underlay.width} height={input.underlay.height} /> : null}
             {input.root.children.map((child, index) => toPdfNode(child, index))}
           </Svg>
         </View>

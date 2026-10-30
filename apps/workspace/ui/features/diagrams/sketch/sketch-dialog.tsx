@@ -55,6 +55,9 @@ import { DiagramFilingControls } from '../components/diagram-filing-controls'
 import type { SketchCanvasHandle } from './sketch-canvas'
 import { useSketchRevision, type SavedRevision, type SketchRevisionState } from './use-sketch-revision'
 import { useSketchRoom, type SketchRoom } from './use-sketch-room'
+import { UnderlayBanner } from './sketch-underlay'
+import type { UnderlayLoadState } from './sketch-underlay-load'
+import type { SketchUnderlayView } from '@/lib/diagrams/sketch-underlay-wire'
 
 /** While the canvas chunk loads, and in its place when it could not be loaded (offline, a stale deploy). */
 function CanvasLoading({ error }: { error?: Error | null }) {
@@ -100,6 +103,10 @@ export interface SketchDialogProps {
     links?: readonly ResolvedSketchLink[]
     /** The project the Skizze lies in: where „Verknüpfen“ looks. */
     projectId?: string | null
+    /** The PDF page it is traced over, as this reader sees it (S6, `sketch-underlay.tsx`). */
+    underlay?: SketchUnderlayView | null
+    /** The Skizze moved to the base's newer Fassung and saved: the caller reopens it on that Fassung. */
+    onUnderlayMoved?: (versionNumber: number) => void
   } | null
 }
 
@@ -243,6 +250,8 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
   const onReady = useCallback((ready: SketchCanvasHandle) => {
     handle.current = ready
   }, [])
+  const [underlayShown, setUnderlayShown] = useState<boolean | null>(null)
+  const onUnderlay = useCallback((state: UnderlayLoadState) => setUnderlayShown(state === 'shown'), [])
 
   return (
     <Dialog open={open} onOpenChange={requestClose}>
@@ -270,6 +279,16 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
             )}
           </DialogDescription>
         </DialogHeader>
+        {revision?.underlay ? (
+          <UnderlayBanner
+            underlay={revision.underlay}
+            shown={underlayShown}
+            documentId={revision.documentId}
+            baseVersionId={revision.baseVersionId}
+            canMove={canWrite && revision.saveTarget === 'published' && !dirty}
+            onMoved={(number) => revision.onUnderlayMoved?.(number)}
+          />
+        ) : null}
         <div className="border-border min-h-0 flex-1 overflow-hidden rounded-lg border phone:rounded-none phone:border-x-0">
           {open ? (
             <SketchCanvas
@@ -279,6 +298,7 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
               langCode={locale === 'de' ? 'de-DE' : 'en'}
               onReady={onReady}
               onDirtyChange={onDirtyChange}
+              onUnderlay={onUnderlay}
               readOnly={filed}
               collab={revision ? room.collab : null}
               links={

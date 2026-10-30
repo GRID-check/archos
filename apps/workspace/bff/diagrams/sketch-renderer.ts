@@ -47,7 +47,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { getTenantContext } from '@/lib/db/tenant-context'
-import type { SketchRenderRequest, SketchRenderResponse } from './sketch-render-types'
+import type { SketchRenderRequest, SketchRenderResponse, UnderlayPlacement } from './sketch-render-types'
 
 export const MAX_QUEUED = 16
 export const MAX_QUEUED_PER_ORGANIZATION = 4
@@ -76,6 +76,8 @@ export interface RenderedScene {
   remeasured: Record<string, unknown>[]
   /** Wall time of the render, queue included. */
   ms: number
+  /** Where the underlay lies in the picture, when the scene has one (S6). */
+  underlay?: UnderlayPlacement
 }
 
 export interface SketchRendererOptions {
@@ -148,7 +150,7 @@ export function createSketchRenderer(options: SketchRendererOptions = {}): Sketc
       rendered += 1
       // Recycled between renders, never during one: the next render starts a fresh worker.
       if (rendered >= recycleAfter || (response.heapMb ?? 0) > RECYCLE_HEAP_MB) stop()
-      settle({ value: { svg: response.svg, remeasured: response.remeasured, ms: Math.round(performance.now() - current.job.queuedAt) } })
+      settle({ value: { svg: response.svg, remeasured: response.remeasured, ms: Math.round(performance.now() - current.job.queuedAt), ...(response.underlay ? { underlay: response.underlay } : {}) } })
     })
     // A worker that ended (crashed, or terminated after a deadline) fails only the render it was running.
     const lost = (detail: string) => {

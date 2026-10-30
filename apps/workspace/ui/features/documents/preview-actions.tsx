@@ -10,6 +10,9 @@
  * The direction is kept by a context instead: the app shell provides the
  * action (`app/app/layout.tsx`), the preview renders whatever is provided, and
  * without a provider (a spec, a surface outside the shell) it renders nothing.
+ *
+ * The second is „Auf Seite zeichnen“ in the PDF viewer's toolbar (S6), a page
+ * action: it is given the page in view.
  */
 
 import { createContext, useContext, type ComponentType, type ReactNode } from 'react'
@@ -30,16 +33,36 @@ export interface PreviewDocumentActionProps {
   reviewRequest?: { open: boolean; annotationId: string | null; onOpenChange: (open: boolean) => void } | null
 }
 
+/** What a page action is given: the document, and the page the viewer shows. */
+export interface PreviewPageActionProps {
+  documentId: string
+  contentType: string | null
+  page: number
+}
+
 const PreviewDocumentActionContext = createContext<ComponentType<PreviewDocumentActionProps> | null>(null)
+const PreviewPageActionContext = createContext<ComponentType<PreviewPageActionProps> | null>(null)
 
 export function PreviewDocumentActionProvider({
   action,
+  pageAction = null,
   children,
 }: {
   action: ComponentType<PreviewDocumentActionProps>
+  pageAction?: ComponentType<PreviewPageActionProps> | null
   children: ReactNode
 }) {
-  return <PreviewDocumentActionContext.Provider value={action}>{children}</PreviewDocumentActionContext.Provider>
+  return (
+    <PreviewDocumentActionContext.Provider value={action}>
+      <PreviewPageActionContext.Provider value={pageAction}>{children}</PreviewPageActionContext.Provider>
+    </PreviewDocumentActionContext.Provider>
+  )
+}
+
+/** The provided page action for this page, or nothing. */
+export function PreviewPageAction(props: PreviewPageActionProps) {
+  const Action = useContext(PreviewPageActionContext)
+  return Action ? <Action {...props} /> : null
 }
 
 /** The provided action for this document, or nothing. */

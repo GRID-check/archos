@@ -96,7 +96,7 @@ features it makes better.
 | S3 | **Anmerkungen on elements.** Reuse `document_annotations`: page 1, the region is the element's bounds normalised to the scene, the element id carried; pins drawn over the canvas; threads, mentions and inbox unchanged | 3 | Anmerkungen, the inbox, Zuständige and Frist reminders | Anmerkungen per Skizze; a pin still on its element after a move. Built: migration 0192, a save carries the marks on in its transaction ([„A mark on a Skizze“](../architecture/document-annotations.md#a-mark-on-a-skizze)) |
 | S4 | **Piloti reads and proposes.** Piloti reads a Skizze through the S1 read; an edit is a proposed change the person applies, which writes a Fassung | 4, 7 | proposed changes, Piloti's answers about the project | proposals accepted against dismissed (`piloti-decision` by `operation`); `sketch-edit` outcomes; `evals/sketch-edits`. Built: the server draws the picture (ADR-0149), `document-sketch-edit` applies operations on the server under the person's yes, the receipt draws the change and offers „Rückgängig“ ([`diagrams.md`](../architecture/diagrams.md#piloti-changes-a-filed-skizze-by-operations-s4)); open: the ghost layer in an open editor, the product model's eval run |
 | S5 | **Links into the workspace.** `customData` with `documentId`, `page`, `versionId`, `ifcGlobalId`, `annotationId` kept through the fence, the editor and the file; a mark on the element opens the target inside the app | 5 | the BIM viewer's model links, the document viewer, Anmerkungen | links opened per week (`sketch_link_opened`); links still resolving after a model revision. Built: one key list for fence, scene, wire and edit, links resolved with the reader's rights, the mark and „Verknüpfen“ in the editor, the skill ([`diagrams.md`](../architecture/diagrams.md#a-sketch-element-links-into-the-workspace-s5)); open: „verlinkt aus Skizze“ on the target's preview, a Fassung address for a pinned link |
-| S6 | **Underlays.** A PDF page or a BIM view as a locked image base, which needs `<image>` in the SVG validator with a same-origin document href only | 6 | the PDF viewer, the BIM viewer, schematic cards, the Einreichung | sketches with a base; validator refuses every other href |
+| S6 | **Underlays.** A PDF page as a locked image base: the scene holds a reference, the server files its own raster | 6 | the PDF viewer, Fassungen, restricted folders, the Einreichung | sketches with a base; every door refuses every other image (`sketch-underlay.spec.ts`). Built for a PDF page ([ADR-0150](../adr/0150-a-sketch-traced-over-a-page-files-the-servers-raster.md), [`diagrams.md`](../architecture/diagrams.md#a-skizze-traced-over-a-pdf-page-s6)): „Auf Seite zeichnen“, the raster route, the slot after the validator, the access rule, „liegt auf Fassung 3, aktuell 4“ and the explicit move; open: a BIM view as base, „Skizzen auf dieser Seite“ on the base's preview |
 
 A BIM view as base (S6, scene step 6) reuses the model viewpoint an Anmerkung on a
 model anchors to: camera, cut, GlobalIds and snapshot, exported as a BCF topic. It is
@@ -104,6 +104,18 @@ slice F5 of [`model-collaboration.md`](model-collaboration.md); build it after F
 
 Search over the scene's texts (scene step 7) and the office's symbol library (step 8)
 have no slice yet. Both wait for S1's structured read.
+
+## From the field (feld72 Jour fixe, 2026-10-30)
+
+- **PDFs stay the medium.** Day-to-day communication runs on plans and PDFs, so
+  tracing over a PDF page (S6) came first, and is kept solid before it is made broad.
+- **One issue management across 2D and 3D.** Anmerkungen are the shared primitive:
+  the same mark on a PDF page, a Skizze element and a model element, and a sketch
+  element links to a GlobalId (S5).
+- **Measuring belongs to the base.** The team is building scale calibration and
+  measuring on PDF plans in the document viewer. A sketch's strokes still claim no
+  dimension: nothing measures on an underlay. When a base page is calibrated, the
+  link to offer from the Skizze is „measure on the base document“ (open).
 
 ## Coherence: what is still open
 
@@ -144,6 +156,11 @@ G5, G6 and G8; the ADR-0148 amendment says what was decided. Still open:
   create a flowchart“ in English. Excalidraw takes only a `langCode` and offers
   no way to override a string; the fix is upstream (its Crowdin) or a patch of
   the package's locale.
+- **S6, what is drawn on a document.** Nothing indexes which Skizzen lie on a
+  document, so the base's preview does not list „Skizzen auf dieser Seite“, and
+  a base moved into a narrower folder after a Skizze was filed is not stopped
+  (the Skizze's next save is). A Skizze a person starts on a page carries the
+  filing seam's machine marking; a person-authored sketch producer is open.
 - **The office's locale on a Freigabe redraw.** A PDF drawn after a Freigabe
   carries the German two-author line; the transition knows no reader's locale.
 

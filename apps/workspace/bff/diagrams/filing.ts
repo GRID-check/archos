@@ -88,6 +88,7 @@ import { acceptDiagram, censusSvg, type DiagramSubmission } from './svg'
 import { renderDiagramPdf } from './svg-to-pdf'
 import { parseStoredSketchScene } from './sketch-scene'
 import { indexSketchForSearch } from './sketch-search'
+import { withUnderlayImage, type EmbeddedUnderlay } from './sketch-underlay-svg'
 
 export interface FileDiagramInput extends DiagramSubmission {
   /** The commissioning human. Their permission is what authorizes the write. */
@@ -137,6 +138,12 @@ export interface FileDiagramInput extends DiagramSubmission {
    * `fileGeneratedDocument`.
    */
   origin?: ConversationOrigin
+  /**
+   * The page a Skizze is traced over (S6), the server's own raster at the place
+   * the renderer gave it: written into the SVG after the validator, and drawn
+   * under the PDF (`sketch-underlay-svg.ts`). Never a client's.
+   */
+  underlay?: EmbeddedUnderlay | null
 }
 
 export interface FiledDiagram {
@@ -178,7 +185,7 @@ export async function fileDiagramDocuments(input: FileDiagramInput): Promise<Fil
   // render — this caller can be ahead of the seam, never different from it.
   const provenance = generatedDocumentMarking('diagram_svg', input.answerRef)
   const accepted = acceptDiagram(input, { notice: input.marking, provenance })
-  const svgBytes = new TextEncoder().encode(accepted.svg)
+  const svgBytes = new TextEncoder().encode(input.underlay ? withUnderlayImage(accepted.svg, input.underlay) : accepted.svg)
 
   const svg = await fileGeneratedDocument({
     session: input.session,
@@ -216,6 +223,7 @@ export async function fileDiagramDocuments(input: FileDiagramInput): Promise<Fil
         bytes: await renderDiagramPdf({
           root: accepted.root,
           viewport: accepted.viewport,
+          underlay: input.underlay ?? null,
           title: input.title,
           projectName: context.projectName,
           marking: input.marking,

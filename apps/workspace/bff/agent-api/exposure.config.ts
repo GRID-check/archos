@@ -7,11 +7,9 @@
  *
  *  - `external`: an outside agent on an office door (`/api/mcp`, the A2A door)
  *    and the OpenAPI document.
- *  - `piloti`: in-product Piloti on its workspace door. `true` offers it;
- *    `'native:<tool>'` says Piloti does this with that native tool (its name in
- *    `configs/config_oib_openrouter.yml`, a group's as `<group>__<function>`),
- *    so the door hides the operation from Piloti; `false` hides it for the
- *    `reason` the entry gives.
+ *  - `piloti`: in-product Piloti on its workspace door. `true` offers it; `'native:<tool>'` says Piloti does this
+ *    with that native tool (its name in `configs/config_oib_openrouter.yml`, a group's as `<group>__<function>`),
+ *    so the door hides the operation from Piloti; `false` hides it for the `reason` the entry gives.
  *  - `platform`: platform staff on the platform door (ADR-0126). Only the
  *    `platform` domain, and that domain on no other door.
  *  - `app`: an MCP Apps view in an outside agent's host (ADR-0142). Set only
@@ -46,12 +44,10 @@ import type { OperationName } from './catalog'
 import type { AppToolName } from './catalog/app-views'
 
 /**
- * Why an operation is withheld from agents. `external-service`: a service we
- * only proxy or switch, which a calling agent already has its own tool for.
- * `product-config`: how Piloti itself works for the office (models, keys,
- * budgets, policies, settings). `model-compute`: model work the caller can do
- * itself whose result is no office artifact. `ui-state`: this person's own
- * screen or device state.
+ * Why an operation is withheld from agents. `external-service`: a service we only proxy or switch, which a calling
+ * agent already has its own tool for. `product-config`: how the product itself works for the office (models, keys, budgets,
+ * policies, settings). `model-compute`: model work the caller can do itself whose result is no office artifact.
+ * `ui-state`: this person's own screen or device state.
  */
 export const WITHHELD_CATEGORIES = ['external-service', 'product-config', 'model-compute', 'ui-state'] as const
 export type WithheldCategory = (typeof WITHHELD_CATEGORIES)[number]
@@ -214,6 +210,10 @@ export const EXPOSURE = {
   'document-sketch-update': OFFERED,
   'document-sketch-edit': OFFERED,
   'document-sketch-revert': OFFERED,
+  'document-sketch-from-page': OFFERED,
+  'document-sketch-underlay-get': OFFERED,
+  'document-sketch-underlay-move': OFFERED,
+  'document-page-raster-get': { external: false, piloti: false, withheld: { category: 'ui-state', reason: 'the picture a sketch editor lays under its strokes, which an agent cannot look at; document-look shows a page' } },
   'document-tags-update': OFFERED,
   'document-text-get': OFFERED,
   'document-thumbnail-get': {

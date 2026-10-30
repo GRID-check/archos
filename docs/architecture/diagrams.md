@@ -99,6 +99,13 @@ so the picture, the PDF, the outline and the editor come from one scene and cann
 disagree (ADR-0149). The client's scene is still the writer's: checked
 (`sketch-scene.ts`), never trusted to be what anyone else drew.
 
+**The one image a Skizze may carry** is the PDF page it is traced over (S6,
+ADR-0150), and it never passes through the validator below. The server writes
+its own cached raster into one fixed slot after the vector picture was
+validated (`sketch-underlay-svg.ts`), and every reader of a stored Skizze lifts
+that exact slot out before the rest is validated again. An `<image>`, `<use>`
+or `data:` href anywhere else, from anyone, is refused as before.
+
 `bff/diagrams/svg.ts` does two things, and neither is redundant:
 
 1. **Refuses, by name.** `<script>`, `<foreignObject>`, `<style>`, `on*`
@@ -593,8 +600,8 @@ document, never a new pair.
   (`bff/diagrams/stored-source.ts`), not from the SVG parser, which caps the
   picture at 1 MiB while a stored sketch is picture plus scene.
 - **The scene is checked now** (`bff/diagrams/sketch-scene.ts`), on save and on
-  read: the fence's element types plus `freedraw`, no `image`, embed or
-  `files`, at most 2 000 elements, coordinates within ±1 000 000, text up to
+  read: the fence's element types plus `freedraw`, no `image` but the one locked
+  underlay (S6, below), no embed or `files`, at most 2 000 elements, coordinates within ±1 000 000, text up to
   5 000 characters, and the 512 KiB excalidraw source cap. Filing used to store
   the scene unread. What the fence drops is dropped here too: an element's
   `link`, `customData` outside `SCENE_CUSTOM_DATA_KEYS` (empty for now; a slice
@@ -866,6 +873,64 @@ Anmerkung of kind `defect`; an Aufgabe is work handed to Piloti, so there is no
   not refused, because the page count lives only in the search projection; the
   Files preview of a target does not yet say „verlinkt aus Skizze …“; a link a
   co-editor sets live shows as unresolved until the next open.
+
+### A Skizze traced over a PDF page (S6)
+
+Day-to-day markup stays on plans and PDFs: a cloud and an arrow on page 12 of
+the Einreichplan. „Auf Seite zeichnen“ in the PDF viewer's toolbar
+(`sketch/draw-on-page-action.tsx`, through the preview's page-action slot)
+starts a Skizze with that page locked underneath (ADR-0150).
+
+- **A reference in the scene.** One locked `image` element at the bottom,
+  `customData.underlay = { documentId, versionId, page, dpi }`, its `fileId`
+  derived from the tuple, no `files` (`bff/diagrams/sketch-underlay.ts`). It is
+  sized one scene pixel per PDF point. The stored scene, the live wire and the
+  edit admit it through that file; any other image is refused at every door
+  (`sketch-underlay.spec.ts`). The fence has no `image` type: Piloti cannot start
+  an underlay; `document-sketch-from-page` starts one under the person's yes.
+  An edit that moves, changes, removes or binds to the page is refused
+  (`underlay-locked`); `place` may stand beside it. The outline reports
+  `underlay: { elementId, ref, box }` so Piloti knows what the strokes lie on.
+- **The raster** (`bff/documents/page-raster.ts`,
+  `GET …/versions/{v}/pages/{n}/raster?dpi=`): read with the reader's rights
+  (shelf, restricted folders, the hold), drawn by the backend
+  (`agent_host/routes/page_raster.py`, pypdfium, a 16-colour palette PNG, long
+  side ≤ 4096 px), cached at `<dir>/_raster/p<page>-<dpi>.png` beside the
+  Fassung and swept with it, kept only with a PNG signature and a page's size,
+  logged as an open. A3 at 150 dpi: 328 KB, 300 ms; at 100 dpi 187 KB, at 200
+  dpi 478 KB.
+- **In the editor** the canvas loads it with `addFiles`
+  (`sketch-underlay-load.ts`); a reader who may not open the base gets a 404 and
+  sees the strokes on a blank sheet, and the banner says only that the page is
+  not available. Locked, so it cannot be selected, cropped or moved. Excalidraw
+  draws an image without its dark filter, so the page reads as paper in dark
+  mode. A save sends no `files`.
+- **Filing.** The worker draws the underlay over a one-pixel stand-in, so
+  Excalidraw places it, takes the stand-in out and answers its place; the save
+  writes the server's PNG there, after the validator, and the PDF draws it from
+  a Buffer through `<Image src>` (never a URL: react-pdf would fetch it). The
+  vector picture keeps its 1 MiB cap, the slot adds at most 4 MiB. A 41-element
+  sketch on an A3 page: render 12 ms, filed SVG 475 KB, PDF 346 KB in 141 ms.
+- **Access** (`sketch-underlay-access.ts`). A Skizze lies in its base's project,
+  and when the base's folder is not open to every member, in that folder. A save
+  or a move that would break it is refused by name (`underlay_wider`,
+  `underlay_other_project`, `underlay_unavailable`), never filed blank. A Skizze
+  started on a restricted page is filed without the page and moved beside it;
+  its first save files the page.
+- **Bound to its Fassung.** When the base's current Fassung moves past the
+  underlay's, `GET …/sketch` answers `underlay.newer` and the editor says
+  „liegt auf Fassung 3, aktuell 4“. „Auf neue Fassung übertragen“ opens the move
+  (`sketch-underlay.tsx`): the page found by its PDF label, else its number
+  (`document-sketch-underlay-get`), old and new alone or overlaid, and
+  „Übertragen“ (`document-sketch-underlay-move`), which saves the Skizze's next
+  Fassung. Strokes, pins and links stay.
+- **The doctrine holds.** Every export says „nicht maßstäblich“; there is no
+  measuring on an underlay.
+- **Not yet.** The base's preview does not list „Skizzen auf dieser Seite“:
+  nothing indexes which Skizzen lie on a document. A base moved into a narrower
+  folder after filing leaves earlier Fassungen' pictures where they were. The
+  receipt of an edit draws the change without the page. A person's Skizze still
+  carries the machine marking of the filing seam.
 
 ## Two people on one Skizze
 

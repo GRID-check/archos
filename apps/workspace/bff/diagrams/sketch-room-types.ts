@@ -27,6 +27,7 @@
 import { z } from 'zod'
 import { realtimePeerSchema } from '@/lib/realtime/types'
 import { SCENE_ELEMENT_TYPES, withoutForeignFields } from './sketch-scene'
+import { underlayProblem } from './sketch-underlay'
 
 /** The fastest a canvas sends its pointer, as the document room's pointer. */
 export const SCENE_POINTER_INTERVAL_MS = 80
@@ -73,7 +74,8 @@ export const sceneSelectionSchema = z.array(elementId).max(SCENE_SELECTION_MAX)
  * `restoreElements`, so a malformed one is repaired rather than drawn). Only
  * the types a saved scene may hold travel (`SCENE_ELEMENT_TYPES`), so what was
  * drawn live can be saved, and the fields a saved scene drops (`link`, foreign
- * `customData`, `withoutForeignFields`) are dropped here too.
+ * `customData`, `withoutForeignFields`) are dropped here too. An `image` travels
+ * only as a valid underlay (`sketch-underlay.ts`), and never with its bytes.
  */
 export const wireElementSchema = z
   .object({
@@ -82,7 +84,7 @@ export const wireElementSchema = z
       .string()
       .min(1)
       .max(32)
-      .refine((type) => SCENE_ELEMENT_TYPES.has(type), 'this element type does not travel'),
+      .refine((type) => SCENE_ELEMENT_TYPES.has(type) || type === 'image', 'this element type does not travel'),
     version: z.number().int().min(0),
     versionNonce: z.number().int(),
     isDeleted: z.boolean(),
@@ -90,6 +92,7 @@ export const wireElementSchema = z
     index: z.string().max(256).nullable(),
   })
   .passthrough()
+  .refine((element) => element.type !== 'image' || underlayProblem(element) === null, 'an image travels only as the underlay')
   .transform((element) => withoutForeignFields(element))
 export type WireElement = z.infer<typeof wireElementSchema>
 

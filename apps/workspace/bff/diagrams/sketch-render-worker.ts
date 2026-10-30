@@ -22,6 +22,12 @@
  *     never dark mode, padding 16, fonts not inlined; then the same cleaning
  *     and re-serialisation through the server's validator
  *     (`fileableSketchSvg`).
+ *   - An underlay (S6, `sketch-underlay.ts`) is drawn by Excalidraw over a
+ *     one-pixel stand-in file, so Excalidraw places it as it would on the
+ *     canvas; its `<use>` and `<symbol>` are then taken out and its place
+ *     answered as `underlay`. The page's bytes never reach the worker: the
+ *     filing writes the server's own PNG there (`sketch-underlay-svg.ts`), and
+ *     the background is left out so the page is not painted over.
  */
 
 import { readFileSync } from 'node:fs'
@@ -33,7 +39,7 @@ import { facesFrom, type FontCoverage } from './sketch-font-faces'
 import { fitContainerToLabel } from './sketch-label-fit'
 import { installSketchDom } from './sketch-render-dom'
 import { createTextMetrics } from './sketch-text-metrics'
-import { FONT_COVERAGE_FILE, type SketchRenderRequest, type SketchRenderResponse } from './sketch-render-types'
+import { FONT_COVERAGE_FILE, type SketchRenderRequest, type SketchRenderResponse, type UnderlayPlacement } from './sketch-render-types'
 
 const { fontsDir } = workerData as { fontsDir: string }
 
@@ -88,6 +94,25 @@ function fitContainers(elements: readonly Plain[], remeasure: ReadonlySet<string
   return changes.size === 0 ? elements : elements.map((element) => (changes.has(element.id) ? { ...element, ...changes.get(element.id) } : element))
 }
 
+/** A transparent pixel: the stand-in Excalidraw draws an underlay with, never filed. */
+const STAND_IN = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
+function underlayFileOf(elements: readonly Plain[]): string | null {
+  const image = elements.find((element) => element.type === 'image' && typeof element.fileId === 'string')
+  return image ? (image.fileId as string) : null
+}
+
+/** Where Excalidraw put the underlay, with its `<use>` and `<symbol>` taken out of the picture. */
+function liftUnderlay(svg: SVGSVGElement, fileId: string): UnderlayPlacement | undefined {
+  const use = svg.querySelector(`use[href="#image-${fileId}"]`)
+  const group = use?.parentElement
+  const translate = /translate\(\s*(-?[\d.e+-]+)[\s,]+(-?[\d.e+-]+)\s*\)/.exec(group?.getAttribute('transform') ?? '')
+  svg.querySelector(`[id="image-${fileId}"]`)?.remove()
+  group?.remove()
+  if (!use || !translate) return undefined
+  return { x: Number(translate[1]), y: Number(translate[2]), width: Number(use.getAttribute('width')), height: Number(use.getAttribute('height')) }
+}
+
 async function render(request: SketchRenderRequest): Promise<SketchRenderResponse> {
   const started = performance.now()
   const { excalidraw, fileable } = await loading
@@ -110,20 +135,22 @@ async function render(request: SketchRenderRequest): Promise<SketchRenderRespons
     })
     elements = fitContainers(elements, remeasure, remeasured)
   }
+  const fileId = underlayFileOf(elements)
   const svg = await excalidraw.exportToSvg({
     elements: elements as unknown as Elements,
     appState: {
       ...(request.appState ?? {}),
-      exportBackground: true,
+      exportBackground: fileId === null,
       viewBackgroundColor: '#ffffff',
       exportWithDarkMode: false,
     },
-    files: null,
+    files: fileId ? { [fileId]: { id: fileId, mimeType: 'image/png', dataURL: STAND_IN, created: 0 } } as never : null,
     exportPadding: 16,
     skipInliningFonts: true,
   })
+  const underlay = fileId ? liftUnderlay(svg, fileId) : undefined
   const heapMb = Math.round(getHeapStatistics().used_heap_size / 2 ** 20)
-  return { id: request.id, ok: true, svg: fileable(svg), remeasured, ms: Math.round(performance.now() - started), heapMb }
+  return { id: request.id, ok: true, svg: fileable(svg), remeasured, ms: Math.round(performance.now() - started), heapMb, ...(underlay ? { underlay } : {}) }
 }
 
 parentPort?.on('message', (request: SketchRenderRequest) => {

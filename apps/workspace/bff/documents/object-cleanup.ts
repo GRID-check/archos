@@ -25,6 +25,7 @@ import {
   buildPageTextPrefix,
   buildRenditionStorageKey,
   buildThumbnailStorageKey,
+  buildPageRasterPrefix,
 } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { deleteBimDerivedObjects } from '@/lib/bim/service'
@@ -169,6 +170,13 @@ export async function deleteDerivedObjects(doc: StoredObjectRef): Promise<Extern
       deleteObjectsUnderPrefix(resolved.bucket, textPrefix),
     )
     if (!text.ok) return text
+  }
+
+  // The page rasters a Skizze was drawn over (S6): a picture of the page is the page.
+  const rasterPrefix = buildPageRasterPrefix(storageKey)
+  if (rasterPrefix) {
+    const rasters = await attemptObjectDelete(`page rasters under ${rasterPrefix}`, () => deleteObjectsUnderPrefix(resolved.bucket, rasterPrefix))
+    if (!rasters.ok) return rasters
   }
 
   return attemptObjectDelete(`bim derivatives of ${storageKey}`, () =>

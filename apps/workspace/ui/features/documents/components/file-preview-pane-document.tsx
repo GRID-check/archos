@@ -22,6 +22,7 @@ import { dropFileSubject } from '../lib/open-file-peek'
 
 import { ReviewPageLayer } from './review/review-page-layer'
 import { InlineMarkPeek } from './inline-mark-peek'
+import { PreviewPageAction } from '../preview-actions'
 
 import { PEEK_SUMMARY_CLAMP_LINES, PageMock, PeekPanel, PeekStage } from './file-preview-peek'
 
@@ -165,7 +166,16 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                           <InlineMarkPeek page={page} review={review} onOpenMark={openReview} />
                         </>
                       )}
-                      toolbarLead={annotateLead}
+                      toolbarLead={
+                        projectId && !reader
+                          ? (page: number) => (
+                              <>
+                                {annotateLead}
+                                <PreviewPageAction documentId={file.id} contentType={shownType} page={page} />
+                              </>
+                            )
+                          : annotateLead
+                      }
                       className="size-full"
                     />
                   ) : (

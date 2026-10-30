@@ -31,6 +31,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { publishNextVersion } from './sketch-version'
 import { censusSvg, type DiagramSvgViewport, type SvgElement } from './svg'
 import { renderDiagramPdf } from './svg-to-pdf'
+import type { EmbeddedUnderlay } from './sketch-underlay-svg'
 
 /** What became of the PDF beside a sketch after a save; a score reads it (`sketch-score.ts`). */
 export type CompanionPdfOutcome = 'redrawn' | 'none' | 'superseded' | 'confined' | 'failed'
@@ -41,7 +42,8 @@ export interface CompanionRedraw {
   sketch: Document
   /** The SVG Fassung the drawing is of; the PDF is published only while it is current. */
   svgVersionId: string
-  drawing: { root: SvgElement; viewport: DiagramSvgViewport }
+  /** The vector picture, and the page it is traced over (S6), drawn under it from the server's PNG. */
+  drawing: { root: SvgElement; viewport: DiagramSvgViewport; underlay?: EmbeddedUnderlay | null }
   /** The two-author line, in the reader's locale (`markingEdited`). */
   marking: string
   title: string
@@ -66,6 +68,7 @@ export async function redrawCompanionPdf(
     const bytes = await renderDiagramPdf({
       root: input.drawing.root,
       viewport: input.drawing.viewport,
+      underlay: input.drawing.underlay ?? null,
       title: input.title,
       projectName: project?.name ?? '',
       marking: input.marking,

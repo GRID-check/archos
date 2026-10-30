@@ -212,6 +212,7 @@ Consequences, where a reader looks for them.
 | [0147](0147-infrastructure-names-carry-no-brand.md) | Infrastructure names carry no brand: namespace `workspace`, Pulumi project `workspace`, moved by expand, switch and contract | Proposed |
 | [0148](0148-a-sketch-is-a-document.md) | A sketch is a document: an SVG carrying its Excalidraw scene, reopened in place, saved as Fassungen, inheriting Files, Anmerkungen, Freigabe, the room and the agent door | Proposed |
 | [0149](0149-the-server-draws-a-sketchs-picture.md) | The server draws a sketch's picture from its scene: Excalidraw's `exportToSvg` in a worker thread on happy-dom, text measured from the font files, so scene and picture cannot disagree | Proposed |
+| [0150](0150-a-sketch-traced-over-a-page-files-the-servers-raster.md) | A Skizze traced over a PDF page files the server's own raster in one slot the server writes after the validator; access follows the base document's folder | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

@@ -517,6 +517,19 @@
    "withheld": null,
    "reason": null
   },
+  "document-page-raster-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the picture a sketch editor lays under its strokes, which an agent cannot look at; document-look shows a page"
+   },
+   "reason": null
+  },
   "document-preview-get": {
    "kind": "catalog",
    "domain": "documents",
@@ -597,6 +610,16 @@
    "withheld": null,
    "reason": null
   },
+  "document-sketch-from-page": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "document-sketch-get": {
    "kind": "catalog",
    "domain": "documents",
@@ -608,6 +631,26 @@
    "reason": null
   },
   "document-sketch-revert": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-sketch-underlay-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-sketch-underlay-move": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,

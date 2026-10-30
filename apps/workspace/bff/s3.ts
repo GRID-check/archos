@@ -179,7 +179,7 @@ export function storageKeySegment(raw: string): string {
  * Keys written before this rule keep their names; the derived-key builders
  * below refuse to return a key equal to the input, which covers them.
  */
-const RESERVED_DERIVED_SEGMENTS: ReadonlySet<string> = new Set(['_thumb.jpg', '_render.pdf', '_img', '_bim', '_text'])
+const RESERVED_DERIVED_SEGMENTS: ReadonlySet<string> = new Set(['_thumb.jpg', '_render.pdf', '_img', '_bim', '_text', '_raster'])
 
 export function buildStorageKey(
   organizationId: string,
@@ -381,6 +381,29 @@ export function buildPageTextStorageKey(storageKey: string, part: string): strin
   if (!(PAGE_TEXT_PARTS as readonly string[]).includes(part)) return null
   const prefix = buildPageTextPrefix(storageKey)
   return prefix ? `${prefix}${part}` : null
+}
+
+/**
+ * The directory a version's page rasters live in, beside the version's file:
+ * `<dir>/_raster/`, swept with the version (S6, `documents/page-raster.ts`).
+ */
+export function buildPageRasterPrefix(storageKey: string): string | null {
+  const idx = storageKey.lastIndexOf('/')
+  if (idx <= 0 || idx === storageKey.length - 1) return null
+  return `${storageKey.slice(0, idx)}/_raster/`
+}
+
+/**
+ * One page of a version drawn at one resolution, `<dir>/_raster/p<page>-<dpi>.png`, or the
+ * version's page labels, `<dir>/_raster/labels.json` (`page: 'labels'`). Built from the
+ * version's own key and two bounded integers, never from a caller's path.
+ */
+export function buildPageRasterStorageKey(storageKey: string, page: number | 'labels', dpi = 0): string | null {
+  const prefix = buildPageRasterPrefix(storageKey)
+  if (!prefix) return null
+  if (page === 'labels') return `${prefix}labels.json`
+  if (!Number.isInteger(page) || page < 1 || page > 9999 || !Number.isInteger(dpi) || dpi < 1 || dpi > 600) return null
+  return `${prefix}p${page}-${dpi}.png`
 }
 
 /**

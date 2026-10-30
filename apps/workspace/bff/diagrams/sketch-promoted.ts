@@ -48,6 +48,7 @@ import { redrawCompanionPdf, type CompanionPdfOutcome } from './sketch-companion
 import { parseStoredSketchScene, sceneHashOf, type SketchScene } from './sketch-scene'
 import { storedDiagramSource } from './stored-source'
 import { parseDiagramSvg } from './svg'
+import { liftUnderlayImage } from './sketch-underlay-svg'
 
 /** A promoted Fassung's bytes as text. Throws when they cannot be read: that is a failure to retry, not a Skizze without a scene. */
 async function readVersionText(version: Pick<DocumentVersion, 'storageBucket' | 'storageKey'>): Promise<string> {
@@ -72,6 +73,12 @@ export async function promotedSketchOf(version: Pick<DocumentVersion, 'storageBu
   const stored = storedDiagramSource(text)
   const scene = stored?.kind === 'excalidraw' ? parseStoredSketchScene(stored.source) : null
   return scene ? { text, scene, next: { elements: scene.elements, viewBox: viewBoxOf(text) } } : null
+}
+
+/** A stored Skizze's picture for its PDF: the vector half through the validator, the page it is traced over lifted out first (S6). */
+function drawingOf(text: string) {
+  const { svg, underlay } = liftUnderlayImage(text)
+  return { ...parseDiagramSvg(svg), underlay }
 }
 
 /** The two-author line in the office's language: a transition carries no reader's locale, so the office's choice, else the product's default. */
@@ -112,7 +119,7 @@ export async function sketchBecameCurrent(
     session,
     sketch: document,
     svgVersionId: version.id,
-    drawing: parseDiagramSvg(sketch.text),
+    drawing: drawingOf(sketch.text),
     marking: await officeMarking(session.organizationId),
     title: (document.displayName ?? document.filename).replace(/\.svg$/i, ''),
   })

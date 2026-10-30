@@ -22,6 +22,7 @@
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
+vi.mock('@/lib/diagrams/sketch-underlay-service', () => ({ sketchMoveRefusal: vi.fn(async () => null) }))
 vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
 vi.mock('@/lib/projects/collection-placement', () => ({
   PURGE_TIMEOUT_MS: 15_000,

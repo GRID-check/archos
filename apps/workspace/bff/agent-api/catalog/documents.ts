@@ -13,6 +13,7 @@ import {
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { saveSketchSchema, sketchReadQuerySchema } from '@/lib/diagrams/sketch-wire'
 import { sketchEditSchema, sketchRevertSchema } from '@/lib/diagrams/sketch-edit-wire'
+import { pageParamsShape, pageRasterQuerySchema, sketchFromPageSchema, underlayMoveSchema, underlayPlanQuerySchema } from '@/lib/diagrams/sketch-underlay-wire'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
 import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
@@ -282,6 +283,59 @@ export const documentsOperations = [
     params: documentParams,
     body: sketchRevertSchema,
     load: () => import('@/app/api/documents/[id]/sketch/revert/route'),
+  },
+  {
+    name: 'document-page-raster-get',
+    domain: 'documents',
+    summary: 'Draw one page of a PDF version as a PNG',
+    description:
+      'The page as a 16-colour PNG, long side at most 4096 px: what a sketch traced over the page shows underneath. ' +
+      'document-look shows a page to a model.',
+    method: 'GET',
+    path: '/api/documents/[id]/versions/[versionId]/pages/[page]/raster',
+    params: documentParams.extend(pageParamsShape),
+    query: pageRasterQuerySchema,
+    load: () => import('@/app/api/documents/[id]/versions/[versionId]/pages/[page]/raster/route'),
+  },
+  {
+    name: 'document-sketch-from-page',
+    domain: 'documents',
+    summary: 'Start a sketch traced over a PDF page',
+    description:
+      'Files a new sketch whose only element is that page of that version, locked underneath. It stays on that version ' +
+      'until document-sketch-underlay-move; it is not to scale and nothing is measured on it. Answers the new `documentId`; ' +
+      'draw on it with document-sketch-edit.',
+    method: 'POST',
+    path: '/api/documents/[id]/versions/[versionId]/pages/[page]/sketch',
+    params: documentParams.extend(pageParamsShape),
+    body: sketchFromPageSchema,
+    load: () => import('@/app/api/documents/[id]/versions/[versionId]/pages/[page]/sketch/route'),
+  },
+  {
+    name: 'document-sketch-underlay-get',
+    domain: 'documents',
+    summary: 'Show what moving a sketch to its page’s newer version would do',
+    description:
+      'For a sketch traced over a PDF page: the page it lies on now and the page of the newer version it would move to, ' +
+      'found by the page label, else by the page number. 409 `underlay_current` when it already lies on that version.',
+    method: 'GET',
+    path: '/api/documents/[id]/sketch/underlay',
+    params: documentParams,
+    query: underlayPlanQuerySchema,
+    load: () => import('@/app/api/documents/[id]/sketch/underlay/route'),
+  },
+  {
+    name: 'document-sketch-underlay-move',
+    domain: 'documents',
+    summary: 'Move a sketch to its page’s newer version',
+    description:
+      'Swaps the page under the sketch for the same page of the newer version (document-sketch-underlay-get) and saves ' +
+      'the next version of the sketch. Strokes, annotations and links stay where they are.',
+    method: 'POST',
+    path: '/api/documents/[id]/sketch/underlay',
+    params: documentParams,
+    body: underlayMoveSchema,
+    load: () => import('@/app/api/documents/[id]/sketch/underlay/route'),
   },
   {
     name: 'document-visual-details-get',

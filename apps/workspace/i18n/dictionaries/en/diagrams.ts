@@ -166,6 +166,40 @@ export const diagrams = {
     saveAgain: 'Someone saved a newer version meanwhile. Your changes are merged into it; please save again.',
   },
   /** A change to a filed sketch proposed as operations (S4), and its receipt. */
+  // A sketch over a PDF page (S6): the page lies locked underneath, on its version.
+  underlay: {
+    title: '{name}, p. {page} — sketch',
+    drawOnPage: 'Draw on page',
+    drawOnPageHint: 'Start a sketch over this page. It stays on this version and is not to scale.',
+    creating: 'Creating the sketch …',
+    createFailed: 'The sketch could not be created.',
+    loading: 'Loading the page …',
+    unavailable: 'The page underneath is not available to you; you see the strokes only.',
+    onVersion: 'Drawn on {title}, version {number}, p. {page}',
+    drift: 'on version {from}, current {to}',
+    noMeasure: 'Nothing is measured on the underlay: the sketch is not to scale.',
+    moveAction: 'Move to the new version',
+    moveTitle: 'Move to version {number}',
+    moveDescription:
+      'The strokes stay where they are; the new version’s page lies underneath. Annotations and links stay on their elements. A new version of the sketch is saved.',
+    matchedByLabel: 'Page “{label}” of version {number}, found by its page label',
+    matchedByIndex: 'Page {page} of version {number}: the same page number, the PDF does not label its pages',
+    showOld: 'Old',
+    showNew: 'New',
+    showBoth: 'Overlaid',
+    move: 'Move',
+    moving: 'Moving …',
+    moved: 'Moved, saved as version {number}',
+    moveFailed: 'Could not be moved.',
+    pageGone: 'The new version no longer has this page.',
+    cancel: 'Cancel',
+    refused: {
+      underlay_wider:
+        'The page underneath is in a folder not everyone in the project may read. The sketch stays in that folder, or its picture would show the page to people who may not open the document.',
+      underlay_other_project: 'A sketch lies in the project of the document it is drawn on.',
+      underlay_unavailable: 'The document this sketch is drawn on is not available to you.',
+    },
+  },
   sketchEdit: {
     eyebrow: 'Change the sketch',
     steps: 'Steps',

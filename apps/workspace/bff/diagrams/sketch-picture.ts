@@ -61,6 +61,8 @@ export function withMeasuredTexts(next: SketchScene, remeasured: readonly Record
 export interface DrawnScene {
   scene: SketchScene
   svg: string
+  /** Where the underlay lies in `svg`, when the scene has one; the filing puts the page there (`sketch-underlay-svg.ts`). */
+  underlay?: RenderedScene['underlay']
   render: Pick<RenderedScene, 'ms'> & { elements: number; remeasured: number }
 }
 
@@ -76,6 +78,7 @@ export async function drawSketchScene(stored: SketchScene | null, next: SketchSc
   return {
     scene: withMeasuredTexts(next, rendered.remeasured),
     svg: rendered.svg,
+    ...(rendered.underlay ? { underlay: rendered.underlay } : {}),
     render: { ms: rendered.ms, elements: drawn.length, remeasured: rendered.remeasured.length },
   }
 }
