@@ -33,6 +33,7 @@ import { findDocumentVersion } from '@/lib/documents/version-repository'
 import type { Document } from '@/lib/db/schema/documents'
 import { fileDiagramDocuments, type FiledDiagram } from './filing'
 import { underlayMoveRefusal } from './sketch-underlay-access'
+import { matchUnderlayPage } from './sketch-underlay-match'
 import { publishedSketchOf, saveSketchDocument, sketchSaveBaseOf } from './sketch-document'
 import { drawSketchScene } from './sketch-picture'
 import { checkSketchScene, serializeSketchScene, type SketchScene } from './sketch-scene'
@@ -91,24 +92,24 @@ function pageOf(versionId: string, versionNumber: number, page: number, labels: 
   return { versionId, versionNumber, page, pageLabel: labels[page - 1] ?? null }
 }
 
-/** Where the page lands in `toVersionId`: the same label when the PDF names one, else the same number. */
-async function planFor(session: AuthorizedSession, ref: SketchUnderlay, toVersionId: string): Promise<UnderlayMovePlan> {
+/** Where the page lands in `toVersionId` (`sketch-underlay-match.ts`): its label when it names one page, else its number, or the page the person chose. */
+async function planFor(session: AuthorizedSession, ref: SketchUnderlay, toVersionId: string, chosen?: number): Promise<UnderlayMovePlan> {
   const [fromVersion, toVersion] = await Promise.all([
     findDocumentVersion(ref.versionId, ref.documentId, session.organizationId),
     findDocumentVersion(toVersionId, ref.documentId, session.organizationId),
   ])
   if (!fromVersion || !toVersion) throw new NotFoundError('Version not found')
   const [fromLabels, toLabels] = await Promise.all([readPageLabels(session, ref.documentId, ref.versionId), readPageLabels(session, ref.documentId, toVersionId)])
-  const label = fromLabels[ref.page - 1] ?? null
-  const byLabel = label ? toLabels.indexOf(label) : -1
-  if (byLabel < 0 && ref.page > toLabels.length) {
-    throw new UnprocessableError('That page is not in the newer version.', { reason: 'page_gone', pageCount: toLabels.length })
+  const match = matchUnderlayPage(fromLabels, toLabels, ref.page, chosen)
+  if (match.kind === 'gone') throw new UnprocessableError('That page is not in the newer version.', { reason: 'page_gone', pageCount: match.pageCount })
+  if (match.kind === 'ambiguous') {
+    throw new UnprocessableError('More than one page of the newer version has that label; choose one.', { reason: 'label_ambiguous', label: match.label, pages: match.pages })
   }
-  const page = byLabel >= 0 ? byLabel + 1 : ref.page
   return {
-    from: pageOf(fromVersion.id, fromVersion.versionNumber, ref.page, fromLabels),
-    to: pageOf(toVersion.id, toVersion.versionNumber, page, toLabels),
-    matchedBy: byLabel >= 0 ? 'label' : 'index',
+    from: pageOf(fromVersion.id, fromVersion.versionNumber, ref.page, fromLabels.labels),
+    to: pageOf(toVersion.id, toVersion.versionNumber, match.page, toLabels.labels),
+    matchedBy: match.matchedBy,
+    labelGone: match.labelGone,
   }
 }
 
@@ -124,16 +125,16 @@ async function moveTarget(session: AuthorizedSession, documentId: string, versio
 }
 
 /** `GET /api/documents/[id]/sketch/underlay`: what the move would do, before the person decides. */
-export async function planSketchUnderlayMove(session: AuthorizedSession, documentId: string, versionId?: string): Promise<UnderlayMovePlan> {
+export async function planSketchUnderlayMove(session: AuthorizedSession, documentId: string, versionId?: string, page?: number): Promise<UnderlayMovePlan> {
   const { underlay, to } = await moveTarget(session, documentId, versionId)
-  return planFor(session, underlay.ref, to)
+  return planFor(session, underlay.ref, to, page)
 }
 
 /** `POST /api/documents/[id]/sketch/underlay`: the page swapped for the newer Fassung's, saved as the Skizze's next Fassung. */
 export async function moveSketchUnderlay(input: { session: AuthorizedSession; documentId: string; body: UnderlayMoveBody; marking: string; request?: Request }) {
   const { session } = input
   const { saveBase, underlay, to } = await moveTarget(session, input.documentId, input.body.versionId)
-  const plan = await planFor(session, underlay.ref, to)
+  const plan = await planFor(session, underlay.ref, to, input.body.page)
   const ref: SketchUnderlay = { ...underlay.ref, versionId: to, page: plan.to.page }
   const raster = await readPageRaster(session, ref, { log: false })
   const elements = saveBase.scene.elements.map((element) => {

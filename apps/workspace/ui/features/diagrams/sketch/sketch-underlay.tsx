@@ -91,8 +91,8 @@ export interface UnderlayMoveDialogProps {
   underlay: Extract<SketchUnderlayView, { state: 'available' }>
   onMoved: (versionNumber: number) => void
   /** The `/dev` preview's stand-ins for the two routes. */
-  planOf?: (documentId: string) => Promise<UnderlayMovePlan>
-  move?: (documentId: string, baseVersionId: string | null, versionId: string) => Promise<{ versionNumber: number }>
+  planOf?: (documentId: string, page?: number) => Promise<UnderlayMovePlan>
+  move?: (documentId: string, baseVersionId: string | null, versionId: string, page?: number) => Promise<{ versionNumber: number }>
   rasterUrl?: typeof pageRasterUrl
 }
 
@@ -112,20 +112,29 @@ export function UnderlayMoveDialog({
   const [failure, setFailure] = useState<string | null>(null)
   const [look, setLook] = useState<Look>('both')
   const [busy, setBusy] = useState(false)
+  // Two pages of the newer Fassung carry the old page's label: the person picks one, nothing guesses.
+  const [choices, setChoices] = useState<number[]>([])
+  const [chosen, setChosen] = useState<number | undefined>(undefined)
 
   useEffect(() => {
     if (!open) return
     const controller = new AbortController()
     setFailure(null)
-    planOf(documentId).then(
+    planOf(documentId, chosen).then(
       (answer) => !controller.signal.aborted && setPlan(answer),
       (error: unknown) => {
         if (controller.signal.aborted) return
+        setPlan(null)
+        if (error instanceof SketchRequestError && error.reason === 'label_ambiguous' && error.pages.length > 0) {
+          setChoices(error.pages)
+          setFailure(t('underlay.labelAmbiguous'))
+          return
+        }
         setFailure(error instanceof SketchRequestError && error.reason === 'page_gone' ? t('underlay.pageGone') : t('underlay.moveFailed'))
       }
     )
     return () => controller.abort()
-  }, [open, documentId, planOf, t])
+  }, [open, documentId, planOf, chosen, t])
 
   const oldUrl = rasterUrl(underlay.ref)
   const newUrl = plan ? rasterUrl({ ...underlay.ref, versionId: plan.to.versionId, page: plan.to.page }) : null
@@ -133,7 +142,7 @@ export function UnderlayMoveDialog({
     if (!plan) return
     setBusy(true)
     try {
-      onMoved((await move(documentId, baseVersionId, plan.to.versionId)).versionNumber)
+      onMoved((await move(documentId, baseVersionId, plan.to.versionId, plan.matchedBy === 'chosen' ? plan.to.page : undefined)).versionNumber)
     } catch {
       setFailure(t('underlay.moveFailed'))
     } finally {
@@ -152,8 +161,27 @@ export function UnderlayMoveDialog({
           <p className="text-sm" data-testid="sketch-underlay-plan">
             {plan.matchedBy === 'label'
               ? t('underlay.matchedByLabel', { label: plan.to.pageLabel ?? '', number: String(plan.to.versionNumber) })
-              : t('underlay.matchedByIndex', { page: String(plan.to.page), number: String(plan.to.versionNumber) })}
+              : plan.matchedBy === 'chosen'
+                ? t('underlay.matchedByChoice', { page: String(plan.to.page), number: String(plan.to.versionNumber) })
+                : plan.labelGone
+                  ? t('underlay.matchedByIndexLabelGone', { label: plan.from.pageLabel ?? '', page: String(plan.to.page), number: String(plan.to.versionNumber) })
+                  : t('underlay.matchedByIndex', { page: String(plan.to.page), number: String(plan.to.versionNumber) })}
           </p>
+        ) : null}
+        {choices.length > 0 ? (
+          <ToggleGroup
+            type="single"
+            value={chosen ? String(chosen) : ''}
+            onValueChange={(value) => value && setChosen(Number(value))}
+            aria-label={t('underlay.labelAmbiguous')}
+            data-testid="sketch-underlay-choices"
+          >
+            {choices.map((page) => (
+              <ToggleGroupItem key={page} value={String(page)}>
+                {t('underlay.choosePage', { page: String(page) })}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         ) : null}
         <ToggleGroup type="single" value={look} onValueChange={(value) => value && setLook(value as Look)} segmented aria-label={t('underlay.moveTitle', { number: '' })}>
           <ToggleGroupItem value="old">{t('underlay.showOld')}</ToggleGroupItem>

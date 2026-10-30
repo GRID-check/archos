@@ -73,4 +73,10 @@ describe('a Skizze on a page', () => {
     const drawn = await renderer.render({ elements: [page, room], remeasure: [] })
     expect(drawn.svg).not.toMatch(/<rect x="0" y="0" width="1223"/)
   }, 30_000)
+
+  it('places the live page when a deleted one lies before it', async () => {
+    const old = { ...newUnderlayElement('old', { ...BASE, versionId: '44444444-4444-4444-8444-444444444444' }, { widthPt: 595, heightPt: 842 }, 3), isDeleted: true }
+    const drawn = await renderer.render({ elements: [old, page, room], remeasure: [] })
+    expect(drawn.underlay).toMatchObject({ width: 1191, height: 842 })
+  }, 30_000)
 })

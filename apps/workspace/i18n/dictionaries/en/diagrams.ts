@@ -184,6 +184,10 @@ export const diagrams = {
       'The strokes stay where they are; the new version’s page lies underneath. Annotations and links stay on their elements. A new version of the sketch is saved.',
     matchedByLabel: 'Page “{label}” of version {number}, found by its page label',
     matchedByIndex: 'Page {page} of version {number}: the same page number, the PDF does not label its pages',
+    matchedByIndexLabelGone: 'Page {page} of version {number}: the label “{label}” is not there any more, so the same page number was taken. Check in the comparison that it is the same sheet.',
+    matchedByChoice: 'Page {page} of version {number}, as you chose',
+    labelAmbiguous: 'More than one page of the new version carries this label. Choose the right one.',
+    choosePage: 'p. {page}',
     showOld: 'Old',
     showNew: 'New',
     showBoth: 'Overlaid',
@@ -198,6 +202,7 @@ export const diagrams = {
         'The page underneath is in a folder not everyone in the project may read. The sketch stays in that folder, or its picture would show the page to people who may not open the document.',
       underlay_other_project: 'A sketch lies in the project of the document it is drawn on.',
       underlay_unavailable: 'The document this sketch is drawn on is not available to you.',
+      underlay_held: 'This version is still held by the upload screening. You can draw on it once it is released.',
     },
   },
   sketchEdit: {

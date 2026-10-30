@@ -17,8 +17,11 @@ from PIL import Image
 
 from agent_host.routes.internal_auth import _TOKEN_HEADERS
 from agent_host.routes.page_raster import MAX_LONG_SIDE
+from agent_host.routes.page_raster import MAX_PDF_BYTES
+from agent_host.routes.page_raster import MAX_PIXELS
 from agent_host.routes.page_raster import PALETTE_COLOURS
 from agent_host.routes.page_raster import add_page_raster_routes
+from agent_host.routes.page_raster import raster_scale
 
 TOKEN = "page-raster-test-token"
 A3 = (1190.55, 841.89)
@@ -96,7 +99,40 @@ async def test_what_is_no_page_is_named(client: AsyncClient, query: str, body: b
 async def test_labels_list_one_entry_per_page(client: AsyncClient) -> None:
     response = await client.post("/v1/internal/page-labels", content=_pdf(A3, 3), headers=_headers())
     assert response.status_code == 200
-    assert response.json() == {"labels": [None, None, None]}
+    assert response.json() == {"labels": [None, None, None], "pageCount": 3}
+
+
+async def test_a_body_declared_too_large_is_refused_before_it_is_read(client: AsyncClient) -> None:
+    headers = {**_headers(), "content-length": str(MAX_PDF_BYTES + 1)}
+    response = await client.post("/v1/internal/page-raster?page=1&dpi=150", content=b"%PDF", headers=headers)
+    assert response.status_code == 413
+    assert response.json()["detail"] == "too_large"
+
+
+def test_a_square_sheet_is_drawn_within_the_pixel_budget() -> None:
+    scale = raster_scale(3370.39, 3370.39, 200)
+    assert (3370.39 * scale) ** 2 <= MAX_PIXELS * 1.0001
+    assert raster_scale(*A3, 150) == pytest.approx(150 / 72)
+
+
+async def test_a_render_past_its_time_is_answered_and_keeps_its_slot(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from agent_host.routes import page_raster
+
+    release = threading.Event()
+    monkeypatch.setattr(page_raster, "RENDER_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(page_raster, "QUEUE_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(page_raster, "MAX_CONCURRENT_RENDERS", 1)
+    monkeypatch.setattr(page_raster, "_slots", None)
+    monkeypatch.setattr(page_raster, "render_page_raster", lambda *_: release.wait(5))
+    first = await client.post("/v1/internal/page-raster?page=1&dpi=150", content=_pdf(A3), headers=_headers())
+    assert first.status_code == 504
+    second = await client.post("/v1/internal/page-raster?page=1&dpi=150", content=_pdf(A3), headers=_headers())
+    assert second.status_code == 503
+    release.set()
 
 
 async def test_without_the_internal_token_nothing_is_drawn(client: AsyncClient) -> None:

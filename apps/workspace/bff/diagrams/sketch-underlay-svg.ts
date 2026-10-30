@@ -7,7 +7,7 @@
  * itself, AFTER the vector picture passed the validator, into one fixed slot,
  * the first child of the root:
  *
- *     <svg …><image data-underlay="" x=… y=… width=… height=…
+ *     <svg …><image data-underlay="" data-sha256="…" x=… y=… width=… height=…
  *       preserveAspectRatio="none" href="data:image/png;base64,…"/>…
  *
  * and every reader of a stored Skizze lifts exactly that slot out
@@ -17,7 +17,10 @@
  * validator an image rule or the minimal `<use href="#…">`: no client-sent
  * picture of any kind is ever parsed as one, and the PNG in the slot is always
  * the server's own raster (`documents/page-raster.ts`), checked by its signature
- * and size when it is written and again when it is read.
+ * and size when it is written and again when it is read. The slot carries the
+ * PNG's SHA-256: a lift refuses a slot whose bytes are not the ones hashed, and
+ * a redraw compares the hash with the server's raster of the page the scene
+ * names (`underlayForRendition`), so a forged slot draws nothing.
  *
  * **The PDF gets the bytes, never a URL.** `svg-to-pdf.tsx` hands the PNG to
  * @react-pdf's `<Image>` as a Buffer through `src` (spike r3: given an http
@@ -28,6 +31,7 @@
  * of PNG, base64 in the file.
  */
 
+import { createHash } from 'node:crypto'
 import { pngFacts } from '@/lib/images/png-facts'
 import { MAX_PAGE_RASTER_BYTES, MAX_PAGE_RASTER_LONG_SIDE } from '@/lib/documents/page-raster-limits'
 import type { UnderlayPlacement } from './sketch-render-types'
@@ -40,6 +44,9 @@ export interface EmbeddedUnderlay extends UnderlayPlacement {
   png: Uint8Array
 }
 
+/** The hash a slot carries of its PNG. */
+export const underlayPngHash = (png: Uint8Array): string => createHash('sha256').update(png).digest('hex')
+
 export class UnderlayImageError extends Error {
   constructor(detail: string) {
     super(detail)
@@ -50,7 +57,7 @@ export class UnderlayImageError extends Error {
 const NUM = '(-?\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)'
 const ROOT = /^(<\?xml[^?]*\?>)?<svg\b[^>]*>/
 const SLOT = new RegExp(
-  `^<image data-underlay="" x="${NUM}" y="${NUM}" width="${NUM}" height="${NUM}" preserveAspectRatio="none" href="data:image/png;base64,([A-Za-z0-9+/]+={0,2})"/>`
+  `^<image data-underlay="" data-sha256="([0-9a-f]{64})" x="${NUM}" y="${NUM}" width="${NUM}" height="${NUM}" preserveAspectRatio="none" href="data:image/png;base64,([A-Za-z0-9+/]+={0,2})"/>`
 )
 
 /** The PNG kept only when it is one, within the raster's size and bytes. */
@@ -70,8 +77,9 @@ export function withUnderlayImage(svg: string, underlay: EmbeddedUnderlay): stri
   if (!root) throw new UnderlayImageError('no root to put the underlay in')
   const { x, y, width, height } = underlay
   if (![x, y, width, height].every(finite) || width <= 0 || height <= 0) throw new UnderlayImageError('the underlay has no place')
-  const href = Buffer.from(checked(underlay.png)).toString('base64')
-  const slot = `<image data-underlay="" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="none" href="data:image/png;base64,${href}"/>`
+  const png = checked(underlay.png)
+  const href = Buffer.from(png).toString('base64')
+  const slot = `<image data-underlay="" data-sha256="${underlayPngHash(png)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="none" href="data:image/png;base64,${href}"/>`
   return svg.slice(0, root[0].length) + slot + svg.slice(root[0].length)
 }
 
@@ -86,8 +94,9 @@ export function liftUnderlayImage(svg: string): { svg: string; underlay: Embedde
   const rest = svg.slice(root[0].length)
   const slot = SLOT.exec(rest)
   if (!slot) return { svg, underlay: null }
-  const [whole, x, y, width, height, base64] = slot
+  const [whole, sha256, x, y, width, height, base64] = slot
   const png = checked(new Uint8Array(Buffer.from(base64, 'base64')))
+  if (underlayPngHash(png) !== sha256) throw new UnderlayImageError('the underlay is not the page its slot names')
   return {
     svg: root[0] + rest.slice(whole.length),
     underlay: { x: Number(x), y: Number(y), width: Number(width), height: Number(height), png },

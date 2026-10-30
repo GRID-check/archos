@@ -16,6 +16,14 @@
  * (`underlay_other_project`, `underlay_wider`), never filed without the page:
  * a Skizze drawn on a page means that page, and filing it blank would say
  * something else. The saver must read the base too (`underlay_unavailable`).
+ *
+ * **Only screened bytes** (ADR-0086). A Skizze is machine-filed and never held,
+ * so a page traced from bytes no passing verdict judged would reach every
+ * member through it. Starting, saving and moving refuse such a page
+ * (`underlay_held`, from `documents/page-raster.ts`), and a redraw from stored
+ * bytes (a Freigabe, its retry) draws the sheet blank when the base has been
+ * held since, or when the slot's PNG is not the server's raster of the page the
+ * scene names ({@link underlayForRendition}).
  */
 
 import 'server-only'
@@ -26,14 +34,14 @@ import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { findDocumentVersion } from '@/lib/documents/version-repository'
-import { readPageRaster } from '@/lib/documents/page-raster'
+import { PageRasterHeldError, readPageRaster } from '@/lib/documents/page-raster'
 import type { SketchScene } from './sketch-scene'
 import type { UnderlayPlacement } from './sketch-render-types'
-import type { EmbeddedUnderlay } from './sketch-underlay-svg'
+import { underlayPngHash, type EmbeddedUnderlay } from './sketch-underlay-svg'
 import { underlayOf, type SceneUnderlay } from './sketch-underlay'
 import type { SketchUnderlayView } from './sketch-underlay-wire'
 
-export type UnderlayRefusalReason = 'underlay_other_project' | 'underlay_wider' | 'underlay_unavailable'
+export type UnderlayRefusalReason = 'underlay_other_project' | 'underlay_wider' | 'underlay_unavailable' | 'underlay_held'
 
 const WORDS: Record<UnderlayRefusalReason, string> = {
   underlay_other_project: 'A sketch lies in the project of the document it is drawn on.',
@@ -41,6 +49,7 @@ const WORDS: Record<UnderlayRefusalReason, string> = {
     'The document this sketch is drawn on is in a folder not every member may read; the sketch stays in that folder, ' +
     'or its filed picture would show the page to people who may not open the document.',
   underlay_unavailable: 'The document this sketch is drawn on is not available to you.',
+  underlay_held: 'The version this sketch is drawn on is held by the upload screening; the sketch is saved on it once it is released.',
 }
 
 export class UnderlayRefusedError extends UnprocessableError {
@@ -91,9 +100,24 @@ export async function embeddedUnderlayFor(
     const raster = await readPageRaster(session, underlay.ref, { log: false })
     return { ...placement, png: raster.png }
   } catch (error) {
+    if (error instanceof PageRasterHeldError) throw new UnderlayRefusedError('underlay_held')
     if (error instanceof NotFoundError) throw new UnderlayRefusedError('underlay_unavailable')
     throw error
   }
+}
+
+/**
+ * The page a redraw from stored bytes may draw (a Freigabe's PDF, its retry):
+ * the slot's page when it is still the server's raster of the page the scene
+ * names, read with this session's rights from screened bytes; else null, a
+ * blank sheet. Never throws: a redraw without its page is still the strokes.
+ */
+export async function underlayForRendition(session: AuthorizedSession, scene: SketchScene, lifted: EmbeddedUnderlay | null): Promise<EmbeddedUnderlay | null> {
+  const underlay = underlayOf(scene.elements)
+  if (!underlay || !lifted) return null
+  const raster = await readPageRaster(session, underlay.ref, { log: false }).catch(() => null)
+  if (!raster || underlayPngHash(raster.png) !== underlayPngHash(lifted.png)) return null
+  return lifted
 }
 
 /** Why moving this Skizze into `folderId` is refused, in words, or null; the move asks before it moves. */

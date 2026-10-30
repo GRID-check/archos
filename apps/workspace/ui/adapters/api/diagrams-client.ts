@@ -94,11 +94,14 @@ export const fileDiagram = async (projectId: string, request: DiagramFilingReque
 /** A sketch request refused: `stale` when a newer Fassung exists (409 `stale_base_version`). */
 export class SketchRequestError extends ApiRequestError {
   readonly serverMessage: string | null
+  /** The pages to choose from, when a move's label names more than one (`label_ambiguous`). */
+  readonly pages: number[]
 
-  constructor(status: number, serverMessage: string | null, reason: string | null) {
+  constructor(status: number, serverMessage: string | null, reason: string | null, pages: number[] = []) {
     super(`The sketch request failed: ${status}`, status, reason)
     this.name = 'SketchRequestError'
     this.serverMessage = serverMessage
+    this.pages = pages
   }
 
   get stale(): boolean {
@@ -114,10 +117,10 @@ export class SketchRequestError extends ApiRequestError {
 async function sketchError(response: Response): Promise<SketchRequestError> {
   const body: unknown = await response.json().catch(() => null)
   const envelope = z
-    .object({ error: z.string().optional(), details: z.object({ reason: z.string() }).partial().optional() })
+    .object({ error: z.string().optional(), details: z.object({ reason: z.string(), pages: z.array(z.number().int()).max(9999) }).partial().optional() })
     .safeParse(body)
   const data = envelope.success ? envelope.data : {}
-  return new SketchRequestError(response.status, data.error ?? null, data.details?.reason ?? null)
+  return new SketchRequestError(response.status, data.error ?? null, data.details?.reason ?? null, data.details?.pages ?? [])
 }
 
 const SketchViewSchema = z.object({
@@ -247,11 +250,17 @@ export const createSketchFromPage = async (documentId: string, versionId: string
 }
 
 const UnderlayPageSchema = z.object({ versionId: z.string(), versionNumber: z.number(), page: z.number(), pageLabel: z.string().nullable() })
-const UnderlayPlanSchema = z.object({ from: UnderlayPageSchema, to: UnderlayPageSchema, matchedBy: z.enum(['label', 'index']) })
+const UnderlayPlanSchema = z.object({
+  from: UnderlayPageSchema,
+  to: UnderlayPageSchema,
+  matchedBy: z.enum(['label', 'index', 'chosen']),
+  labelGone: z.boolean().default(false),
+})
 
-/** `GET /api/documents/{id}/sketch/underlay`: which page of the newer Fassung the Skizze would move to. */
-export const getUnderlayMovePlan = async (documentId: string, signal?: AbortSignal): Promise<UnderlayMovePlan> => {
-  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch/underlay`, { signal })
+/** `GET /api/documents/{id}/sketch/underlay`: which page of the newer Fassung the Skizze would move to, or the `page` the person chose. */
+export const getUnderlayMovePlan = async (documentId: string, page?: number, signal?: AbortSignal): Promise<UnderlayMovePlan> => {
+  const query = page ? `?page=${page}` : ''
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch/underlay${query}`, { signal })
   if (!response.ok) throw await sketchError(response)
   const parsed = UnderlayPlanSchema.safeParse(await response.json())
   if (!parsed.success) throw new SketchRequestError(response.status, null, null)
@@ -259,11 +268,11 @@ export const getUnderlayMovePlan = async (documentId: string, signal?: AbortSign
 }
 
 /** `POST /api/documents/{id}/sketch/underlay`: the move, saved as the Skizze's next Fassung. */
-export const moveSketchUnderlay = async (documentId: string, baseVersionId: string | null, versionId: string): Promise<{ versionNumber: number }> => {
+export const moveSketchUnderlay = async (documentId: string, baseVersionId: string | null, versionId: string, page?: number): Promise<{ versionNumber: number }> => {
   const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/sketch/underlay`, {
     method: 'POST',
     headers: jsonHeaders,
-    body: JSON.stringify({ baseVersionId, versionId }),
+    body: JSON.stringify({ baseVersionId, versionId, ...(page ? { page } : {}) }),
   })
   if (!response.ok) throw await sketchError(response)
   const parsed = z.object({ versionNumber: z.number() }).safeParse(await response.json())

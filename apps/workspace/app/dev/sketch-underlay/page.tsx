@@ -86,6 +86,7 @@ const PLAN = {
   from: { versionId: V3, versionNumber: 3, page: 2, pageLabel: 'A-101' },
   to: { versionId: V4, versionNumber: 4, page: 3, pageLabel: 'A-101' },
   matchedBy: 'label' as const,
+  labelGone: false,
 }
 
 /** The raster route, answered here; a reader gets the 404 the route gives one who may not open the base. */

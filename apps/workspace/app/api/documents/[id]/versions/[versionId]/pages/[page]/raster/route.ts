@@ -1,7 +1,7 @@
 /**
  * One page of a PDF Fassung as a palette PNG (S6): what a Skizze traced over the
  * page shows underneath. `?dpi=` 100, 150 (default) or 200, long side at most
- * 4096 px, cached per (Fassung, page, dpi). Reading it is reading that document:
+ * 4096 px, cached per (Fassung, page, dpi), rate-limited per person (`page-raster`). Reading it is reading that document:
  * restricted folders, held bytes and the download log as every byte read. Thin:
  * the service is `bff/documents/page-raster.ts`.
  */
@@ -11,6 +11,7 @@ import { BadRequestError } from '@/lib/api/errors'
 import { pageRasterResponse, readPageRaster } from '@/lib/documents/page-raster'
 import { DEFAULT_PAGE_RASTER_DPI, type PageRasterDpi } from '@/lib/documents/page-raster-limits'
 import { pageRasterQuerySchema } from '@/lib/diagrams/sketch-underlay-wire'
+import { PAGE_RASTER_LIMIT } from '@/lib/limits'
 
 type Params = { id: string; versionId: string; page: string }
 
@@ -23,6 +24,7 @@ export const GET = apiRoute<Params>(
     return pageRasterResponse(await readPageRaster(session, { documentId: params.id, versionId: params.versionId, page, dpi }))
   },
   {
+    limits: { rule: PAGE_RASTER_LIMIT },
     authz: {
       enforcedBy:
         'readPageRaster -> getAccessibleDocument read (project:view, folder read, the hold); the version must be published or superseded with bytes this session may receive',

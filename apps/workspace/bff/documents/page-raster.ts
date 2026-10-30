@@ -21,14 +21,25 @@
  *     16-colour palette, long side at most 4096 px): 300 ms for an A3 sheet at
  *     150 dpi, 328 KB.
  *   - **Checked before it is kept.** PNG signature, IHDR size within 4096 px, at
- *     most 4 MiB, else the backend's answer is a 502 and nothing is cached.
+ *     most 4 MiB. No PNG is a 502 and nothing is cached; a PNG past 4 MiB is the
+ *     named refusal `raster_too_large`, remembered like the other refusals.
+ *   - **Only screened bytes** (ADR-0086). A page is traced only from bytes a
+ *     passing verdict judged (`versionBytesPassedScreening`): the uploader and the
+ *     reviewers, who may open a held Fassung, get the named refusal
+ *     `underlay_held` here, everyone else the 404. A base that is held later is
+ *     a blank sheet in the editor from then on.
+ *   - **Bounded work.** A refusal (`no_such_page`, `not_a_pdf`, …) is
+ *     remembered for {@link REFUSAL_TTL_MS} per (organization, Fassung, page,
+ *     dpi), so asking again costs no transfer and no parse; concurrent misses of
+ *     one page share one render; the route is rate-limited per person
+ *     (`PAGE_RASTER_LIMIT`).
  *   - **Logged as an open** (`preview`, with the Fassung), like every viewer fetch:
  *     recorded when the document sits under its own access list.
  */
 
 import 'server-only'
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
-import { ApiError, NotFoundError, UpstreamError } from '@/lib/api/errors'
+import { ApiError, NotFoundError, UnprocessableError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-url'
 import type { Document } from '@/lib/db/schema/documents'
@@ -39,6 +50,7 @@ import { internalServiceHeaders } from '@/lib/internal-auth'
 import { buildPageRasterStorageKey, s3Client } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { getAccessibleDocument } from './access'
+import { versionBytesPassedScreening } from './document-reader'
 import { mayReceiveVersionBytes } from './version-content'
 import { MAX_PAGE_RASTER_BYTES, MAX_PAGE_RASTER_LONG_SIDE, type PageRasterDpi } from './page-raster-limits'
 import { findDocumentVersion } from './version-repository'
@@ -48,6 +60,50 @@ const MAX_SOURCE_BYTES = 256 * 1024 * 1024
 const BACKEND_TIMEOUT_MS = 30_000
 const PDF = 'application/pdf'
 const BYTES_STATES: ReadonlySet<string> = new Set(['published', 'superseded'])
+/** How long a refusal is remembered: long enough that a loop costs nothing, short enough that a fix is seen soon. */
+export const REFUSAL_TTL_MS = 5 * 60 * 1000
+const MAX_REMEMBERED_REFUSALS = 2000
+
+/**
+ * The page lies in bytes no passing verdict judged (ADR-0086): its uploader and
+ * its reviewers may open the Fassung, but nothing is traced over it until it is
+ * released, because a Skizze's filed picture is never held.
+ */
+export class PageRasterHeldError extends UnprocessableError {
+  constructor() {
+    super('This version is held by the upload screening; a sketch is drawn on it once it is released.', { reason: 'underlay_held' })
+    this.name = 'PageRasterHeldError'
+  }
+}
+
+/** A refusal the backend gave, kept to be given again without asking it. */
+type Refusal = { kind: 'gone' } | { kind: 'unprocessable'; reason: string }
+const refusals = new Map<string, { refusal: Refusal; until: number }>()
+const inFlight = new Map<string, Promise<{ png: Uint8Array; facts: PageRasterFacts }>>()
+
+function refusalError(refusal: Refusal): ApiError {
+  if (refusal.kind === 'gone') return new NotFoundError('This page does not exist in that version')
+  return new ApiError(422, 'UNPROCESSABLE_ENTITY', 'This PDF page cannot be drawn.', { reason: refusal.reason })
+}
+
+function remembered(key: string): Refusal | null {
+  const entry = refusals.get(key)
+  if (!entry) return null
+  if (entry.until > Date.now()) return entry.refusal
+  refusals.delete(key)
+  return null
+}
+
+function remember(key: string, refusal: Refusal): ApiError {
+  if (refusals.size >= MAX_REMEMBERED_REFUSALS) refusals.delete(refusals.keys().next().value as string)
+  refusals.set(key, { refusal, until: Date.now() + REFUSAL_TTL_MS })
+  return refusalError(refusal)
+}
+
+/** Test seam: forget every remembered refusal. */
+export function forgetPageRasterRefusals(): void {
+  refusals.clear()
+}
 
 /** What the page is, kept beside its raster. Points are the PDF's own unit: a Skizze draws the page one scene pixel per point. */
 export interface PageRasterFacts {
@@ -80,7 +136,11 @@ async function readableFassung(session: AuthorizedSession, documentId: string, v
   const document = await getAccessibleDocument(session, documentId, 'read')
   const version = await findDocumentVersion(versionId, documentId, session.organizationId)
   if (!version || !BYTES_STATES.has(version.state)) throw new NotFoundError('Version not found')
-  if (!(await mayReceiveVersionBytes(session, document, version))) throw new NotFoundError('Version not found')
+  if (!versionBytesPassedScreening(document, version)) {
+    // Who may open the held Fassung learns why; anyone else gets the 404 an unknown one gets.
+    if (await mayReceiveVersionBytes(session, document, version)) throw new PageRasterHeldError()
+    throw new NotFoundError('Version not found')
+  }
   if ((version.contentType ?? document.contentType) !== PDF) {
     throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Only a PDF page can lie under a sketch.', { reason: 'not_a_pdf' })
   }
@@ -110,7 +170,8 @@ async function postPdf(path: string, pdf: Uint8Array): Promise<Response> {
     return await fetch(`${base}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': PDF, ...internalServiceHeaders(base) },
-      body: Buffer.from(pdf),
+      // The bytes as read, not a second copy of a file that may be large; the store's reader answers an ArrayBuffer view.
+      body: pdf as Uint8Array<ArrayBuffer>,
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     })
   } catch {
@@ -118,16 +179,14 @@ async function postPdf(path: string, pdf: Uint8Array): Promise<Response> {
   }
 }
 
-/** The backend's 422 detail as the refusal the route answers. */
-async function refusal(response: Response): Promise<never> {
+/** The backend's refusal, as the route answers it; a 422 or 413 is a fact about these bytes and is remembered under `key`. */
+async function refusal(response: Response, key: string): Promise<never> {
   const detail = await response
     .json()
     .then((body: { detail?: unknown }) => (typeof body.detail === 'string' ? body.detail : null))
     .catch(() => null)
-  if (response.status === 422 && detail === 'no_such_page') throw new NotFoundError('This page does not exist in that version')
-  if (response.status === 422 || response.status === 413) {
-    throw new ApiError(422, 'UNPROCESSABLE_ENTITY', 'This PDF page cannot be drawn.', { reason: detail ?? 'not_drawable' })
-  }
+  if (response.status === 422 && detail === 'no_such_page') throw remember(key, { kind: 'gone' })
+  if (response.status === 422 || response.status === 413) throw remember(key, { kind: 'unprocessable', reason: detail ?? 'not_drawable' })
   throw new UpstreamError('The page renderer failed')
 }
 
@@ -136,11 +195,11 @@ const num = (value: string | null | undefined): number => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-/** The PNG kept only when it is one, and of a size a page raster may have. */
-function checkedPng(bytes: Uint8Array): { width: number; height: number } {
+/** The PNG kept only when it is one, and of a size a page raster may have; a page that draws too heavy is a remembered refusal. */
+function checkedPng(bytes: Uint8Array, key: string): { width: number; height: number } {
   const facts = pngFacts(bytes)
-  const fits = facts && Math.max(facts.width, facts.height) <= MAX_PAGE_RASTER_LONG_SIDE && bytes.byteLength <= MAX_PAGE_RASTER_BYTES
-  if (!facts || !fits) throw new UpstreamError('The page renderer answered no page raster')
+  if (!facts || Math.max(facts.width, facts.height) > MAX_PAGE_RASTER_LONG_SIDE) throw new UpstreamError('The page renderer answered no page raster')
+  if (bytes.byteLength > MAX_PAGE_RASTER_BYTES) throw remember(key, { kind: 'unprocessable', reason: 'raster_too_large' })
   return facts
 }
 
@@ -158,11 +217,11 @@ function factsFrom(metadata: Record<string, string>, address: PageRasterAddress,
   }
 }
 
-async function drawAndKeep(version: DocumentVersion, key: string, address: PageRasterAddress): Promise<{ png: Uint8Array; facts: PageRasterFacts }> {
+async function drawAndKeep(version: DocumentVersion, key: string, address: PageRasterAddress, refusalKey: string): Promise<{ png: Uint8Array; facts: PageRasterFacts }> {
   const response = await postPdf(`/v1/internal/page-raster?page=${address.page}&dpi=${address.dpi}`, await sourceBytes(version))
-  if (!response.ok) return refusal(response)
+  if (!response.ok) return refusal(response, refusalKey)
   const png = new Uint8Array(await response.arrayBuffer())
-  const size = checkedPng(png)
+  const size = checkedPng(png, refusalKey)
   const metadata: Record<string, string> = {
     'page-count': response.headers.get('x-page-count') ?? '0',
     'page-width-pt': response.headers.get('x-page-width-pt') ?? '0',
@@ -174,6 +233,18 @@ async function drawAndKeep(version: DocumentVersion, key: string, address: PageR
     .send(new PutObjectCommand({ Bucket: resolveDocumentBucket(version.storageBucket), Key: key, Body: Buffer.from(png), ContentType: 'image/png', Metadata: metadata }))
     .catch((error: unknown) => console.warn('[page-raster] could not cache a page raster:', error instanceof Error ? error.message : error))
   return { png, facts: factsFrom(metadata, address, size) }
+}
+
+/** A miss, drawn once however many readers ask at the same time, and refused at once while a refusal is remembered. */
+function drawOnce(organizationId: string, version: DocumentVersion, key: string, address: PageRasterAddress) {
+  const flight = `${organizationId}:${version.id}:${address.page}:${address.dpi}`
+  const known = remembered(flight)
+  if (known) return Promise.reject(refusalError(known))
+  const running = inFlight.get(flight)
+  if (running) return running
+  const started = drawAndKeep(version, key, address, flight).finally(() => inFlight.delete(flight))
+  inFlight.set(flight, started)
+  return started
 }
 
 /**
@@ -190,29 +261,51 @@ export async function readPageRaster(session: AuthorizedSession, address: PageRa
   const raster =
     cached && size && Math.max(size.width, size.height) <= MAX_PAGE_RASTER_LONG_SIDE
       ? { png: cached.bytes, facts: factsFrom(cached.metadata, address, size) }
-      : await drawAndKeep(version, key, address)
+      : await drawOnce(session.organizationId, version, key, address)
   if (log) await recordDocumentAccess(session, document, 'preview', { versionId: version.id })
   return { ...raster, document, version }
 }
 
-/** Each page's label in a Fassung, `null` where it has none; cached beside its rasters. Nobody is handed bytes, so nothing is logged. */
-export async function readPageLabels(session: AuthorizedSession, documentId: string, versionId: string): Promise<(string | null)[]> {
+/** A Fassung's page labels, `null` where a page has none, and how many pages it has (labels stop at the backend's `MAX_LABELS`). */
+export interface PageLabels {
+  labels: (string | null)[]
+  pageCount: number
+}
+
+/** What a cached `labels.json` says, or null when it says nothing usable: a corrupt or old file is read again, never a 500. */
+export function parsePageLabels(text: string): PageLabels | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+  const { labels, pageCount } = parsed as { labels?: unknown; pageCount?: unknown }
+  if (!Array.isArray(labels) || typeof pageCount !== 'number' || !Number.isInteger(pageCount) || pageCount < 0) return null
+  return { labels: labels.map((label) => (typeof label === 'string' ? label : null)), pageCount }
+}
+
+/** Each page's label in a Fassung, and its page count; cached beside its rasters. Nobody is handed bytes, so nothing is logged. */
+export async function readPageLabels(session: AuthorizedSession, documentId: string, versionId: string): Promise<PageLabels> {
   const { version } = await readableFassung(session, documentId, versionId)
   const key = buildPageRasterStorageKey(version.storageKey, 'labels')
   if (!key) throw new NotFoundError('Version not found')
   const bucket = resolveDocumentBucket(version.storageBucket)
   const cached = await readObject(bucket, key)
-  if (cached) {
-    const parsed = JSON.parse(new TextDecoder().decode(cached.bytes)) as unknown
-    if (Array.isArray(parsed)) return parsed.map((label) => (typeof label === 'string' ? label : null))
-  }
+  const kept = cached ? parsePageLabels(new TextDecoder().decode(cached.bytes)) : null
+  if (kept) return kept
+  const refusalKey = `${session.organizationId}:${version.id}:labels`
+  const known = remembered(refusalKey)
+  if (known) throw refusalError(known)
   const response = await postPdf('/v1/internal/page-labels', await sourceBytes(version))
-  if (!response.ok) return refusal(response)
-  const { labels } = (await response.json()) as { labels: (string | null)[] }
+  if (!response.ok) return refusal(response, refusalKey)
+  const read = parsePageLabels(await response.text())
+  if (!read) throw new UpstreamError('The page renderer answered no page labels')
   await s3Client
-    .send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: JSON.stringify(labels), ContentType: 'application/json' }))
+    .send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: Buffer.from(JSON.stringify(read)), ContentType: 'application/json' }))
     .catch(() => undefined)
-  return labels
+  return read
 }
 
 /** The raster as the route answers it: private, never sniffed, the page's facts in headers. */

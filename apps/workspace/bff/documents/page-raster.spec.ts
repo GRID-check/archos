@@ -17,11 +17,13 @@ vi.mock('server-only', () => ({}))
 const access = vi.hoisted(() => ({ getAccessibleDocument: vi.fn() }))
 const versions = vi.hoisted(() => ({ findDocumentVersion: vi.fn() }))
 const content = vi.hoisted(() => ({ mayReceiveVersionBytes: vi.fn(async () => true) }))
+const screening = vi.hoisted(() => ({ versionBytesPassedScreening: vi.fn(() => true) }))
 const log = vi.hoisted(() => ({ recordDocumentAccess: vi.fn() }))
 const store = vi.hoisted(() => ({ objects: new Map<string, { bytes: Uint8Array; metadata?: Record<string, string> }>(), puts: [] as string[] }))
 vi.mock('./access', () => access)
 vi.mock('./version-repository', () => versions)
 vi.mock('./version-content', () => content)
+vi.mock('./document-reader', () => screening)
 vi.mock('@/lib/download-log/service', () => log)
 vi.mock('@/lib/backend-url', () => ({ getBackendUrl: () => 'http://backend' }))
 vi.mock('@/lib/internal-auth', () => ({ internalServiceHeaders: () => ({}) }))
@@ -46,7 +48,7 @@ vi.mock('@/lib/s3', async (original) => {
   }
 })
 
-const { readPageRaster } = await import('./page-raster')
+const { forgetPageRasterRefusals, PageRasterHeldError, readPageLabels, readPageRaster } = await import('./page-raster')
 
 const session = { organizationId: 'org_1', userId: 'user_1' } as AuthorizedSession
 const DOC = '22222222-2222-4222-8222-222222222222'
@@ -56,6 +58,8 @@ const fetchMock = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
+  forgetPageRasterRefusals()
+  screening.versionBytesPassedScreening.mockReturnValue(true)
   store.objects.clear()
   store.puts.length = 0
   store.objects.set('org/o/project/p/doc/d/v2/plan.pdf', { bytes: new TextEncoder().encode('%PDF-1.7') })
@@ -86,6 +90,7 @@ describe('readPageRaster', () => {
   it('is a 404 for a document or Fassung the reader may not have, and draws nothing', async () => {
     access.getAccessibleDocument.mockRejectedValueOnce(new NotFoundError())
     await expect(readPageRaster(session, address)).rejects.toBeInstanceOf(NotFoundError)
+    screening.versionBytesPassedScreening.mockReturnValueOnce(false)
     content.mayReceiveVersionBytes.mockResolvedValueOnce(false)
     await expect(readPageRaster(session, address)).rejects.toBeInstanceOf(NotFoundError)
     versions.findDocumentVersion.mockResolvedValueOnce({ id: VER, state: 'draft', contentType: 'application/pdf', storageKey: 'k/x.pdf' })
@@ -109,5 +114,54 @@ describe('readPageRaster', () => {
   it('says a page past the end is not there', async () => {
     fetchMock.mockResolvedValueOnce(Response.json({ detail: 'no_such_page' }, { status: 422 }))
     await expect(readPageRaster(session, address)).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('traces no held bytes: who may open them hears `underlay_held`, and nothing is drawn', async () => {
+    screening.versionBytesPassedScreening.mockReturnValue(false)
+    content.mayReceiveVersionBytes.mockResolvedValue(true)
+    const held = await readPageRaster(session, address).catch((error: unknown) => error)
+    expect(held).toBeInstanceOf(PageRasterHeldError)
+    expect(held).toMatchObject({ status: 422, details: { reason: 'underlay_held' } })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('remembers a refusal, so asking again sends nothing to the backend', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ detail: 'no_such_page' }, { status: 422 }))
+    await expect(readPageRaster(session, address)).rejects.toBeInstanceOf(NotFoundError)
+    await expect(readPageRaster(session, address)).rejects.toBeInstanceOf(NotFoundError)
+    fetchMock.mockResolvedValueOnce(Response.json({ detail: 'not_a_pdf' }, { status: 422 }))
+    await expect(readPageRaster(session, { ...address, dpi: 100 })).rejects.toMatchObject({ status: 422, details: { reason: 'not_a_pdf' } })
+    await expect(readPageRaster(session, { ...address, dpi: 100 })).rejects.toMatchObject({ details: { reason: 'not_a_pdf' } })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('draws a page once for readers who ask at the same time', async () => {
+    const [one, two, three] = await Promise.all([readPageRaster(session, address), readPageRaster(session, address), readPageRaster(session, address)])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(one.facts).toEqual(two.facts)
+    expect(three.png).toBe(one.png)
+  })
+
+  it('refuses a raster past 4 MiB by name, and remembers it', async () => {
+    const heavy = new Uint8Array(4 * 1024 * 1024 + 1)
+    heavy.set(whitePng(40, 30))
+    fetchMock.mockResolvedValueOnce(new Response(Buffer.from(heavy), { status: 200 }))
+    await expect(readPageRaster(session, address)).rejects.toMatchObject({ status: 422, details: { reason: 'raster_too_large' } })
+    await expect(readPageRaster(session, address)).rejects.toMatchObject({ details: { reason: 'raster_too_large' } })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(store.puts).toEqual([])
+  })
+})
+
+describe('readPageLabels', () => {
+  const labelsKey = 'org/o/project/p/doc/d/v2/_raster/labels.json'
+
+  it('reads a corrupt labels.json as absent and asks again, keeping the page count', async () => {
+    store.objects.set(labelsKey, { bytes: new TextEncoder().encode('{not json') })
+    fetchMock.mockResolvedValueOnce(Response.json({ labels: ['A-101', null], pageCount: 2400 }))
+    expect(await readPageLabels(session, DOC, VER)).toEqual({ labels: ['A-101', null], pageCount: 2400 })
+    expect(new TextDecoder().decode(store.objects.get(labelsKey)?.bytes)).toBe(JSON.stringify({ labels: ['A-101', null], pageCount: 2400 }))
+    expect(await readPageLabels(session, DOC, VER)).toEqual({ labels: ['A-101', null], pageCount: 2400 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

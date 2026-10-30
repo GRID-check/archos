@@ -49,6 +49,7 @@ import { parseStoredSketchScene, sceneHashOf, type SketchScene } from './sketch-
 import { storedDiagramSource } from './stored-source'
 import { parseDiagramSvg } from './svg'
 import { liftUnderlayImage } from './sketch-underlay-svg'
+import { underlayForRendition } from './sketch-underlay-access'
 
 /** A promoted Fassung's bytes as text. Throws when they cannot be read: that is a failure to retry, not a Skizze without a scene. */
 async function readVersionText(version: Pick<DocumentVersion, 'storageBucket' | 'storageKey'>): Promise<string> {
@@ -75,10 +76,15 @@ export async function promotedSketchOf(version: Pick<DocumentVersion, 'storageBu
   return scene ? { text, scene, next: { elements: scene.elements, viewBox: viewBoxOf(text) } } : null
 }
 
-/** A stored Skizze's picture for its PDF: the vector half through the validator, the page it is traced over lifted out first (S6). */
-function drawingOf(text: string) {
-  const { svg, underlay } = liftUnderlayImage(text)
-  return { ...parseDiagramSvg(svg), underlay }
+/**
+ * A stored Skizze's picture for its PDF: the vector half through the validator,
+ * the page it is traced over lifted out first (S6), and drawn only while it is
+ * the server's raster of screened bytes this session may read; else the sheet
+ * is blank (`underlayForRendition`).
+ */
+async function drawingOf(session: AuthorizedSession, sketch: PromotedSketch) {
+  const { svg, underlay } = liftUnderlayImage(sketch.text)
+  return { ...parseDiagramSvg(svg), underlay: await underlayForRendition(session, sketch.scene, underlay) }
 }
 
 /** The two-author line in the office's language: a transition carries no reader's locale, so the office's choice, else the product's default. */
@@ -119,7 +125,7 @@ export async function sketchBecameCurrent(
     session,
     sketch: document,
     svgVersionId: version.id,
-    drawing: drawingOf(sketch.text),
+    drawing: await drawingOf(session, sketch),
     marking: await officeMarking(session.organizationId),
     title: (document.displayName ?? document.filename).replace(/\.svg$/i, ''),
   })

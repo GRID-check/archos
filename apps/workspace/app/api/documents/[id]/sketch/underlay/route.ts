@@ -19,7 +19,7 @@ type Params = { id: string }
 export const GET = apiRoute<Params>(
   async ({ session, params, request }) => {
     const query = parseQuery(request, underlayPlanQuerySchema)
-    return planSketchUnderlayMove(session, params.id, query.versionId)
+    return planSketchUnderlayMove(session, params.id, query.versionId, query.page)
   },
   { authz: { enforcedBy: 'planSketchUnderlayMove -> sketchSaveBaseOf (getAccessibleDocument write) and getAccessibleDocument read on the base' } }
 )

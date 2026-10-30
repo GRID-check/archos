@@ -123,6 +123,11 @@ export const diagrams: typeof en.diagrams = {
       'Die Striche bleiben, wo sie sind; darunter liegt dann die Seite der neuen Fassung. Anmerkungen und Verknüpfungen bleiben an ihren Elementen. Gespeichert wird eine neue Fassung der Skizze.',
     matchedByLabel: 'Seite „{label}“ der Fassung {number}, gefunden über die Seitenbezeichnung',
     matchedByIndex: 'Seite {page} der Fassung {number}: gleiche Seitenzahl, das PDF bezeichnet seine Seiten nicht',
+    // Die alte Seite hatte eine Bezeichnung, die neue Fassung kennt sie nicht: dieselbe Seitenzahl ist dann oft ein anderes Blatt.
+    matchedByIndexLabelGone: 'Seite {page} der Fassung {number}: die Bezeichnung „{label}“ gibt es dort nicht mehr, gewählt wurde die gleiche Seitenzahl. Bitte prüfen Sie im Vergleich, ob es dasselbe Blatt ist.',
+    matchedByChoice: 'Seite {page} der Fassung {number}, von Ihnen gewählt',
+    labelAmbiguous: 'Mehrere Seiten der neuen Fassung tragen diese Bezeichnung. Wählen Sie die richtige.',
+    choosePage: 'S. {page}',
     showOld: 'Alt',
     showNew: 'Neu',
     showBoth: 'Übereinander',
@@ -137,6 +142,7 @@ export const diagrams: typeof en.diagrams = {
         'Die Seite darunter liegt in einem Ordner, den nicht alle im Projekt lesen dürfen. Die Skizze bleibt in diesem Ordner, sonst zeigte ihr Bild die Seite Menschen, die das Dokument nicht öffnen dürfen.',
       underlay_other_project: 'Eine Skizze liegt im Projekt des Dokuments, auf dem sie gezeichnet ist.',
       underlay_unavailable: 'Das Dokument, auf dem diese Skizze gezeichnet ist, ist für Sie nicht verfügbar.',
+      underlay_held: 'Diese Fassung wird noch von der Upload-Prüfung zurückgehalten. Auf ihr wird gezeichnet, sobald sie freigegeben ist.',
     },
   },
   sketchEdit: {

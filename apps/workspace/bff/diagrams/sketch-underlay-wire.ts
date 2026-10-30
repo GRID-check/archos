@@ -42,11 +42,19 @@ export const underlayMoveSchema = z.object({
     .max(64)
     .optional()
     .describe('The base document’s version to move to; default its current one.'),
+  page: z
+    .number()
+    .int()
+    .min(1)
+    .max(9999)
+    .optional()
+    .describe('The page of that version to move to, when the plan answered `label_ambiguous`; default the page the plan matched.'),
 })
 export type UnderlayMoveBody = z.infer<typeof underlayMoveSchema>
 
 export const underlayPlanQuerySchema = z.object({
   versionId: z.string().min(1).max(64).optional().describe('The base document’s version to move to; default its current one.'),
+  page: z.coerce.number().int().min(1).max(9999).optional().describe('A page of that version the person chose; default the page matched by label, else by number.'),
 })
 
 /** The page a Skizze lies on, as one reader sees it. */
@@ -75,6 +83,8 @@ export interface UnderlayPage {
 export interface UnderlayMovePlan {
   from: UnderlayPage
   to: UnderlayPage
-  /** How the page was found again: by its label in the PDF (`A-101`), else by its number. */
-  matchedBy: 'label' | 'index'
+  /** How the page was found again: by its label in the PDF (`A-101`), by its number, or as the person chose. */
+  matchedBy: 'label' | 'index' | 'chosen'
+  /** The old page had a label the newer Fassung does not name: matched by its number instead, and the dialog says so. */
+  labelGone: boolean
 }

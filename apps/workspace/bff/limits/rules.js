@@ -239,6 +239,23 @@ const BIM_EXPORT_LIMIT = {
 }
 
 /**
+ * A page of a PDF Fassung drawn for a Skizze (`GET /api/documents/{id}/versions/{v}/pages/{n}/raster`).
+ *
+ * A miss sends the whole PDF to the backend and has pdfium draw a page; a hit
+ * is one object read. The editor asks for one page when it opens and the move
+ * dialog for two, so sixty a minute is far more than a person drawing needs,
+ * and few enough that one reader cannot keep the renderer busy for the office
+ * (the BFF also remembers refusals and shares concurrent misses, `page-raster.ts`).
+ * @type {LimitRule}
+ */
+const PAGE_RASTER_LIMIT = {
+  name: 'page-raster',
+  limit: 60,
+  windowMs: 60 * 1000,
+  burst: { limit: 12, windowMs: 5 * 1000 },
+}
+
+/**
  * A RIS document, read for a citation (`GET /api/ris/document`).
  *
  * A read, and reads are not defaulted — so this one had no bound at all, which
@@ -404,6 +421,7 @@ module.exports = {
   POSTHOG_SUPPORT_POKE_TICKET_LIMIT,
   BIM_QUERY_LIMIT,
   BIM_EXPORT_LIMIT,
+  PAGE_RASTER_LIMIT,
   RIS_DOCUMENT_LIMIT,
   DOCUMENT_UPLOAD_LIMIT,
   SHARE_LIMIT,

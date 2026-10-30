@@ -13,7 +13,7 @@
 
 import { PencilRuler } from 'lucide-react'
 import { useCallback, useState } from 'react'
-import { createSketchFromPage, currentVersionOf, getSketch, type SketchForEditing } from '@/adapters/api/diagrams-client'
+import { createSketchFromPage, currentVersionOf, getSketch, SketchRequestError, type SketchForEditing } from '@/adapters/api/diagrams-client'
 import { ToolbarTextButton } from '@/components/ui/floating-toolbar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
@@ -22,12 +22,16 @@ import type { PreviewPageActionProps } from '@/features/documents/preview-action
 import { SketchDialog } from './sketch-dialog'
 
 const NO_ELEMENTS: readonly object[] = []
+/** The refusals the toolbar names, rather than saying only that it failed. */
+const NAMED_REFUSALS = new Set(['underlay_held', 'underlay_other_project', 'underlay_unavailable', 'underlay_wider'])
+type NamedRefusal = 'underlay_held' | 'underlay_other_project' | 'underlay_unavailable' | 'underlay_wider'
 
 export function DrawOnPageAction({ documentId, page, contentType }: PreviewPageActionProps) {
   const t = useTranslations(diagramsCopy)
   const [sketch, setSketch] = useState<SketchForEditing | null>(null)
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'creating' | 'failed'>('idle')
+  const [refusal, setRefusal] = useState<NamedRefusal | null>(null)
 
   const open_ = useCallback(async (sketchId: string) => {
     setSketch(await getSketch(sketchId))
@@ -35,13 +39,15 @@ export function DrawOnPageAction({ documentId, page, contentType }: PreviewPageA
   }, [])
   const create = useCallback(async () => {
     setState('creating')
+    setRefusal(null)
     try {
       const versionId = await currentVersionOf(documentId)
       if (!versionId) throw new Error('no current version')
       const created = await createSketchFromPage(documentId, versionId, page)
       await open_(created.documentId)
       setState('idle')
-    } catch {
+    } catch (error) {
+      if (error instanceof SketchRequestError && error.reason && NAMED_REFUSALS.has(error.reason)) setRefusal(error.reason as NamedRefusal)
       setState('failed')
     }
   }, [documentId, page, open_])
@@ -61,7 +67,9 @@ export function DrawOnPageAction({ documentId, page, contentType }: PreviewPageA
             {t(state === 'creating' ? 'underlay.creating' : 'underlay.drawOnPage')}
           </ToolbarTextButton>
         </TooltipTrigger>
-        <TooltipContent side="top">{t(state === 'failed' ? 'underlay.createFailed' : 'underlay.drawOnPageHint')}</TooltipContent>
+        <TooltipContent side="top" data-testid="draw-on-page-hint">
+          {refusal ? t(`underlay.refused.${refusal}`) : t(state === 'failed' ? 'underlay.createFailed' : 'underlay.drawOnPageHint')}
+        </TooltipContent>
       </Tooltip>
       {sketch ? (
         <SketchDialog

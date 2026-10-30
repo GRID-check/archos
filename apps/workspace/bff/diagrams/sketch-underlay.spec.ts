@@ -16,7 +16,7 @@ import { outlineSketch } from './sketch-outline'
 import { sceneDeltaSchema } from './sketch-room-types'
 import { checkSketchScene, SketchSceneError } from './sketch-scene'
 import { newUnderlayElement, underlayFileId, underlayProblem, type SketchUnderlay } from './sketch-underlay'
-import { liftUnderlayImage, UnderlayImageError, withUnderlayImage } from './sketch-underlay-svg'
+import { liftUnderlayImage, UnderlayImageError, underlayPngHash, withUnderlayImage } from './sketch-underlay-svg'
 import { DiagramSvgError, parseDiagramSvg } from './svg'
 import { whitePng } from './__fixtures__/white-png'
 
@@ -147,8 +147,16 @@ describe('the filed SVG', () => {
   })
 
   it('refuses bytes in the slot that are no PNG, whoever wrote them', () => {
-    const forged = vector.replace('<rect', '<image data-underlay="" x="0" y="0" width="10" height="10" preserveAspectRatio="none" href="data:image/png;base64,PHN2Zz48L3N2Zz4="/><rect')
+    const forged = vector.replace('<rect', `<image data-underlay="" data-sha256="${'0'.repeat(64)}" x="0" y="0" width="10" height="10" preserveAspectRatio="none" href="data:image/png;base64,PHN2Zz48L3N2Zz4="/><rect`)
     expect(() => liftUnderlayImage(forged.replace(/(<svg[^>]*>)(.*?)(<image[^>]*\/>)/, '$1$3$2'))).toThrow(UnderlayImageError)
     expect(() => withUnderlayImage(vector, { x: 0, y: 0, width: 10, height: 10, png: new TextEncoder().encode('<svg/>') })).toThrow(UnderlayImageError)
+  })
+
+  it('refuses a slot whose PNG is not the one its hash names', () => {
+    const filed = withUnderlayImage(vector, { x: 16, y: 16, width: 368, height: 268, png })
+    expect(filed).toContain(`data-sha256="${underlayPngHash(png)}"`)
+    const other = Buffer.from(whitePng(41, 30)).toString('base64')
+    const swapped = filed.replace(/base64,[A-Za-z0-9+/=]+"/, `base64,${other}"`)
+    expect(() => liftUnderlayImage(swapped)).toThrow(UnderlayImageError)
   })
 })

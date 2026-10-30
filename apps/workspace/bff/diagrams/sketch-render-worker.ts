@@ -98,7 +98,8 @@ function fitContainers(elements: readonly Plain[], remeasure: ReadonlySet<string
 const STAND_IN = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
 
 function underlayFileOf(elements: readonly Plain[]): string | null {
-  const image = elements.find((element) => element.type === 'image' && typeof element.fileId === 'string')
+  // A tombstoned image is no underlay: Excalidraw draws no deleted element, so it would place nothing.
+  const image = elements.find((element) => element.type === 'image' && !element.isDeleted && typeof element.fileId === 'string')
   return image ? (image.fileId as string) : null
 }
 

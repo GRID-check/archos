@@ -18,14 +18,17 @@ vi.mock('server-only', () => ({}))
 
 const access = vi.hoisted(() => ({ getAccessibleDocument: vi.fn() }))
 const egress = vi.hoisted(() => ({ folderRestrictsReading: vi.fn(async () => false) }))
-const raster = vi.hoisted(() => ({ readPageRaster: vi.fn() }))
+const raster = vi.hoisted(() => {
+  class PageRasterHeldError extends Error {}
+  return { readPageRaster: vi.fn(), PageRasterHeldError }
+})
 const versions = vi.hoisted(() => ({ findDocumentVersion: vi.fn() }))
 vi.mock('@/lib/documents/access', () => access)
 vi.mock('@/lib/conversations/restricted-egress', () => egress)
 vi.mock('@/lib/documents/page-raster', () => raster)
 vi.mock('@/lib/documents/version-repository', () => versions)
 
-const { embeddedUnderlayFor, resolveUnderlayView, underlayMoveRefusal, UnderlayRefusedError } = await import('./sketch-underlay-access')
+const { embeddedUnderlayFor, resolveUnderlayView, underlayForRendition, underlayMoveRefusal, UnderlayRefusedError } = await import('./sketch-underlay-access')
 
 const session = { organizationId: 'org_1', userId: 'user_1' } as AuthorizedSession
 const BASE: SketchUnderlay = { documentId: '22222222-2222-4222-8222-222222222222', versionId: '33333333-3333-4333-8333-333333333333', page: 2, dpi: 150 }
@@ -61,6 +64,11 @@ describe('embeddedUnderlayFor', () => {
     expect(await refusal(embeddedUnderlayFor(session, { projectId: 'proj_1', folderId: 'plans' }, scene, placement))).toBe('underlay_unavailable')
   })
 
+  it('refuses a page whose bytes no screening passed, by name (ADR-0086)', async () => {
+    raster.readPageRaster.mockRejectedValueOnce(new raster.PageRasterHeldError())
+    expect(await refusal(embeddedUnderlayFor(session, { projectId: 'proj_1', folderId: 'plans' }, scene, placement))).toBe('underlay_held')
+  })
+
   it('is nothing for a scene without a page', async () => {
     expect(await embeddedUnderlayFor(session, { projectId: 'proj_1', folderId: null }, checkSketchScene({ type: 'excalidraw', elements: [] }), undefined)).toBeNull()
   })
@@ -87,5 +95,21 @@ describe('resolveUnderlayView', () => {
   it('is unavailable, and fails nothing, for a reader who may not open the base', async () => {
     access.getAccessibleDocument.mockRejectedValueOnce(new NotFoundError())
     expect(await resolveUnderlayView(session, underlay)).toEqual({ state: 'unavailable', elementId: 'page', ref: BASE })
+  })
+})
+
+describe('underlayForRendition', () => {
+  const lifted = { ...placement, png: new Uint8Array([9, 9, 9]) }
+
+  it('draws the slot’s page while it is the server’s raster of the page the scene names', async () => {
+    raster.readPageRaster.mockResolvedValueOnce({ png: new Uint8Array([9, 9, 9]) })
+    expect(await underlayForRendition(session, scene, lifted)).toBe(lifted)
+  })
+
+  it('draws a blank sheet when the base is held since, or the slot holds another picture', async () => {
+    raster.readPageRaster.mockRejectedValueOnce(new raster.PageRasterHeldError())
+    expect(await underlayForRendition(session, scene, lifted)).toBeNull()
+    raster.readPageRaster.mockResolvedValueOnce({ png: new Uint8Array([1, 2, 3]) })
+    expect(await underlayForRendition(session, scene, lifted)).toBeNull()
   })
 })
