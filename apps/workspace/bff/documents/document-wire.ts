@@ -21,6 +21,10 @@ export const moveDocumentSchema = z.object({
   // Explicit `null` files the document at its shelf's root, which is a real
   // destination — so this is nullable, not optional.
   folderId: z.guid().nullable(),
+  withTracedSketches: z
+    .boolean()
+    .optional()
+    .describe('Also move the sketches a `traced_sketches_wider` refusal named.'),
 })
 
 /** `PATCH /api/documents/[id]/tags` */

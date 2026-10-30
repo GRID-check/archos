@@ -84,6 +84,8 @@ import { viewBoxOf } from '@/lib/annotations/sketch-anchor'
 import { recordSketchSaveScore, type SketchSaveInput, type SketchSaveOutcome } from '@/lib/langfuse/sketch-score'
 import { acceptDiagram, DiagramSvgError, type AcceptedDiagram } from './svg'
 import { embeddedUnderlayFor, resolveUnderlayView } from './sketch-underlay-access'
+import { recordUnderlayBase } from './sketch-underlay-register'
+import { underlayOf } from './sketch-underlay'
 import { MAX_UNDERLAY_SLOT_BYTES, withUnderlayImage, type EmbeddedUnderlay } from './sketch-underlay-svg'
 
 export type { CompanionPdfOutcome } from './sketch-companion'
@@ -294,6 +296,9 @@ async function acceptSketch(body: SaveSketchBody, stored: SketchScene, input: { 
   const provenance = generatedDocumentMarking('diagram_svg', input.ref)
   const vector: AcceptedDiagram = acceptDiagram({ svg: drawn.svg, source, sourceKind: 'excalidraw' }, { notice: input.marking, provenance })
   const underlay = await embeddedUnderlayFor(input.session, input.document, scene, drawn.underlay)
+  // Before the bytes are written: every later move asks about this page too (migration 0193).
+  const traced = underlayOf(scene.elements)
+  if (traced) await recordUnderlayBase(input.session.organizationId, input.document.id, traced.ref.documentId)
   const accepted: AcceptedDiagram & { underlay: EmbeddedUnderlay | null } = underlay
     ? { ...vector, svg: withUnderlayImage(vector.svg, underlay), underlay }
     : { ...vector, underlay: null }

@@ -18,9 +18,9 @@ type Params = { id: string }
 
 export const PATCH = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const { folderId } = await parseJsonBody(request, moveDocumentSchema)
-    const result = await moveDocumentToFolder({ documentId: params.id, folderId }, session)
-    if (!result.ok) throw new BadRequestError(result.error)
+    const { folderId, withTracedSketches } = await parseJsonBody(request, moveDocumentSchema)
+    const result = await moveDocumentToFolder({ documentId: params.id, folderId, withTracedSketches }, session)
+    if (!result.ok) throw new BadRequestError(result.error, result.reason ? { reason: result.reason, ...result.details } : undefined)
     // `pending`: moved across a restriction and not yet placed in its new collection; searchable nowhere until the sweep places it.
     return { ...result.document, pending: result.pending ?? false }
   },

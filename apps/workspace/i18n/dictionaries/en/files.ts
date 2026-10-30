@@ -510,6 +510,8 @@ export const files = {
     movedBack: '“{name}” is back in “{folder}”.',
     moveRefusedReadOnly: 'Nothing was moved: you may only read one of the two folders.',
     moveRefusedGone: 'Nothing was moved: that folder no longer exists.',
+    moveRefusedTracedSketches: 'Nothing was moved: sketches are drawn on this document in other folders ({names}). Their pictures would show its page wider than this folder.',
+    moveTracedSketchesAlong: 'Move the sketches along',
     nameTaken: '“{parent}” already has a folder named “{name}”.',
     allFiles: 'All Files',
     // The way up, named. The breadcrumb says where you ARE, which is a map,

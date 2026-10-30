@@ -256,6 +256,14 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
     makes: ['internal:identity'],
     why: "Whether a run's Unterlagen name a file in a restricted folder: every row by that name, held ones included, and only ever a refusal.",
   },
+  'lib/diagrams/sketch-underlay-register.ts#underlayBasesOf': {
+    makes: ['internal:derived-copies'],
+    why: 'Where the bases a Skizze was traced over lie, to refuse a move that would widen its page; a held base is still the page, and only a refusal leaves it.',
+  },
+  'lib/diagrams/sketch-underlay-register.ts#sketchesTracing': {
+    makes: ['internal:derived-copies'],
+    why: 'Where the Skizzen traced over a document lie, to refuse moving it narrower than they are; a held Skizze still holds the page, and only a refusal and their names leave it.',
+  },
   'lib/documents/repository/lookup-by-ref.ts#findDocumentAuthoredByRef': {
     makes: ['internal:identity'],
     why: "Idempotency of Piloti's filing by its run reference, which a unique index answers over every row.",

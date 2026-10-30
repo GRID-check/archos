@@ -120,14 +120,67 @@ export async function underlayForRendition(session: AuthorizedSession, scene: Sk
   return lifted
 }
 
-/** Why moving this Skizze into `folderId` is refused, in words, or null; the move asks before it moves. */
-export async function underlayMoveRefusal(session: AuthorizedSession, scene: SketchScene | null, sketch: Pick<Document, 'projectId'>, folderId: string | null): Promise<string | null> {
+/** A move refused by name: the words, and the reason a client reads. */
+export interface MoveRefusal {
+  error: string
+  reason: UnderlayRefusalReason | 'traced_sketches_wider'
+  details?: { sketches: { id: string; name: string }[]; hidden: number }
+}
+
+const refusalOf = (reason: UnderlayRefusalReason): MoveRefusal => ({ error: WORDS[reason], reason })
+
+/**
+ * Why moving this Skizze into `folderId` is refused, or null; the move asks
+ * before it moves. Asked of every base any of its Fassungen was traced over
+ * (`bases`, the register), and of the current scene's, which the saver must
+ * also read.
+ */
+export async function underlayMoveRefusal(
+  session: AuthorizedSession,
+  scene: SketchScene | null,
+  sketch: Pick<Document, 'projectId'>,
+  folderId: string | null,
+  bases: readonly Pick<Document, 'id' | 'projectId' | 'folderId'>[] = []
+): Promise<MoveRefusal | null> {
   const underlay = scene ? underlayOf(scene.elements) : null
-  if (!underlay) return null
-  const base = await readableBase(session, underlay.ref.documentId).catch(() => null)
-  if (!base) return WORDS.underlay_unavailable
-  const refused = await underlayPlacementRefusal(session, base, { projectId: sketch.projectId, folderId })
-  return refused ? WORDS[refused] : null
+  const all = [...bases]
+  if (underlay && !bases.some((base) => base.id === underlay.ref.documentId)) {
+    const current = await readableBase(session, underlay.ref.documentId).catch(() => null)
+    if (!current) return refusalOf('underlay_unavailable')
+    all.push(current)
+  }
+  for (const base of all) {
+    const refused = await underlayPlacementRefusal(session, base, { projectId: sketch.projectId, folderId })
+    if (refused) return refusalOf(refused)
+  }
+  return null
+}
+
+/**
+ * Why moving a base document into `folderId` is refused, or null: when the
+ * folder is one some member may not read, every Skizze traced over the base
+ * lies there too, or its filed picture keeps the page wider than the base
+ * (`traced_sketches_wider`, naming them, so the person can move them along).
+ */
+export async function baseMoveRefusal(
+  session: AuthorizedSession,
+  base: Pick<Document, 'projectId'>,
+  folderId: string | null,
+  sketches: readonly { id: string; folderId: string | null; name: string }[]
+): Promise<MoveRefusal | null> {
+  const wider = sketches.filter((sketch) => sketch.folderId !== folderId)
+  if (wider.length === 0 || !base.projectId) return null
+  if (!(await folderRestrictsReading(session.organizationId, base.projectId, folderId))) return null
+  // Named only where this person may open them: a Skizze in a folder they may not read is counted, never named.
+  const seen = await Promise.all(wider.slice(0, 50).map((sketch) => getAccessibleDocument(session, sketch.id, 'read').then(() => sketch, () => null)))
+  const named = seen.filter((sketch): sketch is (typeof wider)[number] => sketch !== null)
+  const hidden = wider.length - named.length
+  const list = [...named.map((sketch) => sketch.name), ...(hidden > 0 ? [`${hidden} you may not open`] : [])].join(', ')
+  return {
+    error: `Sketches are drawn on this document in other folders (${list}); their filed pictures would show its page wider than the folder it goes to. Move them along, or move them first.`,
+    reason: 'traced_sketches_wider',
+    details: { sketches: named.map(({ id, name }) => ({ id, name })), hidden },
+  }
 }
 
 /**

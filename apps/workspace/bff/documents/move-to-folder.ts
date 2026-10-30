@@ -26,6 +26,15 @@
  * moves the Skizze back and answers why (`moveBack`). Should the two sit apart
  * anyway, the redraw refuses to draw a restricted Skizze into the PDF
  * (`lib/diagrams/sketch-companion.ts`).
+ *
+ * A page traced into a Skizze (S6) holds the folder rule in both directions
+ * (`lib/diagrams/sketch-underlay-service.ts`, `tracedMoveRefusal`): a Skizze
+ * and its PDF go nowhere wider than any base a Fassung of it was drawn on, and
+ * a base goes into no folder narrower than its Skizzen, refused with
+ * `traced_sketches_wider` and their names. `withTracedSketches` moves those
+ * Skizzen along, after the base, each with every check a move makes; one that
+ * will not move takes the base back. Tightening a folder's access list asks
+ * nothing of this yet (ADR-0150, consequences).
  */
 
 import { eq } from 'drizzle-orm'
@@ -73,6 +82,8 @@ export interface MoveDocumentInput {
    * document, so it never moves one somebody has filed since.
    */
   expectedFolderId?: string | null
+  /** Move the Skizzen traced over this document along, when they would otherwise sit wider than its destination (S6). */
+  withTracedSketches?: boolean
 }
 
 export interface MoveDocumentResult {
@@ -97,7 +108,7 @@ export type MoveDocumentOutcomeResult =
       /** Set only by a deferred crossing move: the caller runs placement for this project. */
       placementDue?: PlacementDue | null
     }
-  | { ok: false; error: string }
+  | { ok: false; error: string; reason?: string; details?: Record<string, unknown> }
 
 export interface MoveDocumentOptions {
   /** Internal to {@link moveDocumentsToFolders}, which runs one placement pass per project after its moves. */
@@ -110,6 +121,8 @@ export const MOVED_SINCE_MESSAGE = 'The document was moved since; it was left wh
 /** A Skizze whose PDF would not follow it stays where it was (ADR-0148): the PDF is its rendition. */
 export const COMPANION_STAYED_MESSAGE = 'The PDF beside this sketch could not be moved with it, so the sketch was left where it was:'
 const COMPANION_APART_MESSAGE = 'The sketch was moved and the PDF beside it could not follow; move the PDF too:'
+/** A base whose traced Skizzen would not follow it stays where it was (S6): they carry its page. */
+export const TRACED_STAYED_MESSAGE = 'A sketch drawn on this document could not be moved with it, so the document was left where it was:'
 
 const IN_FLIGHT_MESSAGE =
   'This document is still being processed. Move it across a restriction once processing has finished.'
@@ -120,11 +133,25 @@ export async function moveDocumentToFolder(
   session: AuthorizedSession,
   options: MoveDocumentOptions = {},
 ): Promise<MoveDocumentOutcomeResult> {
-  const read: { document?: MovedDocument } = {}
+  const read: MoveRead = {}
   const moved = await moveSingle(input, session, options, read)
   if (!moved.ok || !moved.changed || !read.document) return moved
   const refused = await companionFollows(read.document, input, session, options)
-  return refused ? await moveBack(read.document, input, session, options, refused) : moved
+  if (refused) return moveBack(read.document, input, session, options, refused)
+  const stayed = await tracedSketchesFollow(read, input, session, options)
+  return stayed ? await moveBack(read.document, input, session, options, stayed, TRACED_STAYED_MESSAGE) : moved
+}
+
+/** The Skizzen traced over a moved base go where it went, when the person asked for that. Answers why one would not, or null. */
+async function tracedSketchesFollow(read: MoveRead, input: MoveDocumentInput, session: AuthorizedSession, options: MoveDocumentOptions): Promise<string | null> {
+  for (const sketch of read.alongSketches ?? []) {
+    const followed = await moveDocumentToFolder({ documentId: sketch.id, folderId: input.folderId }, session, options).catch((error: unknown) => ({
+      ok: false as const,
+      error: error instanceof Error ? error.message : 'unknown',
+    }))
+    if (!followed.ok) return `${sketch.name}: ${followed.error}`
+  }
+  return null
 }
 
 /**
@@ -134,21 +161,44 @@ export async function moveDocumentToFolder(
  * save draws nothing into it (`confined`). When even the way back is refused,
  * the answer says the two now sit apart.
  */
-async function moveBack(sketch: MovedDocument, input: MoveDocumentInput, session: AuthorizedSession, options: MoveDocumentOptions, refused: string): Promise<MoveDocumentOutcomeResult> {
+async function moveBack(
+  sketch: MovedDocument,
+  input: MoveDocumentInput,
+  session: AuthorizedSession,
+  options: MoveDocumentOptions,
+  refused: string,
+  stayedMessage = COMPANION_STAYED_MESSAGE
+): Promise<MoveDocumentOutcomeResult> {
   const back = { documentId: sketch.id, folderId: sketch.folderId, expectedFolderId: input.folderId }
   const undone = await moveSingle(back, session, options).catch(() => ({ ok: false as const, error: 'unknown' }))
-  if (undone.ok) return { ok: false, error: `${COMPANION_STAYED_MESSAGE} ${refused}` }
+  if (undone.ok) return { ok: false, error: `${stayedMessage} ${refused}` }
   console.warn(`[documents] sketch ${sketch.id} moved and its PDF did not; moving it back failed: ${undone.error}`)
   return { ok: false, error: `${COMPANION_APART_MESSAGE} ${refused}` }
 }
 
 type MovedDocument = NonNullable<Awaited<ReturnType<typeof findDocumentForSession>>>
 
-/** A Skizze traced over a page goes nowhere its filed picture would show the page wider than the page's own folder (S6). */
-async function underlayRefusalOf(document: MovedDocument, folderId: string | null, session: AuthorizedSession): Promise<string | null> {
-  if (document.authoredByProducer !== 'diagram_svg' || document.folderId === folderId) return null
-  const { sketchMoveRefusal } = await import('@/lib/diagrams/sketch-underlay-service')
-  return sketchMoveRefusal(session, document, folderId)
+/** What the first move read: the document, and the Skizzen it takes along (`withTracedSketches`). */
+interface MoveRead {
+  document?: MovedDocument
+  alongSketches?: { id: string; name: string }[]
+}
+
+/**
+ * A Skizze traced over a page, or its PDF, goes nowhere its filed picture
+ * would show the page wider than the page's own folder, and a base nowhere
+ * narrower than its Skizzen (S6). The base's refusal is waived when its
+ * Skizzen move along; they are then recorded in `read`.
+ */
+async function underlayRefusalOf(document: MovedDocument, input: MoveDocumentInput, session: AuthorizedSession, read: MoveRead) {
+  if (document.folderId === input.folderId) return null
+  const { tracedMoveRefusal } = await import('@/lib/diagrams/sketch-underlay-service')
+  const refusal = await tracedMoveRefusal(session, document, input.folderId)
+  if (refusal?.reason === 'traced_sketches_wider' && input.withTracedSketches && refusal.details && refusal.details.hidden === 0) {
+    read.alongSketches = refusal.details.sketches
+    return null
+  }
+  return refusal
 }
 
 /** The PDF filed beside a moved Skizze goes where it went. Never throws: answers why it would not, or null. */
@@ -167,7 +217,7 @@ async function moveSingle(
   input: MoveDocumentInput,
   session: AuthorizedSession,
   { deferPlacement = false }: MoveDocumentOptions = {},
-  read: { document?: MovedDocument } = {},
+  read: MoveRead = {},
 ): Promise<MoveDocumentOutcomeResult> {
   const db = getDb()
 
@@ -183,8 +233,8 @@ async function moveSingle(
   if (input.expectedFolderId !== undefined && document.folderId !== input.expectedFolderId) {
     return { ok: false, error: MOVED_SINCE_MESSAGE }
   }
-  const traced = await underlayRefusalOf(document, input.folderId, session)
-  if (traced) return { ok: false, error: traced }
+  const traced = await underlayRefusalOf(document, input, session, read)
+  if (traced) return { ok: false, error: traced.error, reason: traced.reason, ...(traced.details ? { details: traced.details } : {}) }
   const shelf = documentShelf(document)
   if (!shelf) {
     // A session attachment. It is filed nowhere, and the database agrees.

@@ -132,7 +132,7 @@ export interface PageRasterAddress {
 }
 
 /** The document and the Fassung, if this session may read that Fassung's bytes; else 404 (or 415 for no PDF). */
-async function readableFassung(session: AuthorizedSession, documentId: string, versionId: string) {
+async function readableVersion(session: AuthorizedSession, documentId: string, versionId: string) {
   const document = await getAccessibleDocument(session, documentId, 'read')
   const version = await findDocumentVersion(versionId, documentId, session.organizationId)
   if (!version || !BYTES_STATES.has(version.state)) throw new NotFoundError('Version not found')
@@ -253,7 +253,7 @@ function drawOnce(organizationId: string, version: DocumentVersion, key: string,
  * pages); every person-facing read logs.
  */
 export async function readPageRaster(session: AuthorizedSession, address: PageRasterAddress, { log = true }: { log?: boolean } = {}): Promise<PageRaster> {
-  const { document, version } = await readableFassung(session, address.documentId, address.versionId)
+  const { document, version } = await readableVersion(session, address.documentId, address.versionId)
   const key = buildPageRasterStorageKey(version.storageKey, address.page, address.dpi)
   if (!key) throw new NotFoundError('Version not found')
   const cached = await readObject(resolveDocumentBucket(version.storageBucket), key)
@@ -288,7 +288,7 @@ export function parsePageLabels(text: string): PageLabels | null {
 
 /** Each page's label in a Fassung, and its page count; cached beside its rasters. Nobody is handed bytes, so nothing is logged. */
 export async function readPageLabels(session: AuthorizedSession, documentId: string, versionId: string): Promise<PageLabels> {
-  const { version } = await readableFassung(session, documentId, versionId)
+  const { version } = await readableVersion(session, documentId, versionId)
   const key = buildPageRasterStorageKey(version.storageKey, 'labels')
   if (!key) throw new NotFoundError('Version not found')
   const bucket = resolveDocumentBucket(version.storageBucket)

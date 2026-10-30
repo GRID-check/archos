@@ -6,7 +6,7 @@ import { useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileItem, FolderItem } from '../file-types'
-import { refusalOf, shelfRefusalOf, throwUnlessOk, type ShelfRefusal } from '../lib/move-refusal'
+import { refusalOf, shelfRefusalOf, ShelfRequestError, throwUnlessOk, type ShelfRefusal } from '../lib/move-refusal'
 
 /**
  * Re-filing a document: the menu's „Verschieben" lands here, and so does a card
@@ -79,6 +79,8 @@ export function useDocumentMoves(
 
   /** The undo is the same move back, and offers no undo of its own. Set below, once the move exists. */
   const undo = useRef<(documentId: string, folderId: string | null) => Promise<void>>(async () => {})
+  /** The same move, with the Skizzen traced over the document taken along. Set below, once the move exists. */
+  const again = useRef<(documentId: string, folderId: string | null) => Promise<void>>(async () => {})
 
   /**
    * Optimistic: the card visibly leaves the level under the finger, so waiting
@@ -87,7 +89,11 @@ export function useDocumentMoves(
    * for where the document went.
    */
   const dropInFolder = useCallback(
-    async (documentId: string, folderId: string | null, { undoable = true }: { undoable?: boolean } = {}) => {
+    async (
+      documentId: string,
+      folderId: string | null,
+      { undoable = true, withTracedSketches = false }: { undoable?: boolean; withTracedSketches?: boolean } = {}
+    ) => {
       // The remembered row first: a move updates it at once, so an undo clicked
       // before the listing re-renders still knows where the document is now.
       const file = seen.current.get(documentId) ?? files.find((candidate) => candidate.id === documentId)
@@ -103,7 +109,7 @@ export function useDocumentMoves(
           await fetch(`/api/documents/${documentId}/folder`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folderId }),
+            body: JSON.stringify({ folderId, ...(withTracedSketches ? { withTracedSketches: true } : {}) }),
           })
         )
         if (!undoable) {
@@ -119,7 +125,16 @@ export function useDocumentMoves(
       } catch (error) {
         moved(documentId, previousFolderId)
         seen.current.set(documentId, file)
-        toast.error(refusalMessage(refusalOf(error)))
+        const refusal = refusalOf(error)
+        // Skizzen drawn on this document lie wider than where it goes: offered to move along, never moved unasked.
+        const traced = error instanceof ShelfRequestError ? error.traced : null
+        const along =
+          traced?.movable && !withTracedSketches
+            ? { action: { label: t('folders.moveTracedSketchesAlong'), onClick: () => void again.current(documentId, folderId) } }
+            : undefined
+        const message = traced ? t('folders.moveRefusedTracedSketches', { names: traced.names.join(', ') }) : refusalMessage(refusal)
+        if (along) toast.error(message, along)
+        else toast.error(message)
       } finally {
         inFlight.current -= 1
       }
@@ -127,6 +142,7 @@ export function useDocumentMoves(
     [files, moved, folderLabel, refusalMessage, t]
   )
   undo.current = (documentId, folderId) => dropInFolder(documentId, folderId, { undoable: false })
+  again.current = (documentId, folderId) => dropInFolder(documentId, folderId, { withTracedSketches: true })
 
   /**
    * Re-file a selection into one folder: the rows leave the level at once (as a

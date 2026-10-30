@@ -32,7 +32,9 @@ import { DEFAULT_PAGE_RASTER_DPI } from '@/lib/documents/page-raster-limits'
 import { findDocumentVersion } from '@/lib/documents/version-repository'
 import type { Document } from '@/lib/db/schema/documents'
 import { fileDiagramDocuments, type FiledDiagram } from './filing'
-import { underlayMoveRefusal } from './sketch-underlay-access'
+import { baseMoveRefusal, underlayMoveRefusal, type MoveRefusal } from './sketch-underlay-access'
+import { recordUnderlayBase, sketchesTracing, underlayBasesOf } from './sketch-underlay-register'
+import { findDocumentAuthoredByRef } from '@/lib/documents/repository'
 import { matchUnderlayPage } from './sketch-underlay-match'
 import { publishedSketchOf, saveSketchDocument, sketchSaveBaseOf } from './sketch-document'
 import { drawSketchScene } from './sketch-picture'
@@ -83,6 +85,8 @@ export async function createSketchFromPage(input: SketchFromPageInput): Promise<
     request: input.request,
     underlay: !confined && drawn.underlay ? { ...drawn.underlay, png: raster.png } : null,
   })
+  // Before any move: from here on every move of the Skizze, its PDF or the base asks about this page.
+  await recordUnderlayBase(session.organizationId, filed.svg.documentId, base.id)
   if (!confined || filed.svg.folderId === base.folderId) return { ...filed, underlay: ref, movedToBase: false }
   const moved = await moveDocumentToFolder({ documentId: filed.svg.documentId, folderId: base.folderId }, session)
   return { ...filed, underlay: ref, movedToBase: moved.ok }
@@ -160,8 +164,26 @@ export async function moveSketchUnderlay(input: { session: AuthorizedSession; do
   return { ...rest, plan }
 }
 
-/** Why this Skizze may not move into `folderId`, in words, or null (`lib/documents/move-to-folder.ts` asks before it moves). */
-export async function sketchMoveRefusal(session: AuthorizedSession, document: Document, folderId: string | null): Promise<string | null> {
-  const sketch = await publishedSketchOf(document).catch(() => null)
-  return underlayMoveRefusal(session, sketch?.scene ?? null, document, folderId)
+/** Why this Skizze may not move into `folderId`, or null: every base any of its Fassungen was traced over, and the current scene's. */
+export async function sketchMoveRefusal(session: AuthorizedSession, document: Document, folderId: string | null): Promise<MoveRefusal | null> {
+  const [sketch, bases] = await Promise.all([publishedSketchOf(document).catch(() => null), underlayBasesOf(session.organizationId, document.id)])
+  return underlayMoveRefusal(session, sketch?.scene ?? null, document, folderId, bases)
+}
+
+/**
+ * What `lib/documents/move-to-folder.ts` asks before a document moves (S6): a
+ * Skizze and the PDF beside it go nowhere wider than any page they carry, and a
+ * base goes into no folder narrower than the Skizzen traced over it.
+ */
+export async function tracedMoveRefusal(session: AuthorizedSession, document: Document, folderId: string | null): Promise<MoveRefusal | null> {
+  if (document.authoredByProducer === 'diagram_svg') return sketchMoveRefusal(session, document, folderId)
+  if (document.authoredByProducer === 'diagram_pdf') {
+    if (!document.authoredByRef || !document.projectId) return null
+    const sketch = await findDocumentAuthoredByRef(document.authoredByRef, session.organizationId, document.projectId, 'diagram_svg')
+    if (!sketch) return null
+    const bases = await underlayBasesOf(session.organizationId, sketch.id)
+    return underlayMoveRefusal(session, null, document, folderId, bases)
+  }
+  if (document.contentType !== 'application/pdf') return null
+  return baseMoveRefusal(session, document, folderId, await sketchesTracing(session.organizationId, document.id))
 }

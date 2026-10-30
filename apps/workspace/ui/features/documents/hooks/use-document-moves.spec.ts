@@ -178,6 +178,26 @@ describe('useDocumentMoves.dropInFolder', () => {
     expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(message))
   })
 
+  // S6 review, finding 4: a base moved narrower than its traced Skizzen is refused, and the person may take them along.
+  it('says which Skizzen are drawn on the document, and moves them along on the person’s click', async () => {
+    fetchMock
+      .mockResolvedValueOnce(answer(400, { details: { reason: 'traced_sketches_wider', sketches: [{ id: 's', name: 'Lageplan, S. 2 — Skizze' }], hidden: 0 } }))
+      .mockResolvedValueOnce(answer(200))
+    const { hook, rows } = harness([file('a', 'old')])
+
+    await act(async () => hook.result.current.dropInFolder('a', 'site'))
+    expect(rows()[0].folderId).toBe('old')
+    const [message, options] = vi.mocked(toast.error).mock.lastCall as unknown as [string, { action: { onClick: () => void } }]
+    expect(message).toContain('Lageplan, S. 2 — Skizze')
+
+    await act(async () => {
+      options.action.onClick()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/documents/a/folder', expect.objectContaining({ body: JSON.stringify({ folderId: 'site', withTracedSketches: true }) }))
+    expect(rows()[0].folderId).toBe('site')
+  })
+
   it('moves a document carried into a folder that opened under the drag, though the level on screen no longer lists it', async () => {
     fetchMock.mockResolvedValue(answer(200))
     let rows = [file('a', null), file('b', null)]

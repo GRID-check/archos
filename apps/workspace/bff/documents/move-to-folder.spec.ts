@@ -22,7 +22,8 @@
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/diagrams/sketch-underlay-service', () => ({ sketchMoveRefusal: vi.fn(async () => null) }))
+const traced = vi.hoisted(() => ({ tracedMoveRefusal: vi.fn(async (..._args: unknown[]): Promise<unknown> => null) }))
+vi.mock('@/lib/diagrams/sketch-underlay-service', () => traced)
 vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
 vi.mock('@/lib/projects/collection-placement', () => ({
   PURGE_TIMEOUT_MS: 15_000,
@@ -114,7 +115,7 @@ import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { ForbiddenError } from '@/lib/api/errors'
 import { reingestDocument } from './reingest'
-import { COMPANION_STAYED_MESSAGE, MOVED_SINCE_MESSAGE, moveDocumentToFolder, moveDocumentsToFolders } from './move-to-folder'
+import { COMPANION_STAYED_MESSAGE, MOVED_SINCE_MESSAGE, moveDocumentToFolder, moveDocumentsToFolders, TRACED_STAYED_MESSAGE } from './move-to-folder'
 
 const SESSION = { organizationId: 'org-1', userId: 'user-1' } as never
 
@@ -134,6 +135,8 @@ const mirrorBody = (): Record<string, unknown> =>
   JSON.parse(fetchSpy.mock.calls[0][1].body as string) as Record<string, unknown>
 
 beforeEach(() => {
+  traced.tracedMoveRefusal.mockReset()
+  traced.tracedMoveRefusal.mockResolvedValue(null)
   companion.found = null
   db.selects = []
   db.updates = []
@@ -181,6 +184,34 @@ describe('moveDocumentToFolder', () => {
     const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1' }, SESSION)
 
     expect(result).toEqual({ ok: false, error: expect.stringContaining(COMPANION_STAYED_MESSAGE) })
+    expect(db.updates.map((update) => update.folderId)).toEqual(['folder-1', null])
+  })
+
+  // S6 review, finding 4: a base moved into a narrower folder left its traced Skizzen wider, with the page in every Fassung.
+  const along = { error: 'Sketches are drawn on this document in other folders (Skizze A)', reason: 'traced_sketches_wider', details: { sketches: [{ id: 'doc-sk', name: 'Skizze A' }], hidden: 0 } }
+
+  it('refuses to move a base past its traced Skizzen, by name and reason, and writes nothing', async () => {
+    traced.tracedMoveRefusal.mockResolvedValueOnce(along)
+    db.selects = [[DOCUMENT]]
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1' }, SESSION)
+    expect(result).toEqual({ ok: false, error: along.error, reason: 'traced_sketches_wider', details: along.details })
+    expect(db.updates).toEqual([])
+  })
+
+  it('moves the traced Skizzen along when asked, after the base', async () => {
+    traced.tracedMoveRefusal.mockResolvedValueOnce(along)
+    const sketch = { ...DOCUMENT, id: 'doc-sk', filename: 'Skizze A.svg' }
+    db.selects = [[DOCUMENT], [{ id: 'folder-1', path: 'Vertraulich' }], [sketch], [{ id: 'folder-1', path: 'Vertraulich' }]]
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1', withTracedSketches: true }, SESSION)
+    expect(result.ok).toBe(true)
+    expect(db.updates.map((update) => update.folderId)).toEqual(['folder-1', 'folder-1'])
+  })
+
+  it('takes the base back when a traced Skizze will not follow', async () => {
+    traced.tracedMoveRefusal.mockResolvedValueOnce(along)
+    db.selects = [[DOCUMENT], [{ id: 'folder-1', path: 'Vertraulich' }], [], [{ ...DOCUMENT, folderId: 'folder-1' }]]
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1', withTracedSketches: true }, SESSION)
+    expect(result).toEqual({ ok: false, error: expect.stringContaining(TRACED_STAYED_MESSAGE) })
     expect(db.updates.map((update) => update.folderId)).toEqual(['folder-1', null])
   })
 

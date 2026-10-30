@@ -196,6 +196,7 @@ TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app"
     bff/annotations/repository.integration.spec.ts \
     bff/annotations/sketch-carry.integration.spec.ts \
     bff/diagrams/sketch-link-resolve.integration.spec.ts \
+    bff/diagrams/sketch-underlay-register.integration.spec.ts \
     bff/documents/current-version.integration.spec.ts \
     bff/annotations/project-repository.integration.spec.ts \
     bff/proposals/repository.integration.spec.ts \

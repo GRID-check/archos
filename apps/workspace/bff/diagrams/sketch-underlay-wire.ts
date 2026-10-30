@@ -48,13 +48,13 @@ export const underlayMoveSchema = z.object({
     .min(1)
     .max(9999)
     .optional()
-    .describe('The page of that version to move to, when the plan answered `label_ambiguous`; default the page the plan matched.'),
+    .describe('Page to move to, after `label_ambiguous`.'),
 })
 export type UnderlayMoveBody = z.infer<typeof underlayMoveSchema>
 
 export const underlayPlanQuerySchema = z.object({
   versionId: z.string().min(1).max(64).optional().describe('The base document’s version to move to; default its current one.'),
-  page: z.coerce.number().int().min(1).max(9999).optional().describe('A page of that version the person chose; default the page matched by label, else by number.'),
+  page: z.coerce.number().int().min(1).max(9999).optional().describe('A chosen page, after `label_ambiguous`.'),
 })
 
 /** The page a Skizze lies on, as one reader sees it. */

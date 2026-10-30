@@ -159,6 +159,10 @@ export type ShelfReader = { readonly kind: 'member'; readonly userId: string } |
  *   - `resolve-document`: a row of another table read through its document
  *     only to learn WHICH document to ask the rule about (an IFC model's
  *     header, whose document `findDocumentForSession` then loads).
+ *   - `derived-copies`: where the copies of a document's page lie (a Skizze
+ *     traced over it, `lib/diagrams/sketch-underlay-register.ts`), read to
+ *     refuse a move that would widen one; a held row still holds the page,
+ *     and only a refusal leaves the check.
  */
 export type InternalDocumentRead =
   | 'just-written'
@@ -168,6 +172,7 @@ export type InternalDocumentRead =
   | 'audit'
   | 'reloaded'
   | 'resolve-document'
+  | 'derived-copies'
 
 /**
  * Who a query over `documents` reads for. Every repository read takes one, so

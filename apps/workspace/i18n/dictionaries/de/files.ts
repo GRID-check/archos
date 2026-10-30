@@ -493,6 +493,8 @@ export const files: typeof en.files = {
     movedBack: '„{name}“ ist wieder in „{folder}“.',
     moveRefusedReadOnly: 'Verschoben wurde nichts: Einen der beiden Ordner dürfen Sie nur lesen.',
     moveRefusedGone: 'Verschoben wurde nichts: Diesen Ordner gibt es nicht mehr.',
+    moveRefusedTracedSketches: 'Verschoben wurde nichts: Auf diesem Dokument sind Skizzen gezeichnet, die in anderen Ordnern liegen ({names}). Ihr Bild zeigte die Seite dann weiter als dieser Ordner.',
+    moveTracedSketchesAlong: 'Skizzen mitverschieben',
     /** Ein Ordner gleichen Namens liegt schon dort, wohin dieser käme: angelegt, umbenannt oder hingezogen. */
     nameTaken: 'In „{parent}“ gibt es schon einen Ordner „{name}“.',
     allFiles: 'Alle Dateien',

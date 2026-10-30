@@ -289,8 +289,7 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Draw one page of a PDF version as a PNG',
     description:
-      'The page as a 16-colour PNG, long side at most 4096 px: what a sketch traced over the page shows underneath. ' +
-      'document-look shows a page to a model.',
+      'The page as a 16-colour PNG (long side ≤ 4096 px), as a sketch traced over it shows it. A model looks with document-look.',
     method: 'GET',
     path: '/api/documents/[id]/versions/[versionId]/pages/[page]/raster',
     params: documentParams.extend(pageParamsShape),
@@ -302,9 +301,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Start a sketch traced over a PDF page',
     description:
-      'Files a new sketch whose only element is that page of that version, locked underneath. It stays on that version ' +
-      'until document-sketch-underlay-move; it is not to scale and nothing is measured on it. Answers the new `documentId`; ' +
-      'draw on it with document-sketch-edit.',
+      'Files a new sketch over that page of that version, locked underneath; not to scale. Answers its `documentId`; ' +
+      'draw with document-sketch-edit. 422 `underlay_held` while the version is held by screening.',
     method: 'POST',
     path: '/api/documents/[id]/versions/[versionId]/pages/[page]/sketch',
     params: documentParams.extend(pageParamsShape),
@@ -316,8 +314,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Show what moving a sketch to its page’s newer version would do',
     description:
-      'For a sketch traced over a PDF page: the page it lies on now and the page of the newer version it would move to, ' +
-      'found by the page label, else by the page number. 409 `underlay_current` when it already lies on that version.',
+      'The page a traced sketch lies on and the newer version’s page it would move to, by a label naming one page, ' +
+      'else the number. 422 `label_ambiguous` lists `pages`: pass one as `page`. 409 `underlay_current`.',
     method: 'GET',
     path: '/api/documents/[id]/sketch/underlay',
     params: documentParams,
@@ -329,8 +327,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Move a sketch to its page’s newer version',
     description:
-      'Swaps the page under the sketch for the same page of the newer version (document-sketch-underlay-get) and saves ' +
-      'the next version of the sketch. Strokes, annotations and links stay where they are.',
+      'Swaps the page under the sketch for the newer version’s (document-sketch-underlay-get) and saves the sketch’s ' +
+      'next version; strokes, annotations and links stay.',
     method: 'POST',
     path: '/api/documents/[id]/sketch/underlay',
     params: documentParams,
