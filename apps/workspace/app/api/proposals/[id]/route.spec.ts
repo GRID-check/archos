@@ -585,6 +585,8 @@ describe('what follows a decision (live card, inbox, Langfuse)', () => {
       decidedBy: 'user_1',
       origin: ORIGIN,
       traceId: null,
+      // Only an `operation` proposal names a catalog operation; a file operation like this one has none.
+      operation: null,
     })
   })
 
