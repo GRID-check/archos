@@ -121,6 +121,7 @@ Each ships alone. "Makes better" is principle 8's test.
 | F3 | **BCF 3.0 export and import.** One mapping written against 3.0, `extensions.xml` declaring our types and statuses, snapshot from F1. 2.1 stays the default download until the offices' Revit and ArchiCAD BCF managers read 3.0. Import makes Anmerkungen on the model (people as authors where the email resolves, the rest in the thread). Align field names and resources with the BCF API (topics, comments, viewpoints, snapshot, events) so F3b is an adapter, not a rewrite | the Prüfbuch export (gains camera, snapshot, Zuständige, Frist), the Fachplaner round trip | exports per project; import round trip lossless on our own file; topics landing on the right elements in one real tool |
 | F4 | **Piloti proposes model Anmerkungen from findings.** A failing or undecidable Prüfbuch requirement becomes one `proposed` mark (author `piloti`, `basis` the citation, selection its elements), idempotent per requirement and revision series like today's UUIDv5 topic ids. `buildComplianceBcf` then exports Anmerkungen; its second topic builder goes | the Prüfbuch, Piloti's Vorschläge, the BCF export (one path, not two) | Vorschläge taken over against dismissed, as a Langfuse score |
 | F5 | **Sketch over a model view.** S6's BIM base is an F1 viewpoint: the Skizze names it, elements clicked carry GlobalIds, and its export as a BCF topic uses the browser's composite as snapshot and the Skizze as `DocumentReference` | Skizzen (S5 links, S6 bases), the BIM viewer | Skizzen with a model base; links still resolving after a revision |
+| F6 | **Import with triage.** A coordination BCF file becomes ordinary model Anmerkungen (people as authors where the email resolves); Piloti groups duplicates, finds similar earlier marks and proposes a Zuständige, each as a Vorschlag. Not a BCF viewer | the inbox, Piloti's Vorschläge, the Fachplaner round trip (feld72, 2026-10-30) | topics imported per round; Vorschläge from triage taken over against dismissed |
 
 ### F1 status: built
 
@@ -160,9 +161,16 @@ mapping above, in `apps/workspace/bff/bim/bcf3-build.ts` (markup, `extensions.xm
 by `bcf3-service.ts`. Only marks with a viewpoint go; a Vorschlag nobody took over
 never does. `ViewToWorldScale` is the full visible height, as F1 stores it: the
 3.0 `visinfo.xsd` says "view's visible vertical size in meters". The specs check
-the output against the 3.0 XSDs (`BCF3_XSD_DIR`) and read it back field by field.
-Open: no button in the viewer yet (agents and a direct GET reach it), the import,
-`DocumentReferences`, and a reading in a real BCF manager.
+the output against the 3.0 XSDs, vendored unmodified in
+`apps/workspace/tests/fixtures/bcf-3.0` (CC BY-ND, buildingSMART), with `xmllint` on
+every run; CI installs it and the spec fails there without it. It also reads the
+archive back field by field. On 2026-10-30 a file built from `Ifc4_SampleHouse.ifc`
+(boxes from IfcOpenShell, framed by F4's core) validated in all eight parts and was
+read back by IfcOpenShell's `bcf-client`, an independent reader: version, types,
+statuses, assignee, due date, camera, six planes, selection and comments. Loading in
+ARCHICAD's BCF manager and BIMcollab Zoom is **unverified**; that file is the test.
+Open: no button in the viewer yet (agents and a direct GET reach it), the import (F6),
+`DocumentReferences`.
 
 ### F4 status: framing core exists, bounding-box source missing
 
@@ -180,7 +188,43 @@ with IfcOpenShell (`ifcopenshell.geom` plus `ifcopenshell.util.shape.get_bbox`) 
 a nullable bounds column, with a lazy backfill for existing models. IFC's Z-up metres
 is BCF's frame, so no conversion is needed. Pending product-owner approval.
 
+F4 also carries the model counterpart of "ask about a marked area": on a PDF page
+the chat shows which region was looked at; on a model mark Piloti receives the
+viewpoint's GlobalIds and the IFC data behind them (types, properties, quantities,
+storey) through the model-query tools, never the snapshot as something it claims to
+read.
+
 F1 is the foundation; F2 makes it usable; F3 to F5 are independent after it.
+
+## Customer input: feld72 Jour fixe, 2026-10-30
+
+Read with judgement, not as a feature list. What it changes:
+
+- **Export first, proven in their tools.** feld72 proposed tying the Anmerkungen to
+  BCF and named a BCF export that loads in ARCHICAD or BIMcollab as the simplest
+  entry, not a server. F3 came straight after F1 and F2, and its proof is the schema
+  check on every file plus a test file for their BCF manager (above).
+- **Their vocabulary at the edge, ours inside.** "Lean status and terms on BCF, with
+  our extensions": Art maps to `TopicType`, status to `TopicStatus`, and
+  `extensions.xml` declares our values. The German UI keeps CONTEXT.md's words; no
+  second vocabulary.
+- **F6, import with triage (next after export).** A coordination round brings a BCF
+  file with the IFC, say 280 topics. Imported topics become ordinary model
+  Anmerkungen: one primitive, inbox, Zuständige, Frist, people as authors where the
+  email resolves. The value that is ours is Piloti triaging them: grouping
+  duplicates, finding similar earlier Anmerkungen, proposing a Zuständige, each a
+  Vorschlag a person takes over. They warned against becoming a pure IFC/BCF tool;
+  F6 is not a BCF viewer.
+- **Direction, not now:** an issue raised by right-click in ARCHICAD that lands here,
+  is answered with the agent's help and goes back; a BCF server (BIMcollab Nexus, the
+  BCF API). Both sit behind the BCF-API question below.
+- **2D and 3D in one issue management** (as BIMx keeps published plans referenced to
+  the model) is this document's thesis: one Anmerkung across page, Skizze and
+  viewpoint anchors. A Skizze element can already link to an IFC GlobalId (S5,
+  `bff/diagrams/sketch-links.ts`); a page Anmerkung carrying related GlobalIds is a
+  sensible later step. No automatic mapping between plan and model coordinates.
+- **Day-to-day work stays on plans and PDFs for a long time.** F2 and F3 stay lean,
+  and 3D work does not crowd out the 2D path.
 
 ## Open questions
 
@@ -194,6 +238,8 @@ F1 is the foundation; F2 makes it usable; F3 to F5 are independent after it.
   `…/topics/events`, per-topic `authorization`) would be a second door beside MCP
   (ADR-0122), translating to the same routes (ADR-0055) with its own OAuth clients.
   Recommendation: file first; the API when a customer names the tool that will call it.
+  feld72 (2026-10-30) agreed: export first. The ARCHICAD round trip and a BCF server
+  are the direction this decision would serve.
 - **Model Fassungen and GlobalIds.** Revision series come from file names, while a
   Fassung is a `document_versions` row or a confirmed replacement link. Which one does
   a model mark carry along? GlobalIds survive re-export from the same authoring model,
