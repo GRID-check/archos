@@ -1,4 +1,5 @@
 ---
+import { Image } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Button from '../components/Button.astro';
 import DuoCards, { type DuoItem } from '../components/DuoCards.astro';
@@ -20,6 +21,7 @@ import identity from '../lib/identity';
 import { softwareApplication } from '../lib/structured-data';
 import { withName } from '../lib/identity';
 import { PILOT_OFFICES } from '../lib/pilot-offices';
+import { productImages, SCREENSHOT_QUALITY, SCREENSHOT_WIDTHS, SIZES } from '../lib/media';
 
 // Markup and structure only. Text comes from src/i18n/pages/home.ts, in both locales.
 interface Props {
@@ -39,12 +41,7 @@ const workPages = [
 const site = Astro.site ?? new URL(`https://${identity.domain}`);
 const product = softwareApplication(site, locale, c.meta.description, localePath('home', locale));
 
-const heroImage = '/media/product-plan-revision-changes.webp';
-const galleryImages = [
-  '/media/product-search-derivation.webp',
-  '/media/product-compare-clearance.webp',
-  '/media/product-model-check.webp',
-];
+const galleryImages = [productImages.searchDerivation, productImages.compareClearance, productImages.modelCheck];
 const knowledgeVideo = {
   poster: '/media/knowledge-video-poster.webp',
   sources: [
@@ -76,15 +73,15 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
 
 <BaseLayout locale={locale} title={c.meta.title} brandFirst description={c.meta.description} graph={[product]}>
   <Hero title={c.hero.title} text={c.hero.text}>
-    <img
+    <Image
       slot="media"
-      src={heroImage}
-      width="2560"
-      height="1460"
+      src={productImages.planRevisionChanges}
+      widths={SCREENSHOT_WIDTHS}
+      sizes={SIZES.hero}
+      quality={SCREENSHOT_QUALITY}
+      loading="eager"
       fetchpriority="high"
-      decoding="async"
       alt={c.hero.alt}
-      style="display: block; width: 100%; height: auto; background: var(--surface-sunken);"
     />
   </Hero>
 
@@ -123,11 +120,14 @@ const galleryItems = c.gallery.items.map((item, i) => ({ ...item, image: gallery
 
   <section class="ui-container ui-section">
     <SectionIntro title={c.built.title} />
-    <img
+    <Image
       class="home-built-image"
-      src="/media/product-floor-plan-query.webp"
+      src={productImages.floorPlanQuery}
+      widths={SCREENSHOT_WIDTHS}
+      sizes={`(max-width: 767px) calc((100vw - 32px) * 2.25), ${SIZES.container}`}
+      quality={SCREENSHOT_QUALITY}
       alt={c.built.imageAlt}
-      style="display: block; width: 100%; aspect-ratio: 4864 / 1620; object-fit: cover; object-position: left center; margin: var(--space-8) 0 var(--space-16); background: var(--surface-sunken);"
+      style="display: block; width: 100%; height: auto; aspect-ratio: 4864 / 1620; object-fit: cover; object-position: left center; margin: var(--space-8) 0 var(--space-16); background: var(--surface-sunken);"
     />
     <FeatureTiles items={c.built.features} columns={3} />
   </section>

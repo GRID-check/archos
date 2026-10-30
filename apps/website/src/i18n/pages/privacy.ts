@@ -63,7 +63,7 @@ const de = {
       {
         key: 'Mit Ihrer Zustimmung',
         value:
-          'Stimmen Sie im Hinweis zu Cookies zu, setzt PostHog das Cookie „ph_<Projektschlüssel>_posthog“ für die ganze Domain und legt denselben Eintrag im lokalen Speicher ab, gültig 365 Tage; für die laufende Sitzung kommen zwei Einträge im Sitzungsspeicher hinzu („ph_<Projektschlüssel>_posthog“, „ph_<Projektschlüssel>_window_id“). Es enthält eine zufällige Kennung, sodass wir Ihre Besuche über mehrere Tage als einen erkennen. Bei Fehlern oder wiederholten, ins Leere gehenden Klicks kann PostHog dann die Sitzung aufzeichnen; dabei sind alle Eingaben und alle Texte der Seite unkenntlich gemacht. Aufzeichnungen löschen wir nach 30 Tagen. Rechtsgrundlage: Einwilligung, Art. 6 Abs. 1 lit. a DSGVO und § 165 Abs. 3 TKG 2021. Sie können die Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, über „Cookie-Einstellungen“ am Ende jeder Seite.',
+          'Stimmen Sie im Hinweis zu Cookies zu, setzt PostHog das Cookie „ph_<Projektschlüssel>_posthog“ für die ganze Domain und legt denselben Eintrag im lokalen Speicher ab, gültig 365 Tage; für die laufende Sitzung kommen zwei Einträge im Sitzungsspeicher hinzu („ph_<Projektschlüssel>_posthog“, „ph_<Projektschlüssel>_window_id“). Es enthält eine zufällige Kennung, sodass wir Ihre Besuche über mehrere Tage als einen erkennen. Bei Fehlern oder wiederholten, ins Leere gehenden Klicks kann PostHog dann die Sitzung aufzeichnen; dabei sind alle Eingaben und alle Texte der Seite unkenntlich gemacht, und Meldungen der Browser-Konsole werden nicht aufgezeichnet. Aufzeichnungen löschen wir nach 30 Tagen. Rechtsgrundlage: Einwilligung, Art. 6 Abs. 1 lit. a DSGVO und § 165 Abs. 3 TKG 2021. Sie können die Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, über „Cookie-Einstellungen“ am Ende jeder Seite.',
       },
       {
         key: 'Ihre Wahl',
@@ -191,7 +191,7 @@ const en: typeof de = {
       {
         key: 'With your consent',
         value:
-          'If you accept in the cookie note, PostHog sets the cookie “ph_<project key>_posthog” for the whole domain and stores the same entry in local storage, valid for 365 days; for the current session two entries are added to session storage (“ph_<project key>_posthog”, “ph_<project key>_window_id”). It holds a random identifier, so that we recognise your visits across several days as one. On errors or repeated clicks that lead nowhere, PostHog may then record the session; every input and every text on the page is masked. We delete recordings after 30 days. Legal basis: consent, Art. 6(1)(a) GDPR and § 165(3) TKG 2021. You can withdraw your consent at any time with effect for the future, through “Cookie settings” at the bottom of every page.',
+          'If you accept in the cookie note, PostHog sets the cookie “ph_<project key>_posthog” for the whole domain and stores the same entry in local storage, valid for 365 days; for the current session two entries are added to session storage (“ph_<project key>_posthog”, “ph_<project key>_window_id”). It holds a random identifier, so that we recognise your visits across several days as one. On errors or repeated clicks that lead nowhere, PostHog may then record the session; every input and every text on the page is masked, and messages from the browser console are not recorded. We delete recordings after 30 days. Legal basis: consent, Art. 6(1)(a) GDPR and § 165(3) TKG 2021. You can withdraw your consent at any time with effect for the future, through “Cookie settings” at the bottom of every page.',
       },
       {
         key: 'Your choice',
@@ -206,12 +206,12 @@ const en: typeof de = {
       {
         key: 'Contact and demo requests',
         value:
-          'The forms send nothing to us: sending opens your e-mail program with a prepared message that you send yourself. We use what you write to us this way (name, e-mail address, office, function, office size, country, message) to answer your enquiry. Legal basis: Art. 6(1)(b) GDPR (pre-contractual measures) or Art. 6(1)(f) GDPR. If no contract comes into being, we delete the details once the enquiry has been dealt with and no retention obligation applies.',
+          'The forms send nothing to us: sending opens your email program with a prepared message that you send yourself. We use what you write to us this way (name, email address, office, function, office size, country, message) to answer your enquiry. Legal basis: Art. 6(1)(b) GDPR (pre-contractual measures) or Art. 6(1)(f) GDPR. If no contract comes into being, we delete the details once the enquiry has been dealt with and no retention obligation applies.',
       },
       {
         key: 'Newsletter',
         value:
-          'If you tick the box in the demo request, we will send you news about {name} by e-mail. Legal basis: consent, Art. 6(1)(a) GDPR and § 174 TKG 2021. You can unsubscribe at any time via the link in every e-mail or at {email}.',
+          'If you tick the box in the demo request, we will send you news about {name} by email. Legal basis: consent, Art. 6(1)(a) GDPR and § 174 TKG 2021. You can unsubscribe at any time via the link in every email or at {email}.',
       },
       {
         key: 'LinkedIn',
@@ -227,7 +227,7 @@ const en: typeof de = {
       {
         key: 'Account and sign-in',
         value:
-          'For accounts we process name, e-mail address, office, role and sign-in times. Sign-in runs through a specialised authentication service and sets cookies that are technically necessary. Legal basis: contract, Art. 6(1)(b) GDPR, and § 165(3) TKG 2021 for the cookies. We delete the data after the end of the contract, unless statutory retention obligations apply.',
+          'For accounts we process name, email address, office, role and sign-in times. Sign-in runs through a specialised authentication service and sets cookies that are technically necessary. Legal basis: contract, Art. 6(1)(b) GDPR, and § 165(3) TKG 2021 for the cookies. We delete the data after the end of the contract, unless statutory retention obligations apply.',
       },
       {
         key: 'Product analytics in {name}',
@@ -247,7 +247,7 @@ const en: typeof de = {
       {
         key: 'Processors',
         value:
-          'For the website, enquiries and accounts we use service providers: a hosting provider, an authentication service, a product analytics service and an e-mail service. All of them are bound by contract under Art. 28 GDPR.',
+          'For the website, enquiries and accounts we use service providers: a hosting provider, an authentication service, a product analytics service and an email service. All of them are bound by contract under Art. 28 GDPR.',
       },
       {
         key: 'Third countries',

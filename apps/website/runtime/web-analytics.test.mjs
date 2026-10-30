@@ -64,6 +64,8 @@ test('the init options match what the privacy policy says', () => {
   assert.equal(options.person_profiles, 'identified_only')
   assert.deepEqual(options.session_recording, { maskAllInputs: true, maskTextSelector: '*' })
   assert.equal('disable_session_recording' in options, false)
+  // The project turns console-log capture on for the app; the website's replays never carry it.
+  assert.equal(options.enable_recording_console_log, false)
   assert.equal(options.disable_surveys, true)
   // Pageviews, web vitals and heatmaps are measured.
   assert.equal(options.capture_pageview, 'history_change')

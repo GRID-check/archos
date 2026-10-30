@@ -102,11 +102,11 @@ const en: typeof de = {
     },
     {
       title: 'You decide what {name} sees',
-      text: 'Using an exclusion list, your office itself determines which projects, folders or files do not reach the platform.',
+      text: 'With an exclusion list, your office decides which projects, folders or files never reach the platform.',
     },
     {
       title: 'Access by role',
-      text: 'With roles and rights, you release projects and content in a targeted way: to individual people, teams or the whole office.',
+      text: 'With roles and permissions, you share projects and content selectively: with individual people, teams or the whole office.',
     },
   ],
   faqTitle: 'Frequently asked questions.',
@@ -125,7 +125,7 @@ const en: typeof de = {
     },
     {
       q: 'How do our staff sign in?',
-      a: 'With your office’s Microsoft or Google account, or through a sign-in link sent to the business e-mail address.',
+      a: 'With your office’s Microsoft or Google account, or through a sign-in link sent to the business email address.',
     },
     {
       q: 'Is there a data processing agreement?',
@@ -133,12 +133,12 @@ const en: typeof de = {
     },
     {
       q: 'What happens to our data if we stop using {name}?',
-      a: 'Before that, you can export documents and answers. After the end of the contract, we delete your data.',
+      a: 'Before you leave, you can export documents and answers. When the contract ends, we delete your data.',
     },
   ],
   cta: {
     title: 'Any questions about data security?',
-    text: 'We are happy to go through them with you, including with your IT.',
+    text: 'We are happy to go through them with you and your IT team.',
   },
 };
 
