@@ -31,7 +31,8 @@ export const POST = apiRoute<Params>(
         page,
         body,
         title: (name, at) => diagrams.underlay.title.replace('{name}', name).replace('{page}', String(at)),
-        marking: diagrams.markingSketch,
+        // A person starts it: no model drew it (S6 review, finding 5).
+        marking: diagrams.markingPerson,
         request,
       })
       return { documentId: filed.svg.documentId, pdfDocumentId: filed.pdf?.documentId ?? null, folderId: filed.svg.folderId, underlay: filed.underlay }

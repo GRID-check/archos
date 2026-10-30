@@ -40,6 +40,7 @@ import { saveSketchDocument, sketchSaveBaseOf, sketchSceneOfText, type SketchSav
 import { textsToMeasure } from './sketch-picture'
 import { SketchRenderError, sketchRenderer } from './sketch-renderer'
 import type { SketchScene } from './sketch-scene'
+import type { SketchNotices } from './sketch-notice'
 import { sketchTargetOf } from './sketch-target'
 import type { SaveSketchBody, SavedSketch } from './sketch-wire'
 import {
@@ -180,6 +181,9 @@ async function applyAndSave(
       documentId: input.documentId,
       body: { scene: asSaveScene(outcome.applied.scene), baseVersionId: current.versionId, baseContentHash: current.contentHash },
       marking: input.marking,
+      notices: input.notices,
+      // An agent's operations: a Skizze a person started is AI-assisted from this save on.
+      aiAssisted: true,
       request: input.request,
     })
     return { saved, ...outcome }
@@ -195,6 +199,8 @@ export interface EditSketchInput {
   body: SketchEditBody
   /** The two-author line, in the reader's locale (`markingEdited`). */
   marking: string
+  /** The lines for a Skizze a person started (`sketch-notice.ts`). */
+  notices?: SketchNotices
   request?: Request
 }
 
@@ -261,6 +267,7 @@ export interface RevertSketchInput {
   documentId: string
   body: SketchRevertBody
   marking: string
+  notices?: SketchNotices
   request?: Request
 }
 
@@ -295,6 +302,7 @@ async function revertOnto(input: RevertSketchInput, current: SketchSaveBase): Pr
     documentId: document.id,
     body: { scene: asSaveScene(scene), baseVersionId: input.body.versionId },
     marking: input.marking,
+    notices: input.notices,
     request: input.request,
   })
   score(current, 'undone', { metadata: { version_number: saved.versionNumber, restored: previous.versionNumber } })

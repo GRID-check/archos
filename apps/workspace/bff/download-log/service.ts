@@ -89,11 +89,12 @@ import {
   type ReadableFolders,
 } from './repository'
 
-/** What the log needs of a document row. */
+/** What the log needs of a document row; a Skizze's producer and reference, when the caller has them, also log the page it carries. */
 export type LoggedDocument = Pick<
   Document,
   'id' | 'scope' | 'projectId' | 'folderId' | 'filename' | 'displayName' | 'publishedVersionId'
->
+> &
+  Partial<Pick<Document, 'authoredByProducer' | 'authoredByRef'>>
 
 export interface RecordAccessOptions {
   /** The version the bytes belong to, when the route names one; else the document's published version. */
@@ -129,6 +130,22 @@ export async function recordDocumentAccess(
   kind: DownloadLogKind,
   options: RecordAccessOptions = {}
 ): Promise<void> {
+  await recordOne(session, doc, kind, options)
+  // A Skizze traced over a page carries that page in its SVG and its PDF (S6): handing them over hands over the page too.
+  for (const base of await tracedBasesOf(session, doc)) await recordOne(session, base, kind, {})
+}
+
+/** The bases a Skizze's files carry, by the register (`lib/diagrams/sketch-underlay-register.ts`); none for any other document. */
+async function tracedBasesOf(session: AuthorizedSession, doc: LoggedDocument): Promise<LoggedDocument[]> {
+  if (doc.authoredByProducer !== 'diagram_svg' && doc.authoredByProducer !== 'diagram_pdf') return []
+  const { tracedBasesOfFiles } = await import('@/lib/diagrams/sketch-underlay-register')
+  return tracedBasesOfFiles(session.organizationId, doc).catch((error: unknown) => {
+    console.warn(`[download-log] could not read the pages under sketch ${doc.id}:`, error instanceof Error ? error.message : error)
+    return []
+  })
+}
+
+async function recordOne(session: AuthorizedSession, doc: LoggedDocument, kind: DownloadLogKind, options: RecordAccessOptions): Promise<void> {
   let ownList = false
   // Whether the question "is it under an own list?" was answered. When it was
   // not (the folder read failed), the document may be under one, so a failure

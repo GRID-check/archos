@@ -62,6 +62,12 @@ export interface AiProvenance {
    * than no run id, because it reads like an audit trail.
    */
   runId?: string
+  /**
+   * A person drew the content, no model did (a Skizze a person started on a
+   * PDF page, S6): `AIGenerated=false`, and no generator or run is named. The
+   * file still says how it came to exist; it just does not say a machine wrote it.
+   */
+  byPerson?: boolean
 }
 
 /**
@@ -112,6 +118,7 @@ export type AiProvenanceMarking = string & { readonly [aiProvenanceMarkingBrand]
  * and the property names above do not move.
  */
 export function aiProvenanceMarking(provenance: AiProvenance): AiProvenanceMarking {
+  if (provenance.byPerson) return `${AI_PROVENANCE_PROPERTIES.generated}=false` as AiProvenanceMarking
   const parts = [
     `${AI_PROVENANCE_PROPERTIES.generated}=true`,
     `${AI_PROVENANCE_PROPERTIES.generator}=${AI_GENERATOR_NAME}`,

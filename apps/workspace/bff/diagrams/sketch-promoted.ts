@@ -50,6 +50,7 @@ import { storedDiagramSource } from './stored-source'
 import { parseDiagramSvg } from './svg'
 import { liftUnderlayImage } from './sketch-underlay-svg'
 import { underlayForRendition } from './sketch-underlay-access'
+import { aiDrewOn, sketchNoticeFor, sketchNoticesOf } from './sketch-notice'
 
 /** A promoted Fassung's bytes as text. Throws when they cannot be read: that is a failure to retry, not a Skizze without a scene. */
 async function readVersionText(version: Pick<DocumentVersion, 'storageBucket' | 'storageKey'>): Promise<string> {
@@ -87,11 +88,16 @@ async function drawingOf(session: AuthorizedSession, sketch: PromotedSketch) {
   return { ...parseDiagramSvg(svg), underlay: await underlayForRendition(session, sketch.scene, underlay) }
 }
 
-/** The two-author line in the office's language: a transition carries no reader's locale, so the office's choice, else the product's default. */
-async function officeMarking(organizationId: string): Promise<string> {
+/**
+ * The Skizze's line in the office's language: a transition carries no reader's
+ * locale, so the office's choice, else the product's default. Who drew it is
+ * read from its reference and its bytes (`sketch-notice.ts`).
+ */
+async function officeMarking(organizationId: string, ref: string, text: string): Promise<{ marking: string; aiAssisted: boolean }> {
   const organization = await findOrganization(organizationId).catch(() => null)
   const locale = isLocale(organization?.defaultLocale) ? organization.defaultLocale : defaultLocale
-  return diagramsCopy.messages[locale].markingEdited
+  const voiced = sketchNoticeFor(ref, sketchNoticesOf(diagramsCopy.messages[locale]), aiDrewOn(text))
+  return { marking: voiced.notice, aiAssisted: voiced.aiAssisted }
 }
 
 export interface SketchRendition {
@@ -126,7 +132,7 @@ export async function sketchBecameCurrent(
     sketch: document,
     svgVersionId: version.id,
     drawing: await drawingOf(session, sketch),
-    marking: await officeMarking(session.organizationId),
+    ...(await officeMarking(session.organizationId, document.authoredByRef ?? '', sketch.text)),
     title: (document.displayName ?? document.filename).replace(/\.svg$/i, ''),
   })
   return { sceneHash: sceneHashOf(sketch.scene.elements), placed: placed.moved, lost: placed.lost, pdf: outcome }

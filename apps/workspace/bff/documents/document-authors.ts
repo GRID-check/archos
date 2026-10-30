@@ -64,3 +64,14 @@ export type DocumentAuthor = (typeof DOCUMENT_AUTHORS)[number]
  */
 export const AUTHORED_REF_KINDS = ['agent_run', 'answer_artifact'] as const
 export type AuthoredRefKind = (typeof AUTHORED_REF_KINDS)[number]
+
+/**
+ * The reference a Skizze a PERSON started is filed under (S6, „Auf Seite
+ * zeichnen“): no chat answer drew it, so its reference is its own, and this
+ * prefix is what says a person, not Piloti, is its first author. The reference
+ * never changes over the Skizze's life, so every later save, its PDF and its
+ * Freigabe read the same answer from it.
+ */
+export const PERSON_SKETCH_REF_PREFIX = 'person-sketch-'
+
+export const isPersonSketchRef = (ref: string | null | undefined): boolean => typeof ref === 'string' && ref.startsWith(PERSON_SKETCH_REF_PREFIX)

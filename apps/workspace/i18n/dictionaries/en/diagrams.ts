@@ -81,6 +81,11 @@ export const diagrams = {
    */
   markingEdited:
     'Drafted by {productName}, edited by a person — AI-assisted, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+  // A person started the Skizze on a document page (S6): no model drew it.
+  markingPerson:
+    'Drawn by a person on a document page. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+  markingPersonEdited:
+    'Drawn by a person on a document page, continued by {productName} — AI-assisted, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
   /**
    * The same block for a sketch Piloti drew itself (an ```excalidraw fence,
    * ADR-0146) and the reader filed as drawn. „Sketch: not to scale" rather than

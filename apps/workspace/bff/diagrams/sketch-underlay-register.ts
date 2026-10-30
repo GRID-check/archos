@@ -18,10 +18,11 @@ import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { documents } from '@/lib/db/schema/documents'
+import { documents, type Document } from '@/lib/db/schema/documents'
 import { sketchUnderlayBases } from '@/lib/db/schema/sketch-underlay-bases'
 import { internalRead } from '@/lib/documents/document-reader'
 import { documentVisibleTo } from '@/lib/documents/visibility'
+import { findDocumentAuthoredByRef } from '@/lib/documents/repository'
 
 /** Where a document lies: what the folder rule reads. */
 export interface PlacedDocument {
@@ -29,6 +30,8 @@ export interface PlacedDocument {
   projectId: string | null
   folderId: string | null
   name: string
+  /** The row facts the download log records a base by (`download-log/service.ts`). */
+  logged: Pick<Document, 'id' | 'scope' | 'projectId' | 'folderId' | 'filename' | 'displayName' | 'publishedVersionId'>
 }
 
 /** Record that `sketchId` is traced over `baseId`; nothing when it already was. */
@@ -41,17 +44,20 @@ export async function recordUnderlayBase(organizationId: string, sketchId: strin
 
 const placed = {
   id: documents.id,
+  scope: documents.scope,
   projectId: documents.projectId,
   folderId: documents.folderId,
   filename: documents.filename,
   displayName: documents.displayName,
+  publishedVersionId: documents.publishedVersionId,
 }
 
-const toPlaced = (row: { id: string; projectId: string | null; folderId: string | null; filename: string; displayName: string | null }): PlacedDocument => ({
+const toPlaced = (row: PlacedDocument['logged']): PlacedDocument => ({
   id: row.id,
   projectId: row.projectId,
   folderId: row.folderId,
   name: row.displayName ?? row.filename,
+  logged: row,
 })
 
 /** Every base any Fassung of this Skizze was traced over, where it lies now. */
@@ -92,4 +98,20 @@ export async function sketchesTracing(organizationId: string, baseId: string): P
       .limit(500)
   )
   return rows.map(toPlaced)
+}
+
+/**
+ * The bases whose page a Skizze's SVG or its PDF carries, as the download log
+ * records them; the PDF is resolved to its Skizze by their shared reference.
+ */
+export async function tracedBasesOfFiles(
+  organizationId: string,
+  file: Pick<Document, 'id' | 'projectId'> & Partial<Pick<Document, 'authoredByProducer' | 'authoredByRef'>>
+): Promise<PlacedDocument['logged'][]> {
+  let sketchId: string | null = file.authoredByProducer === 'diagram_svg' ? file.id : null
+  if (file.authoredByProducer === 'diagram_pdf' && file.authoredByRef && file.projectId) {
+    sketchId = (await findDocumentAuthoredByRef(file.authoredByRef, organizationId, file.projectId, 'diagram_svg'))?.id ?? null
+  }
+  if (!sketchId) return []
+  return (await underlayBasesOf(organizationId, sketchId)).map((base) => base.logged)
 }

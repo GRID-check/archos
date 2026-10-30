@@ -5,7 +5,12 @@
  * may not open the base document gets a 404 and sees the strokes on a blank
  * sheet (`unavailable`); nothing about the base is shown instead.
  *
- * Pure of Excalidraw, so `sketch-canvas.tsx` stays its only importer.
+ * Pure of Excalidraw, so `sketch-canvas.tsx` stays its only importer, which
+ * calls it with the scene the server read (`initialScene`), never with a room
+ * peer's delta: a peer cannot make this reader fetch, and be logged opening, a
+ * page the stored Skizze does not lie on (S6 review, finding 8). A peer's
+ * changed underlay shows blank here until a save stores it, and that save is
+ * checked against the saver's own rights (`sketch-underlay-access.ts`).
  */
 
 import { pageRasterUrl } from '@/adapters/api/diagrams-client'

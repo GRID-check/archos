@@ -46,7 +46,7 @@
     "apps/workspace/bff/db/schema/documents.ts": 679,
     "apps/workspace/bff/diagrams/svg-to-pdf.tsx": 693,
     "apps/workspace/bff/diagrams/svg.ts": 994,
-    "apps/workspace/bff/documents/generated.ts": 805,
+    "apps/workspace/bff/documents/generated.ts": 803,
     "apps/workspace/bff/documents/lifecycle-types.ts": 771,
     "apps/workspace/bff/documents/lifecycle.ts": 1499,
     "apps/workspace/bff/documents/reconcile-status.ts": 1144,

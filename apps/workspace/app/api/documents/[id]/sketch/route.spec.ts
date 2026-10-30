@@ -69,7 +69,12 @@ vi.mock('@/lib/documents/repository', () => ({
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn(async () => ({ name: 'Wohnhaus Hietzing' })) }))
 vi.mock('@/lib/documents/generated', async () => {
   const { aiProvenanceMarking } = await import('@/lib/ai-provenance')
-  return { generatedDocumentMarking: () => aiProvenanceMarking({}) }
+  const { isPersonSketchRef } = await import('@/lib/documents/document-authors')
+  // The run id aside, the real rule: a person-started Skizze is `AIGenerated=false` until an agent drew on it.
+  return {
+    generatedDocumentMarking: (_producer: string, ref: string, options: { aiAssisted?: boolean } = {}) =>
+      aiProvenanceMarking(isPersonSketchRef(ref) && !options.aiAssisted ? { byPerson: true } : {}),
+  }
 })
 const renderDiagramPdf = vi.fn(async (input: { provenance: string }) => new TextEncoder().encode(`%PDF ${input.provenance}`))
 vi.mock('@/lib/diagrams/svg-to-pdf', () => ({
@@ -313,6 +318,28 @@ describe('PUT /api/documents/[id]/sketch', () => {
       answerRef: 'msg_42-1a2b3c4d',
       versionNumber: 2,
     })
+  })
+
+  // S6 review, finding 5: a person started this Skizze on a page; its files said „KI-generiert“ and „Von Piloti entworfen“.
+  it('files a person-started Skizze as a person’s drawing, in its line, its machine marking and its PDF', async () => {
+    for (const id of ['doc-svg', 'doc-pdf']) documents.set(id, { ...documents.get(id), authoredByRef: 'person-sketch-6f1c0d1e-0000-4000-8000-000000000001' })
+    objects.set('doc/doc-svg/file', objects.get('doc/doc-svg/file')!.replace('AIGenerated=true', 'AIGenerated=false'))
+    const response = await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })
+    expect(response.status).toBe(200)
+    const stored = objects.get('doc/doc-svg/file/v2/w1')!
+    expect(stored).toContain(diagramsCopy.messages.de.markingPerson.slice(0, 40))
+    expect(stored).not.toContain(diagramsCopy.messages.de.markingEdited.slice(0, 30))
+    expect(stored).toContain('AIGenerated=false')
+    expect(stored).not.toContain('AIGenerated=true')
+    expect(renderDiagramPdf).toHaveBeenLastCalledWith(expect.objectContaining({ provenance: 'AIGenerated=false' }))
+  })
+
+  it('keeps a person-started Skizze AI-assisted once an agent drew on it, from its stored bytes', async () => {
+    for (const id of ['doc-svg', 'doc-pdf']) documents.set(id, { ...documents.get(id), authoredByRef: 'person-sketch-6f1c0d1e-0000-4000-8000-000000000001' })
+    expect((await call('PUT', 'doc-svg', { scene: edited, baseVersionId: null })).status).toBe(200)
+    const stored = objects.get('doc/doc-svg/file/v2/w1')!
+    expect(stored).toContain('weitergeführt — KI-unterstützt')
+    expect(stored).toContain('AIGenerated=true')
   })
 
   it('refuses a stale base Fassung with 409 and the current one, and keeps no bytes for it', async () => {

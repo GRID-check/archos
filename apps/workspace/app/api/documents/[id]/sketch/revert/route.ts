@@ -9,6 +9,7 @@
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { BadRequestError, ConflictError, ServiceUnavailableError, UnprocessableError } from '@/lib/api/errors'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
+import { sketchNoticesOf } from '@/lib/diagrams/sketch-notice'
 import { getLocale } from '@/i18n/server'
 import { revertSketchDocument, SketchMovedOnError } from '@/lib/diagrams/sketch-edit-service'
 import { sketchRevertSchema } from '@/lib/diagrams/sketch-edit-wire'
@@ -23,7 +24,7 @@ export const POST = apiRoute<Params>(
     const body = await parseJsonBody(request, sketchRevertSchema, { maxBytes: 4 * 1024 })
     const diagrams = diagramsCopy.messages[await getLocale()]
     try {
-      return await revertSketchDocument({ session, documentId: params.id, body, marking: diagrams.markingEdited, request })
+      return await revertSketchDocument({ session, documentId: params.id, body, marking: diagrams.markingEdited, notices: sketchNoticesOf(diagrams), request })
     } catch (error) {
       if (error instanceof SketchMovedOnError) {
         throw new ConflictError(diagrams.sketchEdit.movedOn, { reason: 'moved_on', currentVersionId: error.currentVersionId })

@@ -37,6 +37,11 @@ export const diagrams: typeof en.diagrams = {
   // Umriss des Grundstücks. Deshalb zusätzlich „nicht maßstäblich".
   markingEdited:
     'Von {productName} entworfen, von einer Person bearbeitet — KI-unterstützt, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
+  // Eine Person hat die Skizze auf einer Dokumentseite begonnen (S6): kein Modell hat sie gezeichnet.
+  markingPerson:
+    'Von einer Person auf einer Dokumentseite gezeichnet. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
+  markingPersonEdited:
+    'Von einer Person auf einer Dokumentseite gezeichnet, von {productName} weitergeführt — KI-unterstützt, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
   markingSketch:
     'Von {productName} erstellt — KI-generiert, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
   sketch: {

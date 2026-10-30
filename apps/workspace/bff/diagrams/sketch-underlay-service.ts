@@ -35,6 +35,8 @@ import { fileDiagramDocuments, type FiledDiagram } from './filing'
 import { baseMoveRefusal, underlayMoveRefusal, type MoveRefusal } from './sketch-underlay-access'
 import { recordUnderlayBase, sketchesTracing, underlayBasesOf } from './sketch-underlay-register'
 import { findDocumentAuthoredByRef } from '@/lib/documents/repository'
+import { PERSON_SKETCH_REF_PREFIX } from '@/lib/documents/document-authors'
+import type { SketchNotices } from './sketch-notice'
 import { matchUnderlayPage } from './sketch-underlay-match'
 import { publishedSketchOf, saveSketchDocument, sketchSaveBaseOf } from './sketch-document'
 import { drawSketchScene } from './sketch-picture'
@@ -78,8 +80,8 @@ export async function createSketchFromPage(input: SketchFromPageInput): Promise<
     svg: drawn.svg,
     source: serializeSketchScene(drawn.scene),
     sourceKind: 'excalidraw',
-    // A person's Skizze has no answer it was drawn in: its own reference, so it files once.
-    answerRef: `page-sketch-${randomUUID()}`,
+    // A person's Skizze has no answer it was drawn in: its own reference, which says a person started it.
+    answerRef: `${PERSON_SKETCH_REF_PREFIX}${randomUUID()}`,
     title: input.title(documentDisplayName(base).replace(/\.pdf$/i, ''), input.page),
     marking: input.marking,
     request: input.request,
@@ -135,7 +137,14 @@ export async function planSketchUnderlayMove(session: AuthorizedSession, documen
 }
 
 /** `POST /api/documents/[id]/sketch/underlay`: the page swapped for the newer Fassung's, saved as the Skizze's next Fassung. */
-export async function moveSketchUnderlay(input: { session: AuthorizedSession; documentId: string; body: UnderlayMoveBody; marking: string; request?: Request }) {
+export async function moveSketchUnderlay(input: {
+  session: AuthorizedSession
+  documentId: string
+  body: UnderlayMoveBody
+  marking: string
+  notices?: SketchNotices
+  request?: Request
+}) {
   const { session } = input
   const { saveBase, underlay, to } = await moveTarget(session, input.documentId, input.body.versionId)
   const plan = await planFor(session, underlay.ref, to, input.body.page)
@@ -158,6 +167,7 @@ export async function moveSketchUnderlay(input: { session: AuthorizedSession; do
     documentId: input.documentId,
     body: { scene: { ...saveBase.scene, elements }, baseVersionId: input.body.baseVersionId },
     marking: input.marking,
+    notices: input.notices,
     request: input.request,
   })
   const { answerRef: _answerRef, pdfOutcome: _pdfOutcome, ...rest } = saved

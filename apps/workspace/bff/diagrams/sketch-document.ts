@@ -51,6 +51,8 @@ import type { Document } from '@/lib/db/schema/documents'
 import { recordDocumentAccess } from '@/lib/download-log/service'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { generatedDocumentMarking } from '@/lib/documents/generated'
+import { isPersonSketchRef } from '@/lib/documents/document-authors'
+import { aiDrewOn, sketchNoticeFor, type SketchNotices } from './sketch-notice'
 import { PublishedVersionMovedError } from '@/lib/documents/published-guard'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { contentDigest } from '@/lib/documents/content-digest'
@@ -256,6 +258,10 @@ export interface SaveSketchInput {
   body: SaveSketchBody
   /** The two-author line, in the reader's locale (`markingEdited`), resolved by the route. */
   marking: string
+  /** The lines for a Skizze a person started (`sketch-notice.ts`); without them `marking` is used for every Skizze. */
+  notices?: SketchNotices
+  /** An agent's edit is being saved: a person-started Skizze is AI-assisted from now on. */
+  aiAssisted?: boolean
   request?: Request
   /** The saving editor's peer id in the document room, so the room's notice of the save is no echo to it. */
   peerId?: string | null
@@ -290,10 +296,14 @@ function storedSceneFor(stored: SketchScene, next: SketchScene): { scene: Sketch
  * validator, where only the server writes (`sketch-underlay-svg.ts`), once the
  * Skizze's place may show it (`sketch-underlay-access.ts`, S6).
  */
-async function acceptSketch(body: SaveSketchBody, stored: SketchScene, input: { session: AuthorizedSession; document: Document; marking: string; ref: string }) {
+async function acceptSketch(
+  body: SaveSketchBody,
+  stored: SketchScene,
+  input: { session: AuthorizedSession; document: Document; marking: string; ref: string; aiAssisted: boolean }
+) {
   const drawn = await drawSketchScene(stored, checkSketchScene(body.scene))
   const { scene, source, bumped, tombstoned } = storedSceneFor(stored, drawn.scene)
-  const provenance = generatedDocumentMarking('diagram_svg', input.ref)
+  const provenance = generatedDocumentMarking('diagram_svg', input.ref, { aiAssisted: input.aiAssisted })
   const vector: AcceptedDiagram = acceptDiagram({ svg: drawn.svg, source, sourceKind: 'excalidraw' }, { notice: input.marking, provenance })
   const underlay = await embeddedUnderlayFor(input.session, input.document, scene, drawn.underlay)
   // Before the bytes are written: every later move asks about this page too (migration 0193).
@@ -325,6 +335,7 @@ export async function saveSketchDocument(
     throw new BadRequestError('Only a sketch filed into the project is saved as a new version; upload a new file instead.')
   }
   const answerRef = document.authoredByRef
+  const voiced = { ...input, ...(await voiceOf(input, document, answerRef)) }
   const score = (outcome: SketchSaveOutcome, extra: Partial<SketchSaveInput> = {}) =>
     void recordSketchSaveScore({ organizationId: session.organizationId, documentId: document.id, answerRef, outcome, ...extra })
   try {
@@ -332,8 +343,8 @@ export async function saveSketchDocument(
     if (target.kind === 'review_open') throw reviewOpenRefusal(target.version)
     const saved =
       target.kind === 'draft'
-        ? await writeDraft(input, document, target.version, answerRef)
-        : await writeVersion(input, document, await storedSceneOf(document), answerRef)
+        ? await writeDraft(voiced, document, target.version, answerRef)
+        : await writeVersion(voiced, document, await storedSceneOf(document), answerRef)
     score(saved.state === 'draft' ? 'drafted' : saved.pdfOutcome === 'failed' ? 'pdf_stale' : 'saved', { metadata: saved.facts })
     const { facts: _facts, ...rest } = saved
     return rest
@@ -347,6 +358,16 @@ export async function saveSketchDocument(
   }
 }
 
+/** A save as its author speaks: the line its files carry, and whether their machine marking is the AI one (`sketch-notice.ts`). */
+type VoicedSave = SaveSketchInput & { marking: string; aiAssisted: boolean }
+
+async function voiceOf(input: SaveSketchInput, document: Document, ref: string): Promise<{ marking: string; aiAssisted: boolean }> {
+  if (!isPersonSketchRef(ref)) return { marking: input.marking, aiAssisted: true }
+  // Once an agent's edit was filed, the stored bytes say so, and every later save keeps saying it.
+  const aiAssisted = input.aiAssisted === true || aiDrewOn(await readStoredText(document).catch(() => ''))
+  return { marking: input.notices ? sketchNoticeFor(ref, input.notices, aiAssisted).notice : input.marking, aiAssisted }
+}
+
 /** The server's drawing of the save, as the score's metadata (ADR-0149). */
 const renderFacts = (render: { ms: number; elements: number; remeasured: number }) => ({
   render_ms: render.ms,
@@ -356,11 +377,11 @@ const renderFacts = (render: { ms: number; elements: number; remeasured: number 
 
 const reasonOf = (error: ConflictError) => (error.details as { reason?: string } | undefined)?.reason
 
-async function writeVersion(input: SaveSketchInput, document: Document, stored: SketchScene, answerRef: string) {
+async function writeVersion(input: VoicedSave, document: Document, stored: SketchScene, answerRef: string) {
   const { session, body } = input
-  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, { session, document, marking: input.marking, ref: answerRef })
+  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, { session, document, marking: input.marking, ref: answerRef, aiAssisted: input.aiAssisted })
   const bytes = new TextEncoder().encode(accepted.svg)
-  const provenance = generatedDocumentMarking('diagram_svg', answerRef)
+  const provenance = generatedDocumentMarking('diagram_svg', answerRef, { aiAssisted: input.aiAssisted })
   if (!markingIsInBytes(bytes, provenance)) throw new Error('the sketch SVG lost its AI marking')
 
   const sceneHash = sceneHashOf(scene.elements)
@@ -384,6 +405,7 @@ async function writeVersion(input: SaveSketchInput, document: Document, stored: 
     svgVersionId: version.id,
     drawing: accepted,
     marking: input.marking,
+    aiAssisted: input.aiAssisted,
     title: titleOf(document),
     request: input.request,
   })
@@ -417,7 +439,7 @@ async function writeVersion(input: SaveSketchInput, document: Document, stored: 
  * from an older state of it, is the 409 `stale_base_version` a published save
  * gets, so the editor merges and tries once more.
  */
-async function writeDraft(input: SaveSketchInput, document: Document, draft: DocumentVersion, answerRef: string) {
+async function writeDraft(input: VoicedSave, document: Document, draft: DocumentVersion, answerRef: string) {
   const { session, body } = input
   const stale = () => new PublishedVersionMovedError(document.id, draft.id)
   if (body.baseVersionId !== draft.id) throw stale()
@@ -425,9 +447,9 @@ async function writeDraft(input: SaveSketchInput, document: Document, draft: Doc
   // Held bytes reach only who may see them (ADR-0086): a draft nobody screened is not merged into.
   if (!(await mayReceiveVersionBytes(session, document, draft))) throw new NotFoundError('Version not found')
   const stored = await storedSceneOf({ ...draft, contentType: SVG })
-  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, { session, document, marking: input.marking, ref: answerRef })
+  const { accepted, scene, bumped, tombstoned, render } = await acceptSketch(body, stored, { session, document, marking: input.marking, ref: answerRef, aiAssisted: input.aiAssisted })
   const bytes = Buffer.from(accepted.svg, 'utf8')
-  if (!markingIsInBytes(bytes, generatedDocumentMarking('diagram_svg', answerRef))) throw new Error('the sketch SVG lost its AI marking')
+  if (!markingIsInBytes(bytes, generatedDocumentMarking('diagram_svg', answerRef, { aiAssisted: input.aiAssisted }))) throw new Error('the sketch SVG lost its AI marking')
   let written: DocumentVersion
   try {
     written = await replaceVersionContent(

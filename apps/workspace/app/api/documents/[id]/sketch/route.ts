@@ -18,6 +18,7 @@
 import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { BadRequestError, ServiceUnavailableError, UnprocessableError } from '@/lib/api/errors'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
+import { sketchNoticesOf } from '@/lib/diagrams/sketch-notice'
 import { getLocale } from '@/i18n/server'
 import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from '@/lib/diagrams/diagram-sources'
 import { probeSketchDocument, readSketchDocument, saveSketchDocument } from '@/lib/diagrams/sketch-document'
@@ -61,6 +62,7 @@ export const PUT = apiRoute<Params>(
         documentId: params.id,
         body,
         marking: diagrams.markingEdited,
+        notices: sketchNoticesOf(diagrams),
         request,
         peerId: peer && PEER_ID.test(peer) ? peer : null,
       })

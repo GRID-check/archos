@@ -41,6 +41,8 @@ vi.mock('@/lib/organizations/service', () => ({
 
 const resolvePeople = vi.fn()
 vi.mock('@/lib/sharing/directory', () => ({ resolvePeople: (...args: unknown[]) => resolvePeople(...args) }))
+const tracedBasesOfFiles = vi.fn(async (..._args: unknown[]): Promise<unknown[]> => [])
+vi.mock('@/lib/diagrams/sketch-underlay-register', () => ({ tracedBasesOfFiles: (...args: unknown[]) => tracedBasesOfFiles(...args) }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import {
@@ -119,6 +121,17 @@ describe('recordDocumentAccess: what is recorded', () => {
         ownList: false,
       })
     )
+  })
+
+  // S6 review, finding 8: a Skizze's SVG and PDF carry the page it is traced over; handing them over hands the page over.
+  it('records the base page a traced Skizze carries, beside the Skizze, and nothing extra for any other document', async () => {
+    tracedBasesOfFiles.mockResolvedValueOnce([document({ id: 'base-1', filename: 'Lohn.pdf', folderId: OPEN_FOLDER })])
+    await recordDocumentAccess(session(), document({ id: 'sketch-1', filename: 'Skizze.svg', folderId: OPEN_FOLDER, authoredByProducer: 'diagram_svg' }), 'download')
+    expect(insertAccessLogEntry.mock.calls.map(([entry]) => (entry as { documentId: string }).documentId)).toEqual(['sketch-1', 'base-1'])
+    insertAccessLogEntry.mockClear()
+    await recordDocumentAccess(session(), document({ folderId: OPEN_FOLDER }), 'download')
+    expect(tracedBasesOfFiles).toHaveBeenCalledTimes(1)
+    expect(insertAccessLogEntry).toHaveBeenCalledTimes(1)
   })
 
   it('records an open under a folder with its own list', async () => {

@@ -15,6 +15,7 @@
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { BadRequestError, ConflictError, ServiceUnavailableError, UnprocessableError } from '@/lib/api/errors'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
+import { sketchNoticesOf } from '@/lib/diagrams/sketch-notice'
 import { getLocale } from '@/i18n/server'
 import { SketchEditError } from '@/lib/diagrams/sketch-edit'
 import { editSketchDocument, SketchChangedError, sketchEditRefusalMessage } from '@/lib/diagrams/sketch-edit-service'
@@ -34,7 +35,7 @@ export const POST = apiRoute<Params>(
     const locale = await getLocale()
     const diagrams = diagramsCopy.messages[locale]
     try {
-      return await editSketchDocument({ session, documentId: params.id, body, marking: diagrams.markingEdited, request })
+      return await editSketchDocument({ session, documentId: params.id, body, marking: diagrams.markingEdited, notices: sketchNoticesOf(diagrams), request })
     } catch (error) {
       if (error instanceof SketchEditError) {
         const message = locale === 'en' ? sketchEditRefusalMessage(error) : diagrams.sketchEdit.refused

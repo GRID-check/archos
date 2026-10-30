@@ -59,7 +59,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { findRootProjectFolderByName, getOrCreateProjectFolderByName } from '@/lib/projects/folder-service'
 import { requireMayFileFrom, type ConversationOrigin } from '@/lib/conversations/restricted-egress'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { AuthoredRefKind } from './document-authors'
+import { isPersonSketchRef, type AuthoredRefKind } from './document-authors'
 import { deleteProjectDocument, findDocumentAuthoredByRef } from './repository'
 import { projectShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
@@ -187,10 +187,8 @@ const PRODUCER_FILES_UNDER_NAMESPACE: Record<GeneratedDocumentProducer, boolean>
  * `fileGeneratedDocument` recomputes it and refuses a rendering that disagrees.
  * A caller can therefore be early, never different.
  */
-export function generatedDocumentMarking(
-  producer: GeneratedDocumentProducer,
-  ref: string,
-): AiProvenanceMarking {
+export function generatedDocumentMarking(producer: GeneratedDocumentProducer, ref: string, { aiAssisted = false } = {}): AiProvenanceMarking {
+  if (isPersonSketchRef(ref) && !aiAssisted) return aiProvenanceMarking({ byPerson: true })
   const refKind = GENERATED_DOCUMENT_PRODUCER_REF_KINDS[producer]
   return aiProvenanceMarking(REF_KIND_IS_A_RUN[refKind] ? { runId: ref } : {})
 }

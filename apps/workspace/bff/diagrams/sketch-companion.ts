@@ -46,6 +46,8 @@ export interface CompanionRedraw {
   drawing: { root: SvgElement; viewport: DiagramSvgViewport; underlay?: EmbeddedUnderlay | null }
   /** The two-author line, in the reader's locale (`markingEdited`). */
   marking: string
+  /** The Skizze's machine marking is the AI one (`sketch-notice.ts`); false only for a Skizze a person drew alone. */
+  aiAssisted?: boolean
   title: string
   request?: Request
 }
@@ -64,7 +66,7 @@ export async function redrawCompanionPdf(
     }
     const pdfDocument = await getAccessibleDocument(session, found.id, 'write')
     const project = await findProjectInOrg(sketch.projectId, session.organizationId)
-    const provenance = generatedDocumentMarking('diagram_pdf', sketch.authoredByRef)
+    const provenance = generatedDocumentMarking('diagram_pdf', sketch.authoredByRef, { aiAssisted: input.aiAssisted ?? true })
     const bytes = await renderDiagramPdf({
       root: input.drawing.root,
       viewport: input.drawing.viewport,
