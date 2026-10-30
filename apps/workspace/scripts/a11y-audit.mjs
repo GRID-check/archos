@@ -19,6 +19,14 @@
  * them) and never signs anyone in. The /dev layout 404s outside development,
  * which is why this runs against `next dev` and not a production build.
  *
+ * `scripts/a11y-pending-routes.json` lists the preview routes that existed before
+ * this gate covered every route and have not been audited yet (the full run did
+ * not fit the container it was set up in). They are skipped, unless named on the
+ * command line; audit a few with `bun run a11y -- /dev/<route> ...`, fix or
+ * baseline what they show, and delete them from the list. A new preview route is
+ * never on it, so it is gated from its first commit. An entry for a route that no
+ * longer exists fails the run, so the list only shrinks.
+ *
  * Exits 1 on any violation not listed in `scripts/a11y-baseline.json`, and on a
  * baseline entry that no longer occurs, so the list only shrinks. Disabled
  * controls are exempt, as WCAG 2.2 SC 1.4.3 says ("inactive user interface
@@ -38,6 +46,7 @@ const appRoot = join(here, '..')
 const require = createRequire(import.meta.url)
 const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8')
 const BASELINE = join(here, 'a11y-baseline.json')
+const PENDING = join(here, 'a11y-pending-routes.json')
 const DEV_DIR = join(appRoot, 'app', 'dev')
 
 /** What a dynamic `[segment]` of a preview route is filled with. */
@@ -175,11 +184,14 @@ async function auditRoute(browser, base, route, found) {
 }
 
 const args = parseArgs(process.argv.slice(2))
-const all = args.named.length ? args.named : previewRoutes()
+const discovered = previewRoutes()
+const pending = existsSync(PENDING) ? JSON.parse(readFileSync(PENDING, 'utf8')) : []
+const all = args.named.length ? args.named : discovered.filter((route) => !pending.includes(route))
+const stalePending = args.named.length ? [] : pending.filter((route) => !discovered.includes(route))
 const routes = inShard(all, args.shard)
 const server = process.env.A11Y_BASE_URL ? undefined : await startDevServer()
 const base = process.env.A11Y_BASE_URL ?? server.origin
-console.log(`auditing ${routes.length} of ${all.length} routes against ${base}`)
+console.log(`auditing ${routes.length} of ${all.length} routes against ${base}; ${args.named.length ? 0 : pending.length} pending (scripts/a11y-pending-routes.json)`)
 
 const launch = () => chromium.launch({ executablePath: process.env.A11Y_CHROME || undefined })
 let browser = await launch()
@@ -224,12 +236,13 @@ const known = new Set(existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, '
 const fresh = [...found.keys()].filter((key) => !known.has(key))
 // An entry for a route that no longer exists is reported once, by the full run or the first shard.
 const reportsOrphans = !args.named.length && (!args.shard || args.shard.index === 1)
-const orphan = (key) => reportsOrphans && !all.includes(key.split(' ')[0])
+const orphan = (key) => reportsOrphans && !discovered.includes(key.split(' ')[0])
 const gone = [...known].filter((key) => (inScope(key) && !found.has(key)) || orphan(key))
 for (const key of fresh) {
   const v = found.get(key)
   console.log(`NEW   ${key}  x${v.count}  ${v.help}\n      ${v.sample}`)
 }
 for (const key of gone) console.log(`FIXED ${key} (remove it from scripts/a11y-baseline.json)`)
+for (const route of stalePending) console.log(`GONE  ${route} (remove it from scripts/a11y-pending-routes.json)`)
 console.log(`${found.size} violation groups, ${fresh.length} new, ${gone.length} fixed`)
-process.exit(fresh.length || gone.length ? 1 : 0)
+process.exit(fresh.length || gone.length || stalePending.length ? 1 : 0)

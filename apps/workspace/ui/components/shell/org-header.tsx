@@ -92,7 +92,7 @@ export function OrgHeader({
             aria-label={t('allProjects')}
             className="text-foreground focus-visible:ring-ring/60 rounded-control flex items-center focus-visible:outline-none focus-visible:ring-2"
           >
-            <Logo kind="wordmark-only" size="small" />
+            <Logo kind="wordmark" size="small" />
           </Link>
         </div>
 
