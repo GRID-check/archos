@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SearchBody, SearchKind, SearchResponse, SearchScopeQuery } from '@/lib/search/search-wire'
-import { postSearch } from '../lib/search-client'
+import { postSearch } from '@/adapters/api/search-client'
 import type { SectionView } from '../lib/sections'
 
 /** One question's answer as it landed: how long the browser waited, and the route's `Server-Timing`. */

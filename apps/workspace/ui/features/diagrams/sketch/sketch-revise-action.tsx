@@ -136,6 +136,8 @@ export function SketchReviseAction({
             canWrite: sketch.canWrite,
             onSaved,
             review,
+            links: sketch.links,
+            projectId: sketch.projectId,
           }}
         />
       ) : null}

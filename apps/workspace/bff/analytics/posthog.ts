@@ -106,6 +106,9 @@ type PostHogProperties = Record<string, string | number | boolean | null | undef
  * `document_opened` and `ifc_model_opened` are the three ways a reader goes from
  * an answer to its evidence.
  *
+ * `sketch_link_opened`: a reader followed a Skizze element's link (`kind`, and
+ * `state`: `available`, or `unavailable` when it led nowhere for them).
+ *
  * Properties are non-identifying by rule: enums, counts, booleans, ids of our
  * own rows. Never free text, never file names, never an address.
  */
@@ -145,6 +148,7 @@ export type PostHogEvent =
   | 'usage_notice_dismissed'
   | 'viewer_action_outcome'
   | 'viewer_actions_auto_changed'
+  | 'sketch_link_opened'
 
 let initialized = false
 

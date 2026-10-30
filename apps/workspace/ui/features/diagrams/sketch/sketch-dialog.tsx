@@ -42,6 +42,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSketch } from '@/adapters/api/diagrams-client'
 import type { WireElement } from '@/lib/diagrams/sketch-room-types'
+import type { ResolvedSketchLink } from '@/lib/diagrams/sketch-links'
 import type { RealtimePeer } from '@/lib/realtime/types'
 import type { DocumentReview, ReviewDraft, RoomTransport } from '@/features/documents'
 import { Button } from '@/components/ui/button'
@@ -95,6 +96,10 @@ export interface SketchDialogProps {
     roomTransport?: RoomTransport
     /** The document's review (the preview's): its Anmerkungen are drawn over the canvas on their elements. */
     review?: DocumentReview | null
+    /** The links as the server read them for this reader (`GET`'s `links`), marked on their elements. */
+    links?: readonly ResolvedSketchLink[]
+    /** The project the Skizze lies in: where „Verknüpfen“ looks. */
+    projectId?: string | null
   } | null
 }
 
@@ -276,6 +281,11 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
               onDirtyChange={onDirtyChange}
               readOnly={filed}
               collab={revision ? room.collab : null}
+              links={
+                revision
+                  ? { links: revision.links ?? [], projectId: revision.projectId ?? null, canLink: canWrite && revision.saveTarget !== 'review_open' }
+                  : null
+              }
               pins={
                 revision?.review
                   ? { review: revision.review, canAnnotate: canWrite && revision.review.canAnnotate, onAnnotate: annotate, canPickAssignee: true }

@@ -25,3 +25,5 @@ export {
 export type { DocumentReview, ReviewDraft } from './hooks/use-document-review'
 export { ReviewPageLayer } from './components/review/review-page-layer'
 export { DraftCard, ThreadCard } from './components/review/thread-card'
+// Where a Skizze's link leads: a document's page, its model's element, an Anmerkung (`features/diagrams/sketch/sketch-links.tsx`).
+export { sketchLinkHref, type AvailableSketchLink } from './lib/sketch-link-href'

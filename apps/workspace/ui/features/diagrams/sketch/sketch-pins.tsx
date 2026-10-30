@@ -62,7 +62,7 @@ export interface SketchPinsProps {
 
 const NONE: string[] = []
 
-interface CanvasView {
+export interface CanvasView {
   elements: readonly AnchorElement[]
   frame: SheetFrame | null
   scrollX: number
@@ -87,7 +87,7 @@ function readView(api: SketchViewApi): CanvasView {
 }
 
 /** The canvas's view, read again once per animation frame while it changes or scrolls. */
-function useCanvasView(api: SketchViewApi | null): CanvasView | null {
+export function useCanvasView(api: SketchViewApi | null): CanvasView | null {
   const [view, setView] = useState<CanvasView | null>(null)
   useEffect(() => {
     if (!api) return

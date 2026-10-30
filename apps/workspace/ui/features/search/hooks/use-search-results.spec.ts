@@ -6,7 +6,7 @@ import type { SearchBody, SearchResponse } from '@/lib/search/search-wire'
 import { useSearchResults } from './use-search-results'
 
 const postSearch = vi.fn<(scope: unknown, body: SearchBody) => Promise<SearchResponse>>()
-vi.mock('../lib/search-client', () => ({ postSearch: (scope: unknown, body: SearchBody) => postSearch(scope, body) }))
+vi.mock('@/adapters/api/search-client', () => ({ postSearch: (scope: unknown, body: SearchBody) => postSearch(scope, body) }))
 
 const SCOPE = { scope: 'office' as const }
 const BODY: SearchBody = { kinds: ['document'] }

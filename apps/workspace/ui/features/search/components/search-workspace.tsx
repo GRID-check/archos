@@ -15,7 +15,7 @@ import { useSearchResults, type AnsweredSearch } from '../hooks/use-search-resul
 import { useOpenedHitCapture, useSearchTracker } from '../hooks/use-search-tracker'
 import { useSearchUrlState } from '../hooks/use-search-url-state'
 import { useSuggestedSearchName } from '../hooks/use-suggested-search-name'
-import { exportSearch, postSuggest, type SearchExportFormat } from '../lib/search-client'
+import { exportSearch, postSuggest, type SearchExportFormat } from '@/adapters/api/search-client'
 import { captureRefinements, captureSavedSearchRun, filterDimensions, parseServerTiming, telemetrySurface } from '../lib/search-telemetry'
 import { fromSearchBody, toSearchBody, type SearchUrlState } from '../lib/search-url'
 import { projectFromSavedScope, surfaceScope, type SearchSurface } from '../lib/search-surface'

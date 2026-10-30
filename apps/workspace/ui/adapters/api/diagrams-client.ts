@@ -15,6 +15,7 @@
 import { z } from 'zod'
 import type { fileDiagramSchema } from '@/lib/diagrams/diagram-wire'
 import { ROOM_PEER_HEADER, type saveSketchSchema } from '@/lib/diagrams/sketch-wire'
+import { SKETCH_LINK_KINDS, type ResolvedSketchLink } from '@/lib/diagrams/sketch-links'
 import { ApiRequestError } from './api-error'
 
 // ============================================================
@@ -128,6 +129,13 @@ const SketchViewSchema = z.object({
   saveTarget: z.enum(['published', 'draft', 'review_open']).default('published'),
   /** The open draft's hash, sent back with a save into it. */
   contentHash: z.string().nullable().default(null),
+  /** The project the Skizze lies in; absent from an older server. */
+  projectId: z.string().nullable().default(null),
+  /** Its links as the server read them for this reader (`lib/diagrams/sketch-links.ts`); absent from an older server. */
+  links: z
+    .array(z.looseObject({ elementId: z.string(), kind: z.enum(SKETCH_LINK_KINDS), state: z.enum(['available', 'unavailable']), ref: z.looseObject({}) }))
+    .default([])
+    .transform((links) => links as unknown as ResolvedSketchLink[]),
 })
 
 /** What the editor needs of a filed sketch: its scene and the Fassung (or open draft) it was read from. */

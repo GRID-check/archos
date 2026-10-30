@@ -7,7 +7,7 @@ import { ActionMenu } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
 import { searchCopy } from '@/i18n/namespaces/search'
-import type { SearchExportFormat } from '../lib/search-client'
+import type { SearchExportFormat } from '@/adapters/api/search-client'
 
 /**
  * The Planliste of the current result, as CSV or XLSX, with every column of
