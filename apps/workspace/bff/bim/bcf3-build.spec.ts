@@ -11,16 +11,16 @@
  * Vorschlag that never travels, and bytes that do not change between exports.
  * The archive is read back through the independent zip reader.
  *
- * Schema validation is opt-in: the buildingSMART XSDs (release_3_0, CC BY-ND)
- * are not vendored. `BCF3_XSD_DIR=<dir with markup.xsd, visinfo.xsd,
- * extensions.xsd, version.xsd, shared-types.xsd> bunx vitest run bff/bim/bcf3-build.spec.ts`
- * runs `xmllint --schema` over every file of a rich archive.
+ * Every file of a rich archive is validated with `xmllint --schema` against
+ * the buildingSMART 3.0 XSDs, vendored unmodified in tests/fixtures/bcf-3.0
+ * (CC BY-ND). Without xmllint the check is skipped locally and fails in CI, so
+ * it cannot quietly stop running.
  */
 
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { readZipEntries } from '@/test-utils/read-zip'
 import { bcf3Title, buildAnnotationsBcf3, type Bcf3Input, type Bcf3Topic } from './bcf3-build'
@@ -243,9 +243,28 @@ describe('the viewpoint', () => {
   })
 })
 
-describe.skipIf(!process.env.BCF3_XSD_DIR)('against the buildingSMART 3.0 schemas', () => {
+const XSD_DIR = resolve(__dirname, '../../tests/fixtures/bcf-3.0')
+
+function hasXmllint(): boolean {
+  try {
+    execFileSync('xmllint', ['--version'], { stdio: 'pipe' })
+    return true
+  } catch {
+    return false
+  }
+}
+
+const XMLLINT = hasXmllint()
+
+describe('the schema check itself', () => {
+  it('runs in CI', () => {
+    if (process.env.CI) expect(XMLLINT, 'xmllint is missing on the CI runner (install libxml2-utils)').toBe(true)
+  })
+})
+
+describe.skipIf(!XMLLINT)('against the buildingSMART 3.0 schemas', () => {
   it('validates every file of a rich archive', () => {
-    const dir = process.env.BCF3_XSD_DIR ?? ''
+    const dir = XSD_DIR
     const work = mkdtempSync(join(tmpdir(), 'bcf3-'))
     try {
       const orthographic = topic({

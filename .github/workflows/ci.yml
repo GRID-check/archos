@@ -711,6 +711,10 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
       - run: task workspace:install
+      # The BCF 3.0 export spec validates its archive with xmllint against the
+      # vendored buildingSMART schemas, and fails in CI when xmllint is absent.
+      - name: xmllint for the BCF schema check
+        run: command -v xmllint || (sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils)
       - name: All specs, shard ${{ matrix.shard }}/8
         if: github.event_name == 'push' || needs.changes.outputs.ui_mode == 'full'
         # Coverage only where the comment is built from it.
