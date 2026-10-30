@@ -118,7 +118,7 @@ export function blogPosting(
     dateModified: post.published.toISOString(),
     inLanguage: post.locale,
     articleSection: post.section,
-    image: new URL('/media/share-card.jpg', site).href,
+    image: new URL('/media/share-card.png', site).href,
     author: { '@id': organizationId(site) },
     publisher: { '@id': organizationId(site) },
   };

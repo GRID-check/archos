@@ -4,10 +4,11 @@ import { artImage, type ArtId } from '@/lib/art'
 import { cn } from '@/lib/utils'
 
 /**
- * A Piloti riso print (the picture language of the public site), by art id.
+ * A riso print (a halftone line drawing), by art id.
  *
- * The print is a halftone screen on warm paper `#F4F2E8`, exported at the
- * exact pixel size of its slot. Two rules follow from that:
+ * The print is a halftone screen in ink and ink-muted on the light image
+ * ground `#f2f1f0` (the brand neutrals, no hue), exported at the exact pixel
+ * size of its slot. Two rules follow from that:
  *
  * - **Native size only.** It is shown at its CSS size from `sm` up and at
  *   exactly half below it (a phone column is narrower than 320 px), never at a
@@ -15,8 +16,8 @@ import { cn } from '@/lib/utils'
  *   into moiré. So no `next/image` (it re-encodes and resizes), no
  *   `max-width: 100%`, no `object-fit`.
  * - **Paper, not ink.** The print is a sheet, so it has the sheet's rounded
- *   corners. In light mode its paper sits on the app's warm paper plane and
- *   needs nothing more. In dark mode it is not inverted or tinted: it is a
+ *   corners. In light mode its grey ground sits on the app's surface as an
+ *   image ground does and needs nothing more. In dark mode it is not inverted or tinted: it is a
  *   printed sheet lying on the charcoal, so it takes the raised-plane shadow
  *   and is dimmed a step so a bright square does not glare out of a dark page.
  *

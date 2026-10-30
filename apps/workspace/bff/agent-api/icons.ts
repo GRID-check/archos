@@ -10,9 +10,10 @@
  * SHOULD, and Claude's connector UI showed nothing for an SVG-only list. The SVG
  * marks follow for clients that take them.
  *
- * Two variants per icon, one per client theme: the ink of the brand tile
- * (`packages/brand/mark.svg`: `#2a301f` on a light page, `#eef2e4` on a
- * dark one). The server's own icon is the Piloti column (`BRAND_MARK`); the
+ * Two variants per icon, one per client theme: the brand's ink on a light
+ * page and its warm white on a dark one (`packages/brand/tokens.json`, `ink`
+ * and `surface`; the brand has no hue). The server's own icon is the app
+ * icon's glyph, the product name's initial (`BRAND_MARK`); the
  * others are 24-unit line glyphs, one per meaning (search, describe, call,
  * report; the guide, glossary, catalog and project resources; the workflows).
  * Never per operation: in `tools` mode that would repeat ~700 bytes on each of
@@ -23,7 +24,7 @@
 import type { Icon } from '@modelcontextprotocol/server'
 import { BRAND_MARK } from '@/lib/brand'
 
-const INK = { light: '#2a301f', dark: '#eef2e4' } as const
+const INK = { light: '#0f0e0d', dark: '#fafaf9' } as const
 const THEMES = ['light', 'dark'] as const
 
 const ESCAPES: Readonly<Record<string, string>> = { '%': '%25', '<': '%3C', '>': '%3E', '#': '%23', '"': "'", ' ': '%20' }
@@ -44,7 +45,7 @@ const glyph = (d: string): Icon[] =>
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${ink}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`,
   )
 
-/** The Piloti column, without its tile. */
+/** The app icon's glyph, without its tile. */
 const SERVER_MARK: Icon[] = icon(
   (ink) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${BRAND_MARK.viewBox}"><path fill="${ink}" d="${BRAND_MARK.path}"/></svg>`,
 )

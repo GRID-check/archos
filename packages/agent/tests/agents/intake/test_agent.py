@@ -16,7 +16,6 @@ from agent_testing.intake import NEEDS
 from agent_testing.intake import NEEDS_BODY
 from agent_testing.intake import recorded_all
 from agent_testing.intake import validator
-from agent.common.brand import PRODUCT_NAME
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
@@ -28,6 +27,7 @@ from agent.agents.intake.agent import ProjectIntakeAgent
 from agent.agents.intake.models import IntakeAgentState
 from agent.agents.intake.read_log import current_read_log
 from agent.common import LLMProvider
+from agent.common.brand import PRODUCT_NAME
 from agent.common.cost_tracking import BudgetExceededError
 
 

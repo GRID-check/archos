@@ -15,13 +15,13 @@
       "files": [
         {
           "density": 1,
-          "src": "/art/vignetten-abstecken-empty-320.webp?v=e1d8ba8a",
+          "src": "/art/vignetten-abstecken-empty-320.webp?v=566d6d83",
           "width": 320,
           "height": 320
         },
         {
           "density": 2,
-          "src": "/art/vignetten-abstecken-empty-640.webp?v=99e96c58",
+          "src": "/art/vignetten-abstecken-empty-640.webp?v=330d5a3a",
           "width": 640,
           "height": 640
         }
@@ -35,19 +35,19 @@
       "width": 320,
       "height": 320,
       "alt": {
-        "de": "Ein leerer Bauplatz auf einem Modellbrett im Morgenlicht: ein abgesteckter Grundriss, eine einzelne Stütze mit Bewehrungseisen und ein Vermessungspflock mit rotem Band.",
-        "en": "An empty building plot on a model board at dawn: a pegged-out plot, a single column with rebar sticking out of its head, and a survey stake with a red ribbon."
+        "de": "Ein leerer Bauplatz auf einem Modellbrett im Morgenlicht: ein abgesteckter Grundriss, eine einzelne Stütze mit Bewehrungseisen und ein Vermessungspflock mit einem Band.",
+        "en": "An empty building plot on a model board at dawn: a pegged-out plot, a single column with rebar sticking out of its head, and a survey stake with a ribbon."
       },
       "files": [
         {
           "density": 1,
-          "src": "/art/vignetten-bauplatz-empty-320.webp?v=0ae4d740",
+          "src": "/art/vignetten-bauplatz-empty-320.webp?v=81ab33f9",
           "width": 320,
           "height": 320
         },
         {
           "density": 2,
-          "src": "/art/vignetten-bauplatz-empty-640.webp?v=fba08e11",
+          "src": "/art/vignetten-bauplatz-empty-640.webp?v=abe8b526",
           "width": 640,
           "height": 640
         }
@@ -67,13 +67,13 @@
       "files": [
         {
           "density": 1,
-          "src": "/art/vignetten-planschrank-empty-320.webp?v=532b6681",
+          "src": "/art/vignetten-planschrank-empty-320.webp?v=93aacdef",
           "width": 320,
           "height": 320
         },
         {
           "density": 2,
-          "src": "/art/vignetten-planschrank-empty-640.webp?v=949f59ba",
+          "src": "/art/vignetten-planschrank-empty-640.webp?v=1cc07291",
           "width": 640,
           "height": 640
         }

@@ -195,11 +195,12 @@ def render_list(body: dict[str, Any]) -> str:
         return f"There are no annotations on {named} yet."
     live = sum(1 for item in items if item.get("status") in _LIVE)
     proposed = sum(1 for item in items if item.get("status") == "proposed")
-    lines = [
+    header = (
         f"Annotations on {named}: {len(items)}, of which {live} open or proposed"
         f" ({proposed} proposals from you that nobody has taken over yet). Locations as shares of the page, "
         "origin top left."
-    ]
+    )
+    lines = [header]
     for item in items[:MAX_LISTED]:
         lines.extend(_annotation_lines(item))
     if len(items) > MAX_LISTED:
@@ -510,8 +511,8 @@ def render_updated(body: dict[str, Any]) -> str:
         for change in _field_changes(body.get("before") or {}, body.get("after") or {})
     )
     return (
-        f"Changed in the person's name: annotation no. {number}{_on(body)} ({moved}). Your `note` appears as your reply "
-        "in the thread. Give the number and what you changed in your answer."
+        f"Changed in the person's name: annotation no. {number}{_on(body)} ({moved}). "
+        "Your `note` appears as your reply in the thread. Give the number and what you changed in your answer."
     )
 
 

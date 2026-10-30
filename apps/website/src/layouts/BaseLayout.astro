@@ -61,7 +61,7 @@ const there = alternatePath ?? alternateOf(here);
 const hrefFor = (target: Locale) => new URL(target === locale ? here : there, Astro.site);
 // Social previews: the share card is the one image every page shares; og:locale names the region.
 const ogLocale: Record<Locale, string> = { de: 'de_AT', en: 'en_GB' };
-const shareImage = new URL('/media/share-card.jpg', Astro.site);
+const shareImage = new URL('/media/share-card.png', Astro.site);
 const site = Astro.site ?? new URL(`https://${identity.domain}`);
 const isHome = here === '/' || here === '/en/' || here === '/en';
 const nodes: GraphNode[] = [...graph];

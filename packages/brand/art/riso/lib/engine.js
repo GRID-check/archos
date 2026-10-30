@@ -34,6 +34,13 @@ const SEP = QS.get('sep');
 const DEBUG = QS.get('debug') || '';
 const NOPAPER = QS.get('paper') === '0';
 
+/* A work's own look, from Riso.run({ look }): `ink` maps an ink name to the hex it
+   prints in, `paper` is the sheet's colour, `mottle: false` leaves the sheet flat
+   (no fibres, flecks or mottling). Unset, a work prints in the series look
+   (the series file). The vignetten work uses it to print in the brand neutrals. */
+let LOOK = { ink: {}, paper: null, mottle: true };
+const inkHex = (ink) => LOOK.ink[ink] || INK[ink];
+
 /* Every format is drawn in a 1080-unit wide space. H is the format's height in
    units. OUT/OUTH/K/PITCH are set per job before a bake. */
 const W = 1080;
@@ -136,7 +143,8 @@ function screenPlate(tone, line, name) {
 function bakePaper() {
   const c = cv(OUT, OUTH), x = c.getContext('2d');
   x.setTransform(K, 0, 0, K, 0, 0);
-  x.fillStyle = PAPER; x.fillRect(0, 0, W, H);
+  x.fillStyle = LOOK.paper || PAPER; x.fillRect(0, 0, W, H);
+  if (LOOK.mottle === false) return c;
   const r = rngFor('paper');
   for (const [res, maxA] of [[30, 0.09], [72, 0.065], [165, 0.045]]) {
     const rh = Math.max(2, Math.round(res * H / W));
@@ -482,7 +490,7 @@ const Riso = (() => {
       const tin = cv(OUT, OUTH), tx = tin.getContext('2d');
       tx.drawImage(dots, 0, 0);
       tx.globalCompositeOperation = 'source-in';
-      tx.fillStyle = INK[ink];
+      tx.fillStyle = inkHex(ink);
       tx.fillRect(0, 0, OUT, OUTH);
       const [rx, ry] = REG[ink];
       o.save();
@@ -504,6 +512,7 @@ const Riso = (() => {
 
   function run(spec) {
     let jobs, arts;
+    if (spec.look) LOOK = { ...LOOK, ...spec.look, ink: { ...spec.look.ink } };
     try { ({ jobs, arts } = expand(spec)); } catch (e) { refuse(e); return; }
     const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
     const baked = new Map();

@@ -6,6 +6,9 @@ import { CATEGORIES, blogPath } from './categories';
 import identity from './identity';
 import { getBlogPosts, postPath } from './posts';
 
+/** The channel's <language> element per locale: German as written in Austria. */
+const LANGUAGE: Record<Locale, string> = { de: '<language>de-at</language>', en: '<language>en</language>' };
+
 /**
  * The blog of one locale as RSS 2.0 (`@astrojs/rss`), both strands, newest first, at the
  * old site's feed addresses (`/rss.xml`, `/en/rss.xml`) so subscribers keep their feed.
@@ -19,7 +22,7 @@ export async function blogFeed(locale: Locale, site: URL | undefined) {
     // The channel's <link> is the listing; item links are absolute paths.
     site: new URL(blogPath(locale), site ?? `https://${identity.domain}`).href,
     trailingSlash: true,
-    customData: `<language>${locale === 'de' ? 'de-at' : 'en'}</language>`,
+    customData: LANGUAGE[locale],
     items: posts.map((post) => ({
       title: post.data.title,
       description: post.data.description,

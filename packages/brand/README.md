@@ -19,7 +19,7 @@ or a brand string changes here and reaches every surface on the next sync.
 | `sync.mjs` | Copies each app the files of its layer (`TARGETS`) and deletes any it no longer receives; copies `identity.json` alone into the agent's package (a `shared` target: nothing else there is touched); writes the product's name into the files listed in `name-copies.mjs`. `--check` writes nothing and fails on a stale, missing or unexpected file. |
 | `name-copies.mjs` | The files that must spell the product's name as a literal (the service worker's fallback title, the icons' SVG `<title>`). `sync.mjs` fills them from `identity.json`, so a rename is still one edit (ADR-0148). |
 | `dist/` | Built output, committed on purpose (see the root `.gitignore` negation). |
-| `mark.svg`, `build-brand-assets.mjs` | The app icon master and its raster build (favicons and manifest icons for `apps/website` and `apps/workspace`, with the website's sharp). Unrelated to the tokens. The master's `<title>` is the token `{productName}`; every copy gets the name from `identity.json`. |
+| `mark.svg`, `build-brand-assets.mjs`, `outline.mjs` | The app icon and the share card. The icon is typographic: the name's initial in Switzer Semibold, outlined (`outline.mjs`, with the website's fontkit), ink on the warm white, inverted for dark and maskable ([brand-basis.md](docs/brand-basis.md#app-icon)). `build-brand-assets.mjs` writes the master `mark.svg` from `identity.json` and the font, copies it into both apps, renders every favicon and manifest icon and the 1200 × 630 share card (wordmark and tagline) with the website's sharp; `--check` fails when the master, a copy or the inline glyph in `apps/workspace/bff/brand.ts` drifted, or after a rename until it is re-run. The master's `<title>` is the token `{productName}`; every copy gets the name from `identity.json`. |
 | `email-signatures.mjs`, `signatures/` | The founders' email signatures, text only, generated from `identity.json` (`--check` runs in the website's `bun run check`). Paste the HTML into the mail client. |
 | `art/riso/` | The riso print kit (moved from the retired public site): its committed outputs are the app's empty-state vignettes; everything else exports to the gitignored `out/`. [`art/riso/README.md`](art/riso/README.md) |
 
@@ -109,6 +109,7 @@ Full text: the component sheets in `docs/components/`.
 - Tracking is never tighter than 0, except the logo.
 - Left-aligned, except large opening statements and the hero text (right-aligned).
 - Mobile (below 768px) steps the display and heading sizes down; the component sheets give the numbers.
+- Headings (`display-xl` to `heading-3`) wrap with `text-wrap: balance` and `overflow-wrap: break-word`, so no title strands a word and no long compound pushes a 320px page sideways. Heading sizes hyphenate automatically (`hyphens: auto`, by the page's `lang`); display sizes only at a soft hyphen the copy sets (`hyphens: manual`), because an automatic break in a 44px word reads as a fault.
 
 **Layout and shape**
 

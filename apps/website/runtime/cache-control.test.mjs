@@ -8,7 +8,7 @@ test('hashed build assets are immutable', () => {
 
 test('unhashed media revalidate after a week, never immutable', () => {
   assert.equal(cacheControlFor('/media/product-model-check.webp'), LONG_REVALIDATE)
-  assert.equal(cacheControlFor('/media/share-card.jpg'), LONG_REVALIDATE)
+  assert.equal(cacheControlFor('/media/share-card.png'), LONG_REVALIDATE)
 })
 
 test('pages and server routes keep the adapter default', () => {

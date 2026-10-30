@@ -30,7 +30,8 @@
    than a dot ramp.
 
    Same series as Tafeln: the one camera, the series sun (dawn for the plot),
-   paper, the five drums, Kelly only for something alive, red once at most.
+   the five drums, Kelly only for something alive, red once at most. They print
+   in the brand neutrals, not the series' colours: see `look` at Riso.run.
    ───────────────────────────────────────────────────────────────────────── */
 
 /* Line weights in 1080-unit space for the 320 slot: 1.84, 1.42 and 1.27 px at 1x. */
@@ -321,8 +322,25 @@ const PLANSCHRANK = (() => {
    with empty alt; the alt here is for any other use.
    ═════════════════════════════════════════════════════════════════════════ */
 
+/* The brand neutrals (design system 3.0; no hue, D26). The vignettes sit in the
+   product app, so they print in ink on the light grey of an image ground
+   (`surface-sunken`) instead of the series' greens on cream, on a flat sheet.
+   Every drum keeps its screen, angle and registration, so the drawing is
+   unchanged; only the colour each drum prints in is. Key line and red (the
+   plate's one accent) print in ink, Moss in ink-muted, and the two tint drums
+   in ink-muted let down onto the ground (Kelly 40 %, Mist 20 %), the way a
+   riso tint is a lighter drum, so a lawn or a haze stays a quiet field. */
+const mixMuted = (share) => '#' + [[0xf2, 0x5e], [0xf1, 0x5b], [0xf0, 0x57]]
+  .map(([ground, muted]) => Math.round(ground + (muted - ground) * share).toString(16).padStart(2, '0')).join('');
+const NEUTRAL = { ink: '#0f0e0d', inkMuted: '#5e5b57', ground: '#f2f1f0', kelly: mixMuted(0.4), mist: mixMuted(0.2) };
+
 Riso.run({
   work: 'vignetten',
+  look: {
+    paper: NEUTRAL.ground,
+    mottle: false,
+    ink: { hunter: NEUTRAL.ink, red: NEUTRAL.ink, moss: NEUTRAL.inkMuted, kelly: NEUTRAL.kelly, mist: NEUTRAL.mist },
+  },
   plates: [
     { name: 'bauplatz',    art: BAUPLATZ,    composes: ['empty'] },
     { name: 'abstecken',   art: ABSTECKEN,   composes: ['empty'] },
@@ -330,8 +348,8 @@ Riso.run({
   ],
   jobs: [
     { plate: 'bauplatz', format: 'empty',
-      alt: { de: 'Ein leerer Bauplatz auf einem Modellbrett im Morgenlicht: ein abgesteckter Grundriss, eine einzelne Stütze mit Bewehrungseisen und ein Vermessungspflock mit rotem Band.',
-             en: 'An empty building plot on a model board at dawn: a pegged-out plot, a single column with rebar sticking out of its head, and a survey stake with a red ribbon.' } },
+      alt: { de: 'Ein leerer Bauplatz auf einem Modellbrett im Morgenlicht: ein abgesteckter Grundriss, eine einzelne Stütze mit Bewehrungseisen und ein Vermessungspflock mit einem Band.',
+             en: 'An empty building plot on a model board at dawn: a pegged-out plot, a single column with rebar sticking out of its head, and a survey stake with a ribbon.' } },
     { plate: 'abstecken', format: 'empty',
       alt: { de: 'Auf einem Rasenbrett ist ein Grundstück mit vier Pflöcken und einer Schnur abgesteckt; eine Figur mit einer Planrolle steht an der Ecke.',
              en: 'A plot staked out with four stakes and a string on a lawn board; a figure holding a rolled drawing stands at the corner.' } },

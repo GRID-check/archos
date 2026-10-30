@@ -175,3 +175,27 @@ def test_rename_drill_reaches_the_literal_copies(drill: Path) -> None:
         ["node", "packages/brand/sync.mjs", "--check"], cwd=drill, capture_output=True, text=True, check=False
     )
     assert check.returncode == 0, check.stderr
+
+
+WEBSITE_DEPS = ROOT / "apps" / "website" / "node_modules"
+
+
+def test_rename_drill_redraws_the_icon(drill: Path) -> None:
+    """The icon is the name's initial: one run of ``build-brand-assets.mjs`` after the sync redraws it."""
+    if not all((WEBSITE_DEPS / dep).is_dir() for dep in ("fontkit", "sharp")):
+        pytest.skip("build-brand-assets.mjs borrows fontkit and sharp from apps/website (bun install there)")
+    site = drill / "apps" / "website"
+    site.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "apps" / "website" / "package.json", site / "package.json")
+    if not (site / "node_modules").exists():
+        (site / "node_modules").symlink_to(WEBSITE_DEPS, target_is_directory=True)
+    script = "packages/brand/build-brand-assets.mjs"
+    subprocess.run(["node", script], cwd=drill, check=True, capture_output=True)
+    initial = f'data-initial="{DRILL_NAME[0].upper()}"'
+    for icon in (Path("packages/brand/mark.svg"), *ICONS):
+        assert initial in (drill / icon).read_text(encoding="utf-8"), icon
+    for icon in ICONS:
+        assert _svg_title(drill / icon) == DRILL_NAME, icon
+    assert (site / "public" / "media" / "share-card.png").is_file()
+    check = subprocess.run(["node", script, "--check"], cwd=drill, capture_output=True, text=True, check=False)
+    assert check.returncode == 0, check.stderr
