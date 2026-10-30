@@ -198,7 +198,7 @@ app's own choices, not defects). Inside that level the rules are the brand's:
 `task workspace:a11y` runs axe-core with the WCAG 2.0, 2.1 and 2.2 A and AA rule
 sets over every `/dev` preview route (`scripts/a11y-audit.mjs` finds them on disk, so a
 new preview is covered without an edit; the older routes still in `scripts/a11y-pending-routes.json` wait for their first audit), light and dark, at 1440 and 390 pixels. It
-starts its own `next dev`, and CI runs it in four shards (`workspace-a11y`). It fails on any violation not in
+starts its own `next dev`; it is not in CI yet (see `docs/contributing/ci.md`), so run it before a UI change lands. It fails on any violation not in
 `scripts/a11y-baseline.json` and on a baseline entry that is gone, so the list only
 shrinks. `ui/components/brand/brand-surfaces.a11y.spec.tsx` holds the structural
 rules in the unit suite (jsdom cannot measure contrast). Contrast rules for what
