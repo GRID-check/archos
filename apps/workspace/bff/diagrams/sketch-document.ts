@@ -122,6 +122,8 @@ export interface PublishedSketch {
   scene: SketchScene
   /** Null for an SVG sized by `width` and `height` alone, which the editor never writes. */
   viewBox: { width: number; height: number } | null
+  /** The bytes carry the AI marking: a model has drawn on it (`sketch-notice.ts`). */
+  aiDrawn?: boolean
 }
 
 /**
@@ -136,7 +138,7 @@ export async function publishedSketchOf(
   const text = await readStoredText(document)
   const stored = storedDiagramSource(text)
   const scene = stored?.kind === 'excalidraw' ? parseStoredSketchScene(stored.source) : null
-  return scene ? { scene, viewBox: viewBoxOf(text) } : null
+  return scene ? { scene, viewBox: viewBoxOf(text), aiDrawn: aiDrewOn(text) } : null
 }
 
 /** The scene some bytes carry (the current ones, or a draft's), or a 415 when they carry none this product can read. */
@@ -364,7 +366,7 @@ type VoicedSave = SaveSketchInput & { marking: string; aiAssisted: boolean }
 async function voiceOf(input: SaveSketchInput, document: Document, ref: string): Promise<{ marking: string; aiAssisted: boolean }> {
   if (!isPersonSketchRef(ref)) return { marking: input.marking, aiAssisted: true }
   // Once an agent's edit was filed, the stored bytes say so, and every later save keeps saying it.
-  const aiAssisted = input.aiAssisted === true || aiDrewOn(await readStoredText(document).catch(() => ''))
+  const aiAssisted = input.aiAssisted === true || (await publishedSketchOf(document).catch(() => null))?.aiDrawn === true
   return { marking: input.notices ? sketchNoticeFor(ref, input.notices, aiAssisted).notice : input.marking, aiAssisted }
 }
 
