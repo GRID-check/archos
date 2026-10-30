@@ -14,6 +14,13 @@ body { margin: 0; font-family: var(--font-sans); font-weight: 500; font-size: 16
      viewport so its longest word („Architekturbüros.“) still fits a 360px phone. */
   .ui-hero-title.display-xl { font-size: min(40px, 10.4vw); line-height: 1.1; }
 }
+/* Below the design system's narrowest checked phone (360px) a 44px display title no longer fits
+   its longest German word in the content width („Planungsbüros“ on /demo at 320px), and WCAG
+   1.4.10 asks for no sideways scroll at 320 CSS px. Only there it scales with the viewport;
+   at 360px and up the 44/46 step above holds unchanged. */
+@media (max-width: 359px) {
+  .display-xl, .display { font-size: 12.2vw; line-height: 1.05; }
+}
 
 /* Headings balance their lines, so a title never leaves one word alone on its last line.
    A German compound longer than a 320px screen ("Wissensmanagement" in display size) breaks
