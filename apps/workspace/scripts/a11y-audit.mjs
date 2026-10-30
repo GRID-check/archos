@@ -169,7 +169,8 @@ async function auditRoute(browser, base, route, found) {
     } catch (error) {
       found.set(`${route} ${scheme} ${viewport.name} load-failed`, { count: 1, sample: String(error.message).slice(0, 120), help: 'route did not render' })
     }
-    await context.close()
+    // A crashed browser has closed it already; the next route relaunches one.
+    await context.close().catch(() => {})
   }
 }
 
@@ -180,7 +181,19 @@ const server = process.env.A11Y_BASE_URL ? undefined : await startDevServer()
 const base = process.env.A11Y_BASE_URL ?? server.origin
 console.log(`auditing ${routes.length} of ${all.length} routes against ${base}`)
 
-const browser = await chromium.launch({ executablePath: process.env.A11Y_CHROME || undefined })
+const launch = () => chromium.launch({ executablePath: process.env.A11Y_CHROME || undefined })
+let browser = await launch()
+let relaunching
+/** The browser, relaunched once if it crashed (a long run on a busy machine can lose it). */
+const liveBrowser = async () => {
+  if (browser.isConnected()) return browser
+  relaunching ??= launch().then((fresh) => {
+    browser = fresh
+    relaunching = undefined
+    return fresh
+  })
+  return relaunching
+}
 const found = new Map()
 const queue = [...routes]
 const started = Date.now()
@@ -188,13 +201,13 @@ try {
   await Promise.all(
     Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
       for (let route = queue.shift(); route; route = queue.shift()) {
-        await auditRoute(browser, base, route, found)
+        await auditRoute(await liveBrowser(), base, route, found)
         console.log(`  ${route} (${Math.round((Date.now() - started) / 1000)}s)`)
       }
     }),
   )
 } finally {
-  await browser.close()
+  await browser.close().catch(() => {})
   server?.stop()
 }
 
