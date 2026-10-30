@@ -15,6 +15,7 @@
  */
 
 import type { z } from 'zod'
+import type { AuthorizedSession } from '@/lib/auth/types'
 
 export type BodyEncoding = 'json' | 'multipart' | 'raw'
 
@@ -160,6 +161,37 @@ export interface AgentOperation {
    * row one level in (`links.ts`), where the deployment pins its origin.
    */
   readonly links?: LinkKind
+  /**
+   * Run before Piloti's call becomes a proposal (`proposeOperation`), in the
+   * session of the person whose turn it is: a call that could only fail when
+   * it is applied throws (its `ApiError` reaches Piloti), so it never becomes a
+   * card nobody can accept. `decline` files nothing and answers its words;
+   * `warnings` go back to the model beside the proposal. Imported lazily, as
+   * `load` is.
+   */
+  readonly checkProposal?: (input: OperationExample, session: AuthorizedSession) => Promise<ProposalCheck>
+  /**
+   * The id of what an applied proposal made, read from the route's answer
+   * (`ProposedChangeResult.itemId`): a sketch edit's new Fassung, which the
+   * receipt offers to take back.
+   */
+  readonly resultItemId?: (body: unknown) => string | undefined
+}
+
+/** What {@link AgentOperation.checkProposal} answers. */
+export interface ProposalCheck {
+  /** File nothing: the call says why there is nothing to change (a sketch edit with no operations). */
+  readonly decline?: string
+  /** Layout or other problems the model may want to fix, in English; the proposal is filed anyway. */
+  readonly warnings?: readonly string[]
+}
+
+/** The call declined to change anything and said why (`checkProposal`'s `decline`): nothing is filed. */
+export class ProposalDeclined extends Error {
+  constructor(readonly note: string) {
+    super(note)
+    this.name = 'ProposalDeclined'
+  }
 }
 
 /** What a door answer may link to: the objects with a page of their own in the app. */

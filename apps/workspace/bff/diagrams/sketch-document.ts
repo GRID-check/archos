@@ -164,6 +164,39 @@ async function mayWrite(session: AuthorizedSession, document: Document): Promise
   )
 }
 
+/** The scene a save would replace, and the version it must name (`sketch-edit-service.ts`). */
+export interface SketchSaveBase {
+  document: Document
+  scene: SketchScene
+  /** The open draft's id, or the current Fassung's. */
+  versionId: string | null
+  contentHash: string | null
+  target: 'published' | 'draft' | 'review_open'
+}
+
+/**
+ * What a save of this session would build on: the open Freigabe draft when
+ * there is one this session may receive, else the current Fassung. Reads the
+ * scene without logging a hand-over: nothing reaches the person here.
+ */
+export async function sketchSaveBaseOf(session: AuthorizedSession, documentId: string, access: 'read' | 'write'): Promise<SketchSaveBase> {
+  const document = await getAccessibleDocument(session, documentId, access)
+  const target = await sketchTargetOf(document)
+  if (target.kind === 'draft' && (await mayReceiveVersionBytes(session, document, target.version))) {
+    const scene = await storedSceneOf({ ...target.version, contentType: SVG })
+    return { document, scene, versionId: target.version.id, contentHash: target.version.contentHash, target: 'draft' }
+  }
+  return { document, scene: await storedSceneOf(document), versionId: document.publishedVersionId, contentHash: null, target: target.kind }
+}
+
+/** The scene stored in some bytes of a Skizze (an earlier Fassung's), or a 415 when they hold none. */
+export function sketchSceneOfText(text: string): SketchScene {
+  const stored = storedDiagramSource(text)
+  const scene = stored?.kind === 'excalidraw' ? parseStoredSketchScene(stored.source) : null
+  if (!scene) throw notASketch()
+  return scene
+}
+
 /**
  * `GET /api/documents/[id]/sketch?probe=1`: the Files preview asking whether to
  * offer the editor. No reading of the document by the person, so it is not

@@ -236,8 +236,15 @@ function afterDecision(session: AuthorizedSession, row: ProposedChangeRow): void
           ? { conversationId: row.originConversationId, messageId: row.originMessageId }
           : null,
       traceId: row.originTraceId,
+      operation: row.kind === 'operation' ? operationNameOf(row.payload) : null,
     })
   )
+}
+
+/** The catalog operation an `operation` proposal names, read from its stored payload. */
+function operationNameOf(payload: unknown): string | null {
+  const name = (payload as { operation?: unknown } | null)?.operation
+  return typeof name === 'string' ? name : null
 }
 
 /**

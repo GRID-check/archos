@@ -12,6 +12,7 @@ import {
 } from '@/lib/documents/document-wire'
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { saveSketchSchema, sketchReadQuerySchema } from '@/lib/diagrams/sketch-wire'
+import { sketchEditSchema, sketchRevertSchema } from '@/lib/diagrams/sketch-edit-wire'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
 import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
@@ -206,8 +207,9 @@ export const documentsOperations = [
       'A sketch document (an SVG filed from an Excalidraw drawing) read as structure. `outline` first: `texts` (with the ' +
       'element each labels), `shapes` with labels, `connections` (from-label → to-label, bound ids, own label; `points` ' +
       'when an end is unbound) and `frames` with children, each with its id and a `box` {x, y, w, h} in scene pixels, y ' +
-      'down. `scene=omit` drops `scene`; `ids` answers just those `elements`. To save, read the whole scene and send it ' +
-      'with `versionId` to document-sketch-update. Other documents answer 415. A sketch claims no dimension.',
+      'down. `scene=omit` drops `scene`; `ids` answers just those `elements`. To change it, send operations with ' +
+      '`versionId` to document-sketch-edit; document-sketch-update takes a whole scene. Other documents answer 415. A ' +
+      'sketch claims no dimension.',
     method: 'GET',
     path: '/api/documents/[id]/sketch',
     params: documentParams,
@@ -232,6 +234,52 @@ export const documentsOperations = [
     params: documentParams,
     body: saveSketchSchema,
     load: () => import('@/app/api/documents/[id]/sketch/route'),
+  },
+  {
+    name: 'document-sketch-edit',
+    domain: 'documents',
+    summary: 'Change a sketch by operations',
+    description:
+      'Changes a filed sketch by operations on its elements (ids from document-sketch-get, `scene=omit`), saved as its ' +
+      'next version. Prefer the relative ops (place, align, distribute, stack) over computed x and y; remove takes ' +
+      'labels and bound arrows along; bound arrows are rerouted. No ops plus a `note` changes nothing: never write ' +
+      'dimensions. 409 `sketch_changed` when an id is gone from a newer version; 422 names a wrong op.',
+    method: 'POST',
+    path: '/api/documents/[id]/sketch/edits',
+    params: documentParams,
+    body: sketchEditSchema,
+    load: () => import('@/app/api/documents/[id]/sketch/edits/route'),
+    checkProposal: async (input, session) =>
+      (await import('@/lib/diagrams/sketch-edit-service')).checkSketchEditProposal(input, session),
+    resultItemId: (body) =>
+      typeof body === 'object' && body !== null && typeof (body as { versionId?: unknown }).versionId === 'string'
+        ? (body as { versionId: string }).versionId
+        : undefined,
+    examples: [
+      {
+        params: { id: 'doc_123' },
+        body: {
+          baseVersionId: 'ver_456',
+          ops: [
+            { op: 'add', intent: 'Add the WC', element: { type: 'rectangle', id: 'wc', x: 0, y: 0, label: { text: 'WC' } } },
+            { op: 'place', intent: 'WC right of the hall', id: 'wc', referenceId: 'hall', side: 'right' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    name: 'document-sketch-revert',
+    domain: 'documents',
+    summary: 'Take back a sketch’s current version',
+    description:
+      'Saves the version before `versionId` as the next one while `versionId` is current and no review is open, else ' +
+      '409 `moved_on`.',
+    method: 'POST',
+    path: '/api/documents/[id]/sketch/revert',
+    params: documentParams,
+    body: sketchRevertSchema,
+    load: () => import('@/app/api/documents/[id]/sketch/revert/route'),
   },
   {
     name: 'document-visual-details-get',

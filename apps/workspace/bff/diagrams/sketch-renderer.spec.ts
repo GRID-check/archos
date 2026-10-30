@@ -16,6 +16,10 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { acceptDiagram } from './svg'
 import { createSketchRenderer, SketchRenderError, type SketchRenderer } from './sketch-renderer'
+import { applySketchEdit } from './sketch-edit'
+import { sketchEditDiffElements, DIFF_COLORS } from './sketch-edit-diff'
+import { textsToMeasure } from './sketch-picture'
+import { checkSketchScene } from './sketch-scene'
 
 const FIXTURES = join(process.cwd(), 'bff', 'diagrams', '__fixtures__')
 const scene = JSON.parse(readFileSync(join(FIXTURES, 'sketch-scene.json'), 'utf8')) as Record<string, unknown>[]
@@ -69,6 +73,35 @@ describe('the sketch renderer', () => {
     // The fixture scene was made by convertToExcalidrawElements before Excalifont loaded: its stored width is the
     // fallback font's (ADR-0149, the font-load race). The server's layout does not depend on a load.
     expect(Number(text.width)).toBeLessThan(Number(remeasured[0].width) - 50)
+  }, 30_000)
+
+  it('draws an edit: new elements Excalidraw restores, and a box grown to the label that no longer fits it', async () => {
+    const before = checkSketchScene({ type: 'excalidraw', elements: scene })
+    const { scene: after } = applySketchEdit(before, [
+      { op: 'update', intent: 'rename', id: 'n1', set: { label: { text: 'Wohnen und Essen mit Blick in den Garten und auf die Terrasse im Süden' } } },
+      { op: 'add', intent: 'add', element: { type: 'rectangle', id: 'bath', x: 600, y: 300, label: { text: 'Bad' } } },
+      { op: 'add', intent: 'join', element: { type: 'arrow', id: 'to-bath', x: 0, y: 0, start: { id: 'n1' }, end: { id: 'bath' } } },
+    ])
+    const remeasure = textsToMeasure(before, after)
+    const { svg, remeasured } = await renderer.render({ elements: after.elements.filter((element) => !element.isDeleted) as never, remeasure })
+    const grown = remeasured.find((entry) => entry.id === 'n1')
+    expect(Number(grown?.height)).toBeGreaterThan(90)
+    expect(grown?.width).toBe(160)
+    expect(words(svg).join(' ')).toContain('Bad')
+    expect(() => acceptDiagram({ svg, source: '{}', sourceKind: 'excalidraw' }, { notice: 'n', provenance: 'AIGenerated=true' })).not.toThrow()
+  }, 30_000)
+
+  it('draws an edit’s diff: added green, removed dashed red, changed blue over grey', async () => {
+    const before = checkSketchScene({ type: 'excalidraw', elements: scene })
+    const { scene: after, diff } = applySketchEdit(before, [
+      { op: 'update', intent: 'colour', id: 'n1', set: { backgroundColor: '#a5d8ff' } },
+      { op: 'remove', intent: 'drop', id: 'n0' },
+      { op: 'add', intent: 'add', element: { type: 'ellipse', id: 'bath', x: 600, y: 300, label: { text: 'Bad' } } },
+    ])
+    const elements = sketchEditDiffElements(before, after, diff)
+    const { svg } = await renderer.render({ elements, remeasure: textsToMeasure(before, after) })
+    for (const colour of Object.values(DIFF_COLORS)) expect(svg.toLowerCase()).toContain(colour)
+    expect(words(svg).join(' ')).toContain('Bad')
   }, 30_000)
 
   it('ends a render past its deadline and starts afresh for the next', async () => {

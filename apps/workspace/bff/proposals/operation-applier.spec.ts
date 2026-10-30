@@ -94,3 +94,19 @@ describe('an operation Piloti does with a native tool (exposure.config.ts, `nati
     expect(callOperation).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('a sketch edit accepted', () => {
+  it('records the Fassung it made, for the receipt’s undo', async () => {
+    const edit: OperationPayload = {
+      operation: 'document-sketch-edit',
+      input: {
+        params: { id: 'doc_1' },
+        body: { baseVersionId: 'ver_1', ops: [{ op: 'remove', intent: 'Drop the store', id: 'store' }] },
+      },
+      summary: 'Change a sketch by operations',
+    }
+    expect(() => requireProposableOperation(edit)).not.toThrow()
+    vi.mocked(callOperation).mockResolvedValue({ status: 200, ok: true, body: { versionId: 'ver_2', rebased: false } })
+    expect(await applyOperation(edit, { session: SESSION })).toEqual([{ label: edit.summary, ok: true, itemId: 'ver_2' }])
+  })
+})

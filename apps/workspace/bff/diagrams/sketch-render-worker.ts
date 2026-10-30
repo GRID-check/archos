@@ -29,6 +29,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parentPort, workerData } from 'node:worker_threads'
 import { facesFrom, type FontCoverage } from './sketch-font-faces'
+import { fitContainerToLabel } from './sketch-label-fit'
 import { installSketchDom } from './sketch-render-dom'
 import { createTextMetrics } from './sketch-text-metrics'
 import { FONT_COVERAGE_FILE, type SketchRenderRequest, type SketchRenderResponse } from './sketch-render-types'
@@ -62,6 +63,30 @@ const loading: Promise<{ excalidraw: Excalidraw; fileable: (svg: SVGSVGElement) 
   return { excalidraw, fileable: svg.fileableSketchSvg }
 })
 
+/**
+ * Each container grown to hold its label laid out again, and the label placed
+ * in it (`sketch-label-fit.ts`): Excalidraw wraps a label to its box but grows
+ * the box only in the editor. A grown container joins `remeasured`.
+ */
+function fitContainers(elements: readonly Plain[], remeasure: ReadonlySet<string>, remeasured: Record<string, unknown>[]): readonly Plain[] {
+  const byId = new Map(elements.map((element) => [element.id, element]))
+  const changes = new Map<string, Record<string, unknown>>()
+  for (const element of elements) {
+    if (!remeasure.has(element.id) || !element.containerId) continue
+    const container = byId.get(element.containerId)
+    if (!container) continue
+    const fit = fitContainerToLabel(container as unknown as Parameters<typeof fitContainerToLabel>[0], element as unknown as Parameters<typeof fitContainerToLabel>[1])
+    changes.set(element.id, fit.label)
+    const laid = remeasured.find((entry) => entry.id === element.id)
+    if (laid) Object.assign(laid, fit.label)
+    if (fit.container) {
+      changes.set(container.id, fit.container)
+      remeasured.push(fit.container)
+    }
+  }
+  return changes.size === 0 ? elements : elements.map((element) => (changes.has(element.id) ? { ...element, ...changes.get(element.id) } : element))
+}
+
 async function render(request: SketchRenderRequest): Promise<SketchRenderResponse> {
   const started = performance.now()
   const { excalidraw, fileable } = await loading
@@ -82,6 +107,7 @@ async function render(request: SketchRenderRequest): Promise<SketchRenderRespons
       remeasured.push(laid)
       return { ...element, ...laid }
     })
+    elements = fitContainers(elements, remeasure, remeasured)
   }
   const svg = await excalidraw.exportToSvg({
     elements: elements as unknown as Elements,

@@ -5400,11 +5400,433 @@
         }
       }
     },
+    "/api/documents/{id}/sketch/edits": {
+      "post": {
+        "operationId": "document-sketch-edit",
+        "summary": "Change a sketch by operations",
+        "description": "Changes a filed sketch by operations on its elements (ids from document-sketch-get, `scene=omit`), saved as its next version. Prefer the relative ops (place, align, distribute, stack) over computed x and y; remove takes labels and bound arrows along; bound arrows are rerouted. No ops plus a `note` changes nothing: never write dimensions. 409 `sketch_changed` when an id is gone from a newer version; 422 names a wrong op.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or workspace-search."
+            },
+            "description": "The document id, from document-list or workspace-search."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "baseVersionId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "The `versionId` document-sketch-get returned."
+                  },
+                  "ops": {
+                    "maxItems": 60,
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "add"
+                            },
+                            "intent": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "description": "Every op has one: the step as the person reads it, one short sentence in their language."
+                            },
+                            "element": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "rectangle",
+                                    "ellipse",
+                                    "diamond",
+                                    "text",
+                                    "arrow",
+                                    "line",
+                                    "frame"
+                                  ]
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id"
+                              ],
+                              "description": "A sketch fence element with a new `id`; bindings may name existing ones."
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "element"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "update"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            },
+                            "set": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                },
+                                "width": {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                },
+                                "height": {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                },
+                                "strokeColor": {
+                                  "type": "string"
+                                },
+                                "backgroundColor": {
+                                  "type": "string"
+                                },
+                                "fillStyle": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hachure",
+                                    "cross-hatch",
+                                    "solid",
+                                    "zigzag"
+                                  ]
+                                },
+                                "strokeStyle": {
+                                  "type": "string",
+                                  "enum": [
+                                    "solid",
+                                    "dashed",
+                                    "dotted"
+                                  ]
+                                },
+                                "label": {
+                                  "description": "Empty removes it.",
+                                  "type": "object",
+                                  "properties": {
+                                    "text": {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "text"
+                                  ]
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 500
+                                },
+                                "customData": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "id",
+                            "set"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "remove"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "id"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "rebind"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            },
+                            "start": {
+                              "type": "string"
+                            },
+                            "end": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "id"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "place"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            },
+                            "referenceId": {
+                              "type": "string"
+                            },
+                            "side": {
+                              "type": "string",
+                              "enum": [
+                                "above",
+                                "below",
+                                "left",
+                                "right"
+                              ]
+                            },
+                            "offset": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 2000
+                            },
+                            "align": {
+                              "type": "string",
+                              "enum": [
+                                "start",
+                                "center",
+                                "end"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "id",
+                            "referenceId",
+                            "side"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "align"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "ids": {
+                              "minItems": 2,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "edge": {
+                              "type": "string",
+                              "enum": [
+                                "left",
+                                "center",
+                                "right",
+                                "top",
+                                "middle",
+                                "bottom"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "ids",
+                            "edge"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "distribute"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "ids": {
+                              "minItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "axis": {
+                              "type": "string",
+                              "enum": [
+                                "horizontal",
+                                "vertical"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "ids",
+                            "axis"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "stack"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "ids": {
+                              "minItems": 2,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "axis": {
+                              "type": "string",
+                              "enum": [
+                                "horizontal",
+                                "vertical"
+                              ]
+                            },
+                            "gap": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 2000
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "intent",
+                            "ids",
+                            "axis"
+                          ]
+                        }
+                      ],
+                      "discriminator": {
+                        "propertyName": "op"
+                      }
+                    }
+                  },
+                  "note": {
+                    "description": "For the person; with no ops, why nothing changes.",
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "baseVersionId",
+                  "ops"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Change a sketch by operations",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/sketch": {
       "get": {
         "operationId": "document-sketch-get",
         "summary": "Read a sketch’s outline and scene",
-        "description": "A sketch document (an SVG filed from an Excalidraw drawing) read as structure. `outline` first: `texts` (with the element each labels), `shapes` with labels, `connections` (from-label → to-label, bound ids, own label; `points` when an end is unbound) and `frames` with children, each with its id and a `box` {x, y, w, h} in scene pixels, y down. `scene=omit` drops `scene`; `ids` answers just those `elements`. To save, read the whole scene and send it with `versionId` to document-sketch-update. Other documents answer 415. A sketch claims no dimension.",
+        "description": "A sketch document (an SVG filed from an Excalidraw drawing) read as structure. `outline` first: `texts` (with the element each labels), `shapes` with labels, `connections` (from-label → to-label, bound ids, own label; `points` when an end is unbound) and `frames` with children, each with its id and a `box` {x, y, w, h} in scene pixels, y down. `scene=omit` drops `scene`; `ids` answers just those `elements`. To change it, send operations with `versionId` to document-sketch-edit; document-sketch-update takes a whole scene. Other documents answer 415. A sketch claims no dimension.",
         "tags": [
           "documents"
         ],
@@ -5586,6 +6008,81 @@
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/sketch/revert": {
+      "post": {
+        "operationId": "document-sketch-revert",
+        "summary": "Take back a sketch’s current version",
+        "description": "Saves the version before `versionId` as the next one while `versionId` is current and no review is open, else 409 `moved_on`.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or workspace-search."
+            },
+            "description": "The document id, from document-list or workspace-search."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "The current version, to take back."
+                  }
+                },
+                "required": [
+                  "versionId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Take back a sketch’s current version",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }

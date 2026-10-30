@@ -122,11 +122,9 @@ const APP_ONLY = {
 } as const satisfies Exposure
 
 const NATIVE_READ = 'Piloti reads with this native tool itself; the door offers it to outside agents'
-const MEMORY =
-  'Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
+const MEMORY = 'Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
 const TASK = 'Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms'
-const SKILL_READ =
-  'Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents'
+const SKILL_READ = 'Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents'
 const CANVAS ='Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
 
 /**
@@ -214,6 +212,8 @@ export const EXPOSURE = {
   'document-summary-get': OFFERED,
   'document-sketch-get': OFFERED,
   'document-sketch-update': OFFERED,
+  'document-sketch-edit': OFFERED,
+  'document-sketch-revert': OFFERED,
   'document-tags-update': OFFERED,
   'document-text-get': OFFERED,
   'document-thumbnail-get': {

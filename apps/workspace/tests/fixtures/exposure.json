@@ -587,7 +587,27 @@
    "withheld": null,
    "reason": null
   },
+  "document-sketch-edit": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "document-sketch-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-sketch-revert": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,

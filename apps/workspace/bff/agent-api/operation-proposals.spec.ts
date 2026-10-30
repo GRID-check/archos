@@ -131,7 +131,7 @@ vi.mock('./catalog', () => ({
   findOperation: (name: string) => catalog.find((op) => op.name === name),
 }))
 
-import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
+import { ForbiddenError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { EXPOSURE, type Exposure } from './exposure.config'
 import { requireProjectAccess } from '@/lib/authz/projects'
@@ -153,7 +153,7 @@ import { requireProposable, type KindPayload } from '@/lib/proposals/kinds'
 import { applyProposal, createProposal, dismissProposal, getProposal, listOpenProposals } from '@/lib/proposals/service'
 import { proposalReachRefusal } from './conversation-audience'
 import { MAX_PROPOSED_INPUT_CHARS, proposeOperation } from './operation-proposals'
-import type { AgentOperation } from './operation'
+import { ProposalDeclined, type AgentOperation } from './operation'
 
 const PROJECT = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
 const ASKER = {
@@ -286,6 +286,18 @@ describe('proposeOperation', () => {
       })
     ).rejects.toMatchObject({ status: 422 })
     expect(insertProposedChange).not.toHaveBeenCalled()
+  })
+
+  it('runs the operation’s own check as the asker: its refusal files nothing, a decline files nothing, warnings come back', async () => {
+    const checked = (checkProposal: AgentOperation['checkProposal']) => ({ ...FOLDER_RENAME, checkProposal })
+    await expect(propose(checked(async () => Promise.reject(new UnprocessableError('op 1: unknown-id'))))).rejects.toMatchObject({ status: 422 })
+    await expect(propose(checked(async () => ({ decline: 'Eine Skizze behauptet keine Maße.' })))).rejects.toBeInstanceOf(ProposalDeclined)
+    expect(insertProposedChange).not.toHaveBeenCalled()
+    const check = vi.fn(async () => ({ warnings: ['bath overlaps hall'] }))
+    const { warnings } = await propose(checked(check))
+    expect(warnings).toEqual(['bath overlaps hall'])
+    expect(check).toHaveBeenCalledWith(INPUT, ASKER)
+    expect(insertProposedChange).toHaveBeenCalledTimes(1)
   })
 
   it('refuses to file a sensitive operation, whatever the proposer may do (M4)', async () => {

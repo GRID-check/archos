@@ -217,3 +217,50 @@ export function recordSketchReleasedScore(input: SketchReleasedInput): Promise<v
     toSketchReleasedScore({ ...input, traceId })
   )
 }
+
+/** The name of the edit score. A contract, as above. */
+export const SKETCH_EDIT_SCORE_NAME = 'sketch-edit'
+
+/**
+ * What became of one edit Piloti (or an agent) made to a Skizze through
+ * `document-sketch-edit` (S4): `proposed` (it passed the check and became a
+ * proposal), `declined` (no operations, only a note: nothing proposed),
+ * `refused` (an operation the sketch cannot take; the comment names the rule,
+ * e.g. `unknown-id`, or `sketch_changed` when a rebase found an id gone),
+ * `accepted` (applied on the Fassung it was made for), `rebased` (applied on a
+ * newer one, every id it names still drawn), `undone` (the Fassung an edit or
+ * a save made was taken back with document-sketch-revert).
+ */
+export const SKETCH_EDIT_OUTCOMES = ['proposed', 'declined', 'refused', 'accepted', 'rebased', 'undone'] as const
+export type SketchEditOutcome = (typeof SKETCH_EDIT_OUTCOMES)[number]
+
+export interface SketchEditScoreInput {
+  organizationId: string
+  documentId: string
+  /** The sketch's `authored_by_ref`; no reference, no score. */
+  answerRef: string | null
+  outcome: SketchEditOutcome
+  refusal?: string
+  /** `ops`, the operation kinds (`kinds`, comma-separated), `warnings`, `added`, `removed`, `changed`. */
+  metadata?: Record<string, string | number>
+}
+
+/** One edit's outcome as a Langfuse score. Pure. */
+export function toSketchEditScore(input: SketchEditScoreInput & { traceId: string; id: string }): ScoreRequest {
+  return {
+    id: input.id,
+    traceId: input.traceId,
+    name: SKETCH_EDIT_SCORE_NAME,
+    dataType: 'CATEGORICAL',
+    value: input.outcome,
+    ...(input.refusal ? { comment: input.refusal } : {}),
+    metadata: { document_id: input.documentId, ...input.metadata },
+  }
+}
+
+/** Record one edit's outcome on the trace of the turn that drew the sketch. Resolves when done and never rejects. */
+export function recordSketchEditScore(input: SketchEditScoreInput): Promise<void> {
+  if (!input.answerRef) return Promise.resolve()
+  const id = `${SKETCH_EDIT_SCORE_NAME}-${randomUUID()}`
+  return scoreOnDrawingTurn({ ...input, answerRef: input.answerRef }, id, (traceId) => toSketchEditScore({ ...input, traceId, id }))
+}

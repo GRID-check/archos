@@ -17,17 +17,30 @@ import { sketchRenderer, type RenderedScene } from './sketch-renderer'
 /** What decides a text's layout: a change to any of these is a text nobody may have measured. */
 const LAYOUT_FIELDS = ['text', 'originalText', 'fontSize', 'fontFamily', 'lineHeight', 'containerId', 'textAlign', 'autoResize'] as const
 
-/** What a new layout changes on a text element (Excalidraw's `refreshTextDimensions`). */
+/** What a new layout changes on a text element (Excalidraw's `refreshTextDimensions`), and on a container grown to hold it. */
 const MEASURED_FIELDS = ['x', 'y', 'width', 'height', 'text'] as const
 
-/** The ids of the text elements `next` adds, or changes in a field that decides their layout. Pure. */
+/** What decides how a label wraps: its container's size. */
+const ROOM_FIELDS = ['width', 'height', 'type'] as const
+
+/**
+ * The ids of the text elements `next` adds, or changes in a field that decides
+ * their layout, or whose container's size changed (a label wraps to its box).
+ * Pure.
+ */
 export function textsToMeasure(stored: SketchScene | null, next: SketchScene): string[] {
   const before = new Map((stored?.elements ?? []).map((element) => [element.id, element]))
+  const after = new Map(next.elements.map((element) => [element.id, element]))
+  const resized = (id: string | null | undefined) => {
+    const old = id ? before.get(id) : undefined
+    const now = id ? after.get(id) : undefined
+    return Boolean(old && now && ROOM_FIELDS.some((field) => old[field] !== now[field]))
+  }
   const ids: string[] = []
   for (const element of next.elements) {
     if (element.type !== 'text' || element.isDeleted) continue
     const old = before.get(element.id)
-    if (!old || old.isDeleted || LAYOUT_FIELDS.some((field) => old[field] !== element[field])) ids.push(element.id)
+    if (!old || old.isDeleted || LAYOUT_FIELDS.some((field) => old[field] !== element[field]) || resized(element.containerId)) ids.push(element.id)
   }
   return ids
 }

@@ -17,7 +17,15 @@ import { withTenant } from '@/lib/db/tenant-context'
 import { createProposal } from '@/lib/proposals/service'
 import { MAX_OPERATION_SUMMARY_LENGTH, type OperationPayload } from '@/lib/proposals/types'
 import type { OperationInput } from './dispatch'
-import type { AgentOperation } from './operation'
+import { ProposalDeclined, type AgentOperation } from './operation'
+
+/** A proposal filed: its id, the line the person reads, and the operation's warnings for the model (`checkProposal`). */
+export interface ProposedOperation {
+  proposalId: string
+  summary: string
+  warnings?: readonly string[]
+}
+
 import { proposalReachRefusal } from './conversation-audience'
 import { requireTargetsReadable, targetsOf, TooManyTargetsError } from './operation-targets'
 
@@ -112,8 +120,10 @@ export function summaryOfOperation(op: AgentOperation, input: OperationInput): s
  * organization (0176). The same call repeated in the conversation, for the same
  * person, while the first proposal is still open files nothing and returns that
  * one. Runs in the person's tenant scope: the conversation, the open proposal
- * and the insert are tenant rows. Returns the proposal's id, which the card
- * carries, and the line the person will read.
+ * and the insert are tenant rows. An operation's own `checkProposal` runs last:
+ * its refusal reaches the model, and its `decline` files nothing (`ProposalDeclined`). Returns the
+ * proposal's id, which the card carries, the line the person will read, and
+ * the check's warnings for the model.
  */
 export async function proposeOperation({
   principal,
@@ -129,7 +139,7 @@ export async function proposeOperation({
   }
   op: AgentOperation
   input: OperationInput
-}): Promise<{ proposalId: string; summary: string }> {
+}): Promise<ProposedOperation> {
   // A sensitive operation widens who may do what, touches the organization's
   // secrets, or turns a control off. Accepting a proposal is one click on a card
   // the agent worded, which is not the confirmation such a change needs, so
@@ -158,17 +168,21 @@ export async function proposeOperation({
   const summary = summaryOfOperation(op, input)
   const payload: OperationPayload = { operation: op.name, input: stored, summary }
   const { session } = principal
-  const row = await withTenant({ organizationId: session.organizationId, userId: session.userId }, async () => {
+  const filed = await withTenant({ organizationId: session.organizationId, userId: session.userId }, async () => {
     await requireTargetsReadable(session, targets)
     const outsideReach = await proposalReachRefusal(principal, targets)
     if (outsideReach) throw new ForbiddenError(outsideReach)
-    return createProposal(session, {
+    // The operation's own check, as the person whose turn it is: what could only fail on the card fails here.
+    const check = op.checkProposal ? await op.checkProposal(stored, session) : {}
+    if (check.decline !== undefined) throw new ProposalDeclined(check.decline)
+    const row = await createProposal(session, {
       projectId: principal.projectId ?? null,
       kind: 'operation',
       payload,
       conversationId: principal.conversationId ?? null,
       answerMessageId: principal.answerMessageId ?? null,
     })
+    return { row, warnings: check.warnings ?? [] }
   })
-  return { proposalId: row.id, summary }
+  return { proposalId: filed.row.id, summary, warnings: filed.warnings }
 }

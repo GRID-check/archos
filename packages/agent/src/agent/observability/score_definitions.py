@@ -86,6 +86,18 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("saved", "drafted", "pdf_stale", "conflict", "review_open", "refused", "render_failed"),
     ),
     ScoreDefinition(
+        "sketch-edit",
+        "CATEGORICAL",
+        "What became of one edit to a filed sketch by operations (document-sketch-edit, S4), on the trace of the "
+        "turn that drew it: proposed (passed the check, filed as a proposal); declined (no operations, only a note: "
+        "nothing proposed); refused (an operation the sketch cannot take, or sketch_changed when a newer Fassung "
+        "lost an element it names; the comment names it); accepted (applied on the Fassung it was made for); "
+        "rebased (applied on a newer one, every id still drawn); undone (the Fassung taken back with "
+        "document-sketch-revert). Metadata ops, kinds, warnings, added, removed, changed.",
+        writer="bff",
+        categories=("proposed", "declined", "refused", "accepted", "rebased", "undone"),
+    ),
+    ScoreDefinition(
         "sketch-pins-kept",
         "NUMERIC",
         "The share of a Skizze's pinned marks still on an element after they were carried onto a Fassung made "

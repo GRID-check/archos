@@ -270,6 +270,29 @@ function checked(scene: unknown): SketchFence {
 }
 
 /**
+ * One element an edit adds to a filed sketch (`sketch-edit.ts`): checked as a
+ * fence element is, its bindings and children against `known` (the sketch's
+ * ids and the edit's earlier adds), and reduced to the allow-list.
+ */
+export function checkSketchSkeleton(
+  element: unknown,
+  known: ReadonlySet<string>
+): { ok: true; skeleton: SceneSkeleton } | { ok: false; refusal: SketchRefusal } {
+  try {
+    if (!isObject(element)) throw new Refused('not-a-scene')
+    elementTexts(element)
+    if (references(element).some((ref) => typeof ref !== 'string' || !known.has(ref))) throw new Refused('dangling-binding')
+    return { ok: true, skeleton: skeletonOf(element) }
+  } catch (error) {
+    if (error instanceof Refused) return { ok: false, refusal: error.refusal }
+    throw error
+  }
+}
+
+/** Whether a label reads like a measurement, which a sketch must not claim (the server's `_DIMENSION`). */
+export const readsAsDimension = (text: string): boolean => DIMENSION.test(text)
+
+/**
  * A body whose JSON was escaped twice (`{\"title\": …`): a model writing the
  * fence inside the envelope's `answer` string sometimes escapes its quotes once
  * too often. Read once unescaped, as the server does (`_OVER_ESCAPED`).

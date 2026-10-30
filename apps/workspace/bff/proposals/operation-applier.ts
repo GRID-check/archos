@@ -121,7 +121,10 @@ export async function applyOperation(
   if ('reason' in found) return failed(label, found.reason)
   try {
     const result = await callOperation(found.op, payload.input, context.session)
-    return result.ok ? [{ label, ok: true }] : failed(label, routeMessage(result.status, result.body))
+    if (!result.ok) return failed(label, routeMessage(result.status, result.body))
+    // What the call made, when the operation names it (a sketch edit's new Fassung), for the card to offer an undo.
+    const itemId = found.op.resultItemId?.(result.body)
+    return [{ label, ok: true, ...(itemId ? { itemId } : {}) }]
   } catch (error) {
     if (error instanceof OperationInputError) return failed(label, error.message)
     throw error

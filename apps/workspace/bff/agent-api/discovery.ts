@@ -41,8 +41,9 @@ import { offersAppViews } from './app-host'
 import { layerSchema, resolveField } from './layered-schema'
 import { configuredAppOrigin } from '@/lib/app-origin'
 import { withLinks } from './links'
-import { type AgentOperation, annotationsOf } from './operation'
+import { type AgentOperation, annotationsOf, ProposalDeclined } from './operation'
 import { proposeOperation } from './operation-proposals'
+import { declinedAnswer, proposedAnswer } from './proposal-answer'
 import {
   type AgentDoor,
   callDecision,
@@ -419,19 +420,11 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
       const parsed = validateOperationInput(op, input)
       const proposal = await proposeOperation({ principal: ctx.principal, op, input: parsed })
       record(202)
-      // The result shape the in-product client reads to show the card (`tools/workspace/register.py`):
-      // `structuredContent.decision === 'propose'` with the proposal's id. The text is all the model reads.
-      return {
-        content: [{ type: 'text', text: 'Proposed — the person decides. Nothing was changed.' }],
-        structuredContent: {
-          decision: 'propose',
-          proposalId: proposal.proposalId,
-          summary: proposal.summary,
-          operation: op.name,
-        },
-      }
+      return proposedAnswer(op, proposal)
     } catch (error) {
-      return operationFailure(op, error, record)
+      if (!(error instanceof ProposalDeclined)) return operationFailure(op, error, record)
+      record(200)
+      return declinedAnswer(op, error.note)
     }
   }
   const outcome = await executeOperation(ctx, op, input, startedAt)

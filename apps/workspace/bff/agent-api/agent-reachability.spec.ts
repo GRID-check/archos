@@ -60,6 +60,11 @@ interface Exemption {
  * here: it is catalogued and withheld in `exposure.config.ts`.
  */
 const NOT_AN_AGENT_CAPABILITY: Record<string, Exemption> = {
+  'POST /api/documents/[id]/sketch/edits/preview': {
+    category: 'ui-state',
+    reason:
+      'the receipt card’s picture of a proposed sketch edit; an agent gets the same diff and warnings from document-sketch-edit, Piloti from the proposal check',
+  },
   'GET /api/ris/document': {
     category: 'external-service',
     reason: 'the RIS text dialog proxies the public legal text service; an agent reads a RIS document by number or URL through law-lookup (`instrument`)',

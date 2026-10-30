@@ -13,7 +13,7 @@ import 'server-only'
  * `accepted` among the decisions is how often Piloti's work was right to
  * propose. `metadata` names the subject (`proposal`, `annotation`, `change`,
  * `intake_suggestion`) and its id, so a trace with several decisions is
- * readable.
+ * readable; an `operation` proposal also names its `operation`.
  *
  * The score id is derived from the subject, so a repeated call (a retried
  * request, a second replica) upserts instead of counting twice. A mark Piloti
@@ -79,6 +79,8 @@ export interface DecisionScoreInput {
    * the project's documents, `research-job`). Wins over `origin`.
    */
   traceId?: string | null
+  /** For an `operation` proposal: which catalog operation it was (`document-sketch-edit`), so the share accepted reads per operation. */
+  operation?: string | null
 }
 
 /** The Langfuse score id for one subject. Stable, so a repeated decision upserts. */
@@ -92,6 +94,7 @@ export function toDecisionScore(input: {
   subject: DecisionSubject
   subjectId: string
   decision: Decision
+  operation?: string | null
 }): ScoreRequest {
   return {
     id: decisionScoreId(input.subject, input.subjectId),
@@ -99,7 +102,7 @@ export function toDecisionScore(input: {
     name: DECISION_SCORE_NAME,
     dataType: 'CATEGORICAL',
     value: input.decision,
-    metadata: { subject: input.subject, subject_id: input.subjectId },
+    metadata: { subject: input.subject, subject_id: input.subjectId, ...(input.operation ? { operation: input.operation } : {}) },
   }
 }
 

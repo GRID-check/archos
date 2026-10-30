@@ -92,6 +92,11 @@ describe('toDecisionScore', () => {
     })
   })
 
+  it('names the operation of an operation proposal', () => {
+    const score = toDecisionScore({ traceId: TRACE, subject: 'proposal', subjectId: 'p-1', decision: 'accepted', operation: 'document-sketch-edit' })
+    expect(score.metadata).toEqual({ subject: 'proposal', subject_id: 'p-1', operation: 'document-sketch-edit' })
+  })
+
   it('derives the id from the subject only, so a repeated decision upserts', () => {
     expect(decisionScoreId('proposal', 'x')).toBe(decisionScoreId('proposal', 'x'))
     expect(decisionScoreId('proposal', 'x')).not.toBe(decisionScoreId('change', 'x'))
