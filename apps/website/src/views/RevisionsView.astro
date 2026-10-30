@@ -1,4 +1,5 @@
 ---
+import { Image } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CTABand from '../components/CTABand.astro';
 import FAQ from '../components/FAQ.astro';
@@ -12,6 +13,7 @@ import copy from '../i18n/pages/revisions';
 import { localePath, type Locale } from '../i18n/paths';
 import { t } from '../i18n/ui';
 import { withName } from '../lib/identity';
+import { productImages, SCREENSHOT_QUALITY, SCREENSHOT_WIDTHS, SIZES } from '../lib/media';
 
 // Markup and structure only. Text comes from src/i18n/pages/revisions.ts, in both locales.
 interface Props {
@@ -27,13 +29,14 @@ const security = { label: ui.navSecurity, href: localePath('security', locale), 
 
 <BaseLayout locale={locale} title={c.title} description={c.description} faq={c.faq}>
   <Hero title={c.hero.title} text={c.hero.text}>
-    <img
+    <Image
       slot="media"
-      src="/media/product-plan-revision-changes.webp"
-      width="2560"
-      height="1460"
+      src={productImages.planRevisionChanges}
+      widths={SCREENSHOT_WIDTHS}
+      sizes={SIZES.hero}
+      quality={SCREENSHOT_QUALITY}
+      loading="eager"
       fetchpriority="high"
-      decoding="async"
       alt={c.hero.alt}
     />
   </Hero>
@@ -48,12 +51,11 @@ const security = { label: ui.navSecurity, href: localePath('security', locale), 
       <SectionIntro title={c.requirements.title} text={c.requirements.text}>
         <TextLink href={localePath('buildingLaw', locale)} arrow>{ui.navBuildingLaw}</TextLink>
       </SectionIntro>
-      <img
-        src="/media/product-compare-clearance.webp"
-        width="2560"
-        height="1024"
-        loading="lazy"
-        decoding="async"
+      <Image
+        src={productImages.compareClearance}
+        widths={SCREENSHOT_WIDTHS}
+        sizes={SIZES.container}
+        quality={SCREENSHOT_QUALITY}
         alt={c.requirements.imageAlt}
         style="display: block; width: 100%; height: auto; margin-top: var(--space-16); background: var(--surface);"
       />
