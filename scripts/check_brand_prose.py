@@ -5,7 +5,7 @@
 Why this exists
 ---------------
 
-The product was AI-Q, then Grid, then Piloti, and is ARCHOS now (ADR-0148). The
+The product was AI-Q, then Grid, then Piloti, and is ARCHOS now (ADR-0149). The
 owner's rule is one name everywhere and the next rename in one edit: the name is
 copy, read from ``packages/brand/identity.json`` (``{productName}`` in the
 dictionaries, ``{{ product_name }}`` in prompts, ``PRODUCT_NAME`` in code).
@@ -39,7 +39,7 @@ History is not rewritten
 
 A record of what was true then keeps the name it was written under:
 
-- ADRs up to ``HISTORY_ADR_MAX`` (0147) and the ADR index; ``docs/audit/``.
+- ADRs up to ``HISTORY_ADR_MAX`` (0148) and the ADR index; ``docs/audit/``.
 - Migrations, the RLS harness that replays them, the ratchet baselines, these
   checkers and their tests.
 - Every release note listed in ``ci/brand_history_manifest.txt`` (the notes that
@@ -84,7 +84,10 @@ import yaml
 BASELINE = Path("ci/brand_prose_baseline.json")
 MANIFEST = Path("ci/brand_history_manifest.txt")
 CUTOVER_DATE = date(2026, 10, 29)
-HISTORY_ADR_MAX = 147
+# The last ADR written before this rule (ADR-0149) existed. 0148 was decided in
+# parallel on develop, under the name the product had then, and merged first, so it
+# is a record of its time like 0147. Every ADR from 0149 on is written under the rule.
+HISTORY_ADR_MAX = 148
 TRANSLATIONS = "releasenotes/translations/de.json"
 SUMMARIES = "releasenotes/summaries.yaml"
 
@@ -148,7 +151,7 @@ BACKTICKED = re.compile(r"`[^`\n]*`")
 
 ADR_LINK = re.compile(r"\b\d{4}-[a-z0-9-]+\.md\b")
 
-# Legal continuity (owner decision D23, ADR-0148): the privacy and legal notices name the
+# Legal continuity (owner decision D23, ADR-0149): the privacy and legal notices name the
 # former name beside the current one, so a reader who signed up under it can tell the
 # notice covers them. Only in these files, and only as this exact parenthesis.
 LEGAL_CONTINUITY_FILES = frozenset(
@@ -165,7 +168,7 @@ URL = re.compile(r"\b(?:https?|git|ssh)://\S+|\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 # nosemgrep: python.lang.security.audit.regex-dos.regex_dos
 OWN_NAMES = re.compile(r"(?i)\barchos-at(?:/archos)?\b|\b(?:[\w-]+\.)*archos\.tech\b")
 # Host names under the old domain (and its test domain) are infrastructure: the domain moves
-# by an operator's cutover (ADR-0148, owner decision D2), not by a copy edit.
+# by an operator's cutover (ADR-0149, owner decision D2), not by a copy edit.
 # The input is this repository's own text (``name_lines``), not a request: the leading
 # label repetition is quadratic on a long dotted run, never exponential.
 # nosemgrep: python.lang.security.audit.regex-dos.regex_dos

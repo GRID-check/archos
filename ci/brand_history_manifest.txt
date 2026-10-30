@@ -1,4 +1,4 @@
-# Release notes frozen as history by the brand-prose check (scripts/check_brand_prose.py, ADR-0148).
+# Release notes frozen as history by the brand-prose check (scripts/check_brand_prose.py, ADR-0149).
 #
 # Each line is a note that shipped under the name the product had then, or the note
 # announcing the rename itself. The check leaves these files, their German entries in

@@ -1,6 +1,6 @@
 """Every surface names the product with the one string in ``packages/brand/identity.json``.
 
-The name is copy, and it has changed four times (ADR-0148). The UI's copy reads
+The name is copy, and it has changed four times (ADR-0149). The UI's copy reads
 ``PRODUCT_NAME`` from ``apps/workspace/bff/brand.ts`` (through ``{productName}`` in
 the dictionaries); the agent's prompts read it from ``agent.common.brand`` (through
 ``{{ product_name }}``); both read ``identity.json``, which ``node packages/brand/sync.mjs``

@@ -23,7 +23,7 @@ equivalents are in
 
 **ARCHOS**:
 The product, and the colleague persona that works in it. The name users see,
-read from `packages/brand/identity.json` wherever code shows it (ADR-0148).
+read from `packages/brand/identity.json` wherever code shows it (ADR-0149).
 _Avoid_: a retired product name in anything a person or an agent reads, and any
 product name in an identifier.
 

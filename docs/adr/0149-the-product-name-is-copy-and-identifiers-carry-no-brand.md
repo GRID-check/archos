@@ -123,7 +123,9 @@ export with no usable title is named `document-…` or `answer-…`.
 These keep the names they were written under, and the brand checks leave them
 alone:
 
-* ADRs 0001 to 0147, their filenames, and links to them. The cutoff is 0147:
+* ADRs 0001 to 0148, their filenames, and links to them. The cutoff is 0148
+  (0148 was decided in parallel, under the old name, before this record took its
+  number):
   a later record may quote an old name in backticks on a line marked
   `<!-- brand-history -->`, the way this one does.
 * `docs/audit/`, every migration (Drizzle and Alembic), the RLS harness that

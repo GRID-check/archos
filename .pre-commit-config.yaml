@@ -191,7 +191,7 @@ repos:
 
       - id: brand-prose
         name: no retired product name in text, and the current one only as copy
-        # The other half of brand-names (ADR-0148): a retired name as a word in
+        # The other half of brand-names (ADR-0149): a retired name as a word in
         # copy, prompts and docs, and the current name typed out where it should
         # be {productName} or PRODUCT_NAME. History is left alone. A ratchet on
         # ci/brand_prose_baseline.json. Always, for the reason file-size gives.

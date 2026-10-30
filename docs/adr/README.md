@@ -207,10 +207,10 @@ Consequences, where a reader looks for them.
 | [0142](0142-piloti-cards-render-in-the-persons-own-assistant-as-mcp-apps.md) | Piloti's cards render in the person's own assistant as MCP Apps, starting with the proposal card | Accepted |
 | [0143](0143-a-computing-card-takes-reader-inputs-and-never-a-stated-result.md) | A computing card takes reader inputs, and never a stated result: named formulas recompute in the browser, cited limits stay fixed | Proposed |
 | [0144](0144-piloti-moves-the-askers-viewer-through-allow-listed-frontend-tool-calls.md) | Piloti moves the asker's viewer through allow-listed frontend tool calls | Proposed |
-| [0145](0145-the-repository-is-laid-out-by-job.md) | The repository is laid out by job: `apps/`, `packages/`, `contracts/`, `evals/`, moved one tree per PR, and no brand names (partly superseded by 0148) | Proposed |
+| [0145](0145-the-repository-is-laid-out-by-job.md) | The repository is laid out by job: `apps/`, `packages/`, `contracts/`, `evals/`, moved one tree per PR, and no brand names (partly superseded by 0149) | Proposed |
 | [0146](0146-piloti-draws-sketches-in-excalidraws-own-format.md) | Piloti draws sketches in Excalidraw's own format: an `excalidraw` fence, checked twice, drawn as it streams; amends 0141 | Proposed |
 | [0147](0147-infrastructure-names-carry-no-brand.md) | Infrastructure names carry no brand: namespace `workspace`, Pulumi project `workspace`, moved by expand, switch and contract | Proposed |
-| [0148](0148-the-product-name-is-copy-and-identifiers-carry-no-brand.md) | The product's name is copy and no identifier carries a brand: the product and its agent are ARCHOS | Accepted |
+| [0149](0149-the-product-name-is-copy-and-identifiers-carry-no-brand.md) | The product's name is copy and no identifier carries a brand: the product and its agent are ARCHOS | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

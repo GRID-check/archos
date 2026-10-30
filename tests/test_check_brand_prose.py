@@ -1,6 +1,6 @@
 """The brand-prose ratchet counts the retired names and a typed-out current name, and leaves history alone.
 
-`scripts/check_brand_prose.py` is the copy half of ADR-0148: no retired product name
+`scripts/check_brand_prose.py` is the copy half of ADR-0149: no retired product name
 (Piloti, AI-Q, GRID) in what a person or an agent reads, and the current name only as
 `{productName}`/`PRODUCT_NAME` outside the brand's own files and the public documents.
 These run it on a scratch repository, so the real tree's baseline is not what they
@@ -104,9 +104,10 @@ def test_the_current_name_is_allowed_only_where_copy_belongs(checker, repo: Path
 
 def test_adrs_up_to_the_cutoff_are_history(checker, repo: Path) -> None:
     _add(repo, "docs/adr/0147-old.md", "Piloti decided.\n")
-    _add(repo, "docs/adr/0148-new.md", "Piloti was renamed.\n`piloti` is the old token. <!-- brand-history -->\n")
+    _add(repo, "docs/adr/0148-parallel.md", "Piloti's live answer.\n")
+    _add(repo, "docs/adr/0149-new.md", "Piloti was renamed.\n`piloti` is the old token. <!-- brand-history -->\n")
     _add(repo, "docs/adr/README.md", "| 0146 | Piloti draws |\n")
-    assert checker.measure(repo, checker.tracked_files(repo)) == {"docs/adr/0148-new.md": 1}
+    assert checker.measure(repo, checker.tracked_files(repo)) == {"docs/adr/0149-new.md": 1}
 
 
 @pytest.mark.parametrize(

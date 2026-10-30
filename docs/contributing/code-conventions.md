@@ -56,7 +56,7 @@ the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
 ## No brand names
 
 No code or infrastructure name carries a brand, and the product's name is copy
-read from `packages/brand/identity.json` (ADR-0148). The rule, its two
+read from `packages/brand/identity.json` (ADR-0149). The rule, its two
 ratchets, "rename when you touch it" and the steps for a stored or external
 name are in [`naming.md`](naming.md#no-brand-in-a-name), with every other
 naming rule.

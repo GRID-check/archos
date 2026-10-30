@@ -45,7 +45,7 @@ Which rules govern which text:
 
 ## No brand in a name
 
-Decided in [ADR-0148](../adr/0148-the-product-name-is-copy-and-identifiers-carry-no-brand.md).
+Decided in [ADR-0149](../adr/0149-the-product-name-is-copy-and-identifiers-carry-no-brand.md).
 
 - **No code or infrastructure name carries a brand**, retired or current: no
   `aiq`, `grid`, `piloti` or `archos` in an identifier, file or folder, <!-- brand-history -->
@@ -60,7 +60,7 @@ Decided in [ADR-0148](../adr/0148-the-product-name-is-copy-and-identifiers-carry
   (`packages/brand/name-copies.mjs`). A rename is one edit and one sync;
   `tests/test_product_name_parity.py` runs that drill.
 - **Comments and engineering docs use the role noun**: the agent, the
-  workspace, the app. The name is written out only in the places ADR-0148
+  workspace, the app. The name is written out only in the places ADR-0149
   lists (the brand package, first-impression documents, blog prose, release
   notes, ADRs).
 - **Two ratchets hold it**, both in `task lint:repo` and CI's **Repo checks**
@@ -77,7 +77,7 @@ Decided in [ADR-0148](../adr/0148-the-product-name-is-copy-and-identifiers-carry
   - Text: `scripts/check_brand_prose.py` against `ci/brand_prose_baseline.json`,
     over every tracked text file. It counts a retired name as a word, and the
     current name typed out where `{productName}` or `PRODUCT_NAME` belongs.
-    History keeps its names and is not counted (ADRs up to 0147, audits,
+    History keeps its names and is not counted (ADRs up to 0148, audits,
     migrations, the release notes in `ci/brand_history_manifest.txt`, a `docs/`
     file whose first line is `<!-- history: YYYY-MM-DD -->`). A later record
     may quote an old name in backticks on a line marked `<!-- brand-history -->`.
@@ -86,12 +86,12 @@ Decided in [ADR-0148](../adr/0148-the-product-name-is-copy-and-identifiers-carry
 - **Rename when you touch it.** The names in both baselines are frozen, not
   swept (D22). A change that edits a file renames the branded names in it that
   it can rename safely, using
-  [ADR-0148's neutral-name map](../adr/0148-the-product-name-is-copy-and-identifiers-carry-no-brand.md#the-neutral-name-map-for-renames-on-touch),
+  [ADR-0149's neutral-name map](../adr/0149-the-product-name-is-copy-and-identifiers-carry-no-brand.md#the-neutral-name-map-for-renames-on-touch),
   and lowers the entries with `--update`. A stored name, or one an outside
   client calls, is not renamed in passing: it follows
   [Renaming a name someone else reads](#renaming-a-name-someone-else-reads).
 - The end state of the identifier ratchet is a baseline holding only the
-  infra-pending names ADR-0148 lists. A name whose rename is already scheduled
+  infra-pending names ADR-0149 lists. A name whose rename is already scheduled
   by script is left out of the count by name, with the ADR row that renames it
   (`PENDING_INFRA_NAMES` in the check), so a split or move inside it does not
   read as new hits; the scripted rename deletes the entry.
@@ -126,11 +126,11 @@ on identifiers with the German stems in `ci/german_stems.json`.
 | HTTP headers | Lowercase `kebab-case`. A new header has no `X-` prefix (RFC 6648); the existing `x-*` service headers keep it until a touch moves them | `x-internal-token` (existing) | Review |
 | OpenAPI extensions | `x-<name>`: the spec's own mechanism, not an HTTP header | `x-sensitivity` | Review |
 | MCP operations (tools) | `kebab-case` `<entity>-<verb>`, under 52 characters, unique | `document-revision-compare`, `task-run-cancel` | `agent-reachability.spec.ts`, `backend-operations.spec.ts` |
-| MCP resource URIs | `<scheme>://<path>`; MCP Apps views `ui://<server>/<view>` | target `workspace://catalog`, `ui://workspace/proposal-card` (today's resources still carry the retired scheme, see ADR-0148) | Review |
+| MCP resource URIs | `<scheme>://<path>`; MCP Apps views `ui://<server>/<view>` | target `workspace://catalog`, `ui://workspace/proposal-card` (today's resources still carry the retired scheme, see ADR-0149) | Review |
 | JSON on the wire | `camelCase` keys over HTTP and the chat socket; Python keeps `snake_case` inside and aliases at the model. A list's key is the plural entity, a single item's the singular (ADR-0131) | `{ "taskRuns": [...] }`, `{ "taskRun": {...} }` | Zod and Pydantic schemas; `tests/fixtures/openapi.json` |
 | Database tables and columns | `snake_case`, tables plural; Drizzle's TypeScript properties `camelCase` | `task_runs.requester_user_id` | Review; `rls-coverage.spec.ts` by table name |
 | Constraints, indexes, policies | Postgres's default shape: `<table>_<columns>_<pkey\|key\|fkey\|idx\|check>` | `projects_status_check` | Review |
-| Postgres settings (GUCs) | `app.<name>` | target `app.organization_id` (today's `grid.*` names are frozen, ADR-0148) | `task db:test:rls` |
+| Postgres settings (GUCs) | `app.<name>` | target `app.organization_id` (today's `grid.*` names are frozen, ADR-0149) | `task db:test:rls` |
 | Product analytics events | The SDK's built-in event first (`$pageview`, `$pageleave`, `$autocapture` with `data-ph-capture-attribute-*`, web vitals; D18). A custom event only where the SDK cannot see the action: `snake_case` `<object>_<verb in past tense>`, properties `snake_case` and never personal | `agent_operation_called`, `user_signed_in` | The closed unions `PostHogEvent` and `ServerEvent` (a typo fails the build); a row in [`posthog-events.md`](../observability/posthog-events.md) |
 | Langfuse scores and prompts | `kebab-case`, named for what they score or hold | `answer-grounded`, `citation-health` | `SCORE_DEFINITIONS`; `test_langfuse_scores.py` |
 | Feature flags | WorkOS slug in `kebab-case`, named for what it gates; the code constant is the slug in `UPPER_SNAKE` | `folder-cards` / `FOLDER_CARDS`, `image-upload` | Review; registered in [`workos-provisioning.md`](../deployment/workos-provisioning.md) |
@@ -141,7 +141,7 @@ on identifiers with the German stems in `ci/german_stems.json`.
 | Repo lint rules | `kebab-case` rule under one plugin namespace | `require-tenant-cache-key` | `lint-config.spec.mjs` |
 | Branches | Cut from `develop`; a prefix and a short `kebab-case` description (`claude/<slug>` for agent work) | `claude/archos-rebrand-docs` | Review |
 | Commits and PR titles | Conventional Commits; the scope, when there is one, is the area in lowercase | `fix(ui): …`, `docs(contributing): …` | The **Conventional PR title** job (type only) |
-| ADRs | `NNNN-short-kebab-title.md` | `0148-the-product-name-is-copy-….md` | `scripts/check_adrs.py` |
+| ADRs | `NNNN-short-kebab-title.md` | `0149-the-product-name-is-copy-….md` | `scripts/check_adrs.py` |
 | Release-note slugs | `kebab-case`, through `task release:note -- <slug>` | `re-index-projects` | reno |
 
 ## One word per concept
@@ -208,7 +208,7 @@ Two words the `unslop` skill bans as metaphors, decided here:
 Proposals for the owner. Nothing here is renamed yet: each needs the owner's
 yes and, for a stored or external name, the three steps above. **High**
 priority means an agent reads the term today and a standard word exists. The
-brand-word renames are in ADR-0148's map, not here.
+brand-word renames are in ADR-0149's map, not here.
 
 | Term today | Where | Proposed name | Priority |
 |---|---|---|---|
@@ -219,8 +219,8 @@ brand-word renames are in ADR-0148's map, not here.
 | `document-version-*` operations, `document_versions` | `catalog/`, `bff/db/schema/documents.ts` | `document-approval-*`, `revision_approvals` | High |
 | `agent-ask-*` operations, `agent_asks` | `catalog/consult.ts`, `catalog/index.ts` | `agent-request-*`; A2A calls the unit a Task | High |
 | door (`AgentDoor`, `doorOfPrincipal`, `agent-api/door/`) | `bff/agent-api/` | MCP server (`McpServer`, `agent-api/mcp/`); the audience is the OAuth audience (RFC 8707) | Medium |
-| wake (`lib/annotations/wake*.ts`) | annotations | thread reply, matching the flag `agent-thread-replies` in ADR-0148 | Medium |
-| acts, notices, ask (flag words) | WorkOS flags, constants | `agent-direct-edits`, `revision-suggestions`, `agent-requests` (ADR-0148) | Medium |
+| wake (`lib/annotations/wake*.ts`) | annotations | thread reply, matching the flag `agent-thread-replies` in ADR-0149 | Medium |
+| acts, notices, ask (flag words) | WorkOS flags, constants | `agent-direct-edits`, `revision-suggestions`, `agent-requests` (ADR-0149) | Medium |
 | lane (retrieval group, queue partition) | `norm_registry`, `claim.lane`, `PLATFORM_LANE` | collection (Qdrant) for retrieval; queue for the partition | Medium |
 | exposure (`exposure.config.ts`, `tests/fixtures/exposure.json`) | `bff/agent-api/` | visibility, the glossary's own gloss | Medium |
 | withheld (`withheld: { category, reason }`) | `exposure.config.ts` | `hidden: { category, reason }` | Medium |
