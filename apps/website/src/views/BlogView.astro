@@ -54,7 +54,7 @@ const feed = locale === 'en' ? '/en/rss.xml' : '/rss.xml';
       {
         posts.map((post) => (
           <PostCard
-            title={post.data.title}
+            title={post.data.heading}
             text={post.data.description}
             date={formatDate(post.data.pubDate, locale)}
             href={postPath(locale, post)}

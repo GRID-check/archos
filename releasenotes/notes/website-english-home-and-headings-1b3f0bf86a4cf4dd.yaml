@@ -1,0 +1,8 @@
+---
+fixes:
+  - >
+    The English home page no longer plays the knowledge animation, whose
+    frames carry German text; it shows the section's text alone until an
+    English version exists. Website headings no longer break short words
+    with an automatic hyphen ("com-pares"); a long German word breaks only
+    where the text marks it.

@@ -66,7 +66,7 @@ export const READING_SITE_SEARCHING: IntakeView = {
   readingProgress: progress(3, 23, { federalState: null, municipality: null, address: null, source: null, confirmed: false }),
 }
 
-/** Done: every document read, the ticket's own numbers, and Piloti's summary. */
+/** Done: every document read, the ticket's own numbers, and the agent's summary. */
 export const READING_READY: IntakeView = {
   ...INTAKE_READY,
   counts: { ...INTAKE_READY.counts, contradictions: 6, decisiveOpen: 9 },

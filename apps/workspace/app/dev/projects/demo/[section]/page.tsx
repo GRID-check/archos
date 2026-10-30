@@ -16,6 +16,7 @@ import type { JSX } from 'react'
 import { use } from 'react'
 import { notFound } from 'next/navigation'
 import { ProjectSectionFrame } from '@/components/shell/project-section-frame'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 export default function ProjectSectionChromeDevPage({
   params,
@@ -35,7 +36,7 @@ export default function ProjectSectionChromeDevPage({
         </ProjectSectionFrame>
       </main>
       <nav className="text-muted-foreground flex h-[51px] shrink-0 items-center justify-around border-t text-xs">
-        <span>Frag Piloti</span>
+        <span>Frag {PRODUCT_NAME}</span>
         <span>Dateien</span>
         <span>Übersicht</span>
         <span>Postfach</span>

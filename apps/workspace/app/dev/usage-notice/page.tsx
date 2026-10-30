@@ -17,6 +17,7 @@
 import { useState, type JSX } from 'react'
 import { UsageNotice } from '@/features/chat/components/UsageNotice'
 import type { ChatUsageNotice } from '@/lib/budgets/usage-notice'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const base: ChatUsageNotice = {
   level: 'warning',
@@ -94,7 +95,7 @@ function Sample({ title, notice }: { title: string; notice: ChatUsageNotice }): 
         ) : (
           <UsageNotice notice={notice} onDismiss={() => setDismissed(true)} />
         )}
-        <div className="text-muted-foreground rounded-lg border px-3 py-2.5 text-sm">Ask Piloti about this project …</div>
+        <div className="text-muted-foreground rounded-lg border px-3 py-2.5 text-sm">Ask {PRODUCT_NAME} about this project …</div>
       </div>
     </section>
   )

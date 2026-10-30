@@ -33,6 +33,7 @@ import { notFound } from 'next/navigation'
 import { EngagementNotice } from '@/features/collaboration/components/EngagementNotice'
 import { I18nProvider } from '@/i18n'
 import type { ConversationEngagement } from '@/lib/db/schema/conversations'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <section className="flex flex-col gap-2">
@@ -80,7 +81,7 @@ export default function EngagementNoticePreviewPage() {
         className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6 md:p-8"
       >
         <header>
-          <h1 className="text-xl font-semibold tracking-tight">Wann Piloti antwortet</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Wann {PRODUCT_NAME} antwortet</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Die Regel steht da, wo die Frage entsteht — und ist gleich der Schalter.
           </p>

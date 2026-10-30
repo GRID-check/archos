@@ -126,7 +126,7 @@ const RAW_FIXTURES: CardInput[] = [
   {
     // The state a draft is usually met in: written more than once, because the
     // reader asked for a change and the tool edited the same path again, and
-    // not yet filed — so the card offers to ASK Piloti to file it rather than
+    // not yet filed — so the card offers to ASK the agent to file it rather than
     // claiming a project document that does not exist.
     type: 'document_draft',
     title: 'Aktenvermerk – Abweichung Fluchtweglänge',
@@ -187,7 +187,7 @@ const RAW_FIXTURES: CardInput[] = [
     note: 'Vorschlag — es wurde noch nichts verschoben.',
   },
   {
-    // An action Piloti proposed through the MCP surface (ADR-0122): the
+    // An action the agent proposed through the MCP surface (ADR-0122): the
     // summary as the title, the action's name, and its inputs.
     type: 'operation_proposal',
     title: 'Rename a folder (name: Pläne, folderId: f_1)',
@@ -197,7 +197,7 @@ const RAW_FIXTURES: CardInput[] = [
   },
   {
     // Both origins: a whole-page look, a region read with a question, and the
-    // box Piloti showed the room.
+    // box the agent showed the room.
     type: 'look',
     document: { id: '00000000-0000-4000-8000-0000000000c1', name: 'Grundriss EG.pdf' },
     items: [

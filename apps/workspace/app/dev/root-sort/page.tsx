@@ -38,13 +38,14 @@ import {
   fixturePlacements,
   fixtureProgress,
 } from './fixtures'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 function Shell({ children }: { children: ReactNode }): JSX.Element {
   return (
     <div className="border-border bg-background mx-auto max-w-4xl rounded-xl border p-4 shadow-md md:p-6">
       <h1 className="text-base font-semibold">Dateien in Ordner einsortieren</h1>
       <p className="text-muted-foreground mt-1 mb-4 text-sm">
-        Piloti schlägt für jede Datei im Stammordner einen Ordner vor. Verschoben wird erst, wenn
+        {PRODUCT_NAME} schlägt für jede Datei im Stammordner einen Ordner vor. Verschoben wird erst, wenn
         Sie übernehmen.
       </p>
       {children}

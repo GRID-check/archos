@@ -51,6 +51,7 @@ import {
   ViewerSlider,
   type ViewerSheetSnap,
 } from '@/features/bim/components/viewer'
+import { PRODUCT_NAME } from '@/lib/brand'
 
 /** The model's vertical extent, as the loaded fixture reports it. */
 const CUT_RANGE = { minMetres: -0.25, maxMetres: 6.25 }
@@ -269,7 +270,7 @@ export default function BimViewportDevPage(): JSX.Element {
             onClose={() => {}}
             footer={
               <Button variant="ghost" size="sm" className="w-full justify-start">
-                Piloti dazu fragen
+                {PRODUCT_NAME} dazu fragen
               </Button>
             }
           >
