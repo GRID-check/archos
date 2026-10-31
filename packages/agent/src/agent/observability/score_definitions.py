@@ -113,6 +113,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "geometry-cold-ms",
+        "NUMERIC",
+        "Milliseconds the geometry service took for a call no cache answered (a model download, parse and "
+        "element index build, ADR-0149), on the BFF's bim-geometry trace. What the first question about a "
+        "model costs; the sizing signal for the geometry service's pods.",
+        writer="bff",
+        min_value=0,
+    ),
+    ScoreDefinition(
         "citation-health",
         "BOOLEAN",
         "True when citation verification found nothing to remove, patch or flag on this turn.",
