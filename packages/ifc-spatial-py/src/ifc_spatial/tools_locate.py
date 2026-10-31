@@ -46,8 +46,10 @@ _COORDINATES = "Coordinates are IFC world coordinates in metres, Z up (the BCF f
 #: Appended to every description: the one rule of this tool surface is that no
 #: tool runs geometry behind the caller's back without saying so.
 _COST = (
-    "Cost: the first locating call on a model runs the geometry pass once (about 2 s for a house) to build "
-    "its element index; later box questions are answered from the index in milliseconds."
+    "Cost: the first locating call on a model runs the geometry pass once to build its element index (about "
+    "2 s for a house; it grows with the model and is not bounded by a budget today — a cold build belongs to "
+    "the geometry service, which builds and caches the index ahead of the question). Later box questions are "
+    "answered from the index in milliseconds."
 )
 
 
@@ -60,6 +62,10 @@ def _guarded(fn: Callable[[Resolve, dict[str, Any]], Any]) -> Callable[[Resolve,
             return run(lambda: fn(resolve, args))
         except (prox.ProximityLimitError, IndexFormatError, ValueError) as error:
             raise ToolError(str(error)) from None
+        except (TypeError, AttributeError) as error:
+            # A number where a GlobalId belongs, an object where a list does: the
+            # caller sent the wrong shape. Named, never a traceback.
+            raise ToolError(f"{fn.__name__}: malformed argument ({error})") from None
 
     return wrapper
 
@@ -153,9 +159,12 @@ def _element_boxes_tool(resolve: Resolve) -> ToolDef:
         name="element_boxes",
         title="Element bounding boxes",
         description=(
-            f"Axis-aligned bounding box and centroid of each element, and the union box of all of them. "
+            "Axis-aligned bounding box and centroid of each element, and the union box of all of them. An "
+            "element without a body of its own (a curtain wall, a stair, a roof made of slabs) gets the union "
+            "of its aggregated parts, marked via: parts. "
             f"At most {prox.MAX_BOX_IDS} GlobalIds. Ids without a body come back under `missing` with the "
-            f"reason (unknown-global-id, no-representation, empty-mesh, shape-failed) instead of failing the "
+            "reason (unknown-global-id, no-representation, empty-mesh, shape-failed, duplicate-global-id) "
+            "instead of failing the "
             f"call. {_COORDINATES} A box frames a view or answers 'roughly where'; it is not a clearance."
         ),
         input_schema={
@@ -296,8 +305,10 @@ def _clash_tool(resolve: Resolve) -> ToolDef:
             "Pairs between setA and setB (or within setA when setB is omitted) that `intersect` (share volume "
             "deeper than `tolerance`, default 0.005 m), `touch` (also surfaces within `tolerance`) or violate a "
             "`clearance` (every pair closer than `tolerance`, required, at most "
-            f"{clash_ops.MAX_CLEARANCE:g} m). Each pair: a, b, kind, distance. Pairs the file declares as hosted "
-            "(a window in its wall) are skipped and counted. Leave IfcSpace out of the sets unless the question "
+            f"{clash_ops.MAX_CLEARANCE:g} m). Each pair: a, b, kind, distance. Pairs whose contact the "
+            "file declares (a window in its wall, an opening in its host, a part in its assembly) are skipped "
+            "and counted in skippedDeclared; output is sorted by GlobalId. Leave IfcSpace out of the sets "
+            "unless the question "
             f"is about rooms: a room contains its furniture by design. Limits: {clash_ops.MAX_CLASH_SET} ids per "
             f"set, {clash_ops.MAX_CANDIDATE_PAIRS} candidate pairs, {clash_ops.MAX_NARROW_PAIRS} pairs measured, "
             f"{clash_ops.CLASH_BUDGET_SECONDS:g} s; past any of them `truncated` is true and the caveat says how "
@@ -324,7 +335,9 @@ def _box_diff_tool(resolve: Resolve) -> ToolDef:
         title="What moved between revisions",
         description=(
             "Compares this model with an earlier revision, per GlobalId: added, removed, moved (centroid "
-            "delta), resized (size delta) or unchanged, within `tolerance` (default 0.005 m). The earlier "
+            "delta), resized (size delta), unchanged, "
+            "no-geometry (one side has no box) or unknown (in neither), within `tolerance` (default "
+            "0.005 m). The earlier "
             "revision is `baseModel` (another handle from open_model) or `baseIndex` (a stored element "
             f"index). With `globalIds` (at most {diff_ops.MAX_DIFF_IDS}) every one is listed; without, only "
             "the changes are listed and `counts` covers the whole model. A change of shape inside the same "

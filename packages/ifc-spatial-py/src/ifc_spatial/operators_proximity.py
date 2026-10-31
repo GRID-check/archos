@@ -33,13 +33,17 @@ import numpy as np
 
 from .clearance import _soup_distance
 from .clearance import _usable_triangles
+from .element_index import MAX_PART_DEPTH
+from .element_index import MAX_PARTS
 from .element_index import ElementIndex
 from .element_index import element_index
+from .element_index import finite_point
 from .envelope import Answer
 from .envelope import computed
 from .envelope import declared
 from .model import SpatialModel
 from .operators_constants import TESSELLATION_TOLERANCE
+from .proximity_mesh import overlaps_by_containment
 from .proximity_mesh import point_distances
 from .proximity_mesh import points_inside
 
@@ -50,6 +54,8 @@ MAX_RESULTS = 500
 MAX_RADIUS = 50.0
 #: Seconds one ``exact`` query may spend on triangles before it stops and says so.
 EXACT_BUDGET_SECONDS = 20.0
+#: Seconds ``elements_in_room`` may spend on its centroid-in-solid test.
+ROOM_BUDGET_SECONDS = 20.0
 #: Bodies that are holes, not things. Left out of every query unless asked for by type.
 VOID_TYPES = ("IfcOpeningElement", "IfcVoidingFeature")
 REASON_UNKNOWN = "unknown-global-id"
@@ -153,6 +159,8 @@ def _ref(index: ElementIndex, row: int, **extra: Any) -> dict[str, Any]:
         "storeyGlobalId": index.storeys[row],
         **_box_dict(index.mins[row], index.maxs[row]),
     }
+    if index.via[row]:
+        out["via"] = index.via[row]
     out.update(extra)
     return out
 
@@ -169,6 +177,7 @@ def element_boxes(index: ElementIndex, ids: list[str]) -> Answer[dict[str, Any]]
             "globalId": index.global_ids[r],
             **_box_dict(index.mins[r], index.maxs[r]),
             "centroid": [float(v) for v in index.centroids[r]],
+            **({"via": index.via[r]} if index.via[r] else {}),
         }
         for r in rows
     ]
@@ -280,7 +289,7 @@ def elements_near(
     caveat = "Box distances: a lower bound on the distance between the bodies."
     if model is not None:
         found, caveat = _exact_near(model, index, found, point, global_id, radius)
-    ordered = sorted(found.items(), key=lambda item: item[1])
+    ordered = sorted(found.items(), key=lambda item: (item[1], index.global_ids[item[0]]))
     shown = ordered[:limit]
     subject = global_id or [float(v) for v in low]
     return computed(
@@ -304,8 +313,10 @@ def _near_subject(
     if (point is None) == (global_id is None):
         raise ProximityLimitError("give exactly one of point or globalId")
     if point is not None:
-        p = np.asarray(point, dtype=float)
+        p = finite_point(point.tolist() if isinstance(point, np.ndarray) else point, "point")
         return p, p, None
+    if not isinstance(global_id, str) or not global_id.strip():
+        raise ProximityLimitError("globalId must be a GlobalId string")
     reason = _missing_reason(index, global_id)  # type: ignore[arg-type]
     if reason is not None:
         raise ProximityLimitError(f"{global_id} has no box in this model ({reason})")
@@ -321,32 +332,76 @@ def _exact_near(
     global_id: str | None,
     radius: float,
 ) -> tuple[dict[int, float], str | None]:
-    """Replace each box distance by the surface distance; drop what the surfaces put beyond ``radius``."""
+    """Replace each box distance by the body distance; drop what the bodies put beyond ``radius``.
+
+    Zero when the point lies inside the body, or one body lies inside the other:
+    a surface distance alone would report a sofa as 2 m from the room it stands in.
+    """
     subject = None if global_id is None else _triangles(model, global_id)
-    started = time.perf_counter()
+    if global_id is not None and subject is None:
+        return {}, f"{global_id} has no triangles to measure from; no exact distances."
+    deadline = time.perf_counter() + EXACT_BUDGET_SECONDS
     out: dict[int, float] = {}
-    for row in sorted(found, key=found.__getitem__):
-        remaining = EXACT_BUDGET_SECONDS - (time.perf_counter() - started)
-        if remaining <= 0:
-            return out, f"Stopped after {EXACT_BUDGET_SECONDS:g} s; {len(found) - len(out)} candidates unmeasured."
+    order = sorted(found, key=lambda r: (found[r], index.global_ids[r]))
+    for position, row in enumerate(order):
         tris = _triangles(model, index.global_ids[row])
-        if tris is None or (global_id is not None and subject is None):
+        if tris is None:
             continue
-        if subject is None:
-            distance = float(point_distances(np.asarray([point], dtype=float), tris)[0])
-        else:
-            distance = _soup_distance(subject, tris, remaining)[0]
+        distance = _exact_distance(subject, point, tris, deadline)
+        if distance is None:
+            unmeasured = len(order) - position
+            return out, f"Stopped after {EXACT_BUDGET_SECONDS:g} s; {unmeasured} candidates were not measured."
         if distance <= radius:
             out[row] = distance
     return out, None
 
 
-def _triangles(model: SpatialModel, global_id: str) -> np.ndarray | None:
-    geo = model.geometry(global_id)
-    if geo is None:
+def _exact_distance(
+    subject: np.ndarray | None, point: np.ndarray | None, tris: np.ndarray, deadline: float
+) -> float | None:
+    """Point-to-body or body-to-body distance, 0 inside; ``None`` once ``deadline`` has passed."""
+    remaining = deadline - time.perf_counter()
+    if remaining <= 0:
         return None
-    tris = _usable_triangles(geo)
-    return tris if len(tris) else None
+    if subject is None:
+        probe = np.asarray([point], dtype=float)
+        if points_inside(probe, tris)[0]:
+            return 0.0
+        return float(point_distances(probe, tris)[0])
+    distance, _, _, _, aborted = _soup_distance(subject, tris, remaining)
+    if aborted:
+        return None
+    if distance > 0 and overlaps_by_containment(subject, tris):
+        return 0.0
+    return float(distance)
+
+
+def _triangles(model: SpatialModel, global_id: str) -> np.ndarray | None:
+    """The element's usable triangles, or those of its aggregated parts when it has no body of its own."""
+    geo = model.geometry(global_id)
+    if geo is not None:
+        tris = _usable_triangles(geo)
+        return tris if len(tris) else None
+    if not model.file.by_guid(global_id).is_a("IfcElement"):
+        return None
+    parts = [_usable_triangles(g) for g in _part_geometries(model, global_id)]
+    parts = [t for t in parts if len(t)]
+    return np.concatenate(parts) if parts else None
+
+
+def _part_geometries(model: SpatialModel, global_id: str) -> list[Any]:
+    """Bodies of everything aggregated under the element, walked with the index's own bounds."""
+    element = model.file.by_guid(global_id)
+    out: list[Any] = []
+    frontier, seen = [element], {element.id()}
+    for _ in range(MAX_PART_DEPTH):
+        children = [c for p in frontier for rel in (p.IsDecomposedBy or []) for c in rel.RelatedObjects]
+        frontier = [c for c in children if c.id() not in seen and getattr(c, "GlobalId", None)][:MAX_PARTS]
+        seen.update(c.id() for c in frontier)
+        out.extend(g for g in (model.geometry(c.GlobalId) for c in frontier) if g is not None)
+        if not frontier or len(seen) > MAX_PARTS:
+            break
+    return out
 
 
 # ── what a room holds ───────────────────────────────────────────────────────
@@ -360,7 +415,10 @@ def _declared_contents(model: SpatialModel, space: Any) -> list[Any]:
 
 
 def _computed_contents(model: SpatialModel, index: ElementIndex, space_id: str) -> list[int] | None:
-    """Rows whose centroid lies inside the space's solid; ``None`` when the space has no body."""
+    """Rows whose centroid lies inside the space's solid; ``None`` when the space has no body.
+
+    Raises :class:`TimeoutError` past :data:`ROOM_BUDGET_SECONDS`.
+    """
     tris = _triangles(model, space_id)
     row = index.row(space_id)
     if tris is None or row is None or not index.ok[row]:
@@ -370,7 +428,8 @@ def _computed_contents(model: SpatialModel, index: ElementIndex, space_id: str) 
     with np.errstate(invalid="ignore"):
         mask &= ((index.centroids >= index.mins[row]) & (index.centroids <= index.maxs[row])).all(axis=1)
     candidates = np.flatnonzero(mask)
-    inside = points_inside(index.centroids[candidates], tris)
+    deadline = time.perf_counter() + ROOM_BUDGET_SECONDS
+    inside = points_inside(index.centroids[candidates], tris, deadline)
     return candidates[inside].tolist()
 
 
@@ -389,23 +448,32 @@ def elements_in_room(model: SpatialModel, space_global_id: str) -> Answer[dict[s
     tags: dict[str, set[str]] = {}
     for element in _declared_contents(model, space):
         tags.setdefault(element.GlobalId, set()).add("declared")
-    rows = _computed_contents(model, index, space_global_id)
+    try:
+        rows = _computed_contents(model, index, space_global_id)
+        timed_out = False
+    except TimeoutError:
+        rows, timed_out = None, True
     for row in rows or []:
         tags.setdefault(index.global_ids[row], set()).add("computed")
-    elements = [_content_ref(model, gid, sources) for gid, sources in tags.items()]
-    value = {"elements": elements, "geometryUsed": rows is not None}
+    elements = [_content_ref(model, gid, tags[gid]) for gid in sorted(tags)]
+    value = {"elements": elements, "geometryUsed": rows is not None, "truncated": timed_out}
     if rows is None:
+        reason = (
+            f"The centroid test stopped after {ROOM_BUDGET_SECONDS:g} s"
+            if timed_out
+            else "The room has no body in this model"
+        )
         return declared(
             value,
-            from_=[space_global_id],
+            from_=[space_global_id, *sorted(tags)],
             method=method,
-            caveat="The room has no body in this model, so only declared containment is listed.",
+            caveat=f"{reason}, so only declared containment is listed.",
         )
     return computed(
         value,
         tolerance=TESSELLATION_TOLERANCE,
         unit="m",
-        from_=[space_global_id, *tags],
+        from_=[space_global_id, *sorted(tags)],
         method=method,
         caveat="Each element says how it was found: declared (IfcRelContainedInSpatialStructure), "
         "computed (its centroid lies inside the room's solid) or both.",

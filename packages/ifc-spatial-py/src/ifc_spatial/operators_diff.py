@@ -26,14 +26,14 @@ DIFF_TOLERANCE = 0.005
 MAX_DIFF_IDS = 5000
 #: Changes listed per answer. The counts always cover everything.
 MAX_DIFF_CHANGES = 2000
-DIFF_STATUSES = ("added", "removed", "moved", "resized", "unchanged", "no-geometry")
+DIFF_STATUSES = ("added", "removed", "moved", "resized", "unchanged", "no-geometry", "unknown")
 
 
 def _compare(base: ElementIndex, current: ElementIndex, global_id: str, tolerance: float) -> dict[str, Any]:
     """One GlobalId's status between ``base`` and ``current``."""
     old, new = base.row(global_id), current.row(global_id)
     if old is None and new is None:
-        return {"globalId": global_id, "status": "no-geometry", "reason": "unknown-global-id"}
+        return {"globalId": global_id, "status": "unknown"}
     if old is None:
         return {"globalId": global_id, "status": "added"}
     if new is None:
@@ -64,6 +64,10 @@ def box_diff(
 ) -> Answer[dict[str, Any]]:
     """Per GlobalId: ``added`` / ``removed`` / ``moved`` (Δcentroid) / ``resized`` (Δsize) / ``unchanged``.
 
+    Two more statuses say why there is no comparison: ``no-geometry`` (the
+    element exists but one side has no box) and ``unknown`` (neither revision
+    has this GlobalId — a typo, or an id from another model).
+
     With ``ids``, every one of them is listed, unchanged ones included. Without,
     the whole model is compared and only the changes are listed; ``counts``
     covers every element either way. ``resized`` wins over ``moved`` when both
@@ -89,7 +93,7 @@ def box_diff(
 
 
 def _all_ids(base: ElementIndex, current: ElementIndex) -> list[str]:
-    ids = list(dict.fromkeys([*base.global_ids, *current.global_ids]))
+    ids = sorted({*base.global_ids, *current.global_ids})
     if not ids:
         raise ProximityLimitError("both indexes are empty")
     return ids

@@ -23,6 +23,7 @@ from typing import Any
 import numpy as np
 
 from .clearance import _soup_distance
+from .element_index import MAX_PART_DEPTH
 from .element_index import ElementIndex
 from .element_index import element_index
 from .envelope import Answer
@@ -78,7 +79,7 @@ def neighbours(model: SpatialModel, global_id: str, gap: float = 0.05) -> Answer
     mask[row] = False
     candidates = np.flatnonzero(mask & _within_gap(index, row, gap))
     found, unmeasured = _measure_neighbours(model, index, subject, candidates, gap)
-    found.sort(key=lambda item: item[1])
+    found.sort(key=lambda item: (item[1], index.global_ids[item[0]]))
     shown = found[:MAX_RESULTS]
     caveat = None
     if unmeasured:
@@ -217,23 +218,30 @@ def clash(
     - ``clearance`` — every pair closer than ``tolerance`` (required, the clearance asked for).
 
     Each pair carries ``kind`` (``intersect`` / ``touch`` / ``clearance``) and the
-    surface ``distance`` (0 for ``intersect``). Pairs the file declares as
-    hosted (a window in its wall, through ``IfcRelFillsElement``) are skipped and
-    counted in ``skippedHosted``.
+    surface ``distance`` (0 for ``intersect``). Pairs whose contact the file
+    declares — a window in its wall, an opening in its host, a part in its
+    assembly — are skipped and counted in ``skippedDeclared``.
+
+    Deterministic: the sets are ordered by GlobalId before any limit applies,
+    each pair is written with ``a < b``, and the list is sorted by ``(a, b)``,
+    so the same question asked in another order gets the same answer.
     """
     tolerance = _check_clash_args(mode, tolerance)
     ids_a = _check_count("setA", set_a, MAX_CLASH_SET)
     ids_b = None if set_b is None else _check_count("setB", set_b, MAX_CLASH_SET)
     index = element_index(model)
-    rows_a, missing = _split(index, ids_a)
+    rows_a, missing = _split(index, sorted(set(ids_a)))
     rows_b = None
     if ids_b is not None:
-        rows_b, missing_b = _split(index, ids_b)
+        rows_b, missing_b = _split(index, sorted(set(ids_b)))
         missing += [m for m in missing_b if m not in missing]
     threshold = -tolerance if mode == "intersect" else tolerance
     pairs, broad_truncated = _broad_pairs(index, rows_a, rows_b, threshold)
-    hosted = _hosted_pairs(model)
-    kept = [p for p in pairs if frozenset((index.global_ids[p[0]], index.global_ids[p[1]])) not in hosted]
+    pairs = sorted(
+        {_ordered(index, a, b) for a, b in pairs}, key=lambda p: (index.global_ids[p[0]], index.global_ids[p[1]])
+    )
+    declared_pairs = _declared_pairs(model)
+    kept = [p for p in pairs if frozenset((index.global_ids[p[0]], index.global_ids[p[1]])) not in declared_pairs]
     skipped, pairs = len(pairs) - len(kept), kept
     found, tested, narrow_truncated = _narrow(model, index, pairs, mode, tolerance)
     truncated = broad_truncated or narrow_truncated
@@ -242,7 +250,7 @@ def clash(
             "pairs": found,
             "candidatePairs": len(pairs),
             "tested": tested,
-            "skippedHosted": skipped,
+            "skippedDeclared": skipped,
             "truncated": truncated,
             "missing": missing,
         },
@@ -254,20 +262,43 @@ def clash(
     )
 
 
-def _hosted_pairs(model: SpatialModel) -> set[frozenset[str]]:
-    """Filler/host, opening/host and filler/opening pairs the file declares.
+def _ordered(index: ElementIndex, a: int, b: int) -> tuple[int, int]:
+    return (a, b) if index.global_ids[a] <= index.global_ids[b] else (b, a)
 
-    A window sits in its wall by construction, and its frame usually reaches
-    into the reveal. Reporting that as a clash would bury every real finding
-    under one per window, so declared hosting is skipped and counted.
+
+def _declared_pairs(model: SpatialModel) -> set[frozenset[str]]:
+    """Pairs whose contact the file declares, so a clash between them is by construction.
+
+    - ``IfcRelFillsElement`` / ``IfcRelVoidsElement``: filler and opening, filler
+      and host, opening and host. A window's frame usually reaches into the
+      reveal; reporting it would bury every real finding under one per window.
+    - ``IfcRelAggregates``: an assembly and each of its parts, at any depth up
+      to :data:`MAX_PART_DEPTH`. A curtain wall's box is the union of its panels.
     """
     out: set[frozenset[str]] = set()
+    for rel in model.file.by_type("IfcRelVoidsElement"):
+        out.add(frozenset((rel.RelatingBuildingElement.GlobalId, rel.RelatedOpeningElement.GlobalId)))
     for rel in model.file.by_type("IfcRelFillsElement"):
         opening, filler = rel.RelatingOpeningElement, rel.RelatedBuildingElement
         out.add(frozenset((opening.GlobalId, filler.GlobalId)))
-        for void in getattr(opening, "VoidsElements", None) or []:
-            host = void.RelatingBuildingElement
-            out.update({frozenset((host.GlobalId, filler.GlobalId)), frozenset((host.GlobalId, opening.GlobalId))})
+        out.update(
+            frozenset((v.RelatingBuildingElement.GlobalId, filler.GlobalId)) for v in opening.VoidsElements or []
+        )
+    parent: dict[str, str] = {}
+    for rel in model.file.by_type("IfcRelAggregates"):
+        parent.update((child.GlobalId, rel.RelatingObject.GlobalId) for child in rel.RelatedObjects)
+    for child in parent:
+        out.update(frozenset((child, ancestor)) for ancestor in _ancestors(parent, child))
+    return out
+
+
+def _ancestors(parent: dict[str, str], child: str) -> list[str]:
+    """The assemblies above ``child``, nearest first, at most :data:`MAX_PART_DEPTH` deep."""
+    out: list[str] = []
+    ancestor = parent.get(child)
+    while ancestor is not None and len(out) < MAX_PART_DEPTH:
+        out.append(ancestor)
+        ancestor = parent.get(ancestor)
     return out
 
 

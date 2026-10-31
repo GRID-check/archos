@@ -54,12 +54,28 @@ def _ray_hits(origins: np.ndarray, direction: np.ndarray, tris: np.ndarray) -> n
     return hit.sum(axis=1)
 
 
-def points_inside(points: np.ndarray, tris: np.ndarray) -> np.ndarray:
-    """Which points lie inside the closed triangle soup ``tris`` (ray parity, majority of three)."""
+#: Points per batch of the parity test. The intermediate arrays are points ×
+#: triangles × 3, so a batch bounds memory: 256 points against a 40 000-triangle
+#: body is ~250 MB of float64 at most, and the deadline is checked between batches.
+POINT_CHUNK = 256
+
+
+def points_inside(points: np.ndarray, tris: np.ndarray, deadline: float | None = None) -> np.ndarray:
+    """Which points lie inside the closed triangle soup ``tris`` (ray parity, majority of three).
+
+    Raises :class:`TimeoutError` when ``deadline`` (a ``perf_counter`` value)
+    passes between two batches.
+    """
+    out = np.zeros(len(points), dtype=bool)
     if len(points) == 0 or len(tris) == 0:
-        return np.zeros(len(points), dtype=bool)
-    votes = sum((_ray_hits(points, ray, tris) % 2 == 1).astype(int) for ray in _RAYS)
-    return votes >= 2
+        return out
+    for start in range(0, len(points), POINT_CHUNK):
+        if deadline is not None and time.perf_counter() > deadline:
+            raise TimeoutError
+        batch = points[start : start + POINT_CHUNK]
+        votes = sum((_ray_hits(batch, ray, tris) % 2 == 1).astype(int) for ray in _RAYS)
+        out[start : start + POINT_CHUNK] = votes >= 2
+    return out
 
 
 def point_distances(points: np.ndarray, tris: np.ndarray) -> np.ndarray:
@@ -71,7 +87,7 @@ def point_distances(points: np.ndarray, tris: np.ndarray) -> np.ndarray:
     return out
 
 
-def _contains_vertex_of(inner: np.ndarray, outer: np.ndarray, tolerance: float) -> bool:
+def _contains_vertex_of(inner: np.ndarray, outer: np.ndarray, tolerance: float, deadline: float) -> bool:
     """A vertex of ``inner`` lies inside ``outer`` and deeper than ``tolerance``."""
     low, high = outer.min(axis=(0, 1)), outer.max(axis=(0, 1))
     vertices = np.unique(inner.reshape(-1, 3), axis=0)
@@ -81,7 +97,7 @@ def _contains_vertex_of(inner: np.ndarray, outer: np.ndarray, tolerance: float) 
     if len(within) > _MAX_CONTAINMENT_SAMPLES:
         step = len(within) / _MAX_CONTAINMENT_SAMPLES
         within = within[(np.arange(_MAX_CONTAINMENT_SAMPLES) * step).astype(int)]
-    inside = within[points_inside(within, outer)]
+    inside = within[points_inside(within, outer, deadline)]
     if len(inside) == 0:
         return False
     return bool((point_distances(inside, outer) > tolerance).any())
@@ -129,8 +145,15 @@ def penetrates(tris_a: np.ndarray, tris_b: np.ndarray, tolerance: float, deadlin
 
     Returns ``None`` when ``deadline`` (a ``perf_counter`` value) passes first.
     """
-    if _contains_vertex_of(tris_a, tris_b, tolerance) or _contains_vertex_of(tris_b, tris_a, tolerance):
-        return True
+    if time.perf_counter() > deadline:
+        return None
+    try:
+        if _contains_vertex_of(tris_a, tris_b, tolerance, deadline) or _contains_vertex_of(
+            tris_b, tris_a, tolerance, deadline
+        ):
+            return True
+    except TimeoutError:
+        return None
     lo_b, hi_b = tris_b.min(axis=1), tris_b.max(axis=1)
     lo_a, hi_a = tris_a.min(axis=1), tris_a.max(axis=1)
     for index in range(len(tris_a)):
@@ -142,4 +165,16 @@ def penetrates(tris_a: np.ndarray, tris_b: np.ndarray, tolerance: float, deadlin
     return False
 
 
-__all__ = ["penetrates", "point_distances", "points_inside"]
+def overlaps_by_containment(tris_a: np.ndarray, tris_b: np.ndarray) -> bool:
+    """One body lies inside the other: a vertex of either is inside the other.
+
+    The surface distance of a sofa standing inside a room is the gap to the
+    nearest wall, not zero; this is what makes "how far is it" answer zero for a
+    body that is IN the other one.
+    """
+    if points_inside(tris_a[:1, 0], tris_b)[0]:
+        return True
+    return bool(points_inside(tris_b[:1, 0], tris_a)[0])
+
+
+__all__ = ["overlaps_by_containment", "penetrates", "point_distances", "points_inside"]

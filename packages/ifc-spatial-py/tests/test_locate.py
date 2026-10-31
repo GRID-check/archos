@@ -28,7 +28,6 @@ from ifc_spatial.model import SpatialModel
 from ifc_spatial.operators_clash import clash
 from ifc_spatial.operators_clash import neighbours
 from ifc_spatial.operators_diff import box_diff
-from ifc_spatial.operators_measures import extent
 from ifc_spatial.operators_proximity import element_boxes
 from ifc_spatial.operators_proximity import elements_in_room
 from ifc_spatial.operators_proximity import elements_near
@@ -67,12 +66,22 @@ def _declared_contents(model: SpatialModel, space: str) -> set[str]:
 # ── the index ───────────────────────────────────────────────────────────────
 
 
-def test_a_walls_index_box_is_its_extent(house: SpatialModel, index: ElementIndex) -> None:
-    measured = extent(house, NORTH_WALL).value["box"]
+def test_a_walls_index_box_is_in_metres_and_as_thick_as_its_type_says(house: SpatialModel, index: ElementIndex) -> None:
+    """Checked against a number the index did not compute. The north wall's type
+    is ``Wall-Ext_102Bwk-75Ins-100LBlk-12P``: 102 mm brick, 75 mm insulation,
+    100 mm block, 12 mm plaster, 289 mm as written by the authoring tool (which
+    rounds each layer to the millimetre). The wall runs along X, so its box depth
+    in Y is its thickness — and 0.289 m rather than 289 is the unit check."""
+    import re
+
+    import ifcopenshell.util.element as ue
+
+    type_name = ue.get_type(house.file.by_guid(NORTH_WALL)).Name
+    layers_mm = [int(n) for n in re.findall(r"(\d+)(?:Bwk|Ins|LBlk|P)\b", type_name)]
+    assert layers_mm == [102, 75, 100, 12]
     row = index.row(NORTH_WALL)
     assert index.status[row] == "ok"
-    assert index.mins[row] == pytest.approx(measured["min"], abs=1e-4)
-    assert index.maxs[row] == pytest.approx(measured["max"], abs=1e-4)
+    assert index.maxs[row][1] - index.mins[row][1] == pytest.approx(sum(layers_mm) / 1000.0, abs=0.002)
     assert index.storeys[row] == house.storey_of(house.file.by_guid(NORTH_WALL)).GlobalId
 
 
@@ -199,7 +208,7 @@ def test_two_rooms_clash_at_the_partition_distance_and_do_not_intersect(house: S
 def test_a_window_in_its_wall_is_hosting_not_a_clash(house: SpatialModel) -> None:
     answer = clash(house, [NORTH_WALL, WINDOW], mode="intersect")
     assert answer.value["pairs"] == []
-    assert answer.value["skippedHosted"] == 1
+    assert answer.value["skippedDeclared"] == 1
     assert answer.value["truncated"] is False and answer.caveat is None
 
 
@@ -238,7 +247,7 @@ def test_box_diff_reports_the_moved_element_and_nothing_else(tmp_path: Path) -> 
     assert whole.value["elements"][0]["centroidDelta"] == pytest.approx([0.25, 0.0, 0.0], abs=1e-3)
     assert whole.value["counts"]["unchanged"] == 1
     listed = box_diff(base, current, [BASEMENT_SLAB, BASEMENT_ROOM, "gone"])
-    assert [e["status"] for e in listed.value["elements"]] == ["moved", "unchanged", "no-geometry"]
+    assert [e["status"] for e in listed.value["elements"]] == ["moved", "unchanged", "unknown"]
     assert listed.provenance == "computed"
 
 
@@ -273,3 +282,161 @@ def test_every_locate_tool_answers_through_call_with_provenance() -> None:
         assert result["provenance"] in ("declared", "computed", "inferred"), name
         assert result["method"] and isinstance(result["from"], list), name
         json.dumps(result)
+
+
+# ── review round: validation, parts, budgets, determinism ───────────────────
+
+CURTAIN_WALL_TYPE = "IfcCurtainWall"
+
+
+def test_an_element_without_a_body_is_framed_by_its_parts(house: SpatialModel, index: ElementIndex) -> None:
+    """The sample house's curtain walls carry no body; their plates and members do.
+    A view framed on the curtain wall must still find it."""
+    walls = [e.GlobalId for e in house.file.by_type(CURTAIN_WALL_TYPE)]
+    assert walls
+    for gid in walls:
+        row = index.row(gid)
+        assert (index.status[row], index.via[row]) == ("ok", "parts")
+        parts = [c.GlobalId for rel in house.file.by_guid(gid).IsDecomposedBy for c in rel.RelatedObjects]
+        union = element_boxes(index, parts).value["union"]
+        assert index.mins[row] == pytest.approx(union["min"]) and index.maxs[row] == pytest.approx(union["max"])
+    boxes = element_boxes(index, walls).value
+    assert boxes["missing"] == [] and all(b["via"] == "parts" for b in boxes["boxes"])
+
+
+def test_an_assembly_against_its_own_parts_is_declared_not_a_clash(house: SpatialModel) -> None:
+    wall = house.file.by_type(CURTAIN_WALL_TYPE)[0]
+    parts = [c.GlobalId for rel in wall.IsDecomposedBy for c in rel.RelatedObjects]
+    answer = clash(house, [wall.GlobalId], parts, mode="intersect")
+    assert answer.value["pairs"] == []
+    assert answer.value["skippedDeclared"] >= 1
+
+
+def test_clash_answers_the_same_whatever_the_order(house: SpatialModel, index: ElementIndex) -> None:
+    ids = [g for g, ok in zip(index.global_ids, index.ok, strict=True) if ok]
+    forward = clash(house, ids, mode="touch").to_dict()
+    backward = clash(house, list(reversed(ids)), mode="touch").to_dict()
+    assert forward["value"]["pairs"] == backward["value"]["pairs"]
+    assert forward["value"]["pairs"], "the invariant is vacuous without pairs"
+    assert all(p["a"] < p["b"] for p in forward["value"]["pairs"])
+    assert forward["value"]["pairs"] == sorted(forward["value"]["pairs"], key=lambda p: (p["a"], p["b"]))
+
+
+def test_clash_past_the_candidate_limit_is_marked_incomplete(
+    house: SpatialModel, index: ElementIndex, monkeypatch
+) -> None:
+    from ifc_spatial import operators_clash
+
+    monkeypatch.setattr(operators_clash, "MAX_CANDIDATE_PAIRS", 3)
+    ids = [g for g, ok in zip(index.global_ids, index.ok, strict=True) if ok]
+    answer = clash(house, ids, mode="touch")
+    assert answer.value["truncated"] is True and answer.value["candidatePairs"] <= 3
+    assert "Incomplete" in answer.caveat
+
+
+def test_clash_past_the_time_budget_is_marked_incomplete(house: SpatialModel, monkeypatch) -> None:
+    from ifc_spatial import operators_clash
+
+    monkeypatch.setattr(operators_clash, "CLASH_BUDGET_SECONDS", 0.0)
+    answer = clash(house, [LIVING], [BEDROOM], mode="clearance", tolerance=0.2)
+    assert answer.value["truncated"] is True and answer.value["pairs"] == []
+
+
+def test_penetrates_gives_up_at_its_deadline_before_any_work(house: SpatialModel) -> None:
+    from ifc_spatial.operators_proximity import _triangles
+    from ifc_spatial.proximity_mesh import penetrates
+
+    tris = _triangles(house, LIVING)
+    assert penetrates(tris, tris, 0.005, deadline=0.0) is None
+
+
+def test_exact_near_a_point_inside_a_body_is_zero(house: SpatialModel, index: ElementIndex) -> None:
+    row = index.row(BEDROOM)
+    inside = (index.mins[row] + index.maxs[row]) / 2.0
+    answer = elements_near(index, point=inside, radius=0.0, model=house)
+    distances = {e["globalId"]: e["distance"] for e in answer.value["elements"]}
+    assert distances.get(BEDROOM) == 0.0
+
+
+def test_exact_near_an_element_inside_another_is_zero(house: SpatialModel) -> None:
+    sofa = sorted(_declared_contents(house, LIVING))[0]
+    answer = elements_near(element_index(house), global_id=sofa, radius=0.0, model=house)
+    assert LIVING in [e["globalId"] for e in answer.value["elements"]]
+
+
+def test_exact_near_out_of_budget_says_so(house: SpatialModel, index: ElementIndex, monkeypatch) -> None:
+    from ifc_spatial import operators_proximity
+
+    monkeypatch.setattr(operators_proximity, "EXACT_BUDGET_SECONDS", 0.0)
+    answer = elements_near(index, global_id=WINDOW, radius=0.05, model=house)
+    assert answer.caveat.startswith("Stopped after")
+    assert answer.value["elements"] == []
+
+
+def test_elements_in_room_out_of_budget_falls_back_to_declared(house: SpatialModel, monkeypatch) -> None:
+    from ifc_spatial import operators_proximity
+
+    monkeypatch.setattr(operators_proximity, "ROOM_BUDGET_SECONDS", -1.0)
+    answer = elements_in_room(house, LIVING)
+    assert answer.provenance == "declared" and answer.value["truncated"] is True
+    assert {e["globalId"] for e in answer.value["elements"]} == _declared_contents(house, LIVING)
+    assert "stopped" in answer.caveat
+
+
+@pytest.mark.parametrize(
+    ("corrupt", "says"),
+    [
+        (lambda d: d["boxes"].__setitem__(_first_ok(d), [True, 0, 0, 1, 1, 1]), "numbers"),
+        (lambda d: d["boxes"].__setitem__(_first_ok(d), None), "must have a box"),
+        (lambda d: d["centroids"].__setitem__(_first_ok(d), None), "must have a box"),
+        (lambda d: d["boxes"].__setitem__(_first_ok(d), [1, 1, 1, 0, 0, 0]), "max below min"),
+        (lambda d: d["boxes"].__setitem__(_first_bad(d), [0, 0, 0, 1, 1, 1]), "must have no box"),
+        (lambda d: d["globalIds"].__setitem__(1, d["globalIds"][0]), "unique"),
+        (lambda d: d["globalIds"].__setitem__(0, 7), "non-empty string"),
+        (lambda d: d["status"].__setitem__(0, "fine"), "status must be one of"),
+        (lambda d: d["via"].__setitem__(0, "magic"), "via must be"),
+        (lambda d: d.pop("via"), "column via"),
+    ],
+)
+def test_a_corrupted_index_is_refused(index: ElementIndex, corrupt, says: str) -> None:
+    data = json.loads(index.to_json())
+    corrupt(data)
+    with pytest.raises(IndexFormatError, match=says):
+        ElementIndex.from_dict(data)
+
+
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
+def test_non_finite_numbers_in_index_json_are_refused(index: ElementIndex, literal: str) -> None:
+    data = json.loads(index.to_json())
+    row = _first_ok(data)
+    text = json.dumps(data).replace(json.dumps(data["boxes"][row]), f"[{literal}, 0, 0, 1, 1, 1]", 1)
+    with pytest.raises(IndexFormatError, match="finite"):
+        ElementIndex.from_json(text)
+
+
+def test_the_index_never_writes_non_finite_json(index: ElementIndex) -> None:
+    text = index.to_json()
+    assert "NaN" not in text and "Infinity" not in text
+
+
+def _first_ok(data: dict) -> int:
+    return data["status"].index("ok")
+
+
+def _first_bad(data: dict) -> int:
+    return next(i for i, s in enumerate(data["status"]) if s != "ok")
+
+
+def test_a_global_id_two_products_share_is_flagged_not_boxed(tmp_path: Path) -> None:
+    target = tmp_path / "duplicate.ifc"
+    model = ifcopenshell.open(str(BASEMENT))
+    model.by_guid(BASEMENT_SLAB).GlobalId = BASEMENT_ROOM
+    model.write(str(target))
+    index = build_index(SpatialModel(str(target)))
+    assert index.global_ids.count(BASEMENT_ROOM) == 1
+    row = index.row(BASEMENT_ROOM)
+    assert index.status[row] == "duplicate-global-id"
+    assert element_boxes(index, [BASEMENT_ROOM]).value["missing"] == [
+        {"globalId": BASEMENT_ROOM, "reason": "duplicate-global-id"}
+    ]
+    ElementIndex.from_json(index.to_json())
