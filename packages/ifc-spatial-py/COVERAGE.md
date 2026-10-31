@@ -94,6 +94,20 @@ implementation, and the port uses it (and says so in the docstring).
 | `mcp/` (tool server) | — | **not available** | ours |
 | `envelope.ts` | — | **not available, and must not be** | this is the product. Ported verbatim, German wording included |
 
+### Locating (this engine only)
+
+No TS counterpart: the TS package has no per-element boxes beyond its truncated pass. These exist for model
+collaboration (framing a view on a set of GlobalIds, clash and revision questions) and are the one geometry
+implementation the BFF, the agent's native tool and the MCP door share.
+
+| operator | built on | note |
+|---|---|---|
+| `element_index.ElementIndex` | `geom.iterator` (the geometry pass) + `storey_of` | one row per `IfcProduct`: box, centroid, storey, status `ok`/`no-representation`/`empty-mesh`/`shape-failed`; columnar JSON, schema `ifc-spatial/element-index` v1, 0.1 mm rounding at build so a round trip is exact. Sample house: 75 rows, ~10 KB, built in ~1.9 s (the pass) |
+| `element_boxes`, `group_boxes`, `elements_within`, `elements_near` | the index alone | answer without opening the IFC; `elements_near(exact)` narrows on triangles |
+| `elements_in_room` | containment + centroid-in-solid (ray parity) | each element tagged `declared` / `computed` / `both` |
+| `neighbours`, `clash` | index broad phase + `clearance._soup_distance` + `proximity_mesh.penetrates` | **never `tree.clash_*`**, which returns `()` on the 0.8.5 wheel. Declared hosting (window in wall) is skipped and counted. Limits: 2 000 ids per set, 20 000 candidate pairs, 2 000 measured pairs, 20 s, then `truncated` |
+| `box_diff` | two indexes | added / removed / moved / resized / unchanged per GlobalId, 5 mm; a shape change inside the same box is not seen |
+
 ---
 
 ## 2. What IfcOpenShell does better — with the measurements
