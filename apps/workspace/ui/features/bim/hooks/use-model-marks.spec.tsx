@@ -355,7 +355,45 @@ describe('a mark on a model and the model’s newer Fassung', () => {
     serve([behind({ carryTarget: { documentId: 'doc-model', documentName: 'tragwerk.ifc', revisionNumber: 4, elements: { present: 0, total: 2 } } })])
     render(<Harness stage={stage()} />)
     act(() => marks().setOpen(true))
-    expect(await screen.findByTestId('mark-carry-count')).toHaveTextContent('Keines der 2 Bauteile in Fassung 4 vorhanden')
+    expect(await screen.findByTestId('mark-carry-count')).toHaveTextContent('Keines der 2 Bauteile ist in Fassung 4 vorhanden')
+  })
+
+  it('says the count is unknown on a model read only in part', async () => {
+    serve([
+      behind({
+        carryTarget: { documentId: 'doc-model', documentName: 'tragwerk.ifc', revisionNumber: 4, elements: { present: 1, total: 3, complete: false } },
+      }),
+    ])
+    render(<Harness stage={stage()} />)
+    act(() => marks().setOpen(true))
+    expect(await screen.findByTestId('mark-carry-count')).toHaveTextContent('Anzahl unbekannt, 1 von 3 gefunden')
+  })
+
+  it('names the mark on its carry button, for a reader who hears the list', async () => {
+    serve([behind()])
+    render(<Harness stage={stage()} />)
+    act(() => marks().setOpen(true))
+    expect(await screen.findByTestId('mark-carry-button')).toHaveAccessibleName('Anmerkung 4 übernehmen')
+  })
+
+  it('says the new Fassung is still being read when the server says so, and adds nothing to a conflict', async () => {
+    let answer = { status: 422, reason: 'model_not_ready' }
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', () =>
+        HttpResponse.json({ error: 'not read yet', code: 'UNPROCESSABLE', details: { reason: answer.reason } }, { status: answer.status })
+      )
+    )
+    serve([behind()])
+    render(<Harness stage={stage()} />)
+    act(() => marks().setOpen(true))
+    await userEvent.click(await screen.findByTestId('mark-carry-button'))
+    expect(await screen.findByTestId('marks-notice')).toHaveTextContent('wird noch gelesen')
+    act(() => marks().dismissNotice())
+
+    answer = { status: 409, reason: 'conflict' }
+    await userEvent.click(screen.getByTestId('mark-carry-button'))
+    await waitFor(() => expect(screen.getByTestId('mark-carry-button')).not.toBeDisabled())
+    expect(screen.queryByTestId('marks-notice')).not.toBeInTheDocument()
   })
 })
 

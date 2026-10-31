@@ -15,7 +15,7 @@ export const MAX_PINNED_MARKS = 100
  * A mark in a list carries only a short summary; the camera, the cut and the
  * pin are `GET …/viewpoint`. A viewpoint never changes once set (migration
  * 0193), so a read is kept for the life of the stage; only a carry puts a mark
- * on a new one (0195), and `forget` drops what was kept for it.
+ * on a new one (0194), and `forget` drops what was kept for it.
  * `want` names the marks whose pins are drawn; `read` fetches one now (a jump).
  */
 export function useMarkViewpoints(documentId: string | null, want: readonly string[]) {

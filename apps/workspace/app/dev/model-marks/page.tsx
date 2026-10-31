@@ -101,7 +101,7 @@ const MARKS: AnnotationView[] = [
     status: 'open',
     body: 'Ist die Brüstungshöhe im Schnitt richtig dargestellt?',
     viewpoint: { id: 'vp-2', cameraKind: 'orthographic', selectionCount: 0, hasSection: false, hasSnapshot: false },
-    // Set on Fassung 3; the model is at Fassung 4 now: the count and „übernehmen“ (migration 0195).
+    // Set on Fassung 3; the model is at Fassung 4 now: the count and „übernehmen“ (migration 0194).
     revisionNumber: 3,
     onCurrentRevision: false,
     carryTarget: { documentId: DOCUMENT_ID, documentName: 'Tragwerk.ifc', revisionNumber: 4, elements: { present: 3, total: 3 } },

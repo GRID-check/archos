@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDocumentReview } from '@/features/documents'
+import { AnnotationRequestError } from '@/lib/annotations/client'
 import { isLive, type AnnotationView } from '@/lib/annotations/types'
 import type { ViewpointInput, ViewpointView } from '@/lib/annotations/viewpoint-types'
 import type { ModelStageController } from '../components/use-model-stage-controller'
@@ -28,6 +29,7 @@ export type MarksNotice =
   | { kind: 'captureFailed' }
   | { kind: 'jumpFailed' }
   | { kind: 'carryFailed' }
+  | { kind: 'carryNotReady' }
   | { kind: 'cut'; notices: CaptureNotices }
 
 /** The wire's input for a stored viewpoint: `GET` says `pin: null` where the request says nothing. */
@@ -159,9 +161,11 @@ export function useModelMarks(controller: ModelMarksStage) {
       try {
         await review.carry(annotation)
         forget(annotation.id)
-      } catch {
-        // A colleague's move first is the review's own conflict notice; anything else is said here.
-        setNotice({ kind: 'carryFailed' })
+      } catch (error) {
+        // A colleague's move first is the review's own conflict notice, said once, there.
+        if (error instanceof AnnotationRequestError && error.status === 409) return
+        const notReady = error instanceof AnnotationRequestError && error.reason === 'model_not_ready'
+        setNotice({ kind: notReady ? 'carryNotReady' : 'carryFailed' })
       }
     },
     [review, forget]

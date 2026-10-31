@@ -28,6 +28,8 @@ function noticeLines(notice: MarksNotice | null): { key: string; values?: Record
       return [{ key: 'marks.notice.jumpFailed' }]
     case 'carryFailed':
       return [{ key: 'marks.notice.carryFailed' }]
+    case 'carryNotReady':
+      return [{ key: 'marks.notice.carryNotReady' }]
     case 'cut':
       return [
         ...(notice.notices.selectionCut ? [{ key: 'marks.notice.selectionCut' }] : []),

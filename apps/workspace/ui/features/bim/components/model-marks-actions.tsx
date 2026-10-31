@@ -20,6 +20,21 @@ import { bcf3ExportHref } from '@/lib/bim/bcf3-wire'
 import { downloadFetched } from '@/lib/browser-download'
 import type { ModelMarks } from '../hooks/use-model-marks'
 
+type Translate = (key: string, values?: Record<string, string | number>) => string
+
+/**
+ * The count line: how many of the mark's elements the Fassung it lands on has.
+ * On a model read only in part (`complete: false`) a GlobalId not found may be
+ * in the part not stored, so the count is unknown unless every one was found.
+ */
+function carryLine(t: Translate, elements: NonNullable<NonNullable<AnnotationView['carryTarget']>['elements']>, where: string): string {
+  const { present, total } = elements
+  if (total === 0) return t('marks.carry.wholeView', { where })
+  if (elements.complete === false && present < total) return t('marks.carry.unknown', { present, total, where })
+  if (present === 0) return t('marks.carry.none', { total, where })
+  return t('marks.carry.present', { present, total, where })
+}
+
 /**
  * Where a mark on a model stands against the model's newer Fassung, under its
  * row and above its thread: how many of its elements that Fassung still has,
@@ -53,11 +68,7 @@ export function ModelMarkCarry({ marks, annotation }: { marks: ModelMarks; annot
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <p className="flex items-start gap-1.5" data-testid="mark-carry-count">
             <History className="mt-1 size-3 shrink-0" aria-hidden />
-            {elements.total === 0
-              ? t('marks.carry.wholeView', { where })
-              : elements.present === 0
-                ? t('marks.carry.none', { total: elements.total, where })
-                : t('marks.carry.present', { present: elements.present, total: elements.total, where })}
+            {carryLine(t, elements, where)}
           </p>
           <Button
             type="button"
@@ -66,6 +77,7 @@ export function ModelMarkCarry({ marks, annotation }: { marks: ModelMarks; annot
             className="h-6 px-2 text-xs"
             disabled={busy}
             data-testid="mark-carry-button"
+            aria-label={t('marks.carry.buttonLabel', { number: annotation.number })}
             onClick={() => void carry()}
           >
             {t('marks.carry.button')}
