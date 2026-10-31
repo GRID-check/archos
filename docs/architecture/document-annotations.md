@@ -755,7 +755,7 @@ same in any viewer; the viewer converts to and from its own frame
   thread says „über BCF-Import von …, im Original vom …“ under it (Piloti's
   list says it too). A topic closed in the file arrives closed by the importer.
   Each Zuständige gets one counted inbox row per import, not one per mark. `source_topic_guid` (unique per
-  document) and `import_batch_id` (migration 0196) make a second import skip
+  document) and `import_batch_id` (migration 0195) make a second import skip
   what is there and give a later triage its batch. The archive is read with
   every bound checked and the XML without ever resolving a DTD or an entity
   (`bff/bim/bcf-archive.ts`, `bcf-xml.ts`, `bcf-read.ts`, mapping in
@@ -1154,7 +1154,7 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `piloti.revision_checked` | Piloti compared a new Fassung unasked and proposed marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.md)); anchored on the first mark | the person whose upload or link made the Fassung | no |
 | `annotation.assigned_to_you` | a person made someone Zuständige of an open mark (setting it, changing it, taking over Piloti's proposal that names one, or carrying it on to a replacing document), or Piloti did for the person its turn acted for | the new Zuständige, unless they did it themselves | yes |
 | `annotation.assigned_to_you`, variants `due` / `due_cleared` (`…_piloti`) | someone set, moved or cleared the date of an open mark whose Zuständige stays (a date that comes with a new Zuständige is their assignment) | the Zuständige, unless they did it, in the row they have for the mark | yes |
-| `annotation.assigned_to_you`, variant `imported` | a BCF import made someone Zuständige of open marks (`bff/annotations/import-attention.ts`) | each Zuständige but the importer: ONE row per import counting their marks (`occurrences`, folded on `import:<batch>`), anchored on their first mark; closing or handing on that mark settles the row | yes |
+| `annotation.assigned_to_you`, variant `imported` | a BCF import made someone Zuständige of open marks (`bff/annotations/import-attention.ts`) | each Zuständige but the importer: ONE row per import (folded on `import:<batch>`) saying how many of their marks are open (`openMarks`), anchored on their first; closing, handing on or deleting that mark moves the row onto their next open mark of the import (`bff/annotations/import-rows.ts`), and it is settled when none remains; a day's bundled push counts it as assigned | yes |
 | `annotation.assigned_to_you`, variants `due_soon` / `overdue` | the daily reminder: the Frist is today or tomorrow, or it has passed (below) | the Zuständige, while they may open the document; once per reminder and date, the overdue one upgrading the same row | yes |
 | `annotation.mentioned` | a person @mentioned someone in a mark's text (setting it, or a `body` that adds them) or in a reply | each person mentioned anew who may open the document, minus whoever wrote it, minus a Zuständige the same write made responsible (who has `annotation.assigned_to_you`) | yes |
 | `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted, minus whom the reply mentions (one row for one reply: the mention) | no |

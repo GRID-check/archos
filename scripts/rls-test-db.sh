@@ -2684,6 +2684,7 @@ apply_in carry_0194 0194_viewpoint_carry.sql
 check_in carry_0194 "SELECT count(*) FROM document_annotations" "2" "0194 re-applies, twice"
 echo "==> 0194 viewpoint carry and down migration verified"
 # Migration 0196: a mark imported from a BCF file remembers its topic and its
+# Migration 0195: a mark imported from a BCF file remembers its topic and its
 # import, and the DOWN.
 #
 # On a database of its own, migrated to 0193. The marks written before carry
@@ -2691,46 +2692,46 @@ echo "==> 0194 viewpoint carry and down migration verified"
 # topic twice on one model is refused, on another model it is not; the down
 # keeps the imported marks and drops only the memory; the up re-applies, twice.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0196 BCF topic memory and its down migration on bcf_import_0196"
-migrate_until bcf_import_0196 0193_annotation_viewpoints
-sql_in bcf_import_0196 <<'SQL'
+echo "==> verifying the 0195 BCF topic memory and its down migration on bcf_import_0195"
+migrate_until bcf_import_0195 0193_annotation_viewpoints
+sql_in bcf_import_0195 <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000196', 'org_0196', 'Modell 0196', 'user_1', 'proj_0196');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000195', 'org_0195', 'Modell 0195', 'user_1', 'proj_0195');
 INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
-VALUES ('d1d1d1d1-0000-4000-8000-000000000196', 'org_0196', 'user_1', 'Haus.ifc', 'k/0196/a', 'proj_0196', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000196'),
-       ('d2d2d2d2-0000-4000-8000-000000000196', 'org_0196', 'user_1', 'Haus TWP.ifc', 'k/0196/b', 'proj_0196', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000196');
+VALUES ('d1d1d1d1-0000-4000-8000-000000000195', 'org_0195', 'user_1', 'Haus.ifc', 'k/0195/a', 'proj_0195', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000195'),
+       ('d2d2d2d2-0000-4000-8000-000000000195', 'org_0195', 'user_1', 'Haus TWP.ifc', 'k/0195/b', 'proj_0195', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000195');
 INSERT INTO annotation_viewpoints (id, organization_id, document_id, camera_kind, camera, created_by)
-VALUES ('a1a1a1a1-0000-4000-8000-000000000196', 'org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 'perspective', '{"type":"perspective"}', 'user_1'),
-       ('a2a2a2a2-0000-4000-8000-000000000196', 'org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 'perspective', '{"type":"perspective"}', 'user_1'),
-       ('a3a3a3a3-0000-4000-8000-000000000196', 'org_0196', 'd2d2d2d2-0000-4000-8000-000000000196', 'perspective', '{"type":"perspective"}', 'user_1'),
-       ('a4a4a4a4-0000-4000-8000-000000000196', 'org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 'perspective', '{"type":"perspective"}', 'user_1');
+VALUES ('a1a1a1a1-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 'perspective', '{"type":"perspective"}', 'user_1'),
+       ('a2a2a2a2-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 'perspective', '{"type":"perspective"}', 'user_1'),
+       ('a3a3a3a3-0000-4000-8000-000000000195', 'org_0195', 'd2d2d2d2-0000-4000-8000-000000000195', 'perspective', '{"type":"perspective"}', 'user_1'),
+       ('a4a4a4a4-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 'perspective', '{"type":"perspective"}', 'user_1');
 INSERT INTO document_annotations (id, organization_id, document_id, number, anchor_kind, viewpoint_id, kind, body, author_kind, status, created_by)
-VALUES ('f1f1f1f1-0000-4000-8000-000000000196', 'org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 1, 'viewpoint', 'a1a1a1a1-0000-4000-8000-000000000196', 'defect', 'Sturz fehlt', 'person', 'open', 'user_1');
+VALUES ('f1f1f1f1-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 1, 'viewpoint', 'a1a1a1a1-0000-4000-8000-000000000195', 'defect', 'Sturz fehlt', 'person', 'open', 'user_1');
 SQL
-apply_in bcf_import_0196 0196_annotation_bcf_import.sql
-check_in bcf_import_0196 "SELECT count(*) FROM document_annotations WHERE source_topic_guid IS NULL AND import_batch_id IS NULL" "1" "a mark written before 0196 carries no topic"
-sql_in bcf_import_0196 <<'SQL'
+apply_in bcf_import_0195 0195_annotation_bcf_import.sql
+check_in bcf_import_0195 "SELECT count(*) FROM document_annotations WHERE source_topic_guid IS NULL AND import_batch_id IS NULL" "1" "a mark written before 0195 carries no topic"
+sql_in bcf_import_0195 <<'SQL'
 INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, viewpoint_id, kind, body, author_kind, status, created_by, source_topic_guid, import_batch_id)
-VALUES ('org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 2, 'viewpoint', 'a2a2a2a2-0000-4000-8000-000000000196', 'defect', 'Durchbruch fehlt', 'person', 'open', 'user_1', 'c0c0c0c0-0000-4000-8000-000000000196', 'b0b0b0b0-0000-4000-8000-000000000196'),
-       ('org_0196', 'd2d2d2d2-0000-4000-8000-000000000196', 1, 'viewpoint', 'a3a3a3a3-0000-4000-8000-000000000196', 'defect', 'Durchbruch fehlt', 'person', 'open', 'user_1', 'c0c0c0c0-0000-4000-8000-000000000196', 'b0b0b0b0-0000-4000-8000-000000000196');
+VALUES ('org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 2, 'viewpoint', 'a2a2a2a2-0000-4000-8000-000000000195', 'defect', 'Durchbruch fehlt', 'person', 'open', 'user_1', 'c0c0c0c0-0000-4000-8000-000000000195', 'b0b0b0b0-0000-4000-8000-000000000195'),
+       ('org_0195', 'd2d2d2d2-0000-4000-8000-000000000195', 1, 'viewpoint', 'a3a3a3a3-0000-4000-8000-000000000195', 'defect', 'Durchbruch fehlt', 'person', 'open', 'user_1', 'c0c0c0c0-0000-4000-8000-000000000195', 'b0b0b0b0-0000-4000-8000-000000000195');
 SQL
-check_in bcf_import_0196 "SELECT count(*) FROM document_annotations WHERE source_topic_guid = 'c0c0c0c0-0000-4000-8000-000000000196'" "2" "the same topic is a mark on each of two models"
-refused_in bcf_import_0196 "INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, viewpoint_id, kind, body, author_kind, status, created_by, source_topic_guid, import_batch_id) VALUES ('org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 3, 'viewpoint', 'a4a4a4a4-0000-4000-8000-000000000196', 'hint', 'x', 'person', 'open', 'user_1', 'C0C0C0C0-0000-4000-8000-000000000196', 'b1b1b1b1-0000-4000-8000-000000000196')" "uniq_document_annotations_source_topic" "the same topic, in capitals, became a second mark on one model"
-refused_in bcf_import_0196 "INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, source_topic_guid, import_batch_id) VALUES ('org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 3, 1, 'point', 0.5, 0.5, 'hint', 'x', 'person', 'open', 'user_1', 'c1c1c1c1-0000-4000-8000-000000000196', 'b1b1b1b1-0000-4000-8000-000000000196')" "document_annotations_import_is_viewpoint" "an imported mark sat on a page"
-refused_in bcf_import_0196 "UPDATE document_annotations SET import_batch_id = NULL WHERE number = 2" "document_annotations_import_complete" "an imported mark lost its batch"
-refused_in bcf_import_0196 "UPDATE document_annotations SET import_batch_id = 'b2b2b2b2-0000-4000-8000-000000000196' WHERE number = 1 AND document_id = 'd1d1d1d1-0000-4000-8000-000000000196'" "document_annotations_import_complete" "a batch without a topic"
-sql_in bcf_import_0196 <<'SQL'
+check_in bcf_import_0195 "SELECT count(*) FROM document_annotations WHERE source_topic_guid = 'c0c0c0c0-0000-4000-8000-000000000195'" "2" "the same topic is a mark on each of two models"
+refused_in bcf_import_0195 "INSERT INTO document_annotations (organization_id, document_id, number, anchor_kind, viewpoint_id, kind, body, author_kind, status, created_by, source_topic_guid, import_batch_id) VALUES ('org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 3, 'viewpoint', 'a4a4a4a4-0000-4000-8000-000000000195', 'hint', 'x', 'person', 'open', 'user_1', 'C0C0C0C0-0000-4000-8000-000000000195', 'b1b1b1b1-0000-4000-8000-000000000195')" "uniq_document_annotations_source_topic" "the same topic, in capitals, became a second mark on one model"
+refused_in bcf_import_0195 "INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, source_topic_guid, import_batch_id) VALUES ('org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 3, 1, 'point', 0.5, 0.5, 'hint', 'x', 'person', 'open', 'user_1', 'c1c1c1c1-0000-4000-8000-000000000195', 'b1b1b1b1-0000-4000-8000-000000000195')" "document_annotations_import_is_viewpoint" "an imported mark sat on a page"
+refused_in bcf_import_0195 "UPDATE document_annotations SET import_batch_id = NULL WHERE number = 2" "document_annotations_import_complete" "an imported mark lost its batch"
+refused_in bcf_import_0195 "UPDATE document_annotations SET import_batch_id = 'b2b2b2b2-0000-4000-8000-000000000195' WHERE number = 1 AND document_id = 'd1d1d1d1-0000-4000-8000-000000000195'" "document_annotations_import_complete" "a batch without a topic"
+sql_in bcf_import_0195 <<'SQL'
 INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, import_batch_id, imported_by, source_date)
-SELECT 'org_0196', id, 'person', 'Bitte prüfen.', 'user_2', 'b0b0b0b0-0000-4000-8000-000000000196', 'user_1', '2026-10-20T08:00:00Z' FROM document_annotations WHERE number = 2;
+SELECT 'org_0195', id, 'person', 'Bitte prüfen.', 'user_2', 'b0b0b0b0-0000-4000-8000-000000000195', 'user_1', '2026-10-20T08:00:00Z' FROM document_annotations WHERE number = 2;
 SQL
-check_in bcf_import_0196 "SELECT count(*) FROM document_annotation_replies WHERE imported_by = 'user_1' AND source_date IS NOT NULL" "1" "an imported reply keeps its importer and its own date"
-refused_in bcf_import_0196 "INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, import_batch_id) SELECT 'org_0196', id, 'person', 'x', 'user_2', 'b0b0b0b0-0000-4000-8000-000000000196' FROM document_annotations WHERE number = 2" "document_annotation_replies_import_complete" "an imported reply without its importer"
-refused_in bcf_import_0196 "INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, source_date) SELECT 'org_0196', id, 'person', 'x', 'user_2', now() FROM document_annotations WHERE number = 2" "document_annotation_replies_import_complete" "a reply written here claiming an original date"
-apply_in bcf_import_0196 0196_annotation_bcf_import.down.sql
-check_in bcf_import_0196 "SELECT count(*) FROM information_schema.columns WHERE table_name IN ('document_annotations', 'document_annotation_replies') AND column_name IN ('source_topic_guid', 'import_batch_id', 'imported_by', 'source_date')" "0" "down dropped every column it added"
-check_in bcf_import_0196 "SELECT count(*) FROM document_annotation_replies" "1" "down kept the imported reply"
-check_in bcf_import_0196 "SELECT count(*) FROM document_annotations" "3" "down kept the imported marks"
-apply_in bcf_import_0196 0196_annotation_bcf_import.sql
-apply_in bcf_import_0196 0196_annotation_bcf_import.sql
-check_in bcf_import_0196 "SELECT count(*) FROM pg_indexes WHERE indexname IN ('uniq_document_annotations_source_topic', 'idx_document_annotations_import_batch')" "2" "0196 re-applies, twice"
-echo "==> 0196 BCF topic memory and down migration verified"
+check_in bcf_import_0195 "SELECT count(*) FROM document_annotation_replies WHERE imported_by = 'user_1' AND source_date IS NOT NULL" "1" "an imported reply keeps its importer and its own date"
+refused_in bcf_import_0195 "INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, import_batch_id) SELECT 'org_0195', id, 'person', 'x', 'user_2', 'b0b0b0b0-0000-4000-8000-000000000195' FROM document_annotations WHERE number = 2" "document_annotation_replies_import_complete" "an imported reply without its importer"
+refused_in bcf_import_0195 "INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, source_date) SELECT 'org_0195', id, 'person', 'x', 'user_2', now() FROM document_annotations WHERE number = 2" "document_annotation_replies_import_complete" "a reply written here claiming an original date"
+apply_in bcf_import_0195 0195_annotation_bcf_import.down.sql
+check_in bcf_import_0195 "SELECT count(*) FROM information_schema.columns WHERE table_name IN ('document_annotations', 'document_annotation_replies') AND column_name IN ('source_topic_guid', 'import_batch_id', 'imported_by', 'source_date')" "0" "down dropped every column it added"
+check_in bcf_import_0195 "SELECT count(*) FROM document_annotation_replies" "1" "down kept the imported reply"
+check_in bcf_import_0195 "SELECT count(*) FROM document_annotations" "3" "down kept the imported marks"
+apply_in bcf_import_0195 0195_annotation_bcf_import.sql
+apply_in bcf_import_0195 0195_annotation_bcf_import.sql
+check_in bcf_import_0195 "SELECT count(*) FROM pg_indexes WHERE indexname IN ('uniq_document_annotations_source_topic', 'idx_document_annotations_import_batch')" "2" "0195 re-applies, twice"
+echo "==> 0195 BCF topic memory and down migration verified"

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * Marks imported from a BCF file (migration 0196) against a REAL Postgres
+ * Marks imported from a BCF file (migration 0195) against a REAL Postgres
  * through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
@@ -16,7 +16,9 @@
  *     model it is a mark of its own;
  *   - the model's imported guids are read back for the skip;
  *   - an imported mark without a viewpoint, or with a guid and no batch, is
- *     refused by the CHECKs.
+ *     refused by the CHECKs;
+ *   - a person's hand-over row of one import moves to their next open mark
+ *     of it when its mark is closed, and is settled when none remains.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
  */
@@ -26,6 +28,7 @@ import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
+vi.mock('@/lib/events/bus', () => ({ publishToUser: vi.fn().mockResolvedValue(undefined) }))
 
 const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
@@ -45,6 +48,7 @@ describe.skipIf(!url)('imported marks against live Postgres', () => {
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let imports: typeof import('./import-repository')
   let repo: typeof import('./repository')
+  let rows: typeof import('./import-rows')
   const ids = { project: '', model: '', other: '' }
 
   const inOrg = <T>(run: () => PromiseLike<T>) => withTenant({ organizationId: ORG, userId: USER }, run)
@@ -109,6 +113,7 @@ describe.skipIf(!url)('imported marks against live Postgres', () => {
     db = (await import('@/lib/db')).getDb()
     imports = await import('./import-repository')
     repo = await import('./repository')
+    rows = await import('./import-rows')
     ids.project = first(
       await inOrg(() =>
         db.execute<{ id: string }>(sql`
@@ -122,6 +127,7 @@ describe.skipIf(!url)('imported marks against live Postgres', () => {
 
   afterAll(async () => {
     if (!db) return
+    await inOrg(() => db.execute(sql`delete from inbox_items where organization_id = ${ORG}`))
     await inOrg(() => db.execute(sql`delete from documents where organization_id = ${ORG}`))
     await inOrg(() => db.execute(sql`delete from projects where organization_id = ${ORG}`))
   })
@@ -194,5 +200,49 @@ describe.skipIf(!url)('imported marks against live Postgres', () => {
       inOrg(() => db.execute(sql`update document_annotation_replies set imported_by = null where id = ${replyId}::uuid`))
     )
     expect(anonymous).toMatch(/document_annotation_replies_import_complete/)
+  })
+
+  it('keeps a person’s hand-over row of an import standing on their next open mark until none remains', async () => {
+    const batch = randomUUID()
+    const assigned = async () => {
+      const row = await insert(ids.model, randomUUID(), 'open', batch)
+      await inOrg(() => db.execute(sql`update document_annotations set assignee_user_id = ${OTHER_USER} where id = ${row.id}::uuid`))
+      return row
+    }
+    const first = await assigned()
+    const second = await assigned()
+    const groupKey = `annotation.assigned_to_you:document:${ids.model}:import:${batch}`
+    await inOrg(() =>
+      db.execute(sql`
+        insert into inbox_items (organization_id, recipient_user_id, type, resource_type, resource_id, anchor_id, group_key,
+                                 actionable, count, payload)
+        values (${ORG}, ${OTHER_USER}, 'annotation.assigned_to_you', 'document', ${ids.model}, ${first.id}, ${groupKey},
+                true, 2, ${JSON.stringify({ subject: 'Haus.ifc', related: String(first.number), openMarks: 2 })}::jsonb)`)
+    )
+    const read = async () =>
+      Array.from(
+        await inOrg(() =>
+          db.execute<{ anchor_id: string; resolved: boolean; payload: Record<string, unknown> }>(sql`
+            select anchor_id, resolved_at is not null as resolved, payload from inbox_items
+            where organization_id = ${ORG} and group_key = ${groupKey}`)
+        )
+      )[0]
+    const close = async (id: string) => {
+      await inOrg(() =>
+        db.execute(sql`update document_annotations set status = 'resolved', closed_by = ${USER}, closed_at = now() where id = ${id}::uuid`)
+      )
+      await inOrg(() => rows.resolveInboxItemsAnchoredOn({ organizationId: ORG, types: ['annotation.assigned_to_you'], anchorId: id }))
+    }
+
+    await close(first.id)
+    const moved = await read()
+    expect(moved.resolved).toBe(false)
+    expect(moved.anchor_id).toBe(second.id)
+    expect(moved.payload).toMatchObject({ subject: 'Haus.ifc', related: String(second.number), openMarks: 1 })
+
+    await close(second.id)
+    const settled = await read()
+    expect(settled.resolved).toBe(true)
+    expect(settled.anchor_id).toBe(second.id)
   })
 })

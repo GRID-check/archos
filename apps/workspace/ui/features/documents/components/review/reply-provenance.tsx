@@ -6,7 +6,7 @@ import { filesCopy } from '@/i18n/namespaces/files'
 import type { AnnotationReplyView } from '@/lib/annotations/types'
 
 /**
- * The line under a reply a BCF import brought in (migration 0196): who
+ * The line under a reply a BCF import brought in (migration 0195): who
  * imported it and, where the file said, the comment's own date. A colleague's
  * comment in a coordination file is theirs, but not something they wrote here.
  */

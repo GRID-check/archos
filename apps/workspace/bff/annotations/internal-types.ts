@@ -162,7 +162,7 @@ export const internalAnnotationSchema = z.object({
       authorKind: z.enum(ANNOTATION_AUTHORS),
       body: z.string(),
       createdByName: z.string().nullable(),
-      /** From a BCF file (migration 0196): who imported it and the comment's own date. A colleague's comment there is not something they wrote here. */
+      /** From a BCF file (migration 0195): who imported it and the comment's own date. A colleague's comment there is not something they wrote here. */
       imported: z.object({ byName: z.string().nullable(), originalDate: z.string().nullable() }).nullable().optional(),
     })
   ),

@@ -1,4 +1,4 @@
--- Reverse 0196. The imported marks and replies stay, as ordinary ones: only the
+-- Reverse 0195. The imported marks and replies stay, as ordinary ones: only the
 -- memory of which topic and which import they came from goes, so a later import
 -- of the same file would set them again, and an imported reply no longer says so.
 ALTER TABLE "document_annotation_replies" DROP CONSTRAINT IF EXISTS "document_annotation_replies_import_complete";

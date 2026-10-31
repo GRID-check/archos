@@ -599,11 +599,11 @@ export const collaboration: typeof en.collaboration = {
         // Erinnerung, ohne {actor}, in derselben Zeile der Anmerkung.
         variants: {
           imported: {
-            title: '{actor} hat Ihnen Anmerkungen aus einer BCF-Datei zugewiesen',
-            titleRelated: '{actor} hat Ihnen Anmerkungen aus einer BCF-Datei in „{subject}“ zugewiesen',
-            titleRelatedMany: '{actor} hat Ihnen {count} Anmerkungen aus einer BCF-Datei in „{subject}“ zugewiesen',
-            titleRelatedNoSubject: '{actor} hat Ihnen Anmerkungen aus einer BCF-Datei zugewiesen',
-            body: 'Sie sind dafür zuständig. Die Liste am Modell zeigt alle; die Zeile öffnet die erste.',
+            title: '{actor} hat Ihnen {marks, plural, one {eine Anmerkung} other {# Anmerkungen}} aus einer BCF-Datei zugewiesen',
+            titleRelated: '{actor} hat Ihnen {marks, plural, one {eine Anmerkung} other {# Anmerkungen}} aus einer BCF-Datei in „{subject}“ zugewiesen',
+            titleRelatedNoSubject: '{actor} hat Ihnen {marks, plural, one {eine Anmerkung} other {# Anmerkungen}} aus einer BCF-Datei zugewiesen',
+            titleResolved: 'Die Anmerkungen aus der BCF-Datei, die {actor} Ihnen zugewiesen hat, sind erledigt',
+            body: 'Sie sind dafür zuständig; {marks, plural, one {sie ist} other {# sind}} noch offen. Die Zeile öffnet die nächste.',
           },
           piloti: {
             title: '{productName} hat Ihnen für {actor} eine Anmerkung zugewiesen',

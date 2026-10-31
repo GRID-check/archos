@@ -11,6 +11,11 @@ vi.mock('@/lib/inbox/service', () => ({
   retractInboxOccurrenceAnchoredOn: vi.fn(),
   rewriteInboxPayloadsAnchoredOn: vi.fn(),
 }))
+// The import's row keeper wraps these two; its own spec is `import-rows.spec.ts`. Here they pass straight through.
+vi.mock('./import-rows', async () => {
+  const inbox = await import('@/lib/inbox/service')
+  return { resolveInboxItemsAnchoredOn: inbox.resolveInboxItemsAnchoredOn, markInboxItemsInertAnchoredOn: inbox.markInboxItemsInertAnchoredOn }
+})
 vi.mock('./repository', () => ({ findDocumentAnnotation: vi.fn() }))
 vi.mock('@/lib/assignments/repository', () => ({ listAssignmentsForResources: vi.fn() }))
 vi.mock('@/lib/sharing/registry', () => ({ describeResource: vi.fn() }))

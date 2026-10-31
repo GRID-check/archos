@@ -226,7 +226,7 @@ Anmerkung; the mapping is the export's, reversed (`bcf-import-map.ts`):
 | `Comment` | a reply by its author where the email may open the document, marked as imported (importer, batch, the comment's own date shown as „im Original vom …“); it arrives at the import's time | the importer's reply, the author's name in the text |
 | first `Viewpoint` | `annotation_viewpoints`: either camera, ≤ 6 planes, ≤ 500 selected (those the model has), ≤ 2000 exceptions, colouring, snapshot PNG/JPEG ≤ 1.5 MB | a 2.1 camera has no aspect ratio: 16∶9; past a bound the rest is cut and counted in the thread |
 
-The topic's Guid is kept (`source_topic_guid`, migration 0196, unique per
+The topic's Guid is kept (`source_topic_guid`, migration 0195, unique per
 document; a Guid that is no UUID by a UUIDv5 of it), so the same file twice, or
 next round's file that still carries last round's topics, adds nothing; every
 mark of one import shares `import_batch_id`, the unit triage works on. The
@@ -241,8 +241,9 @@ picture past 1.5 MB skipped on its declared size) are bounded (`bcf-archive.ts`)
 which resolves no DTD and no entity beyond XML's five, and a `<!DOCTYPE>` is
 refused outright (`bcf-xml.ts`). A `DueDate` is the day it is in the office's
 time zone (one without an offset read as UTC); a camera whose aspect ratio or
-field of view strays is clamped and noted. Each Zuständige gets one counted
-inbox row per import. The audit event and the counts are written in a
+field of view strays is clamped and noted. Each Zuständige gets one
+inbox row per import, saying how many of their marks remain open and settled only
+when none does. The audit event and the counts are written in a
 `finally`, so an import cut short still says what it wrote; one request carries
 a full document (500 topics, in the order of half a minute), and importing the
 same file again resumes where it stopped. Measured by `annotations_imported`

@@ -7,19 +7,22 @@
  * The row is the type every hand-over uses (`annotation.assigned_to_you`, so it
  * is actionable and pushed as a request), worded by its `imported` variant and
  * folded on the import (`groupAnchor` `import:<batch>`, `occurrences` the
- * count). It anchors on the person's first mark of the import, where its link
- * opens the review; closing or handing on THAT mark settles the row, as it
- * would a single hand-over. Later moves of the other marks speak in rows of
- * their own, as ever, and so does each mark's Frist reminder (`due-reminders.ts`),
- * which the push fold already groups into one notification a day.
+ * count, `openMarks` how many are open for them). It anchors on the person's
+ * first mark of the import, where its link opens the review. Closing, handing
+ * on or deleting that mark moves the row onto their next open one and counts
+ * one less; it is settled only when none remain (`./import-rows.ts`). Each
+ * mark's Frist reminder (`due-reminders.ts`) speaks in its own row, which the
+ * push fold groups into one notification a day, counted as assigned.
  */
 
 import 'server-only'
+import { IMPORT_GROUP_ANCHOR } from './import-rows'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
-import { emitAboutMark, excerptOf } from './attention'
+import { emitAboutMark } from './attention'
+import { excerptOf } from './excerpt'
 
 /** The group anchor of one import's hand-over rows. */
-export const IMPORT_GROUP_ANCHOR = 'import:'
+export { IMPORT_GROUP_ANCHOR } from './import-rows'
 
 export interface ImportedAssignment {
   annotationId: string
@@ -61,7 +64,7 @@ export async function onMarksAssignedByImport(input: {
           mentions: [],
           variant: 'imported',
           actorUserId: input.actorUserId,
-          facts: { dueOn: null, reminder: null },
+          facts: { dueOn: null, reminder: null, openMarks: marks.length },
           groupAnchor: `${IMPORT_GROUP_ANCHOR}${input.batchId}`,
           occurrences: marks.length,
         }

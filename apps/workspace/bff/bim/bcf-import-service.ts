@@ -26,7 +26,7 @@
  *
  * ## Once per topic
  *
- * The topic's Guid is kept (`source_topic_guid`, migration 0196) and unique per
+ * The topic's Guid is kept (`source_topic_guid`, migration 0195) and unique per
  * document: importing the file again, or next round's file, skips what is here.
  * Every mark of one import shares `import_batch_id`, the unit a later triage
  * runs over. A topic without a viewpoint is skipped and reported; a later step

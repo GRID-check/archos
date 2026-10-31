@@ -376,6 +376,8 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
           due_soon: 'due_soon',
           person: 'assigned',
           piloti: 'assigned',
+          // A BCF import's hand-over (`lib/annotations/import-attention.ts`): marks assigned, in one counted row.
+          imported: 'assigned',
           due: 'redated',
           due_piloti: 'redated',
           due_cleared: 'redated',

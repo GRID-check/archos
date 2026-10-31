@@ -118,9 +118,9 @@ export const documentAnnotations = pgTable(
     anchorKind: text('anchor_kind').$type<AnnotationAnchor>().notNull().default('page'),
     /** The viewpoint of a mark on a model; with `document_id` it names a viewpoint of the same document. */
     viewpointId: uuid('viewpoint_id'),
-    /** The BCF topic this mark was imported from, unique per document (migration 0196, `lib/bim/bcf-import-service.ts`). */
+    /** The BCF topic this mark was imported from, unique per document (migration 0195, `lib/bim/bcf-import-service.ts`). */
     sourceTopicGuid: uuid('source_topic_guid'),
-    /** The one import that brought it in, shared by every mark of that import (migration 0196). */
+    /** The one import that brought it in, shared by every mark of that import (migration 0195). */
     importBatchId: uuid('import_batch_id'),
   },
   (table) => ({
@@ -269,7 +269,7 @@ export const documentAnnotationReplies = pgTable(
     mentions: jsonb('mentions').$type<MarkMention[]>().notNull().default([]),
     /** When its author last changed its text, by the database's clock; null for one never changed (migration 0152). */
     editedAt: timestamp('edited_at', { withTimezone: true }),
-    /** The BCF import that brought it in, who imported it, and the comment's own date (migration 0196); null for a reply written here. */
+    /** The BCF import that brought it in, who imported it, and the comment's own date (migration 0195); null for a reply written here. */
     importBatchId: uuid('import_batch_id'),
     importedBy: text('imported_by'),
     sourceDate: timestamp('source_date', { withTimezone: true }),

@@ -1,5 +1,5 @@
 /**
- * The SQL of a BCF import (migration 0196): which topics a model already
+ * The SQL of a BCF import (migration 0195): which topics a model already
  * carries, and one imported topic written as a mark on a viewpoint with its
  * thread, in one transaction.
  *
@@ -8,7 +8,7 @@
  */
 
 import 'server-only'
-import { and, eq, isNotNull } from 'drizzle-orm'
+import { and, asc, eq, isNotNull } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
 import { annotationViewpoints } from '@/lib/db/schema/annotation-viewpoints'
@@ -38,6 +38,36 @@ export async function importedTopicGuids(organizationId: string, documentId: str
       .limit(MAX_ANNOTATIONS_PER_DOCUMENT)
   )
   return new Set(rows.flatMap((row) => (row.guid ? [row.guid.toLowerCase()] : [])))
+}
+
+/**
+ * One person's open marks of one import on one document, by number: what an
+ * import's hand-over row still asks of them (`./import-rows.ts`). Bounded by
+ * the document's cap.
+ */
+export async function openImportedMarksOf(input: {
+  organizationId: string
+  documentId: string
+  importBatchId: string
+  assigneeUserId: string
+}): Promise<{ id: string; number: number; body: string }[]> {
+  const db = getDb()
+  return withTenant({ organizationId: input.organizationId }, () =>
+    db
+      .select({ id: documentAnnotations.id, number: documentAnnotations.number, body: documentAnnotations.body })
+      .from(documentAnnotations)
+      .where(
+        and(
+          eq(documentAnnotations.organizationId, input.organizationId),
+          eq(documentAnnotations.documentId, input.documentId),
+          eq(documentAnnotations.importBatchId, input.importBatchId),
+          eq(documentAnnotations.assigneeUserId, input.assigneeUserId),
+          eq(documentAnnotations.status, 'open')
+        )
+      )
+      .orderBy(asc(documentAnnotations.number))
+      .limit(MAX_ANNOTATIONS_PER_DOCUMENT)
+  )
 }
 
 export interface ImportedReply {

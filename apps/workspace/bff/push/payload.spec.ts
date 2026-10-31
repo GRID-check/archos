@@ -120,6 +120,13 @@ describe('one notification for a burst of rows (the fold)', () => {
     })
   })
 
+  it('counts a BCF import’s hand-over as assigned, never as „weitere“', () => {
+    if (!fold) throw new Error('annotation.assigned_to_you folds')
+    expect(buildFoldedPushMessage([mark('a', 'imported'), mark('b', 'due_soon')], fold, DEFAULT_PUSH_PREFERENCES, 'de')).toMatchObject({
+      body: '1 heute oder morgen fällig, 1 zugewiesen',
+    })
+  })
+
   it('names nothing with the preview off, and leaves a single item to its own words', () => {
     if (!fold) throw new Error('annotation.assigned_to_you folds')
     const items = [mark('a', 'due_soon'), mark('b', 'overdue')]

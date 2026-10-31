@@ -237,7 +237,7 @@ export const annotationReplyViewSchema = z.object({
   mentions: z.array(markMentionSchema).optional(),
   /** When its author last reworded it, or null; absent from a server that predates editing (migration 0152). */
   editedAt: z.string().nullable().optional(),
-  /** Brought in by a BCF import (migration 0196): who imported it and the comment's own date; null for a reply written here. */
+  /** Brought in by a BCF import (migration 0195): who imported it and the comment's own date; null for a reply written here. */
   imported: z.object({ byUserId: z.string(), byName: z.string().nullable(), originalDate: z.string().nullable() }).nullable().optional(),
 })
 export type AnnotationReplyView = z.infer<typeof annotationReplyViewSchema>

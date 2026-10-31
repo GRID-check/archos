@@ -64,13 +64,10 @@ import { wakeEndReasonKind } from './wake-end-reason'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES, MARKS_SET_GROUP_ANCHOR } from '@/lib/inbox/registry'
-import {
-  emitInboxItems,
-  markInboxItemsInertAnchoredOn,
-  resolveInboxItemsAnchoredOn,
-  retractInboxOccurrenceAnchoredOn,
-  rewriteInboxPayloadsAnchoredOn,
-} from '@/lib/inbox/service'
+import { emitInboxItems, retractInboxOccurrenceAnchoredOn, rewriteInboxPayloadsAnchoredOn } from '@/lib/inbox/service'
+// Settling or clearing a mark's rows keeps a BCF import's hand-over row standing while marks of it remain.
+import { markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from './import-rows'
+import { excerptOf } from './excerpt'
 import type { DocumentAnnotationReplyRow } from '@/lib/db/schema/document-annotations'
 import type { InboxItemType } from '@/lib/db/schema/inbox'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
@@ -90,14 +87,6 @@ export interface MarkRef {
 /** The payload keys that quote a text: what goes when the text does. */
 const QUOTE_KEYS = ['excerpt', 'mentions'] as const
 
-/** Longest question quoted in a row. */
-const EXCERPT_LENGTH = 160
-
-export function excerptOf(text: string | null | undefined): string | null {
-  const trimmed = text?.replace(/\s+/g, ' ').trim()
-  if (!trimmed) return null
-  return trimmed.length > EXCERPT_LENGTH ? `${trimmed.slice(0, EXCERPT_LENGTH - 1)}…` : trimmed
-}
 
 /** The document's name for the row, or null when it cannot be read (the row then names no file). */
 async function documentName(ref: MarkRef): Promise<string | null> {

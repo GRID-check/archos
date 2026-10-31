@@ -45,6 +45,11 @@ vi.mock('@/lib/sharing/registry', () => ({
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/mentions/service', () => ({ enforceMentionBounds: vi.fn().mockResolvedValue(undefined) }))
+// The import's row keeper wraps the inbox's anchored writes (`import-rows.spec.ts`); here they pass straight through.
+vi.mock('@/lib/annotations/import-rows', async () => {
+  const inbox = await import('@/lib/inbox/service')
+  return { resolveInboxItemsAnchoredOn: inbox.resolveInboxItemsAnchoredOn, markInboxItemsInertAnchoredOn: inbox.markInboxItemsInertAnchoredOn }
+})
 vi.mock('@/lib/inbox/service', () => ({
   emitInboxItems: vi.fn().mockResolvedValue(1),
   resolveInboxItemsAnchoredOn: vi.fn().mockResolvedValue(1),
