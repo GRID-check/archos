@@ -51,8 +51,19 @@ tasks:
       # in module-scoped fixtures, so a file stays on the worker that built them.
       - uv run --project packages/ifc-spatial-py --all-extras pytest packages/ifc-spatial-py/tests -q -n logical --dist loadfile
 
+  pkg:test:geometry-contract:
+    desc: 'apps/geometry: its engine adapter against the real ifc-spatial-py (the engine's own env)'
+    cmds:
+      # The adapter imports nothing of the agent; the last test drives the service's operations,
+      # which do. The engine's env plus the workspace's agent sources and the service's deps.
+      - >-
+        PYTHONPATH=apps/geometry/src:packages/agent/src
+        uv run --project packages/ifc-spatial-py --all-extras --with fastapi --with pydantic --with redis
+        pytest apps/geometry/tests/test_engine_contract.py -q -p no:cacheprovider -o addopts=""
+
   pkg:test:
-    desc: Both standalone package suites (packages/ifc-spatial + ifc-spatial-py)
+    desc: Both standalone package suites (packages/ifc-spatial + ifc-spatial-py), and the geometry contract
     cmds:
       - task: pkg:test:ts
       - task: pkg:test:py
+      - task: pkg:test:geometry-contract

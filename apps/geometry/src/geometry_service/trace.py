@@ -16,7 +16,7 @@ import json
 import logging
 from typing import Any
 
-from .index_cache import GeometryOutcome
+from .errors import GeometryOutcome
 
 logger = logging.getLogger("geometry_service.calls")
 

@@ -871,6 +871,9 @@ jobs:
         run: task pkg:test:ts
       - name: ifc-spatial-py (pytest)
         run: task pkg:test:py
+      # The geometry service's adapter against this engine (ADR-0149): the contract S1 and S2 meet on.
+      - name: geometry contract (apps/geometry against ifc-spatial-py)
+        run: task pkg:test:geometry-contract
 
   # The third-party images deploy/pulumi pins by digest (ADR-0029) are built by
   # nobody here, so nothing else scans them. Only the pins this change adds or

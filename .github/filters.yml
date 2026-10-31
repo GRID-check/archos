@@ -296,6 +296,9 @@ packages:
   # The IFC packages only: packages/brand has no suite of its own and is
   # checked by the site and workspace tiers (ADR-0145).
   - 'packages/ifc-spatial*/**'
+  # The geometry service's engine adapter and its contract test (ADR-0149).
+  - 'apps/geometry/src/geometry_service/engine.py'
+  - 'apps/geometry/tests/test_engine_contract.py'
   # The guide for both, beside them.
   - 'packages/*.md'
   - 'Taskfile.yml'

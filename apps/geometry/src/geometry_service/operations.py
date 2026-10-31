@@ -1,8 +1,13 @@
-"""One typed operation against one model: which tier answers it, and the engine call.
+"""One typed operation against one model, within one request budget.
 
 The broad-phase operations (``boxes``, ``group-boxes``, ``within``, ``near``, ``diff``) answer from
 the element index (Tier B, or built cold); the narrow-phase ones (``in-room``, ``neighbours``,
-``clash``) also need the parsed model (Tier A). ``warm`` starts the index build and returns at once.
+``clash``) read the parsed model (Tier A). ``warm`` starts the index build and returns at once.
+
+One budget covers the whole request (:data:`REQUEST_BUDGET_SECONDS`, below the BFF's timeout): the
+wait for a cold build takes at most :data:`WAIT_SECONDS` of it, and what is left bounds the engine's
+narrow phase. With less than :data:`MIN_OPERATION_SECONDS` left nothing more is started. The result
+is the engine's ``Answer`` in wire form: ``value`` and its provenance.
 """
 
 from __future__ import annotations
@@ -10,11 +15,14 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from . import builds
 from . import engine
 from . import index_cache
-from .index_cache import CacheTier
-from .index_cache import GeometryOutcome
-from .index_cache import GeometryRequestError
+from .engine import EngineRefusal
+from .errors import CacheTier
+from .errors import GeometryOutcome
+from .errors import GeometryRequestError
+from .errors import GeometryTimeout
 from .wire import BoxesOp
 from .wire import ClashOp
 from .wire import DiffOp
@@ -26,8 +34,15 @@ from .wire import NeighboursOp
 from .wire import WarmOp
 from .wire import WithinOp
 
-#: The lists a result may carry, in the order the element count is read from.
-_RESULT_LISTS = ("boxes", "elements", "pairs", "neighbours", "changes", "groups")
+#: The whole request, load and operation; the BFF waits a little longer (`GEOMETRY_TIMEOUT_MS`).
+REQUEST_BUDGET_SECONDS = 40.0
+#: The longest a request waits for a cold build before it is told to come back.
+WAIT_SECONDS = 20.0
+#: Below this, an operation is not started: its answer would arrive after the caller gave up.
+MIN_OPERATION_SECONDS = 1.0
+
+#: The lists a result's value may carry, in the order the element count is read from.
+_RESULT_LISTS = ("boxes", "elements", "pairs", "neighbours", "groups")
 
 _TIER_RANK = {"A": 0, "B": 1, "cold": 2}
 
@@ -37,25 +52,26 @@ def _colder(*tiers: CacheTier) -> CacheTier:
     return max(tiers, key=lambda tier: _TIER_RANK[tier])
 
 
+def _value(result: dict[str, Any]) -> dict[str, Any]:
+    value = result.get("value")
+    return value if isinstance(value, dict) else {}
+
+
 def _size(result: dict[str, Any]) -> int:
+    value = _value(result)
     for key in _RESULT_LISTS:
-        value = result.get(key)
-        if isinstance(value, (list, dict)):
-            return len(value)
+        if isinstance(value.get(key), (list, dict)):
+            return len(value[key])
     return 0
 
 
 def _box_around(index: Any, global_id: str, margin: float) -> dict[str, list[float]]:
     """The element's own box grown by ``margin`` metres on every side."""
-    answer = engine.current().element_boxes(index, [global_id])
-    boxes = answer.get("boxes") or []
+    boxes = _value(engine.current().element_boxes(index, [global_id])).get("boxes") or []
     if not boxes:
         raise GeometryRequestError(f"{global_id} has no box in this model")
     box = boxes[0]
-    return {
-        "min": [value - margin for value in box["min"]],
-        "max": [value + margin for value in box["max"]],
-    }
+    return {"min": [v - margin for v in box["min"]], "max": [v + margin for v in box["max"]]}
 
 
 def _index_op(op: Any, index: Any) -> dict[str, Any]:
@@ -68,58 +84,74 @@ def _index_op(op: Any, index: Any) -> dict[str, Any]:
         box = op.box.model_dump() if op.box else _box_around(index, str(op.around_global_id), op.margin)
         return adapter.elements_within(index, box, op.ifc_types, op.limit)
     if isinstance(op, NearOp):
-        return adapter.elements_near(index, op.point if op.point is not None else op.global_id, op.radius, op.limit)
+        return adapter.elements_near(index, point=op.point, global_id=op.global_id, radius=op.radius, limit=op.limit)
     raise TypeError(type(op).__name__)
 
 
-def _resident_op(op: Any, model: Any, index: Any) -> dict[str, Any]:
+def _resident_op(op: Any, model: Any, budget: float) -> dict[str, Any]:
     adapter = engine.current()
     if isinstance(op, InRoomOp):
-        return adapter.elements_in_room(model, op.space_global_id)
+        return adapter.elements_in_room(model, op.space_global_id, budget)
     if isinstance(op, NeighboursOp):
-        return adapter.neighbours(model, index, op.global_id, op.gap)
+        return adapter.neighbours(model, op.global_id, op.gap, budget)
     if isinstance(op, ClashOp):
-        return adapter.clash(model, index, op.set_a, op.set_b, op.mode, op.tolerance)
+        return adapter.clash(model, op.set_a, op.set_b, op.mode, op.tolerance, budget)
     raise TypeError(type(op).__name__)
+
+
+def _remaining(end: float) -> float:
+    left = end - time.monotonic()
+    if left < MIN_OPERATION_SECONDS:
+        raise GeometryTimeout("the request's time ran out before the operation could start")
+    return left
 
 
 def _answer(
-    op: Any, model_id: str, source: dict[str, Any], scope: tuple[str, str | None], deadline: float
+    request: GeometryRequest, source: dict[str, Any], scope: tuple[str, str | None], end: float, trace: str | None
 ) -> tuple[dict[str, Any], CacheTier]:
-    index, tier = index_cache.load_index(index_cache.index_key(model_id, source), source, deadline)
-    if isinstance(op, DiffOp):
-        base_source = index_cache.resolve(scope[0], scope[1], op.base_model_id)
-        base_key = index_cache.index_key(op.base_model_id, base_source)
-        base_index, base_tier = index_cache.load_index(base_key, base_source, deadline)
-        return engine.current().box_diff(base_index, index, op.global_ids), _colder(tier, base_tier)
+    op = request.operation
+    wait_until = min(time.monotonic() + WAIT_SECONDS, end - MIN_OPERATION_SECONDS)
     if isinstance(op, (InRoomOp, NeighboursOp, ClashOp)):
-        model, model_tier = index_cache.load_model(source, deadline)
-        return _resident_op(op, model, index), _colder(tier, model_tier)
+        model, tier = builds.load_model(source, wait_until, trace)
+        return _resident_op(op, model, _remaining(end)), tier
+    index, tier = builds.load_index(index_cache.index_key(request.model_id, source), source, wait_until, trace)
+    if isinstance(op, DiffOp):
+        base_source = index_cache.resolve(scope[0], request.base_scope(scope[1]), op.base_model_id)
+        base_key = index_cache.index_key(op.base_model_id, base_source)
+        base_index, base_tier = builds.load_index(base_key, base_source, wait_until, trace)
+        _remaining(end)
+        return engine.current().box_diff(base_index, index, op.global_ids), _colder(tier, base_tier)
+    _remaining(end)
     return _index_op(op, index), tier
 
 
-def run(request: GeometryRequest, organization_id: str, project_id: str | None) -> GeometryOutcome:
-    """Answer one operation for the caller the envelope named, within :data:`index_cache.WAIT_SECONDS`.
+def run(
+    request: GeometryRequest, organization_id: str, project_id: str | None, trace_id: str | None = None
+) -> GeometryOutcome:
+    """Answer one operation within :data:`REQUEST_BUDGET_SECONDS`.
 
-    Raises :class:`index_cache.GeometryWarming` past the wait (the build carries on),
-    :class:`index_cache.GeometryModelUnresolved` for a model the caller cannot reach, and
-    :class:`index_cache.GeometryRequestError` for a request the model cannot answer.
+    Raises :class:`GeometryWarming` past the wait (the build carries on), :class:`GeometryTimeout`
+    when no budget is left to start the operation, :class:`GeometryModelUnresolved` for a model the
+    caller cannot reach, and :class:`GeometryRequestError` for a request the engine refuses.
     """
     started = time.monotonic()
     op = request.operation
-    source = index_cache.resolve(organization_id, project_id, request.model_id)
-    if isinstance(op, WarmOp):
-        status = index_cache.warm(request.model_id, source)
-        result: dict[str, Any] = {"status": status}
-        tier: CacheTier = "B" if status == "ready" else "cold"
-    else:
-        deadline = started + index_cache.WAIT_SECONDS
-        result, tier = _answer(op, request.model_id, source, (organization_id, project_id), deadline)
+    try:
+        source = index_cache.resolve(organization_id, project_id, request.model_id)
+        if isinstance(op, WarmOp):
+            status = builds.warm(request.model_id, source, trace_id)
+            result: dict[str, Any] = {"value": {"status": status}}
+            tier: CacheTier = "B" if status == "ready" else "cold"
+        else:
+            scope = (organization_id, project_id)
+            result, tier = _answer(request, source, scope, started + REQUEST_BUDGET_SECONDS, trace_id)
+    except EngineRefusal as exc:
+        raise GeometryRequestError(str(exc)) from None
     return GeometryOutcome(
         op=op.op,
         result=result,
         cache_tier=tier,
         ms=int((time.monotonic() - started) * 1000),
         elements=_size(result),
-        truncated=bool(result.get("truncated")),
+        truncated=bool(_value(result).get("truncated")),
     )

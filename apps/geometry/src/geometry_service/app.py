@@ -10,7 +10,7 @@ carries, checked by the shared code in :mod:`agent.common.envelope_auth`:
   the caller's BFF route did not already authorize. It holds no access rules of its own.
 
 A cold model is built in the background; the request waits at most
-:data:`index_cache.WAIT_SECONDS` and is then answered ``409 {code: 'geometry_warming',
+:data:`operations.WAIT_SECONDS` and is then answered ``409 {code: 'geometry_warming',
 retryAfter}`` while the build continues.
 
 ``/healthz`` is liveness (the process answers). ``/readyz`` is readiness: the engine imports and
@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from typing import Any
 
 from fastapi import FastAPI
@@ -40,9 +41,12 @@ from agent.knowledge.ifc_spatial_client import SpatialEngineUnavailableError
 
 from . import engine
 from . import operations
-from .index_cache import GeometryModelUnresolved
-from .index_cache import GeometryRequestError
-from .index_cache import GeometryWarming
+from .errors import GeometryBuildFailed
+from .errors import GeometryBusy
+from .errors import GeometryModelUnresolved
+from .errors import GeometryRequestError
+from .errors import GeometryTimeout
+from .errors import GeometryWarming
 from .trace import call_facts
 from .trace import log_call
 from .trace import model_handle
@@ -51,6 +55,15 @@ from .wire import GeometryRequest
 logger = logging.getLogger(__name__)
 
 GEOMETRY_PATH = "/v1/internal/bim/geometry"
+#: The Langfuse trace the BFF opened for this call; a cold build scores `geometry-cold-ms` on it.
+TRACE_HEADER = "x-trace-id"
+_TRACE_ID = re.compile(r"^[0-9a-f]{32}$")
+
+#: A failed build's kind, as the refusal it is answered with.
+_BUILD_FAILURES = {
+    "too_large": (413, "model_too_large"),
+    "engine_unavailable": (503, "engine_unavailable"),
+}
 
 
 def _refuse(status: int, code: str, message: str, **extra: Any) -> JSONResponse:
@@ -79,6 +92,13 @@ def _failure(exc: Exception) -> JSONResponse:
     """The refusal a failure is, in the shape the BFF's geometry client maps."""
     if isinstance(exc, GeometryWarming):
         return _refuse(409, "geometry_warming", "The model's geometry is being prepared", retryAfter=exc.retry_after)
+    if isinstance(exc, GeometryBusy):
+        return _refuse(503, "geometry_busy", "The geometry service is busy", retryAfter=exc.retry_after)
+    if isinstance(exc, GeometryTimeout):
+        return _refuse(504, "geometry_timeout", str(exc))
+    if isinstance(exc, GeometryBuildFailed):
+        status, code = _BUILD_FAILURES.get(exc.kind, (502, "build_failed"))
+        return _refuse(status, code, exc.args[0] or "The model's geometry could not be built")
     if isinstance(exc, GeometryModelUnresolved):
         if exc.reason == "not_ready":
             return _refuse(409, "model_not_ready", "The model is still being read")
@@ -89,6 +109,8 @@ def _failure(exc: Exception) -> JSONResponse:
         return _refuse(404, "model_not_found", "Model not found")
     if isinstance(exc, GeometryRequestError):
         return _refuse(400, "invalid_request", str(exc))
+    if isinstance(exc, ValueError):  # the engine refused to build this model's index
+        return _refuse(502, "build_failed", str(exc))
     if isinstance(exc, SpatialEngineUnavailableError):
         return _refuse(503, "engine_unavailable", "The spatial engine is not installed")
     if isinstance(exc, BimQueryUnavailableError):
@@ -114,7 +136,9 @@ def create_app() -> FastAPI:
         organization_id, project_id, _user = _authorize(request)
         op = body.operation.op
         try:
-            outcome = await asyncio.to_thread(operations.run, body, organization_id, project_id)
+            trace = request.headers.get(TRACE_HEADER, "")
+            trace_id = trace if _TRACE_ID.match(trace) else None
+            outcome = await asyncio.to_thread(operations.run, body, organization_id, project_id, trace_id)
         except Exception as exc:  # noqa: BLE001 - every failure is mapped to a refusal
             response = _failure(exc)
             log_call(ifc_op=op, ifc_outcome=f"http_{response.status_code}", ifc_model=model_handle(body.model_id))

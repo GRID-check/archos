@@ -22,7 +22,9 @@ MAX_RESULT_LIMIT = 500
 MAX_RADIUS_M = 50.0
 MAX_MARGIN_M = 50.0
 MAX_GAP_M = 1.0
-MAX_TOLERANCE_M = 1.0
+#: The engine's own bounds (``operators_clash``): a contact tolerance, and a clearance to check.
+MAX_CONTACT_TOLERANCE_M = 0.1
+MAX_CLEARANCE_M = 5.0
 MAX_CLASH_SET = 2000
 MAX_IFC_TYPES = 50
 #: A building is never a thousand kilometres across; this bounds a coordinate, not a model.
@@ -113,7 +115,16 @@ class ClashOp(_Op):
     set_a: list[GlobalId] = Field(alias="setA", min_length=1, max_length=MAX_CLASH_SET)
     set_b: list[GlobalId] | None = Field(default=None, alias="setB", min_length=1, max_length=MAX_CLASH_SET)
     mode: Literal["intersect", "touch", "clearance"] = "intersect"
-    tolerance: float = Field(default=0.01, ge=0, le=MAX_TOLERANCE_M)
+    #: None lets the engine choose (5 mm for intersect and touch); clearance needs it.
+    tolerance: float | None = Field(default=None, ge=0, le=MAX_CLEARANCE_M)
+
+    @model_validator(mode="after")
+    def _tolerance_for_mode(self) -> ClashOp:
+        if self.mode == "clearance" and self.tolerance is None:
+            raise ValueError("mode clearance needs tolerance: the clearance to check, in metres")
+        if self.mode != "clearance" and self.tolerance is not None and self.tolerance > MAX_CONTACT_TOLERANCE_M:
+            raise ValueError(f"tolerance for {self.mode} is at most {MAX_CONTACT_TOLERANCE_M} m")
+        return self
 
 
 class DiffOp(_Op):
@@ -137,3 +148,9 @@ class GeometryRequest(_Op):
 
     model_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")] = Field(alias="modelId")
     operation: GeometryOp
+    #: A diff's base model's own project (null: the office shelf), stated by the BFF after it passed
+    #: that model's read gate. Absent, the envelope's project is used for both models.
+    base_project_id: str | None = Field(default=None, alias="baseProjectId", max_length=64)
+
+    def base_scope(self, project_id: str | None) -> str | None:
+        return self.base_project_id if "base_project_id" in self.model_fields_set else project_id
