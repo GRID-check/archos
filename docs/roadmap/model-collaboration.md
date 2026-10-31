@@ -223,7 +223,7 @@ Anmerkung; the mapping is the export's, reversed (`bcf-import-map.ts`):
 | `AssignedTo` | Zuständige, when the email is someone who may write the document (`requireAssignable`'s rule) | named in the thread |
 | `DueDate` | Frist, its calendar day | unreadable: named in the thread |
 | `CreationAuthor/Date` | the thread's import note; the importer is `created_by` | |
-| `Comment` | a reply by its author where the email may open the document, at its own date | the importer's reply, the author's name and date in the text |
+| `Comment` | a reply by its author where the email may open the document, marked as imported (importer, batch, the comment's own date shown as „im Original vom …“); it arrives at the import's time | the importer's reply, the author's name in the text |
 | first `Viewpoint` | `annotation_viewpoints`: either camera, ≤ 6 planes, ≤ 500 selected (those the model has), ≤ 2000 exceptions, colouring, snapshot PNG/JPEG ≤ 1.5 MB | a 2.1 camera has no aspect ratio: 16∶9; past a bound the rest is cut and counted in the thread |
 
 The topic's Guid is kept (`source_topic_guid`, migration 0196, unique per
@@ -232,13 +232,21 @@ next round's file that still carries last round's topics, adds nothing; every
 mark of one import shares `import_batch_id`, the unit triage works on. The
 response lists imported, skipped (`already_imported`, `duplicate_in_file`,
 `no_viewpoint`) and failed (`bad_xml`, `no_topic`, `limit`, `error`) topics. The
-file is untrusted: the central directory is walked before anything is inflated,
-every member inflates through fflate's streaming `Inflate` counted against its
-declared size, and paths, members (2,500), bytes (64 MiB packed, 16 MiB a member,
-256 MiB in all) are bounded (`bcf-archive.ts`); the XML is parsed by `saxes`,
+file is untrusted: the central directory is walked and admitted before anything
+is inflated (no two members may share bytes, so one compressed run cannot be
+named sixteen times); a member inflates only when a topic names it, through
+fflate's streaming `Inflate` counted against its declared size; paths, members
+(2,500) and bytes (64 MiB packed, 64 MiB declared in all, 4 MiB an XML part, a
+picture past 1.5 MB skipped on its declared size) are bounded (`bcf-archive.ts`); the XML is parsed by `saxes`,
 which resolves no DTD and no entity beyond XML's five, and a `<!DOCTYPE>` is
-refused outright (`bcf-xml.ts`). Measured by `annotations_imported` (topics,
-imported, skipped, failed, assigned per round).
+refused outright (`bcf-xml.ts`). A `DueDate` is the day it is in the office's
+time zone (one without an offset read as UTC); a camera whose aspect ratio or
+field of view strays is clamped and noted. Each Zuständige gets one counted
+inbox row per import. The audit event and the counts are written in a
+`finally`, so an import cut short still says what it wrote; one request carries
+a full document (500 topics, in the order of half a minute), and importing the
+same file again resumes where it stopped. Measured by `annotations_imported`
+(topics, imported, skipped, failed, assigned per round).
 
 **Topics without a viewpoint** are skipped and reported for now. The next step
 frames them on the server from the elements' stored bounding boxes with F4's
