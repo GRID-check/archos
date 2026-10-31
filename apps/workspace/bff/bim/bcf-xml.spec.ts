@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { BcfXmlError, childText, MAX_BCF_XML_CHARS, MAX_BCF_XML_DEPTH, parseBcfXml } from './bcf-xml'
+import { BcfXmlError, childText, MAX_BCF_XML_CHARS, MAX_BCF_XML_DEPTH, MAX_BCF_XML_ELEMENTS, parseBcfXml } from './bcf-xml'
 
 const refused = (source: string) => expect(() => parseBcfXml(source)).toThrow(BcfXmlError)
 
@@ -44,6 +44,7 @@ describe('parseBcfXml', () => {
   it('refuses a part past its size, its depth, or malformed', () => {
     refused(`<Markup>${'x'.repeat(MAX_BCF_XML_CHARS)}</Markup>`)
     refused(`${'<a>'.repeat(MAX_BCF_XML_DEPTH + 1)}${'</a>'.repeat(MAX_BCF_XML_DEPTH + 1)}`)
+    refused(`<Markup>${'<a/>'.repeat(MAX_BCF_XML_ELEMENTS)}</Markup>`)
     refused('<Markup><Topic></Markup>')
     refused('')
   })

@@ -33,6 +33,11 @@ describe('statusOf', () => {
 describe('dueOnOf', () => {
   it('takes the calendar day as written, and nothing that is no day', () => {
     expect(dueOnOf('2026-11-06T12:00:00Z')).toBe('2026-11-06')
+    // The office's day (Vienna), never the server's: late on the 13th in UTC is the 14th there.
+    expect(dueOnOf('2026-11-13T23:30:00Z')).toBe('2026-11-14')
+    expect(dueOnOf('2026-11-13T23:30:00')).toBe('2026-11-14')
+    expect(dueOnOf('2026-11-13T00:30:00+01:00')).toBe('2026-11-13')
+    expect(dueOnOf('2026-11-13T00:30:00-05:00')).toBe('2026-11-13')
     expect(dueOnOf('2026-11-06')).toBe('2026-11-06')
     expect(dueOnOf('2026-02-30T00:00:00')).toBeNull()
     expect(dueOnOf('next Friday')).toBeNull()
@@ -61,6 +66,7 @@ describe('bodyOf', () => {
 describe('topicKey', () => {
   it('is the Guid, lowercase, or a stable UUIDv5 of a Guid that is none', () => {
     expect(topicKey('A2F1C3D4-5B6A-4C7D-8E9F-0A1B2C3D4E5F')).toBe('a2f1c3d4-5b6a-4c7d-8e9f-0a1b2c3d4e5f')
+    expect(topicKey('{A2F1C3D4-5B6A-4C7D-8E9F-0A1B2C3D4E5F}')).toBe('a2f1c3d4-5b6a-4c7d-8e9f-0a1b2c3d4e5f')
     expect(topicKey('TWP-12')).toBe(topicKey(' TWP-12 '))
     expect(topicKey('TWP-12')).not.toBe(topicKey('TWP-13'))
   })

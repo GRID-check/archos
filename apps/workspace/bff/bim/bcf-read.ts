@@ -26,7 +26,14 @@
  * F1's table (`../annotations/viewpoint-types.ts`): six section planes, 500
  * selected and coloured elements, 2000 visibility exceptions (past it the view
  * shows the whole model, as the viewer's own capture does), and a snapshot
- * that is a real PNG or JPEG of at most 1.5 MB.
+ * that is a real PNG or JPEG of at most 1.5 MB, judged on its declared size
+ * before it is inflated. A camera whose aspect ratio or field of view lies
+ * outside what F1 stores is clamped into it and the thread says so.
+ *
+ * ## Dates and booleans as XML Schema writes them
+ *
+ * An `xs:dateTime` without an offset is read as UTC, never in the server's own
+ * zone; `xs:boolean` is `true`, `false`, `1` or `0`.
  */
 
 import {
@@ -43,6 +50,7 @@ import {
   type Vec3,
   type ViewpointCamera,
 } from '@/lib/annotations/viewpoint-types'
+import type { BcfArchive } from './bcf-archive'
 import { BcfXmlError, childNamed, childrenNamed, childText, descendantsNamed, parseBcfXml, type XmlElement } from './bcf-xml'
 
 /** Width over height when a 2.1 camera does not say: the common screen. */
@@ -64,6 +72,8 @@ export interface BcfViewCuts {
   visibility: boolean
   /** Why the picture did not come along, or null when it did or there was none. */
   snapshot: 'too_large' | 'not_an_image' | 'missing' | null
+  /** The camera's aspect ratio or field of view was clamped into the stored range. */
+  camera: boolean
 }
 
 export interface BcfViewpointRead {
@@ -108,8 +118,8 @@ const decoder = new TextDecoder('utf-8', { fatal: false })
 const textOf = (bytes: Uint8Array): string => decoder.decode(bytes).replace(/^﻿/, '')
 
 /** The `VersionId` of `bcf.version`, or null when the file is absent or unreadable. */
-function versionOf(files: ReadonlyMap<string, Uint8Array>): string | null {
-  const entry = files.get('bcf.version')
+function versionOf(files: BcfArchive): string | null {
+  const entry = files.read('bcf.version')
   if (!entry) return null
   try {
     return parseBcfXml(textOf(entry)).attributes.VersionId?.trim() || null
@@ -118,12 +128,26 @@ function versionOf(files: ReadonlyMap<string, Uint8Array>): string | null {
   }
 }
 
-/** An `xs:dateTime` as an instant, or null for one that does not parse. */
-const instant = (value: string | null): Date | null => {
-  if (!value) return null
-  const parsed = new Date(value)
+/** An offset (`Z`, `+01:00`) at the end of an `xs:dateTime`. */
+const HAS_OFFSET = /(Z|[+-]\d{2}:?\d{2})$/i
+
+/** An `xs:dateTime` as an instant, one without an offset read as UTC; null for one that does not parse. */
+export const instant = (value: string | null): Date | null => {
+  const trimmed = value?.trim()
+  if (!trimmed || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(trimmed)) return null
+  const parsed = new Date(HAS_OFFSET.test(trimmed) ? trimmed : `${trimmed}Z`)
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
+
+/** An `xs:boolean` (`true`, `false`, `1`, `0`), or `fallback` when absent or none of those. */
+export function xsBoolean(value: string | undefined, fallback: boolean): boolean {
+  const trimmed = value?.trim()
+  if (trimmed === 'true' || trimmed === '1') return true
+  if (trimmed === 'false' || trimmed === '0') return false
+  return fallback
+}
+
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
 
 const finite = (value: string | null): number | null => {
   if (value === null) return null
@@ -136,22 +160,33 @@ function vec(element: XmlElement | null): Vec3 | null {
   return x === null || y === null || z === null ? null : { x, y, z }
 }
 
-function cameraOf(info: XmlElement): ViewpointCamera | null {
+/** The ranges `cameraSchema` holds (F1): a writer's 0.05 or 180 is clamped, not a reason to drop the view. */
+const ASPECT_RANGE = [0.1, 10] as const
+const FIELD_OF_VIEW_RANGE = [1, 179] as const
+
+/** The camera, clamped into F1's ranges (and whether that was needed), or null for none or one with no direction. */
+function cameraOf(info: XmlElement): { camera: ViewpointCamera; clamped: boolean } | null {
   const perspective = childNamed(info, 'PerspectiveCamera')
   const orthogonal = childNamed(info, 'OrthogonalCamera')
   const element = perspective ?? orthogonal
   if (!element) return null
+  const aspect = finite(childText(element, 'AspectRatio'))
+  const fieldOfView = finite(childText(element, 'FieldOfView'))
+  const aspectRatio = aspect === null || aspect <= 0 ? DEFAULT_ASPECT_RATIO : clamp(aspect, ...ASPECT_RANGE)
+  const field = fieldOfView === null || fieldOfView <= 0 ? null : clamp(fieldOfView, ...FIELD_OF_VIEW_RANGE)
   const shared = {
     position: vec(childNamed(element, 'CameraViewPoint')),
     direction: vec(childNamed(element, 'CameraDirection')),
     up: vec(childNamed(element, 'CameraUpVector')),
-    aspectRatio: finite(childText(element, 'AspectRatio')) ?? DEFAULT_ASPECT_RATIO,
+    aspectRatio,
   }
   const candidate = perspective
-    ? { type: 'perspective', ...shared, fieldOfView: finite(childText(element, 'FieldOfView')) }
+    ? { type: 'perspective', ...shared, fieldOfView: field }
     : { type: 'orthographic', ...shared, viewToWorldScale: finite(childText(element, 'ViewToWorldScale')) }
   const parsed = cameraSchema.safeParse(candidate)
-  return parsed.success ? parsed.data : null
+  if (!parsed.success) return null
+  const clamped = (aspect !== null && aspect > 0 && aspect !== aspectRatio) || (perspective !== null && fieldOfView !== null && field !== fieldOfView)
+  return { camera: parsed.data, clamped }
 }
 
 const isGlobalId = (value: string): boolean => globalIdSchema.safeParse(value).success
@@ -189,7 +224,7 @@ function componentsOf(info: XmlElement) {
   const visibilityElement = childNamed(components, 'Visibility')
   const exceptions = globalIdsOf(descendantsNamed(childNamed(visibilityElement, 'Exceptions'), 'Component')).ids
   // No Visibility element: nothing was hidden. With one, the schema's default for the attribute is false.
-  const defaultVisibility = visibilityElement ? visibilityElement.attributes.DefaultVisibility?.trim() === 'true' : true
+  const defaultVisibility = visibilityElement ? xsBoolean(visibilityElement.attributes.DefaultVisibility, false) : true
   const visibilityCut = exceptions.length > MAX_VISIBILITY_EXCEPTIONS
   const coloring = childrenNamed(childNamed(components, 'Coloring'), 'Color')
     .map((color) => ({
@@ -215,15 +250,17 @@ const startsWith = (bytes: Uint8Array, magic: readonly number[]) => magic.every(
 
 /** The picture a viewpoint names, judged by its bytes, never its extension. */
 function snapshotOf(
-  files: ReadonlyMap<string, Uint8Array>,
+  files: BcfArchive,
   path: string | null
 ): { snapshot: BcfViewpointRead['snapshot']; cut: BcfViewCuts['snapshot'] } {
   if (!path) return { snapshot: null, cut: null }
-  const bytes = files.get(path)
-  if (!bytes || bytes.length === 0) return { snapshot: null, cut: 'missing' }
+  const declared = files.declaredSize(path)
+  if (declared === null || declared === 0) return { snapshot: null, cut: 'missing' }
+  // Judged on what it declares, before a byte is inflated; what inflates is held to that by the archive.
+  if (declared > MAX_SNAPSHOT_BYTES) return { snapshot: null, cut: 'too_large' }
+  const bytes = files.read(path) ?? new Uint8Array(0)
   const contentType: SnapshotContentType | null = startsWith(bytes, PNG) ? 'image/png' : startsWith(bytes, JPEG) ? 'image/jpeg' : null
   if (!contentType) return { snapshot: null, cut: 'not_an_image' }
-  if (bytes.length > MAX_SNAPSHOT_BYTES) return { snapshot: null, cut: 'too_large' }
   return { snapshot: { contentType, bytes }, cut: null }
 }
 
@@ -231,8 +268,8 @@ function snapshotOf(
 const inFolder = (folder: string, name: string | null): string | null =>
   name && !name.includes('/') && !name.includes('\\') ? `${folder}/${name}` : null
 
-function readView(files: ReadonlyMap<string, Uint8Array>, folder: string, bcfv: string, snapshotPath: string | null): BcfViewpointRead | null {
-  const bytes = files.get(bcfv)
+function readView(files: BcfArchive, bcfv: string, snapshotPath: string | null): BcfViewpointRead | null {
+  const bytes = files.read(bcfv)
   if (!bytes) return null
   let info: XmlElement
   try {
@@ -241,26 +278,28 @@ function readView(files: ReadonlyMap<string, Uint8Array>, folder: string, bcfv: 
     if (error instanceof BcfXmlError) return null
     throw error
   }
-  const camera = cameraOf(info)
-  if (!camera) return null
+  const read = cameraOf(info)
+  if (!read) return null
   const { planes, dropped } = planesOf(info)
   const { components, selectionCut, visibilityCut } = componentsOf(info)
   const { snapshot, cut } = snapshotOf(files, snapshotPath)
   return {
-    viewpoint: { camera, clippingPlanes: planes, components },
+    viewpoint: { camera: read.camera, clippingPlanes: planes, components },
     snapshot,
-    cuts: { planes: dropped, selection: selectionCut, visibility: visibilityCut, snapshot: cut },
+    cuts: { planes: dropped, selection: selectionCut, visibility: visibilityCut, snapshot: cut, camera: read.clamped },
   }
 }
 
 /** The topic's views in the order written: 3.0's `Topic/Viewpoints/ViewPoint`, 2.1's `Markup/Viewpoints`, else 2.0's fixed names. */
-function viewRefs(markup: XmlElement, topic: XmlElement, folder: string): { bcfv: string; snapshot: string | null }[] {
+function viewRefs(files: BcfArchive, markup: XmlElement, topic: XmlElement, folder: string): { bcfv: string; snapshot: string | null }[] {
   const listed = [...childrenNamed(childNamed(topic, 'Viewpoints'), 'ViewPoint'), ...childrenNamed(markup, 'Viewpoints')]
   const refs = listed.flatMap((entry) => {
     const bcfv = inFolder(folder, childText(entry, 'Viewpoint'))
     return bcfv ? [{ bcfv, snapshot: inFolder(folder, childText(entry, 'Snapshot')) }] : []
   })
-  return refs.length > 0 ? refs : [{ bcfv: `${folder}/viewpoint.bcfv`, snapshot: `${folder}/snapshot.png` }]
+  if (refs.length > 0) return refs
+  const legacySnapshot = `${folder}/snapshot.png`
+  return [{ bcfv: `${folder}/viewpoint.bcfv`, snapshot: files.has(legacySnapshot) ? legacySnapshot : null }]
 }
 
 function commentsOf(markup: XmlElement, topic: XmlElement): BcfCommentRead[] {
@@ -271,7 +310,7 @@ function commentsOf(markup: XmlElement, topic: XmlElement): BcfCommentRead[] {
   })
 }
 
-function readTopic(files: ReadonlyMap<string, Uint8Array>, folder: string, bytes: Uint8Array): BcfTopicRead | BcfTopicUnread {
+function readTopic(files: BcfArchive, folder: string, bytes: Uint8Array): BcfTopicRead | BcfTopicUnread {
   let markup: XmlElement
   try {
     markup = parseBcfXml(textOf(bytes))
@@ -282,13 +321,14 @@ function readTopic(files: ReadonlyMap<string, Uint8Array>, folder: string, bytes
   const topic = childNamed(markup, 'Topic')
   if (!topic) return { folder, reason: 'no_topic' }
   // The first view with a camera: a components-only one is no view to stand in.
-  const view = viewRefs(markup, topic, folder).reduce<BcfViewpointRead | null>(
-    (found, ref) => found ?? readView(files, folder, ref.bcfv, ref.snapshot),
+  const view = viewRefs(files, markup, topic, folder).reduce<BcfViewpointRead | null>(
+    (found, ref) => found ?? readView(files, ref.bcfv, ref.snapshot),
     null
   )
   return {
     folder,
-    guid: topic.attributes.Guid?.trim() || folder,
+    // Some writers wrap a GUID in braces, as Windows prints one.
+    guid: topic.attributes.Guid?.trim().replace(/^\{(.*)\}$/, '$1').trim() || folder,
     title: childText(topic, 'Title'),
     description: childText(topic, 'Description'),
     topicType: topic.attributes.TopicType?.trim() || null,
@@ -304,14 +344,18 @@ function readTopic(files: ReadonlyMap<string, Uint8Array>, folder: string, bytes
 
 const isRead = (entry: BcfTopicRead | BcfTopicUnread): entry is BcfTopicRead => 'guid' in entry
 
-/** Every topic folder of an unpacked BCF file, in archive order. */
-export function readBcf(files: ReadonlyMap<string, Uint8Array>): BcfRead {
+/**
+ * Every topic folder of an opened BCF file, in archive order. Reads only what
+ * a topic names: its markup, its views until one has a camera, and their
+ * pictures; a member nothing names is never inflated.
+ */
+export function readBcf(files: BcfArchive): BcfRead {
   const topics: BcfTopicRead[] = []
   const unread: BcfTopicUnread[] = []
-  for (const [path, bytes] of files) {
+  for (const path of files.paths) {
     const match = /^([^/]+)\/markup\.bcf$/i.exec(path)
     if (!match) continue
-    const entry = readTopic(files, match[1], bytes)
+    const entry = readTopic(files, match[1], files.read(path) ?? new Uint8Array(0))
     if (isRead(entry)) topics.push(entry)
     else unread.push(entry)
   }

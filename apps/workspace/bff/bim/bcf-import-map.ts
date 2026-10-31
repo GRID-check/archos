@@ -11,7 +11,7 @@
  * | `@TopicType` | `kind`: ours (Hint, Question, Defect), else {@link KIND_WORDS}, else hint |
  * | `@TopicStatus` | `status`: ours (Open, Resolved, Dismissed), else {@link STATUS_WORDS}, else open |
  * | `AssignedTo` | the Zuständige, when the email is someone who may answer (the service decides) |
- * | `DueDate` | `due_on`, its calendar day as written |
+ * | `DueDate` | `due_on`: its day in the office's time zone (`dueOnOf`) |
  * | `CreationAuthor`, `CreationDate` | a line in the thread: the importer sets the mark |
  * | `Comment` | a reply each |
  *
@@ -21,7 +21,9 @@
  */
 
 import { MAX_ANNOTATION_BODY, type AnnotationKind, type AnnotationStatus } from '@/lib/annotations/types'
+import { calendarDayIn, OFFICE_TIME_ZONE } from '@/lib/format'
 import { uuidV5 } from './bcf'
+import { instant } from './bcf-read'
 import { BCF3_TOPIC_STATUSES, BCF3_TOPIC_TYPES } from './bcf3-build'
 
 /**
@@ -34,7 +36,11 @@ const FOREIGN_GUID_NAMESPACE = '3b0e6f2a-9d14-4c7e-8f51-2a6c9e0d7b48'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The key a topic is remembered by on a document: its Guid, lowercase, or a UUIDv5 of whatever the writer put there. */
-export const topicKey = (guid: string): string => (UUID.test(guid.trim()) ? guid.trim().toLowerCase() : uuidV5(FOREIGN_GUID_NAMESPACE, guid.trim()))
+export function topicKey(guid: string): string {
+  // `{…}` as Windows prints a GUID is the same GUID.
+  const bare = guid.trim().replace(/^\{(.*)\}$/, '$1').trim()
+  return UUID.test(bare) ? bare.toLowerCase() : uuidV5(FOREIGN_GUID_NAMESPACE, bare)
+}
 
 /** Lowercase, no spaces, hyphens or underscores: „In Progress“, `in_progress` and `InProgress` are one word. */
 const word = (value: string): string => value.normalize('NFC').toLocaleLowerCase('de').replace(/[\s_-]+/g, '')
@@ -77,12 +83,24 @@ export const kindOf = (topicType: string | null): Mapped<AnnotationKind> => look
 export const statusOf = (topicStatus: string | null): Mapped<Exclude<AnnotationStatus, 'proposed'>> =>
   lookup(topicStatus, BCF3_TOPIC_STATUSES, STATUS_WORDS, 'open')
 
-/** The calendar day of an `xs:dateTime` (or a bare date) as written, or null when it is none. */
-export function dueOnOf(dueDate: string | null): string | null {
-  const day = /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(dueDate?.trim() ?? '')?.[1]
-  if (!day) return null
+/** A bare `YYYY-MM-DD` that is a real calendar day. */
+const isCalendarDay = (day: string): boolean => {
   const parsed = new Date(`${day}T00:00:00Z`)
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(day) ? day : null
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(day)
+}
+
+/**
+ * The Frist of a `DueDate`: a bare date as written; an `xs:dateTime` as the
+ * day it is in the office's time zone (`OFFICE_TIME_ZONE`), one without an
+ * offset read as UTC (`instant`), so `2026-11-13T23:30:00Z` is the 14th in
+ * Vienna and never depends on the server's zone. Null when it is none.
+ */
+export function dueOnOf(dueDate: string | null): string | null {
+  const trimmed = dueDate?.trim() ?? ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return isCalendarDay(trimmed) ? trimmed : null
+  const day = /^(\d{4}-\d{2}-\d{2})T/.exec(trimmed)?.[1]
+  const at = day && isCalendarDay(day) ? instant(trimmed) : null
+  return at ? calendarDayIn(OFFICE_TIME_ZONE, at) : null
 }
 
 /** A text cut to `max` characters (by code point), ending in „…“ when it was cut. */

@@ -1,33 +1,41 @@
 /**
- * A BCF file someone else wrote, unpacked with every bound checked: the ZIP
- * half of the import (`./bcf-import-service.ts`). The XML half is
- * `./bcf-xml.ts`.
+ * A BCF file someone else wrote, opened with every bound checked: the ZIP half
+ * of the import (`./bcf-import-service.ts`). The XML half is `./bcf-xml.ts`.
  *
  * ## Why not `unzipSync`
  *
  * fflate (already a dependency) does the inflating. Its one-call `unzipSync`
- * trusts the sizes the archive declares: it inflates into a buffer of the
- * declared size and keeps decoding past its end, so a member that claims 1 KB
- * and inflates to gigabytes costs the server that much work. Here the central
- * directory (what every unzip tool reads, not the local headers) is walked
- * first, every member is admitted or the whole archive refused, and each
- * deflated member goes through fflate's streaming `Inflate` in small chunks,
- * counted as it comes out: the moment one yields more than it declared, the
- * archive is refused. Nothing is ever written to disk, so a path is only ever a
+ * trusts the sizes the archive declares and inflates every member up front.
+ * Here the central directory (what every unzip tool reads, not the local
+ * headers) is walked first and the whole archive admitted or refused before a
+ * byte is inflated; then a member is inflated only when the reader asks for it
+ * ({@link BcfArchive.read}), through fflate's streaming `Inflate` in small
+ * chunks, counted as it comes out: the moment one yields more than it declared,
+ * the archive is refused. Nothing is ever written to disk, so a path is only a
  * map key; a path that climbs is still refused, because a BCF writer never
  * makes one.
  *
- * ## What refuses the whole archive
+ * ## The bounds, all checked on the directory before anything inflates
  *
- * | Reason | When |
+ * - Members: at most {@link MAX_BCF_ENTRIES}, each name once.
+ * - Bytes: at most {@link MAX_BCF_UNPACKED_BYTES} declared for all members
+ *   together, and an XML part (`.bcf`, `.bcfv`, `.bcfp`, `.xml`, `.version`)
+ *   at most {@link MAX_BCF_XML_MEMBER_BYTES}. A picture is not bounded here:
+ *   the reader skips one that declares more than a snapshot may hold, without
+ *   inflating it. What actually inflates is counted against what was declared.
+ * - Layout: no two members share bytes. Sixteen directory entries pointing at
+ *   one compressed run would inflate it sixteen times; each member's local
+ *   header and data must lie in a range no other member's touches.
+ *
+ * | Refusal | When |
  * |---|---|
  * | `not_a_zip` | no end-of-central-directory record, or one that points outside the bytes |
  * | `too_many_entries` | more than {@link MAX_BCF_ENTRIES} members |
  * | `unsafe_path` | an absolute path, a drive, a backslash, `.` or `..`, a NUL, deeper than a topic folder, or the same name twice |
- * | `too_large` | a member or all of them together past their bound, declared or inflated |
+ * | `too_large` | past a bound above, declared or inflated |
  * | `encrypted` | an encrypted member |
  * | `unsupported` | a compression method other than stored or deflate, or ZIP64 |
- * | `corrupt` | a header that does not hold together, or a CRC that does not match |
+ * | `corrupt` | a header that does not hold together, members that overlap, or a CRC that does not match |
  *
  * Pure: no `server-only`, no I/O.
  */
@@ -40,15 +48,16 @@ import { crc32 } from './zip'
 export const MAX_BCF_ARCHIVE_BYTES = 64 * 1024 * 1024
 /** Members of one archive: four per topic (folder, markup, viewpoint, picture) for a full document, and the root files. */
 export const MAX_BCF_ENTRIES = 2_500
-/** What all members together may inflate to. */
-export const MAX_BCF_UNPACKED_BYTES = 256 * 1024 * 1024
-/** What one member may inflate to; a picture past the snapshot bound is dropped later, not here. */
-export const MAX_BCF_ENTRY_BYTES = 16 * 1024 * 1024
+/** What all members together may declare. Pictures are stored, not deflated, so this is about the archive's own size. */
+export const MAX_BCF_UNPACKED_BYTES = 64 * 1024 * 1024
+/** One XML part, inflated: a viewpoint of 2000 exceptions is well under 1 MiB. */
+export const MAX_BCF_XML_MEMBER_BYTES = 4 * 1024 * 1024
 /** A member's name, in bytes. */
 const MAX_PATH_LENGTH = 255
 /** Compressed bytes handed to the inflater at once: bounds what one push can produce to about a thousandfold. */
 const INFLATE_CHUNK = 4 * 1024
 
+const XML_MEMBER = /\.(bcf|bcfv|bcfp|xml|version)$/i
 
 export class BcfArchiveError extends Error {
   constructor(
@@ -71,6 +80,19 @@ interface Member {
   compressedSize: number
   size: number
   localOffset: number
+  /** Where its data starts, read from its local header at admission. */
+  dataStart: number
+}
+
+/** An admitted archive: its file paths, and each file's bytes on demand. */
+export interface BcfArchive {
+  /** The files (folders left out), in directory order. */
+  readonly paths: readonly string[]
+  has(path: string): boolean
+  /** What the member declares it inflates to, or null for no such file. */
+  declaredSize(path: string): number | null
+  /** The member's bytes, inflated now and counted; null for no such file. Refuses with {@link BcfArchiveError}. */
+  read(path: string): Uint8Array | null
 }
 
 const EOCD = 0x06054b50
@@ -121,20 +143,30 @@ function readDirectory(bytes: Uint8Array, view: DataView): Member[] {
     const next = at + 46 + nameLength + view.getUint16(at + 30, true) + view.getUint16(at + 32, true)
     if (next > end) refuse('corrupt', 'central directory entry runs past its end')
     if (flags & 0x1) refuse('encrypted', 'an encrypted member')
+    const compressedSize = view.getUint32(at + 20, true)
+    const memberSize = view.getUint32(at + 24, true)
+    const localOffset = view.getUint32(at + 42, true)
+    if (compressedSize === ZIP64_MARK || memberSize === ZIP64_MARK || localOffset === ZIP64_MARK) {
+      refuse('unsupported', 'ZIP64 members are not read')
+    }
+    if (localOffset + 30 > offset || view.getUint32(localOffset, true) !== LOCAL) refuse('corrupt', 'bad local header')
+    const dataStart = localOffset + 30 + view.getUint16(localOffset + 26, true) + view.getUint16(localOffset + 28, true)
+    if (dataStart + compressedSize > offset) refuse('corrupt', 'member data runs into the central directory')
     members.push({
       path: safeMemberPath(decoder.decode(bytes.subarray(at + 46, at + 46 + nameLength))),
       method: view.getUint16(at + 10, true),
       crc: view.getUint32(at + 16, true),
-      compressedSize: view.getUint32(at + 20, true),
-      size: view.getUint32(at + 24, true),
-      localOffset: view.getUint32(at + 42, true),
+      compressedSize,
+      size: memberSize,
+      localOffset,
+      dataStart,
     })
     at = next
   }
   return members
 }
 
-/** Check the directory as a whole before anything is inflated: names unique, sizes within bounds as declared. */
+/** Check the directory as a whole before anything is inflated: names unique, no shared bytes, sizes within bounds as declared. */
 function admit(members: readonly Member[]): void {
   const seen = new Set<string>()
   let total = 0
@@ -142,11 +174,15 @@ function admit(members: readonly Member[]): void {
     const key = member.path.toLowerCase()
     if (seen.has(key)) refuse('unsafe_path', `the member ${JSON.stringify(member.path)} appears twice`)
     seen.add(key)
-    if (member.compressedSize === ZIP64_MARK || member.size === ZIP64_MARK) refuse('unsupported', 'ZIP64 members are not read')
     if (member.method !== 0 && member.method !== 8) refuse('unsupported', `compression method ${member.method}`)
-    if (member.size > MAX_BCF_ENTRY_BYTES) refuse('too_large', `a member of ${member.size} bytes`)
+    if (XML_MEMBER.test(member.path) && member.size > MAX_BCF_XML_MEMBER_BYTES) refuse('too_large', `an XML part of ${member.size} bytes`)
     total += member.size
     if (total > MAX_BCF_UNPACKED_BYTES) refuse('too_large', 'the members together are too large')
+  }
+  const ranges = [...members].sort((a, b) => a.localOffset - b.localOffset)
+  for (let index = 1; index < ranges.length; index += 1) {
+    const before = ranges[index - 1]
+    if (ranges[index].localOffset < before.dataStart + before.compressedSize) refuse('corrupt', 'two members share bytes')
   }
 }
 
@@ -174,12 +210,8 @@ function inflateBounded(compressed: Uint8Array, declared: number): Uint8Array {
   return out
 }
 
-function memberBytes(bytes: Uint8Array, view: DataView, member: Member): Uint8Array {
-  const at = member.localOffset
-  if (at + 30 > bytes.length || view.getUint32(at, true) !== LOCAL) refuse('corrupt', 'bad local header')
-  const start = at + 30 + view.getUint16(at + 26, true) + view.getUint16(at + 28, true)
-  if (start + member.compressedSize > bytes.length) refuse('corrupt', 'member data runs past the archive')
-  const compressed = bytes.subarray(start, start + member.compressedSize)
+function memberBytes(bytes: Uint8Array, member: Member): Uint8Array {
+  const compressed = bytes.subarray(member.dataStart, member.dataStart + member.compressedSize)
   if (member.method === 0 && member.compressedSize !== member.size) refuse('corrupt', 'a stored member with two sizes')
   const data = member.method === 0 ? compressed : inflateBounded(compressed, member.size)
   if (crc32(data) !== member.crc) refuse('corrupt', `CRC mismatch for ${member.path}`)
@@ -187,19 +219,23 @@ function memberBytes(bytes: Uint8Array, view: DataView, member: Member): Uint8Ar
 }
 
 /**
- * The files of a BCF archive by path (folders left out), in directory order,
- * or a {@link BcfArchiveError} naming why the whole archive is refused.
+ * Open a BCF archive: the directory is admitted or the whole archive refused
+ * ({@link BcfArchiveError}); members inflate only when read, each at most once.
  */
-export function readBcfArchive(bytes: Uint8Array): Map<string, Uint8Array> {
+export function openBcfArchive(bytes: Uint8Array): BcfArchive {
   if (bytes.length > MAX_BCF_ARCHIVE_BYTES) refuse('too_large', 'the archive is too large')
   if (bytes.length < 22) refuse('not_a_zip', 'too short for a ZIP archive')
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const members = readDirectory(bytes, view)
   admit(members)
-  const files = new Map<string, Uint8Array>()
-  for (const member of members) {
-    if (member.path.endsWith('/')) continue
-    files.set(member.path, memberBytes(bytes, view, member))
+  const files = new Map(members.filter((member) => !member.path.endsWith('/')).map((member) => [member.path, member]))
+  return {
+    paths: [...files.keys()],
+    has: (path) => files.has(path),
+    declaredSize: (path) => files.get(path)?.size ?? null,
+    read: (path) => {
+      const member = files.get(path)
+      return member ? memberBytes(bytes, member) : null
+    },
   }
-  return files
 }
