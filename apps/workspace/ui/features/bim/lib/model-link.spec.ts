@@ -8,7 +8,8 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { buildModelHref, buildModelQuery, parseModelView, withModelView } from './model-link'
+import { modelMarkHref } from '@/lib/bim/model-mark-link'
+import { buildModelHref, buildModelQuery, buildOfficeShelfModelHref, parseModelView, withModelView } from './model-link'
 
 describe('buildModelQuery', () => {
   it('is empty for an empty view, so a bare link stays bare', () => {
@@ -206,5 +207,15 @@ describe('the mark a link opens on', () => {
 
   it('is removed by withModelView like any other field', () => {
     expect(withModelView({ mark: MARK, element: 'e' }, { mark: undefined })).toEqual({ element: 'e' })
+  })
+
+  it('is the link the server hands an agent for the same mark, character for character', () => {
+    const mark = { id: MARK, anchorKind: 'viewpoint' }
+    expect(modelMarkHref({ projectId: 'p1', scope: 'project', filename: 'Haus A.ifc' }, mark)).toBe(
+      buildModelHref('p1', { model: 'Haus A.ifc', mark: MARK })
+    )
+    expect(modelMarkHref({ projectId: null, scope: 'office_shelf', filename: 'Haus.ifc' }, mark)).toBe(
+      buildOfficeShelfModelHref({ model: 'Haus.ifc', mark: MARK })
+    )
   })
 })

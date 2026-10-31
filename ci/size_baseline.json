@@ -25,7 +25,7 @@
     "apps/workspace/bff/agent-api/discovery.ts": 856,
     "apps/workspace/bff/agent-api/exposure.config.ts": 718,
     "apps/workspace/bff/annotations/attention.ts": 686,
-    "apps/workspace/bff/annotations/service.ts": 1531,
+    "apps/workspace/bff/annotations/service.ts": 1519,
     "apps/workspace/bff/answer-export/cards.ts": 884,
     "apps/workspace/bff/audit/schemas.mjs": 950,
     "apps/workspace/bff/authz/catalog.ts": 651,

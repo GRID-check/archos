@@ -281,7 +281,12 @@ export type CarryLinkView = z.infer<typeof carryLinkViewSchema>
  * it moves in place; the document that replaces it, at the end of its chain
  * as the reader sees it, when it goes on as a linked mark.
  */
-export const carryTargetViewSchema = carryLinkViewSchema.pick({ documentId: true, documentName: true })
+export const carryTargetViewSchema = carryLinkViewSchema.pick({ documentId: true, documentName: true }).extend({
+  /** On a model: the number of the Fassung it lands on („Fassung 4“), when the document has a version row. */
+  revisionNumber: z.number().int().nullable().optional(),
+  /** On a model: how many of the elements it points at that Fassung has, by GlobalId (migration 0195). */
+  elements: z.object({ present: z.number().int(), total: z.number().int() }).optional(),
+})
 export type CarryTargetView = z.infer<typeof carryTargetViewSchema>
 
 /** Why its author may not delete a mark: a colleague answered in it, or it was carried on (`deleteRefusalOf`). */
@@ -306,8 +311,10 @@ export const annotationViewSchema = z.object({
   viewpoint: viewpointSummarySchema.nullable().optional(),
   /** On a Skizze: the elements it is about, its box derived from them (migration 0192); null elsewhere. Absent from a server that predates it. */
   elementIds: z.array(z.string()).nullable().optional(),
-  /** None of its elements is in the Skizze any more: it keeps its last box. Absent from a server that predates it. */
+  /** None of its elements is in the Skizze, or in the model's Fassung it was carried to, any more: it keeps its last box or view. Absent from a server that predates it. */
   anchorLost: z.boolean().optional(),
+  /** On a model: the in-app link that opens the model at this mark's view (`?mark=`); null elsewhere. */
+  viewHref: z.string().nullable().optional(),
   kind: z.enum(ANNOTATION_KINDS),
   body: z.string(),
   /** Whom its text mentions, as the server kept them; absent from a server that predates mentions. */

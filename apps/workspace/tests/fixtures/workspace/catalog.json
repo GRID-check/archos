@@ -969,10 +969,10 @@
    "name": "annotation-list",
    "domain": "review",
    "summary": "List the annotations on a document",
-   "description": "Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. The ids feed annotation-get.",
+   "description": "Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. An annotation on a 3D model carries `viewHref`, the link that opens the model at its view; hand it to the person. The ids feed annotation-get.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"annotation-list\",\"domain\":\"review\",\"summary\":\"List the annotations on a document\",\"description\":\"Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. The ids feed annotation-get.\",\"annotations\":{\"title\":\"List the annotations on a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or workspace-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"annotation-list\",\"domain\":\"review\",\"summary\":\"List the annotations on a document\",\"description\":\"Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. An annotation on a 3D model carries `viewHref`, the link that opens the model at its view; hand it to the person. The ids feed annotation-get.\",\"annotations\":{\"title\":\"List the annotations on a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or workspace-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "annotation-reply-delete",

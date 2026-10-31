@@ -144,6 +144,8 @@ export const internalAnnotationSchema = z.object({
   /** On a sketch: the element ids it is pinned to, and whether all of them were deleted; null and false elsewhere. */
   elementIds: z.array(z.string()).nullable(),
   anchorLost: z.boolean(),
+  /** On a model: the link that opens the model at this mark's view, to hand the person; null elsewhere. */
+  viewHref: z.string().nullable().optional(),
   kind: z.enum(ANNOTATION_KINDS),
   status: z.enum(ANNOTATION_STATUSES),
   authorKind: z.enum(ANNOTATION_AUTHORS),

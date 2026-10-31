@@ -219,6 +219,7 @@ export const reviewOperations = [
     summary: 'List the annotations on a document',
     description:
       'Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. ' +
+      'An annotation on a 3D model carries `viewHref`, the link that opens the model at its view; hand it to the person. ' +
       'The ids feed annotation-get.',
     method: 'GET',
     path: '/api/documents/[id]/annotations',
@@ -280,7 +281,9 @@ export const reviewOperations = [
     summary: 'Change, resolve or reassign an annotation',
     description:
       'Rewords, assigns, dates or moves the status (open, resolved, dismissed) of an annotation; send at least one field. ' +
-      '`expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries it onto the current revision.',
+      '`expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries it onto the current revision. ' +
+      'On a 3D model the carry writes a new view with the elements the new revision still has, matched by GlobalId ' +
+      '(`carryTarget.elements` says how many beforehand); with none left the annotation keeps its view and says `anchorLost`.',
     method: 'PATCH',
     path: '/api/documents/[id]/annotations/[annotationId]',
     params: annotationParams,

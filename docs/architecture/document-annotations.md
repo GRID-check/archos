@@ -706,8 +706,32 @@ same in any viewer; the viewer converts to and from its own frame
   thread, behind the same gate as the Protokoll; Piloti's untaken proposals are
   left out (`bff/bim/bcf3-*.ts`, mapping in
   [`model-collaboration.md`](../roadmap/model-collaboration.md#bcf-30-mapped)).
-- **No carry.** A viewpoint mark is not carried to a newer Fassung: its
-  referent is a view, not a sheet.
+- **Carry („übernehmen“, migration `0195_viewpoint_carry.sql`).** The same
+  `PATCH … { carryToCurrent: true }` as a page mark, to the same two Fassungen:
+  the model's own published version (the file uploaded again: in place, number
+  and thread kept) or a confirmed replacing document (across: a linked mark
+  there, `carried_from_id`, the old one closed). The file-name revision series
+  is a timeline guess and is never followed. A viewpoint is never changed: the
+  carry writes a new one (`annotation_viewpoints.carried_from_id` names the old)
+  with the same camera and planes and only the elements the new Fassung's
+  `bim_elements` still has, matched by GlobalId, never by coordinates; a pin on
+  a gone element is dropped, the snapshot stays with the old viewpoint.
+  Presence is enough: a changed element is still the element the mark asks
+  about. None of its selected or pinned elements left: the mark keeps its
+  viewpoint and sets `anchor_lost_at` (in place it still moves to the current
+  Fassung; across it stays open where it is). The list's `carryTarget` carries
+  `revisionNumber` and `elements: { present, total }` beforehand, which the
+  model panel shows as „3 von 3 Bauteilen in Fassung 4 vorhanden · übernehmen“;
+  a model not `ready` offers none and refuses with 422 `model_not_ready`. Piloti's
+  proposals go on in place only (across: 422 `proposed`). Deleting a mark
+  deletes its viewpoint and the same document's ones it was carried from.
+  Product event `annotation_viewpoint_carried` (outcome `carried` or
+  `anchor_lost`, with the counts). Code: `viewpoint-carry*.ts`.
+- **Links.** Every view of a mark on a model carries `viewHref`
+  (`bff/bim/model-mark-link.ts`, the viewer's `?model=…&mark=…`), so the agent
+  door and Piloti hand a person „Zur Ansicht“ with the mark; the `ifc_viewer`
+  card's optional `mark` opens „Modell öffnen“ at that view. The BCF 3.0 file
+  is downloaded from the model's marks panel (open or all).
 
 ### Mentioning a colleague
 

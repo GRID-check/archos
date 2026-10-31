@@ -21,6 +21,20 @@ import { getAccessibleDocument } from '@/lib/documents/access'
 import { REVISION_MAX_HISTORY } from '@/lib/documents/revision-links'
 import { loadRevisionLinks } from '@/lib/documents/revision-links-loader'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
+import type { CarryTargetView } from './types'
+
+/**
+ * Where this reader's carry takes the live marks of one document
+ * (`carryToCurrent` in `./service.ts`): `across` to the document that replaces
+ * it, at the end of its chain as the reader sees it ({@link replacingDocumentOf},
+ * the walk the carry itself takes), or in place; `versionId` is the Fassung it
+ * lands on, that document's published version.
+ */
+export interface CarryWay {
+  to: CarryTargetView
+  across: boolean
+  versionId: string | null
+}
 
 /** The document that replaces `doc` now, at the end of its chain of confirmed links; null when nothing replaces it. */
 export async function replacingDocumentOf(session: AuthorizedSession, doc: Document): Promise<Document | null> {

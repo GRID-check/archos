@@ -74,7 +74,8 @@ import { canWriteDocument } from '@/lib/documents/can-write'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { replacingDocumentOf } from './carry'
+import { modelMarkHref } from '@/lib/bim/model-mark-link'
+import { replacingDocumentOf, type CarryWay } from './carry'
 import { anchorEventProperties, placeAndInsert, placeAndInsertForAgent } from './place-and-insert'
 import { isDiagramRendition } from './sketch-place'
 import {
@@ -121,9 +122,9 @@ import { delegationEventId, wakeTurnId } from './wake-ids'
 import { findWake } from './wake-repository'
 import { latestWakesFor, agentWorkOf } from './agent-work'
 import { nameOf, toReplyView, type Names } from './reply-view'
-import { findViewpoint, viewpointSummariesOfMarks } from './viewpoint-repository'
+import { findViewpoint } from './viewpoint-repository'
+import { carryViewpointAcross, carryViewpointInPlace, markViewpointsOf, viewpointCarryTarget, type MarkViewpoints } from './viewpoint-carry'
 import { discardStoredSnapshot } from './viewpoint-snapshot'
-import type { ViewpointSummary } from './viewpoint-types'
 import { wakeSpansFor, type WakeSpan } from './wake-attribution'
 import {
   auditDeletedWithMark,
@@ -198,7 +199,7 @@ function toView(
   work: ReadonlyMap<string, AgentWakeRow> = new Map(),
   linked: LinkedDocuments = new Map(),
   carryWay: CarryWay | null = null,
-  viewpoints: ReadonlyMap<string, ViewpointSummary> = new Map()
+  viewpoints: MarkViewpoints = new Map()
 ): AnnotationView {
   const wake = work.get(record.id)
   // The author's own mark that the thread or a carry keeps: the card says why it stays.
@@ -218,6 +219,7 @@ function toView(
     viewpoint: record.viewpointId ? (viewpoints.get(record.viewpointId) ?? null) : null,
     elementIds: record.anchorElementIds ?? null,
     anchorLost: record.anchorLostAt != null,
+    viewHref: modelMarkHref(doc, record),
     kind: record.kind,
     body: record.body,
     mentions: record.mentions,
@@ -247,7 +249,7 @@ function toView(
     pilotiWork: wake ? agentWorkOf(wake, nameOf(names, wake.actorUserId)) : null,
     carriedFrom: linkView(record.carriedFrom, linked),
     carriedTo: linkView(record.carriedTo, linked),
-    carryTarget: writable ? carryTargetOf(record, doc, carryWay) : null,
+    carryTarget: writable ? carryTargetOf(record, doc, carryWay, viewpoints) : null,
     canEdit: writable,
     canDelete: own && deleteRefused === null,
     deleteRefused,
@@ -284,17 +286,6 @@ async function linkedDocuments(session: AuthorizedSession, records: readonly Ann
 }
 
 /**
- * Where this reader's carry takes the open marks of one document
- * (`carryToCurrent`): `across` to the document that replaces it, at the end of
- * its chain as the reader sees it (`replacingDocumentOf`, the walk the carry
- * itself takes), or in place.
- */
-interface CarryWay {
-  to: CarryTargetView
-  across: boolean
-}
-
-/**
  * The {@link CarryWay} for a reader who may write `doc`, read once per view:
  * null when nothing of it can be carried (no open mark, or a replacing
  * document the reader may not write, which the carry refuses), or when the
@@ -306,15 +297,15 @@ async function carryWayOf(
   doc: Document,
   records: readonly Pick<AnnotationRecord, 'status'>[]
 ): Promise<CarryWay | null> {
-  if (!records.some((record) => record.status === 'open')) return null
+  if (!records.some(isLive)) return null
   const replacing = await replacingDocumentOf(session, doc).catch((error: unknown) => {
     console.warn(`[annotations] could not read what replaces document ${doc.id}:`, error)
     return undefined
   })
   if (replacing === undefined) return null
-  if (!replacing) return { to: { documentId: doc.id, documentName: documentDisplayName(doc) }, across: false }
-  if (!annotatable(replacing) || !(await canWriteDocument(session, replacing.id))) return null
-  return { to: { documentId: replacing.id, documentName: documentDisplayName(replacing) }, across: true }
+  const to = replacing ?? doc
+  if (replacing && (!annotatable(replacing) || !(await canWriteDocument(session, replacing.id)))) return null
+  return { to: { documentId: to.id, documentName: documentDisplayName(to) }, across: replacing !== null, versionId: to.publishedVersionId ?? null }
 }
 
 /**
@@ -323,9 +314,9 @@ async function carryWayOf(
  * open; across, one Piloti works (`carryAcross` asks for it back first); in
  * place, one already on the current Fassung.
  */
-function carryTargetOf(record: AnnotationRecord, doc: Document, way: CarryWay | null): CarryTargetView | null {
-  // A mark on elements of a Skizze goes on with every save by itself (`./sketch-carry.ts`).
-  // A mark on a model is anchored to a view, not to a sheet: it has no Fassung to move to.
+function carryTargetOf(record: AnnotationRecord, doc: Document, way: CarryWay | null, viewpoints: MarkViewpoints): CarryTargetView | null {
+  // A mark on elements of a Skizze goes on with every save by itself (`./sketch-carry.ts`); one on a model by its elements.
+  if (record.anchorKind === 'viewpoint') return viewpointCarryTarget(record, way, viewpoints)
   if (!way || record.status !== 'open' || record.anchorKind !== 'page') return null
   if (way.across) return record.delegatedBy ? null : way.to
   return (record.versionId ?? null) === (doc.publishedVersionId ?? null) ? null : way.to
@@ -447,19 +438,17 @@ async function requireWritableDocument(session: AuthorizedSession, documentId: s
 async function viewOf(session: AuthorizedSession, doc: Document, annotationId: string): Promise<AnnotationView> {
   const record = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!record) throw new NotFoundError()
+  const way = carryWayOf(session, doc, [record])
   const [names, wakes, work, linked, carryWay, viewpoints] = await Promise.all([
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),
     linkedDocuments(session, [record]),
-    carryWayOf(session, doc, [record]),
-    viewpointsOf(session, doc, [record]),
+    way,
+    markViewpointsOf(session, doc, [record], way),
   ])
   return toView(record, doc, session, true, names, wakes, work, linked, carryWay, viewpoints)
 }
-
-const viewpointsOf = (session: AuthorizedSession, doc: Document, records: readonly AnnotationRecord[]) =>
-  viewpointSummariesOfMarks(session.organizationId, doc.id, records)
 
 const limitReached = (error: unknown): never => {
   if (error instanceof AnnotationLimitReachedError) {
@@ -494,13 +483,14 @@ export async function documentAnnotationViews(
   records: readonly AnnotationRecord[],
   { writable, names }: { writable: boolean; names?: Names }
 ): Promise<AnnotationView[]> {
+  const way = writable ? carryWayOf(session, doc, records) : null
   const [directory, wakes, work, linked, carryWay, viewpoints] = await Promise.all([
     names ?? directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, records),
     latestWakesFor(session.organizationId, doc.id),
     linkedDocuments(session, records),
-    writable ? carryWayOf(session, doc, records) : null,
-    viewpointsOf(session, doc, records),
+    way,
+    markViewpointsOf(session, doc, records, way),
   ])
   return records.map((record) => toView(record, doc, session, writable, directory, wakes, work, linked, carryWay, viewpoints))
 }
@@ -1042,13 +1032,8 @@ async function carryToCurrent(
   existing: AnnotationRecord,
   actor: AnnotationActor
 ): Promise<{ annotation: AnnotationView }> {
-  if (existing.anchorKind === 'viewpoint') {
-    throw new UnprocessableError('A mark on a model is anchored to a view, not to a Fassung of a sheet.', {
-      field: 'carryToCurrent',
-      reason: 'viewpoint',
-    })
-  }
-  if (existing.status !== 'open') {
+  // Piloti's proposal on a model goes on in place as a proposal (`./viewpoint-carry.ts`).
+  if (existing.status !== 'open' && !(existing.status === 'proposed' && existing.anchorKind === 'viewpoint')) {
     throw new UnprocessableError('Only an open Anmerkung goes on with the current Fassung.', {
       field: 'carryToCurrent',
       reason: 'not-open',
@@ -1058,9 +1043,9 @@ async function carryToCurrent(
   if (replacing) return carryAcross(session, doc, existing, replacing, actor)
   const current = doc.publishedVersionId ?? null
   if ((existing.versionId ?? null) === current) return { annotation: await viewOf(session, doc, existing.id) }
-  const updated = await updateDocumentAnnotation(session.organizationId, doc.id, existing.id, 'open', {
-    revision: { from: existing.versionId ?? null, to: current },
-  })
+  const updated = existing.anchorKind === 'viewpoint'
+    ? await carryViewpointInPlace(session, doc, existing, actor.kind)
+    : await updateDocumentAnnotation(session.organizationId, doc.id, existing.id, 'open', { revision: { from: existing.versionId ?? null, to: current } })
   // Closed, or carried by a colleague a moment ago: say so rather than guess.
   if (!updated) throw conflict()
   announce(session, doc.id, [existing.id], 'updated', actor)
@@ -1102,18 +1087,21 @@ async function carryAcross(
   const assignee =
     existing.assigneeUserId && (await isAssignable(session, target, existing.assigneeUserId)) ? existing.assigneeUserId : null
   const mentions = await keepMentions(session, target, existing.body, existing.mentions, { piloti: false })
-  const row = await carryAnnotationToDocument({
+  const carry = {
     organizationId: session.organizationId,
     source: existing,
     target: { documentId: target.id, versionId: target.publishedVersionId ?? null },
     values: { mentions, assigneeUserId: assignee },
     closedBy: session.userId,
-  }).catch((error: unknown) => {
+  }
+  const row = await (existing.anchorKind === 'viewpoint' ? carryViewpointAcross(session, carry, actor.kind) : carryAnnotationToDocument(carry)).catch((error: unknown) => {
     if (error instanceof AlreadyCarriedError) throw conflict()
     return limitReached(error)
   })
   if (!row) throw conflict()
   announce(session, doc.id, [existing.id], 'updated', actor)
+  // None of its elements is on the replacing model: it stays here and says so (`./viewpoint-carry.ts`).
+  if (row.documentId !== target.id) return { annotation: await viewOf(session, doc, row.id) }
   announce(session, target.id, [row.id], 'created', actor)
   // A carry, not a close: the source's closing is the carry's own bookkeeping.
   markEvent(session, 'annotation_carried', doc.id, { way: 'across', by: actor.kind })
@@ -1221,15 +1209,15 @@ export async function readAnnotation(
   const doc = await getAccessibleDocument(session, documentId, 'read')
   const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
   if (!record) throw new NotFoundError()
-  const [writable, names, wakes, work, linked, viewpoints] = await Promise.all([
+  const [writable, names, wakes, work, linked] = await Promise.all([
     canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),
     linkedDocuments(session, [record]),
-    viewpointsOf(session, doc, [record]),
   ])
   const carryWay = writable ? await carryWayOf(session, doc, [record]) : null
+  const viewpoints = await markViewpointsOf(session, doc, [record], carryWay)
   return toView(record, doc, session, writable, names, wakes, work, linked, carryWay, viewpoints)
 }
 
@@ -1589,6 +1577,7 @@ export async function listAnnotationsForAgent(
       viewpoint: annotation.viewpoint ?? null,
       elementIds: annotation.elementIds ?? null,
       anchorLost: annotation.anchorLost ?? false,
+      viewHref: annotation.viewHref ?? null,
       kind: annotation.kind,
       status: annotation.status,
       authorKind: annotation.authorKind,

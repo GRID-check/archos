@@ -17,6 +17,7 @@
  * assumed.
  */
 
+import { MODEL_VIEW_SEGMENT, OFFICE_SHELF_MODEL_PATH } from '@/lib/bim/model-mark-link'
 import type { BimHighlightStatus } from './model-index'
 import {
   defaultCameraState,
@@ -146,25 +147,14 @@ export function buildModelQuery(view: BimModelView): string {
 }
 
 /**
- * The route a model view opens on.
- *
- * Dateien, not a page of its own. A model is a file: it is uploaded here, it
- * is listed here, and `?model=` is what turns this page into the viewer for
- * one of them. The dedicated `/model` route is gone — it redirects here,
- * keeping its query string, so every link already written into a chat answer,
- * a card or a colleague's message still lands on the same view.
+ * The route a model view opens on: Dateien, not a page of its own. A model is
+ * a file: it is uploaded here, it is listed here, and `?model=` is what turns
+ * this page into the viewer for one of them. The dedicated `/model` route is
+ * gone — it redirects here, keeping its query string. The Archiv's
+ * counterpart is `OFFICE_SHELF_MODEL_PATH`, with the same query string. Both
+ * live with the server's `modelMarkHref`, which writes the same links.
  */
-export const MODEL_VIEW_SEGMENT = 'files'
-
-/**
- * The Archiv's counterpart route.
- *
- * The org-wide Archiv is not under a project, so it cannot use the path above —
- * and it needs the same view state in the same query string, because the whole
- * point is that an `.ifc` behaves identically wherever it is opened. Same
- * `buildModelQuery`, so a view copied from one surface parses on the other.
- */
-export const OFFICE_SHELF_MODEL_PATH = '/app/office-shelf'
+export { MODEL_VIEW_SEGMENT, OFFICE_SHELF_MODEL_PATH }
 
 /** Absolute in-app href for a model view. */
 export function buildModelHref(projectId: string, view: BimModelView = {}): string {

@@ -1442,6 +1442,12 @@
               "anchorLost": {
                 "type": "boolean"
               },
+              "viewHref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "kind": {
                 "type": "string",
                 "enum": [
