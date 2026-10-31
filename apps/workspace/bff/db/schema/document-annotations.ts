@@ -118,6 +118,10 @@ export const documentAnnotations = pgTable(
     anchorKind: text('anchor_kind').$type<AnnotationAnchor>().notNull().default('page'),
     /** The viewpoint of a mark on a model; with `document_id` it names a viewpoint of the same document. */
     viewpointId: uuid('viewpoint_id'),
+    /** The BCF topic this mark was imported from, unique per document (migration 0196, `lib/bim/bcf-import-service.ts`). */
+    sourceTopicGuid: uuid('source_topic_guid'),
+    /** The one import that brought it in, shared by every mark of that import (migration 0196). */
+    importBatchId: uuid('import_batch_id'),
   },
   (table) => ({
     documentFk: foreignKey({
@@ -223,6 +227,20 @@ export const documentAnnotations = pgTable(
     anchorViewpointIs3d: check(
       'document_annotations_anchor_viewpoint_is_3d',
       sql`${table.anchorKind} <> 'viewpoint' OR (${table.viewpointId} IS NOT NULL AND ${table.page} IS NULL AND ${table.shape} IS NULL AND ${table.x} IS NULL AND ${table.y} IS NULL AND ${table.w} IS NULL AND ${table.h} IS NULL AND ${table.anchorElementIds} IS NULL)`
+    ),
+    sourceTopicUniq: uniqueIndex('uniq_document_annotations_source_topic')
+      .on(table.documentId, table.sourceTopicGuid)
+      .where(sql`${table.sourceTopicGuid} IS NOT NULL`),
+    importBatchIdx: index('idx_document_annotations_import_batch')
+      .on(table.importBatchId)
+      .where(sql`${table.importBatchId} IS NOT NULL`),
+    importComplete: check(
+      'document_annotations_import_complete',
+      sql`(${table.sourceTopicGuid} IS NULL) = (${table.importBatchId} IS NULL)`
+    ),
+    importIsViewpoint: check(
+      'document_annotations_import_is_viewpoint',
+      sql`${table.sourceTopicGuid} IS NULL OR ${table.anchorKind} = 'viewpoint'`
     ),
     anchorLostNeedsAnchor: check(
       'document_annotations_anchor_lost_needs_anchor',

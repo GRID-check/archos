@@ -172,6 +172,8 @@ const RECORD: AnnotationRecord = {
   anchorLostAt: null,
   anchorKind: 'page',
   viewpointId: null,
+  sourceTopicGuid: null,
+  importBatchId: null,
   mentions: [],
   revisionNumber: 2,
   replies: [],

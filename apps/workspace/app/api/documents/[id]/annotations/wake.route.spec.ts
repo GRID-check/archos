@@ -191,6 +191,8 @@ const MARK: AnnotationRecord = {
   anchorLostAt: null,
   anchorKind: 'page',
   viewpointId: null,
+  sourceTopicGuid: null,
+  importBatchId: null,
   mentions: [],
   revisionNumber: null,
   replies: [],
