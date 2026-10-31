@@ -23,7 +23,7 @@
     "apps/workspace/bff/agent-api/catalog/folders.ts": 644,
     "apps/workspace/bff/agent-api/catalog/platform.ts": 785,
     "apps/workspace/bff/agent-api/discovery.ts": 856,
-    "apps/workspace/bff/agent-api/exposure.config.ts": 718,
+    "apps/workspace/bff/agent-api/exposure.config.ts": 715,
     "apps/workspace/bff/annotations/attention.ts": 679,
     "apps/workspace/bff/annotations/service.ts": 1515,
     "apps/workspace/bff/answer-export/cards.ts": 884,
