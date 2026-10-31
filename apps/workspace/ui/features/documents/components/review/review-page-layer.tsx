@@ -16,7 +16,8 @@ import { Crosshair, Sparkles, SquareDashed } from 'lucide-react'
 import { AnimatePresence, motion, motionBase, springGlide, useMotionToken } from '@/components/motion'
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
 import { identityInk } from '@/components/ui/avatar-identity'
-import { LiveCursor } from '@/components/ui/live-cursor'
+import { FOCUS_RING } from '@/components/ui/focus-ring'
+import { LiveCursor, PeerTag } from '@/components/ui/live-cursor'
 import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { WorkingDots } from '@/components/ui/working-dots'
 import { useTranslations } from '@/i18n'
@@ -279,21 +280,22 @@ function PeerSelection({
         />
       )}
       {tag && (
-        <span
+        <PeerTag
+          color={ink}
           className={cn(
-            'pointer-events-none absolute z-20 rounded-full px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-background shadow-sm',
+            'pointer-events-none absolute z-20',
             region
               ? above
                 ? '-translate-x-full -translate-y-[calc(100%+4px)]'
                 : '-translate-x-[calc(100%+4px)] translate-y-1'
               : 'translate-x-8 -translate-y-6'
           )}
-          style={{ ...at(region ? region.x + (region.w ?? 0) : annotation.x, annotation.y), backgroundColor: ink }}
+          style={at(region ? region.x + (region.w ?? 0) : annotation.x, annotation.y)}
           title={t('review.peerSelected', { names: selectors.map((state) => state.peer.name).join(', ') })}
           data-testid="review-peer-selection-tag"
         >
           {tag}
-        </span>
+        </PeerTag>
       )}
     </>
   )
@@ -388,8 +390,8 @@ const PeerPointer = memo(function PeerPointer({
   )
 })
 
-/** About how wide a first-name tag is, in CSS pixels: 10px type, its padding. */
-const tagWidth = (name: string): number => name.length * 6 + 14
+/** About how wide a first-name tag is, in CSS pixels: `PeerTag`'s 11px type, its padding. */
+const tagWidth = (name: string): number => name.length * 6.5 + 16
 
 /**
  * Where a colleague's draft box carries their name: over its top-right corner
@@ -411,10 +413,11 @@ export function draftTagPlace(
 }
 
 const DRAFT_TAG_CLASSES: Record<ReturnType<typeof draftTagPlace>, string> = {
-  above: 'right-0 -top-px -translate-y-full rounded-t-[3px]',
-  inside: 'right-0 top-0 rounded-bl-[3px]',
-  'beside-right': 'left-full top-0 ml-1 rounded-[3px]',
-  'beside-left': 'right-full top-0 mr-1 rounded-[3px]',
+  // Flush on the box's edge, the corner that touches it square; beside it, a whole tag.
+  above: 'right-0 -top-px -translate-y-full rounded-b-none',
+  inside: 'right-0 top-0 rounded-tr-none',
+  'beside-right': 'left-full top-0 ml-1',
+  'beside-left': 'right-full top-0 mr-1',
 }
 
 /** The marks the others have open, compared by who has which: a pointer moving changes nothing here. */
@@ -490,17 +493,14 @@ const PageCompany = memo(function PageCompany({
             }}
           >
             {focused && (
-              <span
+              <PeerTag
                 data-testid="review-peer-draft-tag"
                 data-place={draftTagPlace(state.draft, firstName(state.peer.name), size)}
-                className={cn(
-                  'absolute px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-background shadow-sm',
-                  DRAFT_TAG_CLASSES[draftTagPlace(state.draft, firstName(state.peer.name), size)]
-                )}
-                style={{ backgroundColor: identityInk(state.peer.userId) }}
+                color={identityInk(state.peer.userId)}
+                className={cn('absolute', DRAFT_TAG_CLASSES[draftTagPlace(state.draft, firstName(state.peer.name), size)])}
               >
                 {firstName(state.peer.name)}
-              </span>
+              </PeerTag>
             )}
           </span>
         ) : null
@@ -1095,7 +1095,7 @@ export function ReviewPageLayer({
                 aria-label={t('review.piloti.reopen')}
                 title={t('review.piloti.reopen')}
                 onClick={() => piloti.open(ask.id)}
-                className="pointer-events-auto absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                className={cn('pointer-events-auto absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none', FOCUS_RING)}
                 style={at(ask.region.x + ask.region.w, ask.region.y)}
               >
                 {/* On the page: paper ink, which the theme does not flip. */}
@@ -1124,15 +1124,16 @@ export function ReviewPageLayer({
           >
             {highlight.label && (
               // Top-right, where no pin stands; inside the box when the box touches the top of the page.
-              <span
+              <PeerTag
                 data-testid="agent-highlight-label"
+                color="var(--paper-ink)"
                 className={cn(
-                  'bg-paper-ink text-paper-ink-foreground absolute right-0 max-w-56 truncate px-1.5 py-0.5 text-[11px] leading-4 font-medium',
-                  tagFitsAbove(highlight.y, size.height) ? '-top-px -translate-y-full rounded-t-[3px]' : 'top-0 rounded-bl-[3px]'
+                  'text-paper-ink-foreground absolute right-0 max-w-56 shadow-none',
+                  tagFitsAbove(highlight.y, size.height) ? '-top-px -translate-y-full rounded-b-none' : 'top-0 rounded-tr-none'
                 )}
               >
-                {highlight.label}
-              </span>
+                <span className="truncate">{highlight.label}</span>
+              </PeerTag>
             )}
           </motion.span>
         ))}

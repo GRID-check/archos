@@ -110,8 +110,8 @@ export function AgentAnswerCard({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className="size-7 [&_svg]:size-3"
+              size="icon-xs"
+              className="[&_svg]:size-3"
               aria-label={t('review.piloti.stop')}
               title={t('review.piloti.stop')}
               data-testid="agent-card-stop"
@@ -123,8 +123,7 @@ export function AgentAnswerCard({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="size-7 [&_svg]:size-3.5"
+            size="icon-xs"
             aria-label={t('review.piloti.close')}
             data-testid="agent-answer-card-close"
             onClick={() => (working ? piloti.open(null) : piloti.dismiss(ask.id))}
@@ -239,8 +238,8 @@ export function AgentAnswerCard({
             <div className="border-t px-3 py-2.5">
               <div className="flex items-center gap-1.5 whitespace-nowrap">
               {RETRYABLE.has(ask.status) ? (
-                <Button type="button" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => piloti.retry(ask.id)}>
-                  <RotateCcw className="size-3" aria-hidden />
+                <Button type="button" size="xs" onClick={() => piloti.retry(ask.id)}>
+                  <RotateCcw aria-hidden />
                   {t('review.piloti.retry')}
                 </Button>
               ) : (
@@ -249,21 +248,20 @@ export function AgentAnswerCard({
                 text && (
                   <Button
                     type="button"
-                    size="sm"
-                    className="h-7 gap-1.5 text-xs"
+                    size="xs"
                     disabled={adopting}
                     data-testid="agent-card-adopt"
                     onClick={() => void adopt()}
                   >
-                    <StickyNote className="size-3" aria-hidden />
+                    <StickyNote aria-hidden />
                     {ask.annotationId ? t('review.piloti.adoptReply') : t('review.piloti.adopt')}
                   </Button>
                 )
               )}
               {piloti.conversationHref && (
-                <Button asChild type="button" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+                <Button asChild type="button" variant="ghost" size="xs">
                   <Link href={piloti.conversationHref} data-testid="agent-card-chat">
-                    <MessageSquareShare className="size-3" aria-hidden />
+                    <MessageSquareShare aria-hidden />
                     {t('review.piloti.continueInChat')}
                   </Link>
                 </Button>

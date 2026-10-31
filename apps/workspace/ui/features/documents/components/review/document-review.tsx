@@ -24,7 +24,9 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { Button } from '@/components/ui/button'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { FloatingNote, FloatingToolbar, ToolbarIconButton } from '@/components/ui/floating-toolbar'
+import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { Kbd } from '@/components/ui/kbd'
+import { PeerTag } from '@/components/ui/live-cursor'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
@@ -310,19 +312,19 @@ function Elsewhere({
       data-over-card={overCard || undefined}
     >
       {here.map(({ state, at }) => (
-        <button
-          key={state.peer.userId}
-          type="button"
-          data-testid="review-elsewhere"
-          aria-label={t('review.elsewhereJump', { name: state.peer.name, page: at })}
-          title={t('review.elsewhereJump', { name: state.peer.name, page: at })}
-          onClick={() => onJump(state)}
-          className="pointer-events-auto inline-flex items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-[11px] leading-4 font-medium text-background shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-          style={{ backgroundColor: identityInk(state.peer.userId) }}
-        >
-          <Arrow className="size-3" aria-hidden />
-          {t('review.elsewhere', { name: state.peer.name.split(/\s+/)[0] ?? state.peer.name, page: at })}
-        </button>
+        <PeerTag key={state.peer.userId} asChild color={identityInk(state.peer.userId)}>
+          <button
+            type="button"
+            data-testid="review-elsewhere"
+            aria-label={t('review.elsewhereJump', { name: state.peer.name, page: at })}
+            title={t('review.elsewhereJump', { name: state.peer.name, page: at })}
+            onClick={() => onJump(state)}
+            className={cn('pointer-events-auto outline-none', FOCUS_RING)}
+          >
+            <Arrow aria-hidden />
+            {t('review.elsewhere', { name: state.peer.name.split(/\s+/)[0] ?? state.peer.name, page: at })}
+          </button>
+        </PeerTag>
       ))}
     </div>
   )
@@ -349,7 +351,6 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
         type="button"
         variant="outline"
         size="sm"
-        className="h-8 gap-1.5"
         data-testid="review-with-agent"
         disabled={piloti.busy}
         onClick={() => piloti.ask({ text: t('review.reviewSeed'), region: null, effort: 'medium' })}
@@ -387,7 +388,7 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
     <div
       role="status"
       data-testid="review-agent-status"
-      className="border-border/70 bg-muted/40 flex h-8 max-w-[30rem] items-center gap-2 rounded-full border pr-1 pl-1"
+      className="border-border/70 bg-muted/40 flex h-8 max-w-[30rem] items-center gap-2 rounded-control border pr-0.5 pl-1.5"
     >
       <AgentGlyph working={working} />
       {working ? (
@@ -399,8 +400,8 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
         <Button
           type="button"
           variant="secondary"
-          size="sm"
-          className="h-6 shrink-0 rounded-full px-2.5 text-xs"
+          size="xs"
+          className="shrink-0"
           data-testid="review-agent-walk"
           onClick={onWalk}
         >
@@ -408,7 +409,7 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
         </Button>
       )}
       {piloti.conversationHref && (
-        <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-xs">
+        <Button asChild variant="ghost" size="xs" className="shrink-0">
           <Link href={piloti.conversationHref} data-testid="review-agent-conversation">
             {t('review.piloti.openConversation')}
           </Link>
@@ -418,8 +419,7 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className="size-6 rounded-full [&_svg]:size-3"
+          size="icon-xs"
           aria-label={t('review.piloti.retry')}
           onClick={() => piloti.retry(run.id)}
         >
@@ -429,8 +429,7 @@ function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => vo
       <Button
         type="button"
         variant="ghost"
-        size="icon"
-        className="size-6 rounded-full [&_svg]:size-3"
+        size="icon-xs"
         aria-label={working ? t('review.piloti.stop') : t('review.piloti.close')}
         title={working ? t('review.piloti.stop') : t('review.piloti.close')}
         data-testid="review-agent-dismiss"
@@ -944,13 +943,13 @@ export function DocumentReviewMode({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="size-8 shrink-0 pointer-coarse:size-11"
+            size="icon-sm"
+            className="shrink-0"
             aria-label={t('review.close')}
             title={`${t('review.close')} (Esc)`}
             onClick={close}
           >
-            <X className="size-4" aria-hidden />
+            <X aria-hidden />
           </Button>
           {/* On a phone the name has a row of its own, under the close and the
               faces: beside them it kept ~40px, „G…_Index-C.pdf". Cut in the
@@ -980,7 +979,7 @@ export function DocumentReviewMode({
           <div className="ml-auto flex shrink-0 items-center gap-3 max-sm:gap-2">
             {room.status === 'offline' && (
               <span
-                className="text-muted-foreground text-[11px] font-medium"
+                className="text-muted-foreground text-xs font-medium"
                 data-testid="review-offline"
                 title={t('review.offlineHint')}
                 role="status"
@@ -996,26 +995,24 @@ export function DocumentReviewMode({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="size-8"
+                  size="icon-sm"
                   aria-label={t('review.popout')}
                   title={t('review.popout')}
                   data-testid="review-popout"
                   onClick={popout}
                 >
-                  <ExternalLink className="size-3.5" aria-hidden />
+                  <ExternalLink aria-hidden />
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="size-8"
+                  size="icon-sm"
                   aria-label={t('review.copyReviewLink')}
                   title={t('review.copyReviewLink')}
                   data-testid="review-copy-link"
                   onClick={() => copyText(new URL(popoutHref, window.location.href).toString())}
                 >
-                  <Link2 className="size-3.5" aria-hidden />
+                  <Link2 aria-hidden />
                 </Button>
               </span>
             )}
@@ -1024,7 +1021,6 @@ export function DocumentReviewMode({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1.5 pointer-coarse:h-11"
                 aria-haspopup="dialog"
                 aria-expanded={listOpen}
                 // „Anmerkungen: 3 offene Anmerkungen und 12 Vorschläge von Piloti“: the chip's sentence.
@@ -1059,13 +1055,9 @@ export function DocumentReviewMode({
                   view follows, who is out of view above, what the tool in hand does. */}
               <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-1.5">
                 {followedState && (
-                  <span
-                    className="rounded-full px-3 py-1 text-xs font-medium text-background shadow-md"
-                    style={{ backgroundColor: identityInk(followedState.userId) }}
-                    role="status"
-                  >
+                  <PeerTag color={identityInk(followedState.userId)} role="status">
                     {t('review.following', { name: followedState.name })}
-                  </span>
+                  </PeerTag>
                 )}
                 <Elsewhere review={review} page={viewPage ?? 1} edge="above" canvas={canvasRef} onJump={jumpTo} />
                 {toolHint && (

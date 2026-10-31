@@ -138,7 +138,7 @@ export function ReviewExportMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" disabled={busy} data-testid="review-export">
+        <Button type="button" variant="outline" size="sm" disabled={busy} data-testid="review-export">
           <FileDown className="size-3.5" aria-hidden />
           {t('review.export.button')}
         </Button>

@@ -27,7 +27,9 @@ import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { FieldError } from '@/components/ui/field'
+import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { Kbd } from '@/components/ui/kbd'
+import { Toggle, ToggleSegments } from '@/components/ui/toggle'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
@@ -176,12 +178,12 @@ const MetaChip = forwardRef<
   } & React.ComponentProps<'button'>
 >(function MetaChip({ icon: Icon, children, tone, set, onClear, clearLabel, ...props }, ref) {
   return (
-    <span
+    <Chip
       data-set={set || undefined}
+      variant={set ? 'secondary' : 'outline'}
       className={cn(
-        'border-border/80 text-muted-foreground inline-flex h-6 max-w-full items-center rounded-full border text-[11px] font-medium transition-colors duration-quick ease-out',
-        !set && 'border-dashed',
-        set && 'bg-secondary text-foreground border-transparent',
+        'gap-0 px-0',
+        !set && 'text-muted-foreground border-dashed',
         // Overdue is ink and weight, not gold: gold is the Büroablage's colour.
         tone === 'urgent' && 'text-foreground border-foreground/50 border-solid font-semibold'
       )}
@@ -190,25 +192,29 @@ const MetaChip = forwardRef<
         ref={ref}
         type="button"
         className={cn(
-          'hover:text-foreground inline-flex h-full min-w-0 items-center gap-1 rounded-full pl-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none',
-          onClear ? 'pr-1' : 'pr-2'
+          'hover:text-foreground inline-flex h-full min-w-0 items-center gap-1 rounded-full pl-2.5 outline-none disabled:pointer-events-none [&_svg]:size-3.5',
+          FOCUS_RING,
+          onClear ? 'pr-1' : 'pr-2.5'
         )}
         {...props}
       >
-        <Icon className="size-3 shrink-0" aria-hidden />
+        <Icon aria-hidden />
         <span className="truncate">{children}</span>
       </button>
       {onClear && (
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground mr-1 inline-flex size-4 shrink-0 items-center justify-center rounded-full outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/60"
+          className={cn(
+            'text-muted-foreground hover:text-foreground hover:bg-accent mr-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full outline-none',
+            FOCUS_RING
+          )}
           aria-label={clearLabel}
           onClick={onClear}
         >
           <X className="size-3" aria-hidden />
         </button>
       )}
-    </span>
+    </Chip>
   )
 })
 
@@ -323,28 +329,25 @@ function ResponsibilityRow({
 function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kind: AnnotationKind) => void }) {
   const t = useTranslations(filesCopy)
   return (
-    <div role="group" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-control p-0.5">
+    <ToggleSegments aria-label={t('annotations.kind')}>
       {ANNOTATION_KINDS.map((kind) => {
         const Icon = KIND_ICONS[kind]
-        const on = kind === value
         return (
-          <button
+          <Toggle
             key={kind}
-            type="button"
-            aria-pressed={on}
+            variant="segment"
+            size="xs"
+            className="gap-1"
+            pressed={kind === value}
             data-testid={`thread-kind-${kind}`}
-            onClick={() => onChange(kind)}
-            className={cn(
-              'inline-flex h-6 items-center gap-1 rounded-[5px] px-2 text-[11px] font-medium transition-colors duration-quick ease-out',
-              on ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-            )}
+            onPressedChange={() => onChange(kind)}
           >
-            <Icon className="size-3" aria-hidden />
+            <Icon aria-hidden />
             {t(`annotations.kinds.${kind}`)}
-          </button>
+          </Toggle>
         )
       })}
-    </div>
+    </ToggleSegments>
   )
 }
 
@@ -448,14 +451,16 @@ function AgentThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevie
   const [adoptFailed, setAdoptFailed] = useState(false)
   const line = liveLine(stepsOf(ask.view), tChat) ?? t('review.piloti.replying')
   const close = (
-    <button
+    <Button
       type="button"
-      className="text-muted-foreground hover:text-foreground ml-auto shrink-0 self-start rounded p-0.5"
+      variant="ghost"
+      size="icon-xs"
+      className="text-muted-foreground -mt-1 ml-auto self-start"
       aria-label={t('review.piloti.close')}
       onClick={() => review.piloti.dismiss(ask.id)}
     >
-      <X className="size-3" aria-hidden />
-    </button>
+      <X aria-hidden />
+    </Button>
   )
   if (ask.status === 'answered' && ask.annotationId && ask.view?.text) {
     const annotationId = ask.annotationId
@@ -468,9 +473,8 @@ function AgentThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevie
           <p className="text-foreground text-sm leading-5 break-words whitespace-pre-line">{body}</p>
           <Button
             type="button"
-            size="sm"
+            size="xs"
             variant="outline"
-            className="h-7 text-xs"
             disabled={adopting}
             onClick={async () => {
               setAdopting(true)
@@ -654,8 +658,8 @@ function RevisionLines({
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="h-7 self-start text-xs"
+            size="xs"
+            className="self-start"
             disabled={busy}
             data-testid="thread-carry"
             onClick={onCarry}
@@ -824,8 +828,7 @@ function ReplyEntry({
                   ref={moreRef}
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="size-6 [&_svg]:size-3.5"
+                  size="icon-xs"
                   aria-label={t('review.replyMore')}
                   data-testid="thread-reply-more"
                 >
@@ -1066,8 +1069,8 @@ export function ThreadCard({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="ml-auto h-6 gap-1.5 px-2 text-xs"
+              size="xs"
+              className="ml-auto"
               aria-keyshortcuts="J"
               data-testid="thread-walk-next"
               onClick={walk.onNext}
@@ -1085,14 +1088,14 @@ export function ThreadCard({
           <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>{' '}
           <span className="text-muted-foreground font-mono text-[11px]">#{annotation.number}</span>
           {proposed && (
-            <span className="text-muted-foreground border-foreground/50 ml-1 rounded-full border border-dashed px-1.5 text-[10px] font-medium">
+            <Chip size="sm" variant="outline" className="border-foreground/50 text-muted-foreground ml-1 border-dashed">
               {t('review.proposal')}
-            </span>
+            </Chip>
           )}
           {!live && (
-            <span className="text-muted-foreground bg-muted ml-1 rounded-full px-1.5 text-[10px] font-medium">
+            <Chip size="sm" variant="muted" className="ml-1">
               {annotation.status === 'resolved' ? t('review.resolved') : t('review.dismissed')}
-            </span>
+            </Chip>
           )}
         </span>
         <span className="ml-auto flex items-center">
@@ -1100,8 +1103,7 @@ export function ThreadCard({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className="size-7 [&_svg]:size-3.5"
+              size="icon-xs"
               disabled={busy}
               aria-label={t('review.resolve')}
               title={`${t('review.resolve')} (E)`}
@@ -1115,8 +1117,7 @@ export function ThreadCard({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className="size-7 [&_svg]:size-3.5"
+              size="icon-xs"
               disabled={busy}
               aria-label={t('review.reopen')}
               title={t('review.reopen')}
@@ -1134,8 +1135,7 @@ export function ThreadCard({
                   ref={menuRef}
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="size-7 [&_svg]:size-3.5"
+                  size="icon-xs"
                   aria-label={t('review.more')}
                 >
                   <MoreHorizontal aria-hidden />
@@ -1148,8 +1148,7 @@ export function ThreadCard({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className="size-7 [&_svg]:size-3.5"
+              size="icon-xs"
               aria-label={t('review.closeThread')}
               onClick={() => review.select(null)}
             >

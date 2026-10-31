@@ -79,6 +79,14 @@ const buttonVariants = cva(
         sm: 'h-8 px-3.5 text-xs pointer-coarse:h-11',
         lg: 'h-11 px-6 text-base',
         icon: 'size-9 pointer-coarse:size-11',
+        // The compact steps, for an action inside a dense surface (a card's
+        // header, a list row, a banner over a list) where `sm` towers over the
+        // 12px text around it. The glyph is the one the radius and glyph
+        // ladders give the well: `size-3.5` at 28px, `size-4` at 32px, so a
+        // caller never writes `h-7 text-xs [&_svg]:size-3` by hand again.
+        xs: "h-7 gap-1.5 px-2.5 text-xs pointer-coarse:h-11 [&_svg:not([class*='size-'])]:size-3.5",
+        'icon-xs': "size-7 pointer-coarse:size-11 [&_svg:not([class*='size-'])]:size-3.5",
+        'icon-sm': 'size-8 pointer-coarse:size-11',
       },
     },
     compoundVariants: [

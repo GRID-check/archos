@@ -87,6 +87,32 @@ describe('Button inline', () => {
   })
 })
 
+describe('Button compact sizes', () => {
+  // A card header or a banner over a list wanted a 28px action, and got it by
+  // overriding `sm` by hand (`h-6`, `h-7`, `[&_svg]:size-3`): three heights in
+  // one panel, and glyphs that matched no well. The sizes carry it now.
+  it('draws xs at 28px with the 28px well’s glyph, and grows to a finger', () => {
+    render(<Button size="xs">Übernehmen</Button>)
+    const classes = screen.getByRole('button', { name: 'Übernehmen' }).className.split(/\s+/)
+    expect(classes).toEqual(expect.arrayContaining(['h-7', 'text-xs', 'pointer-coarse:h-11', "[&_svg:not([class*='size-'])]:size-3.5"]))
+  })
+
+  it('gives the icon steps a square well that a finger can hit', () => {
+    render(
+      <>
+        <Button size="icon-xs" aria-label="Erledigen" />
+        <Button size="icon-sm" aria-label="Mehr" />
+      </>
+    )
+    expect(screen.getByRole('button', { name: 'Erledigen' }).className.split(/\s+/)).toEqual(
+      expect.arrayContaining(['size-7', 'pointer-coarse:size-11'])
+    )
+    expect(screen.getByRole('button', { name: 'Mehr' }).className.split(/\s+/)).toEqual(
+      expect.arrayContaining(['size-8', 'pointer-coarse:size-11'])
+    )
+  })
+})
+
 /*
  * A loading button never moves its label or changes its width. With a leading
  * icon the spinner takes the icon's slot; without one there is no slot, so the

@@ -37,13 +37,12 @@ export function ReviewPageMenu({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className="size-8 pointer-coarse:size-11"
+          size="icon-sm"
           aria-label={t('review.pageMenu', { page })}
           title={t('review.pageMenu', { page })}
           data-testid="review-page-menu"
         >
-          <Ellipsis className="size-4" aria-hidden />
+          <Ellipsis aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72" data-testid="review-page-menu-content">

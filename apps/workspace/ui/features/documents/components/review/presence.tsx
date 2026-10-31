@@ -13,6 +13,7 @@ import type { JSX } from 'react'
 import { AvatarStack } from '@/components/ui/avatar-stack'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { AgentGlyph } from '@/components/ui/agent-glyph'
+import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
@@ -117,7 +118,7 @@ export function Presence({
                       aria-pressed={on}
                       aria-label={label}
                       onClick={() => onFollow(on ? null : person.peerId)}
-                      className="relative rounded-full outline-none focus-visible:ring-2"
+                      className={cn('relative rounded-full outline-none', FOCUS_RING)}
                     >
                       {face}
                       <span

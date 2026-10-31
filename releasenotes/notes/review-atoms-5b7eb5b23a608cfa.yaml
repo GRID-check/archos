@@ -1,0 +1,8 @@
+---
+improvements:
+  - >
+    The document review now looks like the rest of the workspace: its buttons,
+    filters, chips and badges are the workspace's own, actions in a list line
+    up at one height, and a colleague's name on the page has one shape and
+    colour wherever it appears, beside their pointer, on a mark they have open
+    or at the edge of the view.

@@ -1,7 +1,7 @@
 'use client'
 
-import type { JSX } from 'react'
-import { Clock, MessageCircle, UserRound } from 'lucide-react'
+import type { JSX, ReactNode } from 'react'
+import { Clock, MessageCircle, UserRound, type LucideIcon } from 'lucide-react'
 import { CommentPin } from '@/components/ui/comment-pin'
 import { useLocale, useTranslations } from '@/i18n'
 import { filesCopy } from '@/i18n/namespaces/files'
@@ -45,7 +45,6 @@ export function MarkRowContent({
   unread?: boolean
 }): JSX.Element {
   const t = useTranslations(filesCopy)
-  const { locale } = useLocale()
   const byline = useAgentByline()
   const overdue = isOverdue(annotation, localCalendarDay())
   const author =
@@ -72,31 +71,7 @@ export function MarkRowContent({
         <span className={cn('text-foreground line-clamp-2 text-sm leading-5', !isLive(annotation) && 'text-muted-foreground')}>
           <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={viewerId} clamped />
         </span>
-        {/* Items separated by space and their own icons, never a leading „·"
-            when a line wraps; each item keeps to one line. */}
-        <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs" data-testid="review-row-meta">
-          <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
-          {showPage && <span className="whitespace-nowrap">{t('review.page', { page: annotation.page })}</span>}
-          <span className="min-w-0 truncate">{author}</span>
-          {annotation.assigneeName && (
-            <span className="inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap">
-              <UserRound className="size-3 shrink-0" aria-hidden />
-              <span className="truncate">{annotation.assigneeName}</span>
-            </span>
-          )}
-          {annotation.replies.length > 0 && (
-            <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-              <MessageCircle className="size-3" aria-hidden />
-              {annotation.replies.length}
-            </span>
-          )}
-          {annotation.dueOn && (
-            <span className={cn('inline-flex items-center gap-0.5 whitespace-nowrap', overdue && 'text-foreground font-semibold')}>
-              <Clock className="size-3" aria-hidden />
-              {overdue ? t('review.overdue') : formatDayRange(annotation.dueOn, annotation.dueOn, locale)}
-            </span>
-          )}
-        </span>
+        <MarkMeta annotation={annotation} showPage={showPage} author={author} replies overdue={overdue} />
         {!annotation.onCurrentRevision && (
           <span className="text-muted-foreground mt-0.5 block text-xs italic" title={t('annotations.earlierRevisionHint')}>
             {annotation.revisionNumber
@@ -106,5 +81,56 @@ export function MarkRowContent({
         )}
       </span>
     </>
+  )
+}
+
+/** One fact of the quiet line: its glyph and its words, on one line. */
+function MetaItem({ icon: Icon, className, children }: { icon: LucideIcon; className?: string; children: ReactNode }): JSX.Element {
+  return (
+    <span className={cn('inline-flex min-w-0 items-center gap-1 whitespace-nowrap', className)}>
+      <Icon className="size-3 shrink-0" aria-hidden />
+      <span className="truncate">{children}</span>
+    </span>
+  )
+}
+
+/**
+ * The quiet line under a mark: what kind, the page where nothing around says
+ * it, who set it, who is on it, how many answers, by when. Every list of
+ * marks wears this one line, the review's rows and those of a replaced
+ * document alike. Items are separated by space and their own glyphs, never a
+ * leading „·" when the line wraps.
+ */
+export function MarkMeta({
+  annotation,
+  showPage = false,
+  author,
+  replies = false,
+  overdue = false,
+}: {
+  annotation: AnnotationView
+  showPage?: boolean
+  /** Who set it, where the line names them. */
+  author?: string
+  /** Count the answers in its thread. */
+  replies?: boolean
+  /** Past its date and still open: the word in ink instead of the date. */
+  overdue?: boolean
+}): JSX.Element {
+  const t = useTranslations(filesCopy)
+  const { locale } = useLocale()
+  return (
+    <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs" data-testid="review-row-meta">
+      <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
+      {showPage && <span className="whitespace-nowrap">{t('review.page', { page: annotation.page })}</span>}
+      {author !== undefined && <span className="min-w-0 truncate">{author}</span>}
+      {annotation.assigneeName && <MetaItem icon={UserRound}>{annotation.assigneeName}</MetaItem>}
+      {replies && annotation.replies.length > 0 && <MetaItem icon={MessageCircle}>{annotation.replies.length}</MetaItem>}
+      {annotation.dueOn && (
+        <MetaItem icon={Clock} className={cn(overdue && 'text-foreground font-semibold')}>
+          {overdue ? t('review.overdue') : formatDayRange(annotation.dueOn, annotation.dueOn, locale)}
+        </MetaItem>
+      )}
+    </span>
   )
 }

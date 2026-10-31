@@ -18,13 +18,14 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TagInput } from '@/components/ui/tag-input'
 import { Textarea } from '@/components/ui/textarea'
-import { Toggle } from '@/components/ui/toggle'
+import { Toggle, ToggleSegments } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Section } from './section'
 
 export function ControlsSection(): JSX.Element {
   const [tags, setTags] = useState(['Brandschutz', 'Stellplätze'])
   const [checked, setChecked] = useState(true)
+  const [segment, setSegment] = useState<'offen' | 'erledigt'>('offen')
   return (
     <>
       <Section title="Buttons" description="Every variant and size. Controls: 6px.">
@@ -38,6 +39,7 @@ export function ControlsSection(): JSX.Element {
           <Button variant="inline">Inline</Button>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button size="xs">Extra small</Button>
           <Button size="sm">Small</Button>
           <Button size="default">Default size</Button>
           <Button size="lg">Large</Button>
@@ -46,6 +48,12 @@ export function ControlsSection(): JSX.Element {
           </Button>
           <Button variant="outline" size="icon" aria-label="Delete">
             <Trash2 aria-hidden />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Add, small">
+            <Plus aria-hidden />
+          </Button>
+          <Button variant="ghost" size="icon-xs" aria-label="Add, extra small">
+            <Plus aria-hidden />
           </Button>
           <Button>
             Continue <ArrowRight aria-hidden />
@@ -119,6 +127,13 @@ export function ControlsSection(): JSX.Element {
             <ToggleGroupItem value="raster">Raster</ToggleGroupItem>
             <ToggleGroupItem value="karte">Karte</ToggleGroupItem>
           </ToggleGroup>
+          <ToggleSegments aria-label="Status">
+            {(['offen', 'erledigt'] as const).map((option) => (
+              <Toggle key={option} variant="segment" size="xs" pressed={segment === option} onPressedChange={() => setSegment(option)}>
+                {option === 'offen' ? 'Offen' : 'Erledigt'}
+              </Toggle>
+            ))}
+          </ToggleSegments>
         </div>
       </Section>
 

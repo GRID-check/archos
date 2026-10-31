@@ -1,5 +1,37 @@
-import type { JSX, ReactNode } from 'react'
+import type { ComponentProps, JSX, ReactNode } from 'react'
+import { Slot } from '@radix-ui/react-slot'
 import { cn } from '@/lib/utils'
+
+/**
+ * PeerTag — a colleague's name on a shared canvas, in their colour: the tag
+ * beside their pointer, and every other place the room names them over the
+ * page (the mark they have open, the box they are drawing, „Anna · Seite 2"
+ * at the edge of the view). One shape, so a person reads as the same person
+ * wherever the canvas names them: control radius, 11px, white on their ink
+ * (white, never `text-background`, which turns dark on the ink in dark mode).
+ * `asChild` makes it the face of a button or a link.
+ */
+export function PeerTag({
+  color,
+  asChild = false,
+  className,
+  style,
+  ...props
+}: ComponentProps<'span'> & { color: string; asChild?: boolean }): JSX.Element {
+  const Comp = asChild ? Slot : 'span'
+  return (
+    <Comp
+      data-slot="peer-tag"
+      className={cn(
+        "inline-flex max-w-44 items-center gap-1 rounded-control px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3",
+        'pointer-coarse:max-w-36 pointer-coarse:px-1.5 pointer-coarse:text-[10px]',
+        className
+      )}
+      style={{ backgroundColor: color, ...style }}
+      {...props}
+    />
+  )
+}
 
 /**
  * LiveCursor — somebody else's pointer on a shared canvas: the arrow in their
@@ -109,20 +141,19 @@ export function LiveCursor({
         </span>
       ) : (
         <>
-          <span
+          <PeerTag
             data-slot="live-cursor-tag"
+            color={color}
             className={cn(
-              'absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-control px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md',
-              'pointer-coarse:max-w-36 pointer-coarse:px-1.5 pointer-coarse:text-[10px]',
+              'absolute top-[15px] left-[12px]',
               'origin-top-left transition-[opacity,scale] duration-base ease-out motion-reduce:transition-none',
               idle && 'scale-90 opacity-0'
             )}
-            style={{ backgroundColor: color }}
           >
             {icon}
             <span className="truncate">{label}</span>
             {busy}
-          </span>
+          </PeerTag>
           {idle && (
             <span
               data-slot="live-cursor-initial"

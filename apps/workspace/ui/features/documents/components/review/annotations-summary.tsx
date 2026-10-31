@@ -69,7 +69,7 @@ export function AnnotationsSummary({
         {review.load === 'error' && (
           <div className="space-y-2 p-3" data-testid="annotations-summary-error">
             <p className="text-muted-foreground text-xs leading-5">{t('annotations.loadError')}</p>
-            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={review.retry}>
+            <Button type="button" variant="outline" size="sm" onClick={review.retry}>
               <RotateCcw className="size-3.5" aria-hidden />
               {t('annotations.retry')}
             </Button>
@@ -120,7 +120,7 @@ export function AnnotationsSummary({
               type="button"
               variant={live.length > 0 ? 'ghost' : 'outline'}
               size="sm"
-              className="h-8 w-full justify-center gap-1.5"
+              className="w-full"
               data-testid="open-review"
               onClick={() => onOpenReview()}
             >
