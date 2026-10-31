@@ -222,6 +222,19 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 
 ---
 
+## Geometry service (`apps/geometry`)
+
+The service (ADR-0149) reads these; it adds no variable of its own beyond `GEOMETRY_SERVICE_URL` on the BFF side.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `INTERNAL_API_TOKEN` | Yes | — | The same token as the backend's: it checks the BFF's `x-internal-token` and verifies the signed request-context envelope with it (`agent.common.envelope_auth`). Unset, every request is refused and `/readyz` answers 503. |
+| `REDIS_URL` | No | _(unset: per-process cache)_ | The shared cache (Dragonfly) holding the element index (`ifc:index:v1:<model>:<source>`, 30 days) and its build lock. Unset, each replica keeps its own index and builds it again. |
+| `FRONTEND_INTERNAL_URL` | No | `http://frontend:3000` | Where the service resolves a model's source (`/api/internal/bim/source`), as the backend does. |
+| `BIM_SPATIAL_MAX_MODEL_BYTES` | No | derived | The memory admission the backend's `ifc_measure` uses (see its row): a model this pod cannot hold is refused as 413 `model_too_large`, before it is parsed. |
+| `HOST`, `PORT` | No | `0.0.0.0`, `8100` | Where `python -m geometry_service` binds. |
+| `LOG_LEVEL` | No | `INFO` | One JSON object a line; each call logs a `geometry_call` line with its `record_ifc_call` facts. |
+
 ## OIB Base Corpus Sync
 
 The platform-owner base corpus (`oib_knowledge`) is the PDFs admins upload. They live in SeaweedFS and are listed in one table; `packages/agent/src/agent/oib_sync.py` ingests what is not indexed yet, one sync cycle every ten minutes (the `base-corpus` housekeeping route). See [`docs/technical-reference/oib-sync.md`](../technical-reference/oib-sync.md). aiq-agent service.
@@ -270,6 +283,7 @@ The renderer runs the production permit pen over the precedent fixture office, *
 | `FILE_UPLOAD_MAX_FILE_COUNT` | No | `10` | Maximum number of files a **chat session** may hold. Does not apply to the project Dateiablage or the Büroablage (those are bounded by storage quota). |
 | `FILE_EXPIRATION_CHECK_INTERVAL_HOURS` | No | `0` | Hours after upload before files may expire (0 = no expiry shown). Should match backend TTL (e.g., 12 hours). |
 | `GOTENBERG_URL` | No | `http://gotenberg:3000` (compose), `http://gotenberg:3000` when `grid-oib:gotenbergEnabled` (Kubernetes); unset elsewhere | Base URL of the Gotenberg converter that turns Word/Excel/PowerPoint/ODF/RTF files into a PDF rendition, stored beside the original as `_render.pdf` (ADR-0070). Frontend BFF only: the backend never calls it. It receives the finished PDF as `preview_ref` for the thumbnail and, for Word, presentation, `.xls` and `.ods` files, as `extraction_ref`, the only source it indexes them from (ADR-0071). **Required for those formats.** Unset or empty, and on a failed conversion, they are marked failed with a retryable reason, and "Erneut lesen" converts again. `.xlsx` and `.xlsm` still index, only without preview or thumbnail. The original is always kept and `/download` always serves it. The upload marks the row `processing` and converts in the background with a 120s timeout. Gotenberg runs with `--libreoffice-deny-private-ips` and `--libreoffice-deny-public-ips`, so LibreOffice fetches no URL an office file links. Network isolation is a second layer: compose puts it on an `internal: true` network, Kubernetes on a deny-all-egress NetworkPolicy when `networkPolicies` is on, and the Coolify stack has neither (see the comment there). |
+| `GEOMETRY_SERVICE_URL` | No | _(unset)_; `http://geometry:8100` when `grid-oib:geometryEnabled` (Kubernetes) | Base URL of the geometry service (`apps/geometry`, ADR-0149), the one backend of `POST /api/bim/models/<id>/geometry` and the door's `bim-model-geometry`. Frontend BFF only (`bff/bim/geometry-client.ts`, read through `getGeometryServiceUrl`); the BFF sends the internal token and a signed envelope, so plain HTTP is accepted only to an internal host (`isTokenSafeDestination`). Unset, the route answers 503 `geometry_unavailable` and nothing else changes. Compose does not run the service yet. |
 | `GOTENBERG_MAX_CONCURRENCY` | No | `2` | Conversions one frontend BFF process runs at Gotenberg at once (`apps/workspace/bff/documents/rendition.ts`). Gotenberg's LibreOffice converts one document at a time and counts queue time against its API timeout, so without a bound a folder upload of hundreds of office files timed out most of them. With N frontend replicas Gotenberg sees up to N × this value. A reader opening a preview queues ahead of background conversions, and the 120s conversion budget starts when a slot is held, not while waiting for one. Background conversions are `office_rendition` jobs on the `bff-jobs` pool (ADR-0079), where Pulumi sets this to `bffJobsRenditionConcurrency` (1); the pool's replicas times that value is the fleet-wide ceiling, held to Gotenberg's capacity (`gotenbergReplicas`) by a spec. A value that is not a positive integer falls back to the default. |
 
 ---

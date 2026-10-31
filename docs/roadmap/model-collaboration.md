@@ -181,7 +181,16 @@ ARCHICAD's BCF manager and BIMcollab Zoom is **unverified**; that file is the te
 The model's marks panel downloads it (open or all). Open: `DocumentReferences`.
 The import is F6's first part (below).
 
-### F4 status: framing core exists, bounding-box source missing
+### F4 status: framing core exists, the box source is the geometry service
+
+Since ADR-0149 the boxes come from the geometry service (`apps/geometry`), not an ingest
+column: `POST /api/bim/models/{id}/geometry` (`op: boxes`, door operation
+`bim-model-geometry`) answers each element's world-space box from the model's element index,
+cached per revision in Dragonfly and built on the first question (409 `geometry_warming` while
+it builds). Every agent, Piloti included, reaches it through the door and searches around an
+element, never with a coordinate. Open precondition: the geometry worker's sizing (resident memory
+of a parsed model) before the native IFC tools move off the `chat` and `api` pods (ADR-0149).
+The text below is the state before that decision.
 
 `apps/workspace/bff/annotations/viewpoint-frame.ts` (`frameViewpoint`) is the pure
 core: from element boxes in IFC world coordinates (Z-up, metres) it computes the
