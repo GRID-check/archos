@@ -460,3 +460,69 @@ def test_a_real_document_still_lands_under_the_given_name(tmp_path: Path) -> Non
 
     assert facts["path"] == str(tmp_path / "haus.ids")
     assert (tmp_path / "haus.ids").is_file()
+
+
+# ── [7] the locating tools' published limits ────────────────────────────────
+#
+# Every limit in `tools_locate` is a refusal that names itself. A clamp would be
+# worse than an error here: a caller that asked about 900 elements and got an
+# answer about 500 reports a subset as the whole, and a clash check that quietly
+# compared fewer pairs reports a clean model.
+
+_BASEMENT = FIXTURES / "basement-brep-room.ifc"
+_IDS_501 = [f"id{n:019d}" for n in range(501)]
+
+
+@pytest.fixture(scope="module")
+def locate() -> tuple[list, str]:
+    from ifc_spatial.tools import call
+    from ifc_spatial.tools import create_tools
+
+    tools = create_tools()
+    return tools, call(tools, "open_model", {"path": str(_BASEMENT)})["model"]
+
+
+@pytest.mark.parametrize(
+    ("tool", "args", "says"),
+    [
+        ("element_boxes", {"globalIds": _IDS_501}, "at most 500"),
+        ("element_boxes", {"globalIds": "3QoJ6BxnbEJAsAxl5gQcR_"}, "list of GlobalId"),
+        ("group_boxes", {"groups": {f"g{n}": ["x"] for n in range(301)}}, "at most 300"),
+        ("group_boxes", {"groups": {"g": [f"x{n}" for n in range(201)]}}, "at most 200"),
+        ("elements_within", {"box": {"min": [0, 0, 0], "max": [1, 1, 1]}, "limit": 501}, "limit must be between"),
+        ("elements_within", {"box": {"min": [0, 0, "nan"], "max": [1, 1, 1]}}, "finite"),
+        ("elements_within", {"box": {"min": [2, 0, 0], "max": [1, 1, 1]}}, "must not be below"),
+        ("elements_near", {"point": [0, 0, 0], "radius": 51}, "radius must be between"),
+        ("elements_near", {"point": [0, 0, 0], "globalId": "3QoJ6BxnbEJAsAxl5gQcR_"}, "exactly one"),
+        ("neighbours", {"globalId": "3QoJ6BxnbEJAsAxl5gQcR_", "gap": 2}, "gap must be between"),
+        ("clash", {"setA": [f"x{n}" for n in range(2001)]}, "at most 2000"),
+        ("clash", {"setA": ["x"], "mode": "clearance"}, "needs tolerance"),
+        ("clash", {"setA": ["x"], "mode": "clearance", "tolerance": 6}, "tolerance must be between"),
+        ("clash", {"setA": ["x"], "mode": "explode"}, "mode must be one of"),
+        ("box_diff", {}, "exactly one of baseModel"),
+        ("box_diff", {"baseIndex": {"schema": "other", "version": 1}}, "element index must be schema"),
+        (
+            "box_diff",
+            {"baseIndex": {"schema": "ifc-spatial/element-index", "version": 1, "globalIds": ["x"] * 250_001}},
+            "250000",
+        ),
+    ],
+)
+def test_a_locating_request_over_a_limit_is_refused_by_name(locate, tool: str, args: dict, says: str) -> None:
+    from ifc_spatial.tools import call
+
+    tools, handle = locate
+    with pytest.raises(ToolError, match=says):
+        call(tools, tool, {"model": handle, **args})
+
+
+def test_a_clash_with_too_many_candidate_pairs_says_it_is_incomplete(monkeypatch) -> None:
+    """Past a pair limit the answer is marked truncated and says how much it checked."""
+    from ifc_spatial import operators_clash
+
+    monkeypatch.setattr(operators_clash, "MAX_NARROW_PAIRS", 0)
+    model = SpatialModel(str(_BASEMENT))
+    answer = operators_clash.clash(model, ["3QoJ6BxnbEJAsAxl5gQcR_", "0dXE$xLxz8MwbtYoTqJPiO"], mode="touch")
+    assert answer.value["truncated"] is True
+    assert answer.value["pairs"] == []
+    assert "Incomplete" in answer.caveat

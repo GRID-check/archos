@@ -69,6 +69,7 @@ from ifc_spatial.tools_inspect import _find_elements_tool  # noqa: F401
 from ifc_spatial.tools_inspect import _relations_tool  # noqa: F401
 from ifc_spatial.tools_inspect import _room_inventory_tool  # noqa: F401
 from ifc_spatial.tools_inspect import _shopping_list_tool  # noqa: F401
+from ifc_spatial.tools_locate import locate_tools
 from ifc_spatial.tools_measure import _clearance_tool  # noqa: F401
 from ifc_spatial.tools_measure import _distance_tool  # noqa: F401
 from ifc_spatial.tools_measure import _measure_tool  # noqa: F401
@@ -111,6 +112,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         _sun_position_tool(resolve),
         _storey_heights_tool(resolve),
         _room_inventory_tool(resolve),
+        *locate_tools(resolve),
     ]
 
 

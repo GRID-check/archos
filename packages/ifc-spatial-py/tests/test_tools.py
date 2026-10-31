@@ -159,7 +159,7 @@ def test_open_and_briefing_do_not_run_geometry() -> None:
 
 
 def test_the_tool_list_is_the_ported_surface_plus_what_the_port_added(tools: list) -> None:
-    """Ten tools ported from `tools.ts`, and ten the port added.
+    """Ten tools ported from `tools.ts`, ten the port added, and eight that locate.
 
     `view` sits BEFORE `draw` deliberately. They look like duplicates and are
     not: `draw` writes an SVG file for a human, `view` returns a raster the
@@ -196,6 +196,10 @@ def test_the_tool_list_is_the_ported_surface_plus_what_the_port_added(tools: lis
     answer „wie hoch ist der Keller" was present and correct for months, and the
     agent still answered it from the declared storey pitch, because reaching the
     measurement one room at a time did not fit.
+
+    The eight locating tools come last (`tools_locate`): they are the geometry
+    the model collaboration work frames views and checks clashes with, and they
+    share one cost — the element index — which the first of them pays.
     """
     assert [tool.name for tool in tools] == [
         "open_model",
@@ -218,6 +222,14 @@ def test_the_tool_list_is_the_ported_surface_plus_what_the_port_added(tools: lis
         "sun_position",
         "storey_heights",
         "room_inventory",
+        "element_boxes",
+        "group_boxes",
+        "elements_within",
+        "elements_near",
+        "elements_in_room",
+        "neighbours",
+        "clash",
+        "box_diff",
     ]
 
 
@@ -666,6 +678,9 @@ OPERATOR_MODULES = (
     "render",
     "ids_export",
     "relations",
+    "operators_proximity",
+    "operators_clash",
+    "operators_diff",
 )
 
 #: Public operators deliberately NOT reachable from a tool, each with its reason.
