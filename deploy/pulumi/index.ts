@@ -48,7 +48,7 @@ import { LEGACY_API_TIER, LEGACY_CHAT_TIER } from "./src/app/tier-names";
 import { installFrontend } from "./src/app/frontend";
 import { installWeb } from "./src/app/web";
 import { installGotenberg } from "./src/app/gotenberg";
-import { GEOMETRY_URL, installGeometry } from "./src/app/geometry";
+import { installGeometry } from "./src/app/geometry";
 import { installWorkers } from "./src/app/workers";
 import { installAgentWorker } from "./src/app/agent-worker";
 import { installIngestWorker } from "./src/app/ingest-worker";
@@ -213,7 +213,6 @@ const wiring: AppWiring = {
   seaweedPublicEndpoint: seaweed.publicEndpoint,
   gotenbergUrl: gotenberg?.url,
   geocoderUrl: geocoder?.url,
-  geometryUrl: cfg.geometry.enabled ? GEOMETRY_URL : undefined,
   qdrantUrl: qdrant.url,
   dsn: postgres.dsn,
   imagePullSecrets: pullSecret ? [{ name: PULL_SECRET_NAME }] : [],

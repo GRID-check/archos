@@ -10,17 +10,25 @@ import { ROLLOUT, gracefulShutdown, secretChecksumAnnotations, surgeRollout } fr
 import { AppSecrets, AppWiring, sref } from "./config";
 import { PORT, UID } from "../constants";
 
+/** Where `python -m geometry_service` binds (`PORT`). Kept here, not in `constants.ts`, beside its only users. */
+export const GEOMETRY_PORT = 8100;
+
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
 /** The Service name, and so the host the BFF dials. */
 export const GEOMETRY_NAME = "geometry";
 
 /** In-cluster URL the frontend's `GEOMETRY_SERVICE_URL` points at. Deterministic, so the wiring can carry it before the Deployment exists. */
-export const GEOMETRY_URL = `http://${GEOMETRY_NAME}:${PORT.geometry}`;
+export const GEOMETRY_URL = `http://${GEOMETRY_NAME}:${GEOMETRY_PORT}`;
 
 export interface Geometry {
   deployment: k8s.apps.v1.Deployment;
   service: k8s.core.v1.Service;
+}
+
+/** The frontend's `GEOMETRY_SERVICE_URL`, exactly when the service runs; off, the route answers 503. */
+export function geometryFrontendEnv(cfg: DeployConfig): EnvVar[] {
+  return cfg.geometry.enabled ? [{ name: "GEOMETRY_SERVICE_URL", value: GEOMETRY_URL }] : [];
 }
 
 /** The service's environment: the internal token and the envelope's key, the shared cache, the BFF. Exported for the spec. */
@@ -29,7 +37,7 @@ export function geometryEnv(): EnvVar[] {
     { name: "APP_ENV", value: "production" },
     { name: "LOG_LEVEL", value: "INFO" },
     { name: "HOST", value: "0.0.0.0" },
-    { name: "PORT", value: String(PORT.geometry) },
+    { name: "PORT", value: String(GEOMETRY_PORT) },
     // Checks the BFF's token and the signed envelope (agent.common.envelope_auth).
     sref("INTERNAL_API_TOKEN"),
     // Tier B, the element index (authenticated: the URL carries the password).
@@ -77,7 +85,8 @@ export function installGeometry(
             automountServiceAccountToken: false,
             imagePullSecrets: w.imagePullSecrets,
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
-            securityContext: { runAsNonRoot: true, runAsUser: UID.geometry, runAsGroup: UID.geometry },
+            // The image's `USER 1000:1000`, the backend image's lineage.
+            securityContext: { runAsNonRoot: true, runAsUser: UID.backend, runAsGroup: UID.backend },
             topologySpreadConstraints: spreadAcrossNodes(labels),
             ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
@@ -87,17 +96,17 @@ export function installGeometry(
                 imagePullPolicy: appPullPolicy(cfg, image),
                 securityContext: hardenedContainerSecurityContext(),
                 lifecycle: shutdown.lifecycle,
-                ports: [{ containerPort: PORT.geometry, name: "http" }],
+                ports: [{ containerPort: GEOMETRY_PORT, name: "http" }],
                 env: geometryEnv(),
                 resources: toResourceRequirements(cfg.geometry.resources),
                 readinessProbe: {
-                  httpGet: { path: "/readyz", port: PORT.geometry },
+                  httpGet: { path: "/readyz", port: GEOMETRY_PORT },
                   initialDelaySeconds: 5,
                   periodSeconds: 10,
                   timeoutSeconds: 10,
                 },
                 livenessProbe: {
-                  httpGet: { path: "/healthz", port: PORT.geometry },
+                  httpGet: { path: "/healthz", port: GEOMETRY_PORT },
                   initialDelaySeconds: 20,
                   periodSeconds: 20,
                   timeoutSeconds: 10,
@@ -119,7 +128,7 @@ export function installGeometry(
       spec: {
         type: "ClusterIP",
         selector: labels,
-        ports: [{ port: PORT.geometry, targetPort: PORT.geometry, name: "http" }],
+        ports: [{ port: GEOMETRY_PORT, targetPort: GEOMETRY_PORT, name: "http" }],
       },
     },
     { provider: w.provider, dependsOn: deployment },

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "../test-support/stack-config";
+import { LEGACY_PROJECT } from "../names";
 
 /**
  * The geometry service (ADR-0149). What would plan clean and still be wrong: a route or a
@@ -19,7 +20,7 @@ pulumi.runtime.setMocks(
     },
     call: () => ({}),
   },
-  "grid-oib",
+  LEGACY_PROJECT,
   "test",
   false,
 );
@@ -41,7 +42,7 @@ describe("geometry", () => {
   let url = "";
 
   beforeAll(async () => {
-    pulumi.runtime.setAllConfig({ ...baseStackConfig(), "grid-oib:observabilityEnabled": "false", "grid-oib:geometryEnabled": "true" });
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), [`${LEGACY_PROJECT}:observabilityEnabled`]: "false", [`${LEGACY_PROJECT}:geometryEnabled`]: "true" });
     const { loadConfig } = await import("../config");
     const { installGeometry, GEOMETRY_URL } = await import("./geometry");
     const { buildSecrets, frontendEnv } = await import("./config");
@@ -51,18 +52,18 @@ describe("geometry", () => {
     const provider = new k8s.Provider("test", { kubeconfig: "apiVersion: v1" });
     const wiring = {
       cfg,
-      namespace: "grid",
+      namespace: "app",
       provider,
       redisUrl: pulumi.output("redis://dragonfly:6379"),
       seaweedInternalEndpoint: pulumi.output("http://seaweedfs:8333"),
       seaweedPublicEndpoint: pulumi.output("https://s3.example.test"),
-      qdrantUrl: pulumi.output("http://qdrant.grid.svc.cluster.local:6333"),
+      qdrantUrl: pulumi.output("http://qdrant:6333"),
       dsn: () => pulumi.output("postgresql://x"),
       imagePullSecrets: [],
     };
     const g = installGeometry(wiring, cfg, buildSecrets(wiring), []);
-    envOn = frontendEnv({ ...wiring, geometryUrl: GEOMETRY_URL });
-    envOff = frontendEnv(wiring);
+    envOn = frontendEnv(wiring);
+    envOff = frontendEnv({ ...wiring, cfg: { ...cfg, geometry: { ...cfg.geometry, enabled: false } } });
     await new Promise((done) => g.service.id.apply(done));
   });
 
@@ -84,7 +85,7 @@ describe("geometry", () => {
     const c = spec.template.spec.containers[0];
     expect(c.readinessProbe.httpGet.path).toBe("/readyz");
     expect(c.livenessProbe.httpGet.path).toBe("/healthz");
-    expect(c.image).toMatch(/grid-oib-geometry:/);
+    expect(c.image).toMatch(/-geometry:/);
     const names = c.env.map((e: { name: string }) => e.name);
     expect(names).toEqual(expect.arrayContaining(["INTERNAL_API_TOKEN", "REDIS_URL", "FRONTEND_INTERNAL_URL", "PORT"]));
     expect(spec.template.spec.securityContext.runAsNonRoot).toBe(true);

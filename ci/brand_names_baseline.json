@@ -749,7 +749,7 @@
   "deploy/pulumi/src/config/chat-tier.ts": 4,
   "deploy/pulumi/src/config/dns.ts": 10,
   "deploy/pulumi/src/config/dragonfly.ts": 7,
-  "deploy/pulumi/src/config/images.ts": 6,
+  "deploy/pulumi/src/config/images.ts": 4,
   "deploy/pulumi/src/config/langfuse.ts": 14,
   "deploy/pulumi/src/config/observability.ts": 3,
   "deploy/pulumi/src/config/postgres.ts": 5,

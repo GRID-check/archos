@@ -7,6 +7,7 @@ import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
 import { frontendLangfuseEnv, LANGFUSE_SECRETS_NAME, LANGFUSE_SECRET_KEYS } from "../platform/langfuse";
 import { logicalName, objectName } from "../names";
 import { API_TIER, CHAT_TIER } from "./tier-names";
+import { geometryFrontendEnv } from "./geometry";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
@@ -19,8 +20,6 @@ export interface AppWiring {
   seaweedPublicEndpoint: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
-  /** The geometry service's URL (set when cfg.geometry.enabled, ADR-0149): the BFF's `GEOMETRY_SERVICE_URL`. */
-  geometryUrl?: string;
   /** The self-hosted Photon's URL (set when cfg.geocoder.enabled, ADR-0120). */
   geocoderUrl?: pulumi.Output<string>;
   /** The Qdrant cluster's client URL (ADR-0115): the one vector store, so there is no embedded one. */
@@ -630,19 +629,14 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // /api/internal/storage/alerts, which the storage-alerts CronJob calls — so
     // it belongs to the frontend even though nothing renders it. Escalation to
     // 90% and 100% above this value is automatic.
-    {
-      name: "STORAGE_ALERT_THRESHOLD_PERCENT",
-      value: String(cfg.storageAlerts.thresholdPercent),
-    },
+    { name: "STORAGE_ALERT_THRESHOLD_PERCENT", value: String(cfg.storageAlerts.thresholdPercent) },
     // Office → PDF rendition (ADR-0070). Frontend-only: the BFF is the one
     // converter; the backend receives the finished PDF as `preview_ref`, and
     // for Word/presentation/.xls/.ods also as `extraction_ref`, the only
     // source it indexes those from (ADR-0071). Absent ⇒ those files are
     // marked failed (retryable); .xlsx/.xlsm index without preview.
     ...(w.gotenbergUrl ? [{ name: "GOTENBERG_URL", value: w.gotenbergUrl }] : []),
-    // The geometry service (ADR-0149), behind `/api/bim/models/<id>/geometry`. The BFF is its only
-    // caller. Absent ⇒ that route answers 503 and nothing else changes.
-    ...(w.geometryUrl ? [{ name: "GEOMETRY_SERVICE_URL", value: w.geometryUrl }] : []),
+    ...geometryFrontendEnv(cfg), // `GEOMETRY_SERVICE_URL` exactly when the geometry service runs (ADR-0149)
     // Address search for the project dialog (ADR-0120), behind `/api/geocode`.
     // Absent ⇒ the route answers `enabled: false` and the address stays a plain
     // text field. Only ever the in-cluster Photon: an address is client data.

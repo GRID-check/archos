@@ -147,7 +147,7 @@
     "apps/workspace/ui/features/search/components/search-atoms.tsx": 1176,
     "apps/workspace/ui/features/skills/components/skill-editor-dialog.tsx": 1085,
     "apps/workspace/ui/features/tasks/components/tasks-panel.tsx": 681,
-    "deploy/pulumi/src/app/config.ts": 791,
+    "deploy/pulumi/src/app/config.ts": 789,
     "deploy/pulumi/src/constants.ts": 862,
     "deploy/pulumi/src/data/postgres.ts": 901,
     "deploy/pulumi/src/data/seaweedfs-split.ts": 640,

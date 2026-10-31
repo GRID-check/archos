@@ -25,8 +25,6 @@ export const UID = {
   qdrant: 1000,
   /** Backend image (`apps/agent-host/Dockerfile`): `USER 1000:1000`. */
   backend: 1000,
-  /** Geometry image (`apps/geometry/Dockerfile`): `USER 1000:1000`. */
-  geometry: 1000,
   /** Frontend image (`apps/workspace/deploy/Dockerfile`): user `nextjs` = 1001. */
   frontend: 1001,
   /** Web (landing/blog) image (`apps/site/Dockerfile`): user `piloti` = 1001. */
@@ -84,8 +82,6 @@ export const PORT = {
   clickhouseMetrics: 9363,
   /** Gotenberg API (office → PDF, ADR-0070). Upstream default. */
   gotenberg: 3000,
-  /** The geometry service (`apps/geometry`, ADR-0149): `python -m geometry_service` binds `PORT`. */
-  geometry: 8100,
   /** Photon, the address search behind `GEOCODER_URL` (ADR-0120). Upstream default. */
   geocoder: 2322,
   /** Qdrant REST API: clients, probes and the snapshot CronJob. Upstream default. */

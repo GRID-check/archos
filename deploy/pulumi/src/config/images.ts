@@ -3,24 +3,28 @@
  */
 import * as pulumi from "@pulumi/pulumi";
 
+/** The GHCR repository of one app image, as CI names it (`ci/image_inputs.py`, `Image.repository`). */
+const repository = (c: { images: ImagesConfig }, name: string): string =>
+  `${c.images.registry}/grid-oib-${name}:${c.images.tag}`;
+
 /** Resolve the concrete backend image reference. */
 export function backendImage(c: { images: ImagesConfig }): string {
-  return c.images.backend ?? `${c.images.registry}/grid-oib-backend:${c.images.tag}`;
+  return c.images.backend ?? repository(c, "backend");
 }
 
 /** Resolve the concrete geometry-service image reference (`apps/geometry/Dockerfile`, ADR-0149). */
 export function geometryImage(c: { images: ImagesConfig }): string {
-  return c.images.geometry ?? `${c.images.registry}/grid-oib-geometry:${c.images.tag}`;
+  return c.images.geometry ?? repository(c, "geometry");
 }
 
 /** Resolve the concrete frontend image reference. */
 export function frontendImage(c: { images: ImagesConfig }): string {
-  return c.images.frontend ?? `${c.images.registry}/grid-oib-frontend:${c.images.tag}`;
+  return c.images.frontend ?? repository(c, "frontend");
 }
 
 /** Resolve the concrete landing-site (web) image reference. */
 export function webImage(c: { images: ImagesConfig }): string {
-  return c.images.web ?? `${c.images.registry}/grid-oib-web:${c.images.tag}`;
+  return c.images.web ?? repository(c, "web");
 }
 
 /**
