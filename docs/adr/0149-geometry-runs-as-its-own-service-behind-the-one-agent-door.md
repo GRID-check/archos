@@ -49,9 +49,15 @@ agent uses. Two questions: where the engine runs, and how agents reach it.
 Chosen option 3.
 
 * **The service.** `apps/geometry` (image `geometry`, Deployment and ClusterIP Service `geometry`,
-  `deploy/pulumi/src/app/geometry.ts`), one typed route `POST /v1/internal/bim/geometry` plus
-  `/healthz` and `/readyz`. It reuses the agent package's substrate rather than copying it: the
-  shared cache, the BFF client, the model download with its memory admission
+  `deploy/pulumi/src/app/geometry.ts`). It **speaks MCP itself**: an MCP server at `/mcp/`
+  (streamable HTTP, stateless, JSON answers; the official `mcp` SDK's low-level `Server`), one tool
+  per operation (`boxes`, `group-boxes`, `within`, `near`, `in-room`, `neighbours`, `clash`, `diff`,
+  `warm`). Each tool's input schema is generated from the pydantic model the call is validated
+  with, and its description is in English. Probes: `/healthz` and `/readyz`. The earlier typed
+  JSON route is gone; nothing needed it once the BFF called the tools. The engine's own stdio MCP
+  server (`ifc_spatial.mcp_server`) is not reused: it works on file paths and model handles and has
+  no idea of a source handed over by whoever decided access. The service reuses the agent package's
+  substrate rather than copying it: the shared cache, the model download with its memory admission
   (`ifc_spatial_client`), and the inbound checks, lifted into `agent.common.envelope_auth` and
   shared with `agent_host`. Every call into the engine goes through one adapter
   (`geometry_service/engine.py`).
@@ -83,10 +89,24 @@ Chosen option 3.
   for a restricted folder, or diffing against a model in another project, passed the BFF's gate
   and then got a 404 from the service. A second, weaker access decision downstream of the real one
   was the defect; handing over the authorized source removed it.
-* **One agent door, no native tools at the end.** The capability is the catalog operation
-  `bim-model-geometry`, offered to outside agents and to Piloti alike. An agent searches around an
-  element (`aroundGlobalId`, `globalId`); a raw box or point is accepted only from the person's
-  viewer, enforced in `bff/bim/geometry-service.ts`. Piloti gets no new native tool.
+* **The BFF is the gateway.** `POST /api/bim/models/{id}/geometry` authorizes the model or models,
+  applies the agent rule, hands over the sources, and calls the service tool the operation names
+  (`tools/call`; the internal token, the envelope and the sources travel as headers of that one
+  HTTP request). A `tools/call` without a source handed over for this model and tool is an error
+  result (`source_not_signed`), and nothing is fetched.
+* **One agent door, one operation, no native tools at the end.** The capability is the catalog
+  operation `bim-model-geometry`, offered to outside agents and to Piloti alike, with an `op` field
+  selecting the service tool. The alternative was one catalog operation per service tool, generated
+  from the service's tool list into a checked-in file with a drift test. One operation was chosen:
+  - each door tool is an operation naming a route (ADR-0122), and there is one route, the gateway,
+    so per-tool operations would be nine names for one route and one gate;
+  - the door's tool list is paid for on every `tools/list`. The nine tools' descriptions and
+    schemas cost more than one operation whose `op` union carries them once, and the average-size
+    ratchet (`mcp-server.spec.ts`) has no room for eight more tools;
+  - no generator, no second fixture, nothing to drift: the BFF's `geometry-wire.ts` and the
+    service's `wire.py` already have to match and are reviewed together.
+  An agent searches around an element (`aroundGlobalId`, `globalId`); a raw box or point is
+  accepted only from the person's viewer, enforced at the gateway. Piloti gets no new native tool.
 * **The native IFC tools migrate to the door.** `ifc_query` and `ifc_measure` move behind door
   operations once the geometry service runs where their memory belongs; `ifc-query` is already
   withheld on every door (`withheld: duplicate`) as a duplicate of `bim-model-query`, which outside
@@ -125,6 +145,14 @@ Chosen option 3.
   without redirects and with the signed ETag. The service never looks a model up itself.
 * `exposure.config.spec.ts` and `tests/fixtures/exposure.json`: `bim-model-geometry` is offered to
   both audiences, `ifc-query` is withheld. Nothing yet fails a new native geometry tool.
+
+## Writes: the direction, not built
+
+The service never writes to storage. When change operations come (move an element, set a property,
+split a model), they return a modified IFC or a change set **as a proposal**. The BFF stores it as a
+draft Fassung of the model with a diff (`diff` already exists), and a person accepts it or not.
+Writes need the person's yes; Piloti and any other agent only propose (ADR-0122, ADR-0105). The
+gateway stays the one caller, so the proposal arrives where the review flow already lives.
 
 ## Open preconditions
 
