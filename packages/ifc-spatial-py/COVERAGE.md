@@ -102,11 +102,11 @@ implementation the BFF, the agent's native tool and the MCP door share.
 
 | operator | built on | note |
 |---|---|---|
-| `element_index.ElementIndex` | `geom.iterator` (the geometry pass) + `storey_of` | one row per `IfcProduct`: box, centroid, storey, status `ok`/`no-representation`/`empty-mesh`/`shape-failed`; columnar JSON, schema `ifc-spatial/element-index` v1, 0.1 mm rounding at build so a round trip is exact. Sample house: 75 rows, ~10 KB, built in ~1.9 s (the pass) |
+| `element_index.ElementIndex` | `geom.iterator` (the geometry pass) + `storey_of` | one row per `IfcProduct` GlobalId: box, centroid, storey, status `ok`/`no-representation`/`empty-mesh`/`shape-failed`/`duplicate-global-id`; an element without a body of its own (curtain wall, stair, roof by parts) gets the union of its `IfcRelAggregates` parts, `via: parts`. Columnar JSON, schema `ifc-spatial/element-index` v1, 0.1 mm rounding at build so a round trip is exact; the reader refuses non-finite numbers, booleans, duplicate ids and ok rows without a box. Sample house: 75 rows, ~10 KB, built in ~1.9 s (the pass). The pass itself has no budget: a cold build of a large model is the geometry service's job, ahead of the question |
 | `element_boxes`, `group_boxes`, `elements_within`, `elements_near` | the index alone | answer without opening the IFC; `elements_near(exact)` narrows on triangles |
 | `elements_in_room` | containment + centroid-in-solid (ray parity) | each element tagged `declared` / `computed` / `both` |
-| `neighbours`, `clash` | index broad phase + `clearance._soup_distance` + `proximity_mesh.penetrates` | **never `tree.clash_*`**, which returns `()` on the 0.8.5 wheel. Declared hosting (window in wall) is skipped and counted. Limits: 2 000 ids per set, 20 000 candidate pairs, 2 000 measured pairs, 20 s, then `truncated` |
-| `box_diff` | two indexes | added / removed / moved / resized / unchanged per GlobalId, 5 mm; a shape change inside the same box is not seen |
+| `neighbours`, `clash` | index broad phase + `clearance._soup_distance` + `proximity_mesh.penetrates` | **never `tree.clash_*`**, which returns `()` on the 0.8.5 wheel. Declared contact (fills, voids, aggregates) is skipped and counted; output sorted by GlobalId, independent of input order. Limits: 2 000 ids per set, 20 000 candidate pairs, 2 000 measured pairs, 20 s, then `truncated` |
+| `box_diff` | two indexes | added / removed / moved / resized / unchanged / no-geometry / unknown per GlobalId, 5 mm; a shape change inside the same box is not seen |
 
 ---
 

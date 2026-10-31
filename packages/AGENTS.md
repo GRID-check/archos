@@ -51,7 +51,8 @@ and its path to the `packages` filter in `.github/filters.yml`.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Change an operator | Keep the two implementations' answer contracts identical | The agent gets a different number depending on which engine answered, with nothing to detect it |
+| Change an operator both engines implement | Keep the two implementations' answer contracts identical | The agent gets a different number depending on which engine answered, with nothing to detect it |
+| Add or change a locating operator (element index, boxes, `elements_*`, `neighbours`, `clash`, `box_diff`) | Keep it Python-only: it is listed under "Locating (this engine only)" in [`ifc-spatial-py/COVERAGE.md`](ifc-spatial-py/COVERAGE.md) by decision, because geometry has one implementation (ADR-0045 and the model-collaboration toolset design). The TS engine must never serve these; serving them from TS first needs a TS port and a parity test | Two clash checks or two framings that disagree, with nothing to say which one answered |
 | Return a measurement | Carry the provenance: GlobalIds, the operator expression, an absolute tolerance | A measurement without provenance is a number the agent cannot defend, and it is not a citable source |
 | Add a geometry dependency | Check the version floor comment in `ifc-spatial-py/pyproject.toml` first | The `shapely>=2.1` floor is there for the *test suite's* GEOS cross-checks, not for the operators. Leave it where it is |
 | Edit `ifc-spatial` | Keep the MPL-2.0 headers and `NOTICE` intact | It is separately licensed from the rest of the repo |
