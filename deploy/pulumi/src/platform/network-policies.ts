@@ -6,6 +6,7 @@ import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GEOCODER, GOTENBERG, LANGFUSE, PORT,
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
 import { API_TIERS, CHAT_TIER, CHAT_TIERS } from "../app/tier-names";
+import { GEOMETRY_NAME, geometryFrontendOnly } from "../app/geometry";
 
 /**
  * `app.kubernetes.io/name` of the two Langfuse workloads and their ClickHouse
@@ -124,6 +125,7 @@ export function installNetworkPolicies(
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
             ...(cfg.geocoder.enabled ? [GEOCODER.name] : []),
+            ...(cfg.geometry.enabled ? [GEOMETRY_NAME] : []),
             QDRANT.name,
           ],
         },
@@ -303,7 +305,8 @@ export function installNetworkPolicies(
         policyTypes: ["Ingress"],
         ingress: [
           {
-            from: LANGFUSE_BACKEND_CALLERS.map((name) => ({
+            // The geometry service scores its cold builds (`geometry-cold-ms`, ADR-0149).
+            from: [...LANGFUSE_BACKEND_CALLERS, ...(cfg.geometry.enabled ? [GEOMETRY_NAME] : [])].map((name) => ({
               podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
             })),
             ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
@@ -542,6 +545,7 @@ export function installNetworkPolicies(
     ...(langfuseToClickhouse ? [langfuseToClickhouse] : []),
     ...(gotenberg ? [gotenberg] : []),
     ...(geocoder ? [geocoder] : []),
+    ...(cfg.geometry.enabled ? [geometryFrontendOnly(mk)] : []),
     appToQdrant,
     qdrantPeers,
     ...(collectorToQdrant ? [collectorToQdrant] : []),

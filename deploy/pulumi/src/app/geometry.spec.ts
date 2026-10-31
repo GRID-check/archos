@@ -80,6 +80,19 @@ describe("geometry", () => {
     expect(RESOURCES.some((r) => /Ingress|HTTPRoute/.test(r.type) && r.name.includes("geometry"))).toBe(false);
   });
 
+  it("admits the frontend alone, and is withheld from the same-namespace allow", async () => {
+    const { installNetworkPolicies } = await import("../platform/network-policies");
+    const { loadConfig } = await import("../config");
+    const policies = installNetworkPolicies(loadConfig(), new k8s.Provider("netpol", { kubeconfig: "apiVersion: v1" }), "app");
+    await Promise.all(policies.map((policy) => new Promise((done) => policy.id.apply(done))));
+    const own = await resolve(find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "geometry-frontend-only").inputs.spec);
+    expect(own.ingress).toEqual([
+      { from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }], ports: [{ protocol: "TCP", port: 8100 }] },
+    ]);
+    const intra = await resolve(find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-same-namespace").inputs.spec);
+    expect(intra.podSelector.matchExpressions[0].values).toContain("geometry");
+  });
+
   it("probes the paths the service serves, and carries the token it checks", async () => {
     const spec = await resolve(find("kubernetes:apps/v1:Deployment", "geometry").inputs.spec);
     const c = spec.template.spec.containers[0];

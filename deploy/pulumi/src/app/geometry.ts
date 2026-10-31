@@ -7,7 +7,7 @@ import { commonLabels } from "../platform/namespaces";
 import { onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { ROLLOUT, gracefulShutdown, secretChecksumAnnotations, surgeRollout } from "../platform/rollout";
-import { AppSecrets, AppWiring, sref } from "./config";
+import { AppSecrets, AppWiring, langfuseApiEnv, sref } from "./config";
 import { PORT, UID } from "../constants";
 
 /** Where `python -m geometry_service` binds (`PORT`). Kept here, not in `constants.ts`, beside its only users. */
@@ -21,6 +21,27 @@ export const GEOMETRY_NAME = "geometry";
 /** In-cluster URL the frontend's `GEOMETRY_SERVICE_URL` points at. Deterministic, so the wiring can carry it before the Deployment exists. */
 export const GEOMETRY_URL = `http://${GEOMETRY_NAME}:${GEOMETRY_PORT}`;
 
+/**
+ * The geometry pod's own ingress rule (rule 21 of `network-policies.ts`): the frontend alone, the
+ * BFF being its one caller, instead of the blanket same-namespace allow it is withheld from. Egress
+ * stays open, as for every app pod: it reaches the BFF, Dragonfly, the object store's presigned URL
+ * and Langfuse.
+ */
+export function geometryFrontendOnly(
+  mk: (name: string, spec: k8s.types.input.networking.v1.NetworkPolicySpec) => k8s.networking.v1.NetworkPolicy,
+): k8s.networking.v1.NetworkPolicy {
+  return mk("geometry-frontend-only", {
+    podSelector: { matchLabels: { "app.kubernetes.io/name": GEOMETRY_NAME } },
+    policyTypes: ["Ingress"],
+    ingress: [
+      {
+        from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }],
+        ports: [{ protocol: "TCP", port: GEOMETRY_PORT }],
+      },
+    ],
+  });
+}
+
 export interface Geometry {
   deployment: k8s.apps.v1.Deployment;
   service: k8s.core.v1.Service;
@@ -32,7 +53,7 @@ export function geometryFrontendEnv(cfg: DeployConfig): EnvVar[] {
 }
 
 /** The service's environment: the internal token and the envelope's key, the shared cache, the BFF. Exported for the spec. */
-export function geometryEnv(): EnvVar[] {
+export function geometryEnv(cfg: DeployConfig): EnvVar[] {
   return [
     { name: "APP_ENV", value: "production" },
     { name: "LOG_LEVEL", value: "INFO" },
@@ -44,6 +65,8 @@ export function geometryEnv(): EnvVar[] {
     sref("REDIS_URL"),
     // The model's source is resolved through the BFF (`/api/internal/bim/source`).
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
+    // Scores a cold build on the BFF's trace (`geometry-cold-ms`); nothing when Langfuse is off.
+    ...langfuseApiEnv(cfg),
   ];
 }
 
@@ -97,7 +120,7 @@ export function installGeometry(
                 securityContext: hardenedContainerSecurityContext(),
                 lifecycle: shutdown.lifecycle,
                 ports: [{ containerPort: GEOMETRY_PORT, name: "http" }],
-                env: geometryEnv(),
+                env: geometryEnv(cfg),
                 resources: toResourceRequirements(cfg.geometry.resources),
                 readinessProbe: {
                   httpGet: { path: "/readyz", port: GEOMETRY_PORT },
