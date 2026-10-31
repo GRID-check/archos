@@ -27,6 +27,7 @@ from geometry_service.engine import EngineRefusal
 from geometry_service.errors import GeometryWarming
 from geometry_service.signed_sources import SOURCES_HEADER
 from geometry_service.signed_sources import SOURCES_SIG_HEADER
+from geometry_service.signed_sources import sources_key
 
 from agent.common import cache
 from agent.common.envelope_auth import ENVELOPE_HEADER
@@ -123,7 +124,7 @@ class Source:
             "source": {"etag": f"{model_id}:{self.etag}"},
         }
 
-    def open_model(self, source):
+    def open_model(self, source, fetch=None):
         identity = spatial.source_identity(source)
         if identity not in self.resident:
             self.gate.wait(10)
@@ -172,27 +173,46 @@ def _envelope(payload: dict) -> dict[str, str]:
     }
 
 
-def _signed(models: tuple[str, ...], payload: dict, secret: str = SECRET) -> dict[str, str]:
-    """The BFF's signed sources for ``models``, bound to ``payload``'s organization, user and issuedAt."""
-    sources = {
-        m: {"url": f"http://store.internal/{m}", "etag": f"{m}:etag-1", "bytes": 10, "updatedAt": "t"} for m in models
-    }
-    raw = json.dumps({**{k: payload.get(k) for k in ("organizationId", "userId", "issuedAt")}, "sources": sources})
+def _signed(payload: dict, secret: str = SECRET) -> dict[str, str]:
+    """A sources pair as the BFF signs it: the derived key over the raw JSON."""
+    raw = json.dumps(payload)
     return {
         SOURCES_HEADER: base64.urlsafe_b64encode(raw.encode()).decode().rstrip("="),
-        SOURCES_SIG_HEADER: hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest(),
+        SOURCES_SIG_HEADER: hmac.new(sources_key(secret), raw.encode(), hashlib.sha256).hexdigest(),
     }
 
 
-def _headers(models: tuple[str, ...] = (MODEL, BASE), bound: dict | None = None, **override: Any) -> dict[str, str]:
+def _sources(models: tuple[str, ...]) -> dict:
+    return {
+        m: {"url": f"http://store.internal/{m}", "etag": f"{m}:etag-1", "bytes": 10, "updatedAt": "t"} for m in models
+    }
+
+
+def _headers(
+    body: dict | None = None, models: tuple[str, ...] = (MODEL, BASE), bound: dict | None = None, **override: Any
+) -> dict[str, str]:
+    """The envelope and the sources for ``body``; ``bound`` overrides any field of the signed sources."""
+    body = body or _boxes()
     payload = {"organizationId": "org", "userId": "user", "projectId": "project", "issuedAt": int(time.time() * 1000)}
     payload = {**payload, **override}
-    signed = _signed(models, {**payload, **(bound or {})})
-    return {"x-internal-token": SECRET, "x-trace-id": TRACE, **_envelope(payload), **signed}
+    signed = {
+        "kind": "model-sources",
+        "organizationId": payload.get("organizationId"),
+        "userId": payload.get("userId"),
+        "issuedAt": payload["issuedAt"],
+        "exp": payload["issuedAt"] + 60_000,
+        "modelId": body["modelId"],
+        "op": body["operation"]["op"],
+        "sources": _sources(models),
+        **(bound or {}),
+    }
+    return {"x-internal-token": SECRET, "x-trace-id": TRACE, **_envelope(payload), **_signed(signed)}
 
 
 def _post(body: dict, headers: dict[str, str] | None = None):
-    return TestClient(create_app()).post(GEOMETRY_PATH, json=body, headers=_headers() if headers is None else headers)
+    return TestClient(create_app()).post(
+        GEOMETRY_PATH, json=body, headers=_headers(body) if headers is None else headers
+    )
 
 
 def _boxes() -> dict:
@@ -229,8 +249,22 @@ class TestCredentials:
             lambda: _headers(bound={"userId": "someone-else"}),
             lambda: _headers(bound={"issuedAt": 1}),
             lambda: _headers(models=(BASE,)),
+            lambda: _headers(bound={"exp": int(time.time() * 1000) - 60_000}),
+            lambda: _headers(bound={"op": "clash"}),
+            lambda: _headers(bound={"modelId": BASE}),
+            lambda: _headers(bound={"kind": None}),
         ],
-        ids=["no-sources", "forged", "another-user", "another-request", "not-this-model"],
+        ids=[
+            "no-sources",
+            "forged",
+            "another-user",
+            "another-request",
+            "not-this-model",
+            "expired",
+            "another-op",
+            "another-model",
+            "no-kind",
+        ],
     )
     def test_only_a_source_the_bff_signed_for_this_request_and_model_is_fetched(self, fake, headers):
         source, _, _ = fake
@@ -242,7 +276,7 @@ class TestCredentials:
         seen: list[dict] = []
         source, _, _ = fake
         original = source.open_model
-        monkeypatch.setattr(spatial, "open_model", lambda body: seen.append(body) or original(body))
+        monkeypatch.setattr(spatial, "open_model", lambda body, fetch=None: seen.append(body) or original(body))
         assert _post(_boxes()).status_code == 200
         assert seen[0]["source"]["url"] == f"http://store.internal/{MODEL}"
         assert seen[0]["source"]["etag"] == f"{MODEL}:etag-1"
@@ -353,7 +387,8 @@ class TestOperations:
         assert response.json()["result"]["value"]["elements"][0]["status"] == "unchanged"
         assert (adapter.builds, source.downloads) == (2, 2)
         unsigned = _post(
-            {"modelId": MODEL, "operation": {"op": "diff", "baseModelId": BASE}}, _headers(models=(MODEL,))
+            {"modelId": MODEL, "operation": {"op": "diff", "baseModelId": BASE}},
+            _headers({"modelId": MODEL, "operation": {"op": "diff", "baseModelId": BASE}}, models=(MODEL,)),
         )
         assert unsigned.status_code == 403
 

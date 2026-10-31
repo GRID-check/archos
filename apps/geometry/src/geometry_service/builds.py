@@ -39,6 +39,8 @@ from . import index_cache
 from .errors import CacheTier
 from .errors import GeometryBusy
 from .errors import GeometryWarming
+from .fetch import SourceRefused
+from .fetch import fetch_source
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,8 @@ def _submit(key: str, work: Callable[[], Any]) -> Future[Any]:
 
 
 def _failure_kind(exc: BaseException) -> str:
+    if isinstance(exc, SourceRefused):
+        return "source"
     if isinstance(exc, spatial.ModelTooLargeError):
         return "too_large"
     if isinstance(exc, spatial.SpatialEngineUnavailableError):
@@ -96,10 +100,10 @@ def score_cold(trace_id: str | None, ms: int) -> None:
 
 def _open_resident(source: dict[str, Any]) -> Any:
     """The parsed model (download and parse when not resident). Blocking: run it in the pool."""
-    spatial.open_model(source)
+    spatial.open_model(source, fetch_source)
     model = spatial.resident_model(source)
     if model is None:  # evicted between open and lookup by a third model
-        spatial.open_model(source)
+        spatial.open_model(source, fetch_source)
         model = spatial.resident_model(source)
     return model
 

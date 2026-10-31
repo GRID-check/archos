@@ -52,6 +52,7 @@ import tempfile
 import threading
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from typing import Any
 
 from agent.common import bff_http
@@ -454,7 +455,7 @@ def _spill(identity: str, data: bytes) -> str:
     return path
 
 
-def open_model(result: dict[str, Any]) -> str:
+def open_model(result: dict[str, Any], fetch: Callable[[dict[str, Any]], bytes] | None = None) -> str:
     """Open a resolved model and return the handle every operator takes.
 
     Three levels of "already have it", cheapest first:
@@ -464,7 +465,8 @@ def open_model(result: dict[str, Any]) -> str:
        question about one building;
     2. the bytes are on disk from an earlier turn — the file is re-read (a hash
        plus, on a cache hit, nothing else);
-    3. neither — the file is downloaded.
+    3. neither — the file is downloaded, by ``fetch`` when the caller brings a stricter one (the
+       geometry service's, which admits only its object store and refuses redirects).
 
     The tool table is REPLACED once it holds more models than the cache does,
     and that is not an optimisation. ``create_tools`` keeps a handle table that
@@ -494,7 +496,8 @@ def open_model(result: dict[str, Any]) -> str:
 
     source = result.get("source") or {}
     if not path or not os.path.isfile(path):
-        path = _spill(identity, _download(source.get("url"), source.get("bytes")))
+        data = fetch(source) if fetch is not None else _download(source.get("url"), source.get("bytes"))
+        path = _spill(identity, data)
 
     from ifc_spatial.tools import ToolError
     from ifc_spatial.tools import call

@@ -15,8 +15,9 @@
 import 'server-only'
 import { getGeometryServiceUrl } from '@/lib/backend-url'
 import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
-import { buildRequestContextEnvelopeHeaders, signRequestContextEnvelope } from '@/lib/request-context'
-import type { GeometryRequest, GeometryResponse } from './geometry-wire'
+import { createHmac } from 'node:crypto'
+import { buildRequestContextEnvelopeHeaders } from '@/lib/request-context'
+import type { GeometryOp, GeometryRequest, GeometryResponse } from './geometry-wire'
 
 /**
  * The service answers within its own request budget (40 s: at most 20 s waiting for a cold build,
@@ -36,6 +37,7 @@ export type GeometryErrorCode =
   | 'model_too_large'
   | 'geometry_timeout'
   | 'geometry_busy'
+  | 'geometry_source_unavailable'
   | 'build_failed'
   | 'geometry_unavailable'
 
@@ -63,30 +65,44 @@ export interface ModelSource {
 }
 
 /**
- * The header pair carrying the sources, signed like the envelope (HMAC-SHA256 with the internal
- * token over the raw JSON) and bound to it: the same organization, user and `issuedAt`. The service
- * fetches no URL it did not receive this way (`geometry_service/signed_sources.py`).
+ * The header pair carrying the already-authorized sources. Input integrity, not a permission: it
+ * says these are the bytes the BFF handed over, so the service fetches nothing else
+ * (`geometry_service/signed_sources.py`). HMAC-SHA256 over the raw JSON with a key derived from
+ * the internal token ({@link sourcesKey}), of kind `model-sources`, so it never verifies as a
+ * request-context envelope or the other way round; bound to the envelope's organization, user and
+ * `issuedAt`, to this request's model and op, and valid for {@link SOURCES_TTL_MS}.
  */
 export const SOURCES_HEADER = 'x-model-sources'
 export const SOURCES_SIG_HEADER = 'x-model-sources-sig'
+export const SOURCES_KIND = 'model-sources'
+export const SOURCES_TTL_MS = 60_000
+
+/** `HMAC(INTERNAL_API_TOKEN, "geometry-sources/v1")`: the sources' own key. */
+export function sourcesKey(secret: string): Buffer {
+  return createHmac('sha256', secret).update('geometry-sources/v1', 'utf8').digest()
+}
+
+export interface SourcesPayload {
+  organizationId: string
+  userId: string
+  issuedAt: number
+  modelId: string
+  op: GeometryOp
+  sources: Record<string, ModelSource>
+}
 
 /** The signed sources headers. Pure. */
-export function signedSourcesHeaders(
-  payload: { organizationId: string; userId: string; issuedAt: number; sources: Record<string, ModelSource> },
-  secret: string
-): Record<string, string> {
-  const json = JSON.stringify(payload)
+export function signedSourcesHeaders(payload: SourcesPayload, secret: string): Record<string, string> {
+  const json = JSON.stringify({ kind: SOURCES_KIND, ...payload, exp: payload.issuedAt + SOURCES_TTL_MS })
   return {
     [SOURCES_HEADER]: Buffer.from(json, 'utf8').toString('base64url'),
-    [SOURCES_SIG_HEADER]: signRequestContextEnvelope(json, secret),
+    [SOURCES_SIG_HEADER]: createHmac('sha256', sourcesKey(secret)).update(json, 'utf8').digest('hex'),
   }
 }
 
 export interface GeometryCaller {
   organizationId: string
   userId: string
-  /** The model's project; null for an office-shelf model. Rides in the signed envelope. */
-  projectId: string | null
   /** Each model's bytes, by model id: the model's, and a diff's base model's. */
   sources: Record<string, ModelSource>
   /** The `bim-geometry` trace this call is recorded on; the service scores a cold build there. */
@@ -117,6 +133,8 @@ export function geometryError(status: number, body: unknown): GeometryServiceErr
       const retry = isRecord(body) && typeof body.retryAfter === 'number' ? body.retryAfter : DEFAULT_RETRY_AFTER_SECONDS
       return new GeometryServiceError('The geometry service is busy; ask again shortly', 503, 'geometry_busy', retry)
     }
+    case status === 503 && isRecord(body) && body.code === 'geometry_source_unavailable':
+      return new GeometryServiceError('The model file could not be read right now', 503, 'geometry_source_unavailable')
     case status === 504:
       return new GeometryServiceError(said ?? 'The geometry operation ran out of time', 504, 'geometry_timeout')
     case status === 502 && isRecord(body) && body.code === 'build_failed':
@@ -149,11 +167,19 @@ export async function callGeometry(
   }
   const issuedAt = Date.now()
   const envelope = buildRequestContextEnvelopeHeaders(
-    { organizationId: caller.organizationId, userId: caller.userId, projectId: caller.projectId, issuedAt },
+    // Who asked, and nothing about projects or folders: the service decides no access.
+    { organizationId: caller.organizationId, userId: caller.userId, issuedAt },
     secret
   )
   const signedSources = signedSourcesHeaders(
-    { organizationId: caller.organizationId, userId: caller.userId, issuedAt, sources: caller.sources },
+    {
+      organizationId: caller.organizationId,
+      userId: caller.userId,
+      issuedAt,
+      modelId,
+      op: operation.op,
+      sources: caller.sources,
+    },
     secret
   )
 

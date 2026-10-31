@@ -272,9 +272,40 @@ const presignTtlSeconds = (): number => Number(process.env.SEAWEED_PRESIGNED_URL
  *   one sentence this whole feature must never say about a readable building.
  *   The transfer is internal, so the compression bought nothing here anyway.
  */
+/**
+ * A storage object's last HEAD, for a minute, bounded: a hot model asked about again and again does
+ * not cost a HEAD per call. Keyed by bucket and storage key, which name one object whatever the
+ * tenant; the ETag stays in the source identity, and the geometry service refuses bytes whose ETag
+ * is not the signed one, so a stale entry fails a call rather than caching wrong bytes.
+ */
+const HEAD_TTL_MS = 60_000
+const HEAD_MAX_ENTRIES = 512
+const heads = new Map<string, { at: number; bytes: number | null; etag: string | null }>()
+
+function rememberedHead(key: string): { bytes: number | null; etag: string | null } | null {
+  const hit = heads.get(key)
+  if (!hit || Date.now() - hit.at > HEAD_TTL_MS) {
+    heads.delete(key)
+    return null
+  }
+  return hit
+}
+
+function rememberHead(key: string, head: { bytes: number | null; etag: string | null }): void {
+  heads.delete(key)
+  heads.set(key, { at: Date.now(), ...head })
+  while (heads.size > HEAD_MAX_ENTRIES) heads.delete(heads.keys().next().value as string)
+}
+
+/** Forget the remembered HEADs. Test support. */
+export function clearRememberedHeads(): void {
+  heads.clear()
+}
+
 export async function getInternalModelSource(
   model: BimModelHeader,
-  organizationId: string
+  organizationId: string,
+  options: { rememberHead?: boolean } = {}
 ): Promise<InternalModelSource> {
   // The agent's byte path: a held file's bytes reach no model (ADR-0086).
   const document = await findDocumentInOrg(model.documentId, organizationId, SCREENED_ONLY)
@@ -286,16 +317,21 @@ export async function getInternalModelSource(
   // Best-effort: a store that will not answer a HEAD can still serve the GET,
   // and the two fields it fills are a cache hint and a size hint — neither is
   // load-bearing for correctness.
-  let bytes: number | null = null
-  let etag: string | null = null
-  try {
-    const head = await s3Client.send(
-      new HeadObjectCommand({ Bucket: bucket, Key: document.storageKey })
-    )
-    bytes = typeof head.ContentLength === 'number' ? head.ContentLength : null
-    etag = head.ETag ? head.ETag.replace(/"/g, '') : null
-  } catch {
-    // Left null.
+  const headKey = `${bucket}/${document.storageKey}`
+  const remembered = options.rememberHead ? rememberedHead(headKey) : null
+  let bytes: number | null = remembered?.bytes ?? null
+  let etag: string | null = remembered?.etag ?? null
+  if (!remembered) {
+    try {
+      const head = await s3Client.send(
+        new HeadObjectCommand({ Bucket: bucket, Key: document.storageKey })
+      )
+      bytes = typeof head.ContentLength === 'number' ? head.ContentLength : null
+      etag = head.ETag ? head.ETag.replace(/"/g, '') : null
+      if (options.rememberHead) rememberHead(headKey, { bytes, etag })
+    } catch {
+      // Left null.
+    }
   }
 
   const url = await getSignedUrl(

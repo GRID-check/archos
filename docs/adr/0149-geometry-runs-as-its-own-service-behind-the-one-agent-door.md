@@ -60,15 +60,29 @@ Chosen option 3.
   under a 120 s `SET NX` lock. The broad-phase operations answer from Tier B alone, so a warmed model
   is answered by any replica without opening the IFC. A request waits 20 s for a cold build and is
   then answered `409 geometry_warming` with `retryAfter` while the build carries on.
-* **The BFF routes are the only caller.** `POST /api/bim/models/{id}/geometry` passes the model's
-  document read gate (`getAccessibleModel`, and again for a diff's base model), then calls the
-  service with the internal token, a signed request-context envelope naming the person, and the
-  **model sources** it just authorized: each model's presigned internal URL and store identity
-  (ETag, `updatedAt`), signed like the envelope (HMAC with the internal token) and bound to it (the
-  same organization, user and `issuedAt`). The service has **no access control of its own beyond
-  that**: it fetches no URL it did not receive this way and never re-resolves a model, so its view
-  is exactly the person's, restricted folders they are cleared for and a diff's base model in
-  another project included. The cache key is still the model id and the source identity.
+* **The BFF decides all access; the service decides none.** `POST /api/bim/models/{id}/geometry`
+  is the only caller. It decides everything about who may see what: the person and the
+  organization, the ifc-models flag, the project, the document's shelf, folders including
+  restricted ones, a diff's base model, the rate limit, and the agent rule (an agent names
+  GlobalIds, never a coordinate). Then it hands the service an **already-authorized source** per
+  model: the presigned internal URL, the version (ETag, `updatedAt`) and the model id.
+  The geometry service knows nothing about people, projects or folders. It computes geometry from
+  the bytes it was handed. The envelope tells it whom to attribute the work to (a trace, a log);
+  it is not consulted for access.
+* **The signature is input integrity, not a permission check.** The sources travel in
+  `x-model-sources`, HMAC-signed with a key derived from the internal token
+  (`HMAC(token, "geometry-sources/v1")`, kind `model-sources`, so it never verifies as a
+  request-context envelope or the reverse). They are bound to this request's envelope, model and
+  op, and expire after a minute. The service fetches only what the BFF handed over, and only from
+  its configured object store (`SEAWEED_ENDPOINT`), with no redirects, within the size and time
+  bounds and only when the ETag is the signed one. The cache key is the model id and the source
+  identity.
+* **The earlier design's mistake.** The first version had the service resolve the model again
+  through the BFF's internal lookup, with the envelope's project. That lookup is narrower than the
+  person's rights: it hides every restricted folder and knows only one project. A person cleared
+  for a restricted folder, or diffing against a model in another project, passed the BFF's gate
+  and then got a 404 from the service. A second, weaker access decision downstream of the real one
+  was the defect; handing over the authorized source removed it.
 * **One agent door, no native tools at the end.** The capability is the catalog operation
   `bim-model-geometry`, offered to outside agents and to Piloti alike. An agent searches around an
   element (`aroundGlobalId`, `globalId`); a raw box or point is accepted only from the person's
@@ -89,10 +103,10 @@ Chosen option 3.
 * Bad: the service image carries the agent package's dependency closure for the few modules it
   imports (measured: 84 MB resident after import). Lifting the cache, the BFF client and the model
   download into a small shared package would drop it; that is the follow-up, not a blocker.
-* Neutral: the BFF presigns a URL and asks the store for the ETag on every call, also when the
-  index is already cached (a HEAD and a local signature); the alternative, letting the service
-  resolve on its own, would decide access a second time with fewer facts (no folder clearance, no
-  conversation grant), which is the drift this decision avoids.
+* Neutral: the BFF presigns a URL on every call, also when the index is already cached, and asks
+  the store for the ETag at most once a minute per object (a bounded in-process memo). The
+  alternative, letting the service look the model up itself, is the second access decision this
+  record removes.
 * Bad: a held upload's model (ADR-0086) gets no source: the byte path reads screened files only, so
   its uploader is answered 404 until screening passes.
 * Neutral: off by default (`geometryEnabled`); off, the route answers 503 and nothing else changes.
@@ -102,12 +116,13 @@ Chosen option 3.
 * `apps/geometry/tests/test_geometry_service.py`: no envelope, no token or no user is a 403 and
   nothing is resolved; a Tier B hit downloads nothing; concurrent callers share one build; a lock
   held elsewhere waits; past the wait the answer is 409 `geometry_warming`.
-* `bff/bim/geometry-service.spec.ts` and `geometry-service.folder-access.spec.ts`: the read gate
+* `bff/bim/geometry-service.spec.ts` and `geometry-service.folder-access.spec.ts`: the BFF's gate
   runs before the service is called (for a diff's base model too); a person cleared for a
-  restricted folder gets the model's geometry, one not cleared is refused before any URL is
-  presigned; an agent's raw coordinate is refused.
-* `apps/geometry/tests/test_geometry_service.py`: only a source signed for this request, this person
-  and this model is fetched; the service never resolves a model itself.
+  restricted folder gets the model's geometry, one not cleared is refused by the BFF before any URL
+  is presigned; an agent's raw coordinate is refused.
+* `apps/geometry/tests/test_geometry_service.py` and `test_geometry_source_guards.py`: only a source
+  handed over for this request, model and op, unexpired, is fetched, and only from the object store,
+  without redirects and with the signed ETag. The service never looks a model up itself.
 * `exposure.config.spec.ts` and `tests/fixtures/exposure.json`: `bim-model-geometry` is offered to
   both audiences, `ifc-query` is withheld. Nothing yet fails a new native geometry tool.
 

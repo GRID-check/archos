@@ -53,7 +53,7 @@ export function geometryFrontendEnv(cfg: DeployConfig): EnvVar[] {
 }
 
 /** The service's environment: the internal token and the envelope's key, the shared cache, the BFF. Exported for the spec. */
-export function geometryEnv(cfg: DeployConfig): EnvVar[] {
+export function geometryEnv(cfg: DeployConfig, objectStore: pulumi.Input<string>): EnvVar[] {
   return [
     { name: "APP_ENV", value: "production" },
     { name: "LOG_LEVEL", value: "INFO" },
@@ -63,6 +63,8 @@ export function geometryEnv(cfg: DeployConfig): EnvVar[] {
     sref("INTERNAL_API_TOKEN"),
     // Tier B, the element index (authenticated: the URL carries the password).
     sref("REDIS_URL"),
+    // The one origin the service fetches model bytes from: the internal store the BFF presigns against.
+    { name: "SEAWEED_ENDPOINT", value: objectStore },
     // Scores a cold build on the BFF's trace (`geometry-cold-ms`); nothing when Langfuse is off.
     ...langfuseApiEnv(cfg),
   ];
@@ -118,7 +120,7 @@ export function installGeometry(
                 securityContext: hardenedContainerSecurityContext(),
                 lifecycle: shutdown.lifecycle,
                 ports: [{ containerPort: GEOMETRY_PORT, name: "http" }],
-                env: geometryEnv(cfg),
+                env: geometryEnv(cfg, w.seaweedInternalEndpoint),
                 resources: toResourceRequirements(cfg.geometry.resources),
                 readinessProbe: {
                   httpGet: { path: "/readyz", port: GEOMETRY_PORT },

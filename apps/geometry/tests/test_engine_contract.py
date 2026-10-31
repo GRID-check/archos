@@ -144,7 +144,7 @@ def test_every_route_operation_runs_through_the_service_on_the_real_engine(monke
     cache.reset_local_store()
     index_cache.memo_clear()
     body = {"resolved": True, "model": {"modelId": "m", "updatedAt": "t"}, "source": {"etag": "house"}}
-    monkeypatch.setattr(spatial, "open_model", lambda source: "house")
+    monkeypatch.setattr(spatial, "open_model", lambda source, fetch=None: "house")
     monkeypatch.setattr(spatial, "resident_model", lambda source: house)
     model_id = "11111111-1111-4111-8111-111111111111"
     for operation in [

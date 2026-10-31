@@ -16,7 +16,7 @@ vi.mock('./geometry-client', async (importActual) => ({
   ...(await importActual<typeof import('./geometry-client')>()),
   callGeometry: (...args: unknown[]) => callGeometry(...args),
 }))
-const getInternalModelSource = vi.fn(async (model: { id: string }) => ({
+const getInternalModelSource = vi.fn(async (model: { id: string }): Promise<Record<string, unknown>> => ({
   url: `http://store.internal/${model.id}`,
   etag: `etag-${model.id}`,
   bytes: 10,
@@ -57,7 +57,6 @@ describe('geometryForAccessibleModel', () => {
     expect(callGeometry).toHaveBeenCalledWith(MODEL, { op: 'boxes', globalIds: [GID] }, {
       organizationId: 'org_1',
       userId: 'user_1',
-      projectId: 'project_1',
       traceId: expect.stringMatching(/^[0-9a-f]{32}$/),
       sources: { [MODEL]: signed(MODEL) },
     })
@@ -98,11 +97,22 @@ describe('geometryForAccessibleModel', () => {
     expect(callGeometry.mock.calls[0]?.[2]).toMatchObject({ sources: { [MODEL]: signed(MODEL), [BASE]: signed(BASE) } })
   })
 
-  it('answers 409 for a model still being read, and fetches nothing', async () => {
+  it('answers 409 for a model still being read, fetches nothing, and records the refusal', async () => {
     getAccessibleModel.mockResolvedValue(header(MODEL, 'project_1', 'extracting'))
     await expect(geometryForAccessibleModel(session, MODEL, { op: 'warm' })).rejects.toMatchObject({ status: 409, code: 'model_not_ready' })
     expect(getInternalModelSource).not.toHaveBeenCalled()
     expect(callGeometry).not.toHaveBeenCalled()
+    expect(recordGeometryTrace).toHaveBeenCalledWith(expect.objectContaining({ status: 409, code: 'model_not_ready' }))
+  })
+
+  it('answers a store that cannot presign with a typed 503, not a 500', async () => {
+    getInternalModelSource.mockRejectedValueOnce(new Error('connect ECONNREFUSED'))
+    await expect(geometryForAccessibleModel(session, MODEL, { op: 'warm' })).rejects.toMatchObject({
+      status: 503,
+      code: 'geometry_source_unavailable',
+    })
+    expect(callGeometry).not.toHaveBeenCalled()
+    expect(recordGeometryTrace).toHaveBeenCalledWith(expect.objectContaining({ status: 503, code: 'geometry_source_unavailable' }))
   })
 
   it('lets the person’s viewer send a box', async () => {

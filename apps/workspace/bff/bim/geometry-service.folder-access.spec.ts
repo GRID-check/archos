@@ -55,7 +55,9 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { isFolderVisibleTo } from '@/lib/authz/folder-access'
 import { NotFoundError } from '@/lib/api/errors'
 import { makeDocument } from '@/test-utils/db-fixtures'
+import { s3Client } from '@/lib/s3'
 import { geometryForAccessibleModel } from './geometry-service'
+import { clearRememberedHeads } from './internal-access'
 
 const SESSION = {
   userId: 'user-1',
@@ -68,6 +70,7 @@ const RESTRICTED = 'folder-verwaltung'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  clearRememberedHeads()
   documents.clear()
   documents.set(
     'doc-of-model-restricted',
@@ -87,6 +90,18 @@ describe('a model in a restricted folder', () => {
       expect.objectContaining({
         sources: { 'model-restricted': { url: 'http://store.internal/presigned', etag: 'etag-1', bytes: 10, updatedAt: '2026-08-01T00:00:00.000Z' } },
       })
+    )
+  })
+
+  it('asks the store for the ETag once a minute for a hot model, and keeps it in the source', async () => {
+    vi.mocked(isFolderVisibleTo).mockResolvedValue(true)
+    await geometryForAccessibleModel(SESSION, 'model-restricted', { op: 'warm' })
+    await geometryForAccessibleModel(SESSION, 'model-restricted', { op: 'warm' })
+    expect(s3Client.send).toHaveBeenCalledTimes(1)
+    expect(callGeometry).toHaveBeenLastCalledWith(
+      'model-restricted',
+      { op: 'warm' },
+      expect.objectContaining({ sources: { 'model-restricted': expect.objectContaining({ etag: 'etag-1' }) } })
     )
   })
 
