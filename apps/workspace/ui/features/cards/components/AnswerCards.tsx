@@ -357,6 +357,7 @@ export const AnswerCardView: FC<AnswerCardViewProps> = ({
           // a highlight would otherwise be unchecked.
           highlights={cardHighlightSpecs(card.highlights ?? [])}
           projectId={projectId ?? null}
+          mark={card.mark ?? null}
         />
       </FadeIn>
     )

@@ -2597,6 +2597,19 @@
           "description": "Element groups to colour in the viewer, each with a verdict",
           "title": "Highlights"
         },
+        "mark": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Id of an annotation on this model, exactly as the annotation list reported it: 'Open model' then opens at that annotation's view (camera, section, selection). Use when the answer is about that annotation.",
+          "title": "Mark"
+        },
         "model_file": {
           "anyOf": [
             {

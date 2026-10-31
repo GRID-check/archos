@@ -42,6 +42,8 @@ export interface IfcViewerCardProps {
   note: string | null
   highlights: BimHighlightSpec[]
   projectId: string | null
+  /** An Anmerkung on this model: „Modell öffnen“ opens at its view (`?mark=`), as the model's own link does. */
+  mark?: string | null
 }
 
 export function IfcViewerCard({
@@ -51,6 +53,7 @@ export function IfcViewerCard({
   note,
   highlights,
   projectId,
+  mark = null,
 }: IfcViewerCardProps): JSX.Element {
   const t = useTranslations(bimCopy)
   // `isLoading` and `error` were both discarded, so for the first few hundred
@@ -152,8 +155,10 @@ export function IfcViewerCard({
         // Ghosting is what makes three highlighted walls findable inside a
         // whole building rather than buried in it.
         ...(resolved.length > 0 ? { xray: true } : {}),
+        // The mark's own view: the stage puts back its camera, cut and selection once the model is drawn.
+        ...(mark ? { mark } : {}),
       }),
-    [projectId, model, storey, resolved]
+    [projectId, model, storey, resolved, mark]
   )
 
   return (

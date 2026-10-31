@@ -19,7 +19,7 @@ its **anchor**:
 |---|---|---|
 | Page region on a Fassung | `page`, `shape`, `x`, `y`, `w`, `h` on `document_annotations` (0138) | built |
 | Elements of a Skizze | `anchor_element_ids`, `anchor_lost_at` (0192), box derived on the server | built (S3) |
-| Model viewpoint | camera, clipping planes, selected and visible components by IFC GlobalId, snapshot | built (F1, F2) |
+| Model viewpoint | camera, clipping planes, selected and visible components by IFC GlobalId, snapshot | built (F1, F2; carry 0195) |
 
 So the session does not build model issues. It adds a third anchor and leaves the
 lifecycle alone. One thread, one status set, one Zuständige, one Frist reminder, one
@@ -148,9 +148,18 @@ springen“ and a link with `?mark=<id>` (`lib/model-link.ts`) put back camera, 
 visibility and selection and say how many elements this model lacks. Preview:
 `/dev/model-marks`.
 
-Open: the agent door and viewer cards returning a link with `mark`; the pixel diff
-between capture and restore in a browser (headless Chromium has no WebGPU, so it is
-unverified); vertical section planes, which a restore counts and skips.
+Built since (wave 2): the agent door returns the link with `mark` on every view of a
+mark on a model (`viewHref`, `apps/workspace/bff/bim/model-mark-link.ts`, held equal to
+`buildModelHref` by its spec), and the `ifc_viewer` card takes an optional `mark` that
+opens „Modell öffnen“ at that view. Carry to a new model Fassung is built (below, and
+[`document-annotations.md`](../architecture/document-annotations.md#a-mark-on-a-3d-model-a-viewpoint)).
+
+Still open: the pixel diff between capture and restore in a browser (headless
+Chromium has no WebGPU, so it is unverified); vertical section planes, which a
+restore counts and skips; the card's embedded viewer restoring a mark's view in
+place (the link does); the data cards (`IfcDataCards`) naming a mark; a BCF topic
+listing every viewpoint of a carried mark (the chain is stored, the export writes
+the current one).
 
 ### F3 status: export built, import and the button open
 
@@ -169,7 +178,7 @@ archive back field by field. On 2026-10-30 a file built from `Ifc4_SampleHouse.i
 read back by IfcOpenShell's `bcf-client`, an independent reader: version, types,
 statuses, assignee, due date, camera, six planes, selection and comments. Loading in
 ARCHICAD's BCF manager and BIMcollab Zoom is **unverified**; that file is the test.
-Open: no button in the viewer yet (agents and a direct GET reach it), the import (F6),
+The model's marks panel downloads it (open or all). Open: the import (F6),
 `DocumentReferences`.
 
 ### F4 status: framing core exists, bounding-box source missing
@@ -240,11 +249,15 @@ Read with judgement, not as a feature list. What it changes:
   Recommendation: file first; the API when a customer names the tool that will call it.
   feld72 (2026-10-30) agreed: export first. The ARCHICAD round trip and a BCF server
   are the direction this decision would serve.
-- **Model Fassungen and GlobalIds.** Revision series come from file names, while a
-  Fassung is a `document_versions` row or a confirmed replacement link. Which one does
-  a model mark carry along? GlobalIds survive re-export from the same authoring model,
-  not re-modelling; does the carry need `compare.ts`'s added/removed/changed sets, or
-  is presence enough?
+- **Model Fassungen and GlobalIds. Decided (wave 2, migration 0195).** A model mark
+  carries along what a page mark does: the document's published version (the same
+  file uploaded again; in place) or a person's confirmed replacement link (across).
+  The file-name revision series is a guess for the timeline, not a person's word, so
+  no mark follows it. Presence is enough: an element `compare.ts` calls changed is
+  still the element the mark asks about, often what it asked for; GlobalIds that a
+  re-modelling replaced count as gone, and with none left the mark keeps its last
+  viewpoint (`anchor_lost_at`). Explicit, never on upload: „3 von 3 Bauteilen in
+  Fassung 4 vorhanden · übernehmen“.
 - **Coordinates.** BCF cameras and planes are in the IFC's world frame, metres, Z up.
   The viewer is Y-up and may shift large coordinates for precision. F1 must store
   world coordinates, or exports land the camera kilometres away. A section today is

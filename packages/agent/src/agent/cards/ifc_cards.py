@@ -155,6 +155,14 @@ class IfcViewerCard(CardModel):
     )
     storey: str | None = Field(default=None, description="Storey name to isolate on open, e.g. 'Erdgeschoss'")
     note: str | None = Field(default=None, description="Optional one-line clarification under the viewer")
+    mark: str | None = Field(
+        default=None,
+        description=(
+            "Id of an annotation on this model, exactly as the annotation list reported it: "
+            "'Open model' then opens at that annotation's view (camera, section, selection). "
+            "Use when the answer is about that annotation."
+        ),
+    )
 
 
 class IfcScheduleCard(CardModel):

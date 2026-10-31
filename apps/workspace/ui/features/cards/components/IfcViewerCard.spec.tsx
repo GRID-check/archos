@@ -263,4 +263,11 @@ describe('IfcViewerCard — what it says about the answer it illustrates', () =>
     // rather than buried in it.
     expect(href).toContain('xray=1')
   })
+
+  it('opens the model at an annotation’s view when the answer is about one', async () => {
+    stubFetch({ models: MODELS, query: ELEMENTS, source: { url: 'https://example.test/m.ifc' } })
+    card({ mark: '3f2b8c1e-5a47-4e0b-9d6a-1c2e3f4a5b6c' })
+    const link = await screen.findByRole('link', { name: /open model/i })
+    expect(link.getAttribute('href')).toContain('mark=3f2b8c1e-5a47-4e0b-9d6a-1c2e3f4a5b6c')
+  })
 })
