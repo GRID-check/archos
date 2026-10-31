@@ -48,10 +48,12 @@ The file peek beside the chat is the same primitive at the other edge
    review's C, P, Escape), the list listens only while focus is inside the
    panel: mark the root `data-queue-keys` and the Postfach's
    `keyScope="self"` listens anywhere inside it.
-7. **Let it arrive, not jump.** Fade the panel's content in from a few pixels
-   off its edge (`motionEntrance`); never animate the panel's width, which
-   would re-lay out the page beside it on every frame. Rows that come and go
-   take their height (`HeightArrival as="li"` inside
+7. **Let it arrive, not jump.** `DockedSplit` already slides the panel in and
+   the page aside, and slides a still snapshot of the panel out on close, as a
+   FLIP on transforms: the layout lands once, never per frame. Pass
+   `slide={false}` for an open the reader did not make (the shell does for
+   the panel restored on load). Add no entrance of your own on top. Rows that
+   come and go take their height (`HeightArrival as="li"` inside
    `<AnimatePresence initial={false}>`).
 
 Below `lg` (`DOCK_LAYOUT_QUERY`) nothing docks: the door follows its link to

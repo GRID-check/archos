@@ -36,7 +36,7 @@ import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { isMarkAnchored, type InboxItemView } from '@/lib/inbox/types'
 import { Alert, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { motion, springSnap, useMotionToken } from '@/components/motion'
+import { FadeIn, motion, springSnap, useMotionToken } from '@/components/motion'
 import { LoadError } from '@/components/ui/load-error'
 import { LoadMore } from '@/components/ui/load-more'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -213,42 +213,45 @@ export function InboxQueue({ enabled = true, returnHere = true, keyScope = 'page
           ))}
         </div>
       ) : (
-        <InboxQueueList
-          groups={groups}
-          news={news}
-          waitingCount={waitingCount}
-          lateCount={late}
-          currentId={currentId}
-          hrefOf={hrefOf}
-          onFollow={(event, item) => {
-            // Following an entry is reading it; a background tab is not.
-            if (isPlainClick(event)) markRead(item)
-          }}
-          onArchive={archive}
-          onNewsRead={news.length > 0 ? () => void fresh.markAllRead() : undefined}
-          waitingMore={
-            <LoadMore
-              hasMore={waiting.hasMore}
-              loading={waiting.loadingMore}
-              failed={waiting.loadMoreFailed}
-              onLoadMore={waiting.loadMore}
-              loadMoreLabel={t('inbox.loadMore')}
-              loadingLabel={t('inbox.loadingMore')}
-              failedLabel={t('inbox.loadMoreFailed')}
-            />
-          }
-          newsMore={
-            <LoadMore
-              hasMore={fresh.hasMore}
-              loading={fresh.loadingMore}
-              failed={fresh.loadMoreFailed}
-              onLoadMore={fresh.loadMore}
-              loadMoreLabel={t('inbox.loadMore')}
-              loadingLabel={t('inbox.loadingMore')}
-              failedLabel={t('inbox.loadMoreFailed')}
-            />
-          }
-        />
+        // Lands where the skeleton stood, settling the last few pixels instead of snapping in.
+        <FadeIn distance={4}>
+          <InboxQueueList
+            groups={groups}
+            news={news}
+            waitingCount={waitingCount}
+            lateCount={late}
+            currentId={currentId}
+            hrefOf={hrefOf}
+            onFollow={(event, item) => {
+              // Following an entry is reading it; a background tab is not.
+              if (isPlainClick(event)) markRead(item)
+            }}
+            onArchive={archive}
+            onNewsRead={news.length > 0 ? () => void fresh.markAllRead() : undefined}
+            waitingMore={
+              <LoadMore
+                hasMore={waiting.hasMore}
+                loading={waiting.loadingMore}
+                failed={waiting.loadMoreFailed}
+                onLoadMore={waiting.loadMore}
+                loadMoreLabel={t('inbox.loadMore')}
+                loadingLabel={t('inbox.loadingMore')}
+                failedLabel={t('inbox.loadMoreFailed')}
+              />
+            }
+            newsMore={
+              <LoadMore
+                hasMore={fresh.hasMore}
+                loading={fresh.loadingMore}
+                failed={fresh.loadMoreFailed}
+                onLoadMore={fresh.loadMore}
+                loadMoreLabel={t('inbox.loadMore')}
+                loadingLabel={t('inbox.loadingMore')}
+                failedLabel={t('inbox.loadMoreFailed')}
+              />
+            }
+          />
+        </FadeIn>
       )}
     </div>
   )

@@ -274,6 +274,19 @@ export const motionDeliberate: Transition = { duration: 0.32, ease: EASE_OUT }
 export const motionInstant: Transition = { duration: 0, delay: 0 }
 
 /**
+ * A tween token as Web Animations options, for the few moves that are played
+ * on an element directly (`element.animate`) rather than rendered: a FLIP,
+ * where React has already put the element at its end and the animation only
+ * walks it there from where it was. The same numbers as the token, so the
+ * move lands on the motion scale like everything else.
+ */
+export function asWebAnimation(token: Transition): KeyframeAnimationOptions {
+  const seconds = typeof token.duration === 'number' ? token.duration : 0
+  const ease = Array.isArray(token.ease) && token.ease.length === 4 ? `cubic-bezier(${token.ease.join(', ')})` : 'ease-out'
+  return { duration: seconds * 1000, easing: ease }
+}
+
+/**
  * A token, or `motionInstant` when the reader asked for reduced motion.
  *
  * `<MotionConfig reducedMotion="user">` is not enough on its own (see the

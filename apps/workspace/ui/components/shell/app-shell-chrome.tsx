@@ -144,6 +144,14 @@ export function AppShellChrome({
   const closeDock = useStartDock((state) => state.close)
   const restoreDock = useStartDock((state) => state.restore)
   React.useEffect(() => restoreDock(), [restoreDock])
+  // A panel that is open because the page loaded that way (restored, or the
+  // window found wide enough on hydration) stands; only the reader's own open
+  // and close slide. Settled one frame after mount, once both have happened.
+  const [dockSettled, setDockSettled] = React.useState(false)
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => setDockSettled(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
   const dockFits = useMediaQuery(DOCK_LAYOUT_QUERY)
   const dockContent = dockedPanel && dockFits ? (startDock[dockedPanel] ?? null) : null
 
@@ -245,6 +253,7 @@ export function AppShellChrome({
         onDismiss={closeDock}
         restoreWidth={restoreDockWidth}
         resizeLabel={t('resizeDock')}
+        slide={dockSettled}
         panel={dockContent && (
           <div ref={dockFrameRef} className="h-full min-h-0">
             {dockContent}

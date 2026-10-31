@@ -16,9 +16,8 @@
  * focus where the page has it. A click anywhere in it focuses it too, so its
  * keys never wait for a Tab.
  *
- * It arrives by sliding in from its edge a few pixels as it fades: the width
- * itself changes in one frame, because animating it would re-lay out the page
- * beside it (a chat, a review) on every frame.
+ * It slides in and out with the panel it sits in (`DockedSplit`), as one
+ * drawer; it adds no motion of its own.
  *
  * Everything the queue cannot show (the whole history, the archive) is one
  * link away at its foot.
@@ -32,7 +31,6 @@ import { ArrowRight, X } from 'lucide-react'
 import { useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { Button } from '@/components/ui/button'
-import { motion, motionEntrance, useMotionToken } from '@/components/motion'
 import { focusStartDockDoor, useStartDock } from '@/components/shell/start-dock'
 import { InboxQueue } from './InboxQueue'
 
@@ -41,7 +39,6 @@ export function InboxDock(): JSX.Element {
   const close = useStartDock((state) => state.close)
   const takesFocus = useStartDock((state) => state.takesFocus)
   const focusTaken = useStartDock((state) => state.focusTaken)
-  const arrive = useMotionToken(motionEntrance)
   const rootRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -62,7 +59,7 @@ export function InboxDock(): JSX.Element {
   }
 
   return (
-    <motion.aside
+    <aside
       ref={rootRef}
       tabIndex={-1}
       aria-labelledby="inbox-dock-title"
@@ -70,9 +67,6 @@ export function InboxDock(): JSX.Element {
       data-testid="inbox-dock"
       data-queue-keys=""
       onKeyDown={onKeyDown}
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={arrive}
     >
       <header className="flex shrink-0 items-center gap-2 py-2.5 pr-2 pl-5">
         <h2 id="inbox-dock-title" className="text-sm font-semibold">
@@ -107,6 +101,6 @@ export function InboxDock(): JSX.Element {
           />
         </Link>
       </footer>
-    </motion.aside>
+    </aside>
   )
 }
