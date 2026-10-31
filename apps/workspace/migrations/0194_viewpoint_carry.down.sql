@@ -1,7 +1,12 @@
--- Reverse 0195. Lossy by design: a viewpoint mark none of whose elements was
+-- Reverse 0194. Lossy by design: a viewpoint mark none of whose elements was
 -- left forgets it (its `anchor_lost_at` is cleared, as 0193 had no room for
 -- it), and a carried viewpoint forgets the one it was carried from. Every
--- viewpoint stays, and so does every mark.
+-- viewpoint stays, and so does every mark. A model forgets which Fassung it
+-- was extracted from.
+ALTER TABLE "bim_models" DROP CONSTRAINT IF EXISTS "bim_models_source_version_fkey";
+--> statement-breakpoint
+ALTER TABLE "bim_models" DROP COLUMN IF EXISTS "source_version_id";
+--> statement-breakpoint
 UPDATE "document_annotations" SET "anchor_lost_at" = NULL WHERE "anchor_kind" = 'viewpoint' AND "anchor_lost_at" IS NOT NULL;
 --> statement-breakpoint
 ALTER TABLE "document_annotations" DROP CONSTRAINT IF EXISTS "document_annotations_anchor_lost_needs_anchor";

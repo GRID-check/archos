@@ -706,7 +706,7 @@ same in any viewer; the viewer converts to and from its own frame
   thread, behind the same gate as the Protokoll; Piloti's untaken proposals are
   left out (`bff/bim/bcf3-*.ts`, mapping in
   [`model-collaboration.md`](../roadmap/model-collaboration.md#bcf-30-mapped)).
-- **Carry („übernehmen“, migration `0195_viewpoint_carry.sql`).** The same
+- **Carry („übernehmen“, migration `0194_viewpoint_carry.sql`).** The same
   `PATCH … { carryToCurrent: true }` as a page mark, to the same two Fassungen:
   the model's own published version (the file uploaded again: in place, number
   and thread kept) or a confirmed replacing document (across: a linked mark
@@ -721,10 +721,18 @@ same in any viewer; the viewer converts to and from its own frame
   viewpoint and sets `anchor_lost_at` (in place it still moves to the current
   Fassung; across it stays open where it is). The list's `carryTarget` carries
   `revisionNumber` and `elements: { present, total }` beforehand, which the
-  model panel shows as „3 von 3 Bauteilen in Fassung 4 vorhanden · übernehmen“;
-  a model not `ready` offers none and refuses with 422 `model_not_ready`. Piloti's
+  model panel shows as „3 von 3 Bauteilen in Fassung 4 vorhanden · übernehmen“.
+  The model is compared against only when its elements are those of the Fassung
+  the mark lands on (`bim_models.source_version_id`, recorded by the extraction
+  from the bytes it read, cleared when a new one starts): right after an upload
+  the model still reads `ready` with the older elements, and until its
+  extraction ran there is no offer and the carry is a 422 `model_not_ready`. On
+  a model whose element list stops at the extraction cap only found GlobalIds
+  are counted (`elements.complete: false`, „Anzahl unbekannt“), the ones not
+  found are kept in the new view, and the mark is never marked lost. Piloti's
   proposals go on in place only (across: 422 `proposed`). Deleting a mark
-  deletes its viewpoint and the same document's ones it was carried from.
+  deletes its viewpoint and the same document's ones it was carried from, and
+  discards their snapshot objects.
   Product event `annotation_viewpoint_carried` (outcome `carried` or
   `anchor_lost`, with the counts). Code: `viewpoint-carry*.ts`.
 - **Links.** Every view of a mark on a model carries `viewHref`

@@ -208,7 +208,6 @@ export async function listBimModels(
 
 /**
  * Create (or reset) the model row for a document and mark it `extracting`.
- *
  * Idempotent on `document_id`: a re-ingest reuses the row rather than leaving
  * two models for one file, and clears the previous error and summary so a
  * failed extraction cannot leave stale facts visible next to a fresh attempt.
@@ -236,6 +235,7 @@ export async function startBimModel(input: {
           summary: null,
           schemaVersion: null,
           elementCount: 0,
+          sourceVersionId: null,
           extractedAt: null,
           updatedAt: new Date(),
         },
@@ -275,6 +275,7 @@ export async function completeBimModel(input: {
   elements: readonly BimElement[]
   indexStorageKey: string | null
   indexStorageBucket: string | null
+  sourceStorageKey: string // the object read: names the Fassung (`source_version_id`, 0194)
 }): Promise<void> {
   const db = getDb()
   await withTenant({ organizationId: input.organizationId }, () =>
@@ -314,12 +315,10 @@ export async function completeBimModel(input: {
           schemaVersion: input.summary.schema,
           summary: input.summary,
           elementCount: input.elements.length,
-          // Computed here, inside the same transaction that writes the
-          // elements, so the FIRST person to open the Prüfbuch gets the fast
-          // path too. Extraction already holds every element in memory; the
-          // projection is a map over them and costs nothing next to the parse
-          // that produced them.
-          // `truncatedAt` and NOT a hardcoded `false`. Extraction stops at
+          // Computed in the transaction that writes the elements, so the FIRST
+          // person to open the Prüfbuch gets the fast path too (a map over
+          // elements already in memory). `truncatedAt` and NOT a hardcoded
+          // `false`. Extraction stops at
           // `BIM_ELEMENT_LIMIT`, and a projection that claims to cover a
           // building it only covers part of is the "Prüfbuch judged over part
           // of a building" failure — reintroduced on the fast path, where it
@@ -334,6 +333,7 @@ export async function completeBimModel(input: {
           indexStorageKey: input.indexStorageKey,
           indexStorageBucket: input.indexStorageBucket,
           errorMessage: null,
+          sourceVersionId: sql`(SELECT v.id FROM document_versions v WHERE v.document_id = ${bimModels.documentId} AND v.storage_key = ${input.sourceStorageKey} ORDER BY v.version_number DESC LIMIT 1)`,
           extractedAt: new Date(),
           updatedAt: new Date(),
         })

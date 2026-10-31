@@ -284,8 +284,15 @@ export type CarryLinkView = z.infer<typeof carryLinkViewSchema>
 export const carryTargetViewSchema = carryLinkViewSchema.pick({ documentId: true, documentName: true }).extend({
   /** On a model: the number of the Fassung it lands on („Fassung 4“), when the document has a version row. */
   revisionNumber: z.number().int().nullable().optional(),
-  /** On a model: how many of the elements it points at that Fassung has, by GlobalId (migration 0195). */
-  elements: z.object({ present: z.number().int(), total: z.number().int() }).optional(),
+  /** On a model: how many of the elements it points at that Fassung has, by GlobalId (migration 0194). */
+  elements: z
+    .object({
+      present: z.number().int(),
+      total: z.number().int(),
+      /** False on a model whose element list stops at the extraction cap: `present` counts only what was found. */
+      complete: z.boolean().optional(),
+    })
+    .optional(),
 })
 export type CarryTargetView = z.infer<typeof carryTargetViewSchema>
 

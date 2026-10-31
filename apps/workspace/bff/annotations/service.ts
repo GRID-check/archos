@@ -122,7 +122,6 @@ import { delegationEventId, wakeTurnId } from './wake-ids'
 import { findWake } from './wake-repository'
 import { latestWakesFor, agentWorkOf } from './agent-work'
 import { nameOf, toReplyView, type Names } from './reply-view'
-import { findViewpoint } from './viewpoint-repository'
 import { carryViewpointAcross, carryViewpointInPlace, markViewpointsOf, viewpointCarryTarget, type MarkViewpoints } from './viewpoint-carry'
 import { discardStoredSnapshot } from './viewpoint-snapshot'
 import { wakeSpansFor, type WakeSpan } from './wake-attribution'
@@ -1176,10 +1175,9 @@ export async function deleteAnnotation(
   }
   const ended = delegationOfMark(session, doc.id, existing)
   const stopTurn = actor.kind === 'person'
-  const viewpoint = existing.viewpointId && (await findViewpoint(session.organizationId, doc.id, existing.viewpointId))
   // Set in the delete's transaction; a holder, because a closure's assignment is not narrowed.
   const found: { takeBack: TakeBack | null } = { takeBack: null }
-  await deleteDocumentAnnotation(
+  const deleted = await deleteDocumentAnnotation(
     session.organizationId,
     doc.id,
     annotationId,
@@ -1191,7 +1189,8 @@ export async function deleteAnnotation(
         }
       : undefined
   )
-  if (viewpoint && viewpoint.snapshotKey) void discardStoredSnapshot(doc, viewpoint.snapshotKey)
+  // Its view's picture, and those of the views it was carried from (`./viewpoint-delete.ts`).
+  for (const key of deleted?.snapshotKeys ?? []) void discardStoredSnapshot(doc, key)
   announce(session, doc.id, [annotationId], 'deleted', actor)
   if (found.takeBack) auditDeletedWithMark(found.takeBack, takeBackAudit(session, doc, existing, actor))
   bestEffort('clear the deleted mark’s rows', () =>

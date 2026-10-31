@@ -536,7 +536,7 @@ function fakeRepository() {
     if (current) marks.set(input.annotationId, { ...current, replies: [...current.replies, reply] })
     return reply
   })
-  vi.mocked(deleteDocumentAnnotation).mockImplementation(async (_org, _doc, id) => marks.delete(id))
+  vi.mocked(deleteDocumentAnnotation).mockImplementation(async (_org, _doc, id) => (marks.delete(id) ? { snapshotKeys: [] } : null))
 }
 
 const stored = () => marks.get(MARK_ID) ?? record({ body: 'gone' })

@@ -1,5 +1,5 @@
 /**
- * The SQL of carrying a mark on a model to a newer Fassung (migration 0195,
+ * The SQL of carrying a mark on a model to a newer Fassung (migration 0194,
  * `./viewpoint-carry.ts`): each write one transaction, compared and swapped
  * against the mark as the service read it, so a colleague's close or carry in
  * the same moment wins and nothing is half written.
@@ -14,10 +14,12 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
 import { annotationViewpoints } from '@/lib/db/schema/annotation-viewpoints'
+import { bimModels } from '@/lib/db/schema/bim'
 import { documentAnnotations, type DocumentAnnotationRow } from '@/lib/db/schema/document-annotations'
 import { documentVersions } from '@/lib/db/schema/document-versions'
+import { documents } from '@/lib/db/schema/documents'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { DocumentReader } from '@/lib/documents/visibility'
+import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 import { allocateNumbers } from './numbering'
 import { AlreadyCarriedError, type NewAnnotationValues } from './repository'
 import type { carriedViewpointValues } from './viewpoint-carry-plan'
@@ -54,6 +56,45 @@ export async function presentGlobalIds(
     for (const id of chunk) if (!missing.has(id)) present.add(id)
   }
   return present
+}
+
+/** A model a carry may compare against: ready, and extracted from the Fassung the mark lands on. */
+export interface CurrentModel {
+  id: string
+  /** Its element list stops at the extraction cap: a GlobalId not found may be in the part not stored. */
+  truncated: boolean
+}
+
+/**
+ * The model of a document when its elements are those of `versionId` (migration
+ * 0194, `bim_models.source_version_id`), as `reader` may see the document; null
+ * while it is not ready, and while it is ready with the elements of an older
+ * Fassung (the gap between an upload and the start of its extraction).
+ */
+export async function currentModelOf(
+  organizationId: string,
+  documentId: string,
+  versionId: string | null,
+  reader: DocumentReader
+): Promise<CurrentModel | null> {
+  const db = getDb()
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .select({ id: bimModels.id, summary: bimModels.summary })
+      .from(bimModels)
+      .innerJoin(documents, eq(documents.id, bimModels.documentId))
+      .where(
+        and(
+          eq(bimModels.organizationId, organizationId),
+          eq(bimModels.documentId, documentId),
+          eq(bimModels.status, 'ready'),
+          sql`${bimModels.sourceVersionId} IS NOT DISTINCT FROM ${versionId}::uuid`,
+          documentVisibleTo(reader)
+        )
+      )
+      .limit(1)
+  )
+  return row ? { id: row.id, truncated: row.summary?.truncatedAt != null } : null
 }
 
 /** The number of one Fassung of a document („Fassung 4“), or null. The service read the document. */

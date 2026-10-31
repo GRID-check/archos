@@ -7,6 +7,7 @@ import {
   integer,
   boolean,
   bigserial,
+  foreignKey,
   index,
   unique,
   uniqueIndex,
@@ -14,6 +15,7 @@ import {
 import { sql } from 'drizzle-orm'
 import { projects } from './projects'
 import { documents } from './documents'
+import { documentVersions } from './document-versions'
 import type {
   BimClassification,
   BimModelStatus,
@@ -72,12 +74,24 @@ export const bimModels = pgTable(
      */
     searchKeysIndexed: boolean('search_keys_indexed').notNull().default(false),
     errorMessage: text('error_message'),
+    /**
+     * The Fassung whose bytes these elements were extracted from (0194); null
+     * while extracting, and on a model read before it was recorded. A carry of
+     * a mark compares against the elements only when it names the Fassung the
+     * mark lands on (`lib/annotations/viewpoint-carry.ts`).
+     */
+    sourceVersionId: uuid('source_version_id'),
     extractedAt: timestamp('extracted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     documentIdx: uniqueIndex('bim_models_document_idx').on(table.documentId),
+    sourceVersionFk: foreignKey({
+      name: 'bim_models_source_version_fkey',
+      columns: [table.sourceVersionId],
+      foreignColumns: [documentVersions.id],
+    }).onDelete('set null'),
     projectIdx: index('bim_models_project_idx').on(table.projectId),
     orgStatusIdx: index('bim_models_org_status_idx').on(table.organizationId, table.status),
   })

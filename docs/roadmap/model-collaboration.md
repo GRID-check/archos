@@ -19,7 +19,7 @@ its **anchor**:
 |---|---|---|
 | Page region on a Fassung | `page`, `shape`, `x`, `y`, `w`, `h` on `document_annotations` (0138) | built |
 | Elements of a Skizze | `anchor_element_ids`, `anchor_lost_at` (0192), box derived on the server | built (S3) |
-| Model viewpoint | camera, clipping planes, selected and visible components by IFC GlobalId, snapshot | built (F1, F2; carry 0195) |
+| Model viewpoint | camera, clipping planes, selected and visible components by IFC GlobalId, snapshot | built (F1, F2; carry 0194) |
 
 So the session does not build model issues. It adds a third anchor and leaves the
 lifecycle alone. One thread, one status set, one Zuständige, one Frist reminder, one
@@ -249,7 +249,7 @@ Read with judgement, not as a feature list. What it changes:
   Recommendation: file first; the API when a customer names the tool that will call it.
   feld72 (2026-10-30) agreed: export first. The ARCHICAD round trip and a BCF server
   are the direction this decision would serve.
-- **Model Fassungen and GlobalIds. Decided (wave 2, migration 0195).** A model mark
+- **Model Fassungen and GlobalIds. Decided (wave 2, migration 0194).** A model mark
   carries along what a page mark does: the document's published version (the same
   file uploaded again; in place) or a person's confirmed replacement link (across).
   The file-name revision series is a guess for the timeline, not a person's word, so

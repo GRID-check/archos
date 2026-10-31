@@ -2628,48 +2628,57 @@ check_in viewpoints_0193 "SELECT string_agg(number || ':' || anchor_kind, ',' OR
 echo "==> 0193 viewpoint anchors and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0195: a mark on a model goes on with the model's next Fassung, and
+# Migration 0194: a mark on a model goes on with the model's next Fassung, and
 # the DOWN.
 #
-# On a database of its own, migrated to 0193 (0194 is another change's and
-# does not touch these tables). A viewpoint mark may now say its elements are
+# On a database of its own, migrated to 0193. A viewpoint mark may now say its elements are
 # gone; a page mark still may not; a carried viewpoint names the one it was
 # carried from and never itself; deleting the older one leaves the newer
 # standing, unlinked; the down clears the loss and the link, and the up
 # re-applies, twice.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0195 viewpoint carry and its down migration on carry_0195"
-migrate_until carry_0195 0193_annotation_viewpoints
-sql_in carry_0195 <<'SQL'
+echo "==> verifying the 0194 viewpoint carry and its down migration on carry_0194"
+migrate_until carry_0194 0193_annotation_viewpoints
+sql_in carry_0194 <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000195', 'org_0195', 'Modell 0195', 'user_1', 'proj_0195');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000194', 'org_0194', 'Modell 0194', 'user_1', 'proj_0194');
 INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
-VALUES ('d1d1d1d1-0000-4000-8000-000000000195', 'org_0195', 'user_1', 'Haus.ifc', 'k/0195/a', 'proj_0195', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000195');
+VALUES ('d1d1d1d1-0000-4000-8000-000000000194', 'org_0194', 'user_1', 'Haus.ifc', 'k/0194/a', 'proj_0194', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000194');
 INSERT INTO annotation_viewpoints (id, organization_id, document_id, camera_kind, camera, created_by)
-VALUES ('a1a1a1a1-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 'perspective', '{"type":"perspective"}', 'user_1');
+VALUES ('a1a1a1a1-0000-4000-8000-000000000194', 'org_0194', 'd1d1d1d1-0000-4000-8000-000000000194', 'perspective', '{"type":"perspective"}', 'user_1');
 INSERT INTO document_annotations (id, organization_id, document_id, number, anchor_kind, viewpoint_id, kind, body, author_kind, status, created_by)
-VALUES ('f1f1f1f1-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 1, 'viewpoint', 'a1a1a1a1-0000-4000-8000-000000000195', 'defect', 'Auflager fehlt', 'person', 'open', 'user_1');
+VALUES ('f1f1f1f1-0000-4000-8000-000000000194', 'org_0194', 'd1d1d1d1-0000-4000-8000-000000000194', 1, 'viewpoint', 'a1a1a1a1-0000-4000-8000-000000000194', 'defect', 'Auflager fehlt', 'person', 'open', 'user_1');
 INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
-VALUES ('f2f2f2f2-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 2, 1, 'point', 0.5, 0.5, 'hint', 'x', 'person', 'open', 'user_1');
+VALUES ('f2f2f2f2-0000-4000-8000-000000000194', 'org_0194', 'd1d1d1d1-0000-4000-8000-000000000194', 2, 1, 'point', 0.5, 0.5, 'hint', 'x', 'person', 'open', 'user_1');
+INSERT INTO document_versions (id, organization_id, document_id, project_id, version_number, state, storage_key, content_hash, created_by, approved_by, approved_at, created_at)
+VALUES ('e1e1e1e1-0000-4000-8000-000000000194', 'org_0194', 'd1d1d1d1-0000-4000-8000-000000000194', 'aaaaaaaa-0000-4000-8000-000000000194', 1, 'superseded', 'k/0194/a', 'sha256:0194', 'user_1', 'user_1', now(), now() - interval '1 day');
+UPDATE documents SET published_version_id = 'e1e1e1e1-0000-4000-8000-000000000194' WHERE id = 'd1d1d1d1-0000-4000-8000-000000000194';
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d2d2d2d2-0000-4000-8000-000000000194', 'org_0194', 'user_1', 'Alt.ifc', 'k/0194/b', 'proj_0194', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000194');
+INSERT INTO bim_models (organization_id, project_id, document_id, status, element_count, extracted_at)
+VALUES ('org_0194', 'aaaaaaaa-0000-4000-8000-000000000194', 'd1d1d1d1-0000-4000-8000-000000000194', 'ready', 0, now()),
+       ('org_0194', 'aaaaaaaa-0000-4000-8000-000000000194', 'd2d2d2d2-0000-4000-8000-000000000194', 'ready', 0, now());
 SQL
-refused_in carry_0195 "UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 1" "document_annotations_anchor_lost_needs_anchor" "a viewpoint mark lost its elements before 0195"
-apply_in carry_0195 0195_viewpoint_carry.sql
-sql_in carry_0195 <<<"UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 1"
-check_in carry_0195 "SELECT count(*) FROM document_annotations WHERE anchor_lost_at IS NOT NULL" "1" "a viewpoint mark says its elements are gone"
-refused_in carry_0195 "UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 2" "document_annotations_anchor_lost_needs_anchor" "a page mark lost elements it never named"
-sql_in carry_0195 <<'SQL'
+refused_in carry_0194 "UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 1" "document_annotations_anchor_lost_needs_anchor" "a viewpoint mark lost its elements before 0194"
+apply_in carry_0194 0194_viewpoint_carry.sql
+check_in carry_0194 "SELECT string_agg(coalesce(source_version_id::text, 'null'), ',' ORDER BY document_id) FROM bim_models" "e1e1e1e1-0000-4000-8000-000000000194,null" "a model read after its document's Fassung names it; one with no Fassung to name stays null"
+sql_in carry_0194 <<<"UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 1"
+check_in carry_0194 "SELECT count(*) FROM document_annotations WHERE anchor_lost_at IS NOT NULL" "1" "a viewpoint mark says its elements are gone"
+refused_in carry_0194 "UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 2" "document_annotations_anchor_lost_needs_anchor" "a page mark lost elements it never named"
+sql_in carry_0194 <<'SQL'
 INSERT INTO annotation_viewpoints (id, organization_id, document_id, camera_kind, camera, carried_from_id, created_by)
-VALUES ('a2a2a2a2-0000-4000-8000-000000000195', 'org_0195', 'd1d1d1d1-0000-4000-8000-000000000195', 'perspective', '{"type":"perspective"}', 'a1a1a1a1-0000-4000-8000-000000000195', 'user_1');
-UPDATE document_annotations SET viewpoint_id = 'a2a2a2a2-0000-4000-8000-000000000195', anchor_lost_at = NULL WHERE number = 1;
+VALUES ('a2a2a2a2-0000-4000-8000-000000000194', 'org_0194', 'd1d1d1d1-0000-4000-8000-000000000194', 'perspective', '{"type":"perspective"}', 'a1a1a1a1-0000-4000-8000-000000000194', 'user_1');
+UPDATE document_annotations SET viewpoint_id = 'a2a2a2a2-0000-4000-8000-000000000194', anchor_lost_at = NULL WHERE number = 1;
 SQL
-refused_in carry_0195 "UPDATE annotation_viewpoints SET carried_from_id = id WHERE id = 'a1a1a1a1-0000-4000-8000-000000000195'" "annotation_viewpoints_carried_from_other" "a viewpoint was carried from itself"
-sql_in carry_0195 <<<"DELETE FROM annotation_viewpoints WHERE id = 'a1a1a1a1-0000-4000-8000-000000000195'"
-check_in carry_0195 "SELECT coalesce(carried_from_id::text, 'null') FROM annotation_viewpoints WHERE id = 'a2a2a2a2-0000-4000-8000-000000000195'" "null" "deleting the older viewpoint leaves the newer one, unlinked"
-sql_in carry_0195 <<<"UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 1"
-apply_in carry_0195 0195_viewpoint_carry.down.sql
-check_in carry_0195 "SELECT count(*) FROM information_schema.columns WHERE table_name = 'annotation_viewpoints' AND column_name = 'carried_from_id'" "0" "down dropped the link"
-check_in carry_0195 "SELECT count(*) FROM document_annotations WHERE anchor_lost_at IS NOT NULL" "0" "down cleared the loss 0193 has no room for"
-apply_in carry_0195 0195_viewpoint_carry.sql
-apply_in carry_0195 0195_viewpoint_carry.sql
-check_in carry_0195 "SELECT count(*) FROM document_annotations" "2" "0195 re-applies, twice"
-echo "==> 0195 viewpoint carry and down migration verified"
+refused_in carry_0194 "UPDATE annotation_viewpoints SET carried_from_id = id WHERE id = 'a1a1a1a1-0000-4000-8000-000000000194'" "annotation_viewpoints_carried_from_other" "a viewpoint was carried from itself"
+sql_in carry_0194 <<<"DELETE FROM annotation_viewpoints WHERE id = 'a1a1a1a1-0000-4000-8000-000000000194'"
+check_in carry_0194 "SELECT coalesce(carried_from_id::text, 'null') FROM annotation_viewpoints WHERE id = 'a2a2a2a2-0000-4000-8000-000000000194'" "null" "deleting the older viewpoint leaves the newer one, unlinked"
+sql_in carry_0194 <<<"UPDATE document_annotations SET anchor_lost_at = now() WHERE number = 1"
+apply_in carry_0194 0194_viewpoint_carry.down.sql
+check_in carry_0194 "SELECT count(*) FROM information_schema.columns WHERE table_name = 'annotation_viewpoints' AND column_name = 'carried_from_id'" "0" "down dropped the link"
+check_in carry_0194 "SELECT count(*) FROM information_schema.columns WHERE table_name = 'bim_models' AND column_name = 'source_version_id'" "0" "down dropped the model's Fassung"
+check_in carry_0194 "SELECT count(*) FROM document_annotations WHERE anchor_lost_at IS NOT NULL" "0" "down cleared the loss 0193 has no room for"
+apply_in carry_0194 0194_viewpoint_carry.sql
+apply_in carry_0194 0194_viewpoint_carry.sql
+check_in carry_0194 "SELECT count(*) FROM document_annotations" "2" "0194 re-applies, twice"
+echo "==> 0194 viewpoint carry and down migration verified"

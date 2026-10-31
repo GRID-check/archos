@@ -307,6 +307,7 @@ export async function runBimExtraction(input: BimExtractionInput): Promise<BimEx
       elements,
       indexStorageKey: indexKey,
       indexStorageBucket: input.storageBucket,
+      sourceStorageKey: input.storageKey,
     })
 
     if (digestKey) {

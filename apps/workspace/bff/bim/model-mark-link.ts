@@ -2,7 +2,7 @@
  * The in-app link that opens a model at one Anmerkung's view: the viewer's own
  * `?model=<file name>&mark=<id>` (`ui/features/bim/lib/model-link.ts`, whose
  * `buildModelHref` builds the same string, held equal by its spec). Here
- * because the server writes it too: the agent door and Piloti hand a person
+ * because the server writes it too: the agent door and the agent hand a person
  * this link with every mark on a model, so „Zur Ansicht“ is one click from an
  * answer. No `server-only`: the viewer reads the route constants from here.
  */

@@ -199,7 +199,7 @@ beforeEach(() => {
   vi.mocked(findDocumentAnnotation).mockResolvedValue(RECORD)
   vi.mocked(insertDocumentAnnotations).mockResolvedValue([RECORD])
   vi.mocked(updateDocumentAnnotation).mockResolvedValue(RECORD)
-  vi.mocked(deleteDocumentAnnotation).mockResolvedValue(true)
+  vi.mocked(deleteDocumentAnnotation).mockResolvedValue({ snapshotKeys: [] })
   vi.mocked(deleteAnnotationReply).mockResolvedValue(true)
   vi.mocked(insertAnnotationReply).mockResolvedValue({
     id: 'rep_1',

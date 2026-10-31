@@ -1,4 +1,4 @@
--- 0195: a mark on a model goes on with the model's next Fassung.
+-- 0194: a mark on a model goes on with the model's next Fassung.
 --
 -- ## What was missing
 --
@@ -27,10 +27,19 @@
 -- `…_anchor_viewpoint_is_3d` forbade it and 0192's `…_anchor_lost_needs_anchor`
 -- asked for Skizze elements; both are restated to allow a viewpoint.
 --
+-- `bim_models.source_version_id`: the Fassung whose bytes the model's
+-- elements were extracted from, set by the extraction in the transaction that
+-- writes them (`completeBimModel`) and cleared when a new one starts. After a
+-- re-upload the model still reads `ready` with the OLD Fassung's elements until
+-- its extraction starts; a carry compares against the elements only when this
+-- names the Fassung it carries to. Backfilled for a ready model extracted after
+-- its document's published Fassung was created; left null where that is not
+-- determinable, which offers no carry until the model is read again.
+--
 -- ## RLS
 --
--- No new table: both are under `secure_table` already (0138, 0193), and a
--- column inherits its table's policy.
+-- No new table: all three are under `secure_table` already (0034, 0138, 0193),
+-- and a column inherits its table's policy.
 
 ALTER TABLE "annotation_viewpoints" ADD COLUMN IF NOT EXISTS "carried_from_id" uuid;
 --> statement-breakpoint
@@ -55,3 +64,15 @@ ALTER TABLE "document_annotations" DROP CONSTRAINT IF EXISTS "document_annotatio
 --> statement-breakpoint
 ALTER TABLE "document_annotations" ADD CONSTRAINT "document_annotations_anchor_lost_needs_anchor"
   CHECK ("anchor_lost_at" IS NULL OR "anchor_element_ids" IS NOT NULL OR "viewpoint_id" IS NOT NULL);
+--> statement-breakpoint
+ALTER TABLE "bim_models" ADD COLUMN IF NOT EXISTS "source_version_id" uuid;
+--> statement-breakpoint
+ALTER TABLE "bim_models" DROP CONSTRAINT IF EXISTS "bim_models_source_version_fkey";
+--> statement-breakpoint
+ALTER TABLE "bim_models" ADD CONSTRAINT "bim_models_source_version_fkey"
+  FOREIGN KEY ("source_version_id") REFERENCES "document_versions"("id") ON DELETE SET NULL;
+--> statement-breakpoint
+UPDATE "bim_models" m SET "source_version_id" = d."published_version_id"
+  FROM "documents" d JOIN "document_versions" v ON v."id" = d."published_version_id"
+ WHERE d."id" = m."document_id" AND m."status" = 'ready' AND m."source_version_id" IS NULL
+   AND m."extracted_at" IS NOT NULL AND m."extracted_at" >= v."created_at";

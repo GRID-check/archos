@@ -188,7 +188,7 @@ describe.skipIf(!url)('viewpoint marks against live Postgres', () => {
     const other = viewpoint()
     const row = await insert(ids.model, mine)
     await insert(ids.model, other)
-    expect(await inOrg(ORG, () => repo.deleteDocumentAnnotation(ORG, ids.model, row.id))).toBe(true)
+    expect(await inOrg(ORG, () => repo.deleteDocumentAnnotation(ORG, ids.model, row.id))).toEqual({ snapshotKeys: [] })
     expect(await inOrg(ORG, () => viewpoints.findViewpoint(ORG, ids.model, mine.id))).toBeNull()
     expect(await inOrg(ORG, () => viewpoints.findViewpoint(ORG, ids.model, other.id))).not.toBeNull()
   })

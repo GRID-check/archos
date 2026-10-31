@@ -230,7 +230,7 @@ beforeEach(() => {
   })
   vi.mocked(deleteDocumentAnnotation).mockImplementation(async (_org, _doc, _id, beforeDelete) => {
     await beforeDelete?.(TX)
-    return true
+    return { snapshotKeys: [] }
   })
   vi.mocked(updateDocumentAnnotation).mockImplementation(async (_org, _doc, _id, _expected, changes, afterUpdate) => {
     const { transition, delegation, ...fields } = changes

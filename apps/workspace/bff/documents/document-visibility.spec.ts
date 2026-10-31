@@ -184,6 +184,12 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'The Fassung number it was set on, of that same document.',
   'lib/annotations/numbering.ts#allocateNumbers|documentAnnotations':
     "The next number and the count, under the insert's lock, for a document the service read for writing: a mark set (`insertDocumentAnnotations`, `insertViewpointMark`) or carried onto the replacing document (`carryAnnotationToDocument`, migration 0151, whose service read both documents for writing first).",
+  'lib/annotations/viewpoint-carry-repository.ts#versionNumberOf|documentVersions':
+    'The number of the Fassung a carry lands on, of a document the carry read for writing (`./viewpoint-carry.ts`).',
+  'lib/annotations/viewpoint-delete.ts#deleteViewpointRow|documentAnnotations':
+    'Whether another mark names a viewpoint of the chain, inside the delete of a mark whose document the service read for writing.',
+  'lib/bim/repository.ts#completeBimModel|documentVersions':
+    "The Fassung whose bytes the system's extraction job just read, keyed by the model's own document (`source_version_id`, 0194).",
   'lib/annotations/sketch-carry.ts#moveSketchMarks|documentAnnotations':
     "A Skizze's live marks moving onto the Fassung a publish makes current, in that publish's transaction: every publisher read the document for writing first (`getAccessibleDocument`: the sketch save, the Freigabe transition, the upload).",
   'lib/annotations/sketch-carry.ts#moveSketchMarks|documentVersions':

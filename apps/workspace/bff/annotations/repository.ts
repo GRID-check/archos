@@ -459,7 +459,7 @@ export async function updateDocumentAnnotation(
 }
 
 /**
- * Delete one Anmerkung and its thread; whether a row went. Its number is not
+ * Delete one Anmerkung and its thread; null when no row went, else the snapshot objects of the viewpoints that went with it. Its number is not
  * reused while a higher one exists. `beforeDelete` runs in the delete's
  * transaction, before the row and its wakes go: the one moment the wake of a
  * delegation can still be read.
@@ -469,9 +469,9 @@ export async function deleteDocumentAnnotation(
   documentId: string,
   annotationId: string,
   beforeDelete?: (tx: DbTransaction) => Promise<void>
-): Promise<boolean> {
+): Promise<{ snapshotKeys: string[] } | null> {
   const db = getDb()
-  const rows = await withTenant({ organizationId }, () =>
+  return withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
       await beforeDelete?.(tx)
       const removed = await tx
@@ -486,11 +486,10 @@ export async function deleteDocumentAnnotation(
         .returning({ id: documentAnnotations.id, viewpointId: documentAnnotations.viewpointId })
       // A viewpoint belongs to its one mark: it goes in the same transaction, after the mark (the foreign key is NO ACTION).
       const viewpointId = removed[0]?.viewpointId
-      if (viewpointId) await deleteViewpointRow(tx, organizationId, viewpointId)
-      return removed
+      if (removed.length === 0) return null
+      return { snapshotKeys: viewpointId ? await deleteViewpointRow(tx, organizationId, viewpointId) : [] }
     })
   )
-  return rows.length > 0
 }
 
 /** Thrown when a thread already carries {@link MAX_REPLIES_PER_ANNOTATION}. */

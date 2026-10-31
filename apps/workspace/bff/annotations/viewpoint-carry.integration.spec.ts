@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * Carrying a mark on a model to a newer Fassung (migration 0195) against a
+ * Carrying a mark on a model to a newer Fassung (migration 0194) against a
  * REAL Postgres through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
@@ -17,7 +17,9 @@
  *     viewpoint of that document, the source is closed, and a second carry
  *     moves nothing;
  *   - deleting a carried mark takes its viewpoint and the ones of the same
- *     document it was carried from;
+ *     document it was carried from, and names their snapshots;
+ *   - a model is compared against only once its elements are the target
+ *     Fassung's: extraction records the Fassung it read, a new one clears it;
  *   - the GlobalIds and the Fassung number the service reads.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
@@ -53,6 +55,7 @@ describe.skipIf(!url)('carrying viewpoint marks against live Postgres', () => {
   let viewpoints: typeof import('./viewpoint-repository')
   let carry: typeof import('./viewpoint-carry-repository')
   let plan: typeof import('./viewpoint-carry-plan')
+  let bim: typeof import('@/lib/bim/repository')
   let memberReader: typeof import('@/lib/documents/visibility').memberReader
   const ids = { project: '', model: '', next: '', bimModel: '', v1: '', v2: '', nextV1: '' }
 
@@ -106,7 +109,7 @@ describe.skipIf(!url)('carrying viewpoint marks against live Postgres', () => {
   const content = { kind: 'defect' as const, body: 'Auflager fehlt', mentions: [], basis: null, assigneeUserId: null, dueOn: null }
 
   /** A mark on the model's first Fassung, as a person sets it. */
-  async function markOnV1(selection: string[]) {
+  async function markOnV1(selection: string[], snapshotKey: string | null = null) {
     const vp = source(selection)
     const row = await inOrg(() =>
       viewpoints.insertViewpointMark({
@@ -114,7 +117,12 @@ describe.skipIf(!url)('carrying viewpoint marks against live Postgres', () => {
         documentId: ids.model,
         versionId: ids.v1,
         createdBy: USER,
-        viewpoint: { ...vp, snapshotKey: null, snapshotContentType: null, snapshotBytes: null },
+        viewpoint: {
+          ...vp,
+          snapshotKey,
+          snapshotContentType: snapshotKey ? 'image/jpeg' : null,
+          snapshotBytes: snapshotKey ? 10 : null,
+        },
         mark: content,
       })
     )
@@ -138,6 +146,7 @@ describe.skipIf(!url)('carrying viewpoint marks against live Postgres', () => {
     viewpoints = await import('./viewpoint-repository')
     carry = await import('./viewpoint-carry-repository')
     plan = await import('./viewpoint-carry-plan')
+    bim = await import('@/lib/bim/repository')
     memberReader = (await import('@/lib/documents/visibility')).memberReader
     ids.project = first(
       await inOrg(() =>
@@ -182,7 +191,8 @@ describe.skipIf(!url)('carrying viewpoint marks against live Postgres', () => {
   })
 
   it('carries a mark in place onto a new viewpoint that names the old one, which stays as written', async () => {
-    const { row, vp } = await markOnV1([WALL, GONE])
+    const picture = `k/${STAMP}/_bim/viewpoints/first.jpg`
+    const { row, vp } = await markOnV1([WALL, GONE], picture)
     const next = plan.carriedViewpointValues(vp, new Set([WALL, DOOR]), randomUUID())
     const moved = await carry.carryViewpointMarkInPlace({
       organizationId: ORG,
@@ -210,8 +220,8 @@ describe.skipIf(!url)('carrying viewpoint marks against live Postgres', () => {
     expect(stale).toBeNull()
     expect(await viewpoints.findViewpoint(ORG, ids.model, again.id)).toBeNull()
 
-    // Deleting the mark takes the viewpoint it is on and the one it was carried from.
-    expect(await inOrg(() => repo.deleteDocumentAnnotation(ORG, ids.model, row.id))).toBe(true)
+    // Deleting the mark takes the viewpoint it is on and the one it was carried from, whose picture it names.
+    expect(await inOrg(() => repo.deleteDocumentAnnotation(ORG, ids.model, row.id))).toEqual({ snapshotKeys: [picture] })
     expect(await viewpoints.findViewpoints(ORG, ids.model, [vp.id, next.id])).toEqual([])
   })
 
@@ -227,6 +237,47 @@ describe.skipIf(!url)('carrying viewpoint marks against live Postgres', () => {
     })
     expect(lost).toMatchObject({ versionId: ids.v2, viewpointId: vp.id })
     expect(lost?.anchorLostAt).toBeInstanceOf(Date)
+
+    // An element that comes back with a later Fassung: the next carry puts it on a new view and clears the loss.
+    const back = plan.carriedViewpointValues(vp, new Set([GONE]), randomUUID())
+    const again = await carry.carryViewpointMarkInPlace({
+      organizationId: ORG,
+      documentId: ids.model,
+      mark: readMark(lost ?? row, vp.id),
+      toVersionId: ids.v2,
+      viewpoint: back,
+      carriedBy: USER,
+    })
+    expect(again).toMatchObject({ viewpointId: back.id, anchorLostAt: null })
+  })
+
+  it('compares against a model only once its elements are the Fassung the mark lands on', async () => {
+    const doc = await document('Stand.ifc')
+    const older = await version(doc, 1)
+    const newer = await version(doc, 2)
+    const modelId = await inOrg(() => bim.startBimModel({ organizationId: ORG, projectId: ids.project, documentId: doc }))
+    const summary = { schema: 'IFC4', truncatedAt: null } as unknown as import('@/lib/bim/types').BimModelSummary
+    const complete = (key: string) =>
+      inOrg(() =>
+        bim.completeBimModel({
+          modelId,
+          organizationId: ORG,
+          summary,
+          elements: [],
+          indexStorageKey: null,
+          indexStorageBucket: null,
+          sourceStorageKey: key,
+        })
+      )
+    // Extracted from the older Fassung's bytes: ready, but not the newer Fassung's model.
+    await complete(`k/${STAMP}/${doc}/v1`)
+    expect(await carry.currentModelOf(ORG, doc, older, memberReader(USER))).toEqual({ id: modelId, truncated: false })
+    expect(await carry.currentModelOf(ORG, doc, newer, memberReader(USER))).toBeNull()
+    // A new extraction starts: no Fassung's model until it is done.
+    await inOrg(() => bim.startBimModel({ organizationId: ORG, projectId: ids.project, documentId: doc }))
+    expect(await carry.currentModelOf(ORG, doc, older, memberReader(USER))).toBeNull()
+    await complete(`k/${STAMP}/${doc}/v2`)
+    expect(await carry.currentModelOf(ORG, doc, newer, memberReader(USER))).toEqual({ id: modelId, truncated: false })
   })
 
   it('carries an open mark across onto a viewpoint of the replacing model, closes the source, and only once', async () => {

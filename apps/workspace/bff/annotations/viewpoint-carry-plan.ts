@@ -1,6 +1,6 @@
 /**
  * What carrying a mark on a model to a newer Fassung makes of its viewpoint
- * (migration 0195), as pure functions of the stored row and the GlobalIds the
+ * (migration 0194), as pure functions of the stored row and the GlobalIds the
  * new Fassung has. No `server-only`, no database: the service asks the model
  * which ids are there (`./viewpoint-carry.ts`), this decides what follows.
  *

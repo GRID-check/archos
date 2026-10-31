@@ -173,6 +173,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       elements,
       indexStorageKey: null,
       indexStorageBucket: null,
+      sourceStorageKey: 'k/none',
     })
 
     // A second revision of the SAME building: one wall downgraded, one wall
@@ -222,6 +223,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       elements: revisionElements,
       indexStorageKey: null,
       indexStorageBucket: null,
+      sourceStorageKey: 'k/none',
     })
 
     const otherBuildingDocumentId = await seedDocument(ORG, 'nebengebaeude.ifc')
@@ -237,6 +239,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       elements,
       indexStorageKey: null,
       indexStorageBucket: null,
+      sourceStorageKey: 'k/none',
     })
 
     // `bim_check_confirmations.project_id` is a real foreign key, so the
@@ -263,6 +266,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       elements,
       indexStorageKey: null,
       indexStorageBucket: null,
+      sourceStorageKey: 'k/none',
     })
 
     // A model big enough for the two bounds to engage: past `COUNT_CEILING`
@@ -289,6 +293,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       elements: [],
       indexStorageKey: null,
       indexStorageBucket: null,
+      sourceStorageKey: 'k/none',
     })
     await withPlatformAccess('seed a large BIM fixture', () =>
       db.execute(sql`

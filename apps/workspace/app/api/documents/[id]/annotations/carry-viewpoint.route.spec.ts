@@ -50,13 +50,14 @@ vi.mock('@/lib/annotations/repository', () => ({
   insertAnnotationReply: vi.fn(),
 }))
 
-vi.mock('@/lib/bim/repository', () => ({ findBimModelByDocument: vi.fn() }))
+vi.mock('@/lib/annotations/viewpoint-snapshot', () => ({ discardStoredSnapshot: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/annotations/viewpoint-repository', () => ({
   findViewpoint: vi.fn(),
   findViewpoints: vi.fn(),
   viewpointSummariesOfMarks: vi.fn(async () => new Map()),
 }))
 vi.mock('@/lib/annotations/viewpoint-carry-repository', () => ({
+  currentModelOf: vi.fn(),
   presentGlobalIds: vi.fn(),
   versionNumberOf: vi.fn(),
   carryViewpointMarkInPlace: vi.fn(),
@@ -65,18 +66,26 @@ vi.mock('@/lib/annotations/viewpoint-carry-repository', () => ({
 }))
 
 import { AnnotationRequestError, listAnnotations, updateAnnotation } from '@/lib/annotations/client'
-import { findDocumentAnnotation, listDocumentAnnotations, updateDocumentAnnotation, type AnnotationRecord } from '@/lib/annotations/repository'
+import {
+  deleteDocumentAnnotation,
+  findDocumentAnnotation,
+  listDocumentAnnotations,
+  updateDocumentAnnotation,
+  type AnnotationRecord,
+} from '@/lib/annotations/repository'
 import {
   carryViewpointMarkAcross,
+  currentModelOf,
   carryViewpointMarkInPlace,
   markViewpointAnchorLost,
   presentGlobalIds,
   versionNumberOf,
 } from '@/lib/annotations/viewpoint-carry-repository'
 import { findViewpoint, findViewpoints } from '@/lib/annotations/viewpoint-repository'
-import { NotFoundError } from '@/lib/api/errors'
+import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { captureServer } from '@/lib/analytics/posthog-server'
-import { findBimModelByDocument } from '@/lib/bim/repository'
+import { discardStoredSnapshot } from '@/lib/annotations/viewpoint-snapshot'
+import { AGENT_AUTHOR } from '@/lib/annotations/types'
 import type { AnnotationViewpointRow } from '@/lib/db/schema/annotation-viewpoints'
 import type { DocumentAnnotationRow } from '@/lib/db/schema/document-annotations'
 import type { Document } from '@/lib/db/schema/documents'
@@ -87,11 +96,11 @@ import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 
 import { GET as list } from './route'
-import { PATCH as patch } from './[annotationId]/route'
+import { DELETE as remove, PATCH as patch } from './[annotationId]/route'
 
 /**
  * „3 von 3 Bauteilen in Fassung 4 vorhanden · übernehmen": carrying a mark on
- * a model to the model's current Fassung (migration 0195), through the typed
+ * a model to the model's current Fassung (migration 0194), through the typed
  * client and the real route and service; the repositories are faked, the SQL
  * is `lib/annotations/viewpoint-carry.integration.spec.ts`'s.
  *
@@ -108,6 +117,7 @@ type Handler = (request: Request, context?: { params?: Promise<Record<string, st
 const ROUTES: Array<{ pattern: RegExp; method: string; handler: Handler; params: string[] }> = [
   { pattern: /^\/api\/documents\/([^/]+)\/annotations$/, method: 'GET', handler: list, params: ['id'] },
   { pattern: /^\/api\/documents\/([^/]+)\/annotations\/([^/]+)$/, method: 'PATCH', handler: patch, params: ['id', 'annotationId'] },
+  { pattern: /^\/api\/documents\/([^/]+)\/annotations\/([^/]+)$/, method: 'DELETE', handler: remove, params: ['id', 'annotationId'] },
 ]
 
 const run = async (path: string, init?: RequestInit) => {
@@ -207,7 +217,8 @@ const MARK: AnnotationRecord = {
   replies: [],
 }
 
-const READY = { id: 'model_1', status: 'ready', summary: { truncatedAt: null } }
+/** The model is read from the Fassung the mark lands on (`source_version_id`). */
+const CURRENT = { id: 'model_1', truncated: false }
 
 const replacedBy = (older: Document, newer: Document): Map<string, RevisionLinks> =>
   new Map([[older.id, { supersededBy: { id: newer.id, filename: newer.filename }, supersedes: [], suggestion: null, changeSummary: null }]])
@@ -231,7 +242,7 @@ beforeEach(() => {
   vi.mocked(mayWriteDocument).mockImplementation(async (_tenant, _doc, userIds) => new Set(userIds))
   vi.mocked(findDocumentAnnotation).mockResolvedValue(MARK)
   vi.mocked(listDocumentAnnotations).mockResolvedValue([MARK])
-  vi.mocked(findBimModelByDocument).mockResolvedValue(READY as Awaited<ReturnType<typeof findBimModelByDocument>>)
+  vi.mocked(currentModelOf).mockResolvedValue(CURRENT)
   vi.mocked(findViewpoint).mockResolvedValue(VIEWPOINT)
   vi.mocked(findViewpoints).mockResolvedValue([VIEWPOINT])
   vi.mocked(presentGlobalIds).mockResolvedValue(new Set([WALL, DOOR]))
@@ -242,16 +253,26 @@ describe('what the list says a carry of a mark on a model would find', () => {
   it('counts its elements in the Fassung it lands on, and links to its view', async () => {
     const { annotations } = await listAnnotations('doc_m', run)
     expect(annotations[0]).toMatchObject({
-      carryTarget: { documentId: 'doc_m', documentName: 'Haus.ifc', revisionNumber: 4, elements: { present: 2, total: 3 } },
+      carryTarget: { documentId: 'doc_m', documentName: 'Haus.ifc', revisionNumber: 4, elements: { present: 2, total: 3, complete: true } },
       viewHref: '/app/projects/proj_1/files?model=Haus.ifc&mark=ann_1',
     })
     expect(versionNumberOf).toHaveBeenCalledWith('org_1', 'doc_m', 'doc_m_ver_2')
+    // Compared only against a model read from that Fassung.
+    expect(currentModelOf).toHaveBeenCalledWith('org_1', 'doc_m', 'doc_m_ver_2', expect.anything())
   })
 
-  it('offers no carry while the model of the new Fassung is still being read', async () => {
-    vi.mocked(findBimModelByDocument).mockResolvedValue({ ...READY, status: 'extracting' } as Awaited<ReturnType<typeof findBimModelByDocument>>)
+  it('offers no carry while the model still holds an older Fassung’s elements, or is being read', async () => {
+    vi.mocked(currentModelOf).mockResolvedValue(null)
     const { annotations } = await listAnnotations('doc_m', run)
     expect(annotations[0]?.carryTarget).toBeNull()
+    expect(presentGlobalIds).not.toHaveBeenCalled()
+  })
+
+  it('counts only what it found on a model read in part, and says the count is not complete', async () => {
+    vi.mocked(currentModelOf).mockResolvedValue({ id: 'model_1', truncated: true })
+    vi.mocked(presentGlobalIds).mockResolvedValue(new Set([WALL]))
+    const { annotations } = await listAnnotations('doc_m', run)
+    expect(annotations[0]?.carryTarget?.elements).toEqual({ present: 1, total: 3, complete: false })
   })
 
   it('offers none for a mark already on the current Fassung', async () => {
@@ -291,17 +312,37 @@ describe('carrying a mark on a model in place', () => {
     ])
   })
 
-  it('carries Piloti’s proposal in place, as a proposal', async () => {
-    const proposal = { ...MARK, status: 'proposed' as const, authorKind: 'piloti' as const }
+  it('carries the agent’s proposal in place, as a proposal', async () => {
+    const proposal = { ...MARK, status: 'proposed' as const, authorKind: AGENT_AUTHOR }
     vi.mocked(findDocumentAnnotation).mockResolvedValue(proposal)
     vi.mocked(carryViewpointMarkInPlace).mockResolvedValue(proposal as DocumentAnnotationRow)
     await carry('ann_1', 'proposed')
     expect(vi.mocked(carryViewpointMarkInPlace).mock.calls[0]?.[0]).toMatchObject({ mark: { status: 'proposed' } })
   })
 
-  it('is refused while the model is not ready, and a conflict when a colleague moved it first', async () => {
-    vi.mocked(findBimModelByDocument).mockResolvedValueOnce(null)
-    await expect(carry()).rejects.toMatchObject({ status: 422 })
+  it('keeps the elements it could not confirm on a model read in part, and never says they are lost there', async () => {
+    vi.mocked(currentModelOf).mockResolvedValue({ id: 'model_1', truncated: true })
+    vi.mocked(presentGlobalIds).mockResolvedValue(new Set())
+    vi.mocked(carryViewpointMarkInPlace).mockResolvedValue({ ...MARK, versionId: 'doc_m_ver_2' } as DocumentAnnotationRow)
+    await carry()
+    expect(vi.mocked(carryViewpointMarkInPlace).mock.calls[0]?.[0]?.viewpoint).toMatchObject({ selectionIds: [WALL, DOOR, GONE] })
+    expect(events()[0]?.[1]).toMatchObject({ outcome: 'carried', present: 0, total: 3 })
+  })
+
+  it('clears the loss of a mark whose elements came back', async () => {
+    const lost = { ...MARK, anchorLostAt: new Date('2026-10-20T08:00:00Z') }
+    const back = { ...MARK, versionId: 'doc_m_ver_2', viewpointId: 'vp_2', anchorLostAt: null }
+    vi.mocked(findDocumentAnnotation).mockResolvedValueOnce(lost).mockResolvedValue(back)
+    vi.mocked(carryViewpointMarkInPlace).mockResolvedValue(back as DocumentAnnotationRow)
+    const annotation = await carry()
+    expect(vi.mocked(carryViewpointMarkInPlace).mock.calls[0]?.[0]?.viewpoint).toMatchObject({ selectionIds: [WALL, DOOR] })
+    expect(annotation).toMatchObject({ anchorLost: false, onCurrentRevision: true })
+  })
+
+  it('is refused while the model holds an older Fassung, and a conflict when a colleague moved it first', async () => {
+    vi.mocked(currentModelOf).mockResolvedValueOnce(null)
+    await expect(carry()).rejects.toMatchObject({ status: 422, reason: 'model_not_ready' })
+    expect(carryViewpointMarkInPlace).not.toHaveBeenCalled()
     vi.mocked(carryViewpointMarkInPlace).mockResolvedValue(null)
     await expect(carry()).rejects.toMatchObject({ status: 409 })
   })
@@ -324,7 +365,7 @@ describe('carrying a mark on a model another model replaced', () => {
       viewpoint: { selectionIds: [WALL, DOOR], carriedFromId: 'vp_1' },
       closedBy: 'user_me',
     })
-    expect(findBimModelByDocument).toHaveBeenCalledWith('doc_n', 'org_1', expect.anything())
+    expect(currentModelOf).toHaveBeenCalledWith('org_1', 'doc_n', 'doc_n_ver_2', expect.anything())
     expect(annotation).toMatchObject({ id: 'ann_n', documentId: 'doc_n' })
   })
 
@@ -338,9 +379,28 @@ describe('carrying a mark on a model another model replaced', () => {
     expect(annotation).toMatchObject({ id: 'ann_1', documentId: 'doc_m', status: 'open', anchorLost: true })
   })
 
+  it('is refused to a reader who may not write the replacing model', async () => {
+    vi.mocked(getAccessibleDocument).mockImplementation(async (_session, id, intent) => {
+      if (id === 'doc_n' && intent === 'write') throw new ForbiddenError()
+      return DOCS.get(id) as Document
+    })
+    await expect(carry()).rejects.toMatchObject({ status: 403 })
+    expect(carryViewpointMarkAcross).not.toHaveBeenCalled()
+  })
+
   it('refuses a proposal: it is taken over before it goes on to another model', async () => {
-    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, status: 'proposed', authorKind: 'piloti' })
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, status: 'proposed', authorKind: AGENT_AUTHOR })
     await expect(carry('ann_1', 'proposed')).rejects.toBeInstanceOf(AnnotationRequestError)
     expect(carryViewpointMarkAcross).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleting a carried mark on a model', () => {
+  it('discards the picture of every view that went with it, the one it was carried from included', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, createdBy: 'user_me' })
+    vi.mocked(deleteDocumentAnnotation).mockResolvedValue({ snapshotKeys: ['k/_bim/viewpoints/vp_0.jpg'] })
+    const response = await run('/api/documents/doc_m/annotations/ann_1', { method: 'DELETE' })
+    expect(response.status).toBeLessThan(300)
+    expect(vi.mocked(discardStoredSnapshot).mock.calls.map(([, key]) => key)).toEqual(['k/_bim/viewpoints/vp_0.jpg'])
   })
 })

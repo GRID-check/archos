@@ -59,7 +59,7 @@ export const annotationViewpoints = pgTable(
     snapshotKey: text('snapshot_key'),
     snapshotContentType: text('snapshot_content_type'),
     snapshotBytes: integer('snapshot_bytes'),
-    /** The viewpoint this one was carried from, on this document or on the one it replaced (migration 0195). */
+    /** The viewpoint this one was carried from, on this document or on the one it replaced (migration 0194). */
     carriedFromId: uuid('carried_from_id'),
     createdBy: text('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
