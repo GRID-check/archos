@@ -61,6 +61,17 @@ VOID_TYPES = ("IfcOpeningElement", "IfcVoidingFeature")
 REASON_UNKNOWN = "unknown-global-id"
 
 
+def _work_budget(budget_s: float | None, default: float) -> float:
+    """A caller's time budget for the narrow phase: ``default`` when not given, never above it.
+
+    A caller lowers it to what is left of its own request; it cannot raise it, so the operator's
+    bound is unchanged. Refused when it is not a finite, non-negative number of seconds.
+    """
+    if budget_s is None:
+        return default
+    return min(_check_number("budget_s", budget_s, 0.0, float("inf")), default)
+
+
 class ProximityLimitError(ValueError):
     """A request over a published limit, or malformed. The caller can correct it."""
 
@@ -268,6 +279,7 @@ def elements_near(
     limit: int = MAX_RESULTS,
     ifc_types: list[str] | None = None,
     model: SpatialModel | None = None,
+    budget_s: float | None = None,
 ) -> Answer[dict[str, Any]]:
     """Elements within ``radius`` of a point or of an element, nearest first.
 
@@ -278,6 +290,7 @@ def elements_near(
     """
     radius = _check_number("radius", radius, 0.0, MAX_RADIUS)
     limit = int(_check_number("limit", limit, 1, MAX_RESULTS))
+    budget = _work_budget(budget_s, EXACT_BUDGET_SECONDS)
     low, high, subject_row = _near_subject(index, point, global_id)
     mask = _type_mask(index, ifc_types)
     if subject_row is not None:
@@ -288,7 +301,7 @@ def elements_near(
     found = {int(r): float(distances[r]) for r in rows}
     caveat = "Box distances: a lower bound on the distance between the bodies."
     if model is not None:
-        found, caveat = _exact_near(model, index, found, point, global_id, radius)
+        found, caveat = _exact_near(model, index, found, point, global_id, radius, budget)
     ordered = sorted(found.items(), key=lambda item: (item[1], index.global_ids[item[0]]))
     shown = ordered[:limit]
     subject = global_id or [float(v) for v in low]
@@ -331,6 +344,7 @@ def _exact_near(
     point: np.ndarray | None,
     global_id: str | None,
     radius: float,
+    budget: float = EXACT_BUDGET_SECONDS,
 ) -> tuple[dict[int, float], str | None]:
     """Replace each box distance by the body distance; drop what the bodies put beyond ``radius``.
 
@@ -340,7 +354,7 @@ def _exact_near(
     subject = None if global_id is None else _triangles(model, global_id)
     if global_id is not None and subject is None:
         return {}, f"{global_id} has no triangles to measure from; no exact distances."
-    deadline = time.perf_counter() + EXACT_BUDGET_SECONDS
+    deadline = time.perf_counter() + budget
     out: dict[int, float] = {}
     order = sorted(found, key=lambda r: (found[r], index.global_ids[r]))
     for position, row in enumerate(order):
@@ -350,7 +364,7 @@ def _exact_near(
         distance = _exact_distance(subject, point, tris, deadline)
         if distance is None:
             unmeasured = len(order) - position
-            return out, f"Stopped after {EXACT_BUDGET_SECONDS:g} s; {unmeasured} candidates were not measured."
+            return out, f"Stopped after {budget:g} s; {unmeasured} candidates were not measured."
         if distance <= radius:
             out[row] = distance
     return out, None
@@ -414,10 +428,12 @@ def _declared_contents(model: SpatialModel, space: Any) -> list[Any]:
     return out
 
 
-def _computed_contents(model: SpatialModel, index: ElementIndex, space_id: str) -> list[int] | None:
+def _computed_contents(
+    model: SpatialModel, index: ElementIndex, space_id: str, budget: float = ROOM_BUDGET_SECONDS
+) -> list[int] | None:
     """Rows whose centroid lies inside the space's solid; ``None`` when the space has no body.
 
-    Raises :class:`TimeoutError` past :data:`ROOM_BUDGET_SECONDS`.
+    Raises :class:`TimeoutError` past ``budget`` (:data:`ROOM_BUDGET_SECONDS` unless lowered).
     """
     tris = _triangles(model, space_id)
     row = index.row(space_id)
@@ -428,12 +444,14 @@ def _computed_contents(model: SpatialModel, index: ElementIndex, space_id: str) 
     with np.errstate(invalid="ignore"):
         mask &= ((index.centroids >= index.mins[row]) & (index.centroids <= index.maxs[row])).all(axis=1)
     candidates = np.flatnonzero(mask)
-    deadline = time.perf_counter() + ROOM_BUDGET_SECONDS
+    deadline = time.perf_counter() + budget
     inside = points_inside(index.centroids[candidates], tris, deadline)
     return candidates[inside].tolist()
 
 
-def elements_in_room(model: SpatialModel, space_global_id: str) -> Answer[dict[str, Any]]:
+def elements_in_room(
+    model: SpatialModel, space_global_id: str, *, budget_s: float | None = None
+) -> Answer[dict[str, Any]]:
     """What a room holds: declared by containment, computed by centroid-in-solid, each tagged.
 
     The two routes disagree in both directions and both disagreements are
@@ -441,6 +459,7 @@ def elements_in_room(model: SpatialModel, space_global_id: str) -> Answer[dict[s
     a lamp standing in the room that the export assigned only to the storey.
     """
     method = f"elements_in_room({space_global_id})"
+    budget = _work_budget(budget_s, ROOM_BUDGET_SECONDS)
     space = model.by_id(space_global_id, method)
     if not space.is_a("IfcSpace"):
         raise ProximityLimitError(f"{space_global_id} is an {space.is_a()}, not an IfcSpace")
@@ -449,7 +468,7 @@ def elements_in_room(model: SpatialModel, space_global_id: str) -> Answer[dict[s
     for element in _declared_contents(model, space):
         tags.setdefault(element.GlobalId, set()).add("declared")
     try:
-        rows = _computed_contents(model, index, space_global_id)
+        rows = _computed_contents(model, index, space_global_id, budget)
         timed_out = False
     except TimeoutError:
         rows, timed_out = None, True
@@ -458,11 +477,7 @@ def elements_in_room(model: SpatialModel, space_global_id: str) -> Answer[dict[s
     elements = [_content_ref(model, gid, tags[gid]) for gid in sorted(tags)]
     value = {"elements": elements, "geometryUsed": rows is not None, "truncated": timed_out}
     if rows is None:
-        reason = (
-            f"The centroid test stopped after {ROOM_BUDGET_SECONDS:g} s"
-            if timed_out
-            else "The room has no body in this model"
-        )
+        reason = f"The centroid test stopped after {budget:g} s" if timed_out else "The room has no body in this model"
         return declared(
             value,
             from_=[space_global_id, *sorted(tags)],

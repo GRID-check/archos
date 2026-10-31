@@ -97,12 +97,10 @@ def test_in_room_neighbours_and_clash_read_the_model(adapter, house) -> None:
     assert "pairs" in clearance
 
 
-def test_the_narrow_phase_budget_is_restored_after_a_call(adapter, house) -> None:
-    from ifc_spatial import operators_clash
-
-    before = operators_clash.CLASH_BUDGET_SECONDS
-    adapter.clash(house, [NORTH_WALL], None, "intersect", None, budget=2)
-    assert operators_clash.CLASH_BUDGET_SECONDS == before
+def test_the_request_budget_reaches_the_engine_and_a_spent_one_says_so(adapter, house) -> None:
+    pairs = adapter.clash(house, [LIVING], [BEDROOM], "clearance", 0.2, budget=0)
+    assert pairs["value"]["truncated"] is True and "0 s" in pairs["caveat"]
+    assert adapter.clash(house, [LIVING], [BEDROOM], "clearance", 0.2, budget=15)["value"]["truncated"] is False
 
 
 def test_a_diff_of_a_model_with_itself_is_unchanged(adapter, index) -> None:

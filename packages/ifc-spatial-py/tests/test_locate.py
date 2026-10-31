@@ -440,3 +440,32 @@ def test_a_global_id_two_products_share_is_flagged_not_boxed(tmp_path: Path) -> 
         {"globalId": BASEMENT_ROOM, "reason": "duplicate-global-id"}
     ]
     ElementIndex.from_json(index.to_json())
+
+
+# ── a caller's budget ───────────────────────────────────────────────────────
+
+
+def test_a_zero_budget_stops_the_narrow_phase_and_says_so(house: SpatialModel) -> None:
+    """A caller (the geometry service) lowers the budget to what is left of its request."""
+    pairs = clash(house, [LIVING], [BEDROOM], mode="clearance", tolerance=0.2, budget_s=0)
+    assert pairs.value["truncated"] is True
+    assert "0 s" in (pairs.caveat or "")
+    near = neighbours(house, NORTH_WALL, 0.05, budget_s=0)
+    assert near.value["truncated"] is True and "Stopped after 0 s" in (near.caveat or "")
+    room = elements_in_room(house, LIVING, budget_s=0)
+    assert room.value["truncated"] is True and "stopped after 0 s" in (room.caveat or "")
+
+
+def test_a_budget_can_lower_the_bound_but_never_raise_it(house: SpatialModel) -> None:
+    from ifc_spatial.operators_clash import CLASH_BUDGET_SECONDS
+    from ifc_spatial.operators_proximity import ProximityLimitError
+    from ifc_spatial.operators_proximity import _work_budget
+
+    assert _work_budget(None, CLASH_BUDGET_SECONDS) == CLASH_BUDGET_SECONDS
+    assert _work_budget(1e9, CLASH_BUDGET_SECONDS) == CLASH_BUDGET_SECONDS
+    assert _work_budget(2.5, CLASH_BUDGET_SECONDS) == 2.5
+    for bad in (-1, float("nan"), "soon"):
+        with pytest.raises(ProximityLimitError):
+            clash(house, [LIVING], [BEDROOM], mode="clearance", tolerance=0.2, budget_s=bad)
+    unbounded = clash(house, [LIVING], [BEDROOM], mode="clearance", tolerance=0.2, budget_s=1e9)
+    assert unbounded.value["truncated"] is False

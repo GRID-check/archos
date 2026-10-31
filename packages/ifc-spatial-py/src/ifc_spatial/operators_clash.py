@@ -42,6 +42,7 @@ from .operators_proximity import _ref
 from .operators_proximity import _split
 from .operators_proximity import _triangles
 from .operators_proximity import _type_mask
+from .operators_proximity import _work_budget
 from .proximity_mesh import penetrates
 
 CLASH_MODES = ("intersect", "touch", "clearance")
@@ -60,7 +61,9 @@ NEIGHBOUR_BUDGET_SECONDS = 20.0
 # ── neighbours ──────────────────────────────────────────────────────────────
 
 
-def neighbours(model: SpatialModel, global_id: str, gap: float = 0.05) -> Answer[dict[str, Any]]:
+def neighbours(
+    model: SpatialModel, global_id: str, gap: float = 0.05, *, budget_s: float | None = None
+) -> Answer[dict[str, Any]]:
     """Elements whose surface comes within ``gap`` of this element's surface.
 
     ``touching`` when the surfaces meet (within the coordinate tolerance),
@@ -68,6 +71,7 @@ def neighbours(model: SpatialModel, global_id: str, gap: float = 0.05) -> Answer
     that fills one is what a reader means by its neighbour.
     """
     gap = _check_number("gap", gap, 0.0, MAX_NEIGHBOUR_GAP)
+    budget = _work_budget(budget_s, NEIGHBOUR_BUDGET_SECONDS)
     method = f"neighbours({global_id}, gap={gap:g})"
     model.by_id(global_id, method)
     index = element_index(model)
@@ -78,12 +82,12 @@ def neighbours(model: SpatialModel, global_id: str, gap: float = 0.05) -> Answer
     mask = _type_mask(index, None)
     mask[row] = False
     candidates = np.flatnonzero(mask & _within_gap(index, row, gap))
-    found, unmeasured = _measure_neighbours(model, index, subject, candidates, gap)
+    found, unmeasured = _measure_neighbours(model, index, subject, candidates, gap, budget)
     found.sort(key=lambda item: (item[1], index.global_ids[item[0]]))
     shown = found[:MAX_RESULTS]
     caveat = None
     if unmeasured:
-        caveat = f"Stopped after {NEIGHBOUR_BUDGET_SECONDS:g} s; {unmeasured} candidates were not measured."
+        caveat = f"Stopped after {budget:g} s; {unmeasured} candidates were not measured."
     return computed(
         {
             "neighbours": [
@@ -107,12 +111,17 @@ def _within_gap(index: ElementIndex, row: int, gap: float) -> np.ndarray:
 
 
 def _measure_neighbours(
-    model: SpatialModel, index: ElementIndex, subject: np.ndarray, candidates: np.ndarray, gap: float
+    model: SpatialModel,
+    index: ElementIndex,
+    subject: np.ndarray,
+    candidates: np.ndarray,
+    gap: float,
+    budget: float = NEIGHBOUR_BUDGET_SECONDS,
 ) -> tuple[list[tuple[int, float]], int]:
     started = time.perf_counter()
     found: list[tuple[int, float]] = []
     for position, row in enumerate(candidates.tolist()):
-        remaining = NEIGHBOUR_BUDGET_SECONDS - (time.perf_counter() - started)
+        remaining = budget - (time.perf_counter() - started)
         if remaining <= 0:
             return found, len(candidates) - position
         tris = _triangles(model, index.global_ids[row])
@@ -210,6 +219,8 @@ def clash(
     set_b: list[str] | None = None,
     mode: str = "intersect",
     tolerance: float | None = None,
+    *,
+    budget_s: float | None = None,
 ) -> Answer[dict[str, Any]]:
     """Pairs between ``set_a`` and ``set_b`` (or within ``set_a``) that intersect, touch or come too close.
 
@@ -227,6 +238,7 @@ def clash(
     so the same question asked in another order gets the same answer.
     """
     tolerance = _check_clash_args(mode, tolerance)
+    budget = _work_budget(budget_s, CLASH_BUDGET_SECONDS)
     ids_a = _check_count("setA", set_a, MAX_CLASH_SET)
     ids_b = None if set_b is None else _check_count("setB", set_b, MAX_CLASH_SET)
     index = element_index(model)
@@ -243,7 +255,7 @@ def clash(
     declared_pairs = _declared_pairs(model)
     kept = [p for p in pairs if frozenset((index.global_ids[p[0]], index.global_ids[p[1]])) not in declared_pairs]
     skipped, pairs = len(pairs) - len(kept), kept
-    found, tested, narrow_truncated = _narrow(model, index, pairs, mode, tolerance)
+    found, tested, narrow_truncated = _narrow(model, index, pairs, mode, tolerance, budget)
     truncated = broad_truncated or narrow_truncated
     return computed(
         {
@@ -258,7 +270,7 @@ def clash(
         tolerance=TESSELLATION_TOLERANCE,
         from_=list(dict.fromkeys(gid for pair in found for gid in (pair["a"], pair["b"]))),
         method=f"clash({len(ids_a)}, {'self' if ids_b is None else len(ids_b)}, {mode}, {tolerance:g})",
-        caveat=_clash_caveat(truncated, len(pairs), tested),
+        caveat=_clash_caveat(truncated, len(pairs), tested, budget),
     )
 
 
@@ -303,9 +315,14 @@ def _ancestors(parent: dict[str, str], child: str) -> list[str]:
 
 
 def _narrow(
-    model: SpatialModel, index: ElementIndex, pairs: list[tuple[int, int]], mode: str, tolerance: float
+    model: SpatialModel,
+    index: ElementIndex,
+    pairs: list[tuple[int, int]],
+    mode: str,
+    tolerance: float,
+    budget: float = CLASH_BUDGET_SECONDS,
 ) -> tuple[list[dict[str, Any]], int, bool]:
-    deadline = time.perf_counter() + CLASH_BUDGET_SECONDS
+    deadline = time.perf_counter() + budget
     found: list[dict[str, Any]] = []
     for tested, (a, b) in enumerate(pairs):
         if tested >= MAX_NARROW_PAIRS or time.perf_counter() > deadline:
@@ -324,12 +341,12 @@ def _narrow(
     return found, len(pairs), False
 
 
-def _clash_caveat(truncated: bool, candidates: int, tested: int) -> str | None:
+def _clash_caveat(truncated: bool, candidates: int, tested: int, budget: float = CLASH_BUDGET_SECONDS) -> str | None:
     if not truncated:
         return None
     return (
         f"Incomplete: {tested} of {candidates} candidate pairs were tested before a limit "
-        f"({MAX_CANDIDATE_PAIRS} candidates, {MAX_NARROW_PAIRS} tested pairs or {CLASH_BUDGET_SECONDS:g} s). "
+        f"({MAX_CANDIDATE_PAIRS} candidates, {MAX_NARROW_PAIRS} tested pairs or {budget:g} s). "
         "Narrow the sets and ask again; pairs not listed here were not checked."
     )
 

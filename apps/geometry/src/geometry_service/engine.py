@@ -14,28 +14,14 @@ Refusals the engine raises about the request (``ProximityLimitError``, ``IndexFo
 ``UnknownElementError``, any ``ValueError``) become :class:`EngineRefusal`, carrying the engine's
 own message, which the route answers as a 400.
 
-The narrow-phase operators bound their own work with module budgets (``CLASH_BUDGET_SECONDS`` and
-its siblings). The adapter sets them to what is left of the request's budget for the duration of
-one call, under a lock, so a narrow-phase call never outlives the request; this serialises the
-narrow phase within a process (it is CPU-bound under the GIL anyway) until the engine takes a
-budget argument.
+The narrow-phase operators take the time left of the request as ``budget_s``; the engine lowers
+its own bound to it (never raises it) and says in the answer's caveat when it stopped.
 """
 
 from __future__ import annotations
 
-import threading
 from collections.abc import Callable
-from contextlib import contextmanager
 from typing import Any
-
-#: The engine's own module budgets, by module and name, that one call may lower.
-_BUDGETS = (
-    ("ifc_spatial.operators_clash", "CLASH_BUDGET_SECONDS"),
-    ("ifc_spatial.operators_clash", "NEIGHBOUR_BUDGET_SECONDS"),
-    ("ifc_spatial.operators_proximity", "EXACT_BUDGET_SECONDS"),
-    ("ifc_spatial.operators_proximity", "ROOM_BUDGET_SECONDS"),
-)
-_BUDGET_LOCK = threading.Lock()
 
 
 class EngineRefusal(ValueError):
@@ -55,27 +41,6 @@ def _wire(call: Callable[[], Any]) -> dict[str, Any]:
         message = exc.args[0] if isinstance(exc, KeyError) and exc.args else str(exc)
         raise EngineRefusal(str(message)) from None
     return answer.to_dict()
-
-
-@contextmanager
-def _budget(seconds: float | None):
-    """The engine's narrow-phase budgets lowered to ``seconds`` for one call."""
-    if seconds is None:
-        yield
-        return
-    import importlib
-
-    with _BUDGET_LOCK:
-        saved = []
-        for module_name, name in _BUDGETS:
-            module = importlib.import_module(module_name)
-            saved.append((module, name, getattr(module, name)))
-            setattr(module, name, max(0.5, min(getattr(module, name), seconds)))
-        try:
-            yield
-        finally:
-            for module, name, value in saved:
-                setattr(module, name, value)
 
 
 class GeometryEngine:
@@ -137,14 +102,12 @@ class GeometryEngine:
     def elements_in_room(self, model: Any, space_gid: str, budget: float | None = None) -> dict[str, Any]:
         from ifc_spatial import operators_proximity as op
 
-        with _budget(budget):
-            return _wire(lambda: op.elements_in_room(model, space_gid))
+        return _wire(lambda: op.elements_in_room(model, space_gid, budget_s=budget))
 
     def neighbours(self, model: Any, gid: str, gap: float, budget: float | None = None) -> dict[str, Any]:
         from ifc_spatial import operators_clash as op
 
-        with _budget(budget):
-            return _wire(lambda: op.neighbours(model, gid, gap))
+        return _wire(lambda: op.neighbours(model, gid, gap, budget_s=budget))
 
     def clash(
         self,
@@ -157,8 +120,7 @@ class GeometryEngine:
     ) -> dict[str, Any]:
         from ifc_spatial import operators_clash as op
 
-        with _budget(budget):
-            return _wire(lambda: op.clash(model, set_a, set_b, mode, tolerance))
+        return _wire(lambda: op.clash(model, set_a, set_b, mode, tolerance, budget_s=budget))
 
     def box_diff(self, base_index: Any, index: Any, ids: list[str] | None) -> dict[str, Any]:
         from ifc_spatial import operators_diff as op
