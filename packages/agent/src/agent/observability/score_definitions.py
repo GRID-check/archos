@@ -115,10 +115,10 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "geometry-cold-ms",
         "NUMERIC",
-        "Milliseconds the geometry service took for a call no cache answered (a model download, parse and "
-        "element index build, ADR-0149), on the BFF's bim-geometry trace. What the first question about a "
-        "model costs; the sizing signal for the geometry service's pods.",
-        writer="bff",
+        "Milliseconds of a cold geometry build (a model download, parse and element index build, or a parse for "
+        "the narrow phase; ADR-0149), written by the geometry service when the build completes, on the "
+        "bim-geometry trace of the request that started it, also when that request was answered 409. What "
+        "the first question about a model costs; the sizing signal for the geometry service's pods.",
         min_value=0,
     ),
     ScoreDefinition(

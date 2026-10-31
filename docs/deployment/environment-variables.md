@@ -234,6 +234,7 @@ The service (ADR-0149) reads these; it adds no variable of its own beyond `GEOME
 | `BIM_SPATIAL_MAX_MODEL_BYTES` | No | derived | The memory admission the backend's `ifc_measure` uses (see its row): a model this pod cannot hold is refused as 413 `model_too_large`, before it is parsed. |
 | `HOST`, `PORT` | No | `0.0.0.0`, `8100` | Where `python -m geometry_service` binds. |
 | `LOG_LEVEL` | No | `INFO` | One JSON object a line; each call logs a `geometry_call` line with its `record_ifc_call` facts. |
+| `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | No | _(unset: no score)_ | Where a completed cold build scores `geometry-cold-ms`, on the trace id the BFF sent (`x-trace-id`). Set by Pulumi exactly when Langfuse runs. |
 
 ## OIB Base Corpus Sync
 

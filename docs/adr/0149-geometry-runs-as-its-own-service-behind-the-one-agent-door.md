@@ -72,19 +72,27 @@ Chosen option 3.
   viewer, enforced in `bff/bim/geometry-service.ts`. Piloti gets no new native tool.
 * **The native IFC tools migrate to the door.** `ifc_query` and `ifc_measure` move behind door
   operations once the geometry service runs where their memory belongs; `ifc-query` is already
-  withheld from outside agents as a duplicate of `bim-model-query`.
+  withheld on every door (`withheld: duplicate`) as a duplicate of `bim-model-query`, which outside
+  agents use instead. Piloti is unaffected: it reads models with its native `ifc_query`, never
+  through the door's `ifc-query`.
 
 ### Consequences
 
 * Good: one access decision (the BFF's), one agent integration, one engine adapter; the
   geometry memory is sized and scaled on its own pods, and a warmed model costs a cache read.
 * Good: Langfuse sees every call as a `bim-geometry` trace with the cache tier, and a cold one
-  as `geometry-cold-ms`, the number the pods' sizing answers to.
+  as `geometry-cold-ms` (written by the service when the build completes, 409 or not), the number
+  the pods' sizing answers to.
 * Bad: the service image carries the agent package's dependency closure for the few modules it
   imports (measured: 84 MB resident after import). Lifting the cache, the BFF client and the model
   download into a small shared package would drop it; that is the follow-up, not a blocker.
-* Bad: a model resolved by id is found within the model's project and the office shelf; a model
-  attached to a private chat (`scope = 'session'`) is not found by the service yet.
+* Bad: a model is resolved by id within the scope the BFF states, its project or the office shelf,
+  and a diff's base model within its own; a model attached to a private chat (`scope = 'session'`)
+  is not found by the service yet.
+* Bad: the internal resolve hides every model under a restricted folder (ADR-0087), whatever the
+  person's grants, because it receives no grants: a person cleared for a restricted folder passes
+  the BFF's read gate and then gets 404 from the service for a model filed there. Passing the
+  reader's cleared folders into `/api/internal/bim/source` is the fix; it is not built.
 * Neutral: off by default (`geometryEnabled`); off, the route answers 503 and nothing else changes.
 
 ### Confirmation
