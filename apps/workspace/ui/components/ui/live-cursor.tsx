@@ -26,6 +26,11 @@ import { cn } from '@/lib/utils'
  * `tag={false}`: the arrow alone, for a small view of the page (a preview),
  * where a name and a bubble would cover the drawing they point at.
  *
+ * `badge`: with the tag off, a glyph in a dot beside the arrow, where the tag
+ * would start: the reader's own pointer carries the tool in hand this way
+ * (`features/documents/components/review/own-cursor.tsx`), the arrow and the
+ * colour still exactly what the room sees of them.
+ *
  * On a touch screen the tags and bubbles are a step smaller: a phone's sheet
  * is a third of a desktop's, and a full tag there covers a room.
  */
@@ -37,6 +42,7 @@ export function LiveCursor({
   chat,
   idle,
   tag = true,
+  badge,
   className,
 }: {
   color: string
@@ -47,6 +53,8 @@ export function LiveCursor({
   idle?: boolean
   /** Off: the arrow alone, no name tag and no chat bubble. */
   tag?: boolean
+  /** With the tag off: a glyph in a dot beside the arrow (the tool in hand). */
+  badge?: ReactNode
   className?: string
 }): JSX.Element {
   const initial = [...label.trim()][0]?.toLocaleUpperCase() ?? ''
@@ -75,7 +83,18 @@ export function LiveCursor({
           strokeLinejoin="round"
         />
       </svg>
-      {!tag ? null : chat ? (
+      {!tag ? (
+        badge && (
+          <span
+            data-slot="live-cursor-badge"
+            aria-hidden
+            className="absolute top-[14px] left-[11px] flex size-4 items-center justify-center rounded-full text-white shadow-sm [&_svg]:size-2.5"
+            style={{ backgroundColor: color }}
+          >
+            {badge}
+          </span>
+        )
+      ) : chat ? (
         <span
           data-slot="live-cursor-chat"
           className="absolute top-[15px] left-[12px] flex w-max max-w-60 flex-col rounded-surface px-2.5 py-1.5 text-white shadow-md pointer-coarse:max-w-44 pointer-coarse:px-2 pointer-coarse:py-1"

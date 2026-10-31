@@ -46,6 +46,7 @@ import {
   type RoomPeerState,
 } from '../../hooks/use-document-room'
 import { CursorChat } from './cursor-chat'
+import { OWN_CURSOR_ZONE, OwnCursor } from './own-cursor'
 import { keepTrigger, restoreFocus } from './focus-return'
 import { AgentAnswerCard } from './agent-answer-card'
 import { ReviewPageLayer } from './review-page-layer'
@@ -1047,14 +1048,13 @@ export function DocumentReviewMode({
           <div className="flex min-h-0 flex-1">
             <div
               ref={canvasRef}
-              className="relative min-w-0 flex-1"
+              className={cn('relative min-w-0 flex-1', OWN_CURSOR_ZONE)}
               data-testid="review-canvas"
               onWheelCapture={() => following && setFollowing(null)}
               onPointerDownCapture={() => following && setFollowing(null)}
-              onPointerMove={(event) => {
-                lastPointer.current = { x: event.clientX, y: event.clientY }
-              }}
+              onPointerMove={(event) => void (lastPointer.current = { x: event.clientX, y: event.clientY })}
             >
+              <OwnCursor canvas={canvasRef} userId={room.self?.userId ?? null} name={room.self?.name ?? ''} tool={tool} />
               {/* What sits at the top of the canvas, one under the other: whom the
                   view follows, who is out of view above, what the tool in hand does. */}
               <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-1.5">
