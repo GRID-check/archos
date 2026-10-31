@@ -1235,6 +1235,7 @@ source = { editable = "apps/geometry" }
 dependencies = [
     { name = "agent" },
     { name = "fastapi" },
+    { name = "mcp" },
     { name = "pydantic" },
     { name = "uvicorn" },
 ]
@@ -1243,6 +1244,7 @@ dependencies = [
 requires-dist = [
     { name = "agent", editable = "packages/agent" },
     { name = "fastapi", specifier = ">=0.156.8" },
+    { name = "mcp", specifier = ">=1.29,<2" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]

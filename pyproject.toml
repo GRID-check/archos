@@ -35,7 +35,7 @@ addopts = "--import-mode=importlib -m 'not live'"
 # The test-support packages come last: `<distribution>_testing`, one per suite
 # family, so a suite imports its helpers by a name that no directory move changes
 # (ADR-0145 row 5; tests/test_test_imports.py holds it).
-pythonpath = [".", "packages/agent/src", "apps/agent-host/src", "apps/geometry/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "packages/agent/tests/testing"]
+pythonpath = [".", "packages/agent/src", "apps/agent-host/src", "apps/geometry/src", "apps/geometry/testing", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "packages/agent/tests/testing"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [

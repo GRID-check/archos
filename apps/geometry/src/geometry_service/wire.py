@@ -1,4 +1,4 @@
-"""The request body of ``POST /v1/internal/bim/geometry``: one operation, typed, with its limits.
+"""One geometry operation, typed, with its limits: each is a tool of the MCP server (``mcp_server.py``).
 
 The twin of ``apps/workspace/bff/bim/geometry-wire.ts``, which validates the same body first; the
 limits are equal on purpose; change both together. Coordinates

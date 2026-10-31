@@ -1,10 +1,10 @@
 # The geometry service: `apps/geometry`
 
 Element boxes, boxes per group, what lies within a box or near an element, what is in a room,
-what touches an element, clashes and box diffs over the office's IFC models (ADR-0149). One typed
-route, `POST /v1/internal/bim/geometry`, whose only caller is the BFF's
-`app/api/bim/models/[modelId]/geometry` route; every agent, Piloti included, reaches it through
-the door's `bim-model-geometry` operation. Probes: `/healthz`, `/readyz`. Run it with
+what touches an element, clashes and box diffs over the office's IFC models (ADR-0149). An MCP
+server at `/mcp/` (`mcp_server.py`), one tool per operation; its only client is the BFF's gateway,
+`app/api/bim/models/[modelId]/geometry`, and every agent, Piloti included, reaches it through the
+door's `bim-model-geometry` operation. It never writes to storage. Probes: `/healthz`, `/readyz`. Run it with
 `python -m geometry_service`; its tests run in the api suite (`task be:test:api`).
 
 ## Obligations

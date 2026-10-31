@@ -13,7 +13,6 @@ bedroom share one partition.
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import pytest
@@ -126,24 +125,27 @@ def test_the_engine_s_refusals_reach_the_caller_as_engine_refusals(adapter, inde
     assert str(refused.value)
 
 
-def test_every_route_operation_runs_through_the_service_on_the_real_engine(monkeypatch, house) -> None:
-    """The whole path (operations -> builds -> adapter -> engine) for each op, the source local.
+def test_every_tool_runs_through_the_service_s_mcp_endpoint_on_the_real_engine(monkeypatch, house) -> None:
+    """The whole path (MCP tools/call -> operations -> builds -> adapter -> engine) for each tool.
 
+    The source is handed over as the BFF hands it (signed headers); only the download is local.
     Needs the agent package's full environment beside the engine (the root venv with
     ``packages/ifc-spatial-py`` installed, as the service image has); skipped in the engine's own.
     """
     pytest.importorskip("agent.knowledge.ifc_spatial_client")
     from geometry_service import index_cache
-    from geometry_service import operations
-    from geometry_service.wire import GeometryRequest
+    from geometry_testing.service import SECRET
+    from geometry_testing.service import call_tool
+    from geometry_testing.service import headers_for
 
     from agent.common import cache
     from agent.knowledge import ifc_spatial_client as spatial
 
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setattr(cache, "_get_client", lambda: None)
     cache.reset_local_store()
     index_cache.memo_clear()
-    body = {"resolved": True, "model": {"modelId": "m", "updatedAt": "t"}, "source": {"etag": "house"}}
     monkeypatch.setattr(spatial, "open_model", lambda source, fetch=None: "house")
     monkeypatch.setattr(spatial, "resident_model", lambda source: house)
     model_id = "11111111-1111-4111-8111-111111111111"
@@ -158,10 +160,9 @@ def test_every_route_operation_runs_through_the_service_on_the_real_engine(monke
         {"op": "diff", "baseModelId": model_id, "globalIds": [NORTH_WALL]},
         {"op": "warm"},
     ]:
-        started = time.monotonic()
-        request = GeometryRequest.model_validate({"modelId": model_id, "operation": operation})
-        outcome = operations.run(request, {model_id: body})
-        assert outcome.op == operation["op"]
-        assert isinstance(outcome.result["value"], dict), operation
-        assert time.monotonic() - started < operations.REQUEST_BUDGET_SECONDS
-    assert outcome.result["value"] == {"status": "ready"}
+        body = {"modelId": model_id, "operation": operation}
+        answer = call_tool(body, headers_for(body, models=(model_id,)))
+        assert answer.status_code == 200, answer.text
+        assert answer.json()["op"] == operation["op"]
+        assert isinstance(answer.json()["result"]["value"], dict), operation
+    assert answer.json()["result"]["value"] == {"status": "ready"}

@@ -15,6 +15,8 @@ dependencies = [
     "fastapi>=0.156.8",
     "uvicorn>=0.30",
     "pydantic>=2.0.0",
+    # The service's MCP server (streamable HTTP, the low-level Server): the official SDK.
+    "mcp>=1.29,<2",
 ]
 # The engine (`packages/ifc-spatial-py`) is installed by the image on its own, as the backend
 # image does, because it keeps its own uv.lock (packages/AGENTS.md).
