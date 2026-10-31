@@ -12,7 +12,8 @@
 
 import { NextResponse } from 'next/server'
 import { BadRequestError, PayloadTooLargeError } from '@/lib/api/errors'
-import { apiRoute, parseFormData, parseQuery } from '@/lib/api/handler'
+import { readBoundedFormData } from '@/lib/api/bounded-body'
+import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { MAX_BCF_ARCHIVE_BYTES } from '@/lib/bim/bcf-archive'
 import { importAnnotationsBcf } from '@/lib/bim/bcf-import-service'
 import { isBcfFilename } from '@/lib/bim/bcf-import-wire'
@@ -52,10 +53,8 @@ const MULTIPART_OVERHEAD = 64 * 1024
 
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {
-    // Refused before the body is read when the request says it is too large; the file's own size is checked after.
-    const declared = Number(request.headers.get('content-length') ?? 0)
-    if (declared > MAX_BCF_ARCHIVE_BYTES + MULTIPART_OVERHEAD) throw new PayloadTooLargeError(MAX_BCF_ARCHIVE_BYTES)
-    const form = await parseFormData(request)
+    // Counted as it arrives, with or without a Content-Length: the agent door sends a FormData built in process.
+    const form = await readBoundedFormData(request, MAX_BCF_ARCHIVE_BYTES + MULTIPART_OVERHEAD)
     const file = form.get('file')
     if (!(file instanceof File)) throw new BadRequestError('file is required: one .bcf or .bcfzip file')
     if (!isBcfFilename(file.name)) throw new BadRequestError('Only a .bcf or .bcfzip file is imported.')

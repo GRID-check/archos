@@ -110,6 +110,29 @@ describe('POST /api/documents/[id]/annotations/bcf', () => {
     expect(importAnnotationsBcf).not.toHaveBeenCalled()
   })
 
+  it('is a 413 for a body without a Content-Length that grows past the bound, counted as it arrives', async () => {
+    const megabyte = new Uint8Array(1024 * 1024)
+    let sent = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent += 1
+        if (sent > 80) controller.close()
+        else controller.enqueue(megabyte)
+      },
+    })
+    const request = new Request('https://grid.test/api/documents/doc_1/annotations/bcf', {
+      method: 'POST',
+      body,
+      headers: { 'content-type': 'multipart/form-data; boundary=x' },
+      duplex: 'half',
+    } as RequestInit)
+    expect(request.headers.get('content-length')).toBeNull()
+    const response = await POST(request, { params: Promise.resolve({ id: 'doc_1' }) })
+    expect(response.status).toBe(413)
+    expect(sent).toBeLessThan(80)
+    expect(importAnnotationsBcf).not.toHaveBeenCalled()
+  })
+
   it('is a 413 for a body that says it is larger than a BCF file may be, before it is read', async () => {
     const response = await post(withFile('Runde 3.bcf'), { 'content-length': String(200 * 1024 * 1024) })
     expect(response.status).toBe(413)
