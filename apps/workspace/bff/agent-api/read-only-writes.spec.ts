@@ -21,6 +21,7 @@ import { annotationsOf } from './operation'
 
 const READ_ONLY_WRITE_METHODS: Readonly<Record<string, string>> = {
   'bim-model-query': 'queryAccessibleModel answers a query over the stored model; the POST carries the query.',
+  'bim-model-geometry': 'geometryForAccessibleModel reads boxes from the geometry service; its cache is derived, no office data changes.',
   'citation-format': 'renderCitations formats the citations in the body; reads no stored data and stores none.',
   'passage-similar-search': 'findSimilarPassages searches the projects the person may read; stores nothing.',
   'workspace-search':

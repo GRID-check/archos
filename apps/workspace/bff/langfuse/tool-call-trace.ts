@@ -55,17 +55,17 @@ export interface ToolCallRecord {
 type IngestionBatch = Parameters<LangfuseClient['api']['ingestion']['batch']>[0]
 
 /** Langfuse's environment alphabet, as `trace_context.langfuse_environment` coerces `APP_ENV`. */
-function environment(raw = process.env.APP_ENV ?? ''): string | undefined {
+export function environment(raw = process.env.APP_ENV ?? ''): string | undefined {
   const value = raw.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
   return value && !value.startsWith('langfuse') ? value : undefined
 }
 
-function release(raw = process.env.GIT_SHA ?? ''): string | undefined {
+export function release(raw = process.env.GIT_SHA ?? ''): string | undefined {
   const value = raw.trim()
   return value && value !== 'unknown' ? value : undefined
 }
 
-const identityOn = () => process.env.TRACE_IDENTITY_ATTRIBUTES?.trim().toLowerCase() === 'true'
+export const identityOn = () => process.env.TRACE_IDENTITY_ATTRIBUTES?.trim().toLowerCase() === 'true'
 
 /** The ingestion batch for one call. Pure, so the mapping is tested without a network. */
 export function toolCallBatch(call: ToolCallRecord, ids: { traceId: string; observationId: string; eventIds: [string, string] }): IngestionBatch {
@@ -133,7 +133,8 @@ export function toolCallBatch(call: ToolCallRecord, ids: { traceId: string; obse
 
 let cached: { key: string; client: LangfuseClient } | null = null
 
-function clientFor(config: LangfuseApiConfig): LangfuseClient {
+/** One client per configuration, shared by every BFF trace writer. */
+export function clientFor(config: LangfuseApiConfig): LangfuseClient {
   const key = `${config.baseUrl}\u0000${config.publicKey}\u0000${config.secretKey}`
   if (cached?.key !== key) {
     cached = {
@@ -145,7 +146,7 @@ function clientFor(config: LangfuseApiConfig): LangfuseClient {
 }
 
 /** A 32-hex trace id, the form the agent writes and `isTraceId` accepts. */
-const hexId = () => crypto.randomUUID().replace(/-/g, '')
+export const hexId = () => crypto.randomUUID().replace(/-/g, '')
 
 /**
  * Post `call` as its trace. Resolves when sent (or skipped) and never rejects;

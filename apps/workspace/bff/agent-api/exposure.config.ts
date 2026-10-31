@@ -51,9 +51,9 @@ import type { AppToolName } from './catalog/app-views'
  * `product-config`: how Piloti itself works for the office (models, keys,
  * budgets, policies, settings). `model-compute`: model work the caller can do
  * itself whose result is no office artifact. `ui-state`: this person's own
- * screen or device state.
+ * screen or device state. `duplicate`: the same read another operation on the door already offers.
  */
-export const WITHHELD_CATEGORIES = ['external-service', 'product-config', 'model-compute', 'ui-state'] as const
+export const WITHHELD_CATEGORIES = ['external-service', 'product-config', 'model-compute', 'ui-state', 'duplicate'] as const
 export type WithheldCategory = (typeof WITHHELD_CATEGORIES)[number]
 
 export interface Withholding {
@@ -488,13 +488,10 @@ export const EXPOSURE = {
   'bim-check-list': OFFERED,
   'bim-check-withdraw': OFFERED,
   'bim-checks-export': OFFERED,
+  'bim-model-geometry': OFFERED,
   'bim-model-get': OFFERED,
   'bim-model-list': OFFERED,
-  'bim-model-query': {
-    external: true,
-    piloti: 'native:ifc_query',
-    reason: 'Piloti counts and reads the model with its own `ifc_query`, which says what the export cannot answer',
-  },
+  'bim-model-query': { external: true, piloti: 'native:ifc_query', reason: 'Piloti counts and reads the model with its own `ifc_query`, which says what the export cannot answer' },
   'bim-model-source-get': OFFERED,
   'diagram-file': OFFERED,
 
@@ -710,7 +707,7 @@ export const EXPOSURE = {
   'passage-read': { external: true, piloti: 'native:read_file', reason: NATIVE_READ },
   'files-list': { external: true, piloti: 'native:list_files', reason: NATIVE_READ },
   'document-look': { external: true, piloti: 'native:look', reason: NATIVE_READ },
-  'ifc-query': { external: true, piloti: 'native:ifc_query', reason: NATIVE_READ },
+  'ifc-query': { external: false, piloti: false, withheld: { category: 'duplicate', reason: 'the same structured model query as bim-model-query, which the door offers with a typed body' } },
   'ifc-measure': { external: true, piloti: 'native:ifc_measure', reason: NATIVE_READ },
   'law-lookup': { external: true, piloti: 'native:ris_lookup_tool', reason: NATIVE_READ },
   // the app-only tools of the door's MCP Apps views (`catalog/app-views.ts`)

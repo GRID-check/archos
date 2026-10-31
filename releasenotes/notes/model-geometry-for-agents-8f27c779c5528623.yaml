@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Agents connected to the office, Piloti included, can now ask where elements of an
+    IFC model are: their boxes, what lies near an element, what is in a room, what
+    clashes and what moved between two revisions. Large models are prepared on the first
+    question and answer quickly after that.

@@ -106,6 +106,7 @@ describe('the exposure config', () => {
       if (typeof exposure.piloti === 'string') expect(exposure.piloti, name).toMatch(NATIVE)
     }
     for (const op of BACKEND_OPERATIONS) {
+      if (entry(op.name).withheld) continue
       expect(entry(op.name).piloti, op.name).toBe(`native:${AGENT_TOOL_FOR[op.tool] ?? op.tool}`)
     }
   })

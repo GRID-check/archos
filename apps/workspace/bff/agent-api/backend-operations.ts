@@ -229,7 +229,7 @@ const ENTRIES = [
     description:
       'Measure the project’s IFC (BIM) model: dimensions, distances, areas, clear heights and widths, and spatial relations, each ' +
       'with how it was obtained. Use it when the file does not state the number and the geometry has to be read, or to check a ' +
-      'declared number another way; for counts and published values call ifc-query first. Call `operation: "briefing"` ' +
+      'declared number another way; for counts and published values call bim-model-query first. Call `operation: "briefing"` ' +
       'first, once per model: it names the storeys, the property vocabulary this export used, and what this file cannot answer; ' +
       'copy storey and property names from it. Then `find_elements` for GlobalIds, `element`, `relations`, `measure` (one ' +
       'element or a known set), `survey` (one measure across a whole selection, with the spread: use it whenever the question is ' +

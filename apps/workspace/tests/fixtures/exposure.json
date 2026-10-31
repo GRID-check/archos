@@ -2507,6 +2507,16 @@
    "withheld": null,
    "reason": null
   },
+  "bim-model-geometry": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "bim-model-get": {
    "kind": "catalog",
    "domain": "bim",
@@ -3642,11 +3652,14 @@
    "kind": "backend",
    "domain": "bim",
    "sensitivity": null,
-   "external": true,
-   "piloti": "native:ifc_query",
+   "external": false,
+   "piloti": false,
    "platform": false,
-   "withheld": null,
-   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+   "withheld": {
+    "category": "duplicate",
+    "reason": "the same structured model query as bim-model-query, which the door offers with a typed body"
+   },
+   "reason": null
   },
   "ifc-measure": {
    "kind": "backend",

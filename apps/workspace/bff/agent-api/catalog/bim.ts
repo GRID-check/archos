@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { bimQuerySchema } from '@/lib/bim/query'
+import { geometryRequestSchema } from '@/lib/bim/geometry-wire'
 import { confirmCheckSchema, withdrawCheckSchema } from '@/lib/bim/checks-wire'
 import { fileDiagramSchema } from '@/lib/diagrams/diagram-wire'
 import type { AgentOperation } from '../operation'
@@ -28,7 +29,7 @@ export const bimOperations = [
   {
     name: 'bim-model-get',
     domain: 'bim',
-    summary: 'Read one BIM model’s summary',
+    summary: 'Read one IFC model’s storeys, rooms and element counts',
     description:
       'One model’s header and summary: spatial tree, storeys, element type counts and totals. Start here to learn ' +
       'what is in a model, then ask exact questions with bim-model-query.',
@@ -53,6 +54,23 @@ export const bimOperations = [
     body: bimQuerySchema,
     readOnly: true,
     load: () => import('@/app/api/bim/models/[modelId]/query/route'),
+  },
+  {
+    name: 'bim-model-geometry',
+    domain: 'bim',
+    summary: 'Ask where elements of a BIM model are: boxes, proximity, rooms, clashes, changes',
+    description:
+      'Where elements are, by GlobalId (from a model query). IFC world, Z-up, metres. `op`: boxes (min, max, centroid ' +
+      'per id); group-boxes (union box per key); within (aroundGlobalId grown by margin); near (globalId, radius); ' +
+      'in-room (spaceGlobalId); neighbours (globalId, gap); clash (setA, setB, mode, tolerance: pairs); diff (baseModelId: ' +
+      'added, removed, moved, resized); warm. 409 geometry_warming: retry after retryAfter s.',
+    method: 'POST',
+    path: '/api/bim/models/[modelId]/geometry',
+    params: modelParams,
+    // The route's own schema, imported; it is the gate.
+    body: geometryRequestSchema,
+    readOnly: true,
+    load: () => import('@/app/api/bim/models/[modelId]/geometry/route'),
   },
   {
     name: 'bim-check-list',

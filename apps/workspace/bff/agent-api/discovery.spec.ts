@@ -532,7 +532,8 @@ describe('the Python agent’s read tools', () => {
       destructive: false,
     })
     expect(structured(searchOperations(ctx(person), { query: '', domain: 'bim' })).operations.map((op) => op.name)).toEqual(
-      expect.arrayContaining(['ifc-query', 'ifc-measure']),
+      // ifc-query is withheld: the same query as bim-model-query (exposure.config.ts).
+      ['ifc-measure'],
     )
   })
 

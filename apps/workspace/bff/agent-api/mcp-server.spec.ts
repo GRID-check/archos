@@ -14,6 +14,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { AGENT_OPERATIONS } from './catalog'
 import { MCP_INSTRUCTIONS, buildMcpServer, createAgentDoorHandler, resolveMode } from './mcp-server'
 import { BACKEND_OPERATIONS } from './backend-operations'
+import { EXPOSURE } from './exposure.config'
 import { visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 import { APP_TOOLS } from './catalog/app-views'
@@ -92,6 +93,10 @@ describe('backend read tools in tools mode', () => {
     const tools = await listTools('tools')
     for (const op of BACKEND_OPERATIONS) {
       const tool = tools.find((candidate) => candidate.name === op.name)
+      if ((EXPOSURE as Readonly<Record<string, { withheld?: unknown }>>)[op.name]?.withheld) {
+        expect(tool, `${op.name} is withheld`).toBeUndefined()
+        continue
+      }
       expect(tool?.annotations).toEqual({ readOnlyHint: true, openWorldHint: op.name === 'law-lookup' })
     }
   })
