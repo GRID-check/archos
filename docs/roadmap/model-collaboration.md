@@ -180,6 +180,8 @@ statuses, assignee, due date, camera, six planes, selection and comments. Loadin
 ARCHICAD's BCF manager and BIMcollab Zoom is **unverified**; that file is the test.
 The model's marks panel downloads it (open or all). Open: the import (F6),
 `DocumentReferences`.
+Open: no button in the viewer yet (agents and a direct GET reach it),
+`DocumentReferences`. The import is F6's first part (below).
 
 ### F4 status: framing core exists, bounding-box source missing
 
@@ -202,6 +204,75 @@ the chat shows which region was looked at; on a model mark Piloti receives the
 viewpoint's GlobalIds and the IFC data behind them (types, properties, quantities,
 storey) through the model-query tools, never the snapshot as something it claims to
 read.
+
+### F6 status: import built, triage designed
+
+**Import (built).** `POST /api/documents/{id}/annotations/bcf`, multipart with one
+`.bcf` or `.bcfzip` (operation `document-annotations-bcf-import`), the button
+„BCF-Datei importieren“ in the model's marks panel with a summary of what became
+of the topics. BCF 2.1 and 3.0 through one reader (`apps/workspace/bff/bim/bcf-read.ts`):
+2.1's comments and views beside the topic, 3.0's inside it, 2.0's fixed
+`viewpoint.bcfv`. Each topic with a viewpoint becomes an ordinary model
+Anmerkung; the mapping is the export's, reversed (`bcf-import-map.ts`):
+
+| BCF | Ours | Fallback |
+|---|---|---|
+| `Title`, `Description` | `body` (a description starting with the title, as ours does, is the body) | cut to 2000 with „…“, said in the thread |
+| `TopicType` | `kind`: our Hint, Question, Defect exactly | Issue, Error, Clash and kin → Mangel; Request, Question, RFI → Rückfrage; else Hinweis; the file's word in the thread |
+| `TopicStatus` | `status`: our Open, Resolved, Dismissed | Closed, Done → erledigt; Rejected → verworfen; else offen; the file's word in the thread. A closed topic arrives closed by the importer, never as a Vorschlag |
+| `AssignedTo` | Zuständige, when the email is someone who may write the document (`requireAssignable`'s rule) | named in the thread |
+| `DueDate` | Frist, its calendar day | unreadable: named in the thread |
+| `CreationAuthor/Date` | the thread's import note; the importer is `created_by` | |
+| `Comment` | a reply by its author where the email may open the document, at its own date | the importer's reply, the author's name and date in the text |
+| first `Viewpoint` | `annotation_viewpoints`: either camera, ≤ 6 planes, ≤ 500 selected (those the model has), ≤ 2000 exceptions, colouring, snapshot PNG/JPEG ≤ 1.5 MB | a 2.1 camera has no aspect ratio: 16∶9; past a bound the rest is cut and counted in the thread |
+
+The topic's Guid is kept (`source_topic_guid`, migration 0196, unique per
+document; a Guid that is no UUID by a UUIDv5 of it), so the same file twice, or
+next round's file that still carries last round's topics, adds nothing; every
+mark of one import shares `import_batch_id`, the unit triage works on. The
+response lists imported, skipped (`already_imported`, `duplicate_in_file`,
+`no_viewpoint`) and failed (`bad_xml`, `no_topic`, `limit`, `error`) topics. The
+file is untrusted: the central directory is walked before anything is inflated,
+every member inflates through fflate's streaming `Inflate` counted against its
+declared size, and paths, members (2,500), bytes (64 MiB packed, 16 MiB a member,
+256 MiB in all) are bounded (`bcf-archive.ts`); the XML is parsed by `saxes`,
+which resolves no DTD and no entity beyond XML's five, and a `<!DOCTYPE>` is
+refused outright (`bcf-xml.ts`). Measured by `annotations_imported` (topics,
+imported, skipped, failed, assigned per round).
+
+**Topics without a viewpoint** are skipped and reported for now. The next step
+frames them on the server from the elements' stored bounding boxes with F4's
+`frameViewpoint`, once the improved IFC toolset stores those boxes at ingest; the
+topic then imports like any other, and a re-import picks it up, since it was
+never remembered.
+
+**Triage (designed, not built).** Piloti reads one import batch and proposes;
+a person decides. Each suggestion is a Vorschlag in the existing sense, never a
+change made on its own:
+
+1. **Duplicates within the batch.** Two topics about the same thing (a clash
+   reported once from each discipline's model). Signal: overlapping selected
+   GlobalIds (Jaccard over the selection), the same storey and IFC classes from
+   the model-query tools, close text. Proposal: a reply on the later mark,
+   „wohl dasselbe wie Anmerkung 12“, with a take-over that dismisses it with a
+   link to the kept one. Never merged silently: two Fachplaner's words stay.
+2. **Similar earlier marks.** A topic that repeats an open or recently closed
+   mark of an earlier round or of the office's own (the same elements by
+   GlobalId, which survive re-export, or the same text). Proposal: a reply
+   naming the earlier mark and what became of it („in Runde 2 als erledigt
+   geschlossen“), so a reopened issue is visible as one.
+3. **Proposed Zuständige.** For a mark without one: from the elements' IFC data
+   (the discipline of the class and the storey, read through the improved IFC
+   toolset's element queries), who answered marks on those elements before, and
+   the project's assignments. Proposal: a Rückfrage-style reply with the
+   person and the reason; taking it over sets the Zuständige through the
+   ordinary PATCH.
+
+Every suggestion is attributed (`basis` names the signal), idempotent per batch
+and mark, and scored in Langfuse as taken over against dismissed, the measure F6
+names. It builds on the improved IFC toolset: element boxes, classes, storeys
+and properties come from IFC data on the server, never from a picture, and no
+coordinate is ever written by a model.
 
 F1 is the foundation; F2 makes it usable; F3 to F5 are independent after it.
 
