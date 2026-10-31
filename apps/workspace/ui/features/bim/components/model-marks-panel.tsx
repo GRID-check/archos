@@ -12,6 +12,7 @@ import { annotationSnapshotHref } from '@/lib/annotations/client'
 import type { AnnotationView } from '@/lib/annotations/types'
 import type { MarksNotice, ModelMarks } from '../hooks/use-model-marks'
 import { ModelMarkCarry, ModelMarksExport } from './model-marks-actions'
+import { ModelMarksImport } from './model-marks-import'
 import { ViewerSurface } from './viewer'
 
 /** One sentence per thing worth saying after a capture or a jump; null says nothing. */
@@ -66,6 +67,8 @@ function MarkList({ marks }: { marks: ModelMarks }): JSX.Element {
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1">
       <div className="flex flex-1 gap-1" role="group" aria-label={files('review.filter')}>
+      {review.canAnnotate && marks.documentId && <ModelMarksImport documentId={marks.documentId} onImported={review.retry} />}
+      <div className="flex gap-1" role="group" aria-label={files('review.filter')}>
         {(['open', 'closed'] as const).map((filter) => (
           <Button
             key={filter}

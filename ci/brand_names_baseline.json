@@ -549,7 +549,7 @@
   "apps/workspace/tests/app/api/internal/skills/resolve/route.test.ts": 1,
   "apps/workspace/tests/app/api/internal/stages/route.test.ts": 1,
   "apps/workspace/tests/fixtures/document-annotations.schema.json": 3,
-  "apps/workspace/tests/fixtures/exposure.json": 409,
+  "apps/workspace/tests/fixtures/exposure.json": 410,
   "apps/workspace/tests/fixtures/job_fire_headers.json": 1,
   "apps/workspace/tests/fixtures/openapi.json": 38,
   "apps/workspace/tests/fixtures/proposals.schema.json": 8,

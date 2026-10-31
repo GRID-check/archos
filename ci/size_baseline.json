@@ -27,7 +27,7 @@
     "apps/workspace/bff/annotations/attention.ts": 686,
     "apps/workspace/bff/annotations/service.ts": 1519,
     "apps/workspace/bff/answer-export/cards.ts": 884,
-    "apps/workspace/bff/audit/schemas.mjs": 950,
+    "apps/workspace/bff/audit/schemas.mjs": 949,
     "apps/workspace/bff/authz/catalog.ts": 651,
     "apps/workspace/bff/bim/extract.ts": 697,
     "apps/workspace/bff/bim/query.ts": 1291,

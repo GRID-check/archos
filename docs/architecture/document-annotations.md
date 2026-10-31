@@ -740,6 +740,26 @@ same in any viewer; the viewer converts to and from its own frame
   door and Piloti hand a person „Zur Ansicht“ with the mark; the `ifc_viewer`
   card's optional `mark` opens „Modell öffnen“ at that view. The BCF 3.0 file
   is downloaded from the model's marks panel (open or all).
+- **BCF import.** `POST …/annotations/bcf` (multipart, one `.bcf`/`.bcfzip`;
+  agent operation `document-annotations-bcf-import`) makes each topic of a
+  coordination file (BCF 2.1 or 3.0) with a viewpoint an ordinary viewpoint
+  mark, behind the gate of setting one (write access, a `ready` model). The
+  importer is the author; the topic's author and date, a type or status of
+  the other tool's vocabulary, an `AssignedTo` who may not answer the mark and
+  whatever was cut to fit are one note at the end of its thread. A comment is
+  a reply by its author where the email is someone who may open the document,
+  else the importer's with the author's name in its text. A topic closed in the
+  file arrives closed by the importer. `source_topic_guid` (unique per
+  document) and `import_batch_id` (migration 0196) make a second import skip
+  what is there and give a later triage its batch. The archive is read with
+  every bound checked and the XML without ever resolving a DTD or an entity
+  (`bff/bim/bcf-archive.ts`, `bcf-xml.ts`, `bcf-read.ts`, mapping in
+  `bcf-import-map.ts`, service `bcf-import-service.ts`). A topic without a
+  viewpoint is skipped and reported for now. The trail: the audit event
+  `document.annotations.imported` and the product event `annotations_imported`,
+  counts only.
+- **No carry.** A viewpoint mark is not carried to a newer Fassung: its
+  referent is a view, not a sheet.
 
 ### Mentioning a colleague
 

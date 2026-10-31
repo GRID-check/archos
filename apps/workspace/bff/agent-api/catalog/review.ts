@@ -25,6 +25,7 @@ import {
   ANNOTATION_EXPORT_SCOPES,
 } from '@/lib/annotations/export-request'
 import { BCF3_MEDIA_TYPE, bcf3QuerySchema } from '@/lib/bim/bcf3-wire'
+import { uploadFileSchema } from '../upload-wire'
 import { projectProtocolQuerySchema } from '@/lib/annotations/project-types'
 import type { AgentOperation } from '../operation'
 
@@ -466,6 +467,21 @@ export const reviewOperations = [
     params: documentParams,
     query: bcf3QuerySchema,
     binaryResponse: [BCF3_MEDIA_TYPE],
+    load: () => import('@/app/api/documents/[id]/annotations/bcf/route'),
+  },
+  {
+    name: 'document-annotations-bcf-import',
+    domain: 'review',
+    summary: 'Import a BCF file onto a model as annotations',
+    description:
+      'Makes each topic with a viewpoint of a BCF 2.1 or 3.0 file (.bcf, .bcfzip) an annotation on this IFC model; topics ' +
+      'already on it are skipped. Returns imported, skipped and failed topics with reasons, and the batch id.',
+    method: 'POST',
+    path: '/api/documents/[id]/annotations/bcf',
+    params: documentParams,
+    body: z.object({ files: z.array(uploadFileSchema).length(1).describe('The BCF file, up to 32 MiB.') }),
+    bodyEncoding: 'multipart',
+    idempotent: true,
     load: () => import('@/app/api/documents/[id]/annotations/bcf/route'),
   },
   {

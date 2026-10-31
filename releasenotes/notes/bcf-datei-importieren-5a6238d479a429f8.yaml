@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    You can now import a BCF file (2.1 or 3.0) from a coordination round onto
+    an IFC model: each topic with a view becomes an annotation with its camera,
+    elements, picture, comments, due date and, where the address is a
+    colleague, its assignee. Importing the same file again adds nothing twice.

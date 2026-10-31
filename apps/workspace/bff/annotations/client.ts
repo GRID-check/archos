@@ -10,6 +10,7 @@
  * No `server-only` and no drizzle: the browser imports this.
  */
 
+import { bcfImportResultSchema, type BcfImportResult } from '@/lib/bim/bcf-import-wire'
 import { ROOM_PEER_HEADER } from './peer-header'
 import {
   projectMarksHref,
@@ -213,6 +214,13 @@ export function getAnnotationViewpoint(
     { method: 'GET' },
     (value) => viewpointResponseSchema.parse(value).viewpoint
   )
+}
+
+/** A coordination BCF file onto a model (`POST …/annotations/bcf`): what became of each topic. */
+export function importAnnotationsBcf(documentId: string, file: File, run: AnnotationFetch = defaultFetch): Promise<BcfImportResult> {
+  const body = new FormData()
+  body.append('file', file)
+  return request(run, `${annotationsPath(documentId)}/bcf`, { method: 'POST', body }, (value) => bcfImportResultSchema.parse(value))
 }
 
 /** Where the snapshot image of a viewpoint mark is served from (binary, so no typed read). */

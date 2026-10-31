@@ -67,6 +67,7 @@ export type ServerEvent =
   | 'annotation_closed'
   | 'annotation_carried'
   | 'annotation_viewpoint_carried'
+  | 'annotations_imported'
   | 'llm_usage_hourly'
   | 'organization_budget_snapshot'
   | 'agent_operation_called'

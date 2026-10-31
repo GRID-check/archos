@@ -633,14 +633,13 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   // of the marks, so it needs no `filedIn`.
   'document.annotations.exported': {
     targets: [{ type: 'document' }],
-    metadata: {
-      format: 'string',
-      scope: 'string',
-      revision: 'string',
-      includeProposals: 'boolean',
-      markCount: 'number',
-      proposalCount: 'number',
-    },
+    metadata: { format: 'string', scope: 'string', revision: 'string', includeProposals: 'boolean', markCount: 'number', proposalCount: 'number' },
+  },
+  // A person imported a BCF file onto a model (`lib/bim/bcf-import-service.ts`): the version, the batch the
+  // marks share and the counts, never a name or a word of a topic.
+  'document.annotations.imported': {
+    targets: [{ type: 'document' }],
+    metadata: { format: 'string', version: 'string', batchId: 'string', topicCount: 'number', importedCount: 'number', skippedCount: 'number', failedCount: 'number', assignedCount: 'number' },
   },
   // A person exported a project's Offene Punkte as one Protokoll across its
   // documents (`lib/annotations/project-export.ts`). The filters and the

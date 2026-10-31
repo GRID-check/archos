@@ -52,13 +52,26 @@ export function decodeSnapshot(snapshot: SnapshotInput): Buffer {
 
 /** Where a viewpoint's snapshot is stored, or a 422 for a document whose own key has no directory. */
 export function snapshotUploadFor(doc: Pick<Document, 'storageKey' | 'storageBucket'>, viewpointId: string, snapshot: SnapshotInput): SnapshotUpload {
-  const body = decodeSnapshot(snapshot)
+  return snapshotUploadOf(doc, viewpointId, snapshot.contentType, decodeSnapshot(snapshot))
+}
+
+/**
+ * Where checked bytes are stored: the caller has judged them by their magic
+ * number and bounded them (the request's {@link decodeSnapshot}, or a BCF
+ * file's picture in `lib/bim/bcf-read.ts`).
+ */
+export function snapshotUploadOf(
+  doc: Pick<Document, 'storageKey' | 'storageBucket'>,
+  viewpointId: string,
+  contentType: SnapshotContentType,
+  body: Buffer
+): SnapshotUpload {
   const keys = buildBimDerivedKeys(doc.storageKey)
   if (!keys) throw refuse('This model has nowhere to keep a snapshot.')
   return {
     bucket: resolveDocumentBucket(doc.storageBucket),
-    key: `${keys.prefix}viewpoints/${viewpointId}.${EXTENSION[snapshot.contentType]}`,
-    contentType: snapshot.contentType,
+    key: `${keys.prefix}viewpoints/${viewpointId}.${EXTENSION[contentType]}`,
+    contentType,
     body,
   }
 }

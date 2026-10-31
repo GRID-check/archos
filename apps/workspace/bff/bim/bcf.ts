@@ -126,7 +126,7 @@ export const isoDate = (value: Date): string => `${value.toISOString().slice(0, 
 // ---------------------------------------------------------------------------
 
 /** RFC 4122 §4.3 name-based UUID, SHA-1 flavour. */
-function uuidV5(namespace: string, name: string): string {
+export function uuidV5(namespace: string, name: string): string {
   const namespaceBytes = Buffer.from(namespace.replace(/-/g, ''), 'hex')
   const hash = createHash('sha1').update(namespaceBytes).update(Buffer.from(name, 'utf8')).digest()
   const bytes = Uint8Array.from(hash.subarray(0, 16))
