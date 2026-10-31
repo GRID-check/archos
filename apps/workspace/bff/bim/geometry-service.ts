@@ -17,6 +17,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { ApiError, BadRequestError } from '@/lib/api/errors'
 import { actingReaderIsAgent } from '@/lib/agent-api/acting-session'
 import { recordGeometryTrace } from '@/lib/langfuse/geometry-trace'
+import { hexId } from '@/lib/langfuse/tool-call-trace'
 import { callGeometry, GeometryServiceError } from './geometry-client'
 import { type GeometryRequest, type GeometryResponse, usesRawCoordinates } from './geometry-wire'
 import { getAccessibleModel } from './model-service'
@@ -40,17 +41,20 @@ export async function geometryForAccessibleModel(
   if (reader === 'agent' && usesRawCoordinates(request)) throw new BadRequestError(AGENT_COORDINATES_REFUSAL)
 
   const model = await getAccessibleModel(session, modelId)
-  if (request.op === 'diff' && request.baseModelId !== model.id) {
-    await getAccessibleModel(session, request.baseModelId)
-  }
+  // A diff's base model passes its own gate and is resolved in its own project, which may differ.
+  const base =
+    request.op === 'diff' && request.baseModelId !== model.id ? await getAccessibleModel(session, request.baseModelId) : null
 
   const startedAt = Date.now()
-  const trace = { op: request.op, reader, startedAt, organizationId: session.organizationId, userId: session.userId } as const
+  const traceId = hexId()
+  const trace = { op: request.op, reader, startedAt, organizationId: session.organizationId, userId: session.userId, traceId } as const
   try {
     const response = await callGeometry(model.id, request, {
       organizationId: session.organizationId,
       userId: session.userId,
       projectId: model.projectId,
+      traceId,
+      ...(request.op === 'diff' ? { baseProjectId: (base ?? model).projectId } : {}),
     })
     void recordGeometryTrace({
       ...trace,

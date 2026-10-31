@@ -44,12 +44,17 @@ describe('geometryForAccessibleModel', () => {
   it('passes the document read gate, then calls the service with the model’s project', async () => {
     await expect(geometryForAccessibleModel(session, MODEL, { op: 'boxes', globalIds: [GID] })).resolves.toEqual(answer)
     expect(getAccessibleModel).toHaveBeenCalledWith(session, MODEL)
+    const caller = callGeometry.mock.calls[0]?.[2] as { traceId: string }
     expect(callGeometry).toHaveBeenCalledWith(MODEL, { op: 'boxes', globalIds: [GID] }, {
       organizationId: 'org_1',
       userId: 'user_1',
       projectId: 'project_1',
+      traceId: expect.stringMatching(/^[0-9a-f]{32}$/),
     })
-    expect(recordGeometryTrace).toHaveBeenCalledWith(expect.objectContaining({ op: 'boxes', status: 200, cacheTier: 'B', reader: 'person' }))
+    // The trace the service scores a cold build on is the one the BFF records the call on.
+    expect(recordGeometryTrace).toHaveBeenCalledWith(
+      expect.objectContaining({ op: 'boxes', status: 200, cacheTier: 'B', reader: 'person', traceId: caller.traceId })
+    )
   })
 
   it('calls nothing for a model the gate does not let through', async () => {
@@ -75,6 +80,12 @@ describe('geometryForAccessibleModel', () => {
     expect(getAccessibleModel).not.toHaveBeenCalled()
     await geometryForAccessibleModel(session, MODEL, { op: 'within', aroundGlobalId: GID, margin: 1 })
     expect(callGeometry).toHaveBeenCalledTimes(1)
+  })
+
+  it('states a diff base model’s own project, which may differ from the model’s', async () => {
+    getAccessibleModel.mockImplementation(async (_s: unknown, id: string) => ({ id, projectId: id === BASE ? 'project_2' : 'project_1' }))
+    await geometryForAccessibleModel(session, MODEL, { op: 'diff', baseModelId: BASE })
+    expect(callGeometry.mock.calls[0]?.[2]).toMatchObject({ projectId: 'project_1', baseProjectId: 'project_2' })
   })
 
   it('lets the person’s viewer send a box', async () => {

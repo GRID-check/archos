@@ -29,13 +29,14 @@ const json = (status: number, body: unknown) => new Response(JSON.stringify(body
 describe('callGeometry', () => {
   it('posts the operation with the token and a signed envelope, and refuses redirects', async () => {
     fetchMock.mockResolvedValue(json(200, { op: 'warm', result: { status: 'warming' }, meta: { cacheTier: 'cold', ms: 1, elements: 0, truncated: false } }))
-    const answer = await callGeometry(MODEL, { op: 'warm' }, caller)
+    const answer = await callGeometry(MODEL, { op: 'warm' }, { ...caller, traceId: 'd'.repeat(32), baseProjectId: null })
     expect(answer.result).toEqual({ status: 'warming' })
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }]
     expect(url).toBe('http://geometry:8100/v1/internal/bim/geometry')
     expect(init.redirect).toBe('error')
     expect(init.signal).toBeInstanceOf(AbortSignal)
-    expect(JSON.parse(String(init.body))).toEqual({ modelId: MODEL, operation: { op: 'warm' } })
+    expect(JSON.parse(String(init.body))).toEqual({ modelId: MODEL, operation: { op: 'warm' }, baseProjectId: null })
+    expect(init.headers['x-trace-id']).toBe('d'.repeat(32))
     expect(init.headers['x-internal-token']).toBe('test-token')
     const envelope = JSON.parse(Buffer.from(init.headers['X-Request-Context'] as string, 'base64url').toString())
     expect(envelope).toMatchObject({ organizationId: 'org_1', userId: 'user_1', projectId: 'project_1' })
@@ -70,11 +71,20 @@ describe('geometryError', () => {
     [409, { code: 'model_not_ready' }, 409, 'model_not_ready'],
     [409, { code: 'geometry_warming' }, 409, 'geometry_warming'],
     [413, {}, 422, 'model_too_large'],
+    [504, {}, 504, 'geometry_timeout'],
+    [503, { code: 'geometry_busy', retryAfter: 30 }, 503, 'geometry_busy'],
+    [502, { code: 'build_failed', error: 'the model file could not be downloaded' }, 502, 'build_failed'],
     [500, {}, 502, 'geometry_unavailable'],
   ])('%i %j → %i %s', (status, body, expected, code) => {
     const error = geometryError(status, body)
     expect(error).toBeInstanceOf(GeometryServiceError)
     expect([error.status, error.code]).toEqual([expected, code])
+  })
+
+  it('passes the engine’s own refusal through to the caller', () => {
+    expect(geometryError(400, { code: 'invalid_request', error: 'mode must be one of intersect, touch, clearance' }).message).toBe(
+      'mode must be one of intersect, touch, clearance'
+    )
   })
 
   it('tells a warming caller when to come back, defaulting when the service did not say', () => {

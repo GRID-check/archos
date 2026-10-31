@@ -18,8 +18,11 @@ import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/i
 import { buildRequestContextEnvelopeHeaders } from '@/lib/request-context'
 import type { GeometryRequest, GeometryResponse } from './geometry-wire'
 
-/** The service waits 20 s for a cold build before it answers 409; this leaves it room to say so. */
-export const GEOMETRY_TIMEOUT_MS = 25_000
+/**
+ * The service answers within its own request budget (40 s: at most 20 s waiting for a cold build,
+ * the rest for the operation, `operations.REQUEST_BUDGET_SECONDS`); this leaves it room to say so.
+ */
+export const GEOMETRY_TIMEOUT_MS = 45_000
 
 /** Seconds a caller is told to wait when the service did not say. */
 const DEFAULT_RETRY_AFTER_SECONDS = 10
@@ -32,6 +35,8 @@ export type GeometryErrorCode =
   | 'model_not_ready'
   | 'model_too_large'
   | 'geometry_timeout'
+  | 'geometry_busy'
+  | 'build_failed'
   | 'geometry_unavailable'
 
 /** A refusal the route answers with: its status, a stable code and, when warming, when to ask again. */
@@ -52,6 +57,10 @@ export interface GeometryCaller {
   userId: string
   /** The model's project; null for an office-shelf model. Rides in the signed envelope. */
   projectId: string | null
+  /** A diff's base model's own project (null: the office shelf), after it passed its own read gate. */
+  baseProjectId?: string | null
+  /** The `bim-geometry` trace this call is recorded on; the service scores a cold build there. */
+  traceId?: string
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -74,6 +83,14 @@ export function geometryError(status: number, body: unknown): GeometryServiceErr
       const retry = isRecord(body) && typeof body.retryAfter === 'number' ? body.retryAfter : DEFAULT_RETRY_AFTER_SECONDS
       return new GeometryServiceError('The model’s geometry is being prepared; ask again shortly', 409, 'geometry_warming', retry)
     }
+    case status === 503 && isRecord(body) && body.code === 'geometry_busy': {
+      const retry = isRecord(body) && typeof body.retryAfter === 'number' ? body.retryAfter : DEFAULT_RETRY_AFTER_SECONDS
+      return new GeometryServiceError('The geometry service is busy; ask again shortly', 503, 'geometry_busy', retry)
+    }
+    case status === 504:
+      return new GeometryServiceError(said ?? 'The geometry operation ran out of time', 504, 'geometry_timeout')
+    case status === 502 && isRecord(body) && body.code === 'build_failed':
+      return new GeometryServiceError(said ?? 'The model’s geometry could not be built', 502, 'build_failed')
     case status === 413:
       return new GeometryServiceError(said ?? 'The model is too large for the geometry service', 422, 'model_too_large')
     default:
@@ -109,8 +126,18 @@ export async function callGeometry(
   try {
     response = await fetch(`${base}/v1/internal/bim/geometry`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json', ...envelope, ...tokenHeaders },
-      body: JSON.stringify({ modelId, operation }),
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        ...(caller.traceId ? { 'x-trace-id': caller.traceId } : {}),
+        ...envelope,
+        ...tokenHeaders,
+      },
+      body: JSON.stringify({
+        modelId,
+        operation,
+        ...(caller.baseProjectId !== undefined ? { baseProjectId: caller.baseProjectId } : {}),
+      }),
       cache: 'no-store',
       redirect: 'error',
       signal: AbortSignal.timeout(GEOMETRY_TIMEOUT_MS),

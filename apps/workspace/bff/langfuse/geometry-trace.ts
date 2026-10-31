@@ -7,9 +7,9 @@ import 'server-only'
  * agent or a person asked. The geometry service returns those facts in its `meta`
  * (`apps/geometry/src/geometry_service/trace.py`, the `record_ifc_call` facts).
  *
- * A cold call also writes the score `geometry-cold-ms` (NUMERIC, its milliseconds) on the trace:
- * what the first question about a model costs, the number the geometry worker's sizing answers to
- * (ADR-0149). Declared in `agent.observability.score_definitions.SCORE_DEFINITIONS`.
+ * The trace id is chosen before the call and sent to the service (`x-trace-id`): the service writes
+ * `geometry-cold-ms` on this trace when a cold build it started completes, whether this call waited
+ * for it or was answered 409 (ADR-0149), so the score is not biased toward the fast builds.
  *
  * Best-effort like `tool-call-trace.ts`: posted without waiting, never fails the call, and nothing
  * is sent with Langfuse unconfigured.
@@ -18,11 +18,9 @@ import 'server-only'
 import type { LangfuseClient } from '@langfuse/client'
 import type { GeometryCacheTier, GeometryOp } from '@/lib/bim/geometry-wire'
 import { langfuseApiConfig } from './config'
-import { clientFor, environment, hexId, identityOn, release } from './tool-call-trace'
+import { clientFor, environment, identityOn, release } from './tool-call-trace'
 
 export const GEOMETRY_TRACE_NAME = 'bim-geometry'
-/** The score's name in Langfuse. A contract: dashboards select it by name. */
-export const GEOMETRY_COLD_SCORE_NAME = 'geometry-cold-ms'
 
 export interface GeometryCallRecord {
   op: GeometryOp
@@ -39,6 +37,8 @@ export interface GeometryCallRecord {
   endedAt: number
   organizationId: string
   userId: string
+  /** Chosen before the call and sent to the service, which scores a cold build on it. */
+  traceId: string
 }
 
 type IngestionBatch = Parameters<LangfuseClient['api']['ingestion']['batch']>[0]
@@ -46,7 +46,7 @@ type IngestionBatch = Parameters<LangfuseClient['api']['ingestion']['batch']>[0]
 /** The ingestion batch for one call. Pure, so the mapping is tested without a network. */
 export function geometryBatch(
   call: GeometryCallRecord,
-  ids: { traceId: string; observationId: string; eventIds: [string, string, string] }
+  ids: { observationId: string; eventIds: [string, string] }
 ): IngestionBatch {
   const env = environment()
   const rel = release()
@@ -70,7 +70,7 @@ export function geometryBatch(
       id: ids.eventIds[0],
       timestamp: startTime,
       body: {
-        id: ids.traceId,
+        id: call.traceId,
         timestamp: startTime,
         name: GEOMETRY_TRACE_NAME,
         metadata,
@@ -92,7 +92,7 @@ export function geometryBatch(
       timestamp: startTime,
       body: {
         id: ids.observationId,
-        traceId: ids.traceId,
+        traceId: call.traceId,
         name: GEOMETRY_TRACE_NAME,
         startTime,
         endTime,
@@ -103,23 +103,6 @@ export function geometryBatch(
       },
     },
   ]
-  if (call.cacheTier === 'cold' && call.serviceMs !== null) {
-    batch.push({
-      type: 'score-create',
-      id: ids.eventIds[2],
-      timestamp: endTime,
-      body: {
-        id: `${GEOMETRY_COLD_SCORE_NAME}-${ids.traceId}`,
-        traceId: ids.traceId,
-        observationId: ids.observationId,
-        name: GEOMETRY_COLD_SCORE_NAME,
-        dataType: 'NUMERIC',
-        value: call.serviceMs,
-        metadata: { op: call.op, elements: call.elements },
-        ...(env ? { environment: env } : {}),
-      },
-    })
-  }
   return { batch }
 }
 
@@ -129,9 +112,8 @@ export async function recordGeometryTrace(call: GeometryCallRecord): Promise<voi
   if (!config) return
   try {
     const batch = geometryBatch(call, {
-      traceId: hexId(),
       observationId: crypto.randomUUID(),
-      eventIds: [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()],
+      eventIds: [crypto.randomUUID(), crypto.randomUUID()],
     })
     await clientFor(config).api.ingestion.batch(batch, { timeoutInSeconds: 5, maxRetries: 1 })
   } catch (error) {

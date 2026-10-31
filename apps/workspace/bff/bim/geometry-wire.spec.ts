@@ -19,7 +19,8 @@ describe('the geometry request', () => {
       { op: 'near', globalId: GID, radius: 5 },
       { op: 'in-room', spaceGlobalId: GID },
       { op: 'neighbours', globalId: GID },
-      { op: 'clash', setA: [GID], mode: 'clearance', tolerance: 0.05 },
+      { op: 'clash', setA: [GID], mode: 'clearance', tolerance: 4 },
+      { op: 'clash', setA: [GID] },
       { op: 'diff', baseModelId: '11111111-1111-4111-8111-111111111111' },
       { op: 'warm' },
     ]) {
@@ -42,6 +43,13 @@ describe('the geometry request', () => {
     expect(ok({ op: 'near', globalId: GID, radius: 0 })).toBe(false)
     expect(ok({ op: 'within', aroundGlobalId: GID, margin: GEOMETRY_LIMITS.marginM + 1 })).toBe(false)
     expect(ok({ op: 'neighbours', globalId: GID, gap: GEOMETRY_LIMITS.gapM + 1 })).toBe(false)
+  })
+
+  it('bounds the clash tolerance per mode, as the engine does', () => {
+    expect(ok({ op: 'clash', setA: [GID], mode: 'clearance' })).toBe(false)
+    expect(ok({ op: 'clash', setA: [GID], mode: 'clearance', tolerance: GEOMETRY_LIMITS.clearanceM + 1 })).toBe(false)
+    expect(ok({ op: 'clash', setA: [GID], mode: 'touch', tolerance: 0.2 })).toBe(false)
+    expect(ok({ op: 'clash', setA: [GID], mode: 'intersect', tolerance: GEOMETRY_LIMITS.contactToleranceM })).toBe(true)
   })
 
   it('takes exactly one region or centre', () => {

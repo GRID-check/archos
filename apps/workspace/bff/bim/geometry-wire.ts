@@ -19,7 +19,9 @@ export const GEOMETRY_LIMITS = {
   radiusM: 50,
   marginM: 50,
   gapM: 1,
-  toleranceM: 1,
+  /** The engine's own bounds: a contact tolerance (intersect, touch) and a clearance to check. */
+  contactToleranceM: 0.1,
+  clearanceM: 5,
   clashSet: 2000,
   ifcTypes: 50,
   coordinateM: 1_000_000,
@@ -88,13 +90,20 @@ const neighbours = z.object({
   gap: z.number().min(0).max(L.gapM).optional(),
 })
 
-const clash = z.object({
-  op: z.literal('clash'),
-  setA: globalIds(L.clashSet),
-  setB: globalIds(L.clashSet).optional(),
-  mode: z.enum(['intersect', 'touch', 'clearance']).optional(),
-  tolerance: z.number().min(0).max(L.toleranceM).optional(),
-})
+const clash = z
+  .object({
+    op: z.literal('clash'),
+    setA: globalIds(L.clashSet),
+    setB: globalIds(L.clashSet).optional(),
+    mode: z.enum(['intersect', 'touch', 'clearance']).optional(),
+    tolerance: z.number().min(0).max(L.clearanceM).optional(),
+  })
+  .refine((value) => value.mode !== 'clearance' || value.tolerance !== undefined, {
+    message: 'mode clearance needs tolerance: the clearance to check, in metres',
+  })
+  .refine((value) => value.mode === 'clearance' || (value.tolerance ?? 0) <= L.contactToleranceM, {
+    message: `tolerance for intersect and touch is at most ${L.contactToleranceM} m`,
+  })
 
 const diff = z.object({
   op: z.literal('diff'),
