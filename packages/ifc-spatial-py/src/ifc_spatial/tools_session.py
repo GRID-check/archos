@@ -131,27 +131,26 @@ def open_model(cache: SpatialCache, register: Callable[[SpatialModel], str], arg
 def _open_model_tool(cache: SpatialCache, register: Callable[[SpatialModel], str]) -> ToolDef:
     return ToolDef(
         name="open_model",
-        title="IFC-Modell öffnen",
+        title="Open an IFC model",
         description=(
-            "Liest eine IFC-Datei ein und gibt eine model-Kennung plus das Gebäude-Briefing zurück. "
-            "IMMER zuerst aufrufen. Das Briefing nennt die Geschoßnamen, das Property-Vokabular dieser "
-            "Datei und — wichtig — was diese Datei NICHT beantworten kann. Dieselbe Datei zweimal zu "
-            "öffnen ist gratis: das Ergebnis ist über den Inhalt adressiert und wird zwischengespeichert."
+            "Reads an IFC file and returns a model handle plus the building briefing. ALWAYS call first. The "
+            "briefing names the storeys, this file's property vocabulary and — importantly — what this file "
+            "CANNOT answer. Opening the same file twice is free: the result is content-addressed and cached."
         ),
         input_schema={
             "type": "object",
             "properties": {
-                "path": {"type": "string", "description": "Lokaler Dateipfad zur .ifc-Datei"},
+                "path": {"type": "string", "description": "Local path to the .ifc file"},
                 "url": {
                     "type": "string",
                     "description": (
-                        "HTTP(S)-URL, z. B. eine presigned URL. Nur öffentlich erreichbare Adressen — "
-                        "loopback, private und link-local Adressen werden nicht abgerufen."
+                        "HTTP(S) URL, e.g. a presigned URL. Publicly reachable addresses only — "
+                        "loopback, private and link-local addresses are not fetched."
                     ),
                 },
                 "base64": {
                     "type": "string",
-                    "description": "Dateiinhalt base64-kodiert (nur für kleine Modelle sinnvoll)",
+                    "description": "File content, base64-encoded (sensible for small models only)",
                 },
             },
         },
@@ -162,12 +161,11 @@ def _open_model_tool(cache: SpatialCache, register: Callable[[SpatialModel], str
 def _briefing_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="briefing",
-        title="Gebäude-Briefing",
+        title="Building briefing",
         description=(
-            "Das Briefing eines bereits geöffneten Modells noch einmal: Geschoße mit Höhen, Zählungen, "
-            "das Property-Vokabular dieser Datei und die blinden Flecken. Aufrufen, bevor auf einen "
-            "Property- oder Geschoßnamen gefiltert wird — ein Name, den dieser Export nie geschrieben "
-            'hat, liefert null Treffer und liest sich wie „das Gebäude hat keine".'
+            "The briefing of an already opened model again: storeys with heights, counts, this file's "
+            "property vocabulary and the blind spots. Call it before filtering on a property or storey name — "
+            "a name this export never wrote returns zero hits and reads like 'the building has none'."
         ),
         input_schema={
             "type": "object",
@@ -177,7 +175,7 @@ def _briefing_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
                     "type": "string",
                     "enum": ["text", "json"],
                     "default": "text",
-                    "description": "text = der Block für den Kontext, json = dieselben Fakten als Daten",
+                    "description": "text = the block for the context, json = the same facts as data",
                 },
             },
             "required": ["model"],

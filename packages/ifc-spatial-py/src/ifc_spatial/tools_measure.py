@@ -393,18 +393,18 @@ def distance(resolve: Callable[[Any], SpatialModel], args: dict[str, Any]) -> An
 def _measure_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="measure",
-        title="Maße aus der Geometrie",
+        title="Measurements from the geometry",
         description=(
-            "Misst ein Bauteil am Modell. Diese Zahlen stammen aus der GEOMETRIE, nicht aus deklarierten "
-            "Eigenschaften — sie sind also auch dann verfügbar, wenn der Export keine Mengen schreibt, "
-            "und sie tragen immer eine Toleranz. Genau deshalb sind Raumflächen und Brüstungshöhen hier "
-            "beantwortbar, wo eine reine Property-Abfrage leer zurückkommt.\n\n"
+            "Measures one element on the model. These numbers come from the GEOMETRY, not from declared "
+            "properties — so they are available even when the export writes no quantities, and they always "
+            "carry a tolerance. That is exactly why room areas and sill heights are answerable here where a "
+            "pure property query comes back empty.\n\n"
             + "\n".join(f"  {name} — {meaning}" for name, meaning in MEASURES.items())
-            + "\n\nGilt für EIN Bauteil. Für ein ganzes Geschoß oder eine Raumgruppe `survey` nehmen — "
-            "gleiche Kennwerte, aber mit Namen und Spanne, und in einem Aufruf statt in zwanzig. "
-            "(globalId nimmt hier auch eine kommagetrennte Liste, wenn die Menge schon feststeht.)\n\n"
-            "Der erste Aufruf tesselliert das Modell (~2 s für ein Einfamilienhaus), danach sind "
-            "die Maße Millisekunden."
+            + "\n\nApplies to ONE element. For a whole storey or a group of rooms use `survey` — same "
+            "quantities, but with names and spread, in one call instead of twenty. (globalId also takes a "
+            "comma-separated list here when the set is already fixed.)\n\n"
+            "The first call tessellates the model (~2 s for a single-family house); after that the measures "
+            "take milliseconds."
         ),
         input_schema={
             "type": "object",
@@ -412,9 +412,7 @@ def _measure_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
                 "model": {"type": "string"},
                 "globalId": {
                     "type": "string",
-                    "description": (
-                        f"Eine GlobalId, oder bis zu {MAX_BATCH} kommagetrennt für eine Messung über mehrere Bauteile."
-                    ),
+                    "description": (f"One GlobalId, or up to {MAX_BATCH} comma-separated to measure several elements."),
                 },
                 "measure": {"type": "string", "enum": list(MEASURES)},
             },
@@ -427,29 +425,28 @@ def _measure_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _survey_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="survey",
-        title="Eine Messung über ein ganzes Geschoß",
+        title="One measurement over a whole storey",
         description=(
-            "Misst EINEN Kennwert an ALLEN Bauteilen einer Auswahl und nennt sie beim Namen. "
-            "Der erste Griff, sobald die Frage im Plural steht — „wie hoch ist der Keller“, „wie groß "
-            "sind die Büros“, „haben alle Aufenthaltsräume genug Licht“: das ist je eine Frage über "
-            "viele Räume, und sie ist erst beantwortet, wenn alle gemessen sind.\n\n"
-            "Ausgewählt wird wie bei find_elements (storey, ifcType, nameContains, kind); gemessen wird "
-            "mit den Kennwerten aus `measure`, die dort erklärt sind. Zurück kommen Name, Geschoß und "
-            "eigene Antwort je Bauteil, dazu die Spanne.\n\n"
-            "Die Spanne ist der eigentliche Befund. „Alle 17 Kellerräume 2,70 m“ und „16 davon 2,70 m, "
-            "einer 0,25 m“ sind verschiedene Antworten auf dieselbe Frage, und aus einem einzeln "
-            "gemessenen Raum folgt keine von beiden."
+            "Measures ONE quantity on ALL elements of a selection and names each of them. The first call to "
+            "make once the question is plural — 'how high is the basement', 'how large are the offices', "
+            "'do all habitable rooms get enough light': each is one question about many rooms, and it is "
+            "answered only once all of them are measured.\n\n"
+            "Selection works as in find_elements (storey, ifcType, nameContains, kind); the quantities are "
+            "those of `measure`, explained there. Returned per element: name, storey and its own answer, plus "
+            "the spread.\n\n"
+            "The spread is the actual finding. 'All 17 basement rooms 2.70 m' and '16 of them 2.70 m, one "
+            "0.25 m' are different answers to the same question, and a single measured room implies neither."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
                 "measure": {"type": "string", "enum": list(MEASURES)},
-                "storey": {"type": "string", "description": "Geschoßname exakt wie im Briefing"},
-                "ifcType": {"type": "string", "description": "z. B. IfcSpace, IfcWindow, IfcDoor"},
+                "storey": {"type": "string", "description": "Storey name exactly as in the briefing"},
+                "ifcType": {"type": "string", "description": "e.g. IfcSpace, IfcWindow, IfcDoor"},
                 "nameContains": {"type": "string"},
                 "kind": {"type": "string"},
-                "limit": {"type": "integer", "description": f"höchstens {MAX_BATCH}"},
+                "limit": {"type": "integer", "description": f"at most {MAX_BATCH}"},
             },
             "required": ["model", "measure"],
         },
@@ -460,12 +457,11 @@ def _survey_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _distance_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="distance",
-        title="Abstand zwischen zwei Bauteilen",
+        title="Distance between two elements",
         description=(
-            "Abstand zwischen zwei Bauteilen. mode: min (kürzester Abstand der Hüllkörper — 0, wenn sie "
-            "sich überschneiden), centroid, horizontal, vertical. Ein Reviewer, der eine lichte Breite "
-            "prüft, will horizontal; wer eine Höhe prüft, vertical. Der schräge Abstand beantwortet "
-            "keines von beiden."
+            "Distance between two elements. mode: min (shortest distance between the bounding volumes — 0 "
+            "when they overlap), centroid, horizontal, vertical. A reviewer checking a clear width wants "
+            "horizontal; one checking a height wants vertical. The slanted distance answers neither."
         ),
         input_schema={
             "type": "object",
@@ -488,29 +484,28 @@ def _distance_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _clearance_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="clearance",
-        title="Lichtes Maß zwischen zwei Bauteilen",
+        title="Clear dimension between two elements",
         description=(
-            "Der kleinste Abstand OBERFLÄCHE zu OBERFLÄCHE zwischen zwei Körpern, in Metern — das "
-            "lichte Maß, das distance nicht hat. Für den Gang zwischen zwei Wänden, den Abstand "
-            "Handlauf/Wand, den Durchgang zwischen zwei Einbauten.\n\n"
-            "NICHT distance: dessen min ist der Abstand der HÜLLBOXEN. Am Pultdach gegen die "
-            "Innenwand des Musterhauses meldet min 0,000 m — die Box des Daches verschluckt die der "
-            "Wand — wo das lichte Maß 0,995 m beträgt. Eine Boxlücke ist immer eine Untergrenze und "
-            "nie eine Obergrenze: sie meldet Bauteile näher beieinander als sie sind, also in der "
-            "Richtung, in der zu eng als frei durchgeht.\n\n"
-            "Für das lichte Maß EINER Öffnung ist measure/clearWidth der Aufruf — eine Öffnung hat "
-            "zwei Laibungen, aber nur ein Bauteil, und dieses Werkzeug braucht zwei.\n\n"
-            "Die Antwort trägt die beiden Punkte, zwischen denen gemessen wurde (für eine Maßlinie "
-            "im eigenen Modell), und boxGap: die Zahl, die distance('min') geliefert hätte. Der "
-            "Unterschied der beiden ist selbst der Befund.\n\n"
-            "Braucht Geometrie: einige Sekunden beim ersten Aufruf auf ein Modell."
+            "The smallest SURFACE-to-SURFACE distance between two bodies, in metres — the clear dimension "
+            "that distance does not have. For the corridor between two walls, the gap between handrail and "
+            "wall, the passage between two fitted units.\n\n"
+            "NOT distance: its min is the distance between BOUNDING BOXES. For the mono-pitch roof against "
+            "the sample house's inner wall, min reports 0.000 m — the roof's box swallows the wall's — where "
+            "the clear dimension is 0.995 m. A box gap is always a lower bound and never an upper bound: it "
+            "reports elements closer than they are, in the direction where too narrow passes as free.\n\n"
+            "For the clear dimension of ONE opening, measure/clearWidth is the call — an opening has two "
+            "reveals but only one element, and this tool needs two.\n\n"
+            "The answer carries the two points it measured between (for a dimension line in your own model) "
+            "and boxGap: the number distance('min') would have returned. The difference between the two is "
+            "itself the finding.\n\n"
+            "Needs geometry: a few seconds on the first call on a model."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "a": {"type": "string", "description": "GlobalId des ersten Bauteils"},
-                "b": {"type": "string", "description": "GlobalId des zweiten Bauteils"},
+                "a": {"type": "string", "description": "GlobalId of the first element"},
+                "b": {"type": "string", "description": "GlobalId of the second element"},
             },
             "required": ["model", "a", "b"],
         },
@@ -523,11 +518,11 @@ def _clearance_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _storey_heights_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="storey_heights",
-        title="Geschoßhöhen",
+        title="Storey heights",
         description=(
-            "Geschoßhöhen als Differenz der Geschoß-Elevationen. Das ist die STRUKTURELLE Höhe von "
-            "Rohdecke zu Rohdecke, nicht die lichte Raumhöhe — die Antwort sagt das selbst und der "
-            "Hinweis gehört in jede Aussage darüber. Die lichte Raumhöhe liefert measure/clearHeight."
+            "Storey heights as the difference of the storey elevations. That is the STRUCTURAL height from "
+            "slab to slab, not the clear room height — the answer says so itself, and the note belongs in "
+            "every statement about it. measure/clearHeight gives the clear room height."
         ),
         input_schema={
             "type": "object",

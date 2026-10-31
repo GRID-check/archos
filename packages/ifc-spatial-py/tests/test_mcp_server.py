@@ -174,7 +174,7 @@ def test_the_client_drains_stderr_and_bounds_its_reads(session: _Session) -> Non
         silent.close()
 
 
-def test_lists_the_tools_with_their_german_descriptions(session: _Session) -> None:
+def test_lists_the_tools_with_their_english_descriptions(session: _Session) -> None:
     listed = session.request(2, "tools/list")["result"]["tools"]
     names = [tool["name"] for tool in listed]
     assert names[0] == "open_model" and "relations" in names and "draw" in names

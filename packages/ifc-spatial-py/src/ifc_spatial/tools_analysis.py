@@ -279,13 +279,13 @@ def sun_position(resolve: Callable[[Any], SpatialModel], args: dict[str, Any]) -
 def _fire_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="fire",
-        title="Brandschutz-Geometrie (OIB 2)",
+        title="Fire safety geometry (OIB 2)",
         description=(
-            "Die geometrischen Größen, auf die OIB 2 hinausläuft:\n"
+            "The geometric quantities OIB 2 comes down to:\n"
             + "\n".join(f"  {k} — {v}" for k, v in FIRE_ASPECTS.items())
-            + "\n\nKEINE Gebäudeklasse. escape_level liefert eine HÖHE; welche Klasse daraus folgt, "
-            "ist eine rechtliche Einstufung nach OIB 2 samt Landesrecht. Ein Werkzeug, das GK5 "
-            "zurückgibt, hat eine Regel angewandt, die es nie gelesen hat."
+            + "\n\nNO building class. escape_level returns a HEIGHT; which class follows from it is a legal "
+            "classification under OIB 2 and state law. A tool that returns GK5 has applied a rule it never "
+            "read."
         ),
         input_schema={
             "type": "object",
@@ -294,7 +294,7 @@ def _fire_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
                 "what": {"type": "string", "enum": list(FIRE_ASPECTS)},
                 "globalId": {
                     "type": "string",
-                    "description": "Je nach what: Geschoß/Räume (Komma-getrennt), zwei Räume, oder leer",
+                    "description": "Depending on what: storey/rooms (comma-separated), two rooms, or empty",
                 },
             },
             "required": ["model", "what"],
@@ -306,18 +306,16 @@ def _fire_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _envelope_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="envelope",
-        title="Thermische Gebäudehülle (OIB 6)",
+        title="Thermal building envelope (OIB 6)",
         description=(
-            "Die geometrischen Größen, die eine OIB-6-Rechnung als Eingang braucht:\n"
+            "The geometric quantities an OIB 6 calculation needs as input:\n"
             + "\n".join(f"  {k} — {v}" for k, v in ENVELOPE_ASPECTS.items())
-            + "\n\nKEIN U-Wert wird gerechnet. Ein deklarierter U-Wert wird wiedergegeben; ein "
-            "nicht deklarierter FEHLT und wird NICHT aus den Schichten hergeleitet — ein aus einer "
-            "Materialliste gerechneter U-Wert ist eine andere Zahl als die, die die Architektin "
-            "unterschrieben hat, und sieht genauso aus.\n\n"
-            "KEIN Grenzwert und kein „erfüllt“: welcher U-Wert oder welches A/V zulässig ist, steht "
-            "in OIB 6 und im Energieausweis-Verfahren, nicht in der Geometrie.\n\n"
-            "Kostet Geometrie (Sekunden, nicht Millisekunden): alle drei bauen die Körper der "
-            "Hüllbauteile auf."
+            + "\n\nNO U-value is calculated. A declared U-value is passed on; an undeclared one is MISSING "
+            "and is NOT derived from the layers — a U-value calculated from a material list is a different "
+            "number from the one the architect signed, and looks exactly the same.\n\n"
+            "NO limit and no 'compliant': which U-value or which A/V is permissible is in OIB 6 and the "
+            "energy certificate procedure, not in the geometry.\n\n"
+            "Costs geometry (seconds, not milliseconds): all three build the bodies of the envelope elements."
         ),
         input_schema={
             "type": "object",
@@ -334,17 +332,16 @@ def _envelope_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _view_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="view",
-        title="Den Grundriss ansehen",
+        title="Look at the floor plan",
         description=(
-            "Rendert ein Geschoß als PNG und gibt es so zurück, dass das Modell es TATSÄCHLICH SEHEN "
-            "kann — im Unterschied zu draw, das eine SVG-Datei schreibt und nur den Pfad nennt.\n\n"
-            "Dafür gedacht, sich zu orientieren, bevor gemessen wird: welches Bauteil ist gemeint, "
-            "wie sind die Räume angeordnet, liegt das Fenster wirklich in der Wand, die hostedIn "
-            "nennt. `highlight` markiert einzelne Bauteile rot im gesamten Grundriss (wo ist das?), "
-            "`only` blendet alles andere aus (wie sieht das aus?). GlobalIds kommen aus "
-            "find_elements oder relations.\n\n"
-            "EINE Regel: Zahlen kommen nie aus dem Bild. Ein abgelesenes Maß ist geraten, auch wenn "
-            "es zufällig stimmt — dafür measure und distance."
+            "Renders a storey as a PNG and returns it so that the model can ACTUALLY SEE it — unlike draw, "
+            "which writes an SVG file and only names the path.\n\n"
+            "Meant for orientation before measuring: which element is meant, how the rooms are arranged, "
+            "whether the window really sits in the wall hostedIn names. `highlight` marks single elements red "
+            "in the whole plan (where is it?), `only` hides everything else (what does it look like?). "
+            "GlobalIds come from find_elements or relations.\n\n"
+            "ONE rule: numbers never come from the image. A dimension read off it is a guess, even when it "
+            "happens to be right — use measure and distance for that."
         ),
         input_schema={
             "type": "object",
@@ -352,17 +349,17 @@ def _view_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
                 "model": {"type": "string"},
                 "storey": {
                     "type": "string",
-                    "description": "Geschoßname, wörtlich aus dem Briefing; ohne Angabe das unterste",
+                    "description": "Storey name, verbatim from the briefing; the lowest when omitted",
                 },
                 "highlight": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "GlobalIds, die rot markiert werden — der Rest bleibt sichtbar",
+                    "description": "GlobalIds marked in red — the rest stays visible",
                 },
                 "only": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "GlobalIds, auf die die Zeichnung eingeschränkt wird",
+                    "description": "GlobalIds the drawing is restricted to",
                 },
             },
             "required": ["model"],
@@ -374,17 +371,17 @@ def _view_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _draw_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="draw",
-        title="Das Gebäude zeichnen",
+        title="Draw the building",
         description=(
-            "Zeichnet einen Grundriss als SVG — Wandschnitt-Poché, Raumzellen mit Namen, Öffnungen als "
-            "Lücken, aus demselben Modell, aus dem auch gemessen wird. Frei einsetzbar, wann immer "
-            "Hinsehen hilft: um zu verstehen, wie etwas angeordnet ist, um zu klären, welches Bauteil "
-            "gemeint ist, oder um zu prüfen, ob eine Zahl überhaupt plausibel sein kann.\n\n"
-            "EINE Regel: Zahlen kommen nie aus dem Bild. Maße liefern measure/distance; das Bild zeigt "
-            "die Anordnung. Ein aus einer Zeichnung abgelesener Wert ist geraten, auch wenn er stimmt.\n\n"
-            "DAUER: rund 5 Sekunden für ein Einfamilienhaus, mehr für ein großes Modell — vor dem Aufruf "
-            "einplanen. Das SVG wird als Datei geschrieben und der Pfad zurückgegeben, nicht der Inhalt: "
-            "ein Grundriss sind hunderte Kilobyte Pfaddaten, die im Kontext nichts nützen."
+            "Draws a floor plan as SVG — wall poché, room cells with names, openings as gaps, from the same "
+            "model the measurements come from. Use it whenever looking helps: to understand how something is "
+            "arranged, to settle which element is meant, or to check whether a number can be plausible at "
+            "all.\n\n"
+            "ONE rule: numbers never come from the image. measure/distance give dimensions; the image shows "
+            "the arrangement. A value read off a drawing is a guess, even when it is right.\n\n"
+            "DURATION: about 5 seconds for a single-family house, more for a large model — plan for it before "
+            "the call. The SVG is written to a file and the path is returned, not the content: a floor plan is "
+            "hundreds of kilobytes of path data that are of no use in the context."
         ),
         input_schema={
             "type": "object",
@@ -392,12 +389,12 @@ def _draw_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
                 "model": {"type": "string"},
                 "storey": {
                     "type": "string",
-                    "description": "Geschoßname, wörtlich aus dem Briefing; ohne Angabe alle Geschoße",
+                    "description": "Storey name, verbatim from the briefing; all storeys when omitted",
                 },
                 "include": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "IFC-Typen, auf die eingeschränkt wird (z. B. IfcWall)",
+                    "description": "IFC types to restrict to (e.g. IfcWall)",
                 },
                 "widthMm": {"type": "number", "default": 420},
                 "heightMm": {"type": "number", "default": 297},
@@ -411,22 +408,20 @@ def _draw_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _overhang_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="overhang",
-        title="Auskragung über eine Fassadenebene",
+        title="Overhang past a facade plane",
         description=(
-            "Wie weit ein Bauteil über die Fassadenebene eines anderen hinausragt, senkrecht zu "
-            "dieser Ebene, in Metern. Das ist die Zahl für einen Dachüberstand, einen Balkon oder ein "
-            "Vordach.\n\n"
-            "projecting: das auskragende Bauteil (Dach, Balkon). facade: das Bauteil, dessen "
-            "Außenfläche die Bezugsebene ist — meist die Wand darunter, die relations hostedIn zu "
-            "einem Fenster liefert.\n\n"
-            "Gemessen (`computed`) mit Toleranz. Nie als Modellangabe berichten."
+            "How far one element projects past the facade plane of another, perpendicular to that plane, in "
+            "metres. The number for a roof overhang, a balcony or a canopy.\n\n"
+            "projecting: the projecting element (roof, balcony). facade: the element whose outer face is the "
+            "reference plane — usually the wall below, which relations hostedIn returns for a window.\n\n"
+            "Measured (`computed`) with a tolerance. Never report it as a value the model declares."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "projecting": {"type": "string", "description": "GlobalId des auskragenden Bauteils"},
-                "facade": {"type": "string", "description": "GlobalId des Bauteils, dessen Fassadenebene gilt"},
+                "projecting": {"type": "string", "description": "GlobalId of the projecting element"},
+                "facade": {"type": "string", "description": "GlobalId of the element whose facade plane applies"},
             },
             "required": ["model", "projecting", "facade"],
         },
@@ -439,31 +434,29 @@ def _overhang_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _light_incidence_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="light_incidence",
-        title="Freier Lichteinfall auf eine Öffnung",
+        title="Unobstructed light onto an opening",
         description=(
-            "Baut das Lichtprisma über der Unterkante einer Öffnung und meldet, welche Bauteile "
-            'hineinragen und wie tief. Beantwortet „ist der Lichteinfall frei" GEOMETRISCH.\n\n'
-            "angle und swivel sind PARAMETER AUS DER BESTIMMUNG, nicht aus dem Modell. Für OIB 3 "
-            "sind das 45 und 30 Grad — sie sind trotzdem zu übergeben, weil dieses Werkzeug kein "
-            "Regelwerk kennt und keines kennen soll.\n\n"
-            "WICHTIG: Das Ergebnis ist keine Beurteilung. Ein geschnittenes Prisma VERGRÖSSERT nach "
-            "OIB 3 die erforderliche Lichteintrittsfläche — es verbietet das Fenster nicht. Aus "
-            '„blockiert" ein „nicht erfüllt" zu machen überspringt die Bestimmung, statt sie '
-            "anzuwenden. Berichte, was hineinragt und wie tief, und wende dann die Klausel an.\n\n"
-            "exclude: GlobalIds, die nicht als Hindernis zählen — die eigene Wand gehört meist dazu.\n"
-            "Braucht Geometrie: einige Sekunden beim ersten Aufruf auf ein Modell."
+            "Builds the light prism above the lower edge of an opening and reports which elements reach into "
+            "it and how deep. Answers 'is the light incidence unobstructed' GEOMETRICALLY.\n\n"
+            "angle and swivel are PARAMETERS FROM THE PROVISION, not from the model. For OIB 3 they are 45 and "
+            "30 degrees — they must still be passed, because this tool knows no rulebook and is not meant to.\n\n"
+            "IMPORTANT: the result is not an assessment. Under OIB 3 an intersected prism INCREASES the required "
+            "light entry area — it does not forbid the window. Turning 'blocked' into 'not compliant' skips the "
+            "provision instead of applying it. Report what reaches in and how deep, then apply the clause.\n\n"
+            "exclude: GlobalIds that do not count as obstruction — the window's own wall usually belongs here.\n"
+            "Needs geometry: a few seconds on the first call on a model."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "globalId": {"type": "string", "description": "GlobalId der Öffnung oder ihrer Füllung"},
-                "angle": {"type": "number", "description": "Lichteinfallswinkel in Grad, aus der Bestimmung"},
-                "swivel": {"type": "number", "default": 0, "description": "seitliche Verschwenkung in Grad"},
+                "globalId": {"type": "string", "description": "GlobalId of the opening or its filling"},
+                "angle": {"type": "number", "description": "Light incidence angle in degrees, from the provision"},
+                "swivel": {"type": "number", "default": 0, "description": "Lateral swivel in degrees"},
                 "exclude": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "GlobalIds, die nicht als Hindernis zählen",
+                    "description": "GlobalIds that do not count as obstruction",
                 },
             },
             "required": ["model", "globalId", "angle"],
@@ -475,26 +468,24 @@ def _light_incidence_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _sun_position_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="sun_position",
-        title="Sonnenstand über diesem Gebäude",
+        title="Sun position over this building",
         description=(
-            "Azimut (Grad im Uhrzeigersinn ab Nord) und Höhenwinkel der Sonne zu einem Zeitpunkt, "
-            "dazu die Richtung ZUR Sonne in den Koordinaten DIESES Modells — die Eingangsgröße "
-            "jeder Verschattungsbetrachtung, und die Zahl, an der eine Besonnungsfrage anfängt.\n\n"
-            "KEINE Besonnungsstudie. Ein Sonnenstand sagt, dass die Sonne 61,9° hoch und 178,9° "
-            "herum stand; er sagt NICHT, ob der Giebel des Nachbarn davorstand, ob der Balkon "
-            "darüber den Strahl schnitt oder wie viele Stunden Sonne das Fenster über den Tag "
-            "bekam. Das sind Verschattungsfragen, und sie brauchen zusätzlich alles außerhalb der "
-            "Grundgrenze — was in dieser Datei nicht steht. Der Caveat sagt das in jeder Antwort.\n\n"
-            "Ohne IfcSite.RefLatitude/RefLongitude nicht entscheidbar, und es wird KEINE Breite "
-            "angenommen: ein unterstelltes Wien auf einem Vorarlberger Projekt liegt 1,4° im "
-            "Höhenwinkel daneben, ein unterstelltes Nord auf einem um 40° gedrehten Gebäude 40° — "
-            "beides käme als gemessene Zahl mit Toleranz zurück. Aus demselben Grund nimmt dieses "
-            "Werkzeug auch keine Koordinaten entgegen.\n\n"
-            "when MUSS eine Zeitzone tragen. 2026-06-21T12:00:00 ohne Zone als UTC zu lesen "
-            "verschiebt die Sonne in Österreich um 30° — zwei Stunden Schatten, bei einer Eingabe, "
-            "die vollständig aussah.\n\n"
-            "Genauigkeit 0,01° (Michalsky 1988) für 1950–2050, außerhalb 0,1°; die Toleranz steht "
-            "in der Antwort. Keine Geometrie, Millisekunden."
+            "Azimuth (degrees clockwise from north) and altitude of the sun at a point in time, plus the "
+            "direction TO the sun in the coordinates of THIS model — the input to any shading study, and the "
+            "number a sunlight question starts from.\n\n"
+            "NOT a sunlight study. A sun position says the sun stood 61.9° high and 178.9° round; it does NOT "
+            "say whether the neighbour's gable stood in front of it, whether the balcony above cut the ray or "
+            "how many hours of sun the window got over the day. Those are shading questions, and they also "
+            "need everything beyond the site boundary — which is not in this file. The caveat says so in every "
+            "answer.\n\n"
+            "Not decidable without IfcSite.RefLatitude/RefLongitude, and NO latitude is assumed: an assumed "
+            "Vienna on a Vorarlberg project is 1.4° off in altitude, an assumed north on a building rotated by "
+            "40° is 40° off — both would come back as a measured number with a tolerance. For the same reason "
+            "this tool accepts no coordinates either.\n\n"
+            "when MUST carry a time zone. Reading 2026-06-21T12:00:00 without a zone as UTC moves the sun in "
+            "Austria by 30° — two hours of shade, from an input that looked complete.\n\n"
+            "Accuracy 0.01° (Michalsky 1988) for 1950–2050, 0.1° outside; the tolerance is in the answer. No "
+            "geometry, milliseconds."
         ),
         input_schema={
             "type": "object",
@@ -503,8 +494,8 @@ def _sun_position_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
                 "when": {
                     "type": "string",
                     "description": (
-                        "Zeitpunkt nach ISO 8601 MIT Zeitzone, z. B. 2026-06-21T12:00:00+02:00 "
-                        "oder 2026-06-21T10:00:00Z"
+                        "Point in time in ISO 8601 WITH a time zone, e.g. 2026-06-21T12:00:00+02:00 "
+                        "or 2026-06-21T10:00:00Z"
                     ),
                 },
             },

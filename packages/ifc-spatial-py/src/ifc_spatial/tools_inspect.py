@@ -267,19 +267,18 @@ def room_inventory(resolve: Callable[[Any], SpatialModel], args: dict[str, Any])
 def _find_elements_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="find_elements",
-        title="Bauteile suchen",
+        title="Find elements",
         description=(
-            "Findet Bauteile nach IFC-Typ, Namensbestandteil, Geschoß oder Art und gibt ihre GlobalIds "
-            "zurück — die Eingabe für jedes andere Werkzeug hier. Geschoßnamen wörtlich aus dem Briefing "
-            "übernehmen."
+            "Finds elements by IFC type, part of the name, storey or kind and returns their GlobalIds — the "
+            "input to every other tool here. Copy storey names verbatim from the briefing."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "ifcType": {"type": "string", "description": "z. B. IfcWall, IfcWindow, IfcSpace"},
+                "ifcType": {"type": "string", "description": "e.g. IfcWall, IfcWindow, IfcSpace"},
                 "nameContains": {"type": "string"},
-                "storey": {"type": "string", "description": "Geschoßname, wörtlich aus dem Briefing"},
+                "storey": {"type": "string", "description": "Storey name, verbatim from the briefing"},
                 "kind": {"type": "string", "enum": KINDS},
                 "limit": {"type": "number", "default": 50},
             },
@@ -292,10 +291,10 @@ def _find_elements_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _element_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="element",
-        title="Ein Bauteil",
+        title="One element",
         description=(
-            "Alles über EIN Bauteil: Typ, Name, Geschoß, Container — und welche Relationen es überhaupt "
-            "hat. Kostet keine Geometrie."
+            "Everything about ONE element: type, name, storey, container — and which relations it has at "
+            "all. Costs no geometry."
         ),
         input_schema={
             "type": "object",
@@ -309,17 +308,17 @@ def _element_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _relations_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="relations",
-        title="Räumliche Beziehungen",
+        title="Spatial relations",
         description=(
-            "Die topologischen Operatoren. Jede Antwort sagt, WOHER sie kommt: `declared` steht so in "
-            "der Datei, `computed` haben wir aus anderen Relationen oder aus der Geometrie abgeleitet. "
-            'Ein leeres Ergebnis heißt „dieses Bauteil hat keine solche Beziehung"; `decidable: false` '
-            'heißt „dieser Export schreibt diese Relation gar nicht" — das ist ein Befund über den '
-            "Export, nicht über das Gebäude, und `missing` sagt, was ihn behebt.\n\n"
+            "The topological operators. Every answer says WHERE it comes from: `declared` is written so in "
+            "the file, `computed` we derived from other relations or from the geometry. An empty result "
+            "means 'this element has no such relation'; `decidable: false` means 'this export does not write "
+            "this relation at all' — a finding about the export, not about the building, and `missing` says "
+            "what fixes it.\n\n"
             + "\n".join(f"  {name} — {meaning}" for name, meaning in RELATIONS.items())
-            + "\n\nbounds, enclosedBy, opensTo und adjacentSpaces greifen auf die Geometrie zurück, wenn "
-            "die Datei keine IfcRelSpaceBoundary schreibt (der Normalfall). Der erste solche Aufruf "
-            "baut eine Kontaktkarte über alle Räume — einige Sekunden, danach sofort."
+            + "\n\nbounds, enclosedBy, opensTo and adjacentSpaces fall back to the geometry when the file "
+            "writes no IfcRelSpaceBoundary (the usual case). The first such call builds a contact map over "
+            "all rooms — a few seconds, instant afterwards."
         ),
         input_schema={
             "type": "object",
@@ -337,16 +336,16 @@ def _relations_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _element_profile_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="element_profile",
-        title="Alles Messbare an einem Bauteil",
+        title="Everything measurable on one element",
         description=(
-            "Misst ALLE Kennwerte, die für dieses eine Bauteil definiert sind, in einem Aufruf — "
-            "welche das sind, ergibt sich aus seinem IFC-Typ. Der Griff, sobald ein Bauteil "
-            "interessant geworden ist: der Ausreißer aus einem survey, der Raum aus der Frage, die "
-            "Tür, um die es geht. Statt zwanzig Mal `measure` mit geratenem Kennwert.\n\n"
-            "Teure Kennwerte (Fluchtweg, Erreichbarkeit, Bewegungsfläche, Türvorfeld) laufen nur mit "
-            'include="expensive" mit; sie brauchen den Türgraph oder ein Raster über das Modell. '
-            "Was NICHT gemessen wurde, steht mit Begründung in der Antwort — das ist eine Aussage "
-            "über die Frage, nicht über das Gebäude."
+            "Measures ALL quantities defined for this one element in one call — which ones follows from its "
+            "IFC type. The call to make once an element has become interesting: the outlier from a survey, "
+            "the room in the question, the door at issue. Instead of twenty `measure` calls with guessed "
+            "quantities.\n\n"
+            "Expensive quantities (egress path, reachability, turning circle, door approach) run only with "
+            'include="expensive"; they need the door graph or a raster over the model. What was NOT '
+            "measured is in the answer with the reason — a statement about the question, not about the "
+            "building."
         ),
         input_schema={
             "type": "object",
@@ -356,7 +355,7 @@ def _element_profile_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
                 "include": {
                     "type": "string",
                     "enum": ["expensive"],
-                    "description": "Teure Kennwerte mitmessen (Sekunden statt Millisekunden).",
+                    "description": "Also measure the expensive quantities (seconds instead of milliseconds).",
                 },
             },
             "required": ["model", "globalId"],
@@ -368,26 +367,23 @@ def _element_profile_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _shopping_list_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="shopping_list",
-        title="Fehlende Angaben als IDS-Datei",
+        title="Missing data as an IDS file",
         description=(
-            "Schreibt die blinden Flecken dieses Modells als buildingSMART-IDS-Datei (Version 1.0) "
-            "— also das, was der Export NICHT hergibt, in einem Format, das die Architektin in "
-            "Solibri, BIMcollab oder ifctester gegen ihr eigenes Modell laufen lassen kann. Nach der "
-            "Korrektur nochmals laufen lassen beweist, dass die Ergänzung angekommen ist.\n\n"
-            "Die Datei verlangt nur, DASS ein Merkmal vorhanden und auswertbar ist, nie WELCHEN WERT "
-            "es haben muss: Grenzwerte stehen in der OIB-Richtlinie, und einen erfundenen Grenzwert "
-            "in das Prüfwerkzeug einer Architektin zu schreiben wäre der schwerste Fehler, den "
-            "dieses Werkzeug machen könnte.\n\n"
-            "Nicht jeder blinde Fleck lässt sich als IDS ausdrücken — fehlende IfcRelSpaceBoundary "
-            "etwa nicht. Was nicht ausdrückbar ist, wird gemeldet und NICHT stillschweigend "
-            "weggelassen; die Zusammenfassung nennt beide Zahlen."
+            "Writes this model's blind spots as a buildingSMART IDS file (version 1.0) — what the export does "
+            "NOT provide, in a format the architect can run against her own model in Solibri, BIMcollab or "
+            "ifctester. Running it again after the fix proves the addition arrived.\n\n"
+            "The file only requires THAT a property is present and evaluable, never WHICH VALUE it must have: "
+            "limits are in the OIB guideline, and writing an invented limit into an architect's checking tool "
+            "would be the worst mistake this tool could make.\n\n"
+            "Not every blind spot can be expressed as IDS — missing IfcRelSpaceBoundary cannot. What cannot "
+            "be expressed is reported and NOT silently dropped; the summary gives both counts."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "title": {"type": "string", "description": "Titel der IDS-Datei"},
-                "author": {"type": "string", "description": "E-Mail oder Name für den IDS-Kopf"},
+                "title": {"type": "string", "description": "Title of the IDS file"},
+                "author": {"type": "string", "description": "E-mail or name for the IDS header"},
             },
             "required": ["model"],
         },
@@ -398,12 +394,11 @@ def _shopping_list_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
 def _room_inventory_tool(resolve: Callable[[Any], SpatialModel]) -> ToolDef:
     return ToolDef(
         name="room_inventory",
-        title="Räume nach vermuteter Nutzung",
+        title="Rooms by presumed use",
         description=(
-            "Ordnet Räume nach Namen einer vermuteten Nutzung zu (Aufenthaltsraum, Nebenraum, "
-            "Erschließung). Das Ergebnis ist ausdrücklich `inferred`: ob ein Raum ein Aufenthaltsraum "
-            "ist, ist eine rechtliche Einstufung und keine geometrische. Als Vorschlag zur Bestätigung "
-            "behandeln, nie als Feststellung."
+            "Assigns rooms by name to a presumed use (habitable room, ancillary room, circulation). The result "
+            "is explicitly `inferred`: whether a room is habitable is a legal classification, not a geometric "
+            "one. Treat it as a proposal to confirm, never as a finding."
         ),
         input_schema={
             "type": "object",

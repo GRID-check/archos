@@ -233,9 +233,20 @@ def test_the_tool_list_is_the_ported_surface_plus_what_the_port_added(tools: lis
     ]
 
 
-def test_every_tool_documents_itself_in_german(tools: list) -> None:
+def test_every_tool_documents_itself_in_english(tools: list) -> None:
+    """Anything an agent reads is English (root AGENTS.md): titles and
+    descriptions, the enum meanings folded into them, and every property
+    description. German is for people, through i18n, and for domain data."""
+    import re
+
+    german = re.compile(r"[äöüßÄÖÜ„“]|\b(der|die|das|und|nicht|ein|eine|wird|für)\b")
     for tool in tools:
         assert tool.title and tool.description
+        texts = [tool.title, tool.description] + [
+            prop.get("description", "") for prop in tool.input_schema.get("properties", {}).values()
+        ]
+        for text in texts:
+            assert not german.search(text), f"{tool.name}: {german.search(text).group(0)!r} in {text[:80]!r}"
         assert tool.input_schema["type"] == "object"
         for name in tool.input_schema.get("required", []):
             assert name in tool.input_schema["properties"], f"{tool.name}.{name}"
@@ -258,15 +269,15 @@ def test_measure_lists_every_measurement_and_corrects_the_clear_height(tools: li
     # NOT the lichte Höhe. On this engine it is the lichte Höhe, measured under
     # the lowest obstruction; keeping the old sentence would describe an
     # operator that no longer exists.
-    assert "Lichte Raumhöhe" in MEASURES["clearHeight"]
-    assert "NICHT die Höhe des Raumkörpers" in MEASURES["clearHeight"]
+    assert "Clear room height" in MEASURES["clearHeight"]
+    assert "NOT the height of the room solid" in MEASURES["clearHeight"]
 
 
 def test_the_expensive_tools_say_they_are_expensive(tools: list) -> None:
     by_name = {tool.name: tool for tool in tools}
-    assert "5 Sekunden" in by_name["draw"].description
-    assert "Kontaktkarte" in by_name["relations"].description
-    assert "tesselliert" in by_name["measure"].description
+    assert "5 seconds" in by_name["draw"].description
+    assert "contact map" in by_name["relations"].description
+    assert "tessellates" in by_name["measure"].description
 
 
 def test_clear_height_measures_under_the_suspended_ceiling(tools: list, house: str) -> None:
@@ -545,7 +556,7 @@ class TestTheClearanceReachesTheSurface:
         say which is which where the model reads it, or it will pick by name."""
         clearance = next(tool for tool in tools if tool.name == "clearance")
         assert "measure/clearWidth" in clearance.description
-        assert "zwei Laibungen" in clearance.description
+        assert "two reveals" in clearance.description
 
 
 class TestTheDoorGraphReachesTheSurface:

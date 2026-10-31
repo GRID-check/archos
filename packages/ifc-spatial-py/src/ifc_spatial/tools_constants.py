@@ -21,19 +21,19 @@ from .model import SpatialModel
 
 #: The relation names ``relations`` accepts, and what each one answers.
 RELATIONS: dict[str, str] = {
-    "hostedIn": "Welche Wand trägt dieses Fenster / diese Tür? (aus voids+fills abgeleitet)",
-    "hosts": "Welche Öffnungen sind aus diesem Bauteil ausgeschnitten?",
-    "fillerOf": "Was füllt diese Öffnung?",
-    "bounds": "Welche Bauteile begrenzen diesen Raum?",
-    "enclosedBy": "Welche Räume begrenzt dieses Bauteil?",
-    "opensTo": "In welche Räume öffnet dieses Fenster / diese Tür?",
-    "connects": "Welche Bauteile schließen an dieses an?",
-    "contains": "Welche Bauteile liegen in diesem Geschoß oder Raum?",
-    "containerOf": "In welchem Geschoß oder Raum liegt dieses Bauteil?",
-    "adjacentSpaces": "Welche Räume grenzen an diesen Raum?",
-    "elementsOfStorey": "Alle Bauteile dieses Geschoßes (auch die in Räumen).",
-    "above": "Was liegt direkt über diesem Bauteil oder Raum? (Strahlen nach oben, Möblierung ausgenommen)",
-    "below": "Was liegt direkt darunter?",
+    "hostedIn": "Which wall carries this window / door? (derived from voids + fills)",
+    "hosts": "Which openings are cut out of this element?",
+    "fillerOf": "What fills this opening?",
+    "bounds": "Which elements bound this room?",
+    "enclosedBy": "Which rooms does this element bound?",
+    "opensTo": "Into which rooms does this window / door open?",
+    "connects": "Which elements connect to this one?",
+    "contains": "Which elements lie in this storey or room?",
+    "containerOf": "In which storey or room does this element lie?",
+    "adjacentSpaces": "Which rooms adjoin this room?",
+    "elementsOfStorey": "All elements of this storey (including those in rooms).",
+    "above": "What lies directly above this element or room? (rays upwards, furniture excluded)",
+    "below": "What lies directly below?",
 }
 
 RELATION_FN: dict[str, Callable[[SpatialModel, str], Answer[Any]]] = {
@@ -76,96 +76,94 @@ GEOMETRIC_RELATIONS = frozenset(
 
 #: The measurements ``measure`` exposes, and what each one answers.
 MEASURES: dict[str, str] = {
-    "extent": "Abmessungen und Schwerpunkt: Breite, Tiefe, Höhe, Mittelpunkt.",
+    "extent": "Dimensions and centroid: width, depth, height, centre.",
     "floorArea": (
-        "Bodenfläche aus der Geometrie — auch wenn das Modell keine Raumfläche deklariert. Deklariert das "
-        "Modell eine, werden beide Wege gegeneinander geprüft und ein Widerspruch gemeldet."
+        "Floor area from the geometry — even when the model declares no room area. When the model declares "
+        "one, both routes are checked against each other and a contradiction is reported."
     ),
-    "sillAndHead": "Brüstungs- und Sturzhöhe eines Fensters oder einer Tür über SEINEM Geschoß.",
-    "elevation": "Unter- und Oberkante, absolut und über dem eigenen Geschoß.",
+    "sillAndHead": "Sill and head height of a window or door above ITS storey.",
+    "elevation": "Bottom and top edge, absolute and above the element's own storey.",
     # NOT the TS wording. The TS operator returns the height of the space solid
     # and its own caveat says the real clear height needs an intersection test
-    # it does not have; this engine has that test and measures the lichte Höhe
+    # it does not have; this engine has that test and measures the clear height
     # under the lowest obstruction. On the sample house the two differ by 30 cm
     # — under a suspended ceiling — and the TS number is the unsafe side of an
     # OIB minimum room height. Keeping the old sentence would describe an
     # operator that no longer exists.
     "clearHeight": (
-        "Lichte Raumhöhe: vom Boden senkrecht nach oben bis zum untersten hineinragenden Bauteil "
-        "(abgehängte Decke, Unterzug, Leitung). NICHT die Höhe des Raumkörpers — die liefert extent(). "
-        "Möblierung ist ausgenommen. Rasterabtastung, ~0,5 s."
+        "Clear room height: from the floor straight up to the lowest element reaching in (suspended "
+        "ceiling, downstand beam, duct). NOT the height of the room solid — extent() gives that. Furniture "
+        "is excluded. Raster sampling, ~0.5 s."
     ),
-    "azimuth": "Himmelsrichtung der Fassadenebene. Ohne TrueNorth in der Datei nicht entscheidbar.",
+    "azimuth": "Compass direction of the facade plane. Not decidable without TrueNorth in the file.",
     "lightEntryArea": (
-        "Lichteintrittsfläche eines RAUMS und ihr Anteil an der Bodenfläche — die Zahl, auf die ein "
-        "Tageslichtnachweis nach OIB 3 hinausläuft. Summiert nur die AUSSENLIEGENDEN Öffnungen "
-        "(Innentüren belichten nicht) und misst die Rohbaulichte, nicht die Glasfläche. Kein Grenzwert "
-        "angewandt — der Prozentsatz steht im Regelwerk, nicht im Modell."
+        "Light entry area of a ROOM and its share of the floor area — the number a daylight proof under "
+        "OIB 3 comes down to. Sums only the EXTERNAL openings (interior doors do not light a room) and "
+        "measures the structural opening, not the glass area. No limit applied — the percentage is in the "
+        "rulebook, not in the model."
     ),
     "egressPath": (
-        "Kürzester begehbarer Weg eines RAUMS ins Freie, über Türen — Räume, Türen und eine Länge. "
-        "Nachbarschaft ist keine Begehbarkeit: zwei Räume an derselben Wand ohne Tür dazwischen "
-        "grenzen aneinander und sind unerreichbar. Die Länge ist ein Streckenzug über Raum- und "
-        "Türmittelpunkte und damit eine UNTERGRENZE, keine Fluchtweglänge im Sinne der OIB 2."
+        "Shortest walkable route from a ROOM to the outside, through doors — rooms, doors and a length. "
+        "Adjacency is not walkability: two rooms on the same wall without a door between them adjoin and "
+        "are unreachable. The length is a polyline through room and door centres and therefore a LOWER "
+        "BOUND, not an escape route length in the sense of OIB 2."
     ),
     "reachableFrom": (
-        "Alle über Türen erreichbaren Räume mit Anzahl der Türen dazwischen. Beantwortet „welche "
-        "Räume liegen hinter dieser Tür, und findet Räume ganz ohne Ausgang — was selbst ein Befund ist."
+        "All rooms reachable through doors, with the number of doors in between. Answers 'which rooms lie "
+        "behind this door', and finds rooms with no exit at all — which is itself a finding."
     ),
     "clearWidth": (
-        "LICHTE Breite und Höhe einer Öffnung, an der Öffnung selbst gemessen (Rohbaulichte) — die "
-        "Zahl, die eine Durchgangs- oder Fluchtwegbreite verlangt. NICHT distance: dessen Modi messen "
-        "Schwerpunkte und Hüllboxen und liefern einen Achsabstand."
+        "CLEAR width and height of an opening, measured at the opening itself (structural opening) — the "
+        "number a passage or escape route width asks for. NOT distance: its modes measure centroids and "
+        "bounding boxes and return a centre-to-centre distance."
     ),
     "orientedExtent": (
-        "Länge, Breite und Höhe entlang der EIGENEN Achsen des Bauteils, plus seine Verdrehung gegen "
-        "Norden. Für alles, was schräg im Modell steht: extent() ist achsparallel und meldet dort "
-        "systematisch zu große Werte, die weder Länge noch Dicke sind."
+        "Length, width and height along the element's OWN axes, plus its rotation against north. For "
+        "anything set skewed in the model: extent() is axis-aligned and systematically reports values too "
+        "large there, which are neither length nor thickness."
     ),
     "roomDepth": (
-        "Raumtiefe senkrecht zur belichtenden Fassade, dazu die Breite entlang dieser Fassade und das "
-        "Verhältnis zur lichten Raumhöhe — für Tageslichtfragen, bei denen die Tiefe zählt. Die "
-        "gewählte Fassade wird genannt; bei einem Eckraum steht die zweitbeste dabei."
+        "Room depth perpendicular to the lighting facade, plus the width along that facade and the ratio to "
+        "the clear room height — for daylight questions where depth matters. The chosen facade is named; "
+        "for a corner room the second best is given too."
     ),
     "stairGeometry": (
-        "Steigungshöhe, Auftrittsbreite, Anzahl der Steigungen und die NUTZBREITE eines Treppenlaufs "
-        "— und die STREUUNG der Steigungen über den Lauf. Ungleiche Steigungen sind selbst der Befund: "
-        "eine Treppe kann im Mittel stimmen und trotzdem unbegehbar sein. Deklarierte Werte werden "
-        "gegen die Geometrie geprüft und ein Widerspruch gemeldet."
+        "Riser height, tread depth, number of risers and the USABLE WIDTH of a stair flight — and the "
+        "SPREAD of the risers along the flight. Uneven risers are themselves the finding: a stair can be "
+        "right on average and still be unwalkable. Declared values are checked against the geometry and a "
+        "contradiction is reported."
     ),
     "rampSlope": (
-        "Neigung einer Rampe als Prozent UND als Verhältnis, dazu Lauflänge, Höhenunterschied und "
-        "lichte Breite. Beide Formen, weil eine Bestimmung mal die eine und mal die andere nennt."
+        "Slope of a ramp as a percentage AND as a ratio, plus run length, rise and clear width. Both forms, "
+        "because a provision names one or the other."
     ),
     "headroom": (
-        "Durchgangshöhe über einem Treppenlauf oder einer Rampe, SENKRECHT ZUR LAUFEBENE gemessen — "
-        "nicht lotrecht. Die Engstelle liegt dort, wo der Lauf unter die Decke darüber läuft, und ein "
-        "lotrechter Strahl vom Auftritt geht daran vorbei (1,35 m gegen 1,65 m im Testfall)."
+        "Headroom above a stair flight or ramp, measured PERPENDICULAR TO THE PITCH LINE — not plumb. The "
+        "pinch point is where the flight runs under the slab above, and a plumb ray from the tread misses it "
+        "(1.35 m against 1.65 m in the test case)."
     ),
     "stepsOf": (
-        "Die Läufe und Podeste, aus denen eine Treppe zusammengesetzt ist — um einen einzelnen Lauf zu "
-        "befragen statt der Baugruppe. Podeste zählen, weil Bestimmungen die Zahl der Steigungen je "
-        "Lauf ohne Podest begrenzen."
+        "The flights and landings a stair is made of — to ask about a single flight instead of the assembly. "
+        "Landings count, because provisions limit the number of risers per flight without a landing."
     ),
     "turningCircle": (
-        "Der größte Kreis, der auf der freien Bodenfläche eines RAUMS Platz hat — die Zahl, auf die ein "
-        "Wendekreis hinausläuft. Gezählt werden nur feste Einbauten; die Möblierung steht separat unter "
-        "mitMoeblierung, weil eine Baubewilligung für das Gebäude gilt und nicht für die Stühle. Kein "
-        "Grenzwert angewandt."
+        "The largest circle that fits on a ROOM's free floor area — the number a turning circle comes down "
+        "to. Only fixed fittings count; the furniture is reported separately under mitMoeblierung, because "
+        "a building permit applies to the building and not to the chairs. No limit applied."
     ),
     "thresholdHeight": (
-        "Die Stufe an einer Tür: der Höhenunterschied der Böden beiderseits. Enthält der Export keinen "
-        "Fußbodenaufbau, ist es ein ROHBAUMASS — dann sagt die Antwort das, denn Estrich, Belag und "
-        "Dichtung machen die Stufe erst aus, und 0 mm am Rohbau heißt nichts über die fertige Schwelle."
+        "The step at a door: the level difference of the floors on both sides. When the export contains no "
+        "floor build-up it is a STRUCTURAL dimension — the answer then says so, because screed, finish and "
+        "seal make the step, and 0 mm on the structure says nothing about the finished threshold."
     ),
     "balustrade": (
-        "Wo es an einer Öffnung hinuntergeht: die Absturzhöhe und was dort steht, samt seiner Höhe. "
-        "Fehlen IfcRailing im Export ganz, ist die Antwort nicht entscheidbar — kein Geländer im Modell "
-        "heißt nicht kein Geländer am Bau."
+        "Where there is a drop at an opening: the fall height and what stands there, with its height. When "
+        "the export has no IfcRailing at all, the answer is not decidable — no railing in the model does not "
+        "mean no railing on site."
     ),
     "clearApproach": (
-        "Die freie Bodenfläche vor einer Tür, beidseitig, und was sie begrenzt — was jemand braucht, um "
-        "die Tür überhaupt öffnen zu können."
+        "The free floor area in front of a door, on both sides, and what bounds it — what someone needs to "
+        "be able to open the door at all."
     ),
 }
 
@@ -286,25 +284,24 @@ _PROFILE_LIST_CAP = 3
 #: The `what` values `fire` accepts.
 FIRE_ASPECTS: dict[str, str] = {
     "escape_level": (
-        "Höhe des obersten Aufenthaltsgeschoßes über dem tiefsten anschließenden Gelände — die Zahl, "
-        "an der die Gebäudeklasse hängt. Welche Geschoße gezählt wurden, steht in der Antwort"
+        "Height of the topmost habitable storey above the lowest adjoining ground — the number the building "
+        "class depends on. Which storeys were counted is in the answer"
     ),
-    "compartmentArea": "Bodenfläche eines Brandabschnitts über mehrere Räume, mit jedem Raum einzeln",
+    "compartmentArea": "Floor area of a fire compartment over several rooms, with each room individually",
     "separatingElements": (
-        "Was zwischen zwei Räumen liegt — Wand, Decke, und die Türen darin — je mit seinem "
-        "DEKLARIERTEN FireRating, und ausdrücklich mit dessen Fehlen"
+        "What lies between two rooms — wall, slab, and the doors in them — each with its DECLARED "
+        "FireRating, and explicitly with its absence"
     ),
     "siteBoundary": (
-        "Abstand zur Grundgrenze (Brandübertragung). Auf den meisten Exporten nicht entscheidbar: "
-        "eine Grundgrenze wird selten mitexportiert, und geraten wird sie hier nicht"
+        "Distance to the site boundary (fire spread). Not decidable on most exports: a site boundary is "
+        "rarely exported, and it is not guessed here"
     ),
     "doorGraph": (
-        "Der begehbare Graph des GANZEN Gebäudes: Räume als Knoten, DRAUSSEN als eigener Knoten, "
-        "Türen als Kanten — und ausdrücklich die Türen, die zu keiner Kante wurden (unbestimmt, "
-        "excluded). Ein Raum ohne Kante hat keinen Ausgang, und eine unbestimmte Tür ist ein "
-        "Loch in JEDEM Weg dieses Gebäudes. measure/egressPath nennt EINE Route; das hier sagt, wie "
-        "vollständig die Grundlage aller Routen ist. Teilt sich den Aufbau mit egressPath und "
-        "reachableFrom, kostet also nur beim ersten der drei Aufrufe Sekunden"
+        "The walkable graph of the WHOLE building: rooms as nodes, OUTSIDE as its own node, doors as edges "
+        "— and explicitly the doors that became no edge (undetermined, excluded). A room without an edge has "
+        "no exit, and an undetermined door is a hole in EVERY route of this building. measure/egressPath "
+        "names ONE route; this says how complete the basis of all routes is. Shares its setup with "
+        "egressPath and reachableFrom, so only the first of the three calls costs seconds"
     ),
 }
 
@@ -318,21 +315,21 @@ FIRE_ASPECTS: dict[str, str] = {
 #: was left out stays invisible.
 ENVELOPE_ASPECTS: dict[str, str] = {
     "thermalEnvelope": (
-        "Welche Bauteile die Grenze zwischen beheiztem Innen und Außen bilden, nach Art gruppiert, "
-        "je mit Fläche und DEKLARIERTEM U-Wert. Jeder Eintrag nennt, WORAUS die Zuordnung folgt — "
-        "IsExternal deklariert oder aus den Raumberührungen abgeleitet ist nicht dieselbe Aussage. "
-        "Dazu die zwei Listen, die die Summe überprüfbar machen: interior (entschieden und "
-        "weggelassen) und undetermined (nicht entschieden, also weder gezählt noch verworfen)"
+        "Which elements form the boundary between heated inside and outside, grouped by kind, each with "
+        "area and DECLARED U-value. Every entry names WHAT the assignment follows from — IsExternal declared "
+        "or derived from the room contacts is not the same statement. Plus the two lists that make the sum "
+        "checkable: interior (decided and left out) and undetermined (not decided, so neither counted nor "
+        "discarded)"
     ),
     "areaByOrientation": (
-        "Hüllfläche je Himmelsrichtung, opak und transparent getrennt, mit dem Fensterflächenanteil "
-        "(WWR) je Fassade. Braucht einen deklarierten TrueNorth — ohne den wird die Richtung nicht "
-        "geraten, sondern verweigert"
+        "Envelope area per compass direction, opaque and transparent separately, with the window-to-wall "
+        "ratio (WWR) per facade. Needs a declared TrueNorth — without one the direction is not guessed but "
+        "refused"
     ),
     "compactness": (
-        "A/V in 1/m, mit der charakteristischen Länge l_c = V/A daneben. A und V kommen einzeln "
-        "zurück, weil ein Verhältnis, dessen Eingangsgrößen unsichtbar sind, von der Person, die es "
-        "unterschreibt, nicht geprüft werden kann. V ist das NETTO-Volumen (Summe der IfcSpace-Körper)"
+        "A/V in 1/m, with the characteristic length l_c = V/A beside it. A and V come back individually, "
+        "because a ratio whose inputs are invisible cannot be checked by the person who signs it. V is the "
+        "NET volume (sum of the IfcSpace bodies)"
     ),
 }
 
