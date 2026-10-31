@@ -67,11 +67,10 @@ def test_the_token_is_read_under_each_name_the_receiver_accepts():
 
 
 def test_the_dev_default_token_is_refused_outside_dev(monkeypatch):
-    from agent_host.routes.internal_auth import _DEV_DEFAULT_TOKEN
-
-    assert envelope_auth.is_dev_default_token(_DEV_DEFAULT_TOKEN)
-    monkeypatch.setenv("INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
-    header = {envelope_auth.TOKEN_HEADER: _DEV_DEFAULT_TOKEN}
+    dev = "a-well-known-dev-token"  # pragma: allowlist secret
+    monkeypatch.setattr(envelope_auth, "DEV_DEFAULT_TOKEN_SHA256", hashlib.sha256(dev.encode()).hexdigest())
+    monkeypatch.setenv("INTERNAL_API_TOKEN", dev)
+    header = {envelope_auth.TOKEN_HEADER: dev}
     assert envelope_auth.internal_token_refusal(header.get) == (503, "Internal API disabled")
     monkeypatch.setenv("APP_ENV", "development")
     assert envelope_auth.internal_token_refusal(header.get) is None

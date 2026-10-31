@@ -471,6 +471,23 @@ def delete_if_equal(key: str, value: str) -> None:
             _local_store.pop(key, None)
 
 
+_REFRESH_IF_EQUAL_LUA = (
+    "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('pexpire', KEYS[1], ARGV[2]) end return 0"
+)
+
+
+def refresh_if_equal(key: str, value: str, ttl_seconds: float) -> bool:
+    """Extend ``key``'s TTL while it still holds ``value``: a lock owner's heartbeat. False once it is not ours."""
+    if _get_client() is not None:
+        return bool(eval_script(_REFRESH_IF_EQUAL_LUA, [key], [value, int(ttl_seconds * 1000)]))
+    with _local_lock:
+        entry = _local_store.get(key)
+        if entry is None or entry[1] != value or time.monotonic() >= entry[0]:
+            return False
+        _local_store[key] = (time.monotonic() + ttl_seconds, value)
+    return True
+
+
 def _repair_window_ttl(client: Any, key: str, window_seconds: int, cause: BaseException) -> None:
     """Give a fixed-window counter a TTL when the pipelined ``EXPIRE`` was dropped.
 
