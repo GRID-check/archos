@@ -59,15 +59,19 @@ def test_no_envelope_is_none():
     assert envelope_auth.verified_envelope_context(None, None) is None
 
 
-def test_the_token_is_read_under_either_header_name():
-    for name in envelope_auth.TOKEN_HEADERS:
-        assert envelope_auth.internal_token_refusal({name: SECRET}.get) is None
+def test_the_token_is_read_under_each_name_the_receiver_accepts():
+    assert envelope_auth.internal_token_refusal({envelope_auth.TOKEN_HEADER: SECRET}.get) is None
+    assert envelope_auth.internal_token_refusal({"x-legacy": SECRET}.get, ("x-legacy", "x-internal-token")) is None
+    assert envelope_auth.internal_token_refusal({"x-legacy": SECRET}.get) == (403, "Forbidden")
     assert envelope_auth.internal_token_refusal({}.get) == (403, "Forbidden")
 
 
 def test_the_dev_default_token_is_refused_outside_dev(monkeypatch):
-    monkeypatch.setenv("INTERNAL_API_TOKEN", envelope_auth.DEV_DEFAULT_TOKEN)
-    header = {envelope_auth.TOKEN_HEADERS[0]: envelope_auth.DEV_DEFAULT_TOKEN}
+    from agent_host.routes.internal_auth import _DEV_DEFAULT_TOKEN
+
+    assert envelope_auth.is_dev_default_token(_DEV_DEFAULT_TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", _DEV_DEFAULT_TOKEN)
+    header = {envelope_auth.TOKEN_HEADER: _DEV_DEFAULT_TOKEN}
     assert envelope_auth.internal_token_refusal(header.get) == (503, "Internal API disabled")
     monkeypatch.setenv("APP_ENV", "development")
     assert envelope_auth.internal_token_refusal(header.get) is None

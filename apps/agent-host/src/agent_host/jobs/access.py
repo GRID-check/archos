@@ -17,9 +17,9 @@ from sqlalchemy.engine import Connection
 from agent.auth import Principal
 from agent.auth import get_current_principal
 from agent.common.db_utils import ensure_schema
-from agent.common.envelope_auth import REQUEST_CONTEXT_MAX_AGE_MS
 from agent.common.db_utils import present_columns
 from agent.common.db_utils import present_indexes
+from agent.common.envelope_auth import REQUEST_CONTEXT_MAX_AGE_MS
 from agent.common.source_kinds import is_office_shelf_collection
 from agent.knowledge.restricted_collections import base_collection_of
 from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER

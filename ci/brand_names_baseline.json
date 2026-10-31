@@ -30,7 +30,7 @@
   "apps/agent-host/src/agent_host/routes/generate_conversation_title.py": 2,
   "apps/agent-host/src/agent_host/routes/generate_summary.py": 2,
   "apps/agent-host/src/agent_host/routes/ingest.py": 3,
-  "apps/agent-host/src/agent_host/routes/internal_auth.py": 3,
+  "apps/agent-host/src/agent_host/routes/internal_auth.py": 2,
   "apps/agent-host/src/agent_host/routes/internal_tools.py": 1,
   "apps/agent-host/src/agent_host/routes/job_reaper.py": 1,
   "apps/agent-host/src/agent_host/routes/revision_compare.py": 8,

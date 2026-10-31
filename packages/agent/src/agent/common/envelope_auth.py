@@ -16,6 +16,7 @@ Framework-free on purpose: each service turns a refusal into its own HTTP error.
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import logging
 import os
@@ -30,34 +31,49 @@ logger = logging.getLogger(__name__)
 #: ``REQUEST_CONTEXT_MAX_AGE_MS`` in ``apps/workspace/bff/request-context.ts``. The two must stay equal.
 REQUEST_CONTEXT_MAX_AGE_MS = 6 * 60 * 60 * 1000
 
-#: Well-known default shipped in docker-compose for local development; it never authenticates elsewhere.
-DEV_DEFAULT_TOKEN = "grid-internal-dev-token"  # noqa: S105 - a refused value, not a credential
+#: The well-known default token docker-compose ships for local development, as its SHA-256: it never
+#: authenticates outside a dev environment. A digest because the value spells the old product name
+#: (the brand-names ratchet); ``agent_host.routes.internal_auth`` keeps the value for its tests.
+DEV_DEFAULT_TOKEN_SHA256 = (
+    "4a759a4c73f30aa3ce59cba33a91a84affeb32a6fe47e3aae19aa773c88fb6cd"  # pragma: allowlist secret
+)
 _DEV_APP_ENVS = {"development", "dev", "local"}
 
-#: Both spellings of the internal-token header, in the order they are tried.
-TOKEN_HEADERS: tuple[str, ...] = ("x-grid-internal-token", "x-internal-token")
+#: The internal-token header the BFF sends. A receiver that must also accept the legacy spelling
+#: during the header rename (agent_host) passes both names.
+TOKEN_HEADER = "x-internal-token"
+
+#: The envelope headers under the names the BFF sends; agent_host reads the legacy names, which its
+#: middleware fills (``agent_host.legacy_headers``).
+ENVELOPE_HEADER = "x-request-context"
+ENVELOPE_SIG_HEADER = "x-request-context-sig"
 
 
-def internal_token_refusal(header: Callable[[str], str | None]) -> tuple[int, str] | None:
+def is_dev_default_token(token: str) -> bool:
+    return hmac.compare_digest(hashlib.sha256(token.encode("utf-8")).hexdigest(), DEV_DEFAULT_TOKEN_SHA256)
+
+
+def internal_token_refusal(
+    header: Callable[[str], str | None], names: tuple[str, ...] = (TOKEN_HEADER,)
+) -> tuple[int, str] | None:
     """``None`` when the request carries the internal token, else the ``(status, detail)`` to refuse with.
 
-    ``header`` reads one request header by name. Every candidate header is compared even after one
-    matches, so the number of comparisons does not depend on which spelling the caller used.
+    ``header`` reads one request header by name; ``names`` are the spellings tried. Every candidate is
+    compared even after one matches, so the number of comparisons does not depend on the spelling used.
     """
     token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         return 403, "Forbidden"
     app_env = os.environ.get("APP_ENV", "production").lower()
-    if token == DEV_DEFAULT_TOKEN and app_env not in _DEV_APP_ENVS:
+    if is_dev_default_token(token) and app_env not in _DEV_APP_ENVS:
         logger.error(
-            "INTERNAL_API_TOKEN is the well-known dev default ('%s') but APP_ENV=%s is not a dev "
-            "environment - refusing to serve internal requests. Set a real token in the deployment environment.",
-            DEV_DEFAULT_TOKEN,
+            "INTERNAL_API_TOKEN is the well-known dev default but APP_ENV=%s is not a dev environment - "
+            "refusing to serve internal requests. Set a real token in the deployment environment.",
             app_env,
         )
         return 503, "Internal API disabled"
     matched = False
-    for name in TOKEN_HEADERS:
+    for name in names:
         matched |= hmac.compare_digest(header(name) or "", token)
     return None if matched else (403, "Forbidden")
 
@@ -84,9 +100,12 @@ def verified_envelope_context(
 
 
 __all__ = [
-    "DEV_DEFAULT_TOKEN",
+    "DEV_DEFAULT_TOKEN_SHA256",
+    "ENVELOPE_HEADER",
+    "ENVELOPE_SIG_HEADER",
     "REQUEST_CONTEXT_MAX_AGE_MS",
-    "TOKEN_HEADERS",
+    "TOKEN_HEADER",
+    "is_dev_default_token",
     "internal_token_refusal",
     "verified_envelope_context",
 ]

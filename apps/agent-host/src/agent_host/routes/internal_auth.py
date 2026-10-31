@@ -14,9 +14,15 @@ from fastapi import HTTPException
 from fastapi import Request
 
 from agent.common.envelope_auth import _DEV_APP_ENVS  # noqa: F401 - re-exported for maintenance.py
-from agent.common.envelope_auth import DEV_DEFAULT_TOKEN as _DEV_DEFAULT_TOKEN
-from agent.common.envelope_auth import TOKEN_HEADERS as _TOKEN_HEADERS
+from agent.common.envelope_auth import TOKEN_HEADER
 from agent.common.envelope_auth import internal_token_refusal
+
+# Well-known default shipped in docker-compose for local development. It must
+# never authenticate anything outside a dev environment (the shared check knows its digest).
+_DEV_DEFAULT_TOKEN = "grid-internal-dev-token"
+
+#: Both spellings of the internal-token header, legacy first, until the header rename's contract step.
+_TOKEN_HEADERS: tuple[str, ...] = ("x-grid-internal-token", TOKEN_HEADER)
 
 __all__ = ["_DEV_APP_ENVS", "_DEV_DEFAULT_TOKEN", "_TOKEN_HEADERS", "_require_internal_token"]
 
@@ -28,6 +34,6 @@ def _require_internal_token(request: Request) -> None:
     header spellings are accepted: every caller in the repo sent the legacy spelling while this
     guard once read only the new one, and every real request got a 403.
     """
-    refusal = internal_token_refusal(request.headers.get)
+    refusal = internal_token_refusal(request.headers.get, _TOKEN_HEADERS)
     if refusal is not None:
         raise HTTPException(status_code=refusal[0], detail=refusal[1])
