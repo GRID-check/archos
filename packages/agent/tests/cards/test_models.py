@@ -516,3 +516,16 @@ class TestCardTextIsPlainText:
         assert flatten_card_markup(plain) == plain
         once = flatten_card_markup("[a](https://x) **b** `c`")
         assert flatten_card_markup(once) == once
+
+
+def test_ifc_viewer_mark_is_an_annotation_id_or_nothing() -> None:
+    """A mark is an annotation id the list reported; anything else would open no view, so it is refused."""
+    base = {"type": "ifc_viewer", "title": "Auflager"}
+    card = answer_card_adapter.validate_python({**base, "mark": "3f2b8c1e-5a47-4e0b-9d6a-1c2e3f4a5b6c"})
+    assert getattr(card, "mark", None) == "3f2b8c1e-5a47-4e0b-9d6a-1c2e3f4a5b6c"
+    assert getattr(answer_card_adapter.validate_python(base), "mark", "unset") is None
+    try:
+        answer_card_adapter.validate_python({**base, "mark": "Anmerkung 4"})
+    except ValidationError:
+        return
+    raise AssertionError("a mark that is no annotation id was accepted")

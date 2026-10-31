@@ -157,6 +157,7 @@ class IfcViewerCard(CardModel):
     note: str | None = Field(default=None, description="Optional one-line clarification under the viewer")
     mark: str | None = Field(
         default=None,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
         description=(
             "Id of an annotation on this model, exactly as the annotation list reported it: "
             "'Open model' then opens at that annotation's view (camera, section, selection). "
